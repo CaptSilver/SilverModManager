@@ -440,7 +440,7 @@ internal partial class LoadoutManager : ILoadoutManager
         await synchronizer.BuildProcessRun(loadout, state, cancellationToken, largeFiles);
     }
 
-    public async ValueTask DeactivateCurrentLoadout(GameInstallation installation, CancellationToken cancellationToken = default, BackupOverflowChoice? largeFiles = null)
+    public async ValueTask DeactivateCurrentLoadout(GameInstallation installation, CancellationToken cancellationToken = default, BackupOverflowChoice? largeFiles = null, bool discardBackups = false)
     {
         var metadata = _gameRegistry.ForceGetMetadata(installation);
         var synchronizer = installation.GetGame().Synchronizer;
@@ -450,8 +450,13 @@ internal partial class LoadoutManager : ILoadoutManager
         // Before the synchronize below, which writes: a refused reset should leave everything as it was.
         EnsureBuildCovered(installation);
 
-        // Synchronize the last applied loadout, so we don't lose any changes
-        await synchronizer.Synchronize(Loadout.Load(_connection.Db, metadata.LastSyncedLoadout), largeFiles: largeFiles, cancellationToken: cancellationToken);
+        // The sync and the reset are one operation to the player, so one answer covers both.
+        using var answer = BackupOverflowAnswer.Begin();
+
+        // Synchronize the last applied loadout, so we don't lose any changes. A caller that is about to delete the
+        // loadouts has no use for them.
+        if (!discardBackups)
+            await synchronizer.Synchronize(Loadout.Load(_connection.Db, metadata.LastSyncedLoadout), largeFiles: largeFiles, cancellationToken: cancellationToken);
 
         var metadataLocatorIds = installation.LocatorResult.LocatorIds;
         var locatorIds = metadataLocatorIds.Distinct().ToArray();
@@ -461,7 +466,7 @@ internal partial class LoadoutManager : ILoadoutManager
             _logger.LogWarning("Duplicate locator ids `{LocatorIds}` found in LocatorResultMetadata for {Game} when deactivating loadout", metadataLocatorIds, installation.Game.DisplayName);
         }
 
-        await synchronizer.ResetToOriginalGameState(installation, locatorIds, largeFiles, cancellationToken);
+        await synchronizer.ResetToOriginalGameState(installation, locatorIds, largeFiles, cancellationToken, discardBackups);
     }
 
     private static void EnsureBuildCovered(GameInstallation installation)
@@ -469,26 +474,12 @@ internal partial class LoadoutManager : ILoadoutManager
         installation.GetGame().Synchronizer.EnsureBuildCovered(installation, installation.LocatorResult.LocatorIds.Distinct().ToArray());
     }
 
-    public async Task CleanGameFolder(Loadout.ReadOnly loadout)
+    public async Task CleanGameFolder(Loadout.ReadOnly loadout, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default)
     {
-        var installation = loadout.InstallationInstance;
-        EnsureBuildCovered(installation);
+        EnsureBuildCovered(loadout.InstallationInstance);
 
-        loadout = loadout.Rebase();
-        using (var tx = _connection.BeginTransaction())
-        {
-            // Remove items from External Changes
-            if (LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id).TryGetFirst(out var overridesGroup))
-            {
-                foreach (var entry in overridesGroup.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
-                    tx.Delete(entry.Id, recursive: false);
-            }
-
-            await tx.Commit();
-        }
-
-        // Apply clean state to game folder
-        await installation.GetGame().Synchronizer.Synchronize(Loadout.Load(_connection.Db, loadout.LoadoutId));
+        // Through the service so the clean waits its turn behind other syncs and the question holds the install.
+        await _synchronizerService.CleanGameFolder(loadout.LoadoutId, largeFiles, cancellationToken);
     }
 
     public async Task<UnbackedFiles> CountUnbackedFiles(GameInstallation installation, CancellationToken cancellationToken = default)
@@ -537,7 +528,8 @@ internal partial class LoadoutManager : ILoadoutManager
 
             var metadata = _gameRegistry.ForceGetMetadata(installation);
 
-            if (GetCurrentlyActiveLoadout(installation).HasValue && cleanGameFolder) await DeactivateCurrentLoadout(installation, cancellationToken: cancellationToken, largeFiles: largeFiles);
+            // Every loadout is deleted below, so the reset drops its copies instead of making them.
+            if (GetCurrentlyActiveLoadout(installation).HasValue && cleanGameFolder) await DeactivateCurrentLoadout(installation, cancellationToken: cancellationToken, largeFiles: largeFiles, discardBackups: true);
             await ctx.YieldAsync();
 
             {

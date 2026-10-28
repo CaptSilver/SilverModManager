@@ -25,6 +25,16 @@ public interface ISynchronizerService
     public Task Synchronize(LoadoutId loadout, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default);
     
     /// <summary>
+    /// Removes the loadout's External Changes and applies it, which deletes those files from the game folder, backing
+    /// them up first. Waits its turn like <see cref="Synchronize"/>, and the backup-cap question holds the install the
+    /// same way. When the question is refused or the wait cancelled, the External Changes are back as they were.
+    /// </summary>
+    /// <param name="loadout">The loadout whose External Changes are removed.</param>
+    /// <param name="largeFiles">The answer to give when the files to back up are over the cap; null asks the player.</param>
+    /// <param name="cancellationToken">Ends the wait for that answer.</param>
+    public Task CleanGameFolder(LoadoutId loadout, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Removes all the loadouts for a game, and resets the game folder to its
     /// initial state.
     /// </summary>
@@ -41,8 +51,10 @@ public interface ISynchronizerService
     /// which clears an earlier mark.
     /// </param>
     /// <returns>False when the root already uses <paramref name="backend"/> and nothing was done.</returns>
+    /// <param name="largeFiles">The answer to give when the files to back up are over the cap; null asks the player.</param>
+    /// <param name="cancellationToken">Ends the wait for that answer.</param>
     /// <throws cref="ExecutableInUseException">Thrown while the app is running a launch of this game.</throws>
-    public Task<bool> ChangeDeploymentBackend(GameInstallation installation, GamePath root, DeploymentBackendId backend, bool chosen);
+    public Task<bool> ChangeDeploymentBackend(GameInstallation installation, GamePath root, DeploymentBackendId backend, bool chosen, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get the diff tree of the unapplied changes of a loadout.

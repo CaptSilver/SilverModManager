@@ -4,7 +4,9 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Deployment;
 using SilverModManager.Abstractions.Loadouts.Exceptions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.DataModel.CommandLine.Verbs;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Platform.Proton.Doctor;
 using SilverModManager.Platform.Proton.Launch;
@@ -63,8 +65,11 @@ public sealed class DeploymentCommand(
 {
     private static readonly JsonSerializerOptions JsonOptions = DoctorReport.JsonOptions;
 
-    public async Task<int> RunAsync(IRenderer renderer, string game, string? root, string? use, bool recommended, bool json)
+    public async Task<int> RunAsync(IRenderer renderer, string game, string? root, string? use, bool recommended, bool json, string? largeFiles = null)
     {
+        // Always an explicit answer: with none, a verb forwarded to the running window would open the backup-cap dialog there.
+        var overflowChoice = BackupOverflowChoices.Parse(largeFiles);
+
         if ((use is null) == !recommended) return await Fail(renderer, "Give exactly one of --use <backend> or --recommended.");
 
         var installation = resolver.ResolveGame(game, out var gameError);
@@ -100,10 +105,10 @@ public sealed class DeploymentCommand(
         {
             foreach (var (target, choice) in wanted is null ? Choose(installation, plan, targets) : targets.Select(t => (t, (DeploymentChoice?)null)))
             {
-                results.Add(await Apply(installation, plan, target, wanted, choice));
+                results.Add(await Apply(installation, plan, target, wanted, choice, overflowChoice));
             }
         }
-        catch (ExecutableInUseException e)
+        catch (Exception e) when (e is ExecutableInUseException or BackupOverflowException)
         {
             return await Fail(renderer, e.Message);
         }
@@ -130,14 +135,14 @@ public sealed class DeploymentCommand(
             .ToArray();
     }
 
-    private async Task<DeploymentRootResult> Apply(GameInstallation installation, DeploymentPlan plan, GamePath target, DeploymentBackendId? wanted, DeploymentChoice? choice)
+    private async Task<DeploymentRootResult> Apply(GameInstallation installation, DeploymentPlan plan, GamePath target, DeploymentBackendId? wanted, DeploymentChoice? choice, BackupOverflowChoice overflowChoice)
     {
         var before = plan.BackendFor(target);
         var name = DoctorDeploymentRoot.Describe(target);
 
         if (wanted is { } picked)
         {
-            var changed = await synchronizer.ChangeDeploymentBackend(installation, target, picked, chosen: true);
+            var changed = await synchronizer.ChangeDeploymentBackend(installation, target, picked, chosen: true, overflowChoice);
             var outcome = changed ? DeploymentOutcome.Moved : IsChosen(plan, target) ? DeploymentOutcome.Unchanged : DeploymentOutcome.Pinned;
             return new DeploymentRootResult(name, before.Value, picked.Value, outcome, null);
         }
@@ -145,7 +150,7 @@ public sealed class DeploymentCommand(
         if (choice is not { } chain) return new DeploymentRootResult(name, before.Value, before.Value, DeploymentOutcome.LeftChosen, null);
         if (chain.Backend == before) return new DeploymentRootResult(name, before.Value, before.Value, DeploymentOutcome.MatchesChain, chain.Reason);
 
-        await synchronizer.ChangeDeploymentBackend(installation, target, chain.Backend, chosen: false);
+        await synchronizer.ChangeDeploymentBackend(installation, target, chain.Backend, chosen: false, overflowChoice);
         return new DeploymentRootResult(name, before.Value, chain.Backend.Value, DeploymentOutcome.Moved, chain.Reason);
     }
 

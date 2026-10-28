@@ -23,6 +23,7 @@ internal static class DeploymentVerbs
         [Option("r", "root", "The root to move, as shown by `silvermod doctor`; every root when left out", true)] string? root,
         [Option("u", "use", "Deploy with this backend and keep it, whatever the chain picks later", true)] string? use,
         [Option("c", "recommended", "Move roots the chain picked a backend for to the chain's pick now; roots chosen with --use stay", true)] bool recommended,
-        [Option("j", "json", "Print the result as JSON", true)] bool json)
-        => command.RunAsync(renderer, game, root, use, recommended, json);
+        [Option("j", "json", "Print the result as JSON", true)] bool json,
+        [Option("large-files", "large-files", "What to do when moving a root has to back up more added files than the backup cap allows: adopt or backup. Without it the command refuses and says so.", true)] string? largeFiles)
+        => command.RunAsync(renderer, game, root, use, recommended, json, largeFiles);
 }

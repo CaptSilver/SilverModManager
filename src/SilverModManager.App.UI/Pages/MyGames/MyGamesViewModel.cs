@@ -424,7 +424,11 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                 {
                     await Task.Run(() => _loadoutManager.CleanGameFolder(loadout));
                 }
-                catch (SynchronizerPreflightException e)
+                catch (BackupOverflowException e) when (e.Declined)
+                {
+                    // The player answered the question with "Don't manage": nothing was deleted, and there is nothing to explain.
+                }
+                catch (UserFacingException e)
                 {
                     // Nothing was deleted; the files stay as External Changes and the game stays managed.
                     await ShowRefusalDialog($"Can't clean the {installation.Game.DisplayName} folder", e.Message);

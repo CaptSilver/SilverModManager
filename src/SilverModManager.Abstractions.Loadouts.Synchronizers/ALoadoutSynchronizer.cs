@@ -989,23 +989,40 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         Dictionary<GamePath, SyncNode> syncTree,
         GameInstallation installation,
         BackupOverflowChoice? preset,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool presetIsAnAnswer = false,
+        bool adoptOnlyBacksUp = false)
     {
         var overflow = await MeasureBackupOverflow(syncTree, cancellationToken);
         if (overflow is null) return (BackupOverflowChoice.BackUpAnyway, false);
 
         if (preset == BackupOverflowChoice.Refuse) throw new BackupOverflowException(installation, overflow);
 
+        // An earlier step of the same operation has put the question already.
+        var scope = BackupOverflowAnswer.Active;
+        if (preset is null && scope?.Remembered is { } carried)
+        {
+            preset = carried;
+            presetIsAnAnswer = true;
+        }
+
+        // Every overflow node of a reset is deleted after its copy, so there is nothing to leave in place: adopting
+        // can only mean backing up, which the player's earlier adopt answer already accepted for the other files.
+        if (adoptOnlyBacksUp && preset == BackupOverflowChoice.AdoptInPlace) preset = BackupOverflowChoice.BackUpAnyway;
+
         BackupOverflowChoice choice;
         var asked = preset is null;
-        if (preset is { } given)
+        if (preset is { } given && !(presetIsAnAnswer && given == BackupOverflowChoice.AdoptInPlace && !overflow.CanAdopt))
         {
             choice = given;
         }
         else
         {
+            // Either no answer yet, or the folder changed since the player gave theirs and adopting would now lose files.
+            asked = true;
             choice = await _backupOverflowPrompt.Ask(installation, overflow, cancellationToken);
             if (choice == BackupOverflowChoice.Refuse) throw new BackupOverflowException(installation, overflow) { Declined = true };
+            scope?.Remember(choice);
         }
 
         if (choice == BackupOverflowChoice.AdoptInPlace && !overflow.CanAdopt)
@@ -1191,6 +1208,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // Update locator IDs before building the sync tree
         (loadout, var installation) = await UpdateLocatorIds(loadout, cancellationToken);
         
+        // One answer to the backup-cap question covers every step of this apply, a switch's three included.
+        using var answer = BackupOverflowAnswer.Begin();
+
         // If we are swapping loadouts, then we need to synchronize the previous loadout first to ingest
         // any changes, then we can apply the new loadout.
         if (Sdk.Games.GameInstallMetadata.LastSyncedLoadout.TryGetValue(loadout.Installation, out var lastAppliedId) && lastAppliedId != loadout.Id)
@@ -1208,7 +1228,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var metadata = await ReindexState(installation, job, cancellationToken);
 
         // Reconcile sees the fresh disk state, and the game's preparation sees the group it writes.
-        loadout = await ReconcileGameInstalledContent(loadout, metadata);
+        loadout = await ReconcileGameInstalledContent(loadout, metadata, cancellationToken);
         loadout = await PrepareLoadoutForSync(loadout);
 
         var tree = BuildSyncTreeFromIndex(loadout, metadata);
@@ -1222,7 +1242,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             metadata = await ReindexState(installation, job, cancellationToken);
             tree = BuildSyncTreeFromIndex(loadout, metadata);
             ProcessSyncTree(tree);
-            (choice, _) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, choice, cancellationToken);
+            (choice, _) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, choice, cancellationToken, presetIsAnAnswer: true);
         }
 
         loadout = await RunActions(tree, loadout, job, choice);
@@ -1809,7 +1829,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             $"{installation.Game.DisplayName}'s installed build is not in the app's game file data yet, so the app cannot tell the game's own files from added ones and will not clean the folder. Existing files are kept as External Changes.");
     }
 
-    public async Task ResetToOriginalGameState(GameInstallation installation, LocatorId[] locatorIds, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default)
+    public async Task ResetToOriginalGameState(GameInstallation installation, LocatorId[] locatorIds, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default, bool discardBackups = false)
     {
         // Same reasoning as in Synchronize: the re-index below writes before RunActions would refuse.
         await Preflight(installation);
@@ -1817,17 +1837,36 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         var desiredState = await BuildResetTree(installation, locatorIds);
 
-        // Every overflow node here is backed up and then deleted, so nothing is adoptable and the answer is
-        // back up or refuse. After a question the tree is built again from a fresh index of the folder.
-        var (choice, asked) = await ResolveBackupOverflow(desiredState, installation, largeFiles, cancellationToken);
+        // The caller is about to let go of every copy this reset would make (an unmanage), so none is worth the
+        // time or the question.
+        if (discardBackups)
+        {
+            DropBackups(desiredState);
+            await RunActions(desiredState, installation, BackupOverflowChoice.BackUpAnyway);
+            return;
+        }
+
+        // Every overflow node here is backed up and then deleted, so nothing is adoptable and the answer is back up
+        // or refuse; an adopt given for the steps before it can only mean back up here. After a question the tree
+        // is built again from a fresh index of the folder.
+        var (choice, asked) = await ResolveBackupOverflow(desiredState, installation, largeFiles, cancellationToken, adoptOnlyBacksUp: true);
         if (asked)
         {
             desiredState = await BuildResetTree(installation, locatorIds);
-            (choice, _) = await ResolveBackupOverflow(desiredState, installation, choice, cancellationToken);
+            (choice, _) = await ResolveBackupOverflow(desiredState, installation, choice, cancellationToken, presetIsAnAnswer: true, adoptOnlyBacksUp: true);
         }
 
         // Run the groupings
         await RunActions(desiredState, installation, choice);
+    }
+
+    private static void DropBackups(Dictionary<GamePath, SyncNode> tree)
+    {
+        foreach (var path in tree.Keys.ToArray())
+        {
+            ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(tree, path);
+            node.Actions &= ~Actions.BackupFile;
+        }
     }
 
     /// <summary>

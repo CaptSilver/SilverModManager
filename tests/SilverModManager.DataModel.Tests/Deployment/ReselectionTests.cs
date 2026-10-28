@@ -8,6 +8,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.DataModel.Synchronizer;
 using SilverModManager.Games.TestFramework;
+using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Native;
 
@@ -22,7 +23,22 @@ public class ReselectionTests(ITestOutputHelper helper) : AppliedGameTest<Resele
     {
         // Registered first: the data model only adds the chain when nothing else is there.
         services.AddSingleton<IDeploymentBackendSelector>(sp => new CopyUntilToldOtherwise(sp));
-        return base.AddServices(services);
+        return base.AddServices(services)
+            .AddSingleton(new BackupLimit(Size.KB * 8))
+            .AddSingleton<IBackupOverflowPrompt>(_prompt);
+    }
+
+    private readonly CountingPrompt _prompt = new();
+
+    private sealed class CountingPrompt : IBackupOverflowPrompt
+    {
+        public int Asked;
+
+        public ValueTask<BackupOverflowChoice> Ask(GameInstallation installation, BackupOverflow overflow, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref Asked);
+            return ValueTask.FromResult(BackupOverflowChoice.BackUpAnyway);
+        }
     }
 
     private CopyUntilToldOtherwise Selector => (CopyUntilToldOtherwise)ServiceProvider.GetRequiredService<IDeploymentBackendSelector>();
@@ -57,6 +73,21 @@ public class ReselectionTests(ITestOutputHelper helper) : AppliedGameTest<Resele
         game.Backend.Should().Be(chosen);
         game.Chosen.Should().BeFalse("the chain moved it, nobody picked it");
         (await DescribeGameFolder()).Should().Be(applied, "the deployed tree is the same whatever deploys it");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task AMoveInsideACommandLineApply_UsesTheAnswerTheCallerGaveAndNeverAsks()
+    {
+        var (loadout, _) = await AppliedWithCopy();
+        Selector.UseChain = true;
+        // Files the player added, over the 8 KB cap: the reset inside the move has to back them up.
+        for (var i = 0; i < 4; i++)
+            await File.WriteAllBytesAsync((GameInstallation.Locations[LocationId.Game].Path / $"added{i}.bin").ToString(), new byte[4096]);
+
+        await SynchronizerService.Synchronize(loadout.LoadoutId, BackupOverflowChoice.BackUpAnyway);
+
+        Plan.Roots.Single(r => r.Root == GameRoot).Backend.Should().NotBe(DeploymentBackendId.Copy, "the move ran");
+        _prompt.Asked.Should().Be(0, "an explicit answer from the command line never becomes a dialog");
     }
 
     [Fact(Timeout = TimeoutMs)]

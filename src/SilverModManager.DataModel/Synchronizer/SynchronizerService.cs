@@ -11,6 +11,10 @@ using SilverModManager.Abstractions.Loadouts.Ids;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using DynamicData.Kernel;
+using SilverModManager.Sdk;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
@@ -91,6 +95,10 @@ public class SynchronizerService : ISynchronizerService
     public Task Synchronize(LoadoutId loadoutId, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default)
         => SynchronizeCore(loadoutId, refuseWhileRunning: true, reselectBackends: true, largeFiles, cancellationToken);
 
+    /// <inheritdoc />
+    public Task CleanGameFolder(LoadoutId loadoutId, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default)
+        => SynchronizeCore(loadoutId, refuseWhileRunning: true, reselectBackends: true, largeFiles, cancellationToken, cleanExternalChanges: true);
+
     /// <summary>
     /// Synchronizes on behalf of a launch session, which holds the running-game state itself and so
     /// must not be refused by it. Everything else (semaphore, state locks) is the same as <see cref="Synchronize"/>,
@@ -98,7 +106,7 @@ public class SynchronizerService : ISynchronizerService
     /// </summary>
     internal Task SynchronizeFromLaunchSession(LoadoutId loadoutId) => SynchronizeCore(loadoutId, refuseWhileRunning: false, reselectBackends: false, largeFiles: null, CancellationToken.None);
 
-    private async Task SynchronizeCore(LoadoutId loadoutId, bool refuseWhileRunning, bool reselectBackends, BackupOverflowChoice? largeFiles, CancellationToken callerToken)
+    private async Task SynchronizeCore(LoadoutId loadoutId, bool refuseWhileRunning, bool reselectBackends, BackupOverflowChoice? largeFiles, CancellationToken callerToken, bool cleanExternalChanges = false)
     {
         await _jobMonitor.Begin(new SynchronizeLoadoutJob(loadoutId),
             async ctx =>
@@ -124,9 +132,19 @@ public class SynchronizerService : ISynchronizerService
                     var gameState = GetOrAddGameState(loadout.InstallationId);
                     using var _2 = gameState.WithLock();
 
-                    if (reselectBackends) await ReselectUnchosenBackends(loadout.InstallationInstance);
+                    // One answer to the backup-cap question covers the backend move and the apply that follows it.
+                    using var answer = BackupOverflowAnswer.Begin();
 
-                    await loadout.InstallationInstance.GetGame().Synchronizer.Synchronize(loadout, job, largeFiles, linked.Token);
+                    if (reselectBackends) await ReselectUnchosenBackends(loadout.InstallationInstance, largeFiles, linked.Token);
+
+                    if (!cleanExternalChanges)
+                    {
+                        await loadout.InstallationInstance.GetGame().Synchronizer.Synchronize(loadout, job, largeFiles, linked.Token);
+                    }
+                    else
+                    {
+                        await CleanExternalChanges(loadout, job, largeFiles, linked.Token);
+                    }
                 }
                 catch (SynchronizerPreflightException e) when (e.Action is null)
                 {
@@ -145,6 +163,58 @@ public class SynchronizerService : ISynchronizerService
         );
     }
 
+    /// <summary>
+    /// Deletes the loadout's External Changes and applies it. The rows go first because the apply measures what it
+    /// would back up from the loadout as it is after the clean, but a refused question or a cancelled wait is no
+    /// reason to lose them, so they are put back then.
+    /// </summary>
+    private async Task CleanExternalChanges(Loadout.ReadOnly loadout, SynchronizeLoadoutJob job, BackupOverflowChoice? largeFiles, CancellationToken cancellationToken)
+    {
+        var synchronizer = loadout.InstallationInstance.GetGame().Synchronizer;
+        synchronizer.EnsureBuildCovered(loadout.InstallationInstance, loadout.InstallationInstance.LocatorResult.LocatorIds.Distinct().ToArray());
+
+        var removed = await RemoveExternalChanges(loadout);
+        try
+        {
+            await synchronizer.Synchronize(Loadout.Load(_conn.Db, loadout.LoadoutId), job, largeFiles, cancellationToken);
+        }
+        catch (Exception e) when (e is BackupOverflowException or SynchronizerPreflightException or OperationCanceledException)
+        {
+            await RestoreExternalChanges(removed);
+            throw;
+        }
+    }
+
+    private async Task<List<(EntityId Entity, AttributeId Attribute, ValueTag Tag, byte[] Value)>> RemoveExternalChanges(Loadout.ReadOnly loadout)
+    {
+        loadout = loadout.Rebase();
+        var removed = new List<(EntityId, AttributeId, ValueTag, byte[])>();
+
+        using var tx = _conn.BeginTransaction();
+        if (LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id).TryGetFirst(out var overridesGroup))
+        {
+            foreach (var entry in overridesGroup.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
+            {
+                foreach (var datom in loadout.Db.Get(entry.Id))
+                    removed.Add((datom.E, datom.A, datom.Prefix.ValueTag, datom.ValueSpan.ToArray()));
+
+                tx.Delete(entry.Id, recursive: false);
+            }
+        }
+
+        await tx.Commit();
+        return removed;
+    }
+
+    private async Task RestoreExternalChanges(List<(EntityId Entity, AttributeId Attribute, ValueTag Tag, byte[] Value)> removed)
+    {
+        if (removed.Count == 0) return;
+
+        using var tx = _conn.BeginTransaction();
+        foreach (var (entity, attribute, tag, value) in removed) tx.Add(entity, attribute, tag, value);
+        await tx.Commit();
+    }
+
     /// <inheritdoc />
     public async Task UnManage(GameInstallation installation, bool runGc = true, bool cleanGameFolder = true, BackupOverflowChoice? largeFiles = null)
     {
@@ -161,15 +231,15 @@ public class SynchronizerService : ISynchronizerService
     }
 
     /// <inheritdoc />
-    public async Task<bool> ChangeDeploymentBackend(GameInstallation installation, GamePath root, DeploymentBackendId backend, bool chosen)
+    public async Task<bool> ChangeDeploymentBackend(GameInstallation installation, GamePath root, DeploymentBackendId backend, bool chosen, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default)
     {
-        await _semaphore.WaitAsync();
+        await _semaphore.WaitAsync(cancellationToken);
         try
         {
             RunningGameGuard.ThrowIfRunning(_serviceProvider, installation);
 
             using var _ = GetOrAddGameState(_gameRegistry.ForceGetMetadata(installation).GameInstallMetadataId).WithLock();
-            return await MoveRoots(installation, [new RootMove(root, backend, chosen)], reapplyLastLoadout: true);
+            return await MoveRoots(installation, [new RootMove(root, backend, chosen)], reapplyLastLoadout: true, largeFiles, cancellationToken);
         }
         finally
         {
@@ -184,7 +254,7 @@ public class SynchronizerService : ISynchronizerService
     /// chain picks for it now. Runs at the start of an apply, with the semaphore and the game's state lock held,
     /// so the apply that follows deploys with the new backends.
     /// </summary>
-    private async Task ReselectUnchosenBackends(GameInstallation installation)
+    private async Task ReselectUnchosenBackends(GameInstallation installation, BackupOverflowChoice? largeFiles, CancellationToken cancellationToken)
     {
         var metadataId = _gameRegistry.ForceGetMetadata(installation).GameInstallMetadataId;
         var plan = _serviceProvider.GetRequiredService<IDeploymentPlanStore>().Load(_conn.Db, metadataId);
@@ -222,7 +292,7 @@ public class SynchronizerService : ISynchronizerService
         }
 
         // The apply this is part of puts the files back.
-        if (moves.Count > 0) await MoveRoots(installation, moves, reapplyLastLoadout: false);
+        if (moves.Count > 0) await MoveRoots(installation, moves, reapplyLastLoadout: false, largeFiles, cancellationToken);
     }
 
     /// <summary>
@@ -233,7 +303,7 @@ public class SynchronizerService : ISynchronizerService
     /// False when every root already uses its backend, so nothing was redeployed. A person's pick of the backend a
     /// root already has is still recorded as chosen.
     /// </returns>
-    private async Task<bool> MoveRoots(GameInstallation installation, IReadOnlyList<RootMove> requested, bool reapplyLastLoadout)
+    private async Task<bool> MoveRoots(GameInstallation installation, IReadOnlyList<RootMove> requested, bool reapplyLastLoadout, BackupOverflowChoice? largeFiles, CancellationToken cancellationToken)
     {
         var metadata = _gameRegistry.ForceGetMetadata(installation);
         var metadataId = metadata.GameInstallMetadataId;
@@ -255,6 +325,9 @@ public class SynchronizerService : ISynchronizerService
         // The reset below retracts LastSyncedLoadout, so it has to be read first.
         var hadLoadout = GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastLoadoutId);
 
+        // The reset and the apply after it are the same operation to the player, so one answer covers them.
+        using var answer = BackupOverflowAnswer.Begin();
+
         var registered = _serviceProvider.GetServices<IDeploymentBackend>().Select(b => b.Id).ToHashSet();
         var unknown = plan.Roots.Where(r => !registered.Contains(r.Backend)).ToArray();
         if (unknown.Length == 0)
@@ -264,7 +337,7 @@ public class SynchronizerService : ISynchronizerService
             // must not refuse for that reason.
             using (RecordedRootPreflight.Suspend())
             {
-                await _loadoutManager.Value.DeactivateCurrentLoadout(installation);
+                await _loadoutManager.Value.DeactivateCurrentLoadout(installation, cancellationToken, largeFiles);
             }
         }
         else
@@ -284,7 +357,7 @@ public class SynchronizerService : ISynchronizerService
             // Anything loaded before the reset is bound to the old db. Not through Synchronize(LoadoutId): that
             // waits on the semaphore the caller already holds.
             var loadout = Loadout.Load(_conn.Db, lastLoadoutId);
-            await loadout.InstallationInstance.GetGame().Synchronizer.Synchronize(loadout);
+            await loadout.InstallationInstance.GetGame().Synchronizer.Synchronize(loadout, largeFiles: largeFiles, cancellationToken: cancellationToken);
         }
 
         return true;

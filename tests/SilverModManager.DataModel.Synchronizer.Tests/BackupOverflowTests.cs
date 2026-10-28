@@ -5,6 +5,8 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
@@ -249,7 +251,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
     }
 
     [Fact]
-    public async Task UnmanageAfterAdopt_AsksAgainWithoutTheAdoptChoiceAndBacksUpBeforeDeleting()
+    public async Task UnmanageAfterAdopt_AsksNothingAndArchivesNothingBecauseTheCopyWouldBeDiscarded()
     {
         WriteExternalFiles(4, 4096);
         _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
@@ -257,12 +259,25 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         var prompt = new RecordingPrompt(BackupOverflowChoice.BackUpAnyway);
         _prompt.Inner = prompt;
 
-        // No garbage collection: the copies are made before the delete, and unmanaging then lets go of them.
+        // No garbage collection: any copy made on the way would still be in the store afterwards.
         await SynchronizerService.UnManage(GameInstallation, runGc: false, cleanGameFolder: true);
 
-        prompt.Asked.Should().ContainSingle().Which.CanAdopt.Should().BeFalse();
-        (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeTrue();
+        prompt.Asked.Should().BeEmpty("unmanaging lets go of every copy, so none is worth asking about");
+        (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeFalse();
         OnDisk("ext0.bin").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task UnmanageAfterAdopt_WithAnAdoptPreset_StillCleansTheFolder()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        await CreateLoadout();
+
+        await SynchronizerService.UnManage(GameInstallation, cleanGameFolder: true, largeFiles: BackupOverflowChoice.AdoptInPlace);
+
+        for (var i = 0; i < 4; i++) OnDisk($"ext{i}.bin").Should().BeFalse();
+        LoadoutManager.GetCurrentlyActiveLoadout(GameInstallation).HasValue.Should().BeFalse();
     }
 
     [Fact]
@@ -270,14 +285,150 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
     {
         WriteExternalFiles(4, 4096);
         _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
-        await CreateLoadout();
+        var loadout = await CreateLoadout();
 
-        var act = async () => await SynchronizerService.UnManage(GameInstallation, cleanGameFolder: true, largeFiles: BackupOverflowChoice.AdoptInPlace);
+        var act = async () => await LoadoutManager.CleanGameFolder(Refresh(loadout), BackupOverflowChoice.AdoptInPlace);
 
         var refusal = (await act.Should().ThrowAsync<BackupOverflowException>()).Which;
         refusal.Message.Should().Contain("deleted").And.Contain("--large-files backup");
         for (var i = 0; i < 4; i++) OnDisk($"ext{i}.bin").Should().BeTrue();
+        ExternalChanges(Refresh(loadout)).Should().HaveCount(4, "a refused clean leaves the files as External Changes");
         LoadoutManager.GetCurrentlyActiveLoadout(GameInstallation).HasValue.Should().BeTrue("the install stays managed");
+    }
+
+    [Fact]
+    public async Task CleaningAfterAdopt_AndDecliningTheQuestion_KeepsTheExternalChangesAndDeletesNothing()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        var loadout = await CreateLoadout();
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.Refuse);
+
+        var act = async () => await LoadoutManager.CleanGameFolder(Refresh(loadout));
+
+        (await act.Should().ThrowAsync<BackupOverflowException>()).Which.Declined.Should().BeTrue();
+        ExternalChanges(Refresh(loadout)).Should().HaveCount(4);
+        for (var i = 0; i < 4; i++) OnDisk($"ext{i}.bin").Should().BeTrue();
+        (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CleaningAfterAdopt_AndBackingUp_DeletesTheExternalChangesAfterTheCopiesExist()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        var loadout = await CreateLoadout();
+        var prompt = new RecordingPrompt(BackupOverflowChoice.BackUpAnyway);
+        _prompt.Inner = prompt;
+
+        await LoadoutManager.CleanGameFolder(Refresh(loadout));
+
+        prompt.Asked.Should().ContainSingle();
+        ExternalChanges(Refresh(loadout)).Should().BeEmpty();
+        OnDisk("ext0.bin").Should().BeFalse();
+        (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SyncStartedWhileTheCleanQuestionIsOpen_WaitsForTheAnswer()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        var loadout = await CreateLoadout();
+        Task? concurrent = null;
+        var completedWhileOpen = true;
+        _prompt.Inner = new DelegatePrompt(async (_, _, token) =>
+        {
+            concurrent = SynchronizerService.Synchronize(loadout.LoadoutId, BackupOverflowChoice.BackUpAnyway);
+            await Task.Delay(500, token);
+            completedWhileOpen = concurrent.IsCompleted;
+            return BackupOverflowChoice.BackUpAnyway;
+        });
+
+        await LoadoutManager.CleanGameFolder(Refresh(loadout));
+
+        concurrent.Should().NotBeNull();
+        completedWhileOpen.Should().BeFalse("the clean holds the synchronizer service until the question is answered");
+        await concurrent!.WaitAsync(TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public async Task LoadoutSwitchOverTheCap_AsksOnce()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        var first = await CreateLoadout();
+        var second = await LoadoutManager.CopyLoadout(first.LoadoutId);
+        for (var i = 0; i < 4; i++) WriteExternalFile($"late{i}.bin", 4096);
+        var asked = new List<BackupOverflow>();
+        // Answers as the dialog does: adopt where it is on offer, back up where it is not.
+        _prompt.Inner = new DelegatePrompt((_, overflow, _) =>
+        {
+            asked.Add(overflow);
+            return ValueTask.FromResult(overflow.CanAdopt ? BackupOverflowChoice.AdoptInPlace : BackupOverflowChoice.BackUpAnyway);
+        });
+
+        await SynchronizerService.Synchronize(second.LoadoutId);
+
+        asked.Should().ContainSingle("one answer covers the deactivate's sync, the reset and the activation");
+        LoadoutManager.GetCurrentlyActiveLoadout(GameInstallation).Value.Should().Be(second.LoadoutId);
+    }
+
+    [Fact]
+    public async Task LoadoutSwitchWithAnAdoptPreset_Completes()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        var first = await CreateLoadout();
+        var second = await LoadoutManager.CopyLoadout(first.LoadoutId);
+
+        await SynchronizerService.Synchronize(second.LoadoutId, BackupOverflowChoice.AdoptInPlace);
+
+        LoadoutManager.GetCurrentlyActiveLoadout(GameInstallation).Value.Should().Be(second.LoadoutId, "the reset's copies can only be made, so the answer stands for them");
+    }
+
+    // The folder changed while the dialog was open: a file that has to be backed up joined the ones that only wanted a copy.
+    private static Dictionary<GamePath, SyncNode> TreeWhereAdoptingLosesFiles()
+    {
+        SyncNode Node(ulong hash, Actions actions) => new()
+        {
+            Disk = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(hash)), Size = Size.KB * 6, LastModifiedTicks = 1 },
+            Actions = actions,
+        };
+
+        return new Dictionary<GamePath, SyncNode>
+        {
+            [new GamePath(LocationId.Game, "wants-a-copy.bin")] = Node(0xA1, Actions.BackupFile | Actions.IngestFromDisk),
+            [new GamePath(LocationId.Game, "replaced.bin")] = Node(0xB2, Actions.BackupFile | Actions.ExtractToDisk),
+            [new GamePath(LocationId.Game, "deleted.bin")] = Node(0xC3, Actions.BackupFile | Actions.DeleteFromDisk),
+        };
+    }
+
+    [Fact]
+    public async Task AnAdoptAnswerThatNoLongerApplies_IsAskedAgainInsteadOfFailing()
+    {
+        var prompt = new RecordingPrompt(BackupOverflowChoice.BackUpAnyway);
+        _prompt.Inner = prompt;
+
+        var (choice, asked) = await ((ALoadoutSynchronizer)Synchronizer).ResolveBackupOverflow(
+            TreeWhereAdoptingLosesFiles(), GameInstallation, BackupOverflowChoice.AdoptInPlace, CancellationToken.None, presetIsAnAnswer: true);
+
+        choice.Should().Be(BackupOverflowChoice.BackUpAnyway);
+        asked.Should().BeTrue();
+        prompt.Asked.Should().ContainSingle().Which.CanAdopt.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AnAdoptPresetTheCallerGave_StillFailsWhenAdoptingLosesFiles()
+    {
+        var prompt = new RecordingPrompt(BackupOverflowChoice.BackUpAnyway);
+        _prompt.Inner = prompt;
+
+        var act = () => ((ALoadoutSynchronizer)Synchronizer).ResolveBackupOverflow(
+            TreeWhereAdoptingLosesFiles(), GameInstallation, BackupOverflowChoice.AdoptInPlace, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BackupOverflowException>();
+        prompt.Asked.Should().BeEmpty("an explicit answer from the command line is never second-guessed with a dialog");
     }
 
     [Fact]

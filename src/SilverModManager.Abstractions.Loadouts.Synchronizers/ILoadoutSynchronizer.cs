@@ -170,7 +170,11 @@ public interface ILoadoutSynchronizer
     /// outside it. Throws <see cref="SynchronizerPreflightException"/> without touching anything when
     /// <see cref="EnsureBuildCovered"/> does.
     /// </summary>
-    Task ResetToOriginalGameState(GameInstallation installation, LocatorId[] locatorIds, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default);
+    /// <param name="discardBackups">
+    /// True when the caller drops every copy the reset would make (an unmanage), so none is made and the backup-cap
+    /// question is not asked.
+    /// </param>
+    Task ResetToOriginalGameState(GameInstallation installation, LocatorId[] locatorIds, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default, bool discardBackups = false);
 
     /// <summary>
     /// Throws <see cref="SynchronizerPreflightException"/> when the file hashes data does not describe every part of
