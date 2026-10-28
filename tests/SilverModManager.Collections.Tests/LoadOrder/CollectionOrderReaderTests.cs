@@ -146,6 +146,7 @@ public class CollectionOrderReaderTests(ITestOutputHelper helper) : ACyberpunkIs
         LoadOrder = Json("""{"a":1}"""),
         Plugins = Json("""[{"name":"p.esp"}]"""),
         PluginRules = Json("""{"plugins":[],"groups":[]}"""),
+        MergedData = Json("""{"scriptMergedData":"00"}"""),
         SilverLoadOrder = [Entry("a")],
     };
 

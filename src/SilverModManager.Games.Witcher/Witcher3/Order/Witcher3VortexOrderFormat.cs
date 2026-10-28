@@ -29,6 +29,12 @@ public sealed class Witcher3VortexOrderFormat : IVortexOrderFormat
 
     public string Key => "loadOrder";
 
+    /// <summary>
+    /// Vortex's importer destructures <c>mergedData</c> before it reads the order, and skips each field that is absent, so an
+    /// empty object imports the order and nothing else. The app does not export merged script or menu data.
+    /// </summary>
+    public JsonElement? MergedData { get; } = JsonSerializer.SerializeToElement(new JsonObject());
+
     public (IReadOnlyList<ModOrderSourceEntry> Entries, IReadOnlyList<ModOrderDrop> Unmapped) Read(JsonElement value, CollectionRoot root)
     {
         var drops = new List<ModOrderDrop>();
@@ -189,19 +195,26 @@ public sealed class Witcher3VortexOrderFormat : IVortexOrderFormat
     private sealed class ModJoiner(Mod[] mods)
     {
         /// <summary>
-        /// By the mod's logical file name, file expression (with or without its extension) or name; else by the Nexus mod id
-        /// inside the install id, when exactly one mod has it. Null when neither names a single mod.
+        /// By the mod's logical file name, else its file expression (with or without the extension), else its name when
+        /// exactly one mod has it, else the Nexus mod id inside the install id when exactly one mod has it. Null when none
+        /// names a single mod.
         /// </summary>
         public int? Find(string modId)
         {
             for (var i = 0; i < mods.Length; i++)
             {
-                var mod = mods[i];
-                if (Same(mod.Source.LogicalFilename, modId) || Same(mod.Name, modId)) return i;
+                if (Same(mods[i].Source.LogicalFilename, modId)) return i;
+            }
 
-                var expression = mod.Source.FileExpression.Path;
+            for (var i = 0; i < mods.Length; i++)
+            {
+                var expression = mods[i].Source.FileExpression.Path;
                 if (!string.IsNullOrEmpty(expression) && (Same(expression, modId) || Same(Path.GetFileNameWithoutExtension(expression), modId))) return i;
             }
+
+            // A display name can be shared by two mods; it only counts when it names one.
+            var named = Enumerable.Range(0, mods.Length).Where(i => Same(mods[i].Name, modId)).ToArray();
+            if (named.Length == 1) return named[0];
 
             if (ModIdInName.Match(modId) is not { Success: true } match || !uint.TryParse(match.Groups["modId"].Value, out var nexusId))
                 return null;

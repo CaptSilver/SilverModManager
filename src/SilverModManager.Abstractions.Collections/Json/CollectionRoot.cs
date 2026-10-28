@@ -44,6 +44,14 @@ public class CollectionRoot
     public JsonElement? PluginRules { get; init; }
 
     /// <summary>
+    /// Vortex's Witcher 3 extension destructures this object on import before it reads <c>loadOrder</c>, so a Witcher 3
+    /// collection without it fails to import. Kept raw.
+    /// </summary>
+    [JsonPropertyName("mergedData")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? MergedData { get; init; }
+
+    /// <summary>
     /// The app's own mod order, winner first. Vortex ignores keys it does not know, so this does not disturb it.
     /// </summary>
     [JsonPropertyName("silverLoadOrder")]

@@ -118,6 +118,51 @@ public class Witcher3VortexOrderFormatTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public void Read_PrefersAnExactLogicalFilenameOverAnEarlierModWithThatDisplayName()
+    {
+        var root = FixtureRoot();
+        var domain = root.Mods[0].DomainName;
+        var shared = new[]
+        {
+            new Mod { Name = "Shared", DomainName = domain, Source = new ModSource { Type = ModSourceType.NexusMods, ModId = ModId.From(8001), FileId = FileId.From(1) } },
+            new Mod { Name = "Shared", DomainName = domain, Source = new ModSource { Type = ModSourceType.NexusMods, ModId = ModId.From(8002), FileId = FileId.From(2), LogicalFilename = "Shared" } },
+        };
+        var twins = new CollectionRoot { Info = root.Info, Mods = shared };
+
+        var (entries, unmapped) = Format.Read(Json("""[{"id":"modShared","modId":"Shared","data":{"prefix":2}}]"""), twins);
+
+        // The exact logical file name picks the second mod; the display name alone would have picked the first.
+        entries.Single().Reference.ModId.Should().Be(ModId.From(8002));
+        unmapped.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Read_DropsAnEntryThatMatchesOnlyADisplayNameTwoModsShare()
+    {
+        var root = FixtureRoot();
+        var domain = root.Mods[0].DomainName;
+        var shared = new[]
+        {
+            new Mod { Name = "Shared", DomainName = domain, Source = new ModSource { Type = ModSourceType.NexusMods, ModId = ModId.From(8001), FileId = FileId.From(1) } },
+            new Mod { Name = "Shared", DomainName = domain, Source = new ModSource { Type = ModSourceType.NexusMods, ModId = ModId.From(8002), FileId = FileId.From(2) } },
+        };
+        var twins = new CollectionRoot { Info = root.Info, Mods = shared };
+
+        var (entries, unmapped) = Format.Read(Json("""[{"id":"modShared","modId":"Shared","data":{"prefix":2}}]"""), twins);
+
+        entries.Should().BeEmpty();
+        unmapped.Should().ContainSingle().Which.Page.Should().Be("Load Order");
+    }
+
+    [Fact]
+    public void MergedData_IsAnEmptyObject()
+    {
+        // Vortex destructures mergedData before reading the order and skips absent fields, so {} imports the order alone.
+        Format.MergedData!.Value.ValueKind.Should().Be(JsonValueKind.Object);
+        Format.MergedData!.Value.EnumerateObject().Should().BeEmpty();
+    }
+
+    [Fact]
     public void Read_CarriesEnabled()
     {
         var (entries, _) = ReadFixture();

@@ -152,6 +152,19 @@ public class Witcher3CollectionOrderRoundTripTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task TheWrittenManifestCarriesAnEmptyMergedDataForVortex()
+    {
+        var (_, manifest) = await SharedPack();
+
+        var written = JsonSerializer.SerializeToElement(manifest, ServiceProvider.GetRequiredService<JsonSerializerOptions>());
+
+        var merged = written.GetProperty("mergedData");
+        merged.ValueKind.Should().Be(JsonValueKind.Object);
+        merged.EnumerateObject().Should().BeEmpty("merged script and menu data are not exported");
+        written.GetProperty("loadOrder").ValueKind.Should().Be(JsonValueKind.Array);
+    }
+
+    [Fact]
     public async Task OurKeyWinsOverLoadOrder()
     {
         var (shared, manifest) = await SharedPack();

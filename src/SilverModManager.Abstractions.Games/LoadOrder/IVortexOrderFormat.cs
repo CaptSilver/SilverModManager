@@ -14,6 +14,11 @@ public interface IVortexOrderFormat
     /// <summary>Entries winner first, plus the keys that could not be mapped to a mods[] entry (each becomes a drop).</summary>
     (IReadOnlyList<ModOrderSourceEntry> Entries, IReadOnlyList<ModOrderDrop> Unmapped) Read(JsonElement value, CollectionRoot root);
 
+    /// <summary>
+    /// A <c>mergedData</c> value to write beside the key, for a game whose Vortex importer fails without one; null for none.
+    /// </summary>
+    JsonElement? MergedData => null;
+
     /// <summary>The key's value for a loadout's order (winner first), or null when nothing in it is representable.</summary>
     JsonElement? Write(Loadout.ReadOnly loadout, IReadOnlyList<LoadoutItemGroup.ReadOnly> winnerToLoser);
 }

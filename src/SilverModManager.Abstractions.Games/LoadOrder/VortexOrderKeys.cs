@@ -21,6 +21,19 @@ public static class VortexOrderKeys
         _ => throw Unknown(key),
     };
 
+    /// <summary>A copy of <paramref name="root"/> with <c>mergedData</c> set.</summary>
+    public static CollectionRoot WithMergedData(CollectionRoot root, JsonElement value) => new()
+    {
+        Info = root.Info,
+        Mods = root.Mods,
+        ModRules = root.ModRules,
+        LoadOrder = root.LoadOrder,
+        Plugins = root.Plugins,
+        PluginRules = root.PluginRules,
+        MergedData = value,
+        SilverLoadOrder = root.SilverLoadOrder,
+    };
+
     private static CollectionRoot Copy(CollectionRoot root, JsonElement? loadOrder, JsonElement? plugins) => new()
     {
         Info = root.Info,
@@ -29,6 +42,7 @@ public static class VortexOrderKeys
         LoadOrder = loadOrder,
         Plugins = plugins,
         PluginRules = root.PluginRules,
+        MergedData = root.MergedData,
         SilverLoadOrder = root.SilverLoadOrder,
     };
 

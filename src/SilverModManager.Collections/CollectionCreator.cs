@@ -508,7 +508,10 @@ public static class CollectionCreator
         IReadOnlyList<LoadoutItemGroup.ReadOnly> winnerToLoser)
     {
         if (game is not IModOrderGame { VortexOrderFormat: { } format }) return root;
-        return format.Write(loadout, winnerToLoser) is { } value ? VortexOrderKeys.With(root, format.Key, value) : root;
+        if (format.Write(loadout, winnerToLoser) is not { } value) return root;
+
+        var withKey = VortexOrderKeys.With(root, format.Key, value);
+        return format.MergedData is { } merged ? VortexOrderKeys.WithMergedData(withKey, merged) : withKey;
     }
 
     private static SilverLoadOrderEntry[]? SilverOrderOf(IReadOnlyList<LibraryLinkedLoadoutItem.ReadOnly> winnerToLoser)
