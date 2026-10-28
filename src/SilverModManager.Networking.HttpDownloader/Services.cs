@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http.Resilience;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 using Polly;
 
 namespace SilverModManager.Networking.HttpDownloader;
@@ -13,11 +14,13 @@ public static class Services
     /// </summary>
     public static IServiceCollection AddHttpDownloader(this IServiceCollection services)
     {
-        return services.AddSingleton<HttpClient>(_ =>
-        {
-            var client = BuildClient();
-            return client;
-        });
+        return services
+            .AddSettings<HttpProxySettings>()
+            .AddSingleton<HttpClient>(_ =>
+            {
+                var client = BuildClient();
+                return client;
+            });
     }
 
     private static HttpClient BuildClient()

@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Logging;
 using SilverModManager.Abstractions.Serialization;
+using SilverModManager.Networking.HttpDownloader;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.App.Commandline;
 using SilverModManager.App.UI;
@@ -89,6 +90,12 @@ public class Program
         {
             var host = BuildHost(startupMode, loggingSettings);
             _logger = host.Services.GetRequiredService<ILogger<Program>>();
+
+            // Before anything can send a request: every handler picks the default proxy up when it is first used.
+            // The slim client profile has no downloader, so the setting isn't registered there.
+            var settingsManager = host.Services.GetRequiredService<ISettingsManager>();
+            if (settingsManager.Configs.ContainsKey(typeof(HttpProxySettings)))
+                HttpProxy.Apply(settingsManager.Get<HttpProxySettings>(), _logger);
             return host;
         },
         ReadSyncInfo = services => services.GetRequiredService<SyncFile>().GetSyncInfo(),

@@ -1,0 +1,16 @@
+<reactiveUi:ReactiveUserControl
+    x:TypeArguments="settingEntries:ISettingTextViewModel" xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactiveUi="http://reactiveui.net"
+    xmlns:settingEntries="clr-namespace:SilverModManager.App.UI.Controls.Settings.SettingEntries"
+    mc:Ignorable="d"
+    x:Class="SilverModManager.App.UI.Controls.Settings.SettingEntries.SettingTextControl"
+    ClipToBounds="False">
+
+    <TextBox x:Name="ValueTextBox"
+             MinWidth="240"
+             VerticalAlignment="Center" />
+
+</reactiveUi:ReactiveUserControl>

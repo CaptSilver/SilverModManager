@@ -187,6 +187,8 @@ public static class Services
             .AddViewModel<SettingEntryViewModel, ISettingEntryViewModel>()
             .AddView<SettingToggleControl, ISettingToggleViewModel>()
             .AddViewModel<SettingToggleViewModel, ISettingToggleViewModel>()
+            .AddView<SettingTextControl, ISettingTextViewModel>()
+            .AddViewModel<SettingTextViewModel, ISettingTextViewModel>()
             .AddView<SettingSliderControl, ISettingSliderViewModel>()
             .AddViewModel<SettingSliderViewModel, ISettingSliderViewModel>()
             .AddView<SettingComboBoxView, ISettingComboBoxViewModel>()
@@ -362,6 +364,7 @@ public static class Services
             .AddUISettings()
             .AddSingleton<IInteractionControlFactory<SingleValueMultipleChoiceContainerOptions>, SettingComboBoxFactory>()
             .AddSingleton<IInteractionControlFactory<BooleanContainerOptions>, SettingToggleFactory>()
+            .AddSingleton<IInteractionControlFactory<TextContainerOptions>, SettingTextFactory>()
             .AddSingleton<IInteractionControlFactory<SliderContainerOptions>, SettingSliderFactory>()
             .AddSingleton<IInteractionControlFactory<ConfigurablePathsContainerOption>, SettingPathsFactory>()
 
