@@ -7,17 +7,20 @@ using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Games.Witcher.Witcher3.Diagnostics;
 using SilverModManager.Games.Witcher.Witcher3.Installers;
 using SilverModManager.Games.Witcher.Witcher3.Merge;
 using SilverModManager.Games.Witcher.Witcher3.Order;
 using SilverModManager.Games.Witcher.Witcher3.SortOrder;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Ini;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.Games.Witcher.Witcher3;
 
-public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witcher3Game>(provider), IGameData<Witcher3Game>, IHasMergeGame, IModOrderGame
+public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witcher3Game>(provider), IGameData<Witcher3Game>, IHasMergeGame, IModOrderGame, IGameIniFiles
 {
     private AMergeGame? _mergeGame;
     private Witcher3VortexOrderFormat? _vortexOrder;
@@ -61,7 +64,22 @@ public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witch
         provider.GetRequiredService<UnplacedArchiveFilesEmitter>(),
         provider.GetRequiredService<ModsSettingsReplacedEmitter>(),
         provider.GetRequiredService<EngineMergeDiagnosticsEmitter>(),
+        provider.GetRequiredService<DroppedSettingsPartEmitter>(),
+        provider.GetRequiredService<MenuXmlOverwriteEmitter>(),
     ];
+
+    /// <summary>
+    /// The settings files the game reads from Documents/The Witcher 3. A menu mod's <c>.part.txt</c> is merged into the
+    /// one it names, in Load Order, on top of the player's own copy.
+    /// </summary>
+    public IniSet IniFiles => new(WitcherConstants.W3SettingsFiles);
+
+    GamePath IGameIniFiles.IniPath(string fileName) => new(WitcherConstants.WitcherDocuments, fileName);
+
+    // The app sets no keys of its own: every value in these files comes from the player or from a mod's fragment.
+    GamePath? IGameIniFiles.ManagedKeysFile => null;
+
+    IReadOnlyList<IniKeyEdit> IGameIniFiles.ManagedKeys(Loadout.ReadOnly loadout) => [];
 
     protected override ISortOrderVariety[] CreateSortOrderVarieties(IServiceProvider provider) => [new WitcherModSortOrderVariety(provider, this)];
 

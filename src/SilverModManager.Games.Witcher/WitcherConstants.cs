@@ -16,4 +16,7 @@ public static class WitcherConstants
     public static readonly GamePath W3ModsSettings = new(WitcherDocuments, "mods.settings");
     public static readonly GamePath W3MenuConfigFolder = new(LocationId.Game, "bin/config/r4game/user_config_matrix/pc");
     public static readonly string[] W3SettingsFiles = ["input.settings", "user.settings", "dx12user.settings"];
+
+    /// <summary>The menu XMLs the game ships, without the extension. The same set Vortex lists as its config matrix files.</summary>
+    public static readonly string[] W3NativeMenuXmls = ["audio", "display", "gameplay", "gamma", "graphics", "graphicsdx11", "hdr", "hidden", "hud", "input", "localization"];
 }

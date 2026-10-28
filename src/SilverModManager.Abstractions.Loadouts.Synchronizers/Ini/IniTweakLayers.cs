@@ -50,14 +50,23 @@ public static partial class IniTweakLayers
 
     private static bool TryParse(NexusMods.Paths.RelativePath path, string targetFileName, out string name)
     {
+        if (TryParse(path, out name, out var target) && target.Equals(targetFileName, StringComparison.OrdinalIgnoreCase)) return true;
+
         name = "";
+        return false;
+    }
+
+    private static bool TryParse(NexusMods.Paths.RelativePath path, out string name, out string target)
+    {
+        name = target = "";
         var parts = path.Path.Split('/');
         if (parts.Length != 2 || !parts[0].Equals(Folder, StringComparison.OrdinalIgnoreCase)) return false;
 
         var match = TweakName().Match(path.FileName.ToString());
-        if (!match.Success || !match.Groups["target"].Value.Equals(targetFileName, StringComparison.OrdinalIgnoreCase)) return false;
+        if (!match.Success) return false;
 
         name = match.Groups["name"].Value;
+        target = match.Groups["target"].Value;
         return true;
     }
 

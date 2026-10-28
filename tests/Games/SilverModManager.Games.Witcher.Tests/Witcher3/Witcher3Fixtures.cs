@@ -1,9 +1,14 @@
 using System.IO.Compression;
 using System.Text;
+using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Games.Witcher.Tests.Witcher3;
@@ -49,5 +54,41 @@ internal static class Witcher3Fixtures
         };
         var result = await tx.Commit();
         return result.Remap(group).AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId;
+    }
+
+    /// <summary>
+    /// A mod group holding <paramref name="files"/> (a game path and the text it holds), ranked at
+    /// <paramref name="priority"/>. The bytes are in the file store, so a bake can read them.
+    /// </summary>
+    public static async Task<LoadoutItemGroupId> AddMod(
+        IConnection connection, IFileStore fileStore, LoadoutId loadout, string name, ulong priority, params (string Path, string Content)[] files)
+    {
+        var contents = files.Select(f => Encoding.UTF8.GetBytes(f.Content)).ToArray();
+        await fileStore.BackupFiles(contents.Select(bytes =>
+            new ArchivedFileEntry(new MemoryStreamFactory("file", new MemoryStream(bytes)), bytes.xxHash3(), Size.FromLong(bytes.Length))).ToArray());
+
+        using var tx = connection.BeginTransaction();
+        var group = new LoadoutItemGroup.New(tx, out var groupId)
+        {
+            IsGroup = true,
+            LoadoutItem = new LoadoutItem.New(tx, groupId) { LoadoutId = loadout, Name = name },
+        };
+        for (var i = 0; i < files.Length; i++)
+        {
+            var path = new GamePath(LocationId.Game, files[i].Path);
+            _ = new LoadoutFile.New(tx, out var fileId)
+            {
+                LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, fileId)
+                {
+                    LoadoutItem = new LoadoutItem.New(tx, fileId) { LoadoutId = loadout, ParentId = group.Id, Name = path.Path },
+                    TargetPath = path.ToGamePathParentTuple(loadout),
+                },
+                Hash = contents[i].xxHash3(),
+                Size = Size.FromLong(contents[i].Length),
+            };
+        }
+        _ = new LoadoutItemGroupPriority.New(tx) { LoadoutId = loadout, TargetId = group.Id, Priority = ConflictPriority.From(priority) };
+        var result = await tx.Commit();
+        return LoadoutItemGroupId.From(result[group.Id]);
     }
 }

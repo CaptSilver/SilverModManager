@@ -16,6 +16,8 @@ public static class Services
             .AddSingleton<SkippedScriptMergerEmitter>()
             .AddSingleton<UnplacedArchiveFilesEmitter>()
             .AddSingleton<ModsSettingsReplacedEmitter>()
+            .AddSingleton<DroppedSettingsPartEmitter>()
+            .AddSingleton<MenuXmlOverwriteEmitter>()
             .AddWitcherModsSettingsNoticeModel()
             .AddWitcherModSortOrderModel()
             .AddWitcherModSortOrderItemModel()

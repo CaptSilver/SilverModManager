@@ -56,6 +56,31 @@ public static partial class IniTweakLayers
             .ToList();
     }
 
+    /// <summary>
+    /// The enabled tweaks that name an INI other than <paramref name="knownTargets"/>: fragments for a file the game
+    /// does not read, which no bake picks up. Each comes with the target file name it asked for.
+    /// </summary>
+    public static IReadOnlyList<(string Target, IniTweakSource Source)> EnabledForOtherTargets(Loadout.ReadOnly loadout, IReadOnlyCollection<string> knownTargets)
+    {
+        var priorities = new Dictionary<EntityId, ConflictPriority>();
+        foreach (var row in LoadoutItemGroupPriority.FindByLoadout(loadout.Db, loadout))
+            priorities[row.TargetId] = row.Priority;
+
+        var found = new List<(string Path, string Target, IniTweakSource Source)>();
+        foreach (var file in LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile())
+        {
+            var item = file.AsLoadoutItemWithTargetPath().AsLoadoutItem();
+            var path = ((GamePath)file.AsLoadoutItemWithTargetPath().TargetPath).Path;
+            if (!item.IsEnabled() || !TryParse(path, out var name, out var target)) continue;
+            if (knownTargets.Contains(target, StringComparer.OrdinalIgnoreCase)) continue;
+
+            var isLoadoutTweak = name.Equals(LoadoutTweakName, StringComparison.OrdinalIgnoreCase) && InGameSettingsGroup(item);
+            found.Add((path.ToString(), target, new IniTweakSource(name, SourceNameOf(item, priorities), file.Hash, file.Id, isLoadoutTweak, true, true)));
+        }
+
+        return found.OrderBy(f => f.Path, StringComparer.Ordinal).Select(f => (f.Target, f.Source)).ToList();
+    }
+
     // The name of the group the priority belongs to (the mod), else of the file's own parent.
     private static string SourceNameOf(LoadoutItem.ReadOnly item, Dictionary<EntityId, ConflictPriority> priorities)
     {

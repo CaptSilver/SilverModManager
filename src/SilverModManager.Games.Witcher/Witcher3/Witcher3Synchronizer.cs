@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
+using SilverModManager.Games.Witcher.Witcher3.Menu;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
@@ -26,12 +27,27 @@ public sealed class Witcher3Synchronizer(IServiceProvider provider, IGame game) 
 
     // INI tweaks (a menu mod's *.part.txt) live in the loadout to be merged into the game's settings; the folder
     // means nothing to the game, so none of it is written.
-    protected override void AdjustActions(Dictionary<GamePath, SyncNode> tree) => GameInis.KeepTweaksOffDisk(tree);
+    protected override void AdjustActions(Dictionary<GamePath, SyncNode> tree)
+    {
+        GameInis.LeaveDisownedInisOnDisk(Inis, tree);
+        GameInis.KeepTweaksOffDisk(tree);
+    }
+
+    private IGameIniFiles Inis => (IGameIniFiles)game;
 
     public override Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout)
     {
         var files = _merge.Value.IntrinsicFiles(loadout, Logger);
         files[WitcherConstants.W3ModsSettings] = _modsSettings;
+        foreach (var file in GameInis.IntrinsicFiles(Inis, loadout, provider))
+            files[file.Path] = file;
+
+        // The lists only mean something where the game's menu folder is; a loadout on an install without it gets none.
+        if (loadout.IsValid() && loadout.InstallationInstance.Locations.ToAbsolutePath(WitcherConstants.W3MenuConfigFolder).DirectoryExists())
+        {
+            foreach (var list in new[] { new MenuFileListFile(dx12: true), new MenuFileListFile(dx12: false) })
+                files[list.Path] = list;
+        }
         return files;
     }
 
@@ -65,7 +81,7 @@ public sealed class Witcher3Synchronizer(IServiceProvider provider, IGame game) 
     protected override async ValueTask<Loadout.ReadOnly> PrepareLoadoutForSync(Loadout.ReadOnly loadout)
     {
         await Game.SortOrderManager.UpdateLoadOrders(loadout.LoadoutId);
-        loadout = loadout.Rebase();
+        loadout = await GameInis.Prepare(Inis, loadout.Rebase(), provider);
 
         // Plan again on the revision the tree is built from, so the window between the preflight's plan and the
         // reconcile above cannot leave the listing and the plan disagreeing.
