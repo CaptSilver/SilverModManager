@@ -63,6 +63,8 @@ public sealed class VouchedRegulations(IFileHashesService fileHashes, Regulation
                 foreach (var record in fileHashes.GetGameFiles((store, ids)))
                 {
                     if (record.Path.LocationId == LocationId.Game && record.Path.Path.Path.Equals(regulationPath, StringComparison.OrdinalIgnoreCase))
+                        // The set is compared against xxHash3 digests of files on disk; a record that carries only a
+                        // SHA-1 or MD5 cannot vouch for one.
                         if (record.Identity.TryXxHash3(out var recordHash)) hashes.Add(recordHash);
                 }
             }

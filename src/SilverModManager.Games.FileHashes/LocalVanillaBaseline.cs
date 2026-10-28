@@ -99,7 +99,6 @@ internal sealed record BaselineBuild(EntityId BaselineId, IReadOnlyList<NonVanil
 /// </summary>
 internal sealed class LocalVanillaBaseline
 {
-
     /// <summary>
     /// Stamped on every baseline built. Bump it whenever <see cref="Classify"/> or the ignore rules change what
     /// ends up vanilla or non-vanilla: <see cref="LocalBaselineCoordinator"/> rebuilds a depot-manifest baseline

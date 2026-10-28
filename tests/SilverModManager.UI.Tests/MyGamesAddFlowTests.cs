@@ -51,7 +51,7 @@ public class MyGamesAddFlowTests(IServiceProvider provider) : AUiTest(provider)
                 Size = Size.From(10),
             };
         }
-        
+
         await tx.Commit();
         return Loadout.Load(Connection.Db, loadout.LoadoutId);
     }

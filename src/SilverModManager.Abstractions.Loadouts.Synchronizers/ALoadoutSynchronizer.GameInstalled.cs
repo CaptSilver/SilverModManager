@@ -108,6 +108,8 @@ public partial class ALoadoutSynchronizer
             foreach (var file in demoted)
             {
                 var disk = diskState[file.Path];
+                // Overrides rows are store-keyed, and the store is keyed by xxHash3. A demoted file was claimed
+                // before, so ResolveParts has already replaced a manifest SHA-1 with the xxHash3 of its bytes.
                 OverridesGroupItems.UpsertFile(tx, loadout, overrides, file.Path, disk.Identity.XxHash3(), disk.Size);
             }
         }
@@ -159,6 +161,8 @@ public partial class ALoadoutSynchronizer
         foreach (var (entry, identity) in resolved)
         {
             tx.Add(entry, DiskStateEntry.Identity, identity);
+            // Every identity here came from ReadAndSettle, so it is an xxHash3; the column is what the
+            // store-keyed lookups read.
             tx.Add(entry, DiskStateEntry.XxHash3, identity.XxHash3());
         }
     }
@@ -431,6 +435,7 @@ public partial class ALoadoutSynchronizer
             if (IsIgnoredBackupPath(file.Path)) continue;
 
             var disk = diskState[file.Path];
+            // The file store is keyed by xxHash3, and a demoted file's identity was resolved to one when it was claimed.
             var diskHash = disk.Identity.XxHash3();
             if (await _fileStore.HaveFile(diskHash)) continue;
 

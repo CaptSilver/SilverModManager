@@ -138,6 +138,31 @@ public class UiStallWatchdogTests
     }
 
     [Fact]
+    public void OutOfOrderScopeEnds_DoNotGrowTheChain()
+    {
+        for (var i = 0; i < 50; i++)
+        {
+            var x = UiOperation.Enter("X");
+            var y = UiOperation.Enter("Y");
+            x.Dispose();
+            y.Dispose();
+        }
+
+        UiOperation.ChainLength.Should().Be(0);
+        UiOperation.Current.Should().BeNull();
+    }
+
+    [Fact]
+    public void StartAfterDispose_DoesNothing()
+    {
+        var watchdog = Create(() => Task.CompletedTask, []);
+        watchdog.Dispose();
+
+        FluentActions.Invoking(watchdog.Start).Should().NotThrow();
+        watchdog.LoopThread.ThreadState.Should().HaveFlag(ThreadState.Unstarted);
+    }
+
+    [Fact]
     public void SampleNow_CountsOnlyRunningJobs()
     {
         var running = Substitute.For<IJob>();

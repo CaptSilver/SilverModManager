@@ -181,7 +181,7 @@ public partial class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoad
 
                 // The row can be gone by the time a click is handled, as when its mod was just removed.
                 // The lookup scans every item of the order, which on a large loadout is too long to hold the UI thread
-                // once per click, so it runs inside the same pool hop as the edit.
+                // once per click, so it goes through Task.Run. RunEdit does not hop to the pool itself.
                 await RunEdit(async () =>
                 {
                     var item = await Task.Run(() => sortOrderVariety.GetSortOrderItems(sortOrderId).FirstOrDefault(item => item.Key.Equals(key)));

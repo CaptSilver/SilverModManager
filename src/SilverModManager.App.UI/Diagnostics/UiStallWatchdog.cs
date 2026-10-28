@@ -57,6 +57,9 @@ public sealed class UiStallWatchdog : IDisposable
 
     public void Start()
     {
+        // The loop reads the stop token, and Dispose has released it by then; a late Start would kill the thread
+        // with an ObjectDisposedException.
+        if (Volatile.Read(ref _disposed) == 1) return;
         if (Interlocked.Exchange(ref _started, 1) == 0) _thread.Start();
     }
 

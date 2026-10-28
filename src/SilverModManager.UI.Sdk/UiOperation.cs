@@ -31,10 +31,28 @@ public static class UiOperation
         }
     }
 
+    /// <summary>How many entries hang off the current one, ended or not; the chain must not grow with the number of scopes.</summary>
+    internal static int ChainLength
+    {
+        get
+        {
+            var length = 0;
+            for (var entry = _current; entry is not null; entry = entry.Outer) length++;
+            return length;
+        }
+    }
+
+    // An outer that ended out of order is no use to anyone, so the chain never links to one.
+    private static Entry? SkipEnded(Entry? entry)
+    {
+        while (entry is { Ended: true }) entry = entry.Outer;
+        return entry;
+    }
+
     /// <summary>Marks <paramref name="name"/> as running until the returned scope is disposed.</summary>
     public static IDisposable Enter(string name)
     {
-        var entry = new Entry(name, Stopwatch.GetTimestamp(), _current);
+        var entry = new Entry(name, Stopwatch.GetTimestamp(), SkipEnded(_current));
         _current = entry;
         return new Scope(entry);
     }
@@ -47,7 +65,7 @@ public static class UiOperation
         {
             if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
             entry.Ended = true;
-            if (ReferenceEquals(_current, entry)) _current = entry.Outer;
+            if (ReferenceEquals(_current, entry)) _current = SkipEnded(entry.Outer);
         }
     }
 }
