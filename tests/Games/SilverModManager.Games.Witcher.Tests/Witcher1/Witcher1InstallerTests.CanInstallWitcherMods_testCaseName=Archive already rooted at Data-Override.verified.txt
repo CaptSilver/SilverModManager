@@ -1,0 +1,12 @@
+﻿[
+  {
+    FromPath: Data/Override/area.are,
+    Hash: 0x094EA3880F4838D0,
+    ToGamePath: {Game}/Data/Override/area.are
+  },
+  {
+    FromPath: Data/Override/sub/area2.are,
+    Hash: 0x7BC82C9F7ABC96D1,
+    ToGamePath: {Game}/Data/Override/sub/area2.are
+  }
+]

@@ -1,0 +1,7 @@
+﻿[
+  {
+    FromPath: MyMod/Override/dialog.tlk,
+    Hash: 0x41EA697B2C7571CA,
+    ToGamePath: {Game}/Data/Override/dialog.tlk
+  }
+]

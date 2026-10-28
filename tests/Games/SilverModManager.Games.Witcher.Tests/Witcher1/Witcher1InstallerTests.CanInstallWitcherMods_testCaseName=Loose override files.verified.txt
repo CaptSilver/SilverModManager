@@ -1,0 +1,7 @@
+﻿[
+  {
+    FromPath: 0000_my_tweak.2da,
+    Hash: 0x6ECE25B3490E895C,
+    ToGamePath: {Game}/Data/Override/0000_my_tweak.2da
+  }
+]
