@@ -6,7 +6,7 @@ using SilverModManager.Abstractions.Loadouts.Extensions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.Games.Witcher.Witcher3.Menu;
-using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Games.Witcher.Witcher3.SortOrder;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
@@ -19,7 +19,12 @@ namespace SilverModManager.Games.Witcher.Witcher3.Diagnostics;
 /// </summary>
 public sealed class MenuXmlOverwriteEmitter : ADroppedItemEmitter
 {
-    private readonly record struct Provider(string Name, string Group, ConflictPriority Priority);
+    private const string LoadOrderPage = "Load Order";
+    private const string FileConflictsPage = "File Conflicts";
+
+    /// <param name="Rank">The synchronizer's rank for the copy, which puts a pinned copy above every priority.</param>
+    /// <param name="InModsFolder">Whether the same group also has a file under Mods/&lt;folder&gt;, which is what puts it on the Load Order page.</param>
+    private readonly record struct Provider(string Name, string Group, UInt128 Rank, bool InModsFolder);
 
     protected override async IAsyncEnumerable<DroppedItem> Dropped(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -31,34 +36,50 @@ public sealed class MenuXmlOverwriteEmitter : ADroppedItemEmitter
             if (MenuXmlPaths.IsNative(name))
             {
                 foreach (var copy in copies.OrderBy(c => c.Group, StringComparer.Ordinal))
-                    yield return new DroppedItem($"the game's {name}.xml", copy.Group,
-                        $"{copy.Group} ships a whole {name}.xml, so the game's own entries are replaced; Vortex merges these per setting (mergers.ts doMergeXML), this app does not yet", "Library");
+                    yield return new DroppedItem($"the game's copy of {name}.xml", "the game folder",
+                        $"{copy.Group} ships a whole {name}.xml, so the game's own entries in it are replaced", "Library");
             }
 
-            // The winner is the group loaded last, the one lowest on the Load Order page.
-            var ranked = copies.OrderByDescending(c => c.Priority.Value).ThenBy(c => c.Group, StringComparer.Ordinal).ToList();
+            // The synchronizer deploys the highest rank, so the winner is read the same way; equal ranks fall back to the name.
+            var ranked = copies.OrderByDescending(c => c.Rank).ThenBy(c => c.Group, StringComparer.Ordinal).ToList();
+            var winner = ranked[0];
+            var pinned = winner.Rank > ulong.MaxValue;
             foreach (var loser in ranked.Skip(1).OrderBy(c => c.Group, StringComparer.Ordinal))
-                yield return new DroppedItem($"{loser.Group}'s {name}.xml", loser.Group,
-                    $"{ranked[0].Group} loads after it (lower in the Load Order list), so its copy is used", "Load Order");
+            {
+                var onLoadOrder = !pinned && (winner.InModsFolder || loser.InModsFolder);
+                yield return new DroppedItem($"{name}.xml", loser.Group,
+                    pinned
+                        ? $"you chose {winner.Group}'s copy in File Conflicts, so it is used"
+                        : $"{winner.Group} loads after it (lower in the Load Order list), so its copy is used",
+                    onLoadOrder ? LoadOrderPage : FileConflictsPage);
+            }
         }
     }
 
-    // The group that provides a file is the nearest one above it with a priority row, the mod the file belongs to.
+    // Ranked the way the synchronizer picks the file: a pin beats every priority, and only the group directly above
+    // the file counts.
     private static IEnumerable<Provider> Providers(Loadout.ReadOnly loadout)
     {
-        var priorities = new Dictionary<EntityId, ConflictPriority>();
-        foreach (var row in LoadoutItemGroupPriority.FindByLoadout(loadout.Db, loadout))
-            priorities[row.TargetId] = row.Priority;
+        var files = LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile()
+            .Select(file => file.AsLoadoutItemWithTargetPath())
+            .Where(file => file.AsLoadoutItem().IsEnabled())
+            .ToList();
+        var inModsFolder = files
+            .Where(file => WitcherModFolders.FolderOf(file.TargetPath) is not null)
+            .Select(file => file.AsLoadoutItem().ParentId)
+            .ToHashSet();
 
-        foreach (var file in LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile())
+        var winners = FileWinners.Of(loadout.Db, loadout.LoadoutId);
+        foreach (var file in files)
         {
-            var item = file.AsLoadoutItemWithTargetPath().AsLoadoutItem();
-            if (!item.IsEnabled() || MenuXmlPaths.NameOf(file.AsLoadoutItemWithTargetPath().TargetPath) is not { } name) continue;
+            var path = (GamePath)file.TargetPath;
+            if (MenuXmlPaths.NameOf(path) is not { } name) continue;
 
-            var owner = item.GetThisAndParents().Skip(1).FirstOrDefault(ancestor => priorities.ContainsKey(ancestor.Id));
-            if (!owner.IsValid()) continue;
+            var item = file.AsLoadoutItem();
+            if (!item.Parent.IsValid()) continue;
 
-            yield return new Provider(name, owner.Name, priorities[owner.Id]);
+            var groupId = LoadoutItemGroupId.From(item.ParentId.Value);
+            yield return new Provider(name, item.Parent.AsLoadoutItem().Name, winners.RankOf(path, groupId), inModsFolder.Contains(item.ParentId));
         }
     }
 }

@@ -45,7 +45,7 @@ public class MenuFileListFileTests(ITestOutputHelper helper) : AIsolatedGameTest
     }
 
     [Fact]
-    public async Task Dx11List_RenamesGraphics()
+    public async Task Dx11List_NamesGraphicsdx11AndNotGraphics()
     {
         var tree = new Dictionary<GamePath, SyncNode>
         {
@@ -54,7 +54,27 @@ public class MenuFileListFileTests(ITestOutputHelper helper) : AIsolatedGameTest
             [Menu("audio.xml")] = new() { Disk = Part() },
         };
 
-        (await Written(false, tree)).Should().Be("audio.xml;\r\ngraphicsdx11.xml;\r\n", "the DX11 list names graphicsdx11.xml once and not graphics.xml");
+        (await Written(false, tree)).Should().Be("audio.xml;\r\ngraphicsdx11.xml;\r\n");
+    }
+
+    [Fact]
+    public async Task Dx11List_DoesNotInventAGraphicsdx11ForAGraphicsOnlyFolder()
+    {
+        var tree = new Dictionary<GamePath, SyncNode> { [Menu("graphics.xml")] = new() { Disk = Part() } };
+
+        (await Written(false, tree)).Should().BeEmpty("only the files that exist are listed");
+    }
+
+    [Fact]
+    public async Task ParkedXmls_AreNotListed()
+    {
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [Menu("~old.xml")] = new() { Disk = Part() },
+            [Menu("audio.xml")] = new() { Disk = Part() },
+        };
+
+        (await Written(true, tree)).Should().Be("audio.xml;\r\n");
     }
 
     [Fact]

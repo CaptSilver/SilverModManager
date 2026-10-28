@@ -25,8 +25,7 @@ public sealed class MenuFileListFile(bool dx12) : IIntrinsicFile
             .Where(entry => entry.Value.HaveLoadout || entry.Value.HaveDisk)
             .Select(entry => MenuXmlPaths.NameOf(entry.Key))
             .OfType<string>()
-            .Select(ForThisList)
-            .OfType<string>()
+            .Where(IsListed)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Order(StringComparer.OrdinalIgnoreCase);
 
@@ -35,11 +34,12 @@ public sealed class MenuFileListFile(bool dx12) : IIntrinsicFile
         await stream.WriteAsync(new UTF8Encoding(false).GetBytes(text.ToString()));
     }
 
-    // graphics.xml is the DX12 menu and graphicsdx11.xml the DX11 one; each list names only its own.
-    private string? ForThisList(string name)
+    // graphics.xml is the DX12 menu and graphicsdx11.xml the DX11 one, so each list names only its own, and only when
+    // the file is there. A name starting with ~ is a menu file parked out of use.
+    private bool IsListed(string name)
     {
-        if (name.Equals(Dx11Graphics, StringComparison.OrdinalIgnoreCase)) return dx12 ? null : name;
-        return name.Equals(Graphics, StringComparison.OrdinalIgnoreCase) && !dx12 ? Dx11Graphics : name;
+        if (name.StartsWith('~')) return false;
+        return !name.Equals(dx12 ? Dx11Graphics : Graphics, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <inheritdoc />

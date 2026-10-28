@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Games.Witcher.Witcher3;
 using SilverModManager.Sdk.Games;
@@ -85,5 +86,12 @@ public class SettingsPartsTests(ITestOutputHelper helper) : AIsolatedGameTest<Se
 
         await act.Should().NotThrowAsync();
         OnDisk(Settings("dx12user.settings")).FileExists.Should().BeFalse("there is no baseline to build it from");
+    }
+
+    [Fact]
+    public void TheGameOffersTheOwnTheGameInisChoice_ForTheFilesItBakes()
+    {
+        Game.Should().BeAssignableTo<IHasIniFiles>().Which.IniFiles.FileNames
+            .Should().Equal("input.settings", "user.settings", "dx12user.settings");
     }
 }

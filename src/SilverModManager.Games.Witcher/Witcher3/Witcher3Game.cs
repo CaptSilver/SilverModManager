@@ -20,7 +20,7 @@ using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.Games.Witcher.Witcher3;
 
-public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witcher3Game>(provider), IGameData<Witcher3Game>, IHasMergeGame, IModOrderGame, IGameIniFiles
+public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witcher3Game>(provider), IGameData<Witcher3Game>, IHasMergeGame, IModOrderGame, IGameIniFiles, IHasIniFiles
 {
     private AMergeGame? _mergeGame;
     private Witcher3VortexOrderFormat? _vortexOrder;

@@ -56,7 +56,57 @@ public class DroppedSettingsPartEmitterTests(ITestOutputHelper helper)
     public async Task APartForAKnownFile_GetsNoCard(string target)
     {
         var loadout = await CreateLoadout();
+        var file = GameInstallation.Locations.ToAbsolutePath(new GamePath(WitcherConstants.WitcherDocuments, target.ToLowerInvariant()));
+        file.Parent.CreateDirectory();
+        await file.WriteAllBytesAsync("[Rendering]\r\nMaxFPS=30\r\n"u8.ToArray());
         await AddPart(loadout, "modA", target);
+
+        await ShouldHaveNoDiagnostics(loadout);
+    }
+
+    [Fact]
+    public async Task ACardNamesTheModOnce()
+    {
+        var loadout = await CreateLoadout();
+        await AddPart(loadout, "modA", "inputt.settings");
+
+        var summary = (await GetSingleDiagnostic(loadout)).FormatSummary(new PlainDiagnosticWriter());
+
+        summary.Should().StartWith("the inputt.settings fragment from modA is not used");
+    }
+
+    [Fact]
+    public async Task TheCardsReasonCitesNoSourceFile()
+    {
+        var loadout = await CreateLoadout();
+        await AddPart(loadout, "modA", "input.xml");
+
+        var summary = (await GetSingleDiagnostic(loadout)).FormatSummary(new PlainDiagnosticWriter());
+
+        summary.Should().NotContain(".ts").And.Contain("only merges .settings files");
+    }
+
+    [Fact]
+    public async Task APartForASettingsFileThatDoesNotExistYet_GetsOneCardNamingTheMods()
+    {
+        var loadout = await CreateLoadout();
+        await AddPart(loadout, "modA", "dx12user.settings");
+        await AddPart(loadout, "modB", "dx12user.settings");
+
+        var summary = (await GetSingleDiagnostic(loadout)).FormatSummary(new PlainDiagnosticWriter());
+
+        summary.Should().Contain("modA").And.Contain("modB").And.Contain("dx12user.settings doesn't exist yet")
+            .And.Contain("Start the game once, then Apply again");
+    }
+
+    [Fact]
+    public async Task APartForASettingsFileOnDisk_GetsNoCard()
+    {
+        var loadout = await CreateLoadout();
+        var path = GameInstallation.Locations.ToAbsolutePath(new GamePath(WitcherConstants.WitcherDocuments, "user.settings"));
+        path.Parent.CreateDirectory();
+        await path.WriteAllBytesAsync("[Rendering]\r\nMaxFPS=30\r\n"u8.ToArray());
+        await AddPart(loadout, "modA", "user.settings");
 
         await ShouldHaveNoDiagnostics(loadout);
     }
