@@ -16,9 +16,6 @@ internal sealed class XxHash3FullFileHasher : IFullFileHasher
     public async ValueTask<Hash> Hash(AbsolutePath file, CancellationToken cancellationToken)
         => await file.XxHash3Async(token: cancellationToken);
 
-    public async ValueTask<MultiHash> HashAll(AbsolutePath file, CancellationToken cancellationToken)
-    {
-        await using var stream = file.Read();
-        return await MultiHasher.HashStream(stream, cancellationToken);
-    }
+    public ValueTask<MultiHash> HashAll(AbsolutePath file, CancellationToken cancellationToken)
+        => MultiHashFileHasher.Instance.HashAll(file, cancellationToken);
 }

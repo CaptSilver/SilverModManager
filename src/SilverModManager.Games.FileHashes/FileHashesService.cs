@@ -511,7 +511,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
     /// <inheritdoc />
     public FrozenDictionary<GamePath, AttestedLookup> AttestedFiles(GameInstallation installation)
-        => AttestedFileRows.Find(Local, installation.LocatorResult.Store, LocalBaselineCoordinator.GamePathOf(installation));
+        => AttestedFileRows.Find(Local, installation.LocatorResult.Store, LocalBaselineCoordinator.GamePathOf(installation), installation.LocatorResult.LocatorIds);
 
     /// <inheritdoc />
     public Task SettleAttested(GameInstallation installation, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, CancellationToken cancellationToken = default)

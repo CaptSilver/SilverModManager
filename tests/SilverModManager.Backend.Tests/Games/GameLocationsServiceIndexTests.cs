@@ -77,7 +77,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
             Path = _gameDir,
             Store = GameStore.Steam,
             StoreIdentifier = "1",
-            LocatorIds = [],
+            LocatorIds = [LocatorId.From("1")],
             Locator = Substitute.For<IGameLocator>(),
         };
         _installation = new GameInstallation(locatorResult, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, _gameDir)));
@@ -695,7 +695,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
             => LocalFileHashRows.TryGet(local.Db, gameKey, path, size, modifiedUtc, out xxHash3);
 
         public FrozenDictionary<GamePath, AttestedLookup> AttestedFiles(GameInstallation installation)
-            => AttestedFileRows.Find(local.Db, installation.LocatorResult.Store, gameKey);
+            => AttestedFileRows.Find(local.Db, installation.LocatorResult.Store, gameKey, installation.LocatorResult.LocatorIds);
 
         public Task SettleAttested(GameInstallation installation, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, CancellationToken cancellationToken = default)
             => AttestedFileRows.Settle(local, gameKey, read, logger);

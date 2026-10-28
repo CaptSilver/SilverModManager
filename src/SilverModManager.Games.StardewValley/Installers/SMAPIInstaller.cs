@@ -229,9 +229,14 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
                     await _fileHashesService.SettleAttested(loadout.InstallationInstance, [(attested, hashes, fingerprint)], cancellationToken);
                 return (hashes.XxHash3, hashes.Size, file);
             }
+
+            Logger.LogWarning("The game file hashes list `{Path}` but it is missing on disk, using Loadout as fallback", path);
+        }
+        else
+        {
+            Logger.LogWarning("Failed to find game file `{Path}` in the game file hashes, using Loadout as fallback", path);
         }
 
-        Logger.LogWarning("Failed to find game file `{Path}` in the game file hashes, using Loadout as fallback", path);
         var entities = LoadoutItemWithTargetPath.FindByTargetPath(loadout.Db, path.ToGamePathParentTuple(loadout.Id));
         if (!entities.TryGetFirst(x => x.IsLoadoutFile(), out var entity)) return null;
         Logger.LogInformation("Using game file `{Path}` found in the Loadout", path);

@@ -162,7 +162,7 @@ public class StubbedFileHasherService : IFileHashesService
     }
 
     public FrozenDictionary<GamePath, AttestedLookup> AttestedFiles(GameInstallation installation)
-        => AttestedFileRows.Find(EnsureLocal(), installation.LocatorResult.Store, GameKey(installation));
+        => AttestedFileRows.Find(EnsureLocal(), installation.LocatorResult.Store, GameKey(installation), installation.LocatorResult.LocatorIds);
 
     public Task SettleAttested(GameInstallation installation, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, CancellationToken cancellationToken = default)
     {

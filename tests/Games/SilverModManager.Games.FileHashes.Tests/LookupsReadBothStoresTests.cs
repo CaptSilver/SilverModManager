@@ -130,6 +130,22 @@ public sealed class LookupsReadBothStoresTests : IDisposable
         service.AttestedFiles(InstallationAt("/games/other", "1001")).Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task AGameUpdatedSinceTheBaselineWasBuilt_IsAnsweredByTheNewManifestAlone()
+    {
+        var service = await ServiceWithCentral(c => HashRows.AddSteamManifest(c, 1002, ("a.esm", "new build")));
+        var local = service.Local.Connection;
+        await HashRows.AddBaselineOwningManifestAt(local, "/games/a", LocalBaselineKind.DepotManifests, 1001);
+        await HashRows.AddAttestedFile(local, 1001, "a.esm", "old build", gamePath: "/games/a");
+        var updated = InstallationAt("/games/a", "1002");
+
+        var files = service.GetGameFiles(updated).ToList();
+
+        files.Select(f => f.Path.Path.ToString()).Should().Equal("a.esm");
+        files.Should().OnlyContain(f => f.Identity.Kind == HashKind.XxHash3, "the old build's rows describe files the new build replaced");
+        service.AttestedFiles(updated).Should().BeEmpty();
+    }
+
     private static GameInstallation InstallationAt(string gamePath, params string[] locatorIds)
     {
         var result = new GameLocatorResult

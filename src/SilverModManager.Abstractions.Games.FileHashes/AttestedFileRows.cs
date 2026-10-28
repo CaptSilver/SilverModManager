@@ -18,12 +18,17 @@ public static class AttestedFileRows
 {
     /// <summary>
     /// The rows of the baseline at <paramref name="gamePath"/> for <paramref name="store"/>, keyed by their path in
-    /// the game folder. Empty when there is no such baseline.
+    /// the game folder. Empty when there is no such baseline, or when it was built for other
+    /// <paramref name="locatorIds"/>: after a game update its rows describe files the new build replaced, and
+    /// the new build's own manifest answers for every path.
     /// </summary>
-    public static FrozenDictionary<GamePath, AttestedLookup> Find(IDb db, GameStore store, string gamePath)
+    public static FrozenDictionary<GamePath, AttestedLookup> Find(IDb db, GameStore store, string gamePath, IEnumerable<LocatorId> locatorIds)
     {
         var baseline = LocalBaseline.FindByGamePath(db, gamePath).Where(b => b.Store == store).Select(b => (LocalBaseline.ReadOnly?)b).FirstOrDefault();
         if (baseline is not { } found) return FrozenDictionary<GamePath, AttestedLookup>.Empty;
+
+        var current = locatorIds.Select(id => id.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!current.SetEquals(found.LocatorIds)) return FrozenDictionary<GamePath, AttestedLookup>.Empty;
 
         var rows = new Dictionary<GamePath, AttestedLookup>();
         foreach (var row in AttestedFile.FindByBaseline(db, found.Id))
