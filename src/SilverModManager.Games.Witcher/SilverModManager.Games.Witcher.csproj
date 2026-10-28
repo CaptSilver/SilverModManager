@@ -10,6 +10,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="SilverModManager.Games.Witcher.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <AdditionalFiles Include="**\*.sql" />
         <UpToDateCheckInput Include="**\*.sql"/>
     </ItemGroup>

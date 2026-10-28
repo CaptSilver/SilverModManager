@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 using NSubstitute;
+using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.DataModel.CommandLine.Verbs;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.ProxyConsole;
@@ -18,8 +19,7 @@ public class GamesListVerbTests
 {
     private static GameInstallation Install(string name, GameStore store, string path)
     {
-        var game = Substitute.For<IGameData>();
-        game.DisplayName.Returns(name);
+        var game = new StubGameData(name, GameId.From("Test." + name));
         return new GameInstallation(new GameLocatorResult
         {
             Game = game,
@@ -42,6 +42,7 @@ public class GamesListVerbTests
             .AddSingleton<CommandLineConfigurator>()
             .AddCLI()
             .AddSingleton(registry)
+            .AddSingleton(Substitute.For<IFileHashesService>())
             .AddGameVerbs()
             .BuildServiceProvider();
 
@@ -86,6 +87,17 @@ public class GamesListVerbTests
         rows[0].GetProperty("store").GetString().Should().Be("Steam");
         rows[0].GetProperty("name").GetString().Should().Be("Elden Ring");
         rows[0].GetProperty("path").GetString().Should().Be("/games/EldenRing");
+    }
+
+    [Fact]
+    public async Task JsonCarriesTheGameIdTheOtherGameVerbsTake()
+    {
+        var (exitCode, output) = await Run(TwoGames, "games", "list", "--json");
+
+        exitCode.Should().Be(0);
+        using var doc = JsonDocument.Parse(output);
+        doc.RootElement.EnumerateArray().Select(r => r.GetProperty("gameId").GetString())
+            .Should().Equal("Test.Elden Ring", "Test.Cyberpunk 2077");
     }
 
     [Fact]

@@ -40,6 +40,7 @@ public static class LoadoutManagementVerbs
             .AddModule("loadout version", "Commands for managing the version of a loadout")
             .AddVerb(() => SetVersion)
             .AddVerb(() => Synchronize)
+            .AddVerb(() => Create)
             .AddVerb(() => InstallMod)
             .AddVerb(() => Reindex)
             .AddVerb(() => ListLoadouts)
@@ -96,6 +97,27 @@ public static class LoadoutManagementVerbs
         [Injected] ISynchronizerService syncService)
     {
         await syncService.Synchronize(loadout);
+        return 0;
+    }
+
+    [Verb("loadout create", "Creates a loadout for a game found on this machine, managing it if it is not managed yet")]
+    private static async Task<int> Create([Injected] IRenderer renderer,
+        [Injected] IGameRegistry registry,
+        [Injected] ILoadoutManager loadoutManager,
+        [Option("g", "game", "The game id, as `games list --json` prints it")] string gameId,
+        [Option("n", "name", "Loadout name", true)] string? name)
+    {
+        var installations = GameVerbs.Located(registry, gameId);
+        if (installations.IsEmpty)
+        {
+            await renderer.TextLine(GameVerbs.NotLocatedMessage(gameId));
+            return 1;
+        }
+
+        // A game found in two stores gets the first one the registry lists; the output names it.
+        var installation = installations[0];
+        var loadout = await loadoutManager.CreateLoadout(installation, name);
+        await renderer.TextLine($"Created loadout {loadout.Name} ({loadout.LoadoutId}) for {installation.Game.DisplayName} at {installation.LocatorResult.Path}");
         return 0;
     }
 
