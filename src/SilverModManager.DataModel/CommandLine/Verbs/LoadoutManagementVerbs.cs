@@ -183,7 +183,7 @@ public static class LoadoutManagementVerbs
     {
         await renderer.Text("Reindexing {0}", loadout.Name);
         var synchronizer = loadout.InstallationInstance.GetGame().Synchronizer;
-        await synchronizer.ReindexState(loadout.InstallationInstance);
+        await synchronizer.ReindexState(loadout.InstallationInstance, cancellationToken: token);
         return 0;
     }
 

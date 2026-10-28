@@ -27,13 +27,22 @@ public record IndexGameResult(
 [PublicAPI]
 public interface IGameLocationsService
 {
+    /// <summary>Files settled between two <c>onBatch</c> calls.</summary>
+    public const int IndexBatchSize = 1000;
+
     /// <param name="progress">Called with the files looked at so far and the number of files found, as the folder is walked.</param>
+    /// <param name="onBatch">
+    /// Called with each <see cref="IndexBatchSize"/> new or modified files as they settle, and once more with the rest
+    /// (possibly none) when every file has been looked at. The hash rows for a batch's files are written first. A call
+    /// that throws ends the run.
+    /// </param>
     Task<IndexGameResult> IndexGame(
         GameInstallation installation,
         FrozenDictionary<GamePath, DiskStateEntry.ReadOnly> previousDiskState,
         IGamePathFilter filter,
         CancellationToken cancellationToken = default,
-        Action<long, long>? progress = null
+        Action<long, long>? progress = null,
+        Func<IReadOnlyList<IndexFileResult>, ValueTask>? onBatch = null
     );
 
     // Task RemoveEmptyDirectories(GameInstallation installation, CancellationToken cancellationToken = default);

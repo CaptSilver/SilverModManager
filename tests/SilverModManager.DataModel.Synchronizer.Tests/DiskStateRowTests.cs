@@ -1,5 +1,8 @@
 using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Hashing.xxHash3.Paths;
+using SilverModManager.Backend.Games;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
@@ -23,6 +26,93 @@ namespace SilverModManager.DataModel.Synchronizer.Tests;
 public class DiskStateRowTests(ITestOutputHelper helper) : AStubbedGameTest<DiskStateRowTests>(helper)
 {
     private static readonly GamePath Plain = new(LocationId.Game, "plain.txt");
+
+    private readonly FailingHasher _hasher = new();
+
+    protected override IServiceCollection AddServices(IServiceCollection services)
+        => base.AddServices(services).AddSingleton<IFullFileHasher>(_hasher);
+
+    private const int FilesInThreeBatches = 2500;
+
+    private void WriteGameFiles(int count)
+    {
+        var folder = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, "bulk"));
+        folder.CreateDirectory();
+        for (var i = 0; i < count; i++) File.WriteAllText(folder.Combine($"file-{i:D5}.txt").ToString(), $"contents {i}");
+    }
+
+    private GameInstallMetadata.ReadOnly CurrentMetadata()
+        => GameInstallMetadata.Load(Connection.Db, GameRegistry.ForceGetMetadata(GameInstallation).Id);
+
+    [Fact]
+    public async Task HasherFailingMidway_LeavesTheFinishedBatchesCommittedAndTheRerunHashesOnlyTheRest()
+    {
+        await LoadoutManager.ManageInstallation(GameInstallation);
+        WriteGameFiles(FilesInThreeBatches);
+        _hasher.FailAfter(1500);
+
+        var act = () => Synchronizer.RescanFiles(GameInstallation);
+
+        (await act.Should().ThrowAsync<GameFolderUnreadableException>()).Which.InnerException.Should().BeOfType<IOException>();
+        DiskStateEntry.FindByGame(Connection.Db, CurrentMetadata()).Should().HaveCount(1000);
+        CurrentMetadata().Contains(GameInstallMetadata.InitialDiskStateTransaction).Should().BeFalse();
+
+        _hasher.Reset();
+        await Synchronizer.RescanFiles(GameInstallation);
+
+        _hasher.Calls.Should().Be(1500);
+        DiskStateEntry.FindByGame(Connection.Db, CurrentMetadata()).Should().HaveCount(FilesInThreeBatches);
+        CurrentMetadata().Contains(GameInstallMetadata.InitialDiskStateTransaction).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CancelledReindex_StopsBeforeTheNextBatch()
+    {
+        await LoadoutManager.ManageInstallation(GameInstallation);
+        WriteGameFiles(FilesInThreeBatches);
+        using var cts = new CancellationTokenSource();
+        _hasher.OnCall = call => { if (call == 1001) cts.Cancel(); };
+
+        var act = () => Synchronizer.RescanFiles(GameInstallation, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        DiskStateEntry.FindByGame(Connection.Db, CurrentMetadata()).Should().HaveCount(1000);
+        CurrentMetadata().Contains(GameInstallMetadata.InitialDiskStateTransaction).Should().BeFalse();
+    }
+
+    /// <summary>
+    /// Hashes like the real one until told to fail. It ignores the cancellation token on purpose, so a file that
+    /// has started is finished and the batch contents do not depend on how the readers interleave.
+    /// </summary>
+    private sealed class FailingHasher : IFullFileHasher
+    {
+        private int _calls;
+        private int _failAfter = int.MaxValue;
+        public int Calls => Volatile.Read(ref _calls);
+        public Action<int>? OnCall { get; set; }
+        public void FailAfter(int calls) => _failAfter = calls;
+        public void Reset() { _calls = 0; _failAfter = int.MaxValue; OnCall = null; }
+
+        public async ValueTask<Hash> Hash(AbsolutePath file, CancellationToken cancellationToken)
+        {
+            Enter(file);
+            return await file.XxHash3Async(token: CancellationToken.None);
+        }
+
+        public async ValueTask<MultiHash> HashAll(AbsolutePath file, CancellationToken cancellationToken)
+        {
+            Enter(file);
+            await using var stream = file.Read();
+            return await MultiHasher.HashStream(stream, CancellationToken.None);
+        }
+
+        private void Enter(AbsolutePath file)
+        {
+            var call = Interlocked.Increment(ref _calls);
+            OnCall?.Invoke(call);
+            if (call > _failAfter) throw new IOException($"Input/output error reading {file}");
+        }
+    }
 
     [Fact]
     public async Task DeletingAFileWhoseEntryChangedAfterTheTreeWasBuilt_RemovesTheWholeEntry()

@@ -138,7 +138,16 @@ public interface ILoadoutSynchronizer
     /// <returns>A tree of all the files with associated <see cref="FileChangeType"/></returns>
     FileDiffTree LoadoutToDiskDiff(Loadout.ReadOnly loadout, List<PathPartPair> previousState, List<PathPartPair> lastScannedState);
 
-    Task<Sdk.Games.GameInstallMetadata.ReadOnly> ReindexState(GameInstallation installation, SynchronizeLoadoutJob? job = null);
+    /// <summary>
+    /// Indexes the game folder and commits the disk state a thousand files at a time, so a run that is cancelled or
+    /// hits a failing disk keeps what it finished and the next run hashes only the rest.
+    /// </summary>
+    Task<Sdk.Games.GameInstallMetadata.ReadOnly> ReindexState(GameInstallation installation, SynchronizeLoadoutJob? job = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Refreshes the file hashes, then indexes the game folder as <see cref="ReindexState"/> does.
+    /// </summary>
+    Task<Sdk.Games.GameInstallMetadata.ReadOnly> RescanFiles(GameInstallation gameInstallation, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gives every node in <paramref name="tree"/> that is about to be archived or ingested an xxHash3 disk identity,

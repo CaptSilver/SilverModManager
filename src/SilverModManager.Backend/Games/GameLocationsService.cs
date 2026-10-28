@@ -36,7 +36,8 @@ internal class GameLocationsService : IGameLocationsService
         FrozenDictionary<GamePath, DiskStateEntry.ReadOnly> previousDiskState,
         IGamePathFilter filter,
         CancellationToken outerToken = default,
-        Action<long, long>? progress = null)
+        Action<long, long>? progress = null,
+        Func<IReadOnlyList<IndexFileResult>, ValueTask>? onBatch = null)
     {
         // A baseline build commits all its rows at the end; indexing meanwhile would find none and read the whole folder.
         await _fileHashesService.WaitForLocalBaselineBuild(installation, outerToken);
@@ -53,14 +54,14 @@ internal class GameLocationsService : IGameLocationsService
         var seenPaths = new ConcurrentDictionary<GamePath, bool>();
         var newFiles = new ConcurrentDictionary<GamePath, IndexFileResult>();
         var modifiedFiles = new ConcurrentDictionary<GamePath, IndexFileResult>();
-        var readFiles = new ConcurrentBag<IndexedFileHash>();
-        var settled = new ConcurrentBag<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)>();
         var attestedFiles = _fileHashesService.AttestedFiles(installation);
-        var reads = new Reads(readFiles, settled);
+        var batches = new BatchWriter(_fileHashesService, installation, onBatch);
 
         var options = new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = outerToken };
         await Parallel.ForEachAsync(enumerable, options, async (file, token) =>
         {
+            var reads = new Reads();
+            IndexFileResult? changed = null;
             try
             {
                 var gamePath = installation.Locations.ToGamePath(file);
@@ -76,7 +77,7 @@ internal class GameLocationsService : IGameLocationsService
                     var previous = previousDiskStateEntry.IdentityOf();
                     if (HasFileChanged(fingerprint, previousDiskStateEntry))
                     {
-                        modifiedFiles[gamePath] = await IndexChangedFile(installation, file, gamePath, fingerprint, attested, attestedMatches, tally, reads, token);
+                        changed = modifiedFiles[gamePath] = await IndexChangedFile(installation, file, gamePath, fingerprint, attested, attestedMatches, tally, reads, token);
                     }
                     else if (previous.Kind == HashKind.XxHash3 && attestedMatches && !_fileHashesService.TryFindRelation(previous.XxHash3(), out _))
                     {
@@ -84,7 +85,7 @@ internal class GameLocationsService : IGameLocationsService
                         // bytes are the store's or a mod's that the app deployed or adopted here. One read settles it.
                         var result = await IndexFile(installation, file, gamePath, tally, reads, attested, forceRead: true, token);
                         if (result.Identity == previous) tally.Unchanged();
-                        else modifiedFiles[gamePath] = result;
+                        else changed = modifiedFiles[gamePath] = result;
                     }
                     else if (previous.Kind != HashKind.XxHash3)
                     {
@@ -96,7 +97,7 @@ internal class GameLocationsService : IGameLocationsService
                         }
                         else
                         {
-                            modifiedFiles[gamePath] = await IndexChangedFile(installation, file, gamePath, fingerprint, attested, attestedMatches, tally, reads, token);
+                            changed = modifiedFiles[gamePath] = await IndexChangedFile(installation, file, gamePath, fingerprint, attested, attestedMatches, tally, reads, token);
                         }
                     }
                     else
@@ -108,10 +109,16 @@ internal class GameLocationsService : IGameLocationsService
                 }
                 else
                 {
-                    newFiles[gamePath] = await IndexChangedFile(installation, file, gamePath, fingerprint, attested, attestedMatches, tally, reads, token);
+                    changed = newFiles[gamePath] = await IndexChangedFile(installation, file, gamePath, fingerprint, attested, attestedMatches, tally, reads, token);
                 }
             }
-            catch (Exception e)
+            catch (IOException e) when (e is not (FileNotFoundException or DirectoryNotFoundException))
+            {
+                // A deleted or locked file is one file, but a read that fails for any other reason is the drive
+                // failing, and every file after it would fail the same way.
+                throw new GameFolderUnreadableException(installation, file, e);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
             {
                 _logger.LogWarning(e, "Exception indexing file `{Path}`", file);
             }
@@ -119,10 +126,12 @@ internal class GameLocationsService : IGameLocationsService
             {
                 progress?.Invoke(Interlocked.Increment(ref filesDone), totalFiles);
             }
+
+            // Outside the catches above: a commit that fails ends the run instead of being logged as one bad file.
+            await batches.Add(changed, reads);
         });
 
-        await _fileHashesService.RecordIndexedFiles(installation, readFiles.ToArray(), outerToken);
-        await _fileHashesService.SettleAttested(installation, settled.ToArray(), outerToken);
+        await batches.Finish();
 
         var removedFiles = previousDiskState.Keys.Except(seenPaths.Keys).ToFrozenSet();
         tally.Log(_logger, installation.Game.DisplayName, newFiles.Count, modifiedFiles.Count, removedFiles.Count);
@@ -138,8 +147,74 @@ internal class GameLocationsService : IGameLocationsService
     private static bool HasFileChanged(FileFingerprint fingerprint, DiskStateEntry.ReadOnly previousState)
         => fingerprint.LastModified != previousState.LastModified || fingerprint.Size != previousState.Size;
 
-    /// <summary>What the parallel loop collects for the two writes that follow it.</summary>
-    private sealed record Reads(ConcurrentBag<IndexedFileHash> Remembered, ConcurrentBag<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> Settled);
+    /// <summary>What reading one file left to remember, kept with that file so a batch records exactly its own.</summary>
+    private sealed class Reads
+    {
+        public List<IndexedFileHash> Remembered { get; } = [];
+        public List<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> Settled { get; } = [];
+    }
+
+    /// <summary>
+    /// Hands settled files to the caller a batch at a time. The local-store rows of a batch's files are written
+    /// before the caller commits the batch, so a crash between the two leaves rows the next run resolves from and
+    /// never a disk state entry without the rows behind it.
+    /// </summary>
+    private sealed class BatchWriter(IFileHashesService fileHashes, GameInstallation installation, Func<IReadOnlyList<IndexFileResult>, ValueTask>? onBatch)
+    {
+        private readonly object _gate = new();
+        private readonly SemaphoreSlim _commit = new(1, 1);
+        private List<IndexFileResult> _results = [];
+        private List<Reads> _reads = [];
+
+        public async ValueTask Add(IndexFileResult? result, Reads reads)
+        {
+            List<IndexFileResult>? full = null;
+            List<Reads>? fullReads = null;
+            lock (_gate)
+            {
+                _reads.Add(reads);
+                if (result is { } r) _results.Add(r);
+                if (_results.Count >= IGameLocationsService.IndexBatchSize) (full, fullReads) = Take();
+            }
+
+            if (full is not null && fullReads is not null) await Commit(full, fullReads);
+        }
+
+        /// <summary>The files that did not fill a batch, and the final call even when there are none.</summary>
+        public async ValueTask Finish()
+        {
+            List<IndexFileResult> rest;
+            List<Reads> restReads;
+            lock (_gate) (rest, restReads) = Take();
+            await Commit(rest, restReads);
+        }
+
+        private (List<IndexFileResult>, List<Reads>) Take()
+        {
+            var taken = (_results, _reads);
+            (_results, _reads) = ([], []);
+            return taken;
+        }
+
+        private async ValueTask Commit(List<IndexFileResult> results, List<Reads> reads)
+        {
+            // A batch that has filled is written even if the run was cancelled meanwhile: the files in it were
+            // already read, and the cancellation only has to stop the batches after it.
+            await _commit.WaitAsync(CancellationToken.None);
+            try
+            {
+                var remembered = reads.SelectMany(r => r.Remembered).ToArray();
+                if (remembered.Length > 0) await fileHashes.RecordIndexedFiles(installation, remembered, CancellationToken.None);
+                var settled = reads.SelectMany(r => r.Settled).ToArray();
+                if (settled.Length > 0) await fileHashes.SettleAttested(installation, settled, CancellationToken.None);
+                if (onBatch is not null) await onBatch(results);
+            }
+            finally
+            {
+                _commit.Release();
+            }
+        }
+    }
 
     /// <summary>
     /// A file with no usable previous entry: given the store's SHA-1 when it matches the attested row for the path,

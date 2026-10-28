@@ -1154,7 +1154,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         job?.SetStatus(SyncPhases.Collecting);
-        var metadata = await ReindexState(loadout.InstallationInstance, job);
+        var metadata = await ReindexState(loadout.InstallationInstance, job, cancellationToken);
 
         // Reconcile sees the fresh disk state, and the game's preparation sees the group it writes.
         loadout = await ReconcileGameInstalledContent(loadout, metadata);
@@ -1168,7 +1168,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         {
             // The folder can change while the question is open, so the answer is applied to a tree of the folder as
             // it is now. The answer is the preset this time, so nothing is asked twice.
-            metadata = await ReindexState(loadout.InstallationInstance, job);
+            metadata = await ReindexState(loadout.InstallationInstance, job, cancellationToken);
             tree = BuildSyncTreeFromIndex(loadout, metadata);
             ProcessSyncTree(tree);
             (choice, _) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, choice, cancellationToken);
@@ -1181,11 +1181,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         return loadout;
     }
 
-    public async Task<GameInstallMetadata.ReadOnly> RescanFiles(GameInstallation gameInstallation)
+    public async Task<GameInstallMetadata.ReadOnly> RescanFiles(GameInstallation gameInstallation, CancellationToken cancellationToken = default)
     {
         // Make sure the file hashes are up to date
         await _fileHashService.GetFileHashesDb();
-        return await ReindexState(gameInstallation);
+        return await ReindexState(gameInstallation, cancellationToken: cancellationToken);
     }
 
     /// <summary>
@@ -1332,17 +1332,42 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <summary>
-    /// Reindex the state of the game, running a transaction if changes are found
+    /// Reindex the state of the game. New and changed files are committed as the index settles them, a batch at a
+    /// time, with <see cref="Sdk.Games.GameInstallMetadata.LastScannedDiskStateTransaction"/> moved on each time. The
+    /// initial disk state is set only with the last commit, so a run that dies midway looks like no run to the
+    /// next one, which skips the committed rows as unchanged and hashes the rest.
     /// </summary>
-    public async Task<GameInstallMetadata.ReadOnly> ReindexState(GameInstallation installation, SynchronizeLoadoutJob? job = null)
+    public async Task<GameInstallMetadata.ReadOnly> ReindexState(GameInstallation installation, SynchronizeLoadoutJob? job = null, CancellationToken cancellationToken = default)
     {
         using var _ = await _lock.LockAsync();
 
         var metadata = _gameRegistry.ForceGetMetadata(installation);
-        using var tx = Connection.BeginTransaction();
+        var previousState = GetDiskState(metadata);
 
-        // Index the state
-        var changed = await ReindexState(metadata, installation, tx, job);
+        var indexGameResult = await _gameLocationsService.IndexGame(
+            installation: installation,
+            previousDiskState: previousState,
+            filter: Synchronizers.GamePathFilters.Create(path => GamePathFilter.ShouldFilter(path) && !IsTrackedProtectedFile(previousState, path)),
+            cancellationToken: cancellationToken,
+            progress: job is null ? null : (done, total) => job.ReportProgress(SyncPhases.Collecting, done, total),
+            onBatch: async batch =>
+            {
+                if (batch.Count == 0) return;
+                using var batchTx = Connection.BeginTransaction();
+                WriteIndexedFiles(batchTx, metadata, previousState, batch);
+                batchTx.Add(metadata.Id, Sdk.Games.GameInstallMetadata.LastScannedDiskStateTransaction, EntityId.From(TxId.Tmp.Value));
+                await batchTx.Commit();
+            });
+
+        using var tx = Connection.BeginTransaction();
+        var changed = indexGameResult.RemovedFiles.Count != 0;
+        foreach (var gamePath in indexGameResult.RemovedFiles)
+        {
+            var didFind = previousState.TryGetValue(gamePath, out var previousDiskStateEntry);
+            Debug.Assert(didFind, "removed file should be in previous state");
+
+            tx.Delete(previousDiskStateEntry.Id, recursive: false);
+        }
 
         if (!metadata.Contains(Sdk.Games.GameInstallMetadata.InitialDiskStateTransaction))
         {
@@ -1425,25 +1450,23 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <summary>
-    /// Reindex the state of the game
+    /// Writes the rows for one batch of indexed files: a file with a previous entry updates it, any other is added.
     /// </summary>
-    private async Task<bool> ReindexState(GameInstallMetadata.ReadOnly metadata, GameInstallation installation, ITransaction tx, SynchronizeLoadoutJob? job)
+    private static void WriteIndexedFiles(ITransaction tx, GameInstallMetadata.ReadOnly metadata, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly> previousState, IReadOnlyList<IndexFileResult> batch)
     {
-        var previousState = GetDiskState(metadata);
-
-        var indexGameResult = await _gameLocationsService.IndexGame(
-            installation: installation,
-            previousDiskState: previousState,
-            filter: Synchronizers.GamePathFilters.Create(path => GamePathFilter.ShouldFilter(path) && !IsTrackedProtectedFile(previousState, path)),
-            cancellationToken: CancellationToken.None,
-            progress: job is null ? null : (done, total) => job.ReportProgress(SyncPhases.Collecting, done, total)
-        );
-
-        foreach (var (gamePath, result) in indexGameResult.NewFiles)
+        foreach (var result in batch)
         {
+            if (previousState.TryGetValue(result.Path, out var previousDiskStateEntry))
+            {
+                tx.Add(previousDiskStateEntry.Id, DiskStateEntry.Size, result.Size);
+                WriteIdentity(tx, previousDiskStateEntry, result.Identity);
+                tx.Add(previousDiskStateEntry.Id, DiskStateEntry.LastModified, result.LastModified);
+                continue;
+            }
+
             _ = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
             {
-                Path = gamePath.ToGamePathParentTuple(metadata.Id),
+                Path = result.Path.ToGamePathParentTuple(metadata.Id),
                 Identity = result.Identity,
                 XxHash3 = result.Identity.TryXxHash3(out var newHash) ? newHash : null,
                 Size = result.Size,
@@ -1451,30 +1474,6 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 GameId = metadata.Id,
             };
         }
-
-        foreach (var (gamePath, result) in indexGameResult.ModifiedFiles)
-        {
-            var didFind = previousState.TryGetValue(gamePath, out var previousDiskStateEntry);
-            Debug.Assert(didFind, "modified file should be in previous state");
-
-            tx.Add(previousDiskStateEntry.Id, DiskStateEntry.Size, result.Size);
-            WriteIdentity(tx, previousDiskStateEntry, result.Identity);
-            tx.Add(previousDiskStateEntry.Id, DiskStateEntry.LastModified, result.LastModified);
-        }
-
-        foreach (var gamePath in indexGameResult.RemovedFiles)
-        {
-            var didFind = previousState.TryGetValue(gamePath, out var previousDiskStateEntry);
-            Debug.Assert(didFind, "modified file should be in previous state");
-
-            tx.Delete(previousDiskStateEntry.Id, recursive: false);
-        }
-
-        var hasChanged = indexGameResult.NewFiles.Count != 0 || indexGameResult.ModifiedFiles.Count != 0 || indexGameResult.RemovedFiles.Count != 0;
-        if (!hasChanged) return false;
-
-        tx.Add(metadata.Id, GameInstallMetadata.LastScannedDiskStateTransaction, EntityId.From(TxId.Tmp.Value));
-        return true;
     }
 
     public async ValueTask BuildProcessRun(Loadout.ReadOnly loadout, GameInstallMetadata.ReadOnly state, CancellationToken cancellationToken, BackupOverflowChoice? largeFiles = null)
