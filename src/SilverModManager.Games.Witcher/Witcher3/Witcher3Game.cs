@@ -45,6 +45,7 @@ public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witch
         .. base.CreateEmitters(provider),
         provider.GetRequiredService<SkippedScriptMergerEmitter>(),
         provider.GetRequiredService<UnplacedArchiveFilesEmitter>(),
+        provider.GetRequiredService<ModsSettingsReplacedEmitter>(),
     ];
 
     protected override ISortOrderVariety[] CreateSortOrderVarieties(IServiceProvider provider) => [new WitcherModSortOrderVariety(provider, this)];

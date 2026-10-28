@@ -183,6 +183,9 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
 
         using var tx = Connection.BeginTransaction();
         Stage(sortOrderId, [row], tx, db);
+
+        // The user is answering the card about a replaced mods.settings.
+        ModsSettingsNotices.Retract(db, sortOrderId, tx);
         token.ThrowIfCancellationRequested();
         await tx.Commit();
     }
@@ -264,6 +267,10 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
             throw new InvalidOperationException($"That move would break the rule '{GroupRuleText.WinsOver(result.Overridden[0].Rule)}'.");
 
         PersistSortOrderCore(sortOrderId, newOrder, tx, startingDb, token);
+
+        // A drag is the user answering the card about a replaced mods.settings. Not done in PersistSortOrderCore: that
+        // also runs for reconciles and for the seeding after a collection import, neither of which answers anything.
+        ModsSettingsNotices.Retract(startingDb, sortOrderId, tx);
 
         // The same guard as the base class: a switch or reconcile that landed since startingDb must not be overwritten.
         var sortOrderTxId = GetMaxTxIdForSortOrder(sortOrderId, startingDb);

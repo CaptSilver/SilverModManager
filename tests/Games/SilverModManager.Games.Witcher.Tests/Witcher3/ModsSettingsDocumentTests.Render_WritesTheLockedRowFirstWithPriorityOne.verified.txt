@@ -1,0 +1,7 @@
+﻿[mod0000_MergedFiles]
+Enabled=1
+Priority=1
+
+[modX]
+Enabled=1
+Priority=2

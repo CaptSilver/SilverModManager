@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x370BA421067FC1DD
-   - Total attributes: 363
-   - Total namespaces: 103
+   - Fingerprint: 0x3C64FCF0D3E8C577
+   - Total attributes: 366
+   - Total namespaces: 104
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -144,6 +144,9 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Games.Witcher.WitcherModSortOrder/Marker                                 | Null                    | False   | False | False     | 
 | SilverModManager.Games.Witcher.WitcherModSortOrderItem/FolderName                         | Utf8                    | False   | False | False     | 
 | SilverModManager.Games.Witcher.WitcherModSortOrderItem/IsEnabled                          | UInt8                   | False   | False | False     | 
+| SilverModManager.Games.Witcher.WitcherModsSettingsNotice/ReplacedAt                       | Int64                   | False   | False | False     | 
+| SilverModManager.Games.Witcher.WitcherModsSettingsNotice/SortOrder                        | Reference               | True    | False | False     | 
+| SilverModManager.Games.Witcher.WitcherModsSettingsNotice/Summary                          | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.DownloadedFile/DownloadPageUri                                   | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.GitHubRelease/AssetName                                          | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.GitHubRelease/Organization                                       | Utf8                    | False   | False | False     | 

@@ -1,0 +1,7 @@
+﻿[Id] the copy in Documents/The Witcher 3: 1
+[Title] Something was left out
+[Summary] mods.settings from the copy in Documents/The Witcher 3 is not used: the file on disk differed from your Load Order (in a different order: modA, modB)
+[Details]
+**mods.settings** (the copy in Documents/The Witcher 3) was left out: the file on disk differed from your Load Order (in a different order: modA, modB).
+
+Change it on the Load Order page.

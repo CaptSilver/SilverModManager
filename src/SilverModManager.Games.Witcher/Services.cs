@@ -15,6 +15,8 @@ public static class Services
         return services
             .AddSingleton<SkippedScriptMergerEmitter>()
             .AddSingleton<UnplacedArchiveFilesEmitter>()
+            .AddSingleton<ModsSettingsReplacedEmitter>()
+            .AddWitcherModsSettingsNoticeModel()
             .AddWitcherModSortOrderModel()
             .AddWitcherModSortOrderItemModel()
             .AddGame<Witcher1Game>()
