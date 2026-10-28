@@ -432,9 +432,8 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
             var index = row.SortIndex;
             if (row.Key.Equals(WitcherModFolders.MergedKey)) continue;
 
-            if (stored.TryGetValue(row.Key, out var existing))
+            if (stored.TryGetValue(row.Key, out var existing) && existing.RowId is { } id)
             {
-                var id = existing.RowId!.Value;
                 if (existing.SortIndex != index) tx.Add(id, SortOrderItem.SortIndex, index);
                 if (existing.Folder != row.Folder) tx.Add(id, WitcherModSortOrderItem.FolderName, row.Folder);
                 if (existing.IsEnabled != row.IsEnabled) tx.Add(id, WitcherModSortOrderItem.IsEnabled, row.IsEnabled);

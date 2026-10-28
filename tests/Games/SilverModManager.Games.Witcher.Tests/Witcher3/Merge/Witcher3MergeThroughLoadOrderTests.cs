@@ -221,11 +221,11 @@ public class Witcher3MergeThroughLoadOrderTests(ITestOutputHelper helper)
     public async Task CrlfContributor_KeepsItsEndingsAndMakesNoSpuriousHunk()
     {
         // modB writes CRLF endings and a byte order mark over an LF game script; modA is plain LF.
-        var loadout = await TwoMods(Script("\n", (4, "  a = 11;")), "﻿" + Script("\r\n", (8, "  b = 22;")));
+        var loadout = await TwoMods(Script("\n", (4, "  a = 11;")), "\uFEFF" + Script("\r\n", (8, "  b = 22;")));
 
         var merged = Merged(loadout).Bytes;
 
-        merged.Should().Equal(Bytes("﻿" + Script("\r\n", (4, "  a = 11;"), (8, "  b = 22;"))), "the winner's endings and mark are kept, and only the two real changes are hunks");
+        merged.Should().Equal(Bytes("\uFEFF" + Script("\r\n", (4, "  a = 11;"), (8, "  b = 22;"))), "the winner's endings and mark are kept, and only the two real changes are hunks");
         OnlyEntry(loadout).Notes.Should().BeEmpty();
     }
 
@@ -276,12 +276,14 @@ public class Witcher3MergeThroughLoadOrderTests(ITestOutputHelper helper)
         Text(await GameFile($"Mods/{MergedFolder}/{Player}").ReadAllBytesAsync()).Should().Be(Script("\n", (4, "  a = 12;")));
     }
 
-    [Fact]
-    public async Task LooseXmlAndBundles_AreNotMergeable()
+    [Theory]
+    [InlineData("content/x.xml")]
+    [InlineData("content/blob0.bundle")]
+    public async Task LooseXmlAndBundles_AreNotMergeable(string rel)
     {
         var loadout = await CreateLoadout();
-        await Mod(loadout, "modA", 1, Mine("modA", "content/x.xml", "<a/>"));
-        await Mod(loadout, "modB", 2, Mine("modB", "content/x.xml", "<b/>"));
+        await Mod(loadout, "modA", 1, Mine("modA", rel, "<a/>"));
+        await Mod(loadout, "modB", 2, Mine("modB", rel, "<b/>"));
         loadout = Fresh(loadout);
 
         var entry = OnlyEntry(loadout);

@@ -68,6 +68,26 @@ public class ModsSettingsReplacedEmitterTests(ITestOutputHelper helper)
         await tx.Commit();
     }
 
+    /// <summary>
+    /// The manager reconciles a sort order in the background after the mods were added, and a drag built on a database
+    /// from before that is refused as stale. Waits until the rows are stored and the database stops moving.
+    /// </summary>
+    private async Task SortOrderSettled(SortOrderId id)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        var stable = 0;
+        var last = Connection.Db.BasisTxId;
+        while (stable < 4)
+        {
+            if (DateTime.UtcNow > deadline) throw new TimeoutException("The sort order did not settle");
+            await Task.Delay(50);
+            var db = Connection.Db;
+            var stored = SortOrderItem.FindByParentSortOrder(db, id).Count;
+            stable = stored >= 2 && db.BasisTxId == last ? stable + 1 : 0;
+            last = db.BasisTxId;
+        }
+    }
+
     private const string Swapped = "[mod0000_MergedFiles]\nPriority=1\n[modB]\nPriority=2\n[modA]\nPriority=3\n";
 
     [Fact]
@@ -108,6 +128,7 @@ public class ModsSettingsReplacedEmitterTests(ITestOutputHelper helper)
     {
         var (loadout, id, _, _) = await TwoMods();
         await IngestFromDisk(loadout, Swapped);
+        await SortOrderSettled(id);
 
         await Variety.MoveItems(id, [Key("modB")], Key("modA"), TargetRelativePosition.BeforeTarget, Connection.Db);
 

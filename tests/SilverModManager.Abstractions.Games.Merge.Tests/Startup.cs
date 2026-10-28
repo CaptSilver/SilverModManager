@@ -1,5 +1,6 @@
 using NexusMods.Hashing.xxHash3;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
@@ -24,11 +25,11 @@ public class Startup
             .AddLoadoutAbstractions()
             .AddGames()
             .AddRecordingDeploymentBackend()
-            .AddMergeEngine()
-            .AddTextMergeEngine()
-            .AddSingleton<IVanillaTrust, AlwaysTrusted>()
             .AddGame<StubbedGame>()
             .AddUniversalGameLocator<StubbedGame>(Version.Parse("0.0.0"));
+
+        // The default graph holds the baseline trust; these tests answer for it.
+        services.Replace(ServiceDescriptor.Singleton<IVanillaTrust, AlwaysTrusted>());
     }
 
     /// <summary>Resolves the engine in the service graph; tests that care about trust build their own engine with their own answer.</summary>

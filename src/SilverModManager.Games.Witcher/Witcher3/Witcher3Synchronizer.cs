@@ -65,6 +65,11 @@ public sealed class Witcher3Synchronizer(IServiceProvider provider, IGame game) 
     protected override async ValueTask<Loadout.ReadOnly> PrepareLoadoutForSync(Loadout.ReadOnly loadout)
     {
         await Game.SortOrderManager.UpdateLoadOrders(loadout.LoadoutId);
-        return loadout.Rebase();
+        loadout = loadout.Rebase();
+
+        // Plan again on the revision the tree is built from, so the window between the preflight's plan and the
+        // reconcile above cannot leave the listing and the plan disagreeing.
+        _ = _merge.Value.PlanOutputs(loadout);
+        return loadout;
     }
 }

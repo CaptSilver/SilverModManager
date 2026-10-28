@@ -61,6 +61,12 @@ public class Witcher3MergeGameTests
     }
 
     [Fact]
+    public void VanillaFor_IsNullForAPathOutsideContent()
+    {
+        _game.VanillaFor("scripts/game/player.ws", null!).Should().BeNull();
+    }
+
+    [Fact]
     public void OutputFor_IsUnderTheMergedFolder()
     {
         _game.OutputFor("content/scripts/game/player.ws")

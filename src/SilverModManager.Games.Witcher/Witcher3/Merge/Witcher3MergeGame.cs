@@ -38,9 +38,12 @@ public sealed class Witcher3MergeGame(IGame game) : AMergeGame
            && split.Rel.EndsWith(".ws", StringComparison.OrdinalIgnoreCase);
 
     // A mod's rel starts with content/, the game's copy sits below content/content0/ instead. Always a path: the engine
-    // asks the vanilla trust about it and notes a copy that is missing or was modified.
+    // asks the vanilla trust about it and notes a copy that is missing or was modified. Only a rel outside content/ has
+    // no game copy to point at.
     public override GamePath? VanillaFor(string rel, GameInstallation installation)
-        => new GamePath(LocationId.Game, VanillaScripts + rel["content/".Length..]);
+        => rel.StartsWith("content/", StringComparison.OrdinalIgnoreCase)
+            ? new GamePath(LocationId.Game, VanillaScripts + rel["content/".Length..])
+            : null;
 
     public override GamePath OutputFor(string rel)
         => new(LocationId.Game, $"{WitcherConstants.W3ModsFolder}/{WitcherConstants.W3MergedFolder}/{rel}");
