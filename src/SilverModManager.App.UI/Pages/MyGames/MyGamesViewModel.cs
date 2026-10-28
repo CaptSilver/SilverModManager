@@ -353,9 +353,18 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
 
         vm.State = GameWidgetState.AddingGame;
         Loadout.ReadOnly loadout;
+        LoadoutItemWithTargetPath.ReadOnly[] changeEntries;
+        bool buildCovered;
         try
         {
-            loadout = await Task.Run(async () => await ManageGame(installation));
+            // The overrides query and the coverage check walk the database and the game's build list, so they run
+            // on the pool with the manage that precedes them instead of on the dispatcher after it.
+            (loadout, changeEntries, buildCovered) = await Task.Run(async () =>
+            {
+                var created = await ManageGame(installation);
+                var (changes, covered) = DescribeFreshLoadout(_connection, created, installation, BuildIsCovered);
+                return (created, changes, covered);
+            });
         }
         catch (UserFacingException e)
         {
@@ -367,11 +376,8 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
             return;
         }
 
-        // Check if there are external changes
-        var changeEntries = await GetExternalChangesItems(loadout);
         vm.State = GameWidgetState.ManagedGame;
-        var buildCovered = BuildIsCovered(installation);
-        
+
         // Offer to clean them up
         if (changeEntries.Length > 0)
         {
@@ -402,7 +408,7 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                 vm.State = GameWidgetState.AddingGame;
                 try
                 {
-                    await _loadoutManager.CleanGameFolder(loadout);
+                    await Task.Run(() => _loadoutManager.CleanGameFolder(loadout));
                 }
                 catch (SynchronizerPreflightException e)
                 {
@@ -418,15 +424,23 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
         NavigateToLoadoutLibrary(_connection, installation);
     }
     
-    private ValueTask<LoadoutItemWithTargetPath.ReadOnly[]> GetExternalChangesItems(Loadout.ReadOnly loadout)
+    /// <summary>
+    /// What a freshly managed game needs the player to decide on: the files already in its folder that the loadout
+    /// holds as External Changes, and whether its build is one the app knows. Reads the database and the build list,
+    /// so callers run it off the UI thread.
+    /// </summary>
+    internal static (LoadoutItemWithTargetPath.ReadOnly[] Changes, bool BuildCovered) DescribeFreshLoadout(
+        IConnection connection,
+        Loadout.ReadOnly loadout,
+        GameInstallation installation,
+        Func<GameInstallation, bool> buildCovered)
     {
-        var db = _connection.Db;
-        if (!LoadoutOverridesGroup.FindByOverridesFor(db, loadout.Id).TryGetFirst(out var overrideGroup))
-            return ValueTask.FromResult<LoadoutItemWithTargetPath.ReadOnly[]>([]);
-
-        return ValueTask.FromResult(overrideGroup.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath().ToArray());
+        var changes = LoadoutOverridesGroup.FindByOverridesFor(connection.Db, loadout.Id).TryGetFirst(out var overrideGroup)
+            ? overrideGroup.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath().ToArray()
+            : [];
+        return (changes, buildCovered(installation));
     }
-    
+
     private async Task<ButtonDefinitionId> ShowCleanGameFolderDialog(
         ButtonDefinitionId revert,
         ButtonDefinitionId doNothing,
