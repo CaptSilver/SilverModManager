@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Reactive.Disposables;
 using Avalonia.Controls;
 using Avalonia.ReactiveUI;
@@ -44,13 +43,12 @@ public partial class LoadOrderView : ReactiveUserControl<ILoadOrderViewModel>
                     )
                     .DisposeWith(disposables);
 
-                // Trophy bar arrow
-                this.WhenAnyValue(view => view.ViewModel!.SortDirectionCurrent)
-                    .Subscribe(sortCurrentDirection =>
+                // Trophy bar arrow: it points at the trophy, wherever the winner is.
+                this.WhenAnyValue(view => view.ViewModel!.IsWinnerTop)
+                    .Subscribe(isWinnerTop =>
                         {
-                            var isAscending = sortCurrentDirection == ListSortDirection.Ascending;
-                            ArrowUpIcon.IsVisible = !isAscending;
-                            ArrowDownIcon.IsVisible = isAscending;
+                            ArrowUpIcon.IsVisible = isWinnerTop;
+                            ArrowDownIcon.IsVisible = !isWinnerTop;
                         }
                     )
                     .DisposeWith(disposables);

@@ -48,7 +48,7 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
     };
 
     // Written by hand because a mocked SortOrderVarietyId cannot be built: the id type has no default value.
-    private class FakeVariety(params IReactiveSortItem[] items) : ISortOrderVariety
+    internal class FakeVariety(params IReactiveSortItem[] items) : ISortOrderVariety
     {
         public SortOrderVarietyId SortOrderVarietyId { get; } = SortOrderVarietyId.From(Guid.NewGuid());
         public ListSortDirection SortDirectionDefault { get; init; } = ListSortDirection.Ascending;
@@ -148,9 +148,9 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
         return (new LoadOrderViewModel(new WindowManagerProvider(Provider, windows), variety, LoadoutId.From(1)), windows);
     }
 
-    private sealed class FakeItem(bool isEnabled, bool isLocked) : IReactiveSortItem, ISortItemDetails
+    private sealed class FakeItem(bool isEnabled, bool isLocked, string key = "a.esp") : IReactiveSortItem, ISortItemDetails
     {
-        public ISortItemKey Key { get; } = PluginKey;
+        public ISortItemKey Key { get; } = new SortItemKey<string>(key);
         public int SortIndex { get; set; }
         public string DisplayName => "A.esp";
         public string ModName { get; set; } = "Mod";
@@ -219,6 +219,31 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
         OnTop(ListSortDirection.Ascending, IndexOverrideBehavior.GreaterIndexWins).Should().BeFalse();
         OnTop(ListSortDirection.Descending, IndexOverrideBehavior.SmallerIndexWins).Should().BeFalse();
     }
+
+    /// <summary>The position each row of <paramref name="variety"/>'s page shows, read top to bottom in its default direction.</summary>
+    private async Task<string[]> PositionsTopToBottom(ISortOrderVariety variety, int rows)
+    {
+        var items = Enumerable.Range(0, rows).Select(i => new FakeItem(isEnabled: true, isLocked: false, key: $"{i}.mod") { SortIndex = i }).ToArray<IReactiveSortItem>();
+        var listed = new ListedVariety(items) { SortDirectionDefault = variety.SortDirectionDefault, IndexOverrideBehavior = variety.IndexOverrideBehavior };
+        var cache = new LoadOrderDataProvider(Provider)
+            .ObserveLoadOrder(listed, LoadoutId.From(1), R3.Observable.Return(listed.SortDirectionDefault))
+            .AsObservableCache();
+        await Eventually(() => cache.Count.Should().Be(rows));
+
+        var index = cache.Items.Select(row => row.Get<SharedComponents.IndexComponent>(LoadOrderColumns.IndexColumn.IndexComponentKey)).ToArray();
+        var ordered = listed.SortDirectionDefault == ListSortDirection.Ascending
+            ? index.OrderBy(i => i.SortIndex.Value)
+            : index.OrderByDescending(i => i.SortIndex.Value);
+        return ordered.Select(i => i.DisplaySortIndex.Value).ToArray();
+    }
+
+    [Fact]
+    public async Task TheRedModPageNumbersItsRowsByLoadPositionFromTheTop()
+        => (await PositionsTopToBottom(RedMod(), 3)).Should().Equal("1st", "2nd", "3rd");
+
+    [Fact]
+    public async Task APageWhereTheLargerIndexWinsNumbersItsRowsByLoadPositionFromTheTop()
+        => (await PositionsTopToBottom(new FakeVariety { IndexOverrideBehavior = IndexOverrideBehavior.GreaterIndexWins }, 3)).Should().Equal("1st", "2nd", "3rd");
 
     [Fact]
     public async Task OnTheRedModPageMovingARowUpGivesItALaterModlistLineAndDownAnEarlierOne()

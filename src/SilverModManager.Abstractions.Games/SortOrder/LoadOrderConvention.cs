@@ -18,6 +18,14 @@ public static class LoadOrderConvention
     /// <summary>The winner tooltip, <paramref name="explanation"/> saying what overrides what on this page.</summary>
     public static string WinnerToolTip(string explanation) => $"{LastLoadedWins}: {explanation}";
 
+    /// <summary>
+    /// The 1-based load position a row shows: 1 for the mod loaded first, <paramref name="lastIndex"/> + 1 for the
+    /// winner. It follows the order's <paramref name="behavior"/>, not the page's sort direction, so reversing the page
+    /// moves the rows without renumbering them.
+    /// </summary>
+    public static int LoadPosition(int sortIndex, int lastIndex, IndexOverrideBehavior behavior)
+        => behavior == IndexOverrideBehavior.SmallerIndexWins ? lastIndex - sortIndex + 1 : sortIndex + 1;
+
     /// <summary>Whether a page sorted by <paramref name="direction"/> over an order where <paramref name="behavior"/> wins shows the winner in its first row.</summary>
     public static bool WinnerOnTop(ListSortDirection direction, IndexOverrideBehavior behavior)
         => direction == ListSortDirection.Ascending == (behavior == IndexOverrideBehavior.SmallerIndexWins);

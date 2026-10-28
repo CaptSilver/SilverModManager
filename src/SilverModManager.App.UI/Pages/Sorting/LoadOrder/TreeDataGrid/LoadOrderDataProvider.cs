@@ -42,10 +42,13 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
         var refCountedItemsChangeSet = sortOrderVariety.GetSortOrderItemsChangeSet(sortOrderId.Value)
             .RefCount();
         
+        var initialLastIndex = GetLastIndex(sortOrderVariety.GetSortOrderItems(sortOrderId.Value));
         var lastIndexObservable = refCountedItemsChangeSet
             .QueryWhenChanged(query => GetLastIndex(query.Items.ToList()))
             .ToObservable()
-            .Prepend(GetLastIndex(sortOrderVariety.GetSortOrderItems(sortOrderId.Value)));
+            .Prepend(initialLastIndex)
+            .Replay(1)
+            .RefCount();
         
         var topMostIndexObservable = R3.Observable.CombineLatest(
                 sortDirectionObservable,
@@ -64,7 +67,7 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
             .RefCount();;
 
         return refCountedItemsChangeSet
-            .Transform(item => ToLoadOrderItemModel(item, sortOrderVariety, topMostIndexObservable, bottomMostIndexObservable, _connection, _thumbnailLoader));
+            .Transform(item => ToLoadOrderItemModel(item, sortOrderVariety, topMostIndexObservable, bottomMostIndexObservable, lastIndexObservable, initialLastIndex, _connection, _thumbnailLoader));
 
         static int GetLastIndex(IReadOnlyList<IReactiveSortItem> items)
         {
@@ -77,6 +80,8 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
         ISortOrderVariety sortOrderVariety,
         R3.Observable<int> topMostIndexObservable,
         R3.Observable<int> bottomMostIndexObservable,
+        R3.Observable<int> lastIndexObservable,
+        int initialLastIndex,
         IConnection connection,
         Lazy<IResourceLoader<EntityId, Bitmap>> thumbnailLoader)
     {
@@ -145,13 +150,19 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
         );
         
         
-        // The UI requires 1-based indexes, so we convert the 0-based index to a 1-based ordinalized string.
-        var displayIndexObservable = reactiveSortItem.WhenAnyValue(item => item.SortIndex).Select(ToOneBasedOrdinalized);
-        
+        // The column shows the load position, 1 at the top of the page and the winner last, whichever index wins in the
+        // stored order; the raw SortIndex stays on the component for sorting and the move buttons.
+        var behavior = sortOrderVariety.IndexOverrideBehavior;
+        var displayIndexObservable = R3.Observable.CombineLatest(
+            sortIndexObservable,
+            lastIndexObservable,
+            (sortIndex, lastIndex) => LoadPositionText(sortIndex, lastIndex, behavior)
+        );
+
         compositeModel.Add(LoadOrderColumns.IndexColumn.IndexComponentKey,
             new SharedComponents.IndexComponent(
                 new ValueComponent<int>(reactiveSortItem.SortIndex, sortIndexObservable),
-                new ValueComponent<string>(ToOneBasedOrdinalized(reactiveSortItem.SortIndex), displayIndexObservable),
+                new ValueComponent<string>(LoadPositionText(reactiveSortItem.SortIndex, initialLastIndex, behavior), displayIndexObservable),
                 canExecuteMoveUp,
                 canExecuteMoveDown,
                 isLocked: details?.IsLocked ?? false
@@ -161,10 +172,6 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
         return compositeModel;
     }
     
-    /// <summary>
-    /// Converts a 0-based index to a 1-based ordinalized string.
-    /// </summary>
-    /// <param name="index">The 0-based index.</param>
-    /// <returns>A 1-based ordinalized string.</returns>
-    private static string ToOneBasedOrdinalized(int index) => (index + 1).Ordinalize();
+    private static string LoadPositionText(int sortIndex, int lastIndex, IndexOverrideBehavior behavior)
+        => LoadOrderConvention.LoadPosition(sortIndex, lastIndex, behavior).Ordinalize();
 }
