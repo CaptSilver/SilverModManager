@@ -14,6 +14,7 @@ using SilverModManager.Games.CreationEngine.Abstractions;
 using SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
 using SilverModManager.Games.CreationEngine.PluginLists;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -98,10 +99,10 @@ public class Morrowind(IServiceProvider provider) : ACreationEngineGame<Morrowin
     ];
 
     // A .omwscripts file is a text list of Lua scripts, with no header record to read.
-    public override ValueTask<PluginHeader?> ParsePlugin(Hash hash, RelativePath? name = null) =>
+    public override ValueTask<PluginHeader?> ParsePlugin(FileIdentity identity, RelativePath? name = null) =>
         name is { } file && file.Extension == KnownCEExtensions.OMWScripts
             ? ValueTask.FromResult<PluginHeader?>(new PluginHeader(file.FileName.ToString(), [], 0, null, null, null, null, HeaderFormat))
-            : base.ParsePlugin(hash, name);
+            : base.ParsePlugin(identity, name);
 
     public Task<IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)>> PluginTimestamps(Loadout.ReadOnly loadout, IReadOnlyDictionary<GamePath, SyncNode> syncTree) =>
         PlanPluginTimestamps(loadout, syncTree);

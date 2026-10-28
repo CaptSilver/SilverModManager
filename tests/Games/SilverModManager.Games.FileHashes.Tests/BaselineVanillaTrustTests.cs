@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Games.TestFramework.Helpers;
 using System.Collections.Immutable;
 using System.Text;
@@ -126,7 +127,7 @@ public sealed class BaselineVanillaTrustTests : IDisposable
     private bool IsTrusted(string relative, out string reason, string content = "vanilla", AbsolutePath? gameFolder = null)
         => _trust.IsTrusted(Installation(gameFolder), new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(relative)), HashOf(content), out reason);
 
-    private static Hash HashOf(string content) => Encoding.UTF8.GetBytes(content).xxHash3();
+    private static MultiHash HashOf(string content) => MultiHasher.HashStream(new MemoryStream(Encoding.UTF8.GetBytes(content))).GetAwaiter().GetResult();
 
     private static GameInstallation Installation(AbsolutePath? gameFolder = null)
     {

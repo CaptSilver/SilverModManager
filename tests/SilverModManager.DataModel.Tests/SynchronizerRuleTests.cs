@@ -5,6 +5,7 @@ using FluentAssertions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using Xunit.DependencyInjection;
 using static SilverModManager.Abstractions.Loadouts.Synchronizers.Rules.Actions;
 using static SilverModManager.Abstractions.Loadouts.Synchronizers.Rules.Signature;
@@ -19,7 +20,7 @@ public class SynchronizerRuleTests
     /// </summary>
     [Theory]
     [MethodData(nameof(TestRows))]
-    public void ActionSanityChecks(Abstractions.Loadouts.Synchronizers.Rules.Signature signature, string EnumShorthand, Optional<Hash> disk, Optional<Hash> prev, Optional<Hash> loadout, LoadoutSourceItemType itemType)
+    public void ActionSanityChecks(Abstractions.Loadouts.Synchronizers.Rules.Signature signature, string EnumShorthand, Optional<FileIdentity> disk, Optional<FileIdentity> prev, Optional<FileIdentity> loadout, LoadoutSourceItemType itemType)
     {
         var action = ActionMapping.MapActions(signature);
         action.Should().NotBe(0, "Every signature should have a corresponding action");
@@ -106,9 +107,31 @@ public class SynchronizerRuleTests
     }
 
 
-    public static readonly Hash Hash1 = Hash.From(0xFAD01);
-    public static readonly Hash Hash2 = Hash.From(0xFAD02);
-    public static readonly Hash Hash3 = Hash.From(0xFAD03);
+    [Fact]
+    public void DiskAndLoadoutIdentitiesOfDifferentKinds_AreNotEqualInTheSignature()
+    {
+        var sha1 = FileIdentity.Sha1(Sha1Value.FromHex(new string('A', 40)));
+        var xxHash3 = FileIdentity.XxHash3(Hash.From(0xFAD01));
+
+        var sig = SignatureBuilder.Build(diskHash: sha1, prevHash: Optional<FileIdentity>.None, loadoutHash: xxHash3, false, false, false, false, LoadoutSourceItemType.Game);
+
+        sig.Should().NotHaveFlag(DiskEqualsLoadout);
+        sig.Should().HaveFlag(DiskExists).And.HaveFlag(LoadoutExists);
+    }
+
+    [Fact]
+    public void TwoIdentitiesOfTheSameKindAndDigest_AreEqualInTheSignature()
+    {
+        var sha1 = FileIdentity.Sha1(Sha1Value.FromHex(new string('A', 40)));
+
+        var sig = SignatureBuilder.Build(diskHash: sha1, prevHash: sha1, loadoutHash: Optional<FileIdentity>.None, false, false, false, false, LoadoutSourceItemType.Game);
+
+        sig.Should().HaveFlag(DiskEqualsPrev);
+    }
+
+    public static readonly FileIdentity Hash1 = FileIdentity.XxHash3(Hash.From(0xFAD01));
+    public static readonly FileIdentity Hash2 = FileIdentity.XxHash3(Hash.From(0xFAD02));
+    public static readonly FileIdentity Hash3 = FileIdentity.XxHash3(Hash.From(0xFAD03));
 
     public static IEnumerable<object[]> TestRows()
     {
@@ -119,15 +142,15 @@ public class SynchronizerRuleTests
         );
     }
     
-    public static IEnumerable<(Abstractions.Loadouts.Synchronizers.Rules.Signature Signature, string EnumShorthand, Optional<Hash> Disk, Optional<Hash> Prev, Optional<Hash> Loadout, LoadoutSourceItemType ItemType)> AllSignatures()
+    public static IEnumerable<(Abstractions.Loadouts.Synchronizers.Rules.Signature Signature, string EnumShorthand, Optional<FileIdentity> Disk, Optional<FileIdentity> Prev, Optional<FileIdentity> Loadout, LoadoutSourceItemType ItemType)> AllSignatures()
     {
 
         var options =
-            from disk in new[] { Optional.None<Hash>(), Hash1, Hash2, Hash3 }
-            from prev in new[] { Optional.None<Hash>(), Hash1, Hash2, Hash3 }
-            from loadout in new[] { Optional.None<Hash>(), Hash1, Hash2, Hash3 }
+            from disk in new[] { Optional.None<FileIdentity>(), Hash1, Hash2, Hash3 }
+            from prev in new[] { Optional.None<FileIdentity>(), Hash1, Hash2, Hash3 }
+            from loadout in new[] { Optional.None<FileIdentity>(), Hash1, Hash2, Hash3 }
             from isIgnored in new[] { false, true }
-            from archivedState in new Hash[][] { [], [Hash1], [Hash2], [Hash3], [Hash1, Hash2], [Hash1, Hash3], [Hash2, Hash3], [Hash1, Hash2, Hash3] }
+            from archivedState in new FileIdentity[][] { [], [Hash1], [Hash2], [Hash3], [Hash1, Hash2], [Hash1, Hash3], [Hash2, Hash3], [Hash1, Hash2, Hash3] }
             from fileType in new[] { LoadoutSourceItemType.Loadout , LoadoutSourceItemType.Intrinsic, LoadoutSourceItemType.Game}
             where (disk.HasValue || prev.HasValue || loadout.HasValue) || fileType == LoadoutSourceItemType.Intrinsic
             // If the file is intrinsic, we'll always have it
@@ -148,7 +171,7 @@ public class SynchronizerRuleTests
         return options.DistinctBy(o => o.sig);
     }
 
-    private static string MakeShorthand(Signature sig, Optional<Hash> disk, Optional<Hash> prev, Optional<Hash> loadout)
+    private static string MakeShorthand(Signature sig, Optional<FileIdentity> disk, Optional<FileIdentity> prev, Optional<FileIdentity> loadout)
     {
         var diskCode = HashToValue(disk);
         var prevCode = HashToValue(prev);
@@ -166,7 +189,7 @@ public class SynchronizerRuleTests
         
     }
 
-    private static string HashToValue(Optional<Hash> hash)
+    private static string HashToValue(Optional<FileIdentity> hash)
     {
         if (!hash.HasValue) return "x";
 

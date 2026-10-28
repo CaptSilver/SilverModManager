@@ -9,6 +9,7 @@ using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.Abstractions.GC;
 using SilverModManager.Abstractions.Loadouts.Deployment;
 using SilverModManager.Abstractions.Loadouts.Files.Diff;
@@ -193,14 +194,14 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             {
                 LoadoutSourceItemType.Game => new SyncNodePart
                 {
-                    Hash = tuple.Hash,
+                    Identity = ParseIdentity(tuple.Identity),
                     Size = tuple.Size,
                     LastModifiedTicks = 0,
                 },
                 LoadoutSourceItemType.Loadout => new SyncNodePart
                 {
                     EntityId = tuple.Id,
-                    Hash = tuple.Hash,
+                    Identity = ParseIdentity(tuple.Identity),
                     Size = tuple.Size,
                     LastModifiedTicks = 0,
                 },
@@ -267,7 +268,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 if (!onDisk.FileExists) continue;
                 Logger.LogWarning("Not deploying `{Path}`: a file of that name is already there and was not put there by the loadout", path);
             }
-            else if (node.HaveDisk && !node.HavePrevious && node.Disk.Hash != node.Loadout.Hash)
+            else if (node.HaveDisk && !node.HavePrevious && node.Disk.Identity != node.Loadout.Identity)
             {
                 Logger.LogWarning("Leaving `{Path}` alone: it differs from the loadout's copy, so the game or the user has changed it since", path);
             }
@@ -384,7 +385,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var pairs = new List<PathPartPair>();
         var mainAttrId = db.AttributeCache.GetAttributeId(DiskStateEntry.GameId.Id);
         var pathAttrId = db.AttributeCache.GetAttributeId(DiskStateEntry.Path.Id);
-        var hashAttrId = db.AttributeCache.GetAttributeId(DiskStateEntry.Hash.Id);
+        var identityAttrId = db.AttributeCache.GetAttributeId(DiskStateEntry.Identity.Id);
+        var hashAttrId = db.AttributeCache.GetAttributeId(DiskStateEntry.XxHash3.Id);
         var sizeAttrId = db.AttributeCache.GetAttributeId(DiskStateEntry.Size.Id);
         var lastModifiedAttrId = db.AttributeCache.GetAttributeId(DiskStateEntry.LastModified.Id);
         
@@ -395,6 +397,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         
         // Now we have iterators for each field to load
         using var pathIterator = db.LightweightDatoms(SliceDescriptor.Create(pathAttrId));
+        // A row written before identities carried their kind has only the xxHash3, and a row of another kind has only
+        // the identity, so both are read and merged by entity. An xxHash3 row has both and yields one part.
+        using var identityIterator = db.LightweightDatoms(SliceDescriptor.Create(identityAttrId));
         using var hashIterator = db.LightweightDatoms(SliceDescriptor.Create(hashAttrId));
         using var sizeIterator = db.LightweightDatoms(SliceDescriptor.Create(sizeAttrId));
         using var lastModifiedIterator = db.LightweightDatoms(SliceDescriptor.Create(lastModifiedAttrId));
@@ -405,7 +410,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             // Fast-forward the other iterators to the same entry. One that lands past it means the entry lacks that
             // attribute, and reading on would lend it the next entry's value.
             var entry = iterator.KeyPrefix.E;
-            if (!pathIterator.FastForwardTo(entry) || !hashIterator.FastForwardTo(entry)
+            var hasIdentity = identityIterator.FastForwardTo(entry);
+            var hasHash = hashIterator.FastForwardTo(entry);
+            if (!pathIterator.FastForwardTo(entry) || !(hasIdentity || hasHash)
                 || !sizeIterator.FastForwardTo(entry) || !lastModifiedIterator.FastForwardTo(entry))
             {
                 Logger.LogWarning("Skipping disk state entry {Entry} of {Installation}: it is missing its path, hash, size or time", entry, metadata.Id);
@@ -426,7 +433,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 Part = new SyncNodePart
                 {
                     EntityId = iterator.KeyPrefix.E,
-                    Hash = MemoryMarshal.Read<Hash>(hashIterator.ValueSpan),
+                    Identity = hasIdentity
+                        ? FileIdentity.Read(identityIterator.ValueSpan)
+                        : FileIdentity.XxHash3(MemoryMarshal.Read<Hash>(hashIterator.ValueSpan)),
                     Size = MemoryMarshal.Read<Size>(sizeIterator.ValueSpan),
                     LastModifiedTicks = MemoryMarshal.Read<long>(lastModifiedIterator.ValueSpan),
                 },
@@ -454,7 +463,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 Part = new SyncNodePart
                 {
                     EntityId = entry.Id,
-                    Hash = entry.Hash,
+                    Identity = entry.IdentityOf(),
                     Size = entry.Size,
                     LastModifiedTicks = entry.LastModified.UtcTicks,
                 },
@@ -503,12 +512,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             ref var item = ref CollectionsMarshal.GetValueRefOrNullRef(tree, path);
             
             var signature = SignatureBuilder.Build(
-                diskHash: item.HaveDisk ? item.Disk.Hash : Optional<Hash>.None,
-                prevHash: item.HavePrevious ? item.Previous.Hash : Optional<Hash>.None,
-                loadoutHash: item.HaveLoadout && item.Loadout.Hash != Hash.Zero ? item.Loadout.Hash : Optional<Hash>.None,
-                diskArchived: item.HaveDisk && HaveArchive(item.Disk.Hash),
-                prevArchived: item.HavePrevious && HaveArchive(item.Previous.Hash),
-                loadoutArchived: item.Loadout.Hash != Hash.Zero && HaveArchive(item.Loadout.Hash),
+                diskHash: item.HaveDisk ? item.Disk.Identity : Optional<FileIdentity>.None,
+                prevHash: item.HavePrevious ? item.Previous.Identity : Optional<FileIdentity>.None,
+                loadoutHash: item.HaveLoadout ? item.Loadout.Identity : Optional<FileIdentity>.None,
+                diskArchived: item.HaveDisk && HaveArchive(item.Disk.Identity, item.Disk.Size),
+                prevArchived: item.HavePrevious && HaveArchive(item.Previous.Identity, item.Previous.Size),
+                loadoutArchived: item.HaveLoadout && HaveArchive(item.Loadout.Identity, item.Loadout.Size),
                 pathIsIgnored: IsIgnoredBackupPath(path),
                 item.SourceItemType);
 
@@ -520,7 +529,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             // generic rules would delete it or write the mod's copy over it. Dropping the disk state entry also
             // keeps the verdict: once the entry's hash follows the rewrite, the rewrite would look like a change
             // the loadout has not caught up with.
-            if (item.HaveDisk && item.HavePrevious && item.Disk.Hash != item.Previous.Hash && GamePathFilter.ShouldFilter(path))
+            if (item.HaveDisk && item.HavePrevious && item.Disk.Identity != item.Previous.Identity && GamePathFilter.ShouldFilter(path))
                 item.Actions = Actions.ForgetDiskState;
         }
 
@@ -959,7 +968,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         {
             var node = item.Value;
             if (!node.Actions.HasFlag(Actions.BackupFile)) return;
-            if (await _fileStore.HaveFile(node.Disk.Hash)) return;
+            if (await HaveArchiveAsync(node.Disk.Identity, node.Disk.Size)) return;
 
             if (node.Actions == (Actions.BackupFile | Actions.IngestFromDisk))
             {
@@ -1170,12 +1179,32 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private static readonly Actions[] ActionsInOrder = Enum.GetValues<Actions>().OrderBy(a => (ushort)a).ToArray();
 
     /// <summary>
-    /// Returns true if the given hash has been archived.
+    /// Returns true if the bytes behind this identity have been archived. The file store is keyed by xxHash3, so
+    /// an xxHash3 identity is asked as it is, a SHA-1 identity is joined to the xxHash3 of the same bytes through a
+    /// relation the app computed from them, and any other kind is not archived. A relation is the one place two
+    /// kinds may be joined, because it holds digests of the same bytes.
     /// </summary>
-    protected bool HaveArchive(Hash hash)
+    /// <param name="size">When given, a relation of another size is not the same file.</param>
+    protected bool HaveArchive(FileIdentity identity, Size? size = null)
     {
-        return _fileStore.HaveFile(hash).Result;
+        return HaveArchiveAsync(identity, size).AsTask().Result;
     }
+
+    private async ValueTask<bool> HaveArchiveAsync(FileIdentity identity, Size? size = null)
+    {
+        if (identity.TryXxHash3(out var hash)) return await _fileStore.HaveFile(hash);
+        if (identity.Kind != HashKind.Sha1) return false;
+
+        foreach (var relation in HashRelation.FindBySha1(_fileHashService.Local, Sha1Value.From(identity.Digest)))
+        {
+            if (size is { } expected && relation.Size != expected) continue;
+            if (await _fileStore.HaveFile(relation.XxHash3)) return true;
+        }
+
+        return false;
+    }
+
+    private static FileIdentity ParseIdentity(string? hex) => string.IsNullOrEmpty(hex) ? FileIdentity.None : FileIdentity.ParseHex(hex);
 
     /// <summary>
     /// Returns true if the loadout state doesn't match the last scanned disk state.
@@ -1208,7 +1237,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             {
                 entry = new DiskDiffEntry
                 {
-                    Hash = node.Loadout.Hash,
+                    Identity = node.Loadout.Identity,
                     Size = node.Loadout.Size,
                     ChangeType = FileChangeType.None,
                     GamePath = path,
@@ -1219,7 +1248,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             {
                 entry = new DiskDiffEntry
                 {
-                    Hash = node.Loadout.Hash,
+                    Identity = node.Loadout.Identity,
                     Size = node.Loadout.Size,
                     ChangeType = FileChangeType.Added,
                     GamePath = path,
@@ -1229,7 +1258,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             {
                 entry = new DiskDiffEntry
                 {
-                    Hash = node.Loadout.Hash,
+                    Identity = node.Loadout.Identity,
                     Size = node.Loadout.Size,
                     // If paired with a delete action, this is a modified file not a new one
                     ChangeType = actions.HasFlag(Actions.DeleteFromDisk) ? FileChangeType.Modified : FileChangeType.Added,
@@ -1240,7 +1269,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             {
                 entry = new DiskDiffEntry
                 {
-                    Hash = node.Disk.Hash,
+                    Identity = node.Disk.Identity,
                     Size = node.Disk.Size,
                     ChangeType = FileChangeType.Removed,
                     GamePath = path,
@@ -1251,7 +1280,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 // File is already on disk and will not be changed
                 entry = new DiskDiffEntry
                 {
-                    Hash = node.Disk.Hash,
+                    Identity = node.Disk.Identity,
                     Size = node.Disk.Size,
                     ChangeType = FileChangeType.None,
                     GamePath = path,
@@ -1267,7 +1296,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 // This really should become some sort of error state
                 entry = new DiskDiffEntry
                 {
-                    Hash = Hash.Zero,
+                    Identity = FileIdentity.None,
                     Size = Size.Zero,
                     ChangeType = FileChangeType.None,
                     GamePath = path,
@@ -1361,6 +1390,19 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <summary>
+    /// Sets an existing row's identity and keeps the <see cref="DiskStateEntry.XxHash3"/> mirror true to it: present
+    /// and equal for an xxHash3 identity, absent for any other kind.
+    /// </summary>
+    public static void WriteIdentity(ITransaction tx, DiskStateEntry.ReadOnly entry, FileIdentity identity)
+    {
+        tx.Add(entry.Id, DiskStateEntry.Identity, identity);
+        if (identity.TryXxHash3(out var xxHash3))
+            tx.Add(entry.Id, DiskStateEntry.XxHash3, xxHash3);
+        else if (DiskStateEntry.XxHash3.TryGetValue(entry, out var stale))
+            tx.Retract(entry.Id, DiskStateEntry.XxHash3, stale);
+    }
+
+    /// <summary>
     /// Reindex the state of the game
     /// </summary>
     private async Task<bool> ReindexState(GameInstallMetadata.ReadOnly metadata, GameInstallation installation, ITransaction tx, SynchronizeLoadoutJob? job)
@@ -1380,7 +1422,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             _ = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
             {
                 Path = gamePath.ToGamePathParentTuple(metadata.Id),
-                Hash = result.Hash,
+                Identity = result.Identity,
+                XxHash3 = result.Identity.TryXxHash3(out var newHash) ? newHash : null,
                 Size = result.Size,
                 LastModified = result.LastModified,
                 GameId = metadata.Id,
@@ -1393,7 +1436,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             Debug.Assert(didFind, "modified file should be in previous state");
 
             tx.Add(previousDiskStateEntry.Id, DiskStateEntry.Size, result.Size);
-            tx.Add(previousDiskStateEntry.Id, DiskStateEntry.Hash, result.Hash);
+            WriteIdentity(tx, previousDiskStateEntry, result.Identity);
             tx.Add(previousDiskStateEntry.Id, DiskStateEntry.LastModified, result.LastModified);
         }
 
@@ -1732,7 +1775,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             diskState.Add(new PathPartPair(diskFile.Path, new SyncNodePart
             {   
                 EntityId = diskFile.Id,
-                Hash = diskFile.Hash,
+                Identity = diskFile.IdentityOf(),
                 Size = diskFile.Size,
                 LastModifiedTicks = diskFile.LastModified.UtcTicks,
             }));
@@ -1744,7 +1787,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         {
             var part = new SyncNodePart
             {
-                Hash = gameFile.Hash,
+                Identity = gameFile.Identity,
                 Size = gameFile.Size,
                 LastModifiedTicks = 0,
             };
@@ -1821,7 +1864,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 continue;
             }
 
-            if (!HaveArchive(initialPart.Hash))
+            if (!HaveArchive(initialPart.Identity, initialPart.Size))
             {
                 Logger.LogWarning("Initial copy of `{Path}` is missing from the file store, deleting it instead of restoring", path);
                 continue;
@@ -1829,7 +1872,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
             desiredState.Add(path, new SyncNode
             {
-                Loadout = new SyncNodePart { Hash = initialPart.Hash, Size = initialPart.Size, LastModifiedTicks = 0 },
+                Loadout = new SyncNodePart { Identity = initialPart.Identity, Size = initialPart.Size, LastModifiedTicks = 0 },
                 SourceItemType = LoadoutSourceItemType.Game,
             });
         }
@@ -1865,7 +1908,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 // A save on a protected path that the game rewrote is no longer what the loadout deployed.
                 LoadoutSourceItemType.Loadout => node.Loadout.HaveEntityId
                     && !IsInGroup(loadout.Db, node.Loadout.EntityId, overridesGroup)
-                    && !(GamePathFilter.ShouldFilter(path) && node.Disk.Hash != node.Loadout.Hash),
+                    && !(GamePathFilter.ShouldFilter(path) && node.Disk.Identity != node.Loadout.Identity),
                 _ => false,
             };
 

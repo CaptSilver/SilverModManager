@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Collections.Frozen;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
@@ -89,7 +90,7 @@ public sealed class MissingGameFilesEmitterTests : IDisposable
         (await Diagnose(tree)).Should().BeEmpty();
     }
 
-    private static SyncNodePart Part(Hash hash) => new() { Hash = hash, Size = Size.From(10), LastModifiedTicks = 0 };
+    private static SyncNodePart Part(Hash hash) => new() { Identity = FileIdentity.XxHash3(hash), Size = Size.From(10), LastModifiedTicks = 0 };
 
     private static SyncNode Node(Hash? disk, Actions actions = Actions.WarnOfUnableToExtract, LoadoutSourceItemType source = LoadoutSourceItemType.Game)
     {

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -123,7 +124,8 @@ public class IniTweaksNotDeployedTests(ITestOutputHelper helper) : AIsolatedGame
         _ = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
         {
             Path = ModTweak.ToGamePathParentTuple(loadout.Installation),
-            Hash = deployed.xxHash3(),
+            Identity = FileIdentity.XxHash3(deployed.xxHash3()),
+            XxHash3 = deployed.xxHash3(),
             Size = Size.FromLong(deployed.Length),
             LastModified = DateTime.UtcNow,
             GameId = loadout.Installation,

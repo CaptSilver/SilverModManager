@@ -54,7 +54,12 @@ public interface IFileHashesService
     public IEnumerable<VanityVersion> GetKnownVanityVersions(NexusModsGameId nexusModsGameId);
 
     /// <summary>
-    /// Gets all game files associated with the provided locator IDs.
+    /// Gets the game files the depot manifests of the installation's own locator IDs list.
+    /// </summary>
+    public IEnumerable<GameFileRecord> GetGameFiles(GameInstallation installation);
+
+    /// <summary>
+    /// Gets all game files the depot manifests of the provided locator IDs list.
     /// </summary>
     public IEnumerable<GameFileRecord> GetGameFiles(LocatorIdsWithGameStore locatorIdsWithGameStore);
 

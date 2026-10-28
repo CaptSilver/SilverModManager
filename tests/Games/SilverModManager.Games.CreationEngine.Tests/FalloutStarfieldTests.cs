@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -75,7 +76,7 @@ public class FalloutStarfieldTests(IServiceProvider serviceProvider)
         source.OpenAsync(stored).Returns(_ => ValueTask.FromResult<Stream?>(new MemoryStream(bytes)));
         var game = (ICreationEngineGame)System.Activator.CreateInstance(typeof(CreationEngine.Fallout4VR.Fallout4VR), new WithStreamSource(serviceProvider, source))!;
 
-        var header = await game.ParsePlugin(stored, RelativePath.FromUnsanitizedInput("A.esp"));
+        var header = await game.ParsePlugin(FileIdentity.XxHash3(stored), RelativePath.FromUnsanitizedInput("A.esp"));
 
         header!.FileName.Should().Be("A.esp");
         header.Masters.Should().Equal("Fallout4.esm");
@@ -95,7 +96,7 @@ public class FalloutStarfieldTests(IServiceProvider serviceProvider)
         {
             [new GamePath(LocationId.Game, "Data/A.esp")] = new()
             {
-                Loadout = new SyncNodePart { Hash = stored, Size = NexusMods.Paths.Size.From((ulong)bytes.Length), LastModifiedTicks = 0 },
+                Loadout = new SyncNodePart { Identity = FileIdentity.XxHash3(stored), Size = NexusMods.Paths.Size.From((ulong)bytes.Length), LastModifiedTicks = 0 },
                 SourceItemType = LoadoutSourceItemType.Game,
             },
         };

@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Games.FileHashes;
@@ -23,7 +24,7 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes) : IVanil
     // and database state instead of once per question.
     private readonly ConcurrentDictionary<EntityId, BaselineIndex> _indexes = new();
 
-    public bool IsTrusted(GameInstallation installation, GamePath path, Hash currentHash, out string reason)
+    public bool IsTrusted(GameInstallation installation, GamePath path, MultiHash currentHashes, out string reason)
     {
         // The baseline only describes the game folder; a file kept elsewhere has no vanilla list to check against.
         if (path.LocationId != LocationId.Game)
@@ -56,7 +57,7 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes) : IVanil
             return false;
         }
 
-        if (recorded != currentHash)
+        if (recorded != currentHashes.XxHash3)
         {
             reason = "the game's copy differs from the checked baseline";
             return false;

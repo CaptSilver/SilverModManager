@@ -41,9 +41,9 @@ public static class VfsSources
                     sources.Add(new VfsFileSource(
                         RelativeTo(path, mountRoot),
                         VfsSourceKind.Staged,
-                        stagedPathFor(node.Loadout.Hash),
+                        stagedPathFor(node.Loadout.Identity.XxHash3()),
                         node.Loadout.Size,
-                        node.Loadout.Hash));
+                        node.Loadout.Identity.XxHash3()));
                     break;
 
                 // A vanilla file, or a file only the disk knows about (MergeStates gives those the default

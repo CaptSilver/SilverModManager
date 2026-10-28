@@ -3,7 +3,10 @@ using FluentAssertions;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
 
 namespace SilverModManager.DataModel.Tests;
@@ -32,6 +35,33 @@ public class GameFileStreamSourceTests(ITestOutputHelper helper) : AStubbedGameI
         source.Resolve(hash).Should().Be(GameInstallation.Locations.ToAbsolutePath(FilePath));
 
         await using var stream = await source.OpenAsync(hash);
+        stream.Should().NotBeNull();
+        using var reader = new StreamReader(stream!);
+        (await reader.ReadToEndAsync()).Should().Be(Content);
+    }
+
+    [Fact]
+    public async Task ResolvesAnIndexedGameFileByItsIdentity()
+    {
+        var loadout = await CreateLoadout();
+        await Synchronizer.Synchronize(loadout);
+        var bytes = Encoding.UTF8.GetBytes(Content);
+        var sha1 = FileIdentity.Sha1(Sha1Hasher.Hash(bytes));
+        var entry = DiskStateEntry.FindByGame(Connection.Db, loadout.InstallationId).Single(e => ((GamePath)e.Path) == FilePath);
+
+        // The row as a store-vouched file would be recorded: a SHA-1 identity and no xxHash3.
+        using (var tx = Connection.BeginTransaction())
+        {
+            ALoadoutSynchronizer.WriteIdentity(tx, entry, sha1);
+            await tx.Commit();
+        }
+        var source = new GameFileStreamSource(Connection, ServiceProvider);
+
+        source.Resolve(sha1).Should().Be(GameInstallation.Locations.ToAbsolutePath(FilePath));
+        source.Resolve(bytes.xxHash3()).Should().BeNull("the row no longer holds an xxHash3 for these bytes");
+        source.Resolve(FileIdentity.Sha1(Sha1Hasher.Hash("other bytes"u8))).Should().BeNull();
+
+        await using var stream = await source.OpenAsync(sha1);
         stream.Should().NotBeNull();
         using var reader = new StreamReader(stream!);
         (await reader.ReadToEndAsync()).Should().Be(Content);

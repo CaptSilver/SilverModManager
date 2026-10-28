@@ -241,7 +241,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
         var stores = new StoreLookup(this, context);
         var storeFiles = new Dictionary<ILooseStagingStore, Dictionary<Hash, AbsolutePath>>();
         foreach (var group in extract.GroupBy(x => stores.For(x.Key)))
-            storeFiles[group.Key] = await EnsureVerified(context, group.Key, group.Select(static x => x.Value.Loadout.Hash).Distinct());
+            storeFiles[group.Key] = await EnsureVerified(context, group.Key, group.Select(static x => x.Value.Loadout.Identity.XxHash3()).Distinct());
 
         // Unlink first: whatever is at a target may be a link to a staged file, which must neither be written
         // through nor counted as a link this apply still holds.
@@ -265,7 +265,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
         {
             context.Job?.ReportProgress(SyncPhases.Deploying, itemIndex++, extract.Count);
 
-            var hash = node.Loadout.Hash;
+            var hash = node.Loadout.Identity.XxHash3();
             var pathStore = stores.For(path);
             var storeFile = storeFiles[pathStore][hash];
             var target = context.Locations.ToAbsolutePath(path);
@@ -357,16 +357,21 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
 
         // A loadout apply: the previous state is the hash the last apply linked. The disk side is the content
         // now, which has no staged file, so only the previous hash can name the one that was written through.
-        if (node.HavePrevious && node.Previous.Hash != node.Disk.Hash && HasLinkIdentity(deployed, store.PathFor(context.MetadataId, node.Previous.Hash)))
+        // A previous part of another kind (a vanilla file the app never touched) was never linked from the store.
+        if (node.HavePrevious && node.Previous.Identity != node.Disk.Identity
+            && node.Previous.Identity.TryXxHash3(out var previousHash)
+            && HasLinkIdentity(deployed, store.PathFor(context.MetadataId, previousHash)))
         {
-            damaged = node.Previous.Hash;
+            damaged = previousHash;
             return true;
         }
 
         // A reset passes the current disk state as the previous one, so the link itself has to say which
-        // staged file it leads to. A link to the file named for the content on disk is intact.
-        if (HasLinkIdentity(deployed, store.PathFor(context.MetadataId, node.Disk.Hash))) return false;
-        return TryFindLinkedStoreHash(context.MetadataId, deployed, () => storeInodes.Value, out damaged) && damaged != node.Disk.Hash;
+        // staged file it leads to. A link to the file named for the content on disk is intact. Content of another
+        // kind than xxHash3 was never deployed by the app, so it cannot be a link to a staged file.
+        if (!node.Disk.Identity.TryXxHash3(out var diskHash)) return false;
+        if (HasLinkIdentity(deployed, store.PathFor(context.MetadataId, diskHash))) return false;
+        return TryFindLinkedStoreHash(context.MetadataId, deployed, () => storeInodes.Value, out damaged) && damaged != diskHash;
     }
 
     // Every store the nodes' folders use: a hard link to a staged file is recognised by inode, whichever store holds it.
@@ -396,7 +401,8 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
         // Nothing there: nothing to take, and the row can still go.
         if (LibcStat.TryLStat(deployed.ToString(), out _) != 0) return true;
 
-        if (node.HavePrevious && HasLinkIdentity(deployed, store.PathFor(context.MetadataId, node.Previous.Hash))) return true;
+        if (node.HavePrevious && node.Previous.Identity.TryXxHash3(out var previousHash)
+            && HasLinkIdentity(deployed, store.PathFor(context.MetadataId, previousHash))) return true;
 
         // Private copies, generated files and a store path that is gone have no link identity, so the
         // fingerprint the index recorded is all there is to go on.

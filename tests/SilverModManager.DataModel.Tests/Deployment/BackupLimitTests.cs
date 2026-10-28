@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
@@ -12,7 +13,7 @@ public class BackupLimitTests(ITestOutputHelper helper) : AStubbedGameIsolatedTe
 {
     private static SyncNode BackupNode(ulong hash, Size size) => new()
     {
-        Disk = new SyncNodePart { Hash = Hash.From(hash), Size = size, LastModifiedTicks = 1 },
+        Disk = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(hash)), Size = size, LastModifiedTicks = 1 },
         Actions = Actions.BackupFile,
     };
 

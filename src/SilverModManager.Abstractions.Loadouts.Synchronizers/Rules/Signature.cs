@@ -1,5 +1,5 @@
 using DynamicData.Kernel;
-using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 
@@ -82,7 +82,7 @@ public static class SignatureBuilder
     /// Builds the final <see cref="Signature"/> from the arguments.
     /// </summary>
     /// <returns></returns>
-    public static Signature Build(Optional<Hash> diskHash, Optional<Hash> prevHash, Optional<Hash> loadoutHash, bool diskArchived, bool prevArchived, bool loadoutArchived, bool pathIsIgnored, LoadoutSourceItemType? sourceItemType)
+    public static Signature Build(Optional<FileIdentity> diskHash, Optional<FileIdentity> prevHash, Optional<FileIdentity> loadoutHash, bool diskArchived, bool prevArchived, bool loadoutArchived, bool pathIsIgnored, LoadoutSourceItemType? sourceItemType)
     {
         var sig = Signature.Empty;
 

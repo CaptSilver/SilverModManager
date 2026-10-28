@@ -26,7 +26,7 @@ public class NoWayToSourceFilesOnDisk : ILoadoutDiagnosticEmitter
         
         foreach (var (_, node) in syncTree)
         {
-            if (node.Loadout.Hash == node.Disk.Hash && node.SourceItemType == LoadoutSourceItemType.Game && !node.Signature.HasFlag(Signature.DiskArchived))
+            if (node.Loadout.Identity == node.Disk.Identity && node.SourceItemType == LoadoutSourceItemType.Game && !node.Signature.HasFlag(Signature.DiskArchived))
             {
                 totalSize += node.Loadout.Size;
                 count++;

@@ -7,9 +7,11 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.Games.TestFramework;
+using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
 
 namespace SilverModManager.DataModel.Tests.Deployment;
@@ -66,7 +68,7 @@ public class CopyDeploymentBackendTests(ITestOutputHelper helper) : AStubbedGame
                 Disk = new SyncNodePart
                 {
                     EntityId = entry.Id,
-                    Hash = entry.Hash,
+                    Identity = entry.IdentityOf(),
                     Size = entry.Size,
                     LastModifiedTicks = entry.LastModified.UtcTicks,
                 },
@@ -98,5 +100,44 @@ public class CopyDeploymentBackendTests(ITestOutputHelper helper) : AStubbedGame
         parents.Should().BeEquivalentTo([pathX.Parent]);
         absoluteX.FileExists.Should().BeFalse();
         absoluteY.FileExists.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Backup_OfANodeWhoseDiskIdentityIsNotXxHash3_Throws()
+    {
+        var metadata = await LoadoutManager.ManageInstallation(GameInstallation);
+        var path = new GamePath(LocationId.Game, "vanilla/depot.bin");
+        var file = GameInstallation.Locations.ToAbsolutePath(path);
+        file.Parent.CreateDirectory();
+        await file.WriteAllTextAsync("vanilla");
+        var nodes = new Dictionary<GamePath, SyncNode>
+        {
+            [path] = new()
+            {
+                Disk = new SyncNodePart
+                {
+                    Identity = FileIdentity.Sha1(Sha1Hasher.Hash("vanilla"u8)),
+                    Size = Size.FromLong(7),
+                    LastModifiedTicks = 1,
+                },
+                Actions = Actions.BackupFile,
+            },
+        };
+        var backend = ServiceProvider.GetServices<IDeploymentBackend>().Single(b => b.Id == DeploymentBackendId.Copy);
+        using var tx = Connection.BeginTransaction();
+        var context = new DeploymentContext
+        {
+            Synchronizer = (ALoadoutSynchronizer)Synchronizer,
+            Installation = GameInstallation,
+            MetadataId = metadata.Id,
+            SyncTree = nodes,
+            Transaction = tx,
+        };
+
+        var act = async () => await backend.Backup(context, nodes);
+
+        // No Debug.Assert in front of it: the throw is the guard, so nothing is archived under a key that is not its xxHash3.
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("Sha1");
+        (await FileStore.HaveFile(Encoding.UTF8.GetBytes("vanilla").xxHash3())).Should().BeFalse();
     }
 }

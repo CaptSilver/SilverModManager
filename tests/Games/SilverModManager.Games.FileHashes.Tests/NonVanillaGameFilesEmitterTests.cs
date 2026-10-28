@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Games.TestFramework.Helpers;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
@@ -384,7 +385,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
 
     private static SyncNode Node(LoadoutSourceItemType source, bool hasLoadoutHash, EntityId item = default)
     {
-        var part = new SyncNodePart { EntityId = item, Hash = hasLoadoutHash ? Hash.From(1) : Hash.Zero, Size = Size.From(1), LastModifiedTicks = 0 };
+        var part = new SyncNodePart { EntityId = item, Identity = hasLoadoutHash ? FileIdentity.XxHash3(Hash.From(1)) : FileIdentity.None, Size = Size.From(1), LastModifiedTicks = 0 };
         return new SyncNode { SourceItemType = source, Loadout = part };
     }
 

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Loadouts;
@@ -182,8 +183,8 @@ public class HardlinkBackendTests(ITestOutputHelper helper)
 
         var tree = await BuildTree(loadout);
         var node = tree[GamePathOf("a/x.txt")];
-        node.Disk.Hash.Should().NotBe(node.Previous.Hash, "after the reindex the disk side holds the new content");
-        Store.Contains(MetadataId, node.Disk.Hash).Should().BeFalse("which has no staged file to compare against");
+        node.Disk.Identity.Should().NotBe(node.Previous.Identity, "after the reindex the disk side holds the new content");
+        Store.Contains(MetadataId, node.Disk.Identity.XxHash3()).Should().BeFalse("which has no staged file to compare against");
         node.Actions.Should().HaveFlag(Actions.IngestFromDisk);
 
         using var tx = Connection.BeginTransaction();
@@ -191,6 +192,56 @@ public class HardlinkBackendTests(ITestOutputHelper helper)
 
         Store.Contains(MetadataId, hash).Should().BeFalse();
         Stat(OnDisk("a/x.txt")).Inode.Should().Be(storeInode);
+    }
+
+    private static SyncNodePart Sha1Part(SyncNodePart like) => new()
+    {
+        EntityId = like.EntityId,
+        Identity = FileIdentity.Sha1(Sha1Hasher.Hash("a vanilla file the store vouched for"u8)),
+        Size = like.Size,
+        LastModifiedTicks = like.LastModifiedTicks,
+    };
+
+    [Fact]
+    public async Task APreviousPartThatIsNotAnXxHash3_IsNeverTakenForALinkToTheStore()
+    {
+        var (loadout, _, hashes) = await Deploy(("a/x.txt", Original));
+        var hash = hashes["a/x.txt"];
+        // Replaced rather than written through, so the path no longer shares the staged file's inode.
+        File.Delete(OnDisk("a/x.txt").ToString());
+        await File.WriteAllTextAsync(OnDisk("a/x.txt").ToString(), Edited);
+        var tree = await BuildTree(loadout);
+        var path = GamePathOf("a/x.txt");
+        tree[path] = tree[path] with { Previous = Sha1Part(tree[path].Previous) };
+        tree[path].Actions.Should().HaveFlag(Actions.IngestFromDisk);
+
+        using var tx = Connection.BeginTransaction();
+        var ingest = () => Hardlink.Ingest(ContextFor(tree, tx, loadout), tree);
+
+        ingest.Should().NotThrow();
+        Store.Contains(MetadataId, hash).Should().BeTrue("a SHA-1 previous part was never a link to a staged file, so nothing was written through one");
+    }
+
+    [Fact]
+    public async Task Delete_OfAPathWhosePreviousPartIsNotAnXxHash3_LeavesAFileItCannotShowIsOurs()
+    {
+        var (loadout, _, hashes) = await Deploy(("a/x.txt", Original));
+        var tree = await BuildTree(loadout);
+        var path = GamePathOf("a/x.txt");
+        // The recorded fingerprint no longer matches the file, so only a link to the previous hash's staged file could vouch for it.
+        var stale = tree[path].Disk;
+        tree[path] = tree[path] with
+        {
+            Previous = Sha1Part(tree[path].Previous),
+            Disk = new SyncNodePart { EntityId = stale.EntityId, Identity = stale.Identity, Size = stale.Size, LastModifiedTicks = stale.LastModifiedTicks + 1 },
+            Actions = Actions.DeleteFromDisk,
+        };
+
+        using var tx = Connection.BeginTransaction();
+        Hardlink.Delete(ContextFor(tree, tx, loadout), tree);
+
+        OnDisk("a/x.txt").FileExists.Should().BeTrue("a SHA-1 previous part names no staged file, so the link cannot show the file is ours");
+        Store.Contains(MetadataId, hashes["a/x.txt"]).Should().BeTrue();
     }
 
     [Fact]
@@ -286,7 +337,7 @@ public class HardlinkBackendTests(ITestOutputHelper helper)
 
     private static SyncNode BackupNode(ulong hash, Size size) => new()
     {
-        Disk = new SyncNodePart { Hash = Hash.From(hash), Size = size, LastModifiedTicks = 1 },
+        Disk = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(hash)), Size = size, LastModifiedTicks = 1 },
         Actions = Actions.BackupFile,
     };
 

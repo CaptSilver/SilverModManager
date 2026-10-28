@@ -49,7 +49,7 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
         List<string> unreadable = [];
         foreach (var (key, node) in plugins)
         {
-            var header = await _game.ParseNode(node, node.Loadout.Hash, key.Path.FileName);
+            var header = await _game.ParseNode(node, node.Loadout.Identity, key.Path.FileName);
             if (header == null)
             {
                 unreadable.Add(key.Path.FileName);

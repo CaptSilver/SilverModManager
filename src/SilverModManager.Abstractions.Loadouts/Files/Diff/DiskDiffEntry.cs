@@ -1,6 +1,6 @@
-using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Abstractions.Loadouts.Files.Diff;
 
@@ -20,9 +20,9 @@ public record DiskDiffEntry
     public required Size Size { get; init; }
     
     /// <summary>
-    /// The hash of the file (newest if modified)
+    /// The identity of the file (newest if modified)
     /// </summary>
-    public required Hash Hash { get; init; }
+    public required FileIdentity Identity { get; init; }
     
     /// <summary>
     /// The type of change that occurred to the file path

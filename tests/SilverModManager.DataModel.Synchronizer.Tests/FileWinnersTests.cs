@@ -1,7 +1,16 @@
 using FluentAssertions;
+using NexusMods.Hashing.xxHash3;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using NexusMods.Paths;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
@@ -81,5 +90,101 @@ public class FileWinnersTests(ITestOutputHelper helper) : ACyberpunkIsolatedGame
 
         sql.Should().HaveCount(4);
         mine.Should().BeEquivalentTo(sql);
+    }
+
+    // The game files of the stub are rows of the local store, the way a baseline would hold them.
+    private async Task<(string Path, MultiHash Hashes)[]> SeedGameFiles(Loadout.ReadOnly loadout, params string[] files)
+    {
+        var local = ((StubbedFileHasherService)ServiceProvider.GetRequiredService<IFileHashesService>()).Local.Connection;
+        var install = loadout.Installation;
+        var seeded = new List<(string, MultiHash)>();
+
+        using var tx = local.BeginTransaction();
+        var pathIds = new List<EntityId>();
+        foreach (var file in files)
+        {
+            var hashes = await MultiHasher.HashStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes("vanilla " + file)));
+            var relation = new HashRelation.New(tx)
+            {
+                MinimalHash = hashes.MinimalHash,
+                XxHash3 = hashes.XxHash3,
+                Sha1 = hashes.Sha1,
+                XxHash64 = hashes.XxHash64,
+                Md5 = hashes.Md5,
+                Size = hashes.Size,
+                Crc32 = hashes.Crc32,
+            };
+            pathIds.Add(new PathHashRelation.New(tx) { Path = RelativePath.FromUnsanitizedInput(file), HashId = relation }.Id);
+            seeded.Add((file, hashes));
+        }
+
+        _ = new LocalBaseline.New(tx)
+        {
+            Store = install.Store,
+            GamePath = install.Path,
+            LocatorIds = [],
+            Kind = LocalBaselineKind.Snapshot,
+            VersionName = "",
+            BuiltAt = DateTimeOffset.UnixEpoch,
+            FilesIds = pathIds.ToArray(),
+        };
+        await tx.Commit();
+        return seeded.ToArray();
+    }
+
+    [Fact]
+    public async Task GameLayerIdentityFromSql_IsTheXxHash3IdentityOfTheRowsHash()
+    {
+        var loadout = await CreateLoadout();
+        var seeded = await SeedGameFiles(loadout, "game/a.bin", "game/b.bin", "c.bin");
+
+        var rows = ((ALoadoutSynchronizer)Synchronizer).WinningFilesForTest(loadout).Where(r => r.ItemType == "Game").ToDictionary(r => r.Path.Path.ToString());
+
+        foreach (var (path, hashes) in seeded)
+        {
+            rows.Should().ContainKey(path);
+            // ParseHex is case-insensitive; to_hex's casing is not something to pin.
+            FileIdentity.ParseHex(rows[path].Identity).Should().Be(FileIdentity.XxHash3(hashes.XxHash3), $"the SQL and the C# identity of {path} are the same bytes");
+        }
+    }
+
+    [Fact]
+    public async Task ALoadoutFileWinsWithItsOwnXxHash3Identity()
+    {
+        var loadout = await CreateLoadout();
+        Hash mineHash;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var g = AddEmptyGroup(tx, loadout.LoadoutId, "Mod");
+            AddFile(tx, loadout.LoadoutId, g, P("mine"), "mine", out mineHash, out _);
+            await tx.Commit();
+        }
+
+        var row = ((ALoadoutSynchronizer)Synchronizer).WinningFilesForTest(Refresh(loadout)).Single(r => r.Path == P("mine"));
+
+        row.ItemType.Should().Be("Loadout");
+        FileIdentity.ParseHex(row.Identity).Should().Be(FileIdentity.XxHash3(mineHash));
+    }
+}
+
+/// <summary>
+/// A generated file wins its path with no identity, whatever the game folder holds.
+/// </summary>
+public class IntrinsicWinnerIdentityTests(ITestOutputHelper helper) : AIsolatedGameTest<IntrinsicWinnerIdentityTests, IntrinsicStubbedGame>(helper)
+{
+    protected override IServiceCollection AddServices(IServiceCollection services) => base.AddServices(services)
+        .AddGame<IntrinsicStubbedGame>()
+        .AddUniversalGameLocator<IntrinsicStubbedGame>(Version.Parse("0.0.0"));
+
+    [Fact]
+    public async Task IntrinsicLayer_WinsWithAnEmptyIdentity()
+    {
+        var loadout = await CreateLoadout();
+
+        var row = ((ALoadoutSynchronizer)Synchronizer).WinningFilesForTest(loadout).Single(r => r.Path == IntrinsicStubbedGame.GeneratedPath);
+        var tree = await Synchronizer.BuildSyncTree(loadout);
+
+        row.ItemType.Should().Be("Intrinsic");
+        tree[IntrinsicStubbedGame.GeneratedPath].Loadout.Identity.IsNone.Should().BeTrue("an intrinsic file has no loadout side to compare");
     }
 }

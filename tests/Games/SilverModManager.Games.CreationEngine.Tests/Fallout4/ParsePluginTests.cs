@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Games.CreationEngine.Abstractions;
@@ -21,7 +22,7 @@ public class ParsePluginTests(ITestOutputHelper helper) : AIsolatedGameTest<Pars
     [Fact]
     public async Task ParsePlugin_NoStoreHasTheBytes_ReturnsNull()
     {
-        var header = await ((ICreationEngineGame)Game).ParsePlugin(Hash.From(0xDEAD), RelativePath.FromUnsanitizedInput("Gone.esp"));
+        var header = await ((ICreationEngineGame)Game).ParsePlugin(FileIdentity.XxHash3(Hash.From(0xDEAD)), RelativePath.FromUnsanitizedInput("Gone.esp"));
 
         header.Should().BeNull();
     }

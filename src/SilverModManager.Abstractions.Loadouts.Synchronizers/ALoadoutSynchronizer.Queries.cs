@@ -1,4 +1,3 @@
-using NexusMods.Hashing.xxHash3;
 using NexusMods.HyperDuck;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
@@ -9,12 +8,28 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 public partial class ALoadoutSynchronizer
 {
-    private static Query<(EntityId Id, Hash Hash, Size Size, LocationId Location, RelativePath Path, string ItemType)> WinningFilesQuery(IDb db, LoadoutId loadoutId)
+    private static Query<(EntityId Id, string? Identity, Size Size, LocationId Location, RelativePath Path, string ItemType)> WinningFilesQuery(IDb db, LoadoutId loadoutId)
     {
         // TODO: https://github.com/Nexus-Mods/NexusMods.MnemonicDB/issues/183
-        return db.Connection.Query<(EntityId Id, Hash Hash, Size Size, LocationId LocationId, RelativePath Path, string ItemType)>(
-            $"SELECT Id, Hash, Size, Path.Location, Path.Path, ItemType::VARCHAR FROM synchronizer.WinningFiles({db}) WHERE Loadout = {loadoutId} ORDER BY ItemType"
+        return db.Connection.Query<(EntityId Id, string? Identity, Size Size, LocationId LocationId, RelativePath Path, string ItemType)>(
+            $"SELECT Id, Identity, Size, Path.Location, Path.Path, ItemType::VARCHAR FROM synchronizer.WinningFiles({db}) WHERE Loadout = {loadoutId} ORDER BY ItemType"
         );
+    }
+
+    /// <summary>
+    /// One row of the winning-files query: what the sync tree reads for a path.
+    /// </summary>
+    /// <param name="Identity">The hex of the winner's <see cref="Sdk.Hashes.FileIdentity"/>, null for an intrinsic file.</param>
+    public readonly record struct WinningFileRow(EntityId Id, string? Identity, Size Size, GamePath Path, string ItemType);
+
+    /// <summary>
+    /// The winning-files query as the sync tree reads it, so a test can pin what the SQL puts in each column.
+    /// </summary>
+    public IReadOnlyList<WinningFileRow> WinningFilesForTest(Loadout.ReadOnly loadout)
+    {
+        return WinningFilesQuery(Connection.Db, loadout)
+            .Select(static row => new WinningFileRow(row.Id, row.Identity, row.Size, new GamePath(row.Location, row.Path), row.ItemType))
+            .ToArray();
     }
 
     /// <summary>

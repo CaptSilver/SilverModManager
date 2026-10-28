@@ -1,15 +1,15 @@
 using System.Collections.Frozen;
 using JetBrains.Annotations;
-using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 [PublicAPI]
 public record struct IndexFileResult(
     GamePath Path,
-    Hash Hash,
+    FileIdentity Identity,
     Size Size,
     DateTimeOffset LastModified
 );

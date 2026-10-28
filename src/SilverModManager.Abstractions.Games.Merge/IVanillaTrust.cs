@@ -1,5 +1,5 @@
-using NexusMods.Hashing.xxHash3;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Abstractions.Games.Merge;
 
@@ -11,9 +11,9 @@ public interface IVanillaTrust
 {
     /// <summary>
     /// Whether the installed copy at <paramref name="path"/> is the file a baseline recorded. Trust needs positive
-    /// evidence: the baseline lists the path and <paramref name="currentHash"/>, the hash of the bytes the caller just
-    /// read, equals the recorded one. A missing baseline, an unlisted path, a file listed non-vanilla or a file changed
+    /// evidence: the baseline lists the path and <paramref name="currentHashes"/>, the hashes of the bytes the caller just
+    /// read, hold the one the baseline recorded, whichever algorithm it used. A missing baseline, an unlisted path, a file listed non-vanilla or a file changed
     /// since the baseline was built is untrusted; <paramref name="reason"/> is a phrase for the note.
     /// </summary>
-    bool IsTrusted(GameInstallation installation, GamePath path, Hash currentHash, out string reason);
+    bool IsTrusted(GameInstallation installation, GamePath path, MultiHash currentHashes, out string reason);
 }

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -60,7 +61,7 @@ public class ModsSettingsReplacedEmitterTests(ITestOutputHelper helper)
         {
             [WitcherConstants.W3ModsSettings] = new()
             {
-                Previous = new SyncNodePart { Hash = Hash.From(1), Size = NexusMods.Paths.Size.From(10), LastModifiedTicks = 0 },
+                Previous = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(1)), Size = NexusMods.Paths.Size.From(10), LastModifiedTicks = 0 },
             },
         };
         using var tx = Connection.BeginTransaction();

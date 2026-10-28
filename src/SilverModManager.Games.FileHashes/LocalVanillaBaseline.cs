@@ -152,10 +152,6 @@ internal sealed class LocalVanillaBaseline
         var stats = new RebuildStats();
         var (resolved, toRead) = TakeStoredHashes(request, candidates, localStore.Db, stats);
         var hashed = await HashCandidates(toRead, stats, cancellationToken);
-        // Only bytes this build read get a fingerprint row. A resolved file was taken on the store's write time
-        // alone, and a row would let the index skip the minimal-hash check that guards against a same-size,
-        // older-mtime replacement.
-        var storeTaken = resolved.Select(r => r.Candidate).ToHashSet(ReferenceEqualityComparer.Instance);
         hashed.AddRange(resolved);
         _logger.LogInformation(
             "Baseline of {Root}: {Trusted} files vouched for by the store ({Stored} with stored hashes, {TrustedRead} read because no hash was stored), {Read} read in all ({Bytes} bytes), {Elapsed}",
@@ -188,8 +184,9 @@ internal sealed class LocalVanillaBaseline
                 continue;
             }
 
-            if (!storeTaken.Contains(candidate))
-                readFiles.Add(new IndexedFileHash(new GamePath(LocationId.Game, candidate.Path), candidate.Size, new DateTimeOffset(candidate.ModifiedUtc), hash.XxHash3));
+            // A file taken from the store gets a row too, so the index that follows finds its hash by fingerprint
+            // instead of reading three blocks of every file the store already vouched for.
+            readFiles.Add(new IndexedFileHash(new GamePath(LocationId.Game, candidate.Path), candidate.Size, new DateTimeOffset(candidate.ModifiedUtc), hash.XxHash3));
 
             if (candidate.Entry is { } entry && entry.Sha1 != hash.Sha1)
             {
@@ -201,7 +198,7 @@ internal sealed class LocalVanillaBaseline
             var pathRelation = new PathHashRelation.New(tx)
             {
                 Path = path,
-                HashId = EnsureHashRelation(tx, localStore.Db, hashRelations, hash),
+                HashId = LocalFileHashRows.EnsureHashRelation(tx, localStore.Db, hashRelations, hash),
             };
             pathIds.Add(pathRelation.Id);
             if (candidate.Entry is { } matched) pathIdsByManifest[matched.ManifestIndex].Add(pathRelation.Id);
@@ -438,26 +435,6 @@ internal sealed class LocalVanillaBaseline
     {
         var after = new FileInfo(candidate.DiskPath);
         return after.Exists && Size.FromLong(after.Length) == candidate.Size && after.LastWriteTimeUtc == candidate.ModifiedUtc;
-    }
-
-    private static HashRelationId EnsureHashRelation(ITransaction tx, IDb db, Dictionary<Hash, HashRelationId> created, MultiHash hash)
-    {
-        if (created.TryGetValue(hash.XxHash3, out var known)) return known;
-
-        var existing = HashRelation.FindByXxHash3(db, hash.XxHash3).FirstOrDefault();
-        if (existing.IsValid()) return created[hash.XxHash3] = existing.HashRelationId;
-
-        var relation = new HashRelation.New(tx)
-        {
-            MinimalHash = hash.MinimalHash,
-            XxHash3 = hash.XxHash3,
-            Sha1 = hash.Sha1,
-            XxHash64 = hash.XxHash64,
-            Md5 = hash.Md5,
-            Size = hash.Size,
-            Crc32 = hash.Crc32,
-        };
-        return created[hash.XxHash3] = relation.Id;
     }
 
     private static EntityId[] AddManifestRows(ITransaction tx, BaselineRequest request, List<EntityId>[] pathIdsByManifest)

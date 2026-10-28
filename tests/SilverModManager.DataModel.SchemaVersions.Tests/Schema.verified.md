@@ -3,8 +3,8 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xA3B0B1B9997373E8
-   - Total attributes: 372
+   - Fingerprint: 0xB1630AA4E8F369C5
+   - Total attributes: 373
    - Total namespaces: 105
    
 ## Attributes
@@ -189,6 +189,7 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Loadouts.DeploymentPlanEntry/Root                                        | Tuple3_Ref_UShort_Utf8I | False   | False | False     | 
 | SilverModManager.Loadouts.DiskStateEntry/Game                                             | Reference               | False   | False | False     | 
 | SilverModManager.Loadouts.DiskStateEntry/Hash                                             | UInt64                  | False   | False | False     | 
+| SilverModManager.Loadouts.DiskStateEntry/Identity                                         | Blob                    | False   | False | False     | 
 | SilverModManager.Loadouts.DiskStateEntry/LastModified                                     | Int64                   | False   | False | False     | 
 | SilverModManager.Loadouts.DiskStateEntry/Path                                             | Tuple3_Ref_UShort_Utf8I | False   | False | False     | 
 | SilverModManager.Loadouts.DiskStateEntry/Size                                             | UInt64                  | False   | False | False     | 

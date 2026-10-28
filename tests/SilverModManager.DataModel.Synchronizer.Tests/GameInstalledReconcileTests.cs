@@ -91,6 +91,31 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
             .ToArray();
 
     [Fact]
+    public async Task ARecognisedFile_WhoseRowCarriesOnlyAnXxHash3_IsStillLeftAloneBySyncsAfterTheMigration()
+    {
+        var loadout = await CreateLoadout();
+        await WriteOnDisk(CreationA, "alpha 1");
+        Recognise("alpha", CreationA);
+        await Apply(loadout);
+        using (var tx = Connection.BeginTransaction())
+        {
+            foreach (var entry in DiskStateEntry.All(Connection.Db))
+            {
+                if (DiskStateEntry.Identity.TryGetValue(entry, out var identity))
+                    tx.Retract(entry.Id, DiskStateEntry.Identity, identity);
+            }
+            await tx.Commit();
+        }
+
+        await Apply(loadout);
+
+        var tree = await TreeOf(loadout);
+        tree[CreationA].Actions.Should().Be(Actions.DoNothing);
+        Installed(loadout).Should().ContainKey(CreationA).WhoseValue.Hash.Should().Be(HashOf("alpha 1"));
+        OverridesPaths(Refresh(loadout)).Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task ARecognisedFileIsLeftAloneOnTheFirstSync()
     {
         var loadout = await CreateLoadout();

@@ -77,6 +77,34 @@ public class GameInstalledResetTests : AIsolatedGameTest<GameInstalledResetTests
         (await OnDisk(DepotListed).ReadAllTextAsync()).Should().Be("updated by the game");
     }
 
+    // A database written before identities carried their kind has rows with only the xxHash3.
+    private async Task ForgetEveryIdentity()
+    {
+        using var tx = Connection.BeginTransaction();
+        foreach (var entry in DiskStateEntry.All(Connection.Db))
+        {
+            if (DiskStateEntry.Identity.TryGetValue(entry, out var identity))
+                tx.Retract(entry.Id, DiskStateEntry.Identity, identity);
+        }
+        await tx.Commit();
+    }
+
+    [Fact]
+    public async Task ResettingRowsThatCarryOnlyAnXxHash3_StillRestoresWhatTheGameShipped()
+    {
+        var loadout = await CreateLoadout();
+        await WriteOnDisk(Creation, "alpha 1");
+        Recognise("alpha", Creation);
+        await Apply(loadout);
+        await ForgetEveryIdentity();
+        DiskStateEntry.All(Connection.Db).Should().OnlyContain(e => !DiskStateEntry.Identity.Contains(e), "the fixture has to look like the older rows");
+
+        await Reset();
+
+        OnDisk(Creation).FileExists.Should().BeTrue("a recognised creation survives a reset whichever shape its row has");
+        (await OnDisk(Creation).ReadAllTextAsync()).Should().Be("alpha 1");
+    }
+
     [Fact]
     public async Task ARecognisedFileOutsideTheGameLocationIsKept()
     {
@@ -133,7 +161,7 @@ public class GameInstalledResetTests : AIsolatedGameTest<GameInstalledResetTests
         var seen = GameInstalledResetStubbedGame.ResetCalls.Should().ContainSingle().Subject;
         seen.Should().ContainKey(Creation);
         seen[Creation].SourceItemType.Should().Be(LoadoutSourceItemType.Game);
-        seen[Creation].Loadout.Hash.Should().Be(Encoding.UTF8.GetBytes("alpha 1").xxHash3());
+        seen[Creation].Loadout.Identity.XxHash3().Should().Be(Encoding.UTF8.GetBytes("alpha 1").xxHash3());
     }
 
     [Fact]

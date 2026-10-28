@@ -18,6 +18,7 @@ using SilverModManager.Games.Bethesda.LoadOrder.Ordering;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.FileStore;
@@ -157,9 +158,11 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
         return ordered.Select((o, i) => (o.Path, times[i])).ToList();
     }
 
-    public virtual async ValueTask<PluginHeader?> ParsePlugin(Hash hash, RelativePath? name = null)
+    public virtual async ValueTask<PluginHeader?> ParsePlugin(FileIdentity identity, RelativePath? name = null)
     {
-        await using var stream = await _streamSource.OpenAsync(hash);
+        await using var stream = identity.TryXxHash3(out var hash)
+            ? await _streamSource.OpenAsync(hash)
+            : await _streamSource.OpenAsync(identity);
         if (stream is null) return null;
 
         return PluginHeaderReader.Read(stream, HeaderFormat, name?.FileName.ToString() ?? "unknown.esm");

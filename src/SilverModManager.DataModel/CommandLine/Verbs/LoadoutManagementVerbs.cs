@@ -140,7 +140,7 @@ public static class LoadoutManagementVerbs
         var toBackup = tree.Where(f => f.Value.HaveDisk && 
                                        !f.Value.Signature.HasFlag(Signature.DiskArchived) && 
                                        f.Value.SourceItemType == LoadoutSourceItemType.Game)
-            .Select(f => (Path: gameInstallation.Locations.ToAbsolutePath(f.Key), f.Value.Disk.Size, f.Value.Disk.Hash))
+            .Select(f => (Path: gameInstallation.Locations.ToAbsolutePath(f.Key), f.Value.Disk.Size, Hash: f.Value.Disk.Identity.XxHash3()))
             .ToArray();
         await renderer.TextLine("Backing up {0} files for a total of {1}", toBackup.Length, toBackup.Aggregate(Size.Zero, (a, b) => a + b.Size));
         

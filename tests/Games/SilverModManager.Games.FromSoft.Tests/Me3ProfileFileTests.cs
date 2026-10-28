@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
@@ -16,7 +17,7 @@ public class Me3ProfileFileTests(ITestOutputHelper helper) : AEldenRingTest<Me3P
 {
     private static SyncNode InLoadout() => new()
     {
-        Loadout = new SyncNodePart { Hash = Hash.From(1UL), Size = Size.From(1), LastModifiedTicks = 0 },
+        Loadout = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(1UL)), Size = Size.From(1), LastModifiedTicks = 0 },
         Actions = Actions.ExtractToDisk,
     };
 
@@ -24,7 +25,7 @@ public class Me3ProfileFileTests(ITestOutputHelper helper) : AEldenRingTest<Me3P
 
     private static SyncNode ToBeDeleted() => new()
     {
-        Disk = new SyncNodePart { Hash = Hash.From(1UL), Size = Size.From(1), LastModifiedTicks = 0 },
+        Disk = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(1UL)), Size = Size.From(1), LastModifiedTicks = 0 },
         Actions = Actions.DeleteFromDisk,
     };
 

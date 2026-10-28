@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -99,6 +100,49 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
 
         _staging.Contains(installation, deployed).Should().BeTrue("a deployed link would dangle without it");
         _staging.Contains(installation, elsewhere).Should().BeFalse("its path is routed to the copy backend");
+    }
+
+    [Fact]
+    public async Task MarkingLive_SkipsASha1RowAndMarksEveryXxHash3Row()
+    {
+        var loadout = await CreateLoadout();
+        var installation = loadout.InstallationId;
+        var legacy = Hash("legacy row");
+        var migrated = Hash("migrated row");
+        var unrelated = Hash("not named by any row");
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            _plans.Write(tx, Connection.Db, installation, new GamePath(LocationId.Game, "mods"), StagingBackend, chosen: false);
+            // A row written before identities carried their kind: the xxHash3 and nothing else.
+            var old = tx.TempId(DiskStateEntry.EntryPartition);
+            tx.Add(old, DiskStateEntry.Path, new GamePath(LocationId.Game, "mods/legacy").ToGamePathParentTuple(installation));
+            tx.Add(old, DiskStateEntry.Game, installation);
+            tx.Add(old, DiskStateEntry.XxHash3, legacy);
+            tx.Add(old, DiskStateEntry.Size, Size.FromLong(1));
+            tx.Add(old, DiskStateEntry.LastModified, DateTimeOffset.UnixEpoch);
+            AddDiskState(tx, installation, new GamePath(LocationId.Game, "mods/migrated"), migrated);
+            // A vanilla file the store vouched for: a SHA-1 identity, no xxHash3, no staged file.
+            var vanilla = tx.TempId(DiskStateEntry.EntryPartition);
+            tx.Add(vanilla, DiskStateEntry.Path, new GamePath(LocationId.Game, "mods/vanilla").ToGamePathParentTuple(installation));
+            tx.Add(vanilla, DiskStateEntry.Game, installation);
+            tx.Add(vanilla, DiskStateEntry.Identity, FileIdentity.Sha1(Sha1Hasher.Hash("vanilla"u8)));
+            tx.Add(vanilla, DiskStateEntry.Size, Size.FromLong(7));
+            tx.Add(vanilla, DiskStateEntry.LastModified, DateTimeOffset.UnixEpoch);
+            await tx.Commit();
+        }
+        await _fileStore.BackupFiles([
+            new ArchivedFileEntry(new MemoryStreamFactory("legacy", new MemoryStream(Encoding.UTF8.GetBytes("legacy row"))), legacy, Size.FromLong(10)),
+            new ArchivedFileEntry(new MemoryStreamFactory("migrated", new MemoryStream(Encoding.UTF8.GetBytes("migrated row"))), migrated, Size.FromLong(12)),
+            new ArchivedFileEntry(new MemoryStreamFactory("unrelated", new MemoryStream(Encoding.UTF8.GetBytes("not named by any row"))), unrelated, Size.FromLong(20)),
+        ]);
+        foreach (var hash in new[] { legacy, migrated, unrelated }) await _staging.Ensure(installation, hash);
+
+        RunGc();
+
+        _staging.Contains(installation, legacy).Should().BeTrue("a row without an identity is an xxHash3 row");
+        _staging.Contains(installation, migrated).Should().BeTrue();
+        _staging.Contains(installation, unrelated).Should().BeFalse("the SHA-1 row names nothing in the staging store");
     }
 
     [Fact]
@@ -378,7 +422,8 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
         _ = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
         {
             Path = path.ToGamePathParentTuple(installation),
-            Hash = hash,
+            Identity = FileIdentity.XxHash3(hash),
+            XxHash3 = hash,
             Size = Size.FromLong(1),
             LastModified = DateTimeOffset.UnixEpoch.UtcDateTime,
             GameId = installation,

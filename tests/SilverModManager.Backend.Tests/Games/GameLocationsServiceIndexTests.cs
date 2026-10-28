@@ -101,6 +101,31 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
     }
 
     [Fact]
+    public async Task AFullReadOfAGameLocationFile_RecordsEveryHashOfItsBytes()
+    {
+        await WriteGameFiles(1);
+        var saves = _temp.CreateFolder().Path;
+        var savedBytes = Content(77);
+        await saves.Combine("slot1.sav").WriteAllBytesAsync(savedBytes);
+        var installation = new GameInstallation(_installation.LocatorResult, GameLocations.Create(
+            ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, _gameDir).Add(LocationId.Saves, saves)));
+        var service = CreateService();
+
+        var result = await service.IndexGame(installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+
+        var gameHashes = await MultiHasher.HashStream(new MemoryStream(Content(0)));
+        var relation = HashRelation.FindByXxHash3(_connection.Db, gameHashes.XxHash3).Should().ContainSingle("a read of a game file takes every digest in the same pass").Subject;
+        relation.Sha1.Should().Be(gameHashes.Sha1);
+        relation.Size.Should().Be(gameHashes.Size);
+        relation.Paths.Should().BeEmpty("a bare relation says the bytes were hashed, not that they are vanilla");
+
+        var savedHash = (await MultiHasher.HashStream(new MemoryStream(savedBytes))).XxHash3;
+        result.NewFiles.Should().ContainKey(new GamePath(LocationId.Saves, "slot1.sav"));
+        HashRelation.FindByXxHash3(_connection.Db, savedHash).Should().BeEmpty("only the game folder's files are candidates for the vanilla list");
+        LocalFileHash.All(_connection.Db).Select(r => r.Location).Should().BeEquivalentTo([LocationId.Game, LocationId.Saves], "both files keep a fingerprint row");
+    }
+
+    [Fact]
     public async Task ReindexAfterAnUnchangedIndex_HashesNothing()
     {
         await WriteGameFiles(20);
@@ -131,7 +156,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
 
         result.NewFiles.Should().HaveCount(20);
         _hasher.Calls.Should().Be(0);
-        result.NewFiles[new GamePath(LocationId.Game, "data/file4.bin")].Hash.Should().Be((await MultiHasher.HashStream(new MemoryStream(Content(4)))).XxHash3);
+        result.NewFiles[new GamePath(LocationId.Game, "data/file4.bin")].Identity.Should().Be(FileIdentity.XxHash3((await MultiHasher.HashStream(new MemoryStream(Content(4)))).XxHash3));
     }
 
     [Fact]
@@ -202,7 +227,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
 
         second.NewFiles.Should().HaveCount(5);
         _hasher.Calls.Should().Be(0);
-        second.NewFiles[new GamePath(LocationId.Game, "data/file2.bin")].Hash.Should().Be((await MultiHasher.HashStream(new MemoryStream(Content(2)))).XxHash3);
+        second.NewFiles[new GamePath(LocationId.Game, "data/file2.bin")].Identity.Should().Be(FileIdentity.XxHash3((await MultiHasher.HashStream(new MemoryStream(Content(2)))).XxHash3));
     }
 
     [Fact]
@@ -341,7 +366,8 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
             _ = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
             {
                 Path = gamePath.ToGamePathParentTuple(_metadataId),
-                Hash = file.Hash,
+                Identity = file.Identity,
+                XxHash3 = file.Identity.XxHash3(),
                 Size = file.Size,
                 LastModified = file.LastModified,
                 GameId = _metadataId,
@@ -409,6 +435,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
         public ValueTask<IDb> GetFileHashesDb() => throw new NotSupportedException();
         public Task CheckForUpdate(bool forceUpdate = false) => throw new NotSupportedException();
         public IEnumerable<VanityVersion> GetKnownVanityVersions(NexusModsGameId nexusModsGameId) => throw new NotSupportedException();
+        public IEnumerable<GameFileRecord> GetGameFiles(GameInstallation installation) => throw new NotSupportedException();
         public IEnumerable<GameFileRecord> GetGameFiles(LocatorIdsWithGameStore locatorIdsWithGameStore) => throw new NotSupportedException();
         public bool CoversInstalledBuild(LocatorIdsWithGameStore locatorIdsWithGameStore) => throw new NotSupportedException();
         public bool TryGetVanityVersion(LocatorIdsWithGameStore locatorIdsWithGameStore, out VanityVersion version) => throw new NotSupportedException();
@@ -433,6 +460,33 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
 
         public async ValueTask<Hash> Hash(AbsolutePath file, CancellationToken cancellationToken)
         {
+            await Enter(file, cancellationToken);
+            try
+            {
+                return await file.XxHash3Async(token: cancellationToken);
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _inFlight);
+            }
+        }
+
+        public async ValueTask<MultiHash> HashAll(AbsolutePath file, CancellationToken cancellationToken)
+        {
+            await Enter(file, cancellationToken);
+            try
+            {
+                await using var stream = file.Read();
+                return await MultiHasher.HashStream(stream, cancellationToken);
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _inFlight);
+            }
+        }
+
+        private async ValueTask Enter(AbsolutePath file, CancellationToken cancellationToken)
+        {
             _paths.Add(file);
             OnHash?.Invoke(file);
             var now = Interlocked.Increment(ref _inFlight);
@@ -443,14 +497,6 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
             // only that many calls can arrive, so waiting for more would deadlock the index.
             if (now >= HashingLimits.FileReaders) _gate.TrySetResult();
             else await Task.WhenAny(_gate.Task, Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken));
-            try
-            {
-                return await file.XxHash3Async(token: cancellationToken);
-            }
-            finally
-            {
-                Interlocked.Decrement(ref _inFlight);
-            }
         }
     }
 

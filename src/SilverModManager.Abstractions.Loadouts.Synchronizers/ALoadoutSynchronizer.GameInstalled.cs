@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.HyperDuck;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
@@ -101,7 +102,7 @@ public partial class ALoadoutSynchronizer
             foreach (var file in demoted)
             {
                 var disk = diskState[file.Path];
-                OverridesGroupItems.UpsertFile(tx, loadout, overrides, file.Path, disk.Hash, disk.Size);
+                OverridesGroupItems.UpsertFile(tx, loadout, overrides, file.Path, disk.Identity.XxHash3(), disk.Size);
             }
         }
 
@@ -152,7 +153,8 @@ public partial class ALoadoutSynchronizer
                     continue;
                 }
 
-                files[path] = (disk.Hash, disk.Size);
+                // GameInstalledFile rows are a store key, so the recognised file's xxHash3 is needed.
+                files[path] = (disk.Identity.XxHash3(), disk.Size);
             }
 
             if (files.Count == 0) continue;
@@ -350,7 +352,7 @@ public partial class ALoadoutSynchronizer
 
             desiredState[path] = new SyncNode
             {
-                Loadout = new SyncNodePart { Hash = hash, Size = size, LastModifiedTicks = 0 },
+                Loadout = new SyncNodePart { Identity = FileIdentity.XxHash3(hash), Size = size, LastModifiedTicks = 0 },
                 SourceItemType = LoadoutSourceItemType.Game,
             };
         }
@@ -364,10 +366,11 @@ public partial class ALoadoutSynchronizer
             if (IsIgnoredBackupPath(file.Path)) continue;
 
             var disk = diskState[file.Path];
-            if (await _fileStore.HaveFile(disk.Hash)) continue;
+            var diskHash = disk.Identity.XxHash3();
+            if (await _fileStore.HaveFile(diskHash)) continue;
 
             var onDisk = loadout.InstallationInstance.Locations.ToAbsolutePath(file.Path);
-            entries.Add(new ArchivedFileEntry(new NativeFileStreamFactory(onDisk), disk.Hash, disk.Size));
+            entries.Add(new ArchivedFileEntry(new NativeFileStreamFactory(onDisk), diskHash, disk.Size));
         }
 
         if (entries.Count > 0) await _fileStore.BackupFiles(entries, deduplicate: false);
@@ -483,7 +486,7 @@ public partial class ALoadoutSynchronizer
         {
             ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(syncTree, path);
             if (Unsafe.IsNullRef(ref node) || !node.HaveDisk) continue;
-            if (node.HaveLoadout && (node.SourceItemType != LoadoutSourceItemType.Game || node.Loadout.Hash == node.Disk.Hash)) continue;
+            if (node.HaveLoadout && (node.SourceItemType != LoadoutSourceItemType.Game || node.Loadout.Identity == node.Disk.Identity)) continue;
             AdoptDiskAsGameFile(ref node);
         }
 
@@ -503,7 +506,7 @@ public partial class ALoadoutSynchronizer
     {
         node.Loadout = new SyncNodePart
         {
-            Hash = node.Disk.Hash,
+            Identity = node.Disk.Identity,
             Size = node.Disk.Size,
             LastModifiedTicks = 0,
         };

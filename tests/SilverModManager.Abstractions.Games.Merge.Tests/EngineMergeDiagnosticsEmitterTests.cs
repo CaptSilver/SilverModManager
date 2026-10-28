@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Collections.Frozen;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
@@ -204,7 +205,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
 
     private sealed class Trusting : IVanillaTrust
     {
-        public bool IsTrusted(GameInstallation installation, GamePath path, Hash currentHash, out string reason)
+        public bool IsTrusted(GameInstallation installation, GamePath path, MultiHash currentHashes, out string reason)
         {
             reason = "";
             return true;

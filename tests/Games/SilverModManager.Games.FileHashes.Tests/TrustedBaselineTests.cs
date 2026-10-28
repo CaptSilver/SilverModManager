@@ -1,3 +1,4 @@
+using NexusMods.Hashing.xxHash3;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -191,7 +192,7 @@ public sealed class TrustedBaselineTests : IDisposable
     }
 
     [Fact]
-    public async Task Build_WritesNoFingerprintRowForAFileItTookFromTheStore()
+    public async Task Build_WritesAFingerprintRowForAFileItTookFromTheStore()
     {
         WriteFile("a.esm", "vanilla", InstallTime.AddDays(-1));
         WriteFile("b.esm", "other", InstallTime.AddDays(1));
@@ -209,7 +210,13 @@ public sealed class TrustedBaselineTests : IDisposable
 
         // a.esm is vouched for by the store and never opened; b.esm is newer than the store's last write and is read.
         _opened.Should().ContainSingle().Which.Should().EndWith("b.esm");
-        LocalFileHash.All(_store.Db).Select(r => r.Path.ToString()).Should().BeEquivalentTo(["b.esm"]);
+        // Both get a row, so the index that follows finds a.esm's hash by fingerprint instead of reading it.
+        LocalFileHash.All(_store.Db).Select(r => r.Path.ToString()).Should().BeEquivalentTo(["a.esm", "b.esm"]);
+        var taken = LocalFileHash.All(_store.Db).Single(r => r.Path.ToString() == "a.esm");
+        var info = new FileInfo(Path.Combine(_gameRoot, "a.esm"));
+        taken.XxHash3.Should().Be(Encoding.UTF8.GetBytes("vanilla").xxHash3(), "the hash comes from the relation the store already held");
+        taken.Size.Should().Be(Size.FromLong(info.Length));
+        taken.ModifiedUtc.UtcTicks.Should().Be(info.LastWriteTimeUtc.Ticks);
     }
 
     private Task<BaselineBuild> Build(Manifest[] manifests, bool trust, bool settled = true, bool knownInstallTime = true, IDb[]? extraDatabases = null)

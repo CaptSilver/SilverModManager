@@ -3,9 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
 
 namespace SilverModManager.DataModel;
@@ -15,7 +17,7 @@ namespace SilverModManager.DataModel;
 /// you need to read a game file during a diagnostic, but don't care if the file is backed up or
 /// not.
 /// </summary>
-public class GameFileStreamSource : IReadOnlyStreamSource
+public class GameFileStreamSource : IIdentityStreamSource
 {
     private readonly IConnection _conn;
     private readonly IGameRegistry _gameRegistry;
@@ -26,11 +28,17 @@ public class GameFileStreamSource : IReadOnlyStreamSource
         _gameRegistry = provider.GetRequiredService<IGameRegistry>();
     }
 
-    public async ValueTask<Stream?> OpenAsync(Hash hash, CancellationToken cancellationToken = default)
+    public ValueTask<Stream?> OpenAsync(Hash hash, CancellationToken cancellationToken = default)
+        => OpenAsync(FileIdentity.XxHash3(hash), cancellationToken);
+
+    /// <summary>
+    /// Opens the game file whose disk state row carries this identity, of whatever kind.
+    /// </summary>
+    public ValueTask<Stream?> OpenAsync(FileIdentity identity, CancellationToken cancellationToken = default)
     {
-        if (Resolve(hash) is not { } path)
-            return null;
-        return path.Open(mode: FileMode.Open, access: FileAccess.Read, share: FileShare.Read);
+        if (Resolve(identity) is not { } path)
+            return ValueTask.FromResult<Stream?>(null);
+        return ValueTask.FromResult<Stream?>(path.Open(mode: FileMode.Open, access: FileAccess.Read, share: FileShare.Read));
     }
 
     public bool Exists(Hash hash)
@@ -38,11 +46,30 @@ public class GameFileStreamSource : IReadOnlyStreamSource
         return Resolve(hash) != null;
     }
 
-    public AbsolutePath? Resolve(Hash hash)
+    public AbsolutePath? Resolve(Hash hash) => Resolve(FileIdentity.XxHash3(hash));
+
+    /// <summary>
+    /// The file on disk whose disk state row carries this identity and still has the size and modified time the row recorded.
+    /// </summary>
+    public AbsolutePath? Resolve(FileIdentity identity)
     {
-        var options = _conn.Query<(EntityId Game, LocationId Location, RelativePath Path, DateTimeOffset LastModified, Hash Hash, Size Size)>(
-            // Path is (owning game, location, relative path); the owning game is already the Game column.
-            $"select Game, Path.Item2, Path.Item3, LastModified, Hash, Size from mdb_DiskStateEntry(Db=>{_conn}) WHERE Hash = {hash} ORDER BY LastModified DESC");
+        // An xxHash3 row keeps its digest in the Hash column, which is also all a row written before identities
+        // carried their kind has. The query engine cannot read a blob column, so any other kind is found by
+        // comparing the identity in C#. Callers keep what they read (the plugin header cache), so this scan is one
+        // per file per session.
+        IEnumerable<(EntityId Game, LocationId Location, RelativePath Path, DateTimeOffset LastModified, Size Size)> options = identity.TryXxHash3(out var hash)
+            ? _conn.Query<(EntityId Game, LocationId Location, RelativePath Path, DateTimeOffset LastModified, Size Size)>(
+                // Path is (owning game, location, relative path); the owning game is already the Game column.
+                $"select Game, Path.Item2, Path.Item3, LastModified, Size from mdb_DiskStateEntry(Db=>{_conn}) WHERE Hash = {hash} ORDER BY LastModified DESC").ToList()
+            : DiskStateEntry.All(_conn.Db)
+                .Where(entry => DiskStateEntry.Identity.TryGetValue(entry, out var stored) && stored == identity)
+                .Select(entry =>
+                {
+                    GamePath path = entry.Path;
+                    return (Game: (EntityId)entry.GameId, Location: path.LocationId, Path: path.Path, entry.LastModified, entry.Size);
+                })
+                .OrderByDescending(entry => entry.LastModified);
+
         foreach (var option in options)
         {
             var metadata = GameInstallMetadata.Load(_conn.Db, option.Game);

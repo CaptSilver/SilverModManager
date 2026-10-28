@@ -3,6 +3,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 
@@ -14,7 +15,7 @@ internal static class DeployedFileRows
     /// </summary>
     /// <param name="writeTime">The deployed path's modification time as the next index will read it.</param>
     internal static void Record(ITransaction tx, DeploymentContext context, GamePath path, SyncNode node, DateTimeOffset writeTime)
-        => Record(tx, context, path, node, node.Loadout.Hash, node.Loadout.Size, writeTime);
+        => Record(tx, context, path, node, node.Loadout.Identity.XxHash3(), node.Loadout.Size, writeTime);
 
     /// <summary>
     /// Records the bytes just written to <paramref name="path"/>. A generated file has no loadout hash to take
@@ -25,7 +26,8 @@ internal static class DeployedFileRows
         if (node.HaveDisk)
         {
             var id = node.Disk.EntityId;
-            tx.Add(id, DiskStateEntry.Hash, hash);
+            tx.Add(id, DiskStateEntry.Identity, FileIdentity.XxHash3(hash));
+            tx.Add(id, DiskStateEntry.XxHash3, hash);
             tx.Add(id, DiskStateEntry.Size, size);
             tx.Add(id, DiskStateEntry.LastModified, writeTime);
         }
@@ -34,7 +36,8 @@ internal static class DeployedFileRows
             _ = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
             {
                 Path = path.ToGamePathParentTuple(context.MetadataId),
-                Hash = hash,
+                Identity = FileIdentity.XxHash3(hash),
+                XxHash3 = hash,
                 Size = size,
                 LastModified = writeTime,
                 GameId = context.MetadataId,

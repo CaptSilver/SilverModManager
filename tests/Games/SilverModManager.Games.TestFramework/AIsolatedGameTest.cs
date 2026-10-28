@@ -558,7 +558,7 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
             sb.AppendLine("| Path | Hash | Size |");
             sb.AppendLine("| --- | --- | --- |");
             foreach (var pair in entries.OrderBy(e=> e.Path)) 
-                sb.AppendLine($"| {FmtPath(pair.Path)} | {pair.Part.Hash} | {pair.Part.Size} |");
+                sb.AppendLine($"| {FmtPath(pair.Path)} | {(pair.Part.Identity.TryXxHash3(out var xxHash3) ? xxHash3.ToString() : pair.Part.Identity.ToString())} | {pair.Part.Size} |");
         }
         
         static string FmtPath(GamePath targetPath)

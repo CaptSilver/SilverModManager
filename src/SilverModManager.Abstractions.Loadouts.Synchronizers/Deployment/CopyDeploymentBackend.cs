@@ -89,7 +89,10 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
                 var path = installation.Locations.ToAbsolutePath(gamePath);
                 Debug.Assert(node.HaveDisk, "Node must have a disk entry to backup");
 
-                if (await _fileStore.HaveFile(node.Disk.Hash))
+                // The store is keyed by xxHash3, so a disk part of another kind throws here instead of being archived
+                // under a key that does not describe its bytes. A node the plan marks for backup has been read by then.
+                var diskHash = node.Disk.Identity.XxHash3();
+                if (await _fileStore.HaveFile(diskHash))
                 {
                     context.Job?.ReportProgress(SyncPhases.BackingUp, Interlocked.Increment(ref filesChecked), totalFiles, Interlocked.Add(ref bytesAccountedFor, (long)node.Disk.Size.Value), totalBytes);
                     return;
@@ -98,7 +101,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
                 var archivedFile = new ArchivedFileEntry
                 {
                     Size = node.Disk.Size,
-                    Hash = node.Disk.Hash,
+                    Hash = diskHash,
                     StreamFactory = new NativeFileStreamFactory(path),
                 };
 
@@ -144,7 +147,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             if (!node.Actions.HasFlag(Actions.IngestFromDisk))
                 continue;
 
-            OverridesGroupItems.UpsertFile(tx, loadout, overridesGroupId, path, node.Disk.Hash, node.Disk.Size);
+            OverridesGroupItems.UpsertFile(tx, loadout, overridesGroupId, path, node.Disk.Identity.XxHash3(), node.Disk.Size);
             tx.Add(node.Disk.EntityId, DiskStateEntry.LastModified, new DateTimeOffset(node.Disk.LastModifiedTicks, TimeSpan.Zero));
         }
     }
@@ -211,10 +214,11 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             if (!node.Actions.HasFlag(Actions.ExtractToDisk))
                 continue;
             
-            Debug.Assert(node.Loadout.Hash != Hash.Zero, "Loadout hash is zero, this should not happen");
+            Debug.Assert(!node.Loadout.Identity.IsNone, "Loadout identity is empty, this should not happen");
 
             var resolvedPath = context.Locations.ToAbsolutePath(path);
-            toExtract.Add((node.Loadout.Hash, resolvedPath));
+            // Everything the app writes into a loadout is an xxHash3.
+            toExtract.Add((node.Loadout.Identity.XxHash3(), resolvedPath));
         }
 
         // Extract files to disk

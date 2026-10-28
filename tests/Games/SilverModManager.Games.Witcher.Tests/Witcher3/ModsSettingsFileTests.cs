@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,7 +62,7 @@ public class ModsSettingsFileTests(ITestOutputHelper helper)
     {
         [WitcherConstants.W3ModsSettings] = new SyncNode
         {
-            Previous = new SyncNodePart { Hash = Hash.From(1), Size = NexusMods.Paths.Size.From(10), LastModifiedTicks = 0 },
+            Previous = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(1)), Size = NexusMods.Paths.Size.From(10), LastModifiedTicks = 0 },
         },
     };
 
@@ -244,8 +245,8 @@ public class ModsSettingsFileTests(ITestOutputHelper helper)
         await path.WriteAllTextAsync("[mod0000_MergedFiles]\nEnabled=1\nPriority=1\n[modApp]\nEnabled=1\nPriority=2\n[modGame]\nEnabled=0\nPriority=5\n");
         var desired = new Dictionary<GamePath, SyncNode>
         {
-            [new GamePath(LocationId.Game, "Mods/modGame/g.ws")] = new() { Loadout = new SyncNodePart { Hash = Hash.From(1), Size = NexusMods.Paths.Size.From(1), LastModifiedTicks = 0 } },
-            [new GamePath(LocationId.Game, "Mods/modApp/a.ws")] = new() { Disk = new SyncNodePart { Hash = Hash.From(2), Size = NexusMods.Paths.Size.From(1), LastModifiedTicks = 0 } },
+            [new GamePath(LocationId.Game, "Mods/modGame/g.ws")] = new() { Loadout = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(1)), Size = NexusMods.Paths.Size.From(1), LastModifiedTicks = 0 } },
+            [new GamePath(LocationId.Game, "Mods/modApp/a.ws")] = new() { Disk = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(2)), Size = NexusMods.Paths.Size.From(1), LastModifiedTicks = 0 } },
         };
 
         var bytes = await ((IIntrinsicFileWithReset)File(Fresh(loadout))).RenderForReset(Fresh(loadout), desired);

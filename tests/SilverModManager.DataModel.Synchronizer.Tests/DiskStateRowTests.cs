@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -6,6 +7,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -48,7 +50,8 @@ public class DiskStateRowTests(ITestOutputHelper helper) : AStubbedGameTest<Disk
         // A rescan that lands between building the tree and applying it moves the entry past what the tree saw.
         using (var tx = Connection.BeginTransaction())
         {
-            tx.Add(entry, DiskStateEntry.Hash, Hash.From(0xC4A6E));
+            tx.Add(entry, DiskStateEntry.Identity, FileIdentity.XxHash3(Hash.From(0xC4A6E)));
+            tx.Add(entry, DiskStateEntry.XxHash3, Hash.From(0xC4A6E));
             await tx.Commit();
         }
 
@@ -83,7 +86,8 @@ public class DiskStateRowTests(ITestOutputHelper helper) : AStubbedGameTest<Disk
             var w = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
             {
                 Path = new GamePath(LocationId.Game, "whole.txt").ToGamePathParentTuple(row),
-                Hash = Hash.From(0x2),
+                Identity = FileIdentity.XxHash3(Hash.From(0x2)),
+                XxHash3 = Hash.From(0x2),
                 Size = Size.From(2),
                 LastModified = DateTimeOffset.UnixEpoch,
                 GameId = row,
@@ -98,7 +102,199 @@ public class DiskStateRowTests(ITestOutputHelper helper) : AStubbedGameTest<Disk
         pairs.Should().ContainSingle();
         pairs[0].Part.EntityId.Should().Be(whole);
         pairs[0].Path.Should().Be(new GamePath(LocationId.Game, "whole.txt"));
-        pairs[0].Part.Hash.Should().Be(Hash.From(0x2));
+        pairs[0].Part.Identity.Should().Be(FileIdentity.XxHash3(Hash.From(0x2)));
+    }
+
+    private async Task<EntityId> NewInstall()
+    {
+        using var tx = Connection.BeginTransaction();
+        var r = new GameInstallMetadata.New(tx)
+        {
+            Store = GameStore.Steam,
+            Path = "/not-a-folder/typed-" + Guid.NewGuid(),
+            Game = GameId.From("Typed"),
+            Name = "Typed",
+        };
+        var result = await tx.Commit();
+        return result.Remap(r).Id;
+    }
+
+    private static EntityId AddEntry(ITransaction tx, EntityId row, string path, Action<ITransaction, EntityId> identityDatoms)
+    {
+        var id = tx.TempId(DiskStateEntry.EntryPartition);
+        tx.Add(id, DiskStateEntry.Path, new GamePath(LocationId.Game, path).ToGamePathParentTuple(row));
+        tx.Add(id, DiskStateEntry.Game, row);
+        tx.Add(id, DiskStateEntry.Size, Size.From(3));
+        tx.Add(id, DiskStateEntry.LastModified, DateTimeOffset.UnixEpoch);
+        identityDatoms(tx, id);
+        return id;
+    }
+
+    [Fact]
+    public async Task ReadingDiskState_ARowWrittenBeforeIdentitiesCarriedTheirKind_IsReadAsAnXxHash3()
+    {
+        var row = await NewInstall();
+        using (var tx = Connection.BeginTransaction())
+        {
+            AddEntry(tx, row, "legacy.txt", (t, id) => t.Add(id, DiskStateEntry.XxHash3, Hash.From(0xC4A6E)));
+            await tx.Commit();
+        }
+
+        var pairs = Synchronizer.GetDiskStateForGame(GameInstallMetadata.Load(Connection.Db, row));
+
+        pairs.Should().ContainSingle(p => p.Part.Identity == FileIdentity.XxHash3(Hash.From(0xC4A6E)));
+    }
+
+    [Fact]
+    public async Task ReadingDiskState_AMigratedRow_IsReadOnce()
+    {
+        var row = await NewInstall();
+        using (var tx = Connection.BeginTransaction())
+        {
+            AddEntry(tx, row, "migrated.txt", (t, id) =>
+            {
+                t.Add(id, DiskStateEntry.XxHash3, Hash.From(0x77));
+                t.Add(id, DiskStateEntry.Identity, FileIdentity.XxHash3(Hash.From(0x77)));
+            });
+            await tx.Commit();
+        }
+
+        var pairs = Synchronizer.GetDiskStateForGame(GameInstallMetadata.Load(Connection.Db, row));
+
+        pairs.Should().ContainSingle().Which.Part.Identity.Should().Be(FileIdentity.XxHash3(Hash.From(0x77)));
+    }
+
+    [Fact]
+    public async Task ReadingDiskState_ARowOfAnotherKindWithoutAnXxHash3_IsReadWithItsKindAndItsNeighboursKeepTheirOwn()
+    {
+        var row = await NewInstall();
+        var sha1 = FileIdentity.Sha1(Sha1Value.FromHex("0123456789ABCDEF0123456789ABCDEF01234567"));
+        using (var tx = Connection.BeginTransaction())
+        {
+            // The kinds alternate so a merge that took one iterator's value for its neighbour's entry would show.
+            AddEntry(tx, row, "a.txt", (t, id) => t.Add(id, DiskStateEntry.XxHash3, Hash.From(0xA)));
+            AddEntry(tx, row, "b.txt", (t, id) => t.Add(id, DiskStateEntry.Identity, sha1));
+            AddEntry(tx, row, "c.txt", (t, id) =>
+            {
+                t.Add(id, DiskStateEntry.XxHash3, Hash.From(0xC));
+                t.Add(id, DiskStateEntry.Identity, FileIdentity.XxHash3(Hash.From(0xC)));
+            });
+            await tx.Commit();
+        }
+
+        var pairs = Synchronizer.GetDiskStateForGame(GameInstallMetadata.Load(Connection.Db, row)).ToDictionary(p => p.Path.Path.ToString(), p => p.Part.Identity);
+
+        pairs.Should().BeEquivalentTo(new Dictionary<string, FileIdentity>
+        {
+            ["a.txt"] = FileIdentity.XxHash3(Hash.From(0xA)),
+            ["b.txt"] = sha1,
+            ["c.txt"] = FileIdentity.XxHash3(Hash.From(0xC)),
+        });
+    }
+
+    [Fact]
+    public async Task ReadingDiskStateAsOfTheInitialTransaction_StillSeesRowsWrittenBeforeTheMigration()
+    {
+        var row = await NewInstall();
+        TxId initial;
+        using (var tx = Connection.BeginTransaction())
+        {
+            AddEntry(tx, row, "legacy.txt", (t, id) => t.Add(id, DiskStateEntry.XxHash3, Hash.From(0x51)));
+            initial = (await tx.Commit()).NewTx;
+        }
+
+        // What the migration does to the rows that exist.
+        using (var tx = Connection.BeginTransaction())
+        {
+            foreach (var entry in DiskStateEntry.FindByGame(Connection.Db, row))
+                tx.Add(entry.Id, DiskStateEntry.Identity, FileIdentity.XxHash3(DiskStateEntry.XxHash3.Get(entry)));
+            await tx.Commit();
+        }
+
+        var asOf = ((ILoadoutSynchronizer)Synchronizer).GetDiskStateForGameAsOf(GameInstallMetadata.Load(Connection.Db, row), initial);
+
+        asOf.Should().ContainSingle(p => p.Part.Identity == FileIdentity.XxHash3(Hash.From(0x51)));
+    }
+
+    [Fact]
+    public async Task WritingAnIdentity_KeepsTheXxHash3MirrorForAnXxHash3AndDropsItForAnotherKind()
+    {
+        var row = await NewInstall();
+        EntityId entryId;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var e = AddEntry(tx, row, "flip.txt", (t, id) =>
+            {
+                t.Add(id, DiskStateEntry.XxHash3, Hash.From(0x1));
+                t.Add(id, DiskStateEntry.Identity, FileIdentity.XxHash3(Hash.From(0x1)));
+            });
+            entryId = (await tx.Commit())[e];
+        }
+
+        var sha1 = FileIdentity.Sha1(Sha1Value.FromHex(new string('B', 40)));
+        using (var tx = Connection.BeginTransaction())
+        {
+            ALoadoutSynchronizer.WriteIdentity(tx, DiskStateEntry.Load(Connection.Db, entryId), sha1);
+            await tx.Commit();
+        }
+
+        var asSha1 = DiskStateEntry.Load(Connection.Db, entryId);
+        asSha1.IdentityOf().Should().Be(sha1);
+        DiskStateEntry.XxHash3.Contains(asSha1).Should().BeFalse("only an xxHash3 identity has the mirror");
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            ALoadoutSynchronizer.WriteIdentity(tx, asSha1, FileIdentity.XxHash3(Hash.From(0x9)));
+            await tx.Commit();
+        }
+
+        var back = DiskStateEntry.Load(Connection.Db, entryId);
+        back.IdentityOf().Should().Be(FileIdentity.XxHash3(Hash.From(0x9)));
+        DiskStateEntry.XxHash3.Get(back).Should().Be(Hash.From(0x9));
+    }
+
+    [Fact]
+    public async Task StoredIdentity_ComesBackWithItsKind_AndIsStoredAsKindThenDigest()
+    {
+        var row = await NewInstall();
+        var sha1 = FileIdentity.Sha1(Sha1Value.FromHex("0123456789ABCDEF0123456789ABCDEF01234567"));
+        var xxh3 = FileIdentity.XxHash3(Hash.From(0x0123456789ABCDEF));
+        EntityId a, b;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var ea = AddEntry(tx, row, "a.txt", (t, id) => t.Add(id, DiskStateEntry.Identity, sha1));
+            var eb = AddEntry(tx, row, "b.txt", (t, id) => t.Add(id, DiskStateEntry.Identity, xxh3));
+            var result = await tx.Commit();
+            (a, b) = (result[ea], result[eb]);
+        }
+
+        DiskStateEntry.Identity.Get(DiskStateEntry.Load(Connection.Db, a)).Should().Be(sha1);
+        DiskStateEntry.Identity.Get(DiskStateEntry.Load(Connection.Db, b)).Should().Be(xxh3);
+
+        var db = Connection.Db;
+        var raw = new Dictionary<EntityId, byte[]>();
+        using (var iterator = db.LightweightDatoms(SliceDescriptor.Create(db.AttributeCache.GetAttributeId(DiskStateEntry.Identity.Id))))
+        {
+            while (iterator.MoveNext()) raw[iterator.KeyPrefix.E] = iterator.ValueSpan.ToArray();
+        }
+        raw[a].Should().Equal([(byte)HashKind.Sha1, ..sha1.Digest.ToArray()]);
+        raw[b].Should().Equal([(byte)HashKind.XxHash3, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF]);
+    }
+
+    [Fact]
+    public async Task IndexingTheFolder_WritesAnIdentityBesideTheXxHash3OfEveryRow()
+    {
+        var loadout = await CreateLoadout();
+        var file = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, "indexed.txt"));
+        file.Parent.CreateDirectory();
+        await file.WriteAllTextAsync("indexed");
+        await Synchronizer.ReindexState(GameInstallation);
+
+        var rows = DiskStateEntry.FindByGame(Connection.Db, loadout.Installation).ToArray();
+
+        rows.Should().NotBeEmpty();
+        rows.Should().OnlyContain(r => DiskStateEntry.Identity.Contains(r) && DiskStateEntry.XxHash3.Contains(r));
+        rows.Should().OnlyContain(r => r.IdentityOf() == FileIdentity.XxHash3(DiskStateEntry.XxHash3.Get(r)));
     }
 
     // The second row reaches the same folder through a link, so its path is spelled differently and the refusal

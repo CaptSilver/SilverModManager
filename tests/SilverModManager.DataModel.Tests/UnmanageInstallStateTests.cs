@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -63,7 +64,8 @@ public class UnmanageInstallStateTests(ITestOutputHelper helper) : AStubbedGameI
         => _ = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
         {
             Path = new GamePath(LocationId.Game, path).ToGamePathParentTuple(row),
-            Hash = Hash.From(0x1),
+            Identity = FileIdentity.XxHash3(Hash.From(0x1)),
+            XxHash3 = Hash.From(0x1),
             Size = Size.From(1),
             LastModified = DateTimeOffset.UnixEpoch,
             GameId = row,

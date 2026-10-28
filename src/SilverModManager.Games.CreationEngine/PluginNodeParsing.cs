@@ -1,7 +1,7 @@
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Bethesda.LoadOrder;
 using SilverModManager.Games.CreationEngine.Abstractions;
-using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 
 namespace SilverModManager.Games.CreationEngine;
@@ -17,11 +17,11 @@ internal static class PluginNodeParsing
     /// file, those bytes are gone from the disk and were never backed up, but the file now on disk is readable
     /// by its own hash. Returns <c>null</c> when neither can be read.
     /// </remarks>
-    public static async ValueTask<PluginHeader?> ParseNode(this ICreationEngineGame game, SyncNode node, Hash preferred, RelativePath name)
+    public static async ValueTask<PluginHeader?> ParseNode(this ICreationEngineGame game, SyncNode node, FileIdentity preferred, RelativePath name)
     {
         var header = await game.ParsePlugin(preferred, name);
-        if (header is not null || !node.HaveDisk || node.Disk.Hash == preferred) return header;
+        if (header is not null || !node.HaveDisk || node.Disk.Identity == preferred) return header;
 
-        return await game.ParsePlugin(node.Disk.Hash, name);
+        return await game.ParsePlugin(node.Disk.Identity, name);
     }
 }

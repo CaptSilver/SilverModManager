@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Hashing.xxHash3;
@@ -16,7 +17,7 @@ public class VfsSourcesRuleTests
 
     private static SyncNodePart Part(ulong hash, ulong size) => new()
     {
-        Hash = Hash.From(hash),
+        Identity = FileIdentity.XxHash3(Hash.From(hash)),
         Size = Size.From(size),
         LastModifiedTicks = 0,
     };

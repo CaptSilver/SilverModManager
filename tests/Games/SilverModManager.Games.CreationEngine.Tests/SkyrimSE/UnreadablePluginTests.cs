@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Collections.Frozen;
 using System.Text;
 using FluentAssertions;
@@ -76,7 +77,7 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
 
     private static SyncNode LoadoutNode(Hash hash, Size size) => new()
     {
-        Loadout = new SyncNodePart { Hash = hash, Size = size, LastModifiedTicks = 0 },
+        Loadout = new SyncNodePart { Identity = FileIdentity.XxHash3(hash), Size = size, LastModifiedTicks = 0 },
         SourceItemType = LoadoutSourceItemType.Game,
     };
 
@@ -89,7 +90,7 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
         file.Parent.CreateDirectory();
         await file.WriteAllBytesAsync(bytes);
         await Synchronizer.ReindexState(GameInstallation);
-        return new SyncNodePart { Hash = bytes.xxHash3(), Size = Size.FromLong(bytes.Length), LastModifiedTicks = 0 };
+        return new SyncNodePart { Identity = FileIdentity.XxHash3(bytes.xxHash3()), Size = Size.FromLong(bytes.Length), LastModifiedTicks = 0 };
     }
 
     private static FrozenDictionary<GamePath, SyncNode> Tree(params (GamePath Path, SyncNode Node)[] nodes)
@@ -110,7 +111,7 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
     [Fact]
     public async Task ParsePlugin_NoStoreHasTheBytes_ReturnsNull()
     {
-        var header = await Creation.ParsePlugin(Hash.From(0xDEAD), RelativePath.FromUnsanitizedInput("Gone.esp"));
+        var header = await Creation.ParsePlugin(FileIdentity.XxHash3(Hash.From(0xDEAD)), RelativePath.FromUnsanitizedInput("Gone.esp"));
 
         header.Should().BeNull();
     }
@@ -120,7 +121,7 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
     {
         var (_, node) = await StoredPlugin("Readable.esp", "Skyrim.esm");
 
-        var header = await Creation.ParsePlugin(node.Loadout.Hash, RelativePath.FromUnsanitizedInput("Readable.esp"));
+        var header = await Creation.ParsePlugin(node.Loadout.Identity, RelativePath.FromUnsanitizedInput("Readable.esp"));
 
         header.Should().NotBeNull();
         header!.Masters.Should().Equal("Skyrim.esm");

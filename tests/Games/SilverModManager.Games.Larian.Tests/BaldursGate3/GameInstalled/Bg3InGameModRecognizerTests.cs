@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Collections.Immutable;
 using FluentAssertions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -86,7 +87,7 @@ public sealed class Bg3InGameModRecognizerTests : IDisposable
 
     private static SyncNodePart Part(AbsolutePath file) => new()
     {
-        Hash = Hash.Zero,
+        Identity = FileIdentity.None,
         Size = file.FileInfo.Size,
         LastModifiedTicks = file.FileInfo.LastWriteTimeUtc.Ticks,
     };

@@ -1,8 +1,8 @@
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
-using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
@@ -17,7 +17,8 @@ public readonly record struct PathPartPair(GamePath Path, SyncNodePart Part);
 public readonly record struct PathNodePair(GamePath Path, SyncNode Node);
 
 /// <summary>
-/// A grouping of (optional) entityId, hash, size. 8bytes for each, so 24 bytes total.
+/// A grouping of (optional) entityId, identity, size and modified time. 8 bytes for the entity id, size and time, and 34 for the
+/// identity (kind, length and a 32 byte digest buffer), so about 56 bytes with padding.
 /// </summary>
 public readonly struct SyncNodePart
 {
@@ -27,7 +28,7 @@ public readonly struct SyncNodePart
     public SyncNodePart()
     {
         EntityId = EntityId.From(0);
-        Hash = Hash.Zero;
+        Identity = FileIdentity.None;
         Size = Size.Zero;
     }
     
@@ -38,9 +39,10 @@ public readonly struct SyncNodePart
     public EntityId EntityId { get; init; }
     
     /// <summary>
-    /// The xxHash3 hash of the file.
+    /// The identity of the file: a hash kind and its digest. <see cref="FileIdentity.None"/> when this part is absent.
+    /// Loadout parts are always xxHash3; a disk or previous part may carry another kind.
     /// </summary>
-    public required Hash Hash { get; init; }
+    public required FileIdentity Identity { get; init; }
     
     /// <summary>
     /// The size of the file.
@@ -59,7 +61,7 @@ public readonly struct SyncNodePart
 }
 
 /// <summary>
-/// A node in the synchronization tree. 24 bytes for each part, and two ushorts for the other fields. So 76 bytes total.
+/// A node in the synchronization tree. About 56 bytes for each part, and two ushorts for the other fields. So about 170 bytes total.
 /// </summary>
 public record struct SyncNode
 {
@@ -81,17 +83,17 @@ public record struct SyncNode
     /// <summary>
     /// True if the disk state is present.
     /// </summary>
-    public bool HaveDisk => Disk.Hash != Hash.Zero;
+    public bool HaveDisk => !Disk.Identity.IsNone;
     
     /// <summary>
     /// True if the previous state is present.
     /// </summary>
-    public bool HavePrevious => Previous.Hash != Hash.Zero;
+    public bool HavePrevious => !Previous.Identity.IsNone;
     
     /// <summary>
     /// True if the loadout state is present.
     /// </summary>
-    public bool HaveLoadout => Loadout.Hash != Hash.Zero;
+    public bool HaveLoadout => !Loadout.Identity.IsNone;
     
     /// <summary>
     /// The type of thing that the data from the loadout came from. Game state, deleted file, loadout file, etc.

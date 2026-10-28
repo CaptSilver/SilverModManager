@@ -71,7 +71,7 @@ public class CollectionPriorityTests(ITestOutputHelper helper) : ACyberpunkIsola
     private async Task<NexusMods.Hashing.xxHash3.Hash> WinnerOfShared(Loadout.ReadOnly loadout)
     {
         var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
-        return tree[Shared].Loadout.Hash;
+        return tree[Shared].Loadout.Identity.XxHash3();
     }
 
     [Fact]

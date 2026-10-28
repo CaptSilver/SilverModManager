@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -23,18 +24,18 @@ public class PluginHeaderCacheTests(ITestOutputHelper helper)
 
     private static PluginHeader HeaderFor(string name) => new(name, [], 0, 1.7f, 0, null, null, PluginFormat.Tes4);
 
-    private async Task<Hash> Store(byte[] bytes)
+    private async Task<FileIdentity> Store(byte[] bytes)
     {
         var hash = bytes.xxHash3();
         await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("plugin", new MemoryStream(bytes)), hash, Size.FromLong(bytes.Length))]);
-        return hash;
+        return FileIdentity.XxHash3(hash);
     }
 
     [Fact]
     public async Task WarmAsync_ParsesEachHashOnce()
     {
         var game = Substitute.For<ICreationEngineGame>();
-        var (a, b) = (Hash.From(1), Hash.From(2));
+        var (a, b) = (FileIdentity.XxHash3(Hash.From(1)), FileIdentity.XxHash3(Hash.From(2)));
         // Hash has no usable default, so the substitute is told about each hash instead of matching any.
         game.ParsePlugin(a, Arg.Any<RelativePath?>()).Returns(ValueTask.FromResult<PluginHeader?>(HeaderFor("a.esp")));
         game.ParsePlugin(b, Arg.Any<RelativePath?>()).Returns(ValueTask.FromResult<PluginHeader?>(HeaderFor("b.esp")));
@@ -54,7 +55,7 @@ public class PluginHeaderCacheTests(ITestOutputHelper helper)
     {
         var cache = new PluginHeaderCache(Substitute.For<ICreationEngineGame>());
 
-        cache.TryGet(Hash.From(7), "a.esp", out var header).Should().BeFalse();
+        cache.TryGet(FileIdentity.XxHash3(Hash.From(7)), "a.esp", out var header).Should().BeFalse();
         header.Should().BeNull();
     }
 
@@ -87,7 +88,7 @@ public class PluginHeaderCacheTests(ITestOutputHelper helper)
     public async Task WarmAsync_BytesNoStoreHas_RecordsNull()
     {
         var cache = new PluginHeaderCache(Game);
-        var gone = Hash.From(0xDEAD);
+        var gone = FileIdentity.XxHash3(Hash.From(0xDEAD));
 
         await cache.WarmAsync([(gone, "Gone.esp")]);
 
@@ -99,7 +100,7 @@ public class PluginHeaderCacheTests(ITestOutputHelper helper)
     public async Task WarmAsync_HandsTheGameTheFileNameOfThePlugin()
     {
         var game = Substitute.For<ICreationEngineGame>();
-        var hash = Hash.From(3);
+        var hash = FileIdentity.XxHash3(Hash.From(3));
         game.ParsePlugin(hash, Arg.Any<RelativePath?>()).Returns(ValueTask.FromResult<PluginHeader?>(HeaderFor("x")));
         var cache = new PluginHeaderCache(game);
 
@@ -112,7 +113,7 @@ public class PluginHeaderCacheTests(ITestOutputHelper helper)
     public async Task WarmAsync_SameBytesUnderDifferentExtensions_AreParsedAndCachedSeparately()
     {
         var game = Substitute.For<ICreationEngineGame>();
-        var hash = Hash.From(4);
+        var hash = FileIdentity.XxHash3(Hash.From(4));
         game.ParsePlugin(hash, Arg.Any<RelativePath?>()).Returns(call =>
             ValueTask.FromResult<PluginHeader?>(HeaderFor(call.Arg<RelativePath?>()!.Value.FileName.ToString())));
         var cache = new PluginHeaderCache(game);
@@ -130,7 +131,7 @@ public class PluginHeaderCacheTests(ITestOutputHelper helper)
     public async Task WarmAsync_ConcurrentCallsForTheSameHash_ParseItOnce()
     {
         var game = Substitute.For<ICreationEngineGame>();
-        var hash = Hash.From(5);
+        var hash = FileIdentity.XxHash3(Hash.From(5));
         var parses = 0;
         game.ParsePlugin(hash, Arg.Any<RelativePath?>()).Returns(_ =>
         {
@@ -148,7 +149,7 @@ public class PluginHeaderCacheTests(ITestOutputHelper helper)
     public async Task WarmAsync_AParseThatFails_IsTriedAgainOnTheNextWarm()
     {
         var game = Substitute.For<ICreationEngineGame>();
-        var hash = Hash.From(6);
+        var hash = FileIdentity.XxHash3(Hash.From(6));
         var calls = 0;
         game.ParsePlugin(hash, Arg.Any<RelativePath?>()).Returns(_ => ++calls == 1
             ? ValueTask.FromException<PluginHeader?>(new IOException("store unavailable"))

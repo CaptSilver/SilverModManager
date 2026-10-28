@@ -214,6 +214,31 @@ public sealed class LoadoutFilesQueryTests : IDisposable
         hashes.Should().ContainSingle().Which.Should().Be(expected);
     }
 
+    [Fact]
+    public async Task LoadoutFiles_IdentityIsTheXxHash3IdentityOfTheRowsHash()
+    {
+        await HashRows.AddSteamManifest(_central, 1001, ("a.esm", "central file"), ("b.esm", "another file"));
+        var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001");
+
+        var rows = _main.Query<(RelativePath Path, Hash Hash, string Identity)>(
+            $"SELECT Path, Hash, Identity FROM file_hashes.loadout_files({_main.Db}) WHERE Loadout = {loadout.Value}").ToList();
+
+        rows.Should().HaveCount(2);
+        rows.Should().OnlyContain(r => FileIdentity.ParseHex(r.Identity) == FileIdentity.XxHash3(r.Hash));
+    }
+
+    [Theory]
+    [InlineData(0xABUL, "0100000000000000AB")]
+    [InlineData(0xFFFFFFFFFFFFFFFFUL, "01FFFFFFFFFFFFFFFF")]
+    [InlineData(0x0123456789ABCDEFUL, "010123456789ABCDEF")]
+    public void Xxhash3IdentityMacro_PadsTheDigestToSixteenDigitsAfterTheKindByte(ulong value, string expected)
+    {
+        var hex = _main.Query<string>($"SELECT file_hashes.xxhash3_identity(CAST({value} AS UBIGINT))").Single();
+
+        hex.Should().BeEquivalentTo(expected);
+        FileIdentity.ParseHex(hex).Should().Be(FileIdentity.XxHash3(Hash.From(value)));
+    }
+
     private List<(RelativePath Path, Hash Hash, Size Size)> LoadoutFiles(EntityId loadout)
     {
         return _main.Query<(RelativePath Path, Hash Hash, Size Size)>(

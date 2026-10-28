@@ -62,8 +62,12 @@ public static class StagingReferenceMarker
             var id = installation.GameInstallMetadataId;
             if (!planByInstallation.TryGetValue(id, out var plan)) continue;
 
+            // A staged file is always one the app deployed, so its row is an xxHash3. A row of another kind names a
+            // file the app never staged, which no link points at.
             foreach (var entry in DiskStateEntry.FindByGame(db, installation))
-                MarkLive(id, plan, entry.Path, entry.Hash);
+            {
+                if (entry.IdentityOf().TryXxHash3(out var hash)) MarkLive(id, plan, entry.Path, hash);
+            }
         }
 
         var isLoadoutValid = new Dictionary<LoadoutId, bool>();

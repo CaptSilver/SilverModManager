@@ -39,7 +39,7 @@ public class PluginQueriesTests(ITestOutputHelper helper)
 
     private List<PluginRow> LoadoutPlugins(Loadout.ReadOnly loadout) =>
         Connection.Query<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)>(
-                $"SELECT * FROM plugins.LoadoutPlugins({Connection}, {loadout.LoadoutId}, {LocationId.Game.Value}, {DataFolder})")
+                $"SELECT Name, Hash, IsEnabled, ModName, ModGroupId, IsGameInstalled FROM plugins.LoadoutPlugins({Connection}, {loadout.LoadoutId}, {LocationId.Game.Value}, {DataFolder})")
             .Select(r => new PluginRow(r.Name, r.Hash, r.IsEnabled, r.ModName, r.ModGroupId, r.IsGameInstalled))
             .ToList();
 
@@ -110,6 +110,20 @@ public class PluginQueriesTests(ITestOutputHelper helper)
 
         rows.Select(r => r.Name).Should().BeEquivalentTo(VanillaMasters, "only plugins directly in the data folder count");
         rows.Should().OnlyContain(r => r.IsEnabled && r.ModGroupId == null);
+    }
+
+    [Fact]
+    public async Task LoadoutPlugins_EveryRowCarriesTheXxHash3IdentityOfItsHash()
+    {
+        var loadout = await VanillaLoadout();
+        await AddMod(loadout, "Mod", "Data/FromMod.esp");
+
+        var rows = Connection.Query<(string Name, Hash Hash, string Identity)>(
+                $"SELECT Name, Hash, Identity FROM plugins.LoadoutPlugins({Connection}, {Refresh(loadout).LoadoutId}, {LocationId.Game.Value}, {DataFolder})")
+            .ToList();
+
+        rows.Should().Contain(r => r.Name == "Skyrim.esm").And.Contain(r => r.Name == "FromMod.esp", "both a game file and a mod's plugin are listed");
+        rows.Should().OnlyContain(r => FileIdentity.ParseHex(r.Identity) == FileIdentity.XxHash3(r.Hash));
     }
 
     [Fact]

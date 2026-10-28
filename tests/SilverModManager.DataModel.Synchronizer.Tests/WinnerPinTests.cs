@@ -42,7 +42,7 @@ public class WinnerPinTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameTe
     private async Task<Hash> WinnerHash(Loadout.ReadOnly loadout, GamePath path)
     {
         var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
-        return tree[path].Loadout.Hash;
+        return tree[path].Loadout.Identity.XxHash3();
     }
 
     [Fact]

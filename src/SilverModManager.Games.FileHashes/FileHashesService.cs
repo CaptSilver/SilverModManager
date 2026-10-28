@@ -21,6 +21,7 @@ using SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.NexusModsApi;
@@ -490,6 +491,10 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     }
 
     /// <inheritdoc/>
+    public IEnumerable<GameFileRecord> GetGameFiles(GameInstallation installation)
+        => GetGameFiles((installation.LocatorResult.Store, installation.LocatorResult.LocatorIds.ToArray()));
+
+    /// <inheritdoc/>
     public IEnumerable<GameFileRecord> GetGameFiles(LocatorIdsWithGameStore locatorIdsWithGameStore)
     {
         var (gameStore, locatorIds) = locatorIdsWithGameStore;
@@ -544,8 +549,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                     {
                         Path = (LocationId.Game, file.Path),
                         Size = file.Hash.Size,
-                        MinimalHash = file.Hash.MinimalHash,
-                        Hash = file.Hash.XxHash3,
+                        Identity = FileIdentity.XxHash3(file.Hash.XxHash3),
                     };
                 }
             }
@@ -569,8 +573,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                     {
                         Path = (LocationId.Game, file.Path),
                         Size = file.Hash.Size,
-                        MinimalHash = file.Hash.MinimalHash,
-                        Hash = file.Hash.XxHash3,
+                        Identity = FileIdentity.XxHash3(file.Hash.XxHash3),
                     };
                 }
             }
@@ -593,8 +596,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                     {
                         Path = (LocationId.Game, file.Path),
                         Size = file.Hash.Size,
-                        MinimalHash = file.Hash.MinimalHash,
-                        Hash = file.Hash.XxHash3,
+                        Identity = FileIdentity.XxHash3(file.Hash.XxHash3),
                     };
                 }
             }
@@ -932,7 +934,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             var locatorIds = GetLocatorIdsForVersionDefinition(gameInstallation.LocatorResult.Store, versionDefinition);
 
             var matchingCount = GetGameFiles((gameInstallation.LocatorResult.Store, locatorIds))
-                .Count(file => filesSet.Contains((file.Path, file.Hash)));
+                .Count(file => file.Identity.TryXxHash3(out var hash) && filesSet.Contains((file.Path, hash)));
 
             versionMatches.Add((new VersionData(locatorIds, VanityVersion.From(versionDefinition.Name)), matchingCount));
         }

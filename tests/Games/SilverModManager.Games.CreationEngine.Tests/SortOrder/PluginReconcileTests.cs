@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using SilverModManager.Games.CreationEngine.SortOrder;
 using NexusMods.Hashing.xxHash3;
@@ -12,7 +13,7 @@ public class PluginReconcileTests
     private static PluginSortData Row(string name, int index, bool enabled = true, int? early = null) => new(name, index, enabled, early);
 
     private static PluginLoadoutData Plugin(string name, bool master = false, int? early = null, string[]? masters = null) =>
-        new(name, Hash.From(1), true, "Mod", null, master, masters ?? []) { EarlyLoaderIndex = early };
+        new(name, FileIdentity.XxHash3(Hash.From(1)), true, "Mod", null, master, masters ?? []) { EarlyLoaderIndex = early };
 
     private static string[] Order(IEnumerable<(PluginSortData SortedEntry, PluginLoadoutData ItemLoadoutData)> result) =>
         result.OrderBy(r => r.SortedEntry.SortIndex).Select(r => r.SortedEntry.Name).ToArray();

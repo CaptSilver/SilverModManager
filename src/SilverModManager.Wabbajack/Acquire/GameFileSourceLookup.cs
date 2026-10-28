@@ -30,7 +30,7 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
             .AddHasher<Hash, System.IO.Hashing.XxHash3, Xx3Hasher>()
             .AddHasher<Hash, System.IO.Hashing.XxHash64, Xx64Hasher>();
 
-    private Dictionary<GamePath, Hash>? _initialState;
+    private Dictionary<GamePath, (FileIdentity Identity, Size Size)>? _initialState;
     private readonly Dictionary<RelativePath, (Hash XxHash3, Hash XxHash64, Size Size)?> _described = new();
 
     /// <summary>
@@ -105,7 +105,8 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
     {
         if (installationId is not { } owner) return null;
         _initialState ??= ReadInitialState(owner);
-        if (!_initialState.TryGetValue(new GamePath(LocationId.Game, gameFile), out var original)) return null;
+        if (!_initialState.TryGetValue(new GamePath(LocationId.Game, gameFile), out var initial)) return null;
+        if (!TryStoreKey(initial.Identity, initial.Size, out var original)) return null;
 
         var pinned = GameBackedUpFile.All(connection.Db)
             .Any(f => f.Hash == original && f.GameInstallId.Value == owner);
@@ -113,9 +114,35 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
         return original;
     }
 
-    private Dictionary<GamePath, Hash> ReadInitialState(EntityId owner)
+    /// <summary>
+    /// The file store is keyed by xxHash3. An identity of another kind is joined to it through a relation the app
+    /// computed from the bytes it archived, which is the one place two kinds may meet.
+    /// </summary>
+    private bool TryStoreKey(FileIdentity identity, Size size, out Hash key)
     {
-        var result = new Dictionary<GamePath, Hash>();
+        if (identity.TryXxHash3(out key)) return true;
+
+        if (identity.Kind == HashKind.Sha1)
+        {
+            var sha1 = Sha1Value.From(identity.Digest);
+            foreach (var db in fileHashes.Databases)
+            {
+                foreach (var relation in HashRelation.FindBySha1(db, sha1))
+                {
+                    if (relation.Size != size) continue;
+                    key = relation.XxHash3;
+                    return true;
+                }
+            }
+        }
+
+        key = default;
+        return false;
+    }
+
+    private Dictionary<GamePath, (FileIdentity Identity, Size Size)> ReadInitialState(EntityId owner)
+    {
+        var result = new Dictionary<GamePath, (FileIdentity Identity, Size Size)>();
         var metadata = GameInstallMetadata.Load(connection.Db, owner);
         if (!GameInstallMetadata.InitialDiskStateTransaction.TryGetValue(metadata, out var initialTx)) return result;
 
@@ -124,7 +151,7 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
         foreach (var entry in DiskStateEntry.FindByGame(asOf, oldMetadata))
         {
             GamePath path = entry.Path;
-            if (path.LocationId == LocationId.Game) result[path] = entry.Hash;
+            if (path.LocationId == LocationId.Game) result[path] = (entry.IdentityOf(), entry.Size);
         }
         return result;
     }

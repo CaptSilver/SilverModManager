@@ -71,8 +71,10 @@ public sealed class SymlinkDeploymentBackend(CopyDeploymentBackend copy, ILooseS
         var linked = new HashSet<Hash>();
         foreach (var (path, node) in context.SyncTree)
         {
-            if (!node.HaveDisk || !storeFiles.TryGetValue(node.Disk.Hash, out var storeFile) || linked.Contains(node.Disk.Hash)) continue;
-            if (HasLinkIdentity(context.Locations.ToAbsolutePath(path), storeFile)) linked.Add(node.Disk.Hash);
+            // Disk content of another kind than xxHash3 is not something the app deployed, so no staged file holds it.
+            if (!node.HaveDisk || !node.Disk.Identity.TryXxHash3(out var diskHash)) continue;
+            if (!storeFiles.TryGetValue(diskHash, out var storeFile) || linked.Contains(diskHash)) continue;
+            if (HasLinkIdentity(context.Locations.ToAbsolutePath(path), storeFile)) linked.Add(diskHash);
         }
         return linked;
     }

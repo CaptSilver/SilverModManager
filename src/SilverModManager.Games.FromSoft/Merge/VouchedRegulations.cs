@@ -63,7 +63,7 @@ public sealed class VouchedRegulations(IFileHashesService fileHashes, Regulation
                 foreach (var record in fileHashes.GetGameFiles((store, ids)))
                 {
                     if (record.Path.LocationId == LocationId.Game && record.Path.Path.Path.Equals(regulationPath, StringComparison.OrdinalIgnoreCase))
-                        hashes.Add(record.Hash);
+                        if (record.Identity.TryXxHash3(out var recordHash)) hashes.Add(recordHash);
                 }
             }
 

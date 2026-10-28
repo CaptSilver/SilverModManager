@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,7 +26,7 @@ public class PluginsFileFormatTests(IServiceProvider serviceProvider)
         var game = Substitute.For<ICreationEngineGame>();
         game.DataPath.Returns(DataFiles);
         game.PluginsFile.Returns(new GamePath(LocationId.AppData, "Plugins.txt"));
-        game.ParsePlugin(Hash.From(1), null).ReturnsForAnyArgs(call =>
+        game.ParsePlugin(FileIdentity.XxHash3(Hash.From(1)), null).ReturnsForAnyArgs(call =>
         {
             var name = call.ArgAt<RelativePath?>(1);
             var fileName = name!.Value.FileName.ToString();
@@ -36,7 +37,7 @@ public class PluginsFileFormatTests(IServiceProvider serviceProvider)
 
     private static SyncNode Node() => new()
     {
-        Loadout = new SyncNodePart { Hash = Hash.From(1), Size = NexusMods.Paths.Size.From(10), LastModifiedTicks = 0 },
+        Loadout = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(1)), Size = NexusMods.Paths.Size.From(10), LastModifiedTicks = 0 },
         SourceItemType = LoadoutSourceItemType.Game,
     };
 

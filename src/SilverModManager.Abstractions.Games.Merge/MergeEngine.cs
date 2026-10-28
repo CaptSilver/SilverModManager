@@ -5,6 +5,7 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Abstractions.Games.Merge;
@@ -40,7 +41,7 @@ public sealed class MergeEngine : IMergeEngine
     }
 
     /// <summary>The hash of an original copy as last read, which stands until its size or modified time moves.</summary>
-    private sealed record FileFingerprint(Size Size, DateTime Modified, Hash Hash);
+    private sealed record FileFingerprint(Size Size, DateTime Modified, MultiHash Hashes);
 
     private readonly IFileStore _fileStore;
     private readonly IVanillaTrust _trust;
@@ -181,10 +182,10 @@ public sealed class MergeEngine : IMergeEngine
             var info = file.FileInfo;
             var (size, modified) = (info.Size, info.LastWriteTimeUtc);
             byte[]? bytes = null;
-            Hash hash;
+            MultiHash hashes;
             if (!withBytes && _fingerprints.TryGetValue(file, out var known) && known.Size == size && known.Modified == modified)
             {
-                hash = known.Hash;
+                hashes = known.Hashes;
             }
             else
             {
@@ -193,15 +194,16 @@ public sealed class MergeEngine : IMergeEngine
                 using var buffer = new MemoryStream();
                 stream.CopyTo(buffer);
                 bytes = buffer.ToArray();
-                hash = bytes.xxHash3();
-                _fingerprints[file] = new FileFingerprint(size, modified, hash);
+                // Every digest, because the baseline may have recorded the file under any of them.
+                hashes = MultiHasher.HashStream(new MemoryStream(bytes)).GetAwaiter().GetResult();
+                _fingerprints[file] = new FileFingerprint(size, modified, hashes);
             }
 
             // Trust is judged on the hash of the bytes on disk, so a copy edited after the baseline was built cannot pass.
-            if (!_trust.IsTrusted(installation, vanillaPath, hash, out var reason))
+            if (!_trust.IsTrusted(installation, vanillaPath, hashes, out var reason))
                 return new VanillaBase(null, new VanillaBaseUntrusted(rel, reason), $"untrusted:{reason}");
 
-            return new VanillaBase(bytes, null, hash.ToString());
+            return new VanillaBase(bytes, null, hashes.XxHash3.ToString());
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {

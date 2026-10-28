@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 
 using SilverModManager.Abstractions.Loadouts;
@@ -89,7 +90,7 @@ public class LibraryArchiveInstallerTests(ITestOutputHelper outputHelper) : AIso
         foreach (var plugin in plugins)
         {
             var fileName = plugin.AsLoadoutItemWithTargetPath().TargetPath.Item3.FileName;
-            var header = await ((ICreationEngineGame) Game).ParsePlugin(plugin.Hash, fileName);
+            var header = await ((ICreationEngineGame) Game).ParsePlugin(FileIdentity.XxHash3(plugin.Hash), fileName);
             var index = 0;
             foreach (var master in header!.Masters)
             {

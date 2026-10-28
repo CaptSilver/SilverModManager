@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
@@ -27,7 +28,7 @@ public class OutsideLoadoutActionTests(ITestOutputHelper helper) : AStubbedGameI
         {
             [new GamePath(LocationId.Game, "intrinsic.bin")] = new()
             {
-                Disk = new SyncNodePart { Hash = Hash.From(0xA1), Size = Size.From(1), LastModifiedTicks = 1 },
+                Disk = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(0xA1)), Size = Size.From(1), LastModifiedTicks = 1 },
                 Actions = Actions.WriteIntrinsic,
             },
         };

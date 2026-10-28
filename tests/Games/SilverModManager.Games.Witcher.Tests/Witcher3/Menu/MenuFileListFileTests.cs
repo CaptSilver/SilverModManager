@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,7 +21,7 @@ public class MenuFileListFileTests(ITestOutputHelper helper) : AIsolatedGameTest
 
     private static GamePath Menu(string name) => WitcherConstants.W3MenuConfigFolder / name;
 
-    private static SyncNodePart Part() => new() { Hash = Hash.From(1), Size = Size.From(1), LastModifiedTicks = 0 };
+    private static SyncNodePart Part() => new() { Identity = FileIdentity.XxHash3(Hash.From(1)), Size = Size.From(1), LastModifiedTicks = 0 };
 
     private static async Task<string> Written(bool dx12, Dictionary<GamePath, SyncNode> tree)
     {

@@ -4,6 +4,7 @@ using SilverModManager.Games.Bethesda.LoadOrder;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
 using SilverModManager.Games.CreationEngine.PluginLists;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 
 
@@ -81,8 +82,8 @@ public interface ICreationEngineGame : IBethesdaGame
     /// Parse a plugin file. Reads only the header record of the file: its masters, flags and version
     /// </summary>
     /// <returns>
-    /// The plugin header, or <c>null</c> when no stream source can supply the bytes for <paramref name="hash"/>.
+    /// The plugin header, or <c>null</c> when no stream source can supply the bytes for <paramref name="identity"/>.
     /// That happens for a game file whose recorded build is no longer on disk.
     /// </returns>
-    public ValueTask<PluginHeader?> ParsePlugin(Hash hash, RelativePath? name = null);
+    public ValueTask<PluginHeader?> ParsePlugin(FileIdentity identity, RelativePath? name = null);
 }

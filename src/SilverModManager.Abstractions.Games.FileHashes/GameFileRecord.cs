@@ -1,6 +1,6 @@
-using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Abstractions.Games.FileHashes;
 
@@ -20,12 +20,7 @@ public record struct GameFileRecord
     public required Size Size { get; init; }
     
     /// <summary>
-    /// The minimal hash of the game file
+    /// What identifies the game file: the full hash its store row holds, tagged with the algorithm.
     /// </summary>
-    public required Hash MinimalHash { get; init; }
-    
-    /// <summary>
-    /// The full hash of the game file
-    /// </summary>
-    public required Hash Hash { get; init; }
+    public required FileIdentity Identity { get; init; }
 }

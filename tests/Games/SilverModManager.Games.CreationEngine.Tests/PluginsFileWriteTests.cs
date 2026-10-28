@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -32,7 +33,7 @@ public class PluginsFileWriteTests
         var game = Substitute.For<ICreationEngineGame>();
         game.DataPath.Returns(DataFolder);
         game.PluginsFile.Returns(new GamePath(LocationId.AppData, "Plugins.txt"));
-        game.ParsePlugin(Hash.From(1), null).ReturnsForAnyArgs(call =>
+        game.ParsePlugin(FileIdentity.XxHash3(Hash.From(1)), null).ReturnsForAnyArgs(call =>
         {
             var name = call.ArgAt<RelativePath?>(1)!.Value.FileName.ToString();
             PluginHeader? header = unreadable.Contains(name)
@@ -49,7 +50,7 @@ public class PluginsFileWriteTests
         name => new GamePath(LocationId.Game, "Data/" + name),
         _ => new SyncNode
         {
-            Loadout = new SyncNodePart { Hash = Hash.From(1), Size = NexusMods.Paths.Size.From(10), LastModifiedTicks = 0 },
+            Loadout = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(1)), Size = NexusMods.Paths.Size.From(10), LastModifiedTicks = 0 },
             SourceItemType = LoadoutSourceItemType.Game,
         });
 
@@ -57,7 +58,7 @@ public class PluginsFileWriteTests
     private static void AddLoose(Dictionary<GamePath, SyncNode> tree, string name) =>
         tree[new GamePath(LocationId.Game, "Data/" + name)] = new SyncNode
         {
-            Disk = new SyncNodePart { Hash = Hash.From(2), Size = NexusMods.Paths.Size.From(10), LastModifiedTicks = 0 },
+            Disk = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(2)), Size = NexusMods.Paths.Size.From(10), LastModifiedTicks = 0 },
             Actions = Actions.IngestFromDisk,
         };
 

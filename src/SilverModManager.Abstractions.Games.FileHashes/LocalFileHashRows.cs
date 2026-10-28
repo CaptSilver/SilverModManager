@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Abstractions.Games.FileHashes;
 
@@ -27,12 +28,16 @@ public static class LocalFileHashRows
     }
 
     /// <summary>
-    /// Replaces the rows of the given files in <paramref name="tx"/>.
+    /// Replaces the rows of the given files in <paramref name="tx"/>. A file that carries all its digests also gets a
+    /// bare <see cref="HashRelation"/>: that is what lets a later baseline resolve the file from its hashes instead of
+    /// reading it, and what joins a SHA-1 to the xxHash3 the file is archived under.
     /// </summary>
     public static void Record(ITransaction tx, IDb db, string gamePath, IEnumerable<IndexedFileHash> files)
     {
+        var relations = new Dictionary<Hash, HashRelationId>();
         foreach (var file in files)
         {
+            if (file.Hashes is { } hashes) _ = EnsureHashRelation(tx, db, relations, hashes);
             foreach (var old in Find(db, gamePath, file.Path)) tx.Delete(old.Id, recursive: false);
             _ = new LocalFileHash.New(tx)
             {
@@ -60,5 +65,29 @@ public static class LocalFileHashRows
 
         xxHash3 = default;
         return false;
+    }
+
+    /// <summary>
+    /// The relation for these bytes: the existing one, one made earlier in the same transaction (<paramref name="created"/>),
+    /// or a new one added to <paramref name="tx"/>.
+    /// </summary>
+    public static HashRelationId EnsureHashRelation(ITransaction tx, IDb db, Dictionary<Hash, HashRelationId> created, MultiHash hash)
+    {
+        if (created.TryGetValue(hash.XxHash3, out var known)) return known;
+
+        var existing = HashRelation.FindByXxHash3(db, hash.XxHash3).FirstOrDefault();
+        if (existing.IsValid()) return created[hash.XxHash3] = existing.HashRelationId;
+
+        var relation = new HashRelation.New(tx)
+        {
+            MinimalHash = hash.MinimalHash,
+            XxHash3 = hash.XxHash3,
+            Sha1 = hash.Sha1,
+            XxHash64 = hash.XxHash64,
+            Md5 = hash.Md5,
+            Size = hash.Size,
+            Crc32 = hash.Crc32,
+        };
+        return created[hash.XxHash3] = relation.Id;
     }
 }

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
@@ -17,7 +18,7 @@ public class PluginHeaderCacheMorrowindTests(IServiceProvider serviceProvider)
     {
         var cache = new PluginHeaderCache(Game);
         // No store holds these bytes, so a read through the TES3 reader would come back null.
-        var hash = Hash.From(0xBEEF);
+        var hash = FileIdentity.XxHash3(Hash.From(0xBEEF));
 
         await cache.WarmAsync([(hash, "Scripts.omwscripts")]);
 
@@ -30,7 +31,7 @@ public class PluginHeaderCacheMorrowindTests(IServiceProvider serviceProvider)
     public async Task TheSameBytesNamedAsAnEsp_AreNotMistakenForAScriptList()
     {
         var cache = new PluginHeaderCache(Game);
-        var hash = Hash.From(0xBEEF);
+        var hash = FileIdentity.XxHash3(Hash.From(0xBEEF));
 
         await cache.WarmAsync([(hash, "Scripts.omwscripts"), (hash, "Plugin.esp")]);
 

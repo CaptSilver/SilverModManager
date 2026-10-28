@@ -12,6 +12,7 @@ using SilverModManager.Games.CreationEngine.Abstractions;
 using SilverModManager.Games.CreationEngine.Loot;
 using SilverModManager.Games.CreationEngine.Models;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Settings;
@@ -41,7 +42,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     private readonly ICreationEngineGame _game;
     private readonly PluginHeaderCache _headers;
     private readonly ILogger<PluginSortOrderVariety> _logger;
-    private readonly ConcurrentDictionary<Hash, byte> _reportedUnreadable = new();
+    private readonly ConcurrentDictionary<FileIdentity, byte> _reportedUnreadable = new();
 
     public PluginSortOrderVariety(IServiceProvider serviceProvider, ICreationEngineGame game) : base(serviceProvider)
     {
@@ -112,7 +113,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         var sortOrder = LoadoutSortOrder.Load(db, sortOrderId);
         if (sortOrder.IsValid())
         {
-            var plugins = QueryLoadoutPlugins(sortOrder.LoadoutId, db).Select(row => (row.Hash, row.Name));
+            var plugins = QueryLoadoutPlugins(sortOrder.LoadoutId, db).Select(row => (row.Identity, row.Name));
             await _headers.WarmAsync(plugins);
         }
 
@@ -129,8 +130,8 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         var installation = InstallationOf(loadoutId, Connection.Db);
         var early = EarlyLoaderIndexes(installation);
 
-        return Connection.Query<(string PluginName, int SortIndex, bool IsEnabled, Hash Hash, string ModName, EntityId? ModGroupId, int LoadoutState)>($"""
-                SELECT PluginName, SortIndex, IsEnabled, Hash, ModName, ModGroupId,
+        return Connection.Query<(string PluginName, int SortIndex, bool IsEnabled, string Identity, string ModName, EntityId? ModGroupId, int LoadoutState)>($"""
+                SELECT PluginName, SortIndex, IsEnabled, Identity, ModName, ModGroupId,
                     CASE WHEN LoadoutIsEnabled THEN 1 ELSE 0 END + CASE WHEN IsGameInstalled THEN 2 ELSE 0 END AS LoadoutState
                 FROM plugins.LiveSortOrderItems({Connection}, {sortOrderId.Value}, {loadoutId}, {DataLocation}, {DataFolder})
                 """)
@@ -138,8 +139,9 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
             .TransformAsync(async row =>
             {
                 // Rows can arrive before the reconciliation that would warm their headers has run.
-                await _headers.WarmAsync([(row.Hash, row.PluginName)]);
-                var data = ToLoadoutData(row.PluginName, row.Hash, (row.LoadoutState & LoadoutStateEnabled) != 0, row.ModName, row.ModGroupId, (row.LoadoutState & LoadoutStateGameInstalled) != 0, installation, early);
+                var identity = FileIdentity.ParseHex(row.Identity);
+                await _headers.WarmAsync([(identity, row.PluginName)]);
+                var data = ToLoadoutData(row.PluginName, identity, (row.LoadoutState & LoadoutStateEnabled) != 0, row.ModName, row.ModGroupId, (row.LoadoutState & LoadoutStateGameInstalled) != 0, installation, early);
                 return new PluginReactiveSortItem(row.SortIndex, row.PluginName, row.IsEnabled, data);
             });
     }
@@ -311,7 +313,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         var early = EarlyLoaderIndexes(installation);
 
         return QueryLoadoutPlugins(loadoutId, dbToUse)
-            .Select(row => ToLoadoutData(row.Name, row.Hash, row.IsEnabled, row.ModName, row.ModGroupId, row.IsGameInstalled, installation, early))
+            .Select(row => ToLoadoutData(row.Name, row.Identity, row.IsEnabled, row.ModName, row.ModGroupId, row.IsGameInstalled, installation, early))
             .ToList();
     }
 
@@ -485,9 +487,10 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         return Reconcile(current, loadoutData, key => !visible.Contains(key) ? tombstones.GetValueOrDefault(key) : null);
     }
 
-    private IEnumerable<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)> QueryLoadoutPlugins(LoadoutId loadoutId, IDb db) =>
-        db.Connection.Query<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)>(
-            $"SELECT * FROM plugins.LoadoutPlugins({db}, {loadoutId}, {DataLocation}, {DataFolder})");
+    private IEnumerable<(string Name, FileIdentity Identity, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)> QueryLoadoutPlugins(LoadoutId loadoutId, IDb db) =>
+        db.Connection.Query<(string Name, string Identity, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)>(
+            $"SELECT Name, Identity, IsEnabled, ModName, ModGroupId, IsGameInstalled FROM plugins.LoadoutPlugins({db}, {loadoutId}, {DataLocation}, {DataFolder})")
+        .Select(row => (row.Name, FileIdentity.ParseHex(row.Identity), row.IsEnabled, row.ModName, row.ModGroupId, row.IsGameInstalled));
 
     private static bool IsDirectChild(IDb db, EntityId group, LoadoutItemGroupId container)
     {
@@ -505,19 +508,19 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         return early;
     }
 
-    private PluginLoadoutData ToLoadoutData(string name, Hash hash, bool isEnabled, string modName, EntityId? modGroupId, bool isGameInstalled, GameInstallation installation, IReadOnlyDictionary<string, int> early)
+    private PluginLoadoutData ToLoadoutData(string name, FileIdentity identity, bool isEnabled, string modName, EntityId? modGroupId, bool isGameInstalled, GameInstallation installation, IReadOnlyDictionary<string, int> early)
     {
         var isMaster = false;
         IReadOnlyList<string> masters = [];
         string? flags = null;
         var isBlueprint = false;
 
-        if (_headers.TryGet(hash, name, out var header))
+        if (_headers.TryGet(identity, name, out var header))
         {
             if (header is null)
             {
-                if (_reportedUnreadable.TryAdd(hash, 0))
-                    _logger.LogWarning("The header of plugin {Plugin} ({Hash}) could not be read; it is listed as a plugin with no masters", name, hash);
+                if (_reportedUnreadable.TryAdd(identity, 0))
+                    _logger.LogWarning("The header of plugin {Plugin} ({Identity}) could not be read; it is listed as a plugin with no masters", name, identity);
             }
             else
             {
@@ -530,7 +533,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
             }
         }
 
-        return new PluginLoadoutData(name, hash, isEnabled, modName, modGroupId, isMaster, masters)
+        return new PluginLoadoutData(name, identity, isEnabled, modName, modGroupId, isMaster, masters)
         {
             Flags = flags,
             IsBlueprint = isBlueprint,

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Collections.Immutable;
 using System.Text;
 using FluentAssertions;
@@ -74,7 +75,7 @@ public class CreationsCatalogRecognizerTests : IDisposable
 
     private void OnDisk(params string[] dataFiles)
     {
-        foreach (var file in dataFiles) _disk[Data / file] = new SyncNodePart { Hash = Hash.From(1), Size = Size.From(1), LastModifiedTicks = 0 };
+        foreach (var file in dataFiles) _disk[Data / file] = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(1)), Size = Size.From(1), LastModifiedTicks = 0 };
     }
 
     private Task<GameInstalledRecognition> Recognize() =>

@@ -12,6 +12,7 @@ using SilverModManager.Games.CreationEngine.Creations;
 using SilverModManager.Games.CreationEngine.PluginLists;
 using SilverModManager.Games.CreationEngine.SortOrder;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
@@ -33,7 +34,7 @@ public class PluginsFile : IIntrinsicFileWithReset
     private readonly PluginListNoticeGroup _noticeGroup;
     private readonly ILogger<PluginsFile> _logger;
 
-    private record struct Metadata(RelativePath FileName, Hash Hash, PluginHeader Header);
+    private record struct Metadata(RelativePath FileName, FileIdentity Identity, PluginHeader Header);
 
     /// <param name="path">Where the file lives; the game's plugins file when omitted.</param>
     /// <param name="noticeGroup">The files whose differences make up one notice; a file that is not given one reports alone.</param>
@@ -266,17 +267,17 @@ public class PluginsFile : IIntrinsicFileWithReset
     private async ValueTask<Metadata?> MakeMetadata(KeyValuePair<GamePath, SyncNode> arg)
     {
         var relPath = arg.Key.Path.FileName;
-        Hash hash;
+        FileIdentity identity;
 
         // We need to figure out if we should look at the loadout or the disk
         var syncNode = arg.Value;
-        if (syncNode.Actions.HasFlag(Actions.ExtractToDisk) || syncNode.Disk.Hash == Hash.Zero || syncNode.SourceItemType == LoadoutSourceItemType.Game)
-            hash = syncNode.Loadout.Hash;
+        if (syncNode.Actions.HasFlag(Actions.ExtractToDisk) || !syncNode.HaveDisk || syncNode.SourceItemType == LoadoutSourceItemType.Game)
+            identity = syncNode.Loadout.Identity;
         else
-            hash = syncNode.Disk.Hash;
+            identity = syncNode.Disk.Identity;
 
-        var modHeader = await _game.ParseNode(syncNode, hash, relPath);
-        return modHeader is null ? null : new Metadata(relPath, hash, modHeader);
+        var modHeader = await _game.ParseNode(syncNode, identity, relPath);
+        return modHeader is null ? null : new Metadata(relPath, identity, modHeader);
     }
 
     /// <summary>

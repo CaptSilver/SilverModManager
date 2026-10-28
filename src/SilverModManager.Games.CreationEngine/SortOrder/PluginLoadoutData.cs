@@ -1,7 +1,7 @@
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
-using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.MnemonicDB.Abstractions;
 
 namespace SilverModManager.Games.CreationEngine.SortOrder;
@@ -14,7 +14,7 @@ namespace SilverModManager.Games.CreationEngine.SortOrder;
 /// <param name="ModGroupId">The mod that supplies the plugin, null for a file of the game itself.</param>
 public sealed record PluginLoadoutData(
     string Name,
-    Hash Hash,
+    FileIdentity Identity,
     bool IsEnabled,
     string ModName,
     EntityId? ModGroupId,

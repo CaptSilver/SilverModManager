@@ -112,7 +112,7 @@ public abstract class AFromSoftSynchronizer : ALoadoutSynchronizer
 
             node.Actions = !node.HaveDisk
                 ? Actions.DoNothing
-                : node.Disk.Hash != node.Loadout.Hash
+                : node.Disk.Identity != node.Loadout.Identity
                     ? Actions.BackupFile | Actions.DeleteFromDisk
                     : Actions.DeleteFromDisk;
         }

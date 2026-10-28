@@ -1,0 +1,116 @@
+using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Hashing.xxHash3;
+using NexusMods.Paths;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.Wabbajack.Acquire;
+
+namespace SilverModManager.Wabbajack.Tests.Acquire;
+
+/// <summary>
+/// The original of a game file is found in the first disk state the app recorded, which is read as of an old
+/// transaction: rows from before disk state carried a hash kind have only the xxHash3.
+/// </summary>
+public class GameFileSourceLookupTests(ITestOutputHelper helper) : AcquireTestBase<GameFileSourceLookupTests>(helper)
+{
+    private GameFileSourceLookup Lookup(Loadout.ReadOnly loadout)
+        => new(loadout, Connection, FileStore, ServiceProvider.GetRequiredService<IFileHashesService>());
+
+    private async Task BackUpOriginal(Loadout.ReadOnly loadout)
+    {
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(GameBsa, new MemoryStream(GameBsaBytes)), GameBsaBytes.xxHash3(), Size.FromLong(GameBsaBytes.Length))]);
+        using var tx = Connection.BeginTransaction();
+        _ = new GameBackedUpFile.New(tx) { Hash = GameBsaBytes.xxHash3(), GameInstallId = loadout.InstallationId };
+        await tx.Commit();
+    }
+
+    /// <summary>
+    /// Makes the first recorded disk state look the way it did before identities carried their kind: every row at that
+    /// transaction has only its xxHash3, and the install's initial state is that transaction.
+    /// </summary>
+    private async Task MakeInitialStateLegacy(Loadout.ReadOnly loadout, Action<ITransaction, DiskStateEntry.ReadOnly>? rewrite = null)
+    {
+        TxId legacy;
+        using (var tx = Connection.BeginTransaction())
+        {
+            foreach (var entry in DiskStateEntry.FindByGame(Connection.Db, loadout.InstallationId))
+            {
+                if (rewrite is not null) { rewrite(tx, entry); continue; }
+                if (DiskStateEntry.Identity.TryGetValue(entry, out var identity)) tx.Retract(entry.Id, DiskStateEntry.Identity, identity);
+            }
+            legacy = (await tx.Commit()).NewTx;
+        }
+
+        using var point = Connection.BeginTransaction();
+        point.Add(loadout.InstallationId, GameInstallMetadata.InitialDiskStateTransaction, EntityId.From(legacy.Value));
+        await point.Commit();
+    }
+
+    private async Task ReplaceTheLiveFile(Loadout.ReadOnly loadout)
+    {
+        var changed = (byte[])GameBsaBytes.Clone();
+        changed[0] ^= 0xFF;
+        await loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, GameBsa)).WriteAllBytesAsync(changed);
+    }
+
+    [Fact]
+    public async Task InitialState_ReadBeforeTheMigration_StillNamesEveryGameFile()
+    {
+        var loadout = await CreateLoadout();
+        await BackUpOriginal(loadout);
+        await MakeInitialStateLegacy(loadout);
+        await ReplaceTheLiveFile(loadout);
+
+        var (stream, hash) = await Lookup(Refresh(loadout)).Open(GameBsa);
+
+        hash.Should().Be(GameBsaBytes.xxHash3(), "the backup of the original is found through the legacy row");
+        using var read = new MemoryStream();
+        await using (stream) await stream.CopyToAsync(read);
+        read.ToArray().Should().Equal(GameBsaBytes);
+    }
+
+    [Fact]
+    public async Task InitialState_RowOfAnotherKind_IsJoinedToTheArchivedBytesByARelation()
+    {
+        var loadout = await CreateLoadout();
+        await BackUpOriginal(loadout);
+        var hashes = await MultiHasher.HashStream(new MemoryStream(GameBsaBytes));
+        var local = ServiceProvider.GetRequiredService<IFileHashesService>().Local.Connection;
+        using (var tx = local.BeginTransaction())
+        {
+            _ = new HashRelation.New(tx)
+            {
+                MinimalHash = hashes.MinimalHash,
+                XxHash3 = hashes.XxHash3,
+                Sha1 = hashes.Sha1,
+                XxHash64 = hashes.XxHash64,
+                Md5 = hashes.Md5,
+                Size = hashes.Size,
+                Crc32 = hashes.Crc32,
+            };
+            await tx.Commit();
+        }
+        await MakeInitialStateLegacy(loadout, (tx, entry) =>
+        {
+            var current = entry.IdentityOf();
+            if (DiskStateEntry.XxHash3.TryGetValue(entry, out var xx)) tx.Retract(entry.Id, DiskStateEntry.XxHash3, xx);
+            tx.Add(entry.Id, DiskStateEntry.Identity, ((GamePath)entry.Path).Path == GameBsa ? FileIdentity.Sha1(hashes.Sha1) : current);
+            if (current.TryXxHash3(out var kept) && ((GamePath)entry.Path).Path != GameBsa) tx.Add(entry.Id, DiskStateEntry.XxHash3, kept);
+        });
+        await ReplaceTheLiveFile(loadout);
+
+        var (stream, hash) = await Lookup(Refresh(loadout)).Open(GameBsa);
+
+        hash.Should().Be(GameBsaBytes.xxHash3());
+        await stream.DisposeAsync();
+    }
+}

@@ -144,6 +144,9 @@ public class StubbedFileHasherService : IFileHashesService
 
     public async ValueTask<IDb> GetFileHashesDb() => await _db.Value;
 
+    public IEnumerable<GameFileRecord> GetGameFiles(GameInstallation installation)
+        => GetGameFiles((installation.LocatorResult.Store, installation.LocatorResult.LocatorIds.ToArray()));
+
     public IEnumerable<GameFileRecord> GetGameFiles(LocatorIdsWithGameStore locatorIdsWithGameStore)
     {
         var (_, locatorIds) = locatorIdsWithGameStore;
@@ -165,8 +168,7 @@ public class StubbedFileHasherService : IFileHashesService
             {
                 Path = new GamePath(LocationId.Game, file.Path),
                 Size = file.Hash.Size,
-                MinimalHash = file.Hash.MinimalHash,
-                Hash = file.Hash.XxHash3,
+                Identity = FileIdentity.XxHash3(file.Hash.XxHash3),
             };
         }
     }
@@ -289,7 +291,7 @@ public class StubbedFileHasherService : IFileHashesService
         {
             var (locatorIds , _) = versionDefinition;
             var matchingCount = GetGameFiles((gameInstallation.LocatorResult.Store, [locatorIds]))
-                .Count(file => filesSet.Contains((file.Path, file.Hash)));
+                .Count(file => file.Identity.TryXxHash3(out var hash) && filesSet.Contains((file.Path, hash)));
 
             if (!TryGetVanityVersion((gameInstallation.LocatorResult.Store, [locatorIds]), out var version))
             {

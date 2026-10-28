@@ -77,6 +77,7 @@ WITH all_files AS
     NULL Id,
     {Location: smm_fnv1a_hash_short('Game'), Path: Path} Path,
     Hash,
+    Identity,
     Size,
     'Game'::synchronizer.ItemType ItemType,
     0 Layer 
@@ -88,6 +89,7 @@ WITH all_files AS
     loadout_item.Id,
     {Location: loadout_item.TargetPath.Item2, Path: loadout_item.TargetPath.Item3} Path,
     loadout_item.Hash,
+    file_hashes.xxhash3_identity(loadout_item.Hash) AS Identity,
     loadout_item.Size,
     (CASE WHEN loadout_item.IsDeleted THEN 'Deleted' ELSE 'Loadout' END)::synchronizer.ItemType ItemType,
     1 Layer
@@ -99,6 +101,7 @@ WITH all_files AS
     override_file.Id,
     {Location: override_file.TargetPath.Item2, Path: override_file.TargetPath.Item3} Path,
     override_file.Hash,
+    file_hashes.xxhash3_identity(override_file.Hash) AS Identity,
     override_file.Size,
     (CASE WHEN override_file.IsDeleted THEN 'Deleted' ELSE 'Loadout' END)::synchronizer.ItemType ItemType,
     2 Layer
@@ -111,6 +114,7 @@ WITH all_files AS
     Null Id,
     {Location: intrinsic_file.Path.Item1, Path: intrinsic_file.Path.Item2} Path,
     Null Hash,
+    Null AS Identity,
     Null Size,
     'Intrinsic'::synchronizer.ItemType ItemType,
     3 Layer
@@ -120,6 +124,7 @@ WITH all_files AS
 SELECT
   arg_max(Id, Layer) Id,
   arg_max(Hash, Layer) Hash,
+  arg_max(Identity, Layer) AS Identity,
   arg_max(Size, Layer) Size,
   arg_max(ItemType, Layer) ItemType,
   Loadout,

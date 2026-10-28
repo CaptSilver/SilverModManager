@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Mutagen.Bethesda;
@@ -44,7 +45,7 @@ public class PluginHeaderParsingTests(IServiceProvider serviceProvider)
         var hash = bytes.xxHash3();
         var game = Reading(type, new MemoryStream(bytes), hash);
 
-        var header = await game.ParsePlugin(hash, RelativePath.FromUnsanitizedInput("Patch.esp"));
+        var header = await game.ParsePlugin(FileIdentity.XxHash3(hash), RelativePath.FromUnsanitizedInput("Patch.esp"));
 
         header.Should().NotBeNull();
         header!.FileName.Should().Be("Patch.esp");
@@ -57,7 +58,7 @@ public class PluginHeaderParsingTests(IServiceProvider serviceProvider)
     {
         var game = Reading(typeof(CreationEngine.SkyrimSE.SkyrimSE), null, Hash.From(2));
 
-        var header = await game.ParsePlugin(Hash.From(2), RelativePath.FromUnsanitizedInput("A.esp"));
+        var header = await game.ParsePlugin(FileIdentity.XxHash3(Hash.From(2)), RelativePath.FromUnsanitizedInput("A.esp"));
 
         header.Should().BeNull();
     }

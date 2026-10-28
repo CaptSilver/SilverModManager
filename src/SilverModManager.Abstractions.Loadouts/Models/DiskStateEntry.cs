@@ -23,9 +23,16 @@ public partial class DiskStateEntry : IModelDefinition
     public static readonly GamePathParentAttribute Path = new(Namespace, nameof(Path));
 
     /// <summary>
-    /// The hash of the file
+    /// The identity of the file: a hash kind and its digest. Always written.
     /// </summary>
-    public static readonly HashAttribute Hash = new(Namespace, nameof(Hash));
+    public static readonly FileIdentityAttribute Identity = new(Namespace, nameof(Identity));
+
+    /// <summary>
+    /// The xxHash3 of the file. The attribute id stays "Hash" so existing rows, the SQL column and
+    /// <c>WHERE Hash = …</c> lookups keep working; the C# name is XxHash3 so every reader has to say it wants an xxHash3.
+    /// Present exactly when <see cref="Identity"/> is an xxHash3, and equal to it.
+    /// </summary>
+    public static readonly HashAttribute XxHash3 = new(Namespace, "Hash") { IsOptional = true };
     
     /// <summary>
     /// The size of the file (in bytes)
@@ -43,16 +50,16 @@ public partial class DiskStateEntry : IModelDefinition
     public static readonly ReferenceAttribute<Sdk.Games.GameInstallMetadata> Game = new(Namespace, nameof(Game));
     
     
-    public partial struct ReadOnly : IHavePathHashSizeAndReference
+    public partial struct ReadOnly
     {
-#region IHavePathHashSizeAndReference
-
-        GamePath IHavePathHashSizeAndReference.Path => DiskStateEntry.Path.Get(this);
-
-        Hash IHavePathHashSizeAndReference.Hash => DiskStateEntry.Hash.Get(this);
-
-        Size IHavePathHashSizeAndReference.Size => DiskStateEntry.Size.Get(this);
-        EntityId IHavePathHashSizeAndReference.Reference => EntityId.From(0);
-#endregion
+        /// <summary>
+        /// The identity of the file. A row written before identities carried their kind has only the xxHash3,
+        /// which is what such a row held.
+        /// </summary>
+        public FileIdentity IdentityOf()
+        {
+            if (DiskStateEntry.Identity.TryGetValue(this, out var identity)) return identity;
+            return FileIdentity.XxHash3(DiskStateEntry.XxHash3.Get(this));
+        }
     }
 }

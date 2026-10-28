@@ -208,7 +208,8 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
             .Where(f => f.Path == path)
             .TryGetFirst(out var gameFileRecord))
         {
-            hash = gameFileRecord.Hash;
+            // The caller looks the file up in the library and the file store, which are keyed by xxHash3.
+            hash = gameFileRecord.Identity.XxHash3();
             size = gameFileRecord.Size;
             return true;
         }

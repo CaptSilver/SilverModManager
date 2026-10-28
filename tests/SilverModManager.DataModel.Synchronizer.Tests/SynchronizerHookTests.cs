@@ -66,7 +66,7 @@ public class SynchronizerHookTests : AIsolatedGameTest<SynchronizerHookTests, Ho
     private string[] DiskStateSnapshot(Loadout.ReadOnly loadout)
     {
         return DiskStateEntry.FindByGame(Connection.Db, loadout.Installation)
-            .Select(e => $"{(GamePath)e.Path}|{e.Hash}|{e.Size}")
+            .Select(e => $"{(GamePath)e.Path}|{e.IdentityOf()}|{e.Size}")
             .Order(StringComparer.Ordinal)
             .ToArray();
     }
@@ -260,7 +260,7 @@ public class SynchronizerHookTests : AIsolatedGameTest<SynchronizerHookTests, Ho
         if (!tree.TryGetValue(KeptOffDisk, out var node) || !node.HaveLoadout) return;
 
         node.Actions = node.HaveDisk
-            ? node.Disk.Hash != node.Loadout.Hash ? Actions.BackupFile | Actions.DeleteFromDisk : Actions.DeleteFromDisk
+            ? node.Disk.Identity != node.Loadout.Identity ? Actions.BackupFile | Actions.DeleteFromDisk : Actions.DeleteFromDisk
             : Actions.DoNothing;
         tree[KeptOffDisk] = node;
     }
@@ -281,7 +281,7 @@ public class SynchronizerHookTests : AIsolatedGameTest<SynchronizerHookTests, Ho
         (await FileStore.HaveFile(HashOf("hand edited"))).Should().BeTrue("the edit is kept in the file store");
 
         var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
-        tree[KeptOffDisk].Loadout.Hash.Should().Be(HashOf("kept-off-disk.txt"), "the edit was not ingested");
+        tree[KeptOffDisk].Loadout.Identity.XxHash3().Should().Be(HashOf("kept-off-disk.txt"), "the edit was not ingested");
         tree[KeptOffDisk].Loadout.EntityId.Should().Be(itemId);
     }
 

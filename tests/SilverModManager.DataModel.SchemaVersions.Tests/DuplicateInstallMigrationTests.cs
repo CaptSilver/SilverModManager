@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
@@ -246,6 +247,41 @@ public class DuplicateInstallMigrationTests
         DiskStateEntry.FindByGame(db, row).Select(e => e.Id).Should().Equal([whole]);
     }
 
+    // A row of another hash kind has its identity but no xxHash3. It is complete, not half-written.
+    [Fact]
+    public async Task MigrateAll_DiskStateEntryWithOnlyAnIdentity_IsKept()
+    {
+        using var folder = new OnDiskDataFolder();
+        await using var provider = folder.CreateProvider();
+        var connection = provider.GetRequiredService<IConnection>();
+        EntityId row, sha1Entry;
+        using (var tx = connection.BeginTransaction())
+        {
+            var r = NewRow(tx, Folder);
+            var result = await tx.Commit();
+            row = result.Remap(r).Id;
+        }
+        using (var tx = connection.BeginTransaction())
+        {
+            var entry = tx.TempId(DiskStateEntry.EntryPartition);
+            tx.Add(entry, DiskStateEntry.Path, new GamePath(LocationId.Game, "vanilla/sha1.txt").ToGamePathParentTuple(row));
+            tx.Add(entry, DiskStateEntry.Game, row);
+            tx.Add(entry, DiskStateEntry.Identity, FileIdentity.Sha1(Sha1Value.FromHex(new string('A', 40))));
+            tx.Add(entry, DiskStateEntry.Size, Size.From(1));
+            tx.Add(entry, DiskStateEntry.LastModified, DateTimeOffset.UnixEpoch);
+            var result = await tx.Commit();
+            sha1Entry = result[entry];
+        }
+
+        await provider.GetRequiredService<MigrationService>().MigrateAll();
+
+        var db = connection.Db;
+        DiskStateEntry.FindByGame(db, row).Select(e => e.Id).Should().Equal([sha1Entry]);
+        var kept = DiskStateEntry.Load(db, sha1Entry);
+        kept.IdentityOf().Kind.Should().Be(HashKind.Sha1);
+        DiskStateEntry.XxHash3.Contains(kept).Should().BeFalse("only an xxHash3 identity has the mirror");
+    }
+
     // The half-written entry is what a younger row's sync left of the oldest row's entry for a file it replaced.
     [Fact]
     public async Task MigrateAll_TheOldestRowsEntryIsHalfWritten_TheDuplicatesEntryForThatPathTakesItsPlace()
@@ -357,7 +393,8 @@ public class DuplicateInstallMigrationTests
     private static DiskStateEntry.New NewDiskEntry(ITransaction tx, EntityId installation, string path) => new(tx, tx.TempId(DiskStateEntry.EntryPartition))
     {
         Path = new GamePath(LocationId.Game, path).ToGamePathParentTuple(installation),
-        Hash = Hash.From(0x1),
+        Identity = FileIdentity.XxHash3(Hash.From(0x1)),
+        XxHash3 = Hash.From(0x1),
         Size = Size.From(1),
         LastModified = DateTimeOffset.UnixEpoch,
         GameId = installation,

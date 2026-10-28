@@ -85,6 +85,29 @@ public sealed class LookupsReadBothStoresTests : IDisposable
     }
 
     [Fact]
+    public async Task GetGameFiles_ForAnInstallation_ListsTheManifestsOfItsOwnLocatorIdsAsXxHash3Identities()
+    {
+        var service = await ServiceWithCentral(c => HashRows.AddSteamManifest(c, 1001, ("a.esm", "central file")));
+        await HashRows.AddSteamManifest(service.Local.Connection, 1002, ("b.esm", "local file"));
+        var result = new GameLocatorResult
+        {
+            Game = Substitute.For<IGameData>(),
+            Path = FileSystem.Shared.FromUnsanitizedFullPath("/games/lookups"),
+            Store = GameStore.Steam,
+            StoreIdentifier = "1",
+            LocatorIds = [LocatorId.From("1002")],
+            Locator = Substitute.For<IGameLocator>(),
+        };
+        var installation = new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, result.Path)));
+
+        var files = service.GetGameFiles(installation).ToList();
+
+        files.Select(f => f.Path.Path.ToString()).Should().BeEquivalentTo(["b.esm"]);
+        files.Should().OnlyContain(f => f.Identity.Kind == HashKind.XxHash3);
+        files.Single().Identity.Should().Be(FileIdentity.XxHash3((await MultiHasher.HashStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes("local file")))).XxHash3));
+    }
+
+    [Fact]
     public async Task GetGameFiles_TwoLocatorIds_EachAnsweredByTheStoreThatHasIt()
     {
         var service = await ServiceWithCentral(c => HashRows.AddSteamManifest(c, 1001, ("a.esm", "central file")));

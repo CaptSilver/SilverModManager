@@ -117,6 +117,38 @@ public class IntrinsicFileBackupTests(ITestOutputHelper helper) : AIsolatedGameT
     }
 
     [Fact]
+    public async Task ResettingAfterTheMigration_RestoresFromBackupsRecordedBeforeIt()
+    {
+        await UserHadAFile();
+        var metadata = await LoadoutManager.ManageInstallation(GameInstallation);
+        await Synchronizer.ReindexState(GameInstallation);
+
+        // The initial disk state is read as of a transaction from before identities carried their kind: its rows
+        // have only the xxHash3, and the reset finds the user's backup through it. Nothing has been applied yet, so
+        // the state at that transaction is still the user's.
+        TxId legacy;
+        using (var tx = Connection.BeginTransaction())
+        {
+            foreach (var entry in DiskStateEntry.FindByGame(Connection.Db, metadata.Id))
+            {
+                if (DiskStateEntry.Identity.TryGetValue(entry, out var identity)) tx.Retract(entry.Id, DiskStateEntry.Identity, identity);
+            }
+            legacy = (await tx.Commit()).NewTx;
+        }
+        using (var point = Connection.BeginTransaction())
+        {
+            point.Add(metadata.Id, GameInstallMetadata.InitialDiskStateTransaction, EntityId.From(legacy.Value));
+            await point.Commit();
+        }
+        var loadout = await CreateLoadout();
+        await Apply(loadout);
+
+        await Synchronizer.ResetToOriginalGameState(GameInstallation, [LocatorId.From("StubbedGameState.zip")]);
+
+        (await Generated.ReadAllBytesAsync()).Should().Equal(UserBytes);
+    }
+
+    [Fact]
     public async Task ResettingToTheOriginalGameStateRestoresTheUsersFile()
     {
         await UserHadAFile();

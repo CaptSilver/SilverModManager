@@ -81,9 +81,13 @@ WITH
             LEFT JOIN MDB_GOGMANIFEST(DBName=>store) manifest ON manifests.ManifestId = manifest.Id)
 SELECT files.Loadout, files.File PathId FROM files;
 
--- every path row of the hash store called `store`, resolved to its path, hash and size
+-- The hex of a FileIdentity holding an xxHash3: the kind byte 01, then the eight digest bytes big-endian.
+-- FileIdentity.ParseHex reads it case-insensitively, so to_hex's lower case is fine.
+CREATE OR REPLACE MACRO file_hashes.xxhash3_identity(h) AS '01' || lpad(to_hex(h), 16, '0');
+
+-- every path row of the hash store called `store`, resolved to its path, hash, identity and size
 CREATE OR REPLACE MACRO file_hashes.store_path_hashes(store) AS TABLE
-SELECT pathRel.Id, pathRel.Path, hashRel.xxHash3 Hash, hashRel.Size
+SELECT pathRel.Id, pathRel.Path, hashRel.xxHash3 Hash, file_hashes.xxhash3_identity(hashRel.xxHash3) AS Identity, hashRel.Size
 FROM MDB_PathHashRelation(DBName=>store) pathRel
 INNER JOIN MDB_hashrelation(DBName=>store) hashRel ON pathRel.Hash = hashRel.Id;
 
@@ -91,11 +95,11 @@ INNER JOIN MDB_hashrelation(DBName=>store) hashRel ON pathRel.Hash = hashRel.Id;
 -- something inside their own store, so each store resolves its rows to values here and only the values leave.
 CREATE OR REPLACE MACRO file_hashes.hash_store_loadout_files(db, store) AS TABLE
 WITH 
-       relations AS (SELECT Id, Path, Hash, Size FROM file_hashes.store_path_hashes(store)),
+       relations AS (SELECT Id, Path, Hash, Identity, Size FROM file_hashes.store_path_hashes(store)),
        files AS (SELECT Loadout, PathId FROM file_hashes.gog_loadout_files(db, store)
               UNION
               SELECT Loadout, PathId FROM file_hashes.steam_loadout_files(db, store))
-SELECT files.Loadout, relations.Path, relations.Hash, relations.Size FROM files
+SELECT files.Loadout, relations.Path, relations.Hash, relations.Identity, relations.Size FROM files
 INNER JOIN relations ON files.PathId = relations.Id;
 
 -- The local baseline of each loadout's installation. The local store cannot reference the main store's
@@ -112,7 +116,7 @@ WITH
        files AS (SELECT Loadout, unnest(baseline.Files) PathId
                  FROM file_hashes.loadout_baselines(db) baselines
                           INNER JOIN MDB_LOCALBASELINE(DbName=>'local_hashes') baseline ON baseline.Id = baselines.BaselineId)
-SELECT files.Loadout, relations.Path, relations.Hash, relations.Size FROM files
+SELECT files.Loadout, relations.Path, relations.Hash, relations.Identity, relations.Size FROM files
 INNER JOIN file_hashes.store_path_hashes('local_hashes') relations ON files.PathId = relations.Id;
 
 -- the paths a loadout's local baseline has an opinion on: the ones it found vanilla and the ones it found modified
@@ -133,11 +137,11 @@ FROM file_hashes.loadout_baselines(db) baselines
 -- Paths compare as strings, case-sensitively.
 CREATE MACRO file_hashes.loadout_files(db) AS TABLE
 WITH
-       stored AS (SELECT Loadout, Path, Hash, Size FROM file_hashes.hash_store_loadout_files(db, 'hashes')
+       stored AS (SELECT Loadout, Path, Hash, Identity, Size FROM file_hashes.hash_store_loadout_files(db, 'hashes')
                   UNION
-                  SELECT Loadout, Path, Hash, Size FROM file_hashes.hash_store_loadout_files(db, 'local_hashes')),
+                  SELECT Loadout, Path, Hash, Identity, Size FROM file_hashes.hash_store_loadout_files(db, 'local_hashes')),
        classified AS (SELECT Loadout, Path FROM file_hashes.local_baseline_paths(db))
-SELECT Loadout, Path, Hash, Size FROM stored
+SELECT Loadout, Path, Hash, Identity, Size FROM stored
 WHERE NOT EXISTS (SELECT 1 FROM classified WHERE classified.Loadout = stored.Loadout AND classified.Path = stored.Path)
 UNION
-SELECT Loadout, Path, Hash, Size FROM file_hashes.local_baseline_files(db);
+SELECT Loadout, Path, Hash, Identity, Size FROM file_hashes.local_baseline_files(db);

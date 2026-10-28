@@ -80,7 +80,8 @@ public sealed class _0003_MergeDuplicateInstalls(ILogger<_0003_MergeDuplicateIns
         foreach (var id in candidates)
         {
             var entry = DiskStateEntry.Load(db, id);
-            if (DiskStateEntry.Path.Contains(entry) && DiskStateEntry.Game.Contains(entry) && DiskStateEntry.Hash.Contains(entry)
+            if (DiskStateEntry.Path.Contains(entry) && DiskStateEntry.Game.Contains(entry)
+                && (DiskStateEntry.XxHash3.Contains(entry) || DiskStateEntry.Identity.Contains(entry))
                 && DiskStateEntry.Size.Contains(entry) && DiskStateEntry.LastModified.Contains(entry)) continue;
 
             var path = DiskStateEntry.Path.TryGetValue(entry, out var p) ? $"{p.Item2}/{p.Item3}" : "(no path)";

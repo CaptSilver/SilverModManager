@@ -3,6 +3,7 @@ using SilverModManager.Backend.Games;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Games.TestFramework.Helpers;
 
@@ -47,6 +48,13 @@ public static class FullHashCounterExtensions
         {
             counter.Add(file);
             return await file.XxHash3Async(token: cancellationToken);
+        }
+
+        public async ValueTask<MultiHash> HashAll(AbsolutePath file, CancellationToken cancellationToken)
+        {
+            counter.Add(file);
+            await using var stream = file.Read();
+            return await MultiHasher.HashStream(stream, cancellationToken);
         }
     }
 }

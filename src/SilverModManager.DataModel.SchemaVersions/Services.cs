@@ -14,6 +14,7 @@ public static class Services
         services.AddMigration<_0001_KeyInstallsByGameId>();
         services.AddMigration<_0002_MarkProfileSettingsGroups>();
         services.AddMigration<_0003_MergeDuplicateInstalls>();
+        services.AddMigration<_0004_TypedDiskStateIdentity>();
 
         return services;
     }

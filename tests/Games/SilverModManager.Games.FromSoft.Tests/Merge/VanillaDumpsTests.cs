@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -149,8 +150,7 @@ public class VanillaDumpsTests(ITestOutputHelper helper) : AVanillaDumpTest<Vani
     {
         Path = new GamePath(LocationId.Game, path),
         Size = Size.From(1),
-        MinimalHash = Hash.From(hash),
-        Hash = Hash.From(hash),
+        Identity = FileIdentity.XxHash3(Hash.From(hash)),
     };
 
     private void Knows(IFileHashesService service, params (string Version, GameFileRecord[] Files)[] builds)

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -69,7 +70,7 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
     {
         var game = Reading(type, BethesdaPluginBytes.Bytes(release, "A.esp", "Skyrim.esm"), out var hash);
 
-        var header = await game.ParsePlugin(hash, RelativePath.FromUnsanitizedInput("A.esp"));
+        var header = await game.ParsePlugin(FileIdentity.XxHash3(hash), RelativePath.FromUnsanitizedInput("A.esp"));
 
         header!.FileName.Should().Be("A.esp");
         header.Masters.Should().Equal("Skyrim.esm");
@@ -87,7 +88,7 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
         {
             [new GamePath(LocationId.Game, "Data/A.esp")] = new()
             {
-                Loadout = new SyncNodePart { Hash = hash, Size = NexusMods.Paths.Size.From((ulong)bytes.Length), LastModifiedTicks = 0 },
+                Loadout = new SyncNodePart { Identity = FileIdentity.XxHash3(hash), Size = NexusMods.Paths.Size.From((ulong)bytes.Length), LastModifiedTicks = 0 },
                 SourceItemType = LoadoutSourceItemType.Game,
             },
         };

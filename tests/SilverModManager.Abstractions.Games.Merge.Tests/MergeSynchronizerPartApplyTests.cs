@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +25,7 @@ public class MergeSynchronizerPartApplyTests(IServiceProvider provider) : AGameT
 {
     private sealed class Trusting : IVanillaTrust
     {
-        public bool IsTrusted(GameInstallation installation, GamePath path, Hash currentHash, out string reason)
+        public bool IsTrusted(GameInstallation installation, GamePath path, MultiHash currentHashes, out string reason)
         {
             reason = "";
             return true;

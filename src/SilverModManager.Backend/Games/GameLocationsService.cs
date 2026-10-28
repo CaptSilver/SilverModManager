@@ -133,35 +133,49 @@ internal class GameLocationsService : IGameLocationsService
             if (after != fingerprint)
             {
                 _logger.LogDebug("File `{Path}` changed while it was read, not remembering its hash", file);
-                return new IndexFileResult(gamePath, newHash, fingerprint.Size, fingerprint.LastModified);
+                return new IndexFileResult(gamePath, FileIdentity.XxHash3(newHash.XxHash3), fingerprint.Size, fingerprint.LastModified);
             }
         }
 
-        readFiles.Add(new IndexedFileHash(gamePath, fingerprint.Size, fingerprint.LastModified, newHash));
-        return new IndexFileResult(gamePath, newHash, fingerprint.Size, fingerprint.LastModified);
+        readFiles.Add(new IndexedFileHash(gamePath, fingerprint.Size, fingerprint.LastModified, newHash.XxHash3, newHash.Hashes));
+        return new IndexFileResult(gamePath, FileIdentity.XxHash3(newHash.XxHash3), fingerprint.Size, fingerprint.LastModified);
     }
 
-    internal ValueTask<Hash> HashFile(AbsolutePath file, GamePath gamePath, CancellationToken cancellationToken)
-        => HashFile(null, file, gamePath, FileFingerprint.Of(file), new IndexTally(), cancellationToken);
+    internal async ValueTask<Hash> HashFile(AbsolutePath file, GamePath gamePath, CancellationToken cancellationToken)
+        => (await HashFile(null, file, gamePath, FileFingerprint.Of(file), new IndexTally(), cancellationToken)).XxHash3;
 
-    private async ValueTask<Hash> HashFile(GameInstallation? installation, AbsolutePath file, GamePath gamePath, FileFingerprint fingerprint, IndexTally tally, CancellationToken cancellationToken)
+    /// <param name="XxHash3">The file's xxHash3.</param>
+    /// <param name="Hashes">Every digest of the bytes, set when this call read the file in full to get them.</param>
+    private readonly record struct HashedFile(Hash XxHash3, MultiHash? Hashes = null);
+
+    private async ValueTask<HashedFile> HashFile(GameInstallation? installation, AbsolutePath file, GamePath gamePath, FileFingerprint fingerprint, IndexTally tally, CancellationToken cancellationToken)
     {
         if (installation is not null && _fileHashesService.TryGetFingerprintedHash(installation, gamePath, fingerprint.Size, fingerprint.LastModified, out var remembered))
         {
             tally.FromFingerprint();
-            return remembered;
+            return new HashedFile(remembered);
         }
 
         var lookup = await GetExistingHash(_fileHashesService.Databases, file, gamePath, cancellationToken);
         if (lookup.Hash.HasValue)
         {
             tally.FromStoredHash();
-            return lookup.Hash.Value;
+            return new HashedFile(lookup.Hash.Value);
         }
 
         _logger.LogDebug("Didn't find matching hash data for file `{Path}` ({Reason}), falling back to a full hash", file, lookup.Miss);
         tally.FullyHashed(lookup.Miss, fingerprint.Size);
-        return await _fullHasher.Hash(file, cancellationToken);
+
+        // A full read of a game-folder file takes every digest in the same pass. They are recorded as a relation, so
+        // the next baseline can resolve this file from its hashes instead of reading it, and the store's SHA-1 can
+        // be joined to the xxHash3 the file is archived under. Other locations only need the xxHash3.
+        if (gamePath.LocationId == LocationId.Game)
+        {
+            var hashes = await _fullHasher.HashAll(file, cancellationToken);
+            return new HashedFile(hashes.XxHash3, hashes);
+        }
+
+        return new HashedFile(await _fullHasher.Hash(file, cancellationToken));
     }
 
     /// <summary>
