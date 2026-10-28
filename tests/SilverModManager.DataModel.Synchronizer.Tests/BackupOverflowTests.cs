@@ -152,19 +152,27 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
     {
         WriteExternalFiles(4, 4096);
         Task? concurrent = null;
+        var questions = 0;
+        var questionsWhileOpen = -1;
         _prompt.Inner = new DelegatePrompt(async (_, _, token) =>
         {
+            // Only the first question starts the concurrent sync; a second one (from an unguarded sync that
+            // re-indexed the same over-cap files) must show up in the count instead of starting another.
+            if (Interlocked.Increment(ref questions) > 1) return BackupOverflowChoice.BackUpAnyway;
+
             var existing = Loadout.All(Connection.Db).First(l => l.IsVisible());
             concurrent = SynchronizerService.Synchronize(existing.LoadoutId);
-            await Task.Delay(200, token);
-            concurrent.IsCompleted.Should().BeFalse("the synchronizer service is held until the question is answered");
+            await Task.Delay(500, token);
+            questionsWhileOpen = Volatile.Read(ref questions);
             return BackupOverflowChoice.BackUpAnyway;
         });
 
         await CreateLoadout();
 
         concurrent.Should().NotBeNull();
+        questionsWhileOpen.Should().Be(1, "the synchronizer service is held until the question is answered");
         await concurrent!.WaitAsync(TimeSpan.FromSeconds(30));
+        questions.Should().Be(1, "once answered, the files are backed up and nothing is over the cap any more");
     }
 
     [Fact]

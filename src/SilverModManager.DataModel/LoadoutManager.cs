@@ -175,7 +175,7 @@ internal partial class LoadoutManager : ILoadoutManager
         {
             await _synchronizerService.Synchronize(loadout.LoadoutId, largeFiles, cancellationToken);
         }
-        catch (Exception e) when (e is UserFacingException or OperationCanceledException)
+        catch (Exception e) when (e is BackupOverflowException or SynchronizerPreflightException or OperationCanceledException)
         {
             try
             {
