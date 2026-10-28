@@ -142,7 +142,8 @@ public static class Verbs
                         // Now we need to hash all the files, and write the hash variants as well as the foundHashes mapping
                         try
                         {
-                            await Parallel.ForEachAsync(depotInfos, token, async (row, _) =>
+                            // One depot at a time: each depot already hashes with FileReaders workers, so more would exceed the cap.
+                            await Parallel.ForEachAsync(depotInfos, new ParallelOptions { MaxDegreeOfParallelism = 1, CancellationToken = token }, async (row, _) =>
                                 {
                                     var (manifestId, depot, manifest) = row;
                                     ConcurrentDictionary<string, Hash> foundHashes = new();

@@ -1,4 +1,3 @@
-using SilverModManager.Sdk.Hashes;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
@@ -363,7 +362,7 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
         });
 
         // Extract from all source archives.
-        Parallel.ForEach(groupedFiles, new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders }, group =>
+        Parallel.ForEach(groupedFiles, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, group =>
         {
             using var file = group.Key.Read();
             var provider = new FromStreamProvider(file);

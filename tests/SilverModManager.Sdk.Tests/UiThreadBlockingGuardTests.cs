@@ -36,12 +36,6 @@ public class UiThreadBlockingGuardTests
         return found;
     }
 
-    private static bool IsInvocationOf(SyntaxNode node, string memberName, out InvocationExpressionSyntax invocation)
-    {
-        invocation = node as InvocationExpressionSyntax ?? null!;
-        return node is InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax member } && member.Name.Identifier.ValueText == memberName;
-    }
-
     /// <summary>.GetAwaiter().GetResult(), a zero-argument .Wait(), or .Result on a task-shaped receiver.</summary>
     internal static bool IsSyncOverAsync(SyntaxNode node)
     {
@@ -165,9 +159,6 @@ public class UiThreadBlockingGuardTests
             ("src/SilverModManager.Networking.GOG/CLI/Verbs.cs",
                 "await Parallel.ForEachAsync(depotItems, token, async (depot, token) =>",
                 "fetches one depot manifest per item over the network; no file contents"),
-            ("src/SilverModManager.Networking.GOG/CLI/Verbs.cs",
-                "await Parallel.ForEachAsync(depotInfos, token, async (row, _) =>",
-                "iterates depots; the per-file hashing loop nested inside it is capped"),
             ("src/SilverModManager.Networking.GOG/CLI/Verbs.cs",
                 "await Parallel.ForEachAsync(hashFiles, token, async (file, token) =>",
                 "deserialises the small per-file hash index JSON files, not game files"),

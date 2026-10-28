@@ -1,4 +1,3 @@
-using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Deployment;
@@ -11,6 +10,7 @@ using NexusMods.Hashing.xxHash3.Paths;
 using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Native;
 

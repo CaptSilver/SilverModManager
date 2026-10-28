@@ -1,4 +1,3 @@
-using SilverModManager.Sdk.Hashes;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -860,7 +859,7 @@ After asking design, we're choosing to simply open the mod page for now.
             fromInclusive: 0,
             toExclusive: items.Length,
             body: (i, innerCancellationToken) => InstallLibraryItem(items[i], _loadout, targetLoadoutGroup, innerCancellationToken, useAdvancedInstaller),
-            parallelOptions: new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = cancellationToken }
+            parallelOptions: new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken }
         );
         
         var targetCollection = LoadoutItem.Load(db, targetLoadoutGroup);
@@ -966,7 +965,7 @@ After asking design, we're choosing to simply open the mod page for now.
                 var path = paths[i];
                 await _libraryService.AddLocalFile(path);
             },
-            parallelOptions: new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = cancellationToken }
+            parallelOptions: new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken }
         );
     }
 
