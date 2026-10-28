@@ -12,6 +12,7 @@ using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -68,8 +69,10 @@ public sealed record CollectionRepairResult(
 /// The update was refused before the collection was switched. The repair that runs first may already have changed the
 /// collection, so its result comes along: its dropped mods are in My Mods and the user still decides about them.
 /// </summary>
-public sealed class CollectionUpdateRefusedException(string message, CollectionRepairResult repaired, Exception inner) : InvalidOperationException(message, inner)
+public sealed class CollectionUpdateRefusedException(string message, CollectionRepairResult repaired, Exception inner) : UserFacingException(message, inner)
 {
+    public override string Title => "The collection wasn't updated";
+
     /// <summary>What the repair before the refusal did.</summary>
     public CollectionRepairResult Repaired { get; } = repaired;
 }

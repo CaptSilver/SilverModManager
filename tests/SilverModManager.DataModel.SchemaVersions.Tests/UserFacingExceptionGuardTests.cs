@@ -87,6 +87,7 @@ public class UserFacingExceptionGuardTests
         ["SilverModManager.Wabbajack.Transforms.UnsupportedTextureFormatException"] = "A texture the re-encoder cannot handle; the install turns it into a skip row.",
         ["StardewModdingAPI.Toolkit.Serialization.SParseException"] = "Vendored SMAPI toolkit code under extern/, not ours to reparent.",
         ["SilverModManager.Sdk.Hashes.BoundedAtomicUpdateException"] = DeveloperFacing,
+        ["SilverModManager.App.UI.WorkspaceSystem.PageTargetGoneException"] = "A saved tab whose page no longer exists; restoring the workspace catches it and drops the tab.",
     };
 
     private static IEnumerable<Type> ExceptionTypes()

@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.HttpDownloads;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Errors;
 using NexusMods.Paths;
 using Polly;
 using Polly.Retry;
@@ -361,8 +362,10 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
 /// The host of a download did not answer in time. Deliberately not a network error the retry pipeline recognises:
 /// a host that never connects is not going to start after a few seconds.
 /// </summary>
-public class HostNotRespondingException(string host, Exception inner) : Exception($"{host} didn't respond", inner)
+public class HostNotRespondingException(string host, Exception inner) : UserFacingException($"{host} didn't respond", inner)
 {
+    public override string Title => "The download server didn't respond";
+
     /// <summary>
     /// The host (and port, when not the default) that did not respond, without the path or query of the request.
     /// </summary>
