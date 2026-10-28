@@ -48,6 +48,9 @@ public sealed class FileConflictPathRow
 public interface IFileConflictPathsViewModel : IViewModelInterface
 {
     IReadOnlyList<FileConflictPathRow> Rows { get; }
+
+    /// <summary>True until the first load has put the rows in place.</summary>
+    bool IsLoading { get; }
 }
 
 /// <summary>
@@ -62,17 +65,33 @@ public partial class FileConflictPathsViewModel : AViewModel<IFileConflictPathsV
     private readonly Func<IReadOnlyList<FileConflictPath>> _load;
     private IReadOnlyList<FileConflictPath> _paths = [];
 
-    [Reactive] public partial IReadOnlyList<FileConflictPathRow> Rows { get; private set; }
+    [Reactive] public partial IReadOnlyList<FileConflictPathRow> Rows { get; private set; } = [];
 
     /// <param name="thisGroup">The mod the list was opened for, the one a pin makes the winner.</param>
-    /// <param name="load">Reads the paths again; called on construction and after every pin change.</param>
+    /// <param name="load">Reads the paths again; called by <see cref="LoadAsync"/> and after every pin change, always on the task pool.</param>
     public FileConflictPathsViewModel(ILoadoutManager loadouts, LoadoutId loadoutId, LoadoutItemGroupId thisGroup, Func<IReadOnlyList<FileConflictPath>> load)
     {
         _loadouts = loadouts;
         _loadoutId = loadoutId;
         _thisGroup = thisGroup;
         _load = load;
-        Rows = BuildRows();
+        IsLoading = true;
+    }
+
+    [Reactive] public partial bool IsLoading { get; private set; }
+
+    /// <summary>Reads the paths and builds the rows off the UI thread, then assigns <see cref="Rows"/>.</summary>
+    public async Task LoadAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            Rows = await Task.Run(BuildRows);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     public async Task MakeWinner(GamePath path)
@@ -81,13 +100,13 @@ public partial class FileConflictPathsViewModel : AViewModel<IFileConflictPathsV
             throw new InvalidOperationException($"{path} feeds a merge, which a pin does not change.");
 
         await _loadouts.PinFileWinner(_loadoutId, path, _thisGroup);
-        Rows = BuildRows();
+        Rows = await Task.Run(BuildRows);
     }
 
     public async Task ClearPin(GamePath path)
     {
         await _loadouts.ClearFileWinner(_loadoutId, path);
-        Rows = BuildRows();
+        Rows = await Task.Run(BuildRows);
     }
 
     private IReadOnlyList<FileConflictPathRow> BuildRows()

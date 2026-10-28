@@ -1,5 +1,4 @@
 using System.Reactive;
-using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Controls.Trees;
@@ -33,14 +32,14 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
 
         _serviceProvider = serviceProvider;
 
-        RefreshCommand = ReactiveCommand.Create( () =>
+        RefreshCommand = ReactiveCommand.CreateFromTask(async () =>
         {
             if (_fileTreeViewModel is null)
             {
                 return;
             }
 
-            Refresh(_fileTreeViewModel);
+            await RefreshAsync(_fileTreeViewModel);
         });
     }
 
@@ -53,16 +52,14 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
             _serviceProvider.GetRequiredService<IConnection>()
         );
 
-        Refresh(_fileTreeViewModel);
+        _ = RefreshAsync(_fileTreeViewModel);
     }
-    
-    private void Refresh(DiffTreeViewModel diffTreeViewModel)
-    {
-        diffTreeViewModel.Refresh();
 
-        Dispatcher.UIThread.Invoke(() =>
-        {
-            BodyViewModel = diffTreeViewModel;
-        });
+    // The refresh walks the install and the loadout; the tree's own bindings marshal to the UI thread, and the
+    // continuation resumes on the caller's context, so BodyViewModel is assigned there.
+    private async Task RefreshAsync(DiffTreeViewModel diffTreeViewModel)
+    {
+        await Task.Run(diffTreeViewModel.Refresh);
+        BodyViewModel = diffTreeViewModel;
     }
 }

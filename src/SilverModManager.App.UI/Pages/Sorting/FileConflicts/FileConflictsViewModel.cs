@@ -264,6 +264,7 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
             });
 
         var title = string.Format(Language.FileConflicts_Paths_Title, priority.Target.AsLoadoutItem().Name);
+        _ = content.LoadAsync();
         _ = await _windowManager.ShowDialog(
             DialogFactory.CreateDialog(title, [DialogStandardButtons.Close], content, DialogWindowSize.Large),
             DialogWindowType.Modeless);

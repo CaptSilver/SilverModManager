@@ -77,11 +77,19 @@ public class FileConflictPathsTests(IServiceProvider provider) : AUiTest(provide
         _ = new LoadoutFile.New(tx, id) { LoadoutItemWithTargetPath = withPath, Hash = Hash.From(content), Size = Size.From(content) };
     }
 
-    private FileConflictPathsViewModel OpenPaths(Mods mods, MergePathIndex? merges = null) => new(
+    private FileConflictPathsViewModel NewPaths(Mods mods, MergePathIndex? merges = null) => new(
         Loadouts,
         mods.Loadout.LoadoutId,
         mods.Low,
         () => FileConflictPaths.Load(Connection, mods.Loadout.LoadoutId, mods.LowPriority, merges));
+
+    /// <summary>The list as the dialog shows it once its rows have loaded.</summary>
+    private async Task<FileConflictPathsViewModel> OpenPaths(Mods mods, MergePathIndex? merges = null)
+    {
+        var paths = NewPaths(mods, merges);
+        await paths.LoadAsync();
+        return paths;
+    }
 
     /// <summary>The merge index of a FromSoft game whose package files are the given (package, path) pairs.</summary>
     private static MergePathIndex Merges(params (string Package, string RelPath)[] files) => MergePathIndex.Build(
@@ -94,7 +102,7 @@ public class FileConflictPathsTests(IServiceProvider provider) : AUiTest(provide
     {
         var mods = await SeedConflict("Per Path Rows", Contested);
 
-        var row = OpenPaths(mods).Rows.Should().ContainSingle().Subject;
+        var row = (await OpenPaths(mods)).Rows.Should().ContainSingle().Subject;
 
         row.Path.Should().Be(Contested.ToString());
         row.WinnerText.Should().Contain("High Mod").And.NotContain("(this)");
@@ -108,7 +116,7 @@ public class FileConflictPathsTests(IServiceProvider provider) : AUiTest(provide
     public async Task MakingThisTheWinnerPinsThePathAndTheRowReloads()
     {
         var mods = await SeedConflict("Pin From Page", Contested);
-        var paths = OpenPaths(mods);
+        var paths = await OpenPaths(mods);
 
         await paths.MakeWinner(Contested);
 
@@ -126,7 +134,7 @@ public class FileConflictPathsTests(IServiceProvider provider) : AUiTest(provide
     public async Task ClearingThePinHandsThePathBackToPriority()
     {
         var mods = await SeedConflict("Clear From Page", Contested);
-        var paths = OpenPaths(mods);
+        var paths = await OpenPaths(mods);
         await paths.MakeWinner(Contested);
 
         await paths.ClearPin(Contested);
@@ -144,7 +152,7 @@ public class FileConflictPathsTests(IServiceProvider provider) : AUiTest(provide
         var mods = await SeedConflict("Pin To Other", Contested);
         await Loadouts.PinFileWinner(mods.Loadout.LoadoutId, Contested, mods.High);
 
-        var paths = OpenPaths(mods);
+        var paths = await OpenPaths(mods);
         var row = paths.Rows.Should().ContainSingle().Subject;
         row.IsPinned.Should().BeTrue();
         row.PinText.Should().Contain("High Mod");
@@ -160,7 +168,7 @@ public class FileConflictPathsTests(IServiceProvider provider) : AUiTest(provide
     {
         // Two mods writing the same package folder is not a merge: the sync tree's winner, pin included, deploys.
         var mods = await SeedConflict("Shared Package", Package);
-        var paths = OpenPaths(mods, Merges(("pkg", "regulation.bin"), ("pkg", "regulation.bin")));
+        var paths = await OpenPaths(mods, Merges(("pkg", "regulation.bin"), ("pkg", "regulation.bin")));
 
         var row = paths.Rows.Should().ContainSingle().Subject;
         row.CanMakeWinner.Should().BeTrue();
@@ -175,7 +183,7 @@ public class FileConflictPathsTests(IServiceProvider provider) : AUiTest(provide
     public async Task AFileThatFeedsAMergeSaysPinsDoNotApplyAndCannotBePinned()
     {
         var mods = await SeedConflict("Merged Package", Contested, Package);
-        var paths = OpenPaths(mods, Merges(("pkg", "regulation.bin"), ("pkg", "regulation.bin"), ("other", "regulation.bin")));
+        var paths = await OpenPaths(mods, Merges(("pkg", "regulation.bin"), ("pkg", "regulation.bin"), ("other", "regulation.bin")));
 
         var package = paths.Rows.Single(r => r.Path == Package.ToString());
         package.CanMakeWinner.Should().BeFalse();
@@ -203,14 +211,14 @@ public class FileConflictPathsTests(IServiceProvider provider) : AUiTest(provide
 
         var list = shown.Should().BeOfType<Dialog>().Subject.ViewModel.ContentViewModel.Should()
             .BeAssignableTo<IFileConflictPathsViewModel>().Subject;
-        list.Rows.Should().ContainSingle().Which.Path.Should().Be(Contested.ToString());
+        await EventuallyOnUi(() => list.Rows.Should().ContainSingle().Which.Path.Should().Be(Contested.ToString()));
     }
 
     [Fact]
     public async Task TheViewOffersMakeWinnerOnALosingPathAndClearPinOncePinned()
     {
         var mods = await SeedConflict("Path List View", Contested);
-        var paths = OpenPaths(mods);
+        var paths = await OpenPaths(mods);
 
         Window? window = null;
         await Dispatcher.UIThread.InvokeAsync(() =>
@@ -231,6 +239,36 @@ public class FileConflictPathsTests(IServiceProvider provider) : AUiTest(provide
             ButtonLabels(window!).Should().Contain(SilverModManager.App.UI.Resources.Language.FileConflicts_Paths_ClearPin)
                 .And.NotContain(SilverModManager.App.UI.Resources.Language.FileConflicts_Paths_MakeWinner);
         });
+    }
+
+    [Fact]
+    public async Task TheListOpensEmptyAndLoadingAndReadsItsPathsOffTheUiThread()
+    {
+        var mods = await SeedConflict("Paths Off UI", Contested);
+        var loadThreadOnUi = new List<bool>();
+        var release = new ManualResetEventSlim();
+        var paths = new FileConflictPathsViewModel(Loadouts, mods.Loadout.LoadoutId, mods.Low, () =>
+        {
+            lock (loadThreadOnUi) loadThreadOnUi.Add(Dispatcher.UIThread.CheckAccess());
+            release.Wait(TimeSpan.FromSeconds(10));
+            return FileConflictPaths.Load(Connection, mods.Loadout.LoadoutId, mods.LowPriority, null);
+        });
+
+        paths.IsLoading.Should().BeTrue();
+        paths.Rows.Should().BeEmpty();
+
+        Task? loading = null;
+        await Dispatcher.UIThread.InvokeAsync(() => { loading = paths.LoadAsync(); });
+        paths.IsLoading.Should().BeTrue();
+        release.Set();
+        await loading!;
+
+        paths.IsLoading.Should().BeFalse();
+        paths.Rows.Should().ContainSingle();
+        lock (loadThreadOnUi) loadThreadOnUi.Should().NotBeEmpty().And.AllBeEquivalentTo(false);
+
+        await paths.MakeWinner(Contested);
+        lock (loadThreadOnUi) loadThreadOnUi.Should().HaveCount(2).And.AllBeEquivalentTo(false);
     }
 
     /// <summary>The captions of the buttons a window shows; a button hidden by its row is not visible.</summary>
