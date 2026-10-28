@@ -7,6 +7,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Games.Witcher.Witcher3;
+using SilverModManager.Games.Witcher.Witcher3.Models;
 using SilverModManager.Games.Witcher.Witcher3.SortOrder;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
@@ -62,6 +63,12 @@ public class WitcherModSortOrderVarietyTests(ITestOutputHelper helper)
 
     private static string[] Order(IWitcherModSortOrderVariety variety, Loadout.ReadOnly loadout) =>
         variety.StoredOrder(loadout).Select(e => e.Folder).ToArray();
+
+    private List<(string Folder, bool IsEnabled, int SortIndex)> StoredRows(SortOrderId id) =>
+        SortOrderItem.FindByParentSortOrder(Db, id)
+            .Select(item => (item, folder: WitcherModSortOrderItem.Load(Db, item.Id)))
+            .Select(t => (t.folder.FolderName.Value, t.folder.IsEnabled.Value, t.item.SortIndex))
+            .Order().ToList();
 
     private Loadout.ReadOnly Fresh(Loadout.ReadOnly loadout) => Loadout.Load(Db, loadout.LoadoutId);
 
@@ -231,14 +238,16 @@ public class WitcherModSortOrderVarietyTests(ITestOutputHelper helper)
         }
         await variety.ReconcileSortOrder(id);
         var rule = LoadoutGroupRule.FindByLoadout(Db, loadout.LoadoutId).Single();
-        var storedBefore = Connection.Db.Datoms(SortOrderItem.ParentSortOrder, id).Count();
+        var storedBefore = StoredRows(id);
 
         var act = async () => await variety.MoveItems(id, [Key("modA")], Key("modB"), TargetRelativePosition.BeforeTarget, Db);
 
         (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage($"*{GroupRuleText.WinsOver(rule)}*");
         PriorityOf(a).Should().BeLessThan(PriorityOf(b));
         Folders(variety.GetSortOrderItems(id, Db)).Should().Equal(Merged, "modB", "modA");
-        Connection.Db.Datoms(SortOrderItem.ParentSortOrder, id).Count().Should().Be(storedBefore);
+        StoredRows(id).Should().Equal(storedBefore);
+        PriorityOf(b).Should().Be(2);
+        PriorityOf(a).Should().Be(1);
     }
 
     [Fact]
@@ -403,5 +412,66 @@ public class WitcherModSortOrderVarietyTests(ITestOutputHelper helper)
 
         for (var i = 0; i < 50 && !Shown().SequenceEqual([Merged, "modA", "modB"]); i++) await Task.Delay(100);
         Shown().Should().Equal(Merged, "modA", "modB");
+    }
+
+    private async Task<(WitcherModSortOrderVariety Variety, SortOrderId Id, LoadoutItemGroupId Shared, LoadoutItemGroupId Other)> SharedModSetup()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        var shared = await AddMod(loadout, "G", 2, "Mods/modFoo/a.ws", "Mods/modFooUI/b.ws");
+        var other = await AddMod(loadout, "H", 1, "Mods/modBar/c.ws");
+        await variety.ReconcileSortOrder(id);
+        Folders(variety.GetSortOrderItems(id, Db)).Should().Equal(Merged, "modFoo", "modFooUI", "modBar");
+        return (variety, id, shared, other);
+    }
+
+    private async Task ShouldBeRefusedAsOneMod(Func<WitcherModSortOrderVariety, SortOrderId, Task> drag)
+    {
+        var (variety, id, shared, other) = await SharedModSetup();
+        var rowsBefore = StoredRows(id);
+
+        var act = async () => await drag(variety, id);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage("*modFoo and modFooUI come from the same mod and move together.*");
+        PriorityOf(shared).Should().Be(2);
+        PriorityOf(other).Should().Be(1);
+        StoredRows(id).Should().Equal(rowsBefore);
+        Folders(variety.GetSortOrderItems(id, Db)).Should().Equal(Merged, "modFoo", "modFooUI", "modBar");
+    }
+
+    [Fact]
+    public Task AFolderDroppedBetweenTwoFoldersOfOneMod_IsRefused() =>
+        ShouldBeRefusedAsOneMod((v, id) => v.MoveItems(id, [Key("modBar")], Key("modFooUI"), TargetRelativePosition.BeforeTarget, Db));
+
+    [Fact]
+    public Task AFolderOfASharedModMovedPastAnotherMod_IsRefused() =>
+        ShouldBeRefusedAsOneMod((v, id) => v.MoveItems(id, [Key("modFooUI")], Key("modBar"), TargetRelativePosition.AfterTarget, Db));
+
+    [Fact]
+    public Task SwappingTwoFoldersOfOneMod_IsRefused() =>
+        ShouldBeRefusedAsOneMod((v, id) => v.MoveItems(id, [Key("modFoo")], Key("modFooUI"), TargetRelativePosition.AfterTarget, Db));
+
+    [Fact]
+    public async Task MovingAllFoldersOfOneModPastAnother_Works()
+    {
+        var (variety, id, shared, other) = await SharedModSetup();
+
+        await variety.MoveItems(id, [Key("modFoo"), Key("modFooUI")], Key("modBar"), TargetRelativePosition.AfterTarget, Db);
+
+        PriorityOf(other).Should().BeGreaterThan(PriorityOf(shared));
+        Folders(variety.GetSortOrderItems(id, Db)).Should().Equal(Merged, "modBar", "modFoo", "modFooUI");
+    }
+
+    [Fact]
+    public async Task SwitchingAFolder_KeepsItsStoredIndex()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        await AddMod(loadout, "A", 1, "Mods/modA/a.ws");
+        await AddMod(loadout, "B", 2, "Mods/modB/b.ws");
+        await variety.ReconcileSortOrder(id);
+        var before = StoredRows(id).Single(r => r.Folder == "modA").SortIndex;
+
+        await variety.SetEnabled(id, Key("modA"), false);
+
+        StoredRows(id).Single(r => r.Folder == "modA").Should().Be(("modA", false, before));
     }
 }

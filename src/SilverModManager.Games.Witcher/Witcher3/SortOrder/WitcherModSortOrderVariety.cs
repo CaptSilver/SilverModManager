@@ -236,14 +236,24 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
 
         // The merged folder is pinned, so it is left out by key. Where a drag put it in the proposal means nothing.
         var proposed = newOrder.Where(row => !row.Key.Equals(WitcherModFolders.MergedKey)).Select(row => row.Key).ToList();
-        var shown = RetrieveSortOrder(sortOrderId, startingDb).Where(row => !row.Key.Equals(WitcherModFolders.MergedKey)).Select(row => row.Key);
-        if (proposed.SequenceEqual(shown)) return await base.TryPersistSortOrder(sortOrderId, newOrder, startingDb, token);
+        var shownKeys = RetrieveSortOrder(sortOrderId, startingDb).Where(row => !row.Key.Equals(WitcherModFolders.MergedKey)).Select(row => row.Key).ToList();
+        if (proposed.SequenceEqual(shownKeys)) return await base.TryPersistSortOrder(sortOrderId, newOrder, startingDb, token);
 
         var loadoutId = LoadoutSortOrder.Load(startingDb, sortOrderId).LoadoutId;
         var groupsOf = RetrieveLoadoutData(loadoutId, Optional<CollectionGroupId>.None, startingDb).ToDictionary(data => data.Key, data => data.Groups);
 
         // A mod that puts files in two folders is one group; it takes the place of the first folder that lists it.
         var winnerToLoser = proposed.SelectMany(key => groupsOf[key]).Distinct().ToArray();
+        var current = shownKeys.SelectMany(key => groupsOf[key]).Distinct();
+
+        // Priorities belong to groups, so a move that only rearranges folders of one group cannot be stored.
+        if (winnerToLoser.SequenceEqual(current))
+        {
+            var folderOf = newOrder.ToDictionary(row => row.Key, row => row.Folder);
+            var shared = shownKeys.Where(key => groupsOf[key].Any(group => shownKeys.Any(other => !other.Equals(key) && groupsOf[other].Contains(group))))
+                .Select(key => folderOf[key]).ToList();
+            throw new InvalidOperationException($"{string.Join(" and ", shared)} come from the same mod and move together.");
+        }
 
         using var tx = Connection.BeginTransaction();
         var result = _loadouts.SetGroupOrder(loadoutId, winnerToLoser, tx);
@@ -251,7 +261,27 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
             throw new InvalidOperationException($"That move would break the rule '{GroupRuleText.WinsOver(result.Overridden[0].Rule)}'.");
 
         PersistSortOrderCore(sortOrderId, newOrder, tx, startingDb, token);
-        await tx.Commit();
+
+        // The same guard as the base class: a switch or reconcile that landed since startingDb must not be overwritten.
+        var sortOrderTxId = GetMaxTxIdForSortOrder(sortOrderId, startingDb);
+        if (sortOrderTxId == default(TxId)) return false;
+        tx.Add(sortOrderId, sortOrderTxId, (_, txDb, orderId, oldTxId) =>
+        {
+            var currentTxId = GetMaxTxIdForSortOrder(orderId, txDb);
+            if (currentTxId > oldTxId || currentTxId == default(TxId))
+                throw new InvalidOperationException($"Unable to complete transaction: Sort Order {orderId} changed, Current TxId: {currentTxId}, Old TxId: {oldTxId}");
+        });
+
+        try
+        {
+            await tx.Commit();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Failed to persist the Witcher 3 load order {SortOrderId}", sortOrderId);
+            return false;
+        }
+
         return true;
     }
 
@@ -369,9 +399,9 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
     private void Stage(SortOrderId sortOrderId, IReadOnlyList<WitcherModSortData> rows, ITransaction tx, IDb db)
     {
         var stored = StoredRows(sortOrderId, db);
-        for (var index = 0; index < rows.Count; index++)
+        foreach (var row in rows)
         {
-            var row = rows[index];
+            var index = row.SortIndex;
             if (row.Key.Equals(WitcherModFolders.MergedKey)) continue;
 
             if (stored.TryGetValue(row.Key, out var existing))
