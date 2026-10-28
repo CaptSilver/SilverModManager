@@ -177,13 +177,21 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                 if (installed.HasValue && installed.Value.Revision.Id != revisionMetadata.Id)
                 {
                     if (CollectionUpdater.IsUpdateTo(installed.Value, revisionMetadata))
+                    {
+                        logger.LogDebug("Primary action on revision {To} of `{Slug}`: updating the installed revision {From}", revisionMetadata.RevisionNumber, _collection.Slug, installed.Value.Revision.RevisionNumber);
                         await CollectionUpdateFlow.Run(serviceProvider, windowManager, _notificationService, installed.Value, revisionMetadata, cancellationToken);
+                    }
                     else
+                    {
                         _notificationService.ShowToast(Language.CollectionDownloadViewModel_OlderThanInstalled, ToastNotificationVariant.Failure);
+                    }
+
                     return;
                 }
 
                 var items = CollectionDownloader.GetItems(revisionMetadata, CollectionDownloader.ItemType.Required);
+                logger.LogDebug("Primary action on revision {Revision} of `{Slug}`: installing its {Count} required mods ({State})", revisionMetadata.RevisionNumber, _collection.Slug, items.Length,
+                    installed.HasValue ? "the collection is on this revision" : "the collection isn't installed");
                 var group = await InstallCollectionJob.Create(
                     serviceProvider,
                     targetLoadout,
@@ -305,10 +313,16 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     // The new revision's page shows the progress. When its mods aren't downloaded yet, that page's Update button
                     // does the update once they are.
                     var installed = CollectionUpdater.GetInstalledGroup(_collection, targetLoadout, connection.Db);
-                    if (installed.HasValue && CollectionUpdater.IsUpdateTo(installed.Value, revision)
-                        && CollectionDownloader.IsFullyDownloaded(CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Required), connection.Db))
+                    var isUpdate = installed.HasValue && CollectionUpdater.IsUpdateTo(installed.Value, revision);
+                    var isDownloaded = CollectionDownloader.IsFullyDownloaded(CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Required), connection.Db);
+                    if (isUpdate && isDownloaded)
                     {
                         await CollectionUpdateFlow.Run(serviceProvider, windowManager, _notificationService, installed.Value, revision, cancellationToken);
+                    }
+                    else
+                    {
+                        logger.LogDebug("Not updating collection `{Slug}` to revision {To} from here: {Reason}", _collection.Slug, newestRevisionNumber,
+                            !installed.HasValue ? "it isn't installed in this loadout" : !isUpdate ? "the installed revision isn't older" : "its required mods aren't all downloaded yet");
                     }
                 }
                 catch (Exception e) when (!cancellationToken.IsCancellationRequested && !TimeoutDetection.IsRealCancellation(e))
@@ -394,10 +408,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     .Prepend(false);
 
                 // Installed under another revision of the collection: this page's primary action is then "Update".
-                var installedAnyRevisionObservable = connection
-                    .ObserveDatoms(NexusCollectionLoadoutGroup.Collection, _collection)
-                    .QueryWhenChanged(_ => CollectionUpdater.GetInstalledGroup(_collection, _targetLoadout, connection.Db))
-                    .Prepend(CollectionUpdater.GetInstalledGroup(_collection, _targetLoadout, connection.Db));
+                var installedAnyRevisionObservable = CollectionUpdater.ObserveInstalledGroup(connection, _collection, _targetLoadout);
 
                 collectionGroupObservable
                     .CombineLatest(installedAnyRevisionObservable, (thisRevision, anyRevision) => anyRevision.HasValue && !thisRevision.HasValue

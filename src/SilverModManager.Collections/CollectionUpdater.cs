@@ -3,6 +3,7 @@ using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.ExceptionServices;
+using DynamicData;
 using DynamicData.Kernel;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,7 @@ using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Networking.NexusWebApi;
 using SilverModManager.Sdk.Jobs;
@@ -74,7 +76,7 @@ public sealed record CollectionUpdateResult(
 /// Updates an installed Nexus collection to another revision in place: the collection keeps its group, its place in
 /// the menu and the position of every mod that didn't change, instead of the new revision being installed as a second collection.
 /// </summary>
-public static class CollectionUpdater
+public static partial class CollectionUpdater
 {
     // The checks only hold if nothing else installs into or removes the group between them and the switch.
     private static readonly SemaphoreSlim Gate = new(initialCount: 1, maxCount: 1);
@@ -94,6 +96,27 @@ public static class CollectionUpdater
         }
 
         return Optional<NexusCollectionLoadoutGroup.ReadOnly>.None;
+    }
+
+    /// <summary>
+    /// <see cref="GetInstalledGroup"/>, again whenever a collection is installed, removed or switched to another revision.
+    /// </summary>
+    public static IObservable<Optional<NexusCollectionLoadoutGroup.ReadOnly>> ObserveInstalledGroup(IConnection connection, CollectionMetadata.ReadOnly collection, LoadoutId loadoutId) =>
+        // The revision datom, not the collection one: an update changes only the revision.
+        connection.ObserveDatoms(NexusCollectionLoadoutGroup.Revision)
+            .QueryWhenChanged(_ => GetInstalledGroup(collection, loadoutId, connection.Db))
+            .Prepend(GetInstalledGroup(collection, loadoutId, connection.Db));
+
+    /// <summary>
+    /// Emits whether the loadout has <paramref name="revision"/>'s collection installed on a newer revision, which leaves
+    /// this revision as a leftover of an earlier update rather than something to install.
+    /// </summary>
+    public static IObservable<bool> ObserveIsSuperseded(IConnection connection, CollectionRevisionMetadata.ReadOnly revision, LoadoutId loadoutId)
+    {
+        var number = revision.RevisionNumber;
+        return ObserveInstalledGroup(connection, revision.Collection, loadoutId)
+            .Select(installed => installed.HasValue && installed.Value.Revision.RevisionNumber > number)
+            .DistinctUntilChanged();
     }
 
     /// <summary>Whether installing <paramref name="target"/> over the installed group is an update, i.e. the revision is newer.</summary>
@@ -143,7 +166,8 @@ public static class CollectionUpdater
     /// replaced mods where the old ones stood.
     /// </summary>
     /// <remarks>
-    /// Nothing is changed unless every archive the install needs is already in the library. After that there is no
+    /// First runs <see cref="Repair"/>, so a collection an earlier update left inconsistent is sorted out before it is
+    /// compared with the new revision. Beyond that, nothing is changed unless every archive the install needs is already in the library. After that there is no
     /// rollback: a mod that fails to install leaves the group on the new revision with that mod not installed, which the
     /// revision's page shows and offers to install again.
     /// </remarks>
@@ -158,11 +182,25 @@ public static class CollectionUpdater
         var monitor = serviceProvider.GetRequiredService<IJobMonitor>();
         var key = (group.Collection.Id, group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId);
 
+        var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(CollectionUpdater));
+
         await Gate.WaitAsync(cancellationToken);
         SetUpdating(key, true);
         try
         {
-            var switched = await Switch(serviceProvider, group, newRevision, cancellationToken);
+            group = CheckCanSwitch(connection.Db, monitor, group, newRevision);
+            var repaired = await RepairUnlocked(serviceProvider, group, dryRun: false, cancellationToken);
+
+            CollectionSwitch switched;
+            try
+            {
+                switched = await SwitchUnlocked(serviceProvider, group, newRevision, cancellationToken);
+            }
+            catch (InvalidOperationException e)
+            {
+                // The repair is already committed; its dropped mods sit in My Mods and the user still gets asked about them.
+                throw new CollectionUpdateRefusedException(e.Message, repaired, e);
+            }
             var loadoutId = switched.Group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId;
 
             var job = InstallCollectionJob.Create(serviceProvider, loadoutId, switched.LibraryFile, newRevision, switched.Items, preserveEnabledState: true);
@@ -181,12 +219,20 @@ public static class CollectionUpdater
             // The install can end early (cancelled, or the collection's rules contradict the user's after every mod went in), so
             // the clean-up works from what is in the database: an old version goes only if its replacement is there.
             var (kept, skippedRules) = await FinishReplacements(serviceProvider, connection, loadoutId, switched.Group.Id, switched.ReplacedSlots);
+            logger.LogDebug("Update of collection `{Slug}` to revision {To} installed {Installed} mods ({Failed} failed); {Replaced} old versions replaced, {Kept} kept as the user's own",
+                newRevision.Collection.Slug, newRevision.RevisionNumber, switched.Items.Length - job.JobDefinition.FailedItems.Count, job.JobDefinition.FailedItems.Count,
+                switched.ReplacedSlots.Count - kept, kept);
 
             if (failure is not null && (cancellationToken.IsCancellationRequested || TimeoutDetection.IsRealCancellation(failure)))
                 ExceptionDispatchInfo.Capture(failure).Throw();
 
             return new CollectionUpdateResult(
-                NexusCollectionLoadoutGroup.Load(connection.Db, switched.Group.Id), switched.Dropped, job.JobDefinition.FailedItems, kept, skippedRules, failure);
+                NexusCollectionLoadoutGroup.Load(connection.Db, switched.Group.Id),
+                [.. repaired.Dropped, .. switched.Dropped],
+                job.JobDefinition.FailedItems,
+                kept,
+                [.. repaired.SkippedRules, .. skippedRules],
+                failure);
         }
         finally
         {
@@ -200,33 +246,49 @@ public static class CollectionUpdater
     /// the ones that stay (repointed at the new revision's downloads), the ones the new revision replaces (taken out of the collection until the replacement is installed) and
     /// the ones it no longer lists (moved to the loadout's own collection). No mod is installed.
     /// </summary>
-    public static async ValueTask<CollectionSwitch> Switch(
+    public static ValueTask<CollectionSwitch> Switch(
         IServiceProvider serviceProvider,
         NexusCollectionLoadoutGroup.ReadOnly group,
         CollectionRevisionMetadata.ReadOnly newRevision,
         CancellationToken cancellationToken = default)
     {
-        var connection = serviceProvider.GetRequiredService<IConnection>();
-        var downloader = serviceProvider.GetRequiredService<CollectionDownloader>();
-        var jobMonitor = serviceProvider.GetRequiredService<IJobMonitor>();
+        group = CheckCanSwitch(serviceProvider.GetRequiredService<IConnection>().Db, serviceProvider.GetRequiredService<IJobMonitor>(), group, newRevision);
+        return SwitchUnlocked(serviceProvider, group, newRevision, cancellationToken);
+    }
 
-        var db = connection.Db;
+    /// <summary>The group as it is now, if it can be switched to <paramref name="newRevision"/>.</summary>
+    /// <exception cref="InvalidOperationException">It can't; the message says why.</exception>
+    private static NexusCollectionLoadoutGroup.ReadOnly CheckCanSwitch(IDb db, IJobMonitor jobMonitor, NexusCollectionLoadoutGroup.ReadOnly group, CollectionRevisionMetadata.ReadOnly newRevision)
+    {
         group = NexusCollectionLoadoutGroup.Load(db, group.Id);
         if (!group.IsValid()) throw new InvalidOperationException("The collection is no longer installed in this loadout.");
         if (group.Collection.Id != newRevision.Collection.Id) throw new InvalidOperationException("That revision belongs to another collection.");
         if (group.Revision.Id == newRevision.Id) throw new InvalidOperationException("The collection is already on that revision.");
         if (!IsUpdateTo(group, newRevision))
             throw new InvalidOperationException($"Revision {newRevision.RevisionNumber} is older than the installed revision {group.Revision.RevisionNumber}. Updating to an older revision isn't supported.");
+        ThrowIfInstalling(jobMonitor, group);
+        return group;
+    }
 
+    private static async ValueTask<CollectionSwitch> SwitchUnlocked(
+        IServiceProvider serviceProvider,
+        NexusCollectionLoadoutGroup.ReadOnly group,
+        CollectionRevisionMetadata.ReadOnly newRevision,
+        CancellationToken cancellationToken)
+    {
+        var connection = serviceProvider.GetRequiredService<IConnection>();
+        var downloader = serviceProvider.GetRequiredService<CollectionDownloader>();
+        var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(CollectionUpdater));
+
+        var db = connection.Db;
+        group = NexusCollectionLoadoutGroup.Load(db, group.Id);
         var loadoutId = group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId;
-        if (jobMonitor.Jobs.Any(job => job.Status is JobStatus.Created or JobStatus.Running or JobStatus.Paused && Blocks(job.Definition, group)))
-            throw new InvalidOperationException("The collection is still being installed. Wait for it to finish, or cancel it, then try again.");
 
         var nexusModsLibrary = serviceProvider.GetRequiredService<NexusModsLibrary>();
         var options = serviceProvider.GetRequiredService<JsonSerializerOptions>();
         var newLibraryFile = downloader.GetLibraryFile(newRevision);
         var newRoot = await nexusModsLibrary.ParseCollectionJsonFile(newLibraryFile, cancellationToken);
-        var oldRoot = await TryParse(nexusModsLibrary, group, downloader, cancellationToken);
+        var oldRoot = await TryParse(nexusModsLibrary, group.Revision, downloader, logger, cancellationToken);
 
         var items = group.GetCollectionItems().ToArray();
         var installed = items.Select(item => Describe(item, oldRoot, group.LibraryFile, options)).ToArray();
@@ -234,6 +296,9 @@ public static class CollectionUpdater
         var available = newDownloads.Select(download => Describe(download, newRoot, newLibraryFile, options)).ToArray();
 
         var plan = CollectionUpdatePlanner.Plan(installed, available);
+        logger.LogDebug("Plan for collection `{Slug}` from revision {From} ({Installed} mods) to {To} ({Available} mods): {Kept} unchanged, {Changed} changed, {Added} new ({AddedRequired} required), {Dropped} dropped",
+            newRevision.Collection.Slug, group.Revision.RevisionNumber, installed.Length, newRevision.RevisionNumber, available.Length,
+            plan.Kept.Count, plan.Changed.Count, plan.Added.Count, plan.Added.Count(static mod => mod.IsRequired), plan.Dropped.Count);
 
         var toInstall = plan.ToInstall.Select(mod => mod.Download).ToHashSet();
         var itemsToInstall = newDownloads.Where(download => toInstall.Contains(CollectionDownloadId.From(download.Id))).ToArray();
@@ -448,16 +513,18 @@ public static class CollectionUpdater
             .ToList();
     }
 
-    private static async ValueTask<CollectionRoot?> TryParse(NexusModsLibrary library, NexusCollectionLoadoutGroup.ReadOnly group, CollectionDownloader downloader, CancellationToken cancellationToken)
+    /// <summary>The revision's collection.json, or null when its archive isn't in the library any more.</summary>
+    private static async ValueTask<CollectionRoot?> TryParse(NexusModsLibrary library, CollectionRevisionMetadata.ReadOnly revision, CollectionDownloader downloader, ILogger logger, CancellationToken cancellationToken)
     {
         try
         {
-            return await library.ParseCollectionJsonFile(downloader.GetLibraryFile(group.Revision), cancellationToken);
+            return await library.ParseCollectionJsonFile(downloader.GetLibraryFile(revision), cancellationToken);
         }
         catch (Exception e) when (!cancellationToken.IsCancellationRequested && e is not OperationCanceledException)
         {
             // The old archive can be removed from the library while the collection stays installed. Without it the
             // install settings of the installed mods are unknown, so the file alone decides whether a mod is unchanged.
+            logger.LogDebug(e, "Couldn't read the collection.json of revision {Revision} of `{Slug}`; comparing its mods by file only", revision.RevisionNumber, revision.Collection.Slug);
             return null;
         }
     }
@@ -483,7 +550,7 @@ public static class CollectionUpdater
     private static (string File, string Mod) Identify(CollectionDownload.ReadOnly download, NexusModsCollectionLibraryFile.ReadOnly libraryFile)
     {
         if (download.TryGetAsCollectionDownloadNexusMods(out var nexus))
-            return ($"nexus:{nexus.ModUid}:{nexus.FileUid}", $"nexus:{nexus.ModUid}");
+            return ($"nexus:{nexus.ModUid.AsUlong}:{nexus.FileUid.AsUlong}", $"nexus:{nexus.ModUid.AsUlong}");
 
         if (download.TryGetAsCollectionDownloadBundled(out var bundled))
             return ($"bundled:{bundled.BundledPath}:{BundledContent(libraryFile, bundled.BundledPath)}", $"bundled:{bundled.BundledPath}");

@@ -46,8 +46,22 @@ internal static class CollectionUpdateFlow
             var succeeded = result.Error is null && result.Failed.Count == 0 && result.SkippedRules.Count == 0;
             notifications.ShowToast(ResultText(result, (int)revision.RevisionNumber.Value), succeeded ? ToastNotificationVariant.Success : ToastNotificationVariant.Failure);
             if (result.Error is not null) logger.LogError(result.Error, "Updating collection `{Slug}` to revision {To} stopped early", revision.Collection.Slug, revision.RevisionNumber);
+            logger.LogDebug("Updated collection `{Slug}` to revision {To}: {Failed} failed, {Kept} old versions kept, {Dropped} dropped mods to ask about",
+                revision.Collection.Slug, revision.RevisionNumber, result.Failed.Count, result.OldVersionsKept, result.Dropped.Count);
 
             var toRemove = await DroppedModsPrompt.Ask(windowManager, revision.Collection.Name, (int)revision.RevisionNumber.Value, result.Dropped);
+            if (toRemove.Count > 0) await CollectionUpdater.RemoveDropped(serviceProvider, toRemove);
+        }
+        catch (CollectionUpdateRefusedException e)
+        {
+            // Refused before the switch, but the repair that runs first may have moved mods out of the collection.
+            logger.LogError(e, "Updating collection `{Slug}` to revision {To} was refused", revision.Collection.Slug, revision.RevisionNumber);
+            notifications.ShowToast(
+                string.Format(Language.ToastNotification_Couldn_t_update_to_revision__0____1_, revision.RevisionNumber, e.Message),
+                ToastNotificationVariant.Failure
+            );
+
+            var toRemove = await DroppedModsPrompt.Ask(windowManager, revision.Collection.Name, (int)group.Revision.RevisionNumber.Value, e.Repaired.Dropped);
             if (toRemove.Count > 0) await CollectionUpdater.RemoveDropped(serviceProvider, toRemove);
         }
         catch (Exception e) when (!TimeoutDetection.IsRealCancellation(e))

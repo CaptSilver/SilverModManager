@@ -52,6 +52,10 @@ public readonly struct FileUid : IEquatable<FileUid>
     /// </summary>
     public string ToV2Api() => AsUlong.ToString();
 
+    /// <summary>The game and the file id, e.g. <c>3333:107</c>.</summary>
+    /// <remarks>Without this a struct prints its type name, so every uid read the same in a string key or a log line.</remarks>
+    public override string ToString() => $"{GameId.Value}:{FileId.Value}";
+
     /// <summary>
     /// Reinterprets the current <see cref="FileUid"/> as a single <see cref="ulong"/>.
     /// </summary>

@@ -145,6 +145,14 @@ public class ModUidTests
         // Assert
         roundTripped.Should().Be(original);
     }
+
+    [Fact]
+    public void ToString_NamesTheGameAndTheMod()
+    {
+        // String keys built from uids (the collection updater's file and mod keys) need distinct text per uid.
+        new ModUid(ModId.From(405), NexusModsGameId.From(1704)).ToString().Should().Be("1704:405");
+        new ModUid(ModId.From(406), NexusModsGameId.From(1704)).ToString().Should().NotBe(new ModUid(ModId.From(405), NexusModsGameId.From(1704)).ToString());
+    }
 }
 
 

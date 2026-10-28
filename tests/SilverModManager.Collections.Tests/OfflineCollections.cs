@@ -161,13 +161,14 @@ internal sealed class OfflineCollections(IServiceProvider serviceProvider, IConn
     /// files must already be in the library (see <see cref="AddDirectDownload"/>).
     /// </summary>
     /// <param name="bundledFiles">The files of the <c>bundle</c> mods, by the mod's file expression; they go under <c>bundled/&lt;expression&gt;/</c> in the collection archive.</param>
-    public async Task<CollectionResult> Create(CollectionRoot manifest, int[]? optionalIndexes = null, int revisionNumber = 1, IReadOnlyDictionary<string, (string Path, string Content)[]>? bundledFiles = null)
+    /// <param name="slug">The collection's slug; revisions with the same slug belong to the same collection.</param>
+    public async Task<CollectionResult> Create(CollectionRoot manifest, int[]? optionalIndexes = null, int revisionNumber = 1, IReadOnlyDictionary<string, (string Path, string Content)[]>? bundledFiles = null, string slug = "offline")
     {
         var options = serviceProvider.GetRequiredService<JsonSerializerOptions>();
         var folder = temporaryFileManager.CreateFolder();
         var parsed = JsonSerializer.Deserialize<CollectionRoot>(JsonSerializer.Serialize(manifest, options), options)!;
 
-        var (fileId, revisionId) = await Persist(folder.Path, parsed, optionalIndexes, addRules: null, revisionNumber, bundledFiles);
+        var (fileId, revisionId) = await Persist(folder.Path, parsed, optionalIndexes, addRules: null, revisionNumber, bundledFiles, slug);
 
         // The online fetch commits the revision first and matches the rules against what it stored.
         using var ruleTx = connection.BeginTransaction();
@@ -187,6 +188,53 @@ internal sealed class OfflineCollections(IServiceProvider serviceProvider, IConn
         await fileTx.Commit();
     }
 
+    /// <summary>The game id every offline collection and Nexus file uses.</summary>
+    public static readonly NexusModsGameId Game = NexusModsGameId.From(3333);
+
+    /// <summary>
+    /// Puts a zip in the library the way a Nexus download lands there: a library file that is also a
+    /// <see cref="NexusModsLibraryItem"/> pointing at the file's metadata, which a collection download with the same uid shares.
+    /// </summary>
+    public async Task AddNexusDownload(AbsolutePath path, uint modId, uint fileId)
+    {
+        var file = await libraryService.AddLocalFile(path);
+        using var tx = connection.BeginTransaction();
+        var (page, metadata) = NexusMetadata(tx, modId, fileId, path.FileName);
+        tx.Add(file.Id, NexusModsLibraryItem.FileMetadata, metadata);
+        tx.Add(file.Id, NexusModsLibraryItem.ModPageMetadata, page);
+        await tx.Commit();
+    }
+
+    /// <summary>The mod page and file metadata for the uids, made in <paramref name="tx"/> unless the database already has them.</summary>
+    private (EntityId Page, EntityId File) NexusMetadata(ITransaction tx, uint modId, uint fileId, string name)
+    {
+        var db = connection.Db;
+        var modUid = new ModUid(ModId.From(modId), Game);
+        var fileUid = new FileUid(FileId.From(fileId), Game);
+
+        var page = NexusModsModPageMetadata.FindByUid(db, modUid).Select(static p => (EntityId?)p.Id).FirstOrDefault()
+            ?? new NexusModsModPageMetadata.New(tx)
+            {
+                Uid = modUid,
+                Name = name,
+                GameDomain = GameDomain.From("cyberpunk2077"),
+                UpdatedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+                DataUpdatedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+            }.Id;
+
+        var file = NexusModsFileMetadata.FindByUid(db, fileUid).Select(static f => (EntityId?)f.Id).FirstOrDefault()
+            ?? new NexusModsFileMetadata.New(tx)
+            {
+                Uid = fileUid,
+                Name = name,
+                Version = fileId.ToString(),
+                UploadedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+                ModPageId = page,
+            }.Id;
+
+        return (page, file);
+    }
+
     private CollectionResult Load(EntityId fileId, EntityId revisionId)
     {
         var db = connection.Db;
@@ -199,9 +247,10 @@ internal sealed class OfflineCollections(IServiceProvider serviceProvider, IConn
         AbsolutePath folder, CollectionRoot root, int[]? optionalIndexes,
         Action<ITransaction, List<CollectionDownload.New>>? addRules,
         int revisionNo = 1,
-        IReadOnlyDictionary<string, (string Path, string Content)[]>? bundledFiles = null)
+        IReadOnlyDictionary<string, (string Path, string Content)[]>? bundledFiles = null,
+        string slugText = "offline")
     {
-        var slug = CollectionSlug.From("offline");
+        var slug = CollectionSlug.From(slugText);
         var revisionNumber = RevisionNumber.From((ulong)revisionNo);
 
         var collectionJson = folder.Combine("collection.json");
@@ -237,20 +286,21 @@ internal sealed class OfflineCollections(IServiceProvider serviceProvider, IConn
         }
         else
         {
-            var author = new User.New(tx) { Name = "Author", NexusId = 1 };
+            var author = new User.New(tx) { Name = "Author", NexusId = (ulong)CollectionMetadata.All(connection.Db).Count() + 1 };
             collectionEntity = new CollectionMetadata.New(tx)
             {
-                CollectionId = CollectionId.From(1),
+                CollectionId = CollectionId.From((ulong)CollectionMetadata.All(connection.Db).Count() + 1),
                 Slug = slug,
-                Name = "Offline",
-                GameId = NexusModsGameId.From(3333),
+                Name = slugText == "offline" ? "Offline" : slugText,
+                GameId = Game,
                 AuthorId = author,
             }.Id;
         }
 
         var revision = new CollectionRevisionMetadata.New(tx)
         {
-            RevisionId = RevisionId.From((ulong)revisionNo),
+            // Revision ids are unique across collections; the default collection keeps its number as its id.
+            RevisionId = RevisionId.From(slugText == "offline" ? (ulong)revisionNo : 1_000_000UL + (ulong)CollectionRevisionMetadata.All(connection.Db).Count()),
             RevisionNumber = revisionNumber,
             CollectionId = collectionEntity,
         };
@@ -274,6 +324,20 @@ internal sealed class OfflineCollections(IServiceProvider serviceProvider, IConn
                 {
                     CollectionDownload = download,
                     BundledPath = mod.Source.FileExpression,
+                };
+                continue;
+            }
+
+            if (mod.Source.Type == ModSourceType.NexusMods)
+            {
+                // Same as the online fetch: the download shares the file's metadata entity with the library item.
+                var (_, metadata) = NexusMetadata(tx, mod.Source.ModId.Value, mod.Source.FileId.Value, mod.Name);
+                _ = new CollectionDownloadNexusMods.New(tx, download.Id)
+                {
+                    CollectionDownload = download,
+                    ModUid = new ModUid(mod.Source.ModId, Game),
+                    FileUid = new FileUid(mod.Source.FileId, Game),
+                    FileMetadataId = metadata,
                 };
                 continue;
             }

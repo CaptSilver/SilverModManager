@@ -56,6 +56,10 @@ public readonly struct ModUid : IEquatable<ModUid>
     /// </summary>
     public string ToV2Api() => AsUlong.ToString();
 
+    /// <summary>The game and the mod id, e.g. <c>3333:107</c>.</summary>
+    /// <remarks>Without this a struct prints its type name, so every uid read the same in a string key or a log line.</remarks>
+    public override string ToString() => $"{GameId.Value}:{ModId.Value}";
+
     /// <summary>
     /// Reinterprets the current <see cref="ModUid"/> as a single <see cref="ulong"/>.
     /// </summary>

@@ -139,7 +139,10 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
             {
                 var groupObservable = collectionDownloader.GetCollectionGroupObservable(revision, loadout);
                 var isNotInstalledObservable = collectionDownloader.IsCollectionInstalledObservable(revision, groupObservable).Select(static isInstalled => !isInstalled);
-                return isNotInstalledObservable;
+                // An update leaves the old revision behind with nothing installed from it; listing it would show the
+                // collection twice under one name.
+                var isSupersededObservable = CollectionUpdater.ObserveIsSuperseded(conn, revision, loadout);
+                return isNotInstalledObservable.CombineLatest(isSupersededObservable, static (isNotInstalled, isSuperseded) => isNotInstalled && !isSuperseded);
             })
             .Transform(ILeftMenuItemViewModel (revision) =>
             {

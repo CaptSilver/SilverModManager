@@ -127,6 +127,8 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
 
         var skipCount = Items.Length - items.Length;
         if (skipCount > 0) Logger.LogInformation("Skipping `{Count}` already installed items for `{CollectionName}/{RevisionNumber}`", skipCount, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
+        Logger.LogDebug("Installing {ToInstall} of the {Given} mods given for `{CollectionName}/{RevisionNumber}` into {Group}", items.Length, Items.Length,
+            RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber, Group.HasValue ? $"the existing collection {Group.Value.Id}" : "a new collection");
 
         Progress.Begin(total: items.Length, alreadyInstalled: skipCount);
 
