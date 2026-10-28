@@ -19,6 +19,7 @@ using SilverModManager.Games.TestFramework.Helpers;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
@@ -62,6 +63,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
     private sealed class SettleSwitch
     {
         public bool Fail { get; set; }
+        public bool FailBaselineBuild { get; set; }
     }
 
     protected override SteamInstall InstallGame(SteamLibraryFixture library)
@@ -437,6 +439,74 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         await NoVanillaFileWasBackedUp();
     }
 
+    // Steam moved the game to new depot manifests. The registry's installation keeps the ids it was located with, as
+    // it does in the running app until the next start, and only the app manifest on disk names the new build.
+    private void SteamUpdatesTheGame(bool cachesTheNewManifests)
+    {
+        var game = CyberpunkSteamInstall.GameDepot with { ManifestId = NewGameManifestId };
+        var expansion = CyberpunkSteamInstall.ExpansionDepot with { ManifestId = NewExpansionManifestId };
+        if (cachesTheNewManifests)
+        {
+            Library.RestoreManifest(game);
+            Library.RestoreManifest(expansion);
+        }
+
+        var appManifest = Install.AppManifest.ToString();
+        File.WriteAllText(appManifest, File.ReadAllText(appManifest)
+            .Replace(CyberpunkSteamInstall.GameManifestId.ToString(), NewGameManifestId.ToString())
+            .Replace(CyberpunkSteamInstall.ExpansionManifestId.ToString(), NewExpansionManifestId.ToString()));
+    }
+
+    private const ulong NewGameManifestId = 7000000000000000011;
+    private const ulong NewExpansionManifestId = 7000000000000000012;
+
+    private async Task EveryVanillaFileIsOnDiskAndNoneWasBackedUp()
+    {
+        foreach (var file in CyberpunkSteamInstall.GameFiles.Concat(CyberpunkSteamInstall.ExpansionFiles))
+            (await ReadGameFile(file.Path)).Should().Be(System.Text.Encoding.UTF8.GetString(file.Content), $"`{file.Path}` is the game's own");
+        await NoVanillaFileWasBackedUp();
+    }
+
+    [Fact]
+    public async Task AGameUpdatedToABuildNoStoreCovers_RefusesTheApplyAndLeavesEveryVanillaFileAlone()
+    {
+        var loadout = await CreateLoadout();
+        SteamUpdatesTheGame(cachesTheNewManifests: false);
+
+        var act = () => Synchronizer.Synchronize(Refresh(loadout));
+
+        await act.Should().ThrowAsync<UserFacingException>();
+        await EveryVanillaFileIsOnDiskAndNoneWasBackedUp();
+        Refresh(loadout).LocatorIds.Select(id => id.Value).Should().NotContain(NewGameManifestId.ToString(), "a refused apply writes nothing");
+    }
+
+    [Fact]
+    public async Task AGameUpdatedToABuildTheStoreHasManifestsFor_RebuildsTheBaselineAndTouchesNoVanillaFile()
+    {
+        var loadout = await CreateLoadout();
+        SteamUpdatesTheGame(cachesTheNewManifests: true);
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        Refresh(loadout).LocatorIds.Select(id => id.Value).Should().Contain(NewGameManifestId.ToString());
+        LocalBaseline.All(Hashes.Local).Single().LocatorIds.Should().Contain(NewGameManifestId.ToString(), "the apply built the baseline of the installed build");
+        Overrides(Refresh(loadout)).Should().BeEquivalentTo(PlayerFiles, "an unchanged vanilla file is not an external change");
+        await EveryVanillaFileIsOnDiskAndNoneWasBackedUp();
+    }
+
+    [Fact]
+    public async Task AGameUpdatedWhenTheBaselineCannotBeRebuilt_RefusesTheApplyAndLeavesEveryVanillaFileAlone()
+    {
+        var loadout = await CreateLoadout();
+        SteamUpdatesTheGame(cachesTheNewManifests: true);
+        _settle.FailBaselineBuild = true;
+
+        var act = () => Synchronizer.Synchronize(Refresh(loadout));
+
+        await act.Should().ThrowAsync<UserFacingException>();
+        await EveryVanillaFileIsOnDiskAndNoneWasBackedUp();
+    }
+
     private async Task NoVanillaFileWasBackedUp()
     {
         foreach (var file in CyberpunkSteamInstall.GameFiles.Concat(CyberpunkSteamInstall.ExpansionFiles))
@@ -493,7 +563,8 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         public bool TryGetVanityVersion(LocatorIdsWithGameStore locatorIdsWithGameStore, out VanityVersion version) => inner.TryGetVanityVersion(locatorIdsWithGameStore, out version);
         public bool TryGetLocatorIdsForVanityVersion(GameStore gameStore, VanityVersion version, out LocatorId[] locatorIds) => inner.TryGetLocatorIdsForVanityVersion(gameStore, version, out locatorIds);
         public LocatorId[] GetLocatorIdsForVersionDefinition(GameStore gameStore, VersionDefinition.ReadOnly versionDefinition) => inner.GetLocatorIdsForVersionDefinition(gameStore, versionDefinition);
-        public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default) => inner.EnsureLocalBaseline(installation, cancellationToken);
+        public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default)
+            => gate.FailBaselineBuild ? throw new InvalidOperationException("the baseline build failed") : inner.EnsureLocalBaseline(installation, cancellationToken);
         public Task RemoveLocalBaseline(GameStore store, string gamePath, CancellationToken cancellationToken = default) => inner.RemoveLocalBaseline(store, gamePath, cancellationToken);
         public Task WaitForLocalBaselineBuild(GameInstallation installation, CancellationToken cancellationToken = default) => inner.WaitForLocalBaselineBuild(installation, cancellationToken);
         public Task RecordIndexedFiles(GameInstallation installation, IReadOnlyList<IndexedFileHash> files, CancellationToken cancellationToken = default) => inner.RecordIndexedFiles(installation, files, cancellationToken);

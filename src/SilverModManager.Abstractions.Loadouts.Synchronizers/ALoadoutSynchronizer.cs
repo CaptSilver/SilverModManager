@@ -684,14 +684,15 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// Updates the locator IDs on the loadout if the game has been updated by the store.
     /// This should be called before building the sync tree.
     /// </summary>
-    private async ValueTask<Loadout.ReadOnly> UpdateLocatorIds(Loadout.ReadOnly loadout)
+    private async ValueTask<(Loadout.ReadOnly Loadout, GameInstallation Installation)> UpdateLocatorIds(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
-        var locator = loadout.InstallationInstance.LocatorResult.Locator;
+        var registered = loadout.InstallationInstance;
+        var locator = registered.LocatorResult.Locator;
         if (!locator.TryLocate(loadout.Game, out var gameLocatorResult))
         {
             // NOTE(erri120): It would be very odd if we re-query the game, and it's not installed anymore
             Logger.LogCritical("Found no installation of the game `{Store}`/`{Game}` anymore!", loadout.Installation.Store, loadout.Game.DisplayName);
-            return loadout;
+            return (loadout, registered);
         }
 
         var metadataLocatorIds = gameLocatorResult.LocatorIds;
@@ -702,10 +703,36 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         var locatorsToAdd = newLocatorIds.Except(loadout.LocatorIds).ToArray();
         var locatorsToRemove = loadout.LocatorIds.Except(newLocatorIds).ToArray();
+        var changed = locatorsToAdd.Length != 0 || locatorsToRemove.Length != 0;
+
+        // The registry keeps the ids the game was found with until the app restarts, so everything below that
+        // depends on the build works from the install as it is located now.
+        var located = new GameInstallation(gameLocatorResult, registered.Locations);
+        var baseline = FindLocalBaseline(located);
+        var baselineIsForAnotherBuild = baseline is { } found && !newLocatorIds.Select(id => id.Value).ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(found.LocatorIds);
 
         // No reason to change the loadout if the version is the same
-        if (locatorsToAdd.Length == 0 && locatorsToRemove.Length == 0)
-            return loadout;
+        if (!changed && !baselineIsForAnotherBuild) return (loadout, registered);
+
+        // A baseline built for another build vouches for nothing the loadout's ids name, so without a rebuild every
+        // unchanged vanilla file reads as one the loadout deleted. The background pass can have failed or not
+        // run since the update, so the apply makes sure itself.
+        if (baseline is not null)
+        {
+            await RebuildBaselineForUpdatedBuild(located, cancellationToken);
+
+            // Only a build the store describes can tell the game's own files from a mod's. A baseline taken from
+            // whatever is in the folder now would call the deployed mods vanilla.
+            if (GameInstallMetadata.LastSyncedLoadout.TryGetValue(loadout.Installation, out _)
+                && !_fileHashService.CoversInstalledBuild((gameLocatorResult.Store, newLocatorIds)))
+            {
+                throw new SynchronizerPreflightException(
+                    $"{registered.Game.DisplayName} was updated to a build the app has no game file list for yet, so it cannot tell the game's own files from added ones and will not change the folder. " +
+                    "Nothing was changed. Let the store finish its update (Steam keeps the file list for a build in its depotcache), then apply again.");
+            }
+        }
+
+        if (!changed) return (loadout, located);
 
         if (Logger.IsEnabled(LogLevel.Information))
         {
@@ -733,7 +760,31 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             tx.Add(loadout, Loadout.LocatorIds, id);
 
         var result = await tx.Commit();
-        return loadout.Rebase(result.Db);
+        return (loadout.Rebase(result.Db), located);
+    }
+
+    private LocalBaseline.ReadOnly? FindLocalBaseline(GameInstallation installation)
+    {
+        var path = installation.Locations[LocationId.Game].Path.ToString();
+        foreach (var baseline in LocalBaseline.FindByGamePath(_fileHashService.Local, path))
+        {
+            if (baseline.Store == installation.LocatorResult.Store) return baseline;
+        }
+
+        return null;
+    }
+
+    private async ValueTask RebuildBaselineForUpdatedBuild(GameInstallation located, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _fileHashService.EnsureLocalBaseline(located, cancellationToken);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            // The coverage check that follows decides whether the apply can go on without it.
+            Logger.LogWarning(e, "Could not rebuild the vanilla file list of {Game} for its updated build", located.Game.DisplayName);
+        }
     }
 
     private async ValueTask<Loadout.ReadOnly> ReprocessOverrides(Loadout.ReadOnly loadout)
@@ -1138,7 +1189,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         await PreflightLoadout(loadout);
         
         // Update locator IDs before building the sync tree
-        loadout = await UpdateLocatorIds(loadout);
+        (loadout, var installation) = await UpdateLocatorIds(loadout, cancellationToken);
         
         // If we are swapping loadouts, then we need to synchronize the previous loadout first to ingest
         // any changes, then we can apply the new loadout.
@@ -1154,7 +1205,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         job?.SetStatus(SyncPhases.Collecting);
-        var metadata = await ReindexState(loadout.InstallationInstance, job, cancellationToken);
+        var metadata = await ReindexState(installation, job, cancellationToken);
 
         // Reconcile sees the fresh disk state, and the game's preparation sees the group it writes.
         loadout = await ReconcileGameInstalledContent(loadout, metadata);
@@ -1168,7 +1219,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         {
             // The folder can change while the question is open, so the answer is applied to a tree of the folder as
             // it is now. The answer is the preset this time, so nothing is asked twice.
-            metadata = await ReindexState(loadout.InstallationInstance, job, cancellationToken);
+            metadata = await ReindexState(installation, job, cancellationToken);
             tree = BuildSyncTreeFromIndex(loadout, metadata);
             ProcessSyncTree(tree);
             (choice, _) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, choice, cancellationToken);
