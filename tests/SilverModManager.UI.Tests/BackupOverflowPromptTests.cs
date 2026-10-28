@@ -3,13 +3,14 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Pages.MyGames;
+using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.UI.Sdk.Dialog.Enums;
 
 namespace SilverModManager.UI.Tests;
 
 public class BackupOverflowPromptTests(IServiceProvider provider)
 {
-    private static readonly BackupOverflow Overflow = new(Adoptable: Size.From(15_748_000_000), AdoptableCount: 4506, MustBackUp: Size.Zero, MustBackUpCount: 0, Limit: Size.GB * 5);
+    private static readonly BackupOverflow Overflow = new(Adoptable: Size.From(15_748_000_000), AdoptableCount: 4506, MustBackUp: Size.Zero, MustBackUpCount: 0, Limit: Size.GB * 5, Operation: BackupOverflowOperation.Manage);
 
     [Fact]
     public void WhenAdoptIsNotPossible_SaysTheFilesWouldBeDeleted()
@@ -22,13 +23,13 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
 
     [Fact]
     public void TitleNamesTheGameCountAndSize()
-        => BackupOverflowPrompt.For("The Witcher 3", Overflow).Title.Should().Contain("The Witcher 3").And.Contain("4506").And.Contain("14.666 GB");
+        => BackupOverflowPrompt.For("The Witcher 3", Overflow).Title.Should().Contain("The Witcher 3").And.Contain("4506").And.Contain("14.7 GB").And.NotContain("14.666");
 
     [Fact]
     public void MarkdownSaysWhenAdoptedFilesGetBackedUpAndNamesTheBackupVerb()
     {
         var md = BackupOverflowPrompt.For("The Witcher 3", Overflow).Markdown;
-        md.Should().Contain("switching loadouts").And.Contain("backup-game-files").And.Contain("5 GB").And.NotContain("cannot restore them");
+        md.Should().Contain("switching loadouts").And.Contain("backup-game-files").And.Contain("5.0 GB").And.NotContain("cannot restore them");
     }
 
     [Fact]
@@ -40,15 +41,48 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
     {
         var buttons = BackupOverflowPrompt.For("The Witcher 3", Overflow).Buttons;
 
-        buttons.Select(b => b.Text).Should().Equal("Adopt in place", "Back up 14.666 GB", "Don't manage");
+        buttons.Select(b => b.Text).Should().Equal("Adopt in place", "Back up 14.7 GB", "Don't manage");
     }
+
+    [Fact]
+    public void SizesReadTheWayTheRestOfTheAppShowsThem()
+    {
+        var md = BackupOverflowPrompt.For("The Witcher 3", Overflow).Markdown;
+
+        md.Should().Contain("5.0 GB").And.Contain("14.7 GB").And.NotContain("14.666");
+        BackupOverflow.FormatSize(Size.From(15_748_000_000)).Should().Be("14.7 GB");
+        BackupOverflow.FormatSize(Size.From(12_288)).Should().Be("12 KB");
+    }
+
+    [Theory]
+    [InlineData(BackupOverflowOperation.Manage, "Don't manage")]
+    [InlineData(BackupOverflowOperation.Apply, "Don't apply")]
+    [InlineData(BackupOverflowOperation.Launch, "Cancel")]
+    [InlineData(BackupOverflowOperation.Switch, "Cancel")]
+    [InlineData(BackupOverflowOperation.Reset, "Cancel")]
+    public void CancelButtonNamesWhatItStops(BackupOverflowOperation operation, string label)
+    {
+        var buttons = BackupOverflowPrompt.For("The Witcher 3", Overflow with { Operation = operation }).Buttons;
+
+        buttons.Last().Text.Should().Be(label);
+        buttons.Last().Id.Should().Be(ButtonDefinitionId.Cancel);
+    }
+
+    [Theory]
+    [InlineData(BackupOverflowOperation.Manage, "added files")]
+    [InlineData(BackupOverflowOperation.Apply, "added files")]
+    [InlineData(BackupOverflowOperation.Launch, "added files")]
+    [InlineData(BackupOverflowOperation.Switch, "switching loadouts")]
+    [InlineData(BackupOverflowOperation.Reset, "putting the folder back")]
+    public void TitleNamesTheOperation(BackupOverflowOperation operation, string phrase)
+        => BackupOverflowPrompt.For("The Witcher 3", Overflow with { Operation = operation }).Title.Should().Contain(phrase);
 
     [Fact]
     public void OnlyBackUpIsTheEnterKeyDefault()
     {
         var buttons = BackupOverflowPrompt.For("The Witcher 3", Overflow).Buttons;
 
-        buttons.Where(b => b.ButtonAction == ButtonAction.Accept).Select(b => b.Text).Should().Equal("Back up 14.666 GB");
+        buttons.Where(b => b.ButtonAction == ButtonAction.Accept).Select(b => b.Text).Should().Equal("Back up 14.7 GB");
     }
 
     [Fact]

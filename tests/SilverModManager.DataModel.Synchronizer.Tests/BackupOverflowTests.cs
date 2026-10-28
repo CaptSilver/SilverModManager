@@ -76,6 +76,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         asked.Adoptable.Should().Be(Size.KB * 16);
         asked.MustBackUpCount.Should().Be(0);
         asked.CanAdopt.Should().BeTrue();
+        asked.Operation.Should().Be(BackupOverflowOperation.Manage);
         (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeTrue();
     }
 
@@ -128,10 +129,52 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         var act = async () => await LoadoutManager.CreateLoadout(GameInstallation, largeFiles: BackupOverflowChoice.Refuse);
 
         var refusal = (await act.Should().ThrowAsync<BackupOverflowException>()).Which;
-        refusal.Message.Should().Contain("--large-files adopt").And.Contain("--large-files backup").And.Contain("16 KB");
+        refusal.Message.Should().Contain("--large-files adopt").And.Contain("--large-files backup").And.Contain("16 KB").And.Contain("loadout create").And.Contain("manages a game");
         prompt.Asked.Should().BeEmpty();
         VisibleLoadouts.Should().Be(0);
         (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RefusedApply_NamesTheSynchronizeVerbNotTheCreateVerb()
+    {
+        WriteExternalFiles(4, 4096);
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, largeFiles: BackupOverflowChoice.AdoptInPlace);
+        WriteExternalFile("late0.bin", 4096);
+        WriteExternalFile("late1.bin", 4096);
+        WriteExternalFile("late2.bin", 4096);
+
+        var act = async () => await SynchronizerService.Synchronize(loadout.LoadoutId, BackupOverflowChoice.Refuse);
+
+        var message = (await act.Should().ThrowAsync<BackupOverflowException>()).Which.Message;
+        message.Should().Contain("loadout synchronize").And.Contain("applies a loadout").And.NotContain("loadout create");
+    }
+
+    [Theory]
+    [InlineData(BackupOverflowOperation.Manage, "manages a game", "loadout create --game", "--large-files adopt")]
+    [InlineData(BackupOverflowOperation.Apply, "applies a loadout", "loadout synchronize", "--large-files adopt")]
+    [InlineData(BackupOverflowOperation.Launch, "launches a modded game", "loadout synchronize", "launch again")]
+    [InlineData(BackupOverflowOperation.Switch, "switches loadouts", "backup-game-files", "try again")]
+    [InlineData(BackupOverflowOperation.Reset, "puts the game folder back", "backup-game-files", "try again")]
+    public void RefusalWording_FollowsTheOperation(BackupOverflowOperation operation, string verbPhrase, string cliHint, string tail)
+    {
+        var overflow = new BackupOverflow(Size.KB * 16, 4, Size.Zero, 0, Size.KB * 8, operation);
+
+        var message = new BackupOverflowException(GameInstallation, overflow).Message;
+
+        message.Should().Contain(verbPhrase).And.Contain(cliHint).And.Contain(tail);
+        if (operation is BackupOverflowOperation.Switch or BackupOverflowOperation.Reset) message.Should().NotContain("--large-files");
+    }
+
+    [Fact]
+    public void RefusalAndLogSizes_UseTheSameUnitsAsTheDialog()
+    {
+        var overflow = new BackupOverflow(Size.From(15_748_000_000), 4506, Size.Zero, 0, Size.GB * 5);
+
+        var message = new BackupOverflowException(GameInstallation, overflow).Message;
+
+        message.Should().Contain("14.7 GB").And.Contain("5.0 GB").And.NotContain("14.666");
+        overflow.TotalText.Should().Be("14.7 GB");
     }
 
     [Fact]
@@ -194,8 +237,9 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         var questionsWhileOpen = -1;
         _prompt.Inner = new DelegatePrompt(async (_, _, token) =>
         {
-            // Only the first question starts the concurrent sync; a second one (from an unguarded sync that
-            // re-indexed the same over-cap files) must show up in the count instead of starting another.
+            // Only the first question starts the concurrent sync. An unguarded one would fail with "State is
+            // already locked" rather than put a second question, so the checks below are on the count while the
+            // question is open and on the concurrent sync finishing cleanly.
             if (Interlocked.Increment(ref questions) > 1) return BackupOverflowChoice.BackUpAnyway;
 
             var existing = Loadout.All(Connection.Db).First(l => l.IsVisible());
@@ -323,7 +367,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
 
         await LoadoutManager.CleanGameFolder(Refresh(loadout));
 
-        prompt.Asked.Should().ContainSingle();
+        prompt.Asked.Should().ContainSingle().Which.Operation.Should().Be(BackupOverflowOperation.Reset);
         ExternalChanges(Refresh(loadout)).Should().BeEmpty();
         OnDisk("ext0.bin").Should().BeFalse();
         (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeTrue();
@@ -370,7 +414,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
 
         await SynchronizerService.Synchronize(second.LoadoutId);
 
-        asked.Should().ContainSingle("one answer covers the deactivate's sync, the reset and the activation");
+        asked.Should().ContainSingle("one answer covers the deactivate's sync, the reset and the activation").Which.Operation.Should().Be(BackupOverflowOperation.Apply);
         LoadoutManager.GetCurrentlyActiveLoadout(GameInstallation).Value.Should().Be(second.LoadoutId);
     }
 

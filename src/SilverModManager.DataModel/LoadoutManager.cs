@@ -179,6 +179,7 @@ internal partial class LoadoutManager : ILoadoutManager
     {
         try
         {
+            using var answer = BackupOverflowAnswer.Begin(BackupOverflowOperation.Manage);
             await _synchronizerService.Synchronize(loadout.LoadoutId, largeFiles, cancellationToken);
         }
         catch (Exception e) when (e is BackupOverflowException or SynchronizerPreflightException or ExecutableInUseException or OperationCanceledException)
@@ -436,6 +437,7 @@ internal partial class LoadoutManager : ILoadoutManager
         var loadout = Loadout.Load(_connection.Db, loadoutId);
         var synchronizer = loadout.InstallationInstance.GetGame().Synchronizer;
 
+        using var answer = BackupOverflowAnswer.Begin(BackupOverflowOperation.Switch);
         var state = await synchronizer.ReindexState(loadout.InstallationInstance);
         await synchronizer.BuildProcessRun(loadout, state, cancellationToken, largeFiles);
     }
@@ -451,7 +453,7 @@ internal partial class LoadoutManager : ILoadoutManager
         EnsureBuildCovered(installation);
 
         // The sync and the reset are one operation to the player, so one answer covers both.
-        using var answer = BackupOverflowAnswer.Begin();
+        using var answer = BackupOverflowAnswer.Begin(BackupOverflowOperation.Reset);
 
         // Synchronize the last applied loadout, so we don't lose any changes. A caller that is about to delete the
         // loadouts has no use for them.

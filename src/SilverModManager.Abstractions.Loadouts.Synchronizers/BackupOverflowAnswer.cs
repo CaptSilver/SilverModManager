@@ -15,6 +15,11 @@ public sealed class BackupOverflowAnswer
 
     private BackupOverflowChoice? _answer;
 
+    private BackupOverflowAnswer(BackupOverflowOperation operation) => Operation = operation;
+
+    /// <summary>What the player started, which names the question's wording whichever leg puts it.</summary>
+    internal BackupOverflowOperation Operation { get; }
+
     /// <summary>The scope the current operation runs in, or null outside one.</summary>
     internal static BackupOverflowAnswer? Active => Current.Value;
 
@@ -23,12 +28,15 @@ public sealed class BackupOverflowAnswer
 
     internal void Remember(BackupOverflowChoice choice) => _answer = choice;
 
-    /// <summary>Starts a scope, or joins the one already open. Dispose it when the operation ends.</summary>
-    public static IDisposable Begin()
+    /// <summary>
+    /// Starts a scope for <paramref name="operation"/>, or joins the one already open, which keeps its own
+    /// operation. Dispose it when the operation ends.
+    /// </summary>
+    public static IDisposable Begin(BackupOverflowOperation operation)
     {
         if (Current.Value is not null) return Joined.Instance;
 
-        var scope = new BackupOverflowAnswer();
+        var scope = new BackupOverflowAnswer(operation);
         Current.Value = scope;
         return new Owner(scope);
     }

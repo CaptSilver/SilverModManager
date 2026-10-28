@@ -13,7 +13,7 @@ using SilverModManager.App.UI.Dialog.Enums;
 namespace SilverModManager.App.UI.Pages.MyGames;
 
 /// <summary>
-/// Puts the backup-cap question to the player in a modal dialog. Closing the window answers "Don't manage": a
+/// Puts the backup-cap question to the player in a modal dialog. Closing the window answers the cancel button: a
 /// closed window is not consent to copy gigabytes.
 /// </summary>
 public sealed class DialogBackupOverflowPrompt(IServiceProvider serviceProvider, IWindowManager windowManager) : IBackupOverflowPrompt

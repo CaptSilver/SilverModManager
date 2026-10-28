@@ -97,16 +97,16 @@ public class SynchronizerService : ISynchronizerService
 
     /// <inheritdoc />
     public Task CleanGameFolder(LoadoutId loadoutId, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default)
-        => SynchronizeCore(loadoutId, refuseWhileRunning: true, reselectBackends: true, largeFiles, cancellationToken, cleanExternalChanges: true);
+        => SynchronizeCore(loadoutId, refuseWhileRunning: true, reselectBackends: true, largeFiles, cancellationToken, cleanExternalChanges: true, operation: BackupOverflowOperation.Reset);
 
     /// <summary>
     /// Synchronizes on behalf of a launch session, which holds the running-game state itself and so
     /// must not be refused by it. Everything else (semaphore, state locks) is the same as <see cref="Synchronize"/>,
     /// except that the deployment plan is read and never changed: a launch applies what the person last applied.
     /// </summary>
-    internal Task SynchronizeFromLaunchSession(LoadoutId loadoutId) => SynchronizeCore(loadoutId, refuseWhileRunning: false, reselectBackends: false, largeFiles: null, CancellationToken.None);
+    internal Task SynchronizeFromLaunchSession(LoadoutId loadoutId) => SynchronizeCore(loadoutId, refuseWhileRunning: false, reselectBackends: false, largeFiles: null, CancellationToken.None, operation: BackupOverflowOperation.Launch);
 
-    private async Task SynchronizeCore(LoadoutId loadoutId, bool refuseWhileRunning, bool reselectBackends, BackupOverflowChoice? largeFiles, CancellationToken callerToken, bool cleanExternalChanges = false)
+    private async Task SynchronizeCore(LoadoutId loadoutId, bool refuseWhileRunning, bool reselectBackends, BackupOverflowChoice? largeFiles, CancellationToken callerToken, bool cleanExternalChanges = false, BackupOverflowOperation operation = BackupOverflowOperation.Apply)
     {
         await _jobMonitor.Begin(new SynchronizeLoadoutJob(loadoutId),
             async ctx =>
@@ -133,7 +133,7 @@ public class SynchronizerService : ISynchronizerService
                     using var _2 = gameState.WithLock();
 
                     // One answer to the backup-cap question covers the backend move and the apply that follows it.
-                    using var answer = BackupOverflowAnswer.Begin();
+                    using var answer = BackupOverflowAnswer.Begin(operation);
 
                     if (reselectBackends) await ReselectUnchosenBackends(loadout.InstallationInstance, largeFiles, linked.Token);
 
@@ -326,7 +326,7 @@ public class SynchronizerService : ISynchronizerService
         var hadLoadout = GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastLoadoutId);
 
         // The reset and the apply after it are the same operation to the player, so one answer covers them.
-        using var answer = BackupOverflowAnswer.Begin();
+        using var answer = BackupOverflowAnswer.Begin(BackupOverflowOperation.Apply);
 
         var registered = _serviceProvider.GetServices<IDeploymentBackend>().Select(b => b.Id).ToHashSet();
         var unknown = plan.Roots.Where(r => !registered.Contains(r.Backend)).ToArray();

@@ -991,9 +991,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         BackupOverflowChoice? preset,
         CancellationToken cancellationToken,
         bool presetIsAnAnswer = false,
-        bool adoptOnlyBacksUp = false)
+        bool adoptOnlyBacksUp = false,
+        BackupOverflowOperation operation = BackupOverflowOperation.Apply)
     {
-        var overflow = await MeasureBackupOverflow(syncTree, cancellationToken);
+        // The operation the player started names the question; the leg only knows its own step.
+        var overflow = await MeasureBackupOverflow(syncTree, BackupOverflowAnswer.Active?.Operation ?? operation, cancellationToken);
         if (overflow is null) return (BackupOverflowChoice.BackUpAnyway, false);
 
         if (preset == BackupOverflowChoice.Refuse) throw new BackupOverflowException(installation, overflow);
@@ -1030,7 +1032,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         Logger.LogInformation(
             "{FileCount} files ({Total}) to back up are over the {Limit} cap, {Choice} ({Adoptable} of them only want a copy, {MustBackUp} must be backed up)",
-            overflow.FileCount, overflow.Total, overflow.Limit, choice, overflow.Adoptable, overflow.MustBackUp);
+            overflow.FileCount, overflow.TotalText, overflow.LimitText, choice, overflow.AdoptableText, overflow.MustBackUpText);
         return (choice, asked);
     }
 
@@ -1038,7 +1040,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// The size of every file the tree would back up that the file store does not already hold, split into the
     /// files that stay on disk and only want a copy and the ones that must be archived. Null when the total fits.
     /// </summary>
-    private async Task<BackupOverflow?> MeasureBackupOverflow(Dictionary<GamePath, SyncNode> syncTree, CancellationToken cancellationToken)
+    private async Task<BackupOverflow?> MeasureBackupOverflow(Dictionary<GamePath, SyncNode> syncTree, BackupOverflowOperation operation, CancellationToken cancellationToken)
     {
         // A path the synchronizer never writes loses its backup in RunActions; counting it here would ask about
         // files that are never copied.
@@ -1065,7 +1067,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             }
         });
 
-        var overflow = new BackupOverflow(Size.FromLong(adoptable), adoptableCount, Size.FromLong(mustBackUp), mustBackUpCount, _backupLimit.Maximum);
+        var overflow = new BackupOverflow(Size.FromLong(adoptable), adoptableCount, Size.FromLong(mustBackUp), mustBackUpCount, _backupLimit.Maximum, operation);
         return overflow.Total <= overflow.Limit ? null : overflow;
     }
 
@@ -1209,7 +1211,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         (loadout, var installation) = await UpdateLocatorIds(loadout, cancellationToken);
         
         // One answer to the backup-cap question covers every step of this apply, a switch's three included.
-        using var answer = BackupOverflowAnswer.Begin();
+        using var answer = BackupOverflowAnswer.Begin(BackupOverflowOperation.Apply);
 
         // If we are swapping loadouts, then we need to synchronize the previous loadout first to ingest
         // any changes, then we can apply the new loadout.
@@ -1559,7 +1561,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         AdoptUserFilesOutsideGame(tree, loadout, state, diskState);
         ProcessSyncTree(tree);
 
-        var (choice, _) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, largeFiles, cancellationToken);
+        var (choice, _) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, largeFiles, cancellationToken, operation: BackupOverflowOperation.Switch);
         await RunActions(tree, loadout, choice: choice);
     }
 
@@ -1849,11 +1851,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // Every overflow node here is backed up and then deleted, so nothing is adoptable and the answer is back up
         // or refuse; an adopt given for the steps before it can only mean back up here. After a question the tree
         // is built again from a fresh index of the folder.
-        var (choice, asked) = await ResolveBackupOverflow(desiredState, installation, largeFiles, cancellationToken, adoptOnlyBacksUp: true);
+        var (choice, asked) = await ResolveBackupOverflow(desiredState, installation, largeFiles, cancellationToken, adoptOnlyBacksUp: true, operation: BackupOverflowOperation.Reset);
         if (asked)
         {
             desiredState = await BuildResetTree(installation, locatorIds);
-            (choice, _) = await ResolveBackupOverflow(desiredState, installation, choice, cancellationToken, presetIsAnAnswer: true, adoptOnlyBacksUp: true);
+            (choice, _) = await ResolveBackupOverflow(desiredState, installation, choice, cancellationToken, presetIsAnAnswer: true, adoptOnlyBacksUp: true, operation: BackupOverflowOperation.Reset);
         }
 
         // Run the groupings

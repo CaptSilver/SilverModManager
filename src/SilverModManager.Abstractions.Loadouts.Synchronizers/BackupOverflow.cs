@@ -1,9 +1,34 @@
+using Humanizer;
+using Humanizer.Bytes;
 using JetBrains.Annotations;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
+
+/// <summary>
+/// What the player was doing when the backup-cap question came up. The wording of the dialog, its cancel button and
+/// the command line hint in a refusal all depend on it: "Don't manage" means nothing to someone who pressed Play.
+/// </summary>
+[PublicAPI]
+public enum BackupOverflowOperation
+{
+    /// <summary>Adding a game: the first sync of a new loadout.</summary>
+    Manage,
+
+    /// <summary>Applying a loadout to the game folder.</summary>
+    Apply,
+
+    /// <summary>Launching the game, which applies the loadout first.</summary>
+    Launch,
+
+    /// <summary>Switching to another loadout.</summary>
+    Switch,
+
+    /// <summary>Putting the game folder back to its original state (clean, remove the game, delete a loadout).</summary>
+    Reset,
+}
 
 /// <summary>
 /// The files a sync is about to back up when their total is over the cap.
@@ -15,7 +40,7 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 /// from the first set only, so <see cref="CanAdopt"/> asks whether the second set fits under the cap on its own.
 /// </remarks>
 [PublicAPI]
-public sealed record BackupOverflow(Size Adoptable, int AdoptableCount, Size MustBackUp, int MustBackUpCount, Size Limit)
+public sealed record BackupOverflow(Size Adoptable, int AdoptableCount, Size MustBackUp, int MustBackUpCount, Size Limit, BackupOverflowOperation Operation = BackupOverflowOperation.Apply)
 {
     /// <summary>Bytes of every file that would be backed up.</summary>
     public Size Total => Adoptable + MustBackUp;
@@ -23,8 +48,30 @@ public sealed record BackupOverflow(Size Adoptable, int AdoptableCount, Size Mus
     /// <summary>Number of files that would be backed up.</summary>
     public int FileCount => AdoptableCount + MustBackUpCount;
 
+    /// <summary>
+    /// A size as the rest of the app shows one: binary units, one decimal from a gigabyte up. The dialog, the
+    /// refusal and the log all go through this so the same bytes read the same everywhere.
+    /// </summary>
+    public static string FormatSize(Size size)
+    {
+        var bytes = ByteSize.FromBytes(size.Value);
+        return bytes.Gigabytes < 1 ? bytes.Humanize("0") : bytes.Humanize("0.0");
+    }
+
     /// <summary>Whether adopting in place leaves a backup that fits under the cap.</summary>
     public bool CanAdopt => AdoptableCount > 0 && MustBackUp <= Limit;
+
+    /// <summary><see cref="Total"/> as <see cref="FormatSize"/> prints it.</summary>
+    public string TotalText => FormatSize(Total);
+
+    /// <summary><see cref="Limit"/> as <see cref="FormatSize"/> prints it.</summary>
+    public string LimitText => FormatSize(Limit);
+
+    /// <summary><see cref="MustBackUp"/> as <see cref="FormatSize"/> prints it.</summary>
+    public string MustBackUpText => FormatSize(MustBackUp);
+
+    /// <summary><see cref="Adoptable"/> as <see cref="FormatSize"/> prints it.</summary>
+    public string AdoptableText => FormatSize(Adoptable);
 }
 
 /// <summary>
@@ -60,17 +107,47 @@ public sealed class BackupOverflowException : UserFacingException
 
     /// <summary>The refusal that names the CLI flags.</summary>
     public BackupOverflowException(GameInstallation installation, BackupOverflow overflow)
-        : base(
-            $"{overflow.FileCount} files ({overflow.Total}) in the {installation.Game.DisplayName} folder are not part of a clean install. " +
-            $"The app backs up at most {overflow.Limit} of such files before it manages a game.\n\n" +
-            $"Run `silvermod loadout create --game \"{installation.Game.GameId}\" --large-files backup` to back them all up, " +
-            "or `--large-files adopt` to manage them where they are. Adopted files stay where they are and are not copied now; " +
-            "switching loadouts, cleaning or removing the game backs them up first and asks again when that is over the cap. " +
-            "A file deleted outside the app is the one case the app cannot restore. " +
-            "`silvermod loadout backup-game-files` backs them up at any time.")
+        : base(Describe(installation, overflow))
     {
         _installation = installation;
         Overflow = overflow;
+    }
+
+    // The CLI can only answer the question for a verb that takes --large-files, so the hint names the verb that
+    // matches what was being done. A switch or a reset has no such verb; backing the files up first is the way out.
+    private static string Describe(GameInstallation installation, BackupOverflow overflow)
+    {
+        var game = installation.Game;
+        var intro =
+            $"{overflow.FileCount} files ({overflow.TotalText}) in the {game.DisplayName} folder are not part of a clean install. " +
+            $"The app backs up at most {overflow.LimitText} of such files before it {overflow.Operation switch
+            {
+                BackupOverflowOperation.Manage => "manages a game",
+                BackupOverflowOperation.Apply => "applies a loadout",
+                BackupOverflowOperation.Launch => "launches a modded game",
+                BackupOverflowOperation.Switch => "switches loadouts",
+                _ => "puts the game folder back",
+            }}.\n\n";
+
+        const string backupVerb = "`silvermod loadout backup-game-files` backs them up at any time.";
+        const string adoptNote =
+            "Adopted files stay where they are and are not copied now; " +
+            "switching loadouts, cleaning or removing the game backs them up first and asks again when that is over the cap. " +
+            "A file deleted outside the app is the one case the app cannot restore. ";
+
+        return intro + overflow.Operation switch
+        {
+            BackupOverflowOperation.Manage =>
+                $"Run `silvermod loadout create --game \"{game.GameId}\" --large-files backup` to back them all up, " +
+                "or `--large-files adopt` to manage them where they are. " + adoptNote + backupVerb,
+            BackupOverflowOperation.Apply =>
+                "Run `silvermod loadout synchronize --loadout <loadout> --large-files backup` to back them all up, " +
+                "or `--large-files adopt` to leave them where they are. " + adoptNote + backupVerb,
+            BackupOverflowOperation.Launch =>
+                "Apply the loadout first with `silvermod loadout synchronize --loadout <loadout> --large-files backup` " +
+                "(or `--large-files adopt`), then launch again. " + backupVerb,
+            _ => "Back them up first, then try again. " + backupVerb,
+        };
     }
 
     private BackupOverflowException(GameInstallation installation, BackupOverflow overflow, string message) : base(message)
@@ -83,7 +160,7 @@ public sealed class BackupOverflowException : UserFacingException
     public static BackupOverflowException AdoptWouldLoseFiles(GameInstallation installation, BackupOverflow overflow) => new(
         installation,
         overflow,
-        $"{overflow.MustBackUpCount} of these files ({overflow.MustBackUp}) are about to be deleted or replaced, so adopting them in place would lose them. " +
+        $"{overflow.MustBackUpCount} of these files ({overflow.MustBackUpText}) are about to be deleted or replaced, so adopting them in place would lose them. " +
         "Back them up (--large-files backup) or leave the folder as it is.");
 
     /// <inheritdoc />
