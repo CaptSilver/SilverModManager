@@ -22,6 +22,16 @@ public partial class FileConflictPathsView : ReactiveUserControl<IFileConflictPa
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(rows => PathsList.ItemsSource = rows)
                 .DisposeWith(disposables);
+
+            viewModel.WhenAnyValue(vm => vm.IsLoading)
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(loading => LoadingText.IsVisible = loading)
+                .DisposeWith(disposables);
+
+            viewModel.WhenAnyValue(vm => vm.LoadFailed)
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(failed => FailedText.IsVisible = failed)
+                .DisposeWith(disposables);
         });
     }
 }

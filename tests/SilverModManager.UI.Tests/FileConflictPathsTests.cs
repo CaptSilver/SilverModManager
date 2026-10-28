@@ -271,6 +271,21 @@ public class FileConflictPathsTests(IServiceProvider provider) : AUiTest(provide
         lock (loadThreadOnUi) loadThreadOnUi.Should().HaveCount(2).And.AllBeEquivalentTo(false);
     }
 
+    [Fact]
+    public async Task AFailedLoadStopsLoadingMarksTheListFailedAndReachesTheCaller()
+    {
+        var mods = await SeedConflict("Paths Load Fails", Contested);
+        var paths = new FileConflictPathsViewModel(Loadouts, mods.Loadout.LoadoutId, mods.Low,
+            () => throw new InvalidOperationException("read failed"));
+
+        var act = () => paths.LoadAsync();
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        paths.IsLoading.Should().BeFalse();
+        paths.LoadFailed.Should().BeTrue();
+        paths.Rows.Should().BeEmpty();
+    }
+
     /// <summary>The captions of the buttons a window shows; a button hidden by its row is not visible.</summary>
     private static string?[] ButtonLabels(Window window) => window.GetVisualDescendants().OfType<Button>()
         .Where(b => b.IsEffectivelyVisible).Select(b => b.Content as string).ToArray();

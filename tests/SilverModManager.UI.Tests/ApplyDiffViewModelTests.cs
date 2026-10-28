@@ -1,6 +1,7 @@
 using Avalonia.Threading;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
@@ -34,6 +35,7 @@ public class ApplyDiffViewModelTests(IServiceProvider provider) : AUiTest(provid
         var services = new ServiceCollection()
             .AddSingleton(sync)
             .AddSingleton(Connection)
+            .AddLogging()
             .BuildServiceProvider();
 
         await Dispatcher.UIThread.InvokeAsync(() =>
@@ -48,5 +50,41 @@ public class ApplyDiffViewModelTests(IServiceProvider provider) : AUiTest(provid
             lock (onUiThread) onUiThread.Should().HaveCount(2);
         });
         lock (onUiThread) onUiThread.Should().AllBeEquivalentTo(false);
+    }
+
+    private sealed class RecordingLogger : ILogger<ApplyDiffViewModel>
+    {
+        public List<(LogLevel Level, Exception? Error)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            lock (Entries) Entries.Add((logLevel, exception));
+        }
+    }
+
+    [Fact]
+    public async Task AFailureBuildingTheFirstDiffTreeIsLogged()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Apply Diff Failure");
+        var sync = Substitute.For<ISynchronizerService>();
+        sync.GetApplyDiffTree(Arg.Any<LoadoutId>()).Returns(_ => throw new KeyNotFoundException("no such loadout"));
+        var logger = new RecordingLogger();
+
+        var services = new ServiceCollection()
+            .AddSingleton(sync)
+            .AddSingleton(Connection)
+            .AddSingleton<ILogger<ApplyDiffViewModel>>(logger)
+            .BuildServiceProvider();
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+            new ApplyDiffViewModel(Substitute.For<IWindowManager>(), services).Initialize(loadout.LoadoutId));
+
+        await Eventually(() =>
+        {
+            lock (logger.Entries) logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error && e.Error is KeyNotFoundException);
+        });
     }
 }

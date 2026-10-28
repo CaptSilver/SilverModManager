@@ -51,6 +51,9 @@ public interface IFileConflictPathsViewModel : IViewModelInterface
 
     /// <summary>True until the first load has put the rows in place.</summary>
     bool IsLoading { get; }
+
+    /// <summary>True when the last load threw, so an empty list is a failure and not "no conflicts".</summary>
+    bool LoadFailed { get; }
 }
 
 /// <summary>
@@ -80,13 +83,21 @@ public partial class FileConflictPathsViewModel : AViewModel<IFileConflictPathsV
 
     [Reactive] public partial bool IsLoading { get; private set; }
 
+    [Reactive] public partial bool LoadFailed { get; private set; }
+
     /// <summary>Reads the paths and builds the rows off the UI thread, then assigns <see cref="Rows"/>.</summary>
     public async Task LoadAsync()
     {
         IsLoading = true;
+        LoadFailed = false;
         try
         {
             Rows = await Task.Run(BuildRows);
+        }
+        catch
+        {
+            LoadFailed = true;
+            throw;
         }
         finally
         {

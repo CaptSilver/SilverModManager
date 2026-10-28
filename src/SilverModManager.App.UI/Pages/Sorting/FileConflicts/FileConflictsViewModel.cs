@@ -26,6 +26,7 @@ using SilverModManager.Games.FromSoft.Merge;
 using NexusMods.HyperDuck;
 using SilverModManager.MnemonicDB.Abstractions;
 using Humanizer;
+using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Resources;
@@ -264,7 +265,7 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
             });
 
         var title = string.Format(Language.FileConflicts_Paths_Title, priority.Target.AsLoadoutItem().Name);
-        _ = content.LoadAsync();
+        content.LoadAsync().FireAndForget(_logger);
         _ = await _windowManager.ShowDialog(
             DialogFactory.CreateDialog(title, [DialogStandardButtons.Close], content, DialogWindowSize.Large),
             DialogWindowType.Modeless);

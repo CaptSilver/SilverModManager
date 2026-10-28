@@ -9,6 +9,11 @@
                                 mc:Ignorable="d" d:DesignWidth="800"
                                 x:Class="SilverModManager.App.UI.Pages.Sorting.FileConflictPathsView">
 
+    <StackPanel Spacing="8">
+    <TextBlock x:Name="LoadingText" Text="{x:Static resources:Language.FileConflicts_Paths_Loading}"
+               Foreground="{StaticResource NeutralSubduedBrush}" />
+    <TextBlock x:Name="FailedText" Text="{x:Static resources:Language.FileConflicts_Paths_LoadFailed}"
+               TextWrapping="Wrap" />
     <ScrollViewer MaxHeight="420">
         <ItemsControl x:Name="PathsList">
             <ItemsControl.ItemTemplate>
@@ -36,5 +41,6 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
     </ScrollViewer>
+    </StackPanel>
 
 </reactiveUi:ReactiveUserControl>

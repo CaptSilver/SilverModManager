@@ -4588,6 +4588,24 @@ namespace SilverModManager.App.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Reading the conflicts....
+        /// </summary>
+        public static string FileConflicts_Paths_Loading {
+            get {
+                return ResourceManager.GetString("FileConflicts_Paths_Loading", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The conflicts could not be read. Details are in the log..
+        /// </summary>
+        public static string FileConflicts_Paths_LoadFailed {
+            get {
+                return ResourceManager.GetString("FileConflicts_Paths_LoadFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Conflicts for {0}.
         /// </summary>
         public static string FileConflicts_Paths_Title {

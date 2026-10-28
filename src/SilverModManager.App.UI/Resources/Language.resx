@@ -1596,6 +1596,12 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="FileConflicts_Order_PriorityDescending" xml:space="preserve">
         <value>Mods higher in the list have higher priority and win when two mods ship the same file.</value>
     </data>
+    <data name="FileConflicts_Paths_Loading" xml:space="preserve">
+        <value>Reading the conflicts...</value>
+    </data>
+    <data name="FileConflicts_Paths_LoadFailed" xml:space="preserve">
+        <value>The conflicts could not be read. Details are in the log.</value>
+    </data>
     <data name="FileConflicts_Paths_Title" xml:space="preserve">
         <value>Conflicts for {0}</value>
     </data>

@@ -1,5 +1,6 @@
 using System.Reactive;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Controls.Trees;
 using SilverModManager.App.UI.Resources;
@@ -7,6 +8,7 @@ using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.UI.Sdk.Icons;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
@@ -17,6 +19,7 @@ namespace SilverModManager.App.UI.Pages.Diff.ApplyDiff;
 public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, IApplyDiffViewModel
 {
     private IServiceProvider _serviceProvider;
+    private readonly ILogger<ApplyDiffViewModel> _logger;
     private DiffTreeViewModel? _fileTreeViewModel;
     private LoadoutId _loadoutId;
 
@@ -31,6 +34,7 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
         TabIcon = IconValues.ListFilled;
 
         _serviceProvider = serviceProvider;
+        _logger = serviceProvider.GetRequiredService<ILogger<ApplyDiffViewModel>>();
 
         RefreshCommand = ReactiveCommand.CreateFromTask(async () =>
         {
@@ -52,7 +56,8 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
             _serviceProvider.GetRequiredService<IConnection>()
         );
 
-        _ = RefreshAsync(_fileTreeViewModel);
+        // Nothing awaits the first refresh, so a failure (an invalid loadout, a sync error) has to be logged here.
+        RefreshAsync(_fileTreeViewModel).FireAndForget(_logger);
     }
 
     // The refresh walks the install and the loadout; the tree's own bindings marshal to the UI thread, and the
