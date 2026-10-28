@@ -132,6 +132,7 @@ public static class Services
         coll.AddSingleton<IHostedService, ImportedIniFilesPass>();
         coll.AddSingleton<IGameInstalledContentService, GameInstalledContentService>();
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, GameInstalledGroupDisabledEmitter>());
+        coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, MissingUnbackedFileEmitter>());
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, ModOrderDroppedEmitter>());
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, UnshareableModEmitter>());
 

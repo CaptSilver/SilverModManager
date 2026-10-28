@@ -67,6 +67,14 @@ public interface ILoadoutManager
     Task RescanGameFolder(Loadout.ReadOnly loadout);
 
     /// <summary>
+    /// Counts the files of every visible loadout on <paramref name="installation"/> that the file store holds no
+    /// copy of, once per distinct content. That is what adopting files in place leaves behind, and also a mod whose
+    /// download was deleted and collected, so callers say "no backup copy" rather than "adopted". Reads the
+    /// database and the file store; callers run it off the UI thread.
+    /// </summary>
+    Task<UnbackedFiles> CountUnbackedFiles(GameInstallation installation, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets the currently active loadout for the game, if any.
     /// </summary>
     Optional<LoadoutId> GetCurrentlyActiveLoadout(GameInstallation installation);

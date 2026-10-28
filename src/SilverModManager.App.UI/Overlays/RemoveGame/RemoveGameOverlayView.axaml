@@ -28,6 +28,12 @@
                         TextWrapping="Wrap"
                         Theme="{StaticResource BodyMDNormalTheme}" />
 
+                    <TextBlock
+                        x:Name="UnbackedText"
+                        IsVisible="False"
+                        TextWrapping="Wrap"
+                        Theme="{StaticResource BodyMDNormalTheme}" />
+
                     <Grid ColumnDefinitions="Auto, *">
                         <ToggleSwitch x:Name="SwitchDeleteDownloads"
                                       Classes="ExtraSmall"

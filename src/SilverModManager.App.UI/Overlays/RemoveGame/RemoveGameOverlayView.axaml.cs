@@ -1,6 +1,7 @@
 using Avalonia.ReactiveUI;
 using Humanizer;
 using Humanizer.Bytes;
+using SilverModManager.App.UI.Pages.MyGames;
 using SilverModManager.App.UI.Resources;
 using R3;
 using ReactiveUI;
@@ -23,6 +24,8 @@ public partial class RemoveGameOverlayView : ReactiveUserControl<IRemoveGameOver
                     DescriptionText.Text = string.Format(Language.RemoveGameOverlayView_Description, viewModel.GameName);
                     ToggleDescription.Text = string.Format(Language.RemoveGameOverlayView_ToggleDescription, viewModel.NumDownloads.ToString("N0"), viewModel.NumCollections.ToString("N0"), viewModel.GameName);
                     ButtonCancel.Text = Language.RemoveGameOverlayView_CancelButton;
+                    UnbackedText.IsVisible = viewModel.Unbacked.Count > 0;
+                    UnbackedText.Text = viewModel.Unbacked.Count > 0 ? CleanFolderPrompt.RemoveGameNote(viewModel.Unbacked) : "";
                 }).AddTo(disposables);
 
             this.WhenAnyValue(

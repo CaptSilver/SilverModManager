@@ -155,9 +155,11 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                                 var totalSize = filesToDelete.Sum(static Size (file) => file.Size);
 
                                 var collections = installation.Game.CollectionsOf(conn.Db);
+                                var unbacked = await Task.Run(() => _loadoutManager.CountUnbackedFiles(installation));
 
                                 var overlay = new RemoveGameOverlayViewModel
                                 {
+                                    Unbacked = unbacked,
                                     GameName = installation.Game.DisplayName,
                                     NumDownloads = filesToDelete.Length,
                                     SumDownloadsSize = totalSize,
@@ -355,15 +357,16 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
         Loadout.ReadOnly loadout;
         LoadoutItemWithTargetPath.ReadOnly[] changeEntries;
         bool buildCovered;
+        UnbackedFiles unbacked;
         try
         {
             // The overrides query and the coverage check walk the database and the game's build list, so they run
             // on the pool with the manage that precedes them instead of on the dispatcher after it.
-            (loadout, changeEntries, buildCovered) = await Task.Run(async () =>
+            (loadout, changeEntries, buildCovered, unbacked) = await Task.Run(async () =>
             {
                 var created = await ManageGame(installation);
                 var (changes, covered) = DescribeFreshLoadout(_connection, created, installation, BuildIsCovered);
-                return (created, changes, covered);
+                return (created, changes, covered, await _loadoutManager.CountUnbackedFiles(installation));
             });
         }
         catch (UserFacingException e)
@@ -378,8 +381,10 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
 
         vm.State = GameWidgetState.ManagedGame;
 
-        // Offer to clean them up
-        if (changeEntries.Length > 0)
+        // Offer to clean them up. Right after the player chose to leave large files where they are, cleaning would ask
+        // for the copy they just declined; the clean stays reachable from the game's page. An uncovered build offers no
+        // clean, only the explanation, so that still shows.
+        if (changeEntries.Length > 0 && (unbacked.Count == 0 || !buildCovered))
         {
             var (revert, doNothing, clean) = (ButtonDefinitionId.Cancel, ButtonDefinitionId.From("doNothing"), ButtonDefinitionId.Accept);
             var result = await ShowCleanGameFolderDialog(revert,
@@ -387,7 +392,8 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                 clean,
                 changeEntries,
                 installation,
-                buildCovered
+                buildCovered,
+                unbacked
             );
             
             if (result == revert)
@@ -447,9 +453,10 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
         ButtonDefinitionId clean,
         LoadoutItemWithTargetPath.ReadOnly[] changeEntries,
         GameInstallation installation,
-        bool buildCovered)
+        bool buildCovered,
+        UnbackedFiles unbacked)
     {
-        var prompt = CleanFolderPrompt.For(buildCovered, changeEntries.Length, installation.Game.DisplayName);
+        var prompt = CleanFolderPrompt.For(buildCovered, changeEntries.Length, installation.Game.DisplayName, unbacked);
         var markdownVm = _serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
         markdownVm.Contents = prompt.Markdown;
 

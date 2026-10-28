@@ -148,6 +148,42 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
     }
 
     [Fact]
+    public async Task AdoptedFiles_AreCountedAsUnbacked()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        await CreateLoadout();
+
+        var unbacked = await LoadoutManager.CountUnbackedFiles(GameInstallation);
+
+        unbacked.Should().Be(new UnbackedFiles(4, Size.KB * 16));
+    }
+
+    [Fact]
+    public async Task BackedUpFiles_AreNotCountedAsUnbacked()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.BackUpAnyway);
+        await CreateLoadout();
+
+        (await LoadoutManager.CountUnbackedFiles(GameInstallation)).Should().Be(default(UnbackedFiles));
+    }
+
+    [Fact]
+    public async Task UnbackedFilesWithTheSameContent_AreCountedOnce()
+    {
+        WriteExternalFile("aa.bin", 4096);
+        File.WriteAllBytes((GameDir / "copy.bin").ToString(), BytesOf("aa.bin", 4096));
+        WriteExternalFiles(3, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        await CreateLoadout();
+
+        var unbacked = await LoadoutManager.CountUnbackedFiles(GameInstallation);
+
+        unbacked.Count.Should().Be(4, "aa.bin and copy.bin are one blob, plus ext0-2");
+    }
+
+    [Fact]
     public async Task SyncStartedWhileThePromptIsOpen_WaitsForTheAnswer()
     {
         WriteExternalFiles(4, 4096);

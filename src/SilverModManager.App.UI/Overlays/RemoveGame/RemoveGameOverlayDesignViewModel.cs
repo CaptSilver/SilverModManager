@@ -1,4 +1,5 @@
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using R3;
 
 namespace SilverModManager.App.UI.Overlays;
@@ -9,6 +10,7 @@ public class RemoveGameOverlayDesignViewModel : AOverlayViewModel<IRemoveGameOve
     public required int NumDownloads { get; init; } = 98;
     public required Size SumDownloadsSize { get; init; } = Size.From(3435678);
     public required int NumCollections { get; init; } = 3;
+    public UnbackedFiles Unbacked { get; init; }
     public BindableReactiveProperty<bool> ShouldDeleteDownloads { get; } = new(value: false);
     public ReactiveCommand<Unit> CommandCancel { get; }
     public ReactiveCommand<Unit> CommandRemove { get; }

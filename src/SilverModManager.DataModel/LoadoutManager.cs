@@ -3,6 +3,8 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using DynamicData.Kernel;
+using NexusMods.Hashing.xxHash3;
+using NexusMods.Paths;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Collections;
@@ -27,6 +29,7 @@ using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Errors;
+using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
@@ -44,6 +47,7 @@ internal partial class LoadoutManager : ILoadoutManager
     private readonly ISynchronizerService _synchronizerService;
     private readonly IGarbageCollectorRunner _garbageCollectorRunner;
     private readonly IGameRegistry _gameRegistry;
+    private readonly IFileStore _fileStore;
 
     // Nothing in the database makes a folder's row unique, so the check and the create have to happen as one
     // step: two callers that both miss would each commit a row for the same install.
@@ -59,6 +63,7 @@ internal partial class LoadoutManager : ILoadoutManager
         _synchronizerService = serviceProvider.GetRequiredService<ISynchronizerService>();
         _garbageCollectorRunner = serviceProvider.GetRequiredService<IGarbageCollectorRunner>();
         _gameRegistry = serviceProvider.GetRequiredService<IGameRegistry>();
+        _fileStore = serviceProvider.GetRequiredService<IFileStore>();
     }
 
     public async ValueTask<GameInstallMetadata.ReadOnly> ManageInstallation(GameInstallation installation)
@@ -474,6 +479,33 @@ internal partial class LoadoutManager : ILoadoutManager
 
         // Apply clean state to game folder
         await installation.GetGame().Synchronizer.Synchronize(Loadout.Load(_connection.Db, loadout.LoadoutId));
+    }
+
+    public async Task<UnbackedFiles> CountUnbackedFiles(GameInstallation installation, CancellationToken cancellationToken = default)
+    {
+        if (!_gameRegistry.TryGetMetadata(installation, out var metadata)) return default;
+
+        var db = _connection.Db;
+        var sizeByHash = new Dictionary<Hash, Size>();
+        foreach (var loadout in Loadout.FindByInstallation(db, metadata).Where(l => l.IsVisible()))
+        {
+            foreach (var file in LoadoutItem.FindByLoadout(db, loadout).OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile())
+            {
+                sizeByHash.TryAdd(file.Hash, file.Size);
+            }
+        }
+
+        var count = 0;
+        var total = Size.From(0);
+        foreach (var (hash, size) in sizeByHash)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (await _fileStore.HaveFile(hash)) continue;
+            count++;
+            total += size;
+        }
+
+        return new UnbackedFiles(count, total);
     }
 
     public Task RescanGameFolder(Loadout.ReadOnly loadout)

@@ -1,3 +1,5 @@
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+
 namespace SilverModManager.App.UI.Pages.MyGames;
 
 /// <summary>
@@ -8,7 +10,7 @@ namespace SilverModManager.App.UI.Pages.MyGames;
 /// vanilla file list, which for such a build would delete the game's own files.</param>
 public sealed record CleanFolderPrompt(string Title, string Markdown, bool OffersClean)
 {
-    public static CleanFolderPrompt For(bool buildCovered, int fileCount, string gameName)
+    public static CleanFolderPrompt For(bool buildCovered, int fileCount, string gameName, UnbackedFiles unbacked)
     {
         if (!buildCovered)
         {
@@ -21,6 +23,7 @@ public sealed record CleanFolderPrompt(string Title, string Markdown, bool Offer
             );
         }
 
+        var backupLine = unbacked.Count > 0 ? UnbackedFilesNote(unbacked) + "\n\n" : "";
         return new CleanFolderPrompt(
             $"Your {gameName} folder isn't a clean install",
             $"""
@@ -31,9 +34,23 @@ public sealed record CleanFolderPrompt(string Title, string Markdown, bool Offer
             - Files in External Changes **override any mods you install later**.
             - If you stop managing this game or uninstall the app, those **files will be permanently removed**.
 
-            Content the game installed itself (Creations, the in-game mod manager) is kept either way.
+            {backupLine}Content the game installed itself (Creations, the in-game mod manager) is kept either way.
             """,
             OffersClean: true
         );
     }
+
+    /// <summary>
+    /// What cleaning costs when some files have no copy in the app's backup: they are copied first, and past the cap
+    /// the app asks before it copies.
+    /// </summary>
+    public static string UnbackedFilesNote(UnbackedFiles unbacked) =>
+        $"{unbacked.Count} of them ({unbacked.Total}) have no backup copy. Cleaning copies them into the app's backup first, then removes them from the folder; over {BackupLimit.Default.Maximum} the app asks before it copies.";
+
+    /// <summary>
+    /// The same cost as <see cref="UnbackedFilesNote"/>, worded for the remove-game dialog where no list of files was
+    /// just shown.
+    /// </summary>
+    public static string RemoveGameNote(UnbackedFiles unbacked) =>
+        $"{unbacked.Count} files ({unbacked.Total}) in this game's loadouts have no backup copy. Removing the game copies them into the app's backup first, then removes them from the folder; over {BackupLimit.Default.Maximum} the app asks before it copies.";
 }
