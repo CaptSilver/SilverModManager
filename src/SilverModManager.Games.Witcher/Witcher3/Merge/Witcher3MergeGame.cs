@@ -1,0 +1,56 @@
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.Merge;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Games.Witcher.Witcher3.SortOrder;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+
+namespace SilverModManager.Games.Witcher.Witcher3.Merge;
+
+/// <summary>
+/// What the Witcher 3 tells the merge engine. A mod's scripts sit in <c>Mods/&lt;folder&gt;/content/scripts</c> and the
+/// game's own in <c>content/content0/scripts</c>; the merged result goes in the first folder the game reads,
+/// <c>mod0000_MergedFiles</c>, so it overrides every mod's copy.
+/// </summary>
+public sealed class Witcher3MergeGame(IGame game) : AMergeGame
+{
+    private const string ScriptsFolder = "content/scripts/";
+    private const string VanillaScripts = "content/content0/";
+
+    private IWitcherModSortOrderVariety Variety =>
+        game.SortOrderManager.GetSortOrderVarieties().OfType<IWitcherModSortOrderVariety>().Single();
+
+    // The merged folder is the app's own output. A copy a Vortex-era merge left in External Changes must not count as a
+    // mod, or it would show as a contributor and feed its stale merge back in.
+    public override (string Package, string Rel)? Split(GamePath path)
+    {
+        if (WitcherModFolders.FolderOf(path) is not { } folder) return null;
+        if (folder.Equals(WitcherConstants.W3MergedFolder, StringComparison.OrdinalIgnoreCase)) return null;
+
+        var rel = path.Path.Path[(WitcherConstants.W3ModsFolder.Length + 1 + folder.Length + 1)..];
+        return (folder, rel);
+    }
+
+    public override bool Merges(GamePath contested)
+        => Split(contested) is { } split
+           && split.Rel.StartsWith(ScriptsFolder, StringComparison.OrdinalIgnoreCase)
+           && split.Rel.EndsWith(".ws", StringComparison.OrdinalIgnoreCase);
+
+    // A mod's rel starts with content/, the game's copy sits below content/content0/ instead. Always a path: the engine
+    // asks the vanilla trust about it and notes a copy that is missing or was modified.
+    public override GamePath? VanillaFor(string rel, GameInstallation installation)
+        => new GamePath(LocationId.Game, VanillaScripts + rel["content/".Length..]);
+
+    public override GamePath OutputFor(string rel)
+        => new(LocationId.Game, $"{WitcherConstants.W3ModsFolder}/{WitcherConstants.W3MergedFolder}/{rel}");
+
+    public override IMergeStrategy StrategyFor(string rel) => TextThreeWayMerge.Instance;
+
+    public override string ReorderHint => "Load Order";
+
+    // Two groups can share one folder, and the Load Order page ranks the folder once, so the merge ranks it the same
+    // way instead of by the owning group's row.
+    public override ulong Rank(Loadout.ReadOnly loadout, string package, LoadoutItemGroupId owner)
+        => (Variety.RankOf(loadout, package) ?? ConflictPriority.MinValue).Value;
+}

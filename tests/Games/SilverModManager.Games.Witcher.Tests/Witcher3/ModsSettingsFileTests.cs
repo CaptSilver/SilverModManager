@@ -227,11 +227,12 @@ public class ModsSettingsFileTests(ITestOutputHelper helper)
     }
 
     [Fact]
-    public void Synchronizer_ListsModsSettingsAsIntrinsic()
+    public async Task Synchronizer_ListsModsSettingsAsIntrinsic()
     {
         var synchronizer = (ALoadoutSynchronizer)Game.Synchronizer;
+        var loadout = await LoadoutWithOrder();
 
-        synchronizer.IntrinsicFiles(default).Keys.Should().ContainSingle().Which.Should().Be(WitcherConstants.W3ModsSettings);
+        synchronizer.IntrinsicFiles(Fresh(loadout)).Keys.Should().ContainSingle().Which.Should().Be(WitcherConstants.W3ModsSettings);
     }
 
     [Fact]
