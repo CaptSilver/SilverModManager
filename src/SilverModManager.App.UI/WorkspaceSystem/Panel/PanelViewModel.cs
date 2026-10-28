@@ -253,6 +253,11 @@ public partial class PanelViewModel : AViewModel<IPanelViewModel>, IPanelViewMod
                 {
                     newTabPage = _factoryController.Create(tab.PageData, WindowId, WorkspaceId, Id, tabId: tab.Id);
                 }
+                catch (PageTargetGoneException e)
+                {
+                    _logger.LogInformation("Not restoring a tab: {Reason}", e.Message);
+                    continue;
+                }
                 catch (Exception e)
                 {
                     _logger.LogError(e, "Exception creating page for factory `{FactoryId}` with context `{Context}`", tab.PageData.FactoryId, tab.PageData.Context);

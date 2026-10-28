@@ -38,6 +38,9 @@ public class CollectionLoadoutPageFactory : APageFactory<ICollectionLoadoutViewM
 
     public override ICollectionLoadoutViewModel CreateViewModel(CollectionLoadoutPageContext context)
     {
+        if (!CollectionGroup.Load(_connection.Db, context.GroupId).IsValid())
+            throw new PageTargetGoneException($"Collection {context.GroupId} no longer exists");
+
         if (!context.RevisionId.HasValue)
         {
             var group = NexusCollectionLoadoutGroup.Load(_connection.Db, context.GroupId);
