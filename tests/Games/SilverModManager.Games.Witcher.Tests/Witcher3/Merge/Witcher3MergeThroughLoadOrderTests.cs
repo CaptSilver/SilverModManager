@@ -6,6 +6,7 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -80,8 +81,13 @@ public class Witcher3MergeThroughLoadOrderTests(ITestOutputHelper helper)
         await file.WriteAllBytesAsync(Bytes(vanilla));
 
         var local = ((StubbedFileHasherService)ServiceProvider.GetRequiredService<IFileHashesService>()).LocalConnection;
-        await LocalBaselineRows.AddLocalBaseline(local, GameInstallation.LocatorResult.Store, GameInstallation.Locations[LocationId.Game].Path.ToString(),
+        var baseline = await LocalBaselineRows.AddLocalBaseline(local, GameInstallation.LocatorResult.Store, GameInstallation.Locations[LocationId.Game].Path.ToString(),
             LocalBaselineKind.Snapshot, [(VanillaPlayer, vanilla)], nonVanilla);
+
+        // A baseline vouches for the game's files only while it was built for the installed build's locator ids.
+        using var tx = local.BeginTransaction();
+        foreach (var id in GameInstallation.LocatorResult.LocatorIds) tx.Add(baseline, LocalBaseline.LocatorIds, id.Value);
+        await tx.Commit();
     }
 
     private async Task<LoadoutItemGroupId> Mod(Loadout.ReadOnly loadout, string name, ulong priority, params (string Path, byte[] Bytes)[] files)
