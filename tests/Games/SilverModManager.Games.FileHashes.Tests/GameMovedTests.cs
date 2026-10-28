@@ -104,6 +104,20 @@ public sealed class GameMovedTests : IDisposable
     }
 
     [Fact]
+    public async Task Pass_MovedManagedGame_MovesTheBaselineInsteadOfRemovingIt()
+    {
+        var hashes = Substitute.For<IFileHashesService>();
+        var loadout = await MovedLoadout();
+        await MarkManaged(loadout);
+        var registry = Registry(Loadout.Load(_main.Db, loadout.Id).Installation, NewPath, out var installation);
+
+        await RunPass(hashes, registry, installation);
+
+        await hashes.Received(1).MoveLocalBaseline(GameStore.Steam, OldPath, NewPath, Arg.Any<CancellationToken>());
+        RemovedBaselines(hashes).Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Pass_RowStillNamesTheFolderItLeft_RemovesThatBaseline()
     {
         // The registry records the new folder in the background, so the pass can get the row before it lands.
@@ -145,6 +159,13 @@ public sealed class GameMovedTests : IDisposable
         .Where(call => call.GetMethodInfo().Name == nameof(IFileHashesService.RemoveLocalBaseline))
         .Select(call => (string)call.GetArguments()[1]!)
         .ToArray();
+
+    private async Task MarkManaged(Loadout.ReadOnly loadout)
+    {
+        using var tx = _main.BeginTransaction();
+        tx.Add(loadout.Installation.Id, GameInstallMetadata.LastSyncedLoadout, loadout.Id);
+        await tx.Commit();
+    }
 
     private async Task<Loadout.ReadOnly> MovedLoadout()
     {

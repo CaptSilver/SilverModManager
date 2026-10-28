@@ -842,6 +842,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
         public bool TryGetLocatorIdsForVanityVersion(GameStore gameStore, VanityVersion version, out LocatorId[] locatorIds) => throw new NotSupportedException();
         public LocatorId[] GetLocatorIdsForVersionDefinition(GameStore gameStore, VersionDefinition.ReadOnly versionDefinition) => throw new NotSupportedException();
         public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task MoveLocalBaseline(GameStore store, string oldPath, string newPath, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task RemoveLocalBaseline(GameStore store, string gamePath, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public DynamicData.Kernel.Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, Hash Hash)> files) => throw new NotSupportedException();
     }

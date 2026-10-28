@@ -102,6 +102,14 @@ public interface IFileHashesService
     public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Re-keys the baseline at <paramref name="oldPath"/> to <paramref name="newPath"/>, for a managed game the
+    /// registry followed to another folder: the baseline was taken before mods were deployed, and no other
+    /// can be built from the folder as it is now. A baseline from complete depot manifests already at the new
+    /// path stays and the old one is deleted. Nothing happens when there is none at the old path.
+    /// </summary>
+    public Task MoveLocalBaseline(GameStore store, string oldPath, string newPath, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Deletes the local baseline of the installation at <paramref name="gamePath"/>, with the rows only it
     /// uses. Nothing happens when there is none. For a game that moved: its baseline at the old folder is not
     /// read by anything any more.

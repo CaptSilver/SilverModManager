@@ -69,6 +69,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
     {
         public bool Fail { get; set; }
         public bool FailBaselineBuild { get; set; }
+        public int BaselineBuildCalls { get; set; }
     }
 
     protected override SteamInstall InstallGame(SteamLibraryFixture library)
@@ -536,6 +537,42 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         Overrides(Refresh(loadout)).Should().NotContain(Vanilla);
     }
 
+    [Fact]
+    public async Task AGameUpdatedToABuildNoStoreCovers_WhenNoBaselineExists_RefusesTheApplyAndWritesNoBaseline()
+    {
+        var loadout = await CreateLoadout();
+        await AddMod(loadout, Vanilla);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        await Hashes.RemoveLocalBaseline(GameInstallation.LocatorResult.Store, GameFolder.ToString());
+        SteamUpdatesTheGame(cachesTheNewManifests: false);
+
+        var refused = () => Synchronizer.Synchronize(Refresh(loadout));
+
+        var refusal = await refused.Should().ThrowAsync<UserFacingException>();
+        refusal.Which.Message.Should().Contain("Let Steam finish updating");
+        LocalBaseline.All(Hashes.Local).Should().BeEmpty("a snapshot of a folder with a mod deployed would call the mod vanilla");
+        Refresh(loadout).LocatorIds.Select(id => id.Value).Should().NotContain(NewGameManifestId.ToString());
+    }
+
+    [Fact]
+    public async Task AKeptBaselineOfAnOlderBuild_IsNotAskedToRebuildOnEveryApplyOnceTheStoreCoversTheBuild()
+    {
+        var loadout = await CreateLoadout();
+        await AddMod(loadout, Vanilla);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        SteamUpdatesTheGame(cachesTheNewManifests: false);
+        var refused = () => Synchronizer.Synchronize(Refresh(loadout));
+        await refused.Should().ThrowAsync<UserFacingException>();
+        await TheDownloadedStoreLearnsTheNewBuild();
+        await Synchronizer.Synchronize(Refresh(loadout));
+        LocalBaseline.All(Hashes.Local).Single().LocatorIds.Should().NotContain(NewGameManifestId.ToString(), "the deployed mod keeps the old baseline in place");
+        var calls = _settle.BaselineBuildCalls;
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        _settle.BaselineBuildCalls.Should().Be(calls, "the coordinator would refuse again and read the depotcache for nothing");
+    }
+
     // The store's own data: a newer downloaded database on disk, which the service connects when it checks for one.
     private async Task TheDownloadedStoreLearnsTheNewBuild()
     {
@@ -642,7 +679,13 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         public bool TryGetLocatorIdsForVanityVersion(GameStore gameStore, VanityVersion version, out LocatorId[] locatorIds) => inner.TryGetLocatorIdsForVanityVersion(gameStore, version, out locatorIds);
         public LocatorId[] GetLocatorIdsForVersionDefinition(GameStore gameStore, VersionDefinition.ReadOnly versionDefinition) => inner.GetLocatorIdsForVersionDefinition(gameStore, versionDefinition);
         public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default)
-            => gate.FailBaselineBuild ? throw new InvalidOperationException("the baseline build failed") : inner.EnsureLocalBaseline(installation, cancellationToken);
+            => CountedEnsure(installation, cancellationToken);
+        private Task<LocalBaselineResult> CountedEnsure(GameInstallation installation, CancellationToken cancellationToken)
+        {
+            gate.BaselineBuildCalls++;
+            return gate.FailBaselineBuild ? throw new InvalidOperationException("the baseline build failed") : inner.EnsureLocalBaseline(installation, cancellationToken);
+        }
+        public Task MoveLocalBaseline(GameStore store, string oldPath, string newPath, CancellationToken cancellationToken = default) => inner.MoveLocalBaseline(store, oldPath, newPath, cancellationToken);
         public Task RemoveLocalBaseline(GameStore store, string gamePath, CancellationToken cancellationToken = default) => inner.RemoveLocalBaseline(store, gamePath, cancellationToken);
         public Task WaitForLocalBaselineBuild(GameInstallation installation, CancellationToken cancellationToken = default) => inner.WaitForLocalBaselineBuild(installation, cancellationToken);
         public Task RecordIndexedFiles(GameInstallation installation, IReadOnlyList<IndexedFileHash> files, CancellationToken cancellationToken = default) => inner.RecordIndexedFiles(installation, files, cancellationToken);

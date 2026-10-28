@@ -82,6 +82,29 @@ internal sealed class LocalBaselineCoordinator : IDisposable
     }
 
     /// <summary>
+    /// Points the baseline at <paramref name="oldPath"/> at <paramref name="newPath"/> instead, for a game the
+    /// registry followed to another folder. A baseline from complete depot manifests already at the new path is
+    /// kept and the old one dropped; anything else there is replaced by the moved one.
+    /// </summary>
+    public async Task Move(GameStore store, string oldPath, string newPath, CancellationToken cancellationToken = default)
+    {
+        foreach (var path in new[] { oldPath, newPath })
+        {
+            if (!_inFlight.TryGetValue((store, path), out var running)) continue;
+            try
+            {
+                await running.Value.WaitAsync(cancellationToken);
+            }
+            catch (Exception e) when (!cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(e, "The local baseline build at {Path} failed before its rows were moved", path);
+            }
+        }
+
+        await _baseline.Move(store, oldPath, newPath, _localStore());
+    }
+
+    /// <summary>
     /// Waits for the build of this installation that is running, if any. A build that fails leaves no rows
     /// and reports the failure to its own caller, so the waiter carries on without them.
     /// </summary>
@@ -134,14 +157,13 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         var (manifests, allCovered) = ResolveManifests(installation);
 
         // A folder a loadout was applied to has mods in it. A baseline not built from complete depot manifests
-        // takes the folder as it is, so for another build than the old baseline's it would call those mods vanilla.
-        // The old baseline stays until a manifest covers the new build.
-        if (existing is { } old && !BuiltFor(old, locator.LocatorIds.Select(id => id.Value))
-            && (manifests.Count == 0 || !allCovered) && _isManaged(installation))
+        // takes the folder as it is, so it would call those mods vanilla. Only complete manifests replace what is
+        // there (or make the first baseline), whatever the locator ids are; until then the old baseline stays.
+        if (_isManaged(installation) && (manifests.Count == 0 || !allCovered))
         {
-            _logger.LogInformation("Keeping the baseline of {Game} built for its previous build: no manifest covers the new one and the folder has mods deployed, so a baseline taken from it would count them as the game's own files",
-                installation.Game.DisplayName);
-            return Describe(store.Db, old, rebuilt: false);
+            _logger.LogInformation("Not building a baseline of {Game}: no complete set of manifests covers its build and the folder has mods deployed, so a baseline taken from it would count them as the game's own files{Kept}",
+                installation.Game.DisplayName, existing is null ? "" : "; keeping the one it has");
+            return existing is { } old ? Describe(store.Db, old, rebuilt: false) : new LocalBaselineResult(LocalBaselineKind.Snapshot, false, 0);
         }
 
         var synchronizer = installation.GetGame().Synchronizer;

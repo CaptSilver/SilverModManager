@@ -48,7 +48,8 @@ internal sealed class LocalBaselineStartupPass : IHostedService
 
     /// <summary>
     /// A game the registry followed to another folder leaves its baseline behind at the old one. Nothing reads
-    /// it any more, unless another install of the game is at that folder now.
+    /// it any more, unless another install of the game is at that folder now. An unmanaged game's is deleted;
+    /// a managed game's moves to the new folder.
     /// </summary>
     private async Task RemoveBaselineOfFolderLeft(GameInstallMetadata.ReadOnly metadata, GameInstallation installation, ImmutableArray<GameInstallation> installations, CancellationToken cancellationToken)
     {
@@ -60,7 +61,12 @@ internal sealed class LocalBaselineStartupPass : IHostedService
 
         if (installations.Any(other => other.LocatorResult.Store == metadata.Store && LocalBaselineCoordinator.GamePathOf(other) == oldPath)) return;
 
-        await _fileHashes.RemoveLocalBaseline(metadata.Store, oldPath, cancellationToken);
+        // A managed folder has mods in it, so no baseline can be built from it now; the one from before they were
+        // deployed is the only vanilla record there is and moves with the game.
+        if (GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out _))
+            await _fileHashes.MoveLocalBaseline(metadata.Store, oldPath, folder, cancellationToken);
+        else
+            await _fileHashes.RemoveLocalBaseline(metadata.Store, oldPath, cancellationToken);
     }
 
     /// <summary>

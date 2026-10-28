@@ -233,7 +233,7 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
         baseline.LocatorIds.Should().Equal("101");
         baseline.Files.Select(f => f.Path.ToString()).Should().NotContain("mod.esp");
-        _coordinatorLog.Lines.Should().Contain(l => l.Contains("Keeping the baseline"));
+        _coordinatorLog.Lines.Should().Contain(l => l.Contains("Not building a baseline") && l.Contains("keeping the one it has"));
     }
 
     [Fact]
@@ -265,6 +265,161 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         result.Rebuilt.Should().BeTrue();
         result.Kind.Should().Be(LocalBaselineKind.DepotManifests);
         LocalBaseline.All(_store.Db).Should().ContainSingle().Which.LocatorIds.Should().Equal("102");
+    }
+
+    [Fact]
+    public async Task ManagedFolder_ManifestThatStillNeedsAKey_KeepsAPartialBaselineOfTheSameIds()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        WriteGameFile("b.esm", "other");
+        _source.Add(101, ("a.esm", "vanilla"));
+        (await _coordinator.Ensure(Installation("101", "102"))).Kind.Should().Be(LocalBaselineKind.PartialDepotManifests);
+        WriteGameFile("mod.esp", "deployed mod");
+
+        await Task.Delay(50);
+        _source.AddNeedingKey(102);
+        var result = await ManagedCoordinator().Ensure(Installation("101", "102"));
+
+        result.Rebuilt.Should().BeFalse();
+        result.Kind.Should().Be(LocalBaselineKind.PartialDepotManifests);
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Files.Select(f => f.Path.ToString()).Should().NotContain("mod.esp");
+    }
+
+    [Fact]
+    public async Task ManagedFolder_ManifestAppearingLater_UpgradesAPartialBaseline()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        WriteGameFile("b.esm", "other");
+        _source.Add(101, ("a.esm", "vanilla"));
+        await _coordinator.Ensure(Installation("101", "102"));
+
+        await Task.Delay(50);
+        _source.Add(102, ("b.esm", "other"));
+        var result = await ManagedCoordinator().Ensure(Installation("101", "102"));
+
+        result.Rebuilt.Should().BeTrue();
+        result.Kind.Should().Be(LocalBaselineKind.DepotManifests);
+    }
+
+    [Fact]
+    public async Task ManagedFolder_ManifestThatNeedsAKeyAppearingAfterASnapshot_KeepsTheSnapshot()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        (await _coordinator.Ensure(Installation("101"))).Kind.Should().Be(LocalBaselineKind.Snapshot);
+        WriteGameFile("mod.esp", "deployed mod");
+
+        await Task.Delay(50);
+        _source.AddNeedingKey(101);
+        var result = await ManagedCoordinator().Ensure(Installation("101"));
+
+        result.Rebuilt.Should().BeFalse();
+        result.Kind.Should().Be(LocalBaselineKind.Snapshot);
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Files.Select(f => f.Path.ToString()).Should().NotContain("mod.esp");
+    }
+
+    [Fact]
+    public async Task ManagedFolder_ManifestAppearingLater_UpgradesASnapshot()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        await _coordinator.Ensure(Installation("101"));
+
+        await Task.Delay(50);
+        _source.Add(101, ("a.esm", "vanilla"));
+        var result = await ManagedCoordinator().Ensure(Installation("101"));
+
+        result.Rebuilt.Should().BeTrue();
+        result.Kind.Should().Be(LocalBaselineKind.DepotManifests);
+    }
+
+    [Fact]
+    public async Task ManagedFolder_WithNoBaselineAndNoManifest_BuildsNone()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        WriteGameFile("mod.esp", "deployed mod");
+
+        var result = await ManagedCoordinator().Ensure(Installation("101"));
+
+        result.Rebuilt.Should().BeFalse();
+        LocalBaseline.All(_store.Db).Should().BeEmpty();
+        _coordinatorLog.Lines.Should().ContainSingle(l => l.Contains("Not building a baseline") && !l.Contains("keeping"));
+    }
+
+    [Fact]
+    public async Task ManagedFolder_WithNoBaselineAndACompleteManifest_BuildsFromIt()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        _source.Add(101, ("a.esm", "vanilla"));
+
+        var result = await ManagedCoordinator().Ensure(Installation("101"));
+
+        result.Rebuilt.Should().BeTrue();
+        result.Kind.Should().Be(LocalBaselineKind.DepotManifests);
+    }
+
+    [Fact]
+    public async Task Move_ReKeysTheBaselineToTheNewFolder_KeepingItsRows()
+    {
+        const string oldPath = "/games/old";
+        var id = await LocalBaselineRows.AddLocalBaseline(_store, GameStore.Steam, oldPath, LocalBaselineKind.DepotManifests, [("a.esm", "one")]);
+
+        await _coordinator.Move(GameStore.Steam, oldPath, "/games/new");
+
+        var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        baseline.Id.Should().Be(id);
+        baseline.GamePath.Should().Be("/games/new");
+        baseline.Files.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Move_ReplacesASnapshotAlreadyAtTheNewFolder()
+    {
+        var moved = await LocalBaselineRows.AddLocalBaseline(_store, GameStore.Steam, "/games/old", LocalBaselineKind.DepotManifests, [("a.esm", "one")]);
+        await LocalBaselineRows.AddLocalBaseline(_store, GameStore.Steam, "/games/new", LocalBaselineKind.Snapshot, [("a.esm", "one"), ("mod.esp", "mod")]);
+
+        await _coordinator.Move(GameStore.Steam, "/games/old", "/games/new");
+
+        var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        baseline.Id.Should().Be(moved);
+        baseline.GamePath.Should().Be("/games/new");
+    }
+
+    [Fact]
+    public async Task Move_KeepsADepotManifestBaselineAlreadyAtTheNewFolder()
+    {
+        await LocalBaselineRows.AddLocalBaseline(_store, GameStore.Steam, "/games/old", LocalBaselineKind.DepotManifests, [("a.esm", "one")]);
+        var current = await LocalBaselineRows.AddLocalBaseline(_store, GameStore.Steam, "/games/new", LocalBaselineKind.DepotManifests, [("a.esm", "one")]);
+
+        await _coordinator.Move(GameStore.Steam, "/games/old", "/games/new");
+
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Id.Should().Be(current);
+    }
+
+    [Fact]
+    public async Task ManagedFolderThatMoved_WithNoManifest_KeepsTheBaselineFromBeforeTheModsAtTheNewFolder()
+    {
+        // The baseline of the old folder, taken when the game was clean.
+        WriteGameFile("a.esm", "vanilla");
+        _source.Add(101, ("a.esm", "vanilla"));
+        var installation = Installation("101");
+        await _coordinator.Ensure(installation);
+        var gamePath = LocalBaselineCoordinator.GamePathOf(installation);
+        var movedFrom = gamePath + "-before-the-move";
+        using (var tx = _store.BeginTransaction())
+        {
+            tx.Add(LocalBaseline.All(_store.Db).Single().Id, LocalBaseline.GamePath, movedFrom);
+            await tx.Commit();
+        }
+
+        // A mod was deployed since; a baseline taken from the folder now would call it vanilla.
+        WriteGameFile("mod.esp", "deployed mod");
+        var managed = ManagedCoordinator();
+        await managed.Move(GameStore.Steam, movedFrom, gamePath);
+        var result = await managed.Ensure(Installation("101"));
+
+        result.Rebuilt.Should().BeFalse();
+        var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        baseline.GamePath.Should().Be(gamePath);
+        baseline.Files.Select(f => f.Path.ToString()).Should().Equal("a.esm");
     }
 
     [Fact]

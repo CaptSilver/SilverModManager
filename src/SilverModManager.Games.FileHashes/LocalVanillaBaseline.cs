@@ -525,4 +525,27 @@ internal sealed class LocalVanillaBaseline
         if (!RetractAt(tx, localStore.Db, store, gamePath)) return;
         await tx.Commit();
     }
+
+    /// <summary>
+    /// Re-keys the baseline at <paramref name="oldPath"/> to <paramref name="newPath"/>. One already at the new
+    /// path that was built from depot manifests stays and the old one is deleted; any other is replaced.
+    /// </summary>
+    public async Task Move(GameStore store, string oldPath, string newPath, IConnection localStore)
+    {
+        var db = localStore.Db;
+        if (LocalBaselineCoordinator.FindBaseline(db, store, oldPath) is not { } moved) return;
+
+        using var tx = localStore.BeginTransaction();
+        if (LocalBaselineCoordinator.FindBaseline(db, store, newPath) is { Kind: LocalBaselineKind.DepotManifests })
+        {
+            RetractAt(tx, db, store, oldPath);
+        }
+        else
+        {
+            RetractAt(tx, db, store, newPath);
+            tx.Add(moved.Id, LocalBaseline.GamePath, newPath);
+        }
+
+        await tx.Commit();
+    }
 }

@@ -743,6 +743,10 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         => _baselineCoordinator.Ensure(installation, cancellationToken);
 
     /// <inheritdoc />
+    public Task MoveLocalBaseline(GameStore store, string oldPath, string newPath, CancellationToken cancellationToken = default)
+        => _baselineCoordinator.Move(store, oldPath, newPath, cancellationToken);
+
+    /// <inheritdoc />
     public Task RemoveLocalBaseline(GameStore store, string gamePath, CancellationToken cancellationToken = default)
         => _baselineCoordinator.Remove(store, gamePath, cancellationToken);
 

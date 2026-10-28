@@ -717,14 +717,18 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // A baseline built for another build vouches for nothing the loadout's ids name, so without a rebuild every
         // unchanged vanilla file reads as one the loadout deleted. The background pass can have failed or not
         // run since the update, so the apply makes sure itself.
-        if (baseline is not null)
+        var managed = GameInstallMetadata.LastSyncedLoadout.TryGetValue(loadout.Installation, out _);
+        var covered = (gameLocatorResult.Store, newLocatorIds);
+        if (baseline is not null || managed)
         {
-            await RebuildBaselineForUpdatedBuild(located, cancellationToken);
+            // A managed folder whose build the store data already covers needs no baseline of its own, and the
+            // coordinator would only refuse to build one from the deployed folder again.
+            if (!managed || !_fileHashService.CoversInstalledBuild(covered))
+                await RebuildBaselineForUpdatedBuild(located, cancellationToken);
 
             // Only a build the store describes can tell the game's own files from a mod's. A baseline taken from
             // whatever is in the folder now would call the deployed mods vanilla.
-            if (GameInstallMetadata.LastSyncedLoadout.TryGetValue(loadout.Installation, out _)
-                && !_fileHashService.CoversInstalledBuild((gameLocatorResult.Store, newLocatorIds)))
+            if (managed && !_fileHashService.CoversInstalledBuild(covered))
             {
                 var howToLift = gameLocatorResult.Store == GameStore.Steam
                     ? "Let Steam finish updating the game (it keeps the file list for a build in its depotcache), then apply again."
