@@ -15,12 +15,8 @@ public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witch
     public static string DisplayName => "The Witcher 3: Wild Hunt";
     public static Optional<NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(952);
 
-    private StoreIdentifiers? _storeIdentifiers;
-
     // 292030 is the base game, 499450 the Game of the Year edition.
-    protected override uint SteamAppId => 292030;
-
-    public override StoreIdentifiers StoreIdentifiers => _storeIdentifiers ??= new StoreIdentifiers(GameId)
+    protected override StoreIdentifiers CreateStoreIdentifiers() => new(GameId)
     {
         SteamAppIds = [499450u, 292030u],
         GOGProductIds = [1207664663L, 1495134320L, 1207664643L, 1640424747L],

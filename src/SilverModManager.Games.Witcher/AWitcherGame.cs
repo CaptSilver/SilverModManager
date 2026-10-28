@@ -12,10 +12,10 @@ public abstract class AWitcherGame<TSelf>(IServiceProvider provider) : AGame<TSe
 {
     private StoreIdentifiers? _storeIdentifiers;
 
-    protected abstract uint SteamAppId { get; }
+    protected abstract StoreIdentifiers CreateStoreIdentifiers();
 
-    // Built on first read: the Steam id is a virtual member and the base constructor runs before a derived one.
-    public override StoreIdentifiers StoreIdentifiers => _storeIdentifiers ??= new StoreIdentifiers(TSelf.GameId) { SteamAppIds = [SteamAppId] };
+    // Built on first read: the ids come from a virtual member and the base constructor runs before a derived one.
+    public override StoreIdentifiers StoreIdentifiers => _storeIdentifiers ??= CreateStoreIdentifiers();
 
     /// <summary>The folder under Documents that the game keeps its settings in. Null when it keeps none there.</summary>
     protected virtual string? DocumentsFolderName => null;

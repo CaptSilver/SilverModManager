@@ -11,6 +11,6 @@ public sealed class Witcher1Game(IServiceProvider provider) : AWitcherGame<Witch
     public static string DisplayName => "The Witcher";
     public static Optional<NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(150);
 
-    protected override uint SteamAppId => 20900;
+    protected override StoreIdentifiers CreateStoreIdentifiers() => new(GameId) { SteamAppIds = [20900] };
     protected override RelativePath PrimaryExe => "System/witcher.exe";
 }
