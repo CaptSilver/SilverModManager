@@ -48,6 +48,19 @@ public class Witcher3InstallerTests(ITestOutputHelper outputHelper) : AWitcher3A
     }
 
     [Fact]
+    public async Task MenuModWithoutBin_RootsAtThePartFolderSoContentLandsUnderMods()
+    {
+        var loadout = await CreateLoadout();
+        var archive = await AddNamedArchive("Example Mod.zip", "modFoo/content/scripts/x.ws", "modFoo/input.settings.part.txt");
+
+        var group = await InstallThroughGame(loadout, archive);
+
+        Targets(group).Should().Equal(
+            "{Game}/INI Tweaks/modFoo [input.settings].ini",
+            "{Game}/Mods/modFoo/content/scripts/x.ws");
+    }
+
+    [Fact]
     public async Task ScriptMerger_IsRefusedReadablyOnAManualInstall()
     {
         var loadout = await CreateLoadout();
@@ -58,7 +71,7 @@ public class Witcher3InstallerTests(ITestOutputHelper outputHelper) : AWitcher3A
 
         var thrown = (await act.Should().ThrowAsync<ScriptMergerArchiveRefusedException>()).Which;
         thrown.Title.Should().Be("Script Merger is not needed");
-        thrown.Message.Should().Contain("Script Merger.zip").And.Contain("merges scripts itself");
+        thrown.Message.Should().Contain("Script Merger.zip").And.Contain("merges scripts itself").And.NotContain("collection");
         LoadoutItemGroup.All(Connection.Db).Count(g => g.AsLoadoutItem().LoadoutId == loadout.LoadoutId).Should().Be(groupsBefore);
     }
 

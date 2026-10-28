@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -63,6 +65,47 @@ public class UnplacedArchiveFilesEmitterTests(ITestOutputHelper helper)
         var loadout = await CreateLoadout();
         var collection = await CreateNexusCollectionGroup(loadout, "Big list");
         await Install(loadout, "Script Merger.zip", collection, "WitcherScriptMerger/WitcherScriptMerger.exe", "WitcherScriptMerger/lib.dll");
+
+        await ShouldHaveNoDiagnostics(loadout);
+    }
+
+    [Fact]
+    public async Task ASubsetGroupNoRuleInstalled_GetsNoCard()
+    {
+        var loadout = await CreateLoadout();
+        var archive = await AddNamedArchive("Subset.zip", "content/a.ws", "content/b.ws", "tools/patch.exe");
+        var kept = archive.Children.Single(c => c.Path.Path == "content/a.ws");
+        using (var tx = Connection.BeginTransaction())
+        {
+            var group = new LoadoutItemGroup.New(tx, out var id)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, id) { Name = "Subset.zip", LoadoutId = loadout },
+            };
+            _ = new LibraryLinkedLoadoutItem.New(tx, id) { LoadoutItemGroup = group, LibraryItemId = archive.AsLibraryFile().AsLibraryItem() };
+            var fileId = tx.TempId();
+            _ = new LoadoutFile.New(tx, fileId)
+            {
+                LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, fileId)
+                {
+                    TargetPath = (loadout.Id, LocationId.Game, (RelativePath)"Mods/modSubset/content/a.ws"),
+                    LoadoutItem = new LoadoutItem.New(tx, fileId) { Name = "a.ws", LoadoutId = loadout, ParentId = group.Id },
+                },
+                Hash = kept.AsLibraryFile().Hash,
+                Size = kept.AsLibraryFile().Size,
+            };
+            await tx.Commit();
+        }
+
+        await ShouldHaveNoDiagnostics(loadout, "the group is not what the Witcher 3 rules produce, so the user or a collection chose the subset");
+    }
+
+    [Fact]
+    public async Task TheBackupCopyOfAMenuXml_GetsNoCard()
+    {
+        var loadout = await CreateLoadout();
+        await Install(loadout, "Menu.zip", null,
+            "modX/bin/config/r4game/user_config_matrix/pc/x.xml", "modX/backup/bin/config/r4game/user_config_matrix/pc/x.xml");
 
         await ShouldHaveNoDiagnostics(loadout);
     }

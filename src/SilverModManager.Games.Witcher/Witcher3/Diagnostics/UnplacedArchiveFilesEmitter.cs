@@ -1,6 +1,5 @@
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
-using NexusMods.Paths;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -11,8 +10,10 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.Games.Witcher.Witcher3.Diagnostics;
 
 /// <summary>
-/// Lists the files of an installed archive that ended up nowhere in the loadout, apart from documentation. Found by
-/// matching the archive's file hashes against the group's files, so a <c>.part.txt</c> kept as an INI tweak counts as placed.
+/// Lists the files of an archive the Witcher 3 rules installed that ended up nowhere in the loadout, apart from
+/// documentation. Only a group whose files are exactly what the rules produce for its archive is checked: a
+/// collection's saved FOMOD choices, its file lists and a hand-picked Advanced install leave files out on purpose.
+/// Files are matched by hash, so a <c>.part.txt</c> kept as an INI tweak counts as placed.
 /// </summary>
 public sealed class UnplacedArchiveFilesEmitter : ADroppedItemEmitter
 {
@@ -28,13 +29,25 @@ public sealed class UnplacedArchiveFilesEmitter : ADroppedItemEmitter
             if (ScriptMergerArchive.IsScriptMerger(archive)) continue;
 
             var item = group.AsLoadoutItemGroup();
-            var placed = item.Children.OfTypeLoadoutItemWithTargetPath()
-                .Select(child => child.TryGetAsLoadoutFile(out var file) ? file.Hash : default)
-                .ToHashSet();
+            var entries = archive.Children.ToArray();
+            var paths = entries.Select(e => e.Path.Path).ToArray();
+            var plan = Witcher3InstallPlan.Plan(paths, archive.AsLibraryFile().FileName.ToString());
+            if (plan is null) continue;
 
-            foreach (var entry in archive.Children.OrderBy(child => child.Path.Path, StringComparer.Ordinal))
+            var hashOf = entries.ToDictionary(e => e.Path.Path, e => e.AsLibraryFile().Hash, StringComparer.Ordinal);
+            var expected = plan.Select(p => (Target: p.Target.ToString(), Hash: hashOf[p.Source])).ToHashSet();
+            var actual = item.Children.OfTypeLoadoutItemWithTargetPath()
+                .Select(child => child.TryGetAsLoadoutFile(out var file) ? (Target: ((GamePath)child.TargetPath).ToString(), Hash: file.Hash) : default)
+                .Where(pair => pair.Target is not null)
+                .ToHashSet();
+            if (!expected.SetEquals(actual)) continue;
+
+            var placed = actual.Select(a => a.Hash).ToHashSet();
+            var skippedCopies = Witcher3InstallPlan.SkippedMenuXmlCopies(paths);
+            foreach (var entry in entries.OrderBy(e => e.Path.Path, StringComparer.Ordinal))
             {
                 if (placed.Contains(entry.AsLibraryFile().Hash)) continue;
+                if (skippedCopies.Contains(entry.Path.Path)) continue;
                 if (Witcher3ModInstaller.DocumentationExtensions.Contains(entry.Path.Extension)) continue;
 
                 yield return new DroppedItem(entry.Path.Path, item.AsLoadoutItem().Name, Reason, "Library");

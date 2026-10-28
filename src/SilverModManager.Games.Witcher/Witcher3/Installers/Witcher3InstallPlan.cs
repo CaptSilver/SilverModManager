@@ -39,9 +39,13 @@ internal static class Witcher3InstallPlan
             return null;
 
         // The folder above bin names the mod; an archive without one takes its name from the file.
+        // Without a bin folder the folder holding the .part.txt plays that part, so content lands under Mods/<that folder>.
         var binIndex = paths.Select(p => p.MenuConfigBinIndex).FirstOrDefault(i => i >= 0, -1);
-        var root = binIndex > 0 ? string.Join('/', paths.First(p => p.MenuConfigBinIndex == binIndex).Segments[..binIndex]) + "/" : "";
-        var modName = binIndex > 0 ? paths.First(p => p.MenuConfigBinIndex == binIndex).Segments[binIndex - 1] : archiveModName;
+        var rootSegments = binIndex >= 0
+            ? paths.First(p => p.MenuConfigBinIndex == binIndex).Segments[..binIndex]
+            : paths.FirstOrDefault(p => p.Lower.EndsWith(PartSuffix, StringComparison.Ordinal))?.Segments[..^1] ?? [];
+        var root = rootSegments.Length > 0 ? string.Join('/', rootSegments) + "/" : "";
+        var modName = rootSegments.Length > 0 ? rootSegments[^1] : archiveModName;
 
         var placements = new List<Placement>();
         var taken = new HashSet<GamePath>();
@@ -52,12 +56,9 @@ internal static class Witcher3InstallPlan
         }
 
         // A mod that ships a backup of the vanilla menu file next to its own would otherwise win by archive order.
-        var menuXmls = paths.Where(p => p.MenuConfigBinIndex >= 0 && p.Extension == ".xml").ToArray();
-        foreach (var group in menuXmls.GroupBy(p => p.FileName, StringComparer.OrdinalIgnoreCase))
-        {
-            var winner = group.FirstOrDefault(p => !p.Lower.Contains("backup", StringComparison.Ordinal)) ?? group.First();
+        var menuXmls = MenuXmls(paths);
+        foreach (var winner in MenuXmlWinners(menuXmls))
             Place(winner.Original, $"{MenuConfigFolder}/{winner.FileName}");
-        }
 
         foreach (var path in paths.Where(p => p.Lower.StartsWith(root.ToLowerInvariant(), StringComparison.Ordinal) && !menuXmls.Contains(p)))
         {
@@ -75,6 +76,24 @@ internal static class Witcher3InstallPlan
         }
 
         return placements.ToArray();
+    }
+
+    private static ArchivePath[] MenuXmls(ArchivePath[] paths) =>
+        paths.Where(p => p.MenuConfigBinIndex >= 0 && p.Extension == ".xml").ToArray();
+
+    private static IEnumerable<ArchivePath> MenuXmlWinners(ArchivePath[] menuXmls) =>
+        menuXmls.GroupBy(p => p.FileName, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.FirstOrDefault(p => !p.Lower.Contains("backup", StringComparison.Ordinal)) ?? group.First());
+
+    /// <summary>
+    /// The copies of a menu XML that lose to another of the same name, normally the vanilla backup a mod ships
+    /// beside its own file. They are left out on purpose, so nothing reports them as unplaced.
+    /// </summary>
+    public static IReadOnlySet<string> SkippedMenuXmlCopies(IReadOnlyList<string> archivePaths)
+    {
+        var menuXmls = MenuXmls(archivePaths.Select(p => new ArchivePath(p)).ToArray());
+        var winners = MenuXmlWinners(menuXmls).ToHashSet();
+        return menuXmls.Where(p => !winners.Contains(p)).Select(p => p.Original).ToHashSet();
     }
 
     private static Placement[]? Mixed(ArchivePath[] paths)

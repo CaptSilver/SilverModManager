@@ -52,7 +52,7 @@ public class SkippedScriptMergerEmitterTests(ITestOutputHelper helper)
     {
         var loadout = await CreateLoadout();
         var collection = await CreateNexusCollectionGroup(loadout, "Big list");
-        // Rule 4 claims it, but nothing in it matches a placed file, so the group has children; make one with none by hand.
+        // A lone readme that no rule claims, in an empty group built by hand, so only the archive decides whether it is Script Merger.
         var archive = await AddNamedArchive("Other.zip", "readme.txt");
         using (var tx = Connection.BeginTransaction())
         {
