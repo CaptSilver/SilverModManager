@@ -50,4 +50,13 @@ public class CleanFolderPromptTests
     [Fact]
     public void NoUnbackedFiles_SaysNothingAboutBackups()
         => CleanFolderPrompt.For(true, 10, "X", default).Markdown.Should().NotContain("backup copy");
+
+    [Fact]
+    public void RemoveGameNote_SaysTheFilesAreDeletedForGood_NotBackedUp()
+    {
+        var note = CleanFolderPrompt.RemoveGameNote(new UnbackedFiles(4, Size.GB * 6));
+
+        note.Should().Contain("4 files").And.Contain("6 GB").And.Contain("no backup copy")
+            .And.Contain("deletes them").And.NotContain("backup first");
+    }
 }

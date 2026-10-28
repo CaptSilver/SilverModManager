@@ -80,4 +80,35 @@ public class MissingUnbackedFileEmitterTests(ITestOutputHelper helper) : AStubbe
 
         (await Diagnose(loadout)).Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task AdoptedFileChangedOnDisk_GetsNoDiagnostic()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        var loadout = await CreateLoadout();
+        File.WriteAllBytes((GameDir / "ext0.bin").ToString(), new byte[4096]);
+        await SynchronizerService.Synchronize(loadout.LoadoutId);
+
+        (await Diagnose(loadout)).Should().BeEmpty("the file is still there, only different");
+    }
+
+    [Fact]
+    public async Task LoadoutThatIsNotTheAppliedOne_GetsNoDiagnostic()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        var adopted = await CreateLoadout();
+        var other = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+        File.Delete((GameDir / "ext0.bin").ToString());
+        await SynchronizerService.Synchronize(adopted.LoadoutId);
+
+        // The disk state describes whichever loadout was applied last, which is no longer the adopted one.
+        var metadata = GameRegistry.ForceGetMetadata(GameInstallation);
+        using var tx = Connection.BeginTransaction();
+        tx.Add(metadata.Id, GameInstallMetadata.LastSyncedLoadout, other.Id);
+        await tx.Commit();
+
+        (await Diagnose(adopted)).Should().BeEmpty("the disk state belongs to another loadout");
+    }
 }

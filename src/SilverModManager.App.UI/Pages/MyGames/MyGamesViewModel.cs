@@ -155,7 +155,16 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                                 var totalSize = filesToDelete.Sum(static Size (file) => file.Size);
 
                                 var collections = installation.Game.CollectionsOf(conn.Db);
-                                var unbacked = await Task.Run(() => _loadoutManager.CountUnbackedFiles(installation));
+                                var unbacked = default(UnbackedFiles);
+                                try
+                                {
+                                    unbacked = await Task.Run(() => _loadoutManager.CountUnbackedFiles(installation));
+                                }
+                                catch (Exception e)
+                                {
+                                    // The count only adds a warning line, so failing it must not stop the game being removed.
+                                    logger.LogWarning(e, "Counting the files without a backup copy failed for {Game}", installation.Game.DisplayName);
+                                }
 
                                 var overlay = new RemoveGameOverlayViewModel
                                 {
@@ -381,10 +390,9 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
 
         vm.State = GameWidgetState.ManagedGame;
 
-        // Offer to clean them up. Right after the player chose to leave large files where they are, cleaning would ask
-        // for the copy they just declined; the clean stays reachable from the game's page. An uncovered build offers no
-        // clean, only the explanation, so that still shows.
-        if (changeEntries.Length > 0 && (unbacked.Count == 0 || !buildCovered))
+        // Offer to clean them up. This dialog is the only place a clean is offered, so it shows after an adopt too,
+        // with what the clean would copy first.
+        if (changeEntries.Length > 0)
         {
             var (revert, doNothing, clean) = (ButtonDefinitionId.Cancel, ButtonDefinitionId.From("doNothing"), ButtonDefinitionId.Accept);
             var result = await ShowCleanGameFolderDialog(revert,

@@ -15,9 +15,9 @@ public partial class MissingUnbackedFileDiagnostics
         .WithId(new DiagnosticId(Source, number: 1))
         .WithTitle("A file is gone and has no backup copy")
         .WithSeverity(DiagnosticSeverity.Warning)
-        .WithSummary("The file was managed where it was, without a copy, and is no longer in the game folder. The app cannot put it back; remove it from the loadout or restore the file yourself.")
+        .WithSummary("The app holds no copy of this file and it is no longer in the game folder. The app cannot put it back; remove it from the loadout or restore the file yourself.")
         .WithDetails("""
-{Path} is part of this loadout, but the app never copied it into its backup (it was kept in the game folder as it was), and it is no longer in the game folder, so there is nothing to restore it from.
+{Path} is part of this loadout, but the app holds no copy of it (it was kept in the game folder as it was, or the mod it came from was removed), and it is no longer in the game folder, so there is nothing to restore it from.
 
 Remove it from the loadout, or put the file back in the game folder yourself.
 """)

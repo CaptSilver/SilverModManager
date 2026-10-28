@@ -20,9 +20,13 @@ public class MissingUnbackedFileEmitter(IFileStore fileStore) : ILoadoutDiagnost
     {
         await Task.Yield();
 
-        var onDisk = new Dictionary<GamePath, NexusMods.Hashing.xxHash3.Hash>();
+        // The disk state describes whichever loadout was applied last, so any other loadout would be compared
+        // against files that were never meant to be its own.
+        if (!GameInstallMetadata.LastSyncedLoadout.TryGetValue(loadout.Installation, out var applied) || applied != loadout.Id) yield break;
+
+        var onDisk = new HashSet<GamePath>();
         foreach (var entry in DiskStateEntry.FindByGame(loadout.Db, loadout.Installation))
-            onDisk[entry.Path] = entry.Hash;
+            onDisk.Add(entry.Path);
 
         foreach (var file in LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile())
         {
@@ -31,7 +35,8 @@ public class MissingUnbackedFileEmitter(IFileStore fileStore) : ILoadoutDiagnost
             // A disabled file is not meant to be in the folder.
             if (!file.AsLoadoutItemWithTargetPath().AsLoadoutItem().IsEnabled()) continue;
             GamePath path = file.AsLoadoutItemWithTargetPath().TargetPath;
-            if (onDisk.TryGetValue(path, out var diskHash) && diskHash == file.Hash) continue;
+            // A file that is there but different is changed, not gone.
+            if (onDisk.Contains(path)) continue;
             if (await fileStore.HaveFile(file.Hash)) continue;
 
             // Titles take no message data, so the path goes into the title by hand to tell the entries apart.

@@ -48,9 +48,9 @@ public sealed record CleanFolderPrompt(string Title, string Markdown, bool Offer
         $"{unbacked.Count} of them ({unbacked.Total}) have no backup copy. Cleaning copies them into the app's backup first, then removes them from the folder; over {BackupLimit.Default.Maximum} the app asks before it copies.";
 
     /// <summary>
-    /// The same cost as <see cref="UnbackedFilesNote"/>, worded for the remove-game dialog where no list of files was
-    /// just shown.
+    /// What removing a game costs when some files have no copy in the app's backup. Removing drops the backup it
+    /// makes on the way out, so unlike cleaning, nothing is left to restore from.
     /// </summary>
     public static string RemoveGameNote(UnbackedFiles unbacked) =>
-        $"{unbacked.Count} files ({unbacked.Total}) in this game's loadouts have no backup copy. Removing the game copies them into the app's backup first, then removes them from the folder; over {BackupLimit.Default.Maximum} the app asks before it copies.";
+        $"{unbacked.Count} files ({unbacked.Total}) in this game's loadouts have no backup copy. Removing the game deletes them from the folder and they cannot be restored afterwards.";
 }
