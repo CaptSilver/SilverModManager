@@ -17,21 +17,8 @@ internal static class LoadoutCollectionOrder
     /// <summary>Identifies a loadout in <see cref="Settings.LoadoutCollectionOrderSettings.Orders"/>.</summary>
     public static string KeyOf(LoadoutId loadoutId) => loadoutId.Value.Value.ToString();
 
-    /// <summary>
-    /// The loadout's default collection: the oldest one the user can edit and that is not an imported modlist. The
-    /// loadout is created with it, so it is the one the menu has always listed first. Null when the loadout has none
-    /// left (it can be deleted once another editable collection exists, after which no collection is pinned).
-    /// </summary>
-    public static CollectionGroupId? DefaultCollectionOf(IDb db, LoadoutId loadoutId)
-    {
-        return CollectionGroup.All(db)
-            .Where(group => !group.IsReadOnly
-                && group.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId == loadoutId
-                && !group.TryGetAsWabbajackModlistLoadoutGroup(out _))
-            .OrderBy(group => group.Id)
-            .Select(group => (CollectionGroupId?)group.CollectionGroupId)
-            .FirstOrDefault();
-    }
+    /// <inheritdoc cref="DefaultCollection.Of"/>
+    public static CollectionGroupId? DefaultCollectionOf(IDb db, LoadoutId loadoutId) => DefaultCollection.Of(db, loadoutId);
 
     /// <summary>
     /// Whether an entry may be dragged or moved: an installed collection other than the pinned default one. The

@@ -1911,4 +1911,55 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="PrefixSetup_Close" xml:space="preserve">
         <value>Close</value>
     </data>
+    <data name="CollectionUpdate_DroppedMods_Title" xml:space="preserve">
+        <value>Remove mods from the old revision?</value>
+    </data>
+    <data name="CollectionUpdate_DroppedMods_Text" xml:space="preserve">
+        <value>{0} mods installed by {1} aren't in revision {2}. Removing them avoids conflicts. Kept mods move to My Mods and are managed as your own.</value>
+    </data>
+    <data name="CollectionUpdate_DroppedMods_KeepAll" xml:space="preserve">
+        <value>Keep all</value>
+    </data>
+    <data name="CollectionUpdate_DroppedMods_Review" xml:space="preserve">
+        <value>Review mods</value>
+    </data>
+    <data name="CollectionUpdate_DroppedMods_RemoveAll" xml:space="preserve">
+        <value>Remove all</value>
+    </data>
+    <data name="CollectionUpdate_DroppedMods_RemoveSelected" xml:space="preserve">
+        <value>Remove selected</value>
+    </data>
+    <data name="CollectionDownloadViewModel_UpdateInstalledCollection" xml:space="preserve">
+        <value>Update collection</value>
+    </data>
+    <data name="CollectionDownloadViewModel_OlderRevision" xml:space="preserve">
+        <value>Revision {0} is an older revision of this collection. The newest is revision {1}.</value>
+    </data>
+    <data name="CollectionDownloadViewModel_TabTitleWithRevision" xml:space="preserve">
+        <value>{0} · rev {1}</value>
+    </data>
+    <data name="ToastNotification_Collection_updated" xml:space="preserve">
+        <value>Collection updated</value>
+    </data>
+    <data name="ToastNotification_Update_collection_first" xml:space="preserve">
+        <value>Update the installed collection to this revision before installing single mods from it.</value>
+    </data>
+    <data name="CollectionUpdate_DroppedMods_Text_One" xml:space="preserve">
+        <value>{0} mod installed by {1} isn't in revision {2}. Removing it avoids conflicts. A kept mod moves to My Mods and is managed as your own.</value>
+    </data>
+    <data name="ToastNotification_Collection_updated_with_failures" xml:space="preserve">
+        <value>Collection updated, but {0} failed to install.</value>
+    </data>
+    <data name="ToastNotification_Collection_update_kept_old_versions" xml:space="preserve">
+        <value> Where there was an older version of a failed mod, it was kept in My Mods.</value>
+    </data>
+    <data name="CollectionDownloadViewModel_OlderThanInstalled" xml:space="preserve">
+        <value>A newer revision of this collection is installed, so this one can't replace it.</value>
+    </data>
+    <data name="ToastNotification_Collection_update_skipped_rules" xml:space="preserve">
+        <value> {0} of your rules couldn't be carried over to the new versions because they contradict other rules.</value>
+    </data>
+    <data name="ToastNotification_Collection_update_interrupted" xml:space="preserve">
+        <value>Update to revision {0} stopped early: {1}</value>
+    </data>
 </root>

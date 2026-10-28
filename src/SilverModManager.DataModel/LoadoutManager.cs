@@ -137,19 +137,7 @@ internal partial class LoadoutManager : ILoadoutManager
             };
 
             // Create the user's default collection
-            _ = new CollectionGroup.New(tx, out var userCollectionId)
-            {
-                IsReadOnly = false,
-                LoadoutItemGroup = new LoadoutItemGroup.New(tx, userCollectionId)
-                {
-                    IsGroup = true,
-                    LoadoutItem = new LoadoutItem.New(tx, userCollectionId)
-                    {
-                        Name = "My Mods",
-                        LoadoutId = loadout,
-                    },
-                },
-            };
+            _ = DefaultCollection.Create(tx, loadout);
 
             var result = await tx.Commit();
             var remappedLoadout = result.Remap(loadout);

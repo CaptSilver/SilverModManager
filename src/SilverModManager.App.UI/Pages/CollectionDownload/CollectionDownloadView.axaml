@@ -203,6 +203,9 @@
 
                         </Grid>
                     </Border>
+
+                    <!-- shown when a newer revision of the collection exists -->
+                    <TextBlock x:Name="OlderRevisionBanner" IsVisible="False" Margin="16 8" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 

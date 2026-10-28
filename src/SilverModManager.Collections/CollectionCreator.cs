@@ -87,85 +87,93 @@ public static class CollectionCreator
         var db = conn.Db;
         foreach (var item in conn.Query<EntityId>($"SELECT Id FROM mdb_NexusCollectionItemLoadoutGroup(Db=>{db}) WHERE Parent = {cloneId.Id}"))
         {
-            var ent = NexusCollectionItemLoadoutGroup.Load(db, item);
-            tx.Retract(item, NexusCollectionItemLoadoutGroup.Download, NexusCollectionItemLoadoutGroup.Download.Get(ent));
-            tx.Retract(item, NexusCollectionItemLoadoutGroup.IsRequired, NexusCollectionItemLoadoutGroup.IsRequired.Get(ent));
-
-            if (NexusCollectionReplicatedLoadoutGroup.Replicated.TryGetValue(ent, out var replicated))
-                tx.Retract(item, NexusCollectionReplicatedLoadoutGroup.Replicated, replicated);
-
-            if (NexusCollectionBundledLoadoutGroup.CollectionLibraryFileId.TryGetValue(ent, out var bundleLibraryFileId))
-                tx.Retract(item, NexusCollectionBundledLoadoutGroup.CollectionLibraryFileId, bundleLibraryFileId);
-
-            if (NexusCollectionBundledLoadoutGroup.BundleDownload.TryGetValue(ent, out var bundleDownload))
-            {
-                tx.Retract(item, NexusCollectionBundledLoadoutGroup.BundleDownload, bundleDownload);
-
-                // We've now orphaned the bundled files, so we'll now create a download archive that contains the files this loadout group needs.
-
-                var fileName = "Bundled Files - " + ent.AsLoadoutItemGroup().AsLoadoutItem().Name;
-
-                // Don't add duplicates: one archive entry per distinct hash.
-                var distinctFiles = ent.AsLoadoutItemGroup().Children
-                    .OfTypeLoadoutItemWithTargetPath()
-                    .OfTypeLoadoutFile()
-                    .DistinctBy(static child => child.Hash)
-                    .ToArray();
-
-                var sum = Size.Zero;
-                foreach (var child in distinctFiles) sum += child.Size;
-
-                // Create a new library item. The size has to be known up front: adding a second
-                // LibraryFile.Size to the same entity in this transaction leaves both values in the
-                // database and readers see the first one.
-                var libraryFile = new ManuallyCreatedArchive.New(tx, out var libraryFileId)
-                {
-                    Source = ManuallyCreatedArchive.CreationSource.CollectionBundled,
-                    LibraryArchive = new LibraryArchive.New(tx, libraryFileId)
-                    {
-                        IsArchive = true,
-                        LibraryFile = new LibraryFile.New(tx, libraryFileId)
-                        {
-                            Hash = Hash.Zero,
-                            Size = sum,
-                            FileName = fileName,
-                            LibraryItem = new LibraryItem.New(tx, libraryFileId)
-                            {
-                                Name = fileName,
-                            },
-                        },
-
-                    },
-                };
-
-                // Link the mod group to the archive
-                tx.Add(item, LibraryLinkedLoadoutItem.LibraryItemId, libraryFileId);
-
-                foreach (var child in distinctFiles)
-                {
-                    var name = child.AsLoadoutItemWithTargetPath().AsLoadoutItem().Name;
-                    _ = new LibraryArchiveFileEntry.New(tx, out var fileId)
-                    {
-                        ParentId = libraryFileId,
-                        Path = child.AsLoadoutItemWithTargetPath().TargetPath.Item3,
-                        LibraryFile = new LibraryFile.New(tx, fileId)
-                        {
-                            Hash = child.Hash,
-                            Size = child.Size,
-                            FileName = name,
-                            LibraryItem = new LibraryItem.New(tx, fileId)
-                            {
-                                Name = name,
-                            },
-                        },
-                    };
-                }
-            }
-
+            DetachFromCollection(tx, db, item);
         }
 
         await tx.Commit();
         return cloneId;
+    }
+
+    /// <summary>
+    /// Turns a collection item into an ordinary mod: drops the references to the collection's downloads and, for a
+    /// bundled mod whose files only live inside the collection archive, gives it an archive of its own.
+    /// </summary>
+    internal static void DetachFromCollection(ITransaction tx, IDb db, EntityId item)
+    {
+        var ent = NexusCollectionItemLoadoutGroup.Load(db, item);
+        tx.Retract(item, NexusCollectionItemLoadoutGroup.Download, NexusCollectionItemLoadoutGroup.Download.Get(ent));
+        tx.Retract(item, NexusCollectionItemLoadoutGroup.IsRequired, NexusCollectionItemLoadoutGroup.IsRequired.Get(ent));
+
+        if (NexusCollectionReplicatedLoadoutGroup.Replicated.TryGetValue(ent, out var replicated))
+            tx.Retract(item, NexusCollectionReplicatedLoadoutGroup.Replicated, replicated);
+
+        if (NexusCollectionBundledLoadoutGroup.CollectionLibraryFileId.TryGetValue(ent, out var bundleLibraryFileId))
+            tx.Retract(item, NexusCollectionBundledLoadoutGroup.CollectionLibraryFileId, bundleLibraryFileId);
+
+        if (NexusCollectionBundledLoadoutGroup.BundleDownload.TryGetValue(ent, out var bundleDownload))
+        {
+            tx.Retract(item, NexusCollectionBundledLoadoutGroup.BundleDownload, bundleDownload);
+
+            // We've now orphaned the bundled files, so we'll now create a download archive that contains the files this loadout group needs.
+
+            var fileName = "Bundled Files - " + ent.AsLoadoutItemGroup().AsLoadoutItem().Name;
+
+            // Don't add duplicates: one archive entry per distinct hash.
+            var distinctFiles = ent.AsLoadoutItemGroup().Children
+                .OfTypeLoadoutItemWithTargetPath()
+                .OfTypeLoadoutFile()
+                .DistinctBy(static child => child.Hash)
+                .ToArray();
+
+            var sum = Size.Zero;
+            foreach (var child in distinctFiles) sum += child.Size;
+
+            // Create a new library item. The size has to be known up front: adding a second
+            // LibraryFile.Size to the same entity in this transaction leaves both values in the
+            // database and readers see the first one.
+            var libraryFile = new ManuallyCreatedArchive.New(tx, out var libraryFileId)
+            {
+                Source = ManuallyCreatedArchive.CreationSource.CollectionBundled,
+                LibraryArchive = new LibraryArchive.New(tx, libraryFileId)
+                {
+                    IsArchive = true,
+                    LibraryFile = new LibraryFile.New(tx, libraryFileId)
+                    {
+                        Hash = Hash.Zero,
+                        Size = sum,
+                        FileName = fileName,
+                        LibraryItem = new LibraryItem.New(tx, libraryFileId)
+                        {
+                            Name = fileName,
+                        },
+                    },
+
+                },
+            };
+
+            // Link the mod group to the archive
+            tx.Add(item, LibraryLinkedLoadoutItem.LibraryItemId, libraryFileId);
+
+            foreach (var child in distinctFiles)
+            {
+                var name = child.AsLoadoutItemWithTargetPath().AsLoadoutItem().Name;
+                _ = new LibraryArchiveFileEntry.New(tx, out var fileId)
+                {
+                    ParentId = libraryFileId,
+                    Path = child.AsLoadoutItemWithTargetPath().TargetPath.Item3,
+                    LibraryFile = new LibraryFile.New(tx, fileId)
+                    {
+                        Hash = child.Hash,
+                        Size = child.Size,
+                        FileName = name,
+                        LibraryItem = new LibraryItem.New(tx, fileId)
+                        {
+                            Name = name,
+                        },
+                    },
+                };
+            }
+        }
     }
 
     /// <summary>

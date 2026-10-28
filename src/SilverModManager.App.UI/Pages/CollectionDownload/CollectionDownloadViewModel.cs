@@ -5,6 +5,7 @@ using DynamicData;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.Abstractions.NexusWebApi;
@@ -24,6 +25,7 @@ using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Collections;
 using SilverModManager.UI.Sdk.Icons;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.Networking.NexusWebApi;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
@@ -149,6 +151,12 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
         CommandInstallOptionalItems = IsInstalling.CombineLatest(_canInstallOptionalItems, static (isInstalling, canInstall) => !isInstalling && canInstall).ToReactiveCommand<Unit>(
             executeAsync: async (_, _) =>
             {
+                if (WillUpdateInstalledRevision.Value || IsOlderThanInstalledRevision.Value)
+                {
+                    _notificationService.ShowToast(Language.ToastNotification_Update_collection_first, ToastNotificationVariant.Failure);
+                    return;
+                }
+
                 await InstallCollectionJob.Create(
                     serviceProvider,
                     targetLoadout,
@@ -161,9 +169,20 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
             configureAwait: false
         );
 
-        CommandInstallRequiredItems = IsInstalling.CombineLatest(_canInstallRequiredItems, static (isInstalling, canInstall) => !isInstalling && canInstall).ToReactiveCommand<Unit>(
-            executeAsync: async (_, _) =>
+        CommandInstallRequiredItems = IsInstalling.CombineLatest(_canInstallRequiredItems, IsOlderThanInstalledRevision, static (isInstalling, canInstall, isOlder) => !isInstalling && canInstall && !isOlder).ToReactiveCommand<Unit>(
+            executeAsync: async (_, cancellationToken) =>
             {
+                // Another revision of this collection is installed: this revision replaces it instead of becoming a second entry.
+                var installed = CollectionUpdater.GetInstalledGroup(_collection, targetLoadout, connection.Db);
+                if (installed.HasValue && installed.Value.Revision.Id != revisionMetadata.Id)
+                {
+                    if (CollectionUpdater.IsUpdateTo(installed.Value, revisionMetadata))
+                        await CollectionUpdateFlow.Run(serviceProvider, windowManager, _notificationService, installed.Value, revisionMetadata, cancellationToken);
+                    else
+                        _notificationService.ShowToast(Language.CollectionDownloadViewModel_OlderThanInstalled, ToastNotificationVariant.Failure);
+                    return;
+                }
+
                 var items = CollectionDownloader.GetItems(revisionMetadata, CollectionDownloader.ItemType.Required);
                 var group = await InstallCollectionJob.Create(
                     serviceProvider,
@@ -282,6 +301,15 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
 
                     var workspaceController = GetWorkspaceController();
                     workspaceController.OpenPage(WorkspaceId, pageData, new OpenPageBehavior.ReplaceTab(PanelId, TabId));
+
+                    // The new revision's page shows the progress. When its mods aren't downloaded yet, that page's Update button
+                    // does the update once they are.
+                    var installed = CollectionUpdater.GetInstalledGroup(_collection, targetLoadout, connection.Db);
+                    if (installed.HasValue && CollectionUpdater.IsUpdateTo(installed.Value, revision)
+                        && CollectionDownloader.IsFullyDownloaded(CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Required), connection.Db))
+                    {
+                        await CollectionUpdateFlow.Run(serviceProvider, windowManager, _notificationService, installed.Value, revision, cancellationToken);
+                    }
                 }
                 catch (Exception e) when (!cancellationToken.IsCancellationRequested && !TimeoutDetection.IsRealCancellation(e))
                 {
@@ -302,7 +330,11 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                 jobMonitor
                     .HasActiveJob<InstallCollectionJob>(job => job.RevisionMetadata.Id == _revision.Id)
                     .OnUI()
-                    .Subscribe(isInstalling => IsInstalling.Value = isInstalling)
+                    .Subscribe(isInstalling =>
+                    {
+                        _installJobRunning = isInstalling;
+                        IsInstalling.Value = _installJobRunning || _updateRunning;
+                    })
                     .AddTo(disposables);
 
                 // A job that ends leaves the active set; its last snapshot stays on screen if it finished.
@@ -360,6 +392,35 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                 var hasInstalledAllOptionalItems = collectionDownloader
                     .IsCollectionInstalledObservable(_revision, collectionGroupObservable, CollectionDownloader.ItemType.Optional)
                     .Prepend(false);
+
+                // Installed under another revision of the collection: this page's primary action is then "Update".
+                var installedAnyRevisionObservable = connection
+                    .ObserveDatoms(NexusCollectionLoadoutGroup.Collection, _collection)
+                    .QueryWhenChanged(_ => CollectionUpdater.GetInstalledGroup(_collection, _targetLoadout, connection.Db))
+                    .Prepend(CollectionUpdater.GetInstalledGroup(_collection, _targetLoadout, connection.Db));
+
+                collectionGroupObservable
+                    .CombineLatest(installedAnyRevisionObservable, (thisRevision, anyRevision) => anyRevision.HasValue && !thisRevision.HasValue
+                        ? (CollectionUpdater.IsUpdateTo(anyRevision.Value, _revision) ? InstalledRevision.Older : InstalledRevision.Newer)
+                        : InstalledRevision.None)
+                    .DistinctUntilChanged()
+                    .OnUI()
+                    .Subscribe(installed =>
+                    {
+                        WillUpdateInstalledRevision.Value = installed == InstalledRevision.Older;
+                        IsOlderThanInstalledRevision.Value = installed == InstalledRevision.Newer;
+                    })
+                    .AddTo(disposables);
+
+                // From before the group is switched until the update is done, so no install can start in between.
+                CollectionUpdater.ObserveIsUpdating(_collection, _targetLoadout)
+                    .OnUI()
+                    .Subscribe(isUpdating =>
+                    {
+                        _updateRunning = isUpdating;
+                        IsInstalling.Value = _installJobRunning || _updateRunning;
+                    })
+                    .AddTo(disposables);
 
                 numDownloadedRequiredItemsObservable.CombineLatest(isCollectionInstalledObservable)
                     .OnUI()
@@ -461,6 +522,8 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                                 self.IsUpdateAvailable.Value = isUpdateAvailable;
                                 self.NewestRevisionNumber.Value = isUpdateAvailable ? lastPublishedRevisionNumber : Optional<RevisionNumber>.None;
                             }
+
+                            self.TabTitle = TabTitleOf(self._collection.Name, self._revision.RevisionNumber, self.NewestRevisionNumber.Value);
                         }
                     ).AddTo(disposables);
 
@@ -491,6 +554,12 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
 
     private async ValueTask InstallItem(CollectionDownloadEntity.ReadOnly download, CancellationToken cancellationToken)
     {
+        if (WillUpdateInstalledRevision.Value || IsOlderThanInstalledRevision.Value)
+        {
+            _notificationService.ShowToast(Language.ToastNotification_Update_collection_first, ToastNotificationVariant.Failure);
+            return;
+        }
+
         var monitor = _serviceProvider.GetRequiredService<IJobMonitor>();
 
         var job = await InstallCollectionDownloadJob.Create(
@@ -503,7 +572,18 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
         await monitor.Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(job);
     }
 
+    /// <summary>
+    /// The tab's title: the collection's name, plus the revision number when a newer revision exists, so two revisions
+    /// of one collection can be told apart in the tab strip.
+    /// </summary>
+    public static string TabTitleOf(string collectionName, RevisionNumber revision, Optional<RevisionNumber> newestRevision) =>
+        newestRevision.HasValue ? string.Format(Language.CollectionDownloadViewModel_TabTitleWithRevision, collectionName, revision) : collectionName;
+
     public BindableReactiveProperty<bool> IsInstalled { get; } = new(value: false);
+
+    public BindableReactiveProperty<bool> WillUpdateInstalledRevision { get; } = new(value: false);
+
+    public BindableReactiveProperty<bool> IsOlderThanInstalledRevision { get; } = new(value: false);
 
     public BindableReactiveProperty<bool> HasInstalledAllOptionalItems { get; } = new(value: false);
 
@@ -515,6 +595,12 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
 
     private readonly BehaviorSubject<bool> _canInstallRequiredItems = new(initialValue: false);
     private readonly BehaviorSubject<bool> _canInstallOptionalItems = new(initialValue: false);
+    private bool _installJobRunning;
+    private bool _updateRunning;
+
+    /// <summary>How the revision installed in the loadout relates to this page's revision.</summary>
+    private enum InstalledRevision { None, Older, Newer }
+
     public BindableReactiveProperty<bool> IsInstalling { get; } = new(value: false);
     public BindableReactiveProperty<CollectionInstallProgress.Snapshot?> InstallProgress { get; } = new(value: null);
 

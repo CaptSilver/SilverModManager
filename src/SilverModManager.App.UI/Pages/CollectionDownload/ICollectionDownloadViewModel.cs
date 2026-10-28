@@ -101,6 +101,18 @@ public interface ICollectionDownloadViewModel : IPageViewModelInterface
     bool CanDownloadAutomatically { get; }
 
     BindableReactiveProperty<bool> IsInstalled { get; }
+    /// <summary>
+    /// Whether an older revision of this collection is installed in the target loadout, so installing this revision
+    /// replaces it in place and the primary action reads "Update".
+    /// </summary>
+    BindableReactiveProperty<bool> WillUpdateInstalledRevision { get; }
+
+    /// <summary>
+    /// Whether a newer revision of this collection is installed in the target loadout. This revision can't replace it,
+    /// so the primary action is disabled.
+    /// </summary>
+    BindableReactiveProperty<bool> IsOlderThanInstalledRevision { get; }
+
     BindableReactiveProperty<bool> IsInstalling { get; }
 
     /// <summary>

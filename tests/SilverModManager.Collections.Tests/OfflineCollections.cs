@@ -160,13 +160,14 @@ internal sealed class OfflineCollections(IServiceProvider serviceProvider, IConn
     /// through the JSON serializer first, so the rules are matched from what a family member's copy would carry. The mods'
     /// files must already be in the library (see <see cref="AddDirectDownload"/>).
     /// </summary>
-    public async Task<CollectionResult> Create(CollectionRoot manifest, int[]? optionalIndexes = null)
+    /// <param name="bundledFiles">The files of the <c>bundle</c> mods, by the mod's file expression; they go under <c>bundled/&lt;expression&gt;/</c> in the collection archive.</param>
+    public async Task<CollectionResult> Create(CollectionRoot manifest, int[]? optionalIndexes = null, int revisionNumber = 1, IReadOnlyDictionary<string, (string Path, string Content)[]>? bundledFiles = null)
     {
         var options = serviceProvider.GetRequiredService<JsonSerializerOptions>();
         var folder = temporaryFileManager.CreateFolder();
         var parsed = JsonSerializer.Deserialize<CollectionRoot>(JsonSerializer.Serialize(manifest, options), options)!;
 
-        var (fileId, revisionId) = await Persist(folder.Path, parsed, optionalIndexes, addRules: null);
+        var (fileId, revisionId) = await Persist(folder.Path, parsed, optionalIndexes, addRules: null, revisionNumber, bundledFiles);
 
         // The online fetch commits the revision first and matches the rules against what it stored.
         using var ruleTx = connection.BeginTransaction();
@@ -196,10 +197,12 @@ internal sealed class OfflineCollections(IServiceProvider serviceProvider, IConn
     /// <summary>Writes the collection.json, its library file, the revision and one download per <c>mods[]</c> entry; <paramref name="addRules"/> runs in the same transaction.</summary>
     private async Task<(EntityId File, EntityId Revision)> Persist(
         AbsolutePath folder, CollectionRoot root, int[]? optionalIndexes,
-        Action<ITransaction, List<CollectionDownload.New>>? addRules)
+        Action<ITransaction, List<CollectionDownload.New>>? addRules,
+        int revisionNo = 1,
+        IReadOnlyDictionary<string, (string Path, string Content)[]>? bundledFiles = null)
     {
         var slug = CollectionSlug.From("offline");
-        var revisionNumber = RevisionNumber.From(1);
+        var revisionNumber = RevisionNumber.From((ulong)revisionNo);
 
         var collectionJson = folder.Combine("collection.json");
         var collectionZip = folder.Combine("collection.zip");
@@ -208,6 +211,14 @@ internal sealed class OfflineCollections(IServiceProvider serviceProvider, IConn
         using (var zip = new ZipArchive(stream, ZipArchiveMode.Create))
         {
             zip.CreateEntryFromFile(collectionJson.ToString(), "collection.json");
+            foreach (var (expression, files) in bundledFiles ?? new Dictionary<string, (string Path, string Content)[]>())
+            {
+                foreach (var (path, content) in files)
+                {
+                    using var writer = new StreamWriter(zip.CreateEntry($"bundled/{expression}/{path}").Open());
+                    writer.Write(content);
+                }
+            }
         }
 
         var collectionLibraryFile = await libraryService.AddLocalFile(collectionZip);
@@ -217,21 +228,31 @@ internal sealed class OfflineCollections(IServiceProvider serviceProvider, IConn
         tx.Add(collectionLibraryFile.Id, NexusModsCollectionLibraryFile.CollectionSlug, slug);
         tx.Add(collectionLibraryFile.Id, NexusModsCollectionLibraryFile.CollectionRevisionNumber, revisionNumber);
 
-        var author = new User.New(tx) { Name = "Author", NexusId = 1 };
-        var collection = new CollectionMetadata.New(tx)
+        // A later revision belongs to the collection the first one created.
+        var existing = CollectionMetadata.All(connection.Db).FirstOrDefault(c => c.Slug == slug);
+        EntityId collectionEntity;
+        if (existing.IsValid())
         {
-            CollectionId = CollectionId.From(1),
-            Slug = slug,
-            Name = "Offline",
-            GameId = NexusModsGameId.From(3333),
-            AuthorId = author,
-        };
+            collectionEntity = existing.Id;
+        }
+        else
+        {
+            var author = new User.New(tx) { Name = "Author", NexusId = 1 };
+            collectionEntity = new CollectionMetadata.New(tx)
+            {
+                CollectionId = CollectionId.From(1),
+                Slug = slug,
+                Name = "Offline",
+                GameId = NexusModsGameId.From(3333),
+                AuthorId = author,
+            }.Id;
+        }
 
         var revision = new CollectionRevisionMetadata.New(tx)
         {
-            RevisionId = RevisionId.From(1),
+            RevisionId = RevisionId.From((ulong)revisionNo),
             RevisionNumber = revisionNumber,
-            CollectionId = collection,
+            CollectionId = collectionEntity,
         };
 
         var downloads = new List<CollectionDownload.New>();
@@ -246,6 +267,16 @@ internal sealed class OfflineCollections(IServiceProvider serviceProvider, IConn
                 Name = mod.Name,
             };
             downloads.Add(download);
+
+            if (mod.Source.Type == ModSourceType.Bundle)
+            {
+                _ = new CollectionDownloadBundled.New(tx, download.Id)
+                {
+                    CollectionDownload = download,
+                    BundledPath = mod.Source.FileExpression,
+                };
+                continue;
+            }
 
             _ = new CollectionDownloadExternal.New(tx, download.Id)
             {

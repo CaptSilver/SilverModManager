@@ -34,6 +34,12 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
     public required CollectionDownload.ReadOnly[] Items { get; init; }
     public required Optional<NexusCollectionLoadoutGroup.ReadOnly> Group { get; init; }
 
+    /// <summary>
+    /// Leaves the group's enabled/disabled state as the user has it. An update sets this: a mod that fails to install keeps its
+    /// old version in the loadout, so the collection stays usable and must not be switched off because of it.
+    /// </summary>
+    public bool PreserveEnabledState { get; init; }
+
     public required IServiceProvider ServiceProvider { get; init; }
     public required IFileStore FileStore { get; init; }
     public required ILibraryService LibraryService { get; init; }
@@ -79,7 +85,8 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         LoadoutId target,
         NexusModsCollectionLibraryFile.ReadOnly source,
         CollectionRevisionMetadata.ReadOnly revisionMetadata,
-        CollectionDownload.ReadOnly[] items)
+        CollectionDownload.ReadOnly[] items,
+        bool preserveEnabledState = false)
     {
         var connection = provider.GetRequiredService<IConnection>();
         var group = CollectionDownloader.GetCollectionGroup(revisionMetadata, target, connection.Db);
@@ -90,6 +97,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         {
             Group = group,
             Items = items,
+            PreserveEnabledState = preserveEnabledState,
             TargetLoadout = target,
             SourceCollection = source,
             RevisionMetadata = revisionMetadata,
@@ -206,7 +214,11 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             // ApplyCollectionDownloadRules above has already committed its own priority write; SetGroupOrder must be the only priority writer in the transaction it joins.
             CollectionOrderImport.Import(ServiceProvider, Connection.Db, TargetLoadout, game, root, RevisionMetadata, containerId, newGroups, tx);
 
-            if (allRequiredItemsInstalled)
+            if (PreserveEnabledState)
+            {
+                // Nothing to do: the state is the user's.
+            }
+            else if (allRequiredItemsInstalled)
             {
                 // A group enabled by an earlier run no longer has the marker; retracting it again retracts a datom that doesn't exist.
                 var isDisabled = LoadoutItem.Load(Connection.Db, collectionGroup.Id).IsDisabled;
@@ -221,7 +233,8 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             collectionGroup = NexusCollectionLoadoutGroup.Load(result.Db, collectionGroup.Id);
         }
 
-        Progress.Finish(leftDisabled: !allRequiredItemsInstalled);
+        var leftDisabled = PreserveEnabledState ? LoadoutItem.Load(Connection.Db, collectionGroup.Id).IsDisabled : !allRequiredItemsInstalled;
+        Progress.Finish(leftDisabled: leftDisabled);
 
         return collectionGroup;
     }

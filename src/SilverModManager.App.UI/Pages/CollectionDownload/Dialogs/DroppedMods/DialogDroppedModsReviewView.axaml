@@ -1,0 +1,21 @@
+<reactiveUi:ReactiveUserControl x:TypeArguments="droppedMods:IDialogDroppedModsReviewViewModel"
+                                xmlns="https://github.com/avaloniaui"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                                xmlns:reactiveUi="http://reactiveui.net"
+                                xmlns:droppedMods="clr-namespace:SilverModManager.App.UI.Pages.CollectionDownload.Dialogs.DroppedMods"
+                                mc:Ignorable="d" d:DesignWidth="400"
+                                x:Class="SilverModManager.App.UI.Pages.CollectionDownload.Dialogs.DroppedMods.DialogDroppedModsReviewView">
+
+    <ScrollViewer MaxHeight="360">
+        <ItemsControl x:Name="ModsList">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="droppedMods:DroppedModChoice">
+                    <CheckBox Classes="accent" IsChecked="{Binding Remove}" Content="{Binding Name}" />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
+
+</reactiveUi:ReactiveUserControl>

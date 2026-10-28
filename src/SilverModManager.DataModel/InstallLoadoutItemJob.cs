@@ -64,8 +64,9 @@ internal class InstallLoadoutItemJob : IJobDefinitionWithStart<InstallLoadoutIte
     {
         if (!ParentGroupId.HasValue)
         {
-            var collection = Loadout.Load(Connection.Db, LoadoutId).MutableCollections().First().CollectionId;
-            ParentGroupId = LoadoutItemGroupId.From(collection);
+            var collection = DefaultCollection.Of(Connection.Db, LoadoutId)
+                ?? throw new InvalidOperationException($"Loadout {LoadoutId.Value} has no collection of its own to install into.");
+            ParentGroupId = LoadoutItemGroupId.From(collection.Value);
         }
 
         await context.YieldAsync();

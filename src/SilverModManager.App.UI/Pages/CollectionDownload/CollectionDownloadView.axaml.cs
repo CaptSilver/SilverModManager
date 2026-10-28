@@ -1,5 +1,6 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Controls;
@@ -141,13 +142,31 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                             ArrowRight.IsVisible = isUpdateAvailable;
                             NewestRevision.IsVisible = isUpdateAvailable;
 
+                            OlderRevisionBanner.IsVisible = optional.HasValue;
                             if (optional.HasValue)
                             {
+                                OlderRevisionBanner.Text = string.Format(Language.CollectionDownloadViewModel_OlderRevision, ViewModel?.RevisionNumber, optional.Value);
                                 ButtonUpdateCollection.Text = string.Format(Language.CollectionDownloadViewModel_UpdateCollection, optional.Value);
                                 NewestRevision.Text = $"Revision {optional.Value}";
                             }
                         }
                     ).DisposeWith(d);
+
+                this.WhenAnyValue(view => view.ViewModel)
+                    .WhereNotNull()
+                    .Select(static vm => vm.WillUpdateInstalledRevision.AsSystemObservable())
+                    .Switch()
+                    .Subscribe(willUpdate => ButtonInstallRequiredItems.Text = willUpdate
+                        ? Language.CollectionDownloadViewModel_UpdateInstalledCollection
+                        : Language.CollectionDownloadViewModel_InstallCollection)
+                    .DisposeWith(d);
+
+                this.WhenAnyValue(view => view.ViewModel)
+                    .WhereNotNull()
+                    .Select(static vm => vm.IsOlderThanInstalledRevision.AsSystemObservable())
+                    .Switch()
+                    .Subscribe(isOlder => ToolTip.SetTip(ButtonInstallRequiredItems, isOlder ? Language.CollectionDownloadViewModel_OlderThanInstalled : null))
+                    .DisposeWith(d);
 
                 this.WhenAnyValue(view => view.TabControl.SelectedItem)
                     .Subscribe(selectedItem =>

@@ -62,6 +62,8 @@ public class CollectionDownloadDesignViewModel : APageViewModel<ICollectionDownl
 
     public BindableReactiveProperty<bool> IsInstalled { get; } = new(value: false);
     public BindableReactiveProperty<bool> IsDownloading { get; } = new();
+    public BindableReactiveProperty<bool> WillUpdateInstalledRevision { get; } = new();
+    public BindableReactiveProperty<bool> IsOlderThanInstalledRevision { get; } = new();
     public BindableReactiveProperty<bool> IsInstalling { get; } = new();
     public BindableReactiveProperty<CollectionInstallProgress.Snapshot?> InstallProgress { get; } = new(value: new CollectionInstallProgress.Snapshot(
         Total: 46, AlreadyInstalled: 241, Installed: 12,

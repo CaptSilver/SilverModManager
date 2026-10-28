@@ -44,6 +44,7 @@ using SilverModManager.App.UI.Pages;
 using SilverModManager.App.UI.Pages.About;
 using SilverModManager.App.UI.Pages.Changelog;
 using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Pages.CollectionDownload.Dialogs.DroppedMods;
 using SilverModManager.App.UI.Pages.CollectionDownload.Dialogs.PremiumDownloads;
 using SilverModManager.App.UI.Pages.DebugControls;
 using SilverModManager.App.UI.Pages.Diagnostics;
@@ -285,6 +286,8 @@ public static class Services
             
             .AddView<DialogPremiumCollectionDownloadsView, IDialogPremiumCollectionDownloadsViewModel>()
             .AddViewModel<DialogPremiumCollectionDownloadsViewModel, IDialogPremiumCollectionDownloadsViewModel>()
+            .AddView<DialogDroppedModsReviewView, IDialogDroppedModsReviewViewModel>()
+            .AddViewModel<DialogDroppedModsReviewViewModel, IDialogDroppedModsReviewViewModel>()
 
             .AddView<ProtocolRegistrationTestPageView, IProtocolRegistrationTestPageViewModel>()
             .AddViewModel<ProtocolRegistrationTestPageViewModel, IProtocolRegistrationTestPageViewModel>()

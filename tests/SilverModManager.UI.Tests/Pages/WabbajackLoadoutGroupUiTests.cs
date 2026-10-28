@@ -71,6 +71,21 @@ public class WabbajackLoadoutGroupUiTests(IServiceProvider provider) : AUiTest(p
     }
 
     [Fact]
+    public async Task AModlistIsNeverTheDefaultCollection()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Default collection loadout");
+        await AddModlistGroup(loadout, "Default collection list");
+
+        DefaultCollection.Of(Connection.Db, loadout.LoadoutId).Should().BeNull("a modlist is not where the user's own mods go");
+
+        using var tx = Connection.BeginTransaction();
+        var mine = DefaultCollection.Create(tx, loadout.LoadoutId);
+        var result = await tx.Commit();
+
+        DefaultCollection.Of(Connection.Db, loadout.LoadoutId).Should().Be(CollectionGroupId.From(result[mine.Id]));
+    }
+
+    [Fact]
     public async Task AModlistGroup_ShowsInTheLeftMenusCollectionListUnderTheListsName()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Left menu loadout");

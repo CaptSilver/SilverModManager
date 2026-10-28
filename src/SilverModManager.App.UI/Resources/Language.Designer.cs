@@ -5531,5 +5531,158 @@ namespace SilverModManager.App.UI.Resources {
                 return ResourceManager.GetString("PrefixSetup_Close", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Remove mods from the old revision?.
+        /// </summary>
+        public static string CollectionUpdate_DroppedMods_Title {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_DroppedMods_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} mods installed by {1} aren't in revision {2}. Removing them avoids conflicts. Kept mods move to My Mods and are managed as your own..
+        /// </summary>
+        public static string CollectionUpdate_DroppedMods_Text {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_DroppedMods_Text", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Keep all.
+        /// </summary>
+        public static string CollectionUpdate_DroppedMods_KeepAll {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_DroppedMods_KeepAll", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Review mods.
+        /// </summary>
+        public static string CollectionUpdate_DroppedMods_Review {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_DroppedMods_Review", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Remove all.
+        /// </summary>
+        public static string CollectionUpdate_DroppedMods_RemoveAll {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_DroppedMods_RemoveAll", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Remove selected.
+        /// </summary>
+        public static string CollectionUpdate_DroppedMods_RemoveSelected {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_DroppedMods_RemoveSelected", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Update collection.
+        /// </summary>
+        public static string CollectionDownloadViewModel_UpdateInstalledCollection {
+            get {
+                return ResourceManager.GetString("CollectionDownloadViewModel_UpdateInstalledCollection", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Revision {0} is an older revision of this collection. The newest is revision {1}..
+        /// </summary>
+        public static string CollectionDownloadViewModel_OlderRevision {
+            get {
+                return ResourceManager.GetString("CollectionDownloadViewModel_OlderRevision", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} · rev {1}.
+        /// </summary>
+        public static string CollectionDownloadViewModel_TabTitleWithRevision {
+            get {
+                return ResourceManager.GetString("CollectionDownloadViewModel_TabTitleWithRevision", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Collection updated.
+        /// </summary>
+        public static string ToastNotification_Collection_updated {
+            get {
+                return ResourceManager.GetString("ToastNotification_Collection_updated", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Update the installed collection to this revision before installing single mods from it..
+        /// </summary>
+        public static string ToastNotification_Update_collection_first {
+            get {
+                return ResourceManager.GetString("ToastNotification_Update_collection_first", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} mod installed by {1} isn't in revision {2}. Removing it avoids conflicts. A kept mod moves to My Mods and is managed as your own..
+        /// </summary>
+        public static string CollectionUpdate_DroppedMods_Text_One {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_DroppedMods_Text_One", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Collection updated, but {0} failed to install..
+        /// </summary>
+        public static string ToastNotification_Collection_updated_with_failures {
+            get {
+                return ResourceManager.GetString("ToastNotification_Collection_updated_with_failures", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to  Where there was an older version of a failed mod, it was kept in My Mods..
+        /// </summary>
+        public static string ToastNotification_Collection_update_kept_old_versions {
+            get {
+                return ResourceManager.GetString("ToastNotification_Collection_update_kept_old_versions", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to A newer revision of this collection is installed, so this one can't replace it..
+        /// </summary>
+        public static string CollectionDownloadViewModel_OlderThanInstalled {
+            get {
+                return ResourceManager.GetString("CollectionDownloadViewModel_OlderThanInstalled", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to  {0} of your rules couldn't be carried over to the new versions because they contradict other rules..
+        /// </summary>
+        public static string ToastNotification_Collection_update_skipped_rules {
+            get {
+                return ResourceManager.GetString("ToastNotification_Collection_update_skipped_rules", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Update to revision {0} stopped early: {1}.
+        /// </summary>
+        public static string ToastNotification_Collection_update_interrupted {
+            get {
+                return ResourceManager.GetString("ToastNotification_Collection_update_interrupted", resourceCulture);
+            }
+        }
     }
 }
