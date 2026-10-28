@@ -30,8 +30,9 @@ public class BackupLimitTests(ITestOutputHelper helper) : AStubbedGameIsolatedTe
             [new GamePath(LocationId.Preferences, "b.bin")] = BackupNode(0xB2, Size.GB * 3),
         };
 
-        var act = () => ((ALoadoutSynchronizer)Synchronizer).RunActions(tree, loadout);
+        // The question is settled before the synchronizer lock is taken or a file is read; the default prompt refuses.
+        var act = () => ((ALoadoutSynchronizer)Synchronizer).ResolveBackupOverflow(tree, GameInstallation, preset: null, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<Exception>()).Which.Message.Should().Contain("larger than the maximum");
+        (await act.Should().ThrowAsync<BackupOverflowException>()).Which.Message.Should().Contain("6 GB").And.Contain("--large-files backup");
     }
 }

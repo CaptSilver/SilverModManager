@@ -23,6 +23,7 @@ using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Jobs;
@@ -65,6 +66,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
     private readonly IJobMonitor _jobMonitor;
     private readonly IFileHashesService _fileHashService;
+    private readonly IBackupOverflowPrompt _backupOverflowPrompt;
+    private readonly BackupLimit _backupLimit;
 
     /// <summary>
     /// Loadout synchronizer base constructor.
@@ -90,6 +93,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         _planStore = serviceProvider.GetRequiredService<IDeploymentPlanStore>();
         _backendSelector = serviceProvider.GetRequiredService<IDeploymentBackendSelector>();
         _stagingStore = serviceProvider.GetRequiredService<ILooseStagingStore>();
+        _backupOverflowPrompt = serviceProvider.GetRequiredService<IBackupOverflowPrompt>();
+        _backupLimit = serviceProvider.GetRequiredService<BackupLimit>();
 
         _fileHashService = fileHashService;
 
@@ -523,7 +528,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <inheritdoc />
-    public async Task<Loadout.ReadOnly> RunActions(Dictionary<GamePath, SyncNode> syncTree, Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null)
+    public async Task<Loadout.ReadOnly> RunActions(Dictionary<GamePath, SyncNode> syncTree, Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null, BackupOverflowChoice choice = BackupOverflowChoice.BackUpAnyway)
     {
         await Preflight(loadout.InstallationInstance);
         var gameMetadataId = MetadataOf(loadout).GameInstallMetadataId;
@@ -531,6 +536,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         KeepNeverWrittenPathsOffDisk(syncTree);
         await PreflightActions(syncTree, loadout);
         ProbeWritableRoots(syncTree, loadout.InstallationInstance.Locations);
+        ApplyBackupOverflowChoice(syncTree, choice);
 
         using var _ = await _lock.LockAsync();
         using var tx = Connection.BeginTransaction();
@@ -541,7 +547,6 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var plan = _planStore.EnsureComplete(tx, Connection.Db, loadout.InstallationInstance, gameMetadataId, _backendSelector);
         var groups = GroupByBackend(plan, syncTree);
         PreflightRecordedRoots(loadout.InstallationInstance, plan, syncTree);
-        await EnforceBackupLimit(syncTree);
         var foldersWithDeletedFiles = new List<IReadOnlyCollection<GamePath>>();
         IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)> plannedTimes = loadout.InstallationInstance.Game is ITimestampOrderedGame timestamped
             ? await timestamped.PluginTimestamps(loadout, syncTree)
@@ -757,13 +762,14 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <summary>
     /// Alternative to <see cref="RunActions"/> that ignores changes and optionally clears the last sync loadout metadata
     /// </summary>
-    public async Task RunActions(Dictionary<GamePath, SyncNode> syncTree, GameInstallation gameInstallation)
+    public async Task RunActions(Dictionary<GamePath, SyncNode> syncTree, GameInstallation gameInstallation, BackupOverflowChoice choice = BackupOverflowChoice.BackUpAnyway)
     {
         await Preflight(gameInstallation);
         RefuseTraversalPaths(syncTree);
         KeepNeverWrittenPathsOffDisk(syncTree);
         await PreflightActions(syncTree, null);
         ProbeWritableRoots(syncTree, gameInstallation.Locations);
+        ApplyBackupOverflowChoice(syncTree, choice);
 
         using var _ = await _lock.LockAsync();
         using var tx = Connection.BeginTransaction();
@@ -775,7 +781,6 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         using var stagingHold = _stagingStore.Hold();
         var plan = _planStore.EnsureComplete(tx, Connection.Db, gameInstallation, metadata, _backendSelector);
         var groups = GroupByBackend(plan, syncTree);
-        await EnforceBackupLimit(syncTree);
         var foldersWithDeletedFiles = new List<IReadOnlyCollection<GamePath>>();
         var context = new DeploymentContext
         {
@@ -896,49 +901,95 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <summary>
-    /// We'll limit backups to 5GB, for now we should never see much more than this
-    /// of modified game files.
+    /// Measures what the tree would back up and, when it is over <see cref="BackupLimit"/>, settles the question of
+    /// what to do about it. Runs before <see cref="_lock"/> is taken, so a question that waits on a person holds up
+    /// nothing but the callers queued behind the synchronizer service.
     /// </summary>
-    private static Size MaximumBackupSize => Size.GB * 5;
+    /// <remarks>
+    /// Public so the check can be driven with a hand-built tree. A <see cref="BackupOverflowChoice.Refuse"/>
+    /// <paramref name="preset"/> throws without asking, which is what the command line relies on. <c>Asked</c> is
+    /// true when the prompt answered, so the caller knows the folder may have changed while it was open.
+    /// </remarks>
+    public async Task<(BackupOverflowChoice Choice, bool Asked)> ResolveBackupOverflow(
+        Dictionary<GamePath, SyncNode> syncTree,
+        GameInstallation installation,
+        BackupOverflowChoice? preset,
+        CancellationToken cancellationToken)
+    {
+        var overflow = await MeasureBackupOverflow(syncTree, cancellationToken);
+        if (overflow is null) return (BackupOverflowChoice.BackUpAnyway, false);
+
+        if (preset == BackupOverflowChoice.Refuse) throw new BackupOverflowException(installation, overflow);
+
+        BackupOverflowChoice choice;
+        var asked = preset is null;
+        if (preset is { } given)
+        {
+            choice = given;
+        }
+        else
+        {
+            choice = await _backupOverflowPrompt.Ask(installation, overflow, cancellationToken);
+            if (choice == BackupOverflowChoice.Refuse) throw new BackupOverflowException(installation, overflow) { Declined = true };
+        }
+
+        if (choice == BackupOverflowChoice.AdoptInPlace && !overflow.CanAdopt)
+            throw BackupOverflowException.AdoptWouldLoseFiles(installation, overflow);
+
+        Logger.LogInformation(
+            "{FileCount} files ({Total}) to back up are over the {Limit} cap, {Choice} ({Adoptable} of them only want a copy, {MustBackUp} must be backed up)",
+            overflow.FileCount, overflow.Total, overflow.Limit, choice, overflow.Adoptable, overflow.MustBackUp);
+        return (choice, asked);
+    }
 
     /// <summary>
-    /// Fails before anything is written when the files about to be backed up, over every backend's share of the
-    /// tree together, exceed <see cref="MaximumBackupSize"/>.
+    /// The size of every file the tree would back up that the file store does not already hold, split into the
+    /// files that stay on disk and only want a copy and the ones that must be archived. Null when the total fits.
     /// </summary>
-    private async Task EnforceBackupLimit(Dictionary<GamePath, SyncNode> syncTree)
+    private async Task<BackupOverflow?> MeasureBackupOverflow(Dictionary<GamePath, SyncNode> syncTree, CancellationToken cancellationToken)
     {
-        var sizes = new ConcurrentBag<Size>();
-        await Parallel.ForEachAsync(syncTree, async (item, _) =>
+        // A path the synchronizer never writes loses its backup in RunActions; counting it here would ask about
+        // files that are never copied.
+        KeepNeverWrittenPathsOffDisk(syncTree);
+
+        long adoptable = 0, mustBackUp = 0;
+        var adoptableCount = 0;
+        var mustBackUpCount = 0;
+        await Parallel.ForEachAsync(syncTree, new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = cancellationToken }, async (item, _) =>
         {
             var node = item.Value;
             if (!node.Actions.HasFlag(Actions.BackupFile)) return;
             if (await _fileStore.HaveFile(node.Disk.Hash)) return;
-            sizes.Add(node.Disk.Size);
+
+            if (node.Actions == (Actions.BackupFile | Actions.IngestFromDisk))
+            {
+                Interlocked.Add(ref adoptable, (long)node.Disk.Size.Value);
+                Interlocked.Increment(ref adoptableCount);
+            }
+            else
+            {
+                Interlocked.Add(ref mustBackUp, (long)node.Disk.Size.Value);
+                Interlocked.Increment(ref mustBackUpCount);
+            }
         });
 
-        var totalSize = sizes.Sum(static x => x);
-        if (totalSize <= MaximumBackupSize) return;
+        var overflow = new BackupOverflow(Size.FromLong(adoptable), adoptableCount, Size.FromLong(mustBackUp), mustBackUpCount, _backupLimit.Maximum);
+        return overflow.Total <= overflow.Limit ? null : overflow;
+    }
 
-        var nodeSignatures = syncTree
-            .Where(static x => x.Value.Actions.HasFlag(Actions.BackupFile))
-            .Select(static x => x.Value.Signature)
-            .GroupBy(signature => signature)
-            .Select(static grp => new { Signature = grp.Key, FileCount = grp.Count() })
-            .ToList();
+    /// <summary>
+    /// Applies an adopt answer: files that stay on disk and only want a copy are ingested without one. Every other
+    /// node keeps its backup, an intrinsic file included, since the app is about to overwrite what the player had.
+    /// </summary>
+    private static void ApplyBackupOverflowChoice(Dictionary<GamePath, SyncNode> syncTree, BackupOverflowChoice choice)
+    {
+        if (choice != BackupOverflowChoice.AdoptInPlace) return;
 
-        Logger.LogError(
-            """
-            Cannot backup {FileCount} files with total size {TotalSize}, which exceeds maximum of {MaximumSize}.
-            Node signatures:
-            {Signatures}
-            """,
-            sizes.Count,
-            totalSize,
-            MaximumBackupSize,
-            string.Join(Environment.NewLine, nodeSignatures.Select(sig => $"  - {sig.Signature}: {sig.FileCount} files"))
-        );
-
-        throw new Exception($"Cannot backup files, total size is {totalSize}, which is larger than the maximum of {MaximumBackupSize}");
+        foreach (var path in syncTree.Keys.ToArray())
+        {
+            ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(syncTree, path);
+            if (node.Actions == (Actions.BackupFile | Actions.IngestFromDisk)) node.Actions = Actions.IngestFromDisk;
+        }
     }
 
     /// <summary>
@@ -1050,7 +1101,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <inheritdoc />
-    public virtual async Task<Loadout.ReadOnly> Synchronize(Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null)
+    public virtual async Task<Loadout.ReadOnly> Synchronize(Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default)
     {
         // Refuse before the locator ids are updated and the game folder is re-indexed: both write to the
         // database, and neither can mean anything when the prefix they read from is gone.
@@ -1072,8 +1123,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             var prevLoadout = Loadout.Load(loadout.Db, lastAppliedId);
             if (prevLoadout.IsValid())
             {
-                await _loadoutManager.DeactivateCurrentLoadout(loadout.InstallationInstance);
-                await _loadoutManager.ActivateLoadout(loadout);
+                await _loadoutManager.DeactivateCurrentLoadout(loadout.InstallationInstance, cancellationToken, largeFiles);
+                await _loadoutManager.ActivateLoadout(loadout, cancellationToken, largeFiles);
                 return loadout.Rebase();
             }
         }
@@ -1087,7 +1138,19 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         var tree = BuildSyncTreeFromIndex(loadout, metadata);
         ProcessSyncTree(tree);
-        loadout = await RunActions(tree, loadout, job);
+
+        var (choice, asked) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, largeFiles, cancellationToken);
+        if (asked)
+        {
+            // The folder can change while the question is open, so the answer is applied to a tree of the folder as
+            // it is now. The answer is the preset this time, so nothing is asked twice.
+            metadata = await ReindexState(loadout.InstallationInstance, job);
+            tree = BuildSyncTreeFromIndex(loadout, metadata);
+            ProcessSyncTree(tree);
+            (choice, _) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, choice, cancellationToken);
+        }
+
+        loadout = await RunActions(tree, loadout, job, choice);
 
         // Move any override files that now match game files after sync
         loadout = await ReprocessOverrides(loadout);
@@ -1349,7 +1412,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         return true;
     }
 
-    public async ValueTask BuildProcessRun(Loadout.ReadOnly loadout, GameInstallMetadata.ReadOnly state, CancellationToken cancellationToken)
+    public async ValueTask BuildProcessRun(Loadout.ReadOnly loadout, GameInstallMetadata.ReadOnly state, CancellationToken cancellationToken, BackupOverflowChoice? largeFiles = null)
     {
         // The loadout-switch path reaches the hook only here: Synchronize hands the switch to the loadout
         // manager, which ends in this method.
@@ -1360,7 +1423,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var tree = BuildSyncTree(diskState, diskState, loadout);
         AdoptUserFilesOutsideGame(tree, loadout, state, diskState);
         ProcessSyncTree(tree);
-        await RunActions(tree, loadout);
+
+        var (choice, _) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, largeFiles, cancellationToken);
+        await RunActions(tree, loadout, choice: choice);
     }
 
     /// <summary>
@@ -1629,12 +1694,32 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             $"{installation.Game.DisplayName}'s installed build is not in the app's game file data yet, so the app cannot tell the game's own files from added ones and will not clean the folder. Existing files are kept as External Changes.");
     }
 
-    public async Task ResetToOriginalGameState(GameInstallation installation, LocatorId[] locatorIds)
+    public async Task ResetToOriginalGameState(GameInstallation installation, LocatorId[] locatorIds, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default)
     {
         // Same reasoning as in Synchronize: the re-index below writes before RunActions would refuse.
         await Preflight(installation);
         EnsureBuildCovered(installation, locatorIds);
 
+        var desiredState = await BuildResetTree(installation, locatorIds);
+
+        // Every overflow node here is backed up and then deleted, so nothing is adoptable and the answer is
+        // back up or refuse. After a question the tree is built again from a fresh index of the folder.
+        var (choice, asked) = await ResolveBackupOverflow(desiredState, installation, largeFiles, cancellationToken);
+        if (asked)
+        {
+            desiredState = await BuildResetTree(installation, locatorIds);
+            (choice, _) = await ResolveBackupOverflow(desiredState, installation, choice, cancellationToken);
+        }
+
+        // Run the groupings
+        await RunActions(desiredState, installation, choice);
+    }
+
+    /// <summary>
+    /// Indexes the folder and builds the processed tree that takes it back to the vanilla file list.
+    /// </summary>
+    private async Task<Dictionary<GamePath, SyncNode>> BuildResetTree(GameInstallation installation, LocatorId[] locatorIds)
+    {
         var gameState = _fileHashService.GetGameFiles((installation.LocatorResult.Store, locatorIds));
         var metadata = await ReindexState(installation);
 
@@ -1689,8 +1774,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // Tracked saves the game rewrote stay on disk, but nothing may track them any more.
         foreach (var path in forgotten) CollectionsMarshal.GetValueRefOrNullRef(desiredState, path).Actions = Actions.ForgetDiskState;
 
-        // Run the groupings
-        await RunActions(desiredState, installation);
+        return desiredState;
     }
 
     /// <summary>

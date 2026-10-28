@@ -88,22 +88,27 @@ public class SynchronizerService : ISynchronizerService
     }
     
     /// <inheritdoc />
-    public Task Synchronize(LoadoutId loadoutId) => SynchronizeCore(loadoutId, refuseWhileRunning: true, reselectBackends: true);
+    public Task Synchronize(LoadoutId loadoutId, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default)
+        => SynchronizeCore(loadoutId, refuseWhileRunning: true, reselectBackends: true, largeFiles, cancellationToken);
 
     /// <summary>
     /// Synchronizes on behalf of a launch session, which holds the running-game state itself and so
     /// must not be refused by it. Everything else (semaphore, state locks) is the same as <see cref="Synchronize"/>,
     /// except that the deployment plan is read and never changed: a launch applies what the person last applied.
     /// </summary>
-    internal Task SynchronizeFromLaunchSession(LoadoutId loadoutId) => SynchronizeCore(loadoutId, refuseWhileRunning: false, reselectBackends: false);
+    internal Task SynchronizeFromLaunchSession(LoadoutId loadoutId) => SynchronizeCore(loadoutId, refuseWhileRunning: false, reselectBackends: false, largeFiles: null, CancellationToken.None);
 
-    private async Task SynchronizeCore(LoadoutId loadoutId, bool refuseWhileRunning, bool reselectBackends)
+    private async Task SynchronizeCore(LoadoutId loadoutId, bool refuseWhileRunning, bool reselectBackends, BackupOverflowChoice? largeFiles, CancellationToken callerToken)
     {
         await _jobMonitor.Begin(new SynchronizeLoadoutJob(loadoutId),
             async ctx =>
             {
                 var job = ctx.Definition;
-                await _semaphore.WaitAsync();
+
+                // The caller's token too: cancelling a create job has to end a sync of its own that sits at the
+                // backup-cap question, and that sync is a job of its own that the create job only awaits.
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(ctx.CancellationToken, callerToken);
+                await _semaphore.WaitAsync(linked.Token);
                 try
                 {
                     var loadout = Loadout.Load(_conn.Db, loadoutId);
@@ -121,7 +126,7 @@ public class SynchronizerService : ISynchronizerService
 
                     if (reselectBackends) await ReselectUnchosenBackends(loadout.InstallationInstance);
 
-                    await loadout.InstallationInstance.GetGame().Synchronizer.Synchronize(loadout, job);
+                    await loadout.InstallationInstance.GetGame().Synchronizer.Synchronize(loadout, job, largeFiles, linked.Token);
                 }
                 catch (SynchronizerPreflightException e) when (e.Action is null)
                 {
@@ -141,13 +146,13 @@ public class SynchronizerService : ISynchronizerService
     }
 
     /// <inheritdoc />
-    public async Task UnManage(GameInstallation installation, bool runGc = true, bool cleanGameFolder = true)
+    public async Task UnManage(GameInstallation installation, bool runGc = true, bool cleanGameFolder = true, BackupOverflowChoice? largeFiles = null)
     {
         await _semaphore.WaitAsync();
         try
         {
             if (!_gameRegistry.TryGetMetadata(installation, out var metadata)) return;
-            await _loadoutManager.Value.UnManage(installation, runGc, cleanGameFolder);
+            await _loadoutManager.Value.UnManage(installation, runGc, cleanGameFolder, largeFiles: largeFiles);
         }
         finally
         {

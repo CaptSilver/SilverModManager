@@ -2,6 +2,7 @@
 using SilverModManager.Abstractions.Loadouts.Files.Diff;
 using SilverModManager.Abstractions.Loadouts.Exceptions;
 using SilverModManager.Abstractions.Loadouts.Ids;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using R3;
@@ -18,7 +19,10 @@ public interface ISynchronizerService
     /// new changes in the loadout will be applied to the game folder.
     /// </summary>
     /// <throws cref="ExecutableInUseException">Thrown while the app is running a launch of this game.</throws>
-    public Task Synchronize(LoadoutId loadout);
+    /// <param name="loadout">The loadout to apply.</param>
+    /// <param name="largeFiles">The answer to give when added files are over the backup cap; null asks the player.</param>
+    /// <param name="cancellationToken">Ends the wait for that answer.</param>
+    public Task Synchronize(LoadoutId loadout, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Removes all the loadouts for a game, and resets the game folder to its
@@ -26,7 +30,7 @@ public interface ISynchronizerService
     /// </summary>
     /// <param name="installation">Game installation which should be unmanaged.</param>
     /// <param name="runGc">If true, runs the garbage collector.</param>
-    public Task UnManage(GameInstallation installation, bool runGc = true, bool cleanGameFolder = true);
+    public Task UnManage(GameInstallation installation, bool runGc = true, bool cleanGameFolder = true, BackupOverflowChoice? largeFiles = null);
     
     /// <summary>
     /// Moves the root to a different deployment backend. The game is first reset with the backend that

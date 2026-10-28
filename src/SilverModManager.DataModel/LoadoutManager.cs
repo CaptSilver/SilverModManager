@@ -26,6 +26,7 @@ using SilverModManager.MnemonicDB.Abstractions.Internals;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
@@ -90,7 +91,7 @@ internal partial class LoadoutManager : ILoadoutManager
         }
     }
 
-    public IJobTask<CreateLoadoutJob, Loadout.ReadOnly> CreateLoadout(GameInstallation installation, string? suggestedName = null)
+    public IJobTask<CreateLoadoutJob, Loadout.ReadOnly> CreateLoadout(GameInstallation installation, string? suggestedName = null, BackupOverflowChoice? largeFiles = null)
     {
         return _jobMonitor.Begin(new CreateLoadoutJob(installation), async ctx =>
         {
@@ -145,7 +146,7 @@ internal partial class LoadoutManager : ILoadoutManager
             // If there is no currently synced loadout, then we can ingest the game folder
             if (!GameInstallMetadata.LastSyncedLoadout.TryGetValue(remappedLoadout.Installation, out var lastSyncedLoadoutId))
             {
-                await _synchronizerService.Synchronize(remappedLoadout.LoadoutId);
+                await FirstSync(remappedLoadout, largeFiles, ctx.CancellationToken);
                 remappedLoadout = remappedLoadout.Rebase();
             }
             else
@@ -154,13 +155,44 @@ internal partial class LoadoutManager : ILoadoutManager
                 var lastSyncedLoadout = Loadout.Load(remappedLoadout.Db, lastSyncedLoadoutId);
                 if (!lastSyncedLoadout.IsValid())
                 {
-                    await _synchronizerService.Synchronize(remappedLoadout.LoadoutId);
+                    await FirstSync(remappedLoadout, largeFiles, ctx.CancellationToken);
                     remappedLoadout = remappedLoadout.Rebase();
                 }
             }
 
             return remappedLoadout;
         });
+    }
+
+    /// <summary>
+    /// The sync that ingests the game folder into a loadout that was just created. When it is refused or cancelled the
+    /// loadout and the index it left behind are removed again: a loadout with nothing synced is a half-added game, and
+    /// the next attempt starts from a stat-only index anyway.
+    /// </summary>
+    private async Task FirstSync(Loadout.ReadOnly loadout, BackupOverflowChoice? largeFiles, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _synchronizerService.Synchronize(loadout.LoadoutId, largeFiles, cancellationToken);
+        }
+        catch (Exception e) when (e is UserFacingException or OperationCanceledException)
+        {
+            try
+            {
+                await DeleteLoadout(loadout.LoadoutId, deactivateIfActive: false);
+
+                var metadata = GameInstallMetadata.Load(_connection.Db, loadout.InstallationId);
+                using var tx = _connection.BeginTransaction();
+                ClearInstallState(tx, metadata);
+                await tx.Commit();
+            }
+            catch (Exception cleanup)
+            {
+                _logger.LogError(cleanup, "Could not remove loadout {Loadout} after its first sync was refused", loadout.Name);
+            }
+
+            throw;
+        }
     }
 
     private static string GetNewShortName(IDb db, GameInstallMetadataId installationId)
@@ -384,16 +416,16 @@ internal partial class LoadoutManager : ILoadoutManager
         await _garbageCollectorRunner.RunWithMode(gcRunMode);
     }
 
-    public async ValueTask ActivateLoadout(LoadoutId loadoutId, CancellationToken cancellationToken = default)
+    public async ValueTask ActivateLoadout(LoadoutId loadoutId, CancellationToken cancellationToken = default, BackupOverflowChoice? largeFiles = null)
     {
         var loadout = Loadout.Load(_connection.Db, loadoutId);
         var synchronizer = loadout.InstallationInstance.GetGame().Synchronizer;
 
         var state = await synchronizer.ReindexState(loadout.InstallationInstance);
-        await synchronizer.BuildProcessRun(loadout, state, cancellationToken);
+        await synchronizer.BuildProcessRun(loadout, state, cancellationToken, largeFiles);
     }
 
-    public async ValueTask DeactivateCurrentLoadout(GameInstallation installation, CancellationToken cancellationToken = default)
+    public async ValueTask DeactivateCurrentLoadout(GameInstallation installation, CancellationToken cancellationToken = default, BackupOverflowChoice? largeFiles = null)
     {
         var metadata = _gameRegistry.ForceGetMetadata(installation);
         var synchronizer = installation.GetGame().Synchronizer;
@@ -404,7 +436,7 @@ internal partial class LoadoutManager : ILoadoutManager
         EnsureBuildCovered(installation);
 
         // Synchronize the last applied loadout, so we don't lose any changes
-        await synchronizer.Synchronize(Loadout.Load(_connection.Db, metadata.LastSyncedLoadout));
+        await synchronizer.Synchronize(Loadout.Load(_connection.Db, metadata.LastSyncedLoadout), largeFiles: largeFiles, cancellationToken: cancellationToken);
 
         var metadataLocatorIds = installation.LocatorResult.LocatorIds;
         var locatorIds = metadataLocatorIds.Distinct().ToArray();
@@ -414,7 +446,7 @@ internal partial class LoadoutManager : ILoadoutManager
             _logger.LogWarning("Duplicate locator ids `{LocatorIds}` found in LocatorResultMetadata for {Game} when deactivating loadout", metadataLocatorIds, installation.Game.DisplayName);
         }
 
-        await synchronizer.ResetToOriginalGameState(installation, locatorIds);
+        await synchronizer.ResetToOriginalGameState(installation, locatorIds, largeFiles, cancellationToken);
     }
 
     private static void EnsureBuildCovered(GameInstallation installation)
@@ -455,7 +487,7 @@ internal partial class LoadoutManager : ILoadoutManager
         return LoadoutId.From(lastAppliedLoadout);
     }
 
-    public IJobTask<UnmanageGameJob, GameInstallation> UnManage(GameInstallation installation, bool runGc = true, bool cleanGameFolder = true, CancellationToken cancellationToken = default)
+    public IJobTask<UnmanageGameJob, GameInstallation> UnManage(GameInstallation installation, bool runGc = true, bool cleanGameFolder = true, CancellationToken cancellationToken = default, BackupOverflowChoice? largeFiles = null)
     {
         return _jobMonitor.Begin(new UnmanageGameJob(installation), async ctx =>
         {
@@ -463,7 +495,7 @@ internal partial class LoadoutManager : ILoadoutManager
 
             var metadata = _gameRegistry.ForceGetMetadata(installation);
 
-            if (GetCurrentlyActiveLoadout(installation).HasValue && cleanGameFolder) await DeactivateCurrentLoadout(installation, cancellationToken: cancellationToken);
+            if (GetCurrentlyActiveLoadout(installation).HasValue && cleanGameFolder) await DeactivateCurrentLoadout(installation, cancellationToken: cancellationToken, largeFiles: largeFiles);
             await ctx.YieldAsync();
 
             {

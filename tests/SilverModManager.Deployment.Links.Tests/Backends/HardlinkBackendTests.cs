@@ -279,9 +279,9 @@ public class HardlinkBackendTests(ITestOutputHelper helper)
             [new GamePath(LocationId.Preferences, "b.bin")] = BackupNode(0xB2, Size.GB * 3),
         };
 
-        var act = () => ((ALoadoutSynchronizer)Synchronizer).RunActions(tree, loadout);
+        var act = () => ((ALoadoutSynchronizer)Synchronizer).ResolveBackupOverflow(tree, GameInstallation, preset: null, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<Exception>()).Which.Message.Should().Contain("larger than the maximum");
+        (await act.Should().ThrowAsync<BackupOverflowException>()).Which.Message.Should().Contain("6 GB").And.Contain("--large-files backup");
     }
 
     private static SyncNode BackupNode(ulong hash, Size size) => new()

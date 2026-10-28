@@ -23,7 +23,7 @@ public interface ILoadoutManager
     /// <summary>
     /// Creates a loadout for a game, managing the game if it has not previously been managed.
     /// </summary>
-    IJobTask<CreateLoadoutJob, Loadout.ReadOnly> CreateLoadout(GameInstallation installation, string? suggestedName = null);
+    IJobTask<CreateLoadoutJob, Loadout.ReadOnly> CreateLoadout(GameInstallation installation, string? suggestedName = null, BackupOverflowChoice? largeFiles = null);
 
     /// <summary>
     /// Copies a loadout.
@@ -45,12 +45,12 @@ public interface ILoadoutManager
     /// <summary>
     /// Sets the loadout as the active loadout for the game, applying the changes to the game folder.
     /// </summary>
-    ValueTask ActivateLoadout(LoadoutId loadoutId, CancellationToken cancellationToken = default);
+    ValueTask ActivateLoadout(LoadoutId loadoutId, CancellationToken cancellationToken = default, BackupOverflowChoice? largeFiles = null);
 
     /// <summary>
     /// Resets a game back to its initial state, any applied loadouts will be unapplied.
     /// </summary>
-    ValueTask DeactivateCurrentLoadout(GameInstallation installation, CancellationToken cancellationToken = default);
+    ValueTask DeactivateCurrentLoadout(GameInstallation installation, CancellationToken cancellationToken = default, BackupOverflowChoice? largeFiles = null);
 
     /// <summary>
     /// Removes the loadout's External Changes and synchronizes, which deletes those files from the game folder.
@@ -74,7 +74,7 @@ public interface ILoadoutManager
     /// <summary>
     /// Removes all the loadouts for a game, and resets the game folder to its initial state.
     /// </summary>
-    IJobTask<UnmanageGameJob, GameInstallation> UnManage(GameInstallation installation, bool runGc = true, bool cleanGameFolder = true, CancellationToken cancellationToken = default);
+    IJobTask<UnmanageGameJob, GameInstallation> UnManage(GameInstallation installation, bool runGc = true, bool cleanGameFolder = true, CancellationToken cancellationToken = default, BackupOverflowChoice? largeFiles = null);
 
     /// <summary>
     /// Wrapper for item installations.

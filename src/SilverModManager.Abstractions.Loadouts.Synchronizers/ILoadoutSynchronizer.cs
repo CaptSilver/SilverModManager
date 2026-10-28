@@ -54,13 +54,21 @@ public interface ILoadoutSynchronizer
     /// <summary>
     /// Run the groupings on the game folder and return a new loadout with the changes applied.
     /// </summary>
-    Task<Loadout.ReadOnly> RunActions(Dictionary<GamePath, SyncNode> syncTree, Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null);
+    /// <param name="choice">
+    /// The answer to the backup-cap question, already resolved. The default means nothing was over the cap; the
+    /// size of the backups is not measured here.
+    /// </param>
+    Task<Loadout.ReadOnly> RunActions(Dictionary<GamePath, SyncNode> syncTree, Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null, BackupOverflowChoice choice = BackupOverflowChoice.BackUpAnyway);
     
     /// <summary>
     /// Synchronizes the loadout with the game folder, any changes in the game folder will be added to the loadout, and any
     /// new changes in the loadout will be applied to the game folder.
     /// </summary>
-    Task<Loadout.ReadOnly> Synchronize(Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null);
+    /// <param name="largeFiles">
+    /// The answer to give when added files are over the backup cap, so no question is asked. Null asks the player.
+    /// </param>
+    /// <param name="cancellationToken">Ends the wait for the answer to that question.</param>
+    Task<Loadout.ReadOnly> Synchronize(Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get the disk state for a game as of a specific transaction.
@@ -138,14 +146,14 @@ public interface ILoadoutSynchronizer
     /// </summary>
     Task RescanExternalChanges(Loadout.ReadOnly loadout);
 
-    ValueTask BuildProcessRun(Loadout.ReadOnly loadout, Sdk.Games.GameInstallMetadata.ReadOnly state, CancellationToken cancellationToken);
+    ValueTask BuildProcessRun(Loadout.ReadOnly loadout, Sdk.Games.GameInstallMetadata.ReadOnly state, CancellationToken cancellationToken, BackupOverflowChoice? largeFiles = null);
 
     /// <summary>
     /// Resets the game folder to the vanilla file list of <paramref name="locatorIds"/>, deleting every indexed file
     /// outside it. Throws <see cref="SynchronizerPreflightException"/> without touching anything when
     /// <see cref="EnsureBuildCovered"/> does.
     /// </summary>
-    Task ResetToOriginalGameState(GameInstallation installation, LocatorId[] locatorIds);
+    Task ResetToOriginalGameState(GameInstallation installation, LocatorId[] locatorIds, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Throws <see cref="SynchronizerPreflightException"/> when the file hashes data does not describe every part of

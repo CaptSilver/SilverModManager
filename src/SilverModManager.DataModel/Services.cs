@@ -111,6 +111,8 @@ public static class Services
         coll.AddSettings<DiagnosticSettings>();
         // Only a fallback: the UI registers a writer with its own value formatters first, and that one wins.
         coll.TryAddSingleton<IDiagnosticWriter, PlainDiagnosticWriter>();
+        coll.TryAddSingleton<IBackupOverflowPrompt, RefusingBackupOverflowPrompt>();
+        coll.TryAddSingleton(BackupLimit.Default);
         
         // GC
         coll.AddAllSingleton<IGarbageCollectorRunner, GarbageCollectorRunner>();

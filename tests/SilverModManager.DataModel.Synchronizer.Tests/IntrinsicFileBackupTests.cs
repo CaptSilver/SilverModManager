@@ -33,8 +33,12 @@ public class IntrinsicFileBackupTests(ITestOutputHelper helper) : AIsolatedGameT
     {
         return base.AddServices(services)
             .AddGame<IntrinsicStubbedGame>()
-            .AddUniversalGameLocator<IntrinsicStubbedGame>(Version.Parse("0.0.0"));
+            .AddUniversalGameLocator<IntrinsicStubbedGame>(Version.Parse("0.0.0"))
+            .AddSingleton(new BackupLimit(Size.KB * 8))
+            .AddSingleton<IBackupOverflowPrompt>(_prompt);
     }
+
+    private readonly SwitchableBackupOverflowPrompt _prompt = new();
 
     private async Task UserHadAFile()
     {
@@ -55,6 +59,21 @@ public class IntrinsicFileBackupTests(ITestOutputHelper helper) : AIsolatedGameT
         (await Generated.ReadAllBytesAsync()).Should().NotEqual(UserBytes, "the app now owns the file");
         (await FileStore.HaveFile(UserBytes.xxHash3())).Should().BeTrue("the user's copy has to be kept before it is overwritten");
         GameBackedUpFile.All(Connection.Db).Select(f => f.Hash).Should().Contain(UserBytes.xxHash3(), "the backup is pinned against garbage collection");
+    }
+
+    [Fact]
+    public async Task AdoptInPlace_StillBacksUpAnIntrinsicFileBeforeRewritingIt()
+    {
+        await UserHadAFile();
+        var gameDir = GameInstallation.Locations[LocationId.Game].Path;
+        gameDir.CreateDirectory();
+        for (var i = 0; i < 4; i++) await (gameDir / $"ext{i}.bin").WriteAllBytesAsync(Enumerable.Repeat((byte)(i + 1), 4096).ToArray());
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+
+        await CreateLoadout();
+
+        (await FileStore.HaveFile(UserBytes.xxHash3())).Should().BeTrue("adopting skips the added files only, not the file the app is about to rewrite");
+        (await FileStore.HaveFile(Enumerable.Repeat((byte)1, 4096).ToArray().xxHash3())).Should().BeFalse();
     }
 
     [Fact]
