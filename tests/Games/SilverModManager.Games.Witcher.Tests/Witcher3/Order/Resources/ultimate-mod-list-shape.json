@@ -1,0 +1,25 @@
+{
+  "info": { "name": "Fixture list", "domainName": "witcher3" },
+  "mods": [
+    { "name": "Friendly HUD", "version": "3.2", "domainName": "witcher3",
+      "source": { "type": "nexus", "modId": 365, "fileId": 1234, "logicalFilename": "Friendly HUD" } },
+    { "name": "Better Icons", "version": "1.0", "domainName": "witcher3",
+      "source": { "type": "nexus", "modId": 2000, "fileId": 10 } },
+    { "name": "Mod Menu", "version": "2.1", "domainName": "witcher3",
+      "source": { "type": "nexus", "modId": 3000, "fileId": 20, "fileExpression": "Mod Menu v2.1.zip" } },
+    { "name": "Extra Quests", "version": "1.4", "domainName": "witcher3",
+      "source": { "type": "nexus", "modId": 4000, "fileId": 30 } },
+    { "name": "Sharper Shadows", "version": "1.0", "domainName": "witcher3",
+      "source": { "type": "nexus", "modId": 5000, "fileId": 40 } }
+  ],
+  "modRules": [],
+  "loadOrder": [
+    { "id": "mod0000_MergedFiles", "name": "mod0000_MergedFiles", "enabled": true, "modId": "mod0000_MergedFiles", "locked": true, "data": { "prefix": 0 } },
+    { "id": "modFriendlyHUD", "name": "Friendly HUD (modFriendlyHUD)", "enabled": true, "modId": "Friendly HUD", "locked": false, "data": { "prefix": 3 } },
+    { "id": "modBetterIcons", "name": "modBetterIcons", "enabled": true, "modId": "Better Icons-2000-1-0-1700000000", "locked": false, "data": { "prefix": 2 } },
+    { "id": "modMenu", "name": "modMenu", "enabled": false, "modId": "Mod Menu v2.1", "locked": false, "data": { "prefix": 5 } },
+    { "id": "modExtraQuests", "name": "modExtraQuests", "enabled": true, "modId": "Extra Quests-4000-1-4-1700000001", "locked": false, "data": { "prefix": 4 } },
+    { "id": "modSharperShadows", "name": "modSharperShadows", "enabled": true, "modId": "Sharper Shadows-5000-1-0-1700000002", "locked": false, "data": { "prefix": 6 } },
+    { "id": "modGhost", "name": "modGhost", "enabled": true, "modId": "Ghost Mod-777-1-0-1700000003", "locked": false, "data": { "prefix": 7 } }
+  ]
+}

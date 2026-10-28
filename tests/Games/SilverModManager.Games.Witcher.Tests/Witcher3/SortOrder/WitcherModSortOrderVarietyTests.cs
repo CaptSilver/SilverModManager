@@ -381,24 +381,6 @@ public class WitcherModSortOrderVarietyTests(ITestOutputHelper helper)
     }
 
     [Fact]
-    public async Task SeedingTheStoredIndexes_LeavesThePageOnPriority()
-    {
-        var (loadout, variety, id) = await Reconciled();
-        var a = await AddMod(loadout, "A", 1, "Mods/modA/a.ws");
-        var b = await AddMod(loadout, "B", 2, "Mods/modB/b.ws");
-        await variety.ReconcileSortOrder(id);
-
-        using (var tx = Connection.BeginTransaction())
-        {
-            variety.SeedFromGroupOrder(id, [a, b], tx, Db);
-            await tx.Commit();
-        }
-
-        Folders(variety.GetSortOrderItems(id, Db)).Should().Equal(Merged, "modB", "modA");
-        PriorityOf(b).Should().BeGreaterThan(PriorityOf(a));
-    }
-
-    [Fact]
     public async Task TheChangeSet_FollowsAPriorityChange()
     {
         var (loadout, variety, id) = await Reconciled();

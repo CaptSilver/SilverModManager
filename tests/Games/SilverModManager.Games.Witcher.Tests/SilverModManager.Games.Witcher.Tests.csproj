@@ -4,4 +4,7 @@
     <ProjectReference Include="..\..\..\src\SilverModManager.Games.Witcher\SilverModManager.Games.Witcher.csproj" />
     <ProjectReference Include="..\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Witcher3/Order/Resources/**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

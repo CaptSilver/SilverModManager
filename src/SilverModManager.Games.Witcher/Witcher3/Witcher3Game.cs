@@ -2,6 +2,7 @@ using DynamicData.Kernel;
 using NexusMods.Paths;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Library.Installers;
@@ -9,15 +10,17 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Witcher.Witcher3.Diagnostics;
 using SilverModManager.Games.Witcher.Witcher3.Installers;
 using SilverModManager.Games.Witcher.Witcher3.Merge;
+using SilverModManager.Games.Witcher.Witcher3.Order;
 using SilverModManager.Games.Witcher.Witcher3.SortOrder;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.Games.Witcher.Witcher3;
 
-public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witcher3Game>(provider), IGameData<Witcher3Game>, IHasMergeGame
+public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witcher3Game>(provider), IGameData<Witcher3Game>, IHasMergeGame, IModOrderGame
 {
     private AMergeGame? _mergeGame;
+    private Witcher3VortexOrderFormat? _vortexOrder;
 
     private static readonly RelativePath Dx12Exe = "bin/x64_dx12/witcher3.exe";
     private static readonly RelativePath Dx11Exe = "bin/x64/witcher3.exe";
@@ -33,6 +36,11 @@ public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witch
         GOGProductIds = [1207664663L, 1495134320L, 1207664643L, 1640424747L],
         EGSCatalogItemId = ["725a22e15ed74735bb0d6a19f3cc82d0"],
     };
+
+    // The page is a view over the priority rows, which the default sink writes, so there is nothing of its own to apply.
+    IModOrderSink? IModOrderGame.OrderSink => null;
+
+    IVortexOrderFormat? IModOrderGame.VortexOrderFormat => _vortexOrder ??= new Witcher3VortexOrderFormat();
 
     public AMergeGame MergeGame => _mergeGame ??= new Witcher3MergeGame(this);
 

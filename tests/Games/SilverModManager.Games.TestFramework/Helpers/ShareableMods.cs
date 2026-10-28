@@ -37,8 +37,11 @@ public static class ShareableMods
         return id;
     }
 
-    /// <summary>A library item for a Nexus file the user never downloaded: ids and a name, no local file and so no md5.</summary>
-    public static EntityId AddNexusItem(ITransaction tx, string name, NexusModsGameId game, GameDomain domain, uint modId, uint fileId)
+    /// <summary>
+    /// A library item for a Nexus file. Without <paramref name="fileName"/> the user never downloaded it (ids and a name, no
+    /// local file and so no md5); with one it is also a library file of that name.
+    /// </summary>
+    public static EntityId AddNexusItem(ITransaction tx, string name, NexusModsGameId game, GameDomain domain, uint modId, uint fileId, string? fileName = null)
     {
         var page = new NexusModsModPageMetadata.New(tx)
         {
@@ -62,6 +65,16 @@ public static class ShareableMods
             FileMetadataId = file.Id,
             ModPageMetadataId = page.Id,
         };
+        if (fileName is not null)
+        {
+            _ = new LibraryFile.New(tx, item.Id)
+            {
+                FileName = fileName,
+                Hash = fileName.xxHash3AsUtf8(),
+                Size = Size.FromLong(1),
+                LibraryItem = new LibraryItem.New(tx, item.Id) { Name = name },
+            };
+        }
         return item.Id;
     }
 
