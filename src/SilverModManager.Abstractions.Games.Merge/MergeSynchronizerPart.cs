@@ -21,6 +21,10 @@ public sealed class MergeApplyRefusedException(string reason) : SynchronizerPref
     /// <summary>The loadout, or the merge plan made from it, changed between the preflight and the sync tree.</summary>
     public static MergeApplyRefusedException Changed() => new("The loadout changed while it was being applied. Apply again.");
 
+    /// <summary>A merged file is written for a revision whose plan no check verified, so there are no checked bytes to write.</summary>
+    public static MergeApplyRefusedException Unchecked(string relPath)
+        => new($"{relPath} is merged from several mods, but the merge was not checked before this apply wrote it, so it is not written. Apply again.");
+
     public static MergeApplyRefusedException PlanFailed(Exception cause) => new($"The files the mods provide could not be merged: {cause.Message}");
 
     public static MergeApplyRefusedException ListingFailed(string reason) => new($"The files the mods provide could not be listed: {reason}");
@@ -40,7 +44,7 @@ public sealed class MergeApplyRefusedException(string reason) : SynchronizerPref
 /// </para>
 /// <para>
 /// The merged files it lists read their bytes from here, and the bytes are the plan <see cref="CheckOutputs"/>
-/// verified for that revision. Asking the engine again from each write would scan the loadout and read every
+/// verified for that revision; a write for a revision no check passed for is refused. Asking the engine again from each write would scan the loadout and read every
 /// contested original once per file, and could hand a write bytes that were never checked.
 /// </para>
 /// </summary>
@@ -151,12 +155,13 @@ public sealed class MergeSynchronizerPart(IMergeEngine engine, ILogger logger) :
 
     /// <summary>
     /// The bytes <see cref="CheckOutputs"/> verified for <paramref name="relPath"/> at this revision, or null when that
-    /// plan has no merge for it. Only a revision no check passed for (nothing an apply writes) asks the engine.
+    /// plan has no merge for it. Throws <see cref="MergeApplyRefusedException"/> for a revision no check passed for:
+    /// asking the engine instead would write bytes nothing compared with the tree.
     /// </summary>
     public byte[]? MergedBytes(Loadout.ReadOnly loadout, string relPath)
     {
         if (_checked.TryGetValue(loadout.LoadoutId, out var verified) && verified.Revision == loadout.Db.BasisTxId)
             return verified.Outputs.TryGetValue(relPath, out var output) ? output.Bytes : null;
-        return engine.MergedBytes(loadout, relPath);
+        throw MergeApplyRefusedException.Unchecked(relPath);
     }
 }

@@ -236,13 +236,18 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
     }
 
     [Fact]
-    public async Task ARevisionNoCheckPassedForIsAnsweredByTheEngine()
+    public async Task AWriteAtARevisionNoCheckPassedForIsARefusalNotTheEnginesBytes()
     {
         var loadout = await CreateLoadout();
         var engine = Engine();
         engine.MergedBytes(Arg.Any<Loadout.ReadOnly>(), "scripts/a.txt").Returns([7]);
+        var part = new MergeSynchronizerPart(engine, NullLogger.Instance);
+        var files = part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
 
-        new MergeSynchronizerPart(engine, NullLogger.Instance).MergedBytes(loadout, "scripts/a.txt").Should().Equal(7);
+        var act = () => files[OutA].Write(new MemoryStream(), loadout, []);
+
+        (await act.Should().ThrowAsync<MergeApplyRefusedException>()).Which.Message.Should().Contain("scripts/a.txt").And.Contain("not checked");
+        engine.DidNotReceiveWithAnyArgs().MergedBytes(default, default!);
     }
 
     [Fact]

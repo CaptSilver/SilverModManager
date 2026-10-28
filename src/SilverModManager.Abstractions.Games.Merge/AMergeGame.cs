@@ -7,7 +7,7 @@ namespace SilverModManager.Abstractions.Games.Merge;
 
 /// <summary>
 /// A game class implements this to be served by <see cref="MergeEngine"/>. That alone deploys no merged file: a game
-/// makes four hookups, and each one it forgets breaks something different.
+/// makes the hookups below, and each one it forgets breaks something different.
 /// <list type="number">
 /// <item><description>
 /// <b>This interface on the game</b>, returning its <see cref="AMergeGame"/>. Without it no engine serves the game: no
@@ -22,8 +22,7 @@ namespace SilverModManager.Abstractions.Games.Merge;
 /// <b><see cref="MergeSynchronizerPart.PlanOutputs"/> in <c>PreflightLoadout</c> and
 /// <see cref="MergeSynchronizerPart.CheckOutputs"/> in <c>PreflightActions</c>.</b> Without the first, the listing does
 /// not yet know a merge fails, so the first apply after it starts failing is refused once. Without the second, nothing
-/// compares the tree with the plan, the writes read whatever the engine plans at that moment, and a merge that failed
-/// after the listing throws half way through the writes.
+/// compares the tree with the plan and every merged file's write is refused, since no checked plan exists to copy.
 /// </description></item>
 /// <item><description>
 /// <b><see cref="EngineMergeDiagnosticsEmitter"/> in the game's <c>DiagnosticEmitters</c>.</b> Without it Health Check

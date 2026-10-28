@@ -90,7 +90,7 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
 
     /// <summary>
     /// The baseline is keyed by the folder the game registry located, which can be spelled differently from the
-    /// installation row (on this host /home is a link to /var/home), so it is looked up the way it was written. A game
+    /// installation row (on an ostree host /home is a link to /var/home), so it is looked up the way it was written. A game
     /// the registry cannot find falls back to the row's folder, the one it was managed in.
     /// </summary>
     private LocalBaseline.ReadOnly? FindBaseline(IDb db, Loadout.ReadOnly loadout)

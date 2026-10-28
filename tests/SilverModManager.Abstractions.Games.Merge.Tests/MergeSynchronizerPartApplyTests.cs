@@ -116,6 +116,7 @@ public class MergeSynchronizerPartApplyTests(IServiceProvider provider) : AGameT
         var files = part.IntrinsicFiles(loadout, NullLogger.Instance);
 
         files.Keys.Should().BeEquivalentTo([good]);
+        part.CheckOutputs(files.Keys.ToDictionary(p => p, _ => new SyncNode { SourceItemType = LoadoutSourceItemType.Intrinsic }), loadout);
         var stream = new MemoryStream();
         await files[good].Write(stream, loadout, []);
         Encoding.UTF8.GetString(stream.ToArray()).Should().Be("a\nB1\nC\n");
