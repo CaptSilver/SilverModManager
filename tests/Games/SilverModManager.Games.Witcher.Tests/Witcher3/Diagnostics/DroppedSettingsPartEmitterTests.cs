@@ -95,8 +95,67 @@ public class DroppedSettingsPartEmitterTests(ITestOutputHelper helper)
 
         var summary = (await GetSingleDiagnostic(loadout)).FormatSummary(new PlainDiagnosticWriter());
 
-        summary.Should().Contain("modA").And.Contain("modB").And.Contain("dx12user.settings doesn't exist yet")
+        summary.Should().Contain("modA").And.Contain("modB").And.Contain("neither user.settings nor dx12user.settings exists yet")
             .And.Contain("Start the game once, then Apply again");
+    }
+
+    [Fact]
+    public async Task TheMissingFileCard_PointsAtNoPage()
+    {
+        var loadout = await CreateLoadout();
+        await AddPart(loadout, "modA", "dx12user.settings");
+
+        (await GetSingleDiagnostic(loadout)).FormatDetails(new PlainDiagnosticWriter()).Should().NotContain("Change it on");
+    }
+
+    [Fact]
+    public async Task WhenOnlyOneRendererFileExists_TheOtherOnesFragmentsAreSkippedSilently()
+    {
+        var loadout = await CreateLoadout();
+        await WriteSettings("user.settings");
+        await AddPart(loadout, "modA", "user.settings");
+        await AddPart(loadout, "modB", "dx12user.settings");
+
+        await ShouldHaveNoDiagnostics(loadout);
+    }
+
+    [Fact]
+    public async Task WhenOnlyDx12UserSettingsExists_UserSettingsFragmentsAreSkippedSilently()
+    {
+        var loadout = await CreateLoadout();
+        await WriteSettings("dx12user.settings");
+        await AddPart(loadout, "modA", "user.settings");
+
+        await ShouldHaveNoDiagnostics(loadout);
+    }
+
+    [Fact]
+    public async Task WhenNeitherRendererFileExists_OneCardNamesTheModsOfBoth()
+    {
+        var loadout = await CreateLoadout();
+        await AddPart(loadout, "modA", "user.settings");
+        await AddPart(loadout, "modB", "dx12user.settings");
+
+        var cards = await GetAllDiagnostics(loadout);
+
+        cards.Should().ContainSingle().Which.FormatSummary(new PlainDiagnosticWriter()).Should().Contain("modA").And.Contain("modB");
+    }
+
+    [Fact]
+    public async Task AMissingInputSettings_GetsACardEvenWhenTheRendererFilesExist()
+    {
+        var loadout = await CreateLoadout();
+        await WriteSettings("user.settings");
+        await AddPart(loadout, "modA", "input.settings");
+
+        (await GetSingleDiagnostic(loadout)).FormatSummary(new PlainDiagnosticWriter()).Should().Contain("input.settings doesn't exist yet");
+    }
+
+    private async Task WriteSettings(string name)
+    {
+        var file = GameInstallation.Locations.ToAbsolutePath(new GamePath(WitcherConstants.WitcherDocuments, name));
+        file.Parent.CreateDirectory();
+        await file.WriteAllBytesAsync("[Rendering]\r\nMaxFPS=30\r\n"u8.ToArray());
     }
 
     [Fact]

@@ -32,18 +32,29 @@ public sealed class DroppedSettingsPartEmitter : ADroppedItemEmitter
 
         if (!Loadout.OwnsGameInis.Get(loadout) || !loadout.IsValid()) yield break;
 
-        var locations = loadout.InstallationInstance.Locations;
-        foreach (var file in WitcherConstants.W3SettingsFiles)
+        // user.settings belongs to DX11 and dx12user.settings to DX12, so a player has one of them. The other renderer's
+        // fragments are not waiting for anything; they only wait when the game was never started.
+        foreach (var files in new[] { new[] { "input.settings" }, new[] { "user.settings", "dx12user.settings" } })
         {
-            var path = new GamePath(WitcherConstants.WitcherDocuments, file);
-            if (GameInis.StateOf(loadout, path) is not null) continue;
-            if (locations.ContainsKey(path.LocationId) && locations.ToAbsolutePath(path).FileExists) continue;
+            if (files.Any(file => Exists(loadout, file))) continue;
 
-            var mods = IniTweakLayers.All(loadout, path).Where(t => t.IsEnabled).Select(t => t.SourceName).Distinct().Order(StringComparer.Ordinal).ToList();
+            var mods = files
+                .SelectMany(file => IniTweakLayers.All(loadout, new GamePath(WitcherConstants.WitcherDocuments, file)))
+                .Where(t => t.IsEnabled)
+                .Select(t => t.SourceName).Distinct().Order(StringComparer.Ordinal).ToList();
             if (mods.Count == 0) continue;
 
-            yield return new DroppedItem($"the settings for {file}", string.Join(", ", mods),
-                $"{file} doesn't exist yet. Start the game once, then Apply again", "Library");
+            var what = files.Length == 1 ? $"{files[0]} doesn't exist yet" : $"neither {files[0]} nor {files[1]} exists yet";
+            yield return new DroppedItem($"the settings for {string.Join(" and ", files)}", string.Join(", ", mods),
+                $"{what}. Start the game once, then Apply again", null);
         }
+    }
+
+    private static bool Exists(Loadout.ReadOnly loadout, string file)
+    {
+        var path = new GamePath(WitcherConstants.WitcherDocuments, file);
+        var locations = loadout.InstallationInstance.Locations;
+        return GameInis.StateOf(loadout, path) is not null
+               || (locations.ContainsKey(path.LocationId) && locations.ToAbsolutePath(path).FileExists);
     }
 }
