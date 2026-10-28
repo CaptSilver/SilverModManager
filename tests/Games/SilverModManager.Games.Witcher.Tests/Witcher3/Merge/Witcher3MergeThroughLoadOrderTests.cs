@@ -182,6 +182,32 @@ public class Witcher3MergeThroughLoadOrderTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task AFolderSwitchedOffOnThePage_NoLongerContributesToTheMerge()
+    {
+        var loadout = await TwoMods(Script("\n", (4, "  a = 11;")), Script("\n", (8, "  b = 22;")));
+        var id = await Variety.GetOrCreateSortOrderFor(loadout.LoadoutId, loadout.LoadoutId);
+        Merged(loadout).Contributors.Should().Equal("modB", "modA");
+
+        await Variety.SetEnabled(id, Key("modA"), false);
+
+        Engine.Plan(Fresh(loadout), MergeSourceMode.Apply).Should().BeEmpty("modA is not loaded, so its edits must not reach the merged copy");
+        Engine.Report(Fresh(loadout), MergeSourceMode.Report).Entries.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AFolderSwitchedBackOn_ContributesAgain()
+    {
+        var loadout = await TwoMods(Script("\n", (4, "  a = 11;")), Script("\n", (8, "  b = 22;")));
+        var id = await Variety.GetOrCreateSortOrderFor(loadout.LoadoutId, loadout.LoadoutId);
+        await Variety.SetEnabled(id, Key("modA"), false);
+        Engine.Plan(Fresh(loadout), MergeSourceMode.Apply).Should().BeEmpty();
+
+        await Variety.SetEnabled(id, Key("modA"), true);
+
+        Text(Merged(loadout).Bytes).Should().Be(Script("\n", (4, "  a = 11;"), (8, "  b = 22;")));
+    }
+
+    [Fact]
     public async Task NonOverlappingHunks_BothApply()
     {
         var loadout = await TwoMods(Script("\n", (4, "  a = 11;")), Script("\n", (8, "  b = 22;")));

@@ -89,6 +89,14 @@ public abstract class AMergeGame
     public static string ReorderAdvice(string dropped, string kept) => $"move {dropped} below {kept} so it loads after it";
 
     /// <summary>
+    /// Whether the files of <paramref name="package"/> take part in merging. A game whose load order can switch a
+    /// package off returns false for it, so a package the game does not load leaves nothing in the merged copy. Asked
+    /// once per package and file each time the loadout is scanned, from inside the synchronizer's winning-files query,
+    /// so an override has the same limits as <see cref="Rank"/>.
+    /// </summary>
+    public virtual bool Contributes(Loadout.ReadOnly loadout, string package) => true;
+
+    /// <summary>
     /// Higher wins. Defaults to the greatest priority row of <paramref name="owner"/>, or the lowest rank when it has
     /// none. Asked once per mod folder and owner each time the loadout is scanned, from inside the synchronizer's
     /// winning-files query. Reading rows through model accessors is fine (the default's <c>FindByTarget</c> is one);

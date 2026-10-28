@@ -56,6 +56,25 @@ public class MergeContributorsTests(IServiceProvider provider) : AGameTest<Stubb
     }
 
     [Fact]
+    public async Task APackageTheGameSaysDoesNotContributeIsLeftOutOfTheContest()
+    {
+        var loadout = await CreateLoadout();
+        await Mod(loadout, "A", 3, "Mods/modA/scripts/x.txt");
+        await Mod(loadout, "B", 2, "Mods/modB/scripts/x.txt");
+        await Mod(loadout, "C", 1, "Mods/modC/scripts/x.txt");
+
+        var contest = MergeContributors.Of(Refresh(loadout), new LeavingOut("modB")).Should().ContainSingle().Subject;
+        contest.Contributors.Select(c => c.Package).Should().Equal("modA", "modC");
+
+        MergeContributors.Of(Refresh(loadout), _game).Single().Contributors.Should().HaveCount(3, "a game that does not say otherwise counts every package");
+    }
+
+    private sealed class LeavingOut(string package) : TestMergeGame
+    {
+        public override bool Contributes(Loadout.ReadOnly loadout, string candidate) => candidate != package;
+    }
+
+    [Fact]
     public async Task RankIsAskedOncePerModFolderNotOncePerFile()
     {
         var loadout = await CreateLoadout();

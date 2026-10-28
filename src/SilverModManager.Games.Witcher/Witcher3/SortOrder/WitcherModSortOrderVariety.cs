@@ -50,6 +50,9 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
     // Rank is asked once per folder and owner for every scan of the loadout, so the folders' ranks are kept per revision.
     private readonly ConcurrentDictionary<LoadoutId, (TxId Basis, IReadOnlyDictionary<string, ConflictPriority> Ranks)> _ranks = new();
 
+    // The merge asks about the switch for every file it scans, so the switched-off folders are kept per revision too.
+    private readonly ConcurrentDictionary<LoadoutId, (TxId Basis, IReadOnlySet<string> Off)> _switchedOff = new();
+
     public WitcherModSortOrderVariety(IServiceProvider serviceProvider, IGame game) : base(serviceProvider)
     {
         _loadouts = serviceProvider.GetRequiredService<ILoadoutManager>();
@@ -70,7 +73,7 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
         OverrideInfoTitle = LoadOrderConvention.Title("Load Order"),
         OverrideInfoMessage = """
                               When two mods in the Mods folder change the same script, the one loaded last, lower in this list, wins. Moving a mod here changes its priority on File Conflicts too.
-                              mod0000_MergedFiles holds the scripts the Script Merger combined. It is always loaded and cannot be moved or switched off.
+                              mod0000_MergedFiles holds the scripts the app merged on Apply. It is always loaded and cannot be moved or switched off.
                               """,
         WinnerIndexToolTip = LoadOrderConvention.WinnerToolTip("a mod lower in the list overrides the ones above it."),
         IndexColumnHeader = "Load Order",
@@ -198,6 +201,23 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
             ? RetrieveSortOrder(sortOrderId.Value, loadout.Db)
             : Reconcile([], RetrieveLoadoutData(loadout.LoadoutId, Optional<CollectionGroupId>.None, loadout.Db)).Select(t => t.SortedEntry).ToList();
         return rows.Select(row => (row.Folder, row.IsEnabled)).ToList();
+    }
+
+    /// <inheritdoc />
+    public bool IsSwitchedOn(Loadout.ReadOnly loadout, string folder)
+    {
+        var basis = loadout.Db.BasisTxId;
+        if (!_switchedOff.TryGetValue(loadout.LoadoutId, out var known) || known.Basis != basis)
+        {
+            var sortOrderId = GetSortOrderIdFor(loadout.LoadoutId, loadout.Db);
+            var off = sortOrderId.HasValue
+                ? StoredRows(sortOrderId.Value, loadout.Db).Values.Where(row => !row.IsEnabled).Select(row => row.Key.Key).ToHashSet()
+                : [];
+            known = (basis, off);
+            _switchedOff[loadout.LoadoutId] = known;
+        }
+
+        return !known.Off.Contains(WitcherModFolders.KeyFor(folder).Key);
     }
 
     /// <inheritdoc />

@@ -15,6 +15,12 @@ public interface IWitcherModSortOrderVariety : ISortOrderVariety
     IReadOnlyList<(string Folder, bool IsEnabled)> StoredOrder(Loadout.ReadOnly loadout);
 
     /// <summary>
+    /// Whether the Load Order page has the folder switched on. A folder with no stored switch is on. Reads model
+    /// accessors only, so it is safe to call from inside a running query.
+    /// </summary>
+    bool IsSwitchedOn(Loadout.ReadOnly loadout, string folder);
+
+    /// <summary>
     /// The rank the merge engine uses for a folder: its groups' highest priority, or null for a folder the loadout
     /// does not supply. Reads model accessors only, so it is safe to call from inside a running query.
     /// </summary>

@@ -57,6 +57,7 @@ public static class MergeContributors
 
             var target = (GamePath)item.TargetPath;
             if (game.Split(target) is not var (package, rel)) continue;
+            if (!game.Contributes(loadout, package)) continue;
             if (game.Contests(target) != contested) continue;
 
             // Only a file has bytes to merge; anything else with a target path is a marker.

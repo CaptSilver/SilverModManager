@@ -52,6 +52,9 @@ public sealed class Witcher3MergeGame(IGame game) : AMergeGame
 
     public override string ReorderHint => "Load Order";
 
+    // A folder switched off on the Load Order page is not loaded, so its edits must not live on in the merged copy.
+    public override bool Contributes(Loadout.ReadOnly loadout, string package) => Variety.IsSwitchedOn(loadout, package);
+
     // Two groups can share one folder, and the Load Order page ranks the folder once, so the merge ranks it the same
     // way instead of by the owning group's row.
     public override ulong Rank(Loadout.ReadOnly loadout, string package, LoadoutItemGroupId owner)
