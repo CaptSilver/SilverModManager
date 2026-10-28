@@ -12,11 +12,17 @@ public class Dialog : IDialog
     /// <summary>The dialog's content, for tests to read without opening a window.</summary>
     internal DialogViewModel ViewModel => _viewModel;
     private bool _hasUserResized = false;
+    private DialogWindow? _window;
 
     public Dialog(DialogViewModel viewModel)
     {
         _viewModel = viewModel;
     }
+
+    /// <summary>
+    /// Closes the window if it is open, leaving the result as it is (no button pressed).
+    /// </summary>
+    public void Close() => _ = DispatcherHelper.EnsureOnUIThreadAsync(() => _window?.Close());
 
     /// <summary>
     /// Displays the dialog window.
@@ -54,6 +60,7 @@ public class Dialog : IDialog
                     MinHeight = 150
                 };
 
+                _window = window;
                 var tcs = new TaskCompletionSource<StandardDialogResult>();
 
                 // when the window is closed, set the result and complete the task

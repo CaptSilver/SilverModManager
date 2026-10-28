@@ -2,6 +2,8 @@ using SilverModManager.App.UI.Controls.Cards;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.App.UI.Pages.MyGames;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Sdk.EventBus;
 using SilverModManager.Abstractions.Serialization.ExpressionGenerator;
@@ -101,6 +103,8 @@ public static class Services
 
             // Type Finder
             .AddSingleton<ITypeFinder, TypeFinder>()
+            // Replaces the refusing default the data model registers; AddUI runs after AddDataModel.
+            .AddSingleton<IBackupOverflowPrompt, DialogBackupOverflowPrompt>()
             .AddSingleton<GameRunningTracker>()
             .AddTransient<MainWindow>()
 

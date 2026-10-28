@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.App.UI.Controls.GameWidget;
 using SilverModManager.App.UI.Controls.Spine;
 using SilverModManager.App.UI.Resources;
@@ -356,11 +357,12 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
         {
             loadout = await Task.Run(async () => await ManageGame(installation));
         }
-        catch (SynchronizerPreflightException e)
+        catch (UserFacingException e)
         {
-            // Nothing was written, so the game goes back to being a detected game with the reason shown.
+            // Nothing was written, so the game goes back to being a detected game with the reason shown. A
+            // "Don't manage" answer needs no dialog: the player just said no.
             vm.State = GameWidgetState.DetectedGame;
-            await ShowCannotAddGameDialog(installation, e.Message);
+            if (e is not BackupOverflowException { Declined: true }) await ShowCannotAddGameDialog(installation, e.Message);
             return;
         }
 

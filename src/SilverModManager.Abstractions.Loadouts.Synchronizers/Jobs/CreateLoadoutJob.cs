@@ -7,4 +7,4 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 /// <summary>
 /// A job to create a loadout
 /// </summary>
-public record CreateLoadoutJob(GameInstallation Installation) : IJobDefinition<Loadout.ReadOnly>;
+public record CreateLoadoutJob(GameInstallation Installation, BackupOverflowChoice? LargeFiles = null) : IJobDefinition<Loadout.ReadOnly>;

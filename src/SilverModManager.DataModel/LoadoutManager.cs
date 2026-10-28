@@ -93,7 +93,7 @@ internal partial class LoadoutManager : ILoadoutManager
 
     public IJobTask<CreateLoadoutJob, Loadout.ReadOnly> CreateLoadout(GameInstallation installation, string? suggestedName = null, BackupOverflowChoice? largeFiles = null)
     {
-        return _jobMonitor.Begin(new CreateLoadoutJob(installation), async ctx =>
+        return _jobMonitor.Begin(new CreateLoadoutJob(installation, largeFiles), async ctx =>
         {
             // Refuse before any row exists: a half-added game (metadata and loadout, nothing synced) is worse
             // than one that was never added.

@@ -25,6 +25,8 @@ namespace SilverModManager.DataModel.CommandLine.Verbs;
 /// </summary>
 public static class LoadoutManagementVerbs
 {
+    private const string LargeFilesHelp = "What to do when the added files exceed the backup cap: adopt or backup. Without it the command refuses and says so.";
+
     /// <summary>
     /// Register the loadout management verbs
     /// </summary>
@@ -94,9 +96,10 @@ public static class LoadoutManagementVerbs
     [Verb("loadout synchronize", "Synchronize the loadout with the game folders, adding any changes in the game folder to the loadout and applying any new changes in the loadout to the game folder")]
     private static async Task<int> Synchronize([Injected] IRenderer renderer,
         [Option("l", "loadout", "Loadout to apply")] Loadout.ReadOnly loadout,
-        [Injected] ISynchronizerService syncService)
+        [Injected] ISynchronizerService syncService,
+        [Option("large-files", "large-files", LargeFilesHelp, true)] string? largeFiles)
     {
-        await syncService.Synchronize(loadout);
+        await syncService.Synchronize(loadout.LoadoutId, BackupOverflowChoices.Parse(largeFiles));
         return 0;
     }
 
@@ -105,8 +108,10 @@ public static class LoadoutManagementVerbs
         [Injected] IGameRegistry registry,
         [Injected] ILoadoutManager loadoutManager,
         [Option("g", "game", "The game id, as `games list --json` prints it")] string gameId,
-        [Option("n", "name", "Loadout name", true)] string? name)
+        [Option("n", "name", "Loadout name", true)] string? name,
+        [Option("large-files", "large-files", LargeFilesHelp, true)] string? largeFiles)
     {
+        var choice = BackupOverflowChoices.Parse(largeFiles);
         var installations = GameVerbs.Located(registry, gameId);
         if (installations.IsEmpty)
         {
@@ -116,7 +121,7 @@ public static class LoadoutManagementVerbs
 
         // A game found in two stores gets the first one the registry lists; the output names it.
         var installation = installations[0];
-        var loadout = await loadoutManager.CreateLoadout(installation, name);
+        var loadout = await loadoutManager.CreateLoadout(installation, name, choice);
         await renderer.TextLine($"Created loadout {loadout.Name} ({loadout.LoadoutId}) for {installation.Game.DisplayName} at {installation.LocatorResult.Path}");
         return 0;
     }
