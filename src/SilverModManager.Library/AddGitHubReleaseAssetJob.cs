@@ -129,7 +129,13 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
                 Client = Client,
                 Logger = ServiceProvider.GetRequiredService<ILogger<HttpDownloadJob>>(),
             };
-            await ServiceProvider.GetRequiredService<IJobMonitor>().Begin<HttpDownloadJob, AbsolutePath>(download);
+            var monitor = ServiceProvider.GetRequiredService<IJobMonitor>();
+            var downloading = monitor.Begin<HttpDownloadJob, AbsolutePath>(download);
+            // The download is a job of its own, so cancelling this one doesn't reach it unless passed on.
+            await using (context.CancellationToken.Register(() => monitor.Cancel(downloading)))
+            {
+                await downloading;
+            }
 
             Sha256Value actual;
             await using (var stream = downloaded.Read())

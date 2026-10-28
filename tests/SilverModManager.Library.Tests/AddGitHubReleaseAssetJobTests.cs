@@ -189,6 +189,25 @@ public partial class AddGitHubReleaseAssetJobTests(IServiceProvider serviceProvi
         await act.Should().ThrowAsync<ReleaseAssetIntegrityException>().WithMessage("*gone*");
     }
 
+    [Fact]
+    public async Task CancellingTheJobStopsTheDownloadAndAddsNothing()
+    {
+        var handler = new BlockingHandler();
+        var copiesBefore = LibraryCopiesOfThePayload();
+
+        var task = AddGitHubReleaseAssetJob.Create(
+            serviceProvider, new StubApi(ReleaseWith("v5", null)), new HttpClient(handler),
+            GitHubRepositoryRef.FromId(1), "v5", suffix: ".tar.gz", nameHint: "linux", expectedSha256: null
+        );
+        await handler.Started.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        serviceProvider.GetRequiredService<IJobMonitor>().Cancel(task);
+
+        async Task Finished() => await task;
+        var act = () => Finished().WaitAsync(TimeSpan.FromSeconds(30));
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        LibraryCopiesOfThePayload().Should().Be(copiesBefore);
+    }
+
     public class Startup
     {
         public void ConfigureServices(IServiceCollection services)

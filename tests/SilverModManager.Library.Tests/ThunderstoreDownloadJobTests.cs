@@ -42,19 +42,6 @@ public partial class ThunderstoreDownloadJobTests(IServiceProvider serviceProvid
         }
     }
 
-    // Holds the response open until the request is cancelled, so the job is mid-download when it is cancelled.
-    private sealed class BlockingHandler : HttpMessageHandler
-    {
-        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            Started.TrySetResult();
-            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
-            throw new InvalidOperationException("unreachable");
-        }
-    }
-
     private sealed class StubApi(PackageVersion? version) : IThunderstoreApi
     {
         public Task<PackageVersion?> FetchVersion(ThunderstoreVersionRef requested, CancellationToken cancellationToken) => Task.FromResult(version);
@@ -182,7 +169,9 @@ public partial class ThunderstoreDownloadJobTests(IServiceProvider serviceProvid
         await handler.Started.Task.WaitAsync(TimeSpan.FromSeconds(30));
         serviceProvider.GetRequiredService<IJobMonitor>().Cancel(task);
 
-        var act = async () => await task;
+        // Bounded: a download that ignores the cancel would otherwise hang until HttpClient's own 100 s timeout.
+        async Task Finished() => await task;
+        var act = () => Finished().WaitAsync(TimeSpan.FromSeconds(30));
         await act.Should().ThrowAsync<OperationCanceledException>();
         LibraryCopies().Should().Be(copiesBefore);
     }
