@@ -98,6 +98,22 @@ public class LoadoutCreateLargeFilesTests(ITestOutputHelper helper) : AIsolatedG
     }
 
     [Fact]
+    public async Task Synchronize_WithoutTheFlag_RefusesNamingTheFlagAndNeverAsks()
+    {
+        await GenerateGameFiles();
+        var loadout = await ServiceProvider.GetRequiredService<ILoadoutManager>()
+            .CreateLoadout(GameInstallation, "synced", BackupOverflowChoice.Refuse);
+        var folder = GameInstallation.LocatorResult.Path;
+        for (var i = 0; i < 4; i++) File.WriteAllBytes((folder / $"added{i}.bin").ToString(), new byte[4096]);
+
+        var (exit, output) = await Run("loadout", "synchronize", "-l", loadout.LoadoutId.ToString());
+
+        exit.Should().NotBe(0);
+        output.Should().Contain("--large-files");
+        _prompt.Asked.Should().Be(0);
+    }
+
+    [Fact]
     public async Task WithAnUnknownValue_RefusesNamingTheValues()
     {
         await WriteAddedFiles();

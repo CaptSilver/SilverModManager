@@ -21,6 +21,9 @@ public sealed class DialogBackupOverflowPrompt(IServiceProvider serviceProvider,
     /// <inheritdoc />
     public async ValueTask<BackupOverflowChoice> Ask(GameInstallation installation, BackupOverflow overflow, CancellationToken cancellationToken)
     {
+        // Close only works once the window exists, so a sync cancelled before this point must not open the dialog.
+        cancellationToken.ThrowIfCancellationRequested();
+
         var prompt = BackupOverflowPrompt.For(installation.Game.DisplayName, overflow);
 
         var pressed = await DispatcherHelper.EnsureOnUIThreadAsync(async () =>

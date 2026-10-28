@@ -39,7 +39,7 @@ public sealed record BackupOverflowPrompt(string Title, string Markdown, DialogB
         }
 
         List<DialogButtonDefinition> buttons = [];
-        if (overflow.CanAdopt) buttons.Add(new DialogButtonDefinition("Adopt in place", Adopt, ButtonAction.Accept));
+        if (overflow.CanAdopt) buttons.Add(new DialogButtonDefinition("Adopt in place", Adopt));
         buttons.Add(new DialogButtonDefinition($"Back up {overflow.Total}", ButtonDefinitionId.Accept, ButtonAction.Accept, ButtonStyling.Primary));
         buttons.Add(new DialogButtonDefinition("Don't manage", ButtonDefinitionId.Cancel));
 

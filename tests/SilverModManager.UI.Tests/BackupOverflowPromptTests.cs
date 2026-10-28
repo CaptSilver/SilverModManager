@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Pages.MyGames;
+using SilverModManager.UI.Sdk.Dialog.Enums;
 
 namespace SilverModManager.UI.Tests;
 
@@ -40,6 +41,14 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
         var buttons = BackupOverflowPrompt.For("The Witcher 3", Overflow).Buttons;
 
         buttons.Select(b => b.Text).Should().Equal("Adopt in place", "Back up 14.666 GB", "Don't manage");
+    }
+
+    [Fact]
+    public void OnlyBackUpIsTheEnterKeyDefault()
+    {
+        var buttons = BackupOverflowPrompt.For("The Witcher 3", Overflow).Buttons;
+
+        buttons.Where(b => b.ButtonAction == ButtonAction.Accept).Select(b => b.Text).Should().Equal("Back up 14.666 GB");
     }
 
     [Fact]

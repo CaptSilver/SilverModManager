@@ -359,8 +359,9 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
         }
         catch (UserFacingException e)
         {
-            // Nothing was written, so the game goes back to being a detected game with the reason shown. A
-            // "Don't manage" answer needs no dialog: the player just said no.
+            // A refused, declined or cancelled first sync is cleaned up, so the game goes back to being a detected
+            // game with the reason shown. A failure after a partial sync keeps its loadout, and the tile follows the
+            // database once that loadout is visible. A "Don't manage" answer needs no dialog: the player just said no.
             vm.State = GameWidgetState.DetectedGame;
             if (e is not BackupOverflowException { Declined: true }) await ShowCannotAddGameDialog(installation, e.Message);
             return;
