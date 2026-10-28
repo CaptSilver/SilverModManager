@@ -7,12 +7,13 @@ using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.UI.Tests;
 
+[Collection("UiOperation")]
 public class UiStallWatchdogTests
 {
     private static StallFingerprint FakeSample() => new(TimeSpan.Zero, true, TimeSpan.Zero, 0, 8, 0, 0, null, null);
 
     private static UiStallWatchdog Create(Func<Task> probe, List<StallFingerprint> stalls)
-        => new(probe, FakeSample, TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(50), stall => { lock (stalls) stalls.Add(stall); });
+        => new(probe, FakeSample, TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(50), stall => { lock (stalls) stalls.Add(stall); }, _ => { });
 
     [Fact]
     public async Task LateProbe_ReportsOneStallWithItsFingerprint()
@@ -75,6 +76,40 @@ public class UiStallWatchdogTests
     }
 
     [Fact]
+    public void Dispose_CalledTwice_DoesNotThrow()
+    {
+        var neverStarted = Create(() => Task.CompletedTask, []);
+        neverStarted.Dispose();
+        FluentActions.Invoking(neverStarted.Dispose).Should().NotThrow();
+
+        var started = Create(() => new TaskCompletionSource().Task, []);
+        started.Start();
+        started.Dispose();
+        FluentActions.Invoking(started.Dispose).Should().NotThrow();
+    }
+
+    [Fact]
+    public async Task SamplerThatThrows_ReportsTheErrorAndKeepsWatching()
+    {
+        var errors = new List<Exception>();
+        var stalls = new List<StallFingerprint>();
+        var probes = 0;
+        var calls = 0;
+        using var watchdog = new UiStallWatchdog(
+            () => Interlocked.Increment(ref probes) <= 2 ? new TaskCompletionSource().Task : Task.CompletedTask,
+            () => Interlocked.Increment(ref calls) == 1 ? throw new ArgumentException("collection changed") : FakeSample(),
+            TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(50),
+            stall => { lock (stalls) stalls.Add(stall); },
+            ex => { lock (errors) errors.Add(ex); });
+        watchdog.Start();
+        await Task.Delay(400);
+
+        watchdog.LoopThread.IsAlive.Should().BeTrue();
+        lock (errors) errors.Should().ContainSingle().Which.Should().BeOfType<ArgumentException>();
+        lock (stalls) stalls.Should().NotBeEmpty();
+    }
+
+    [Fact]
     public void StallDuringASuspendedCommand_ReportsTheOperationWithItsAge()
     {
         var jobs = Substitute.For<IJobMonitor>();
@@ -88,8 +123,18 @@ public class UiStallWatchdogTests
             fingerprint.UiOperation.Should().Be("SuspendedCommand");
             fingerprint.UiOperationAge.Should().BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(100));
         }
+    }
 
-        UiOperation.Current.Should().BeNull();
+    [Fact]
+    public void OutOfOrderScopeEnds_DoNotBringBackAnEndedOperation()
+    {
+        var x = UiOperation.Enter("X");
+        var y = UiOperation.Enter("Y");
+        x.Dispose();
+        y.Dispose();
+
+        UiOperation.Current?.Name.Should().NotBe("X");
+        UiOperation.Current?.Name.Should().NotBe("Y");
     }
 
     [Fact]

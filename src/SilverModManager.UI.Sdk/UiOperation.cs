@@ -12,7 +12,10 @@ namespace SilverModManager.UI.Sdk;
 /// </remarks>
 public static class UiOperation
 {
-    private sealed record Entry(string Name, long StartedAt, Entry? Outer);
+    private sealed record Entry(string Name, long StartedAt, Entry? Outer)
+    {
+        public volatile bool Ended;
+    }
 
     private static volatile Entry? _current;
 
@@ -21,7 +24,9 @@ public static class UiOperation
     {
         get
         {
+            // Skip scopes that ended out of order, so interleaved async scopes cannot bring a finished operation back.
             var entry = _current;
+            while (entry is { Ended: true }) entry = entry.Outer;
             return entry is null ? null : (entry.Name, entry.StartedAt);
         }
     }
@@ -41,8 +46,7 @@ public static class UiOperation
         public void Dispose()
         {
             if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-            // Only pop when this scope is still the innermost one; an out-of-order dispose must not
-            // resurrect an operation that already ended.
+            entry.Ended = true;
             if (ReferenceEquals(_current, entry)) _current = entry.Outer;
         }
     }

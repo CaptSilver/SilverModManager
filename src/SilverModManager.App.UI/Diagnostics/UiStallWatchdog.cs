@@ -23,7 +23,9 @@ public sealed class UiStallWatchdog : IDisposable
     private readonly Action<StallFingerprint> _onStall;
     private readonly CancellationTokenSource _stop = new();
     private readonly Thread _thread;
+    private readonly Action<Exception> _onError;
     private int _started;
+    private int _disposed;
 
     // Set by the loop just before each probe is posted; the sampler reports deltas from them.
     private TimeSpan _gcPauseAtPost;
@@ -36,16 +38,18 @@ public sealed class UiStallWatchdog : IDisposable
         _interval = DefaultInterval;
         _threshold = DefaultThreshold;
         _onStall = stall => Log(logger, stall);
+        _onError = ex => logger.LogWarning(ex, "UI stall watchdog could not take a sample");
         _thread = new Thread(Loop) { IsBackground = true, Name = "ui-stall-watchdog" };
     }
 
-    internal UiStallWatchdog(Func<Task> probe, Func<StallFingerprint> sample, TimeSpan interval, TimeSpan threshold, Action<StallFingerprint> onStall)
+    internal UiStallWatchdog(Func<Task> probe, Func<StallFingerprint> sample, TimeSpan interval, TimeSpan threshold, Action<StallFingerprint> onStall, Action<Exception> onError)
     {
         _probe = probe;
         _sample = sample;
         _interval = interval;
         _threshold = threshold;
         _onStall = onStall;
+        _onError = onError;
         _thread = new Thread(Loop) { IsBackground = true, Name = "ui-stall-watchdog" };
     }
 
@@ -59,11 +63,7 @@ public sealed class UiStallWatchdog : IDisposable
     internal static StallFingerprint SampleNow(TimeSpan gcPauseAtPost, int gen2AtPost, IJobMonitor jobs)
     {
         var operation = UiOperation.Current;
-        var running = 0;
-        foreach (var job in jobs.Jobs.ToArray())
-        {
-            if (job.Status == JobStatus.Running) running++;
-        }
+        var running = CountRunning(jobs);
 
         return new StallFingerprint(
             Late: TimeSpan.Zero,
@@ -77,6 +77,27 @@ public sealed class UiStallWatchdog : IDisposable
             UiOperationAge: operation is { } op ? Stopwatch.GetElapsedTime(op.StartedAt) : null);
     }
 
+    /// <summary>
+    /// Job threads add to the bound collection while this runs, and <c>ToArray</c> can lose that race. Retry a few
+    /// times, then report -1 rather than let a diagnostic throw.
+    /// </summary>
+    private static int CountRunning(IJobMonitor jobs)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                return jobs.Jobs.ToArray().Count(job => job.Status == JobStatus.Running);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                // The collection changed under the copy; try again.
+            }
+        }
+
+        return -1;
+    }
+
     private void Loop()
     {
         var token = _stop.Token;
@@ -84,18 +105,18 @@ public sealed class UiStallWatchdog : IDisposable
         {
             while (!token.IsCancellationRequested)
             {
-                _gcPauseAtPost = GC.GetTotalPauseDuration();
-                _gen2AtPost = GC.CollectionCount(2);
-                var started = Stopwatch.GetTimestamp();
-                var probe = _probe();
-
-                if (!Wait(probe, _threshold, token))
+                try
                 {
-                    // The wait timed out, so at least the threshold has passed whatever the timer granularity says.
-                    var late = Stopwatch.GetElapsedTime(started);
-                    _onStall(_sample() with { Late = late < _threshold ? _threshold : late, StillPending = true });
-                    Wait(probe, Timeout.InfiniteTimeSpan, token);
-                    _onStall(_sample() with { Late = Stopwatch.GetElapsedTime(started), StillPending = false });
+                    ProbeOnce(token);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    // A diagnostic must not take the process down; report it and keep watching.
+                    try { _onError(ex); } catch (Exception) { /* nothing left to report to */ }
                 }
 
                 token.WaitHandle.WaitOne(_interval);
@@ -104,6 +125,23 @@ public sealed class UiStallWatchdog : IDisposable
         catch (OperationCanceledException)
         {
             // Dispose asked the loop to stop.
+        }
+    }
+
+    private void ProbeOnce(CancellationToken token)
+    {
+        _gcPauseAtPost = GC.GetTotalPauseDuration();
+        _gen2AtPost = GC.CollectionCount(2);
+        var started = Stopwatch.GetTimestamp();
+        var probe = _probe();
+
+        if (!Wait(probe, _threshold, token))
+        {
+            // The wait timed out, so at least the threshold has passed whatever the timer granularity says.
+            var late = Stopwatch.GetElapsedTime(started);
+            _onStall(_sample() with { Late = late < _threshold ? _threshold : late, StillPending = true });
+            Wait(probe, Timeout.InfiniteTimeSpan, token);
+            _onStall(_sample() with { Late = Stopwatch.GetElapsedTime(started), StillPending = false });
         }
     }
 
@@ -137,8 +175,13 @@ public sealed class UiStallWatchdog : IDisposable
 
     public void Dispose()
     {
+        // Both App's exit handler and the container dispose this; the second call must be a no-op.
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+
         _stop.Cancel();
-        if (Volatile.Read(ref _started) == 1 && Thread.CurrentThread != _thread) _thread.Join(TimeSpan.FromSeconds(2));
-        _stop.Dispose();
+        var stopped = true;
+        if (Volatile.Read(ref _started) == 1 && Thread.CurrentThread != _thread) stopped = _thread.Join(TimeSpan.FromSeconds(2));
+        // A loop stuck in a callback still holds the token's wait handle; leave the source for the finalizer then.
+        if (stopped) _stop.Dispose();
     }
 }
