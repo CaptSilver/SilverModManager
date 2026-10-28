@@ -747,6 +747,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     public async Task RecordIndexedFiles(GameInstallation installation, IReadOnlyList<IndexedFileHash> files, CancellationToken cancellationToken = default)
     {
         if (files.Count == 0) return;
+        cancellationToken.ThrowIfCancellationRequested();
         var connection = _local.Connection;
         using var tx = connection.BeginTransaction();
         LocalFileHashRows.Record(tx, connection.Db, LocalBaselineCoordinator.GamePathOf(installation), files);

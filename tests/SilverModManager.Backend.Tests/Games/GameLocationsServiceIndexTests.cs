@@ -37,6 +37,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
     private readonly List<IDisposable> _owned = [];
     private readonly TemporaryFileManager _temp = new(FileSystem.Shared);
     private readonly CountingHasher _hasher = new();
+    private LocalRowsFileHashes _hashes = null!;
     private readonly CapturingLoggerProvider _logs = new();
     private readonly AbsolutePath _gameDir;
     private readonly GameInstallation _installation;
@@ -600,6 +601,104 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
         await tx.Commit();
     }
 
+    private const int Eio = 5;
+    private const int Enxio = 6;
+
+    private static readonly FrozenDictionary<GamePath, DiskStateEntry.ReadOnly> NoDiskState = FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty;
+
+    [Fact]
+    public async Task ASymlinkLoopInAGameLocation_DoesNotBlockIndexingTheOtherFiles()
+    {
+        await WriteGameFiles(3);
+        File.CreateSymbolicLink(_gameDir.Combine("loop-a").GetFullPath(), _gameDir.Combine("loop-b").GetFullPath());
+        File.CreateSymbolicLink(_gameDir.Combine("loop-b").GetFullPath(), _gameDir.Combine("loop-a").GetFullPath());
+        var service = CreateService();
+
+        var result = await service.IndexGame(_installation, NoDiskState, GamePathFilters.Empty);
+
+        result.NewFiles.Keys.Select(k => k.Path.ToString()).Should().Contain(["data/file0.bin", "data/file1.bin", "data/file2.bin"]);
+    }
+
+    [Fact]
+    public async Task ASocketInAGameLocation_DoesNotBlockIndexingTheOtherFiles()
+    {
+        await WriteGameFiles(3);
+        using var socket = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.Unix, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Unspecified);
+        socket.Bind(new System.Net.Sockets.UnixDomainSocketEndPoint(_gameDir.Combine("s.sock").GetFullPath()));
+        var service = CreateService();
+
+        var result = await service.IndexGame(_installation, NoDiskState, GamePathFilters.Empty);
+
+        result.NewFiles.Keys.Select(k => k.Path.ToString()).Should().Contain(["data/file0.bin", "data/file1.bin", "data/file2.bin"]);
+    }
+
+    [Fact]
+    public async Task AReadThatFailsWithoutBeingTheDrive_IsLoggedAndTheFileSkipped()
+    {
+        await WriteGameFiles(3);
+        _hasher.OnHash = file => { if (file.FileName == "file1.bin") throw new IOException("No such device or address", Enxio); };
+        var service = CreateService();
+
+        var result = await service.IndexGame(_installation, NoDiskState, GamePathFilters.Empty);
+
+        result.NewFiles.Keys.Select(k => k.Path.ToString()).Should().BeEquivalentTo(["data/file0.bin", "data/file2.bin"]);
+        _logs.Messages.Should().Contain(m => m.Contains("Exception indexing file"));
+    }
+
+    [Fact]
+    public async Task AReadThatFailsWithEio_RefusesReadably()
+    {
+        await WriteGameFiles(3);
+        _hasher.OnHash = file => { if (file.FileName == "file1.bin") throw new IOException("Input/output error", Eio); };
+        var service = CreateService();
+
+        var act = () => service.IndexGame(_installation, NoDiskState, GamePathFilters.Empty);
+
+        (await act.Should().ThrowAsync<GameFolderUnreadableException>()).Which.InnerException.Should().BeOfType<IOException>();
+    }
+
+    [Fact]
+    public async Task ABatchThatCannotBeCommitted_RefusesReadably()
+    {
+        await WriteGameFiles(3);
+        var service = CreateService();
+
+        var act = () => service.IndexGame(_installation, NoDiskState, GamePathFilters.Empty,
+            onBatch: _ => throw new IOException("No space left on device", 28));
+
+        (await act.Should().ThrowAsync<GameFolderUnreadableException>()).Which.InnerException.Should().BeOfType<IOException>();
+    }
+
+    [Fact]
+    public async Task AFailedFingerprintWrite_DoesNotFailTheIndexAndIsLogged()
+    {
+        await WriteGameFiles(3);
+        _hasher.OnHash = null;
+        var service = CreateService();
+        _hashes.BeforeRecord = () => throw new InvalidOperationException("cache write failed");
+
+        var result = await service.IndexGame(_installation, NoDiskState, GamePathFilters.Empty);
+
+        result.NewFiles.Should().HaveCount(3);
+        _logs.Messages.Should().Contain(m => m.Contains("fingerprint rows"));
+    }
+
+    [Fact]
+    public async Task AFileTakenFromItsFingerprint_IsNotRecordedAgain()
+    {
+        await WriteGameFiles(4);
+        var service = CreateService();
+        await service.IndexGame(_installation, NoDiskState, GamePathFilters.Empty);
+        _hashes.Recorded.Clear();
+        _hasher.Reset();
+
+        var second = await service.IndexGame(_installation, NoDiskState, GamePathFilters.Empty);
+
+        second.NewFiles.Should().HaveCount(4);
+        _hasher.Calls.Should().Be(0);
+        _hashes.Recorded.Should().BeEmpty("the row the hash came from is already there");
+    }
+
     private IReadOnlyList<LocalFileHash.ReadOnly> LocalRows() => LocalFileHash.All(_connection.Db).ToList();
 
     private async Task WriteGameFiles(int count)
@@ -662,7 +761,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
 
     private GameLocationsService CreateService(Task? waitForBuild = null, IDb[]? stores = null)
     {
-        var hashes = new LocalRowsFileHashes(_connection, _gameDir.ToString(), stores ?? [], waitForBuild ?? Task.CompletedTask, _logs.CreateLogger("IndexFixture"));
+        var hashes = _hashes = new LocalRowsFileHashes(_connection, _gameDir.ToString(), stores ?? [], waitForBuild ?? Task.CompletedTask, _logs.CreateLogger("IndexFixture"));
 
         var services = new ServiceCollection()
             .AddLogging(b => b.AddProvider(_logs))
@@ -684,8 +783,16 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
         public IReadOnlyList<IDb> Databases => stores;
         public Task WaitForLocalBaselineBuild(GameInstallation installation, CancellationToken cancellationToken = default) => waitForBuild;
 
+        /// <summary>Every file handed to <see cref="RecordIndexedFiles"/>, in call order.</summary>
+        public ConcurrentQueue<IndexedFileHash> Recorded { get; } = [];
+
+        /// <summary>Runs before a record is written, so a test can fail the write.</summary>
+        public Action? BeforeRecord { get; set; }
+
         public async Task RecordIndexedFiles(GameInstallation installation, IReadOnlyList<IndexedFileHash> files, CancellationToken cancellationToken = default)
         {
+            BeforeRecord?.Invoke();
+            foreach (var file in files) Recorded.Enqueue(file);
             using var tx = local.BeginTransaction();
             LocalFileHashRows.Record(tx, local.Db, gameKey, files);
             await tx.Commit();

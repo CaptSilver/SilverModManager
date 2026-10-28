@@ -45,7 +45,15 @@ internal class GameLocationsService : IGameLocationsService
         var tally = new IndexTally();
         var topLevelLocations = installation.Locations.GetTopLevelLocations();
         // Listed up front so the total is known while the files are hashed.
-        var files = topLevelLocations.Where(kv => kv.Value.DirectoryExists()).SelectMany(kv => kv.Value.EnumerateFiles()).ToList();
+        List<AbsolutePath> files;
+        try
+        {
+            files = topLevelLocations.Where(kv => kv.Value.DirectoryExists()).SelectMany(kv => kv.Value.EnumerateFiles()).ToList();
+        }
+        catch (IOException e) when (e is not (FileNotFoundException or DirectoryNotFoundException))
+        {
+            throw new GameFolderUnreadableException(installation, $"Listing the files of {installation.Game.DisplayName}", e);
+        }
         var enumerable = files.ToAsyncEnumerable();
         var totalFiles = files.Count;
         long filesDone = 0;
@@ -55,7 +63,7 @@ internal class GameLocationsService : IGameLocationsService
         var newFiles = new ConcurrentDictionary<GamePath, IndexFileResult>();
         var modifiedFiles = new ConcurrentDictionary<GamePath, IndexFileResult>();
         var attestedFiles = _fileHashesService.AttestedFiles(installation);
-        var batches = new BatchWriter(_fileHashesService, installation, onBatch);
+        var batches = new BatchWriter(_fileHashesService, installation, onBatch, _logger);
 
         var options = new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = outerToken };
         await Parallel.ForEachAsync(enumerable, options, async (file, token) =>
@@ -112,10 +120,10 @@ internal class GameLocationsService : IGameLocationsService
                     changed = newFiles[gamePath] = await IndexChangedFile(installation, file, gamePath, fingerprint, attested, attestedMatches, tally, reads, token);
                 }
             }
-            catch (IOException e) when (e is not (FileNotFoundException or DirectoryNotFoundException))
+            catch (IOException e) when (e is not (FileNotFoundException or DirectoryNotFoundException) && GameFolderUnreadableException.IsDeviceFailure(e))
             {
-                // A deleted or locked file is one file, but a read that fails for any other reason is the drive
-                // failing, and every file after it would fail the same way.
+                // A deleted or locked file, a socket or a symlink loop is one file, but a device that cannot
+                // deliver bytes is the drive failing, and every file after it would fail the same way.
                 throw new GameFolderUnreadableException(installation, file, e);
             }
             catch (Exception e) when (e is not OperationCanceledException)
@@ -159,7 +167,7 @@ internal class GameLocationsService : IGameLocationsService
     /// before the caller commits the batch, so a crash between the two leaves rows the next run resolves from and
     /// never a disk state entry without the rows behind it.
     /// </summary>
-    private sealed class BatchWriter(IFileHashesService fileHashes, GameInstallation installation, Func<IReadOnlyList<IndexFileResult>, ValueTask>? onBatch)
+    private sealed class BatchWriter(IFileHashesService fileHashes, GameInstallation installation, Func<IReadOnlyList<IndexFileResult>, ValueTask>? onBatch, ILogger logger)
     {
         private readonly object _gate = new();
         private readonly SemaphoreSlim _commit = new(1, 1);
@@ -196,6 +204,21 @@ internal class GameLocationsService : IGameLocationsService
             return taken;
         }
 
+        /// <summary>
+        /// The rows only save a later index a read, so a store that cannot take them costs speed, not the index.
+        /// </summary>
+        private async ValueTask RecordFingerprints(IndexedFileHash[] remembered)
+        {
+            try
+            {
+                await fileHashes.RecordIndexedFiles(installation, remembered, CancellationToken.None);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                logger.LogWarning(e, "Could not save the fingerprint rows of {Count} indexed files; the next index reads them again", remembered.Length);
+            }
+        }
+
         private async ValueTask Commit(List<IndexFileResult> results, List<Reads> reads)
         {
             // A batch that has filled is written even if the run was cancelled meanwhile: the files in it were
@@ -204,10 +227,14 @@ internal class GameLocationsService : IGameLocationsService
             try
             {
                 var remembered = reads.SelectMany(r => r.Remembered).ToArray();
-                if (remembered.Length > 0) await fileHashes.RecordIndexedFiles(installation, remembered, CancellationToken.None);
+                if (remembered.Length > 0) await RecordFingerprints(remembered);
                 var settled = reads.SelectMany(r => r.Settled).ToArray();
                 if (settled.Length > 0) await fileHashes.SettleAttested(installation, settled, CancellationToken.None);
                 if (onBatch is not null) await onBatch(results);
+            }
+            catch (IOException e)
+            {
+                throw new GameFolderUnreadableException(installation, "Saving the indexed files", e);
             }
             finally
             {
@@ -264,7 +291,7 @@ internal class GameLocationsService : IGameLocationsService
 
         // The bytes of an attested path settle the row, which also writes the fingerprint row and the relation.
         if (attested is { } row && newHash.Hashes is { } hashes) reads.Settled.Add((row, hashes, fingerprint));
-        else reads.Remembered.Add(new IndexedFileHash(gamePath, fingerprint.Size, fingerprint.LastModified, newHash.XxHash3, newHash.Hashes));
+        else if (!newHash.FromFingerprint) reads.Remembered.Add(new IndexedFileHash(gamePath, fingerprint.Size, fingerprint.LastModified, newHash.XxHash3, newHash.Hashes));
         return new IndexFileResult(gamePath, FileIdentity.XxHash3(newHash.XxHash3), fingerprint.Size, fingerprint.LastModified);
     }
 
@@ -273,7 +300,8 @@ internal class GameLocationsService : IGameLocationsService
 
     /// <param name="XxHash3">The file's xxHash3.</param>
     /// <param name="Hashes">Every digest of the bytes, set when this call read the file in full to get them.</param>
-    private readonly record struct HashedFile(Hash XxHash3, MultiHash? Hashes = null);
+    /// <param name="FromFingerprint">The hash came from the file's own fingerprint row, so recording it again would write what is already there.</param>
+    private readonly record struct HashedFile(Hash XxHash3, MultiHash? Hashes = null, bool FromFingerprint = false);
 
     /// <param name="forceRead">Skip the remembered and stored hashes, because the caller needs every digest of the bytes.</param>
     private async ValueTask<HashedFile> HashFile(GameInstallation? installation, AbsolutePath file, GamePath gamePath, FileFingerprint fingerprint, IndexTally tally, bool forceRead, CancellationToken cancellationToken)
@@ -284,7 +312,7 @@ internal class GameLocationsService : IGameLocationsService
             if (installation is not null && _fileHashesService.TryGetFingerprintedHash(installation, gamePath, fingerprint.Size, fingerprint.LastModified, out var remembered))
             {
                 tally.FromFingerprint();
-                return new HashedFile(remembered);
+                return new HashedFile(remembered, FromFingerprint: true);
             }
 
             var lookup = await GetExistingHash(_fileHashesService.Databases, file, gamePath, cancellationToken);

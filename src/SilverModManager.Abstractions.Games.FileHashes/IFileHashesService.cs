@@ -116,8 +116,10 @@ public interface IFileHashesService
     public Task WaitForLocalBaselineBuild(GameInstallation installation, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Remembers the xxHash3 of files that were read in full and found unchanged by a second stat, replacing the
-    /// rows of the same location and path, in one transaction on <see cref="Local"/>.
+    /// Remembers the xxHash3 of files whose hash the index had to produce, replacing the rows of the same location
+    /// and path, in one transaction on <see cref="Local"/>. Those are files read in full and found unchanged by a
+    /// second stat, and files whose hash came from a stored <see cref="PathHashRelation"/>. A hash the index took
+    /// from the file's own fingerprint row is not passed in again. Observes the token before it writes.
     /// </summary>
     public Task RecordIndexedFiles(GameInstallation installation, IReadOnlyList<IndexedFileHash> files, CancellationToken cancellationToken = default);
 

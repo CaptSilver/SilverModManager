@@ -110,7 +110,7 @@ public class DiskStateRowTests(ITestOutputHelper helper) : AStubbedGameTest<Disk
         {
             var call = Interlocked.Increment(ref _calls);
             OnCall?.Invoke(call);
-            if (call > _failAfter) throw new IOException($"Input/output error reading {file}");
+            if (call > _failAfter) throw new IOException($"Input/output error reading {file}", 5);
         }
     }
 

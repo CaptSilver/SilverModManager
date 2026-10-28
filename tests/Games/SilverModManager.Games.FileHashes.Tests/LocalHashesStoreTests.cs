@@ -1,8 +1,13 @@
+using System.Collections.Immutable;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 using NexusMods.HyperDuck;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB;
@@ -61,6 +66,30 @@ public sealed class LocalHashesStoreTests : IDisposable
         await RealQueryEngineHost.AddHashRow(service.Local.Connection, "committed later");
 
         HashRelation.All(service.Local).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task RecordIndexedFiles_WithACancelledToken_WritesNothing()
+    {
+        var service = CreateService();
+        var result = new GameLocatorResult
+        {
+            Game = Substitute.For<IGameData>(),
+            Path = FileSystem.Shared.FromUnsanitizedFullPath("/games/test"),
+            Store = GameStore.Steam,
+            StoreIdentifier = "1",
+            LocatorIds = [LocatorId.From("1002")],
+            Locator = Substitute.For<IGameLocator>(),
+        };
+        var installation = new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, result.Path)));
+        var file = new IndexedFileHash(new GamePath(LocationId.Game, "a.bin"), Size.From(3), DateTimeOffset.UnixEpoch, Hash.From(1));
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        var act = () => service.RecordIndexedFiles(installation, [file], cancelled.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        LocalFileHash.All(service.Local).Should().BeEmpty();
     }
 
     [Fact]

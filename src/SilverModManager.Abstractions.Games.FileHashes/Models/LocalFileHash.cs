@@ -6,8 +6,8 @@ using SilverModManager.Sdk.Hashes;
 namespace SilverModManager.Abstractions.Games.FileHashes.Models;
 
 /// <summary>
-/// The xxHash3 of a game file an index or baseline read in full, with the size and modified time the file had
-/// before and after that read. A later index that finds the same size and time takes the hash from here instead of
+/// The xxHash3 of a game file an index or baseline read in full or matched to a stored hash, with the size and
+/// modified time the file had before and after that read. A later index that finds the same size and time takes the hash from here instead of
 /// reading the file again. Rows live in the local store, so they outlive the disk state and survive unmanaging.
 /// </summary>
 public partial class LocalFileHash : IModelDefinition
