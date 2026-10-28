@@ -1,0 +1,12 @@
+﻿[
+  {
+    FromPath: modSDL/bin/config/r4game/user_config_matrix/pc/sdl.xml,
+    Hash: 0x0849ED97374470E0,
+    ToGamePath: {Game}/bin/config/r4game/user_config_matrix/pc/sdl.xml
+  },
+  {
+    FromPath: modSDL/dlc/dlcSDL/content/x.bundle,
+    Hash: 0x65BF5AE849050FAC,
+    ToGamePath: {Game}/dlc/dlcSDL/content/x.bundle
+  }
+]

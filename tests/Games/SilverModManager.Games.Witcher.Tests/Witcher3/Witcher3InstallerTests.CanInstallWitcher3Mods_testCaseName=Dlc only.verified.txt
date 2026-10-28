@@ -1,0 +1,7 @@
+﻿[
+  {
+    FromPath: dlc/dlcBaz/content/e.bundle,
+    Hash: 0x4DC1C25BC8B4A15B,
+    ToGamePath: {Game}/dlc/dlcBaz/content/e.bundle
+  }
+]

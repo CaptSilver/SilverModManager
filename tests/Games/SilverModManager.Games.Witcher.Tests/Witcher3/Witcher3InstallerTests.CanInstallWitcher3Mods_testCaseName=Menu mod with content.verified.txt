@@ -1,0 +1,17 @@
+﻿[
+  {
+    FromPath: modSDL/input.settings.part.txt,
+    Hash: 0x6998C3B9AB7EBAAE,
+    ToGamePath: {Game}/INI Tweaks/modSDL [input.settings].ini
+  },
+  {
+    FromPath: modSDL/content/scripts/game/sdl.ws,
+    Hash: 0x9C6F1931B4F61274,
+    ToGamePath: {Game}/Mods/modSDL/content/scripts/game/sdl.ws
+  },
+  {
+    FromPath: modSDL/bin/config/r4game/user_config_matrix/pc/sdl.xml,
+    Hash: 0x0849ED97374470E0,
+    ToGamePath: {Game}/bin/config/r4game/user_config_matrix/pc/sdl.xml
+  }
+]

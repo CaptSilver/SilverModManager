@@ -1,5 +1,6 @@
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.Witcher.Witcher3;
@@ -12,4 +13,8 @@ public sealed class Witcher3Synchronizer(IServiceProvider provider, IGame game) 
     // filtered whole.
     protected override IGamePathFilter GameSpecificPathFilter { get; } =
         GamePathFilters.Create(path => path.InFolder(SavesFolder));
+
+    // INI tweaks (a menu mod's *.part.txt) live in the loadout to be merged into the game's settings; the folder
+    // means nothing to the game, so none of it is written.
+    protected override void AdjustActions(Dictionary<GamePath, SyncNode> tree) => GameInis.KeepTweaksOffDisk(tree);
 }

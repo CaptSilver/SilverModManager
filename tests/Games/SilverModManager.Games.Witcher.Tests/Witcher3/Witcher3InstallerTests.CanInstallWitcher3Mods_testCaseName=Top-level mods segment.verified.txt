@@ -1,0 +1,7 @@
+﻿[
+  {
+    FromPath: Release/Mods/modBar/content/c.ws,
+    Hash: 0xF46B98E485334BFA,
+    ToGamePath: {Game}/Mods/modBar/content/c.ws
+  }
+]

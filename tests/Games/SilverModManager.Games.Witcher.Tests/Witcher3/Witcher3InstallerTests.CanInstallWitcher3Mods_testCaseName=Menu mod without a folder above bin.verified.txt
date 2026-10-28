@@ -1,0 +1,12 @@
+﻿[
+  {
+    FromPath: bin/config/r4game/user_config_matrix/pc/x.xml,
+    Hash: 0x5F8B705AFB5CFE6A,
+    ToGamePath: {Game}/bin/config/r4game/user_config_matrix/pc/x.xml
+  },
+  {
+    FromPath: content/scripts/y.ws,
+    Hash: 0x470340CC2B31087A,
+    ToGamePath: {Game}/Mods/modExampleMod/content/scripts/y.ws
+  }
+]

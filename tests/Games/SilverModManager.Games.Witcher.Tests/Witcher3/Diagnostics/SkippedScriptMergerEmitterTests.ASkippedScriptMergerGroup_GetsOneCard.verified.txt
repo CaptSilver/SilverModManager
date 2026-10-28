@@ -1,0 +1,7 @@
+﻿[Id] collection Big list: 1
+[Title] Something was left out
+[Summary] Script Merger.zip from collection Big list is not used: the app merges scripts itself on Apply, so Script Merger is not installed
+[Details]
+**Script Merger.zip** (collection Big list) was left out: the app merges scripts itself on Apply, so Script Merger is not installed.
+
+Change it on the Merges page.

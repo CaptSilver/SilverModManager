@@ -1,0 +1,69 @@
+using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Games.Witcher.Witcher3;
+using SilverModManager.Games.Witcher.Witcher3.Diagnostics;
+using SilverModManager.StandardGameLocators.TestHelpers;
+
+namespace SilverModManager.Games.Witcher.Tests.Witcher3.Diagnostics;
+
+public class UnplacedArchiveFilesEmitterTests(ITestOutputHelper helper)
+    : ALoadoutDiagnosticEmitterTest<UnplacedArchiveFilesEmitterTests, Witcher3Game, UnplacedArchiveFilesEmitter>(helper)
+{
+    protected override IServiceCollection AddServices(IServiceCollection services)
+    {
+        return base.AddServices(services)
+            .AddWitcherGames()
+            .AddUniversalGameLocator<Witcher3Game>(new Version("4.0"), locationsFileSystem: IsolatedKnownFolders.Create);
+    }
+
+    private async Task<LibraryArchive.ReadOnly> AddNamedArchive(string fileName, params string[] paths) =>
+        await RegisterLocalArchive(await Witcher3Fixtures.WriteArchive(TemporaryFileManager.CreateFolder().Path / fileName, paths));
+
+    private Task<LoadoutItemGroupId> CreateNexusCollectionGroup(LoadoutId loadout, string name) =>
+        Witcher3Fixtures.CreateNexusCollectionGroup(Connection, loadout, name);
+
+    private async Task Install(LoadoutId loadout, string archiveName, LoadoutItemGroupId? parent, params string[] paths)
+    {
+        var archive = await AddNamedArchive(archiveName, paths);
+        var item = archive.AsLibraryFile().AsLibraryItem();
+        if (parent is { } p) await LoadoutManager.InstallItem(item, loadout, parent: p);
+        else await LoadoutManager.InstallItem(item, loadout);
+    }
+
+    [Fact]
+    public async Task AFileNoRulePlaced_GetsACard()
+    {
+        var loadout = await CreateLoadout();
+        await Install(loadout, "Example Mod.zip", null, "content/scripts/d.ws", "tools/patch.exe");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+        await VerifyDiagnostic(diagnostic);
+    }
+
+    [Fact]
+    public async Task DocumentationAndParts_GetNoCard()
+    {
+        var loadout = await CreateLoadout();
+        await Install(loadout, "Plain.zip", null, "content/scripts/d.ws", "readme.txt", "screenshot.png");
+        await Install(loadout, "Menu.zip", null, "modSDL/bin/config/r4game/user_config_matrix/pc/sdl.xml", "modSDL/input.settings.part.txt");
+
+        await ShouldHaveNoDiagnostics(loadout);
+    }
+
+    [Fact]
+    public async Task TheSkippedScriptMergerArchive_GetsNoUnplacedCards()
+    {
+        var loadout = await CreateLoadout();
+        var collection = await CreateNexusCollectionGroup(loadout, "Big list");
+        await Install(loadout, "Script Merger.zip", collection, "WitcherScriptMerger/WitcherScriptMerger.exe", "WitcherScriptMerger/lib.dll");
+
+        await ShouldHaveNoDiagnostics(loadout);
+    }
+}

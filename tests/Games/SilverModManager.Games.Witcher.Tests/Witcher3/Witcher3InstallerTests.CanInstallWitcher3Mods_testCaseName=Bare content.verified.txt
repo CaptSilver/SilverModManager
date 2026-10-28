@@ -1,0 +1,7 @@
+﻿[
+  {
+    FromPath: content/scripts/d.ws,
+    Hash: 0x68D5B7A1EC36959E,
+    ToGamePath: {Game}/Mods/modExampleMod/content/scripts/d.ws
+  }
+]

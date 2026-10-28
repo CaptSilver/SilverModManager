@@ -1,0 +1,12 @@
+﻿[
+  {
+    FromPath: modX/input.xml.part.txt,
+    Hash: 0x460CC0B56E0CD82A,
+    ToGamePath: {Game}/INI Tweaks/modX [input.xml].ini
+  },
+  {
+    FromPath: modX/bin/config/r4game/user_config_matrix/pc/x.xml,
+    Hash: 0xC54C27B97D057A51,
+    ToGamePath: {Game}/bin/config/r4game/user_config_matrix/pc/x.xml
+  }
+]

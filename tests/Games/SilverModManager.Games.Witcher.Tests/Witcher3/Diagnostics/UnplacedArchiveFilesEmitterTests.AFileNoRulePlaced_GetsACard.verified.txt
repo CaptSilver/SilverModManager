@@ -1,0 +1,7 @@
+﻿[Id] Example Mod.zip: 1
+[Title] Something was left out
+[Summary] tools/patch.exe from Example Mod.zip is not used: no install rule for The Witcher 3 places it
+[Details]
+**tools/patch.exe** (Example Mod.zip) was left out: no install rule for The Witcher 3 places it.
+
+Change it on the Library page.

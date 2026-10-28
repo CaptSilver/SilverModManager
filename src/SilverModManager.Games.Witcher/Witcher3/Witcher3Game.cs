@@ -1,6 +1,11 @@
 using DynamicData.Kernel;
 using NexusMods.Paths;
+using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.Witcher.Witcher3.Diagnostics;
+using SilverModManager.Games.Witcher.Witcher3.Installers;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.NexusModsApi;
 
@@ -25,6 +30,20 @@ public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witch
 
     protected override RelativePath PrimaryExe => Dx12Exe;
     protected override string? DocumentsFolderName => "The Witcher 3";
+
+    // Script Merger first: its archive also contains files the mod rules could claim.
+    protected override ILibraryItemInstaller[] CreateInstallers(IServiceProvider provider) =>
+    [
+        new ScriptMergerArchiveInstaller(provider),
+        new Witcher3ModInstaller(provider),
+    ];
+
+    protected override IEnumerable<IDiagnosticEmitter> CreateEmitters(IServiceProvider provider) =>
+    [
+        .. base.CreateEmitters(provider),
+        provider.GetRequiredService<SkippedScriptMergerEmitter>(),
+        provider.GetRequiredService<UnplacedArchiveFilesEmitter>(),
+    ];
 
     protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new Witcher3Synchronizer(provider, this);
 

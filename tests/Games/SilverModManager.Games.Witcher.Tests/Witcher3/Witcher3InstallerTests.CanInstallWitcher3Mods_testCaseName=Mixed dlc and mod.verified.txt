@@ -1,0 +1,12 @@
+﻿[
+  {
+    FromPath: dlcFoo/content/a.bundle,
+    Hash: 0x64E23A2469563681,
+    ToGamePath: {Game}/dlc/dlcFoo/content/a.bundle
+  },
+  {
+    FromPath: modFoo/content/b.ws,
+    Hash: 0x931E45E544F3E335,
+    ToGamePath: {Game}/Mods/modFoo/content/b.ws
+  }
+]

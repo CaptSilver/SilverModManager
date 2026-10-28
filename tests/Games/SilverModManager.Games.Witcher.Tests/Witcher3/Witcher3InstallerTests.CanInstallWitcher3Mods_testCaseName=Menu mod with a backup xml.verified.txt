@@ -1,0 +1,7 @@
+﻿[
+  {
+    FromPath: modX/bin/config/r4game/user_config_matrix/pc/x.xml,
+    Hash: 0xC54C27B97D057A51,
+    ToGamePath: {Game}/bin/config/r4game/user_config_matrix/pc/x.xml
+  }
+]
