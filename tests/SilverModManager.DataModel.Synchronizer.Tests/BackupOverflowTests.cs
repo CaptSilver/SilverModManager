@@ -1,4 +1,6 @@
+using System.Collections.Frozen;
 using FluentAssertions;
+using SilverModManager.Backend.Games;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -23,11 +25,28 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
 {
     private readonly SwitchableBackupOverflowPrompt _prompt = new();
 
+    private bool _indexingFails;
+
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
-        return base.AddServices(services)
+        base.AddServices(services)
             .AddSingleton(new BackupLimit(Size.KB * 8))
             .AddSingleton<IBackupOverflowPrompt>(_prompt);
+
+        // The real indexer, behind a switch that makes it report a failing disk.
+        var real = services.Last(d => d.ServiceType == typeof(IGameLocationsService));
+        services.Remove(real);
+        return services.AddSingleton<IGameLocationsService>(sp =>
+            new SwitchableIndexer((IGameLocationsService)ActivatorUtilities.CreateInstance(sp, real.ImplementationType ?? throw new InvalidOperationException()), () => _indexingFails));
+    }
+
+    private sealed class SwitchableIndexer(IGameLocationsService inner, Func<bool> fails) : IGameLocationsService
+    {
+        public Task<IndexGameResult> IndexGame(GameInstallation installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly> previousDiskState, IGamePathFilter filter,
+            CancellationToken cancellationToken = default, Action<long, long>? progress = null, Func<IReadOnlyList<IndexFileResult>, ValueTask>? onBatch = null)
+            => fails()
+                ? throw new GameFolderUnreadableException(installation, "Listing the files", new IOException("Input/output error"))
+                : inner.IndexGame(installation, previousDiskState, filter, cancellationToken, progress, onBatch);
     }
 
     private AbsolutePath GameDir => GameInstallation.Locations[LocationId.Game].Path;
@@ -354,6 +373,21 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         ExternalChanges(Refresh(loadout)).Should().HaveCount(4);
         for (var i = 0; i < 4; i++) OnDisk($"ext{i}.bin").Should().BeTrue();
         (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CleaningAfterAdopt_WhenTheDiskFailsBeforeTheApplyWrites_KeepsTheExternalChanges()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        var loadout = await CreateLoadout();
+        _indexingFails = true;
+
+        var act = async () => await LoadoutManager.CleanGameFolder(Refresh(loadout));
+
+        await act.Should().ThrowAsync<GameFolderUnreadableException>();
+        ExternalChanges(Refresh(loadout)).Should().HaveCount(4, "the clean never got to change the folder");
+        for (var i = 0; i < 4; i++) OnDisk($"ext{i}.bin").Should().BeTrue();
     }
 
     [Fact]

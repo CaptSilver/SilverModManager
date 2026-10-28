@@ -165,8 +165,8 @@ public class SynchronizerService : ISynchronizerService
 
     /// <summary>
     /// Deletes the loadout's External Changes and applies it. The rows go first because the apply measures what it
-    /// would back up from the loadout as it is after the clean, but a refused question or a cancelled wait is no
-    /// reason to lose them, so they are put back then.
+    /// would back up from the loadout as it is after the clean, but a refused question, a cancelled wait or a failure
+    /// before the apply started writing is no reason to lose them, so they are put back then.
     /// </summary>
     private async Task CleanExternalChanges(Loadout.ReadOnly loadout, SynchronizeLoadoutJob job, BackupOverflowChoice? largeFiles, CancellationToken cancellationToken)
     {
@@ -178,12 +178,20 @@ public class SynchronizerService : ISynchronizerService
         {
             await synchronizer.Synchronize(Loadout.Load(_conn.Db, loadout.LoadoutId), job, largeFiles, cancellationToken);
         }
-        catch (Exception e) when (e is BackupOverflowException or SynchronizerPreflightException or OperationCanceledException)
+        catch (Exception e) when (e is BackupOverflowException or SynchronizerPreflightException or OperationCanceledException || !ApplyBeganWriting(job))
         {
             await RestoreExternalChanges(removed);
             throw;
         }
     }
+
+    /// <summary>
+    /// Whether the apply got past collecting and indexing, to the phases that back files up and change the folder.
+    /// An apply that failed before that, such as on an unreadable disk, changed nothing, so the rows it was
+    /// measured against are still the loadout's.
+    /// </summary>
+    private static bool ApplyBeganWriting(SynchronizeLoadoutJob job)
+        => job.Progress.Value.Phase is { } phase && phase != SyncPhases.Collecting;
 
     private async Task<List<(EntityId Entity, AttributeId Attribute, ValueTag Tag, byte[] Value)>> RemoveExternalChanges(Loadout.ReadOnly loadout)
     {

@@ -426,7 +426,7 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                 }
                 catch (BackupOverflowException e) when (e.Declined)
                 {
-                    // The player answered the question with "Don't manage": nothing was deleted, and there is nothing to explain.
+                    // The player answered the question with "Cancel" (the clean runs as a Reset): nothing was deleted, and there is nothing to explain.
                 }
                 catch (UserFacingException e)
                 {

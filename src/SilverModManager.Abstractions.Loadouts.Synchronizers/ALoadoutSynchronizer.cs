@@ -726,9 +726,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             if (GameInstallMetadata.LastSyncedLoadout.TryGetValue(loadout.Installation, out _)
                 && !_fileHashService.CoversInstalledBuild((gameLocatorResult.Store, newLocatorIds)))
             {
+                var howToLift = gameLocatorResult.Store == GameStore.Steam
+                    ? "Let Steam finish updating the game (it keeps the file list for a build in its depotcache), then apply again."
+                    : "Apply again once the app's game file data covers the new build.";
                 throw new SynchronizerPreflightException(
                     $"{registered.Game.DisplayName} was updated to a build the app has no game file list for yet, so it cannot tell the game's own files from added ones and will not change the folder. " +
-                    "Nothing was changed. Let the store finish its update (Steam keeps the file list for a build in its depotcache), then apply again.");
+                    $"Nothing was changed. {howToLift}");
             }
         }
 

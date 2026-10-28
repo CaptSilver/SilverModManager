@@ -480,7 +480,8 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
 
         var act = () => Synchronizer.Synchronize(Refresh(loadout));
 
-        await act.Should().ThrowAsync<UserFacingException>();
+        var refusal = await act.Should().ThrowAsync<UserFacingException>();
+        refusal.Which.Message.Should().Contain("Let Steam finish updating", "the block lifts once Steam has cached the new build's manifests");
         await EveryVanillaFileIsOnDiskAndNoneWasBackedUp();
         Refresh(loadout).LocatorIds.Select(id => id.Value).Should().NotContain(NewGameManifestId.ToString(), "a refused apply writes nothing");
     }
