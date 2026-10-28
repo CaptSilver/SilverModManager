@@ -499,7 +499,7 @@ public static class CollectionCreator
 
     /// <summary>
     /// <paramref name="root"/> with the game's Vortex order key set from <paramref name="winnerToLoser"/>, when the game has a
-    /// <see cref="IVortexOrderFormat"/> and it has something to write. A format whose key the app does not know throws.
+    /// <see cref="IVortexOrderFormat"/> and it has an order to write, and its merged data whenever the format has any. A format whose key the app does not know throws.
     /// </summary>
     public static CollectionRoot WithVortexOrder(
         CollectionRoot root,
@@ -508,9 +508,9 @@ public static class CollectionCreator
         IReadOnlyList<LoadoutItemGroup.ReadOnly> winnerToLoser)
     {
         if (game is not IModOrderGame { VortexOrderFormat: { } format }) return root;
-        if (format.Write(loadout, winnerToLoser) is not { } value) return root;
 
-        var withKey = VortexOrderKeys.With(root, format.Key, value);
+        // The merged data goes out even when there is no order, since the importer reads it before anything else.
+        var withKey = format.Write(loadout, winnerToLoser) is { } value ? VortexOrderKeys.With(root, format.Key, value) : root;
         return format.MergedData is { } merged ? VortexOrderKeys.WithMergedData(withKey, merged) : withKey;
     }
 

@@ -10,6 +10,7 @@ using SilverModManager.Games.TestFramework;
 using SilverModManager.Games.TestFramework.Helpers;
 using SilverModManager.Games.Witcher.Witcher3;
 using SilverModManager.Games.Witcher.Witcher3.Order;
+using SilverModManager.Games.Witcher.Witcher3.SortOrder;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -299,6 +300,21 @@ public class Witcher3VortexOrderFormatTests(ITestOutputHelper helper)
 
         var byId = written.EnumerateArray().ToDictionary(e => e.GetProperty("id").GetString()!, e => e.GetProperty("enabled").GetBoolean());
         byId["modFriendlyHUD"].Should().BeFalse();
+        byId["modBetterIcons"].Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Write_CarriesTheSwitchOfTheLoadOrderPage()
+    {
+        var (loadout, groups) = await Build(Hud(), Icons());
+        var variety = Game.SortOrderManager.GetSortOrderVarieties().OfType<WitcherModSortOrderVariety>().Single();
+        var sortOrder = await variety.GetOrCreateSortOrderFor(loadout.LoadoutId, loadout.LoadoutId);
+        await variety.SetEnabled(sortOrder, WitcherModFolders.KeyFor("modFriendlyHUD"), false);
+
+        var written = Format.Write(Refresh(loadout), groups)!.Value;
+
+        var byId = written.EnumerateArray().ToDictionary(e => e.GetProperty("id").GetString()!, e => e.GetProperty("enabled").GetBoolean());
+        byId["modFriendlyHUD"].Should().BeFalse("the group is on but the folder is switched off on the page");
         byId["modBetterIcons"].Should().BeTrue();
     }
 

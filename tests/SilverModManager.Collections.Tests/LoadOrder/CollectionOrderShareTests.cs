@@ -240,10 +240,11 @@ public class CollectionOrderShareTests(ITestOutputHelper helper) : ACyberpunkIso
         (back.Source.Tag, back.Other.Tag).Should().Be(("one", "two"));
     }
 
-    private sealed class RecordingFormat(string key, JsonElement? value) : IVortexOrderFormat
+    private sealed class RecordingFormat(string key, JsonElement? value, JsonElement? mergedData = null) : IVortexOrderFormat
     {
         public IReadOnlyList<string> Written { get; private set; } = [];
         public string Key => key;
+        public JsonElement? MergedData => mergedData;
         public (IReadOnlyList<ModOrderSourceEntry> Entries, IReadOnlyList<ModOrderDrop> Unmapped) Read(JsonElement _, CollectionRoot __) => ([], []);
 
         public JsonElement? Write(Loadout.ReadOnly loadout, IReadOnlyList<LoadoutItemGroup.ReadOnly> winnerToLoser)
@@ -291,6 +292,19 @@ public class CollectionOrderShareTests(ITestOutputHelper helper) : ACyberpunkIso
         CollectionCreator.WithVortexOrder(root, GameInstallation.GetGame(), loadout, groups).LoadOrder.Should().BeNull();
         CollectionCreator.WithVortexOrder(root, new OrderedGame(ServiceProvider, new RecordingFormat("loadOrder", null)), loadout, groups)
             .LoadOrder.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AFormatWithMergedDataWritesItEvenWhenItHasNoOrderToWrite()
+    {
+        var (loadout, groups, root) = await VortexSetup();
+        var merged = JsonDocument.Parse("{}").RootElement.Clone();
+
+        var written = CollectionCreator.WithVortexOrder(root, new OrderedGame(ServiceProvider, new RecordingFormat("loadOrder", null, merged)), loadout, groups);
+
+        written.LoadOrder.Should().BeNull();
+        written.MergedData.Should().NotBeNull();
+        written.MergedData!.Value.GetRawText().Should().Be("{}");
     }
 
     [Fact]

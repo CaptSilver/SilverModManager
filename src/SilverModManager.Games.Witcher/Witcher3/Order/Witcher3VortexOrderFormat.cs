@@ -65,6 +65,7 @@ public sealed class Witcher3VortexOrderFormat : IVortexOrderFormat
 
     public JsonElement? Write(Loadout.ReadOnly loadout, IReadOnlyList<LoadoutItemGroup.ReadOnly> winnerToLoser)
     {
+        var variety = loadout.InstallationInstance.GetGame().SortOrderManager.GetSortOrderVarieties().OfType<IWitcherModSortOrderVariety>().Single();
         var rows = new List<(string Folder, string Name, bool Enabled, string ModId)>();
         var seen = new HashSet<SortItemKey<string>> { WitcherModFolders.MergedKey };
         foreach (var group in winnerToLoser)
@@ -76,7 +77,9 @@ public sealed class Witcher3VortexOrderFormat : IVortexOrderFormat
                 if (!seen.Add(WitcherModFolders.KeyFor(folder))) continue;
 
                 var name = folder.Equals(item.Name, StringComparison.OrdinalIgnoreCase) ? folder : $"{item.Name} ({folder})";
-                rows.Add((folder, name, !item.IsDisabled, archive ?? folder));
+                
+                // Two switches: the group's own, and the one for this folder on the Load Order page.
+                rows.Add((folder, name, !item.IsDisabled && variety.IsSwitchedOn(loadout, folder), archive ?? folder));
             }
         }
 
