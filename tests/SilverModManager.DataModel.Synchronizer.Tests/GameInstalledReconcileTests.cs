@@ -450,7 +450,8 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
         {
             Store = install.Store,
             GamePath = install.Path,
-            LocatorIds = [],
+            // A baseline counts only for the locator ids it was built for.
+            LocatorIds = loadout.LocatorIds.Select(id => id.Value).ToArray(),
             Kind = LocalBaselineKind.Snapshot,
             VersionName = "",
             BuiltAt = DateTimeOffset.UnixEpoch,

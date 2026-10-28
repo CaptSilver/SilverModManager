@@ -102,13 +102,20 @@ WITH
 SELECT files.Loadout, relations.Path, relations.Hash, relations.Identity, relations.Size FROM files
 INNER JOIN relations ON files.PathId = relations.Id;
 
+-- The ids a baseline or loadout is compared by: a set, so order and repeats do not matter, and case-insensitive
+-- the way AttestedFileRows.Find compares them.
+CREATE OR REPLACE MACRO file_hashes.locator_id_set(ids) AS list_sort(list_distinct(list_transform(ids, x -> lower(x))));
+
 -- The local baseline of each loadout's installation. The local store cannot reference the main store's
--- entities, so the baseline carries the installation as values and is matched on (Store, Path).
+-- entities, so the baseline carries the installation as values and is matched on (Store, Path). It counts only
+-- while it was built for the loadout's own locator ids: after a game update its rows describe files the new build
+-- replaced, and the new build's manifest answers for every path.
 CREATE OR REPLACE MACRO file_hashes.loadout_baselines(db) AS TABLE
 SELECT loadout.id Loadout, baseline.Id BaselineId
 FROM MDB_LOADOUT(Db=>db) loadout
          INNER JOIN MDB_GAMEINSTALLMETADATA(Db=>db) install ON loadout.Installation = install.id
-         INNER JOIN MDB_LOCALBASELINE(DbName=>'local_hashes') baseline ON baseline.Store = install.Store AND baseline.GamePath = install.Path;
+         INNER JOIN MDB_LOCALBASELINE(DbName=>'local_hashes') baseline ON baseline.Store = install.Store AND baseline.GamePath = install.Path
+WHERE file_hashes.locator_id_set(baseline.LocatorIds) = file_hashes.locator_id_set(loadout.LocatorIds);
 
 -- gets the paths and hashes of the files each loadout's local baseline classified as vanilla
 CREATE OR REPLACE MACRO file_hashes.local_baseline_files(db) AS TABLE

@@ -414,6 +414,64 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         FullHashes.BaselineOpens.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task AGameUpdatedSinceTheBaselineWasBuilt_BacksUpAndIngestsNoVanillaFileWhenApplyingSwitchingOrResetting()
+    {
+        var first = await CreateLoadout();
+        var second = await LoadoutManager.CreateLoadout(GameInstallation, "second");
+        await Synchronizer.Synchronize(Refresh(second));
+        await Synchronizer.Synchronize(Refresh(first));
+        await TheBaselineIsFromAnOlderBuildAndTheStoreKnowsTheInstalledOne();
+        FullHashes.Reset();
+
+        await Synchronizer.Synchronize(Refresh(first));
+        await Synchronizer.Synchronize(Refresh(second));
+        await Synchronizer.Synchronize(Refresh(first));
+
+        Overrides(Refresh(first)).Should().BeEquivalentTo(PlayerFiles, "an unchanged vanilla file is not an external change");
+        await NoVanillaFileWasBackedUp();
+
+        await Synchronizer.ResetToOriginalGameState(GameInstallation, Refresh(first).LocatorIds.ToArray());
+
+        foreach (var file in CyberpunkSteamInstall.GameFiles) (await ReadGameFile(file.Path)).Should().Be(System.Text.Encoding.UTF8.GetString(file.Content));
+        await NoVanillaFileWasBackedUp();
+    }
+
+    private async Task NoVanillaFileWasBackedUp()
+    {
+        foreach (var file in CyberpunkSteamInstall.GameFiles.Concat(CyberpunkSteamInstall.ExpansionFiles))
+            (await FileStore.HaveFile(file.Content.xxHash3())).Should().BeFalse($"`{file.Path}` is the game's own and unchanged");
+    }
+
+    // The baseline's rows are for the build before an update, and the store now lists the installed build's files with
+    // their xxHash3: the new manifest alone must answer for every path.
+    private async Task TheBaselineIsFromAnOlderBuildAndTheStoreKnowsTheInstalledOne()
+    {
+        var baseline = LocalBaseline.All(Hashes.Local).Single();
+        var contents = CyberpunkSteamInstall.GameFiles.Concat(CyberpunkSteamInstall.ExpansionFiles).ToDictionary(f => f.Path, f => f.Content);
+        using var tx = Hashes.Local.Connection.BeginTransaction();
+        foreach (var row in AttestedFile.FindByBaseline(Hashes.Local, baseline.Id))
+        {
+            var hashes = await MultiHasher.HashStream(new MemoryStream(contents[row.Path.ToString()]));
+            var relation = new HashRelation.New(tx)
+            {
+                MinimalHash = hashes.MinimalHash,
+                XxHash3 = hashes.XxHash3,
+                Sha1 = hashes.Sha1,
+                XxHash64 = hashes.XxHash64,
+                Md5 = hashes.Md5,
+                Size = hashes.Size,
+                Crc32 = hashes.Crc32,
+            };
+            var path = new PathHashRelation.New(tx) { Path = row.Path, HashId = relation };
+            tx.Add(row.ManifestId, SteamManifest.Files, path.Id);
+        }
+
+        foreach (var id in baseline.LocatorIds) tx.Retract(baseline.Id, LocalBaseline.LocatorIds, id);
+        tx.Add(baseline.Id, LocalBaseline.LocatorIds, "6000000000000000999");
+        await tx.Commit();
+    }
+
     private sealed class SettleFailingHashes(IFileHashesService inner, SettleSwitch gate) : IFileHashesService, Microsoft.Extensions.Hosting.IHostedService, IDisposable
     {
         public Task SettleAttested(GameInstallation installation, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, SilverModManager.Sdk.IO.FileFingerprint After)> read, CancellationToken cancellationToken = default)

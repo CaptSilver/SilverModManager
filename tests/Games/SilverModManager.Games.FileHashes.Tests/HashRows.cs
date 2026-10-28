@@ -148,6 +148,20 @@ internal static class HashRows
         return result[row.Id];
     }
 
+    /// <summary>
+    /// Records that the baseline of the install at <paramref name="gamePath"/> was built for <paramref name="locatorIds"/>,
+    /// the ids the loadout of the same build carries. A baseline built for other ids counts for nothing.
+    /// </summary>
+    public static async Task BuiltForLocatorIds(IConnection store, string gamePath, params string[] locatorIds)
+    {
+        var baseline = LocalBaseline.FindByGamePath(store.Db, gamePath).Single();
+        using var tx = store.BeginTransaction();
+        // A value retracted and added in one transaction is dropped, so only the difference is written.
+        foreach (var existing in baseline.LocatorIds.Except(locatorIds)) tx.Retract(baseline.Id, LocalBaseline.LocatorIds, existing);
+        foreach (var id in locatorIds.Except(baseline.LocatorIds)) tx.Add(baseline.Id, LocalBaseline.LocatorIds, id);
+        await tx.Commit();
+    }
+
     public static readonly NexusModsGameId GameId = NexusModsGameId.From(1234);
 
     /// <summary>The game's own id, the one installations are keyed on.</summary>

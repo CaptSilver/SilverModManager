@@ -123,6 +123,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
         await HashRows.AddSteamManifest(_central, 1001, ("x.esm", "vanilla x"), ("y.esm", "vanilla y"));
         await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.DepotManifests,
             [], "x.esm");
+        await HashRows.BuiltForLocatorIds(_local, "/games/test", "1001");
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001");
 
         var rows = LoadoutFiles(loadout);
@@ -136,6 +137,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
         await HashRows.AddSteamManifest(_central, 1001, ("y.esm", "central y"));
         await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.Snapshot,
             [("y.esm", "local y")]);
+        await HashRows.BuiltForLocatorIds(_local, "/games/test", "1001");
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001");
 
         var rows = LoadoutFiles(loadout);
@@ -150,6 +152,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
         await HashRows.AddSteamManifest(_local, 1001, ("x.esm", "vanilla x"), ("y.esm", "vanilla y"));
         await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.DepotManifests,
             [("y.esm", "vanilla y")], "x.esm");
+        await HashRows.BuiltForLocatorIds(_local, "/games/test", "1001");
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001");
 
         LoadoutFiles(loadout).Select(r => r.Path.ToString()).Should().BeEquivalentTo(["y.esm"]);
@@ -172,6 +175,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
         await HashRows.AddSteamManifest(_central, 1001, ("x.esm", "vanilla x"), ("y.esm", "vanilla y"));
         await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/mnt/steam/test", LocalBaselineKind.DepotManifests,
             [], "x.esm");
+        await HashRows.BuiltForLocatorIds(_local, "/mnt/steam/test", "1001");
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/home/steam/test", "1001");
 
         LoadoutFiles(loadout).Select(r => r.Path.ToString()).Should().BeEquivalentTo(["x.esm", "y.esm"], "no baseline is at the old path");
@@ -252,6 +256,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
         await HashRows.AddSteamManifest(_central, 1001, ("a.esm", "central file"), ("b.esm", "central other"));
         await HashRows.AddBaselineOwningManifest(_local, LocalBaselineKind.DepotManifests, 1002);
         await HashRows.AddAttestedFile(_local, 1002, "a.esm", "attested file");
+        await HashRows.BuiltForLocatorIds(_local, "/games/test", "1001", "1002");
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001", "1002");
 
         var rows = _main.Query<(RelativePath Path, string Identity)>(
@@ -260,6 +265,44 @@ public sealed class LoadoutFilesQueryTests : IDisposable
         rows.Should().HaveCount(2);
         rows.Single(r => r.Path.ToString() == "a.esm").Identity.Should().StartWith("02");
         rows.Single(r => r.Path.ToString() == "b.esm").Identity.Should().StartWith("01");
+    }
+
+    [Fact]
+    public async Task LoadoutFiles_ABaselineBuiltForOtherLocatorIds_ContributesNoRows()
+    {
+        // The game updated from build 1001 to 1002 and the downloaded store knows 1002. The old baseline's vanilla,
+        // attested and non-vanilla rows describe files the new build replaced, so the new manifest answers alone.
+        await HashRows.AddSteamManifest(_central, 1002, ("a.esm", "new a"), ("x.esm", "new x"));
+        await HashRows.AddBaselineOwningManifest(_local, LocalBaselineKind.DepotManifests, 1001, ("b.esm", "old b"));
+        await HashRows.AddAttestedFile(_local, 1001, "a.esm", "old a");
+        using (var tx = _local.BeginTransaction())
+        {
+            _ = new NonVanillaFile.New(tx)
+            {
+                BaselineId = LocalBaseline.FindByGamePath(_local.Db, "/games/test").Single().Id,
+                Path = RelativePath.FromUnsanitizedInput("x.esm"),
+                Reason = NonVanillaReason.HashDiffers,
+                Size = Size.From(1),
+            };
+            await tx.Commit();
+        }
+        var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1002");
+
+        var rows = _main.Query<(RelativePath Path, string Identity)>(
+            $"SELECT Path, Identity FROM file_hashes.loadout_files({_main.Db}) WHERE Loadout = {loadout.Value}").ToList();
+
+        rows.Select(r => r.Path.ToString()).Should().BeEquivalentTo(["a.esm", "x.esm"], "the old baseline's b.esm and its verdict on x.esm are gone");
+        FileIdentity.ParseHex(rows.Single(r => r.Path.ToString() == "a.esm").Identity).Should().Be(FileIdentity.XxHash3(await HashOf("new a")), "not the old build's SHA-1 row");
+    }
+
+    [Fact]
+    public async Task LoadoutFiles_ABaselineBuiltForTheLoadoutsLocatorIds_CountsEvenWhenAnIdIsListedTwice()
+    {
+        await HashRows.AddBaselineOwningManifest(_local, LocalBaselineKind.DepotManifests, 1001, ("b.esm", "b"));
+        await HashRows.AddAttestedFile(_local, 1001, "a.esm", "a");
+        var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001", "1001");
+
+        LoadoutFiles(loadout).Select(r => r.Path.ToString()).Should().BeEquivalentTo(["a.esm", "b.esm"]);
     }
 
     [Theory]
