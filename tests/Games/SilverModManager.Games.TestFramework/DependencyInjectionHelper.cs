@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Secrets;
 using SilverModManager.Abstractions.Serialization;
 using SilverModManager.Backend;
@@ -126,6 +127,14 @@ public static class DependencyInjectionHelper
         else 
             serviceCollection
                 .AddFileHashes();
+
+        // The App registers the engine beside the file hashes; a game that merges resolves it from its synchronizer and
+        // emitters. The real service graph already holds the baseline trust.
+        serviceCollection
+            .AddMergeEngine()
+            .AddTextMergeEngine();
+        if (stubbedFileHashService)
+            serviceCollection.AddSingleton<IVanillaTrust, BaselineVanillaTrust>();
 
         return serviceCollection;
     }

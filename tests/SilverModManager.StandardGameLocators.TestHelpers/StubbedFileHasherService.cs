@@ -208,6 +208,16 @@ public class StubbedFileHasherService : IFileHashesService
 
     public IDb Local => EnsureLocal();
 
+    /// <summary>The writable store behind <see cref="Local"/>, for a test that needs a baseline row in it.</summary>
+    public IConnection LocalConnection
+    {
+        get
+        {
+            EnsureLocal();
+            return _localConnection ?? throw new InvalidOperationException("The local store was just created");
+        }
+    }
+
     public IReadOnlyList<IDb> Databases => [Local, Current];
 
     public bool TryGetVanityVersion(LocatorIdsWithGameStore locatorIdsWithGameStore, out VanityVersion version)

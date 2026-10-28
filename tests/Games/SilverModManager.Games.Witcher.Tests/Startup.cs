@@ -1,11 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
-using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.GuidedInstallers;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Backend;
-using SilverModManager.Games.FileHashes;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Games.Witcher.Witcher1;
 using SilverModManager.Games.Witcher.Witcher2;
@@ -26,9 +24,6 @@ public class Startup
             .AddUniversalGameLocator<Witcher2Game>(new Version("3.5"), locationsFileSystem: IsolatedKnownFolders.Create)
             .AddUniversalGameLocator<Witcher3Game>(new Version("4.0"), locationsFileSystem: IsolatedKnownFolders.Create)
             .AddWitcherGames()
-            .AddMergeEngine()
-            .AddTextMergeEngine()
-            .AddSingleton<IVanillaTrust, BaselineVanillaTrust>()
             .AddLogging(builder => builder.AddXUnit())
             .AddGames()
             .AddGameServices()
