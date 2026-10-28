@@ -36,6 +36,7 @@ public sealed class McpTestHost : IAsyncDisposable
             .AddModule("loadout", "Loadout verbs")
             .AddModule("loadouts", "Loadouts verbs")
             .AddModule("games", "Games verbs")
+            .AddModule("settings", "Settings verbs")
             .AddModule("fromsoft", "FromSoft verbs")
             .AddModule("fromsoft merge", "Merge verbs")
             .AddModule("fromsoft vanilla", "Vanilla verbs")
@@ -46,6 +47,9 @@ public sealed class McpTestHost : IAsyncDisposable
             .AddVerb(() => Verbs.Heal)
             .AddVerb(() => Verbs.Doctor)
             .AddVerb(() => Verbs.ListGames)
+            .AddVerb(() => Verbs.SettingsList)
+            .AddVerb(() => Verbs.SettingsGet)
+            .AddVerb(() => Verbs.SettingsSet)
             .AddVerb(() => Verbs.Diagnostics)
             .AddVerb(() => Verbs.Launch)
             .AddVerb(() => Verbs.Heartbeat)
@@ -151,6 +155,27 @@ public sealed class McpTestHost : IAsyncDisposable
         public static async Task<int> ListGames([Injected] IRenderer renderer, [Option("j", "json", "Json", true)] bool json)
         {
             await renderer.TextLine(json ? "[{\"store\":\"Steam\",\"name\":\"Elden Ring\"}]" : "Steam Elden Ring");
+            return 0;
+        }
+
+        [Verb("settings list", "Stand-in for the settings list")]
+        public static async Task<int> SettingsList([Injected] IRenderer renderer, [Option("j", "json", "Json", true)] bool json)
+        {
+            await renderer.TextLine($"settings list json={json}");
+            return 0;
+        }
+
+        [Verb("settings get", "Stand-in for the settings get")]
+        public static async Task<int> SettingsGet([Injected] IRenderer renderer, [Option("k", "key", "Key")] string key)
+        {
+            await renderer.TextLine($"get key={key}");
+            return 0;
+        }
+
+        [Verb("settings set", "Stand-in for the settings set")]
+        public static async Task<int> SettingsSet([Injected] IRenderer renderer, [Option("k", "key", "Key")] string key, [Option("v", "value", "Value")] string value)
+        {
+            await renderer.TextLine($"set key={key} value=[{value}]");
             return 0;
         }
 

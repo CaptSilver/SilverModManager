@@ -41,6 +41,27 @@ public sealed class McpForwardedToolTests : IAsyncDisposable
     }
 
     [Fact(Timeout = TimeoutMs)]
+    public async Task TheSettingsTools_PassTheirArgumentsAsOptions()
+    {
+        var tools = await ToolsAsync();
+
+        (await McpTestHost.CallAsync(tools, "settings_list")).Text.Trim().Should().Be("settings list json=True");
+        (await McpTestHost.CallAsync(tools, "settings_get", new JsonObject { ["key"] = "HttpProxySettings.HttpProxy" })).Text.Trim()
+            .Should().Be("get key=HttpProxySettings.HttpProxy");
+        (await McpTestHost.CallAsync(tools, "settings_set", new JsonObject { ["key"] = "HttpProxySettings.HttpProxy", ["value"] = "http://127.0.0.1:8888" })).Text.Trim()
+            .Should().Be("set key=HttpProxySettings.HttpProxy value=[http://127.0.0.1:8888]");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task SettingsSet_AcceptsAnEmptyValueToClearASetting()
+    {
+        var result = await McpTestHost.CallAsync(await ToolsAsync(), "settings_set", new JsonObject { ["key"] = "HttpProxySettings.HttpProxy", ["value"] = "" });
+
+        result.IsError.Should().BeFalse();
+        result.Text.Trim().Should().Be("set key=HttpProxySettings.HttpProxy value=[]");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
     public async Task AHealPlan_AlwaysRunsAsADryRun()
     {
         var result = await McpTestHost.CallAsync(await ToolsAsync(), "loadout_heal_plan", Loadout("abc"));

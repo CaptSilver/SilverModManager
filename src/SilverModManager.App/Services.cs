@@ -199,6 +199,7 @@ public static class Services
             .AddFileSystem()
             .AddCleanupVerbs()
             .AddStatusVerbs()
+            .AddSettingsVerbs()
             .AddSteamCli()
             .AddGOG()
             .AddFileHashes()

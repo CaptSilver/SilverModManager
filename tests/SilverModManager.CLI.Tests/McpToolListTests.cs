@@ -17,7 +17,7 @@ public sealed class McpToolListTests : IAsyncDisposable
     public void AFullServer_ListsTheReadOnlyAndTheMutatingTools()
     {
         Tools(readOnly: false).Select(t => t.Name).Should().BeEquivalentTo(
-            "app_status", "app_log_errors", "loadouts_list", "loadout_merge_report", "loadout_vanilla_list", "loadout_heal_plan", "doctor", "games_list", "loadout_health_check", "loadout_apply", "game_launch");
+            "app_status", "app_log_errors", "loadouts_list", "loadout_merge_report", "loadout_vanilla_list", "loadout_heal_plan", "doctor", "games_list", "loadout_health_check", "settings_list", "settings_get", "settings_set", "loadout_apply", "game_launch");
     }
 
     [Fact]
@@ -25,7 +25,7 @@ public sealed class McpToolListTests : IAsyncDisposable
     {
         var names = Tools(readOnly: true).Select(t => t.Name).ToList();
 
-        names.Should().NotContain("loadout_apply").And.NotContain("game_launch");
+        names.Should().NotContain("loadout_apply").And.NotContain("game_launch").And.NotContain("settings_set");
         Tools(readOnly: true).Should().OnlyContain(t => t.ReadOnly);
     }
 
@@ -34,13 +34,30 @@ public sealed class McpToolListTests : IAsyncDisposable
     {
         var all = Tools(readOnly: false);
 
-        all.Where(t => !t.ReadOnly).Select(t => t.Name).Should().BeEquivalentTo("loadout_apply", "game_launch");
+        all.Where(t => !t.ReadOnly).Select(t => t.Name).Should().BeEquivalentTo("settings_set", "loadout_apply", "game_launch");
     }
 
     [Fact]
     public void AReadOnlyServer_OffersGamesAndTheHealthCheck()
     {
         Tools(readOnly: true).Select(t => t.Name).Should().Contain(["games_list", "loadout_health_check"]);
+    }
+
+    [Fact]
+    public void AReadOnlyServer_OffersToReadSettings()
+    {
+        Tools(readOnly: true).Select(t => t.Name).Should().Contain(["settings_list", "settings_get"]);
+    }
+
+    [Fact]
+    public void TheSettingsToolsTakeTheKeyAndTheValueAsRequiredArguments()
+    {
+        var tools = Tools(readOnly: false).ToDictionary(t => t.Name);
+
+        tools["settings_list"].Params.Should().BeEmpty();
+        tools["settings_get"].Params.Select(p => (p.Name, p.Required)).Should().Equal(("key", true));
+        tools["settings_set"].Params.Select(p => (p.Name, p.Required)).Should().Equal(("key", true), ("value", true));
+        tools["settings_get"].Description.Should().Contain("settings_list");
     }
 
     [Fact]

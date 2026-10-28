@@ -65,6 +65,8 @@ internal class SettingsBuilder : ISettingsBuilder
         };
 
         _properties.Add(new PropertyConfig(
+            Name: propertyInfo.Name,
+            PropertyType: typeof(TProperty),
             Options: wrapper,
             ContainerOptions: containerOptions,
             GetValue: GetValue,

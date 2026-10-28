@@ -34,6 +34,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="SilverModManager.Backend.Tests"/>
+        <InternalsVisibleTo Include="SilverModManager.CLI.Tests"/>
         <InternalsVisibleTo Include="SilverModManager.CrossPlatform.Tests"/>
         <InternalsVisibleTo Include="SilverModManager.Games.TestFramework"/>
     </ItemGroup>

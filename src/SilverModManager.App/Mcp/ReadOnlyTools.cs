@@ -8,6 +8,9 @@ namespace SilverModManager.App.Mcp;
 /// <summary>The tools that only read. A read-only server offers just these.</summary>
 public static class ReadOnlyTools
 {
+    internal static readonly ToolParam SettingKeyParam = new(
+        "key", "The setting's key, as settings_list shows it, e.g. HttpProxySettings.HttpProxy. Not case sensitive.", Required: true);
+
     private const int DefaultLogLimit = 50;
     private const int MaxLogLimit = 500;
 
@@ -36,6 +39,12 @@ public static class ReadOnlyTools
             "Runs the Health Check on a loadout again and returns, as JSON, the problems and suggestions it finds. " +
             "Find the loadout with loadouts_list.",
             readOnly: true, ["loadout", "diagnostics"], takesLoadout: true, context.Limits.SlowReadTimeout, flags: ["--refresh", "--json"]),
+        VerbTool.Create(context, "settings_list",
+            "Lists, as JSON, every app setting with its key, display name, section, current value, default and whether a change needs a restart.",
+            readOnly: true, ["settings", "list"], takesLoadout: false, context.Limits.ReadTimeout, flags: ["--json"]),
+        VerbTool.Create(context, "settings_get",
+            "Reads one app setting. Find the keys with settings_list.",
+            readOnly: true, ["settings", "get"], takesLoadout: false, context.Limits.ReadTimeout, options: [SettingKeyParam]),
         VerbTool.Create(context, "doctor",
             "Reports, as JSON, how each managed game would launch: prefix, Proton, tool runner, Steam launch options and launch lock.",
             readOnly: true, ["doctor"], takesLoadout: false, context.Limits.ReadTimeout, flags: ["--json"], reportsExitOne: true),

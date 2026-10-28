@@ -12,6 +12,8 @@ public record SettingsConfig(
 
 [PublicAPI]
 public record PropertyConfig(
+    string Name,
+    Type PropertyType,
     PropertyOptionsWrapper Options,
     IContainerOptions? ContainerOptions,
     Func<ISettingsManager, object> GetValue,
@@ -19,6 +21,12 @@ public record PropertyConfig(
     Action<ISettingsManager, object> Update
 )
 {
+    /// <summary>
+    /// The settings type and property name, e.g. `HttpProxySettings.HttpProxy`: stable, unlike the display name, and
+    /// what the command line and MCP tools address a setting by.
+    /// </summary>
+    public string Key(SettingsConfig owner) => $"{owner.Type.Name}.{Name}";
+
     public T GetValueCasted<T>(ISettingsManager settingsManager) => Cast<T>(GetValue(settingsManager));
     public T GetDefaultValueCasted<T>(ISettingsManager settingsManager) => Cast<T>(GetDefaultValue(settingsManager));
 
