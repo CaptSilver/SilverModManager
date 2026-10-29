@@ -105,6 +105,69 @@ public class Witcher3VortexOrderFormatTests(ITestOutputHelper helper)
         drop.Page.Should().Be("Load Order", "the page that holds this order, not the file-conflicts tab the default sink names");
     }
 
+    private (IReadOnlyList<ModOrderSourceEntry> Entries, IReadOnlyList<ModOrderDrop> Unmapped) ReadInstallIdFixture()
+    {
+        var root = JsonSerializer.Deserialize<CollectionRoot>(
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Witcher3", "Order", "Resources", "vortex-collection-install-ids.json")),
+            ServiceProvider.GetRequiredService<JsonSerializerOptions>())!;
+        return Format.Read(root.LoadOrder!.Value, root);
+    }
+
+    [Fact]
+    public void Read_JoinsSpacedCollectionInstallIdsByNexusModId()
+    {
+        var (entries, unmapped) = ReadInstallIdFixture();
+
+        unmapped.Should().BeEmpty();
+        entries.Select(e => (e.Reference.ModId, e.Reference.FileId)).Should().Equal(
+            (ModId.From(13530), FileId.From(101)), (ModId.From(13378), FileId.From(102)), (ModId.From(8060), FileId.From(103)),
+            (ModId.From(12954), FileId.From(104)), (ModId.From(12954), FileId.From(105)));
+    }
+
+    [Fact]
+    public void Read_DoesNotReadADateInTheInstallIdAsTheModId()
+    {
+        var (entries, _) = ReadInstallIdFixture();
+
+        // "Decoy Ten" has Nexus mod id 10; the "-10-" in 2026-10-12 must not join anything to it.
+        entries.Should().NotContain(e => e.Reference.ModId == ModId.From(10));
+    }
+
+    [Fact]
+    public void Read_PicksTheModWhoseVersionMatchesWhenTwoShareANexusModId()
+    {
+        var (entries, _) = ReadInstallIdFixture();
+
+        entries.Single(e => e.Reference.ModId == ModId.From(12954) && e.Reference.FileId == FileId.From(104)).Should().NotBeNull();
+        entries.Count(e => e.Reference.FileId == FileId.From(105)).Should().Be(1);
+    }
+
+    [Fact]
+    public void Read_DropsWhenTwoModsShareModIdAndVersion()
+    {
+        var root = JsonSerializer.Deserialize<CollectionRoot>(
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Witcher3", "Order", "Resources", "vortex-collection-install-ids.json")),
+            ServiceProvider.GetRequiredService<JsonSerializerOptions>())!;
+        var domain = root.Mods[0].DomainName;
+        Mod Twin(string name, uint file) => new() { Name = name, Version = "5.01.3", DomainName = domain, Source = new ModSource { Type = ModSourceType.NexusMods, ModId = ModId.From(12954), FileId = FileId.From(file) } };
+        var twins = new CollectionRoot { Info = root.Info, Mods = [Twin("One", 1), Twin("Two", 2)] };
+
+        var (entries, unmapped) = Format.Read(Json("""[{"id":"modX","modId":"Other 12954 5.01.3 2026-10-07T11-00Z aBcDeFgHi","data":{"prefix":2}}]"""), twins);
+
+        entries.Should().BeEmpty();
+        var drop = unmapped.Should().ContainSingle().Which;
+        drop.Reason.Should().Contain("12954");
+        drop.Page.Should().Be("Load Order");
+    }
+
+    [Fact]
+    public void Read_ParsesANameThatHoldsDigitsAndParentheses()
+    {
+        var (entries, _) = ReadInstallIdFixture();
+
+        entries.Should().Contain(e => e.Reference.ModId == ModId.From(8060) && e.Enabled == false);
+    }
+
     [Fact]
     public void Read_DoesNotGuessBetweenTwoModsThatShareANexusModId()
     {

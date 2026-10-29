@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 using SilverModManager.Abstractions.Collections.Json;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.LoadOrder;
@@ -24,9 +23,6 @@ public sealed class Witcher3VortexOrderFormat : IVortexOrderFormat
     private const string LoadOrderPage = "Load Order";
     private const string LockedPrefix = "mod0000_";
 
-    /// <summary>Vortex names an install <c>name-modId-version-timestamp</c>, so the first number between dashes is the Nexus mod id.</summary>
-    private static readonly Regex ModIdInName = new(@"-(?<modId>\d+)-", RegexOptions.CultureInvariant);
-
     public string Key => "loadOrder";
 
     /// <summary>
@@ -44,14 +40,15 @@ public sealed class Witcher3VortexOrderFormat : IVortexOrderFormat
             .OrderBy(entry => entry.Prefix ?? double.MaxValue)
             .ToArray();
 
-        var joiner = new ModJoiner(root.Mods);
+        var joiner = new VortexModJoiner(root.Mods);
         var entries = new List<ModOrderSourceEntry>();
         var placed = new HashSet<int>();
         foreach (var entry in listed)
         {
-            if (joiner.Find(entry.ModId) is not { } index)
+            var found = joiner.Find(entry.ModId);
+            if (found.Index is not { } index)
             {
-                drops.Add(new ModOrderDrop(entry.Name, $"no mod in the collection matches '{entry.ModId}'", LoadOrderPage));
+                drops.Add(new ModOrderDrop(entry.Name, found.Reason ?? "no mod in the collection matches the install id", LoadOrderPage));
                 continue;
             }
 
@@ -193,46 +190,4 @@ public sealed class Witcher3VortexOrderFormat : IVortexOrderFormat
         JsonValueKind.String when double.TryParse(value.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) => parsed,
         _ => null,
     };
-
-    /// <summary>Finds the mods[] entry a Vortex install id belongs to.</summary>
-    private sealed class ModJoiner(Mod[] mods)
-    {
-        /// <summary>
-        /// By the mod's logical file name, else its file expression (with or without the extension), else its name when
-        /// exactly one mod has it, else the Nexus mod id inside the install id when exactly one mod has it. Null when none
-        /// names a single mod.
-        /// </summary>
-        public int? Find(string modId)
-        {
-            for (var i = 0; i < mods.Length; i++)
-            {
-                if (Same(mods[i].Source.LogicalFilename, modId)) return i;
-            }
-
-            for (var i = 0; i < mods.Length; i++)
-            {
-                var expression = mods[i].Source.FileExpression.Path;
-                if (!string.IsNullOrEmpty(expression) && (Same(expression, modId) || Same(Path.GetFileNameWithoutExtension(expression), modId))) return i;
-            }
-
-            // A display name can be shared by two mods; it only counts when it names one.
-            var named = Enumerable.Range(0, mods.Length).Where(i => Same(mods[i].Name, modId)).ToArray();
-            if (named.Length == 1) return named[0];
-
-            if (ModIdInName.Match(modId) is not { Success: true } match || !uint.TryParse(match.Groups["modId"].Value, out var nexusId))
-                return null;
-
-            int? found = null;
-            for (var i = 0; i < mods.Length; i++)
-            {
-                if (mods[i].Source.Type != ModSourceType.NexusMods || mods[i].Source.ModId.Value != nexusId) continue;
-                if (found is not null) return null;
-                found = i;
-            }
-
-            return found;
-        }
-
-        private static bool Same(string? left, string right) => left is not null && left.Equals(right, StringComparison.OrdinalIgnoreCase);
-    }
 }

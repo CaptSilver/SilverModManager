@@ -1,0 +1,26 @@
+{
+  "info": { "name": "Vortex ids", "domainName": "witcher3" },
+  "mods": [
+    { "name": "Smooth Map - Map Remastered Version", "version": "1.0", "domainName": "witcher3",
+      "source": { "type": "nexus", "modId": 13530, "fileId": 101 } },
+    { "name": "Actual Items In Bestiary", "version": "1", "domainName": "witcher3",
+      "source": { "type": "nexus", "modId": 13378, "fileId": 102 } },
+    { "name": "Extended Death Screen 5.00.1 (Remastered)", "version": "5.00.1", "domainName": "witcher3",
+      "source": { "type": "nexus", "modId": 8060, "fileId": 103 } },
+    { "name": "BASE - All", "version": "5.01.3", "domainName": "witcher3",
+      "source": { "type": "nexus", "modId": 12954, "fileId": 104 } },
+    { "name": "Party At Chameleon Remastered Patch", "version": "5.00.3c", "domainName": "witcher3",
+      "source": { "type": "nexus", "modId": 12954, "fileId": 105 } },
+    { "name": "Decoy Ten", "version": "1.0", "domainName": "witcher3",
+      "source": { "type": "nexus", "modId": 10, "fileId": 106 } }
+  ],
+  "modRules": [],
+  "loadOrder": [
+    { "id": "mod0000_MergedFiles", "name": "mod0000_MergedFiles", "enabled": true, "modId": "mod0000_MergedFiles", "locked": true, "data": { "prefix": 0 } },
+    { "id": "modSmoothMap", "name": "Smooth Map (modSmoothMap)", "enabled": true, "modId": "Smooth Map - Map Remastered Version 13530 1.0 2026-10-12T17-56Z 864tMlsGA", "locked": false, "data": { "prefix": 2 } },
+    { "id": "modBestiary", "name": "Actual Items In Bestiary (modBestiary)", "enabled": true, "modId": "Actual Items In Bestiary 13378 1 2026-10-03T16-30Z yShfiQago", "locked": false, "data": { "prefix": 3 } },
+    { "id": "modDeathScreen", "name": "Extended Death Screen (modDeathScreen)", "enabled": false, "modId": "Extended Death Screen 5.00.1 (Remastered) 8060 5.00.1 2026-10-05T09-12Z Qw3rTyUiO", "locked": false, "data": { "prefix": 4 } },
+    { "id": "modBase", "name": "BASE - All (modBase)", "enabled": true, "modId": "BASE - All 12954 5.01.3 2026-10-07T11-00Z aBcDeFgHi", "locked": false, "data": { "prefix": 5 } },
+    { "id": "modChameleon", "name": "Party At Chameleon (modChameleon)", "enabled": true, "modId": "Party At Chameleon Remastered Patch 12954 5.00.3c 2026-10-07T11-05Z jKlMnOpQr", "locked": false, "data": { "prefix": 6 } }
+  ]
+}
