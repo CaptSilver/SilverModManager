@@ -105,6 +105,18 @@ internal sealed class SteamAppManifestWatcher : IHostedService, IDisposable
         }
     }
 
+    /// <summary>How many file watchers are armed. Exposed for tests.</summary>
+    internal int WatcherCount
+    {
+        get { lock (_lock) return _watchers.Count; }
+    }
+
+    /// <summary>True once a watcher is armed on the <c>steamapps</c> folder <paramref name="library"/>. Exposed for tests, which wait on it instead of sleeping.</summary>
+    internal bool IsWatching(string library)
+    {
+        lock (_lock) return _watchers.Any(w => w.Path == library && w.EnableRaisingEvents);
+    }
+
     /// <summary>Starts a watcher on every Steam library that holds a registered game and is not watched yet. Exposed for tests, which await it.</summary>
     internal void Watch()
     {
@@ -116,11 +128,13 @@ internal sealed class SteamAppManifestWatcher : IHostedService, IDisposable
 
         foreach (var library in libraries)
         {
+            // Reserved under the same lock as the check, so an overlapping Watch skips it.
             lock (_lock)
             {
-                if (_watchedLibraries.Contains(library)) continue;
+                if (!_watchedLibraries.Add(library)) continue;
             }
 
+            var armed = false;
             try
             {
                 var watcher = new FileSystemWatcher(library, "appmanifest_*.acf")
@@ -139,13 +153,21 @@ internal sealed class SteamAppManifestWatcher : IHostedService, IDisposable
                     else
                     {
                         _watchers.Add(watcher);
-                        _watchedLibraries.Add(library);
+                        armed = true;
                     }
                 }
             }
             catch (Exception e)
             {
                 _logger.LogWarning(e, "Cannot watch the Steam library at {Library} for game updates; an update is noticed at the next apply or restart", library);
+            }
+            finally
+            {
+                // Not armed (failed, or stopped): free the reservation so a later rescan can try again.
+                if (!armed)
+                {
+                    lock (_lock) _watchedLibraries.Remove(library);
+                }
             }
         }
     }

@@ -130,15 +130,34 @@ public sealed class SteamAppManifestWatcherTests : IDisposable
             .Returns(call => { call[1] = added.LocatorResult; lookedAt.Add("any"); return true; });
         using var watcher = new SteamAppManifestWatcher(_registry, Reaction(), NullLogger<SteamAppManifestWatcher>.Instance, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100));
         await watcher.StartAsync(TestContext.Current.CancellationToken);
-        await Task.Delay(300, TestContext.Current.CancellationToken);
+        await WaitFor(() => watcher.IsWatching(_steamapps));
+        watcher.IsWatching(second).Should().BeFalse("the registry does not hold the second library yet");
 
         installations = [first, added];
-        await Task.Delay(500, TestContext.Current.CancellationToken);
+        await WaitFor(() => watcher.IsWatching(second));
+        watcher.IsWatching(second).Should().BeTrue("a rescan arms the library once the registry has it");
         lookedAt.Clear();
         await File.WriteAllTextAsync(Path.Combine(second, "appmanifest_2.acf"), "x", TestContext.Current.CancellationToken);
 
         await WaitFor(() => !lookedAt.IsEmpty);
         lookedAt.Should().NotBeEmpty("the library registered after start is watched too");
+    }
+
+    [Fact]
+    public async Task OverlappingWatchCalls_ArmEachLibraryOnce()
+    {
+        var installation = Installation(GameStore.Steam, Path.Combine(_steamapps, "common", "Game"));
+        _registry.LocateGameInstallations().Returns([installation]);
+        using var watcher = Watcher();
+        using var barrier = new Barrier(8);
+
+        await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(() =>
+        {
+            barrier.SignalAndWait();
+            watcher.Watch();
+        }, TestContext.Current.CancellationToken)));
+
+        watcher.WatcherCount.Should().Be(1);
     }
 
     private sealed class CapturingLogger<T> : Microsoft.Extensions.Logging.ILogger<T>
