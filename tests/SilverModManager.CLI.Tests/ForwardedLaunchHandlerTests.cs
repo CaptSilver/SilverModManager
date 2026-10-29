@@ -113,7 +113,7 @@ public class ForwardedLaunchHandlerTests
 
         LaunchRun.RelayStop(logger, stop, context);
 
-        logger.Messages.Should().ContainSingle().Which.Should().Contain(signal.ToString());
+        logger.Messages.Should().ContainSingle().Which.Should().StartWith("Information:").And.Contain(signal.ToString());
         context.Cancel.Should().BeTrue("the signal must not kill the process before the window has ended the game");
         stop.IsCancellationRequested.Should().BeTrue();
     }

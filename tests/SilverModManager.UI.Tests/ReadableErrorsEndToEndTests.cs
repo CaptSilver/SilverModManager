@@ -1,3 +1,4 @@
+using SilverModManager.Platform.Proton.Launch;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using SilverModManager.App.UI;
@@ -137,7 +138,8 @@ public class ReadableErrorsEndToEndTests(IServiceProvider provider) : AUiTest(pr
             Connection,
             wiring.Jobs,
             wiring.With((typeof(ISynchronizerService), synchronizer)),
-            Provider.GetRequiredService<GameRunningTracker>())
+            Provider.GetRequiredService<GameRunningTracker>(),
+            new ActiveLaunchSessions(null))
         {
             LoadoutId = loadout.LoadoutId,
         };

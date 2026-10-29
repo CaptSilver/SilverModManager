@@ -17,6 +17,7 @@ using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
 using NSubstitute;
 using SilverModManager.UI.Tests.Helpers;
 using ReactiveUI;
@@ -41,7 +42,7 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         public LaunchButtonViewModel ViewModel = null!;
     }
 
-    private async Task<Rig> Build(PresenterRig? presenter = null, Func<Exception>? failure = null, bool withoutRunTool = false, TimeProvider? clock = null, ActiveLaunchSessions? sessions = null)
+    private async Task<Rig> Build(PresenterRig? presenter = null, Func<Exception>? failure = null, bool withoutRunTool = false, TimeProvider? clock = null, ActiveLaunchSessions? sessions = null, IConnection? connection = null)
     {
         var rig = new Rig();
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Launch button");
@@ -69,12 +70,12 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         rig.ViewModel = new LaunchButtonViewModel(
             NullLogger<ILaunchButtonViewModel>.Instance,
             toolManager,
-            Connection,
+            connection ?? Connection,
             monitor,
             presenter?.Services ?? Provider,
             Provider.GetRequiredService<GameRunningTracker>(),
-            clock,
-            sessions)
+            sessions ?? new ActiveLaunchSessions(null),
+            clock)
         {
             LoadoutId = loadout.LoadoutId,
         };
@@ -217,6 +218,38 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         registration.Dispose();
         await Eventually(() => rig.ViewModel.Label == Language.LaunchButtonViewModel_LaunchGame_LAUNCH);
         (await rig.ViewModel.IsRunningObservable.FirstAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ActivatingTheButtonReadsTheDatabaseOffTheActivatingThread()
+    {
+        var threads = new List<int>();
+        var recording = Substitute.For<IConnection>();
+        recording.Db.Returns(_ =>
+        {
+            lock (threads) threads.Add(Environment.CurrentManagedThreadId);
+            return Connection.Db;
+        });
+        var rig = await Build(connection: recording);
+        lock (threads) threads.Clear();
+
+        // A thread of its own stands in for the UI thread, which activates the button.
+        var activated = new TaskCompletionSource<(int Caller, IDisposable Activation)>();
+        var thread = new Thread(() => activated.SetResult((Environment.CurrentManagedThreadId, rig.ViewModel.Activator.Activate()))) { IsBackground = true };
+        thread.Start();
+        var (caller, activation) = await activated.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        using var _ = activation;
+
+        await Eventually(() => { lock (threads) return threads.Count > 0; });
+        lock (threads) threads.Should().NotContain(caller, "the installation lookup must not run on the thread that activates the button");
+    }
+
+    [Fact]
+    public async Task IsRunningObservable_IsOneSharedChain()
+    {
+        var rig = await Build();
+
+        rig.ViewModel.IsRunningObservable.Should().BeSameAs(rig.ViewModel.IsRunningObservable);
     }
 
     [Fact]

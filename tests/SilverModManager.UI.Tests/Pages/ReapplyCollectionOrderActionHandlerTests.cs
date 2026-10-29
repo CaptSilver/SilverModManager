@@ -71,6 +71,11 @@ public class ReapplyCollectionOrderActionHandlerTests(IServiceProvider provider)
             {
                 outcome.SetException(e.InnerExceptions);
             }
+            catch (Exception e)
+            {
+                // A synchronous throw from the command must fail the test, not kill this thread and hang it.
+                outcome.SetException(e);
+            }
         }) { IsBackground = true };
         thread.Start();
         return (started.Task.GetAwaiter().GetResult(), outcome.Task);
