@@ -1,3 +1,4 @@
+using System.Reactive.Linq;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
@@ -245,6 +246,45 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
 
         rows["Mine.pak"].Should().Be(FileIdentity.XxHash3(hash).ToHex());
         rows["FromGame.pak"].Should().Be(FileIdentity.XxHash3(Hash.From(0xAB)).ToHex());
+    }
+
+    [Fact]
+    public async Task APakRowsLoadoutData_CarriesTheIdentityOfItsFile()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        Hash hash;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var group = AddEmptyGroup(tx, loadout.LoadoutId, "Mod");
+            AddFile(tx, loadout.LoadoutId, group, PakPath("Mine.pak"), "Mine.pak", out hash, out _);
+            await tx.Commit();
+        }
+        await AddGameInstalledPaks(loadout, "FromGame.pak");
+        await variety.ReconcileSortOrder(id);
+
+        var rows = variety.GetSortOrderItems(id, Db).ToDictionary(r => r.DisplayName, r => ((Bg3PakLoadoutData)r.LoadoutData!).Identity);
+
+        rows["Mine.pak"].Should().Be(FileIdentity.XxHash3(hash));
+        rows["FromGame.pak"].Should().Be(FileIdentity.XxHash3(Hash.From(0xAB)));
+    }
+
+    [Fact]
+    public async Task ALiveRowsLoadoutData_CarriesTheIdentityOfItsFile()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        Hash hash;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var group = AddEmptyGroup(tx, loadout.LoadoutId, "Mod");
+            AddFile(tx, loadout.LoadoutId, group, PakPath("Mine.pak"), "Mine.pak", out hash, out _);
+            await tx.Commit();
+        }
+        await variety.ReconcileSortOrder(id);
+
+        var changes = await variety.GetSortOrderItemsChangeSet(id).FirstAsync();
+
+        var item = changes.Select(c => c.Current).Single();
+        ((Bg3PakLoadoutData)item.LoadoutData!).Identity.Should().Be(FileIdentity.XxHash3(hash));
     }
 
     private EntityId StoredRowId(SortOrderId id, string name) =>

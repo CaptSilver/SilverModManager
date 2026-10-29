@@ -18,7 +18,7 @@ CREATE MACRO plugins.LoadoutPlugins(db, loadoutId, gameLocationId, dataFolder) A
 WITH candidates AS (
     SELECT
         regexp_extract(file.TargetPath.Item3, '[^/]+$') AS Name,
-        file_hashes.xxhash3_identity(enabledState.Hash) AS Identity,
+        enabledState.Identity AS Identity,
         enabledState.IsEnabled AS IsEnabled,
         groupItem.Name AS ModName,
         groupItem.Id AS ModGroupId,
@@ -28,7 +28,7 @@ WITH candidates AS (
     JOIN mdb_LoadoutItemGroup(Db=>db) AS groupItem ON file.Parent = groupItem.Id
     WHERE file.TargetPath.Item1 = loadoutId
         AND file.TargetPath.Item2 = gameLocationId
-        AND enabledState.Hash IS NOT NULL
+        AND enabledState.Identity IS NOT NULL
         AND NOT enabledState.IsDeleted
         AND lower(regexp_replace(file.TargetPath.Item3, '/?[^/]+$', '')) = lower(dataFolder)
         AND lower(regexp_extract(file.TargetPath.Item3, '\.[^./]+$')) IN ('.esm', '.esp', '.esl', '.omwaddon', '.omwgame', '.omwscripts')

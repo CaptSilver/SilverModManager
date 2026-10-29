@@ -10,6 +10,7 @@ using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
 using SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
 using SilverModManager.Games.Larian.BaldursGate3.Utils.PakParsing;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using DynamicData.Kernel;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
@@ -30,7 +31,7 @@ public sealed class Bg3PakModules
     private readonly ILogger<Bg3PakModules> _logger;
 
     // The result is null for a pak that cannot be read, so it is not opened again until its content changes.
-    private readonly ConcurrentDictionary<(string Name, Hash Hash), ModsettingsDocument.ModuleEntry?> _diskReads = new();
+    private readonly ConcurrentDictionary<(string Name, FileIdentity Identity), ModsettingsDocument.ModuleEntry?> _diskReads = new();
 
     public Bg3PakModules(IServiceProvider provider)
     {
@@ -90,7 +91,7 @@ public sealed class Bg3PakModules
     {
         try
         {
-            var resource = await _metadataPipeline.LoadResourceAsync(data.Hash, token);
+            var resource = await _metadataPipeline.LoadResourceAsync(data.Identity.XxHash3(), token);
             if (resource.Data.Exception is { } error)
             {
                 _logger.LogWarning(error, "Unable to read the module of `{Name}`, it is left out of the mod list", data.Name);
@@ -122,7 +123,7 @@ public sealed class Bg3PakModules
                 Md5: Or(stored.Md5, ""));
         }
 
-        return _diskReads.GetOrAdd((data.Name, data.Hash), static (_, state) => ReadFromDisk(state.loadout, state.data.Name, state.logger), (loadout, data, logger: _logger));
+        return _diskReads.GetOrAdd((data.Name, data.Identity), static (_, state) => ReadFromDisk(state.loadout, state.data.Name, state.logger), (loadout, data, logger: _logger));
     }
 
     private static string Or(Optional<string> value, string fallback) => value.HasValue ? value.Value : fallback;

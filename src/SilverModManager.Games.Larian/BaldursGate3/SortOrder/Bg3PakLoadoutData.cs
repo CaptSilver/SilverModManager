@@ -1,8 +1,8 @@
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
-using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Games.Larian.BaldursGate3.SortOrder;
 
@@ -14,7 +14,7 @@ namespace SilverModManager.Games.Larian.BaldursGate3.SortOrder;
 /// <param name="ModGroupId">The mod that supplies the pak, or the game-installed item for a pak the game installed.</param>
 public sealed record Bg3PakLoadoutData(
     string Name,
-    Hash Hash,
+    FileIdentity Identity,
     bool IsEnabled,
     string ModName,
     EntityId? ModGroupId,

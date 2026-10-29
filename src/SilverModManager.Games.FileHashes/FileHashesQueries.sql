@@ -85,21 +85,21 @@ SELECT files.Loadout, files.File PathId FROM files;
 -- Upper case, the spelling of FileIdentity.ToHex, so count(DISTINCT Identity) and string compares agree.
 CREATE OR REPLACE MACRO file_hashes.xxhash3_identity(h) AS '01' || upper(lpad(to_hex(h), 16, '0'));
 
--- every path row of the hash store called `store`, resolved to its path, hash, identity and size
+-- every path row of the hash store called `store`, resolved to its path, identity and size
 CREATE OR REPLACE MACRO file_hashes.store_path_hashes(store) AS TABLE
-SELECT pathRel.Id, pathRel.Path, hashRel.xxHash3 Hash, file_hashes.xxhash3_identity(hashRel.xxHash3) AS Identity, hashRel.Size
+SELECT pathRel.Id, pathRel.Path, file_hashes.xxhash3_identity(hashRel.xxHash3) AS Identity, hashRel.Size
 FROM MDB_PathHashRelation(DBName=>store) pathRel
 INNER JOIN MDB_hashrelation(DBName=>store) hashRel ON pathRel.Hash = hashRel.Id;
 
--- gets the paths and hashes of game files in loadouts from the one hash store called `store`. Row ids only mean
+-- gets the paths and identities of game files in loadouts from the one hash store called `store`. Row ids only mean
 -- something inside their own store, so each store resolves its rows to values here and only the values leave.
 CREATE OR REPLACE MACRO file_hashes.hash_store_loadout_files(db, store) AS TABLE
 WITH 
-       relations AS (SELECT Id, Path, Hash, Identity, Size FROM file_hashes.store_path_hashes(store)),
+       relations AS (SELECT Id, Path, Identity, Size FROM file_hashes.store_path_hashes(store)),
        files AS (SELECT Loadout, PathId FROM file_hashes.gog_loadout_files(db, store)
               UNION
               SELECT Loadout, PathId FROM file_hashes.steam_loadout_files(db, store))
-SELECT files.Loadout, relations.Path, relations.Hash, relations.Identity, relations.Size FROM files
+SELECT files.Loadout, relations.Path, relations.Identity, relations.Size FROM files
 INNER JOIN relations ON files.PathId = relations.Id;
 
 -- The ids a baseline or loadout is compared by: a set, so order and repeats do not matter, and case-insensitive
@@ -117,19 +117,19 @@ FROM MDB_LOADOUT(Db=>db) loadout
          INNER JOIN MDB_LOCALBASELINE(DbName=>'local_hashes') baseline ON baseline.Store = install.Store AND baseline.GamePath = install.Path
 WHERE file_hashes.locator_id_set(baseline.LocatorIds) = file_hashes.locator_id_set(loadout.LocatorIds);
 
--- gets the paths and hashes of the files each loadout's local baseline classified as vanilla
+-- gets the paths and identities of the files each loadout's local baseline classified as vanilla
 CREATE OR REPLACE MACRO file_hashes.local_baseline_files(db) AS TABLE
 WITH
        files AS (SELECT Loadout, unnest(baseline.Files) PathId
                  FROM file_hashes.loadout_baselines(db) baselines
                           INNER JOIN MDB_LOCALBASELINE(DbName=>'local_hashes') baseline ON baseline.Id = baselines.BaselineId)
-SELECT files.Loadout, relations.Path, relations.Hash, relations.Identity, relations.Size FROM files
+SELECT files.Loadout, relations.Path, relations.Identity, relations.Size FROM files
 INNER JOIN file_hashes.store_path_hashes('local_hashes') relations ON files.PathId = relations.Id;
 
 -- the files each loadout's local baseline recorded from the depot manifest without reading them. They have no
--- xxHash3, so Hash is NULL; the identity is the kind byte 02 and the SHA-1 as the attribute stores it.
+-- xxHash3; the identity is the kind byte 02 and the SHA-1 as the attribute stores it.
 CREATE OR REPLACE MACRO file_hashes.local_baseline_attested(db) AS TABLE
-SELECT baselines.Loadout, attested.Path, CAST(NULL AS UBIGINT) Hash, '02' || hex(attested.Sha1) AS Identity, attested.Size
+SELECT baselines.Loadout, attested.Path, '02' || hex(attested.Sha1) AS Identity, attested.Size
 FROM file_hashes.loadout_baselines(db) baselines
          INNER JOIN MDB_ATTESTEDFILE(DbName=>'local_hashes') attested ON attested.Baseline = baselines.BaselineId;
 
@@ -154,13 +154,13 @@ FROM file_hashes.loadout_baselines(db) baselines
 -- Paths compare as strings, case-sensitively.
 CREATE MACRO file_hashes.loadout_files(db) AS TABLE
 WITH
-       stored AS (SELECT Loadout, Path, Hash, Identity, Size FROM file_hashes.hash_store_loadout_files(db, 'hashes')
+       stored AS (SELECT Loadout, Path, Identity, Size FROM file_hashes.hash_store_loadout_files(db, 'hashes')
                   UNION
-                  SELECT Loadout, Path, Hash, Identity, Size FROM file_hashes.hash_store_loadout_files(db, 'local_hashes')),
+                  SELECT Loadout, Path, Identity, Size FROM file_hashes.hash_store_loadout_files(db, 'local_hashes')),
        classified AS (SELECT Loadout, Path FROM file_hashes.local_baseline_paths(db))
-SELECT Loadout, Path, Hash, Identity, Size FROM stored
+SELECT Loadout, Path, Identity, Size FROM stored
 WHERE NOT EXISTS (SELECT 1 FROM classified WHERE classified.Loadout = stored.Loadout AND classified.Path = stored.Path)
 UNION
-SELECT Loadout, Path, Hash, Identity, Size FROM file_hashes.local_baseline_files(db)
+SELECT Loadout, Path, Identity, Size FROM file_hashes.local_baseline_files(db)
 UNION
-SELECT Loadout, Path, Hash, Identity, Size FROM file_hashes.local_baseline_attested(db);
+SELECT Loadout, Path, Identity, Size FROM file_hashes.local_baseline_attested(db);

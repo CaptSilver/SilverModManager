@@ -314,11 +314,13 @@ public sealed class LookupsReadBothStoresTests : IDisposable
         return new GameInstallation(locatorResult, default);
     }
 
-    private static List<(RelativePath Path, Hash Hash, Size Size)> LoadoutFiles(IConnection main, EntityId loadout)
+    private static List<(RelativePath Path, FileIdentity Identity, Size Size)> LoadoutFiles(IConnection main, EntityId loadout)
     {
-        return main.Query<(RelativePath Path, Hash Hash, Size Size)>(
-            $"SELECT Path, Hash, Size FROM file_hashes.loadout_files({main.Db}) WHERE Loadout = {loadout.Value}"
-        ).ToList();
+        return main.Query<(RelativePath Path, string Identity, Size Size)>(
+                $"SELECT Path, Identity, Size FROM file_hashes.loadout_files({main.Db}) WHERE Loadout = {loadout.Value}"
+            )
+            .Select(row => (row.Path, FileIdentity.ParseHex(row.Identity), row.Size))
+            .ToList();
     }
 
     private static async Task<Hash> HashOf(string content)

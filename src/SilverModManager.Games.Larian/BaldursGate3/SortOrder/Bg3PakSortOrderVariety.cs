@@ -5,9 +5,9 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.Larian.BaldursGate3.ModList;
 using SilverModManager.Games.Larian.BaldursGate3.Models;
-using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
 using OneOf;
 using LoadoutSortOrder = SilverModManager.Abstractions.Loadouts.SortOrder;
@@ -89,15 +89,15 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
 
         // The query layer cannot read a value tuple of more than seven columns, so the owning mod's two flags
         // travel as one number and are split again below.
-        return Connection.Query<(string PakName, int SortIndex, bool IsEnabled, Hash Hash, string ModName, EntityId? ModGroupId, int LoadoutState)>($"""
-                SELECT PakName, SortIndex, IsEnabled, Hash, ModName, ModGroupId,
+        return Connection.Query<(string PakName, int SortIndex, bool IsEnabled, string Identity, string ModName, EntityId? ModGroupId, int LoadoutState)>($"""
+                SELECT PakName, SortIndex, IsEnabled, Identity, ModName, ModGroupId,
                     CASE WHEN LoadoutIsEnabled THEN 1 ELSE 0 END + CASE WHEN IsGameInstalled THEN 2 ELSE 0 END AS LoadoutState
                 FROM bg3.LiveSortOrderItems({Connection}, {sortOrderId.Value}, {loadoutId}, {ModsLocation})
                 """)
             .Observe(row => Bg3PakSortData.KeyFor(row.PakName))
             .Transform(row =>
             {
-                var data = new Bg3PakLoadoutData(row.PakName, row.Hash, (row.LoadoutState & LoadoutStateEnabled) != 0, row.ModName, row.ModGroupId, (row.LoadoutState & LoadoutStateGameInstalled) != 0);
+                var data = new Bg3PakLoadoutData(row.PakName, FileIdentity.ParseHex(row.Identity), (row.LoadoutState & LoadoutStateEnabled) != 0, row.ModName, row.ModGroupId, (row.LoadoutState & LoadoutStateGameInstalled) != 0);
                 return new Bg3PakReactiveSortItem(row.SortIndex, row.PakName, row.IsEnabled, data);
             });
     }
@@ -306,7 +306,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     {
         var dbToUse = db ?? Connection.Db;
         return QueryLoadoutPaks(loadoutId, dbToUse)
-            .Select(row => new Bg3PakLoadoutData(row.Name, row.Hash, row.IsEnabled, row.ModName, row.ModGroupId, row.IsGameInstalled))
+            .Select(row => new Bg3PakLoadoutData(row.Name, row.Identity, row.IsEnabled, row.ModName, row.ModGroupId, row.IsGameInstalled))
             .ToList();
     }
 
@@ -435,7 +435,8 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         return Reconcile(current, loadoutData, key => !visible.Contains(key) ? tombstones.GetValueOrDefault(key) : null);
     }
 
-    private IEnumerable<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)> QueryLoadoutPaks(LoadoutId loadoutId, IDb db) =>
-        db.Connection.Query<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)>(
-            $"SELECT Name, Hash, IsEnabled, ModName, ModGroupId, IsGameInstalled FROM bg3.LoadoutPaks({db}, {loadoutId}, {ModsLocation})");
+    private IEnumerable<(string Name, FileIdentity Identity, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)> QueryLoadoutPaks(LoadoutId loadoutId, IDb db) =>
+        db.Connection.Query<(string Name, string Identity, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)>(
+            $"SELECT Name, Identity, IsEnabled, ModName, ModGroupId, IsGameInstalled FROM bg3.LoadoutPaks({db}, {loadoutId}, {ModsLocation})")
+        .Select(row => (row.Name, FileIdentity.ParseHex(row.Identity), row.IsEnabled, row.ModName, row.ModGroupId, row.IsGameInstalled));
 }

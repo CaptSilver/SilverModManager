@@ -12,8 +12,7 @@ CREATE MACRO bg3.LoadoutPaks(db, loadoutId, modsLocationId) AS TABLE
 WITH candidates AS (
     SELECT
         file.TargetPath.Item3 AS Name,
-        enabledState.Hash AS Hash,
-        file_hashes.xxhash3_identity(enabledState.Hash) AS Identity,
+        enabledState.Identity AS Identity,
         enabledState.IsEnabled AS IsEnabled,
         groupItem.Name AS ModName,
         groupItem.Id AS ModGroupId,
@@ -23,14 +22,13 @@ WITH candidates AS (
     JOIN mdb_LoadoutItemGroup(Db=>db) AS groupItem ON file.Parent = groupItem.Id
     WHERE file.TargetPath.Item1 = loadoutId
         AND file.TargetPath.Item2 = modsLocationId
-        AND enabledState.Hash IS NOT NULL
+        AND enabledState.Identity IS NOT NULL
         AND NOT enabledState.IsDeleted
         AND file.TargetPath.Item3 NOT LIKE '%/%'
         AND lower(file.TargetPath.Item3) LIKE '%.pak'
     UNION ALL
     SELECT
         gameFile.Path.Item3 AS Name,
-        gameFile.Hash AS Hash,
         file_hashes.xxhash3_identity(gameFile.Hash) AS Identity,
         groupItem.Disabled = FALSE AS IsEnabled,
         item.Name AS ModName,
@@ -44,7 +42,7 @@ WITH candidates AS (
         AND gameFile.Path.Item3 NOT LIKE '%/%'
         AND lower(gameFile.Path.Item3) LIKE '%.pak'
 )
-SELECT Name, Hash, Identity, IsEnabled, ModName, ModGroupId, IsGameInstalled
+SELECT Name, Identity, IsEnabled, ModName, ModGroupId, IsGameInstalled
 FROM (
     SELECT
         candidates.*,
@@ -74,7 +72,6 @@ SELECT
     s.SortIndex,
     s.IsEnabled,
     s.Id,
-    p.Hash,
     p.Identity,
     p.IsEnabled AS LoadoutIsEnabled,
     p.ModName,

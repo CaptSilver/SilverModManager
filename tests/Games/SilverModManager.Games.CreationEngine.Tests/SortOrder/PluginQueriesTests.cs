@@ -127,6 +127,8 @@ public class PluginQueriesTests(ITestOutputHelper helper)
         rows.Should().Contain(r => r.Name == "Skyrim.esm").And.Contain(r => r.Name == "FromMod.esp", "both a game file and a mod's plugin are listed");
         rows.Should().OnlyContain(r => FileIdentity.ParseHex(r.Identity).Kind == HashKind.XxHash3);
         rows.Single(r => r.Name == "FromMod.esp").Identity.Should().Be(FileIdentity.XxHash3(modFileHash).ToHex());
+        var vanillaHash = (await MultiHasher.HashStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes($"vanilla {DataFolder}/Skyrim.esm")))).XxHash3;
+        rows.Single(r => r.Name == "Skyrim.esm").Identity.Should().Be(FileIdentity.XxHash3(vanillaHash).ToHex(), "a game row keeps the digest of its seeded bytes");
     }
 
     [Fact]

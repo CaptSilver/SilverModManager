@@ -65,13 +65,13 @@ public sealed class LoadoutFilesQueryTests : IDisposable
         await HashRows.AddSteamManifest(_local, 1002, ("b.esm", "local one"), ("b2.esm", "local two"));
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001", "1002");
 
-        var rows = LoadoutFiles(loadout).ToDictionary(r => r.Path.ToString(), r => r.Hash);
+        var rows = LoadoutFiles(loadout).ToDictionary(r => r.Path.ToString(), r => r.Identity);
 
         rows.Should().HaveCount(4);
-        rows["a.esm"].Should().Be(await HashOf("central one"));
-        rows["a2.esm"].Should().Be(await HashOf("central two"));
-        rows["b.esm"].Should().Be(await HashOf("local one"));
-        rows["b2.esm"].Should().Be(await HashOf("local two"));
+        rows["a.esm"].Should().Be(FileIdentity.XxHash3(await HashOf("central one")));
+        rows["a2.esm"].Should().Be(FileIdentity.XxHash3(await HashOf("central two")));
+        rows["b.esm"].Should().Be(FileIdentity.XxHash3(await HashOf("local one")));
+        rows["b2.esm"].Should().Be(FileIdentity.XxHash3(await HashOf("local two")));
     }
 
     [Fact]
@@ -142,7 +142,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
 
         var rows = LoadoutFiles(loadout);
 
-        rows.Should().ContainSingle().Which.Hash.Should().Be(await HashOf("local y"));
+        rows.Should().ContainSingle().Which.Identity.Should().Be(FileIdentity.XxHash3(await HashOf("local y")));
     }
 
     [Fact]
@@ -220,16 +220,17 @@ public sealed class LoadoutFilesQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task LoadoutFiles_IdentityIsTheXxHash3IdentityOfTheRowsHash()
+    public async Task LoadoutFiles_IdentityIsTheXxHash3IdentityOfTheStoredFile()
     {
         await HashRows.AddSteamManifest(_central, 1001, ("a.esm", "central file"), ("b.esm", "another file"));
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001");
 
-        var rows = _main.Query<(RelativePath Path, Hash Hash, string Identity)>(
-            $"SELECT Path, Hash, Identity FROM file_hashes.loadout_files({_main.Db}) WHERE Loadout = {loadout.Value}").ToList();
+        var rows = _main.Query<(RelativePath Path, string Identity)>(
+            $"SELECT Path, Identity FROM file_hashes.loadout_files({_main.Db}) WHERE Loadout = {loadout.Value}").ToList();
 
         rows.Should().HaveCount(2);
-        rows.Should().OnlyContain(r => FileIdentity.ParseHex(r.Identity).Equals(FileIdentity.XxHash3(r.Hash)));
+        rows.Single(r => r.Path.ToString() == "a.esm").Identity.Should().Be(FileIdentity.XxHash3(await HashOf("central file")).ToHex());
+        rows.Single(r => r.Path.ToString() == "b.esm").Identity.Should().Be(FileIdentity.XxHash3(await HashOf("another file")).ToHex());
     }
 
     [Fact]
@@ -239,13 +240,12 @@ public sealed class LoadoutFilesQueryTests : IDisposable
         await HashRows.AddAttestedFile(_local, 1002, "a.esm", "attested file");
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1002");
 
-        var rows = _main.Query<(RelativePath Path, Hash? Hash, string Identity, Size Size)>(
-            $"SELECT Path, Hash, Identity, Size FROM file_hashes.loadout_files({_main.Db}) WHERE Loadout = {loadout.Value}").ToList();
+        var rows = _main.Query<(RelativePath Path, string Identity, Size Size)>(
+            $"SELECT Path, Identity, Size FROM file_hashes.loadout_files({_main.Db}) WHERE Loadout = {loadout.Value}").ToList();
 
         var expected = (await MultiHasher.HashStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes("attested file"))));
         var row = rows.Should().ContainSingle().Subject;
         row.Path.ToString().Should().Be("a.esm");
-        row.Hash.Should().BeNull("nothing was read, so there is no xxHash3 to list");
         FileIdentity.ParseHex(row.Identity).Should().Be(FileIdentity.Sha1(expected.Sha1), "hex() over the Sha1 column gives the digits the service builds");
         row.Size.Should().Be(expected.Size);
     }
@@ -328,11 +328,13 @@ public sealed class LoadoutFilesQueryTests : IDisposable
         hex.Should().Be(FileIdentity.XxHash3(Hash.From(value)).ToHex(), "count(DISTINCT Identity) and string compares need one spelling");
     }
 
-    private List<(RelativePath Path, Hash Hash, Size Size)> LoadoutFiles(EntityId loadout)
+    private List<(RelativePath Path, FileIdentity Identity, Size Size)> LoadoutFiles(EntityId loadout)
     {
-        return _main.Query<(RelativePath Path, Hash Hash, Size Size)>(
-            $"SELECT Path, Hash, Size FROM file_hashes.loadout_files({_main.Db}) WHERE Loadout = {loadout.Value}"
-        ).ToList();
+        return _main.Query<(RelativePath Path, string Identity, Size Size)>(
+                $"SELECT Path, Identity, Size FROM file_hashes.loadout_files({_main.Db}) WHERE Loadout = {loadout.Value}"
+            )
+            .Select(row => (row.Path, FileIdentity.ParseHex(row.Identity), row.Size))
+            .ToList();
     }
 
     private static async Task<Hash> HashOf(string content)
