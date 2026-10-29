@@ -139,4 +139,24 @@ public class Witcher3SynchronizerTests(ITestOutputHelper helper)
         game.Combine("Mods/modX/content/a.ws").FileExists.Should().BeFalse();
         GameFolderNames().Should().NotContain("mods");
     }
+
+    [Fact]
+    public async Task AModDisabledBeforeTheRepairingApplyIsRemovedByThatApply()
+    {
+        var loadout = await CreateLoadout();
+        await AddModFile(loadout, "mods/modX/content/a.ws", "class A {}");
+        await new UnrepairedSynchronizer(ServiceProvider, Game, (ALoadoutSynchronizer)Synchronizer).Synchronize(Refresh(loadout));
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            foreach (var group in LoadoutItemGroup.All(Connection.Db).Where(g => g.AsLoadoutItem().Name.StartsWith("mod mods/", StringComparison.Ordinal)))
+                tx.Add(group.Id, LoadoutItem.Disabled, Null.Instance);
+            await tx.Commit();
+        }
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        var game = GameInstallation.Locations[LocationId.Game].Path;
+        game.Combine("Mods/modX/content/a.ws").FileExists.Should().BeFalse();
+        game.Combine("mods/modX/content/a.ws").FileExists.Should().BeFalse();
+    }
 }

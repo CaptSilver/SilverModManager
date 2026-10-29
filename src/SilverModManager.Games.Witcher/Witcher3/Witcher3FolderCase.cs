@@ -32,7 +32,8 @@ internal static class Witcher3FolderCase
 
     // The attribute holding a path compares text without regard to case, so one transaction that swaps a path
     // for its re-cased twin cancels itself out. The row passes through a different spelling instead, and a path
-    // found still carrying the marker (the process died between the two commits) is finished first.
+    // found still carrying the marker (the process died between the two commits) is finished first. Each commit is a
+    // loadout revision, so anything watching the loadout can see paths ending in the marker between the two.
     private const string Marker = "~recase";
 
     private readonly record struct Change(EntityId Row, GamePathParentAttribute Attribute, (EntityId Parent, LocationId Location, RelativePath Path) Old, string Canonical);

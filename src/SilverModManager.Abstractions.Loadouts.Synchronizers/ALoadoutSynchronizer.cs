@@ -296,22 +296,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <inheritdoc />
     public void MergeStates(IEnumerable<PathPartPair> currentState, IEnumerable<PathPartPair> previousTree, Dictionary<GamePath, SyncNode> loadoutItems)
     {
-        foreach (var node in previousTree)
-        {
-            ref var existing = ref CollectionsMarshal.GetValueRefOrAddDefault(loadoutItems, node.Path, out var exists);
-            if (exists)
-            {
-                existing.Previous = node.Part;
-            }
-            else
-            {
-                existing = new SyncNode
-                {
-                    Previous = node.Part,
-                };
-            }
-        }
-        
+        // Disk first: paths compare without regard to case, so the spelling a node is keyed by is the first one
+        // added, and a delete must name the file as it is on disk now, not as an earlier sync recorded it.
         foreach (var node in currentState)
         {
             ref var existing = ref CollectionsMarshal.GetValueRefOrAddDefault(loadoutItems, node.Path, out var exists);
@@ -324,6 +310,22 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 existing = new SyncNode
                 {
                     Disk = node.Part,
+                };
+            }
+        }
+
+        foreach (var node in previousTree)
+        {
+            ref var existing = ref CollectionsMarshal.GetValueRefOrAddDefault(loadoutItems, node.Path, out var exists);
+            if (exists)
+            {
+                existing.Previous = node.Part;
+            }
+            else
+            {
+                existing = new SyncNode
+                {
+                    Previous = node.Part,
                 };
             }
         }
@@ -1240,6 +1242,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // Reconcile sees the fresh disk state, and the game's preparation sees the group it writes.
         loadout = await ReconcileGameInstalledContent(loadout, metadata, cancellationToken);
         loadout = await PrepareLoadoutForSync(loadout);
+
+        // The preparation can respell recorded disk state, and the tree reads the state it left, not the snapshot taken before.
+        metadata = GameInstallMetadata.Load(Connection.Db, metadata.Id);
 
         var tree = BuildSyncTreeFromIndex(loadout, metadata);
         ProcessSyncTree(tree);
