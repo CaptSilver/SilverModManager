@@ -249,8 +249,8 @@ public sealed class Connection : IConnection
                 var observeDatomsEvent = events[i] as IObserveDatomsEvent;
                 Debug.Assert(observeDatomsEvent is not null);
 
-                var (from, to, observer) = observeDatomsEvent.Prime(Db);
-                _datomObservers.Add(from, to, observer);
+                if (TryPrime(observeDatomsEvent, out var primed))
+                    _datomObservers.Add(primed.From, primed.To, primed.Observer);
             }
         }
         else
@@ -262,8 +262,8 @@ public sealed class Connection : IConnection
                 var observeDatomsEvent = events[i] as IObserveDatomsEvent;
                 Debug.Assert(observeDatomsEvent is not null);
 
-                var (from, to, observer) = observeDatomsEvent.Prime(Db);
-                _pendingObservers.Add((from, to, observer));
+                if (TryPrime(observeDatomsEvent, out var primed))
+                    _pendingObservers.Add((primed.From, primed.To, primed.Observer));
             });
 
             foreach (var (from, to, observer) in _pendingObservers)
@@ -272,6 +272,26 @@ public sealed class Connection : IConnection
             }
 
             _pendingObservers.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Priming sends the observer its first snapshot, so whatever the observer does with it runs here. One that
+    /// throws is logged and left unregistered; letting the exception out would skip every observer queued after it
+    /// in the same batch, and those would never be primed at all.
+    /// </summary>
+    private bool TryPrime(IObserveDatomsEvent observeDatomsEvent, out (Datom From, Datom To, IObserver<ChangeSet<Datom, DatomKey, IDb>> Observer) primed)
+    {
+        try
+        {
+            primed = observeDatomsEvent.Prime(Db);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An observer failed while being primed");
+            primed = default;
+            return false;
         }
     }
 
