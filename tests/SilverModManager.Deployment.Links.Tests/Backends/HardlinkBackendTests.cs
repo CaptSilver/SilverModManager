@@ -203,6 +203,27 @@ public class HardlinkBackendTests(ITestOutputHelper helper)
     };
 
     [Fact]
+    public async Task AnEditThroughTheLink_WhoseDiskPartIsNotYetNamedByXxHash3_StillDamagesTheStagedFileOfThePrevious()
+    {
+        var (loadout, _, hashes) = await Deploy(("a/x.txt", Original), ("b/x.txt", Original));
+        var hash = hashes["a/x.txt"];
+        var storeInode = Stat(Store.PathFor(MetadataId, hash)).Inode;
+        var linked = new[] { "a/x.txt", "b/x.txt" }.Single(p => Stat(OnDisk(p)).Inode == storeInode);
+        await File.WriteAllTextAsync(OnDisk(linked).ToString(), Edited);
+        var tree = await BuildTree(loadout);
+        var path = GamePathOf(linked);
+        // The disk side is named by another kind and no recorded relation says whether it is the previous bytes, so the
+        // two parts cannot be told apart. That must read as "changed", not as "unchanged".
+        tree[path] = tree[path] with { Disk = Sha1Part(tree[path].Disk), Actions = Actions.DeleteFromDisk };
+        tree[path].Previous.Identity.MatchSameKind(tree[path].Disk.Identity).Should().Be(IdentityMatch.Unknown);
+
+        using var tx = Connection.BeginTransaction();
+        Hardlink.Delete(ContextFor(tree, tx, loadout), tree);
+
+        Store.Contains(MetadataId, hash).Should().BeFalse("the staged file was written through the link and is released");
+    }
+
+    [Fact]
     public async Task APreviousPartThatIsNotAnXxHash3_IsNeverTakenForALinkToTheStore()
     {
         var (loadout, _, hashes) = await Deploy(("a/x.txt", Original));

@@ -174,6 +174,19 @@ public sealed class RecordedDigestResolverTests : IDisposable
     }
 
     [Fact]
+    public async Task Resolve_TwoKindsNeitherXxHash3_ConvertsRightToLeftWhenOnlyTheRightHasAUsableRow()
+    {
+        var a = await Hashed("alpha");
+        var b = await Hashed("beta");
+        await AddRow(_local, a, withMd5: false);
+        await AddRow(_local, b, size: a.Size);
+
+        // The row found by the SHA-1 has no MD5 to offer, so the answer has to come from the row found by the MD5.
+        _resolver.TryConvert(FileIdentity.Sha1(a.Sha1), a.Size, HashKind.Md5, out _).Should().BeFalse();
+        _resolver.Resolve(FileIdentity.Sha1(a.Sha1), FileIdentity.Md5(b.Md5), a.Size).Should().Be(IdentityMatch.Different);
+    }
+
+    [Fact]
     public async Task Scoped_AsksTheIndexOnce()
     {
         var a = await Hashed("alpha");

@@ -357,6 +357,34 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         FullyHashed.Should().Contain("unknown.dat");
     }
 
+    [Theory]
+    [InlineData(true, "the last sync saw these bytes under their SHA-1, so it follows them to the xxHash3")]
+    [InlineData(false, "the last sync saw other bytes under another kind, which nothing relates to these, so it stays as it was")]
+    public async Task ReadingASha1File_RewritesThePreviousOnlyWhenItWasTheSameBytes(bool previousIsTheSameBytes, string because)
+    {
+        var loadout = await CreateLoadout();
+        var path = new GamePath(LocationId.Game, "unknown.dat");
+        await File.WriteAllTextAsync((GameFolder / "unknown.dat").ToString(), "bytes nobody knew");
+        var hashes = await MultiHasher.HashStream(new MemoryStream(Encoding.UTF8.GetBytes("bytes nobody knew")));
+        var disk = FileIdentity.Sha1(hashes.Sha1);
+        var previous = previousIsTheSameBytes ? disk : FileIdentity.XxHash3(Hash.From(0xBADBEEF));
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [path] = new SyncNode
+            {
+                Disk = new SyncNodePart { Identity = disk, Size = hashes.Size, LastModifiedTicks = 1 },
+                Previous = new SyncNodePart { Identity = previous, Size = hashes.Size, LastModifiedTicks = 1 },
+                Actions = Actions.BackupFile | Actions.IngestFromDisk,
+            },
+        };
+        using var tx = Connection.BeginTransaction();
+
+        await Synchronizer.ResolveDiskIdentitiesForWrites(tree, GameInstallation, tx);
+
+        tree[path].Disk.Identity.Should().Be(FileIdentity.XxHash3(hashes.XxHash3));
+        tree[path].Previous.Identity.Should().Be(previousIsTheSameBytes ? FileIdentity.XxHash3(hashes.XxHash3) : previous, because);
+    }
+
     [Fact]
     public async Task GameLayerIdentityFromSql_MatchesTheServiceForAnAttestedRow()
     {

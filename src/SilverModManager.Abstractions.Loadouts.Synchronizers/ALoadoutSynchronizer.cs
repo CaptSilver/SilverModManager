@@ -2285,7 +2285,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// mod or an intrinsic file. Files that came from the loadout's overrides were ingested from the user's own
     /// files, so they are not included.
     /// </summary>
-    private HashSet<GamePath> GetFilesDeployedByLastSyncedLoadout(GameInstallMetadata.ReadOnly metadata, List<PathPartPair> diskState)
+    internal HashSet<GamePath> GetFilesDeployedByLastSyncedLoadout(GameInstallMetadata.ReadOnly metadata, List<PathPartPair> diskState)
     {
         var result = new HashSet<GamePath>();
         if (!GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastSynced)) return result;

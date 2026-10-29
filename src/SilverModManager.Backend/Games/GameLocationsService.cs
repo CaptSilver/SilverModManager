@@ -100,6 +100,7 @@ internal class GameLocationsService : IGameLocationsService
                     {
                         // A row that names the file by another kind is trusted only while the store's row still says the
                         // same; a rebuild that replaced it leaves the fingerprint rows to resolve the path.
+                        // previous may be any non-xxHash3 kind; Equals is false across kinds, and a row of another kind than the store's SHA-1 is not trusted.
                         if (attestedMatches && attested is { } still && FileIdentity.Sha1(still.Sha1).Equals(previous))
                         {
                             tally.Unchanged();
