@@ -983,6 +983,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             };
         }
 
+        if (recordAsApplied)
+            tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastSyncedLoadoutTransaction, EntityId.From(tx.ThisTxId.Value));
+
         var result = await tx.Commit();
         return loadout.Rebase(result.Db);
     }
@@ -1516,6 +1519,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         loadout = await ReconcileGameInstalledContent(loadout, metadata, cancellationToken);
         loadout = await PrepareLoadoutForSync(loadout);
 
+        // Rows already in the Overrides are settled before the tree is built, so the apply covers them: an edit made
+        // after the apply would read as a change still to apply.
+        loadout = await ReprocessOverrides(loadout, recordAsApplied: false);
+
         // The preparation can respell recorded disk state, and the tree reads the state it left, not the snapshot taken before.
         metadata = GameInstallMetadata.Load(Connection.Db, metadata.Id);
 
@@ -1535,9 +1542,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         loadout = await RunActions(tree, loadout, job, choice);
 
-        // Move any override files that now match game files after sync
-        loadout = await ReprocessOverrides(loadout);
-        return loadout;
+        // The apply can ingest a file whose path is a game file, which is dropped again here and never deployed.
+        // That edit follows the record of what was applied, so the record moves with it.
+        return await ReprocessOverrides(loadout, recordAsApplied: true);
     }
 
     public async Task<GameInstallMetadata.ReadOnly> RescanFiles(GameInstallation gameInstallation, CancellationToken cancellationToken = default)

@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Reactive.Linq;
 using System.Text;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
@@ -213,7 +214,7 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
         foreach (var path in GameRewritten)
             (await (GameFolder / path).ReadAllTextAsync()).Should().Be("written by the game: " + path, "healing the loadout deletes nothing from the game folder");
 
-        // The rows go after the apply, so a deletion would come with the sync after it.
+        // The rows go before the apply builds its tree, so the sync after it has nothing left to delete either.
         await Synchronizer.Synchronize(Refresh(loadout));
 
         OverridePaths(Refresh(loadout)).Should().NotContain(GameRewritten);
@@ -221,6 +222,41 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
             (await (GameFolder / path).ReadAllTextAsync()).Should().Be("written by the game: " + path, "the sync after the heal deletes nothing either");
         var diagnostics = await RunEmittersOnProcessedTree(Refresh(loadout));
         diagnostics.Select(Describe).Where(text => GameRewritten.Any(text.Contains)).Should().BeEmpty("no card is left for the game's own output");
+    }
+
+    [Fact]
+    public async Task OneApplyHealingTheOverridesLeavesNothingElseToApply()
+    {
+        var loadout = await CreateLoadout();
+        await Legacy().Synchronize(Refresh(loadout));
+        await TheGameRunsOnce();
+        await Legacy().Synchronize(Refresh(loadout));
+        OverridePaths(loadout).Should().Contain([Stamp, CompiledScripts], "the earlier synchronizer filed the game's output as the player's overrides");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        // The state the Apply button shows: it lights up when the loadout differs from what was just applied.
+        var status = await (await SynchronizerService.StatusForLoadout(loadout.LoadoutId))
+            .Where(state => state != LoadoutSynchronizerState.Pending).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+        status.Should().Be(LoadoutSynchronizerState.Current, "the heal belongs to the apply that made it");
+    }
+
+    [Fact]
+    public async Task AChangedGameFileSettlesWithinTheApplyThatIngestsIt()
+    {
+        var loadout = await CreateLoadout();
+        await Synchronizer.Synchronize(Refresh(loadout));
+        var exe = GameFolder / "bin/x64/witcher3.exe";
+        await exe.WriteAllBytesAsync(Encoding.UTF8.GetBytes("patched executable"));
+
+        for (var apply = 1; apply <= 2; apply++)
+        {
+            await Synchronizer.Synchronize(Refresh(loadout));
+            var status = await (await SynchronizerService.StatusForLoadout(loadout.LoadoutId))
+                .Where(state => state != LoadoutSynchronizerState.Pending).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+            status.Should().Be(LoadoutSynchronizerState.Current, $"apply {apply} leaves nothing for another");
+            (await exe.ReadAllTextAsync()).Should().Be("patched executable");
+        }
     }
 
     [Fact]
