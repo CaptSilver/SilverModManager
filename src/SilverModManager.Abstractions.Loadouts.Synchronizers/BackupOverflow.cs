@@ -58,8 +58,9 @@ public enum BackupOverflowKind : byte
 
 /// <summary>The files of one kind under one folder.</summary>
 /// <param name="Folder">The folder as the player sees it: the location's first two path segments, or <see cref="BackupOverflow.GameFolderName"/>.</param>
+/// <param name="Location">The location's player-facing name ("Saves", "Settings"), or null for the game folder.</param>
 [PublicAPI]
-public sealed record BackupOverflowGroup(string Folder, int FileCount, Size Size, BackupOverflowKind Kind);
+public sealed record BackupOverflowGroup(string Folder, int FileCount, Size Size, BackupOverflowKind Kind, string? Location = null);
 
 /// <summary>One of the biggest files in the overflow.</summary>
 [PublicAPI]
@@ -211,7 +212,7 @@ public sealed record BackupOverflow(
 
         var lead = kinds[0] switch
         {
-            BackupOverflowKind.Appeared => "These are not from this app and not your mods: you, Steam or another program put them in the game folder.",
+            BackupOverflowKind.Appeared => $"These are not from this app and not your mods: {WhoPutThem()} {WhereAppeared()}.",
             BackupOverflowKind.GameFileChanged => "These are the game's own files, new or changed since the app last saw them. A game update does that.",
             BackupOverflowKind.ModFileChanged => "These are mod files that changed since the app put them in place; something edited them.",
             _ => $"The app copies them first because {OperationPhrase} deletes, replaces or changes them.",
@@ -222,12 +223,27 @@ public sealed record BackupOverflow(
         var (count, size) = Kinds[second];
         var tail = second switch
         {
-            BackupOverflowKind.Appeared => "were put there by you, Steam or another program",
+            BackupOverflowKind.Appeared => Operation == BackupOverflowOperation.AfterPlay ? "were written by the game or another program" : "were put there by you, Steam or another program",
             BackupOverflowKind.GameFileChanged => "are the game's own files, new or changed",
             BackupOverflowKind.ModFileChanged => "are mod files that changed",
             _ => $"are changed by {OperationPhrase}",
         };
         return $"{lead} {Files(count)} ({FormatSize(size)}) {tail}.";
+    }
+
+    private string WhoPutThem() => Operation == BackupOverflowOperation.AfterPlay
+        ? "the game or another program wrote them"
+        : "you, Steam or another program put them";
+
+    /// <summary>"in the game folder", or the named places when any of the not-from-the-app files sit elsewhere.</summary>
+    private string WhereAppeared()
+    {
+        var appeared = (Groups ?? []).Where(g => g.Kind == BackupOverflowKind.Appeared).ToArray();
+        var places = new List<string>();
+        if (appeared.Length == 0 || appeared.Any(g => g.Location is null)) places.Add("the game folder");
+        places.AddRange(appeared.Select(g => g.Location).OfType<string>().Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal));
+        var list = places.Count == 1 ? places[0] : string.Join(", ", places.Take(places.Count - 1)) + " and " + places[^1];
+        return "in " + list;
     }
 
     /// <summary>

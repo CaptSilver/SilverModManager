@@ -1134,8 +1134,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         return overflow with
         {
             Groups = counted
-                .GroupBy(c => (Folder: FolderOf(c.Path), c.Kind))
-                .Select(g => new BackupOverflowGroup(g.Key.Folder, g.Count(), Size.From((ulong)g.Sum(c => (long)c.Size)), g.Key.Kind))
+                .GroupBy(c => (Folder: FolderOf(c.Path), c.Kind, Location: c.Path.LocationId == LocationId.Game ? null : c.Path.LocationId.DisplayName))
+                .Select(g => new BackupOverflowGroup(g.Key.Folder, g.Count(), Size.From((ulong)g.Sum(c => (long)c.Size)), g.Key.Kind, g.Key.Location))
                 .OrderByDescending(g => g.Size.Value).ThenBy(g => g.Folder, StringComparer.Ordinal)
                 .ToArray(),
             Examples = counted
@@ -1197,22 +1197,13 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var segments = path.Path.ToString().Split('/', StringSplitOptions.RemoveEmptyEntries);
         var folders = segments.Take(Math.Min(2, segments.Length - 1)).ToArray();
         var isGameFolder = path.LocationId == LocationId.Game;
-        if (folders.Length == 0) return isGameFolder ? BackupOverflow.GameFolderName : LocationLabel(path.LocationId);
+        if (folders.Length == 0) return isGameFolder ? BackupOverflow.GameFolderName : path.LocationId.DisplayName;
         var joined = string.Join('/', folders);
-        return isGameFolder ? joined : $"{LocationLabel(path.LocationId)}/{joined}";
+        return isGameFolder ? joined : $"{path.LocationId.DisplayName}/{joined}";
     }
 
     private static string DisplayPathOf(GamePath path)
-        => path.LocationId == LocationId.Game ? path.Path.ToString() : $"{LocationLabel(path.LocationId)}/{path.Path}";
-
-    /// <summary>A location as a player names it, not as the app does ("AppDataRoaming", "Preferences").</summary>
-    private static string LocationLabel(LocationId location)
-    {
-        if (location == LocationId.Saves) return "Saves";
-        if (location == LocationId.Preferences) return "Settings";
-        if (location == LocationId.AppData || location == LocationId.AppDataRoaming) return "AppData";
-        return location.ToString();
-    }
+        => path.LocationId == LocationId.Game ? path.Path.ToString() : $"{path.LocationId.DisplayName}/{path.Path}";
 
     /// <summary>
     /// Applies an adopt answer: files that stay on disk and only want a copy are ingested without one. Every other

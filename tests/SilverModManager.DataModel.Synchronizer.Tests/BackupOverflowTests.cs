@@ -692,7 +692,24 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         var asked = await Measure(tree);
 
         asked.Groups!.Select(g => g.Folder).Should().BeEquivalentTo("AppData/Foo/bar", "Saves/slot1");
+        asked.Groups!.Select(g => g.Location).Should().BeEquivalentTo("AppData", "Saves");
         asked.Examples!.Select(e => e.Path).Should().Contain("AppData/Foo/bar/x.bin");
+    }
+
+    [Fact]
+    public async Task OverflowMeasure_GameSpecificLocation_UsesItsRegisteredNameNotItsId()
+    {
+        var documents = LocationId.From("SyncTestsGameDocuments", "Documents");
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [new GamePath(documents, "Foo/x.ini")] = MeasuredNode(0xD3, Actions.BackupFile | Actions.IngestFromDisk, kb: 9),
+        };
+
+        var asked = await Measure(tree);
+
+        asked.Groups!.Single().Folder.Should().Be("Documents/Foo");
+        asked.Groups!.Single().Location.Should().Be("Documents");
+        asked.Examples!.Single().Path.Should().Be("Documents/Foo/x.ini");
     }
 
     [Fact]

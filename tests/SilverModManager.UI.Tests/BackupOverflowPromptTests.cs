@@ -12,7 +12,7 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
 {
     private static readonly BackupOverflow Overflow = new(Adoptable: Size.From(15_748_000_000), AdoptableCount: 4506, MustBackUp: Size.Zero, MustBackUpCount: 0, Limit: Size.GB * 5, Operation: BackupOverflowOperation.Manage);
 
-    private static BackupOverflowGroup Group(string folder, int count, Size size, BackupOverflowKind kind = BackupOverflowKind.GameFileChanged) => new(folder, count, size, kind);
+    private static BackupOverflowGroup Group(string folder, int count, Size size, BackupOverflowKind kind = BackupOverflowKind.GameFileChanged, string? location = null) => new(folder, count, size, kind, location);
 
     private static BackupOverflow Witcher(BackupOverflowKind kind = BackupOverflowKind.GameFileChanged, BackupOverflowOperation operation = BackupOverflowOperation.Launch) => new(
         Adoptable: Size.GB * 45, AdoptableCount: 95, MustBackUp: Size.Zero, MustBackUpCount: 0, Limit: Size.GB * 5, Operation: operation,
@@ -263,11 +263,55 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
     [Fact]
     public void FilesOutsideTheGameFolder_AreNotSaidToBeInTheGameFolder()
     {
-        var overflow = Witcher() with { Groups = [Group("Saves/slot1", 3, Size.GB * 1), Group("AppData/Foo", 2, Size.GB * 1)] };
+        var overflow = Witcher(BackupOverflowKind.Appeared) with
+        {
+            Groups = [Group("Saves/slot1", 3, Size.GB * 1, BackupOverflowKind.Appeared, "Saves"), Group("AppData/Foo", 2, Size.GB * 1, BackupOverflowKind.Appeared, "AppData")],
+        };
 
         var md = BackupOverflowPrompt.For("The Witcher 3", overflow).Markdown;
 
         md.Should().Contain("- Saves/slot1 — 3 files").And.NotContain("in its folder").And.NotContain("in the game folder");
+        md.Should().Contain("put them in AppData and Saves");
+    }
+
+    [Fact]
+    public void AppearedFilesInSettings_NameThePlace()
+    {
+        var overflow = Witcher(BackupOverflowKind.Appeared) with { Groups = [Group("Settings/x", 3, Size.GB * 1, BackupOverflowKind.Appeared, "Settings")] };
+
+        BackupOverflowPrompt.For("X", overflow).Markdown.Should().Contain("put them in Settings.").And.NotContain("game folder");
+    }
+
+    [Fact]
+    public void AppearedFilesInTheGameFolderAndElsewhere_NameBoth()
+    {
+        var overflow = Witcher(BackupOverflowKind.Appeared) with
+        {
+            Groups = [Group("bin/x64", 3, Size.GB * 1, BackupOverflowKind.Appeared), Group("Saves/slot1", 2, Size.GB * 1, BackupOverflowKind.Appeared, "Saves")],
+        };
+
+        BackupOverflowPrompt.For("X", overflow).Markdown.Should().Contain("put them in the game folder and Saves.");
+    }
+
+    [Fact]
+    public void AppearedFilesAfterPlay_AreSaidToBeWrittenByTheGameOrAnotherProgram()
+    {
+        var overflow = Witcher(BackupOverflowKind.Appeared, BackupOverflowOperation.AfterPlay);
+
+        var md = BackupOverflowPrompt.For("X", overflow).Markdown;
+
+        md.Should().Contain("the game or another program wrote them in the game folder.").And.NotContain("Steam");
+    }
+
+    [Fact]
+    public void AppearedFilesAfterPlayInSaves_NameTheLocation()
+    {
+        var overflow = Witcher(BackupOverflowKind.Appeared, BackupOverflowOperation.AfterPlay) with
+        {
+            Groups = [Group("Saves/slot1", 2, Size.GB * 1, BackupOverflowKind.Appeared, "Saves")],
+        };
+
+        BackupOverflowPrompt.For("X", overflow).Markdown.Should().Contain("the game or another program wrote them in Saves.");
     }
 
     [Fact]
