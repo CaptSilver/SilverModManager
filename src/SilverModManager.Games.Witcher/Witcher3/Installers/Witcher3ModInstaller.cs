@@ -39,10 +39,12 @@ public sealed class Witcher3ModInstaller(IServiceProvider provider)
 
         var fileName = libraryArchive.AsLibraryFile().FileName.ToString();
         var plan = Witcher3InstallPlan.Plan(files.Keys.Order(StringComparer.Ordinal).ToArray(), fileName);
-        if (plan is not { Count: > 0 })
+        if (plan is { IsAmbiguous: true })
+            return ValueTask.FromResult<InstallerResult>(new NotSupported("the archive has variants that need a choice"));
+        if (plan is not { Placements.Count: > 0 })
             return ValueTask.FromResult<InstallerResult>(new NotSupported("no Witcher 3 layout matches"));
 
-        foreach (var (source, target) in plan)
+        foreach (var (source, target) in plan.Placements)
         {
             var file = files[source];
             _ = new LoadoutFile.New(transaction, out var id)

@@ -33,10 +33,10 @@ public sealed class UnplacedArchiveFilesEmitter : ADroppedItemEmitter
             var entries = archive.Children.OrderBy(e => e.Path.Path, StringComparer.Ordinal).ToArray();
             var paths = entries.Select(e => e.Path.Path).ToArray();
             var plan = Witcher3InstallPlan.Plan(paths, archive.AsLibraryFile().FileName.ToString());
-            if (plan is null) continue;
+            if (plan is null or { IsAmbiguous: true }) continue;
 
             var hashOf = entries.ToDictionary(e => e.Path.Path, e => e.AsLibraryFile().Hash, StringComparer.Ordinal);
-            var expected = plan.Select(p => (Target: p.Target.ToString(), Hash: hashOf[p.Source])).ToHashSet();
+            var expected = plan.Placements.Select(p => (Target: p.Target.ToString(), Hash: hashOf[p.Source])).ToHashSet();
             var actual = item.Children.OfTypeLoadoutItemWithTargetPath()
                 .Select(child => child.TryGetAsLoadoutFile(out var file) ? (Target: ((GamePath)child.TargetPath).ToString(), Hash: file.Hash) : default)
                 .Where(pair => pair.Target is not null)

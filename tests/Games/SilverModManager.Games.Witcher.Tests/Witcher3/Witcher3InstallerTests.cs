@@ -71,14 +71,79 @@ public class Witcher3InstallerTests(ITestOutputHelper outputHelper) : AWitcher3A
     }
 
     private static string[] PlanTargets(string archiveName, params string[] paths) =>
-        Witcher3InstallPlan.Plan(paths, archiveName)?.Select(p => p.Target.ToString()).Order(StringComparer.Ordinal).ToArray() ?? [];
+        Witcher3InstallPlan.Plan(paths, archiveName)?.Placements.Select(p => p.Target.ToString()).Order(StringComparer.Ordinal).ToArray() ?? [];
 
     [Theory]
-    [InlineData("Option A/content/blob0.bundle", "Option B/content/blob0.bundle")]
     [InlineData("Option A/modFoo/content/a.ws", "Option B/modFoo/content/a.ws")]
+    [InlineData("Option A/dlc/dlcX/content/a.bundle", "Option B/dlc/dlcX/content/a.bundle")]
+    [InlineData("Option A/dlcX/content/a.bundle", "Option B/dlcX/content/a.bundle")]
+    [InlineData("dlcA/content/x.bundle", "modB/content/y.ws", "modB/bin/x64/d.dll", "dlcA/bin/x64/d.dll")]
     public void VariantArchives_AreLeftForTheManualInstaller(params string[] paths)
     {
-        Witcher3InstallPlan.Plan(paths, "Example Mod.zip").Should().BeNull();
+        var plan = Witcher3InstallPlan.Plan(paths, "Example Mod.zip");
+        plan.Should().NotBeNull();
+        plan!.IsAmbiguous.Should().BeTrue();
+        plan.Placements.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SeveralContentWrappers_AreNotClaimedByAnyRule()
+    {
+        Witcher3InstallPlan.Plan(["Option A/content/blob0.bundle", "Option B/content/blob0.bundle"], "Example Mod.zip").Should().BeNull();
+    }
+
+    [Fact]
+    public async Task VariantArchive_IsNotSupportedWithAReasonThatNamesTheChoice()
+    {
+        var loadout = await CreateLoadout();
+        var archive = await AddNamedArchive("Example Mod.zip", "Option A/dlcX/content/a.bundle", "Option B/dlcX/content/a.bundle");
+        var libraryItem = archive.AsLibraryFile().AsLibraryItem();
+
+        using var tx = Connection.BeginTransaction();
+        var group = new LoadoutItemGroup.New(tx, out var groupId)
+        {
+            IsGroup = true,
+            LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = libraryItem.Name, LoadoutId = loadout },
+        };
+
+        var result = await Game.LibraryItemInstallers.OfType<Witcher3ModInstaller>().Single().ExecuteAsync(libraryItem, group, tx, loadout, CancellationToken.None);
+
+        result.IsNotSupported(out var reason).Should().BeTrue();
+        reason.Should().Contain("variants").And.Contain("choice");
+    }
+
+    [Fact]
+    public void NestedDlcFolder_KeepsItsOwnPlaceUnderTheDeepestFolder()
+    {
+        PlanTargets("Example Mod.zip", "modX/content/a.ws", "modX/dlc/dlcX/content/y.bundle")
+            .Should().Equal("{Game}/Mods/modX/content/a.ws", "{Game}/dlc/dlcX/content/y.bundle");
+        PlanTargets("Example Mod.zip", "Wrap/content/a.ws", "Wrap/dlc/dlcX/content/y.bundle")
+            .Should().Equal("{Game}/Mods/modWrap/content/a.ws", "{Game}/dlc/dlcX/content/y.bundle");
+    }
+
+    [Fact]
+    public void ScriptsFolder_GoesUnderContentAndLooseScriptsAreNotPlaced()
+    {
+        PlanTargets("Example Mod.zip", "scripts/game/a.ws").Should().Equal("{Game}/Mods/modExampleMod/content/scripts/game/a.ws");
+        PlanTargets("Example Mod.zip", "Wrap/scripts/game/a.ws", "Wrap/readme.txt").Should().Equal("{Game}/Mods/modExampleMod/content/scripts/game/a.ws");
+        PlanTargets("Example Mod.zip", "Wrap/content/b.bundle", "Wrap/scripts/game/a.ws")
+            .Should().Equal("{Game}/Mods/modWrap/content/b.bundle", "{Game}/Mods/modWrap/content/scripts/game/a.ws");
+        PlanTargets("Example Mod.zip", "loose.ws", "blob0.bundle").Should().Equal("{Game}/Mods/modExampleMod/content/blob0.bundle");
+        PlanTargets("Example Mod.zip", "loose.ws").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RootBinBesideAWrappedContentFolder_GoesToTheGameBin()
+    {
+        PlanTargets("Example Mod.zip", "Wrap/content/a.ws", "bin/x64/d.dll")
+            .Should().Equal("{Game}/Mods/modWrap/content/a.ws", "{Game}/bin/x64/d.dll");
+    }
+
+    [Fact]
+    public void DocumentationUnderMods_IsNotPlaced()
+    {
+        PlanTargets("Example Mod.zip", "Mods/modA/content/a.ws", "Mods/modA/readme.txt", "Mods/modA/docs/info.md")
+            .Should().Equal("{Game}/Mods/modA/content/a.ws");
     }
 
     [Fact]
