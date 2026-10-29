@@ -309,9 +309,47 @@ public class Witcher3MergeThroughLoadOrderTests(ITestOutputHelper helper)
     }
 
     [Theory]
-    [InlineData("content/x.xml")]
     [InlineData("content/blob0.bundle")]
-    public async Task LooseXmlAndBundles_AreNotMergeable(string rel)
+    [InlineData("content/info.json")]
+    [InlineData("content/metadata.store")]
+    [InlineData("content/en.w3strings")]
+    [InlineData("content/texture.cache")]
+    public async Task PerFolderFiles_AreNoConflict(string rel)
+    {
+        var loadout = await CreateLoadout();
+        await Mod(loadout, "modA", 1, Mine("modA", rel, "<a/>"));
+        await Mod(loadout, "modB", 2, Mine("modB", rel, "<b/>"));
+        loadout = Fresh(loadout);
+
+        Engine.Report(loadout, MergeSourceMode.Report).Entries.Should().BeEmpty();
+        Engine.NotContested(loadout).Should().BeEmpty();
+        Engine.PlannedOutputs(loadout).Should().BeEmpty();
+        (await CardDetails(loadout)).Should().BeEmpty();
+
+        await Synchronizer.Synchronize(loadout);
+        GameFile($"Mods/modA/{rel}").FileExists.Should().BeTrue();
+        GameFile($"Mods/modB/{rel}").FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AScriptBesidePerFolderFiles_IsTheOnlyEntry()
+    {
+        var loadout = await CreateLoadout();
+        string[] shared = ["content/info.json", "content/blob0.bundle", "content/en.w3strings"];
+        await Mod(loadout, "modA", 1, [Mine("modA", Player, Script("\n", (4, "  a = 11;"))), .. shared.Select(r => Mine("modA", r, "a"))]);
+        await Mod(loadout, "modB", 2, [Mine("modB", Player, Script("\n", (8, "  b = 22;"))), .. shared.Select(r => Mine("modB", r, "b"))]);
+        loadout = Fresh(loadout);
+
+        var entry = OnlyEntry(loadout);
+
+        entry.Path.Should().EndWith(Player);
+        entry.Outcome.Should().Be(MergeReportOutcome.Merged);
+        Engine.NotContested(loadout).Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("content/x.xml")]
+    public async Task LooseXml_IsNotMergeable(string rel)
     {
         var loadout = await CreateLoadout();
         await Mod(loadout, "modA", 1, Mine("modA", rel, "<a/>"));

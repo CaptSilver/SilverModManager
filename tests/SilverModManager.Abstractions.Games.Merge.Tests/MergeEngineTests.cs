@@ -389,6 +389,21 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
     }
 
     [Fact]
+    public async Task AnIndependentPathIsInNoReportPlanOrNotContested()
+    {
+        var loadout = await CreateLoadout();
+        await Mod(loadout, "A", "modA", 2, ("content/info.json", [1]));
+        await Mod(loadout, "B", "modB", 1, ("content/info.json", [2]));
+        loadout = Refresh(loadout);
+        var engine = Engine();
+
+        engine.Report(loadout, MergeSourceMode.Report).Entries.Should().BeEmpty();
+        engine.PlannedOutputs(loadout).Should().BeEmpty();
+        engine.Plan(loadout, MergeSourceMode.Apply).Should().BeEmpty();
+        engine.NotContested(loadout).Should().BeEmpty();
+    }
+
+    [Fact]
     public void ServesOnlyGamesThatHaveAMergeGame()
     {
         var engine = Engine();

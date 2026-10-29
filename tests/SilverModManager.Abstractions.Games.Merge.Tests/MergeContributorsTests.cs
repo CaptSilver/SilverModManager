@@ -191,6 +191,18 @@ public class MergeContributorsTests(IServiceProvider provider) : AGameTest<Stubb
     }
 
     [Fact]
+    public async Task APathTheGameSaysIsIndependentIsInNeitherList()
+    {
+        var loadout = await CreateLoadout();
+        await Mod(loadout, "A", 2, "Mods/modX/content/info.json");
+        await Mod(loadout, "B", 1, "Mods/modY/content/info.json");
+        loadout = Refresh(loadout);
+
+        MergeContributors.Of(loadout, _game).Should().BeEmpty();
+        MergeContributors.NotContested(loadout, _game).Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task OneModShippingThePathInTwoPackageFoldersDoesNotContestItself()
     {
         var loadout = await CreateLoadout();

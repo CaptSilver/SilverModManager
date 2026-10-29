@@ -85,9 +85,25 @@ public class Witcher3MergeGameTests
         _game.ReorderHint.Should().Be("Load Order");
     }
 
-    [Fact]
-    public void Contests_EveryPath()
+    [Theory]
+    [InlineData("content/scripts/game/x.ws", SharedPath.Contested)]
+    [InlineData("content/scripts/game/X.WS", SharedPath.Contested)]
+    [InlineData("content/x.xml", SharedPath.Contested)]
+    [InlineData("content/info.json", SharedPath.Independent)]
+    [InlineData("content/metadata.store", SharedPath.Independent)]
+    [InlineData("content/blob0.bundle", SharedPath.Independent)]
+    [InlineData("content/buffers0.bundle", SharedPath.Independent)]
+    [InlineData("content/texture.cache", SharedPath.Independent)]
+    [InlineData("content/collision.cache", SharedPath.Independent)]
+    [InlineData("content/en.w3strings", SharedPath.Independent)]
+    [InlineData("content/precompiled.rsblob", SharedPath.Independent)]
+    [InlineData("witcherscript.toml", SharedPath.Independent)]
+    [InlineData("content/witcherscript.toml", SharedPath.Independent)]
+    [InlineData("readme.url", SharedPath.Independent)]
+    [InlineData("content/Localization/en.csv", SharedPath.Independent)]
+    [InlineData("content/scripts/game/x.txt", SharedPath.Independent)]
+    public void Sharing_OnlyScriptsAreContested(string rel, SharedPath expected)
     {
-        _game.Contests(Game("Mods/modA/content/scripts/game/x.ws")).Should().BeTrue();
+        _game.Sharing(Game($"Mods/modA/{rel}")).Should().Be(expected);
     }
 }

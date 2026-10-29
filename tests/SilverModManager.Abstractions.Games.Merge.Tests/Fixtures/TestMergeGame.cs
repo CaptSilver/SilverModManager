@@ -17,7 +17,10 @@ internal class TestMergeGame : AMergeGame
     }
 
     // A per-mod container the game loads for every mod, so two mods shipping one override nothing.
-    public override bool Contests(GamePath path) => !path.Path.Path.EndsWith(".bundle", StringComparison.OrdinalIgnoreCase);
+    public override SharedPath Sharing(GamePath path)
+        => path.Path.Path.EndsWith(".bundle", StringComparison.OrdinalIgnoreCase) ? SharedPath.LoadedPerFolder
+            : path.Path.Path.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ? SharedPath.Independent
+            : SharedPath.Contested;
 
     public override GamePath? VanillaFor(string rel, GameInstallation installation) => new(LocationId.Game, $"vanilla/{rel}");
 

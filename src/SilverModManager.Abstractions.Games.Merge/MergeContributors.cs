@@ -23,26 +23,26 @@ public sealed record ContestedPath(string Rel, IReadOnlyList<ContestedFile> Cont
 public static class MergeContributors
 {
     /// <summary>
-    /// Every enabled file under a mod folder that the game contests, grouped by Rel case-insensitively, only groups
+    /// Every enabled file under a mod folder whose <see cref="AMergeGame.Sharing"/> is <see cref="SharedPath.Contested"/>, grouped by Rel case-insensitively, only groups
     /// provided by more than one mod. A mod counts once per path, and when several mods ship the very same target only
     /// the one the synchronizer deploys counts. Sorted by Rel ordinal. Reads rows through the model accessors and no file
     /// bytes, so the synchronizer can call it while its winning-files query runs: a database query there would re-enter
     /// the running one.
     /// </summary>
     public static IReadOnlyList<ContestedPath> Of(Loadout.ReadOnly loadout, AMergeGame game, ILogger? logger = null)
-        => Group(loadout, game, contested: true, logger)
+        => Group(loadout, game, SharedPath.Contested, logger)
             .Select(g => new ContestedPath(g[0].Rel, g, game.Merges(g[0].Target) ? game.StrategyFor(g[0].Rel) : null))
             .ToArray();
 
     /// <summary>
-    /// The paths several mod folders ship that the game says are no contest (it loads each mod's copy), in the same
+    /// The paths several mod folders ship whose <see cref="AMergeGame.Sharing"/> is <see cref="SharedPath.LoadedPerFolder"/> (the game loads each mod's copy), in the same
     /// order and shape as <see cref="Of"/> with no strategy. They are not merged and not reported not mergeable, but a
     /// caller can still tell the user that the lower mod's copy of such a path is not used.
     /// </summary>
     public static IReadOnlyList<ContestedPath> NotContested(Loadout.ReadOnly loadout, AMergeGame game, ILogger? logger = null)
-        => Group(loadout, game, contested: false, logger).Select(g => new ContestedPath(g[0].Rel, g, null)).ToArray();
+        => Group(loadout, game, SharedPath.LoadedPerFolder, logger).Select(g => new ContestedPath(g[0].Rel, g, null)).ToArray();
 
-    private static List<ContestedFile[]> Group(Loadout.ReadOnly loadout, AMergeGame game, bool contested, ILogger? logger)
+    private static List<ContestedFile[]> Group(Loadout.ReadOnly loadout, AMergeGame game, SharedPath kind, ILogger? logger)
     {
         var db = loadout.Db;
         var priorityRows = new Dictionary<LoadoutItemGroupId, bool>();
@@ -58,7 +58,7 @@ public static class MergeContributors
             var target = (GamePath)item.TargetPath;
             if (game.Split(target) is not var (package, rel)) continue;
             if (!game.Contributes(loadout, package)) continue;
-            if (game.Contests(target) != contested) continue;
+            if (game.Sharing(target) != kind) continue;
 
             // Only a file has bytes to merge; anything else with a target path is a marker.
             if (!item.TryGetAsLoadoutFile(out var file)) continue;

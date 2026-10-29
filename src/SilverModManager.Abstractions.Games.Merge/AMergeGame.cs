@@ -65,11 +65,8 @@ public abstract class AMergeGame
     /// </summary>
     public abstract (string Package, string Rel)? Split(GamePath path);
 
-    /// <summary>
-    /// Whether two mod folders shipping this path is a conflict at all. False for a path the game loads once per mod
-    /// folder with no override between them: it is then neither merged nor reported not mergeable.
-    /// </summary>
-    public virtual bool Contests(GamePath path) => true;
+    /// <summary>How the game treats the path when more than one mod folder ships it. Contested unless a game says otherwise.</summary>
+    public virtual SharedPath Sharing(GamePath path) => SharedPath.Contested;
 
     /// <summary>Where the game's own copy of <paramref name="rel"/> lives; null when the game ships none.</summary>
     public abstract GamePath? VanillaFor(string rel, GameInstallation installation);
@@ -107,4 +104,17 @@ public abstract class AMergeGame
             .Select(r => r.Priority.Value)
             .DefaultIfEmpty(ConflictPriority.MinValue.Value)
             .Max();
+}
+
+/// <summary>How a game treats a path that more than one mod folder ships.</summary>
+public enum SharedPath
+{
+    /// <summary>The game uses one copy: merged when <see cref="AMergeGame.Merges"/> says so, otherwise reported not mergeable.</summary>
+    Contested,
+
+    /// <summary>The game loads every folder's copy and what is inside them overlaps by priority: not merged, listed by <see cref="IMergeEngine.NotContested"/>.</summary>
+    LoadedPerFolder,
+
+    /// <summary>Each folder's copy is its own: nothing is merged, planned or reported.</summary>
+    Independent,
 }
