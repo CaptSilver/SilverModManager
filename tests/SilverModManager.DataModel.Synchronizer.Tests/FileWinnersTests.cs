@@ -92,6 +92,33 @@ public class FileWinnersTests(ITestOutputHelper helper) : ACyberpunkIsolatedGame
         mine.Should().BeEquivalentTo(sql);
     }
 
+    [Fact]
+    public async Task LoadoutLayerIdentityFromSql_IsTheLoadoutFilesIdentityHex()
+    {
+        var loadout = await CreateLoadout();
+        Hash mineHash;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var g = AddEmptyGroup(tx, loadout.LoadoutId, "Mod");
+            AddFile(tx, loadout.LoadoutId, g, P("mine"), "mine", out mineHash, out _);
+            await tx.Commit();
+        }
+
+        var identity = Connection.Query<string>($"SELECT Identity FROM synchronizer.LeafLoadoutItems({Connection.Db}) WHERE Loadout = {loadout.LoadoutId}").Single();
+
+        identity.Should().Be(FileIdentity.XxHash3(mineHash).ToHex());
+    }
+
+    [Fact]
+    public async Task TwoEnabledModsWithDifferentBytesAtOnePath_StillConflict()
+    {
+        var loadout = await Fixture();
+
+        var conflicting = Connection.Query<long>($"SELECT count(*) FROM synchronizer.ConflictingPaths({Connection.Db}) WHERE Loadout = {loadout.LoadoutId}").Single();
+
+        conflicting.Should().Be(3, "plain and both pinned paths hold three different contents; nested has one row with a priority");
+    }
+
     // The game files of the stub are rows of the local store, the way a baseline would hold them.
     private async Task<(string Path, MultiHash Hashes)[]> SeedGameFiles(Loadout.ReadOnly loadout, params string[] files)
     {

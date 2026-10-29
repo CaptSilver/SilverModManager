@@ -13,6 +13,7 @@ WITH candidates AS (
     SELECT
         file.TargetPath.Item3 AS Name,
         enabledState.Hash AS Hash,
+        file_hashes.xxhash3_identity(enabledState.Hash) AS Identity,
         enabledState.IsEnabled AS IsEnabled,
         groupItem.Name AS ModName,
         groupItem.Id AS ModGroupId,
@@ -30,6 +31,7 @@ WITH candidates AS (
     SELECT
         gameFile.Path.Item3 AS Name,
         gameFile.Hash AS Hash,
+        file_hashes.xxhash3_identity(gameFile.Hash) AS Identity,
         groupItem.Disabled = FALSE AS IsEnabled,
         item.Name AS ModName,
         item.Id AS ModGroupId,
@@ -42,7 +44,7 @@ WITH candidates AS (
         AND gameFile.Path.Item3 NOT LIKE '%/%'
         AND lower(gameFile.Path.Item3) LIKE '%.pak'
 )
-SELECT Name, Hash, IsEnabled, ModName, ModGroupId, IsGameInstalled
+SELECT Name, Hash, Identity, IsEnabled, ModName, ModGroupId, IsGameInstalled
 FROM (
     SELECT
         candidates.*,
@@ -73,6 +75,7 @@ SELECT
     s.IsEnabled,
     s.Id,
     p.Hash,
+    p.Identity,
     p.IsEnabled AS LoadoutIsEnabled,
     p.ModName,
     p.ModGroupId,

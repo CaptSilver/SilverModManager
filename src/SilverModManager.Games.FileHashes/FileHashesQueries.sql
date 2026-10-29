@@ -82,8 +82,8 @@ WITH
 SELECT files.Loadout, files.File PathId FROM files;
 
 -- The hex of a FileIdentity holding an xxHash3: the kind byte 01, then the eight digest bytes big-endian.
--- FileIdentity.ParseHex reads it case-insensitively, so to_hex's lower case is fine.
-CREATE OR REPLACE MACRO file_hashes.xxhash3_identity(h) AS '01' || lpad(to_hex(h), 16, '0');
+-- Upper case, the spelling of FileIdentity.ToHex, so count(DISTINCT Identity) and string compares agree.
+CREATE OR REPLACE MACRO file_hashes.xxhash3_identity(h) AS '01' || upper(lpad(to_hex(h), 16, '0'));
 
 -- every path row of the hash store called `store`, resolved to its path, hash, identity and size
 CREATE OR REPLACE MACRO file_hashes.store_path_hashes(store) AS TABLE

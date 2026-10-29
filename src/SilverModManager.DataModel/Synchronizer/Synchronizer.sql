@@ -22,6 +22,7 @@ SELECT
   loadout_item.Parent,
   loadout_item.TargetPath,
   loadout_file.Hash,
+  file_hashes.xxhash3_identity(loadout_file.Hash) AS Identity,
   loadout_file.Size,
   loadout_item.Disabled = FALSE
   AND loadout_item_group.Disabled = FALSE
@@ -48,6 +49,7 @@ SELECT
   arg_max(loadout_item.Parent, synchronizer.WinnerRank(pin.WinnerGroup, loadout_item.Parent, group_priority.Priority)) AS Parent,
   arg_max(loadout_item.TargetPath, synchronizer.WinnerRank(pin.WinnerGroup, loadout_item.Parent, group_priority.Priority)) AS TargetPath,
   arg_max(loadout_item.Hash, synchronizer.WinnerRank(pin.WinnerGroup, loadout_item.Parent, group_priority.Priority)) AS Hash,
+  arg_max(loadout_item.Identity, synchronizer.WinnerRank(pin.WinnerGroup, loadout_item.Parent, group_priority.Priority)) AS Identity,
   arg_max(loadout_item.Size, synchronizer.WinnerRank(pin.WinnerGroup, loadout_item.Parent, group_priority.Priority)) AS Size,
   arg_max(loadout_item.IsDeleted, synchronizer.WinnerRank(pin.WinnerGroup, loadout_item.Parent, group_priority.Priority)) AS IsDeleted
 FROM
@@ -89,7 +91,7 @@ WITH all_files AS
     loadout_item.Id,
     {Location: loadout_item.TargetPath.Item2, Path: loadout_item.TargetPath.Item3} Path,
     loadout_item.Hash,
-    file_hashes.xxhash3_identity(loadout_item.Hash) AS Identity,
+    loadout_item.Identity,
     loadout_item.Size,
     (CASE WHEN loadout_item.IsDeleted THEN 'Deleted' ELSE 'Loadout' END)::synchronizer.ItemType ItemType,
     1 Layer
@@ -101,7 +103,7 @@ WITH all_files AS
     override_file.Id,
     {Location: override_file.TargetPath.Item2, Path: override_file.TargetPath.Item3} Path,
     override_file.Hash,
-    file_hashes.xxhash3_identity(override_file.Hash) AS Identity,
+    override_file.Identity,
     override_file.Size,
     (CASE WHEN override_file.IsDeleted THEN 'Deleted' ELSE 'Loadout' END)::synchronizer.ItemType ItemType,
     2 Layer
@@ -156,7 +158,7 @@ FROM
 WHERE
   priority.Id IS NOT NULL AND loadout_item.IsEnabled
 GROUP BY loadout_item.Loadout, loadout_item.TargetPath.Item2, loadout_item.TargetPath.Item3
-HAVING count(DISTINCT loadout_item.Hash) > 1;
+HAVING count(DISTINCT loadout_item.Identity) > 1;
 
 -- Returns all priority groups with additional per-loadout data
 CREATE OR REPLACE MACRO synchronizer.PriorityGroups (db) AS TABLE

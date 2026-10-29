@@ -227,6 +227,26 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         ((ISortItemDetails)rows["Mine.pak"]).LockReason.Should().BeNull();
     }
 
+    [Fact]
+    public async Task APakRow_CarriesTheIdentityOfItsFile()
+    {
+        var (loadout, _, _) = await Reconciled();
+        Hash hash;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var group = AddEmptyGroup(tx, loadout.LoadoutId, "Mod");
+            AddFile(tx, loadout.LoadoutId, group, PakPath("Mine.pak"), "Mine.pak", out hash, out _);
+            await tx.Commit();
+        }
+        await AddGameInstalledPaks(loadout, "FromGame.pak");
+
+        var rows = Connection.Query<(string Name, string Identity)>($"SELECT Name, Identity FROM bg3.LoadoutPaks({Connection.Db}, {loadout.LoadoutId}, {Bg3Constants.ModsLocationId})")
+            .ToDictionary(r => r.Name, r => r.Identity);
+
+        rows["Mine.pak"].Should().Be(FileIdentity.XxHash3(hash).ToHex());
+        rows["FromGame.pak"].Should().Be(FileIdentity.XxHash3(Hash.From(0xAB)).ToHex());
+    }
+
     private EntityId StoredRowId(SortOrderId id, string name) =>
         Connection.Query<EntityId>($"SELECT Id FROM bg3.SortOrderItems({Connection}, {id.Value}) WHERE PakName = {name}").Single();
 

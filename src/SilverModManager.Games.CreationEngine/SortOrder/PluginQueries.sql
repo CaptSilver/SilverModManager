@@ -18,7 +18,6 @@ CREATE MACRO plugins.LoadoutPlugins(db, loadoutId, gameLocationId, dataFolder) A
 WITH candidates AS (
     SELECT
         regexp_extract(file.TargetPath.Item3, '[^/]+$') AS Name,
-        enabledState.Hash AS Hash,
         file_hashes.xxhash3_identity(enabledState.Hash) AS Identity,
         enabledState.IsEnabled AS IsEnabled,
         groupItem.Name AS ModName,
@@ -36,7 +35,6 @@ WITH candidates AS (
     UNION ALL
     SELECT
         regexp_extract(gameFile.Path, '[^/]+$') AS Name,
-        gameFile.Hash AS Hash,
         gameFile.Identity AS Identity,
         TRUE AS IsEnabled,
         installation.Name AS ModName,
@@ -60,7 +58,6 @@ WITH candidates AS (
     UNION ALL
     SELECT
         regexp_extract(installedFile.Path.Item3, '[^/]+$') AS Name,
-        installedFile.Hash AS Hash,
         file_hashes.xxhash3_identity(installedFile.Hash) AS Identity,
         groupItem.Disabled = FALSE AS IsEnabled,
         item.Name AS ModName,
@@ -76,7 +73,7 @@ WITH candidates AS (
         AND lower(regexp_replace(installedFile.Path.Item3, '/?[^/]+$', '')) = lower(dataFolder)
         AND lower(regexp_extract(installedFile.Path.Item3, '\.[^./]+$')) IN ('.esm', '.esp', '.esl', '.omwaddon', '.omwgame', '.omwscripts')
 )
-SELECT Name, Hash, Identity, IsEnabled, ModName, ModGroupId, IsGameInstalled
+SELECT Name, Identity, IsEnabled, ModName, ModGroupId, IsGameInstalled
 FROM (
     SELECT
         candidates.*,
@@ -113,7 +110,6 @@ SELECT
     s.SortIndex,
     s.IsEnabled,
     s.Id,
-    p.Hash,
     p.Identity,
     p.IsEnabled AS LoadoutIsEnabled,
     p.ModName,

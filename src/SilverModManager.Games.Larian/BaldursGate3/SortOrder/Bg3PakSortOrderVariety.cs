@@ -437,5 +437,5 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
 
     private IEnumerable<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)> QueryLoadoutPaks(LoadoutId loadoutId, IDb db) =>
         db.Connection.Query<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)>(
-            $"SELECT * FROM bg3.LoadoutPaks({db}, {loadoutId}, {ModsLocation})");
+            $"SELECT Name, Hash, IsEnabled, ModName, ModGroupId, IsGameInstalled FROM bg3.LoadoutPaks({db}, {loadoutId}, {ModsLocation})");
 }

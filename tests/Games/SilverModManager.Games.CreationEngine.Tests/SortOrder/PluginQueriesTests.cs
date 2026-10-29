@@ -33,14 +33,14 @@ public class PluginQueriesTests(ITestOutputHelper helper)
         .AddCreationEngine()
         .AddUniversalGameLocator<CreationEngine.SkyrimSE.SkyrimSE>(new Version("1.6.1170"), locationsFileSystem: IsolatedKnownFolders.Create);
 
-    private record PluginRow(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled);
+    private record PluginRow(string Name, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled);
 
     private IDb Db => Connection.Db;
 
     private List<PluginRow> LoadoutPlugins(Loadout.ReadOnly loadout) =>
-        Connection.Query<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)>(
-                $"SELECT Name, Hash, IsEnabled, ModName, ModGroupId, IsGameInstalled FROM plugins.LoadoutPlugins({Connection}, {loadout.LoadoutId}, {LocationId.Game.Value}, {DataFolder})")
-            .Select(r => new PluginRow(r.Name, r.Hash, r.IsEnabled, r.ModName, r.ModGroupId, r.IsGameInstalled))
+        Connection.Query<(string Name, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)>(
+                $"SELECT Name, IsEnabled, ModName, ModGroupId, IsGameInstalled FROM plugins.LoadoutPlugins({Connection}, {loadout.LoadoutId}, {LocationId.Game.Value}, {DataFolder})")
+            .Select(r => new PluginRow(r.Name, r.IsEnabled, r.ModName, r.ModGroupId, r.IsGameInstalled))
             .ToList();
 
     /// <summary>Records <paramref name="files"/> as vanilla game files of the loadout's installation.</summary>
@@ -119,12 +119,14 @@ public class PluginQueriesTests(ITestOutputHelper helper)
         var loadout = await VanillaLoadout();
         await AddMod(loadout, "Mod", "Data/FromMod.esp");
 
-        var rows = Connection.Query<(string Name, Hash Hash, string Identity)>(
-                $"SELECT Name, Hash, Identity FROM plugins.LoadoutPlugins({Connection}, {Refresh(loadout).LoadoutId}, {LocationId.Game.Value}, {DataFolder})")
+        var rows = Connection.Query<(string Name, string Identity)>(
+                $"SELECT Name, Identity FROM plugins.LoadoutPlugins({Connection}, {Refresh(loadout).LoadoutId}, {LocationId.Game.Value}, {DataFolder})")
             .ToList();
+        var modFileHash = Connection.Query<Hash>($"SELECT Hash FROM synchronizer.LeafLoadoutItems({Connection.Db}) WHERE TargetPath.Item3 = 'Data/FromMod.esp'").Single();
 
         rows.Should().Contain(r => r.Name == "Skyrim.esm").And.Contain(r => r.Name == "FromMod.esp", "both a game file and a mod's plugin are listed");
-        rows.Should().OnlyContain(r => FileIdentity.ParseHex(r.Identity).Equals(FileIdentity.XxHash3(r.Hash)));
+        rows.Should().OnlyContain(r => FileIdentity.ParseHex(r.Identity).Kind == HashKind.XxHash3);
+        rows.Single(r => r.Name == "FromMod.esp").Identity.Should().Be(FileIdentity.XxHash3(modFileHash).ToHex());
     }
 
     [Fact]

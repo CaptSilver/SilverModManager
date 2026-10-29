@@ -317,6 +317,17 @@ public sealed class LoadoutFilesQueryTests : IDisposable
         FileIdentity.ParseHex(hex).Should().Be(FileIdentity.XxHash3(Hash.From(value)));
     }
 
+    [Theory]
+    [InlineData(0xABUL)]
+    [InlineData(0xFFFFFFFFFFFFFFFFUL)]
+    [InlineData(0x0123456789ABCDEFUL)]
+    public void Xxhash3IdentityMacro_SpellsTheIdentityLikeToHex(ulong value)
+    {
+        var hex = _main.Query<string>($"SELECT file_hashes.xxhash3_identity(CAST({value} AS UBIGINT))").Single();
+
+        hex.Should().Be(FileIdentity.XxHash3(Hash.From(value)).ToHex(), "count(DISTINCT Identity) and string compares need one spelling");
+    }
+
     private List<(RelativePath Path, Hash Hash, Size Size)> LoadoutFiles(EntityId loadout)
     {
         return _main.Query<(RelativePath Path, Hash Hash, Size Size)>(
