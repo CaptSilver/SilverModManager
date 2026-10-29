@@ -20,7 +20,8 @@ internal static class Verbs
         collection
             .AddModule("collection", "Commands for the Nexus collections installed in a loadout")
             .AddVerb(() => InstallCollection)
-            .AddVerb(() => RepairCollections);
+            .AddVerb(() => RepairCollections)
+            .AddVerb(() => ReapplyOrder);
 
     [Verb("install-collection", "Installs a collection into the given loadout")]
     private static async Task<int> InstallCollection([Injected] IRenderer renderer,
@@ -94,6 +95,30 @@ internal static class Verbs
             foreach (var line in result.Describe(name)) await renderer.TextLine(line);
         }
 
+        return 0;
+    }
+
+    [Verb("collection reapply-order", "Imports the load order of a Nexus collection in the loadout again with the current matching, replacing the order of its mods and the entries listed as left out")]
+    private static async Task<int> ReapplyOrder([Injected] IRenderer renderer,
+        [Option("l", "loadout", "Loadout the collection is installed in")] Loadout.ReadOnly loadout,
+        [Option("c", "collection", "Slug of the collection")] string slug,
+        [Injected] IServiceProvider serviceProvider,
+        [Injected] IConnection connection,
+        [Injected] CancellationToken token)
+    {
+        var group = NexusCollectionLoadoutGroup.All(connection.Db)
+            .Where(group => group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId == loadout.LoadoutId)
+            .FirstOrDefault(group => group.Collection.Slug.Value == slug);
+        if (!group.IsValid())
+        {
+            await renderer.TextLine($"The loadout has no collection `{slug}`.");
+            return 1;
+        }
+
+        var result = await CollectionOrderReapply.Reapply(serviceProvider, group, token);
+        await renderer.TextLine(result.Dropped == 0
+            ? $"{result.CollectionName}: the load order was applied again."
+            : $"{result.CollectionName}: the load order was applied again; {result.Dropped} entries match no mod and are listed in the Health Check.");
         return 0;
     }
 }

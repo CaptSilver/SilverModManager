@@ -1974,4 +1974,7 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="ToastNotification_Collection_update_interrupted" xml:space="preserve">
         <value>Update to revision {0} stopped early: {1}</value>
     </data>
+    <data name="DiagnosticAction_ReapplyCollectionOrder" xml:space="preserve">
+        <value>Apply the collection's load order again</value>
+    </data>
 </root>

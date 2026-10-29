@@ -5720,5 +5720,14 @@ namespace SilverModManager.App.UI.Resources {
                 return ResourceManager.GetString("ToastNotification_Collection_update_interrupted", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Apply the collection's load order again.
+        /// </summary>
+        public static string DiagnosticAction_ReapplyCollectionOrder {
+            get {
+                return ResourceManager.GetString("DiagnosticAction_ReapplyCollectionOrder", resourceCulture);
+            }
+        }
     }
 }

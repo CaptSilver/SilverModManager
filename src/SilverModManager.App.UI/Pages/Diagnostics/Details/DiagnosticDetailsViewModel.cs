@@ -87,7 +87,7 @@ public class DiagnosticDetailsViewModel : APageViewModel<IDiagnosticDetailsViewM
                     await errorPresenter.Report(e, $"running \"{action.Label}\"");
                 }
             });
-            buttons.Add(new DiagnosticActionButton(action.Label, command, action.Note, handler.StatusOf(loadoutId)));
+            buttons.Add(new DiagnosticActionButton(handler.LabelFor(action) ?? action.Label, command, action.Note, handler.StatusOf(loadoutId)));
         }
 
         return buttons;

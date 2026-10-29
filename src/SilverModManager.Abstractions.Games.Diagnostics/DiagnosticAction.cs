@@ -83,4 +83,15 @@ public static class DiagnosticActions
     /// </summary>
     public static DiagnosticAction SetUpPrefix(IEnumerable<string> componentIds)
         => new(SetUpPrefixId, "Set up prefix", [..componentIds]);
+
+    /// <summary>
+    /// Id of the action that imports a collection's load order again.
+    /// </summary>
+    public const string ReapplyCollectionOrderId = "reapply-collection-order";
+
+    /// <summary>
+    /// Imports the load order of the collection whose group has the entity id <paramref name="collectionGroup"/> again, replacing the order its mods are in and the entries it left out.
+    /// </summary>
+    public static DiagnosticAction ReapplyCollectionOrder(ulong collectionGroup)
+        => new(ReapplyCollectionOrderId, "Apply the collection's load order again", [collectionGroup.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
 }

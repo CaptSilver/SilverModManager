@@ -16,6 +16,11 @@ public interface IDiagnosticActionHandler
     string ActionId { get; }
 
     /// <summary>
+    /// The button text for <paramref name="action"/> when the handler has a localized one; null to show the action's own label.
+    /// </summary>
+    string? LabelFor(SilverModManager.Abstractions.Diagnostics.DiagnosticAction action) => null;
+
+    /// <summary>
     /// Runs the action for the loadout whose diagnostic offered it. Completes once the fix is done and the
     /// diagnostics have been refreshed.
     /// </summary>

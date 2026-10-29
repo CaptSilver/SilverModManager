@@ -1,5 +1,6 @@
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
+using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -38,7 +39,13 @@ public sealed class ModOrderDroppedEmitter : ADroppedItemEmitter
             }
 
             var entries = string.Join('\n', group.Select(row => $"- **{row.Item}**: {row.Reason}"));
-            yield return DroppedItemDiagnostics.CreateDroppedItems(group.Count, group[0].Source, entries, group[0].Page);
+            var card = DroppedItemDiagnostics.CreateDroppedItems(group.Count, group[0].Source, entries, group[0].Page);
+
+            // Only a Nexus collection has a manifest to read the order from again.
+            var container = group[0].ContainerId;
+            yield return NexusCollectionLoadoutGroup.Load(loadout.Db, container.Value).IsValid()
+                ? card with { Actions = [DiagnosticActions.ReapplyCollectionOrder(container.Value.Value)] }
+                : card;
         }
     }
 
