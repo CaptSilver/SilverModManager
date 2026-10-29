@@ -257,13 +257,14 @@ public static class LoadoutDataProviderHelper
        );
     }
 
-    public static void AddCollections(
-        CompositeItemModel<EntityId> parentItemModel,
-        IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedItemsObservable)
+    /// <summary>
+    /// Names of the collections the linked items sit in, sorted and comma-joined. Empty when none do.
+    /// </summary>
+    public static IObservable<string> ObserveCollectionNames(IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedItemsObservable)
     {
-        var collectionsObservable = linkedItemsObservable
-            .QueryWhenChanged(query => query.Items
-                .Where(static item => item.Parent.IsCollectionGroup())
+        return linkedItemsObservable
+            .QueryWhenChanged(static query => query.Items
+                .Where(static item => item.HasParent() && item.Parent.IsCollectionGroup())
                 .GroupBy(static item => item.ParentId)
                 .Select(static grouping =>
                 {
@@ -275,10 +276,15 @@ public static class LoadoutDataProviderHelper
                 .Order(StringComparer.OrdinalIgnoreCase)
                 .SafeAggregate(defaultValue: string.Empty, static (a, b) => $"{a}, {b}")
             );
+    }
 
+    public static void AddCollections(
+        CompositeItemModel<EntityId> parentItemModel,
+        IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedItemsObservable)
+    {
         parentItemModel.Add(LoadoutColumns.Collections.ComponentKey, new StringComponent(
             initialValue: string.Empty,
-            valueObservable: collectionsObservable
+            valueObservable: ObserveCollectionNames(linkedItemsObservable)
         ));
     }
     

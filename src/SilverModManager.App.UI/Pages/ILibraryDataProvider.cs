@@ -89,6 +89,22 @@ public static class LibraryDataProviderHelper
         );
     }
 
+    /// <summary>
+    /// Sorted names of the parents of the linked items. An item without a parent is in no collection and is skipped.
+    /// </summary>
+    public static IObservable<IChangeSet<string>> ObserveInstalledCollectionNames(IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedLoadoutItemsObservable)
+    {
+        return linkedLoadoutItemsObservable
+            .Filter(static item => item.HasParent())
+            .Transform(item => item.Parent.AsLoadoutItem())
+            .ChangeKey(coll => coll.Id)
+            .Distinct()
+            .Transform(collection => collection.Name)
+            .SortBy(static name => name)
+            .RemoveKey()
+            .StartWithEmpty();
+    }
+
     public static void AddRelatedCollectionsComponent(
         CompositeItemModel<EntityId> itemModel,
         IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedLoadoutItemsObservable)
@@ -109,14 +125,7 @@ public static class LibraryDataProviderHelper
             .RemoveKey()
             .StartWithEmpty();
         
-        var installedCollectionsObservable = linkedLoadoutItemsObservable
-            .Transform(item => item.Parent.AsLoadoutItem())
-            .ChangeKey(coll => coll.Id)
-            .Distinct()
-            .Transform(collection => collection.Name)
-            .SortBy(static name => name)
-            .RemoveKey()
-            .StartWithEmpty();
+        var installedCollectionsObservable = ObserveInstalledCollectionNames(linkedLoadoutItemsObservable);
 
         // Only take downloaded entries that are not already installed
         var filteredDownloadedCollectionsObservable = downloadedNamesObservable.Except(installedCollectionsObservable);
