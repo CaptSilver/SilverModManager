@@ -159,7 +159,8 @@ public interface IFileHashesService
     /// match keeps its row, gets a <see cref="HashRelation"/> for the bytes read and is logged as an external change.
     /// Every item also gets a <see cref="LocalFileHash"/> row for <c>After</c>, the fingerprint taken after the
     /// read. A row that is gone (a rebuild replaced it) still gets the fingerprint row and the relation, so the new
-    /// baseline resolves the path. The caller drops an item whose file changed while it was read.
+    /// baseline resolves the path. The caller drops an item whose file changed while it was read. Concurrent calls are
+    /// serialized, so two syncs settling the same row promote it once.
     /// </summary>
     public Task SettleAttested(GameInstallation installation, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, CancellationToken cancellationToken = default);
 

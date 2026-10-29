@@ -39,7 +39,7 @@ public static class AttestedFileRows
     // A settle reads each row, then promotes and deletes it. Two syncs reading the same row would both promote it and
     // the second delete would unlink what the first linked, so settles run one at a time and read the database only
     // once they hold the turn.
-    private static readonly SemaphoreSlim SettleTurn = new(1, 1);
+    internal static readonly SemaphoreSlim SettleTurn = new(1, 1);
 
     /// <summary>
     /// Records what reading attested files found, in one transaction on <paramref name="local"/>; see

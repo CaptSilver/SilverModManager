@@ -31,9 +31,8 @@ public partial class ALoadoutSynchronizer
     /// <see cref="HashRelation"/> for its bytes: those are about to be streamed into the store anyway, and recording
     /// their digests lets a later baseline resolve the path and lets reset find the backup through its SHA-1.
     /// A node whose identity changed has its signature and actions worked out again, because they were chosen for the
-    /// old one. When the SHA-1 matched, <see cref="SyncNode.Previous"/> follows: the last sync saw these bytes, it
-    /// named them by SHA-1. When it did not match, the last sync did not see the bytes now on disk and
-    /// <c>Previous</c> keeps its SHA-1.
+    /// old one. A <see cref="SyncNode.Previous"/> or loadout part that is the SHA-1 of the bytes read follows the
+    /// disk part to their xxHash3; one that is another file's SHA-1 keeps it.
     /// </remarks>
     public async Task ResolveDiskIdentitiesForWrites(
         Dictionary<GamePath, SyncNode> tree,
@@ -53,14 +52,9 @@ public partial class ALoadoutSynchronizer
         foreach (var read in reads)
         {
             ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(tree, read.Path);
-            var before = node.Disk.Identity;
-            var xxHash3 = FileIdentity.XxHash3(read.Hashes.XxHash3);
-            if (before.MatchSameKind(xxHash3) == IdentityMatch.Same) continue;
+            if (node.Disk.Identity.MatchSameKind(FileIdentity.XxHash3(read.Hashes.XxHash3)) == IdentityMatch.Same) continue;
 
-            var matched = before.Kind == HashKind.Sha1 && read.Hashes.Sha1 == Sha1Value.From(before.Digest) && read.Hashes.Size == node.Disk.Size;
-            node.Disk = node.Disk with { Identity = xxHash3 };
-            if (matched && node.HavePrevious && node.Previous.Identity.MatchSameKind(before) == IdentityMatch.Same)
-                node.Previous = node.Previous with { Identity = xxHash3 };
+            NameByTheBytesRead(ref node, read);
             resolved[read.Path] = node;
         }
 
@@ -126,11 +120,7 @@ public partial class ALoadoutSynchronizer
         foreach (var read in reads)
         {
             var node = tree[read.Path];
-            var xxHash3 = FileIdentity.XxHash3(read.Hashes.XxHash3);
-            if (node.Disk.Identity.MatchSameKind(xxHash3) != IdentityMatch.Same) node.DiskNamedByRead = true;
-            node.Disk = node.Disk with { Identity = xxHash3 };
-            if (node.HavePrevious && NamesTheBytesRead(node.Previous, read)) node.Previous = node.Previous with { Identity = xxHash3 };
-            if (node.HaveLoadout && NamesTheBytesRead(node.Loadout, read)) node.Loadout = node.Loadout with { Identity = xxHash3 };
+            if (NameByTheBytesRead(ref node, read)) node.DiskNamedByRead = true;
             resolved[read.Path] = node;
         }
 
@@ -149,6 +139,22 @@ public partial class ALoadoutSynchronizer
             node.IdentityUnresolved = false;
             tree[path] = node;
         }
+    }
+
+    /// <summary>
+    /// Names a node's disk part by the xxHash3 of the bytes just read, and any previous or loadout part that is a
+    /// SHA-1 of those same bytes. A part naming other bytes keeps its SHA-1: it is a different file. Both reads of a
+    /// node, the early one and the one before writes, go through here so they cannot disagree about which parts
+    /// follow. Returns whether the disk part's name changed.
+    /// </summary>
+    private static bool NameByTheBytesRead(ref SyncNode node, WholeRead read)
+    {
+        var xxHash3 = FileIdentity.XxHash3(read.Hashes.XxHash3);
+        var renamed = node.Disk.Identity.MatchSameKind(xxHash3) != IdentityMatch.Same;
+        node.Disk = node.Disk with { Identity = xxHash3 };
+        if (node.HavePrevious && NamesTheBytesRead(node.Previous, read)) node.Previous = node.Previous with { Identity = xxHash3 };
+        if (node.HaveLoadout && NamesTheBytesRead(node.Loadout, read)) node.Loadout = node.Loadout with { Identity = xxHash3 };
+        return renamed;
     }
 
     private static bool NamesTheBytesRead(SyncNodePart part, WholeRead read)

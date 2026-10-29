@@ -15,6 +15,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <InternalsVisibleTo Include="SilverModManager.Games.FileHashes.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
       <Folder Include="Attributes\EpicGameStore\" />
     </ItemGroup>
 

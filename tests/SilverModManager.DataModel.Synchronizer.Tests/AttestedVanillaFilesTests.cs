@@ -1,8 +1,11 @@
+using System.Collections.Frozen;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Games.FileHashes;
+using SilverModManager.Games.FileHashes.Emitters;
 using SilverModManager.MnemonicDB.Storage;
 using SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 using SilverModManager.Sdk.Settings;
@@ -709,6 +712,42 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         FullHashes.Reset();
         await Synchronizer.Synchronize(Refresh(loadout));
         FullyHashed.Should().NotContain(Vanilla);
+    }
+
+    // The tree DiagnosticManager builds for its emitters, handed to the emitter that reports unusable game files.
+    private async Task<Diagnostic[]> WhatTheMissingGameFilesEmitterSays(Loadout.ReadOnly loadout)
+    {
+        var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
+        Synchronizer.ProcessSyncTree(tree);
+        var emitter = new UndeployableLoadoutDueToMissingGameFiles(ServiceProvider);
+        var found = new List<Diagnostic>();
+        await foreach (var diagnostic in emitter.Diagnose(Refresh(loadout), tree.ToFrozenDictionary(), CancellationToken.None))
+            found.Add(diagnostic);
+        return found.ToArray();
+    }
+
+    [Fact]
+    public async Task AnUnresolvedVanillaFile_GetsNoMissingGameFilesCard()
+    {
+        var loadout = await CreateLoadout();
+        await TheIndexRememberedTheVanillaFilesXxHash3WithNoRelation();
+        var node = await VanillaNodeNow(loadout);
+        node.IdentityUnresolved.Should().BeTrue("the two kinds have no recorded digest between them");
+
+        (await WhatTheMissingGameFilesEmitterSays(loadout)).Should().BeEmpty("the next apply reads the file and settles whether it differs");
+    }
+
+    [Fact]
+    public async Task ADeletedVanillaFile_IsStillReportedMissing()
+    {
+        var loadout = await CreateLoadout();
+        await TheIndexRememberedTheVanillaFilesXxHash3WithNoRelation();
+        File.Delete((GameFolder / Vanilla).ToString());
+
+        var diagnostic = (await WhatTheMissingGameFilesEmitterSays(loadout)).Should().ContainSingle().Subject;
+
+        diagnostic.Should().BeOfType<Diagnostic<SilverModManager.Games.FileHashes.Diagnostics.UndeployableLoadoutDueToMissingGameFilesMessageData>>()
+            .Which.MessageData.Files.Should().Contain(Vanilla);
     }
 
     [Fact]

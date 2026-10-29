@@ -13,6 +13,7 @@
       <InternalsVisibleTo Include="SilverModManager.Games.FileHashes.Tests" />
       <InternalsVisibleTo Include="SilverModManager.Backend.Tests" />
       <InternalsVisibleTo Include="SilverModManager.Games.TestFramework" />
+      <InternalsVisibleTo Include="SilverModManager.DataModel.Synchronizer.Tests" />
     </ItemGroup>
 
     <ItemGroup>

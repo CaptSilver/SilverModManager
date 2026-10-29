@@ -50,15 +50,29 @@ public sealed class SettleAttestedTests : IDisposable
     }
 
     [Fact]
-    public async Task TwoSettlesOfOneRowAtOnce_PromoteItOnce()
+    public async Task ASettleWaitsForTheSettleInProgress_SoARowIsPromotedOnce()
     {
         var (attested, baseline, _) = await Setup("a.esm", "vanilla");
         var hashes = await Hash("vanilla");
         var read = new (AttestedLookup, MultiHash, FileFingerprint)[] { (attested, hashes, new FileFingerprint(hashes.Size, Modified)) };
 
-        await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(() => _service.SettleAttested(Installation(), read))));
+        // Stands in for a settle that has read the row and not yet written: a second one must not start reading.
+        await AttestedFileRows.SettleTurn.WaitAsync(TestContext.Current.CancellationToken);
+        Task second;
+        try
+        {
+            second = Task.Run(() => _service.SettleAttested(Installation(), read), TestContext.Current.CancellationToken);
+            var finished = await Task.WhenAny(second, Task.Delay(TimeSpan.FromMilliseconds(500), TestContext.Current.CancellationToken));
+            finished.Should().NotBe(second, "a settle that starts while another holds the turn waits for it");
+            AttestedFile.All(_local.Db).Should().ContainSingle("the waiting settle has not touched the row");
+        }
+        finally
+        {
+            AttestedFileRows.SettleTurn.Release();
+        }
 
-        LocalBaseline.Load(_local.Db, baseline).Files.Should().ContainSingle("a second settle sees the row already promoted");
+        await second;
+        LocalBaseline.Load(_local.Db, baseline).Files.Should().ContainSingle();
         PathHashRelation.All(_local.Db).Should().ContainSingle();
         HashRelation.FindByXxHash3(_local.Db, hashes.XxHash3).Should().ContainSingle();
     }
