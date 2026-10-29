@@ -9,6 +9,7 @@ using SilverModManager.App.UI.Overlays;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
@@ -24,7 +25,22 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
 
     [Reactive] public partial ReactiveCommand<Unit, Unit> Command { get; set; }
 
-    public IObservable<bool> IsRunningObservable => _gameRunningTracker.GetWithCurrentStateAsStarting();
+    public IObservable<bool> IsRunningObservable => _gameRunningTracker.GetWithCurrentStateAsStarting()
+        .CombineLatest(SessionRunning(), (jobRunning, sessionRunning) => jobRunning || sessionRunning)
+        .DistinctUntilChanged();
+
+    // A launch Steam started through the app's wrapper is a session of this process but no run-game job, so the
+    // job tracker alone never shows it as running.
+    private IObservable<bool> SessionRunning() => _activeSessions is null
+        ? Observable.Return(false)
+        : this.WhenAnyValue(vm => vm.LoadoutId)
+            .Select(loadoutId =>
+            {
+                var marker = Sdk.Loadouts.Loadout.Load(_conn.Db, loadoutId);
+                return marker.IsValid() ? _activeSessions.WhenRunning(marker.InstallationInstance) : Observable.Return(false);
+            })
+            .Switch()
+            .OnUI();
 
     [Reactive] public partial bool CanLaunch { get; set; } = true;
 
@@ -46,6 +62,7 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
     private readonly IServiceProvider _serviceProvider;
     private readonly GameRunningTracker _gameRunningTracker;
     private readonly TimeProvider _timeProvider;
+    private readonly ActiveLaunchSessions? _activeSessions;
 
     /// <summary>
     /// How long the wait for the game may take before the label hints that Steam or the game's launcher may be
@@ -60,8 +77,9 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
     private bool _installStep;
     private ITimer? _slowStartTimer;
 
-    public LaunchButtonViewModel(ILogger<ILaunchButtonViewModel> logger, IToolManager toolManager, IConnection conn, IJobMonitor monitor, IServiceProvider serviceProvider, GameRunningTracker gameRunningTracker, TimeProvider? timeProvider = null)
+    public LaunchButtonViewModel(ILogger<ILaunchButtonViewModel> logger, IToolManager toolManager, IConnection conn, IJobMonitor monitor, IServiceProvider serviceProvider, GameRunningTracker gameRunningTracker, TimeProvider? timeProvider = null, ActiveLaunchSessions? activeSessions = null)
     {
+        _activeSessions = activeSessions;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _logger = logger;
         _toolManager = toolManager;
@@ -72,7 +90,7 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
         
         this.WhenActivated(cd =>
         {
-            _gameRunningTracker.GetWithCurrentStateAsStarting().Subscribe(isRunning =>
+            IsRunningObservable.Subscribe(isRunning =>
             {
                 if (isRunning)
                     SetLabelToRunning();

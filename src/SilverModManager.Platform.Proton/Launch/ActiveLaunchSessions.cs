@@ -1,3 +1,5 @@
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Sdk.Games;
@@ -19,6 +21,9 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
     private readonly object _lock = new();
     private readonly Dictionary<(GameStore Store, string StoreId), int> _counts = new();
 
+    // Says which installation's count just changed. Subscribers read the count themselves.
+    private readonly Subject<(GameStore, string)> _changes = new();
+
     /// <param name="services">
     /// Builds the sessions <see cref="BeginSession"/> hands out. Resolved lazily because a session depends on this
     /// registry. Null for a registry that only answers <see cref="IsRunning"/>.
@@ -29,6 +34,25 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
     public bool IsRunning(GameInstallation installation)
     {
         lock (_lock) return _counts.ContainsKey(KeyOf(installation));
+    }
+
+    /// <summary>
+    /// Whether <paramref name="installation"/> is running a launch: the current value on subscribe, then each
+    /// change. Two registrations for one installation report false only after both are disposed.
+    /// </summary>
+    public IObservable<bool> WhenRunning(GameInstallation installation)
+    {
+        var key = KeyOf(installation);
+        return Observable.Create<bool>(observer =>
+        {
+            // Each emission reads the count under the gate instead of carrying a value from the changing
+            // thread, so two threads changing it at once cannot deliver their values out of order.
+            var gate = new object();
+            void Emit() { lock (gate) observer.OnNext(IsRunning(installation)); }
+            var subscription = _changes.Where(changed => changed == key).Subscribe(_ => Emit());
+            Emit();
+            return subscription;
+        }).DistinctUntilChanged();
     }
 
     /// <inheritdoc />
@@ -50,6 +74,7 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
     {
         var key = KeyOf(installation);
         lock (_lock) _counts[key] = _counts.GetValueOrDefault(key) + 1;
+        _changes.OnNext(key);
         return new Registration(this, key);
     }
 
@@ -64,6 +89,7 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
             if (remaining == 0) _counts.Remove(key);
             else _counts[key] = remaining;
         }
+        _changes.OnNext(key);
     }
 
     private sealed class Registration(ActiveLaunchSessions owner, (GameStore, string) key) : IDisposable

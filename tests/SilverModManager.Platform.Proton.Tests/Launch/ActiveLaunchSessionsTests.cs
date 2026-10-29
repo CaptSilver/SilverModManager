@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Runtime.InteropServices;
+using System.Reactive.Linq;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
@@ -51,6 +52,46 @@ public class ActiveLaunchSessionsTests
 
         registration.Dispose();
         sessions.IsRunning(installation).Should().BeFalse();
+    }
+
+    [Fact]
+    public void WhenRunning_EmitsTheCurrentValueThenTrueOnRegisterAndFalseOnceTheLastRegistrationIsDisposed()
+    {
+        var sessions = new ActiveLaunchSessions();
+        var installation = Installation("1");
+        var seen = new List<bool>();
+        using var subscription = sessions.WhenRunning(installation).Subscribe(seen.Add);
+        seen.Should().Equal(false);
+
+        var first = sessions.Register(installation);
+        var second = sessions.Register(installation);
+        first.Dispose();
+        seen.Should().Equal(false, true);
+
+        second.Dispose();
+        seen.Should().Equal(false, true, false);
+    }
+
+    [Fact]
+    public void WhenRunning_StartsTrueForAnInstallationThatIsAlreadyRunning()
+    {
+        var sessions = new ActiveLaunchSessions();
+        var installation = Installation("1");
+        using var registration = sessions.Register(installation);
+
+        sessions.WhenRunning(installation).FirstAsync().Wait().Should().BeTrue();
+    }
+
+    [Fact]
+    public void WhenRunning_IgnoresAnotherInstallation()
+    {
+        var sessions = new ActiveLaunchSessions();
+        var seen = new List<bool>();
+        using var subscription = sessions.WhenRunning(Installation("1")).Subscribe(seen.Add);
+
+        using var other = sessions.Register(Installation("2"));
+
+        seen.Should().Equal(false);
     }
 
     [Fact]

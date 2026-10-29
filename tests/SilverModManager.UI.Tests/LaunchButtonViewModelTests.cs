@@ -11,6 +11,8 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI;
 using SilverModManager.App.UI.LeftMenu.Items;
 using SilverModManager.App.UI.Resources;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
@@ -35,15 +37,17 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         public readonly TaskCompletionSource Finish = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public CancellationToken ToolToken;
         public string GameName = "";
+        public GameInstallation Installation = null!;
         public LaunchButtonViewModel ViewModel = null!;
     }
 
-    private async Task<Rig> Build(PresenterRig? presenter = null, Func<Exception>? failure = null, bool withoutRunTool = false, TimeProvider? clock = null)
+    private async Task<Rig> Build(PresenterRig? presenter = null, Func<Exception>? failure = null, bool withoutRunTool = false, TimeProvider? clock = null, ActiveLaunchSessions? sessions = null)
     {
         var rig = new Rig();
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Launch button");
 
         rig.GameName = loadout.InstallationInstance.Game.DisplayName;
+        rig.Installation = loadout.InstallationInstance;
         var tool = Substitute.For<IRunGameTool>();
         tool.WaitingForSteam.Returns(rig.Waiting);
         tool.RunningInstallStep.Returns(rig.InstallStep);
@@ -69,7 +73,8 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
             monitor,
             presenter?.Services ?? Provider,
             Provider.GetRequiredService<GameRunningTracker>(),
-            clock)
+            clock,
+            sessions)
         {
             LoadoutId = loadout.LoadoutId,
         };
@@ -194,6 +199,24 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         rig.ViewModel.Label.Should().Be(string.Format(Language.LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM, rig.GameName));
         rig.Finish.SetResult();
         await run.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task Label_IsRunningWhileAForwardedSessionHoldsTheInstallation()
+    {
+        // A launch Steam started through the app's wrapper is a registered session with no run-game job behind it.
+        var sessions = new ActiveLaunchSessions(null);
+        var rig = await Build(sessions: sessions);
+        using var activation = await OnUi(() => Task.FromResult(rig.ViewModel.Activator.Activate()));
+        await Eventually(() => rig.ViewModel.Label == Language.LaunchButtonViewModel_LaunchGame_LAUNCH);
+
+        var registration = sessions.Register(rig.Installation);
+        await Eventually(() => rig.ViewModel.Label == Language.LaunchButtonViewModel_LaunchGame_RUNNING);
+        (await rig.ViewModel.IsRunningObservable.FirstAsync()).Should().BeTrue("the button is busy for as long as the label says Running");
+
+        registration.Dispose();
+        await Eventually(() => rig.ViewModel.Label == Language.LaunchButtonViewModel_LaunchGame_LAUNCH);
+        (await rig.ViewModel.IsRunningObservable.FirstAsync()).Should().BeFalse();
     }
 
     [Fact]
