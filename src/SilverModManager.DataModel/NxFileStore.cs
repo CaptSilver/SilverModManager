@@ -34,6 +34,34 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
     private FrozenDictionary<Hash, ArchiveContents> _archivesByEntry = FrozenDictionary<Hash, ArchiveContents>.Empty;
     private FrozenDictionary<AbsolutePath, ArchiveContents> _archives = FrozenDictionary<AbsolutePath, ArchiveContents>.Empty;
 
+    /// <summary>
+    /// The zstd level backups are packed at, for both solid blocks and chunked files. Backups are read back rarely
+    /// and are mostly game assets that do not compress much further, so the time at the default level (9) is not
+    /// worth the few percent it saves.
+    /// </summary>
+    private const int BackupCompressionLevel = 3;
+
+    /// <summary>
+    /// Passes on only reports that raise the fraction: the packer finishes its blocks in order, but nothing here
+    /// should depend on that, and a bar fed from it must not move backwards.
+    /// </summary>
+    private sealed class NeverBackProgress(IProgress<double> inner) : IProgress<double>
+    {
+        private readonly object _sync = new();
+        private double _highest = -1;
+
+        public void Report(double value)
+        {
+            lock (_sync)
+            {
+                value = Math.Clamp(value, 0, 1);
+                if (value <= _highest) return;
+                _highest = value;
+                inner.Report(value);
+            }
+        }
+    }
+
     private record ArchiveContents(AbsolutePath ArchivePath, Size Size, DateTimeOffset LastModified, FrozenDictionary<Hash, FileEntry> Entries);
     
     /// <summary>
@@ -169,13 +197,17 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
     public ValueTask<bool> HaveFile(Hash hash) => ValueTask.FromResult(_archivesByEntry.ContainsKey(hash));
 
     /// <inheritdoc />
-    public async Task BackupFiles(IEnumerable<ArchivedFileEntry> enumerable, bool deduplicate = true, CancellationToken token = default)
+    public async Task BackupFiles(IEnumerable<ArchivedFileEntry> enumerable, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null)
     {
         // NOTE(AL12rs): We take a read lock here to prevent write access to the archives being read
         // While this is also creating an archive, we don't take the write lock, as the archive new and thus not known yet
         using var _ = _lock.ReadLock();
 
-        var builder = new NxPackerBuilder();
+        var forward = progress is null ? null : new NeverBackProgress(progress);
+        var builder = new NxPackerBuilder()
+            .WithProgress(forward)
+            .WithChunkedLevel(BackupCompressionLevel)
+            .WithSolidCompressionLevel(BackupCompressionLevel);
         Dictionary<Hash, (ArchivedFileEntry, Stream)> filesToBackup;
 
         enumerable = enumerable.DistinctBy(x => x.Hash);
@@ -216,6 +248,8 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
             builder.WithOutput(outputStream);
             builder.Build();
         }
+
+        forward?.Report(1.0);
 
         foreach (var kv in filesToBackup)
         {

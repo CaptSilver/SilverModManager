@@ -116,8 +116,16 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
         );
 
         // PERFORMANCE: We deduplicate above with the HaveFile call.
-        // The archive is written in one pass that reports nothing, so the bytes it covers are counted when it is done.
-        await _fileStore.BackupFiles(archivedFiles, deduplicate: false);
+        // The archive is written in one pass; the store reports how far it is, which fills the part of the bar the
+        // files it already had did not.
+        if (!archivedFiles.IsEmpty)
+        {
+            _logger.LogInformation("Archiving {Count} files ({Size}) into the file store", archivedFiles.Count,
+                BackupOverflow.FormatSize(Size.FromLong(archivedFiles.Sum(static file => (long)file.Size.Value))));
+        }
+
+        var packProgress = new BackupPackProgress(context.Job, _logger, totalFiles, totalBytes, Interlocked.Read(ref bytesAccountedFor));
+        await _fileStore.BackupFiles(archivedFiles, deduplicate: false, progress: packProgress);
         context.Job?.ReportProgress(SyncPhases.BackingUp, totalFiles, totalFiles, totalBytes, totalBytes);
 
         // Pin the files to avoid garbage collection.

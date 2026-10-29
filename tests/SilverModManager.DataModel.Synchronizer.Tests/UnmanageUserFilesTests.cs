@@ -172,7 +172,7 @@ public class UnmanageUserFilesTests(ITestOutputHelper helper) : AStubbedGameTest
     private class HidingFileStore(IFileStore inner, HashSet<Hash> hidden) : IFileStore
     {
         public ValueTask<bool> HaveFile(Hash hash) => hidden.Contains(hash) ? ValueTask.FromResult(false) : inner.HaveFile(hash);
-        public Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default) => inner.BackupFiles(backups, deduplicate, token);
+        public Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null) => inner.BackupFiles(backups, deduplicate, token, progress);
         public Task ExtractFiles(IEnumerable<(Hash Hash, AbsolutePath Dest)> files, CancellationToken token = default, Action<(int Current, int Max)>? progress = null) => inner.ExtractFiles(files, token, progress);
         public Task<Dictionary<Hash, byte[]>> ExtractFiles(IEnumerable<Hash> files, CancellationToken token = default) => inner.ExtractFiles(files, token);
         public Task<Stream> GetFileStream(Hash hash, CancellationToken token = default) => inner.GetFileStream(hash, token);

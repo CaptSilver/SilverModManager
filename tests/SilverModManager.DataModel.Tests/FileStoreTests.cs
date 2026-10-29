@@ -31,6 +31,49 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
     }
     
     
+    private sealed class RecordingProgress : IProgress<double>
+    {
+        public List<double> Reports { get; } = [];
+        public void Report(double value) => Reports.Add(value);
+    }
+
+    private static ArchivedFileEntry RandomEntry(int seed, int length, out byte[] bytes)
+    {
+        bytes = new byte[length];
+        new Random(seed).NextBytes(bytes);
+        return new ArchivedFileEntry(new MemoryStreamFactory($"random{seed}.bin", new MemoryStream(bytes)), bytes.xxHash3(), Size.FromLong(length));
+    }
+
+    [Fact]
+    public async Task BackingUpFiles_ReportsProgressThatNeverGoesBackAndEndsAtOne()
+    {
+        var entries = Enumerable.Range(1, 12).Select(i => RandomEntry(i, 700 * 1024, out _)).ToList();
+        var progress = new RecordingProgress();
+
+        await _fileStore.BackupFiles(entries, deduplicate: false, token: TestContext.Current.CancellationToken, progress: progress);
+
+        progress.Reports.Should().HaveCountGreaterThan(1, "the packer reports as its blocks finish, not only at the end");
+        progress.Reports.Should().BeInAscendingOrder("a bar fed by it must not move backwards");
+        progress.Reports.Should().OnlyContain(value => value >= 0 && value <= 1);
+        progress.Reports.Last().Should().Be(1.0);
+    }
+
+    [Fact]
+    public async Task BackingUpFiles_StoresBytesThatReadBackIdenticallyAtTheBackupCompressionLevel()
+    {
+        // One file past the chunk size and several below it, so both the chunked and the solid path are used.
+        var big = RandomEntry(100, 6 * 1024 * 1024 + 123, out var bigBytes);
+        var small = Enumerable.Range(1, 5).Select(i => RandomEntry(i, 40 * 1024 + i, out _)).ToList();
+        var compressible = new ArchivedFileEntry(new MemoryStreamFactory("text.txt", new MemoryStream(Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("silver ", 100_000))))),
+            Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("silver ", 100_000))).xxHash3(), Size.FromLong("silver ".Length * 100_000));
+
+        await _fileStore.BackupFiles([big, compressible, .. small], deduplicate: false, token: TestContext.Current.CancellationToken);
+
+        (await _fileStore.Load(big.Hash, TestContext.Current.CancellationToken)).Should().Equal(bigBytes);
+        (await _fileStore.Load(compressible.Hash, TestContext.Current.CancellationToken)).Should().Equal(Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("silver ", 100_000))));
+        foreach (var entry in small) (await _fileStore.Load(entry.Hash, TestContext.Current.CancellationToken)).Should().HaveCount((int)entry.Size.Value);
+    }
+
     [Fact]
     public async Task AFileThatChangedAfterItWasHashedIsRejectedAndNotIndexed()
     {

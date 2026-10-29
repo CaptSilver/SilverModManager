@@ -161,7 +161,7 @@ public class LibraryFileDigestsTests(IConnection connection, IServiceProvider se
             return Task.FromResult<Stream>(new MemoryStream(content, writable: false));
         }
 
-        public Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default) => throw new NotSupportedException();
+        public Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null) => throw new NotSupportedException();
         public Task ExtractFiles(IEnumerable<(Hash Hash, AbsolutePath Dest)> files, CancellationToken token = default, Action<(int Current, int Max)>? progress = null) => throw new NotSupportedException();
         public Task<Dictionary<Hash, byte[]>> ExtractFiles(IEnumerable<Hash> files, CancellationToken token = default) => throw new NotSupportedException();
         public Task<byte[]> Load(Hash hash, CancellationToken token = default) => throw new NotSupportedException();

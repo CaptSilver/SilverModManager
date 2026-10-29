@@ -78,3 +78,80 @@ public class ProgressLogTests
         seen.Last().Should().Be(new SyncProgress(SyncPhases.ReadingBackups, 4, 4, 4096, 4096));
     }
 }
+
+public class BackupPackProgressTests
+{
+    private static (SynchronizeLoadoutJob Job, List<SyncProgress> Seen, IDisposable Subscription) Watch()
+    {
+        var job = new SynchronizeLoadoutJob(SilverModManager.Sdk.Loadouts.LoadoutId.From(1UL));
+        var seen = new List<SyncProgress>();
+        var subscription = job.Progress.Where(p => p.Phase is not null).Subscribe(seen.Add);
+        return (job, seen, subscription);
+    }
+
+    [Fact]
+    public void PackedShare_FillsOnlyTheBytesTheStoreDidNotAlreadyHold()
+    {
+        var (job, seen, subscription) = Watch();
+        using var _ = subscription;
+        var progress = new BackupPackProgress(job, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance, totalFiles: 10, totalBytes: 1000, bytesAccountedFor: 200, new ProgressLogGate(TimeSpan.FromHours(1)));
+
+        progress.Report(0);
+        progress.Report(0.5);
+        progress.Report(1.0);
+
+        seen.Select(p => p.BytesDone).Should().Equal(200, 600, 1000);
+        seen.Should().OnlyContain(p => p.Phase == SyncPhases.BackingUp && p.FilesDone == 10 && p.FilesTotal == 10 && p.BytesTotal == 1000);
+    }
+
+    [Fact]
+    public void AReportBehindTheLastOne_DoesNotMoveTheBarBack()
+    {
+        var (job, seen, subscription) = Watch();
+        using var _ = subscription;
+        var progress = new BackupPackProgress(job, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance, 4, 400, 0, new ProgressLogGate(TimeSpan.FromHours(1)));
+
+        progress.Report(0.75);
+        progress.Report(0.25);
+        progress.Report(1.0);
+
+        seen.Select(p => p.BytesDone).Should().BeInAscendingOrder();
+        seen.Last().BytesDone.Should().Be(400);
+    }
+
+    [Fact]
+    public void NothingLeftToPack_StillEndsAtTheTotal()
+    {
+        var (job, seen, subscription) = Watch();
+        using var _ = subscription;
+        var progress = new BackupPackProgress(job, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance, 3, 300, bytesAccountedFor: 300, new ProgressLogGate(TimeSpan.FromHours(1)));
+
+        progress.Report(1.0);
+
+        seen.Last().Should().Be(new SyncProgress(SyncPhases.BackingUp, 3, 3, 300, 300));
+    }
+
+    [Fact]
+    public void TheLog_IsThrottledByTheGate()
+    {
+        var quiet = new ListLoggerForPack();
+        var slow = new BackupPackProgress(null, quiet, 1, 100, 0, new ProgressLogGate(TimeSpan.FromHours(1)));
+        for (var i = 1; i <= 10; i++) slow.Report(i / 10.0);
+        quiet.Lines.Should().BeEmpty();
+
+        var chatty = new ListLoggerForPack();
+        var fast = new BackupPackProgress(null, chatty, 1, 100, 0, new ProgressLogGate(TimeSpan.Zero));
+        fast.Report(0.5);
+        chatty.Lines.Should().ContainSingle().Which.Should().Be("Archived 50 B of 100 B of the files to back up");
+    }
+
+    private sealed class ListLoggerForPack : ILogger
+    {
+        public List<string> Lines { get; } = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Lines.Add(formatter(state, exception));
+    }
+}

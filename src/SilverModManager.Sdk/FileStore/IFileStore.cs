@@ -26,6 +26,10 @@ public interface IFileStore
     /// <param name="backups">The files to back up.</param>
     /// <param name="deduplicate">Ensures no duplicate files are stored.</param>
     /// <param name="token"></param>
+    /// <param name="progress">
+    /// Receives how much of the archive is written, from 0 to 1. A store that cannot tell reports only the
+    /// finish. Reports never go down and the last one is 1; they may come from any thread.
+    /// </param>
     /// <remarks>
     /// Backing up duplicates should generally be avoided, as it encurs a performance and
     /// disk space penalty. However accidentally creating a duplicate is not
@@ -43,7 +47,7 @@ public interface IFileStore
     /// being made without a lock is so low that it is generally recommended not to lock
     /// to instead maximize performance. The Garbage Collector will remove any duplicates down the road.
     /// </remarks>
-    Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default);
+    Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null);
 
     /// <summary>
     /// Extract the given files to the given disk locations, provide as a less-abstract interface in case
