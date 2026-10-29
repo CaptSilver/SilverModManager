@@ -191,6 +191,34 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
         AsText(engine.Plan(loadout, MergeSourceMode.Apply).Single()).Should().Be("A\nb\nc\n");
     }
 
+    [Fact]
+    public async Task AfterTheOriginalBecomesTrustedTheMergeKeepsBothModsNonOverlappingEdits()
+    {
+        // The game updated while the app ran: the copy was unchecked at first (a two-way fold keeps A's file and drops
+        // B's two inserted lines), then the store's list for the new build vouched for it.
+        var loadout = await CreateLoadout();
+        var rel = $"scripts/after-update-{Guid.NewGuid():N}.txt";
+        await WriteVanilla(rel, "a\nb\nc\nd\ne\n");
+        await Mod(loadout, "A", "modA", 2, Text(rel, "a\nBB\nc\nd\ne\n"));
+        await Mod(loadout, "B", "modB", 1, Text(rel, "a\nb\nc\nd\nvar tt_creator;\ntt_creator = owner;\ne\n"));
+        loadout = Refresh(loadout);
+        var engine = Engine();
+        _trust.Trusted = false;
+        _trust.Reason = VanillaTrustReasons.StoreFileListNotSavedYet;
+
+        var twoWay = engine.Plan(loadout, MergeSourceMode.Apply).Single(o => o.RelPath == rel);
+        AsText(twoWay).Should().NotContain("tt_creator", "a two-way fold drops the lower mod's lines");
+        twoWay.Notes.OfType<VanillaBaseUntrusted>().Should().ContainSingle();
+
+        _trust.Trusted = true;
+
+        var threeWay = engine.Plan(loadout, MergeSourceMode.Apply).Single(o => o.RelPath == rel);
+        AsText(threeWay).Should().Be("a\nBB\nc\nd\nvar tt_creator;\ntt_creator = owner;\ne\n");
+        threeWay.Strategy.Should().Be("text-3way");
+        threeWay.Notes.OfType<VanillaBaseUntrusted>().Should().BeEmpty();
+        threeWay.Notes.OfType<LinesKept>().Should().BeEmpty();
+    }
+
     /// <summary>A contest over its own rel whose result depends on the vanilla copy: A edits line 1, B line 3.</summary>
     private async Task<(Loadout.ReadOnly Loadout, string VanillaPath)> TwoEditsOverOwnVanilla()
     {

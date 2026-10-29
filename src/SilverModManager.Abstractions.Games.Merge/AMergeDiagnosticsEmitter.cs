@@ -41,6 +41,12 @@ public abstract class AMergeDiagnosticsEmitter<TPlan>(ILogger logger) : ADropped
     protected virtual bool RaisesCard(IMergeNote note) => note.Loss is not null && note is not (IVanillaSourceNote or IMergeDetailNote);
 
     /// <summary>
+    /// Whether another card already says everything about this path's losses, so the per-loss cards would only
+    /// repeat it or give advice that does not hold for it.
+    /// </summary>
+    protected virtual bool CardsReplaceLossCards(MergedEntry entry) => false;
+
+    /// <summary>
     /// The bare name of the page where the user reorders the mods that conflict. Every emitter names it: it differs per
     /// game and has to agree with the game's own card wording, which no default can know.
     /// </summary>
@@ -73,6 +79,7 @@ public abstract class AMergeDiagnosticsEmitter<TPlan>(ILogger logger) : ADropped
     {
         foreach (var entry in Merged(loadout, plan))
         {
+            if (CardsReplaceLossCards(entry)) continue;
             var losses = entry.Notes.Where(n => RaisesCard(n) && n.Loss is not null).GroupBy(n => n.Loss);
             foreach (var group in losses) yield return ToDroppedItem(loadout, entry.Path, group.ToArray());
         }

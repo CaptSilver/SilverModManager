@@ -119,15 +119,15 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
     }
 
     [Fact]
-    public async Task ManyUntrustedOriginalsAreOneSuggestionNamingTheFirstFewPaths()
+    public async Task EachUntrustedOriginalIsItsOwnWarningNamingItsPath()
     {
-        var notes = Enumerable.Range(1, 7).Select(i => new VanillaBaseUntrusted($"scripts/{i}.ws", "edited after install")).ToArray<IMergeNote>();
+        var outputs = Enumerable.Range(1, 3).Select(i => TwoWayOutput($"scripts/{i}.ws", VanillaTrustReasons.StoreFileListNotSavedYet)).ToArray();
 
-        var cards = await Run([Merged()], [Output(notes)]);
+        var cards = await Run([Merged()], outputs);
 
-        var card = cards.Should().ContainSingle().Which;
-        Summary(card).Should().Contain("scripts/1.ws").And.Contain("scripts/5.ws").And.NotContain("scripts/6.ws").And.Contain("and 2 more")
-            .And.Contain("the higher-priority mod's version wins");
+        cards.Should().HaveCount(3).And.OnlyContain(c => c.Severity == DiagnosticSeverity.Warning);
+        Summary(cards[0]).Should().Contain("scripts/1.ws");
+        Summary(cards[2]).Should().Contain("scripts/3.ws");
     }
 
     [Fact]
@@ -154,15 +154,79 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
     }
 
     [Fact]
-    public async Task AnUntrustedOriginalCopyIsASuggestionAndAMissingOneRaisesNothing()
+    public async Task AnOriginalSteamHasNotSavedAListFor_IsAWarningNamingTheWinnerTheLoserAndTheDroppedLinesWithTrueAdvice()
     {
-        var cards = await Run([Merged()], [Output(new NoVanillaBase(Script), new VanillaBaseUntrusted("scripts/y.ws", "edited after install"))]);
+        var output = TwoWayOutput(Script, VanillaTrustReasons.StoreFileListNotSavedYet, new LinesKept(Script, 12, 13, "Alpha", "Beta"), new LinesKept(Script, 40, 40, "Alpha", "Beta"));
+
+        var card = (await Run([Merged()], [output])).Should().ContainSingle().Which;
+
+        card.Severity.Should().Be(DiagnosticSeverity.Warning);
+        var text = Summary(card) + " " + Details(card);
+        text.Should().Contain("the game's own copy of scripts/x.ws")
+            .And.Contain("Steam has not saved the file list for the installed build yet")
+            .And.Contain("Alpha").And.Contain("Beta's lines 12–13, 40–40")
+            .And.Contain("Let Steam finish the update").And.Contain("apply again");
+        text.Should().NotContain("Load Order").And.NotContain("Test Order page");
+    }
+
+    [Fact]
+    public async Task AnOriginalThatDiffersFromTheStoresList_SaysToVerifyTheGamesFilesAndIsAWarning()
+    {
+        var output = TwoWayOutput(Script, VanillaTrustReasons.DiffersFromStoreList, new LinesKept(Script, 4, 7, "Alpha", "Beta"));
+
+        var card = (await Run([Merged()], [output])).Should().ContainSingle().Which;
+
+        card.Severity.Should().Be(DiagnosticSeverity.Warning);
+        var text = Summary(card) + " " + Details(card);
+        text.Should().Contain("differs from the store's file list").And.Contain("Verify the game's files in Steam").And.Contain("Beta's lines 4–7");
+        text.Should().NotContain("Load Order").And.NotContain("Test Order page");
+    }
+
+    [Fact]
+    public async Task AFileTheStoreNeverInstalled_SaysToKeepOnlyOneOfTheModsThatShipIt()
+    {
+        var output = TwoWayOutput(Script, VanillaTrustReasons.NotInstalledByStore, new LinesKept(Script, 4, 7, "Alpha", "Beta"));
+
+        var card = (await Run([Merged()], [output])).Should().ContainSingle().Which;
+
+        card.Severity.Should().Be(DiagnosticSeverity.Warning);
+        (Summary(card) + " " + Details(card)).Should().Contain("keep only one of the mods that ship this file");
+    }
+
+    [Fact]
+    public async Task AnyOtherReasonForAnUntrustedOriginal_IsStillAWarning()
+    {
+        var output = TwoWayOutput(Script, "outside the game folder", new LinesKept(Script, 4, 7, "Alpha", "Beta"));
+
+        var card = (await Run([Merged()], [output])).Should().ContainSingle().Which;
+
+        card.Severity.Should().Be(DiagnosticSeverity.Warning);
+        (Summary(card) + " " + Details(card)).Should().Contain("outside the game folder").And.NotContain("Load Order");
+    }
+
+    [Fact]
+    public async Task ATwoWayFoldGetsNoMoveXBelowYCardBecauseReorderingWouldDropTheOtherModsLines()
+    {
+        var output = TwoWayOutput(Script, VanillaTrustReasons.StoreFileListNotSavedYet, new LinesKept(Script, 4, 7, "Alpha", "Beta"));
+
+        var cards = await Run([Merged()], [output]);
+
+        cards.Select(c => Summary(c) + Details(c)).Should().NotContain(t => t.Contains("below") && t.Contains("loads after"));
+        cards.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task AMissingOriginalCopyRaisesNothingAndItsPerLossCardsStay()
+    {
+        var cards = await Run([Merged()], [Output(new NoVanillaBase(Script), Loss)]);
 
         var card = cards.Should().ContainSingle().Which;
-        card.Severity.Should().Be(DiagnosticSeverity.Suggestion);
-        Summary(card).Should().Contain("scripts/y.ws").And.Contain("edited after install").And.Contain("the higher-priority mod's version wins");
+        Summary(card).Should().Contain("Beta's change to `scripts/x.ws`");
         Details(card).Should().Contain("Test Order page");
     }
+
+    private static MergedOutput TwoWayOutput(string path, string reason, params LinesKept[] kept)
+        => new(new GamePath(LocationId.Game, $"Mods/merged/{path}"), path, [], ["Alpha", "Beta"], [new VanillaBaseUntrusted(path, reason), .. kept], "text");
 
     [Fact]
     public async Task ANoteThatIsNeitherALossNorAVanillaNoteRaisesNoCard()

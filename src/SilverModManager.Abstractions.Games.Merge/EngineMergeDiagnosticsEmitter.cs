@@ -17,8 +17,6 @@ public sealed record EngineMergeSnapshot(MergeReport Report, IReadOnlyList<Merge
 /// </summary>
 public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<EngineMergeSnapshot>
 {
-    private const int MaxNamedPaths = 5;
-
     private readonly MergeEngines _engines;
     private readonly Func<Loadout.ReadOnly, AMergeGame> _gameOf;
 
@@ -62,8 +60,12 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Eng
     {
         var page = ReorderPage(loadout);
         foreach (var item in NotMergeableItems(plan.Report, page)) yield return item;
-        if (UntrustedBaseItem(plan, page) is { } untrusted) yield return untrusted;
+        foreach (var item in UntrustedBaseItems(plan)) yield return item;
     }
+
+    // A two-way merge keeps the first mod's copy and every difference in the others is dropped, so "move X below Y"
+    // would only swap which mod loses its lines. The base card lists what is dropped instead.
+    protected override bool CardsReplaceLossCards(MergedEntry entry) => entry.Notes.Any(n => n is VanillaBaseUntrusted);
 
     // The game loads every mod's copy, so nothing here is left out: the card says which copy wins where they overlap.
     protected override IEnumerable<Diagnostic> Extra(Loadout.ReadOnly loadout, EngineMergeSnapshot plan)
@@ -92,18 +94,54 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Eng
         }
     }
 
-    // The game's own copy was changed by another tool, so the mods are merged two-way and the higher-ranked one wins every
-    // difference. A missing copy raises nothing: a file a mod adds has none, and the Merges page already says so.
-    private static DroppedItem? UntrustedBaseItem(EngineMergeSnapshot plan, string page)
+    // Without the game's own copy to compare against, the merge is two-way: the first mod's file is the result and what
+    // the other mods changed is left out, including lines they added that nothing else touches. That can break the
+    // result (a script that uses a variable the dropped lines declare no longer compiles), so every reason is a Warning.
+    // A missing copy raises nothing: a file a mod adds has none, and the Merges page already says so.
+    // The advice has nothing to do with load order, so the card has no page.
+    private static IEnumerable<DroppedItem> UntrustedBaseItems(EngineMergeSnapshot plan)
     {
-        var untrusted = plan.Outputs.SelectMany(o => o.Notes).OfType<VanillaBaseUntrusted>().DistinctBy(n => n.Path).ToArray();
-        if (untrusted.Length == 0) return null;
+        foreach (var output in plan.Outputs)
+        {
+            if (output.Notes.OfType<VanillaBaseUntrusted>().FirstOrDefault() is not { } untrusted) continue;
+            if (output.Contributors.Count < 2) continue;
 
-        var paths = string.Join(", ", untrusted.Take(MaxNamedPaths).Select(n => n.Path));
-        if (untrusted.Length > MaxNamedPaths) paths += $" and {untrusted.Length - MaxNamedPaths} more";
-        var reasons = string.Join("; ", untrusted.Select(n => n.Reason).Distinct());
-        return new DroppedItem(
-            $"the game's own copy of {paths}", "the game folder",
-            $"{reasons}, so the mods were merged without it and where they differ the higher-priority mod's version wins", page, DiagnosticSeverity.Suggestion);
+            var winner = output.Contributors[0];
+            var losers = output.Contributors.Skip(1).Distinct().ToArray();
+            var both = $"{winner} and {string.Join(" and ", losers)}";
+            var dropped = DroppedLines(output, losers);
+
+            var reason = untrusted.Reason switch
+            {
+                VanillaTrustReasons.StoreFileListNotSavedYet =>
+                    $"{untrusted.Reason}, so the app cannot tell the game's lines from the mods' and merged {both} two-way; {dropped} are dropped, " +
+                    "which can break the result. Let Steam finish the update (or verify the game's files in Steam), wait for the app's file check, then apply again",
+                VanillaTrustReasons.DiffersFromStoreList =>
+                    $"the game's copy differs from the store's file list for the installed build (another tool or an earlier merge changed it), so {both} were merged two-way and {dropped} are dropped. " +
+                    "Verify the game's files in Steam to restore the original, then apply again",
+                VanillaTrustReasons.NotInstalledByStore =>
+                    $"the store did not install this file, so there is no original to merge against; {both} were merged two-way and {dropped} are dropped. " +
+                    "If a mod's content is missing in game, keep only one of the mods that ship this file",
+                _ =>
+                    $"{untrusted.Reason}, so {both} were merged two-way and {dropped} are dropped. " +
+                    "If a mod's content is missing in game, keep only one of the mods that ship this file",
+            };
+
+            yield return new DroppedItem($"the game's own copy of {untrusted.Path}", "the game folder", reason, null);
+        }
+    }
+
+    // "Beta's lines 12–13, 40–40 and Gamma's lines 3–3"; a merge that notes no lines just says the mod's changes.
+    private static string DroppedLines(MergedOutput output, string[] losers)
+    {
+        var parts = new List<string>();
+        foreach (var loser in losers)
+        {
+            var ranges = output.Notes.OfType<LinesKept>().Where(k => k.DroppedMod == loser).OrderBy(k => k.FirstLine)
+                .Select(k => $"{k.FirstLine}–{k.LastLine}").ToArray();
+            parts.Add(ranges.Length == 0 ? $"{loser}'s own changes" : $"{loser}'s lines {string.Join(", ", ranges)}");
+        }
+
+        return string.Join(" and ", parts);
     }
 }
