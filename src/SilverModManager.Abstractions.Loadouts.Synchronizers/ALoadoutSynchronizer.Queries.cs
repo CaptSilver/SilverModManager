@@ -39,7 +39,7 @@ public partial class ALoadoutSynchronizer
     /// </summary>
     public IReadOnlyList<GamePath> DeletedWinners(Loadout.ReadOnly loadout)
     {
-        return WinningFilesQuery(Connection.Db, loadout)
+        return WinningFilesQuery(loadout.Db, loadout)
             .Where(static row => row.ItemType == "Deleted")
             .Select(static row => new GamePath(row.Location, row.Path))
             .ToArray();

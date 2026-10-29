@@ -172,7 +172,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     {
         Dictionary<GamePath, SyncNode> syncTree = new();
 
-        foreach (var tuple in WinningFilesQuery(Connection.Db, loadout))
+        // The loadout's own revision, not the latest one: a commit that lands after the caller took its loadout would
+        // otherwise put files in the tree that the caller's loadout (which games check the tree against) never listed.
+        foreach (var tuple in WinningFilesQuery(loadout.Db, loadout))
         {
             var itemType = ToItemType(tuple.ItemType);
 

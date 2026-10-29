@@ -11,6 +11,7 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
@@ -222,6 +223,26 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
             (await (GameFolder / path).ReadAllTextAsync()).Should().Be("written by the game: " + path, "the sync after the heal deletes nothing either");
         var diagnostics = await RunEmittersOnProcessedTree(Refresh(loadout));
         diagnostics.Select(Describe).Where(text => GameRewritten.Any(text.Contains)).Should().BeEmpty("no card is left for the game's own output");
+    }
+
+    [Fact]
+    public async Task AnotherCommitLandingBeforeTheTreeIsBuiltDoesNotMakeTheMergeCheckRefuseTheApply()
+    {
+        var loadout = await CreateLoadout();
+        await Synchronizer.Synchronize(Refresh(loadout));
+        var held = Refresh(loadout);
+
+        // A background writer (the load order reconciler, say) commits after the apply took its loadout.
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(held.Id, Loadout.Name, "renamed while the apply runs");
+            await tx.Commit();
+        }
+
+        var tree = await Synchronizer.BuildSyncTree(held);
+        var apply = async () => await Synchronizer.RunActions(tree, held);
+
+        await apply.Should().NotThrowAsync<MergeApplyRefusedException>("the tree was built from the loadout the merge check judges");
     }
 
     [Fact]
