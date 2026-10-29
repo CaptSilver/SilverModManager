@@ -16,6 +16,9 @@ public readonly partial struct LocationId
     /// <summary>What a player is told for a location nobody gave a name.</summary>
     public const string UnnamedDisplayName = "Other folders";
 
+    /// <summary>How a sentence names a location nobody gave a name.</summary>
+    public const string UnnamedSentenceName = "other folders";
+
     /// <summary>
     /// Converts the string to a LocationId.
     /// </summary>
@@ -34,9 +37,9 @@ public readonly partial struct LocationId
 
     /// <summary>
     /// The location as a sentence names it, so it reads after "in" and "to" ("the mod loader folder"). Most
-    /// locations read the same bare as <see cref="DisplayName"/> ("in Saves"); a registered phrase wins.
+    /// locations read the same bare as <see cref="DisplayName"/> ("in Saves"); a registered phrase wins. A location nobody named reads <see cref="UnnamedSentenceName"/>.
     /// </summary>
-    public string SentenceName => Names.TryGetValue(Value, out var name) ? name.Sentence : UnnamedDisplayName;
+    public string SentenceName => Names.TryGetValue(Value, out var name) ? name.Sentence : UnnamedSentenceName;
 
     /// <summary>Whether a name was registered for this location. Game-specific names come from the game instead.</summary>
     public bool IsNamed => Names.ContainsKey(Value);

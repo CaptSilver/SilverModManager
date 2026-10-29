@@ -92,7 +92,7 @@ public sealed record BackupOverflow(
     public const int ListedFolders = 5;
 
     /// <summary>How the sentence names files in locations nobody gave a name.</summary>
-    public const string OtherFoldersPhrase = "other folders";
+    public const string OtherFoldersPhrase = LocationId.UnnamedSentenceName;
 
     /// <summary>The folder name for files directly in the game folder.</summary>
     public static string GameFolderName => LocationId.Game.DisplayName;

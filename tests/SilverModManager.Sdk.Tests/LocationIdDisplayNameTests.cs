@@ -75,4 +75,8 @@ public class LocationIdDisplayNameTests
         LocationId.Game.SentenceName.Should().Be("the game folder");
         LocationId.Me3Host.SentenceName.Should().Be("the mod loader folder");
     }
+
+    [Fact]
+    public void AnUnnamedId_ReadsInLowercaseInASentence()
+        => LocationId.From("DisplayNameTestsNoNameSentence").SentenceName.Should().Be("other folders");
 }
