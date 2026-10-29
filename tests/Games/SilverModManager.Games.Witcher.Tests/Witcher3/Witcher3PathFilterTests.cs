@@ -57,6 +57,25 @@ public class Witcher3PathFilterTests(IServiceProvider serviceProvider)
         _filter.ShouldFilter(new GamePath(LocationId.Game, "Mods/modA/content/scripts/a.ws")).Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData("content/metadata.store")]
+    [InlineData("content/metadata.store.stamp")]
+    [InlineData("content/content0/x64.final.redscripts")]
+    public void TheGameFolder_IgnoresWhatTheGameRewritesWhenItStarts(string path)
+    {
+        _filter.ShouldFilter(new GamePath(LocationId.Game, path)).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("content/content0/cookedfinal.redscripts")]
+    [InlineData("content/blob0.bundle")]
+    [InlineData("Mods/modA/content/metadata.store")]
+    [InlineData("dlc/dlcA/content/metadata.store")]
+    public void TheGameFolder_KeepsFilesSteamListsAndThoseInsideAModFolder(string path)
+    {
+        _filter.ShouldFilter(new GamePath(LocationId.Game, path)).Should().BeFalse();
+    }
+
     // Already true of the base filter; guards against a synchronizer that replaces it.
     [Fact]
     public void SavesLocation_IsFiltered()

@@ -25,8 +25,16 @@ public sealed class Witcher3Synchronizer(IServiceProvider provider, IGame game) 
     private static readonly HashSet<GamePath> ManagedDocuments =
         [WitcherConstants.W3ModsSettings, .. WitcherConstants.W3SettingsFiles.Select(file => new GamePath(WitcherConstants.WitcherDocuments, file))];
 
+    // The next-gen game rewrites its metadata store and the store's stamp whenever the set of mod and DLC bundles changes, and
+    // its script compiler writes a cache beside the scripts Steam ships. Steam lists the store as a vanilla file, so left in
+    // the sync it reads as a changed game file with no archived original and blocks every apply. The game rebuilds all of
+    // them, so they are never indexed, backed up or restored. Exact paths: a mod's own Mods/<name>/content/metadata.store is
+    // an ordinary mod file.
+    private static readonly HashSet<GamePath> RewrittenByTheGame = [.. WitcherConstants.W3GameRewrittenFiles.Select(file => new GamePath(LocationId.Game, file))];
+
     protected override IGamePathFilter GameSpecificPathFilter { get; } =
-        GamePathFilters.Create(path => path.LocationId == WitcherConstants.WitcherDocuments && !ManagedDocuments.Contains(path));
+        GamePathFilters.Create(path => RewrittenByTheGame.Contains(path)
+                                       || (path.LocationId == WitcherConstants.WitcherDocuments && !ManagedDocuments.Contains(path)));
 
     // INI tweaks (a menu mod's *.part.txt) live in the loadout to be merged into the game's settings; the folder
     // means nothing to the game, so none of it is written.

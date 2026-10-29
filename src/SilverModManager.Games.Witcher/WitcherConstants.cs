@@ -17,6 +17,8 @@ public static class WitcherConstants
 
     public static readonly GamePath W3ModsSettings = new(WitcherDocuments, "mods.settings");
     public static readonly GamePath W3MenuConfigFolder = new(LocationId.Game, "bin/config/r4game/user_config_matrix/pc");
+    /// <summary>Files in the game folder the game writes itself when it starts, none of them a mod's or the player's.</summary>
+    public static readonly string[] W3GameRewrittenFiles = ["content/metadata.store", "content/metadata.store.stamp", "content/content0/x64.final.redscripts"];
     public static readonly string[] W3SettingsFiles = ["input.settings", "user.settings", "dx12user.settings"];
 
     /// <summary>The menu XMLs the game ships, without the extension. The same set Vortex lists as its config matrix files.</summary>

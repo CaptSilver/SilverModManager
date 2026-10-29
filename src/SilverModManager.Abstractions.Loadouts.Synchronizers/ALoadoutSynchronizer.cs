@@ -183,7 +183,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             // flagged to allow protected paths is the exception, its files are tracked on disk once deployed.
             if (GamePathFilter.ShouldFilter(gamePath) && IsSkippedAsProtected(LoadoutItem.Load(Connection.Db, tuple.Id), gamePath))
             {
-                LogSkippedFilteredItem(tuple.Id, gamePath);
+                // The store's own record of a file the game rewrites is skipped every time; only a mod's file is news.
+                if (itemType != LoadoutSourceItemType.Game) LogSkippedFilteredItem(tuple.Id, gamePath);
                 continue;
             }
 
