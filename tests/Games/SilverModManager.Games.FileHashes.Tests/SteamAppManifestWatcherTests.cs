@@ -116,6 +116,31 @@ public sealed class SteamAppManifestWatcherTests : IDisposable
         logger.Errors.Should().ContainSingle().Which.Should().Contain("Could not start watching");
     }
 
+    [Fact]
+    public async Task AGameInALibraryRegisteredAfterStart_IsWatchedOnceTheRegistryHasIt()
+    {
+        var second = Path.Combine(_root, "second", "steamapps");
+        Directory.CreateDirectory(Path.Combine(second, "common", "Other"));
+        var first = Installation(GameStore.Steam, Path.Combine(_steamapps, "common", "Game"));
+        var added = Installation(GameStore.Steam, Path.Combine(second, "common", "Other"));
+        var installations = new[] { first };
+        _registry.LocateGameInstallations().Returns(_ => [.. installations]);
+        var lookedAt = new System.Collections.Concurrent.ConcurrentBag<string>();
+        _locator.TryLocate(Arg.Any<IGameData>(), out Arg.Any<GameLocatorResult?>())
+            .Returns(call => { call[1] = added.LocatorResult; lookedAt.Add("any"); return true; });
+        using var watcher = new SteamAppManifestWatcher(_registry, Reaction(), NullLogger<SteamAppManifestWatcher>.Instance, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100));
+        await watcher.StartAsync(TestContext.Current.CancellationToken);
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+
+        installations = [first, added];
+        await Task.Delay(500, TestContext.Current.CancellationToken);
+        lookedAt.Clear();
+        await File.WriteAllTextAsync(Path.Combine(second, "appmanifest_2.acf"), "x", TestContext.Current.CancellationToken);
+
+        await WaitFor(() => !lookedAt.IsEmpty);
+        lookedAt.Should().NotBeEmpty("the library registered after start is watched too");
+    }
+
     private sealed class CapturingLogger<T> : Microsoft.Extensions.Logging.ILogger<T>
     {
         public System.Collections.Concurrent.ConcurrentBag<string> Errors { get; } = [];

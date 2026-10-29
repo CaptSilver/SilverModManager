@@ -8,7 +8,8 @@ namespace SilverModManager.Games.FileHashes;
 /// Watches the <c>appmanifest_*.acf</c> files of the Steam libraries that hold a registered game and asks
 /// <see cref="StoreUpdateReaction"/> to look again when one changes, so an update Steam finishes while the app
 /// runs is picked up without a restart. It parses nothing itself: the locator knows Steam's format, and the
-/// reaction ignores a rewrite that changed nothing about the build. Steam only; other stores are located again
+/// reaction ignores a rewrite that changed nothing about the build. The registry is read again every
+/// <see cref="DefaultRescanInterval"/> for libraries of games registered after startup. Steam only; other stores are located again
 /// on each apply. Registered by the window-showing process only, like <see cref="LocalBaselineStartupPass"/>.
 /// </summary>
 internal sealed class SteamAppManifestWatcher : IHostedService, IDisposable
@@ -16,25 +17,32 @@ internal sealed class SteamAppManifestWatcher : IHostedService, IDisposable
     // Steam rewrites the manifest many times during a download.
     internal static readonly TimeSpan DefaultDebounce = TimeSpan.FromSeconds(2);
 
+    // How often the registry is read for a library that was not there at startup. The registry has no change event.
+    internal static readonly TimeSpan DefaultRescanInterval = TimeSpan.FromSeconds(30);
+
     private readonly IGameRegistry _registry;
     private readonly StoreUpdateReaction _reaction;
     private readonly ILogger<SteamAppManifestWatcher> _logger;
     private readonly TimeSpan _debounce;
+    private readonly TimeSpan _rescanInterval;
     private readonly CancellationTokenSource _stopping = new();
     private readonly List<FileSystemWatcher> _watchers = [];
+    private readonly HashSet<string> _watchedLibraries = new(StringComparer.Ordinal);
     private readonly Lock _lock = new();
     private Timer? _timer;
+    private Timer? _rescan;
     private Task _running = Task.CompletedTask;
 
     public SteamAppManifestWatcher(IGameRegistry registry, StoreUpdateReaction reaction, ILogger<SteamAppManifestWatcher> logger)
         : this(registry, reaction, logger, DefaultDebounce) { }
 
-    internal SteamAppManifestWatcher(IGameRegistry registry, StoreUpdateReaction reaction, ILogger<SteamAppManifestWatcher> logger, TimeSpan debounce)
+    internal SteamAppManifestWatcher(IGameRegistry registry, StoreUpdateReaction reaction, ILogger<SteamAppManifestWatcher> logger, TimeSpan debounce, TimeSpan? rescanInterval = null)
     {
         _registry = registry;
         _reaction = reaction;
         _logger = logger;
         _debounce = debounce;
+        _rescanInterval = rescanInterval ?? DefaultRescanInterval;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -50,6 +58,10 @@ internal sealed class SteamAppManifestWatcher : IHostedService, IDisposable
             {
                 // Without this the watcher would silently never arm.
                 _logger.LogError(e, "Could not start watching the Steam libraries for game updates; an update is noticed at the next apply or restart");
+            }
+            finally
+            {
+                StartRescanning();
             }
         }, CancellationToken.None);
         return Task.CompletedTask;
@@ -69,7 +81,31 @@ internal sealed class SteamAppManifestWatcher : IHostedService, IDisposable
         }
     }
 
-    /// <summary>Starts a watcher on every Steam library that holds a registered game. Exposed for tests, which await it.</summary>
+    // A game installed or a library added while the app runs reaches the registry after startup. Watch skips the
+    // libraries it already holds, so a rescan only adds what is new.
+    private void StartRescanning()
+    {
+        lock (_lock)
+        {
+            if (_stopping.IsCancellationRequested || _rescan is not null) return;
+            _rescan = new Timer(_ => Rescan(), null, _rescanInterval, _rescanInterval);
+        }
+    }
+
+    private void Rescan()
+    {
+        if (_stopping.IsCancellationRequested) return;
+        try
+        {
+            Watch();
+        }
+        catch (Exception e)
+        {
+            _logger.LogWarning(e, "Could not look for new Steam libraries to watch for game updates");
+        }
+    }
+
+    /// <summary>Starts a watcher on every Steam library that holds a registered game and is not watched yet. Exposed for tests, which await it.</summary>
     internal void Watch()
     {
         var libraries = _registry.LocateGameInstallations()
@@ -80,6 +116,11 @@ internal sealed class SteamAppManifestWatcher : IHostedService, IDisposable
 
         foreach (var library in libraries)
         {
+            lock (_lock)
+            {
+                if (_watchedLibraries.Contains(library)) continue;
+            }
+
             try
             {
                 var watcher = new FileSystemWatcher(library, "appmanifest_*.acf")
@@ -95,7 +136,11 @@ internal sealed class SteamAppManifestWatcher : IHostedService, IDisposable
                 {
                     // Stopped while this one was being set up: nothing will dispose it later.
                     if (_stopping.IsCancellationRequested) watcher.Dispose();
-                    else _watchers.Add(watcher);
+                    else
+                    {
+                        _watchers.Add(watcher);
+                        _watchedLibraries.Add(library);
+                    }
                 }
             }
             catch (Exception e)
@@ -159,8 +204,11 @@ internal sealed class SteamAppManifestWatcher : IHostedService, IDisposable
         {
             foreach (var watcher in _watchers) watcher.Dispose();
             _watchers.Clear();
+            _watchedLibraries.Clear();
             _timer?.Dispose();
             _timer = null;
+            _rescan?.Dispose();
+            _rescan = null;
         }
     }
 }
