@@ -65,6 +65,13 @@ public interface IGameData
     /// </summary>
     IReadOnlyDictionary<string, string> LocationNames => ImmutableDictionary<string, string>.Empty;
 
+    /// <summary>
+    /// The phrases a sentence uses for this game's locations, keyed like <see cref="LocationNames"/>, for a location
+    /// whose label does not read after "in" and "to" ("Mod folder" is "the mod folder"). A location missing here
+    /// reads as its <see cref="LocationNames"/> label.
+    /// </summary>
+    IReadOnlyDictionary<string, string> LocationSentenceNames => ImmutableDictionary<string, string>.Empty;
+
     ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult);
 
     /// <summary>

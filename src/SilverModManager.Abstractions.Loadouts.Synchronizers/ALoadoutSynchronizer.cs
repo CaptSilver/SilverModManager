@@ -1268,14 +1268,16 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         => installation.Game.LocationNames.TryGetValue(id.ToString(), out var name) ? name : id.DisplayName;
 
     /// <summary>
-    /// The location as the backup question's sentence names it: null for the game folder, the game's name or the app's
-    /// sentence phrase for a named location, and "other folders" for one nobody named.
+    /// The location as the backup question's sentence names it: null for the game folder; for a named location the
+    /// game's sentence phrase, else the game's label, else the app's sentence phrase; "other folders" for one nobody named.
     /// </summary>
     private static string? SentencePlaceOf(LocationId id, GameInstallation installation)
     {
         if (id == LocationId.Game) return null;
-        if (installation.Game.LocationNames.TryGetValue(id.ToString(), out var gameName)) return gameName;
-        return id.IsNamed ? id.SentenceName : BackupOverflow.OtherFoldersPhrase;
+        var key = id.ToString();
+        if (installation.Game.LocationSentenceNames.TryGetValue(key, out var gamePhrase)) return gamePhrase;
+        if (installation.Game.LocationNames.TryGetValue(key, out var gameLabel)) return gameLabel;
+        return id.SentenceName;
     }
 
     /// <summary>

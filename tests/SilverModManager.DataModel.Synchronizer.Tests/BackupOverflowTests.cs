@@ -714,6 +714,20 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
     }
 
     [Fact]
+    public async Task OverflowMeasure_GameLocationWithAPhrase_ReadsItsPhraseInTheSentenceAndItsLabelAsARow()
+    {
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [new GamePath(LocationId.From(StubbedGame.PhrasedLocationId), "Foo/x.ini")] = MeasuredNode(0xD8, Actions.BackupFile | Actions.IngestFromDisk, kb: 9),
+        };
+
+        var asked = await Measure(tree);
+
+        asked.Groups!.Single().Folder.Should().Be("Mod folder/Foo");
+        asked.Groups!.Single().Location.Should().Be("the mod folder");
+    }
+
+    [Fact]
     public async Task OverflowMeasure_LocationNobodyNamed_ReadsAsOtherFolders()
     {
         var tree = new Dictionary<GamePath, SyncNode>

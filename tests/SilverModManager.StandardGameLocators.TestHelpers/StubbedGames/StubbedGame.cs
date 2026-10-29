@@ -46,7 +46,16 @@ public class StubbedGame : IGame, IGameData<StubbedGame>
     /// <summary>A location only this game names, so a test can tell the game's name from a registered one.</summary>
     public const string NamedLocationId = "SyncTestsGameDocuments";
 
-    public IReadOnlyDictionary<string, string> LocationNames { get; } = new Dictionary<string, string> { [NamedLocationId] = "Documents" };
+    /// <summary>A location this game gives a label and a different sentence phrase.</summary>
+    public const string PhrasedLocationId = "SyncTestsGameModFolder";
+
+    public IReadOnlyDictionary<string, string> LocationNames { get; } = new Dictionary<string, string>
+    {
+        [NamedLocationId] = "Documents",
+        [PhrasedLocationId] = "Mod folder",
+    };
+
+    public IReadOnlyDictionary<string, string> LocationSentenceNames { get; } = new Dictionary<string, string> { [PhrasedLocationId] = "the mod folder" };
 
     public ILoadoutSynchronizer Synchronizer => new DefaultSynchronizer(_serviceProvider);
 
