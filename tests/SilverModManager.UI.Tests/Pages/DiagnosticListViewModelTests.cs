@@ -12,10 +12,15 @@ using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.UI.Tests.Pages;
 
-public class DiagnosticListViewModelTests(IServiceProvider provider) : AUiTest(provider), IDisposable
+public class DiagnosticListViewModelTests(IServiceProvider provider) : AUiTest(provider)
 {
-    // The settings manager is shared with other UI tests, so put the default back.
-    public void Dispose() => Provider.GetRequiredService<ISettingsManager>().Set(new DiagnosticSettings());
+    // The settings manager is shared with other UI tests, so put the default back. AUiTest is IAsyncDisposable,
+    // which the runner calls instead of Dispose, so this is an override and not an IDisposable.
+    public override async ValueTask DisposeAsync()
+    {
+        Provider.GetRequiredService<ISettingsManager>().Set(new DiagnosticSettings());
+        await base.DisposeAsync();
+    }
 
     private readonly record struct DetailsOnlyData(string Path) : IDiagnosticMessageData
     {
