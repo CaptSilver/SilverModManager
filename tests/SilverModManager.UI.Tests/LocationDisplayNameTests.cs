@@ -66,11 +66,15 @@ public class LocationDisplayNameTests
     }
 
     // A sentence phrase for a folder sits after "in" and "to" ("in the mod loader folder"), so a phrase that
-    // names a folder needs its article. Row labels ("Mod loader folder") are not phrases and are not checked.
+    // names a folder needs its article. An app row label is not a phrase, but a game's label is the phrase when the
+    // game gives no sentence name for that location, the same fallback the backup question uses.
     [Fact]
     public void AFolderNameInASentence_TakesItsArticle()
     {
-        var gamePhrases = GameNameMaps("LocationSentenceNames").SelectMany(d => d).Select(kv => (Field: kv.Key, Sentence: kv.Value));
+        var gameSentences = GameNameMaps("LocationSentenceNames").SelectMany(d => d).ToDictionary(kv => kv.Key, kv => kv.Value);
+        var gamePhrases = GameNameMaps("LocationNames").SelectMany(d => d)
+            .Select(kv => (Field: kv.Key, Sentence: gameSentences.GetValueOrDefault(kv.Key, kv.Value)))
+            .Concat(gameSentences.Select(kv => (Field: kv.Key, Sentence: kv.Value)));
         var appPhrases = DefinedLocationIds().Where(a => a.Id.IsNamed).Select(a => (a.Field, Sentence: a.Id.SentenceName));
 
         gamePhrases.Concat(appPhrases)
