@@ -52,14 +52,38 @@ public class ReapplyCollectionOrderActionHandlerTests(IServiceProvider provider)
         }
     }
 
+    // Stands in for the UI thread: a thread of its own, outside the pool, that stays blocked until the command is
+    // done. A pool thread that called Task.Run could pick its own work item back up once it yielded, and a thread that
+    // had ended could hand its managed id to the pool, so neither can stand in for the thread the read must leave.
+    private static (int CallerThread, Task Outcome) RunFromADedicatedThread(Func<Task> command)
+    {
+        var started = new TaskCompletionSource<int>();
+        var outcome = new TaskCompletionSource();
+        var thread = new Thread(() =>
+        {
+            started.SetResult(Environment.CurrentManagedThreadId);
+            try
+            {
+                command().Wait();
+                outcome.SetResult();
+            }
+            catch (AggregateException e)
+            {
+                outcome.SetException(e.InnerExceptions);
+            }
+        }) { IsBackground = true };
+        thread.Start();
+        return (started.Task.GetAwaiter().GetResult(), outcome.Task);
+    }
+
     [Fact]
     public async Task Test_TheDatabaseIsReadOffTheCallingThread()
     {
         var recording = new ThreadRecordingProvider(Provider);
         var handler = new ReapplyCollectionOrderActionHandler(recording, Substitute.For<IDiagnosticManager>());
-        var caller = Environment.CurrentManagedThreadId;
 
-        var act = () => handler.ExecuteAsync(Loadout, DiagnosticActions.ReapplyCollectionOrder(0xDEAD).Arguments);
+        var (caller, outcome) = RunFromADedicatedThread(() => handler.ExecuteAsync(Loadout, DiagnosticActions.ReapplyCollectionOrder(0xDEAD).Arguments));
+        var act = () => outcome;
         await act.Should().ThrowAsync<CollectionOrderReapplyRefusedException>();
 
         recording.Threads.Should().NotBeEmpty().And.NotContain(caller, "a command runs its first part on the UI thread, so the read has to move off it");
