@@ -1,11 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Games.Witcher.Witcher3.Menu;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
@@ -81,6 +83,10 @@ public sealed class Witcher3Synchronizer(IServiceProvider provider, IGame game) 
     /// </summary>
     protected override async ValueTask<Loadout.ReadOnly> PrepareLoadoutForSync(Loadout.ReadOnly loadout)
     {
+        // Before the tree is built: an install from before the plan wrote targets canonically has its folders merged and its rows
+        // respelled together, so the recorded spelling is always one the disk has.
+        Witcher3FolderCase.MergeFoldersOnDisk(loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty)), Logger);
+        loadout = await Witcher3FolderCase.Repair(provider.GetRequiredService<IConnection>(), loadout);
         await Game.SortOrderManager.UpdateLoadOrders(loadout.LoadoutId);
         loadout = await GameInis.Prepare(Inis, loadout.Rebase(), provider);
 

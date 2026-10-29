@@ -457,22 +457,8 @@ internal static class Witcher3InstallPlan
             : 0;
     }
 
-    private static readonly string[] CanonicalTopFolders = [WitcherConstants.W3ModsFolder, WitcherConstants.W3DlcFolder, Bin];
-
-    /// <summary>
-    /// Every placement goes through here. The first segment is rewritten to the game's spelling of
-    /// <c>Mods</c>, <c>dlc</c> or <c>bin</c>: Wine resolves names case-insensitively, so <c>mods</c> next
-    /// to <c>Mods</c> hides one of them from the game.
-    /// </summary>
-    private static GamePath Target(string path)
-    {
-        var slash = path.IndexOf('/');
-        var first = slash < 0 ? path : path[..slash];
-        foreach (var canonical in CanonicalTopFolders)
-            if (first.Equals(canonical, StringComparison.OrdinalIgnoreCase))
-                return new GamePath(LocationId.Game, canonical + path[first.Length..]);
-        return new GamePath(LocationId.Game, path);
-    }
+    /// <summary>Every placement goes through here, so the first segment is in the game's spelling of Mods, dlc or bin.</summary>
+    private static GamePath Target(string path) => new(LocationId.Game, Witcher3FolderCase.Canonical(path));
 
     private sealed class ArchivePath(string original)
     {
