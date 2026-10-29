@@ -171,7 +171,7 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Eng
     };
 
     // Named for the installation's own store: a GOG or Epic player has no Steam to verify in.
-    private static string VerifyFiles(GameStore store)
+    public static string VerifyFiles(GameStore store)
     {
         if (store == GameStore.Steam) return "Verify the game's files in Steam";
         if (store == GameStore.Unknown || store == GameStore.ManuallyAdded || store == GameStore.Lutris)

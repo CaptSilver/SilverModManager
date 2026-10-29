@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -28,8 +29,8 @@ public class UndeployableLoadoutDueToMissingGameFiles : ILoadoutDiagnosticEmitte
         await Task.Yield();
 
         // A file with no disk part is gone from the folder, and the store can restore it. One with a disk part is
-        // there with a hash the app's data for this build doesn't list, so "verify in the store" would be the
-        // wrong advice when that data is what's wrong.
+        // there with a hash the app's data for this build doesn't list: verifying in the store is the first thing to
+        // try, but when the same files come back, that data is what's wrong and the card says to report it.
         var missing = new Group();
         var mismatched = new Group();
 
@@ -63,7 +64,8 @@ public class UndeployableLoadoutDueToMissingGameFiles : ILoadoutDiagnosticEmitte
                 Game: game,
                 Files: mismatched.Files.ToString(),
                 Store: store,
-                Version: version
+                Version: version,
+                Verify: EngineMergeDiagnosticsEmitter.VerifyFiles(loadout.Installation.Store)
             );
         }
     }

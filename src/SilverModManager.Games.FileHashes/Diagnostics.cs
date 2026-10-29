@@ -78,7 +78,7 @@ The loadout is based on {Game} v{Version}. {FileCount} file(s), totalling {Size}
 The files are not missing. Either something outside the app changed them after {Store} installed them, or the app's file data for this build of {Game} is wrong about them.
 
 ## What To Do
-Verify the game's files in {Store}. It rewrites any file that differs from its own list, and the next apply goes ahead. If the same files are listed again after that, they are the game's own and the app's file data for this build is out of date; the files below and the version above are what to report.
+{Verify}. That rewrites any file that differs from the store's list; if those were the cause, the next apply goes ahead. If the same files are listed again after that, they are the game's own and the app's file data for this build is out of date; the files below and the version above are what to report.
 
 ## Technical Details
 Each file below exists in the game folder with a hash that differs from the one the app holds for {Game} v{Version} from {Store}.
@@ -94,6 +94,7 @@ The files with issues:
             .AddValue<string>("Files")
             .AddValue<string>("Game")
             .AddValue<string>("Store")
+            .AddValue<string>("Verify")
             .AddValue<string>("Version")
         )
         .Finish();

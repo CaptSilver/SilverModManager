@@ -60,13 +60,27 @@ public sealed class MissingGameFilesEmitterTests : IDisposable
     }
 
     [Fact]
-    public async Task ADataMismatchSaysHowToPutTheListedContentsBack()
+    public async Task ADataMismatchNamesTheStoresOwnVerifyStep()
     {
         var tree = Tree(("data/changed.pak", Node(disk: OnDisk)));
 
         var diagnostic = (await Diagnose(tree)).Should().ContainSingle().Subject;
 
-        diagnostic.Details.Value.Should().Contain("Verify the game's files in {Store}");
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.GameFilesDifferFromTheAppsFileDataMessageData>>().Subject.MessageData;
+        data.Verify.Should().Be("Verify the game's files in Steam");
+        diagnostic.Details.Value.Should().Contain("{Verify}");
+    }
+
+    [Fact]
+    public async Task ADataMismatchDoesNotPromiseTheApplyGoesAheadAndSaysWhatToReportIfTheSameFilesReturn()
+    {
+        var tree = Tree(("data/changed.pak", Node(disk: OnDisk)));
+
+        var details = (await Diagnose(tree)).Should().ContainSingle().Subject.Details.Value;
+
+        details.Should().NotContain("and the next apply goes ahead");
+        details.Should().Contain("if those were the cause, the next apply goes ahead");
+        details.Should().Contain("If the same files are listed again").And.Contain("out of date").And.Contain("report");
     }
 
     [Fact]
