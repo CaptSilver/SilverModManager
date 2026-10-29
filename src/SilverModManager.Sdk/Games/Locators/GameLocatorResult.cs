@@ -110,8 +110,8 @@ public class GameLocatorResult
 
     /// <summary>
     /// The store is writing the installed files right now (Steam: one of UpdateRunning, UpdateStarted,
-    /// UpdatePaused, Downloading, Staging, Committing, Preallocating, AddingFiles, Reconfiguring, Validating
-    /// is set), so they match no single build until it clears. Implies <see cref="StoreUpdatePending"/>.
+    /// UpdatePaused, Downloading, Staging, Committing, Preallocating, AddingFiles, Reconfiguring, Validating,
+    /// UpdateStopping, Uninstalling is set), so they match no single build until it clears. Implies <see cref="StoreUpdatePending"/>.
     /// A settled Steam install's manifest holds <c>"StateFlags" "4"</c>; UpdateRequired alone is not this,
     /// because Steam leaves it set for good for players who update only on launch.
     /// </summary>

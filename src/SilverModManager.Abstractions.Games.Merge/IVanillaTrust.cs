@@ -38,7 +38,10 @@ public static class VanillaTrustReasons
     /// <summary>The store's file list for the installed build does not have the file.</summary>
     public const string NotInstalledByStore = "not a file the store installed";
 
-    /// <summary>Steam saved the file list for the installed build but the app cannot read it (it needs a depot key the app does not have).</summary>
+    /// <summary>
+    /// Steam saved the file list for the installed build but the app cannot use it: it needs a depot key the app does
+    /// not have, or the file could not be read or parsed.
+    /// </summary>
     public const string StoreFileListUnreadable = "Steam's saved file list for the installed build cannot be read by the app";
 
     /// <summary>The baseline lists the file as changed from the store's copy.</summary>
