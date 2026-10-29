@@ -27,7 +27,7 @@ public partial class ALoadoutSynchronizer
     /// </summary>
     public IReadOnlyList<WinningFileRow> WinningFilesForTest(Loadout.ReadOnly loadout)
     {
-        return WinningFilesQuery(Connection.Db, loadout)
+        return WinningFilesQuery(loadout.Db, loadout)
             .Select(static row => new WinningFileRow(row.Id, row.Identity, row.Size, new GamePath(row.Location, row.Path), row.ItemType))
             .ToArray();
     }

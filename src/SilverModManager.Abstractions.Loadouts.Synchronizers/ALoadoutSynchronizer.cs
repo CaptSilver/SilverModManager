@@ -187,10 +187,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             // The disk side of the tree never contains filtered paths, so a loadout item on one has to be left
             // out too: otherwise the sync would write the file and could never take it off disk again. A mod
             // flagged to allow protected paths is the exception, its files are tracked on disk once deployed.
-            if (GamePathFilter.ShouldFilter(gamePath) && IsSkippedAsProtected(LoadoutItem.Load(Connection.Db, tuple.Id), gamePath))
+            if (GamePathFilter.ShouldFilter(gamePath) && IsSkippedAsProtected(LoadoutItem.Load(loadout.Db, tuple.Id), gamePath))
             {
                 // The store's own record of a file the game rewrites is skipped every time; only a mod's file is news.
-                if (itemType != LoadoutSourceItemType.Game) LogSkippedFilteredItem(tuple.Id, gamePath);
+                if (itemType != LoadoutSourceItemType.Game) LogSkippedFilteredItem(loadout.Db, tuple.Id, gamePath);
                 continue;
             }
 
@@ -371,9 +371,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         foreach (var path in toRemove) syncTree.Remove(path);
     }
 
-    private void LogSkippedFilteredItem(EntityId itemId, GamePath gamePath)
+    private void LogSkippedFilteredItem(IDb db, EntityId itemId, GamePath gamePath)
     {
-        var item = LoadoutItem.Load(Connection.Db, itemId);
+        var item = LoadoutItem.Load(db, itemId);
         var group = item.IsValid() && item.HasParent() ? item.Parent.AsLoadoutItem().Name : "(no group)";
         Logger.LogWarning("Skipping `{Path}` from `{Group}`: the synchronizer ignores this path", gamePath, group);
     }

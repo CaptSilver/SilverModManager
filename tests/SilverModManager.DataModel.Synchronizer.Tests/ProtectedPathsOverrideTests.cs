@@ -308,4 +308,21 @@ public class ProtectedPathsOverrideTests(ITestOutputHelper helper) : AStubbedGam
 
         (await ModSave.ReadAllBytesAsync()).Should().Equal(UpdatedModSaveBytes);
     }
+
+    [Fact]
+    public async Task TheTree_JudgesProtectedPathsOnTheRevisionItIsBuiltFor()
+    {
+        var (held, mod) = await InstallMod(await CreateLoadout(), SaveModFiles(), allowProtectedPaths: true);
+
+        // The flag is switched off after the caller took its loadout; that loadout still has the flag.
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.RetractCurrent(mod.Id, LoadoutItem.ProtectedPathsAllowed);
+            await tx.Commit();
+        }
+
+        var tree = await Synchronizer.BuildSyncTree(held);
+
+        tree.Should().ContainKey(ModSavePath, "the loadout the tree is built for allowed the mod's saves");
+    }
 }
