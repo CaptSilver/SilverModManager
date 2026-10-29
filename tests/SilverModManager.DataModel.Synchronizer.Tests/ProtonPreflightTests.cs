@@ -184,6 +184,62 @@ public class ProtonPreflightTests(ITestOutputHelper helper) : AStubbedGameTest<P
     }
 
     [Fact]
+    public async Task Synchronize_ProtonGameWithTwoFoldersThatDifferOnlyInCase_IsRefusedNamingBothAndWritesNothing()
+    {
+        UseProtonPrefix(prefixReady: true);
+        var loadout = await CreateLoadout();
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "mods/modX/content/a.ws"), "a");
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modY/content/b.ws"), "b");
+        var gameFolder = GameInstallation.Locations[LocationId.Game].Path;
+
+        var act = async () => await Synchronizer.Synchronize(loadout);
+
+        var exception = (await act.Should().ThrowAsync<SynchronizerPreflightException>()).Which;
+        exception.Message.Should().Contain("{Game}/mods").And.Contain("{Game}/Mods");
+        gameFolder.Combine("mods").DirectoryExists().Should().BeFalse();
+        gameFolder.Combine("Mods").DirectoryExists().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Synchronize_ProtonGameWithNestedFoldersThatDifferOnlyInCase_IsRefused()
+    {
+        UseProtonPrefix(prefixReady: true);
+        var loadout = await CreateLoadout();
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modX/Content/a.ws"), "a");
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modX/content/b.ws"), "b");
+
+        var act = async () => await Synchronizer.Synchronize(loadout);
+
+        var exception = (await act.Should().ThrowAsync<SynchronizerPreflightException>()).Which;
+        exception.Message.Should().Contain("{Game}/Mods/modX/Content").And.Contain("{Game}/Mods/modX/content");
+    }
+
+    [Fact]
+    public async Task Synchronize_ProtonGameWithOneSpellingPerFolder_Passes()
+    {
+        UseProtonPrefix(prefixReady: true);
+        var loadout = await CreateLoadout();
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modX/content/a.ws"), "a");
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modY/content/b.ws"), "b");
+
+        await Synchronizer.Synchronize(loadout);
+
+        GameInstallation.Locations[LocationId.Game].Path.Combine("Mods/modY/content/b.ws").FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Synchronize_NativeLinuxGameWithTwoFoldersThatDifferOnlyInCase_IsNotRefused()
+    {
+        var loadout = await CreateLoadout();
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "mods/modX/content/a.ws"), "a");
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modY/content/b.ws"), "b");
+
+        await Synchronizer.Synchronize(loadout);
+
+        GameInstallation.Locations[LocationId.Game].Path.Combine("mods/modX/content/a.ws").FileExists.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Synchronize_PendingWriteIntoUnwritableLocation_ThrowsNamingThePath()
     {
         Assert.SkipWhen(Environment.IsPrivilegedProcess, "root ignores directory permissions");

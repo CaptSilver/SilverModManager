@@ -553,6 +553,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         RefuseTraversalPaths(syncTree);
         KeepNeverWrittenPathsOffDisk(syncTree);
         await PreflightActions(syncTree, loadout);
+        RefuseCaseVariantFolders(syncTree, loadout.InstallationInstance);
         ProbeWritableRoots(syncTree, loadout.InstallationInstance.Locations);
         ApplyBackupOverflowChoice(syncTree, choice);
 
