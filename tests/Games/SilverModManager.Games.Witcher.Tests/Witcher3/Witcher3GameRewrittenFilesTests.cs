@@ -212,6 +212,15 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
         OverridePaths(Refresh(loadout)).Should().NotContain(GameRewritten, "the game's own output is not the player's mod");
         foreach (var path in GameRewritten)
             (await (GameFolder / path).ReadAllTextAsync()).Should().Be("written by the game: " + path, "healing the loadout deletes nothing from the game folder");
+
+        // The rows go after the apply, so a deletion would come with the sync after it.
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        OverridePaths(Refresh(loadout)).Should().NotContain(GameRewritten);
+        foreach (var path in GameRewritten)
+            (await (GameFolder / path).ReadAllTextAsync()).Should().Be("written by the game: " + path, "the sync after the heal deletes nothing either");
+        var diagnostics = await RunEmittersOnProcessedTree(Refresh(loadout));
+        diagnostics.Select(Describe).Where(text => GameRewritten.Any(text.Contains)).Should().BeEmpty("no card is left for the game's own output");
     }
 
     [Fact]

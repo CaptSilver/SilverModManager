@@ -1,5 +1,3 @@
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
@@ -46,25 +44,8 @@ public sealed class Witcher3Synchronizer(IServiceProvider provider, IGame game) 
     // means nothing to the game, so none of it is written.
     protected override void AdjustActions(Dictionary<GamePath, SyncNode> tree)
     {
-        LeaveGameRewrittenFilesAlone(tree);
         GameInis.LeaveDisownedInisOnDisk(Inis, tree);
         GameInis.KeepTweaksOffDisk(tree);
-    }
-
-    // The three paths are filtered from the index, but one an earlier build already indexed stays tracked, and with no loadout
-    // side the generic rules would back it up and delete it (unchanged since the last apply) or ingest it as an override (new
-    // since then). A reset adds the store's vanilla copy as a desired file that was never archived. Either way the file is the
-    // game's: stop tracking it and leave it on disk. A mod file allowed on protected paths has a loadout-typed node and is not touched.
-    private static void LeaveGameRewrittenFilesAlone(Dictionary<GamePath, SyncNode> tree)
-    {
-        foreach (var path in RewrittenByTheGame)
-        {
-            ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(tree, path);
-            if (Unsafe.IsNullRef(ref node)) continue;
-            if (node.HaveLoadout && node.SourceItemType != LoadoutSourceItemType.Game) continue;
-
-            node.Actions = node.HaveDisk ? Actions.ForgetDiskState : Actions.DoNothing;
-        }
     }
 
     private IGameIniFiles Inis => (IGameIniFiles)game;

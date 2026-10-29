@@ -622,6 +622,24 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // the loadout has not caught up with.
         if (item.HaveDisk && item.HavePrevious && item.Disk.Identity != item.Previous.Identity && GamePathFilter.ShouldFilter(path))
             item.Actions = Actions.ForgetDiskState;
+
+        LeaveGameWrittenFileAlone(path, ref item);
+    }
+
+    /// <summary>
+    /// A filtered path the game names as its own output (a log, a crash dump, a file it rebuilds) is never the
+    /// loadout's to write or remove. It can still be tracked: an earlier build indexed it, or its Overrides row was
+    /// just dropped, and with no loadout side the generic rules would back it up and delete it (unchanged since the
+    /// last apply) or ingest it as an override (new since then). Stop tracking it and leave it on disk. A mod file
+    /// allowed on the path has a loadout-typed node and goes through the generic rules; a game-typed loadout side
+    /// (a reset's vanilla copy) is not the player's and is left alone too.
+    /// </summary>
+    private void LeaveGameWrittenFileAlone(GamePath path, ref SyncNode item)
+    {
+        if (item.HaveLoadout && item.SourceItemType != LoadoutSourceItemType.Game) return;
+        if (!IsGameWrittenPath(path) || !GamePathFilter.ShouldFilter(path)) return;
+
+        item.Actions = item.HaveDisk ? Actions.ForgetDiskState : Actions.DoNothing;
     }
 
     /// <inheritdoc />
