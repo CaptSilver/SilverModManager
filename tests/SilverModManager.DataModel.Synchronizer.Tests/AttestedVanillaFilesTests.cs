@@ -417,8 +417,16 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
     {
         var loadout = await CreateLoadout();
         await TheIndexReadTheVanillaFilesInFull();
-        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        var prompt = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        _prompt.Inner = prompt;
+
+        // The state the player is left with: the disk names every vanilla file by xxHash3, the loadout by SHA-1.
+        DiskEntry(Vanilla).IdentityOf().Kind.Should().Be(HashKind.XxHash3);
+        ((ALoadoutSynchronizer)Synchronizer).WinningFilesForTest(Refresh(loadout)).Where(r => r.ItemType == "Game")
+            .Should().NotBeEmpty().And.OnlyContain(r => FileIdentity.ParseHex(r.Identity).Kind == HashKind.Sha1);
+
         await Synchronizer.Synchronize(Refresh(loadout));
+        prompt.Asked.Should().BeEmpty("the same bytes need no backup, so the cap is never reached");
         FullHashes.Reset();
 
         // The app is restarted: the index finds every file unchanged by size and time and keeps the disk state's names.
@@ -430,6 +438,61 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         Overrides(Refresh(loadout)).Should().BeEquivalentTo(PlayerFiles, "the game's own bytes are not the player's changes");
         FullyHashed.Should().BeEmpty();
         await EveryVanillaFileIsOnDiskAndNoneWasBackedUp();
+    }
+
+    // The disk and the previous state name the vanilla file by xxHash3 of these bytes; the loadout names it by the
+    // store's SHA-1. Only a recorded relation of the same SHA-1 and size may call the two the same file.
+    private async Task<SyncNode> VanillaNodeNamedOnDiskBy(MultiHash diskBytes, bool recordRelation)
+    {
+        var loadout = await CreateLoadout();
+        var path = new GamePath(LocationId.Game, Vanilla);
+        if (recordRelation)
+            await Hashes.RecordIndexedFiles(GameInstallation, [new IndexedFileHash(path, diskBytes.Size, DateTimeOffset.UtcNow, diskBytes.XxHash3, diskBytes)]);
+
+        var synchronizer = (ALoadoutSynchronizer)Synchronizer;
+        var metadata = GameInstallMetadata.Load(Connection.Db, Metadata);
+        PathPartPair Named(PathPartPair pair) => pair.Path != path ? pair : pair with { Part = new SyncNodePart { Identity = FileIdentity.XxHash3(diskBytes.XxHash3), Size = diskBytes.Size, LastModifiedTicks = pair.Part.LastModifiedTicks } };
+        var disk = synchronizer.GetDiskStateForGame(metadata).Select(Named).ToList();
+        var previous = ((ILoadoutSynchronizer)synchronizer).GetPreviouslyAppliedDiskState(metadata).Select(Named).ToList();
+
+        var tree = synchronizer.BuildSyncTree(disk, previous, Refresh(loadout));
+        Synchronizer.ProcessSyncTree(tree);
+        var node = tree[path];
+        node.Loadout.Identity.Kind.Should().Be(HashKind.Sha1, "the loadout names the file the way the store does");
+        node.Disk.Identity.Kind.Should().Be(HashKind.XxHash3);
+        return node;
+    }
+
+    private static async Task<MultiHash> HashOf(string text) => await MultiHasher.HashStream(new MemoryStream(Encoding.UTF8.GetBytes(text)));
+
+    [Fact]
+    public async Task AnXxHash3WhoseRelationHasAnotherSha1_IsNotTheStoresFile()
+    {
+        var edited = await HashOf(VanillaText.ToUpperInvariant()); // same length, so only the SHA-1 tells it apart
+
+        var node = await VanillaNodeNamedOnDiskBy(edited, recordRelation: true);
+
+        node.Actions.Should().HaveFlag(Actions.WarnOfUnableToExtract, "the bytes on disk are not the ones the store lists, and nothing archives the listed ones");
+    }
+
+    [Fact]
+    public async Task AnXxHash3WhoseRelationHasTheSha1ButAnotherSize_IsNotTheStoresFile()
+    {
+        var vanilla = await HashOf(VanillaText);
+
+        var node = await VanillaNodeNamedOnDiskBy(vanilla with { Size = vanilla.Size + Size.From(1) }, recordRelation: true);
+
+        node.Actions.Should().HaveFlag(Actions.WarnOfUnableToExtract);
+    }
+
+    [Fact]
+    public async Task AnXxHash3WithNoRelation_IsNotCalledTheStoresFile()
+    {
+        var vanilla = await HashOf(VanillaText);
+
+        var node = await VanillaNodeNamedOnDiskBy(vanilla, recordRelation: false);
+
+        node.Actions.Should().HaveFlag(Actions.WarnOfUnableToExtract, "nothing says the bytes behind the xxHash3 are the ones behind the SHA-1");
     }
 
     // The state a full read of every vanilla file leaves: the disk state names each by xxHash3, and the digests of the
