@@ -260,6 +260,27 @@ public class SteamLocatorTests
         result.StoreUpdatePending.Should().Be(expected);
     }
 
+    // The numbers are what Steam writes: 1026 is UpdateRequired|UpdateStarted, 516 is FullyInstalled|UpdatePaused,
+    // 36 is FullyInstalled|FilesMissing and 132 FullyInstalled|FilesCorrupt.
+    [Theory]
+    [InlineData("4", false, false)]
+    [InlineData("6", false, false)]
+    [InlineData("68", false, false)]
+    [InlineData("1026", true, false)]
+    [InlineData("1028", true, false)]
+    [InlineData("516", true, false)]
+    [InlineData("260", true, false)]
+    [InlineData("1048576", true, false)]
+    [InlineData("36", false, true)]
+    [InlineData("132", false, true)]
+    public void Locate_SeparatesAnUpdateRunningFromFilesTheStoreCallsDamaged(string stateFlags, bool inProgress, bool damaged)
+    {
+        var result = LocateSingle(withProtonPrefix: false, stateFlags: stateFlags).Result;
+
+        result.StoreUpdateInProgress.Should().Be(inProgress);
+        result.StoreFilesDamaged.Should().Be(damaged);
+    }
+
     [Theory]
     [InlineData(null, true)]
     [InlineData("0", true)]

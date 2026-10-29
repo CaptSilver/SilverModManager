@@ -90,11 +90,19 @@ internal class SteamLocator : IGameLocator
                 // A settled install's manifest holds FullyInstalled alone; any other flag (update required,
                 // running, paused, files missing) means the files may not match the listed build.
                 StoreUpdatePending = gameFinderGame.AppManifest.StateFlags != StateFlags.FullyInstalled,
+                StoreUpdateInProgress = (gameFinderGame.AppManifest.StateFlags & UpdateInProgressFlags) != 0,
+                StoreFilesDamaged = (gameFinderGame.AppManifest.StateFlags & (StateFlags.FilesMissing | StateFlags.FilesCorrupt)) != 0,
                 StoreLastWrite = LastWriteOf(gameFinderGame.AppManifest),
                 StoreUpdatesInBackground = gameFinderGame.AppManifest.AutoUpdateBehavior != AutoUpdateBehavior.UpdateOnLaunch,
             };
         }
     }
+
+    // Flags Steam sets while it writes the installed files. UpdateRequired alone is not one: it stays set for
+    // players who update only on launch.
+    private const StateFlags UpdateInProgressFlags = StateFlags.UpdateRunning | StateFlags.UpdateStarted | StateFlags.UpdatePaused
+        | StateFlags.Downloading | StateFlags.Staging | StateFlags.Committing | StateFlags.Preallocating
+        | StateFlags.AddingFiles | StateFlags.Reconfiguring | StateFlags.Validating;
 
     private readonly HashSet<uint> _loggedStalePrefixes = [];
 

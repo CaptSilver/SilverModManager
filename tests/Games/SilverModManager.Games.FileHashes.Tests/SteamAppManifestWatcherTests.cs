@@ -1,0 +1,110 @@
+using System.Collections.Immutable;
+using Microsoft.Extensions.Logging.Abstractions;
+using NexusMods.Paths;
+using NSubstitute;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Sdk.Games;
+
+namespace SilverModManager.Games.FileHashes.Tests;
+
+/// <summary>
+/// A changed appmanifest under a watched library leads to one look at each Steam game, after the debounce. A real
+/// temp folder and a short debounce; the reaction runs for real over a locator stand-in that counts the looks.
+/// </summary>
+public sealed class SteamAppManifestWatcherTests : IDisposable
+{
+    private readonly RealQueryEngineHost _host = new();
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "silver-watcher-" + Guid.NewGuid().ToString("N"));
+    private readonly string _steamapps;
+    private readonly IGameLocator _locator = Substitute.For<IGameLocator>();
+    private readonly IGameRegistry _registry = Substitute.For<IGameRegistry>();
+    private int _looks;
+
+    public SteamAppManifestWatcherTests()
+    {
+        _steamapps = Path.Combine(_root, "steamapps");
+        Directory.CreateDirectory(Path.Combine(_steamapps, "common", "Game"));
+    }
+
+    public void Dispose()
+    {
+        _host.Dispose();
+        try { Directory.Delete(_root, recursive: true); } catch (IOException) { }
+    }
+
+    [Fact]
+    public async Task ManyRewritesOfTheManifest_LeadToOneLookAtTheGameAfterTheDebounce()
+    {
+        var installation = Installation(GameStore.Steam, Path.Combine(_steamapps, "common", "Game"));
+        _registry.LocateGameInstallations().Returns([installation]);
+        _locator.TryLocate(Arg.Any<IGameData>(), out Arg.Any<GameLocatorResult?>())
+            .Returns(call => { Interlocked.Increment(ref _looks); call[1] = installation.LocatorResult; return true; });
+        using var watcher = Watcher();
+        watcher.Watch();
+
+        for (var i = 0; i < 5; i++) await File.WriteAllTextAsync(Path.Combine(_steamapps, "appmanifest_1.acf"), "x" + i, TestContext.Current.CancellationToken);
+
+        await WaitFor(() => Volatile.Read(ref _looks) >= 1);
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+        Volatile.Read(ref _looks).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AFileThatIsNotAnAppManifest_LeadsToNoLook()
+    {
+        var installation = Installation(GameStore.Steam, Path.Combine(_steamapps, "common", "Game"));
+        _registry.LocateGameInstallations().Returns([installation]);
+        _locator.TryLocate(Arg.Any<IGameData>(), out Arg.Any<GameLocatorResult?>())
+            .Returns(call => { Interlocked.Increment(ref _looks); call[1] = installation.LocatorResult; return true; });
+        using var watcher = Watcher();
+        watcher.Watch();
+
+        await File.WriteAllTextAsync(Path.Combine(_steamapps, "libraryfolders.vdf"), "x", TestContext.Current.CancellationToken);
+
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        Volatile.Read(ref _looks).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AGameFromAnotherStore_IsNotWatchedNorLookedAt()
+    {
+        var installation = Installation(GameStore.GOG, Path.Combine(_steamapps, "common", "Game"));
+        _registry.LocateGameInstallations().Returns([installation]);
+        using var watcher = Watcher();
+        watcher.Watch();
+
+        await File.WriteAllTextAsync(Path.Combine(_steamapps, "appmanifest_1.acf"), "x", TestContext.Current.CancellationToken);
+
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        _locator.DidNotReceiveWithAnyArgs().TryLocate(default!, out _);
+    }
+
+    private SteamAppManifestWatcher Watcher() => new(
+        _registry,
+        new StoreUpdateReaction(_registry, Substitute.For<IFileHashesService>(), Substitute.For<IDiagnosticManager>(), _host.OpenInMemory("main"), NullLogger<StoreUpdateReaction>.Instance),
+        NullLogger<SteamAppManifestWatcher>.Instance,
+        TimeSpan.FromMilliseconds(100));
+
+    private static async Task WaitFor(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(20);
+    }
+
+    private GameInstallation Installation(GameStore store, string gamePath)
+    {
+        var path = FileSystem.Shared.FromUnsanitizedFullPath(gamePath);
+        var result = new GameLocatorResult
+        {
+            Game = Substitute.For<SubstitutableGame>(),
+            Path = path,
+            Store = store,
+            StoreIdentifier = "1",
+            LocatorIds = [LocatorId.From("1")],
+            Locator = _locator,
+            StoreBuildId = "b",
+        };
+        return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, path)));
+    }
+}

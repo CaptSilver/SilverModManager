@@ -144,10 +144,12 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         var store = _localStore();
         var existing = FindBaseline(store.Db, locator.Store, gamePath);
 
-        if (locator.StoreUpdatePending)
+        if (!StoreSettled(locator))
         {
-            // The files on disk may not match the manifest ids the store lists while it updates; the next start retries.
-            _logger.LogInformation("{Game} is being updated by {Store}, not building its baseline now", installation.Game.DisplayName, locator.Store);
+            // The files on disk may not match the manifest ids the store lists while it writes them; the update
+            // watcher and the next apply or start try again. An install the store only flags as needing an update
+            // (Steam's UpdateRequired for players who update on launch) is not this: its files are whole.
+            _logger.LogInformation("{Game} is being updated by {Store}, or its files are damaged, not building its baseline until that is settled", installation.Game.DisplayName, locator.Store);
             return existing is { } current ? Describe(store.Db, current, rebuilt: false) : new LocalBaselineResult(LocalBaselineKind.Snapshot, false, 0);
         }
 
@@ -178,7 +180,7 @@ internal sealed class LocalBaselineCoordinator : IDisposable
             Manifests = manifests,
             AllInstalledDepotsCovered = allCovered,
             // Unsettled installs returned above; the flag is spelled out so the baseline never has to assume it.
-            StoreSettled = !locator.StoreUpdatePending,
+            StoreSettled = StoreSettled(locator),
             StoreLastWrite = locator.StoreLastWrite,
             // Only the rule for files the synchronizer never touches: IsIgnoredBackupPath is about what is worth
             // backing up (all of Baldur's Gate 3's install folder, the archives of the Creation Engine games), and
@@ -227,6 +229,8 @@ internal sealed class LocalBaselineCoordinator : IDisposable
 
     private static bool BuiltFor(LocalBaseline.ReadOnly baseline, IEnumerable<string> locatorIds)
         => locatorIds.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(baseline.LocatorIds);
+
+    private static bool StoreSettled(GameLocatorResult locator) => !locator.StoreUpdateInProgress && !locator.StoreFilesDamaged;
 
     private static LocalBaselineResult Describe(IDb db, LocalBaseline.ReadOnly baseline, bool rebuilt)
         => new(baseline.Kind, rebuilt, NonVanillaFile.FindByBaseline(db, baseline.Id).Count());

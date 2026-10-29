@@ -543,12 +543,12 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     }
 
     [Fact]
-    public async Task UpdatePendingInSteam_DoesNotBuild()
+    public async Task UpdateRunningInSteam_DoesNotBuild()
     {
         WriteGameFile("a.esm", "vanilla");
         _source.Add(101, ("a.esm", "vanilla"));
 
-        var result = await _coordinator.Ensure(Make(["101"], updatePending: true));
+        var result = await _coordinator.Ensure(Make(["101"], updateInProgress: true));
 
         result.Rebuilt.Should().BeFalse();
         result.Kind.Should().Be(LocalBaselineKind.Snapshot);
@@ -557,7 +557,31 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     }
 
     [Fact]
-    public async Task UpdatePendingInSteam_KeepsTheExistingBaseline()
+    public async Task UpdateRequiredAlone_StillBuilds_ForAPlayerWhoUpdatesOnLaunch()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        _source.Add(101, ("a.esm", "vanilla"));
+
+        var result = await _coordinator.Ensure(Make(["101"], updatePending: true));
+
+        result.Rebuilt.Should().BeTrue();
+        LocalBaseline.All(_store.Db).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task FilesTheStoreCallsDamaged_DoNotBuild()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        _source.Add(101, ("a.esm", "vanilla"));
+
+        var result = await _coordinator.Ensure(Make(["101"], filesDamaged: true));
+
+        result.Rebuilt.Should().BeFalse();
+        LocalBaseline.All(_store.Db).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task UpdateRunningInSteam_KeepsTheExistingBaseline()
     {
         WriteGameFile("a.esm", "vanilla");
         _source.Add(101, ("a.esm", "vanilla"));
@@ -565,7 +589,7 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         await _coordinator.Ensure(Installation("101"));
         _source.Reads.Clear();
 
-        var result = await _coordinator.Ensure(Make(["102"], updatePending: true));
+        var result = await _coordinator.Ensure(Make(["102"], updateInProgress: true));
 
         result.Rebuilt.Should().BeFalse();
         result.Kind.Should().Be(LocalBaselineKind.DepotManifests);
@@ -850,6 +874,8 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         string[] locatorIds,
         GameStore? store = null,
         bool updatePending = false,
+        bool updateInProgress = false,
+        bool filesDamaged = false,
         bool withStoreRoot = true,
         DateTimeOffset? storeLastWrite = null,
         Func<GamePath, bool>? filter = null,
@@ -875,7 +901,9 @@ public sealed class EnsureLocalBaselineTests : IDisposable
             Locator = Substitute.For<IGameLocator>(),
             StoreRoot = withStoreRoot ? FileSystem.Shared.FromUnsanitizedFullPath(_storeRoot) : null,
             StoreBuildId = "build-1",
-            StoreUpdatePending = updatePending,
+            StoreUpdatePending = updatePending || updateInProgress || filesDamaged,
+            StoreUpdateInProgress = updateInProgress,
+            StoreFilesDamaged = filesDamaged,
             StoreLastWrite = storeLastWrite,
         };
         return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, gamePath)));

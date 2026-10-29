@@ -117,6 +117,7 @@ public static class Services
                 services.TryAddSingleton<DesktopShutdownOnHostStop>();
                 // Steam updates games while the app is closed, so managed games are checked once at startup.
                 services.AddLocalBaselineStartupPass();
+                services.AddSteamUpdateWatcher();
                 // Steam prunes manifests of old builds; each one is read and saved while it is still there.
                 Games.FromSoft.Services.AddSavedManifestsStartupPass(services);
                 break;

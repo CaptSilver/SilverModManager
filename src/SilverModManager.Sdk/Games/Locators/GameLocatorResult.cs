@@ -109,6 +109,21 @@ public class GameLocatorResult
     public bool StoreUpdatePending { get; init; }
 
     /// <summary>
+    /// The store is writing the installed files right now (Steam: one of UpdateRunning, UpdateStarted,
+    /// UpdatePaused, Downloading, Staging, Committing, Preallocating, AddingFiles, Reconfiguring, Validating
+    /// is set), so they match no single build until it clears. Implies <see cref="StoreUpdatePending"/>.
+    /// A settled Steam install's manifest holds <c>"StateFlags" "4"</c>; UpdateRequired alone is not this,
+    /// because Steam leaves it set for good for players who update only on launch.
+    /// </summary>
+    public bool StoreUpdateInProgress { get; init; }
+
+    /// <summary>
+    /// The store reports installed files as missing or corrupt (Steam: FilesMissing or FilesCorrupt). Unlike
+    /// an update this never clears by itself; the player has to verify the game's files in the store.
+    /// </summary>
+    public bool StoreFilesDamaged { get; init; }
+
+    /// <summary>
     /// A time the store's last write to the installed files cannot be later than, or null when the locator
     /// has no such bound. For Steam, the appmanifest's update time.
     /// </summary>

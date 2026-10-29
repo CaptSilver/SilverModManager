@@ -53,4 +53,15 @@ public static class Services
     {
         return services.AddSingleton<IHostedService, LocalBaselineStartupPass>();
     }
+
+    /// <summary>
+    /// Refreshes a game when Steam finishes updating it while the app runs. Left out of
+    /// <see cref="AddFileHashes"/> for the same reason as <see cref="AddLocalBaselineStartupPass"/>.
+    /// </summary>
+    public static IServiceCollection AddSteamUpdateWatcher(this IServiceCollection services)
+    {
+        return services
+            .AddSingleton<StoreUpdateReaction>()
+            .AddSingleton<IHostedService, SteamAppManifestWatcher>();
+    }
 }
