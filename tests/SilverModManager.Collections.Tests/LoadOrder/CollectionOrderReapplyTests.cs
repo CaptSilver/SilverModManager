@@ -12,6 +12,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
 using Xunit;
 
@@ -50,12 +51,12 @@ public class CollectionOrderReapplyTests(ITestOutputHelper helper) : ACyberpunkI
         ContainerOrder.ChildrenWinnerFirst(Connection.Db, group.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId)
             .Select(child => child.AsLoadoutItem().Name.Replace(".zip", "").Replace("mod", "Plain mod ")).ToArray();
 
-    private async Task Scramble(Loadout.ReadOnly loadout, NexusCollectionLoadoutGroup.ReadOnly group)
+    private async Task Scramble(Loadout.ReadOnly loadout, NexusCollectionLoadoutGroup.ReadOnly group, int dropped = 5)
     {
         // What the broken joiner left behind: the mods in the wrong order and an entry per mod that matched nothing.
         var container = group.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId;
         var reversed = ContainerOrder.ChildrenWinnerFirst(Connection.Db, container).Reverse().Select(child => new ModOrderEntry(child.LoadoutItemGroupId, null));
-        var drops = Enumerable.Range(0, 5).Select(i => new ModOrderDrop($"modId{i}", $"no mod in the collection matches 'modId{i}'", "Load Order"));
+        var drops = Enumerable.Range(0, dropped).Select(i => new ModOrderDrop($"modId{i}", $"no mod in the collection matches 'modId{i}'", "Load Order"));
 
         using var tx = Connection.BeginTransaction();
         new ModOrderImporter(ServiceProvider, Connection, NullLogger<ModOrderImporter>.Instance)
@@ -125,7 +126,7 @@ public class CollectionOrderReapplyTests(ITestOutputHelper helper) : ACyberpunkI
         var (_, group, _) = await InstallCollection();
         var entered = new TaskCompletionSource();
         var release = new TaskCompletionSource();
-        var holder = CollectionUpdater.RunExclusive(ServiceProvider, group, async () =>
+        var holder = CollectionUpdater.RunExclusive(ServiceProvider, group, message => new InvalidOperationException(message), async () =>
         {
             entered.SetResult();
             await release.Task;
@@ -142,5 +143,80 @@ public class CollectionOrderReapplyTests(ITestOutputHelper helper) : ACyberpunkI
             release.SetResult();
             await holder;
         }
+    }
+
+    [Fact]
+    public async Task ReapplyingRefusesWhileADownloadIsBeingInstalledIntoTheCollection()
+    {
+        var mods = Enumerable.Range(0, 4).Select(i => ((SilverModManager.Games.FOMOD.FomodOption[]?)null, $"Plain mod {i}")).ToArray();
+        var (file, revision, items) = await new OfflineCollections(ServiceProvider, Connection, LibraryService, TemporaryFileManager)
+            .Create(mods, optionalIndexes: [3], silverLoadOrder: WinnerFirst);
+        var loadout = await CreateLoadout();
+        var install = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        async Task<NexusCollectionLoadoutGroup.ReadOnly> Run() => await install;
+        var group = await Run().WaitAsync(Timeout);
+        await Scramble(loadout, group);
+        var optional = revision.Downloads.Single(download => download.Name == "Plain mod 3");
+        var job = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout.LoadoutId, optional, CancellationToken.None);
+
+        // The job is registered with the monitor and sits on its work, as a running install does.
+        var entered = new TaskCompletionSource();
+        var release = new TaskCompletionSource();
+        var running = ServiceProvider.GetRequiredService<IJobMonitor>().Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(job, async _ =>
+        {
+            entered.SetResult();
+            await release.Task;
+            return default;
+        });
+        await entered.Task.WaitAsync(Timeout);
+
+        try
+        {
+            var act = async () => await CollectionOrderReapply.Reapply(ServiceProvider, group);
+            (await act.Should().ThrowAsync<CollectionOrderReapplyRefusedException>()).Which.Message.Should().Contain("still being installed");
+            Rows(loadout.LoadoutId, group).Should().HaveCount(5);
+        }
+        finally
+        {
+            release.SetResult();
+            try { await running; } catch (Exception) { /* the stub task returns nothing; only the refusal matters here */ }
+        }
+    }
+
+    [Fact]
+    public async Task ASingleDroppedOrderEntryOfANexusCollectionAlsoOffersTheAction()
+    {
+        var (loadout, group, _) = await InstallCollection();
+        await Scramble(loadout, group, dropped: 1);
+
+        var card = (await Cards(loadout)).Should().ContainSingle().Subject;
+
+        card.Actions.Should().ContainSingle(action => action.Id == DiagnosticActions.ReapplyCollectionOrderId);
+    }
+
+    [Fact]
+    public async Task RuleDropsGetTheirOwnCardWithoutTheAction()
+    {
+        var (loadout, group, _) = await InstallCollection();
+        await Scramble(loadout, group);
+        var container = group.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId;
+        using (var tx = Connection.BeginTransaction())
+        {
+            foreach (var rule in new[] { "rule 'a before b'", "rule 'c after d'" })
+            {
+                _ = new ModOrderDroppedEntry.New(tx)
+                {
+                    LoadoutId = loadout.LoadoutId, ContainerId = container, Source = $"collection {group.Collection.Name}",
+                    Item = rule, Reason = ModOrderDrop.UnresolvedRuleReason, Page = group.Collection.Name,
+                };
+            }
+            await tx.Commit();
+        }
+
+        var cards = await Cards(loadout);
+
+        cards.Should().HaveCount(2);
+        cards.Where(card => card.Actions.Any(action => action.Id == DiagnosticActions.ReapplyCollectionOrderId)).Should().ContainSingle()
+            .Which.FormatDetails(new PlainDiagnosticWriter()).Should().Contain("modId0").And.NotContain("rule 'a before b'");
     }
 }

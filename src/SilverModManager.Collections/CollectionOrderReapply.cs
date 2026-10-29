@@ -42,7 +42,7 @@ public static class CollectionOrderReapply
         var container = group.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId;
         var name = group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().Name;
 
-        await CollectionUpdater.RunExclusive(serviceProvider, group, async () =>
+        await CollectionUpdater.RunExclusive(serviceProvider, group, message => new CollectionOrderReapplyRefusedException(message), async () =>
         {
             var loadout = Loadout.Load(connection.Db, loadoutId);
             var installation = loadout.InstallationInstance;
