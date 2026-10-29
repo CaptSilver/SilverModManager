@@ -722,9 +722,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var baseline = FindLocalBaseline(located);
         var baselineIsForAnotherBuild = baseline is { } found && !newLocatorIds.Select(id => id.Value).ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(found.LocatorIds);
 
-        // No reason to change the loadout if the version is the same. The install handed back is still the one
-        // located now: a first apply may have adopted the new ids already, leaving the loadout matching them while
-        // the registry copy names the old build, and the index looks the store's file list up by those ids.
+        // No reason to change the loadout if the version is the same. The install handed back is the one located
+        // now: a first apply may have adopted the new ids already, leaving the loadout matching them. The registry
+        // is refreshed above when the build changes, and returning the located install means this synchronize does
+        // not depend on that refresh having reached the copy the index reads.
         if (!changed && !baselineIsForAnotherBuild) return (loadout, located);
 
         // A baseline built for another build vouches for nothing the loadout's ids name, so without a rebuild every
@@ -784,9 +785,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <summary>
-    /// Asks the store again where the game is and which build it is. The registry keeps the ids the game was found
-    /// with until the app restarts, and the store's file list is looked up by those ids, so anything that reads the
-    /// folder against that list works from this install and not from the registry's copy.
+    /// Asks the store again where the game is and which build it is. The registry's copy keeps the ids the game was
+    /// found with, and the store's file list is looked up by those ids. When the build has changed,
+    /// <see cref="UpdateLocatorIds"/> hands the registry this install through <c>RefreshInstallation</c>; it also
+    /// returns it, so the running synchronize reads the folder against the current build whether or not that refresh
+    /// has been seen by every reader.
     /// </summary>
     private static bool TryLocateNow(GameInstallation registered, [NotNullWhen(true)] out GameInstallation? located)
     {

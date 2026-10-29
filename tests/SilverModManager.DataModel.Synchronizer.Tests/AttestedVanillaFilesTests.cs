@@ -519,20 +519,16 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
     }
 
     [Fact]
-    public async Task AGameUpdatedAfterItWasRegistered_ASecondSyncQueuesNoBackupOrIngestForAVanillaFile()
+    public async Task AGameUpdatedAfterItWasRegistered_ASecondSyncArchivesNoVanillaFile()
     {
         var loadout = await CreateLoadout();
         SteamUpdatesTheGame(cachesTheNewManifests: true);
         await Synchronizer.Synchronize(Refresh(loadout));
+
+        // Read through the stale ids, the vanilla files look changed and the sync archives them as the player's own.
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
-
-        foreach (var file in CyberpunkSteamInstall.GameFiles.Concat(CyberpunkSteamInstall.ExpansionFiles))
-        {
-            var actions = tree[new GamePath(LocationId.Game, file.Path)].Actions;
-            actions.Should().NotHaveFlag(Actions.BackupFile, $"`{file.Path}` is the game's own").And.NotHaveFlag(Actions.IngestFromDisk);
-        }
+        await NoVanillaFileWasBackedUp();
     }
 
     [Fact]

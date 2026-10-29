@@ -36,7 +36,9 @@ internal class GameRegistry : IGameRegistry
 
     public void ClearCache()
     {
-        _cachedInstallations = Optional<ImmutableArray<GameInstallation>>.None;
+        // Under the lock so a clear cannot land between RefreshInstallation's read and write and be undone by it,
+        // and a locate in flight finishes before the cache is dropped.
+        lock (_lock) _cachedInstallations = Optional<ImmutableArray<GameInstallation>>.None;
     }
 
     public void RefreshInstallation(GameInstallation located)
