@@ -42,10 +42,12 @@ internal static class Witcher3FolderCase
     /// Rewrites the loadout's items and the game's recorded disk state whose game-folder path starts with a case
     /// variant of a top folder, left by installs from before the plan wrote them canonically. The disk state is
     /// rewritten too because the synchronizer takes the spelling it deletes by from it. Returns the loadout
-    /// unchanged when nothing needed rewriting.
+    /// unchanged when nothing needed rewriting. Reads the database as it is now, not through the caller's snapshot:
+    /// the reindex that opens an apply records disk state after that snapshot was taken.
     /// </summary>
     public static async ValueTask<Loadout.ReadOnly> Repair(IConnection connection, Loadout.ReadOnly loadout)
     {
+        loadout = Loadout.Load(connection.Db, loadout.LoadoutId);
         var changes = new List<Change>();
         foreach (var item in LoadoutItem.FindByLoadout(loadout.Db, loadout.LoadoutId).OfTypeLoadoutItemWithTargetPath())
             Collect(changes, item.Id, LoadoutItemWithTargetPath.TargetPath, item.TargetPath);

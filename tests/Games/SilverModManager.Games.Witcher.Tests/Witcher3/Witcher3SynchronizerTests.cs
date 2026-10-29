@@ -12,6 +12,7 @@ using SilverModManager.Sdk.Loadouts;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Games.Witcher.Witcher3;
 using SilverModManager.Games.Witcher.Witcher3.Models;
@@ -158,5 +159,74 @@ public class Witcher3SynchronizerTests(ITestOutputHelper helper)
         var game = GameInstallation.Locations[LocationId.Game].Path;
         game.Combine("Mods/modX/content/a.ws").FileExists.Should().BeFalse();
         game.Combine("mods/modX/content/a.ws").FileExists.Should().BeFalse();
+    }
+    private async Task RecordDiskState(Loadout.ReadOnly loadout, string path, string content)
+    {
+        var bytes = Encoding.UTF8.GetBytes(content);
+        using var tx = Connection.BeginTransaction();
+        _ = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
+        {
+            Path = new GamePath(LocationId.Game, path).ToGamePathParentTuple(loadout.Installation),
+            Identity = FileIdentity.XxHash3(bytes.xxHash3()),
+            XxHash3 = bytes.xxHash3(),
+            Size = Size.FromLong(bytes.Length),
+            LastModified = DateTime.UtcNow,
+            GameId = loadout.Installation,
+        };
+        await tx.Commit();
+    }
+
+    [Fact]
+    public async Task RepairRespellsDiskStateRecordedAfterTheLoadoutSnapshotWasTaken()
+    {
+        var loadout = await CreateLoadout();
+        var snapshot = Refresh(loadout);
+
+        // What the reindex at the start of an apply does: records a file after the caller took its snapshot.
+        await RecordDiskState(loadout, "mods/modMenu/content/a.ws", "menu");
+        await Witcher3FolderCase.Repair(Connection, snapshot);
+
+        DiskStateEntry.FindByGame(Connection.Db, loadout.Installation.Id)
+            .Select(e => ((GamePath)e.Path).ToString()).Where(p => p.StartsWith("{Game}/", StringComparison.Ordinal))
+            .Should().Equal("{Game}/Mods/modMenu/content/a.ws");
+    }
+
+    [Fact]
+    public async Task AnApplyOfAMenuModsLoadoutDeployedUnderLowercaseModsBesideMods_LeavesEverythingUnderModsOnly()
+    {
+        var loadout = await CreateLoadout();
+        for (var i = 0; i < 14; i++) await AddModFile(loadout, $"mods/modMenu{i}/content/a.ws", $"menu {i}");
+        await AddModFile(loadout, "Mods/modBase/content/b.ws", "base");
+        await new UnrepairedSynchronizer(ServiceProvider, Game, (ALoadoutSynchronizer)Synchronizer).Synchronize(Refresh(loadout));
+        GameFolderNames().Should().Contain("mods").And.Contain("Mods");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        var game = GameInstallation.Locations[LocationId.Game].Path;
+        GameFolderNames().Should().Contain("Mods").And.NotContain("mods");
+        for (var i = 0; i < 14; i++) game.Combine($"Mods/modMenu{i}/content/a.ws").FileExists.Should().BeTrue();
+        game.Combine("Mods/modBase/content/b.ws").FileExists.Should().BeTrue();
+        DiskStateEntry.FindByGame(Connection.Db, loadout.Installation.Id)
+            .Should().OnlyContain(e => !((GamePath)e.Path).ToString().StartsWith("{Game}/mods/", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ASwitchToALoadoutOfMenuModsDeployedUnderLowercaseModsBesideMods_LeavesEverythingUnderModsOnly()
+    {
+        var loadout = await CreateLoadout();
+        for (var i = 0; i < 14; i++) await AddModFile(loadout, $"mods/modMenu{i}/content/a.ws", $"menu {i}");
+        await AddModFile(loadout, "Mods/modBase/content/b.ws", "base");
+        await new UnrepairedSynchronizer(ServiceProvider, Game, (ALoadoutSynchronizer)Synchronizer).Synchronize(Refresh(loadout));
+        var other = await CreateLoadout();
+
+        await Synchronizer.Synchronize(Refresh(other));
+        await LoadoutManager.DeactivateCurrentLoadout(GameInstallation);
+        await LoadoutManager.ActivateLoadout(Refresh(loadout));
+
+        var game = GameInstallation.Locations[LocationId.Game].Path;
+        GameFolderNames().Should().Contain("Mods").And.NotContain("mods");
+        for (var i = 0; i < 14; i++) game.Combine($"Mods/modMenu{i}/content/a.ws").FileExists.Should().BeTrue();
+        DiskStateEntry.FindByGame(Connection.Db, loadout.Installation.Id)
+            .Should().OnlyContain(e => !((GamePath)e.Path).ToString().StartsWith("{Game}/mods/", StringComparison.Ordinal));
     }
 }

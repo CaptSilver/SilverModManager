@@ -25,12 +25,4 @@ public static class ProtonMessages
     /// </summary>
     public static string UnwritableFolder(AbsolutePath folder)
         => $"The folder '{folder}' cannot be written to, so nothing was changed. Check its permissions and try again.";
-
-    /// <summary>
-    /// The loadout would create two folders in one place that differ only in letter case. Wine shows the game one of
-    /// them, so the mods in the other would not load.
-    /// </summary>
-    public static string CaseVariantFolders(string gameName, string first, string second)
-        => $"{gameName} runs under Wine, which treats '{first}' and '{second}' as the same folder, so only one of them would be seen by the game. " +
-           "Nothing was changed. Remove or reinstall the mod that uses the other spelling, then try again.";
 }

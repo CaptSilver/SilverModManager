@@ -1,50 +1,56 @@
+using System.Runtime.InteropServices;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 /// <summary>
-/// Finds two folders under one parent whose names differ only in letter case. Wine resolves names
-/// case-insensitively, so of such a pair the game sees one folder and the other's files are lost to it.
+/// Finds sibling folders whose names differ only in letter case. Wine resolves names case-insensitively, so of
+/// such a pair the game sees one folder and the other's files are lost to it.
 /// </summary>
-internal static class CaseVariantFolders
+public static class CaseVariantFolders
 {
     /// <summary>
-    /// The first pair found, or null when every folder has one spelling. A pair is a folder of <paramref name="deployed"/>
-    /// beside another folder of <paramref name="deployed"/> or of <paramref name="onDisk"/>; two folders of
-    /// <paramref name="onDisk"/> alone are not this apply's doing and are not reported.
+    /// Whether the game is a Windows build run through Wine or Proton. Native games and Windows itself keep the two
+    /// folders apart or merge them themselves, so only Wine needs this reported.
     /// </summary>
-    public static (GamePath First, GamePath Second)? Find(IEnumerable<GamePath> deployed, IEnumerable<GamePath> onDisk)
+    public static bool RunsUnderWine(GameInstallation installation)
+        => installation.LocatorResult.WinePrefixPath is not null
+           || (installation.LocatorResult.Platform == OSPlatform.Windows && !OperatingSystem.IsWindows());
+
+    /// <summary>
+    /// Every pair of sibling folders, among the folders the <paramref name="files"/> sit in, that differ only in case.
+    /// Three spellings of one name give three pairs. A folder is a sibling of another only under the same parent
+    /// spelling, so <c>mods/x</c> and <c>Mods/x</c> are not a pair: the pair is <c>mods</c> and <c>Mods</c>.
+    /// </summary>
+    public static IReadOnlyList<(GamePath First, GamePath Second)> FindAll(IEnumerable<GamePath> files)
     {
-        // Keyed by the folder's path with case ignored; the value is the spelling seen first.
-        var seen = new Dictionary<(LocationId, string), string>();
-        foreach (var file in deployed)
+        // Keyed by the parent as written and the name with case ignored; the value holds each spelling of the name.
+        var spellings = new Dictionary<(LocationId Location, string Parent, string Name), SortedSet<string>>();
+        foreach (var file in files)
         {
-            foreach (var (folder, key) in FoldersOf(file))
+            var segments = file.Path.ToString().Split('/');
+            var parent = "";
+            for (var i = 0; i < segments.Length - 1; i++)
             {
-                if (seen.TryAdd(key, folder)) continue;
-                if (seen[key] != folder) return (new GamePath(file.LocationId, seen[key]), new GamePath(file.LocationId, folder));
+                var key = (file.LocationId, parent, segments[i].ToUpperInvariant());
+                if (!spellings.TryGetValue(key, out var set)) spellings[key] = set = new SortedSet<string>(StringComparer.Ordinal);
+                set.Add(segments[i]);
+                parent = parent.Length == 0 ? segments[i] : parent + "/" + segments[i];
             }
         }
 
-        foreach (var file in onDisk)
+        var pairs = new List<(GamePath, GamePath)>();
+        foreach (var ((location, parent, _), set) in spellings.OrderBy(kv => kv.Key.Location.ToString(), StringComparer.Ordinal).ThenBy(kv => kv.Key.Parent, StringComparer.Ordinal).ThenBy(kv => kv.Key.Name, StringComparer.Ordinal))
         {
-            foreach (var (folder, key) in FoldersOf(file))
+            var names = set.ToArray();
+            for (var i = 0; i < names.Length; i++)
             {
-                if (seen.TryGetValue(key, out var spelling) && spelling != folder)
-                    return (new GamePath(file.LocationId, folder), new GamePath(file.LocationId, spelling));
+                for (var j = i + 1; j < names.Length; j++)
+                    pairs.Add((new GamePath(location, Join(parent, names[i])), new GamePath(location, Join(parent, names[j]))));
             }
         }
-        return null;
+        return pairs;
     }
 
-    private static IEnumerable<(string Folder, (LocationId, string) Key)> FoldersOf(GamePath file)
-    {
-        var segments = file.Path.ToString().Split('/');
-        var folder = "";
-        for (var i = 0; i < segments.Length - 1; i++)
-        {
-            folder = folder.Length == 0 ? segments[i] : folder + "/" + segments[i];
-            yield return (folder, (file.LocationId, folder.ToUpperInvariant()));
-        }
-    }
+    private static string Join(string parent, string name) => parent.Length == 0 ? name : parent + "/" + name;
 }

@@ -1,11 +1,14 @@
+using System.Collections.Frozen;
 using System.Runtime.InteropServices;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
+using SilverModManager.DataModel.Diagnostics;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
@@ -184,37 +187,138 @@ public class ProtonPreflightTests(ITestOutputHelper helper) : AStubbedGameTest<P
         GameRegistry.ForceGetMetadata(GameInstallation).Contains(GameInstallMetadata.LastSyncedLoadout).Should().BeFalse();
     }
 
+    private async Task<Diagnostic[]> CaseVariantCards(Loadout.ReadOnly loadout)
+    {
+        var tree = await Synchronizer.BuildSyncTree(loadout);
+        Synchronizer.ProcessSyncTree(tree);
+        var cards = new List<Diagnostic>();
+        await foreach (var card in new CaseVariantFolderEmitter().Diagnose(loadout, tree.ToFrozenDictionary(), CancellationToken.None))
+            cards.Add(card);
+        return cards.ToArray();
+    }
+
+    private static string DetailsOf(Diagnostic card) => card.FormatDetails(new PlainDiagnosticWriter());
+
     [Fact]
-    public async Task Synchronize_ProtonGameWithTwoFoldersThatDifferOnlyInCase_IsRefusedNamingBothAndWritesNothing()
+    public async Task Synchronize_ProtonGameWithTwoFoldersThatDifferOnlyInCase_AppliesAndTheCardNamesBoth()
     {
         UseProtonPrefix(prefixReady: true);
         var loadout = await CreateLoadout();
         loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "mods/modX/content/a.ws"), "a");
         loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modY/content/b.ws"), "b");
-        var gameFolder = GameInstallation.Locations[LocationId.Game].Path;
 
-        var act = async () => await Synchronizer.Synchronize(loadout);
+        loadout = await Synchronizer.Synchronize(loadout);
 
-        var exception = (await act.Should().ThrowAsync<SynchronizerPreflightException>()).Which;
-        exception.Message.Should().Contain("{Game}/mods").And.Contain("{Game}/Mods");
-        gameFolder.Combine("mods").DirectoryExists().Should().BeFalse();
-        gameFolder.Combine("Mods").DirectoryExists().Should().BeFalse();
+        var game = GameInstallation.Locations[LocationId.Game].Path;
+        game.Combine("mods/modX/content/a.ws").FileExists.Should().BeTrue();
+        game.Combine("Mods/modY/content/b.ws").FileExists.Should().BeTrue();
+        var card = (await CaseVariantCards(loadout)).Should().ContainSingle().Subject;
+        card.Severity.Should().Be(DiagnosticSeverity.Critical);
+        DetailsOf(card).Should().Contain("{Game}/mods").And.Contain("{Game}/Mods").And.Contain("one folder of each pair");
     }
 
     [Fact]
-    public async Task Synchronize_ProtonGameWithNestedFoldersThatDifferOnlyInCase_IsRefused()
+    public async Task Synchronize_ProtonGameWithNestedFoldersThatDifferOnlyInCase_AppliesAndTheCardNamesBoth()
     {
         UseProtonPrefix(prefixReady: true);
         var loadout = await CreateLoadout();
         loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modX/Content/a.ws"), "a");
         loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modX/content/b.ws"), "b");
 
-        var act = async () => await Synchronizer.Synchronize(loadout);
+        loadout = await Synchronizer.Synchronize(loadout);
 
-        var exception = (await act.Should().ThrowAsync<SynchronizerPreflightException>()).Which;
-        exception.Message.Should().Contain("{Game}/Mods/modX/Content").And.Contain("{Game}/Mods/modX/content");
+        GameInstallation.Locations[LocationId.Game].Path.Combine("Mods/modX/content/b.ws").FileExists.Should().BeTrue();
+        DetailsOf((await CaseVariantCards(loadout)).Should().ContainSingle().Subject)
+            .Should().Contain("{Game}/Mods/modX/Content").And.Contain("{Game}/Mods/modX/content");
     }
 
+    [Fact]
+    public async Task Synchronize_ProtonGameWithAModFolderBesideAVanillaFolderOfAnotherCase_AppliesAndTheCardNamesBoth()
+    {
+        UseProtonPrefix(prefixReady: true);
+        var vanilla = GameInstallation.Locations[LocationId.Game].Path.Combine("Data/Interface/vanilla.txt");
+        vanilla.Parent.CreateDirectory();
+        await vanilla.WriteAllTextAsync("vanilla");
+        var loadout = await CreateLoadout();
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Data/interface/x.txt"), "x");
+
+        loadout = await Synchronizer.Synchronize(loadout);
+
+        GameInstallation.Locations[LocationId.Game].Path.Combine("Data/interface/x.txt").FileExists.Should().BeTrue();
+        DetailsOf((await CaseVariantCards(loadout)).Should().ContainSingle().Subject)
+            .Should().Contain("{Game}/Data/Interface").And.Contain("{Game}/Data/interface");
+    }
+
+    [Fact]
+    public async Task Synchronize_ProtonGameWritingAFolderBesideAnUnmanagedFolderThatDiffersInCase_AppliesAndTheCardNamesBoth()
+    {
+        UseProtonPrefix(prefixReady: true);
+        var loadout = await CreateLoadout();
+        var unmanaged = GameInstallation.Locations[LocationId.Game].Path.Combine("mods/own/user.ws");
+        unmanaged.Parent.CreateDirectory();
+        await unmanaged.WriteAllTextAsync("the player's own");
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modY/content/b.ws"), "b");
+
+        loadout = await Synchronizer.Synchronize(loadout);
+
+        GameInstallation.Locations[LocationId.Game].Path.Combine("Mods/modY/content/b.ws").FileExists.Should().BeTrue();
+        DetailsOf((await CaseVariantCards(loadout)).Should().ContainSingle().Subject)
+            .Should().Contain("{Game}/mods").And.Contain("{Game}/Mods");
+    }
+
+    [Fact]
+    public async Task Synchronize_ProtonGameWithSeveralPairs_ListsEveryPairOnOneCard()
+    {
+        UseProtonPrefix(prefixReady: true);
+        var loadout = await CreateLoadout();
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "mods/modX/a.ws"), "a");
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modY/b.ws"), "b");
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Data/Textures/a.dds"), "a");
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Data/textures/b.dds"), "b");
+
+        loadout = await Synchronizer.Synchronize(loadout);
+
+        var details = DetailsOf((await CaseVariantCards(loadout)).Should().ContainSingle().Subject);
+        details.Should().Contain("{Game}/mods").And.Contain("{Game}/Mods").And.Contain("{Game}/Data/Textures").And.Contain("{Game}/Data/textures");
+    }
+
+    [Fact]
+    public async Task CaseVariantCard_NativeLinuxGameWithTwoFoldersThatDifferOnlyInCase_IsNotShown()
+    {
+        var loadout = await CreateLoadout();
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "mods/modX/content/a.ws"), "a");
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modY/content/b.ws"), "b");
+
+        loadout = await Synchronizer.Synchronize(loadout);
+
+        (await CaseVariantCards(loadout)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void FindAll_FoldersThatDifferOnlyInCaseUnderDifferentParents_AreNotSiblingsOfEachOther()
+    {
+        var files = new[] { "mods/x/a.ws", "Mods/x/b.ws" }.Select(p => new GamePath(LocationId.Game, p));
+
+        var pairs = CaseVariantFolders.FindAll(files);
+
+        pairs.Select(p => (p.First.ToString(), p.Second.ToString())).Should().Equal(("{Game}/Mods", "{Game}/mods"));
+    }
+
+    [Fact]
+    public void FindAll_ThreeSpellingsOfOneFolder_GiveThreePairs()
+    {
+        var files = new[] { "mods/a.ws", "Mods/b.ws", "MODS/c.ws" }.Select(p => new GamePath(LocationId.Game, p));
+
+        CaseVariantFolders.FindAll(files).Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void FindAll_OneSpellingPerFolder_GivesNoPair()
+    {
+        var files = new[] { "Mods/x/a.ws", "Mods/y/b.ws", "bin/c.dll" }.Select(p => new GamePath(LocationId.Game, p));
+
+        CaseVariantFolders.FindAll(files).Should().BeEmpty();
+    }
     [Fact]
     public async Task Synchronize_ProtonGameWithOneSpellingPerFolder_Passes()
     {
@@ -226,79 +330,6 @@ public class ProtonPreflightTests(ITestOutputHelper helper) : AStubbedGameTest<P
         await Synchronizer.Synchronize(loadout);
 
         GameInstallation.Locations[LocationId.Game].Path.Combine("Mods/modY/content/b.ws").FileExists.Should().BeTrue();
-    }
-
-    private static SyncNode NodeOf(LoadoutSourceItemType type, bool loadout = true, bool disk = true)
-    {
-        var part = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(1UL)), Size = Size.From(1), LastModifiedTicks = 1 };
-        return new SyncNode
-        {
-            SourceItemType = type,
-            Loadout = loadout ? part : default,
-            Disk = disk ? part : default,
-        };
-    }
-
-    [Fact]
-    public void RefuseCaseVariantFolders_AModFolderThatDiffersInCaseFromAVanillaFolder_IsNotRefused()
-    {
-        UseProtonPrefix(prefixReady: true);
-        var tree = new Dictionary<GamePath, SyncNode>
-        {
-            [new GamePath(LocationId.Game, "Data/Interface/vanilla.txt")] = NodeOf(LoadoutSourceItemType.Game),
-            [new GamePath(LocationId.Game, "Data/interface/x.txt")] = NodeOf(LoadoutSourceItemType.Loadout, disk: false),
-        };
-
-        var act = () => ALoadoutSynchronizer.RefuseCaseVariantFolders(tree, GameInstallation);
-
-        act.Should().NotThrow();
-    }
-
-    [Fact]
-    public void RefuseCaseVariantFolders_TwoModFoldersThatDifferInCase_AreRefusedEvenBesideAVanillaFolder()
-    {
-        UseProtonPrefix(prefixReady: true);
-        var tree = new Dictionary<GamePath, SyncNode>
-        {
-            [new GamePath(LocationId.Game, "Data/Interface/vanilla.txt")] = NodeOf(LoadoutSourceItemType.Game),
-            [new GamePath(LocationId.Game, "Data/interface/x.txt")] = NodeOf(LoadoutSourceItemType.Loadout, disk: false),
-            [new GamePath(LocationId.Game, "Data/INTERFACE/y.txt")] = NodeOf(LoadoutSourceItemType.Loadout, disk: false),
-        };
-
-        var act = () => ALoadoutSynchronizer.RefuseCaseVariantFolders(tree, GameInstallation);
-
-        act.Should().Throw<SynchronizerPreflightException>().Which.Message.Should().Contain("{Game}/Data/interface").And.Contain("{Game}/Data/INTERFACE");
-    }
-
-    [Fact]
-    public async Task Synchronize_ProtonGameWithTwoModsWhoseTextureFoldersDifferInCase_IsRefusedNamingBoth()
-    {
-        UseProtonPrefix(prefixReady: true);
-        var loadout = await CreateLoadout();
-        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Data/Textures/a.dds"), "a");
-        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Data/textures/b.dds"), "b");
-
-        var act = async () => await Synchronizer.Synchronize(loadout);
-
-        var exception = (await act.Should().ThrowAsync<SynchronizerPreflightException>()).Which;
-        exception.Message.Should().Contain("{Game}/Data/Textures").And.Contain("{Game}/Data/textures");
-    }
-
-    [Fact]
-    public async Task Synchronize_ProtonGameWritingAFolderBesideAnUnmanagedFolderThatDiffersInCase_IsRefusedNamingBoth()
-    {
-        UseProtonPrefix(prefixReady: true);
-        var loadout = await CreateLoadout();
-        var unmanaged = GameInstallation.Locations[LocationId.Game].Path.Combine("mods/own/user.ws");
-        unmanaged.Parent.CreateDirectory();
-        File.WriteAllText(unmanaged.GetFullPath(), "the player's own");
-        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modY/content/b.ws"), "b");
-
-        var act = async () => await Synchronizer.Synchronize(loadout);
-
-        var exception = (await act.Should().ThrowAsync<SynchronizerPreflightException>()).Which;
-        exception.Message.Should().Contain("{Game}/mods").And.Contain("{Game}/Mods");
-        GameInstallation.Locations[LocationId.Game].Path.Combine("Mods").DirectoryExists().Should().BeFalse();
     }
 
     [Fact]

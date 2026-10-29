@@ -555,7 +555,6 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         RefuseTraversalPaths(syncTree);
         KeepNeverWrittenPathsOffDisk(syncTree);
         await PreflightActions(syncTree, loadout);
-        RefuseCaseVariantFolders(syncTree, loadout.InstallationInstance);
         ProbeWritableRoots(syncTree, loadout.InstallationInstance.Locations);
         ApplyBackupOverflowChoice(syncTree, choice);
 
@@ -1568,6 +1567,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // manager, which ends in this method.
         loadout = await ReconcileGameInstalledContent(loadout, state);
         loadout = await PrepareLoadoutForSync(loadout);
+
+        // The preparation can respell recorded disk state, so the tree reads the state it left, not the caller's snapshot.
+        state = GameInstallMetadata.Load(Connection.Db, state.Id);
         var diskStateEntries = DiskStateEntry.FindByGame(state.Db, state);
         var diskState = DiskStateToPathPartPair(diskStateEntries).ToList();
         var tree = BuildSyncTree(diskState, diskState, loadout);
