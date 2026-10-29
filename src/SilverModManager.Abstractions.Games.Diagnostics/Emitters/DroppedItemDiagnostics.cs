@@ -46,4 +46,28 @@ Change it on the {Page} page.
             .AddValue<string>("Reason")
         )
         .Finish();
+
+    /// <summary>One card for everything one source left out of a loadout, when it left out more than one thing.</summary>
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate DroppedItems = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 3))
+        .WithTitle("Something was left out")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{Count} entries of {Source}'s load order are not used")
+        .WithDetails("""
+{Count} entries of {Source}'s load order were left out:
+
+{Entries}
+
+Change the order on the {Page} page.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<int>("Count")
+            .AddValue<string>("Source")
+            .AddValue<string>("Entries")
+            .AddValue<string>("Page")
+        )
+        .Finish();
 }

@@ -47,19 +47,51 @@ public class ModOrderDroppedEmitterTests(ITestOutputHelper helper) : ACyberpunkI
     }
 
     [Fact]
-    public async Task OneWarningPerDroppedRow()
+    public async Task OneCardForASourceThatDroppedSeveralEntries()
+    {
+        var loadout = await CreateLoadout();
+        var container = await AddContainer(loadout.LoadoutId, "Collection X");
+        await AddRow(loadout.LoadoutId, container, "collection X", "Ghost", "no mod matches 'Ghost'");
+        await AddRow(loadout.LoadoutId, container, "collection X", "Phantom", "no mod matches 'Phantom'");
+
+        var diagnostics = await Diagnose(loadout);
+
+        var card = diagnostics.Should().ContainSingle().Which;
+        card.Severity.Should().Be(DiagnosticSeverity.Warning);
+        card.Title.Should().Be("Something was left out");
+        card.FormatSummary(new PlainDiagnosticWriter()).Should().Be("2 entries of collection X's load order are not used");
+        var details = card.FormatDetails(new PlainDiagnosticWriter());
+        details.Should().Contain("Ghost").And.Contain("no mod matches 'Ghost'").And.Contain("Phantom").And.Contain("no mod matches 'Phantom'");
+        details.Should().Contain("Load Order page");
+    }
+
+    [Fact]
+    public async Task ASingleDroppedEntryKeepsItsOwnCard()
     {
         var loadout = await CreateLoadout();
         var container = await AddContainer(loadout.LoadoutId, "Collection X");
         await AddRow(loadout.LoadoutId, container, "collection X", "Ghost");
-        await AddRow(loadout.LoadoutId, container, "collection X", "Phantom");
 
         var diagnostics = await Diagnose(loadout);
 
-        diagnostics.Should().HaveCount(2).And.OnlyContain(d => d.Severity == DiagnosticSeverity.Warning);
-        var summaries = diagnostics.Select(d => d.FormatSummary(new PlainDiagnosticWriter())).ToArray();
-        summaries.Should().Contain(s => s.Contains("Ghost") && s.Contains("collection X"));
-        summaries.Should().Contain(s => s.Contains("Phantom"));
+        diagnostics.Should().ContainSingle().Which.FormatSummary(new PlainDiagnosticWriter()).Should().Contain("Ghost").And.Contain("collection X");
+    }
+
+    [Fact]
+    public async Task EachSourceGetsItsOwnCard()
+    {
+        var loadout = await CreateLoadout();
+        var first = await AddContainer(loadout.LoadoutId, "Collection X");
+        var second = await AddContainer(loadout.LoadoutId, "Collection Y");
+        await AddRow(loadout.LoadoutId, first, "collection X", "Ghost");
+        await AddRow(loadout.LoadoutId, first, "collection X", "Phantom");
+        await AddRow(loadout.LoadoutId, second, "collection Y", "Wraith");
+        await AddRow(loadout.LoadoutId, second, "collection Y", "Shade");
+
+        var summaries = (await Diagnose(loadout)).Select(d => d.FormatSummary(new PlainDiagnosticWriter())).ToArray();
+
+        summaries.Should().HaveCount(2);
+        summaries.Should().Contain(s => s.Contains("collection X")).And.Contain(s => s.Contains("collection Y"));
     }
 
     [Fact]
