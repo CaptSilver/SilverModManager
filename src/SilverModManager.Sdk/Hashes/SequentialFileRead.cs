@@ -19,7 +19,7 @@ public static class SequentialFileRead
     public static Stream Open(AbsolutePath file)
     {
         var stream = file.Read();
-        if (OperatingSystem.IsLinux() && stream is FileStream { SafeFileHandle.IsInvalid: false } fileStream) AdviseSequential(fileStream);
+        if (stream is FileStream { SafeFileHandle.IsInvalid: false } fileStream) AdviseSequential(fileStream);
         return stream;
     }
 
