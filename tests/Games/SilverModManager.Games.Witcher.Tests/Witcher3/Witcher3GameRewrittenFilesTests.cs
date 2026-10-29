@@ -1,6 +1,10 @@
 using System.Collections.Frozen;
 using System.Text;
 using FluentAssertions;
+using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.IO;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Diagnostics;
@@ -141,5 +145,110 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
         await Synchronizer.Synchronize(Refresh(loadout));
 
         (GameFolder / MetadataStore).FileExists.Should().BeFalse("the game rebuilds it itself when it starts");
+    }
+
+    /// <summary>What the game's synchronizer did before the three paths were filtered: they are indexed like any game file.</summary>
+    private sealed class UnfilteredSynchronizer(IServiceProvider provider, IGame game, ALoadoutSynchronizer real) : WitcherSynchronizer(provider, game)
+    {
+        public override Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout) => real.IntrinsicFiles(loadout);
+    }
+
+    private UnfilteredSynchronizer Legacy() => new(ServiceProvider, Game, (ALoadoutSynchronizer)Synchronizer);
+
+    private string[] TrackedRewritten(Loadout.ReadOnly loadout) =>
+        Paths(DiskStateEntry.FindByGame(Connection.Db, loadout.Installation.Id).Select(e => (GamePath)e.Path))
+            .Where(p => GameRewritten.Contains(p)).ToArray();
+
+    private string[] OverridePaths(Loadout.ReadOnly loadout) =>
+        LoadoutOverridesGroup.FindByOverridesFor(Connection.Db, loadout.Id)
+            .SelectMany(g => g.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
+            .Select(item => ((GamePath)item.TargetPath).Path.ToString()).ToArray();
+
+    [Fact]
+    public async Task AnInstallThatAlreadyTracksTheStoreKeepsItOnDiskAndStopsTrackingIt()
+    {
+        var loadout = await CreateLoadout();
+        await Legacy().Synchronize(Refresh(loadout));
+        TrackedRewritten(loadout).Should().Contain(MetadataStore, "the earlier synchronizer indexed the store");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (GameFolder / MetadataStore).FileExists.Should().BeTrue("the apply must not take the vanilla store off disk");
+        (await (GameFolder / MetadataStore).ReadAllTextAsync()).Should().Be("vanilla metadata store");
+        TrackedRewritten(loadout).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AStampAndScriptCacheIndexedBeforeTheFilterAreNotIngestedAsOverrides()
+    {
+        var loadout = await CreateLoadout();
+        await Legacy().Synchronize(Refresh(loadout));
+        await TheGameRunsOnce();
+        // The rescan after a Play, by the synchronizer that did not know the files were the game's.
+        await Legacy().ReindexState(GameInstallation);
+        TrackedRewritten(loadout).Should().Contain([Stamp, CompiledScripts]);
+        // The earlier synchronizer's own record of the vanilla store is already there; only what the apply adds is in question.
+        var before = OverridePaths(loadout);
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        foreach (var path in GameRewritten)
+            (await (GameFolder / path).ReadAllTextAsync()).Should().Be("written by the game: " + path);
+        OverridePaths(loadout).Except(before).Should().BeEmpty("the game's own output is not the player's mod");
+        TrackedRewritten(loadout).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AResetLeavesWhatTheGameRewroteAsItIs()
+    {
+        var loadout = await CreateLoadout();
+        await Synchronizer.Synchronize(Refresh(loadout));
+        // The vanilla store is in the file store, as it is once an earlier apply backed it up.
+        var vanilla = Encoding.UTF8.GetBytes("vanilla metadata store");
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(MetadataStore, new MemoryStream(vanilla)), vanilla.xxHash3(), Size.FromLong(vanilla.Length))]);
+        await TheGameRunsOnce();
+
+        await Synchronizer.ResetToOriginalGameState(GameInstallation, GameInstallation.LocatorResult.LocatorIds.ToArray());
+
+        foreach (var path in GameRewritten)
+            (await (GameFolder / path).ReadAllTextAsync()).Should().Be("written by the game: " + path, "a reset does not restore or delete the game's own output");
+    }
+
+    private static SyncNodePart Part(string content)
+    {
+        var bytes = Encoding.UTF8.GetBytes(content);
+        return new SyncNodePart { Identity = FileIdentity.XxHash3(bytes.xxHash3()), Size = Size.FromLong(bytes.Length), LastModifiedTicks = 0 };
+    }
+
+    [Theory]
+    [InlineData(MetadataStore)]
+    [InlineData(Stamp)]
+    [InlineData(CompiledScripts)]
+    public void AResetsVanillaCopyOfAFileTheGameRewritesIsNeitherExtractedNorWarnedAbout(string path)
+    {
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [new GamePath(LocationId.Game, path)] = new() { Loadout = Part("vanilla"), SourceItemType = LoadoutSourceItemType.Game },
+        };
+
+        Synchronizer.ProcessSyncTree(tree);
+
+        tree.Values.Single().Actions.Should().Be(Actions.DoNothing);
+    }
+
+    [Theory]
+    [InlineData(MetadataStore)]
+    [InlineData(Stamp)]
+    [InlineData(CompiledScripts)]
+    public void ATrackedCopyOfAFileTheGameRewritesIsForgottenWhateverTheOtherSidesHold(string path)
+    {
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [new GamePath(LocationId.Game, path)] = new() { Disk = Part("game"), Loadout = Part("vanilla"), SourceItemType = LoadoutSourceItemType.Game },
+        };
+
+        Synchronizer.ProcessSyncTree(tree);
+
+        tree.Values.Single().Actions.Should().Be(Actions.ForgetDiskState);
     }
 }
