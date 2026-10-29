@@ -1,4 +1,4 @@
-using System.Collections.Frozen;
+using System.Reactive.Linq;
 using System.Text;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
@@ -12,6 +12,7 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Games.TestFramework.Helpers;
 using SilverModManager.Games.Witcher.Witcher3;
@@ -121,30 +122,12 @@ public class Witcher3NonVanillaNoticeTests(ITestOutputHelper helper)
             .SelectMany(g => g.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
             .Select(item => ((GamePath)item.TargetPath).Path.ToString()).ToArray();
 
+    /// <summary>The cards the app shows for the loadout, from the diagnostic manager the Health Check page reads.</summary>
     private async Task<string[]> NonVanillaCards(Loadout.ReadOnly loadout)
     {
-        // The diagnostic manager's route: the recorded disk states, not the index.
-        var metadata = loadout.Installation;
-        var scanned = Synchronizer.GetLastScannedDiskState(metadata);
-        var previous = Synchronizer.GetPreviouslyAppliedDiskState(metadata);
-        var tree = Synchronizer.BuildSyncTree(scanned, previous, loadout);
-        Synchronizer.ProcessSyncTree(tree);
-        var frozen = tree.ToFrozenDictionary();
-        var emitters = GameInstallation.GetGame().DiagnosticEmitters
-            .Concat(ServiceProvider.GetServices<IDiagnosticEmitter>())
-            .OfType<ILoadoutDiagnosticEmitter>();
-
-        var cards = new List<string>();
-        foreach (var emitter in emitters)
-        {
-            await foreach (var diagnostic in emitter.Diagnose(loadout, frozen, CancellationToken.None))
-            {
-                var text = Describe(diagnostic);
-                if (text.Contains("already there before", StringComparison.Ordinal)) cards.Add(text);
-            }
-        }
-
-        return cards.ToArray();
+        await DiagnosticManager.RefreshAsync(loadout.LoadoutId);
+        var diagnostics = await DiagnosticManager.GetLoadoutDiagnostics(loadout.LoadoutId).FirstAsync();
+        return diagnostics.Select(Describe).Where(text => text.Contains("already there before", StringComparison.Ordinal)).ToArray();
     }
 
     [Fact]
@@ -173,5 +156,68 @@ public class Witcher3NonVanillaNoticeTests(ITestOutputHelper helper)
         (GameFolder / MergedScript).FileExists.Should().BeTrue("the next apply has not run");
         cards.Should().ContainSingle(card => card.Contains("readme-from-the-user.txt"));
         cards.Should().NotContain(card => card.Contains("mod0000_MergedFiles") || card.Contains("modB"), "this app wrote them");
+    }
+
+    /// <summary>What the game's synchronizer did before the three paths were filtered: they are indexed like any game file.</summary>
+    private sealed class UnfilteredSynchronizer(IServiceProvider provider, IGame game, ALoadoutSynchronizer real) : WitcherSynchronizer(provider, game)
+    {
+        public override Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout) => real.IntrinsicFiles(loadout);
+    }
+
+    private async Task RebuildTheBaseline()
+    {
+        var hashes = ServiceProvider.GetRequiredService<IFileHashesService>();
+        await hashes.RemoveLocalBaseline(GameInstallation.LocatorResult.Store, GameFolder.ToString());
+        await hashes.EnsureLocalBaseline(GameInstallation);
+    }
+
+    [Fact]
+    public async Task ModsAnEarlierBuildDeployedAndTheGameRewroteFilesAroundAreNotListedOnceTheBaselineIsRebuilt()
+    {
+        var loadout = await CreateLoadout();
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, ModFiles, loadout.LoadoutId, "Deployed mods");
+            await tx.Commit();
+        }
+
+        // An earlier build applied the loadout, the game ran, and the earlier build filed what it wrote as overrides.
+        var legacy = new UnfilteredSynchronizer(ServiceProvider, Game, (ALoadoutSynchronizer)Synchronizer);
+        await legacy.Synchronize(Refresh(loadout));
+        foreach (var path in new[] { "content/metadata.store.stamp", "content/content0/x64.final.redscripts" })
+        {
+            (GameFolder / path).Parent.CreateDirectory();
+            await (GameFolder / path).WriteAllBytesAsync(Encoding.UTF8.GetBytes("written by the game: " + path));
+        }
+        await legacy.Synchronize(Refresh(loadout));
+        await RebuildTheBaseline();
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        var cards = await NonVanillaCards(Refresh(loadout));
+        cards.Should().BeEmpty("the mods are the loadout's and the game's own output is not listed");
+    }
+
+    [Fact]
+    public async Task AnApplyOfASnapshotTakenBeforeAContestingModWasAddedLeavesTheDeployedFilesUnlisted()
+    {
+        var loadout = await CreateLoadout();
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, ModFiles, loadout.LoadoutId, "Deployed mods");
+            await tx.Commit();
+        }
+        await ScriptMod(loadout, "modA", 1, Script(2, "  a();"));
+        await Synchronizer.Synchronize(Refresh(loadout));
+        var snapshot = Refresh(loadout);
+        await ScriptMod(loadout, "modB", 2, Script(8, "  b();"));
+        await RebuildTheBaseline();
+
+        await Synchronizer.Synchronize(snapshot);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        OverridePaths(Refresh(loadout)).Should().BeEmpty("nothing the loadout deploys is filed as the player's");
+        (await NonVanillaCards(Refresh(loadout))).Should().BeEmpty();
     }
 }
