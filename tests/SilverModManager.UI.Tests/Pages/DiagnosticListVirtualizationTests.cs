@@ -99,6 +99,20 @@ public class DiagnosticListVirtualizationTests(IServiceProvider provider) : AUiT
             list.ContainerFromIndex(999).Should().NotBeNull();
             list.ContainerFromIndex(0).Should().BeNull();
             RealizedRows(view).Should().BeLessThan(RealizedLimit);
+
+            var last = list.ContainerFromIndex(999)!.GetVisualDescendants().OfType<DiagnosticEntryView>().Single();
+            last.FindControl<TextBlock>("TitleText")!.Text.Should().Be("Entry 999");
+            last.FindControl<Control>("SeverityIcon")!.Classes.Should().Contain("Suggestion").And.NotContain(["Warning", "Critical"]);
+
+            // Every realized row, recycled or not, shows its own entry.
+            foreach (var row in view.GetVisualDescendants().OfType<DiagnosticEntryView>())
+            {
+                row.FindControl<TextBlock>("TitleText")!.Text.Should().Be(row.ViewModel!.Title);
+                var classes = row.FindControl<Control>("SeverityIcon")!.Classes;
+                var own = row.ViewModel.Severity.ToString();
+                classes.Should().Contain(own);
+                classes.Should().NotContain(new[] { "Suggestion", "Warning", "Critical" }.Where(c => c != own));
+            }
         });
     }
 

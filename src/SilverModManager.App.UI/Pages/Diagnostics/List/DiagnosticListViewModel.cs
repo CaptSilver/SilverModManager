@@ -137,12 +137,16 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
                     .Select(diagnostic => (IDiagnosticEntryViewModel)new DiagnosticEntryViewModel(diagnostic, diagnosticWriter))
                     .ToArray()
                 )
+                // A refresh that finds the same diagnostics must not swap the array: the list would jump back to the top.
+                .DistinctUntilChanged(SameEntries.Instance)
                 .BindToVM(this, vm => vm.DiagnosticEntries)
                 .DisposeWith(disposable);
 
-            var severityCountObservable = this.WhenAnyValue(vm => vm.Diagnostics)
-                .Select(diagnostics => diagnostics
+            // Counts follow the minimum severity as well as the diagnostics, so the tab headers match the list.
+            var severityCountObservable = this.WhenAnyValue(vm => vm.Diagnostics, vm => vm.Settings)
+                .Select(tuple => tuple.Item1
                     .Select(diagnostic => diagnostic.Severity)
+                    .Where(severity => severity >= tuple.Item2.MinimumSeverity)
                     .GroupBy(x => x)
                     .ToDictionary(group => group.Key, group => group.Count())
                 )
@@ -153,19 +157,16 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
             // diagnostic counts
             severityCountObservable
                 .Select(dict => dict.GetValueOrDefault(DiagnosticSeverity.Suggestion, defaultValue: 0))
-                .Select(num => Settings.MinimumSeverity > DiagnosticSeverity.Suggestion ? 0 : num)
                 .BindToVM(this, vm => vm.NumSuggestions)
                 .DisposeWith(disposable);
 
             severityCountObservable
                 .Select(dict => dict.GetValueOrDefault(DiagnosticSeverity.Warning, defaultValue: 0))
-                .Select(num => Settings.MinimumSeverity > DiagnosticSeverity.Warning ? 0 : num)
                 .BindToVM(this, vm => vm.NumWarnings)
                 .DisposeWith(disposable);
 
             severityCountObservable
                 .Select(dict => dict.GetValueOrDefault(DiagnosticSeverity.Critical, defaultValue: 0))
-                .Select(num => Settings.MinimumSeverity > DiagnosticSeverity.Critical ? 0 : num)
                 .BindToVM(this, vm => vm.NumCritical)
                 .DisposeWith(disposable);
 
@@ -234,6 +235,31 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
         {
             SupportBundleMessage = $"Support bundle written to {path}. Could not copy the path to the clipboard.";
         }
+    }
+
+    /// <summary>
+    /// Entries are the same when every row would look and behave the same: id, title, severity, formatted summary,
+    /// details and actions. The creation time and data references differ on every refresh and are ignored.
+    /// </summary>
+    private sealed class SameEntries : IEqualityComparer<IDiagnosticEntryViewModel[]>
+    {
+        public static readonly SameEntries Instance = new();
+
+        public bool Equals(IDiagnosticEntryViewModel[]? x, IDiagnosticEntryViewModel[]? y)
+        {
+            if (ReferenceEquals(x, y)) return true;
+            if (x is null || y is null || x.Length != y.Length) return false;
+            for (var i = 0; i < x.Length; i++)
+            {
+                var (a, b) = (x[i], y[i]);
+                if (a.Title != b.Title || a.Summary != b.Summary || a.Severity != b.Severity) return false;
+                if (!a.Diagnostic.Id.Equals(b.Diagnostic.Id) || a.Diagnostic.Details != b.Diagnostic.Details) return false;
+                if (a.Diagnostic.MoreDetails != b.Diagnostic.MoreDetails || !a.Diagnostic.Actions.SequenceEqual(b.Diagnostic.Actions)) return false;
+            }
+            return true;
+        }
+
+        public int GetHashCode(IDiagnosticEntryViewModel[] obj) => obj.Length;
     }
 
     private static DiagnosticFilter SeverityToFilter(DiagnosticSeverity severity)

@@ -23,32 +23,6 @@ public class DiagnosticListRefreshTests(IServiceProvider provider) : AUiTest(pro
 
     private sealed record Setup(DiagnosticListViewModel Vm, IDiagnosticManager Manager, FakeWindowManager Windows);
 
-    private sealed class FakeWindow : ReactiveObject, IWorkspaceWindow
-    {
-        private bool _isActive = true;
-        public bool IsActive { get => _isActive; set => this.RaiseAndSetIfChanged(ref _isActive, value); }
-        public WindowId WindowId => throw new NotSupportedException();
-        public IWorkspaceController WorkspaceController => throw new NotSupportedException();
-        public ReactiveCommand<System.Reactive.Unit, bool> BringWindowToFront => throw new NotSupportedException();
-    }
-
-    /// <summary>
-    /// Holds one window, like the real window manager does with a single window open.
-    /// </summary>
-    private sealed class FakeWindowManager : ReactiveObject, IWindowManager
-    {
-        public FakeWindow Window { get; } = new();
-        public IWorkspaceWindow ActiveWindow { get => Window; set => throw new NotSupportedException(); }
-        public ReadOnlyObservableCollection<WindowId> AllWindowIds { get; } = new(new ObservableCollection<WindowId>());
-
-        public bool TryGetWindow(WindowId windowId, [NotNullWhen(true)] out IWorkspaceWindow? window) => throw new NotSupportedException();
-        public void RegisterWindow(IWorkspaceWindow window) => throw new NotSupportedException();
-        public void UnregisterWindow(IWorkspaceWindow window) => throw new NotSupportedException();
-        public void SaveWindowState(IWorkspaceWindow window) => throw new NotSupportedException();
-        public bool RestoreWindowState(IWorkspaceWindow window) => throw new NotSupportedException();
-        public Task<StandardDialogResult> ShowDialog(IDialog dialog, DialogWindowType windowType) => throw new NotSupportedException();
-    }
-
     private async Task<Setup> Create()
     {
         var manager = Substitute.For<IDiagnosticManager>();
