@@ -40,10 +40,11 @@ public partial class ALoadoutSynchronizer
         GameInstallation installation,
         ITransaction tx,
         BackupOverflowChoice choice = BackupOverflowChoice.BackUpAnyway,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        SynchronizeLoadoutJob? job = null)
     {
         var wanted = NodesNeedingBytes(tree);
-        var reads = wanted.Count == 0 ? [] : await ReadAndSettle(wanted, installation, cancellationToken);
+        var reads = wanted.Count == 0 ? [] : await ReadAndSettle(wanted, installation, cancellationToken, ProgressOfReading(tree, wanted, job));
 
         var resolved = new Dictionary<GamePath, SyncNode>();
         foreach (var read in reads)
@@ -106,6 +107,9 @@ public partial class ALoadoutSynchronizer
         }
     }
 
+    private WholeReadProgress ProgressOfReading(Dictionary<GamePath, SyncNode> tree, List<GamePath> wanted, SynchronizeLoadoutJob? job)
+        => new(job, Logger, wanted.ToDictionary(path => path, path => (long)tree[path].Disk.Size.Value));
+
     private List<GamePath> NodesNeedingBytes(Dictionary<GamePath, SyncNode> tree)
     {
         var wanted = new List<GamePath>();
@@ -126,9 +130,9 @@ public partial class ALoadoutSynchronizer
     /// Reads the files, then records what the reads found before anything else happens: an attested file's row is
     /// settled, and the digests of any other file are remembered as a relation and a fingerprint row.
     /// </summary>
-    private async Task<List<WholeRead>> ReadAndSettle(List<GamePath> paths, GameInstallation installation, CancellationToken cancellationToken)
+    private async Task<List<WholeRead>> ReadAndSettle(List<GamePath> paths, GameInstallation installation, CancellationToken cancellationToken, WholeReadProgress? progress = null)
     {
-        var reads = await ReadWholeFiles(paths, installation, cancellationToken);
+        var reads = await ReadWholeFiles(paths, installation, cancellationToken, progress);
         var attested = _fileHashService.AttestedFiles(installation);
 
         var settle = new List<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)>();
@@ -147,14 +151,16 @@ public partial class ALoadoutSynchronizer
     /// <summary>
     /// Reads each file once with every digest, taking its fingerprint before and after.
     /// </summary>
-    private async Task<List<WholeRead>> ReadWholeFiles(List<GamePath> paths, GameInstallation installation, CancellationToken cancellationToken)
+    private async Task<List<WholeRead>> ReadWholeFiles(List<GamePath> paths, GameInstallation installation, CancellationToken cancellationToken, WholeReadProgress? progress)
     {
+        progress?.Begin();
         var results = new ConcurrentBag<WholeRead>();
         var options = new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = cancellationToken };
         await Parallel.ForEachAsync(paths, options, async (path, token) =>
         {
             var (hashes, fingerprint) = await StableFileRead.Read(_fullHasher, installation.Locations.ToAbsolutePath(path), token);
             results.Add(new WholeRead(path, hashes, fingerprint));
+            progress?.FileRead(path);
         });
 
         return results.ToList();

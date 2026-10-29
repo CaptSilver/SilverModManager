@@ -561,7 +561,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         // Before the backends copy the tree: a vanilla file the store vouched for is read here, once, so what is
         // archived and recorded is the bytes' xxHash3 and the attestation is settled before anything is written.
-        await ResolveDiskIdentitiesForWrites(syncTree, loadout.InstallationInstance, tx, choice);
+        await ResolveDiskIdentitiesForWrites(syncTree, loadout.InstallationInstance, tx, choice, job: job);
 
         // Held from before the chain probes the store directory until the links are recorded: a sweep in
         // between cannot see the files this apply is staging and would delete them.

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk.Hashes;
@@ -26,18 +27,30 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
     private readonly SwitchableBackupOverflowPrompt _prompt = new();
 
     private bool _indexingFails;
+    private bool _readingFails;
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         base.AddServices(services)
             .AddSingleton(new BackupLimit(Size.KB * 8))
-            .AddSingleton<IBackupOverflowPrompt>(_prompt);
+            .AddSingleton<IBackupOverflowPrompt>(_prompt)
+            .AddSingleton<IFullFileHasher>(new SwitchableFileHasher(() => _readingFails));
 
         // The real indexer, behind a switch that makes it report a failing disk.
         var real = services.Last(d => d.ServiceType == typeof(IGameLocationsService));
         services.Remove(real);
         return services.AddSingleton<IGameLocationsService>(sp =>
             new SwitchableIndexer((IGameLocationsService)ActivatorUtilities.CreateInstance(sp, real.ImplementationType ?? throw new InvalidOperationException()), () => _indexingFails));
+    }
+
+    /// <summary>The real hasher, behind a switch that makes a file read as one that changed under it.</summary>
+    private sealed class SwitchableFileHasher(Func<bool> fails) : IFullFileHasher
+    {
+        public ValueTask<Hash> Hash(AbsolutePath file, CancellationToken cancellationToken)
+            => fails() ? throw new GameFileChangedWhileReadException(file) : MultiHashFileHasher.Instance.Hash(file, cancellationToken);
+
+        public ValueTask<MultiHash> HashAll(AbsolutePath file, CancellationToken cancellationToken)
+            => fails() ? throw new GameFileChangedWhileReadException(file) : MultiHashFileHasher.Instance.HashAll(file, cancellationToken);
     }
 
     private sealed class SwitchableIndexer(IGameLocationsService inner, Func<bool> fails) : IGameLocationsService
@@ -387,6 +400,22 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
 
         await act.Should().ThrowAsync<GameFolderUnreadableException>();
         ExternalChanges(Refresh(loadout)).Should().HaveCount(4, "the clean never got to change the folder");
+        for (var i = 0; i < 4; i++) OnDisk($"ext{i}.bin").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CleaningAfterAdopt_WhenAFileChangesWhileItIsReadForTheBackup_KeepsTheExternalChanges()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        var loadout = await CreateLoadout();
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.BackUpAnyway);
+        _readingFails = true;
+
+        var act = async () => await LoadoutManager.CleanGameFolder(Refresh(loadout));
+
+        await act.Should().ThrowAsync<GameFileChangedWhileReadException>();
+        ExternalChanges(Refresh(loadout)).Should().HaveCount(4, "the read stopped the apply before it archived or deleted anything");
         for (var i = 0; i < 4; i++) OnDisk($"ext{i}.bin").Should().BeTrue();
     }
 

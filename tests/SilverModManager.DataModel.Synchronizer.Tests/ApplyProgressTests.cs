@@ -1,4 +1,7 @@
+using System.Collections.Concurrent;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.RedEngine.Cyberpunk2077;
@@ -14,6 +17,37 @@ namespace SilverModManager.DataModel.Synchronizer.Tests;
 public class ApplyProgressTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameTest<ApplyProgressTests>(helper)
 {
     private static readonly string[] ExternalFiles = ["bin/progress/a.txt", "bin/progress/b.txt", "bin/progress/c.txt"];
+
+    private readonly ConcurrentQueue<string> _information = new();
+
+    protected override IServiceCollection AddServices(IServiceCollection services)
+        => base.AddServices(services).AddLogging(b => b.AddProvider(new InformationCapture(_information)));
+
+    private sealed class InformationCapture(ConcurrentQueue<string> sink) : ILoggerProvider
+    {
+        public ILogger CreateLogger(string categoryName) => new Capture(sink);
+        public void Dispose() { }
+
+        private sealed class Capture(ConcurrentQueue<string> sink) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Information;
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                if (IsEnabled(logLevel)) sink.Enqueue(formatter(state, exception));
+            }
+        }
+    }
+
+    private async Task WriteExternalFiles()
+    {
+        foreach (var file in ExternalFiles)
+        {
+            var path = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, file));
+            path.Parent.CreateDirectory();
+            await path.WriteAllTextAsync("content of " + file);
+        }
+    }
 
     private async Task<List<SyncProgress>> ApplyRecording(Loadout.ReadOnly loadout)
     {
@@ -89,6 +123,39 @@ public class ApplyProgressTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
         backup.Last().FilesDone.Should().Be(backup.Last().FilesTotal!.Value);
         backup.Last().BytesTotal.Should().BeGreaterThanOrEqualTo(sizes.Sum());
         backup.Last().BytesDone.Should().Be(backup.Last().BytesTotal!.Value);
+    }
+
+    [Fact]
+    public async Task ReadingFilesToBackUp_ReportsFilesAndBytesUpToTheTotal_BeforeTheBackupStarts()
+    {
+        var loadout = await CreateLoadout();
+        await WriteExternalFiles();
+        var expectedBytes = ExternalFiles.Sum(f => ("content of " + f).Length);
+
+        var seen = await ApplyRecording(loadout);
+
+        var reading = seen.Where(p => p.Phase == SyncPhases.ReadingBackups).ToList();
+        reading.Should().NotBeEmpty("the files are hashed before they are archived, and that read is a phase of its own");
+        reading.Select(p => p.FilesDone).Should().BeInAscendingOrder();
+        reading.Select(p => p.BytesDone).Should().BeInAscendingOrder();
+        reading.Select(p => p.FilesTotal).Distinct().Should().ContainSingle().Which.Should().BeGreaterThanOrEqualTo(ExternalFiles.Length);
+        reading.Last().FilesDone.Should().Be(reading.Last().FilesTotal!.Value);
+        reading.Last().BytesTotal.Should().BeGreaterThanOrEqualTo(expectedBytes);
+        reading.Last().BytesDone.Should().Be(reading.Last().BytesTotal!.Value);
+
+        var phases = seen.Select(p => p.Phase).ToList();
+        phases.IndexOf(SyncPhases.ReadingBackups).Should().BeLessThan(phases.IndexOf(SyncPhases.BackingUp));
+    }
+
+    [Fact]
+    public async Task ReadingFilesToBackUp_LogsHowManyFilesAndHowMuchItReads()
+    {
+        var loadout = await CreateLoadout();
+        await WriteExternalFiles();
+
+        await ApplyRecording(loadout);
+
+        _information.Should().Contain(line => line.StartsWith("Reading ") && line.Contains(" files (") && line.EndsWith(") to back up"));
     }
 
     [Fact]

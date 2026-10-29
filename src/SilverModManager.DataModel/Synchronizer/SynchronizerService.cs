@@ -186,12 +186,12 @@ public class SynchronizerService : ISynchronizerService
     }
 
     /// <summary>
-    /// Whether the apply got past collecting and indexing, to the phases that back files up and change the folder.
-    /// An apply that failed before that, such as on an unreadable disk, changed nothing, so the rows it was
-    /// measured against are still the loadout's.
+    /// Whether the apply got past collecting, indexing and reading the files to back up, to the phases that archive
+    /// files and change the folder. An apply that failed before that, such as on an unreadable disk or a file that
+    /// changed while it was read, changed nothing, so the rows it was measured against are still the loadout's.
     /// </summary>
     private static bool ApplyBeganWriting(SynchronizeLoadoutJob job)
-        => job.Progress.Value.Phase is { } phase && phase != SyncPhases.Collecting;
+        => job.Progress.Value.Phase is { } phase && phase != SyncPhases.Collecting && phase != SyncPhases.ReadingBackups;
 
     private async Task<List<(EntityId Entity, AttributeId Attribute, ValueTag Tag, byte[] Value)>> RemoveExternalChanges(Loadout.ReadOnly loadout)
     {

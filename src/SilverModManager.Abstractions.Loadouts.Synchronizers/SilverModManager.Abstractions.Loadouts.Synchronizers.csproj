@@ -20,6 +20,7 @@
     <ItemGroup>
       <InternalsVisibleTo Include="SilverModManager.Benchmarks" />
       <InternalsVisibleTo Include="SilverModManager.Deployment.Links" />
+      <InternalsVisibleTo Include="SilverModManager.DataModel.Synchronizer.Tests" />
     </ItemGroup>
 
 </Project>

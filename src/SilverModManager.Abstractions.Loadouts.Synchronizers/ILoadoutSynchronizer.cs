@@ -154,8 +154,9 @@ public interface ILoadoutSynchronizer
     /// reading the files the index named by the store's SHA-1 and settling what the read found. Run it before the
     /// nodes reach anything keyed by xxHash3 (the file store, a loadout file). The disk state rows of the nodes it
     /// changes are updated in <paramref name="tx"/>; the attestation is committed on its own before this returns.
+    /// With a <paramref name="job"/>, the read reports files and bytes done under <see cref="SyncPhases.ReadingBackups"/>.
     /// </summary>
-    Task ResolveDiskIdentitiesForWrites(Dictionary<GamePath, SyncNode> tree, GameInstallation installation, ITransaction tx, BackupOverflowChoice choice = BackupOverflowChoice.BackUpAnyway, CancellationToken cancellationToken = default);
+    Task ResolveDiskIdentitiesForWrites(Dictionary<GamePath, SyncNode> tree, GameInstallation installation, ITransaction tx, BackupOverflowChoice choice = BackupOverflowChoice.BackUpAnyway, CancellationToken cancellationToken = default, SynchronizeLoadoutJob? job = null);
 
     /// <summary>
     /// Reindexes the game folder, then removes the loadout's External Changes that were on disk at the last sync and

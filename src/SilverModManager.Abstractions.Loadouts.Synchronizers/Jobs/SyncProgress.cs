@@ -36,6 +36,7 @@ public readonly record struct SyncProgress(string Phase, long FilesDone, long? F
 public static class SyncPhases
 {
     public const string Collecting = "Collecting files";
+    public const string ReadingBackups = "Reading files to back up";
     public const string BackingUp = "Backing up files";
     public const string IngestingChanges = "Adding external changes";
     public const string UpdatingLoadout = "Updating loadout";
