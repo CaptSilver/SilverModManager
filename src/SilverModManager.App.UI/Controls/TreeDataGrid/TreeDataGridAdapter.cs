@@ -141,6 +141,7 @@ public abstract class TreeDataGridAdapter<TModel, TKey> : ReactiveR3Object, ISea
 
                     self._selectionModelsSerialDisposable.Disposable = Disposable.Combine(selectionResetDisposable, selectionDisposable);
 
+                    self._declaredSortApplied = false;
                     self.Source.Value = source;
                 })
                 .Select(self, static (viewHierarchical, self) =>
@@ -165,6 +166,7 @@ public abstract class TreeDataGridAdapter<TModel, TKey> : ReactiveR3Object, ISea
                             }
 
                             self.Roots.ApplyChanges(changeSet);
+                            self.ApplyDeclaredSortOnceRowsExist();
                             if (self.CustomSortComparer.Value is not null)
                             {
                                 self.SortRoots(self.CustomSortComparer.Value);
@@ -212,6 +214,24 @@ public abstract class TreeDataGridAdapter<TModel, TKey> : ReactiveR3Object, ISea
     /// matters for lists the player reorders by dragging, so it is opt-in.
     /// </summary>
     protected virtual bool SortWithoutReset => false;
+
+    private bool _declaredSortApplied;
+
+    /// <summary>
+    /// A column created with a sort direction shows its arrow, but the grid does not sort by it: sorting the source
+    /// before it has rows does nothing, and rows that arrive unsorted stay in database order, which differs from
+    /// load to load. Telling the source to sort once the first rows are in makes it keep later arrivals in place.
+    /// A column the user has since sorted by is the one that carries the direction, so it is the one reapplied.
+    /// </summary>
+    private void ApplyDeclaredSortOnceRowsExist()
+    {
+        if (_declaredSortApplied || Roots.Count == 0) return;
+        _declaredSortApplied = true;
+
+        var source = Source.Value;
+        var column = source.Columns.FirstOrDefault(static column => column.SortDirection is not null);
+        if (column?.SortDirection is { } direction) source.SortBy(column, direction);
+    }
 
     private void SortRoots(IComparer<TModel> comparer)
     {
