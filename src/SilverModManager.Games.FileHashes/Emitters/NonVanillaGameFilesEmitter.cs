@@ -57,7 +57,10 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         var gameInstalled = GameInstalledPaths.For(loadout.Db, loadout.LoadoutId);
 
         var isGameWritten = GameWrittenPredicate(loadout);
+        var isFiltered = FilteredPredicate(loadout);
         var unmanaged = NonVanillaFile.FindByBaseline(db, baseline.Value.Id)
+            // A baseline built before the synchronizer filtered a path still holds its row; a new baseline would not.
+            .Where(f => !isFiltered(new GamePath(LocationId.Game, f.Path)))
             .Where(f => !IsManagedByLoadout(loadout.Db, syncTree, overridesGroup, gameInstalled, f.Path))
             .ToArray();
         var files = unmanaged
@@ -110,6 +113,11 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         => loadout.TryGetGame(out var game) && game is IGame { Synchronizer: var synchronizer }
             ? synchronizer.IsGameWrittenPath
             : GameWrittenFiles.IsLogOrCrashFile;
+
+    private static Func<GamePath, bool> FilteredPredicate(Loadout.ReadOnly loadout)
+        => loadout.TryGetGame(out var game) && game is IGame { Synchronizer: var synchronizer }
+            ? synchronizer.GamePathFilter.ShouldFilter
+            : _ => false;
 
     /// <summary>
     /// Whether the loadout deploys or intends to deploy the file, or the game handles it itself. A file the game

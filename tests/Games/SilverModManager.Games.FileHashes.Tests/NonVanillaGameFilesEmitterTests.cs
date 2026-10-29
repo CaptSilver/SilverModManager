@@ -309,6 +309,21 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
         data.Files.Should().Contain("game.log").And.NotContain("own.dat").And.Contain("1 log or crash file the game wrote itself is not listed.");
     }
 
+    [Fact]
+    public async Task ARowOnAPathTheSynchronizerFilters_IsNotListedEvenWhenTheBaselinePredatesTheFilter()
+    {
+        _synchronizer.GamePathFilter.ShouldFilter(Arg.Any<GamePath>()).Returns(call => call.Arg<GamePath>().Path.ToString() == "content/metadata.store.stamp");
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("content/metadata.store.stamp", NonVanillaReason.NotInManifest), ("mod.esp", NonVanillaReason.NotInManifest));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
+        data.FileCount.Should().Be(1);
+        data.Files.Should().Contain("mod.esp").And.NotContain("metadata.store.stamp").And.NotContain("wrote itself");
+    }
+
     [Theory]
     [InlineData("bin/game.log", true)]
     [InlineData("Launcher/debug.LOG", true)]
