@@ -334,6 +334,134 @@ public class Witcher3InstallerTests(ITestOutputHelper outputHelper) : AWitcher3A
         }
     }
 
+    [Fact]
+    public void VariantsWithTheSameFolderName_AreToldApartByTheirWrapper()
+    {
+        var plan = Witcher3InstallPlan.Plan(
+            ["Option A/modFoo/content/a.bundle", "Option B/modFoo/content/a.bundle", "Option A/scripts/x.ws"], "Example Mod.zip");
+        plan.Should().NotBeNull();
+        plan!.IsAmbiguous.Should().BeTrue();
+        plan.Variants.Should().BeEquivalentTo("Option A/modFoo", "Option B/modFoo");
+    }
+
+    [Fact]
+    public void VariantsWithDifferentFolderNames_AreNamedByTheFolder()
+    {
+        var plan = Witcher3InstallPlan.Plan(["Option A/modOne/content/a.ws", "Option B/modTwo/content/a.ws", "Option A/scripts/x.ws"], "Example Mod.zip");
+        plan!.Variants.Should().BeEquivalentTo("modOne", "modTwo");
+    }
+
+    [Fact]
+    public void DocumentationOnlyFolders_AreNeitherWrappersNorVariants()
+    {
+        PlanTargets("Example Mod.zip", "Wrap/content/a.ws", "Docs/content/readme.txt").Should().Equal("{Game}/Mods/modWrap/content/a.ws");
+        var plan = Witcher3InstallPlan.Plan(["Wrap/content/a.ws", "Docs/content/readme.txt"], "Example Mod.zip");
+        plan!.IsAmbiguous.Should().BeFalse();
+        PlanTargets("Example Mod.zip", "modFoo/content/a.ws", "modDocs/content/readme.txt").Should().Equal("{Game}/Mods/modFoo/content/a.ws");
+    }
+
+    [Fact]
+    public void RootBinBesideOneModFolder_GoesToTheGameBin()
+    {
+        PlanTargets("Example Mod.zip", "modFoo/content/a.ws", "bin/x64/d.dll", "bin/readme.txt")
+            .Should().Equal("{Game}/Mods/modFoo/content/a.ws", "{Game}/bin/x64/d.dll");
+    }
+
+    [Fact]
+    public void ScriptsInsideAModFolderBesideContent_GoUnderItsContent()
+    {
+        PlanTargets("Example Mod.zip", "modFoo/content/a.ws", "modFoo/scripts/game/b.ws")
+            .Should().Equal("{Game}/Mods/modFoo/content/a.ws", "{Game}/Mods/modFoo/content/scripts/game/b.ws");
+        PlanTargets("Example Mod.zip", "modOne/content/a.ws", "modTwo/content/b.ws", "modOne/scripts/game/c.ws")
+            .Should().Equal("{Game}/Mods/modOne/content/a.ws", "{Game}/Mods/modOne/content/scripts/game/c.ws", "{Game}/Mods/modTwo/content/b.ws");
+        PlanTargets("Example Mod.zip", "modFoo/content/a.ws", "modFoo/scripts/game/b.ws", "dlcBar/content/c.bundle")
+            .Should().Equal("{Game}/Mods/modFoo/content/a.ws", "{Game}/Mods/modFoo/content/scripts/game/b.ws", "{Game}/dlc/dlcBar/content/c.bundle");
+        PlanTargets("Example Mod.zip", "Wrap/Mods/modFoo/content/a.ws", "Wrap/Mods/modFoo/scripts/game/b.ws")
+            .Should().Equal("{Game}/Mods/modFoo/content/a.ws", "{Game}/Mods/modFoo/content/scripts/game/b.ws");
+        PlanTargets("Example Mod.zip", "Wrap/content/a.ws", "Wrap/scripts/game/b.ws")
+            .Should().Equal("{Game}/Mods/modWrap/content/a.ws", "{Game}/Mods/modWrap/content/scripts/game/b.ws");
+    }
+
+    [Fact]
+    public void MenuModWithAWrapperOverContent_PutsItInAModFolderNotTheGameRoot()
+    {
+        PlanTargets("Example Mod.zip", "Wrap/content/a.ws", "bin/config/r4game/user_config_matrix/pc/x.xml")
+            .Should().Equal("{Game}/Mods/modWrap/content/a.ws", "{Game}/bin/config/r4game/user_config_matrix/pc/x.xml");
+    }
+
+    [Fact]
+    public void MenuModWithAModFolderBesideScripts_SendsScriptsUnderContent()
+    {
+        PlanTargets("Example Mod.zip", "modFoo/content/a.ws", "modFoo/scripts/game/b.ws", "bin/config/r4game/user_config_matrix/pc/x.xml")
+            .Should().Equal("{Game}/Mods/modFoo/content/a.ws", "{Game}/Mods/modFoo/content/scripts/game/b.ws", "{Game}/bin/config/r4game/user_config_matrix/pc/x.xml");
+    }
+
+    [Fact]
+    public void MixedWithOneModFolder_PutsRootScriptsWithIt()
+    {
+        PlanTargets("Example Mod.zip", "modOne/content/a.ws", "dlcTwo/content/b.ws", "scripts/game/c.ws")
+            .Should().Equal("{Game}/Mods/modOne/content/a.ws", "{Game}/Mods/modOne/content/scripts/game/c.ws", "{Game}/dlc/dlcTwo/content/b.ws");
+    }
+
+    [Fact]
+    public void MixedWithSeveralModFoldersAndRootScripts_IsAmbiguous()
+    {
+        var plan = Witcher3InstallPlan.Plan(["modOne/content/a.ws", "modTwo/content/b.ws", "dlcThree/content/c.ws", "scripts/game/d.ws"], "Example Mod.zip");
+        plan!.IsAmbiguous.Should().BeTrue();
+        plan.Placements.Should().BeEmpty();
+        plan.Variants.Should().BeEquivalentTo("modOne", "modTwo");
+    }
+
+    /// <summary>Layouts that stress the rules beyond the install cases above.</summary>
+    private static readonly string[][] ProbeLayouts =
+    [
+        ["Option A/modFoo/content/a.bundle", "Option B/modFoo/content/a.bundle", "Option A/scripts/x.ws"],
+        ["Wrap/content/a.ws", "Docs/content/readme.txt"],
+        ["modFoo/content/a.ws", "scripts/game/b.ws", "bin/x64/d.dll"],
+        ["modFoo/content/a.ws", "modFoo/scripts/game/b.ws", "modFoo/witcherscript.toml"],
+        ["Wrap/content/a.ws", "bin/config/r4game/user_config_matrix/pc/x.xml"],
+        ["modFoo/scripts/game/b.ws", "modFoo/content/a.ws", "bin/config/r4game/user_config_matrix/pc/x.xml"],
+        ["modOne/content/a.ws", "dlcTwo/content/b.ws", "scripts/game/c.ws"],
+        ["modOne/content/a.ws", "modTwo/content/b.ws", "dlcThree/content/c.ws", "scripts/game/d.ws"],
+        ["Mods/modFoo/content/a.ws", "Mods/modFoo/scripts/game/b.ws", "Mods/modFoo/dlc/dlcX/content/y.bundle", "bin/x64/d.dll"],
+        ["Wrap/content/a.ws", "Wrap/scripts/game/b.ws", "Wrap/bin/x64/d.dll", "Wrap/dlc/dlcX/content/y.bundle", "scripts/game/c.ws"],
+        ["scripts/game/a.ws", "bin/x64/d.dll", "blob0.bundle", "loose.ws"],
+        ["Wrap/scripts/game/a.ws", "Wrap/readme.txt"],
+        ["Mods/modA/content/x.ws", "Other/dlcB/content/y.bundle"],
+        ["dlcA/content/x.bundle", "modB/content/y.ws", "modB/bin/x64/d.dll", "dlcA/bin/x64/d.dll"],
+        ["modOne/content/a.ws", "modTwo/content/b.ws"],
+        ["Option A/content/a.bundle", "Option B/content/b.bundle"],
+    ];
+
+    [Fact]
+    public void EveryPlacement_LandsInAFolderTheGameLoads()
+    {
+        var layouts = TestCases.Select(row => (row.TestName, row.ArchiveName, row.Paths))
+            .Concat(ProbeLayouts.Select((paths, i) => ($"probe {i}", "Example Mod.zip", paths)));
+        foreach (var (name, archiveName, paths) in layouts)
+        {
+            var plan = Witcher3InstallPlan.Plan(paths, archiveName);
+            foreach (var placement in plan?.Placements ?? [])
+                IsLoadedByTheGame(placement.Target.ToString()).Should().BeTrue($"{name}: {placement.Source} went to {placement.Target}");
+        }
+    }
+
+    private static bool IsLoadedByTheGame(string target)
+    {
+        const string gamePrefix = "{Game}/";
+        var segments = target[gamePrefix.Length..].Split('/');
+        var first = segments[0];
+        if (first.Equals("Mods", StringComparison.OrdinalIgnoreCase))
+        {
+            var isModFolder = segments.Length > 2 && segments[1].StartsWith("mod", StringComparison.OrdinalIgnoreCase);
+            // Mods/<mod>/content/... or a single project file beside content.
+            return isModFolder && (segments.Length == 3 || (segments.Length > 3 && segments[2].Equals("content", StringComparison.OrdinalIgnoreCase)));
+        }
+        if (first.Equals("dlc", StringComparison.OrdinalIgnoreCase)) return segments.Length > 2;
+        if (first.Equals("bin", StringComparison.OrdinalIgnoreCase)) return segments.Length > 1;
+        return first.Equals("INI Tweaks", StringComparison.OrdinalIgnoreCase) && segments.Length == 2;
+    }
+
     [Theory]
     [InlineData("Example Mod.zip", "modExampleMod")]
     [InlineData("My.Cool Mod v1.2.7z", "modMyCoolModv12")]
