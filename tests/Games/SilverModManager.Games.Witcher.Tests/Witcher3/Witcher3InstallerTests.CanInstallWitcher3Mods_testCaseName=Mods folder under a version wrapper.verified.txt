@@ -1,0 +1,7 @@
+﻿[
+  {
+    FromPath: MyMod v1.2/Mods/modFoo/content/a.ws,
+    Hash: 0x3DA8639806389E02,
+    ToGamePath: {Game}/Mods/modFoo/content/a.ws
+  }
+]

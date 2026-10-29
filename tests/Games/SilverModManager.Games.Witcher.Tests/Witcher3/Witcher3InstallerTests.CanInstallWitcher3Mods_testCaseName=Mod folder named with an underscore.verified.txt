@@ -1,0 +1,22 @@
+﻿[
+  {
+    FromPath: mod_E3Runes/content/blob0.bundle,
+    Hash: 0x77914EF85BD7933A,
+    ToGamePath: {Game}/Mods/mod_E3Runes/content/blob0.bundle
+  },
+  {
+    FromPath: mod_E3Runes/content/collision.cache.tmp,
+    Hash: 0x44B4C53C33BCBDE0,
+    ToGamePath: {Game}/Mods/mod_E3Runes/content/collision.cache.tmp
+  },
+  {
+    FromPath: mod_E3Runes/content/metadata.store,
+    Hash: 0xD898ED9A6CACD795,
+    ToGamePath: {Game}/Mods/mod_E3Runes/content/metadata.store
+  },
+  {
+    FromPath: mod_E3Runes/content/texture.cache,
+    Hash: 0xCC5DDFB0E0BD4D0C,
+    ToGamePath: {Game}/Mods/mod_E3Runes/content/texture.cache
+  }
+]

@@ -1,0 +1,7 @@
+﻿[
+  {
+    FromPath: Wrap/bin/x64/dinput8.dll,
+    Hash: 0x22F8AE0FAEAE3F1A,
+    ToGamePath: {Game}/bin/x64/dinput8.dll
+  }
+]

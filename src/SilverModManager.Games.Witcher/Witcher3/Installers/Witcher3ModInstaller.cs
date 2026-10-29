@@ -11,9 +11,9 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.Games.Witcher.Witcher3.Installers;
 
 /// <summary>
-/// Places a Witcher 3 mod archive by the layouts Vortex recognises: menu mods, a mix of dlc and mod folders, a
-/// <c>Mods</c> folder anywhere in the archive, a bare <c>content</c> folder, and dlc folders. The rules themselves
-/// are in <see cref="Witcher3InstallPlan"/>.
+/// Places a Witcher 3 mod archive by its layout: menu mods, <c>mod*</c> and <c>dlc*</c> folders at any depth, a
+/// <c>Mods</c> folder anywhere in the archive, a bare or wrapped <c>content</c> folder, and root <c>bin</c> or
+/// loose content files. The rules themselves are in <see cref="Witcher3InstallPlan"/>.
 /// </summary>
 public sealed class Witcher3ModInstaller(IServiceProvider provider)
     : ALibraryArchiveInstaller(provider, provider.GetRequiredService<ILogger<Witcher3ModInstaller>>())
@@ -22,8 +22,10 @@ public sealed class Witcher3ModInstaller(IServiceProvider provider)
     public static readonly Extension[] DocumentationExtensions = [new(".txt"), new(".md"), new(".pdf"), new(".png"), new(".jpg"), new(".jpeg"), new(".url"), new(".nfo")];
 
     /// <summary>The Mods folder name for an archive whose own layout names none: <c>mod</c> plus the file name without extension, spaces and dots.</summary>
-    public static string ModNameFromArchive(string fileName) =>
-        "mod" + Path.GetFileNameWithoutExtension(fileName).Replace(" ", "").Replace(".", "");
+    public static string ModNameFromArchive(string fileName) => ModFolderName(Path.GetFileNameWithoutExtension(fileName));
+
+    /// <summary>A Mods folder name the game loads: <c>mod</c> plus the name without spaces and dots.</summary>
+    public static string ModFolderName(string name) => "mod" + name.Replace(" ", "").Replace(".", "");
 
     public override ValueTask<InstallerResult> ExecuteAsync(
         LibraryArchive.ReadOnly libraryArchive,

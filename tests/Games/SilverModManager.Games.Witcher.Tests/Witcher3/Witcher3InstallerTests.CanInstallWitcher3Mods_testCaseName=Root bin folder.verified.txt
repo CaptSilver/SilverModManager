@@ -1,0 +1,12 @@
+﻿[
+  {
+    FromPath: bin/x64/dinput8.dll,
+    Hash: 0xF80234E28799B502,
+    ToGamePath: {Game}/bin/x64/dinput8.dll
+  },
+  {
+    FromPath: bin/config/base/visuals.ini,
+    Hash: 0xD0504363995C5E6A,
+    ToGamePath: {Game}/bin/config/base/visuals.ini
+  }
+]

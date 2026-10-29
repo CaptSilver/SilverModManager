@@ -1,0 +1,7 @@
+﻿[
+  {
+    FromPath: Wrap/dlcFoo/content/a.bundle,
+    Hash: 0x3BE02C60F89B5645,
+    ToGamePath: {Game}/dlc/dlcFoo/content/a.bundle
+  }
+]

@@ -1,0 +1,7 @@
+﻿[
+  {
+    FromPath: modLessScreams/content/scripts/local/less_screams_anno.ws,
+    Hash: 0x55B692B7FD32B6EF,
+    ToGamePath: {Game}/Mods/modLessScreams/content/scripts/local/less_screams_anno.ws
+  }
+]

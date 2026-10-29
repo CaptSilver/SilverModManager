@@ -1,0 +1,12 @@
+﻿[
+  {
+    FromPath: modArmorDurability/content/scripts/local/WhereDidMyArmorGo.ws,
+    Hash: 0x75BB539DAC070AF6,
+    ToGamePath: {Game}/Mods/modArmorDurability/content/scripts/local/WhereDidMyArmorGo.ws
+  },
+  {
+    FromPath: modArmorDurability/witcherscript.toml,
+    Hash: 0x036DB9235E3E145A,
+    ToGamePath: {Game}/Mods/modArmorDurability/witcherscript.toml
+  }
+]

@@ -1,0 +1,12 @@
+﻿[
+  {
+    FromPath: mod_WolfArmorsRestored_TypeA/content/blob0.bundle,
+    Hash: 0x8FCC2F0A3759425F,
+    ToGamePath: {Game}/Mods/mod_WolfArmorsRestored_TypeA/content/blob0.bundle
+  },
+  {
+    FromPath: MODShout/content/x.ws,
+    Hash: 0x5EA090127A2BA68C,
+    ToGamePath: {Game}/Mods/MODShout/content/x.ws
+  }
+]

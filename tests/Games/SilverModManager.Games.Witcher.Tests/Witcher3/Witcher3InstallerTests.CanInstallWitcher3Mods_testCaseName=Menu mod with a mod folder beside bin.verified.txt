@@ -1,0 +1,17 @@
+﻿[
+  {
+    FromPath: modFoo/content/a.ws,
+    Hash: 0x560A8D0807033975,
+    ToGamePath: {Game}/Mods/modFoo/content/a.ws
+  },
+  {
+    FromPath: dlcFoo/content/b.bundle,
+    Hash: 0x46B3E642777D8332,
+    ToGamePath: {Game}/dlc/dlcFoo/content/b.bundle
+  },
+  {
+    FromPath: bin/config/r4game/user_config_matrix/pc/x.xml,
+    Hash: 0x5F8B705AFB5CFE6A,
+    ToGamePath: {Game}/bin/config/r4game/user_config_matrix/pc/x.xml
+  }
+]

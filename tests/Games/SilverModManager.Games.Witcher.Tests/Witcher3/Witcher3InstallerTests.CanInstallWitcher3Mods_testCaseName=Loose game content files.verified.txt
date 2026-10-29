@@ -1,0 +1,17 @@
+﻿[
+  {
+    FromPath: blob0.bundle,
+    Hash: 0xD42537C92E241A75,
+    ToGamePath: {Game}/Mods/modExampleMod/content/blob0.bundle
+  },
+  {
+    FromPath: metadata.store,
+    Hash: 0x3F33DDD227F8BEAB,
+    ToGamePath: {Game}/Mods/modExampleMod/content/metadata.store
+  },
+  {
+    FromPath: texture.cache,
+    Hash: 0xAE06EE0C9D707DB2,
+    ToGamePath: {Game}/Mods/modExampleMod/content/texture.cache
+  }
+]

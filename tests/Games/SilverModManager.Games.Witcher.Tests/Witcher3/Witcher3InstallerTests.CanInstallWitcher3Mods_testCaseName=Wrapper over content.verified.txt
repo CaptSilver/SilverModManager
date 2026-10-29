@@ -1,0 +1,7 @@
+﻿[
+  {
+    FromPath: My Cool Mod v1.2/content/scripts/a.ws,
+    Hash: 0x9A55C723B22DF294,
+    ToGamePath: {Game}/Mods/modMyCoolModv12/content/scripts/a.ws
+  }
+]

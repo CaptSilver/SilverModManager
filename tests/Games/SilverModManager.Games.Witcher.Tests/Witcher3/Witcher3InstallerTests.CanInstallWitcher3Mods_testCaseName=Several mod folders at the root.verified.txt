@@ -1,0 +1,12 @@
+﻿[
+  {
+    FromPath: modOne/content/a.ws,
+    Hash: 0x59D146F9EE237366,
+    ToGamePath: {Game}/Mods/modOne/content/a.ws
+  },
+  {
+    FromPath: modTwo/content/b.ws,
+    Hash: 0x858943015E715FA2,
+    ToGamePath: {Game}/Mods/modTwo/content/b.ws
+  }
+]

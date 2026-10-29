@@ -1,0 +1,17 @@
+﻿[
+  {
+    FromPath: Wrap/Mods/modFoo/content/a.ws,
+    Hash: 0xB62AFE67A8B6E2AD,
+    ToGamePath: {Game}/Mods/modFoo/content/a.ws
+  },
+  {
+    FromPath: Wrap/bin/x64/b.dll,
+    Hash: 0x22D3224EE9E51DB8,
+    ToGamePath: {Game}/bin/x64/b.dll
+  },
+  {
+    FromPath: Wrap/dlc/dlcFoo/content/c.bundle,
+    Hash: 0x49905B41189CCBE1,
+    ToGamePath: {Game}/dlc/dlcFoo/content/c.bundle
+  }
+]

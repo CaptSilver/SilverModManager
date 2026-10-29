@@ -1,0 +1,22 @@
+﻿[
+  {
+    FromPath: modBloodTrails/content/blob0.bundle,
+    Hash: 0x203ED746ED69784D,
+    ToGamePath: {Game}/Mods/modBloodTrails/content/blob0.bundle
+  },
+  {
+    FromPath: modBloodTrails/content/scripts/local/BloodTrails.ws,
+    Hash: 0x8E517D63A8BCC366,
+    ToGamePath: {Game}/Mods/modBloodTrails/content/scripts/local/BloodTrails.ws
+  },
+  {
+    FromPath: modBloodTrails/content/metadata.store,
+    Hash: 0x98A9D794B66CE499,
+    ToGamePath: {Game}/Mods/modBloodTrails/content/metadata.store
+  },
+  {
+    FromPath: modBloodTrails/content/texture.cache,
+    Hash: 0x659994085AC5BC6C,
+    ToGamePath: {Game}/Mods/modBloodTrails/content/texture.cache
+  }
+]
