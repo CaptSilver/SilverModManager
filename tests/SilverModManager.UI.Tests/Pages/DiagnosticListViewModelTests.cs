@@ -18,8 +18,14 @@ public class DiagnosticListViewModelTests(IServiceProvider provider) : AUiTest(p
     // which the runner calls instead of Dispose, so this is an override and not an IDisposable.
     public override async ValueTask DisposeAsync()
     {
-        Provider.GetRequiredService<ISettingsManager>().Set(new DiagnosticSettings());
-        await base.DisposeAsync();
+        try
+        {
+            Provider.GetRequiredService<ISettingsManager>().Set(new DiagnosticSettings());
+        }
+        finally
+        {
+            await base.DisposeAsync();
+        }
     }
 
     private readonly record struct DetailsOnlyData(string Path) : IDiagnosticMessageData
@@ -182,6 +188,8 @@ public class DiagnosticListViewModelTests(IServiceProvider provider) : AUiTest(p
         {
             vm.DiagnosticEntries.Should().NotBeSameAs(before);
             vm.DiagnosticEntries.Select(e => e.Diagnostic.Id).Should().Equal(before.Select(e => e.Diagnostic.Id));
+            vm.DiagnosticEntries.Select(e => e.Title).Should().Equal(before.Select(e => e.Title));
+            vm.DiagnosticEntries.Select(e => e.Summary).Should().Equal(before.Select(e => e.Summary));
             return Task.CompletedTask;
         });
     }
