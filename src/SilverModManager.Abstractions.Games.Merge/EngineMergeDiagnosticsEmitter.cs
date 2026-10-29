@@ -1,7 +1,10 @@
+using System.Collections.Frozen;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
@@ -19,18 +22,20 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Eng
 {
     private readonly MergeEngines _engines;
     private readonly Func<Loadout.ReadOnly, AMergeGame> _gameOf;
+    private readonly Func<Loadout.ReadOnly, GameStore> _storeOf;
 
     public EngineMergeDiagnosticsEmitter(MergeEngines engines, ILogger<EngineMergeDiagnosticsEmitter> logger)
         : this(engines, logger, loadout => ((IHasMergeGame)loadout.InstallationInstance.Game).MergeGame)
     {
     }
 
-    /// <summary>For tests, which have no game class that implements <see cref="IHasMergeGame"/>.</summary>
-    internal EngineMergeDiagnosticsEmitter(MergeEngines engines, ILogger<EngineMergeDiagnosticsEmitter> logger, Func<Loadout.ReadOnly, AMergeGame> gameOf)
+    /// <summary>For tests, which have no game class that implements <see cref="IHasMergeGame"/> and no real store.</summary>
+    internal EngineMergeDiagnosticsEmitter(MergeEngines engines, ILogger<EngineMergeDiagnosticsEmitter> logger, Func<Loadout.ReadOnly, AMergeGame> gameOf, Func<Loadout.ReadOnly, GameStore>? storeOf = null)
         : base(logger)
     {
         _engines = engines;
         _gameOf = gameOf;
+        _storeOf = storeOf ?? (loadout => loadout.InstallationInstance.LocatorResult.Store);
     }
 
     protected override EngineMergeSnapshot? TryPlan(Loadout.ReadOnly loadout, out Diagnostic? failure)
@@ -60,7 +65,15 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Eng
     {
         var page = ReorderPage(loadout);
         foreach (var item in NotMergeableItems(plan.Report, page)) yield return item;
-        foreach (var item in UntrustedBaseItems(plan)) yield return item;
+    }
+
+    // The untrusted-original cards are grouped, so they are not dropped items: a script update can leave dozens of
+    // files with the same cause, and one card per file would bury the rest of the Health Check.
+    protected override async IAsyncEnumerable<Diagnostic> NoteCards(Loadout.ReadOnly loadout, EngineMergeSnapshot plan, FrozenDictionary<GamePath, SyncNode> syncTree, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await foreach (var card in base.NoteCards(loadout, plan, syncTree, cancellationToken).WithCancellation(cancellationToken))
+            yield return card;
+        foreach (var card in UntrustedBaseCards(plan, _storeOf(loadout))) yield return card;
     }
 
     // A two-way merge keeps the first mod's copy and every difference in the others is dropped, so "move X below Y"
@@ -95,46 +108,75 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Eng
     }
 
     // Without the game's own copy to compare against, the merge is two-way: the first mod's file is the result and what
-    // the other mods changed is left out, including lines they added that nothing else touches. That can break the
+    // the other mods changed is dropped, including lines they added that nothing else touches. That can break the
     // result (a script that uses a variable the dropped lines declare no longer compiles), so every reason is a Warning.
     // A missing copy raises nothing: a file a mod adds has none, and the Merges page already says so.
-    // The advice has nothing to do with load order, so the card has no page.
-    private static IEnumerable<DroppedItem> UntrustedBaseItems(EngineMergeSnapshot plan)
+    // One card per reason; the advice has nothing to do with load order, so the card has no page.
+    private static IEnumerable<Diagnostic> UntrustedBaseCards(EngineMergeSnapshot plan, GameStore store)
     {
-        foreach (var output in plan.Outputs)
+        var untrusted = plan.Outputs
+            .Where(o => o.Contributors.Count >= 2 && o.Notes.OfType<VanillaBaseUntrusted>().Any())
+            .GroupBy(o => o.Notes.OfType<VanillaBaseUntrusted>().First().Reason, StringComparer.Ordinal);
+
+        foreach (var group in untrusted)
         {
-            if (output.Notes.OfType<VanillaBaseUntrusted>().FirstOrDefault() is not { } untrusted) continue;
-            if (output.Contributors.Count < 2) continue;
-
-            var winner = output.Contributors[0];
-            var losers = output.Contributors.Skip(1).Distinct().ToArray();
-            var both = $"{winner} and {string.Join(" and ", losers)}";
-            var dropped = DroppedLines(output, losers);
-
-            var reason = untrusted.Reason switch
-            {
-                VanillaTrustReasons.StoreFileListNotSavedYet =>
-                    $"{untrusted.Reason}, so the app cannot tell the game's lines from the mods' and merged {both} two-way; {dropped} are dropped, " +
-                    "which can break the result. Let Steam finish the update (or verify the game's files in Steam), wait for the app's file check, then apply again",
-                VanillaTrustReasons.DiffersFromStoreList =>
-                    $"the game's copy differs from the store's file list for the installed build (another tool or an earlier merge changed it), so {both} were merged two-way and {dropped} are dropped. " +
-                    "Verify the game's files in Steam to restore the original, then apply again",
-                VanillaTrustReasons.DiffersFromBaseline or VanillaTrustReasons.ListedAsModified or VanillaTrustReasons.ListedAsSizeDiffers =>
-                    $"{untrusted.Reason}, so there is no original to merge against; {both} were merged two-way and {dropped} are dropped. " +
-                    "Verify the game's files in Steam to restore the original, then apply again",
-                VanillaTrustReasons.StoreFileListUnreadable =>
-                    $"{untrusted.Reason}, so the app cannot tell the game's lines from the mods'; {both} were merged two-way and {dropped} are dropped. " +
-                    "If a mod's content is missing in game, keep only one of the mods that ship this file",
-                VanillaTrustReasons.NotInstalledByStore =>
-                    $"the store did not install this file, so there is no original to merge against; {both} were merged two-way and {dropped} are dropped. " +
-                    "If a mod's content is missing in game, keep only one of the mods that ship this file",
-                _ =>
-                    $"{untrusted.Reason}, so {both} were merged two-way and {dropped} are dropped. " +
-                    "If a mod's content is missing in game, keep only one of the mods that ship this file",
-            };
-
-            yield return new DroppedItem($"the game's own copy of {untrusted.Path}", "the game folder", reason, null);
+            var (cause, advice) = CauseAndAdvice(group.Key, store);
+            var paths = group.Select(o => o.Notes.OfType<VanillaBaseUntrusted>().First().Path).ToArray();
+            var entries = string.Join("\n", group.Select(Entry));
+            yield return MergeDiagnostics.CreateUntrustedOriginal(Subject(paths), cause, entries, advice);
         }
+    }
+
+    private const int NamedPaths = 5;
+
+    // "the game's own copy of a.ws", "... of a.ws, b.ws and c.ws", "... of a.ws, b.ws, c.ws, d.ws, e.ws and 7 more".
+    private static string Subject(string[] paths)
+    {
+        var named = paths.Take(NamedPaths).ToArray();
+        var rest = paths.Length - named.Length;
+        var list = rest > 0 ? $"{string.Join(", ", named)} and {rest} more"
+            : named.Length == 1 ? named[0]
+            : $"{string.Join(", ", named[..^1])} and {named[^1]}";
+        return $"the game's own copy of {list}";
+    }
+
+    private static string Entry(MergedOutput output)
+    {
+        var winner = output.Contributors[0];
+        var losers = output.Contributors.Skip(1).Distinct().ToArray();
+        var path = output.Notes.OfType<VanillaBaseUntrusted>().First().Path;
+        return $"- `{path}`: {winner} and {string.Join(" and ", losers)}; {DroppedLines(output, losers)} are dropped";
+    }
+
+    private static (string Cause, string Advice) CauseAndAdvice(string reason, GameStore store) => reason switch
+    {
+        VanillaTrustReasons.StoreFileListNotSavedYet => (
+            $"{reason}, so the app cannot tell the game's lines from the mods'",
+            "Let Steam finish the update (or verify the game's files in Steam), wait for the app's file check, then apply again"),
+        VanillaTrustReasons.DiffersFromStoreList => (
+            $"{reason} (another tool or an earlier merge changed it)",
+            $"{VerifyFiles(store)} to restore the original, then apply again"),
+        VanillaTrustReasons.DiffersFromBaseline or VanillaTrustReasons.ListedAsModified or VanillaTrustReasons.ListedAsSizeDiffers => (
+            $"{reason}, so there is no original to merge against",
+            $"{VerifyFiles(store)} to restore the original, then apply again"),
+        VanillaTrustReasons.StoreFileListUnreadable => (
+            $"{reason}, so the app cannot tell the game's lines from the mods'",
+            "If a mod's content is missing in game, keep only one of the mods that ship this file"),
+        VanillaTrustReasons.NotInstalledByStore => (
+            "the store did not install this file, so there is no original to merge against",
+            "If a mod's content is missing in game, keep only one of the mods that ship this file"),
+        _ => (
+            reason,
+            "If a mod's content is missing in game, keep only one of the mods that ship this file"),
+    };
+
+    // Named for the installation's own store: a GOG or Epic player has no Steam to verify in.
+    private static string VerifyFiles(GameStore store)
+    {
+        if (store == GameStore.Steam) return "Verify the game's files in Steam";
+        if (store == GameStore.Unknown || store == GameStore.ManuallyAdded || store == GameStore.Lutris)
+            return "Verify or repair the game's files in the store or launcher the game came from";
+        return $"Verify or repair the game's files in {store.Value}";
     }
 
     // "Beta's changes at lines 12–13 and line 40 of the merged file and Gamma's changes at line 3 of the merged file".

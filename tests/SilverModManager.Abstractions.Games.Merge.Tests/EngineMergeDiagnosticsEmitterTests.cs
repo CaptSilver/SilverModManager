@@ -40,14 +40,14 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
     private IMergeEngine _engine = null!;
 
     private async Task<Diagnostic[]> Run(
-        MergeReportEntry[] entries, MergedOutput[]? outputs = null, ContestedPath[]? notContested = null, AMergeGame? game = null, bool engineless = false, ILogger<EngineMergeDiagnosticsEmitter>? logger = null)
+        MergeReportEntry[] entries, MergedOutput[]? outputs = null, ContestedPath[]? notContested = null, AMergeGame? game = null, bool engineless = false, ILogger<EngineMergeDiagnosticsEmitter>? logger = null, GameStore? store = null)
     {
         var engine = _engine = Substitute.For<IMergeEngine>();
         engine.Serves(Arg.Any<IGameData>()).Returns(!engineless);
         engine.PlanAndReport(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>()).Returns(new MergePlanReport(new MergeReport(entries, null, "hint"), outputs ?? []));
         engine.NotContested(Arg.Any<Loadout.ReadOnly>()).Returns(notContested ?? []);
 
-        var emitter = new EngineMergeDiagnosticsEmitter(new MergeEngines([engine]), logger ?? NullLogger<EngineMergeDiagnosticsEmitter>.Instance, _ => game ?? new TestMergeGame());
+        var emitter = new EngineMergeDiagnosticsEmitter(new MergeEngines([engine]), logger ?? NullLogger<EngineMergeDiagnosticsEmitter>.Instance, _ => game ?? new TestMergeGame(), _ => store ?? GameStore.Steam);
         var loadout = Refresh(await CreateLoadout());
         return await Collect(emitter.Diagnose(loadout, CancellationToken.None));
     }
@@ -119,15 +119,46 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
     }
 
     [Fact]
-    public async Task EachUntrustedOriginalIsItsOwnWarningNamingItsPath()
+    public async Task UntrustedOriginalsWithTheSameReason_AreOneWarningNamingEachPath()
     {
         var outputs = Enumerable.Range(1, 3).Select(i => TwoWayOutput($"scripts/{i}.ws", VanillaTrustReasons.StoreFileListNotSavedYet)).ToArray();
 
+        var card = (await Run([Merged()], outputs)).Should().ContainSingle().Which;
+
+        card.Severity.Should().Be(DiagnosticSeverity.Warning);
+        var text = Summary(card) + " " + Details(card);
+        text.Should().Contain("scripts/1.ws").And.Contain("scripts/2.ws").And.Contain("scripts/3.ws");
+    }
+
+    [Fact]
+    public async Task ManyUntrustedOriginals_AreOneWarningWhoseSummaryNamesFiveAndCountsTheRestAndWhoseDetailsListEveryPathWithItsDroppedLines()
+    {
+        var outputs = Enumerable.Range(1, 12)
+            .Select(i => TwoWayOutput($"scripts/{i:00}.ws", VanillaTrustReasons.StoreFileListNotSavedYet, new LinesKept($"scripts/{i:00}.ws", i, i + 1, "Alpha", "Beta")))
+            .ToArray();
+
+        var card = (await Run([Merged()], outputs)).Should().ContainSingle().Which;
+
+        var summary = Summary(card);
+        summary.Should().Contain("scripts/01.ws").And.Contain("scripts/05.ws").And.NotContain("scripts/06.ws").And.Contain("and 7 more");
+        var details = Details(card);
+        for (var i = 1; i <= 12; i++) details.Should().Contain($"scripts/{i:00}.ws").And.Contain($"lines {i}–{i + 1} of the merged file");
+    }
+
+    [Fact]
+    public async Task UntrustedOriginalsWithDifferentReasons_AreOneWarningEach()
+    {
+        var outputs = new[]
+        {
+            TwoWayOutput("scripts/a.ws", VanillaTrustReasons.StoreFileListNotSavedYet),
+            TwoWayOutput("scripts/b.ws", VanillaTrustReasons.DiffersFromStoreList),
+            TwoWayOutput("scripts/c.ws", VanillaTrustReasons.StoreFileListNotSavedYet),
+        };
+
         var cards = await Run([Merged()], outputs);
 
-        cards.Should().HaveCount(3).And.OnlyContain(c => c.Severity == DiagnosticSeverity.Warning);
-        Summary(cards[0]).Should().Contain("scripts/1.ws");
-        Summary(cards[2]).Should().Contain("scripts/3.ws");
+        cards.Should().HaveCount(2).And.OnlyContain(c => c.Severity == DiagnosticSeverity.Warning);
+        cards.Select(c => Summary(c) + Details(c)).Should().ContainSingle(t => t.Contains("scripts/a.ws") && t.Contains("scripts/c.ws") && !t.Contains("scripts/b.ws"));
     }
 
     [Fact]
@@ -194,6 +225,36 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
 
         card.Severity.Should().Be(DiagnosticSeverity.Warning);
         (Summary(card) + " " + Details(card)).Should().Contain(reason).And.Contain("Verify the game's files in Steam").And.NotContain("keep only one");
+    }
+
+    [Theory]
+    [InlineData("GOG", "GOG")]
+    [InlineData("Epic Games Store", "Epic Games Store")]
+    [InlineData("Xbox", "Xbox")]
+    public async Task AnOriginalChangedSinceTheBaseline_OnAnotherStore_NamesThatStoreAndNeverSteam(string store, string named)
+    {
+        foreach (var reason in new[] { VanillaTrustReasons.DiffersFromBaseline, VanillaTrustReasons.ListedAsModified, VanillaTrustReasons.ListedAsSizeDiffers, VanillaTrustReasons.DiffersFromStoreList })
+        {
+            var output = TwoWayOutput(Script, reason, new LinesKept(Script, 4, 7, "Alpha", "Beta"));
+
+            var card = (await Run([Merged()], [output], store: GameStore.From(store))).Should().ContainSingle().Which;
+
+            var text = Summary(card) + " " + Details(card);
+            text.Should().Contain($"the game's files in {named}", $"the advice for '{reason}' names the installation's store").And.NotContain("Steam");
+        }
+    }
+
+    [Theory]
+    [InlineData("Unknown")]
+    [InlineData("Manually Added")]
+    [InlineData("Lutris")]
+    public async Task AnOriginalChangedSinceTheBaseline_OnAnInstallWithNoNamedStore_SaysTheStoreOrLauncherItCameFromAndNeverSteam(string store)
+    {
+        var output = TwoWayOutput(Script, VanillaTrustReasons.DiffersFromBaseline, new LinesKept(Script, 4, 7, "Alpha", "Beta"));
+
+        var card = (await Run([Merged()], [output], store: GameStore.From(store))).Should().ContainSingle().Which;
+
+        (Summary(card) + " " + Details(card)).Should().Contain("the store or launcher the game came from").And.NotContain("Steam");
     }
 
     [Fact]

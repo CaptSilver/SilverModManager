@@ -25,4 +25,29 @@ To change which mod that is, reorder them on the {Page} page.
             .AddValue<string>("Page")
         )
         .Finish();
+
+    /// <summary>One card for the merged files that had no trustworthy original copy for the same reason.</summary>
+    [DiagnosticTemplate]
+    internal static IDiagnosticTemplate UntrustedOriginal = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 2))
+        .WithTitle("Merged without the game's own copy")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{Subject}: {Cause}")
+        .WithDetails("""
+**{Subject}** could not be used as the original of the merge: {Cause}.
+
+These files were merged two-way: the first mod's copy is the result and what the other mods changed is dropped, which can break the result.
+
+{Entries}
+
+{Advice}.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Subject")
+            .AddValue<string>("Cause")
+            .AddValue<string>("Entries")
+            .AddValue<string>("Advice")
+        )
+        .Finish();
 }
