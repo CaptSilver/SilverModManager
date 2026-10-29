@@ -277,7 +277,50 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
     }
 
     [Fact]
-    public async Task ACheckAtARevisionThatWasNeverListedIsRefusedAsAChangedLoadout()
+    public async Task ACheckAtARevisionThatWasNeverListedListsItAndJudgesTheTreeAgainstIt()
+    {
+        var loadout = await CreateLoadout();
+        var engine = Engine();
+        var part = new MergeSynchronizerPart(engine, NullLogger.Instance);
+        part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
+        using (var tx = Connection.BeginTransaction())
+        {
+            AddEmptyGroup(tx, loadout.LoadoutId, "later");
+            await tx.Commit();
+        }
+        var other = Refresh(loadout);
+        engine.ClearReceivedCalls();
+
+        var act = () => part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA, OutB), other);
+
+        act.Should().NotThrow();
+        engine.Received(1).PlannedOutputs(Arg.Any<Loadout.ReadOnly>());
+        part.MergedBytes(other, "scripts/a.txt").Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ACheckAtARevisionThatWasNeverListedStillRefusesAPlanThatMovedUnderIt()
+    {
+        var loadout = await CreateLoadout();
+        var engine = Engine();
+        var part = new MergeSynchronizerPart(engine, NullLogger.Instance);
+        part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
+        using (var tx = Connection.BeginTransaction())
+        {
+            AddEmptyGroup(tx, loadout.LoadoutId, "later");
+            await tx.Commit();
+        }
+        var other = Refresh(loadout);
+        // The plan names both outputs, but the listing made for this revision has only one: the plan moved under the check.
+        engine.PlannedOutputs(Arg.Any<Loadout.ReadOnly>()).Returns([Planned[0]]);
+
+        var act = () => part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA), other);
+
+        act.Should().Throw<SynchronizerPreflightException>().WithMessage("*changed while it was being applied*");
+    }
+
+    [Fact]
+    public async Task ACheckAtARevisionThatWasNeverListedStillRefusesAnOutputMissingFromTheTree()
     {
         var loadout = await CreateLoadout();
         var part = new MergeSynchronizerPart(Engine(), NullLogger.Instance);
@@ -289,9 +332,9 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
         }
         var other = Refresh(loadout);
 
-        var act = () => part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA, OutB), other);
+        var act = () => part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA), other);
 
-        act.Should().Throw<SynchronizerPreflightException>().WithMessage("*changed while it was being applied*");
+        act.Should().Throw<MergeOutputMissingException>().WithMessage("*scripts/b.txt*");
     }
 
     [Fact]
