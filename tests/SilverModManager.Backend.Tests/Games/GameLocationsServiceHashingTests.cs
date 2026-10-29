@@ -1,3 +1,4 @@
+using SilverModManager.Games.FileHashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -161,6 +162,7 @@ public sealed class GameLocationsServiceHashingTests : IDisposable
         var services = new ServiceCollection()
             .AddLogging()
             .AddSingleton(hashes)
+            .AddFileIdentityResolver()
             .BuildServiceProvider();
         _owned.Add(services);
         return new GameLocationsService(services);

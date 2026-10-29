@@ -23,7 +23,7 @@ namespace SilverModManager.Wabbajack.Tests.Acquire;
 public class GameFileSourceLookupTests(ITestOutputHelper helper) : AcquireTestBase<GameFileSourceLookupTests>(helper)
 {
     private GameFileSourceLookup Lookup(Loadout.ReadOnly loadout)
-        => new(loadout, Connection, FileStore, ServiceProvider.GetRequiredService<IFileHashesService>());
+        => new(loadout, Connection, FileStore, ServiceProvider.GetRequiredService<IFileHashesService>(), ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileIdentityResolver>());
 
     private async Task BackUpOriginal(Loadout.ReadOnly loadout)
     {

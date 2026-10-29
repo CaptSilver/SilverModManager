@@ -27,7 +27,7 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         new FakeMappingCache(),
         Connection,
         FileStore,
-        ServiceProvider.GetRequiredService<IFileHashesService>());
+        ServiceProvider.GetRequiredService<IFileHashesService>(), ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileIdentityResolver>());
 
     private async Task<ArchivePlanRow> RowFor(ArchiveEntry archive, bool premium = false)
     {

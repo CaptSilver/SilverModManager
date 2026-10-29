@@ -22,7 +22,7 @@ public class HaveArchiveTests(ITestOutputHelper helper) : AStubbedGameIsolatedTe
 {
     private sealed class Probe(IServiceProvider provider) : DefaultSynchronizer(provider)
     {
-        public bool Have(FileIdentity identity, Size? size = null) => HaveArchive(identity, size);
+        public bool Have(FileIdentity identity, Size size) => HaveArchive(identity, size);
     }
 
     private Probe CreateProbe() => new(ServiceProvider);
@@ -59,8 +59,8 @@ public class HaveArchiveTests(ITestOutputHelper helper) : AStubbedGameIsolatedTe
         var missing = await MultiHasher.HashStream(new MemoryStream("never archived"u8.ToArray()));
         var probe = CreateProbe();
 
-        probe.Have(FileIdentity.XxHash3(archived.XxHash3)).Should().BeTrue();
-        probe.Have(FileIdentity.XxHash3(missing.XxHash3)).Should().BeFalse();
+        probe.Have(FileIdentity.XxHash3(archived.XxHash3), archived.Size).Should().BeTrue();
+        probe.Have(FileIdentity.XxHash3(missing.XxHash3), missing.Size).Should().BeFalse();
     }
 
     [Fact]
@@ -70,7 +70,6 @@ public class HaveArchiveTests(ITestOutputHelper helper) : AStubbedGameIsolatedTe
         await Relate(hashes);
         var probe = CreateProbe();
 
-        probe.Have(FileIdentity.Sha1(hashes.Sha1)).Should().BeTrue();
         probe.Have(FileIdentity.Sha1(hashes.Sha1), hashes.Size).Should().BeTrue();
     }
 
@@ -89,7 +88,7 @@ public class HaveArchiveTests(ITestOutputHelper helper) : AStubbedGameIsolatedTe
         var hashes = await MultiHasher.HashStream(new MemoryStream("related but not archived"u8.ToArray()));
         await Relate(hashes);
 
-        CreateProbe().Have(FileIdentity.Sha1(hashes.Sha1)).Should().BeFalse();
+        CreateProbe().Have(FileIdentity.Sha1(hashes.Sha1), hashes.Size).Should().BeFalse();
     }
 
     [Fact]
@@ -97,7 +96,7 @@ public class HaveArchiveTests(ITestOutputHelper helper) : AStubbedGameIsolatedTe
     {
         var hashes = await Archive("archived but unrelated");
 
-        CreateProbe().Have(FileIdentity.Sha1(hashes.Sha1)).Should().BeFalse("nothing joins the two kinds without bytes the app hashed");
+        CreateProbe().Have(FileIdentity.Sha1(hashes.Sha1), hashes.Size).Should().BeFalse("nothing joins the two kinds without bytes the app hashed");
     }
 
     [Fact]
@@ -106,7 +105,7 @@ public class HaveArchiveTests(ITestOutputHelper helper) : AStubbedGameIsolatedTe
         var hashes = await Archive("vanilla");
         await Relate(hashes);
 
-        CreateProbe().Have(FileIdentity.Of(HashKind.Md5, hashes.Md5.AsSpan())).Should().BeFalse();
-        CreateProbe().Have(FileIdentity.None).Should().BeFalse();
+        CreateProbe().Have(FileIdentity.Of(HashKind.Md5, hashes.Md5.AsSpan()), hashes.Size).Should().BeFalse();
+        CreateProbe().Have(FileIdentity.None, hashes.Size).Should().BeFalse();
     }
 }

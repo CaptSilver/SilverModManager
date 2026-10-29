@@ -207,7 +207,8 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
             new FakeMappingCache(),
             Connection,
             FileStore,
-            ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileHashesService>());
+            ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileHashesService>(),
+            ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileIdentityResolver>());
         var loadout = await CreateLoadout();
         var list = ListWith(states.Select((s, i) => Entry(s, Hash.From((ulong)(i + 1) * 0x1111), 10, $"{i}.7z")).ToArray());
         var plan = await inventory.Build(list, Connection.Db, loadout);

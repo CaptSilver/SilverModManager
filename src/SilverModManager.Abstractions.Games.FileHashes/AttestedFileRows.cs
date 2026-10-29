@@ -72,23 +72,4 @@ public static class AttestedFileRows
         LocalFileHashRows.Record(tx, db, gamePath, fingerprints);
         await tx.Commit();
     }
-
-    /// <summary>
-    /// The SHA-1 and size of the bytes an xxHash3 names, from a <see cref="HashRelation"/> in the first of
-    /// <paramref name="databases"/> that has one.
-    /// </summary>
-    public static bool TryFindRelation(IEnumerable<IDb> databases, Hash xxHash3, out (Sha1Value Sha1, NexusMods.Paths.Size Size) relation)
-    {
-        foreach (var db in databases)
-        {
-            foreach (var row in HashRelation.FindByXxHash3(db, xxHash3))
-            {
-                relation = (row.Sha1, row.Size);
-                return true;
-            }
-        }
-
-        relation = default;
-        return false;
-    }
 }

@@ -32,7 +32,7 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
     private ArchivePathResolver Resolver(ArchivePlan plan, Loadout.ReadOnly loadout, params INestedArchiveOpener[] openers)
     {
         var resolver = new ArchivePathResolver(plan, Connection.Db, FileStore,
-            new GameFileSourceLookup(loadout, Connection, FileStore, ServiceProvider.GetRequiredService<IFileHashesService>()),
+            new GameFileSourceLookup(loadout, Connection, FileStore, ServiceProvider.GetRequiredService<IFileHashesService>(), ServiceProvider.GetRequiredService<IFileIdentityResolver>()),
             openers);
         _resolvers.Add(resolver);
         return resolver;

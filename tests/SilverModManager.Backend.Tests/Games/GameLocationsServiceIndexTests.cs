@@ -788,6 +788,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
         var services = new ServiceCollection()
             .AddLogging(b => b.AddProvider(_logs))
             .AddSingleton<IFileHashesService>(hashes)
+            .AddFileIdentityResolver()
             .AddSingleton<IFullFileHasher>(_hasher)
             .BuildServiceProvider();
         _owned.Add(services);
@@ -802,7 +803,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
     {
         public IDb Current => local.Db;
         public IDb Local => local.Db;
-        public IReadOnlyList<IDb> Databases => stores;
+        public IReadOnlyList<IDb> Databases => [local.Db, ..stores];
         public Task WaitForLocalBaselineBuild(GameInstallation installation, CancellationToken cancellationToken = default) => waitForBuild;
 
         /// <summary>Every file handed to <see cref="RecordIndexedFiles"/>, in call order.</summary>
@@ -828,9 +829,6 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
 
         public Task SettleAttested(GameInstallation installation, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, CancellationToken cancellationToken = default)
             => AttestedFileRows.Settle(local, gameKey, read, logger);
-
-        public bool TryFindRelation(Hash xxHash3, out (Sha1Value Sha1, Size Size) relation)
-            => AttestedFileRows.TryFindRelation([local.Db, ..stores], xxHash3, out relation);
 
         public ValueTask<IDb> GetFileHashesDb() => throw new NotSupportedException();
         public Task CheckForUpdate(bool forceUpdate = false) => throw new NotSupportedException();

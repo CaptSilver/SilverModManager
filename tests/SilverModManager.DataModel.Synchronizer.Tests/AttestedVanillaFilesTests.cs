@@ -310,6 +310,50 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         (await ReadGameFile(Vanilla)).Should().Be(VanillaText);
     }
 
+    [Fact]
+    public async Task ResettingWhenTwoRelationsShareTheSha1_RestoresFromTheOneWhoseXxHash3TheStoreHolds()
+    {
+        var loadout = await CreateLoadout();
+        await AddMod(loadout, Vanilla);
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        var local = Hashes.Local.Connection;
+        var baseline = LocalBaseline.All(Hashes.Local).Single();
+        var path = baseline.Files.Single(f => f.Path.ToString() == Vanilla);
+        var manifest = baseline.Manifests.Single(m => m.Files.Any(f => f.Id == path.Id));
+        var relation = path.Hash;
+        using (var tx = local.BeginTransaction())
+        {
+            tx.Retract(baseline.Id, LocalBaseline.Files, path.Id);
+            tx.Retract(manifest.Id, SteamManifest.Files, path.Id);
+            _ = new AttestedFile.New(tx)
+            {
+                BaselineId = baseline.Id,
+                ManifestId = manifest.Id,
+                Path = path.Path,
+                Sha1 = relation.Sha1,
+                Size = relation.Size,
+                ModifiedUtc = DateTimeOffset.UtcNow,
+            };
+            // Same SHA-1 and size, an xxHash3 that sorts before the real one and that the store never archived.
+            _ = new HashRelation.New(tx)
+            {
+                XxHash3 = Hash.From(1),
+                Sha1 = relation.Sha1,
+                Size = relation.Size,
+                Md5 = relation.Md5,
+                Crc32 = relation.Crc32,
+                XxHash64 = Hash.From(2),
+                MinimalHash = Hash.From(3),
+            };
+            await tx.Commit();
+        }
+
+        await Synchronizer.ResetToOriginalGameState(GameInstallation, Refresh(loadout).LocatorIds.ToArray());
+
+        (await ReadGameFile(Vanilla)).Should().Be(VanillaText);
+    }
+
     [Theory]
     [InlineData("hardlink")]
     [InlineData("symlink")]
@@ -999,7 +1043,6 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         public Task RecordIndexedFiles(GameInstallation installation, IReadOnlyList<IndexedFileHash> files, CancellationToken cancellationToken = default) => inner.RecordIndexedFiles(installation, files, cancellationToken);
         public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out Hash xxHash3) => inner.TryGetFingerprintedHash(installation, path, size, modifiedUtc, out xxHash3);
         public System.Collections.Frozen.FrozenDictionary<GamePath, AttestedLookup> AttestedFiles(GameInstallation installation) => inner.AttestedFiles(installation);
-        public bool TryFindRelation(Hash xxHash3, out (Sha1Value Sha1, Size Size) relation) => inner.TryFindRelation(xxHash3, out relation);
         public DynamicData.Kernel.Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, Hash Hash)> files) => inner.SuggestVersionData(gameInstallation, files);
     }
 }

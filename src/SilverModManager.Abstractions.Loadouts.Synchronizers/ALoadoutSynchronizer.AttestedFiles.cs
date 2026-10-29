@@ -99,9 +99,9 @@ public partial class ALoadoutSynchronizer
         foreach (var (path, node) in tree.ToArray())
         {
             if (!node.Actions.HasFlag(Actions.ExtractToDisk) || !node.HaveLoadout || node.Loadout.Identity.Kind != HashKind.Sha1) continue;
-            if (await ArchiveKeyOfSha1Async(node.Loadout.Identity, node.Loadout.Size) is not { } key) continue;
+            if (await _identityResolver.StoreKeyAsync(_fileStore, node.Loadout.Identity, node.Loadout.Size) is not { } key) continue;
 
-            var named = node with { Loadout = node.Loadout with { Identity = FileIdentity.XxHash3(key) } };
+            var named = node with { Loadout = node.Loadout with { Identity = key } };
             tree[path] = named;
             resolved[path] = named;
         }
@@ -119,8 +119,8 @@ public partial class ALoadoutSynchronizer
             var backsUp = node.Actions.HasFlag(Actions.BackupFile);
             if (!backsUp && !node.Actions.HasFlag(Actions.IngestFromDisk)) continue;
 
-            if (!node.Disk.Identity.TryXxHash3(out var xxHash3)) wanted.Add(path);
-            else if (backsUp && path.LocationId == LocationId.Game && !_fileHashService.TryFindRelation(xxHash3, out _)) wanted.Add(path);
+            if (node.Disk.Identity.Kind != HashKind.XxHash3) wanted.Add(path);
+            else if (backsUp && path.LocationId == LocationId.Game && !_identityResolver.TryConvert(node.Disk.Identity, node.Disk.Size, HashKind.Sha1, out _)) wanted.Add(path);
         }
 
         return wanted;

@@ -85,7 +85,7 @@ public sealed class SettleAttestedTests : IDisposable
     }
 
     [Fact]
-    public void TryFindRelation_FindsTheSha1AndSizeOfBytesTheAppHashed()
+    public void ResolverConvertsToTheSha1OfBytesTheAppHashed()
     {
         _service = _harness.CreateService(_harness.NewDatabaseLocation());
         _local = _service.Local.Connection;
@@ -100,9 +100,11 @@ public sealed class SettleAttestedTests : IDisposable
             tx.Commit().Wait();
         }
 
-        _service.TryFindRelation(hashes.XxHash3, out var relation).Should().BeTrue();
-        relation.Should().Be((hashes.Sha1, hashes.Size));
-        _service.TryFindRelation(NexusMods.Hashing.xxHash3.Hash.From(1), out _).Should().BeFalse();
+        var resolver = new RecordedDigestResolver(_service);
+        resolver.TryConvert(FileIdentity.XxHash3(hashes.XxHash3), hashes.Size, HashKind.Sha1, out var sha1).Should().BeTrue();
+        sha1.Should().Be(FileIdentity.Sha1(hashes.Sha1));
+        resolver.TryConvert(FileIdentity.XxHash3(NexusMods.Hashing.xxHash3.Hash.From(1)), hashes.Size, HashKind.Sha1, out _).Should().BeFalse();
+        resolver.TryConvert(FileIdentity.XxHash3(hashes.XxHash3), hashes.Size + Size.From(1), HashKind.Sha1, out _).Should().BeFalse("a row of another size is not these bytes");
     }
 
     private async Task<(AttestedLookup Attested, EntityId Baseline, EntityId Manifest)> Setup(string path, string content)

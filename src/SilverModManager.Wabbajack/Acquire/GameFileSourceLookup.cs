@@ -20,10 +20,10 @@ namespace SilverModManager.Wabbajack.Acquire;
 /// <paramref name="installationId"/> is null for an installation the app has not managed yet; it has no backups, so
 /// the game folder is all there is to read.
 /// </remarks>
-public sealed class GameFileSourceLookup(GameInstallation installation, EntityId? installationId, IConnection connection, IFileStore fileStore, IFileHashesService fileHashes)
+public sealed class GameFileSourceLookup(GameInstallation installation, EntityId? installationId, IConnection connection, IFileStore fileStore, IFileHashesService fileHashes, IFileIdentityResolver identityResolver)
 {
-    public GameFileSourceLookup(Loadout.ReadOnly loadout, IConnection connection, IFileStore fileStore, IFileHashesService fileHashes)
-        : this(loadout.InstallationInstance, (EntityId)loadout.InstallationId, connection, fileStore, fileHashes) { }
+    public GameFileSourceLookup(Loadout.ReadOnly loadout, IConnection connection, IFileStore fileStore, IFileHashesService fileHashes, IFileIdentityResolver identityResolver)
+        : this(loadout.InstallationInstance, (EntityId)loadout.InstallationId, connection, fileStore, fileHashes, identityResolver) { }
 
     private static readonly MultiHasherBuilder<Hash, System.IO.Hashing.XxHash3, Xx3Hasher, Hash, System.IO.Hashing.XxHash64, Xx64Hasher> Hasher
         = MultiHasherBuilder.Start()
@@ -106,38 +106,13 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
         if (installationId is not { } owner) return null;
         _initialState ??= ReadInitialState(owner);
         if (!_initialState.TryGetValue(new GamePath(LocationId.Game, gameFile), out var initial)) return null;
-        if (!TryStoreKey(initial.Identity, initial.Size, out var original)) return null;
+        if (await identityResolver.StoreKeyAsync(fileStore, initial.Identity, initial.Size) is not { } key) return null;
+        var original = key.XxHash3();
 
         var pinned = GameBackedUpFile.All(connection.Db)
             .Any(f => f.Hash == original && f.GameInstallId.Value == owner);
-        if (!pinned || !await fileStore.HaveFile(original)) return null;
+        if (!pinned) return null;
         return original;
-    }
-
-    /// <summary>
-    /// The file store is keyed by xxHash3. An identity of another kind is joined to it through a relation the app
-    /// computed from the bytes it archived, which is the one place two kinds may meet.
-    /// </summary>
-    private bool TryStoreKey(FileIdentity identity, Size size, out Hash key)
-    {
-        if (identity.TryXxHash3(out key)) return true;
-
-        if (identity.Kind == HashKind.Sha1)
-        {
-            var sha1 = Sha1Value.From(identity.Digest);
-            foreach (var db in fileHashes.Databases)
-            {
-                foreach (var relation in HashRelation.FindBySha1(db, sha1))
-                {
-                    if (relation.Size != size) continue;
-                    key = relation.XxHash3;
-                    return true;
-                }
-            }
-        }
-
-        key = default;
-        return false;
     }
 
     private Dictionary<GamePath, (FileIdentity Identity, Size Size)> ReadInitialState(EntityId owner)

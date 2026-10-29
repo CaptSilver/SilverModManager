@@ -22,6 +22,7 @@ internal class GameLocationsService : IGameLocationsService
 {
     private readonly ILogger _logger;
     private readonly IFileHashesService _fileHashesService;
+    private readonly IFileIdentityResolver _identityResolver;
     private readonly IFullFileHasher _fullHasher;
 
     public GameLocationsService(IServiceProvider serviceProvider)
@@ -29,6 +30,7 @@ internal class GameLocationsService : IGameLocationsService
         _fullHasher = serviceProvider.GetService<IFullFileHasher>() ?? XxHash3FullFileHasher.Instance;
         _logger = serviceProvider.GetRequiredService<ILogger<GameLocationsService>>();
         _fileHashesService = serviceProvider.GetRequiredService<IFileHashesService>();
+        _identityResolver = serviceProvider.GetRequiredService<IFileIdentityResolver>();
     }
 
     public async Task<IndexGameResult> IndexGame(
@@ -87,7 +89,7 @@ internal class GameLocationsService : IGameLocationsService
                     {
                         changed = modifiedFiles[gamePath] = await IndexChangedFile(installation, file, gamePath, fingerprint, attested, attestedMatches, tally, reads, token);
                     }
-                    else if (previous.Kind == HashKind.XxHash3 && attestedMatches && !_fileHashesService.TryFindRelation(previous.XxHash3(), out _))
+                    else if (previous.Kind == HashKind.XxHash3 && attestedMatches && !_identityResolver.TryConvert(previous, fingerprint.Size, HashKind.Sha1, out _))
                     {
                         // The index wrote this row before full reads recorded a relation, so nothing says whether the
                         // bytes are the store's or a mod's that the app deployed or adopted here. One read settles it.

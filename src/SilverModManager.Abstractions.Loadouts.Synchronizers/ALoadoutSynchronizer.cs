@@ -228,7 +228,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         MergeStates(latestDiskState, previousDiskState, syncTree);
-        NameTheSameBytesByOneKind(syncTree);
+        NameTheSameBytesByOneKind(syncTree, _identityResolver.Scoped());
         AdoptGameInstalledFiles(syncTree, loadout);
         LeaveUserProtectedFilesAlone(syncTree, loadout);
         return syncTree;
@@ -241,7 +241,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// another part of the same path, the SHA-1 part is renamed to that xxHash3 for this tree. A SHA-1 no relation
     /// joins stays as it is: nothing says those bytes are the same.
     /// </summary>
-    private void NameTheSameBytesByOneKind(Dictionary<GamePath, SyncNode> tree)
+    private void NameTheSameBytesByOneKind(Dictionary<GamePath, SyncNode> tree, IFileIdentityResolver resolver)
     {
         List<GamePath>? mixed = null;
         foreach (var (path, node) in tree)
@@ -256,9 +256,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             var disk = node.Disk;
             var previous = node.Previous;
             var loadout = node.Loadout;
-            RenameBySharedRelation(path, ref disk, previous, loadout);
-            RenameBySharedRelation(path, ref previous, disk, loadout);
-            RenameBySharedRelation(path, ref loadout, disk, previous);
+            RenameBySharedRelation(resolver, path, ref disk, previous, loadout);
+            RenameBySharedRelation(resolver, path, ref previous, disk, loadout);
+            RenameBySharedRelation(resolver, path, ref loadout, disk, previous);
             node.Disk = disk;
             node.Previous = previous;
             node.Loadout = loadout;
@@ -278,13 +278,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
     }
 
-    private void RenameBySharedRelation(GamePath path, ref SyncNodePart part, SyncNodePart first, SyncNodePart second)
+    private void RenameBySharedRelation(IFileIdentityResolver resolver, GamePath path, ref SyncNodePart part, SyncNodePart first, SyncNodePart second)
     {
         if (part.Identity.Kind != HashKind.Sha1) return;
         foreach (var other in new[] { first, second })
         {
-            if (!other.Identity.TryXxHash3(out var xxHash3) || !_fileHashService.TryFindRelation(xxHash3, out var relation)) continue;
-            if (relation.Sha1 != Sha1Value.From(part.Identity.Digest) || relation.Size != part.Size) continue;
+            if (other.Identity.Kind != HashKind.XxHash3 || resolver.Resolve(part.Identity, other.Identity, part.Size) != IdentityMatch.Same) continue;
 
             part = part with { Identity = other.Identity };
             return;
@@ -295,13 +294,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         foreach (var other in new[] { first, second })
         {
             if (other.Identity.IsNone || other.Identity.Kind == HashKind.Sha1) continue;
-            var databases = _fileHashService.Databases.Count;
-            if (other.Identity.TryXxHash3(out var xxHash3) && _fileHashService.TryFindRelation(xxHash3, out var relation))
-                Logger.LogTrace("Relation for {XxHash3} of `{Path}` names {RelationSha1} ({RelationSize} bytes), not {Identity} ({Size} bytes); searched {Databases} hash database(s)",
-                    xxHash3, path, relation.Sha1, relation.Size, part.Identity, part.Size, databases);
-            else
-                Logger.LogTrace("No relation for the {OtherKind} part {OtherIdentity} of `{Path}` to join {Identity} ({Size} bytes); searched {Databases} hash database(s)",
-                    other.Identity.Kind, other.Identity, path, part.Identity, part.Size, databases);
+            Logger.LogTrace("No relation of {Size} bytes joins the {OtherKind} part {OtherIdentity} of `{Path}` to {Identity}; searched {Databases} hash database(s)",
+                part.Size, other.Identity.Kind, other.Identity, path, part.Identity, _fileHashService.Databases.Count);
         }
     }
 
@@ -1556,31 +1550,16 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// relation the app computed from them, and any other kind is not archived. A relation is the one place two
     /// kinds may be joined, because it holds digests of the same bytes.
     /// </summary>
-    /// <param name="size">When given, a relation of another size is not the same file.</param>
-    protected bool HaveArchive(FileIdentity identity, Size? size = null)
+    /// <param name="size">A relation of another size is not the same file.</param>
+    protected bool HaveArchive(FileIdentity identity, Size size)
     {
         return HaveArchiveAsync(identity, size).AsTask().Result;
     }
 
-    private async ValueTask<bool> HaveArchiveAsync(FileIdentity identity, Size? size = null)
+    private async ValueTask<bool> HaveArchiveAsync(FileIdentity identity, Size size)
     {
         if (identity.TryXxHash3(out var hash)) return await _fileStore.HaveFile(hash);
-        return identity.Kind == HashKind.Sha1 && await ArchiveKeyOfSha1Async(identity, size) is not null;
-    }
-
-    /// <summary>
-    /// The xxHash3 an archived copy of the bytes a SHA-1 names is stored under, from a relation the app computed from
-    /// them. Null when no relation joins the two or the store holds none of its keys.
-    /// </summary>
-    private async ValueTask<Hash?> ArchiveKeyOfSha1Async(FileIdentity sha1, Size? size)
-    {
-        foreach (var relation in HashRelation.FindBySha1(_fileHashService.Local, Sha1Value.From(sha1.Digest)))
-        {
-            if (size is { } expected && relation.Size != expected) continue;
-            if (await _fileStore.HaveFile(relation.XxHash3)) return relation.XxHash3;
-        }
-
-        return null;
+        return identity.Kind == HashKind.Sha1 && await _identityResolver.StoreKeyAsync(_fileStore, identity, size) is not null;
     }
 
     private static FileIdentity ParseIdentity(string? hex) => string.IsNullOrEmpty(hex) ? FileIdentity.None : FileIdentity.ParseHex(hex);

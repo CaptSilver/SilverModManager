@@ -525,8 +525,6 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         => AttestedFileRows.Settle(_local.Connection, LocalBaselineCoordinator.GamePathOf(installation), read, _logger);
 
     /// <inheritdoc />
-    public bool TryFindRelation(Hash xxHash3, out (Sha1Value Sha1, Size Size) relation)
-        => AttestedFileRows.TryFindRelation(Databases, xxHash3, out relation);
 
     /// <inheritdoc/>
     public IEnumerable<GameFileRecord> GetGameFiles(LocatorIdsWithGameStore locatorIdsWithGameStore)

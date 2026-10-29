@@ -164,12 +164,6 @@ public interface IFileHashesService
     public Task SettleAttested(GameInstallation installation, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// The SHA-1 and size of the bytes an xxHash3 names, from a <see cref="HashRelation"/> in any store (local first).
-    /// A relation is computed from bytes, so it is the one place an xxHash3 and a SHA-1 may be joined.
-    /// </summary>
-    public bool TryFindRelation(Hash xxHash3, out (Sha1Value Sha1, Size Size) relation);
-
-    /// <summary>
     /// Suggest version data for a given game installation and files.
     /// </summary>
     public Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, Hash Hash)> files);

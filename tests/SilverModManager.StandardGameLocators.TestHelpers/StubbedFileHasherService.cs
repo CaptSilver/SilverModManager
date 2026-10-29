@@ -170,9 +170,6 @@ public class StubbedFileHasherService : IFileHashesService
         return AttestedFileRows.Settle(_localConnection!, GameKey(installation), read, _provider.GetRequiredService<ILogger<StubbedFileHasherService>>());
     }
 
-    public bool TryFindRelation(Hash xxHash3, out (Sha1Value Sha1, Size Size) relation)
-        => AttestedFileRows.TryFindRelation(Databases, xxHash3, out relation);
-
     public IEnumerable<GameFileRecord> GetGameFiles(LocatorIdsWithGameStore locatorIdsWithGameStore)
     {
         var (_, locatorIds) = locatorIdsWithGameStore;
