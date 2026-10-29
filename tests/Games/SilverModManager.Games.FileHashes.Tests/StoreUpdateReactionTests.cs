@@ -1,5 +1,5 @@
 using System.Collections.Immutable;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using NSubstitute;
 using SilverModManager.Abstractions.Diagnostics;
@@ -25,6 +25,7 @@ public sealed class StoreUpdateReactionTests : IDisposable
     private readonly IFileHashesService _hashes = Substitute.For<IFileHashesService>();
     private readonly IDiagnosticManager _diagnostics = Substitute.For<IDiagnosticManager>();
     private readonly IGameLocator _locator = Substitute.For<IGameLocator>();
+    private readonly CapturingLogger _log = new();
     private readonly StoreUpdateReaction _reaction;
 
     public StoreUpdateReactionTests()
@@ -33,7 +34,7 @@ public sealed class StoreUpdateReactionTests : IDisposable
         _hashes.EnsureLocalBaseline(Arg.Any<GameInstallation>(), Arg.Any<CancellationToken>())
             .Returns(new LocalBaselineResult(LocalBaselineKind.DepotManifests, true, 0));
         _diagnostics.RefreshAsync(Arg.Any<LoadoutId>()).Returns(Task.CompletedTask);
-        _reaction = new StoreUpdateReaction(_registry, _hashes, _diagnostics, _main, NullLogger<StoreUpdateReaction>.Instance);
+        _reaction = new StoreUpdateReaction(_registry, _hashes, _diagnostics, _main, _log);
     }
 
     public void Dispose() => _host.Dispose();
@@ -52,6 +53,7 @@ public sealed class StoreUpdateReactionTests : IDisposable
         var outcome = await _reaction.Check(installation, TestContext.Current.CancellationToken);
 
         outcome.Should().Be(StoreUpdateOutcome.Refreshed);
+        _log.Messages.Should().ContainSingle().Which.Should().Contain("was updated by Steam to build build-2");
         _registry.Received(1).RefreshInstallation(Arg.Is<GameInstallation>(i => i.LocatorResult.LocatorIds.Single().Value == "new"));
         await _hashes.Received(1).EnsureLocalBaseline(Arg.Is<GameInstallation>(i => i.LocatorResult.StoreBuildId == "build-2"), Arg.Any<CancellationToken>());
         await _diagnostics.Received(1).RefreshAsync(Loadout.Load(_main.Db, first).LoadoutId);
@@ -94,10 +96,39 @@ public sealed class StoreUpdateReactionTests : IDisposable
 
         var outcome = await _reaction.Check(Installation("old", "build-1", inProgress: true), TestContext.Current.CancellationToken);
 
-        outcome.Should().Be(StoreUpdateOutcome.Refreshed);
+        outcome.Should().Be(StoreUpdateOutcome.StateChanged);
+        _log.Messages.Should().ContainSingle().Which.Should().Contain("state in Steam changed").And.NotContain("was updated by");
         _registry.Received(1).RefreshInstallation(Arg.Is<GameInstallation>(i => !i.LocatorResult.StoreUpdateInProgress && !i.LocatorResult.StoreUpdatePending));
         await _hashes.Received(1).EnsureLocalBaseline(Arg.Any<GameInstallation>(), Arg.Any<CancellationToken>());
         await _diagnostics.Received(1).RefreshAsync(Loadout.Load(_main.Db, id).LoadoutId);
+    }
+
+    [Fact]
+    public async Task Check_SteamStartsReportingDamagedFilesOnTheSameBuild_UpdatesTheRegistryAndHealthCheckAndSaysSoInsteadOfClaimingAnUpdate()
+    {
+        var id = await HashRows.AddLoadout(_main, GameStore.Steam, GamePath, "old");
+        var row = Loadout.Load(_main.Db, id).Installation;
+        _registry.TryGetMetadata(Arg.Any<GameInstallation>(), out Arg.Any<GameInstallMetadata.ReadOnly>())
+            .Returns(call => { call[1] = row; return true; });
+        StoreSays(Result("old", "build-1", damaged: true));
+
+        var outcome = await _reaction.Check(Installation("old", "build-1"), TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(StoreUpdateOutcome.StateChanged);
+        _registry.Received(1).RefreshInstallation(Arg.Is<GameInstallation>(i => i.LocatorResult.StoreFilesDamaged));
+        await _diagnostics.Received(1).RefreshAsync(Loadout.Load(_main.Db, id).LoadoutId);
+        _log.Messages.Should().ContainSingle().Which.Should().Contain("Steam now reports damaged files").And.NotContain("was updated by").And.NotContain("refreshing its file list");
+    }
+
+    [Fact]
+    public async Task Check_AnUpdateArrivesWhileSteamReportsDamagedFiles_SaysTheFileListWaitsForTheVerify()
+    {
+        StoreSays(Result("new", "build-2", damaged: true));
+
+        var outcome = await _reaction.Check(Installation("old", "build-1"), TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(StoreUpdateOutcome.Refreshed);
+        _log.Messages.Should().ContainSingle().Which.Should().Contain("build build-2").And.Contain("damaged files").And.NotContain("refreshing its file list;");
     }
 
     [Fact]
@@ -140,7 +171,7 @@ public sealed class StoreUpdateReactionTests : IDisposable
         _locator.TryLocate(Arg.Any<IGameData>(), out Arg.Any<GameLocatorResult?>())
             .Returns(call => { call[1] = result; return true; });
 
-    private GameLocatorResult Result(string id, string build, bool inProgress = false)
+    private GameLocatorResult Result(string id, string build, bool inProgress = false, bool damaged = false)
     {
         var game = Substitute.For<SubstitutableGame>();
         var path = FileSystem.Shared.FromUnsanitizedFullPath(GamePath);
@@ -155,6 +186,7 @@ public sealed class StoreUpdateReactionTests : IDisposable
             StoreBuildId = build,
             StoreUpdateInProgress = inProgress,
             StoreUpdatePending = inProgress,
+            StoreFilesDamaged = damaged,
         };
     }
 
@@ -162,5 +194,19 @@ public sealed class StoreUpdateReactionTests : IDisposable
     {
         var result = Result(id, build, inProgress);
         return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, result.Path)));
+    }
+
+    private sealed class CapturingLogger : ILogger<StoreUpdateReaction>
+    {
+        public System.Collections.Concurrent.ConcurrentQueue<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == LogLevel.Information) Messages.Enqueue(formatter(state, exception));
+        }
     }
 }

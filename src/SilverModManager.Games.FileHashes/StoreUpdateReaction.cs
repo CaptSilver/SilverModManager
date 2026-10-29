@@ -11,14 +11,21 @@ namespace SilverModManager.Games.FileHashes;
 /// <summary>What <see cref="StoreUpdateReaction.Check"/> found.</summary>
 public enum StoreUpdateOutcome
 {
-    /// <summary>The store has the same build as the registry's copy.</summary>
+    /// <summary>The store reports the same build, ids and state as the registry's copy.</summary>
     Unchanged,
 
     /// <summary>The store is writing the game's files; nothing was changed so the registry never holds a half-updated state.</summary>
     UpdateInProgress,
 
-    /// <summary>The registry, the local baseline and the Health Check were brought up to the new build.</summary>
+    /// <summary>The store moved the game to another build: the registry, the local baseline and the Health Check were brought up to it.</summary>
     Refreshed,
+
+    /// <summary>
+    /// The build is the same but the store's state changed (an update or validation settled, or Steam started
+    /// reporting damaged files). The registry and the Health Check follow; the baseline is only rebuilt when the
+    /// store is settled, so it stays as it was while files are reported damaged.
+    /// </summary>
+    StateChanged,
 
     /// <summary>The locator no longer finds the game.</summary>
     NotFound,
@@ -45,8 +52,10 @@ public sealed class StoreUpdateReaction(
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _perFolder = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// Locates <paramref name="registered"/> again and refreshes everything that depends on its build if the
-    /// store has settled on another one.
+    /// Locates <paramref name="registered"/> again and refreshes everything that depends on the store's view of it
+    /// when that view differs from the registry's copy: another build or other ids (<see cref="StoreUpdateOutcome.Refreshed"/>),
+    /// or the same build in another state (<see cref="StoreUpdateOutcome.StateChanged"/>). Does nothing while the
+    /// store is still writing the files.
     /// </summary>
     public async Task<StoreUpdateOutcome> Check(GameInstallation registered, CancellationToken cancellationToken = default)
     {
@@ -82,9 +91,10 @@ public sealed class StoreUpdateReaction(
         // build still has to clear those flags and let the skipped baseline be built.
         if (fresh.HasSameStoreStateAs(before)) return StoreUpdateOutcome.Unchanged;
 
+        var buildChanged = BuildChanged(before, fresh);
         var located = new GameInstallation(fresh, registered.Locations);
         registry.RefreshInstallation(located);
-        logger.LogInformation("{Game} was updated by {Store} to build {BuildId}; refreshing its file list", name, fresh.Store, fresh.StoreBuildId ?? "unknown");
+        LogChange(name, before, fresh, buildChanged);
 
         try
         {
@@ -118,6 +128,33 @@ public sealed class StoreUpdateReaction(
             }
         }
 
-        return StoreUpdateOutcome.Refreshed;
+        return buildChanged ? StoreUpdateOutcome.Refreshed : StoreUpdateOutcome.StateChanged;
+    }
+
+    // Other ids name other manifests, so they are another build even when the store reports the same build number.
+    private static bool BuildChanged(GameLocatorResult before, GameLocatorResult fresh)
+        => before.StoreBuildId != fresh.StoreBuildId
+           || !before.LocatorIds.Select(id => id.Value).ToHashSet(StringComparer.OrdinalIgnoreCase)
+               .SetEquals(fresh.LocatorIds.Select(id => id.Value));
+
+    private void LogChange(string name, GameLocatorResult before, GameLocatorResult fresh, bool buildChanged)
+    {
+        var build = fresh.StoreBuildId ?? "unknown";
+        if (buildChanged)
+        {
+            // The baseline is only built for a settled install, so a verify has to come first.
+            if (fresh.StoreFilesDamaged)
+                logger.LogInformation("{Game} was updated by {Store} to build {BuildId} but now reports damaged files; its file list is refreshed once the files are verified", name, fresh.Store, build);
+            else
+                logger.LogInformation("{Game} was updated by {Store} to build {BuildId}; refreshing its file list", name, fresh.Store, build);
+        }
+        else if (fresh.StoreFilesDamaged && !before.StoreFilesDamaged)
+        {
+            logger.LogInformation("{Store} now reports damaged files for {Game} (build {BuildId}); updating its Health Check", fresh.Store, name, build);
+        }
+        else
+        {
+            logger.LogInformation("The state in {Store} changed for {Game} (build {BuildId}, no update or validation running now); refreshing its file list", fresh.Store, name, build);
+        }
     }
 }
