@@ -63,7 +63,13 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
     {
         // One file past the chunk size and several below it, so both the chunked and the solid path are used.
         var big = RandomEntry(100, 6 * 1024 * 1024 + 123, out var bigBytes);
-        var small = Enumerable.Range(1, 5).Select(i => RandomEntry(i, 40 * 1024 + i, out _)).ToList();
+        var smallBytes = new Dictionary<Hash, byte[]>();
+        var small = Enumerable.Range(1, 5).Select(i =>
+        {
+            var entry = RandomEntry(i, 40 * 1024 + i, out var bytes);
+            smallBytes[entry.Hash] = bytes;
+            return entry;
+        }).ToList();
         var compressible = new ArchivedFileEntry(new MemoryStreamFactory("text.txt", new MemoryStream(Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("silver ", 100_000))))),
             Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("silver ", 100_000))).xxHash3(), Size.FromLong("silver ".Length * 100_000));
 
@@ -71,7 +77,28 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
 
         (await _fileStore.Load(big.Hash, TestContext.Current.CancellationToken)).Should().Equal(bigBytes);
         (await _fileStore.Load(compressible.Hash, TestContext.Current.CancellationToken)).Should().Equal(Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("silver ", 100_000))));
-        foreach (var entry in small) (await _fileStore.Load(entry.Hash, TestContext.Current.CancellationToken)).Should().HaveCount((int)entry.Size.Value);
+        foreach (var entry in small) (await _fileStore.Load(entry.Hash, TestContext.Current.CancellationToken)).Should().Equal(smallBytes[entry.Hash]);
+    }
+
+    [Fact]
+    public async Task BackingUpNothingNewReportsCompletion_WhenThereIsNothingToPack()
+    {
+        var progress = new RecordingProgress();
+        await _fileStore.BackupFiles([], deduplicate: false, token: TestContext.Current.CancellationToken, progress: progress);
+        progress.Reports.Should().Equal(1.0);
+    }
+
+    [Fact]
+    public async Task BackingUpFilesAlreadyStoredReportsCompletion_WhenEverythingIsDeduplicated()
+    {
+        var entry = RandomEntry(7, 50 * 1024, out _);
+        await _fileStore.BackupFiles([entry], deduplicate: false, token: TestContext.Current.CancellationToken);
+        var again = RandomEntry(7, 50 * 1024, out _);
+        var progress = new RecordingProgress();
+
+        await _fileStore.BackupFiles([again], deduplicate: true, token: TestContext.Current.CancellationToken, progress: progress);
+
+        progress.Reports.Should().Equal(1.0);
     }
 
     [Fact]

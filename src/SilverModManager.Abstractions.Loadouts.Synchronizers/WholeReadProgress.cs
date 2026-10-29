@@ -32,7 +32,7 @@ internal sealed class WholeReadProgress
     /// <summary>Starts the phase at zero and logs what is about to be read.</summary>
     public void Begin()
     {
-        _logger.LogInformation("Reading {Count} files ({Size}) to back up", _sizes.Count, BackupOverflow.FormatSize(Size.FromLong(_totalBytes)));
+        _logger.LogInformation("Reading {Count} files ({Size}) to back up or add", _sizes.Count, BackupOverflow.FormatSize(Size.FromLong(_totalBytes)));
         _job?.ReportProgress(SyncPhases.ReadingBackups, 0, _sizes.Count, 0, _totalBytes);
     }
 
@@ -49,7 +49,7 @@ internal sealed class WholeReadProgress
 
         if (_logGate.TryTake())
         {
-            _logger.LogInformation("Read {Done} of {Count} files ({DoneSize} of {Size}) to back up",
+            _logger.LogInformation("Read {Done} of {Count} files ({DoneSize} of {Size}) to back up or add",
                 files, _sizes.Count, BackupOverflow.FormatSize(Size.FromLong(bytes)), BackupOverflow.FormatSize(Size.FromLong(_totalBytes)));
         }
     }

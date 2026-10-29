@@ -138,7 +138,7 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
             }
 
             Sha256Value actual;
-            await using (var stream = downloaded.Read())
+            await using (var stream = SequentialFileRead.Open(downloaded))
             {
                 actual = await Sha256Hasher.HashAsync(stream, cancellationToken: context.CancellationToken);
             }

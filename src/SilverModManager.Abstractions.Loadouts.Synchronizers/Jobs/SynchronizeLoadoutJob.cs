@@ -47,7 +47,8 @@ public record SynchronizeLoadoutJob(LoadoutId LoadoutId, BindableReactivePropert
             var samePhase = current.Phase == phase && current.FilesTotal == filesTotal && current.BytesTotal == bytesTotal;
             if (samePhase && (filesDone < current.FilesDone || bytesDone < current.BytesDone)) return;
 
-            var completes = (filesTotal.HasValue && filesDone >= filesTotal) || (bytesTotal.HasValue && bytesDone >= bytesTotal);
+            // Bytes are the finer measure when known: a packer reports files N/N throughout and only its bytes move.
+            var completes = bytesTotal.HasValue ? bytesDone >= bytesTotal : filesTotal.HasValue && filesDone >= filesTotal;
             var due = Stopwatch.GetElapsedTime(_gate.LastPublishedAt) >= PublishInterval;
             if (samePhase && !completes && !due) return;
 

@@ -73,7 +73,7 @@ public sealed class WabbajackGalleryDownloader(
         }
 
         Hash actual;
-        await using (var stream = file.Read())
+        await using (var stream = SequentialFileRead.Open(file))
             actual = await Xx64Hasher.HashAsync(stream, cancellationToken: cancellationToken);
         if (actual != expectedHash)
         {

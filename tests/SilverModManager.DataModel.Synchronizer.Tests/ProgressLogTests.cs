@@ -44,7 +44,7 @@ public class ProgressLogTests
         progress.Begin();
         foreach (var path in sizes.Keys) progress.FileRead(path);
 
-        logger.Lines.Should().ContainSingle().Which.Should().Be("Information: Reading 50 files (50 KB) to back up");
+        logger.Lines.Should().ContainSingle().Which.Should().Be("Information: Reading 50 files (50 KB) to back up or add");
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class ProgressLogTests
         foreach (var path in sizes.Keys) progress.FileRead(path);
 
         logger.Lines.Should().HaveCount(4);
-        logger.Lines.Last().Should().Be("Information: Read 3 of 3 files (3 KB of 3 KB) to back up");
+        logger.Lines.Last().Should().Be("Information: Read 3 of 3 files (3 KB of 3 KB) to back up or add");
     }
 
     [Fact]

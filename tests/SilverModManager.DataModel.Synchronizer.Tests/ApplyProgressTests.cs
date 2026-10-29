@@ -155,7 +155,7 @@ public class ApplyProgressTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
 
         await ApplyRecording(loadout);
 
-        _information.Should().Contain(line => line.StartsWith("Reading ") && line.Contains(" files (") && line.EndsWith(") to back up"));
+        _information.Should().Contain(line => line.StartsWith("Reading ") && line.Contains(" files (") && line.EndsWith(") to back up or add"));
     }
 
     [Fact]
@@ -186,6 +186,23 @@ public class ApplyProgressTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
         job.ReportProgress(SyncPhases.Deploying, 0, 5);
 
         job.Progress.Value.Should().Be(new SyncProgress(SyncPhases.Deploying, 0, 5, 0, null));
+    }
+
+    [Fact]
+    public void ByteReportsWithAllFilesCounted_AreThinnedOutUntilTheBytesAreComplete()
+    {
+        // The pack step reports files N/N from the start and only its bytes move.
+        var job = new SynchronizeLoadoutJob(SilverModManager.Sdk.Loadouts.LoadoutId.From(1UL));
+        var published = 0;
+        using var _ = job.Progress.Subscribe(_ => published++);
+
+        for (var done = 0L; done < 1000; done++) job.ReportProgress(SyncPhases.BackingUp, 5, 5, done, 1000);
+        var beforeTheEnd = published;
+        job.ReportProgress(SyncPhases.BackingUp, 5, 5, 1000, 1000);
+
+        beforeTheEnd.Should().BeLessThan(50, "a thousand reports inside a few milliseconds are one publish interval's worth");
+        published.Should().Be(beforeTheEnd + 1);
+        job.Progress.Value.BytesDone.Should().Be(1000);
     }
 
     [Fact]

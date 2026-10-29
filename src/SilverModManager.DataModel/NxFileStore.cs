@@ -223,7 +223,11 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
             filesToBackup = enumerable.ToDictionary(fileToBackUp => fileToBackUp.Hash, fileToBackUp => (fileToBackUp, Stream.Null));
         }
 
-        if (filesToBackup.Count == 0) return;
+        if (filesToBackup.Count == 0)
+        {
+            progress?.Report(1.0);
+            return;
+        }
 
         foreach (var kv in filesToBackup)
         {

@@ -53,7 +53,7 @@ public sealed class ArchiveInbox(
 
                 try
                 {
-                    await using (var stream = file.Read())
+                    await using (var stream = SequentialFileRead.Open(file))
                     {
                         found.Add((file, await Xx64Hasher.HashAsync(stream, cancellationToken: cancellationToken)));
                     }
