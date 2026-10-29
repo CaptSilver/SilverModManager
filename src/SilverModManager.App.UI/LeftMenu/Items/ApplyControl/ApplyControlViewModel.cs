@@ -46,7 +46,6 @@ public partial class ApplyControlViewModel : AViewModel<IApplyControlViewModel>,
     [Reactive] public partial string ProcessingText { get; private set; } = "";
     [Reactive] public partial double ProgressFraction { get; private set; }
     [Reactive] public partial bool IsProgressIndeterminate { get; private set; } = true;
-    [Reactive] public partial bool IsLaunchButtonEnabled { get; private set; } = true;
 
     public ILaunchButtonViewModel LaunchButtonViewModel { get; }
 
@@ -125,7 +124,7 @@ public partial class ApplyControlViewModel : AViewModel<IApplyControlViewModel>,
                                    && ldStatus != LoadoutSynchronizerState.Current
                                    && ldStatus != LoadoutSynchronizerState.Unavailable
                                    && !isUnmanaging;
-                        IsLaunchButtonEnabled = !isProcessing 
+                        LaunchButtonViewModel.CanLaunch = !isProcessing 
                                                 && !running
                                                 && gameStatus != GameSynchronizerState.Busy
                                                 && ldStatus == LoadoutSynchronizerState.Current

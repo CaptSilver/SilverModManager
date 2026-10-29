@@ -22,6 +22,9 @@ public partial class LaunchButtonDesignViewModel : AViewModel<ILaunchButtonViewM
     public IObservable<bool> IsRunningObservable => _isRunningSubject.AsObservable();
 
     [Reactive]
+    public partial bool CanLaunch { get; set; } = true;
+
+    [Reactive]
     public partial string Label { get; set; } = "PLAY";
 
     [Reactive]

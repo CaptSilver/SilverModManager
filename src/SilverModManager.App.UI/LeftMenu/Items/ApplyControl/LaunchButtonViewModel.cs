@@ -26,6 +26,8 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
 
     public IObservable<bool> IsRunningObservable => _gameRunningTracker.GetWithCurrentStateAsStarting();
 
+    [Reactive] public partial bool CanLaunch { get; set; } = true;
+
     [Reactive] public partial string Label { get; set; } = Language.LaunchButtonViewModel_LaunchGame_LAUNCH;
 
     [Reactive] public partial Percent? Progress { get; set; }

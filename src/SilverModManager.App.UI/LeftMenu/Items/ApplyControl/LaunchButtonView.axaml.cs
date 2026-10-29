@@ -16,7 +16,11 @@ public partial class LaunchButtonView : ReactiveUserControl<ILaunchButtonViewMod
             var isRunning = ViewModel!.IsRunningObservable;
             var isNotRunning = ViewModel!.IsRunningObservable.Select(running => !running);
 
-            isNotRunning.BindToUi(this, view => view.LaunchButton.IsEnabled)
+            // Only the launch button is gated. Cancel lives in this control too and must stay usable while the
+            // game is starting, which is exactly when launching is switched off.
+            isNotRunning
+                .CombineLatest(ViewModel.WhenAnyValue(vm => vm.CanLaunch), (notRunning, canLaunch) => notRunning && canLaunch)
+                .BindToUi(this, view => view.LaunchButton.IsEnabled)
                 .DisposeWith(d);
             
             // Show progress bar when running

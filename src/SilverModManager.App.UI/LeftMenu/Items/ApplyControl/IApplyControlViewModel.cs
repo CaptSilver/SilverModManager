@@ -13,7 +13,6 @@ public interface IApplyControlViewModel : IViewModelInterface
     
     ILaunchButtonViewModel LaunchButtonViewModel { get; }
     
-    bool IsLaunchButtonEnabled { get; }
     
     bool IsProcessing { get; }
     

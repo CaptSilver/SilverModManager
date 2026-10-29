@@ -26,6 +26,12 @@ public interface ILaunchButtonViewModel : IViewModelInterface
     public IObservable<bool> IsRunningObservable { get; }
 
     /// <summary>
+    /// Whether the launch button itself may be pressed. Only the launch button follows this: the cancel button
+    /// has to stay usable while launching is off, because launching is off for the whole Steam wait.
+    /// </summary>
+    public bool CanLaunch { get; set; }
+
+    /// <summary>
     /// Text to display on the button.
     /// </summary>
     public string Label { get; }
