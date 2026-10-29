@@ -40,7 +40,10 @@ public sealed class Witcher3ModInstaller(IServiceProvider provider)
         var fileName = libraryArchive.AsLibraryFile().FileName.ToString();
         var plan = Witcher3InstallPlan.Plan(files.Keys.Order(StringComparer.Ordinal).ToArray(), fileName);
         if (plan is { IsAmbiguous: true })
-            return ValueTask.FromResult<InstallerResult>(new NotSupported("the archive has variants that need a choice"));
+        {
+            var variants = plan.Variants.Count > 0 ? $": {string.Join(", ", plan.Variants)}" : "";
+            return ValueTask.FromResult<InstallerResult>(new NotSupported($"the archive has variants that need a choice{variants}"));
+        }
         if (plan is not { Placements.Count: > 0 })
             return ValueTask.FromResult<InstallerResult>(new NotSupported("no Witcher 3 layout matches"));
 

@@ -87,9 +87,73 @@ public class Witcher3InstallerTests(ITestOutputHelper outputHelper) : AWitcher3A
     }
 
     [Fact]
-    public void SeveralContentWrappers_AreNotClaimedByAnyRule()
+    public void SeveralContentWrappers_AreVariantsAndTheOutcomeNamesThem()
     {
-        Witcher3InstallPlan.Plan(["Option A/content/blob0.bundle", "Option B/content/blob0.bundle"], "Example Mod.zip").Should().BeNull();
+        var plan = Witcher3InstallPlan.Plan(["Option A/content/blob0.bundle", "Option B/content/blob0.bundle"], "Example Mod.zip");
+        plan.Should().NotBeNull();
+        plan!.IsAmbiguous.Should().BeTrue();
+        plan.Placements.Should().BeEmpty();
+        plan.Variants.Should().BeEquivalentTo("Option A", "Option B");
+    }
+
+    [Fact]
+    public void SeveralContentWrappersWithDifferentFiles_AreStillVariants()
+    {
+        var plan = Witcher3InstallPlan.Plan(["Option A/content/a.bundle", "Option B/content/b.bundle"], "Example Mod.zip");
+        plan.Should().NotBeNull();
+        plan!.IsAmbiguous.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SeveralContentWrappers_AreNotSupportedWithAReasonThatNamesTheVariants()
+    {
+        var loadout = await CreateLoadout();
+        var archive = await AddNamedArchive("Example Mod.zip", "Option A/content/a.bundle", "Option B/content/b.bundle");
+        var libraryItem = archive.AsLibraryFile().AsLibraryItem();
+
+        using var tx = Connection.BeginTransaction();
+        var group = new LoadoutItemGroup.New(tx, out var groupId)
+        {
+            IsGroup = true,
+            LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = libraryItem.Name, LoadoutId = loadout },
+        };
+
+        var result = await Game.LibraryItemInstallers.OfType<Witcher3ModInstaller>().Single().ExecuteAsync(libraryItem, group, tx, loadout, CancellationToken.None);
+
+        result.IsNotSupported(out var reason).Should().BeTrue();
+        reason.Should().Contain("Option A").And.Contain("Option B");
+    }
+
+    [Fact]
+    public void DlcBelowAModFolderUnderMods_GoesToTheGameDlcFolder()
+    {
+        PlanTargets("Example Mod.zip", "Mods/modX/dlc/dlcX/content/y.bundle").Should().Equal("{Game}/dlc/dlcX/content/y.bundle");
+        PlanTargets("Example Mod.zip", "Mods/modX/dlcX/content/y.bundle").Should().Equal("{Game}/dlc/dlcX/content/y.bundle");
+        PlanTargets("Example Mod.zip", "Wrap/Mods/modX/content/a.ws", "Wrap/Mods/modX/dlc/dlcX/content/y.bundle", "Wrap/Mods/modX/dlc/dlcX/readme.txt")
+            .Should().Equal("{Game}/Mods/modX/content/a.ws", "{Game}/dlc/dlcX/content/y.bundle");
+    }
+
+    [Fact]
+    public void RootScriptsBesideAWrapper_GoUnderThatModFolder()
+    {
+        PlanTargets("Example Mod.zip", "Wrap/content/a.ws", "scripts/game/b.ws")
+            .Should().Equal("{Game}/Mods/modWrap/content/a.ws", "{Game}/Mods/modWrap/content/scripts/game/b.ws");
+    }
+
+    [Fact]
+    public void RootScriptsBesideOneModFolder_GoUnderThatModFolder()
+    {
+        PlanTargets("Example Mod.zip", "modFoo/content/a.ws", "scripts/game/b.ws")
+            .Should().Equal("{Game}/Mods/modFoo/content/a.ws", "{Game}/Mods/modFoo/content/scripts/game/b.ws");
+    }
+
+    [Fact]
+    public void RootScriptsBesideSeveralModFolders_AreAmbiguous()
+    {
+        var plan = Witcher3InstallPlan.Plan(["modOne/content/a.ws", "modTwo/content/b.ws", "scripts/game/c.ws"], "Example Mod.zip");
+        plan.Should().NotBeNull();
+        plan!.IsAmbiguous.Should().BeTrue();
+        plan.Variants.Should().BeEquivalentTo("modOne", "modTwo");
     }
 
     [Fact]
