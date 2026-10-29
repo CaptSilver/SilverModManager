@@ -741,6 +741,20 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
     }
 
     [Fact]
+    public async Task OverflowMeasure_ModLoaderFolder_ReadsAsAPhraseAfterInAndTo()
+    {
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [new GamePath(LocationId.Me3Host, "bin/x.dll")] = MeasuredNode(0xD7, Actions.BackupFile | Actions.IngestFromDisk, kb: 9),
+        };
+
+        var asked = await Measure(tree);
+
+        asked.Groups!.Single().Folder.Should().Be("Mod loader folder/bin");
+        asked.Groups!.Single().Location.Should().Be("the mod loader folder");
+    }
+
+    [Fact]
     public async Task OverflowMeasure_FilesDirectlyInTheGameFolder_UseTheGameFolderLabel()
     {
         var tree = new Dictionary<GamePath, SyncNode>

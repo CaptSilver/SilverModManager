@@ -55,4 +55,24 @@ public class LocationIdDisplayNameTests
     [Fact]
     public void ANamedLocation_IsNamed()
         => LocationId.From("DisplayNameTestsRegistered", "Documents").IsNamed.Should().BeTrue();
+
+    [Fact]
+    public void ASentencePhrase_IsRegisteredBesideTheLabel()
+    {
+        var id = LocationId.From("DisplayNameTestsPhrase", "Mod loader folder", "the mod loader folder");
+
+        id.DisplayName.Should().Be("Mod loader folder");
+        id.SentenceName.Should().Be("the mod loader folder");
+    }
+
+    [Fact]
+    public void WithNoPhrase_TheSentenceReadsTheLabel()
+        => LocationId.From("DisplayNameTestsNoPhrase", "Documents").SentenceName.Should().Be("Documents");
+
+    [Fact]
+    public void TheGameFolderAndTheModLoaderFolder_TakeAnArticleInASentence()
+    {
+        LocationId.Game.SentenceName.Should().Be("the game folder");
+        LocationId.Me3Host.SentenceName.Should().Be("the mod loader folder");
+    }
 }

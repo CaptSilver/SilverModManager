@@ -11,7 +11,7 @@ namespace SilverModManager.Sdk.Games;
 public readonly partial struct LocationId
 {
     private static readonly StringHashPool<ushort, FNV1a16Hasher> HashPool = new(name: nameof(LocationId));
-    private static readonly ConcurrentDictionary<ushort, string> DisplayNames = new();
+    private static readonly ConcurrentDictionary<ushort, (string Display, string Sentence)> Names = new();
 
     /// <summary>What a player is told for a location nobody gave a name.</summary>
     public const string UnnamedDisplayName = "Other folders";
@@ -30,16 +30,22 @@ public readonly partial struct LocationId
     /// never its internal id. Only the app's own locations are named here; a game names its own through
     /// <see cref="IGameData.LocationNames"/>, which does not depend on static initialization order.
     /// </summary>
-    public string DisplayName => DisplayNames.TryGetValue(Value, out var name) ? name : UnnamedDisplayName;
+    public string DisplayName => Names.TryGetValue(Value, out var name) ? name.Display : UnnamedDisplayName;
+
+    /// <summary>
+    /// The location as a sentence names it, so it reads after "in" and "to" ("the mod loader folder"). Most
+    /// locations read the same bare as <see cref="DisplayName"/> ("in Saves"); a registered phrase wins.
+    /// </summary>
+    public string SentenceName => Names.TryGetValue(Value, out var name) ? name.Sentence : UnnamedDisplayName;
 
     /// <summary>Whether a name was registered for this location. Game-specific names come from the game instead.</summary>
-    public bool IsNamed => DisplayNames.ContainsKey(Value);
+    public bool IsNamed => Names.ContainsKey(Value);
 
-    /// <summary>Converts the string to a LocationId and registers the name a player knows it by.</summary>
-    public static LocationId From(string value, string displayName)
+    /// <summary>Converts the string to a LocationId and registers the name a player knows it by, and optionally the phrase a sentence uses for it.</summary>
+    public static LocationId From(string value, string displayName, string? sentenceName = null)
     {
         var id = From(value);
-        DisplayNames[id.Value] = displayName;
+        Names[id.Value] = (displayName, sentenceName ?? displayName);
         return id;
     }
 
@@ -51,7 +57,7 @@ public readonly partial struct LocationId
     /// <summary>
     /// The path for the game installation.
     /// </summary>
-    public static readonly LocationId Game = From("Game", "Game folder");
+    public static readonly LocationId Game = From("Game", "Game folder", "the game folder");
 
     /// <summary>
     /// Path used to store the save data of a game.
@@ -81,5 +87,5 @@ public readonly partial struct LocationId
     /// <summary>
     /// Where Elden Ring's me3 mod loader is deployed, outside the game folder.
     /// </summary>
-    public static readonly LocationId Me3Host = From("Me3Host", "Mod loader folder");
+    public static readonly LocationId Me3Host = From("Me3Host", "Mod loader folder", "the mod loader folder");
 }

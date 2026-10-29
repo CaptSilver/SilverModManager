@@ -10,7 +10,7 @@ public class SuggestedEntryDesignViewModel() : SuggestedEntryViewModel(
     DataLocation,
     new GamePath(LocationId.Game, "Data"))
 {
-    private static readonly LocationId DataLocation = LocationId.From("Data", "Data folder");
+    private static readonly LocationId DataLocation = LocationId.From("Data", "Data folder", "the data folder");
 
     private static AbsolutePath CreateDesignAbsolutePath()
     {

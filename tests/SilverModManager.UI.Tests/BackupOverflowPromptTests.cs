@@ -324,8 +324,8 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
             [
                 Group("bin/x64", 3, Size.GB * 1, BackupOverflowKind.Appeared),
                 Group("Saves/slot1", 2, Size.GB * 1, BackupOverflowKind.Appeared, "Saves"),
-                Group("AppData/Foo", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.AppData.DisplayName),
-                Group("AppData/Bar", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.AppDataRoaming.DisplayName),
+                Group("AppData/Foo", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.AppData.SentenceName),
+                Group("AppData/Bar", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.AppDataRoaming.SentenceName),
             ],
         };
 
@@ -339,8 +339,8 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
         {
             Groups =
             [
-                Group("AppData/Foo", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.AppData.DisplayName),
-                Group("AppData/Bar", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.AppDataRoaming.DisplayName),
+                Group("AppData/Foo", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.AppData.SentenceName),
+                Group("AppData/Bar", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.AppDataRoaming.SentenceName),
             ],
         };
 
@@ -352,10 +352,10 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
     {
         var overflow = Witcher(BackupOverflowKind.Appeared) with
         {
-            Groups = [Group("Mod loader folder/bin", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.Me3Host.DisplayName)],
+            Groups = [Group("Mod loader folder/bin", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.Me3Host.SentenceName)],
         };
 
-        BackupOverflowPrompt.For("X", overflow).Markdown.Should().Contain("put them in Mod loader folder.");
+        BackupOverflowPrompt.For("X", overflow).Markdown.Should().Contain("put them in the mod loader folder.");
     }
 
     [Fact]
@@ -363,7 +363,7 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
     {
         var overflow = Witcher(BackupOverflowKind.Appeared) with
         {
-            Groups = [Group("Mods/Foo", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.Me3Mods.DisplayName)],
+            Groups = [Group("Mods/Foo", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.Me3Mods.SentenceName)],
         };
 
         BackupOverflowPrompt.For("X", overflow).Markdown.Should().Contain("put them in Mods.");

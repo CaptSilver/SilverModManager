@@ -58,7 +58,7 @@ public enum BackupOverflowKind : byte
 
 /// <summary>The files of one kind under one folder.</summary>
 /// <param name="Folder">The folder as the player sees it: the location's first two path segments, or <see cref="BackupOverflow.GameFolderName"/>.</param>
-/// <param name="Location">The location's player-facing name ("Saves", "Settings"), or null for the game folder.</param>
+/// <param name="Location">The location as a sentence names it, reading after "in" and "to" ("Saves", "the mod loader folder"), or null for the game folder.</param>
 [PublicAPI]
 public sealed record BackupOverflowGroup(string Folder, int FileCount, Size Size, BackupOverflowKind Kind, string? Location = null);
 
@@ -246,7 +246,7 @@ public sealed record BackupOverflow(
     {
         var appeared = (Groups ?? []).Where(g => g.Kind == BackupOverflowKind.Appeared).ToArray();
         var places = new List<string>();
-        if (appeared.Any(g => g.Location is null)) places.Add("the " + GameFolderName.ToLowerInvariant());
+        if (appeared.Any(g => g.Location is null)) places.Add(LocationId.Game.SentenceName);
         places.AddRange(appeared.Select(g => g.Location).OfType<string>().Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal));
         if (places.Count == 0) return "there";
 
