@@ -1229,11 +1229,16 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         return all.Select(c => c.Kind == BackupOverflowKind.Appeared && IsListed(listed, c.Path, c.Size, c.Identity) ? c with { Kind = BackupOverflowKind.GameFileChanged } : c).ToArray();
     }
 
-    private static bool IsListed(Dictionary<string, GameFileRecord> listed, GamePath path, ulong size, FileIdentity identity)
+    // A list naming the file by SHA-1 and a disk naming it by xxHash3 are compared through the relation recorded for
+    // that xxHash3. With no relation nothing can tell the bytes apart, so path and size decide.
+    private bool IsListed(Dictionary<string, GameFileRecord> listed, GamePath path, ulong size, FileIdentity identity)
     {
         if (path.LocationId != LocationId.Game || !listed.TryGetValue(path.Path.ToString(), out var record)) return false;
         if (record.Size.Value != size) return false;
-        return record.Identity.Kind != identity.Kind || record.Identity.Equals(identity);
+        if (record.Identity.Kind == identity.Kind) return record.Identity.Equals(identity);
+        if (record.Identity.Kind == HashKind.Sha1 && identity.TryXxHash3(out var xxHash3) && _fileHashService.TryFindRelation(xxHash3, out var relation))
+            return relation.Sha1 == Sha1Value.From(record.Identity.Digest) && relation.Size.Value == size;
+        return true;
     }
 
     /// <summary>

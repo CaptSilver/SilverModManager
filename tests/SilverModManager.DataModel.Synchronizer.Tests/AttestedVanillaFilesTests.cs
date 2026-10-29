@@ -495,6 +495,31 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         node.Actions.Should().HaveFlag(Actions.WarnOfUnableToExtract, "nothing says the bytes behind the xxHash3 are the ones behind the SHA-1");
     }
 
+    // A disk-only file whose path and size the store lists is told apart from a player's file by its hash. When the
+    // list names it by SHA-1 and the disk by xxHash3, the recorded relation of the xxHash3 is what compares them.
+    private async Task<BackupOverflowKind> HowTheDialogCountsAnUnbackedVanillaFileNamedByXxHash3(MultiHash diskBytes, bool recordRelation)
+    {
+        await CreateLoadout();
+        var path = new GamePath(LocationId.Game, Vanilla);
+        if (recordRelation)
+            await Hashes.RecordIndexedFiles(GameInstallation, [new IndexedFileHash(path, diskBytes.Size, DateTimeOffset.UtcNow, diskBytes.XxHash3, diskBytes)]);
+
+        var file = new ALoadoutSynchronizer.MeasuredFile(path, diskBytes.Size.Value, BackupOverflowKind.Appeared, FileIdentity.XxHash3(diskBytes.XxHash3));
+        return ((ALoadoutSynchronizer)Synchronizer).TellGameFilesApart([file], GameInstallation).Single().Kind;
+    }
+
+    [Fact]
+    public async Task AnXxHash3OfTheStoresBytes_IsCountedAsTheGamesOwnFile()
+        => (await HowTheDialogCountsAnUnbackedVanillaFileNamedByXxHash3(await HashOf(VanillaText), recordRelation: true)).Should().Be(BackupOverflowKind.GameFileChanged);
+
+    [Fact]
+    public async Task AnXxHash3OfOtherBytesOfTheListedSize_IsStillAFileThatAppeared()
+        => (await HowTheDialogCountsAnUnbackedVanillaFileNamedByXxHash3(await HashOf(VanillaText.ToUpperInvariant()), recordRelation: true)).Should().Be(BackupOverflowKind.Appeared);
+
+    [Fact]
+    public async Task AnXxHash3NoRelationTellsApart_IsCountedByPathAndSizeAlone()
+        => (await HowTheDialogCountsAnUnbackedVanillaFileNamedByXxHash3(await HashOf(VanillaText.ToUpperInvariant()), recordRelation: false)).Should().Be(BackupOverflowKind.GameFileChanged);
+
     // The state a full read of every vanilla file leaves: the disk state names each by xxHash3, and the digests of the
     // bytes are recorded as a fingerprint row and a relation.
     private async Task TheIndexReadTheVanillaFilesInFull()
