@@ -95,7 +95,8 @@ internal class SettingsBuilder : ISettingsBuilder
 
                 // The init setter edits its target in place. Run it on a copy: the current object may be the
                 // registration's shared default (nothing saved yet), and edited in place it would stop being the default.
-                var copy = (TSettings)MemberwiseCloneMethod.Invoke(settings, null)!;
+                var copy = MemberwiseCloneMethod.Invoke(settings, null) as TSettings
+                    ?? throw new InvalidOperationException($"MemberwiseClone of {typeof(TSettings)} did not return a {typeof(TSettings)}");
 
                 // void Set_Property(TSettings this, TProperty newValue)
                 setDelegate.DynamicInvoke([copy, newValue]);
