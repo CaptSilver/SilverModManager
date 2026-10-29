@@ -75,8 +75,22 @@ internal sealed class RecordedDigestResolver(IFileHashesService fileHashes) : IF
 
     private static IdentityMatch Meet(IFileIdentityResolver source, FileIdentity other, FileIdentity xxHash3, Size size)
     {
-        if (source.TryConvert(other, size, HashKind.XxHash3, out var otherAsXxHash3)) return xxHash3.MatchSameKind(otherAsXxHash3);
-        return source.TryConvert(xxHash3, size, other.Kind, out var xxHash3AsOther) ? xxHash3AsOther.MatchSameKind(other) : IdentityMatch.Unknown;
+        // Rows can share a digest and differ in another, so the first row of one direction may name other bytes
+        // while a row of the other direction joins the pair. Either direction joining them makes them the same.
+        var knownDifferent = false;
+        if (source.TryConvert(other, size, HashKind.XxHash3, out var otherAsXxHash3))
+        {
+            if (xxHash3.MatchSameKind(otherAsXxHash3) == IdentityMatch.Same) return IdentityMatch.Same;
+            knownDifferent = true;
+        }
+
+        if (source.TryConvert(xxHash3, size, other.Kind, out var xxHash3AsOther))
+        {
+            if (xxHash3AsOther.MatchSameKind(other) == IdentityMatch.Same) return IdentityMatch.Same;
+            knownDifferent = true;
+        }
+
+        return knownDifferent ? IdentityMatch.Different : IdentityMatch.Unknown;
     }
 
     private IEnumerable<HashRelation.ReadOnly> MatchingRows(FileIdentity identity, Size size)

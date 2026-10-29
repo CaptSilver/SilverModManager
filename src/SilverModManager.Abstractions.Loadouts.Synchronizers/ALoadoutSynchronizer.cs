@@ -294,8 +294,16 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         foreach (var other in new[] { first, second })
         {
             if (other.Identity.IsNone || other.Identity.Kind == HashKind.Sha1) continue;
-            Logger.LogTrace("No relation of {Size} bytes joins the {OtherKind} part {OtherIdentity} of `{Path}` to {Identity}; searched {Databases} hash database(s)",
-                part.Size, other.Identity.Kind, other.Identity, path, part.Identity, _fileHashService.Databases.Count);
+            if (resolver.Resolve(part.Identity, other.Identity, part.Size) == IdentityMatch.Different)
+            {
+                Logger.LogTrace("The relations of {Size} bytes name other bytes than {Identity} for the {OtherKind} part {OtherIdentity} of `{Path}`",
+                    part.Size, part.Identity, other.Identity.Kind, other.Identity, path);
+            }
+            else
+            {
+                Logger.LogTrace("No relation of {Size} bytes joins the {OtherKind} part {OtherIdentity} of `{Path}` to {Identity}; searched {Databases} hash database(s)",
+                    part.Size, other.Identity.Kind, other.Identity, path, part.Identity, _fileHashService.Databases.Count);
+            }
         }
     }
 

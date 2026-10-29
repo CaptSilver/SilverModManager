@@ -524,8 +524,6 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     public Task SettleAttested(GameInstallation installation, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, CancellationToken cancellationToken = default)
         => AttestedFileRows.Settle(_local.Connection, LocalBaselineCoordinator.GamePathOf(installation), read, _logger);
 
-    /// <inheritdoc />
-
     /// <inheritdoc/>
     public IEnumerable<GameFileRecord> GetGameFiles(LocatorIdsWithGameStore locatorIdsWithGameStore)
     {

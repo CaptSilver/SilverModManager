@@ -335,7 +335,12 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
                 Size = relation.Size,
                 ModifiedUtc = DateTimeOffset.UtcNow,
             };
-            // Same SHA-1 and size, an xxHash3 that sorts before the real one and that the store never archived.
+
+            // Rows sharing a SHA-1 come back in entity order. The real relation (the one whose bytes the store
+            // archived) is recreated after a relation with the same SHA-1 and size whose xxHash3 was never
+            // archived, so the unarchived row is the first candidate and the archived one the second. A rule that
+            // takes the first size-matching row restores from the missing key and fails.
+            tx.Delete(relation.Id, recursive: false);
             _ = new HashRelation.New(tx)
             {
                 XxHash3 = Hash.From(1),
@@ -346,8 +351,21 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
                 XxHash64 = Hash.From(2),
                 MinimalHash = Hash.From(3),
             };
+            _ = new HashRelation.New(tx)
+            {
+                XxHash3 = relation.XxHash3,
+                Sha1 = relation.Sha1,
+                Size = relation.Size,
+                Md5 = relation.Md5,
+                Crc32 = relation.Crc32,
+                XxHash64 = relation.XxHash64,
+                MinimalHash = relation.MinimalHash,
+            };
             await tx.Commit();
         }
+
+        HashRelation.FindBySha1(local.Db, relation.Sha1).Select(r => r.XxHash3).First()
+            .Should().Be(Hash.From(1), "the unarchived row is the first candidate for this SHA-1");
 
         await Synchronizer.ResetToOriginalGameState(GameInstallation, Refresh(loadout).LocatorIds.ToArray());
 
@@ -514,10 +532,27 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
 
     // The disk and the previous state name the vanilla file by xxHash3 of these bytes; the loadout names it by the
     // store's SHA-1. Only a recorded relation of the same SHA-1 and size may call the two the same file.
-    private async Task<SyncNode> VanillaNodeNamedOnDiskBy(MultiHash diskBytes, bool recordRelation)
+    private async Task<SyncNode> VanillaNodeNamedOnDiskBy(MultiHash diskBytes, bool recordRelation, bool anotherRelationPrecedesIt = false)
     {
         var loadout = await CreateLoadout();
         var path = new GamePath(LocationId.Game, Vanilla);
+        if (anotherRelationPrecedesIt)
+        {
+            // Same SHA-1 and size, recorded before the disk's own relation, so it is the first row of that SHA-1.
+            using var tx = Hashes.Local.Connection.BeginTransaction();
+            _ = new HashRelation.New(tx)
+            {
+                XxHash3 = Hash.From(1),
+                Sha1 = diskBytes.Sha1,
+                Size = diskBytes.Size,
+                Md5 = diskBytes.Md5,
+                Crc32 = diskBytes.Crc32,
+                XxHash64 = Hash.From(2),
+                MinimalHash = Hash.From(3),
+            };
+            await tx.Commit();
+        }
+
         if (recordRelation)
             await Hashes.RecordIndexedFiles(GameInstallation, [new IndexedFileHash(path, diskBytes.Size, DateTimeOffset.UtcNow, diskBytes.XxHash3, diskBytes)]);
 
@@ -530,12 +565,25 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         var tree = synchronizer.BuildSyncTree(disk, previous, Refresh(loadout));
         Synchronizer.ProcessSyncTree(tree);
         var node = tree[path];
-        node.Loadout.Identity.Kind.Should().Be(HashKind.Sha1, "the loadout names the file the way the store does");
         node.Disk.Identity.Kind.Should().Be(HashKind.XxHash3);
+        if (anotherRelationPrecedesIt)
+            node.Loadout.Identity.Should().Be(node.Disk.Identity, "the relation joins the two, so the tree names the file by one kind");
+        else
+            node.Loadout.Identity.Kind.Should().Be(HashKind.Sha1, "the loadout names the file the way the store does");
         return node;
     }
 
     private static async Task<MultiHash> HashOf(string text) => await MultiHasher.HashStream(new MemoryStream(Encoding.UTF8.GetBytes(text)));
+
+    [Fact]
+    public async Task AnXxHash3WhoseRelationIsTheSecondToShareTheSha1_IsTheStoresFile()
+    {
+        var vanilla = await HashOf(VanillaText);
+
+        var node = await VanillaNodeNamedOnDiskBy(vanilla, recordRelation: true, anotherRelationPrecedesIt: true);
+
+        node.Actions.Should().NotHaveFlag(Actions.WarnOfUnableToExtract, "a relation of this SHA-1 and size lists the xxHash3 on disk");
+    }
 
     [Fact]
     public async Task AnXxHash3WhoseRelationHasAnotherSha1_IsNotTheStoresFile()

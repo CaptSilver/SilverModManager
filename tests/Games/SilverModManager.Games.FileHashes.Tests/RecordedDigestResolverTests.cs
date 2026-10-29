@@ -165,6 +165,18 @@ public sealed class RecordedDigestResolverTests : IDisposable
     }
 
     [Fact]
+    public async Task Resolve_TwoRowsShareTheSha1_JoinsThroughTheOneWhoseXxHash3IsAsked()
+    {
+        var a = await Hashed("alpha");
+        var b = await Hashed("beta");
+        await AddRow(_local, a, xxHash3: b.XxHash3); // listed first, so it is the SHA-1's first row
+        await AddRow(_local, a);
+
+        _resolver.Resolve(FileIdentity.Sha1(a.Sha1), FileIdentity.XxHash3(a.XxHash3), a.Size).Should().Be(IdentityMatch.Same);
+        _resolver.Resolve(FileIdentity.XxHash3(a.XxHash3), FileIdentity.Sha1(a.Sha1), a.Size).Should().Be(IdentityMatch.Same);
+    }
+
+    [Fact]
     public async Task Resolve_TwoKindsNeitherXxHash3_ConvertsLeftToRight()
     {
         var a = await Hashed("alpha");
