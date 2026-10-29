@@ -62,15 +62,11 @@ internal sealed class RecordedDigestResolver(IFileHashesService fileHashes) : IF
         if (left.Kind == right.Kind) return left.MatchSameKind(right);
 
         // xxHash3 is the store key and the most widely recorded digest, so meet there when either side has it.
-        var target = right.Kind == HashKind.XxHash3 ? HashKind.XxHash3
-            : left.Kind == HashKind.XxHash3 ? HashKind.XxHash3
-            : right.Kind;
-
-        if (target == right.Kind)
+        if (left.Kind == HashKind.XxHash3)
         {
-            return source.TryConvert(left, size, target, out var convertedLeft) ? convertedLeft.MatchSameKind(right) : IdentityMatch.Unknown;
+            return source.TryConvert(right, size, HashKind.XxHash3, out var convertedRight) ? left.MatchSameKind(convertedRight) : IdentityMatch.Unknown;
         }
-        return source.TryConvert(right, size, target, out var convertedRight) ? left.MatchSameKind(convertedRight) : IdentityMatch.Unknown;
+        return source.TryConvert(left, size, right.Kind, out var convertedLeft) ? convertedLeft.MatchSameKind(right) : IdentityMatch.Unknown;
     }
 
     private IEnumerable<HashRelation.ReadOnly> MatchingRows(FileIdentity identity, Size size)
