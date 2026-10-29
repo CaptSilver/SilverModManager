@@ -57,4 +57,34 @@ public class RenderTests
         console.Write(rendered);
         console.Output.Should().Be("1 of 2");
     }
+
+    [Fact]
+    public async Task LongJsonLine_IsNotWrappedByTheRenderer()
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(new[]
+        {
+            new { id = 1, message = new string('a', 60) + " " + new string('b', 60) + " and some more words that go past eighty columns" },
+        });
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+        var renderer = new SpectreRenderer(console);
+
+        await renderer.RenderAsync(new Text { Template = json + "\n" });
+
+        console.Output.Should().Be(json + "\n");
+        System.Text.Json.JsonDocument.Parse(console.Output).RootElement.GetArrayLength().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task LongJsonLine_IsNotWrappedByTheTextRenderDefinition()
+    {
+        var json = "{\"message\": \"" + string.Join(' ', Enumerable.Repeat("word", 40)) + "\"}\n";
+        var rendered = await new RenderDefinitions.TextRenderDefinition().ToSpectreAsync(new Text { Template = json }, _ => throw new InvalidOperationException());
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+
+        console.Write(rendered);
+
+        console.Output.Should().Be(json);
+    }
 }

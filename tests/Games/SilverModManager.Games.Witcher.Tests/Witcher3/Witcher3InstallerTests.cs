@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -207,6 +207,15 @@ public class Witcher3InstallerTests(ITestOutputHelper outputHelper) : AWitcher3A
     public void DocumentationUnderMods_IsNotPlaced()
     {
         PlanTargets("Example Mod.zip", "Mods/modA/content/a.ws", "Mods/modA/readme.txt", "Mods/modA/docs/info.md")
+            .Should().Equal("{Game}/Mods/modA/content/a.ws");
+    }
+
+    [Fact]
+    public void LocalisationCsvBesideContent_IsNotPlaced()
+    {
+        PlanTargets("Example Mod.zip", "modA/content/a.ws", "en.csv")
+            .Should().Equal("{Game}/Mods/modA/content/a.ws");
+        PlanTargets("Example Mod.zip", "Mods/modA/content/a.ws", "Mods/modA/strings/en.csv")
             .Should().Equal("{Game}/Mods/modA/content/a.ws");
     }
 

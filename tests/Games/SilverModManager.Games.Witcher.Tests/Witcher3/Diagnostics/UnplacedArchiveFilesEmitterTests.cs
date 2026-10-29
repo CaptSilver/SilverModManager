@@ -74,6 +74,15 @@ public class UnplacedArchiveFilesEmitterTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task ALocalisationCsvBesideTheContent_GetsNoCard()
+    {
+        var loadout = await CreateLoadout();
+        await Install(loadout, "Standardised Naming.zip", null, "modNaming/content/scripts/d.ws", "en.csv");
+
+        await ShouldHaveNoDiagnostics(loadout);
+    }
+
+    [Fact]
     public async Task TheSkippedScriptMergerArchive_GetsNoUnplacedCards()
     {
         var loadout = await CreateLoadout();

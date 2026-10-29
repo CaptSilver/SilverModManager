@@ -18,8 +18,8 @@ namespace SilverModManager.Games.Witcher.Witcher3.Installers;
 public sealed class Witcher3ModInstaller(IServiceProvider provider)
     : ALibraryArchiveInstaller(provider, provider.GetRequiredService<ILogger<Witcher3ModInstaller>>())
 {
-    /// <summary>Files that ship with a mod for the reader and have no place in the game folder.</summary>
-    public static readonly Extension[] DocumentationExtensions = [new(".txt"), new(".md"), new(".pdf"), new(".png"), new(".jpg"), new(".jpeg"), new(".url"), new(".nfo")];
+    /// <summary>Files that ship with a mod for the reader and have no place in the game folder. A <c>.csv</c> is the source a modder compiles into <c>.w3strings</c>.</summary>
+    public static readonly Extension[] DocumentationExtensions = [new(".txt"), new(".md"), new(".pdf"), new(".png"), new(".jpg"), new(".jpeg"), new(".url"), new(".nfo"), new(".csv")];
 
     /// <summary>The Mods folder name for an archive whose own layout names none: <c>mod</c> plus the file name without extension, spaces and dots.</summary>
     public static string ModNameFromArchive(string fileName) => ModFolderName(Path.GetFileNameWithoutExtension(fileName));

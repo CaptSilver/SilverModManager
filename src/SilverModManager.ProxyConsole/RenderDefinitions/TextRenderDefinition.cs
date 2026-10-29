@@ -13,7 +13,7 @@ public class TextRenderDefinition() : ARenderableDefinition<Text>("718E119C-FABF
     protected override async ValueTask<Rendering.IRenderable> ToSpectreAsync(Text renderable, Func<IRenderable,
         ValueTask<Rendering.IRenderable>> subConvert)
     {
-        return new Console.Text(renderable.Arguments.Length == 0
+        return new UnwrappedText(renderable.Arguments.Length == 0
             ? renderable.Template
             : string.Format(renderable.Template, renderable.Arguments));
     }

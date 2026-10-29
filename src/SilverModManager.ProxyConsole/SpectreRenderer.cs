@@ -42,11 +42,11 @@ public class SpectreRenderer : IRenderer
             case SilverModManager.Sdk.ProxyConsole.Text text:
                 if (text.Arguments.Length == 0)
                 {
-                    return new SpectreText(text.Template);
+                    return new UnwrappedText(text.Template);
                 }
                 else
                 {
-                    return new SpectreText(string.Format(text.Template, text.Arguments));
+                    return new UnwrappedText(string.Format(text.Template, text.Arguments));
                 }
             case SilverModManager.Sdk.ProxyConsole.Table table:
                 return await ToSpectreAsync(table);
