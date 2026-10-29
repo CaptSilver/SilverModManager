@@ -203,6 +203,15 @@ public class FileIdentityTests
     }
 
     [Fact]
+    public void AnExtractorRefusesTheRightKindAtTheWrongLength()
+    {
+        FileIdentity.Of(HashKind.Sha1, new byte[19]).TrySha1(out _).Should().BeFalse();
+        FileIdentity.Of(HashKind.Md5, new byte[15]).TryMd5(out _).Should().BeFalse();
+        FileIdentity.Of(HashKind.Crc32, new byte[5]).TryCrc32(out _).Should().BeFalse();
+        FileIdentity.Of(HashKind.XxHash64, new byte[7]).TryXxHash64(out _).Should().BeFalse();
+    }
+
+    [Fact]
     public void Sha256Identity_HasThirtyTwoBytesAndItsOwnName()
     {
         var identity = FileIdentity.Sha256(Sha256Value.From(new byte[32]));
@@ -220,7 +229,16 @@ public class FileIdentityTests
     public void MultiHashIdentity_MatchesTheFactoryForThatKind(HashKind kind)
     {
         var hashes = MultiHasher.HashStream(new MemoryStream("multi"u8.ToArray())).Result;
-        hashes.Identity(kind).Should().Be(FileIdentity.Of(hashes, kind));
+        var expected = kind switch
+        {
+            HashKind.XxHash3 => FileIdentity.XxHash3(hashes.XxHash3),
+            HashKind.Sha1 => FileIdentity.Sha1(hashes.Sha1),
+            HashKind.Md5 => FileIdentity.Md5(hashes.Md5),
+            HashKind.XxHash64 => FileIdentity.XxHash64(hashes.XxHash64),
+            HashKind.Crc32 => FileIdentity.Crc32(hashes.Crc32),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
+        hashes.Identity(kind).Should().Be(expected);
         hashes.Identity(kind).Kind.Should().Be(kind);
     }
 }
