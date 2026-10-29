@@ -37,14 +37,12 @@ public sealed class Witcher3MergeGame(IGame game) : AMergeGame
            && split.Rel.StartsWith(ScriptsFolder, StringComparison.OrdinalIgnoreCase)
            && split.Rel.EndsWith(".ws", StringComparison.OrdinalIgnoreCase);
 
-    // Each mod folder is the game's own namespace: its bundles, caches, string tables and metadata sit beside every
-    // other folder's and override nothing. A script path is the one thing the game resolves across folders (it
-    // compiles one copy), so it is merged. A loose xml is kept Contested (reported, not merged) until we know the game
-    // never loads one from a mod's content folder.
+    // Each mod folder is the game's own namespace: its bundles, caches, string tables, metadata and any loose file
+    // sit beside every other folder's and override nothing (the game loads bundles, caches, w3strings and scripts
+    // from a mod folder, never a loose xml). A script path is the one thing the game resolves across folders (it
+    // compiles one copy), so only that is contested and merged.
     public override SharedPath Sharing(GamePath path)
-        => Merges(path) || (Split(path) is { } split && split.Rel.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
-            ? SharedPath.Contested
-            : SharedPath.Independent;
+        => Merges(path) ? SharedPath.Contested : SharedPath.Independent;
 
     // A mod's rel starts with content/, the game's copy sits below content/content0/ instead. Always a path: the engine
     // asks the vanilla trust about it and notes a copy that is missing or was modified. Only a rel outside content/ has

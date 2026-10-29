@@ -314,6 +314,7 @@ public class Witcher3MergeThroughLoadOrderTests(ITestOutputHelper helper)
     [InlineData("content/metadata.store")]
     [InlineData("content/en.w3strings")]
     [InlineData("content/texture.cache")]
+    [InlineData("content/x.xml")]
     public async Task PerFolderFiles_AreNoConflict(string rel)
     {
         var loadout = await CreateLoadout();
@@ -345,23 +346,7 @@ public class Witcher3MergeThroughLoadOrderTests(ITestOutputHelper helper)
         entry.Path.Should().EndWith(Player);
         entry.Outcome.Should().Be(MergeReportOutcome.Merged);
         Engine.NotContested(loadout).Should().BeEmpty();
-    }
-
-    [Theory]
-    [InlineData("content/x.xml")]
-    public async Task LooseXml_IsNotMergeable(string rel)
-    {
-        var loadout = await CreateLoadout();
-        await Mod(loadout, "modA", 1, Mine("modA", rel, "<a/>"));
-        await Mod(loadout, "modB", 2, Mine("modB", rel, "<b/>"));
-        loadout = Fresh(loadout);
-
-        var entry = OnlyEntry(loadout);
-
-        entry.Outcome.Should().Be(MergeReportOutcome.NotMergeable);
-        Engine.Report(loadout, MergeSourceMode.Report).Refusal.Should().BeNull();
-        var card = (await CardDetails(loadout)).Should().ContainSingle().Which;
-        card.Should().Contain("Load Order page");
+        (await CardDetails(loadout)).Should().ContainSingle().Which.Should().Contain("player.ws");
     }
 
     [Fact]
