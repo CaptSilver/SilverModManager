@@ -18,7 +18,9 @@ public readonly partial record struct VortexInstallId(string Name, uint NexusMod
     [GeneratedRegex(@"^(?<name>.+?)-(?<modId>\d+)-(?:v?\d[0-9A-Za-z-]*?-)??(?<time>\d{9,})$", RegexOptions.CultureInvariant)]
     private static partial Regex DashedPattern();
 
-    [GeneratedRegex(@"^(?<name>.+?)-(?<modId>\d+)-(?:[0-9A-Za-z][0-9A-Za-z-]*?-)??(?<time>\d{9,})$", RegexOptions.CultureInvariant)]
+    // The fallback only sees ids the primary pattern rejected, so its version starts with a letter. The name is greedy: the mod id is the
+    // last number that is followed by a letter-first version, so "Witcher-3-HD-1234-beta-..." is mod 1234 and not mod 3.
+    [GeneratedRegex(@"^(?<name>.+)-(?<modId>\d+)-(?:[A-Za-z][0-9A-Za-z-]*?-)??(?<time>\d{9,})$", RegexOptions.CultureInvariant)]
     private static partial Regex DashedAnyVersionPattern();
 
     /// <summary>Parses either form. Anything else is not an install id; there is no fallback to "the first number between dashes".</summary>

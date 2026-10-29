@@ -26,6 +26,7 @@ public class VortexInstallIdTests
     [InlineData("Mod-123-beta-1700000000", "Mod", 123u)]
     [InlineData("Mod-123-Final-1700000000", "Mod", 123u)]
     [InlineData("Mod-123-v2-beta-1700000000", "Mod", 123u)]
+    [InlineData("Witcher-3-HD-1234-beta-1700000000", "Witcher-3-HD", 1234u)]
     public void TryParse_DashedArchiveName(string id, string name, uint modId)
     {
         VortexInstallId.TryParse(id, out var parsed).Should().BeTrue();
