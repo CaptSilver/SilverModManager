@@ -29,6 +29,8 @@ public sealed class VortexModJoiner(IReadOnlyList<Mod> mods)
 
         if (!VortexInstallId.TryParse(installId, out var parsed)) return (null, $"no mod in the collection matches '{installId}'");
 
+        parsed = ResolveDashedAmbiguity(installId, parsed);
+
         var candidates = Enumerable.Range(0, mods.Count)
             .Where(i => mods[i].Source.Type == ModSourceType.NexusMods && mods[i].Source.ModId.Value == parsed.NexusModId)
             .ToArray();
@@ -48,6 +50,31 @@ public sealed class VortexModJoiner(IReadOnlyList<Mod> mods)
         }
 
         return (null, $"several mods in the collection have Nexus mod id {parsed.NexusModId} and none is the one '{installId}' names");
+    }
+
+    /// <summary>
+    /// An archive-form id can read several ways ("Mod-123-beta-2-rc-..." is mod 123 or mod 2). The reading whose mod id the collection
+    /// lists wins; when several are listed, the one whose version is the rest of the id; else the parser's first choice stands.
+    /// </summary>
+    private VortexInstallId ResolveDashedAmbiguity(string installId, VortexInstallId parsed)
+    {
+        if (parsed.Version is not null) return parsed;
+
+        var splits = VortexInstallId.DashedCandidates(installId);
+        if (splits.Count < 2) return parsed;
+
+        var listed = splits.Where(s => mods.Any(m => m.Source.Type == ModSourceType.NexusMods && m.Source.ModId.Value == s.NexusModId)).ToArray();
+        if (listed.Length == 0) return parsed;
+
+        var pick = listed[0];
+        if (listed.Length > 1)
+        {
+            var versioned = listed.Where(s => mods.Any(m => m.Source.Type == ModSourceType.NexusMods && m.Source.ModId.Value == s.NexusModId
+                && Same(m.Version.Replace('.', '-'), s.DashedVersion))).ToArray();
+            if (versioned.Length > 0) pick = versioned[0];
+        }
+
+        return new VortexInstallId(pick.Name, pick.NexusModId, null);
     }
 
     private static bool Same(string? left, string right) => left is not null && left.Equals(right, StringComparison.OrdinalIgnoreCase);
