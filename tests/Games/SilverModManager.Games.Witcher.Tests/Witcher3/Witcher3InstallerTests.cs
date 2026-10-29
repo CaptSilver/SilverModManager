@@ -426,6 +426,43 @@ public class Witcher3InstallerTests(ITestOutputHelper outputHelper) : AWitcher3A
             .Should().Equal("{Game}/Mods/modWrap/content/a.ws", "{Game}/bin/config/r4game/user_config_matrix/pc/x.xml");
     }
 
+    [Theory]
+    [InlineData("mods")]
+    [InlineData("MODS")]
+    [InlineData("Mods")]
+    public void MenuModWithAMixedCaseModsFolder_LandsInTheGamesSpellingOfMods(string folder)
+    {
+        PlanTargets("Example Mod.zip", $"{folder}/modX/content/a.ws", "bin/config/r4game/user_config_matrix/pc/x.xml")
+            .Should().Equal("{Game}/Mods/modX/content/a.ws", "{Game}/bin/config/r4game/user_config_matrix/pc/x.xml");
+    }
+
+    [Theory]
+    [InlineData("mods")]
+    [InlineData("MODS")]
+    public void MenuModWithLooseFilesInAMixedCaseModsFolder_LandsInTheGamesSpellingOfMods(string folder)
+    {
+        PlanTargets("Example Mod.zip", $"{folder}/modX/content/a.ws", $"{folder}/modY/modY.xml", "bin/config/r4game/user_config_matrix/pc/x.xml")
+            .Should().BeEquivalentTo("{Game}/Mods/modX/content/a.ws", "{Game}/Mods/modY/modY.xml", "{Game}/bin/config/r4game/user_config_matrix/pc/x.xml");
+    }
+
+    [Theory]
+    [InlineData("DLC")]
+    [InlineData("Dlc")]
+    public void MenuModWithAMixedCaseDlcFolder_LandsInTheGamesSpellingOfDlc(string folder)
+    {
+        PlanTargets("Example Mod.zip", $"{folder}/dlcX/content/a.bundle", "bin/config/r4game/user_config_matrix/pc/x.xml")
+            .Should().BeEquivalentTo("{Game}/dlc/dlcX/content/a.bundle", "{Game}/bin/config/r4game/user_config_matrix/pc/x.xml");
+    }
+
+    [Theory]
+    [InlineData("Bin")]
+    [InlineData("BIN")]
+    public void MenuModWithAMixedCaseBinFolder_LandsInTheGamesSpellingOfBin(string folder)
+    {
+        PlanTargets("Example Mod.zip", "modX/content/a.ws", $"{folder}/config/r4game/user_config_matrix/pc/x.xml", $"{folder}/x64/d.dll")
+            .Should().BeEquivalentTo("{Game}/Mods/modX/content/a.ws", "{Game}/bin/config/r4game/user_config_matrix/pc/x.xml", "{Game}/bin/x64/d.dll");
+    }
+
     [Fact]
     public void MenuModWithAModFolderBesideScripts_SendsScriptsUnderContent()
     {
@@ -468,6 +505,9 @@ public class Witcher3InstallerTests(ITestOutputHelper outputHelper) : AWitcher3A
         ["dlcA/content/x.bundle", "modB/content/y.ws", "modB/bin/x64/d.dll", "dlcA/bin/x64/d.dll"],
         ["modOne/content/a.ws", "modTwo/content/b.ws"],
         ["Option A/content/a.bundle", "Option B/content/b.bundle"],
+        ["mods/modX/content/a.ws", "bin/config/r4game/user_config_matrix/pc/x.xml"],
+        ["MODS/modX/content/a.ws", "DLC/dlcY/content/b.bundle", "Bin/x64/d.dll"],
+        ["Wrap/mods/modX/content/a.ws", "Wrap/Dlc/dlcY/content/b.bundle", "Wrap/BIN/x64/d.dll"],
     ];
 
     [Fact]
@@ -479,9 +519,16 @@ public class Witcher3InstallerTests(ITestOutputHelper outputHelper) : AWitcher3A
         {
             var plan = Witcher3InstallPlan.Plan(paths, archiveName);
             foreach (var placement in plan?.Placements ?? [])
+            {
                 IsLoadedByTheGame(placement.Target.ToString()).Should().BeTrue($"{name}: {placement.Source} went to {placement.Target}");
+                var first = placement.Target.Path.ToString().Split('/')[0];
+                if (CanonicalFolders.FirstOrDefault(c => c.Equals(first, StringComparison.OrdinalIgnoreCase)) is { } canonical)
+                    first.Should().Be(canonical, $"{name}: {placement.Source} went to {placement.Target}");
+            }
         }
     }
+
+    private static readonly string[] CanonicalFolders = ["Mods", "dlc", "bin"];
 
     private static bool IsLoadedByTheGame(string target)
     {
