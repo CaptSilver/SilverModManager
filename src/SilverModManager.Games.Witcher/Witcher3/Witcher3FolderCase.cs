@@ -96,7 +96,7 @@ internal static class Witcher3FolderCase
     /// </summary>
     public static void MergeFoldersOnDisk(AbsolutePath gameFolder, ILogger logger)
     {
-        if (OperatingSystem.IsWindows() || !gameFolder.DirectoryExists()) return;
+        if (!gameFolder.DirectoryExists()) return;
 
         foreach (var folder in TopFolders)
         {

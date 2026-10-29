@@ -15,6 +15,8 @@ public partial class HostOsCheckGuardTests
     // survive unrelated edits but a new check in an allowlisted file still fails.
     private static readonly (string File, string Line, string Reason)[] Allowed =
     [
+        // The game's build platform: a Windows build runs through Wine, which merges folders that differ in case.
+        ("src/SilverModManager.Abstractions.Loadouts.Synchronizers/CaseVariantFolders.cs", "|| installation.LocatorResult.Platform == OSPlatform.Windows;", "game target platform"),
         // GOG's installer list is data from their API (one entry per OS), not a host check.
         ("src/SilverModManager.Abstractions.GOG/IClient.cs", "ValueTask<(OSPlatform OS, Uri DownloadLink)[]> GetInstallers(ProductId productId, CancellationToken cancellationToken);", "GOG installer OS field"),
         ("src/SilverModManager.Abstractions.GOG/IClient.cs", "ValueTask DownloadInstallerArchive((OSPlatform OS, Uri DownloadLink) installerInfo, Stream output, CancellationToken cancellationToken);", "GOG installer OS field"),

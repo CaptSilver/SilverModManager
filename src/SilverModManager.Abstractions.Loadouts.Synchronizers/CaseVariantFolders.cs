@@ -10,12 +10,12 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 public static class CaseVariantFolders
 {
     /// <summary>
-    /// Whether the game is a Windows build run through Wine or Proton. Native games and Windows itself keep the two
-    /// folders apart or merge them themselves, so only Wine needs this reported.
+    /// Whether the game is a Windows build, which on Linux always runs through Wine or Proton. Wine sees only one of
+    /// two folders that differ in case; a native Linux game keeps them apart, so only Wine games need this reported.
     /// </summary>
     public static bool RunsUnderWine(GameInstallation installation)
         => installation.LocatorResult.WinePrefixPath is not null
-           || (installation.LocatorResult.Platform == OSPlatform.Windows && !OperatingSystem.IsWindows());
+           || installation.LocatorResult.Platform == OSPlatform.Windows;
 
     /// <summary>
     /// Every pair of sibling folders, among the folders the <paramref name="files"/> sit in, that differ only in case.

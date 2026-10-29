@@ -76,7 +76,10 @@ public partial class DiagnosticListView : ReactiveUserControl<IDiagnosticListVie
                     .DisposeWith(disposable);
 
                 // Every refresh replaces the entries. The same diagnostics (id, title and summary: an id only names the kind of diagnostic) keep the scroll offset; another set (a tab switch, a fix) starts at the top.
-                this.WhenAnyValue(view => view.ViewModel!.DiagnosticEntries)
+                this.WhenAnyValue(view => view.ViewModel)
+                    .WhereNotNull()
+                    .Select(viewModel => viewModel.WhenAnyValue(vm => vm.DiagnosticEntries))
+                    .Switch()
                     .Subscribe(ShowEntries)
                     .DisposeWith(disposable);
                 

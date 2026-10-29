@@ -112,11 +112,11 @@ public class DiagnosticListViewModelTests(IServiceProvider provider) : AUiTest(p
         var before = vm.DiagnosticEntries;
 
         source.OnNext(Mixed());
-        await Task.Delay(500);
 
+        // The view keeps the scroll offset itself, so the rows are always rebuilt.
+        await EventuallyOnUi(() => vm.DiagnosticEntries.Should().NotBeSameAs(before));
         await OnUi(() =>
         {
-            vm.DiagnosticEntries.Should().NotBeSameAs(before, "the view keeps the scroll offset itself, so the rows are always rebuilt");
             vm.DiagnosticEntries.Select(e => e.Title).Should().Equal(before.Select(e => e.Title));
             return Task.CompletedTask;
         });
