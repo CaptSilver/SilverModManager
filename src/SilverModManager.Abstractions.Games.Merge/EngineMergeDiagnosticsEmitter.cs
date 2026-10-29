@@ -176,7 +176,16 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Eng
         if (store == GameStore.Steam) return "Verify the game's files in Steam";
         if (store == GameStore.Unknown || store == GameStore.ManuallyAdded || store == GameStore.Lutris)
             return "Verify or repair the game's files in the store or launcher the game came from";
-        return $"Verify or repair the game's files in {store.Value}";
+        return $"Verify or repair the game's files {StorePhrase(store)}";
+    }
+
+    private static string StorePhrase(GameStore store)
+    {
+        if (store == GameStore.GOG) return "in GOG Galaxy";
+        if (store == GameStore.EGS) return "in the Epic Games Store";
+        if (store == GameStore.Amazon) return "in the Amazon Games app";
+        if (store.Value == "Xbox") return "in the Xbox app";
+        return $"in {store.Value}";
     }
 
     // "Beta's changes at lines 12–13 and line 40 of the merged file and Gamma's changes at line 3 of the merged file".

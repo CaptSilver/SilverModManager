@@ -228,9 +228,10 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
     }
 
     [Theory]
-    [InlineData("GOG", "GOG")]
-    [InlineData("Epic Games Store", "Epic Games Store")]
-    [InlineData("Xbox", "Xbox")]
+    [InlineData("GOG", "in GOG Galaxy")]
+    [InlineData("Epic Games Store", "in the Epic Games Store")]
+    [InlineData("Amazon", "in the Amazon Games app")]
+    [InlineData("Xbox", "in the Xbox app")]
     public async Task AnOriginalChangedSinceTheBaseline_OnAnotherStore_NamesThatStoreAndNeverSteam(string store, string named)
     {
         foreach (var reason in new[] { VanillaTrustReasons.DiffersFromBaseline, VanillaTrustReasons.ListedAsModified, VanillaTrustReasons.ListedAsSizeDiffers, VanillaTrustReasons.DiffersFromStoreList })
@@ -240,7 +241,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
             var card = (await Run([Merged()], [output], store: GameStore.From(store))).Should().ContainSingle().Which;
 
             var text = Summary(card) + " " + Details(card);
-            text.Should().Contain($"the game's files in {named}", $"the advice for '{reason}' names the installation's store").And.NotContain("Steam");
+            text.Should().Contain($"the game's files {named}", $"the advice for '{reason}' names the installation's store").And.NotContain("Steam");
         }
     }
 
