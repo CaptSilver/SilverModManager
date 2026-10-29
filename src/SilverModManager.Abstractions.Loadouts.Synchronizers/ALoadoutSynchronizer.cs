@@ -938,7 +938,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
     }
 
-    private async ValueTask<Loadout.ReadOnly> ReprocessOverrides(Loadout.ReadOnly loadout)
+    /// <param name="recordAsApplied">The edit follows an apply, so the record of the last applied loadout is moved
+    /// onto it. The rows dropped were never deployed, so the applied state is the same without them.</param>
+    private async ValueTask<Loadout.ReadOnly> ReprocessOverrides(Loadout.ReadOnly loadout, bool recordAsApplied)
     {
         // Make a lookup set of the new files based on current locator IDs
         var versionFiles = _fileHashService
