@@ -595,11 +595,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <inheritdoc />
     public void ProcessSyncTree(Dictionary<GamePath, SyncNode> tree)
     {
+        var resolver = _identityResolver.Scoped();
         foreach (var path in tree.Keys)
         {
             // TODO: sucks that we have to do a lookup here, but we have no way to get the ref to the value otherwise
             ref var item = ref CollectionsMarshal.GetValueRefOrNullRef(tree, path);
-            MapActions(path, ref item);
+            MapActions(path, ref item, resolver);
         }
 
         AdjustActions(tree);
@@ -609,24 +610,25 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// Two kinds with no join are unknown, unless the recorded digests of one side's bytes name other bytes than the
     /// other side: that is a known difference, and reading the file would only repeat it.
     /// </summary>
-    private IdentityMatch MatchParts(bool haveLeft, SyncNodePart left, bool haveRight, SyncNodePart right)
+    private static IdentityMatch MatchParts(IFileIdentityResolver resolver, bool haveLeft, SyncNodePart left, bool haveRight, SyncNodePart right)
     {
         if (!haveLeft || !haveRight) return IdentityMatch.Different;
 
         var match = left.Identity.MatchSameKind(right.Identity);
-        return match == IdentityMatch.Unknown && _identityResolver.Resolve(left.Identity, right.Identity, left.Size) == IdentityMatch.Different
+        return match == IdentityMatch.Unknown && resolver.Resolve(left.Identity, right.Identity, left.Size) == IdentityMatch.Different
             ? IdentityMatch.Different
             : match;
     }
 
     /// <summary>
-    /// Signs one node and gives it the actions that signature maps to.
+    /// Signs one node and gives it the actions that signature maps to. The resolver is scoped to the pass, so a node's
+    /// three pairs put each question to the recorded digests once.
     /// </summary>
-    private void MapActions(GamePath path, ref SyncNode item)
+    private void MapActions(GamePath path, ref SyncNode item, IFileIdentityResolver resolver)
     {
-        var diskPrev = MatchParts(item.HaveDisk, item.Disk, item.HavePrevious, item.Previous);
-        var prevLoadout = MatchParts(item.HavePrevious, item.Previous, item.HaveLoadout, item.Loadout);
-        var diskLoadout = MatchParts(item.HaveDisk, item.Disk, item.HaveLoadout, item.Loadout);
+        var diskPrev = MatchParts(resolver, item.HaveDisk, item.Disk, item.HavePrevious, item.Previous);
+        var prevLoadout = MatchParts(resolver, item.HavePrevious, item.Previous, item.HaveLoadout, item.Loadout);
+        var diskLoadout = MatchParts(resolver, item.HaveDisk, item.Disk, item.HaveLoadout, item.Loadout);
         item.IdentityUnresolved = diskPrev == IdentityMatch.Unknown || prevLoadout == IdentityMatch.Unknown || diskLoadout == IdentityMatch.Unknown;
 
         var signature = SignatureBuilder.Build(

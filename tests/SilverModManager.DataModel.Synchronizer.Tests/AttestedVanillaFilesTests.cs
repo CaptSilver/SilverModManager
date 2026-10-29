@@ -67,8 +67,41 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         // The real service, behind a switch that makes the settle step fail.
         var real = services.Last(d => d.ServiceType == typeof(IFileHashesService));
         services.Remove(real);
-        return services.AddSingleton<IFileHashesService>(sp =>
+        services.AddSingleton<IFileHashesService>(sp =>
             new SettleFailingHashes((IFileHashesService)ActivatorUtilities.CreateInstance(sp, real.ImplementationType ?? throw new InvalidOperationException()), _settle));
+
+        // The real resolver, counting the questions put to it outside a scope.
+        var resolver = services.Last(d => d.ServiceType == typeof(IFileIdentityResolver));
+        services.Remove(resolver);
+        return services.AddSingleton<IFileIdentityResolver>(sp =>
+            new UnscopedQuestionCounter((IFileIdentityResolver)ActivatorUtilities.CreateInstance(sp, resolver.ImplementationType ?? throw new InvalidOperationException()), _unscopedQuestions));
+    }
+
+    private readonly UnscopedQuestions _unscopedQuestions = new();
+
+    private sealed class UnscopedQuestions
+    {
+        public int Count { get; set; }
+    }
+
+    // A question asked of a scoped resolver goes to its memo and is not counted; one asked here has no memo to answer it.
+    private sealed class UnscopedQuestionCounter(IFileIdentityResolver inner, UnscopedQuestions questions) : IFileIdentityResolver
+    {
+        public bool TryConvert(FileIdentity identity, Size size, HashKind kind, out FileIdentity converted)
+        {
+            questions.Count++;
+            return inner.TryConvert(identity, size, kind, out converted);
+        }
+
+        public IdentityMatch Resolve(FileIdentity left, FileIdentity right, Size size)
+        {
+            questions.Count++;
+            return inner.Resolve(left, right, size);
+        }
+
+        public IEnumerable<FileIdentity> StoreKeyCandidates(FileIdentity identity, Size size) => inner.StoreKeyCandidates(identity, size);
+
+        public IFileIdentityResolver Scoped() => inner.Scoped();
     }
 
     private sealed class SettleSwitch
@@ -716,6 +749,20 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         FullHashes.Reset();
         await Synchronizer.Synchronize(Refresh(loadout));
         FullyHashed.Should().NotContain(Vanilla);
+    }
+
+    // ProcessSyncTree runs on every refresh. A node whose names no relation joins is asked about again for each of its
+    // three pairs, so the answers have to come from one memo and not from the recorded digests each time.
+    [Fact]
+    public async Task ProcessingAnUnresolvedNode_AsksTheRecordedDigestsThroughOneScope()
+    {
+        var (_, tree) = await VanillaTreeNamedOnDiskBy(await HashOf(VanillaText), recordRelation: false);
+        tree[new GamePath(LocationId.Game, Vanilla)].IdentityUnresolved.Should().BeTrue();
+        _unscopedQuestions.Count = 0;
+
+        Synchronizer.ProcessSyncTree(tree);
+
+        _unscopedQuestions.Count.Should().Be(0, "every pair of the node is put to the same memo");
     }
 
     // The emitter that reports unusable game files, handed the tree DiagnosticManager would give it.

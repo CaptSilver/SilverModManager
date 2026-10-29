@@ -69,10 +69,11 @@ public partial class ALoadoutSynchronizer
 
         // The signatures were built for the old identities, so the actions are worked out again. An adopt answer
         // was applied to the old actions and has to be applied to the new ones too.
+        var resolver = _identityResolver.Scoped();
         foreach (var path in resolved.Keys.ToArray())
         {
             var node = resolved[path];
-            MapActions(path, ref node);
+            MapActions(path, ref node, resolver);
             resolved[path] = node;
         }
 
@@ -124,10 +125,11 @@ public partial class ALoadoutSynchronizer
             resolved[read.Path] = node;
         }
 
+        var resolver = _identityResolver.Scoped();
         foreach (var path in resolved.Keys.ToArray())
         {
             var node = resolved[path];
-            MapActions(path, ref node);
+            MapActions(path, ref node, resolver);
             resolved[path] = node;
         }
 
