@@ -29,10 +29,13 @@ public sealed class ReapplyCollectionOrderActionHandler(IServiceProvider service
         if (arguments.Length != 1 || !ulong.TryParse(arguments[0], out var id))
             throw new ArgumentException("The action names no collection to apply the load order of", nameof(arguments));
 
-        var group = NexusCollectionLoadoutGroup.Load(serviceProvider.GetRequiredService<IConnection>().Db, EntityId.From(id));
-        if (!group.IsValid()) throw new CollectionOrderReapplyRefusedException("The collection is no longer installed in this loadout.");
-
-        await Task.Run(() => CollectionOrderReapply.Reapply(serviceProvider, group));
+        // The command runs this method up to its first await on the UI thread, so the database read goes inside the task too.
+        await Task.Run(() =>
+        {
+            var group = NexusCollectionLoadoutGroup.Load(serviceProvider.GetRequiredService<IConnection>().Db, EntityId.From(id));
+            if (!group.IsValid()) throw new CollectionOrderReapplyRefusedException("The collection is no longer installed in this loadout.");
+            return CollectionOrderReapply.Reapply(serviceProvider, group);
+        });
         await diagnosticManager.RefreshAsync(loadoutId);
     }
 }

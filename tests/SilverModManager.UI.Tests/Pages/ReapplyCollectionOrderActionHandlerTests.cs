@@ -40,4 +40,28 @@ public class ReapplyCollectionOrderActionHandlerTests(IServiceProvider provider)
 
         await act.Should().ThrowAsync<ArgumentException>();
     }
+
+    private sealed class ThreadRecordingProvider(IServiceProvider inner) : IServiceProvider
+    {
+        public List<int> Threads { get; } = [];
+
+        public object? GetService(Type serviceType)
+        {
+            lock (Threads) Threads.Add(Environment.CurrentManagedThreadId);
+            return inner.GetService(serviceType);
+        }
+    }
+
+    [Fact]
+    public async Task Test_TheDatabaseIsReadOffTheCallingThread()
+    {
+        var recording = new ThreadRecordingProvider(Provider);
+        var handler = new ReapplyCollectionOrderActionHandler(recording, Substitute.For<IDiagnosticManager>());
+        var caller = Environment.CurrentManagedThreadId;
+
+        var act = () => handler.ExecuteAsync(Loadout, DiagnosticActions.ReapplyCollectionOrder(0xDEAD).Arguments);
+        await act.Should().ThrowAsync<CollectionOrderReapplyRefusedException>();
+
+        recording.Threads.Should().NotBeEmpty().And.NotContain(caller, "a command runs its first part on the UI thread, so the read has to move off it");
+    }
 }
