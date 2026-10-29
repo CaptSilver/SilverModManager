@@ -41,6 +41,9 @@ using DiskState = Entities<DiskStateEntry.ReadOnly>;
 /// </summary>
 public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 {
+    /// <inheritdoc />
+    public virtual IReadOnlyList<string> FoldersMergedOnApply => [];
+
     private readonly ScopedAsyncLock _lock = new();
     private readonly IFileStore _fileStore;
 

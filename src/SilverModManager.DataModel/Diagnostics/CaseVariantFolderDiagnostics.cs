@@ -21,11 +21,12 @@ public partial class CaseVariantFolderDiagnostics
 
 {Pairs}
 
-For files the app deploys, there is nothing to do for The Witcher 3: the next Apply merges these folders. For any other game, move the files of one folder of the pair into the other.
+{Advice}
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("Game")
             .AddValue<string>("Pairs")
+            .AddValue<string>("Advice")
         )
         .Finish();
 }

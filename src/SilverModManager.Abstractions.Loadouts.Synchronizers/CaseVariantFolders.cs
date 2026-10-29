@@ -23,16 +23,24 @@ public static class CaseVariantFolders
     /// spelling, so <c>mods/x</c> and <c>Mods/x</c> are not a pair: the pair is <c>mods</c> and <c>Mods</c>.
     /// </summary>
     public static IReadOnlyList<(GamePath First, GamePath Second)> FindAll(IEnumerable<GamePath> files)
+        => FindAll(files, []);
+
+    /// <summary>
+    /// <see cref="FindAll(IEnumerable{GamePath})"/>, plus the <paramref name="folders"/> given themselves. Folders are
+    /// needed because paths compare without regard to case: two files with the same relative name in two spellings
+    /// of a folder are one path to the loadout and the sync tree, so only the folders on disk show both.
+    /// </summary>
+    public static IReadOnlyList<(GamePath First, GamePath Second)> FindAll(IEnumerable<GamePath> files, IEnumerable<GamePath> folders)
     {
         // Keyed by the parent as written and the name with case ignored; the value holds each spelling of the name.
         var spellings = new Dictionary<(LocationId Location, string Parent, string Name), SortedSet<string>>();
-        foreach (var file in files)
+        foreach (var (path, isFolder) in files.Select(f => (f, false)).Concat(folders.Select(f => (f, true))))
         {
-            var segments = file.Path.ToString().Split('/');
+            var segments = path.Path.ToString().Split('/');
             var parent = "";
-            for (var i = 0; i < segments.Length - 1; i++)
+            for (var i = 0; i < segments.Length - (isFolder ? 0 : 1); i++)
             {
-                var key = (file.LocationId, parent, segments[i].ToUpperInvariant());
+                var key = (path.LocationId, parent, segments[i].ToUpperInvariant());
                 if (!spellings.TryGetValue(key, out var set)) spellings[key] = set = new SortedSet<string>(StringComparer.Ordinal);
                 set.Add(segments[i]);
                 parent = parent.Length == 0 ? segments[i] : parent + "/" + segments[i];

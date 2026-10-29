@@ -1,4 +1,8 @@
+using System.Collections.Frozen;
+using System.Runtime.InteropServices;
 using System.Text;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.DataModel.Diagnostics;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -160,6 +164,7 @@ public class Witcher3SynchronizerTests(ITestOutputHelper helper)
         game.Combine("Mods/modX/content/a.ws").FileExists.Should().BeFalse();
         game.Combine("mods/modX/content/a.ws").FileExists.Should().BeFalse();
     }
+
     private async Task RecordDiskState(Loadout.ReadOnly loadout, string path, string content)
     {
         var bytes = Encoding.UTF8.GetBytes(content);
@@ -228,5 +233,59 @@ public class Witcher3SynchronizerTests(ITestOutputHelper helper)
         for (var i = 0; i < 14; i++) game.Combine($"Mods/modMenu{i}/content/a.ws").FileExists.Should().BeTrue();
         DiskStateEntry.FindByGame(Connection.Db, loadout.Installation.Id)
             .Should().OnlyContain(e => !((GamePath)e.Path).ToString().StartsWith("{Game}/mods/", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ALoadoutSwitchBacksUpAFileRecordedAfterTheCallersSnapshotBeforeReplacingIt()
+    {
+        var loadout = await CreateLoadout();
+        await AddModFile(loadout, "Mods/modOld/content/old.ws", "new");
+        var staleState = GameInstallMetadata.Load(Connection.Db, loadout.Installation.Id);
+        var old = GameInstallation.Locations[LocationId.Game].Path.Combine("mods/modOld/content/old.ws");
+        old.Parent.CreateDirectory();
+        await old.WriteAllTextAsync("old");
+        await RecordDiskState(loadout, "mods/modOld/content/old.ws", "old");
+
+        await ((ALoadoutSynchronizer)Synchronizer).BuildProcessRun(Refresh(loadout), staleState, CancellationToken.None);
+
+        // The row recorded after the snapshot is what makes the switch back the old content up before it replaces it.
+        var game = GameInstallation.Locations[LocationId.Game].Path;
+        (await game.Combine("Mods/modOld/content/old.ws").ReadAllTextAsync()).Should().Be("new");
+        game.Combine("mods").DirectoryExists().Should().BeFalse();
+        (await FileStore.HaveFile(Encoding.UTF8.GetBytes("old").xxHash3())).Should().BeTrue();
+    }
+
+    // The files stay on the host's file system; only the located game becomes a Windows build with a prefix.
+    private void RunUnderWine()
+    {
+        var locator = ServiceProvider.GetServices<IGameLocator>().OfType<UniversalStubbedGameLocator<Witcher3Game>>().Single();
+        locator.Platform = OSPlatform.Windows;
+        locator.WinePrefixPath = TemporaryFileManager.CreateFolder().Path.Combine("pfx");
+        GameRegistry.ClearCache();
+        GameInstallation = GameRegistry.LocateGameInstallations().Single(i => i.Game is Witcher3Game);
+    }
+
+    [Fact]
+    public async Task AnApplyLeavesAFileWhoseTwinExistsInModsAndTheCardTellsTheUserToMoveItByHand()
+    {
+        var loadout = await CreateLoadout();
+        await AddModFile(loadout, "Mods/modX/content/a.ws", "from the mod");
+        loadout = Refresh(loadout);
+        await Synchronizer.Synchronize(loadout);
+        var twin = GameInstallation.Locations[LocationId.Game].Path.Combine("mods/modX/content/a.ws");
+        twin.Parent.CreateDirectory();
+        await twin.WriteAllTextAsync("left behind");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        twin.FileExists.Should().BeTrue();
+        RunUnderWine();
+        var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
+        Synchronizer.ProcessSyncTree(tree);
+        var cards = new List<Diagnostic>();
+        await foreach (var card in new CaseVariantFolderEmitter().Diagnose(Refresh(loadout), tree.ToFrozenDictionary(), CancellationToken.None))
+            cards.Add(card);
+        var details = cards.Should().ContainSingle().Subject.FormatDetails(new PlainDiagnosticWriter());
+        details.Should().Contain("{Game}/mods").And.Contain("{Game}/Mods").And.Contain("Move the files of one folder").And.Contain("`Mods`, `dlc`, `bin`");
     }
 }

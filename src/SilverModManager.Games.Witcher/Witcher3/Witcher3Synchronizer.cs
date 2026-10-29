@@ -75,6 +75,8 @@ public sealed class Witcher3Synchronizer(IServiceProvider provider, IGame game) 
         return new MergeSynchronizerPart(engine, provider.GetRequiredService<ILogger<Witcher3Synchronizer>>());
     }
 
+    public override IReadOnlyList<string> FoldersMergedOnApply => Witcher3FolderCase.TopFolders;
+
     /// <summary>
     /// Creates the loadout's Load Order if it has none yet and brings it up to date before the sync tree is built. A
     /// mod installed a moment ago is not reconciled (the manager does that in the background), so without this the

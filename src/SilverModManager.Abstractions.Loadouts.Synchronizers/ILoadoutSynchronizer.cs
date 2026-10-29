@@ -18,6 +18,13 @@ public interface ILoadoutSynchronizer
     IGamePathFilter GamePathFilter { get; }
 
     /// <summary>
+    /// Folders, written as they sit in the game folder, whose case variants the next Apply merges into one. Empty
+    /// for a game that does not repair them. Health Check names them so it can tell the user which pairs need no
+    /// hand work.
+    /// </summary>
+    IReadOnlyList<string> FoldersMergedOnApply { get; }
+
+    /// <summary>
     /// Whether the sync tree leaves out the loadout item's file at <paramref name="path"/>: the path is
     /// protected and neither the item nor a group it sits in is flagged to deploy to protected paths.
     /// </summary>

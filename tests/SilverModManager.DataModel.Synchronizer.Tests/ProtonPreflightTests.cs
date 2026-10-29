@@ -2,6 +2,7 @@ using System.Collections.Frozen;
 using System.Runtime.InteropServices;
 using System.Text;
 using FluentAssertions;
+using System.Reactive.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
@@ -267,6 +268,39 @@ public class ProtonPreflightTests(ITestOutputHelper helper) : AStubbedGameTest<P
     }
 
     [Fact]
+    public async Task Synchronize_ProtonGameWithAFileWhoseTwinSitsInAFolderOfAnotherCase_TheCardNamesBothFolders()
+    {
+        // Both spellings hold the same relative file name, so the loadout's path comparison sees one file.
+        UseProtonPrefix(prefixReady: true);
+        var loadout = await CreateLoadout();
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modX/content/a.ws"), "from the mod");
+        loadout = await Synchronizer.Synchronize(loadout);
+        var twin = GameInstallation.Locations[LocationId.Game].Path.Combine("mods/modX/content/a.ws");
+        twin.Parent.CreateDirectory();
+        await twin.WriteAllTextAsync("left behind");
+
+        loadout = await Synchronizer.Synchronize(loadout);
+
+        var card = (await CaseVariantCards(loadout)).Should().ContainSingle().Subject;
+        DetailsOf(card).Should().Contain("{Game}/mods").And.Contain("{Game}/Mods");
+    }
+
+    [Fact]
+    public async Task HealthCheck_ProtonGameWithAPair_ShowsTheCaseVariantCard()
+    {
+        UseProtonPrefix(prefixReady: true);
+        var loadout = await CreateLoadout();
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "mods/modX/a.ws"), "a");
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modY/b.ws"), "b");
+        loadout = await Synchronizer.Synchronize(loadout);
+
+        await DiagnosticManager.RefreshAsync(loadout.LoadoutId).WaitAsync(TimeSpan.FromSeconds(30));
+        var cards = await DiagnosticManager.GetLoadoutDiagnostics(loadout.LoadoutId).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+
+        cards.Should().Contain(c => c.Id == new DiagnosticId("SilverModManager.DataModel.CaseVariantFolder", number: 1));
+    }
+
+    [Fact]
     public async Task Synchronize_ProtonGameWithSeveralPairs_ListsEveryPairOnOneCard()
     {
         UseProtonPrefix(prefixReady: true);
@@ -319,6 +353,7 @@ public class ProtonPreflightTests(ITestOutputHelper helper) : AStubbedGameTest<P
 
         CaseVariantFolders.FindAll(files).Should().BeEmpty();
     }
+
     [Fact]
     public async Task Synchronize_ProtonGameWithOneSpellingPerFolder_Passes()
     {
@@ -327,9 +362,10 @@ public class ProtonPreflightTests(ITestOutputHelper helper) : AStubbedGameTest<P
         loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modX/content/a.ws"), "a");
         loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Mods/modY/content/b.ws"), "b");
 
-        await Synchronizer.Synchronize(loadout);
+        loadout = await Synchronizer.Synchronize(loadout);
 
         GameInstallation.Locations[LocationId.Game].Path.Combine("Mods/modY/content/b.ws").FileExists.Should().BeTrue();
+        (await CaseVariantCards(loadout)).Should().BeEmpty();
     }
 
     [Fact]

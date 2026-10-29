@@ -14,7 +14,7 @@ namespace SilverModManager.Games.Witcher.Witcher3;
 /// </summary>
 internal static class Witcher3FolderCase
 {
-    private static readonly string[] TopFolders = [WitcherConstants.W3ModsFolder, WitcherConstants.W3DlcFolder, "bin"];
+    internal static readonly string[] TopFolders = [WitcherConstants.W3ModsFolder, WitcherConstants.W3DlcFolder, "bin"];
 
     /// <summary>
     /// <paramref name="path"/> with its first segment written in the game's spelling when it case-insensitively
