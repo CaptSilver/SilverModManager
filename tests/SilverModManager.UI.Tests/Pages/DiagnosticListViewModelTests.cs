@@ -64,14 +64,41 @@ public class DiagnosticListViewModelTests(IServiceProvider provider) : AUiTest(p
         Make("s1", DiagnosticSeverity.Suggestion), Make("s2", DiagnosticSeverity.Suggestion), Make("s3", DiagnosticSeverity.Suggestion),
     ];
 
-    private async Task<(DiagnosticListViewModel Vm, Subject<Diagnostic[]> Source)> Create()
+    /// <summary>
+    /// Formats through the real writer, after waiting <see cref="Delay"/>. Rows are built off the UI thread while they
+    /// format their summaries, so this makes a refresh take as long as a loaded machine would.
+    /// </summary>
+    private sealed class SlowDiagnosticWriter(IDiagnosticWriter inner) : IDiagnosticWriter
+    {
+        public TimeSpan Delay { get; set; }
+
+        public void Write<T>(ref DiagnosticWriterState state, T value) where T : notnull
+        {
+            Thread.Sleep(Delay);
+            inner.Write(ref state, value);
+        }
+
+        public void WriteValueType<T>(ref DiagnosticWriterState state, T value) where T : struct
+        {
+            Thread.Sleep(Delay);
+            inner.WriteValueType(ref state, value);
+        }
+
+        public void Write(ref DiagnosticWriterState state, ReadOnlySpan<char> value)
+        {
+            Thread.Sleep(Delay);
+            inner.Write(ref state, value);
+        }
+    }
+
+    private async Task<(DiagnosticListViewModel Vm, Subject<Diagnostic[]> Source)> Create(IDiagnosticWriter? writer = null)
     {
         var source = new Subject<Diagnostic[]>();
         var manager = Substitute.For<IDiagnosticManager>();
         manager.GetLoadoutDiagnostics(Arg.Any<LoadoutId>()).Returns(source);
         manager.RefreshAsync(Arg.Any<LoadoutId>()).Returns(Task.CompletedTask);
 
-        var vm = await OnUi(() => Task.FromResult(ActivatorUtilities.CreateInstance<DiagnosticListViewModel>(Provider, manager, new FakeWindowManager())));
+        var vm = await OnUi(() => Task.FromResult(ActivatorUtilities.CreateInstance<DiagnosticListViewModel>(Provider, [manager, new FakeWindowManager(), .. writer is null ? Array.Empty<object>() : [writer]])));
         vm.LoadoutId = Loadout;
         await OnUi(() =>
         {
@@ -175,18 +202,20 @@ public class DiagnosticListViewModelTests(IServiceProvider provider) : AUiTest(p
     public async Task Test_ARefreshWithEqualMessageData_ReplacesTheEntriesWithEqualRows()
     {
         SetMinimumSeverity(DiagnosticSeverity.Suggestion);
-        var (vm, source) = await Create();
+        var writer = new SlowDiagnosticWriter(Provider.GetRequiredService<IDiagnosticWriter>());
+        var (vm, source) = await Create(writer);
         var first = WithPath("a.txt");
         source.OnNext([first]);
         await EventuallyOnUi(() => vm.DiagnosticEntries.Should().HaveCount(1));
         var before = vm.DiagnosticEntries;
 
+        writer.Delay = TimeSpan.FromMilliseconds(800);
         source.OnNext([WithPath("a.txt") with { Id = first.Id }]);
-        await Task.Delay(500);
 
+        // The rows are built off the UI thread, so how long they take depends on load.
+        await EventuallyOnUi(() => vm.DiagnosticEntries.Should().NotBeSameAs(before));
         await OnUi(() =>
         {
-            vm.DiagnosticEntries.Should().NotBeSameAs(before);
             vm.DiagnosticEntries.Select(e => e.Diagnostic.Id).Should().Equal(before.Select(e => e.Diagnostic.Id));
             vm.DiagnosticEntries.Select(e => e.Title).Should().Equal(before.Select(e => e.Title));
             vm.DiagnosticEntries.Select(e => e.Summary).Should().Equal(before.Select(e => e.Summary));
