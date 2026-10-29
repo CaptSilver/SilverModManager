@@ -23,16 +23,17 @@ public class DiagnosticListVirtualizationTests(IServiceProvider provider) : AUiT
     private sealed class StubViewModel : APageViewModel<IDiagnosticListViewModel>, IDiagnosticListViewModel
     {
         private DiagnosticFilter _filter;
+        private IDiagnosticEntryViewModel[] _entries;
         public StubViewModel(IDiagnosticEntryViewModel[] entries, int critical, int warnings, int suggestions) : base(new DesignWindowManager())
         {
-            DiagnosticEntries = entries;
+            _entries = entries;
             NumCritical = critical;
             NumWarnings = warnings;
             NumSuggestions = suggestions;
         }
 
         public LoadoutId LoadoutId { get; set; }
-        public IDiagnosticEntryViewModel[] DiagnosticEntries { get; }
+        public IDiagnosticEntryViewModel[] DiagnosticEntries { get => _entries; set => this.RaiseAndSetIfChanged(ref _entries, value); }
         public int NumCritical { get; }
         public int NumWarnings { get; }
         public int NumSuggestions { get; }
@@ -172,6 +173,61 @@ public class DiagnosticListVirtualizationTests(IServiceProvider provider) : AUiT
             Dispatcher.UIThread.RunJobs();
             icon.Classes.Should().Contain("Critical").And.NotContain("Warning");
             row.FindControl<TextBlock>("TitleText")!.Text.Should().Be("Entry 2");
+        });
+    }
+
+    private static Diagnostic[] Diagnostics(int count, string prefix = "Entry") => Enumerable.Range(0, count)
+        .Select(i => new Diagnostic
+        {
+            Id = new DiagnosticId(),
+            Title = $"{prefix} {i}",
+            Severity = DiagnosticSeverity.Warning,
+            Summary = DiagnosticMessage.From($"Summary {i}"),
+            Details = DiagnosticMessage.DefaultValue,
+            DataReferences = new Dictionary<DataReferenceDescription, IDataReference>(),
+        })
+        .ToArray();
+
+    private static IDiagnosticEntryViewModel[] Wrap(Diagnostic[] diagnostics) =>
+        diagnostics.Select(d => (IDiagnosticEntryViewModel)new DiagnosticEntryDesignViewModel(d)).ToArray();
+
+    [Fact]
+    public async Task Test_ReplacingTheEntriesWithTheSameDiagnostics_KeepsTheScrollOffset()
+    {
+        var diagnostics = Diagnostics(1000);
+        var (vm, view) = await ShowAsync(0);
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            vm.DiagnosticEntries = Wrap(diagnostics);
+            Dispatcher.UIThread.RunJobs();
+            var scroller = List(view).FindAncestorOfType<ScrollViewer>()!;
+            scroller.Offset = new Avalonia.Vector(0, 3000);
+            Dispatcher.UIThread.RunJobs();
+            scroller.Offset.Y.Should().Be(3000);
+
+            vm.DiagnosticEntries = Wrap(diagnostics);
+            Dispatcher.UIThread.RunJobs();
+
+            scroller.Offset.Y.Should().Be(3000, "a refresh that finds the same diagnostics must not send the list back to the top");
+        });
+    }
+
+    [Fact]
+    public async Task Test_ReplacingTheEntriesWithOtherDiagnostics_ScrollsBackToTheTop()
+    {
+        var (vm, view) = await ShowAsync(0);
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            vm.DiagnosticEntries = Wrap(Diagnostics(1000));
+            Dispatcher.UIThread.RunJobs();
+            var scroller = List(view).FindAncestorOfType<ScrollViewer>()!;
+            scroller.Offset = new Avalonia.Vector(0, 3000);
+            Dispatcher.UIThread.RunJobs();
+
+            vm.DiagnosticEntries = Wrap(Diagnostics(1000, "Other"));
+            Dispatcher.UIThread.RunJobs();
+
+            scroller.Offset.Y.Should().Be(0);
         });
     }
 }

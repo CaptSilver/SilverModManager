@@ -54,8 +54,8 @@ public record Diagnostic
     /// <c>with { Actions = ... }</c> on the diagnostic a template creates.
     /// </summary>
     /// <remarks>
-    /// Nothing relies on <see cref="Diagnostic"/> value equality (<see cref="DataReferences"/> already compares
-    /// by reference), so the array is compared like any other property of the record.
+    /// Records compare an <see cref="ImmutableArray{T}"/> by its underlying array, so two diagnostics with equal
+    /// actions are still unequal. Nothing relies on <see cref="Diagnostic"/> value equality.
     /// </remarks>
     public ImmutableArray<DiagnosticAction> Actions { get; init; } = [];
 

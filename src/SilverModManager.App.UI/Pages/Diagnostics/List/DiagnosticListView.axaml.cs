@@ -1,9 +1,12 @@
 using System.Diagnostics;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using Avalonia.Controls;
 using Avalonia.ReactiveUI;
+using Avalonia.VisualTree;
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.App.UI.Controls.Diagnostics;
 using SilverModManager.App.UI.Extensions;
 using SilverModManager.App.UI.Resources;
 using ReactiveUI;
@@ -14,6 +17,24 @@ namespace SilverModManager.App.UI.Pages.Diagnostics;
 [UsedImplicitly]
 public partial class DiagnosticListView : ReactiveUserControl<IDiagnosticListViewModel>
 {
+    private (DiagnosticId Id, string Title, string Summary)[] _shownIds = [];
+
+    private void ShowEntries(IDiagnosticEntryViewModel[] entries)
+    {
+        var scroller = HealthCheckItemsControl.FindAncestorOfType<ScrollViewer>();
+        var offset = scroller?.Offset ?? default;
+        var ids = entries.Select(entry => (entry.Diagnostic.Id, entry.Title, entry.Summary)).ToArray();
+        var keepOffset = scroller is not null && ids.SequenceEqual(_shownIds);
+        _shownIds = ids;
+
+        HealthCheckItemsControl.ItemsSource = entries;
+        if (scroller is null) return;
+
+        // The extent is only known after layout; without it the offset would be clamped to the old, empty extent.
+        scroller.UpdateLayout();
+        scroller.Offset = keepOffset ? offset : default;
+    }
+
     public DiagnosticListView()
     {
         InitializeComponent();
@@ -54,8 +75,9 @@ public partial class DiagnosticListView : ReactiveUserControl<IDiagnosticListVie
                 this.OneWayBind(ViewModel, vm => vm.SupportBundleMessage, view => view.SupportBundleText.Text)
                     .DisposeWith(disposable);
 
-                // // bind all DiagnosticEntries to the AllItemsControl
-                this.OneWayBind(ViewModel, vm => vm.DiagnosticEntries, view => view.HealthCheckItemsControl.ItemsSource)
+                // Every refresh replaces the entries. The same diagnostics (id, title and summary: an id only names the kind of diagnostic) keep the scroll offset; another set (a tab switch, a fix) starts at the top.
+                this.WhenAnyValue(view => view.ViewModel!.DiagnosticEntries)
+                    .Subscribe(ShowEntries)
                     .DisposeWith(disposable);
                 
                 this.WhenAnyValue(view => view.TabControl.SelectedItem)

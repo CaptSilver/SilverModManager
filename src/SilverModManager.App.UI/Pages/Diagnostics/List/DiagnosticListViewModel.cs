@@ -139,8 +139,6 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
                     .Select(diagnostic => (IDiagnosticEntryViewModel)new DiagnosticEntryViewModel(diagnostic, diagnosticWriter))
                     .ToArray()
                 )
-                // A refresh that finds the same diagnostics must not swap the array: the list would jump back to the top.
-                .DistinctUntilChanged(SameEntries.Instance)
                 .OnUI()
                 .BindToVM(this, vm => vm.DiagnosticEntries)
                 .DisposeWith(disposable);
@@ -238,44 +236,6 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
         {
             SupportBundleMessage = $"Support bundle written to {path}. Could not copy the path to the clipboard.";
         }
-    }
-
-    /// <summary>
-    /// Entries are the same when every row would look and behave the same. The diagnostics are compared as records, which
-    /// includes the message data the details are formatted from (formatting here could read the database); only the creation
-    /// time, which differs on every refresh, is ignored. Data references and actions are compared by content because the
-    /// containers holding them compare by reference.
-    /// </summary>
-    private sealed class SameEntries : IEqualityComparer<IDiagnosticEntryViewModel[]>
-    {
-        public static readonly SameEntries Instance = new();
-
-        public bool Equals(IDiagnosticEntryViewModel[]? x, IDiagnosticEntryViewModel[]? y)
-        {
-            if (ReferenceEquals(x, y)) return true;
-            if (x is null || y is null || x.Length != y.Length) return false;
-            for (var i = 0; i < x.Length; i++)
-            {
-                var (a, b) = (x[i], y[i]);
-                if (a.Title != b.Title || a.Summary != b.Summary || a.Severity != b.Severity) return false;
-                if (!SameDiagnostic(a.Diagnostic, b.Diagnostic)) return false;
-            }
-            return true;
-        }
-
-        private static bool SameDiagnostic(Diagnostic a, Diagnostic b)
-        {
-            if (!a.Actions.SequenceEqual(b.Actions)) return false;
-            if (a.DataReferences.Count != b.DataReferences.Count) return false;
-            foreach (var (key, reference) in a.DataReferences)
-            {
-                if (!b.DataReferences.TryGetValue(key, out var other) || !reference.Equals(other)) return false;
-            }
-
-            return (a with { CreatedAt = b.CreatedAt, DataReferences = b.DataReferences, Actions = b.Actions }).Equals(b);
-        }
-
-        public int GetHashCode(IDiagnosticEntryViewModel[] obj) => obj.Length;
     }
 
     private static DiagnosticFilter SeverityToFilter(DiagnosticSeverity severity)

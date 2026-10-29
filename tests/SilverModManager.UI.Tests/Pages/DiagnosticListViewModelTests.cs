@@ -92,7 +92,7 @@ public class DiagnosticListViewModelTests(IServiceProvider provider) : AUiTest(p
     }
 
     [Fact]
-    public async Task Test_ARefreshWithTheSameDiagnostics_KeepsTheEntries()
+    public async Task Test_ARefreshWithTheSameDiagnostics_ReplacesTheEntriesWithEqualRows()
     {
         SetMinimumSeverity(DiagnosticSeverity.Suggestion);
         var (vm, source) = await Create();
@@ -105,7 +105,8 @@ public class DiagnosticListViewModelTests(IServiceProvider provider) : AUiTest(p
 
         await OnUi(() =>
         {
-            vm.DiagnosticEntries.Should().BeSameAs(before, "replacing the array sends the list back to the top");
+            vm.DiagnosticEntries.Should().NotBeSameAs(before, "the view keeps the scroll offset itself, so the rows are always rebuilt");
+            vm.DiagnosticEntries.Select(e => e.Title).Should().Equal(before.Select(e => e.Title));
             return Task.CompletedTask;
         });
     }
@@ -160,7 +161,7 @@ public class DiagnosticListViewModelTests(IServiceProvider provider) : AUiTest(p
     }
 
     [Fact]
-    public async Task Test_ARefreshWithEqualMessageData_KeepsTheEntries()
+    public async Task Test_ARefreshWithEqualMessageData_ReplacesTheEntriesWithEqualRows()
     {
         SetMinimumSeverity(DiagnosticSeverity.Suggestion);
         var (vm, source) = await Create();
@@ -174,7 +175,8 @@ public class DiagnosticListViewModelTests(IServiceProvider provider) : AUiTest(p
 
         await OnUi(() =>
         {
-            vm.DiagnosticEntries.Should().BeSameAs(before);
+            vm.DiagnosticEntries.Should().NotBeSameAs(before);
+            vm.DiagnosticEntries.Select(e => e.Diagnostic.Id).Should().Equal(before.Select(e => e.Diagnostic.Id));
             return Task.CompletedTask;
         });
     }
