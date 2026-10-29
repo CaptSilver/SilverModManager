@@ -131,6 +131,7 @@ public class CliClient(
                 Command = [..launch.Command],
                 Environment = new Dictionary<string, string>(launch.Environment),
                 WorkingDirectory = launch.WorkingDirectory,
+                ClientPid = launch.ClientPid,
             });
 
             // The stop is sent from whichever thread cancels; the receive loop below only reads.

@@ -209,7 +209,7 @@ public sealed class CliServer : IHostedService, IDisposable
         ForwardedLaunchAdmission admission;
         try
         {
-            admission = await handler.AdmitAsync(new ForwardedLaunch(request.LoadoutName, request.Game, request.Command, request.Environment, request.WorkingDirectory));
+            admission = await handler.AdmitAsync(new ForwardedLaunch(request.LoadoutName, request.Game, request.Command, request.Environment, request.WorkingDirectory, request.ClientPid));
         }
         catch (Exception e)
         {

@@ -68,12 +68,8 @@ public static class LaunchRun
     public static async Task<ForwardedLaunchOutcome> ForwardAsync(IServiceProvider services, LaunchArgs args)
     {
         using var stop = new CancellationTokenSource();
-        void Stop(PosixSignalContext context)
-        {
-            // Steam's Stop sends SIGTERM to this process alone; the game is the window's child, so the window has to end it.
-            context.Cancel = true;
-            stop.Cancel();
-        }
+        var logger = services.GetRequiredService<ILogger<LaunchSession>>();
+        void Stop(PosixSignalContext context) => RelayStop(logger, stop, context);
 
         using var term = PosixSignalRegistration.Create(PosixSignal.SIGTERM, Stop);
         using var hup = PosixSignalRegistration.Create(PosixSignal.SIGHUP, Stop);
@@ -84,11 +80,23 @@ public static class LaunchRun
     }
 
     /// <summary>
+    /// Turns a signal this process received into the stop request for the window, and says which signal it was:
+    /// .NET cannot tell who sent it, but SIGTERM (Steam's Stop) reads differently from SIGHUP or SIGINT.
+    /// </summary>
+    internal static void RelayStop(ILogger logger, CancellationTokenSource stop, PosixSignalContext context)
+    {
+        // Steam's Stop sends SIGTERM to this process alone; the game is the window's child, so the window has to end it.
+        logger.LogInformation("Received {Signal}: asking the window to stop the game", context.Signal);
+        context.Cancel = true;
+        stop.Cancel();
+    }
+
+    /// <summary>
     /// What the window needs to run <paramref name="args"/> as this process would: the environment Steam gave it and
     /// the directory Steam started it in.
     /// </summary>
     public static ForwardedLaunch ToForwardedLaunch(LaunchArgs args, IReadOnlyDictionary<string, string> environment, string? workingDirectory)
-        => new(args.LoadoutName, args.Game, args.Command, environment, workingDirectory);
+        => new(args.LoadoutName, args.Game, args.Command, environment, workingDirectory, Environment.ProcessId);
 
     private static Dictionary<string, string> CurrentEnvironment()
     {
@@ -122,13 +130,16 @@ public static class LaunchRun
     }
 
     // The game runs in what Steam gave the run process, in the folder Steam started it in; the window's own are unrelated.
-    private static LaunchPlan InForwardedEnvironment(LaunchPlan plan, ForwardedLaunch launch)
+    internal static LaunchPlan InForwardedEnvironment(LaunchPlan plan, ForwardedLaunch launch)
         => plan with
         {
             Process = plan.Process with
             {
                 BaseEnvironment = launch.Environment,
                 WorkingDirectory = plan.Process.WorkingDirectory ?? launch.WorkingDirectory,
+                // The run process that forwarded this launch is alive until the game's exit is reported to it, and
+                // carries the game's prefix in its environment. The sweep after the game must not signal it.
+                ExcludedPids = launch.ClientPid > 0 ? new HashSet<int> { launch.ClientPid } : null,
             },
         };
 

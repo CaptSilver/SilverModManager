@@ -1,6 +1,8 @@
+using System.Runtime.InteropServices;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App;
@@ -72,6 +74,57 @@ public class ForwardedLaunchHandlerTests
         launch.Command.Should().Equal("proton", "waitforexitandrun", "game.exe");
         launch.Environment.Should().BeSameAs(environment);
         launch.WorkingDirectory.Should().Be("/games/peak");
+    }
+
+    [Fact]
+    public void TheForwardedLaunchNamesTheForwardingProcess()
+    {
+        LaunchArgs.TryParse(["My Loadout", "--", "game.exe"], out var args, out _).Should().BeTrue();
+
+        LaunchRun.ToForwardedLaunch(args!, new Dictionary<string, string>(), null).ClientPid.Should().Be(Environment.ProcessId);
+    }
+
+    [Fact]
+    public void TheGameOfAForwardedLaunchIsSweptWithoutTheForwardingProcess()
+    {
+        var launch = new ForwardedLaunch("L", null, ["game.exe"], new Dictionary<string, string>(), null, ClientPid: 4242);
+        var plan = new LaunchPlan(new GameProcessSpec(["game.exe"]));
+
+        LaunchRun.InForwardedEnvironment(plan, launch).Process.ExcludedPids.Should().BeEquivalentTo(new[] { 4242 });
+    }
+
+    [Fact]
+    public void ALaunchFromAnOlderClientThatSentNoPidExcludesNobody()
+    {
+        var launch = new ForwardedLaunch("L", null, ["game.exe"], new Dictionary<string, string>(), null);
+
+        LaunchRun.InForwardedEnvironment(new LaunchPlan(new GameProcessSpec(["game.exe"])), launch).Process.ExcludedPids.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(PosixSignal.SIGTERM)]
+    [InlineData(PosixSignal.SIGHUP)]
+    [InlineData(PosixSignal.SIGINT)]
+    public void AStopSignalIsLoggedByNameAndCancelsTheForwardedLaunch(PosixSignal signal)
+    {
+        var logger = new RecordingLogger();
+        using var stop = new CancellationTokenSource();
+        var context = new PosixSignalContext(signal);
+
+        LaunchRun.RelayStop(logger, stop, context);
+
+        logger.Messages.Should().ContainSingle().Which.Should().Contain(signal.ToString());
+        context.Cancel.Should().BeTrue("the signal must not kill the process before the window has ended the game");
+        stop.IsCancellationRequested.Should().BeTrue();
+    }
+
+    private sealed class RecordingLogger : ILogger
+    {
+        public readonly List<string> Messages = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Messages.Add($"{logLevel}: {formatter(state, exception)}");
     }
 
     [Fact]

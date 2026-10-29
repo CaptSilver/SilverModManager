@@ -23,13 +23,18 @@ namespace SilverModManager.Platform.Proton.Launch;
 /// The environment to inherit instead of this process's own, for a launch that runs here on behalf of another
 /// process (<c>run</c> handing Steam's variables to the window). Null inherits ours.
 /// </param>
+/// <param name="ExcludedPids">
+/// Processes the sweep after the game exits must leave alone, with their ancestors: the <c>run</c> process that
+/// forwarded the launch, which is still waiting for the game's exit to be reported.
+/// </param>
 public sealed record GameProcessSpec(
     IReadOnlyList<string> Argv,
     string? WorkingDirectory = null,
     IReadOnlyDictionary<string, string>? Environment = null,
     IReadOnlyList<string>? FilesystemRoots = null,
     IReadOnlyList<WineDllOverride>? WineDllOverrides = null,
-    IReadOnlyDictionary<string, string>? BaseEnvironment = null);
+    IReadOnlyDictionary<string, string>? BaseEnvironment = null,
+    IReadOnlySet<int>? ExcludedPids = null);
 
 /// <summary>
 /// How a <see cref="GameProcess"/> ended.
@@ -60,9 +65,11 @@ public sealed partial class GameProcess : IGameProcess
     private readonly TimeSpan _grace;
     private readonly bool _forwardTermination;
     private readonly bool _leaveSignalsAlone;
+    private readonly IReadOnlySet<int> _excludedPids;
 
-    private GameProcess(Process process, IProcessTracker? tracker, GameInstallation? installation, TimeSpan grace, bool forwardTermination, bool leaveSignalsAlone)
+    private GameProcess(Process process, IProcessTracker? tracker, GameInstallation? installation, TimeSpan grace, bool forwardTermination, bool leaveSignalsAlone, IReadOnlySet<int>? excludedPids)
     {
+        _excludedPids = excludedPids ?? new HashSet<int>();
         _forwardTermination = forwardTermination;
         _leaveSignalsAlone = leaveSignalsAlone;
         _process = process;
@@ -130,7 +137,7 @@ public sealed partial class GameProcess : IGameProcess
         foreach (var (key, value) in environment) startInfo.Environment[key] = value;
 
         var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Failed to start {spec.Argv[0]}");
-        return new GameProcess(process, tracker, installation, grace ?? DefaultGrace, forwardTermination, leaveSignalsAlone);
+        return new GameProcess(process, tracker, installation, grace ?? DefaultGrace, forwardTermination, leaveSignalsAlone, spec.ExcludedPids);
     }
 
     private static Dictionary<string, string> CurrentEnvironment()
@@ -255,7 +262,7 @@ public sealed partial class GameProcess : IGameProcess
     /// to leave on their own, then SIGTERM, then SIGKILL.
     /// </summary>
     private Task<TrackedProcess?> ShutDownStragglersAsync(CancellationToken cancellationToken)
-        => StragglerShutdown.RunAsync(_tracker!, _installation!, _grace, cancellationToken);
+        => StragglerShutdown.RunAsync(_tracker!, _installation!, _grace, cancellationToken, _excludedPids);
 
     /// <summary>
     /// Whether a pid can be signalled as one process. <c>kill(2)</c> reads 0 as our process group and -1 as

@@ -9,7 +9,8 @@ public sealed record ForwardedLaunch(
     string? Game,
     IReadOnlyList<string> Command,
     IReadOnlyDictionary<string, string> Environment,
-    string? WorkingDirectory);
+    string? WorkingDirectory,
+    int ClientPid = 0);
 
 /// <summary>
 /// How a launch the main process ran ended. <paramref name="Message"/> is why the launch itself failed, and null

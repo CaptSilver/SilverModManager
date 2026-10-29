@@ -22,4 +22,7 @@ public partial class LaunchRequest : IMessage
     public required Dictionary<string, string> Environment { get; init; }
 
     public string? WorkingDirectory { get; init; }
+
+    /// <summary>The client's process id, so the main process leaves it alone when it sweeps up after the game.</summary>
+    public int ClientPid { get; init; }
 }
