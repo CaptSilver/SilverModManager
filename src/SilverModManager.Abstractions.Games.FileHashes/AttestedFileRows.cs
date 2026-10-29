@@ -36,14 +36,32 @@ public static class AttestedFileRows
         return rows.ToFrozenDictionary();
     }
 
+    // A settle reads each row, then promotes and deletes it. Two syncs reading the same row would both promote it and
+    // the second delete would unlink what the first linked, so settles run one at a time and read the database only
+    // once they hold the turn.
+    private static readonly SemaphoreSlim SettleTurn = new(1, 1);
+
     /// <summary>
     /// Records what reading attested files found, in one transaction on <paramref name="local"/>; see
-    /// <see cref="IFileHashesService.SettleAttested"/>.
+    /// <see cref="IFileHashesService.SettleAttested"/>. Concurrent calls are serialized.
     /// </summary>
     public static async Task Settle(IConnection local, string gamePath, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, ILogger logger)
     {
         if (read.Count == 0) return;
 
+        await SettleTurn.WaitAsync();
+        try
+        {
+            await SettleInTurn(local, gamePath, read, logger);
+        }
+        finally
+        {
+            SettleTurn.Release();
+        }
+    }
+
+    private static async Task SettleInTurn(IConnection local, string gamePath, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, ILogger logger)
+    {
         var db = local.Db;
         var relations = new Dictionary<Hash, HashRelationId>();
         var fingerprints = new List<IndexedFileHash>(read.Count);

@@ -50,6 +50,20 @@ public sealed class SettleAttestedTests : IDisposable
     }
 
     [Fact]
+    public async Task TwoSettlesOfOneRowAtOnce_PromoteItOnce()
+    {
+        var (attested, baseline, _) = await Setup("a.esm", "vanilla");
+        var hashes = await Hash("vanilla");
+        var read = new (AttestedLookup, MultiHash, FileFingerprint)[] { (attested, hashes, new FileFingerprint(hashes.Size, Modified)) };
+
+        await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(() => _service.SettleAttested(Installation(), read))));
+
+        LocalBaseline.Load(_local.Db, baseline).Files.Should().ContainSingle("a second settle sees the row already promoted");
+        PathHashRelation.All(_local.Db).Should().ContainSingle();
+        HashRelation.FindByXxHash3(_local.Db, hashes.XxHash3).Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task ASha1ThatDiffers_KeepsTheRowAndRemembersTheBytesAsAnExternalChange()
     {
         var (attested, baseline, _) = await Setup("a.esm", "vanilla");
