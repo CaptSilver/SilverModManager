@@ -262,7 +262,25 @@ public sealed class SteamLibraryFixture : IDisposable
     {
         // The symlink goes first: a recursive delete must not be asked to follow it.
         var link = _root / "mnt";
-        if (Directory.Exists(link.ToString())) Directory.Delete(link.ToString(), recursive: false);
-        if (Directory.Exists(_root.ToString())) Directory.Delete(_root.ToString(), recursive: true);
+        if (new DirectoryInfo(link.ToString()).LinkTarget is not null) Directory.Delete(link.ToString(), recursive: false);
+        if (Directory.Exists(_root.ToString()))
+        {
+            MakeWritable(_root.ToString());
+            Directory.Delete(_root.ToString(), recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// A game folder can be read-only, and Directory.Delete cannot empty a folder it may not write to, so the
+    /// whole fixture would stay behind in the temp directory.
+    /// </summary>
+    private static void MakeWritable(string directory)
+    {
+        const UnixFileMode all = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+        File.SetUnixFileMode(directory, File.GetUnixFileMode(directory) | all);
+        foreach (var child in Directory.EnumerateDirectories(directory))
+        {
+            if (new DirectoryInfo(child).LinkTarget is null) MakeWritable(child);
+        }
     }
 }
