@@ -29,19 +29,21 @@ public partial class DiagnosticEntryView : ReactiveUserControl<IDiagnosticEntryV
 
     private void InitializeData(IDiagnosticEntryViewModel vm)
     {
+        // a recycled row gets a new view model, so set all three instead of only adding
+        SeverityIcon.Classes.Set("Suggestion", vm.Severity == DiagnosticSeverity.Suggestion);
+        SeverityIcon.Classes.Set("Warning", vm.Severity == DiagnosticSeverity.Warning);
+        SeverityIcon.Classes.Set("Critical", vm.Severity == DiagnosticSeverity.Critical);
+
         switch (vm.Severity)
         {
             case DiagnosticSeverity.Suggestion:
                 SeverityIcon.Value = IconValues.InfoFilled;
-                SeverityIcon.Classes.Add("Suggestion");
                 break;
             case DiagnosticSeverity.Warning:
                 SeverityIcon.Value = IconValues.Warning;
-                SeverityIcon.Classes.Add("Warning");
                 break;
             case DiagnosticSeverity.Critical:
                 SeverityIcon.Value = IconValues.Error;
-                SeverityIcon.Classes.Add("Critical");
                 break;
             default:
                 SeverityIcon.Value = IconValues.NotificationImportant;

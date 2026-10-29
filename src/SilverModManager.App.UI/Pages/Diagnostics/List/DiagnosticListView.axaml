@@ -21,14 +21,15 @@
             <ItemsControl x:Name="HealthCheckItemsControl">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel Spacing="{StaticResource Spacing-2}" />
+                        <VirtualizingStackPanel />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <!-- Do not replace with ReactiveUI, the generated component and kills shadows -->
                 <!-- due to enforced ClipToBounds that can't be overwritten by styles -->
                 <ItemsControl.DataTemplates>
                     <DataTemplate DataType="{x:Type diagnostics:IDiagnosticEntryViewModel}">
-                        <diagnostics:DiagnosticEntryView DataContext="{CompiledBinding .}" />
+                        <!-- VirtualizingStackPanel has no Spacing, so the gap lives on the row -->
+                        <diagnostics:DiagnosticEntryView Margin="0,0,0,8" DataContext="{CompiledBinding .}" />
                     </DataTemplate>
                 </ItemsControl.DataTemplates>
             </ItemsControl>
