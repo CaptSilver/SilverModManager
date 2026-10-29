@@ -534,6 +534,32 @@ public class PluginSortOrderVarietyTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task GetOrCreate_CalledFromSeveralPlacesAtOnce_MakesOneSortOrder()
+    {
+        // The game's manager reconciles in the background while the synchronizer and the page ask for the same
+        // order, each through its own variety instance.
+        // A sibling game's loadout: this game's manager never creates an order for it behind the test's back.
+        var loadoutId = await SeedLoadout(CreationEngine.SkyrimVR.SkyrimVR.GameId);
+        var varieties = Enumerable.Range(0, 16).Select(_ => NewVariety()).ToArray();
+        using var start = new ManualResetEventSlim();
+
+        var asks = varieties
+            .Select(variety => Task.Run(async () =>
+            {
+                start.Wait();
+                return await variety.GetOrCreateSortOrderFor(loadoutId, loadoutId);
+            }))
+            .ToArray();
+        start.Set();
+        var ids = await Task.WhenAll(asks);
+
+        ids.Distinct().Should().ContainSingle("every caller gets the one order");
+        LoadoutSortOrder.FindByParentEntity(Db, loadoutId)
+            .Where(order => order.SortOrderTypeId == varieties[0].SortOrderVarietyId.Value)
+            .Should().ContainSingle("a second order would shadow the first and survive a delete of it");
+    }
+
+    [Fact]
     public async Task ChangeSet_ListsTheLiveRows()
     {
         var (loadout, variety, id) = await Reconciled();

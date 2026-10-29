@@ -57,29 +57,26 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         OneOf<LoadoutId, CollectionGroupId> parentEntity,
         CancellationToken token = default)
     {
-        var optionalSortOrderId = GetSortOrderIdFor(parentEntity);
-        if (optionalSortOrderId.HasValue)
-            return optionalSortOrderId.Value;
-
-        token.ThrowIfCancellationRequested();
-
-        using var ts = Connection.BeginTransaction();
-        var newSortOrder = new LoadoutSortOrder.New(ts)
+        return await GetOrCreateOnce(parentEntity, async () =>
         {
-            LoadoutId = loadoutId,
-            ParentEntity = parentEntity,
-            SortOrderTypeId = SortOrderVarietyId.Value,
-        };
+            using var ts = Connection.BeginTransaction();
+            var newSortOrder = new LoadoutSortOrder.New(ts)
+            {
+                LoadoutId = loadoutId,
+                ParentEntity = parentEntity,
+                SortOrderTypeId = SortOrderVarietyId.Value,
+            };
 
-        var newPakSortOrder = new Bg3PakSortOrder.New(ts, newSortOrder)
-        {
-            SortOrder = newSortOrder,
-            IsMarker = true,
-            SeededFromGameFile = false,
-        };
+            var newPakSortOrder = new Bg3PakSortOrder.New(ts, newSortOrder)
+            {
+                SortOrder = newSortOrder,
+                IsMarker = true,
+                SeededFromGameFile = false,
+            };
 
-        var commitResult = await ts.Commit();
-        return commitResult.Remap(newPakSortOrder).AsSortOrder().SortOrderId;
+            var commitResult = await ts.Commit();
+            return commitResult.Remap(newPakSortOrder).AsSortOrder().SortOrderId;
+        }, token);
     }
 
     public override IObservable<IChangeSet<Bg3PakReactiveSortItem, SortItemKey<string>>> GetSortOrderItemsChangeSet(SortOrderId sortOrderId)

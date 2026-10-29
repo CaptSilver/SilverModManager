@@ -78,29 +78,26 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         OneOf<LoadoutId, CollectionGroupId> parentEntity,
         CancellationToken token = default)
     {
-        var optionalSortOrderId = GetSortOrderIdFor(parentEntity);
-        if (optionalSortOrderId.HasValue)
-            return optionalSortOrderId.Value;
-
-        token.ThrowIfCancellationRequested();
-
-        using var ts = Connection.BeginTransaction();
-        var newSortOrder = new LoadoutSortOrder.New(ts)
+        return await GetOrCreateOnce(parentEntity, async () =>
         {
-            LoadoutId = loadoutId,
-            ParentEntity = parentEntity,
-            SortOrderTypeId = SortOrderVarietyId.Value,
-        };
+            using var ts = Connection.BeginTransaction();
+            var newSortOrder = new LoadoutSortOrder.New(ts)
+            {
+                LoadoutId = loadoutId,
+                ParentEntity = parentEntity,
+                SortOrderTypeId = SortOrderVarietyId.Value,
+            };
 
-        var newPluginSortOrder = new PluginSortOrder.New(ts, newSortOrder)
-        {
-            SortOrder = newSortOrder,
-            IsMarker = true,
-            SeededFromGameFile = false,
-        };
+            var newPluginSortOrder = new PluginSortOrder.New(ts, newSortOrder)
+            {
+                SortOrder = newSortOrder,
+                IsMarker = true,
+                SeededFromGameFile = false,
+            };
 
-        var commitResult = await ts.Commit();
-        return commitResult.Remap(newPluginSortOrder).AsSortOrder().SortOrderId;
+            var commitResult = await ts.Commit();
+            return commitResult.Remap(newPluginSortOrder).AsSortOrder().SortOrderId;
+        }, token);
     }
 
     /// <summary>

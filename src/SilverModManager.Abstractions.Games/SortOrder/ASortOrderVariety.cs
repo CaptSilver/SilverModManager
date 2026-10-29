@@ -72,6 +72,38 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
         return entities[0].SortOrderId;
     }
 
+    /// <summary>
+    /// Returns the parent's sort order of this variety, running <paramref name="create"/> only when it has none. The
+    /// game's manager, the synchronizer and the page each ask through their own variety instance, and the check and
+    /// the commit are separate steps, so without one gate shared by all of them two callers that both saw no order
+    /// each made one, and the parent then had two (the lookup returns the first, and deleting that one leaves the other).
+    /// </summary>
+    protected async ValueTask<SortOrderId> GetOrCreateOnce(
+        OneOf<LoadoutId, CollectionGroupId> parentEntity,
+        Func<ValueTask<SortOrderId>> create,
+        CancellationToken token)
+    {
+        var existing = GetSortOrderIdFor(parentEntity);
+        if (existing.HasValue)
+            return existing.Value;
+
+        await SortOrderCreationGate.Gate.WaitAsync(token);
+        try
+        {
+            // Latest database: whoever held the gate has committed before releasing it.
+            existing = GetSortOrderIdFor(parentEntity);
+            if (existing.HasValue)
+                return existing.Value;
+
+            token.ThrowIfCancellationRequested();
+            return await create();
+        }
+        finally
+        {
+            SortOrderCreationGate.Gate.Release();
+        }
+    }
+
     /// <inheritdoc />
     public abstract ValueTask<SortOrderId> GetOrCreateSortOrderFor(
         LoadoutId loadoutId,
@@ -427,4 +459,10 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
     }
 
 #endregion protected members
+}
+
+/// <summary>One gate for every variety instance: the instances that race are not the same object.</summary>
+internal static class SortOrderCreationGate
+{
+    public static readonly SemaphoreSlim Gate = new(1, 1);
 }

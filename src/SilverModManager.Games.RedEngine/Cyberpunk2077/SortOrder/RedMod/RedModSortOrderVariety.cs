@@ -54,30 +54,27 @@ public class RedModSortOrderVariety : ASortOrderVariety<
         OneOf<LoadoutId, CollectionGroupId> parentEntity,
         CancellationToken token = default)
     {
-        var optionalSortOrderId = GetSortOrderIdFor(parentEntity);
-        if (optionalSortOrderId.HasValue)
-            return optionalSortOrderId.Value;
-        
-        token.ThrowIfCancellationRequested();
-        
-        using var ts = Connection.BeginTransaction();
-        var newSortOrder = new Abstractions.Loadouts.SortOrder.New(ts)
+        return await GetOrCreateOnce(parentEntity, async () =>
         {
-            LoadoutId = loadoutId,
-            ParentEntity = parentEntity,
-            SortOrderTypeId = SortOrderVarietyId.Value,
-        };
+            using var ts = Connection.BeginTransaction();
+            var newSortOrder = new Abstractions.Loadouts.SortOrder.New(ts)
+            {
+                LoadoutId = loadoutId,
+                ParentEntity = parentEntity,
+                SortOrderTypeId = SortOrderVarietyId.Value,
+            };
 
-        var newRedModSortOrder = new RedModSortOrder.New(ts, newSortOrder)
-        {
-            SortOrder = newSortOrder,
-            IsMarker = true,
-        };
+            var newRedModSortOrder = new RedModSortOrder.New(ts, newSortOrder)
+            {
+                SortOrder = newSortOrder,
+                IsMarker = true,
+            };
 
-        var commitResult = await ts.Commit();
+            var commitResult = await ts.Commit();
 
-        var redModSortOrder = commitResult.Remap(newRedModSortOrder);
-        return redModSortOrder.AsSortOrder().SortOrderId;
+            var redModSortOrder = commitResult.Remap(newRedModSortOrder);
+            return redModSortOrder.AsSortOrder().SortOrderId;
+        }, token);
     }
 
     public override IObservable<IChangeSet<RedModReactiveSortItem, SortItemKey<string>>> GetSortOrderItemsChangeSet(SortOrderId sortOrderId)
