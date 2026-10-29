@@ -127,7 +127,7 @@ public class GameRegistryTests
     }
 
     [Fact]
-    public void RefreshInstallation_AfterClearCache_DoesNotBringTheClearedListBack()
+    public void RefreshInstallation_AfterClearCache_LeavesTheCacheEmpty()
     {
         var locator = new FixedLocator(Located("game", "/a", "old"));
         var registry = CreateRegistry(locator);

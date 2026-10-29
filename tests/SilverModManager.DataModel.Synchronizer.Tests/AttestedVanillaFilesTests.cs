@@ -445,8 +445,8 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         await NoVanillaFileWasBackedUp();
     }
 
-    // Steam moved the game to new depot manifests. The registry's installation keeps the ids it was located with, as
-    // it does in the running app until the next start, and only the app manifest on disk names the new build.
+    // Steam moved the game to new depot manifests while the app was running. The registry's installation keeps the ids
+    // it was located with until a sync sees the new build, and only the app manifest on disk names it.
     private void SteamUpdatesTheGame(bool cachesTheNewManifests)
     {
         var game = CyberpunkSteamInstall.GameDepot with { ManifestId = NewGameManifestId };
@@ -510,7 +510,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         Refresh(loadout).LocatorIds.Select(id => id.Value).Should().Contain(NewGameManifestId.ToString());
         FullHashes.Reset();
 
-        // The registry still holds the ids from before the update, as it does until the app restarts.
+        // The first sync refreshed the registry; this one must work whether or not that refresh reached the copy the index reads.
         await Synchronizer.Synchronize(Refresh(loadout));
 
         FullyHashed.Should().BeEmpty("the store vouches for the new build's files, so the index has nothing to read");
@@ -525,7 +525,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         SteamUpdatesTheGame(cachesTheNewManifests: true);
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        // Read through the stale ids, the vanilla files look changed and the sync archives them as the player's own.
+        // Indexed through the startup ids, the vanilla files would look changed and be archived as the player's own.
         await Synchronizer.Synchronize(Refresh(loadout));
 
         await NoVanillaFileWasBackedUp();
