@@ -12,8 +12,6 @@ namespace SilverModManager.Collections;
 /// </summary>
 public static class CollectionRuleDrops
 {
-    private const string UnresolvedReason = "no mod of the collection matched it";
-
     /// <summary>
     /// A rule the revision stored no <see cref="CollectionDownloadRules"/> row for (the resolver skips a rule when one end
     /// matches no download). Other rule types are not about order and are left out.
@@ -32,7 +30,7 @@ public static class CollectionRuleDrops
 
             var item = $"rule '{Describe(rule.Source)} {(rule.Type == VortexModRuleType.Before ? "before" : "after")} {Describe(rule.Other)}'";
             // The collection's own page (its tab is the collection's name) is where its downloads and their rules are shown.
-            if (!stored) drops.Add(new ModOrderDrop(item, UnresolvedReason, revision.Collection.Name));
+            if (!stored) drops.Add(new ModOrderDrop(item, ModOrderDrop.UnresolvedRuleReason, revision.Collection.Name));
         }
         return drops;
     }

@@ -23,8 +23,9 @@ public sealed class ModOrderDroppedEmitter : ADroppedItemEmitter
     }
 
     /// <summary>
-    /// One card per source that dropped several entries (a big collection can drop dozens, and a card each buries the rest of
-    /// the Health Check), the usual per-item card for a source that dropped one.
+    /// One card per source and page that dropped several entries (a big collection can drop dozens, and a card each buries the
+    /// rest of the Health Check), the usual per-item card for one that dropped a single entry. The collection's rule drops
+    /// are not order entries: they get their own card and never the re-apply action, because the next import writes them again.
     /// </summary>
     public override async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -32,35 +33,33 @@ public sealed class ModOrderDroppedEmitter : ADroppedItemEmitter
 
         foreach (var group in Groups(loadout))
         {
-            if (group.Count == 1)
-            {
-                yield return Card(new DroppedItem(group[0].Item, group[0].Source, group[0].Reason, group[0].Page));
-                continue;
-            }
+            var first = group[0];
+            var card = group.Count == 1
+                ? Card(new DroppedItem(first.Item, first.Source, first.Reason, first.Page))
+                : DroppedItemDiagnostics.CreateDroppedItems(group.Count, first.Source, string.Join('\n', group.Select(row => $"- **{row.Item}**: {row.Reason}")), first.Page);
 
-            var entries = string.Join('\n', group.Select(row => $"- **{row.Item}**: {row.Reason}"));
-            var card = DroppedItemDiagnostics.CreateDroppedItems(group.Count, group[0].Source, entries, group[0].Page);
-
-            // Only a Nexus collection has a manifest to read the order from again.
-            var container = group[0].ContainerId;
-            yield return NexusCollectionLoadoutGroup.Load(loadout.Db, container.Value).IsValid()
-                ? card with { Actions = [DiagnosticActions.ReapplyCollectionOrder(container.Value.Value)] }
+            // Only a Nexus collection has a manifest to read the order from again, and only its order entries come out of it.
+            yield return !IsRuleDrop(first) && NexusCollectionLoadoutGroup.Load(loadout.Db, first.ContainerId.Value).IsValid()
+                ? card with { Actions = [DiagnosticActions.ReapplyCollectionOrder(first.ContainerId.Value.Value)] }
                 : card;
         }
     }
 
+    private static bool IsRuleDrop(ModOrderDroppedEntry.ReadOnly row) => row.Reason == ModOrderDrop.UnresolvedRuleReason;
+
     private static List<List<ModOrderDroppedEntry.ReadOnly>> Groups(Loadout.ReadOnly loadout)
     {
         var db = loadout.Db;
-        var groups = new Dictionary<(LoadoutItemGroupId Container, string Source), List<ModOrderDroppedEntry.ReadOnly>>();
+        var groups = new Dictionary<(LoadoutItemGroupId Container, string Source, string? Page, bool Rule), List<ModOrderDroppedEntry.ReadOnly>>();
         var order = new List<List<ModOrderDroppedEntry.ReadOnly>>();
         foreach (var row in ModOrderDroppedEntry.FindByLoadout(db, loadout.LoadoutId))
         {
             // The rows are not retracted with their collection, so a row whose container is gone is stale.
             if (!LoadoutItemGroup.Load(db, row.ContainerId).IsValid()) continue;
-            if (!groups.TryGetValue((row.ContainerId, row.Source), out var list))
+            var key = (row.ContainerId, row.Source, row.Page, IsRuleDrop(row));
+            if (!groups.TryGetValue(key, out var list))
             {
-                groups[(row.ContainerId, row.Source)] = list = [];
+                groups[key] = list = [];
                 order.Add(list);
             }
 

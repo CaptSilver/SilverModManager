@@ -10,7 +10,11 @@ public sealed record ModOrderEntry(LoadoutItemGroupId Group, bool? Enabled);
 /// <param name="Item">What the source named, as the user would recognise it (mod name, Vortex key, file name).</param>
 /// <param name="Reason">Why it could not be placed, in words the user can act on.</param>
 /// <param name="Page">The tab to fix it on, as the UI titles it; null for the sink's own (<see cref="IModOrderSink.FixPage"/>).</param>
-public sealed record ModOrderDrop(string Item, string Reason, string? Page = null);
+public sealed record ModOrderDrop(string Item, string Reason, string? Page = null)
+{
+    /// <summary>The reason of a collection rule that names no mod of the collection; the card tells it from the order entries by this.</summary>
+    public const string UnresolvedRuleReason = "no mod of the collection matched it";
+}
 
 /// <summary>
 /// An order of installed mod groups handed over by a collection or a Wabbajack list. It is a starting

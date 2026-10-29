@@ -23,7 +23,7 @@ public class ModOrderDroppedEmitterTests(ITestOutputHelper helper) : ACyberpunkI
         return LoadoutItemGroupId.From(result[temp].Value);
     }
 
-    private async Task AddRow(LoadoutId loadoutId, LoadoutItemGroupId container, string source, string item, string reason = "no installed mod matches it")
+    private async Task AddRow(LoadoutId loadoutId, LoadoutItemGroupId container, string source, string item, string reason = "no installed mod matches it", string page = "Load Order")
     {
         using var tx = Connection.BeginTransaction();
         _ = new ModOrderDroppedEntry.New(tx)
@@ -33,7 +33,7 @@ public class ModOrderDroppedEmitterTests(ITestOutputHelper helper) : ACyberpunkI
             Source = source,
             Item = item,
             Reason = reason,
-            Page = "Load Order",
+            Page = page,
         };
         await tx.Commit();
     }
@@ -92,6 +92,42 @@ public class ModOrderDroppedEmitterTests(ITestOutputHelper helper) : ACyberpunkI
 
         summaries.Should().HaveCount(2);
         summaries.Should().Contain(s => s.Contains("collection X")).And.Contain(s => s.Contains("collection Y"));
+    }
+
+    [Fact]
+    public async Task RuleDropsAreNotCountedWithTheOrderEntries()
+    {
+        var loadout = await CreateLoadout();
+        var container = await AddContainer(loadout.LoadoutId, "Collection X");
+        await AddRow(loadout.LoadoutId, container, "collection X", "Ghost", "no mod matches 'Ghost'");
+        await AddRow(loadout.LoadoutId, container, "collection X", "rule 'a before b'", ModOrderDrop.UnresolvedRuleReason, "Collection X");
+        await AddRow(loadout.LoadoutId, container, "collection X", "rule 'c after d'", ModOrderDrop.UnresolvedRuleReason, "Collection X");
+
+        var diagnostics = await Diagnose(loadout);
+
+        diagnostics.Should().HaveCount(2);
+        var order = diagnostics.Single(d => d.FormatSummary(new PlainDiagnosticWriter()).Contains("Ghost"));
+        order.FormatDetails(new PlainDiagnosticWriter()).Should().Contain("Load Order page").And.NotContain("rule");
+        var rules = diagnostics.Single(d => d != order);
+        rules.FormatSummary(new PlainDiagnosticWriter()).Should().Be("2 entries of collection X's load order are not used");
+        rules.FormatDetails(new PlainDiagnosticWriter()).Should().Contain("rule 'a before b'").And.Contain("rule 'c after d'").And.Contain("Collection X page").And.NotContain("Ghost");
+    }
+
+    [Fact]
+    public async Task EntriesThatAreFixedOnDifferentPagesGetOneCardPerPage()
+    {
+        var loadout = await CreateLoadout();
+        var container = await AddContainer(loadout.LoadoutId, "Collection X");
+        await AddRow(loadout.LoadoutId, container, "collection X", "Ghost", page: "Load Order");
+        await AddRow(loadout.LoadoutId, container, "collection X", "Phantom", page: "Load Order");
+        await AddRow(loadout.LoadoutId, container, "collection X", "Wraith", page: "Collection X");
+        await AddRow(loadout.LoadoutId, container, "collection X", "Shade", page: "Collection X");
+
+        var details = (await Diagnose(loadout)).Select(d => d.FormatDetails(new PlainDiagnosticWriter())).ToArray();
+
+        details.Should().HaveCount(2);
+        details.Should().ContainSingle(d => d.Contains("Ghost") && d.Contains("Phantom") && d.Contains("Load Order page") && !d.Contains("Wraith"));
+        details.Should().ContainSingle(d => d.Contains("Wraith") && d.Contains("Shade") && d.Contains("Collection X page") && !d.Contains("Ghost"));
     }
 
     [Fact]
