@@ -105,16 +105,27 @@ public static class LoadoutDataProviderHelper
         return itemModel;
     }
 
+    /// <summary>
+    /// The collection the item sits in. Parent is optional, and reading it on an item without one throws, which on a
+    /// database observer's thread takes the other observers queued with it down.
+    /// </summary>
+    private static bool TryGetParentCollectionGroup(LoadoutItem.ReadOnly item, out CollectionGroup.ReadOnly collectionGroup)
+    {
+        if (item.HasParent()) return item.Parent.TryGetAsCollectionGroup(out collectionGroup);
+        collectionGroup = default;
+        return false;
+    }
+
     public static void AddCollection(IConnection connection, CompositeItemModel<EntityId> itemModel, LoadoutItem.ReadOnly loadoutItem)
     {
-        if (!loadoutItem.Parent.TryGetAsCollectionGroup(out var collectionGroup)) return;
+        if (!TryGetParentCollectionGroup(loadoutItem, out var collectionGroup)) return;
 
         itemModel.Add(LoadoutColumns.Collections.ComponentKey, new StringComponent(value: collectionGroup.AsLoadoutItemGroup().AsLoadoutItem().Name));
     }
 
     public static void AddParentCollectionDisabled(IConnection connection, CompositeItemModel<EntityId> itemModel, LoadoutItem.ReadOnly loadoutItem)
     {
-        if (!loadoutItem.Parent.TryGetAsCollectionGroup(out var collectionGroup)) return;
+        if (!TryGetParentCollectionGroup(loadoutItem, out var collectionGroup)) return;
 
         var isParentCollectionDisabledObservable = LoadoutItem.Observe(connection, collectionGroup.Id).Select(static item => item.IsDisabled).ToObservable();
 
@@ -134,7 +145,7 @@ public static class LoadoutDataProviderHelper
         var isParentCollectionDisabledObservable = linkedItemsObservable
             .TransformOnObservable(item =>
                 {
-                    if (!item.Parent.TryGetAsCollectionGroup(out var collectionGroup)) 
+                    if (!TryGetParentCollectionGroup(item, out var collectionGroup)) 
                         return System.Reactive.Linq.Observable.Return(false);
                     return LoadoutItem.Observe(connection, collectionGroup)
                         .Select(static parentItem => parentItem.IsDisabled);
@@ -296,7 +307,7 @@ public static class LoadoutDataProviderHelper
             .TransformOnObservable(item =>
                 {
                     var isLocked = IsToggleLocked(item);
-                    if (!item.Parent.TryGetAsCollectionGroup(out var collectionGroup))
+                    if (!TryGetParentCollectionGroup(item, out var collectionGroup))
                         return System.Reactive.Linq.Observable.Return((IsLocked: isLocked, IsParentDisabled: false));
                     
                     return LoadoutItem.Observe(connection, collectionGroup)
