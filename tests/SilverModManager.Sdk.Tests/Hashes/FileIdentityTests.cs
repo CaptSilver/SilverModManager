@@ -114,8 +114,8 @@ public class FileIdentityTests
         var a = FileIdentity.XxHash3(Hash.From(42));
         var b = FileIdentity.XxHash3(Hash.From(42));
         a.GetHashCode().Should().Be(b.GetHashCode());
-        (a == b).Should().BeTrue();
-        (a != FileIdentity.XxHash3(Hash.From(43))).Should().BeTrue();
+        a.Equals(b).Should().BeTrue();
+        a.Equals(FileIdentity.XxHash3(Hash.From(43))).Should().BeFalse();
     }
 
     private static MultiHash HashesOf(byte[] bytes) => MultiHasher.HashStream(new MemoryStream(bytes)).Result;

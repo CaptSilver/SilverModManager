@@ -232,7 +232,7 @@ public class DiskStateRowTests(ITestOutputHelper helper) : AStubbedGameTest<Disk
 
         var pairs = Synchronizer.GetDiskStateForGame(GameInstallMetadata.Load(Connection.Db, row));
 
-        pairs.Should().ContainSingle(p => p.Part.Identity == FileIdentity.XxHash3(Hash.From(0xC4A6E)));
+        pairs.Should().ContainSingle(p => p.Part.Identity.Equals(FileIdentity.XxHash3(Hash.From(0xC4A6E))));
     }
 
     [Fact]
@@ -303,7 +303,7 @@ public class DiskStateRowTests(ITestOutputHelper helper) : AStubbedGameTest<Disk
 
         var asOf = ((ILoadoutSynchronizer)Synchronizer).GetDiskStateForGameAsOf(GameInstallMetadata.Load(Connection.Db, row), initial);
 
-        asOf.Should().ContainSingle(p => p.Part.Identity == FileIdentity.XxHash3(Hash.From(0x51)));
+        asOf.Should().ContainSingle(p => p.Part.Identity.Equals(FileIdentity.XxHash3(Hash.From(0x51))));
     }
 
     [Fact]
@@ -384,7 +384,7 @@ public class DiskStateRowTests(ITestOutputHelper helper) : AStubbedGameTest<Disk
 
         rows.Should().NotBeEmpty();
         rows.Should().OnlyContain(r => DiskStateEntry.Identity.Contains(r) && DiskStateEntry.XxHash3.Contains(r));
-        rows.Should().OnlyContain(r => r.IdentityOf() == FileIdentity.XxHash3(DiskStateEntry.XxHash3.Get(r)));
+        rows.Should().OnlyContain(r => r.IdentityOf().Equals(FileIdentity.XxHash3(DiskStateEntry.XxHash3.Get(r))));
     }
 
     // The second row reaches the same folder through a link, so its path is spelled differently and the refusal

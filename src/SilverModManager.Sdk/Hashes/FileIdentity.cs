@@ -9,6 +9,8 @@ namespace SilverModManager.Sdk.Hashes;
 /// <summary>
 /// A hash together with the algorithm that produced it. Two identities are equal only when the kind, the length and
 /// every digest byte agree; an xxHash3 and a SHA-1 of the same bytes are different identities.
+/// There is no <c>==</c>: whether two identities of different kinds name the same bytes is a question with three
+/// answers, so callers ask <see cref="MatchSameKind"/> (or the resolver) and spell which answer they act on.
 /// There is no conversion to or from <see cref="Hash"/>: callers that need an xxHash3 say so with <c>XxHash3()</c>
 /// (throws) or <see cref="TryXxHash3"/>, so a SHA-1 can never reach the file store or a loadout file by accident.
 /// </summary>
@@ -265,12 +267,6 @@ public readonly struct FileIdentity : IEquatable<FileIdentity>
         HashKind.Crc32 => $"crc32:{Convert.ToHexString(Digest)}",
         _ => $"kind{_kind}:{Convert.ToHexString(Digest)}",
     };
-
-    /// <summary/>
-    public static bool operator ==(FileIdentity left, FileIdentity right) => left.Equals(right);
-
-    /// <summary/>
-    public static bool operator !=(FileIdentity left, FileIdentity right) => !left.Equals(right);
 
     [InlineArray(MaxDigestLength)]
     private struct DigestBuffer

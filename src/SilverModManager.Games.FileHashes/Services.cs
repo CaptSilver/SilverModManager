@@ -39,12 +39,19 @@ public static class Services
             .AddEpicGameStoreBuildModel()
             .AddFileHashesQueriesSql()
             .AddSingleton<IFileHashesService, FileHashesService>()
-            .AddSingleton<IFileIdentityResolver, RecordedDigestResolver>()
+            .AddFileIdentityResolver()
             .AddSingleton<IVanillaTrust, BaselineVanillaTrust>()
             .AddSingleton<IHostedService>(s => (IHostedService)s.GetRequiredService<IFileHashesService>())
             .AddSettings<FileHashesServiceSettings>()
             .AddHashRelationModel();
     }
+
+    /// <summary>
+    /// Registers <see cref="IFileIdentityResolver"/>, which every synchronizer needs. Part of <see cref="AddFileHashes"/>;
+    /// graphs that replace the hashes service register it on its own.
+    /// </summary>
+    public static IServiceCollection AddFileIdentityResolver(this IServiceCollection services)
+        => services.AddSingleton<IFileIdentityResolver, RecordedDigestResolver>();
 
     /// <summary>
     /// Updates the local baselines of managed games in the background after startup. Left out of

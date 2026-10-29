@@ -358,7 +358,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
         // A loadout apply: the previous state is the hash the last apply linked. The disk side is the content
         // now, which has no staged file, so only the previous hash can name the one that was written through.
         // A previous part of another kind (a vanilla file the app never touched) was never linked from the store.
-        if (node.HavePrevious && node.Previous.Identity != node.Disk.Identity
+        if (node.HavePrevious && node.Previous.Identity.MatchSameKind(node.Disk.Identity) != IdentityMatch.Same
             && node.Previous.Identity.TryXxHash3(out var previousHash)
             && HasLinkIdentity(deployed, store.PathFor(context.MetadataId, previousHash)))
         {

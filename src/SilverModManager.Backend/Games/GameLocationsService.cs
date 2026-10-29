@@ -92,14 +92,15 @@ internal class GameLocationsService : IGameLocationsService
                         // The index wrote this row before full reads recorded a relation, so nothing says whether the
                         // bytes are the store's or a mod's that the app deployed or adopted here. One read settles it.
                         var result = await IndexFile(installation, file, gamePath, tally, reads, attested, forceRead: true, token);
-                        if (result.Identity == previous) tally.Unchanged();
+                        // Both are xxHash3 by construction: the branch is guarded by previous.Kind == XxHash3 and IndexFile always returns one.
+                        if (result.Identity.Equals(previous)) tally.Unchanged();
                         else changed = modifiedFiles[gamePath] = result;
                     }
                     else if (previous.Kind != HashKind.XxHash3)
                     {
                         // A row that names the file by another kind is trusted only while the store's row still says the
                         // same; a rebuild that replaced it leaves the fingerprint rows to resolve the path.
-                        if (attestedMatches && attested is { } still && FileIdentity.Sha1(still.Sha1) == previous)
+                        if (attestedMatches && attested is { } still && FileIdentity.Sha1(still.Sha1).Equals(previous))
                         {
                             tally.Unchanged();
                         }

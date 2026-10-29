@@ -556,7 +556,7 @@ public partial class ALoadoutSynchronizer
         {
             ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(syncTree, path);
             if (Unsafe.IsNullRef(ref node) || !node.HaveDisk) continue;
-            if (node.HaveLoadout && (node.SourceItemType != LoadoutSourceItemType.Game || node.Loadout.Identity == node.Disk.Identity)) continue;
+            if (node.HaveLoadout && (node.SourceItemType != LoadoutSourceItemType.Game || node.Loadout.Identity.MatchSameKind(node.Disk.Identity) == IdentityMatch.Same)) continue;
             AdoptDiskAsGameFile(ref node);
         }
 

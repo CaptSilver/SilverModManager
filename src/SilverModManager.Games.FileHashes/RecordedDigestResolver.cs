@@ -61,12 +61,22 @@ internal sealed class RecordedDigestResolver(IFileHashesService fileHashes) : IF
     {
         if (left.Kind == right.Kind) return left.MatchSameKind(right);
 
-        // xxHash3 is the store key and the most widely recorded digest, so meet there when either side has it.
+        // xxHash3 is the store key and the most widely recorded digest, so meet there when either side has it. A row
+        // keyed by the other side's digest may not exist while one keyed by the xxHash3 does, so that side is
+        // converted the other way before giving up.
         if (left.Kind == HashKind.XxHash3)
-        {
-            return source.TryConvert(right, size, HashKind.XxHash3, out var convertedRight) ? left.MatchSameKind(convertedRight) : IdentityMatch.Unknown;
-        }
-        return source.TryConvert(left, size, right.Kind, out var convertedLeft) ? convertedLeft.MatchSameKind(right) : IdentityMatch.Unknown;
+            return Meet(source, other: right, xxHash3: left, size);
+        if (right.Kind == HashKind.XxHash3)
+            return Meet(source, other: left, xxHash3: right, size);
+
+        if (source.TryConvert(left, size, right.Kind, out var convertedLeft)) return convertedLeft.MatchSameKind(right);
+        return source.TryConvert(right, size, left.Kind, out var convertedRight) ? left.MatchSameKind(convertedRight) : IdentityMatch.Unknown;
+    }
+
+    private static IdentityMatch Meet(IFileIdentityResolver source, FileIdentity other, FileIdentity xxHash3, Size size)
+    {
+        if (source.TryConvert(other, size, HashKind.XxHash3, out var otherAsXxHash3)) return xxHash3.MatchSameKind(otherAsXxHash3);
+        return source.TryConvert(xxHash3, size, other.Kind, out var xxHash3AsOther) ? xxHash3AsOther.MatchSameKind(other) : IdentityMatch.Unknown;
     }
 
     private IEnumerable<HashRelation.ReadOnly> MatchingRows(FileIdentity identity, Size size)

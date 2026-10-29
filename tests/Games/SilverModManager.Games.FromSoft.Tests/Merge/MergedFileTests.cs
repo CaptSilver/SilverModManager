@@ -16,6 +16,7 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Games.FromSoft.Tests.Merge;
@@ -196,6 +197,48 @@ public class MergedFileTests(ITestOutputHelper helper) : AVanillaDumpTest<Merged
         (await MergedMsg.ReadAllBytesAsync()).Should().Equal(merged);
         (await (Mods / "silver.me3").ReadAllBytesAsync()).Should().Equal(profile);
     }
+
+    [Theory]
+    [InlineData(false, Actions.DeleteFromDisk)]
+    [InlineData(true, Actions.BackupFile | Actions.DeleteFromDisk)]
+    public void AContributorCopyOnDisk_IsBackedUpUnlessItIsKnownToBeTheDeployedOne(bool differs, Actions expected)
+    {
+        var deployed = FileIdentity.XxHash3(Hash.From(0xFAD01));
+        var other = FileIdentity.XxHash3(Hash.From(0xFAD02));
+        var contributor = new GamePath(LocationId.Me3Mods, "Alpha/" + Msg);
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [new GamePath(LocationId.Me3Mods, "_merged/" + Msg)] = new() { Disk = Part(deployed), SourceItemType = LoadoutSourceItemType.Intrinsic },
+            [contributor] = new() { Disk = Part(differs ? other : deployed), Previous = Part(deployed), Loadout = Part(deployed), SourceItemType = LoadoutSourceItemType.Loadout },
+        };
+
+        Synchronizer.ProcessSyncTree(tree);
+
+        tree[contributor].Actions.Should().Be(expected);
+    }
+
+    [Fact]
+    public void AContributorCopyOfAnotherHashKind_IsBackedUpBeforeItIsDeleted()
+    {
+        var contributor = new GamePath(LocationId.Me3Mods, "Alpha/" + Msg);
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [new GamePath(LocationId.Me3Mods, "_merged/" + Msg)] = new() { Disk = Part(FileIdentity.XxHash3(Hash.From(0xFAD01))), SourceItemType = LoadoutSourceItemType.Intrinsic },
+            [contributor] = new()
+            {
+                Disk = Part(FileIdentity.Sha1(Sha1Value.FromHex(new string('A', 40)))),
+                Previous = Part(FileIdentity.XxHash3(Hash.From(0xFAD01))),
+                Loadout = Part(FileIdentity.XxHash3(Hash.From(0xFAD01))),
+                SourceItemType = LoadoutSourceItemType.Loadout,
+            },
+        };
+
+        Synchronizer.ProcessSyncTree(tree);
+
+        tree[contributor].Actions.Should().Be(Actions.BackupFile | Actions.DeleteFromDisk);
+    }
+
+    private static SyncNodePart Part(FileIdentity identity) => new() { Identity = identity, Size = Size.FromLong(10), LastModifiedTicks = 5 };
 
     [Fact]
     public async Task AtSteadyStateTheContributorNodesNeedNothingAndTheGeneratedFilesAreRewritten()

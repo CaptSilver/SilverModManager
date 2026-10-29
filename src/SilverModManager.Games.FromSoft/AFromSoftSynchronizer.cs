@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
@@ -112,7 +113,7 @@ public abstract class AFromSoftSynchronizer : ALoadoutSynchronizer
 
             node.Actions = !node.HaveDisk
                 ? Actions.DoNothing
-                : node.Disk.Identity != node.Loadout.Identity
+                : node.Disk.Identity.MatchSameKind(node.Loadout.Identity) != IdentityMatch.Same
                     ? Actions.BackupFile | Actions.DeleteFromDisk
                     : Actions.DeleteFromDisk;
         }

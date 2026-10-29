@@ -125,7 +125,8 @@ public static class DependencyInjectionHelper
                 .AddEpicGameStoreBuildModel()
                 .AddFileHashesQueriesSql()
                 .AddHashRelationModel()
-                .AddSingleton<IFileHashesService, StubbedFileHasherService>();
+                .AddSingleton<IFileHashesService, StubbedFileHasherService>()
+                .AddFileIdentityResolver();
         else 
             serviceCollection
                 .AddFileHashes();

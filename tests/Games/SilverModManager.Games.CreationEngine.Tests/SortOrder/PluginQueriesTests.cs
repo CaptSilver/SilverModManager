@@ -124,7 +124,7 @@ public class PluginQueriesTests(ITestOutputHelper helper)
             .ToList();
 
         rows.Should().Contain(r => r.Name == "Skyrim.esm").And.Contain(r => r.Name == "FromMod.esp", "both a game file and a mod's plugin are listed");
-        rows.Should().OnlyContain(r => FileIdentity.ParseHex(r.Identity) == FileIdentity.XxHash3(r.Hash));
+        rows.Should().OnlyContain(r => FileIdentity.ParseHex(r.Identity).Equals(FileIdentity.XxHash3(r.Hash)));
     }
 
     [Fact]

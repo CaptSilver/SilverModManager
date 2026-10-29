@@ -20,7 +20,7 @@ internal static class PluginNodeParsing
     public static async ValueTask<PluginHeader?> ParseNode(this ICreationEngineGame game, SyncNode node, FileIdentity preferred, RelativePath name)
     {
         var header = await game.ParsePlugin(preferred, name);
-        if (header is not null || !node.HaveDisk || node.Disk.Identity == preferred) return header;
+        if (header is not null || !node.HaveDisk || node.Disk.Identity.MatchSameKind(preferred) == IdentityMatch.Same) return header;
 
         return await game.ParsePlugin(node.Disk.Identity, name);
     }

@@ -52,11 +52,11 @@ public partial class ALoadoutSynchronizer
             ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(tree, read.Path);
             var before = node.Disk.Identity;
             var xxHash3 = FileIdentity.XxHash3(read.Hashes.XxHash3);
-            if (before == xxHash3) continue;
+            if (before.MatchSameKind(xxHash3) == IdentityMatch.Same) continue;
 
             var matched = before.Kind == HashKind.Sha1 && read.Hashes.Sha1 == Sha1Value.From(before.Digest) && read.Hashes.Size == node.Disk.Size;
             node.Disk = node.Disk with { Identity = xxHash3 };
-            if (matched && node.HavePrevious && node.Previous.Identity == before)
+            if (matched && node.HavePrevious && node.Previous.Identity.MatchSameKind(before) == IdentityMatch.Same)
                 node.Previous = node.Previous with { Identity = xxHash3 };
             resolved[read.Path] = node;
         }

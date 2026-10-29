@@ -229,7 +229,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
             $"SELECT Path, Hash, Identity FROM file_hashes.loadout_files({_main.Db}) WHERE Loadout = {loadout.Value}").ToList();
 
         rows.Should().HaveCount(2);
-        rows.Should().OnlyContain(r => FileIdentity.ParseHex(r.Identity) == FileIdentity.XxHash3(r.Hash));
+        rows.Should().OnlyContain(r => FileIdentity.ParseHex(r.Identity).Equals(FileIdentity.XxHash3(r.Hash)));
     }
 
     [Fact]

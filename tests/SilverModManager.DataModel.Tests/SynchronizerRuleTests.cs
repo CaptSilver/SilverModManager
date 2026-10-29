@@ -220,9 +220,9 @@ public class SynchronizerRuleTests
     {
         if (!hash.HasValue) return "x";
 
-        if (hash.Value == Hash1) return "A";
-        if (hash.Value == Hash2) return "B";
-        if (hash.Value == Hash3) return "C";
+        if (hash.Value.Equals(Hash1)) return "A";
+        if (hash.Value.Equals(Hash2)) return "B";
+        if (hash.Value.Equals(Hash3)) return "C";
         throw new ArgumentOutOfRangeException(nameof(hash));
     }
 }

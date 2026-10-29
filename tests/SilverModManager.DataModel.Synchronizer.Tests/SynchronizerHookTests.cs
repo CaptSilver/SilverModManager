@@ -16,6 +16,7 @@ using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Trees;
@@ -260,7 +261,7 @@ public class SynchronizerHookTests : AIsolatedGameTest<SynchronizerHookTests, Ho
         if (!tree.TryGetValue(KeptOffDisk, out var node) || !node.HaveLoadout) return;
 
         node.Actions = node.HaveDisk
-            ? node.Disk.Identity != node.Loadout.Identity ? Actions.BackupFile | Actions.DeleteFromDisk : Actions.DeleteFromDisk
+            ? node.Disk.Identity.MatchSameKind(node.Loadout.Identity) != IdentityMatch.Same ? Actions.BackupFile | Actions.DeleteFromDisk : Actions.DeleteFromDisk
             : Actions.DoNothing;
         tree[KeptOffDisk] = node;
     }

@@ -6,6 +6,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Games.FileHashes.Emitters;
@@ -26,7 +27,7 @@ public class NoWayToSourceFilesOnDisk : ILoadoutDiagnosticEmitter
         
         foreach (var (_, node) in syncTree)
         {
-            if (node.Loadout.Identity == node.Disk.Identity && node.SourceItemType == LoadoutSourceItemType.Game && !node.Signature.HasFlag(Signature.DiskArchived))
+            if (node.Loadout.Identity.MatchSameKind(node.Disk.Identity) == IdentityMatch.Same && node.SourceItemType == LoadoutSourceItemType.Game && !node.Signature.HasFlag(Signature.DiskArchived))
             {
                 totalSize += node.Loadout.Size;
                 count++;

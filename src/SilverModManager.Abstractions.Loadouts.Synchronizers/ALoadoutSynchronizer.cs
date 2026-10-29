@@ -71,6 +71,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
     private readonly IJobMonitor _jobMonitor;
     private readonly IFileHashesService _fileHashService;
+
+    /// <summary>Answers "same bytes?" across hash kinds from rows already recorded; never reads a file.</summary>
+    protected readonly IFileIdentityResolver _identityResolver;
     private readonly IBackupOverflowPrompt _backupOverflowPrompt;
     private readonly BackupLimit _backupLimit;
     private readonly IFullFileHasher _fullHasher;
@@ -104,6 +107,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         _fullHasher = serviceProvider.GetService<IFullFileHasher>() ?? MultiHashFileHasher.Instance;
 
         _fileHashService = fileHashService;
+        _identityResolver = serviceProvider.GetRequiredService<IFileIdentityResolver>();
 
         Logger = logger;
         _fileStore = fileStore;
@@ -347,7 +351,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 if (!onDisk.FileExists) continue;
                 Logger.LogWarning("Not deploying `{Path}`: a file of that name is already there and was not put there by the loadout", path);
             }
-            else if (node.HaveDisk && !node.HavePrevious && node.Disk.Identity != node.Loadout.Identity)
+            else if (node.HaveDisk && !node.HavePrevious && node.Disk.Identity.MatchSameKind(node.Loadout.Identity) != IdentityMatch.Same)
             {
                 Logger.LogWarning("Leaving `{Path}` alone: it differs from the loadout's copy, so the game or the user has changed it since", path);
             }
@@ -631,7 +635,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // generic rules would delete it or write the mod's copy over it. Dropping the disk state entry also
         // keeps the verdict: once the entry's hash follows the rewrite, the rewrite would look like a change
         // the loadout has not caught up with.
-        if (item.HaveDisk && item.HavePrevious && item.Disk.Identity != item.Previous.Identity && GamePathFilter.ShouldFilter(path))
+        if (item.HaveDisk && item.HavePrevious && item.Disk.Identity.MatchSameKind(item.Previous.Identity) != IdentityMatch.Same && GamePathFilter.ShouldFilter(path))
             item.Actions = Actions.ForgetDiskState;
 
         LeaveGameWrittenFileAlone(path, ref item);
@@ -1285,21 +1289,23 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     // A list naming the file by SHA-1 and a disk naming it by xxHash3 are compared through the relation recorded for
-    // that xxHash3. With no relation nothing can tell the bytes apart, so path and size decide.
+    // them. With no relation nothing can tell the bytes apart, so path and size decide.
     private bool IsListed(Dictionary<string, GameFileRecord> listed, GamePath path, ulong size, FileIdentity identity)
     {
         if (path.LocationId != LocationId.Game || !listed.TryGetValue(path.Path.ToString(), out var record)) return false;
         if (record.Size.Value != size) return false;
-        if (record.Identity.Kind == identity.Kind) return record.Identity.Equals(identity);
-        if (record.Identity.Kind == HashKind.Sha1 && identity.TryXxHash3(out var xxHash3) && _fileHashService.TryFindRelation(xxHash3, out var relation))
+
+        switch (_identityResolver.Resolve(record.Identity, identity, Size.From(size)))
         {
-            var joined = relation.Sha1 == Sha1Value.From(record.Identity.Digest) && relation.Size.Value == size;
-            if (!joined)
-                Logger.LogTrace("`{Path}` is not the listed file: the relation for {XxHash3} names {RelationSha1} ({RelationSize} bytes), the list has {ListedIdentity}", path, xxHash3, relation.Sha1, relation.Size, record.Identity);
-            return joined;
+            case IdentityMatch.Different:
+                Logger.LogTrace("`{Path}` is not the listed file: the list has {ListedIdentity}, the disk has {Identity}", path, record.Identity, identity);
+                return false;
+            case IdentityMatch.Unknown:
+                Logger.LogTrace("`{Path}` is listed by path and size only: no relation joins the list's {ListedIdentity} to the disk's {Identity}", path, record.Identity, identity);
+                return true;
+            default:
+                return true;
         }
-        Logger.LogTrace("`{Path}` is listed by path and size only: no relation joins the list's {ListedIdentity} to the disk's {Identity}", path, record.Identity, identity);
-        return true;
     }
 
     /// <summary>
@@ -2302,7 +2308,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 // A save on a protected path that the game rewrote is no longer what the loadout deployed.
                 LoadoutSourceItemType.Loadout => node.Loadout.HaveEntityId
                     && !IsInGroup(loadout.Db, node.Loadout.EntityId, overridesGroup)
-                    && !(GamePathFilter.ShouldFilter(path) && node.Disk.Identity != node.Loadout.Identity),
+                    && !(GamePathFilter.ShouldFilter(path) && node.Disk.Identity.MatchSameKind(node.Loadout.Identity) != IdentityMatch.Same),
                 _ => false,
             };
 

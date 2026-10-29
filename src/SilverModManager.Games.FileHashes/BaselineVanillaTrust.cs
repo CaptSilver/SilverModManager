@@ -74,25 +74,7 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotMa
             return false;
         }
 
-        FileIdentity current;
-        try
-        {
-            current = FileIdentity.Of(currentHashes, recorded.Kind);
-        }
-        catch (InvalidOperationException)
-        {
-            reason = "recorded with a hash kind this build cannot compute";
-            return false;
-        }
-
-        if (recorded != current)
-        {
-            reason = VanillaTrustReasons.DiffersFromBaseline;
-            return false;
-        }
-
-        reason = "";
-        return true;
+        return Matches(recorded, currentHashes, VanillaTrustReasons.DiffersFromBaseline, out reason);
     }
 
     /// <summary>
@@ -108,7 +90,7 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotMa
         var unreadable = false;
 
         if (index.Recorded.TryGetValue(wanted, out var recorded))
-            return Compare(recorded, currentHashes, out reason);
+            return Matches(recorded, currentHashes, VanillaTrustReasons.DiffersFromStoreList, out reason);
 
         if (installation.LocatorResult.Store == GameStore.Steam)
         {
@@ -136,7 +118,9 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotMa
         return false;
     }
 
-    private static bool Compare(FileIdentity recorded, MultiHash currentHashes, out string reason)
+    // The recorded digest and the current one are compared in the recorded kind. Both sides come from the same
+    // MultiHash family, so the kinds agree by construction and Equals is the whole question.
+    private static bool Matches(FileIdentity recorded, MultiHash currentHashes, string differsReason, out string reason)
     {
         FileIdentity current;
         try
@@ -149,9 +133,9 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotMa
             return false;
         }
 
-        if (recorded != current)
+        if (!recorded.Equals(current))
         {
-            reason = VanillaTrustReasons.DiffersFromStoreList;
+            reason = differsReason;
             return false;
         }
 

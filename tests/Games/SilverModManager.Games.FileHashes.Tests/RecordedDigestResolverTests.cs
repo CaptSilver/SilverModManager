@@ -153,6 +153,18 @@ public sealed class RecordedDigestResolverTests : IDisposable
     }
 
     [Fact]
+    public async Task Resolve_OnlyTheXxHash3SideHasARow_ItsOtherDigestSettlesTheAnswer()
+    {
+        var a = await Hashed("alpha");
+        var b = await Hashed("beta");
+        await AddRow(_local, b, size: a.Size);
+
+        _resolver.Resolve(FileIdentity.Sha1(a.Sha1), FileIdentity.XxHash3(b.XxHash3), a.Size).Should().Be(IdentityMatch.Different);
+        _resolver.Resolve(FileIdentity.XxHash3(b.XxHash3), FileIdentity.Sha1(a.Sha1), a.Size).Should().Be(IdentityMatch.Different);
+        _resolver.Resolve(FileIdentity.Sha1(b.Sha1), FileIdentity.XxHash3(b.XxHash3), a.Size).Should().Be(IdentityMatch.Same);
+    }
+
+    [Fact]
     public async Task Resolve_TwoKindsNeitherXxHash3_ConvertsLeftToRight()
     {
         var a = await Hashed("alpha");
