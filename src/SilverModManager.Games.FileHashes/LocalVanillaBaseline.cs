@@ -128,7 +128,7 @@ internal sealed class LocalVanillaBaseline
         _storedHashes = storedHashes;
         _fileSystem = fileSystem;
         _logger = logger;
-        _openRead = openRead ?? (path => path.Read());
+        _openRead = openRead ?? SequentialFileRead.Open;
     }
 
     private readonly record struct IndexEntry(Size Size, Sha1Value Sha1, RelativePath Spelling, int ManifestIndex);

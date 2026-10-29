@@ -89,7 +89,7 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
         var live = LivePath(gameFile);
         if (!live.FileExists) return null;
 
-        await using var stream = live.Read();
+        await using var stream = SequentialFileRead.Open(live);
         var both = await Hasher.HashAsync(stream, cancellationToken: cancellationToken);
         return (both.Hash1, both.Hash2, live.FileInfo.Size);
     }

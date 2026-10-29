@@ -1,3 +1,4 @@
+using System.Buffers;
 using JetBrains.Annotations;
 
 namespace SilverModManager.Sdk.Hashes;
@@ -10,7 +11,7 @@ public interface IStreamingHasher<THash, TState, TSelf> : IHasher<THash, TSelf>
     where THash : unmanaged, IEquatable<THash>
     where TSelf : IStreamingHasher<THash, TState, TSelf>
 {
-    public const int DefaultBufferSize = 1024 * 8;
+    public const int DefaultBufferSize = HashingLimits.ReadBlockSize;
 
     /// <summary>
     /// Hashes the stream contents until the end.
@@ -49,18 +50,26 @@ public static class StreamingHasher<THash, TState, THasher>
         int bufferSize,
         CancellationToken cancellationToken)
     {
-        var buffer = GC.AllocateUninitializedArray<byte>(bufferSize);
-
-        var state = THasher.Initialize();
-        while (!cancellationToken.IsCancellationRequested)
+        // A short stream does not need a full block; the pool hands out the large ones without a fresh allocation each file.
+        if (stream.CanSeek) bufferSize = (int)Math.Clamp(stream.Length - stream.Position, 1, bufferSize);
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+        try
         {
-            var bytesRead = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-            if (bytesRead == 0) break;
+            var state = THasher.Initialize();
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var bytesRead = await stream.ReadAsync(buffer.AsMemory(0, bufferSize), cancellationToken).ConfigureAwait(false);
+                if (bytesRead == 0) break;
 
-            state = THasher.Update(state, buffer, offset: 0, count: bytesRead);
+                state = THasher.Update(state, buffer, offset: 0, count: bytesRead);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            return THasher.Finish(state);
         }
-
-        cancellationToken.ThrowIfCancellationRequested();
-        return THasher.Finish(state);
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 }

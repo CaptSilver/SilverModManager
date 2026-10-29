@@ -76,7 +76,7 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
 
     private static async ValueTask<(Hash, Optional<Md5Value>, Optional<Sha256Value>, Hash)> HashAsync(AbsolutePath filePath, bool isNestedFile, CancellationToken cancellationToken)
     {
-        await using var stream = filePath.Read();
+        await using var stream = SequentialFileRead.Open(filePath);
 
         if (isNestedFile)
         {
