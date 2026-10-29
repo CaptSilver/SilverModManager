@@ -200,11 +200,13 @@ public abstract class LinkedGameTest<TTest>(ITestOutputHelper helper, Placement 
     protected static bool IsSymlink(AbsolutePath path) => LibcStat.TryLStat(path.ToString(), out var stat) == 0 && (stat.Mode & LibcStat.TypeMask) == LibcStat.Symlink;
 
     /// <summary>
-    /// The sync tree for what is on disk now, as a synchronize would build it.
+    /// The sync tree for what is on disk now, as a synchronize would build it. The loadout is read again at the
+    /// latest revision first: the tree lists the winning files of the revision it is handed, and a loadout taken
+    /// before the test disabled or added an item would build the tree of the old state.
     /// </summary>
     protected async Task<Dictionary<GamePath, SyncNode>> BuildTree(Loadout.ReadOnly loadout)
     {
-        var tree = await Synchronizer.BuildSyncTree(loadout);
+        var tree = await Synchronizer.BuildSyncTree(Loadout.Load(Connection.Db, loadout.LoadoutId));
         Synchronizer.ProcessSyncTree(tree);
         return tree;
     }
