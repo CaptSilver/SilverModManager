@@ -4,6 +4,7 @@ using SilverModManager.App.GarbageCollection.Interfaces;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 
@@ -44,7 +45,7 @@ public static class DataStoreReferenceMarker
 
         // Bytes a running job stored but has not yet recorded in any of the above.
         foreach (var hash in FileStorePins.Pinned())
-            archiveGc.AddReferencedFile(hash);
+            archiveGc.AddReferencedFile(FileIdentity.XxHash3(hash));
     }
 
     private static void MarkGameIniCopies<TParsedHeaderState, TFileEntryWrapper>(ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWrapper> archiveGc, IDb db, Dictionary<LoadoutId, bool> isLoadoutValidDict)
@@ -60,8 +61,8 @@ public static class DataStoreReferenceMarker
 
             if (!isLoadoutValid) continue;
 
-            archiveGc.AddReferencedFile(state.Baseline);
-            if (LoadoutIniState.LastBakedHash.TryGetValue(state, out var baked)) archiveGc.AddReferencedFile(baked);
+            archiveGc.AddReferencedFile(state.BaselineIdentity);
+            if (state.LastBakedIdentity() is { } baked) archiveGc.AddReferencedFile(baked);
         }
     }
 
@@ -70,7 +71,7 @@ public static class DataStoreReferenceMarker
         // All files explicitly marked as roots should be preserved.
         var gameBackedUpFile = GameBackedUpFile.All(db);
         foreach (var file in gameBackedUpFile)
-            archiveGc.AddReferencedFile(file.Hash);
+            archiveGc.AddReferencedFile(file.Identity);
     }
 
     private static void MarkItemsUsedInLibrary<TParsedHeaderState, TFileEntryWrapper>(ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWrapper> archiveGc, IDb db) where TParsedHeaderState : ICanProvideFileHashes<TFileEntryWrapper> where TFileEntryWrapper : IHaveFileHash
@@ -91,7 +92,7 @@ public static class DataStoreReferenceMarker
 
         var libraryFiles = LibraryFile.All(db);
         foreach (var file in libraryFiles)
-            archiveGc.AddReferencedFile(file.Hash);
+            archiveGc.AddReferencedFile(file.Identity);
 
         /*
             This covers every `LibraryFile`: the members of an archive, and plain files added on their own
@@ -126,7 +127,7 @@ public static class DataStoreReferenceMarker
                 continue;
             
             // If the loadout is valid, mark the file as used.
-            archiveGc.AddReferencedFile(loadoutFile.Hash);
+            archiveGc.AddReferencedFile(loadoutFile.Identity);
         }
     }
 }

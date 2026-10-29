@@ -8,6 +8,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
         <InternalsVisibleTo Include="SilverModManager.App.GarbageCollection.Tests"/>
         <InternalsVisibleTo Include="SilverModManager.App.GarbageCollection.DataModel.Tests"/>
     </ItemGroup>

@@ -7,6 +7,7 @@ using SilverModManager.App.GarbageCollection.Structs;
 using SilverModManager.App.GarbageCollection.Utilities;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Hashes;
 namespace SilverModManager.App.GarbageCollection;
 
 /// <summary>
@@ -73,18 +74,29 @@ public readonly struct ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWra
     ///     Increments the ref count of a file from the data store.
     ///     [Thread Safe]
     /// </summary>
-    /// <param name="hash">The hash for which the ref count is to be incremented.</param>
+    /// <param name="identity">
+    ///     The identity of the file whose ref count is to be incremented. Archives are keyed by xxHash3, so an
+    ///     identity of any other kind names no archive entry and is ignored.
+    /// </param>
     /// <param name="throwOnUnknownFile">Throws if an unknown file is being added to the ref counter.</param>
     /// <exception cref="UnknownFileException">
     ///     An archive is being added via <see cref="AddReferencedFile"/> but
     ///     was not originally collected via <see cref="AddArchive"/>.
     /// </exception>
-    public void AddReferencedFile(Hash hash, bool throwOnUnknownFile = false)
+    public void AddReferencedFile(FileIdentity identity, bool throwOnUnknownFile = false)
     {
+        if (!identity.TryXxHash3(out var hash))
+        {
+            if (throwOnUnknownFile)
+                ThrowHelpers.ThrowUnknownFileException(identity);
+
+            return;
+        }
+
         if (!HashToArchive.TryGetValue(hash, out var archiveRef))
         {
             if (throwOnUnknownFile)
-                ThrowHelpers.ThrowUnknownFileException(hash);
+                ThrowHelpers.ThrowUnknownFileException(identity);
 
             return;
         }

@@ -40,4 +40,10 @@ public partial class GameBackedUpFile : IModelDefinition
     /// we properly clean up files aft
     /// </summary>
     public static readonly ReferenceAttribute<Sdk.Games.GameInstallMetadata> GameInstall = new(Namespace, nameof(GameInstall));
+
+    public partial struct ReadOnly
+    {
+        /// <summary>The backed-up file's store key as an identity.</summary>
+        public FileIdentity Identity => FileIdentity.XxHash3(GameBackedUpFile.Hash.Get(this));
+    }
 }

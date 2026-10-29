@@ -106,6 +106,7 @@ public class GameInstalledModelTests(ITestOutputHelper helper) : ACyberpunkIsola
         var readFile = GameInstalledFile.Load(db, result[file]);
         ((GamePath)readFile.Path).Should().Be(DataPath("cc_one.esm"));
         readFile.Hash.Should().Be(Hash.From(0xAB));
+        readFile.Identity.Equals(FileIdentity.XxHash3(Hash.From(0xAB))).Should().BeTrue();
         readFile.Size.Should().Be(Size.From(42));
         readFile.AsLoadoutItem().ParentId.Value.Should().Be(result[item].Value);
     }

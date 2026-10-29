@@ -45,4 +45,14 @@ public partial class LibraryFile : IModelDefinition
     /// Name of the file.
     /// </summary>
     public static readonly RelativePathAttribute FileName = new(Namespace, nameof(FileName));
+
+    public partial struct ReadOnly
+    {
+        /// <summary>The file's store key as an identity.</summary>
+        public FileIdentity Identity => FileIdentity.XxHash3(LibraryFile.Hash.Get(this));
+
+        /// <summary>The xxHash64 as an identity; null for rows from before it was recorded.</summary>
+        public FileIdentity? XxHash64Identity()
+            => LibraryFile.XxHash64.TryGetValue(this, out var hash) ? FileIdentity.XxHash64(hash) : null;
+    }
 }

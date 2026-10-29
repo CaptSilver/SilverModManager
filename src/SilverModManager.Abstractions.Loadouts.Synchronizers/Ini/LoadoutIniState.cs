@@ -30,4 +30,14 @@ public partial class LoadoutIniState : IModelDefinition
     /// so a later ingest can diff the live file against what was written. Absent until the first write.
     /// </summary>
     public static readonly HashAttribute LastBakedHash = new(Namespace, nameof(LastBakedHash)) { IsOptional = true };
+
+    public partial struct ReadOnly
+    {
+        /// <summary>The baseline's store key as an identity.</summary>
+        public FileIdentity BaselineIdentity => FileIdentity.XxHash3(LoadoutIniState.Baseline.Get(this));
+
+        /// <summary>The last baked bytes' store key as an identity; null until the first write.</summary>
+        public FileIdentity? LastBakedIdentity()
+            => LoadoutIniState.LastBakedHash.TryGetValue(this, out var baked) ? FileIdentity.XxHash3(baked) : null;
+    }
 }

@@ -5,6 +5,7 @@ using SilverModManager.App.GarbageCollection.Structs;
 using SilverModManager.App.GarbageCollection.Tests.Helpers;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths.TestingHelpers;
 using Xunit;
 namespace SilverModManager.App.GarbageCollection.Tests;
@@ -22,8 +23,8 @@ public class ArchiveGarbageCollectorTests
 
         // Act
         collector.AddArchive(archivePath, headerState);
-        collector.AddReferencedFile(hash1);
-        collector.AddReferencedFile(hash2);
+        collector.AddReferencedFile(FileIdentity.XxHash3(hash1));
+        collector.AddReferencedFile(FileIdentity.XxHash3(hash2));
 
         // Assert
 
@@ -54,10 +55,10 @@ public class ArchiveGarbageCollectorTests
 
         // Act
         collector.AddArchive(archivePath, headerState);
-        collector.AddReferencedFile(hash1);
-        collector.AddReferencedFile(hash2);
-        collector.AddReferencedFile(hash1);
-        collector.AddReferencedFile(hash2);
+        collector.AddReferencedFile(FileIdentity.XxHash3(hash1));
+        collector.AddReferencedFile(FileIdentity.XxHash3(hash2));
+        collector.AddReferencedFile(FileIdentity.XxHash3(hash1));
+        collector.AddReferencedFile(FileIdentity.XxHash3(hash2));
 
         // Assert
 
@@ -74,7 +75,22 @@ public class ArchiveGarbageCollectorTests
         var unknownHash = (Hash)999;
 
         // Act & Assert
-        var act = () => collector.AddReferencedFile(unknownHash, true);
+        var act = () => collector.AddReferencedFile(FileIdentity.XxHash3(unknownHash), true);
+        act.Should().Throw<UnknownFileException>();
+    }
+
+    [Theory, AutoFileSystem]
+    public void AddReferencedFile_IgnoresAnIdentityOfAnotherKind(AbsolutePath archivePath)
+    {
+        var collector = new ArchiveGarbageCollector<MockParsedHeaderState, MockFileHash>();
+        var hash1 = (Hash)1;
+        collector.AddArchive(archivePath, new MockParsedHeaderState(hash1));
+
+        // Same eight bytes, tagged xxHash64: it names no archive entry.
+        collector.AddReferencedFile(FileIdentity.XxHash64(hash1));
+
+        collector.HashToArchive[hash1].Entries[hash1].GetRefCount().Should().Be(0);
+        var act = () => collector.AddReferencedFile(FileIdentity.XxHash64(hash1), true);
         act.Should().Throw<UnknownFileException>();
     }
 
@@ -91,8 +107,8 @@ public class ArchiveGarbageCollectorTests
         // Act
         collector.AddArchive(path1, headerState1);
         collector.AddArchive(path2, headerState2);
-        collector.AddReferencedFile(hash1);
-        collector.AddReferencedFile(hash2);
+        collector.AddReferencedFile(FileIdentity.XxHash3(hash1));
+        collector.AddReferencedFile(FileIdentity.XxHash3(hash2));
 
         // Assert
         // Verify that each hash is associated with the correct archive path
@@ -125,8 +141,8 @@ public class ArchiveGarbageCollectorTests
         var headerState = new MockParsedHeaderState(hash1, hash2);
 
         collector.AddArchive(archivePath, headerState);
-        collector.AddReferencedFile(hash1);
-        collector.AddReferencedFile(hash2);
+        collector.AddReferencedFile(FileIdentity.XxHash3(hash1));
+        collector.AddReferencedFile(FileIdentity.XxHash3(hash2));
 
         var repackCalled = false;
 
@@ -150,7 +166,7 @@ public class ArchiveGarbageCollectorTests
         var headerState = new MockParsedHeaderState(hash1, hash2);
 
         collector.AddArchive(archivePath, headerState);
-        collector.AddReferencedFile(hash1);
+        collector.AddReferencedFile(FileIdentity.XxHash3(hash1));
         // hash2 is not referenced
 
         List<Hash> toBeArchived = null!;
@@ -192,9 +208,9 @@ public class ArchiveGarbageCollectorTests
 
         collector.AddArchive(path1, headerState1);
         collector.AddArchive(path2, headerState2);
-        collector.AddReferencedFile(hash1);
-        collector.AddReferencedFile(hash3);
-        collector.AddReferencedFile(hash4);
+        collector.AddReferencedFile(FileIdentity.XxHash3(hash1));
+        collector.AddReferencedFile(FileIdentity.XxHash3(hash3));
+        collector.AddReferencedFile(FileIdentity.XxHash3(hash4));
         // hash2 is not referenced
 
         AbsolutePath? repackedArchives = null;

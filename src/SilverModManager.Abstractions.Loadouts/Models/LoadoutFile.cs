@@ -40,12 +40,12 @@ public partial class LoadoutFile : IModelDefinition
 
     public partial struct ReadOnly : IHavePathHashSizeAndReference
     {
+        /// <summary>The file's store key as an identity.</summary>
+        public FileIdentity Identity => FileIdentity.XxHash3(LoadoutFile.Hash.Get(this));
 
 #region IHavePathHashSizeAndReference
 
         GamePath IHavePathHashSizeAndReference.Path => LoadoutItemWithTargetPath.TargetPath.Get(this);
-
-        Hash IHavePathHashSizeAndReference.Hash => LoadoutFile.Hash.Get(this);
 
         Size IHavePathHashSizeAndReference.Size => LoadoutFile.Size.Get(this);
         EntityId IHavePathHashSizeAndReference.Reference => Id;

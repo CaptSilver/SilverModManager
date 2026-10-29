@@ -6,6 +6,7 @@ using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Deployment.Vfs.Tests;
@@ -57,6 +58,18 @@ public class VfsCatalogTests(ITestOutputHelper helper) : AStubbedGameIsolatedTes
 
         catalog.TryGetHash(installation, SomeFile, Fingerprint, out var hash).Should().BeTrue();
         hash.Should().Be(TheHash);
+    }
+
+    [Fact]
+    public async Task ARecordedEntryExposesItsHashAsAnIdentity()
+    {
+        var installation = await Installation();
+        var catalog = ServiceProvider.GetRequiredService<IVfsCatalog>();
+        await Record(catalog, installation, SomeFile, Fingerprint, TheHash);
+
+        var entry = VfsCatalogEntry.FindByInstallation(Connection.Db, installation).Single();
+
+        entry.Identity.Equals(FileIdentity.XxHash3(TheHash)).Should().BeTrue();
     }
 
     public static TheoryData<string, FileFingerprint> OneFieldDiffers => new()

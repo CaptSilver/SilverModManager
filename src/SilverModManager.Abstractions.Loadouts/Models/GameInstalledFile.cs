@@ -32,4 +32,10 @@ public partial class GameInstalledFile : IModelDefinition
     /// The file's size on disk at the last reconcile.
     /// </summary>
     public static readonly SizeAttribute Size = new(Namespace, nameof(Size));
+
+    public partial struct ReadOnly
+    {
+        /// <summary>The file's on-disk hash as an identity.</summary>
+        public FileIdentity Identity => FileIdentity.XxHash3(GameInstalledFile.Hash.Get(this));
+    }
 }

@@ -1,7 +1,7 @@
-using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Abstractions.Loadouts;
 
@@ -16,9 +16,9 @@ public interface IHavePathHashSizeAndReference
     public GamePath Path { get; }
 
     /// <summary>
-    /// The hash of the file.
+    /// The identity of the file's bytes.
     /// </summary>
-    public Hash Hash { get; }
+    public FileIdentity Identity { get; }
     
     /// <summary>
     /// The size of the file.

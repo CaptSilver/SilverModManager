@@ -1,9 +1,9 @@
 using SilverModManager.App.GarbageCollection.Errors;
-using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.App.GarbageCollection.Utilities;
 
 internal static class ThrowHelpers
 {
-    internal static void ThrowUnknownFileException(Hash hash) => throw new UnknownFileException(hash);
+    internal static void ThrowUnknownFileException(FileIdentity identity) => throw new UnknownFileException(identity);
 }

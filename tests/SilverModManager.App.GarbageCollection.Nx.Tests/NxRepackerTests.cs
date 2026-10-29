@@ -7,6 +7,7 @@ using NexusMods.Paths;
 using NexusMods.Paths.Extensions.Nx.Extensions;
 using NexusMods.Paths.Extensions.Nx.FileProviders;
 using NexusMods.Paths.TestingHelpers;
+using SilverModManager.Sdk.Hashes;
 using Xunit;
 namespace SilverModManager.App.GarbageCollection.Nx.Tests;
 
@@ -141,7 +142,7 @@ public class NxRepackerTests
             var entry = header.Entries[x];
             var entryName = header.Pool[x];
             if (entryName is File1Name or File2Name)
-                collector.AddReferencedFile((Hash)entry.Hash);
+                collector.AddReferencedFile(FileIdentity.XxHash3((Hash)entry.Hash));
         }
     }
 }

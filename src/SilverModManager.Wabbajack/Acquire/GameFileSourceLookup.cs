@@ -110,7 +110,7 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
         var original = key.XxHash3();
 
         var pinned = GameBackedUpFile.All(connection.Db)
-            .Any(f => f.Hash == original && f.GameInstallId.Value == owner);
+            .Any(f => f.Identity.Equals(key) && f.GameInstallId.Value == owner);
         if (!pinned) return null;
         return original;
     }

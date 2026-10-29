@@ -35,4 +35,10 @@ public partial class VfsCatalogEntry : IModelDefinition
 
     /// <summary>The file's content hash at the time of the fingerprint.</summary>
     public static readonly HashAttribute Hash = new(Namespace, nameof(Hash));
+
+    public partial struct ReadOnly
+    {
+        /// <summary>The recorded hash as an identity.</summary>
+        public FileIdentity Identity => FileIdentity.XxHash3(VfsCatalogEntry.Hash.Get(this));
+    }
 }
