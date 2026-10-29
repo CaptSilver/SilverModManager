@@ -67,12 +67,27 @@ public sealed class ProcProcessTracker(string procRoot) : IProcessTracker
     /// <inheritdoc />
     public TrackedProcess? FindReaperForApp(uint appId)
     {
-        var wanted = $"AppId={appId}";
         return Scan()
-            .Where(p => p.Process.Name == "reaper" && p.Arguments().Contains(wanted))
+            .Where(p => p.Process.Name == "reaper" && ReaperOptions(p, appId) is { } options && !options.Any(IsInstallOption))
             .Select(p => p.Process)
             .FirstOrDefault();
     }
+
+    /// <inheritdoc />
+    public bool IsInstallStepRunning(uint appId)
+    {
+        return Scan().Any(p => p.Process.Name == "reaper" && ReaperOptions(p, appId) is { } options && options.Any(IsInstallOption));
+    }
+
+    // Only the reaper's own options count: the tokens between SteamLaunch and the first "--". What follows is the
+    // game's command line, which may mention an app id or an Install= of its own.
+    private static List<string>? ReaperOptions(Candidate p, uint appId)
+    {
+        var options = p.Arguments().SkipWhile(a => a != "SteamLaunch").Skip(1).TakeWhile(a => a != "--").ToList();
+        return options.Contains($"AppId={appId}") ? options : null;
+    }
+
+    private static bool IsInstallOption(string option) => option.StartsWith("Install=", StringComparison.Ordinal);
 
     private static bool HasName(Candidate p, string name)
     {

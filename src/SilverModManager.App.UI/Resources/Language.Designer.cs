@@ -2143,6 +2143,15 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Steam is running the install step for {0}....
+        /// </summary>
+        public static string LaunchButtonViewModel_LaunchGame_STEAM_INSTALL_STEP {
+            get {
+                return ResourceManager.GetString("LaunchButtonViewModel_LaunchGame_STEAM_INSTALL_STEP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Still waiting. Steam or the game's launcher may be waiting on a window....
         /// </summary>
         public static string LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM_SLOW {

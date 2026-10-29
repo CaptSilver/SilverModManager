@@ -369,14 +369,18 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
     private sealed class ClockedTool(IServiceProvider provider, StubbedGame game, TimeProvider clock) : RunGameTool<StubbedGame>(provider, game)
     {
         protected override TimeProvider Clock => clock;
+        public TimeProvider ClockForTest => clock;
         public TimeSpan DefaultStartTimeout => StartTimeout;
         public TimeSpan DefaultSteamStartTimeout => SteamStartTimeout;
     }
 
     // Runs the tool while stepping the fake clock until it finishes, and returns how much fake time that took.
-    private async Task<TimeSpan> RunOnFakeClock(Loadout.ReadOnly loadout, FakeTimeProvider clock, Action<TimeSpan>? atEachStep = null)
+    private Task<TimeSpan> RunOnFakeClock(Loadout.ReadOnly loadout, FakeTimeProvider clock, Action<TimeSpan>? atEachStep = null)
+        => RunOnFakeClock(loadout, new ClockedTool(ServiceProvider, Game, clock), atEachStep);
+
+    private static async Task<TimeSpan> RunOnFakeClock(Loadout.ReadOnly loadout, ClockedTool tool, Action<TimeSpan>? atEachStep = null)
     {
-        var tool = new ClockedTool(ServiceProvider, Game, clock);
+        var clock = (FakeTimeProvider)tool.ClockForTest;
         var begin = clock.GetUtcNow();
         var run = Task.Run(() => tool.Execute(loadout, CancellationToken.None, []));
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(20);
@@ -441,6 +445,43 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
 
         Notifier.Notifications.Should().BeEmpty();
         reaperReturned.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task SteamLaunch_KeepsWaitingWhileSteamRunsTheInstallStep_ThenTakesTheRealReaper()
+    {
+        _cancelOnOpen = false;
+        Tracker.SteamRunning = true;
+        var elapsed = TimeSpan.Zero;
+        var reaperReturned = 0;
+        // Steam's install step runs for 3 minutes, three times the wait for a game; only then does the game start.
+        Tracker.InstallStepForApp = id => id == AppId && elapsed < TimeSpan.FromMinutes(3);
+        Tracker.ReaperForApp = id => id == AppId && elapsed >= TimeSpan.FromMinutes(3) && reaperReturned++ < 4 ? new TrackedProcess(77, "reaper") : null;
+        var tool = new ClockedTool(ServiceProvider, Game, new FakeTimeProvider());
+        var seen = new List<bool>();
+        using var subscription = tool.RunningInstallStep.Subscribe(v => { lock (seen) seen.Add(v); });
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+
+        await RunOnFakeClock(loadout, tool, at => elapsed = at);
+
+        Notifier.Notifications.Should().BeEmpty("the install step is Steam working, not Steam failing to start the game");
+        reaperReturned.Should().BeGreaterThan(0);
+        lock (seen) seen.Should().Equal(false, true, false);
+    }
+
+    [Fact]
+    public async Task SteamLaunch_GivesUpSixtySecondsAfterTheInstallStepEndsWithNoGame()
+    {
+        _cancelOnOpen = false;
+        Tracker.SteamRunning = true;
+        var elapsed = TimeSpan.Zero;
+        Tracker.InstallStepForApp = _ => elapsed < TimeSpan.FromSeconds(100);
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+
+        var took = await RunOnFakeClock(loadout, new ClockedTool(ServiceProvider, Game, new FakeTimeProvider()), at => elapsed = at);
+
+        took.Should().BeGreaterThanOrEqualTo(TimeSpan.FromSeconds(160)).And.BeLessThan(TimeSpan.FromSeconds(162));
+        Notifier.Notifications.Should().ContainSingle().Which.Body.Should().Contain("within 1 minute");
     }
 
     [Fact]

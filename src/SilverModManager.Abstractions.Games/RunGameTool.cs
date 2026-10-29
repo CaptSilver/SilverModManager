@@ -28,6 +28,12 @@ public interface IRunGameTool : ITool
     /// the user can still back out of. Emits the current value on subscribe and only changes after that.
     /// </summary>
     IObservable<bool> WaitingForSteam { get; }
+
+    /// <summary>
+    /// True while the wait is only Steam running the game's install step (redistributables and the like) before
+    /// it starts the game. Emits the current value on subscribe.
+    /// </summary>
+    IObservable<bool> RunningInstallStep { get; }
 }
 
 /// <summary>
@@ -76,6 +82,17 @@ public class RunGameTool<T> : IRunGameTool
 
     /// <inheritdoc />
     public IObservable<bool> WaitingForSteam => _waitingForSteam;
+
+    private readonly BehaviorSubject _runningInstallStep = new(false);
+
+    /// <inheritdoc />
+    public IObservable<bool> RunningInstallStep => _runningInstallStep;
+
+    private void SetRunningInstallStep(bool running)
+    {
+        lock (_runningInstallStep)
+            if (_runningInstallStep.Value != running) _runningInstallStep.OnNext(running);
+    }
 
     /// <summary>
     /// Constructor
@@ -332,6 +349,7 @@ public class RunGameTool<T> : IRunGameTool
         finally
         {
             if (waiting) SetWaitingForSteam(-1);
+            SetRunningInstallStep(false);
         }
     }
 
@@ -343,9 +361,10 @@ public class RunGameTool<T> : IRunGameTool
         // See https://github.com/sonic2kk/steamtinkerlaunch/wiki/Steam-Reaper for details.
         // Only the reaper Steam started for this app counts: another game's reaper may be running already.
         TrackedProcess? reaper = null;
-        if (await PollUntil(() => (reaper = _processTracker.FindReaperForApp(appId)) is not null, StartTimeout, launch, cancellationToken) is { } reaperFailure)
+        if (await PollUntil(() => (reaper = _processTracker.FindReaperForApp(appId)) is not null, StartTimeout, launch, cancellationToken, appId) is { } reaperFailure)
             return reaperFailure;
 
+        SetRunningInstallStep(false);
         gameStarted();
         _logger.LogDebug("Waiting for reaper {Pid} of app {AppId} to exit", reaper!.Pid, appId);
         var misses = 0;
@@ -369,15 +388,23 @@ public class RunGameTool<T> : IRunGameTool
 
     /// <summary>
     /// Polls until <paramref name="condition"/> holds, returning null, or returns why it stopped. A timeout is
-    /// not final while a Steam wrapper has recorded itself in the launch's state file: that means the game is on
-    /// its way and the process table has just not caught up.
+    /// not final while a Steam wrapper has recorded itself in the launch's state file (the game is on its way
+    /// and the process table has just not caught up), or, when <paramref name="installStepOfApp"/> is given,
+    /// while Steam is running that app's install step. Either one restarts the clock.
     /// </summary>
-    private async Task<SteamWait?> PollUntil(Func<bool> condition, TimeSpan timeout, IGameLaunch launch, CancellationToken cancellationToken)
+    private async Task<SteamWait?> PollUntil(Func<bool> condition, TimeSpan timeout, IGameLaunch launch, CancellationToken cancellationToken, uint? installStepOfApp = null)
     {
         var started = Clock.GetTimestamp();
         while (!cancellationToken.IsCancellationRequested)
         {
             if (condition()) return null;
+
+            if (installStepOfApp is { } appId)
+            {
+                var installing = _processTracker.IsInstallStepRunning(appId);
+                SetRunningInstallStep(installing);
+                if (installing) started = Clock.GetTimestamp();
+            }
 
             if (Clock.GetElapsedTime(started) >= timeout)
             {

@@ -104,6 +104,7 @@ public class ReadableErrorsEndToEndTests(IServiceProvider provider) : AUiTest(pr
         public IEnumerable<GameId> GameIds => [game];
         public string Name => "Fake run";
         public System.IObservable<bool> WaitingForSteam { get; } = new System.Reactive.Subjects.BehaviorSubject<bool>(false);
+        public System.IObservable<bool> RunningInstallStep { get; } = new System.Reactive.Subjects.BehaviorSubject<bool>(false);
 
         public ValueTask<LaunchSpec> GetLaunchSpec(Loadout.ReadOnly loadout, CancellationToken cancellationToken) => throw new NotSupportedException();
 

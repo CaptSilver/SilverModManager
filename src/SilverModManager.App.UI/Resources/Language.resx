@@ -134,6 +134,9 @@
     <data name="LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM_SLOW" xml:space="preserve">
         <value>Still waiting. Steam or the game's launcher may be waiting on a window...</value>
     </data>
+    <data name="LaunchButtonViewModel_LaunchGame_STEAM_INSTALL_STEP" xml:space="preserve">
+        <value>Steam is running the install step for {0}...</value>
+    </data>
     <data name="LaunchButtonViewModel_LaunchGame_CANCEL" xml:space="preserve">
         <value>Cancel</value>
     </data>

@@ -40,6 +40,11 @@ public class FakeProcessTracker : IProcessTracker
     /// </summary>
     public Func<uint, TrackedProcess?> ReaperForApp { get; set; } = _ => null;
 
+    /// <summary>
+    /// What <see cref="IsInstallStepRunning"/> returns; no install step by default.
+    /// </summary>
+    public Func<uint, bool> InstallStepForApp { get; set; } = _ => false;
+
     /// <inheritdoc />
     public IReadOnlyList<TrackedProcess> FindGameProcesses(GameInstallation installation) => ForInstallation(installation);
 
@@ -58,6 +63,9 @@ public class FakeProcessTracker : IProcessTracker
 
     /// <inheritdoc />
     public TrackedProcess? FindReaperForApp(uint appId) => ReaperForApp(appId);
+
+    /// <inheritdoc />
+    public bool IsInstallStepRunning(uint appId) => InstallStepForApp(appId);
 }
 
 public static class FakeProcessTrackerExtensions

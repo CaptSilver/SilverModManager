@@ -30,6 +30,7 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
     private sealed class Rig
     {
         public readonly BehaviorSubject<bool> Waiting = new(false);
+        public readonly BehaviorSubject<bool> InstallStep = new(false);
         public readonly TaskCompletionSource Started = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public readonly TaskCompletionSource Finish = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public CancellationToken ToolToken;
@@ -45,6 +46,7 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         rig.GameName = loadout.InstallationInstance.Game.DisplayName;
         var tool = Substitute.For<IRunGameTool>();
         tool.WaitingForSteam.Returns(rig.Waiting);
+        tool.RunningInstallStep.Returns(rig.InstallStep);
 
         var toolManager = Substitute.For<IToolManager>();
         toolManager.GetTools(Arg.Any<Loadout.ReadOnly>()).Returns(withoutRunTool ? [] : [tool]);
@@ -128,6 +130,26 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         rig.ViewModel.Label.Should().Be(Language.LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM_SLOW);
         rig.ViewModel.IsWaitingForSteam.Should().BeTrue("Cancel stays available next to the hint");
 
+        rig.Finish.SetResult();
+        await run.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task WhileSteamRunsTheInstallStep_TheLabelSaysSoAtOnce_ThenGoesBackToWaiting()
+    {
+        var rig = await Build(clock: new FakeTimeProvider());
+        var run = rig.ViewModel.Command.Execute().ToTask();
+        await rig.Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        rig.Waiting.OnNext(true);
+        await Eventually(() => rig.ViewModel.IsWaitingForSteam);
+
+        rig.InstallStep.OnNext(true);
+        var installing = string.Format(Language.LaunchButtonViewModel_LaunchGame_STEAM_INSTALL_STEP, rig.GameName);
+        await Eventually(() => rig.ViewModel.Label == installing);
+
+        rig.InstallStep.OnNext(false);
+        await Eventually(() => rig.ViewModel.Label != installing);
+        rig.ViewModel.Label.Should().Be(string.Format(Language.LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM, rig.GameName));
         rig.Finish.SetResult();
         await run.WaitAsync(TimeSpan.FromSeconds(10));
     }

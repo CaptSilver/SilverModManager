@@ -57,6 +57,7 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
     private readonly object _labelLock = new();
     private string _waitingGameName = "";
     private bool _slowStart;
+    private bool _installStep;
     private ITimer? _slowStartTimer;
 
     public LaunchButtonViewModel(ILogger<ILaunchButtonViewModel> logger, IToolManager toolManager, IConnection conn, IJobMonitor monitor, IServiceProvider serviceProvider, GameRunningTracker gameRunningTracker, TimeProvider? timeProvider = null)
@@ -99,7 +100,9 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
             var gameName = marker.InstallationInstance.Game.DisplayName;
             var tool = _toolManager.GetTools(marker).OfType<IRunGameTool>().FirstOrDefault()
                 ?? throw new NoRunGameToolException(gameName);
-            waitingSubscription = tool.WaitingForSteam.Subscribe(waiting => SetWaitingForSteam(waiting, gameName));
+            waitingSubscription = new System.Reactive.Disposables.CompositeDisposable(
+                tool.WaitingForSteam.Subscribe(waiting => SetWaitingForSteam(waiting, gameName)),
+                tool.RunningInstallStep.Subscribe(running => SetRunningInstallStep(running, gameName)));
             var cancellationToken = launchCancellation.Token;
             await Task.Run(async () => await _toolManager.RunTool(tool, marker, _monitor, token: cancellationToken), cancellationToken);
         }
@@ -139,11 +142,23 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
         {
             _waitingGameName = gameName;
             _slowStart = false;
+            _installStep = false;
             StopSlowStartTimer();
             IsWaitingForSteam = waiting;
             if (waiting)
                 _slowStartTimer = _timeProvider.CreateTimer(_ => MarkSlowStart(), null, SlowStartHintDelay, Timeout.InfiniteTimeSpan);
             Label = WaitingLabel(waiting);
+        }
+    }
+
+    private void SetRunningInstallStep(bool running, string gameName)
+    {
+        lock (_labelLock)
+        {
+            _waitingGameName = gameName;
+            _installStep = running;
+            // The tool reports the install step only while it waits, so there is no label to touch otherwise.
+            if (IsWaitingForSteam) Label = WaitingLabel(waiting: true);
         }
     }
 
@@ -170,6 +185,7 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
     private string WaitingLabel(bool waiting)
     {
         if (!waiting) return Language.LaunchButtonViewModel_LaunchGame_RUNNING;
+        if (_installStep) return string.Format(Language.LaunchButtonViewModel_LaunchGame_STEAM_INSTALL_STEP, _waitingGameName);
         return _slowStart
             ? Language.LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM_SLOW
             : string.Format(Language.LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM, _waitingGameName);

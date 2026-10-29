@@ -47,7 +47,14 @@ public interface IProcessTracker
     bool IsSteamRunning();
 
     /// <summary>
-    /// The reaper process Steam started for the app, or null. Another game's reaper is not returned.
+    /// The reaper running the app's game, or null. Steam's install-script step for the app (the reaper marked
+    /// <c>Install=</c>) and another game's reaper are not returned.
     /// </summary>
     TrackedProcess? FindReaperForApp(uint appId);
+
+    /// <summary>
+    /// Whether Steam is running the app's install-script step (redistributables and the like), which it does
+    /// under a reaper of its own before the game starts.
+    /// </summary>
+    bool IsInstallStepRunning(uint appId);
 }

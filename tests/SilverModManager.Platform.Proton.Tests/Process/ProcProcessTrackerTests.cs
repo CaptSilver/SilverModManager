@@ -248,4 +248,50 @@ public class ProcProcessTrackerTests : IDisposable
 
         Tracker.FindReaperForApp(7).Should().BeNull();
     }
+
+    private static readonly string[] InstallScriptReaper = ["reaper", "SteamLaunch", "AppId=1091500", "Install=1", "--",
+        "/s/_v2-entry-point", "--verb=run", "--", "/p/proton", "run", "/s/legacycompat/iscriptevaluator.exe",
+        "legacycompat\\evaluatorscript_1091500.vdf"];
+
+    private static readonly string[] GameReaper = ["reaper", "SteamLaunch", "AppId=1091500", "--",
+        "/s/_v2-entry-point", "--verb=waitforexitandrun", "--", "/p/proton", "waitforexitandrun", "/g/bin/x64/Cyberpunk2077.exe"];
+
+    [Fact]
+    public void FindReaperForApp_IgnoresSteamsInstallScriptReaper()
+    {
+        AddProcess(100, "reaper", argv: InstallScriptReaper);
+        Tracker.FindReaperForApp(1091500).Should().BeNull();
+
+        AddProcess(101, "reaper", argv: GameReaper);
+        Tracker.FindReaperForApp(1091500).Should().Be(new TrackedProcess(101, "reaper"));
+    }
+
+    [Fact]
+    public void FindReaperForApp_IgnoresAnAppIdThatOnlyTheGamesOwnArgumentsMention()
+    {
+        AddProcess(100, "reaper", argv: ["reaper", "SteamLaunch", "AppId=7", "--", "/g/game", "AppId=1091500"]);
+
+        Tracker.FindReaperForApp(1091500).Should().BeNull();
+    }
+
+    [Fact]
+    public void IsInstallStepRunning_IsTrueOnlyWhileTheInstallScriptReaperOfThatAppExists()
+    {
+        Tracker.IsInstallStepRunning(1091500).Should().BeFalse();
+
+        AddProcess(100, "reaper", argv: InstallScriptReaper);
+        Tracker.IsInstallStepRunning(1091500).Should().BeTrue();
+        Tracker.IsInstallStepRunning(7).Should().BeFalse("another app's install step is not this app's");
+
+        AddProcess(101, "reaper", argv: GameReaper);
+        Tracker.IsInstallStepRunning(1091500).Should().BeTrue("the real reaper does not hide the install step");
+    }
+
+    [Fact]
+    public void IsInstallStepRunning_IgnoresAnInstallTokenThatOnlyTheGamesOwnArgumentsCarry()
+    {
+        AddProcess(100, "reaper", argv: ["reaper", "SteamLaunch", "AppId=1091500", "--", "/g/game", "Install=1"]);
+
+        Tracker.IsInstallStepRunning(1091500).Should().BeFalse();
+    }
 }
