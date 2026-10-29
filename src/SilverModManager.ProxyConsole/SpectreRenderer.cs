@@ -40,14 +40,7 @@ public class SpectreRenderer : IRenderer
         switch (renderable)
         {
             case SilverModManager.Sdk.ProxyConsole.Text text:
-                if (text.Arguments.Length == 0)
-                {
-                    return new UnwrappedText(text.Template);
-                }
-                else
-                {
-                    return new UnwrappedText(string.Format(text.Template, text.Arguments));
-                }
+                return new UnwrappedText(RenderDefinitions.TextRenderDefinition.Format(text));
             case SilverModManager.Sdk.ProxyConsole.Table table:
                 return await ToSpectreAsync(table);
             default:
@@ -60,7 +53,7 @@ public class SpectreRenderer : IRenderer
         var t = new SpectreTable();
         foreach (var column in table.Columns)
         {
-            t.AddColumn(new SpectreTableColumn(await ToSpectreAsync(column)));
+            t.AddColumn(new SpectreTableColumn(await ToCellAsync(column)));
         }
 
         foreach (var row in table.Rows)
@@ -68,11 +61,22 @@ public class SpectreRenderer : IRenderer
             var convertedRow = new List<SpectreRender.IRenderable>();
             foreach (var cell in row)
             {
-                convertedRow.Add(await ToSpectreAsync(cell));
+                convertedRow.Add(await ToCellAsync(cell));
             }
             t.AddRow(convertedRow.ToArray());
         }
         return t;
+    }
+
+    /// <summary>
+    /// Table text keeps Spectre's wrapping so a long cell folds inside its column. Only top-level text is
+    /// written unwrapped.
+    /// </summary>
+    private ValueTask<SpectreRender.IRenderable> ToCellAsync(IRenderable cell)
+    {
+        return cell is SilverModManager.Sdk.ProxyConsole.Text text
+            ? ValueTask.FromResult<SpectreRender.IRenderable>(new SpectreText(RenderDefinitions.TextRenderDefinition.Format(text)))
+            : ToSpectreAsync(cell);
     }
 
     /// <inheritdoc />

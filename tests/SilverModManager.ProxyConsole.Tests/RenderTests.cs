@@ -87,4 +87,37 @@ public class RenderTests
 
         console.Output.Should().Be(json);
     }
+
+    private static Table LongCellTable() => new()
+    {
+        Columns = [new Text { Template = "Name" }, new Text { Template = "Description" }],
+        Rows = [[new Text { Template = "a" }, new Text { Template = string.Join(' ', Enumerable.Repeat("word", 30)) }]],
+    };
+
+    [Fact]
+    public async Task LongTableCell_StillWrapsInTheSpectreRenderer()
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 40;
+
+        await new SpectreRenderer(console).RenderAsync(LongCellTable());
+
+        console.Lines.Should().OnlyContain(l => l.Length <= 40);
+        console.Lines.Count.Should().BeGreaterThan(5);
+    }
+
+    [Fact]
+    public async Task LongTableCell_StillWrapsInTheTableRenderDefinition()
+    {
+        var text = new RenderDefinitions.TextRenderDefinition();
+        var rendered = await new RenderDefinitions.TableRenderDefinition().ToSpectreAsync(LongCellTable(),
+            r => text.ToSpectreAsync(r, _ => throw new InvalidOperationException()));
+        var console = new TestConsole();
+        console.Profile.Width = 40;
+
+        console.Write(rendered);
+
+        console.Lines.Should().OnlyContain(l => l.Length <= 40);
+        console.Lines.Count.Should().BeGreaterThan(5);
+    }
 }

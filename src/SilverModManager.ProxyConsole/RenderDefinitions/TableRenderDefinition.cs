@@ -16,7 +16,7 @@ public class TableRenderDefinition() : ARenderableDefinition<Table>("2148B17A-D6
         var t = new Console.Table();
         foreach (var column in table.Columns)
         {
-            t.AddColumn(new Console.TableColumn(await subConvert(column)));
+            t.AddColumn(new Console.TableColumn(await ToCell(column, subConvert)));
         }
 
         foreach (var row in table.Rows)
@@ -24,10 +24,21 @@ public class TableRenderDefinition() : ARenderableDefinition<Table>("2148B17A-D6
             var convertedRow = new List<Rendering.IRenderable>();
             foreach (var cell in row)
             {
-                convertedRow.Add(await subConvert(cell));
+                convertedRow.Add(await ToCell(cell, subConvert));
             }
             t.Rows.Add(convertedRow.ToArray());
         }
         return t;
+    }
+
+    /// <summary>
+    /// Table text keeps Spectre's wrapping so a long cell folds inside its column. Only top-level text is
+    /// written unwrapped.
+    /// </summary>
+    private static ValueTask<Rendering.IRenderable> ToCell(IRenderable cell, Func<IRenderable, ValueTask<Rendering.IRenderable>> subConvert)
+    {
+        return cell is Text text
+            ? ValueTask.FromResult<Rendering.IRenderable>(new Console.Text(TextRenderDefinition.Format(text)))
+            : subConvert(cell);
     }
 }
