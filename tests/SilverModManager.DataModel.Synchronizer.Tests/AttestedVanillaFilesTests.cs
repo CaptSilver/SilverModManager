@@ -47,6 +47,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
     protected override bool StoreVouchesForTheFiles => true;
 
     private readonly SettleSwitch _settle = new();
+    private readonly SwitchableBackupOverflowPrompt _prompt = new();
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
@@ -56,7 +57,9 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
             .RemoveRuntimeDependencyChecker()
             .AddGenericGameSupport()
             .AddFakeToolRunner()
-            .AddRedEngineGames();
+            .AddRedEngineGames()
+            .AddSingleton(new BackupLimit(Size.From(40)))
+            .AddSingleton<IBackupOverflowPrompt>(_prompt);
 
         // The real service, behind a switch that makes the settle step fail.
         var real = services.Last(d => d.ServiceType == typeof(IFileHashesService));
@@ -405,6 +408,49 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         FullHashes.Reset();
         await Synchronizer.Synchronize(Refresh(loadout));
         FullHashes.Paths.Should().BeEmpty();
+    }
+
+    // A full read named these files by xxHash3 while the loadout names the same files by the store's SHA-1. The
+    // recorded digests say they are the same bytes, so the sync has nothing to do and nothing to warn about.
+    [Fact]
+    public async Task VanillaFilesTheIndexNamedByXxHash3WhileTheLoadoutNamesThemBySha1_AreTheSameFile()
+    {
+        var loadout = await CreateLoadout();
+        await TheIndexReadTheVanillaFilesInFull();
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        FullHashes.Reset();
+
+        // The app is restarted: the index finds every file unchanged by size and time and keeps the disk state's names.
+        var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
+        Synchronizer.ProcessSyncTree(tree);
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        tree.Where(kv => kv.Value.Actions.HasFlag(Actions.WarnOfUnableToExtract)).Select(kv => kv.Key.Path.ToString()).Should().BeEmpty();
+        Overrides(Refresh(loadout)).Should().BeEquivalentTo(PlayerFiles, "the game's own bytes are not the player's changes");
+        FullyHashed.Should().BeEmpty();
+        await EveryVanillaFileIsOnDiskAndNoneWasBackedUp();
+    }
+
+    // The state a full read of every vanilla file leaves: the disk state names each by xxHash3, and the digests of the
+    // bytes are recorded as a fingerprint row and a relation.
+    private async Task TheIndexReadTheVanillaFilesInFull()
+    {
+        var remembered = new List<IndexedFileHash>();
+        using var tx = Connection.BeginTransaction();
+        foreach (var file in CyberpunkSteamInstall.GameFiles.Concat(CyberpunkSteamInstall.ExpansionFiles))
+        {
+            var hashes = await MultiHasher.HashStream(new MemoryStream(file.Content));
+            var entry = DiskEntry(file.Path);
+            tx.Add(entry.Id, DiskStateEntry.Identity, FileIdentity.XxHash3(hashes.XxHash3));
+            tx.Add(entry.Id, DiskStateEntry.XxHash3, hashes.XxHash3);
+            var path = new GamePath(LocationId.Game, file.Path);
+            var fingerprint = SilverModManager.Sdk.IO.FileFingerprint.Of(GameFolder / file.Path);
+            remembered.Add(new IndexedFileHash(path, fingerprint.Size, fingerprint.LastModified, hashes.XxHash3, hashes));
+        }
+
+        await tx.Commit();
+        await Hashes.RecordIndexedFiles(GameInstallation, remembered);
     }
 
     [Fact]

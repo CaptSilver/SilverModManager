@@ -223,9 +223,67 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         MergeStates(latestDiskState, previousDiskState, syncTree);
+        NameTheSameBytesByOneKind(syncTree);
         AdoptGameInstalledFiles(syncTree, loadout);
         LeaveUserProtectedFilesAlone(syncTree, loadout);
         return syncTree;
+    }
+
+    /// <summary>
+    /// A file the store vouched for is named by its SHA-1 until the app reads it, and a read names it by its xxHash3.
+    /// The two never compare equal, so a path whose parts are named by different kinds would look changed even when a
+    /// full read recorded that both are the same bytes. Where a recorded relation joins a SHA-1 to the xxHash3 of
+    /// another part of the same path, the SHA-1 part is renamed to that xxHash3 for this tree. A SHA-1 no relation
+    /// joins stays as it is: nothing says those bytes are the same.
+    /// </summary>
+    private void NameTheSameBytesByOneKind(Dictionary<GamePath, SyncNode> tree)
+    {
+        List<GamePath>? mixed = null;
+        foreach (var (path, node) in tree)
+        {
+            if (HasMixedKinds(node)) (mixed ??= []).Add(path);
+        }
+
+        if (mixed is null) return;
+        foreach (var path in mixed)
+        {
+            ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(tree, path);
+            var disk = node.Disk;
+            var previous = node.Previous;
+            var loadout = node.Loadout;
+            RenameBySharedRelation(ref disk, previous, loadout);
+            RenameBySharedRelation(ref previous, disk, loadout);
+            RenameBySharedRelation(ref loadout, disk, previous);
+            node.Disk = disk;
+            node.Previous = previous;
+            node.Loadout = loadout;
+        }
+    }
+
+    private static bool HasMixedKinds(SyncNode node)
+    {
+        var kind = HashKind.None;
+        return Differs(ref kind, node.Disk) || Differs(ref kind, node.Previous) || Differs(ref kind, node.Loadout);
+
+        static bool Differs(ref HashKind seen, SyncNodePart part)
+        {
+            if (part.Identity.IsNone) return false;
+            if (seen == HashKind.None) seen = part.Identity.Kind;
+            return seen != part.Identity.Kind;
+        }
+    }
+
+    private void RenameBySharedRelation(ref SyncNodePart part, SyncNodePart first, SyncNodePart second)
+    {
+        if (part.Identity.Kind != HashKind.Sha1) return;
+        foreach (var other in new[] { first, second })
+        {
+            if (!other.Identity.TryXxHash3(out var xxHash3) || !_fileHashService.TryFindRelation(xxHash3, out var relation)) continue;
+            if (relation.Sha1 != Sha1Value.From(part.Identity.Digest) || relation.Size != part.Size) continue;
+
+            part = part with { Identity = other.Identity };
+            return;
+        }
     }
 
     /// <inheritdoc />
