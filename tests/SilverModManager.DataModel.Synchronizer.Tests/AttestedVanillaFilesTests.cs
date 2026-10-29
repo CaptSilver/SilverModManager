@@ -536,6 +536,10 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
     // The disk and the previous state name the vanilla file by xxHash3 of these bytes; the loadout names it by the
     // store's SHA-1. Only a recorded relation of the same SHA-1 and size may call the two the same file.
     private async Task<SyncNode> VanillaNodeNamedOnDiskBy(MultiHash diskBytes, bool recordRelation, bool anotherRelationPrecedesIt = false)
+        => (await VanillaTreeNamedOnDiskBy(diskBytes, recordRelation, anotherRelationPrecedesIt)).Tree[new GamePath(LocationId.Game, Vanilla)];
+
+    // With removeFromDisk the file is gone from the folder, so only the previous state and the loadout name it.
+    private async Task<(Loadout.ReadOnly Loadout, Dictionary<GamePath, SyncNode> Tree)> VanillaTreeNamedOnDiskBy(MultiHash diskBytes, bool recordRelation, bool anotherRelationPrecedesIt = false, bool removeFromDisk = false)
     {
         var loadout = await CreateLoadout();
         var path = new GamePath(LocationId.Game, Vanilla);
@@ -562,18 +566,18 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         var synchronizer = (ALoadoutSynchronizer)Synchronizer;
         var metadata = GameInstallMetadata.Load(Connection.Db, Metadata);
         PathPartPair Named(PathPartPair pair) => pair.Path != path ? pair : pair with { Part = new SyncNodePart { Identity = FileIdentity.XxHash3(diskBytes.XxHash3), Size = diskBytes.Size, LastModifiedTicks = pair.Part.LastModifiedTicks } };
-        var disk = synchronizer.GetDiskStateForGame(metadata).Select(Named).ToList();
+        var disk = synchronizer.GetDiskStateForGame(metadata).Where(pair => !removeFromDisk || pair.Path != path).Select(Named).ToList();
         var previous = ((ILoadoutSynchronizer)synchronizer).GetPreviouslyAppliedDiskState(metadata).Select(Named).ToList();
 
         var tree = synchronizer.BuildSyncTree(disk, previous, Refresh(loadout));
         Synchronizer.ProcessSyncTree(tree);
         var node = tree[path];
-        node.Disk.Identity.Kind.Should().Be(HashKind.XxHash3);
+        if (!removeFromDisk) node.Disk.Identity.Kind.Should().Be(HashKind.XxHash3);
         if (anotherRelationPrecedesIt)
             node.Loadout.Identity.Should().Be(node.Disk.Identity, "the relation joins the two, so the tree names the file by one kind");
         else
             node.Loadout.Identity.Kind.Should().Be(HashKind.Sha1, "the loadout names the file the way the store does");
-        return node;
+        return (loadout, tree);
     }
 
     private static async Task<MultiHash> HashOf(string text) => await MultiHasher.HashStream(new MemoryStream(Encoding.UTF8.GetBytes(text)));
@@ -714,11 +718,9 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         FullyHashed.Should().NotContain(Vanilla);
     }
 
-    // The tree DiagnosticManager builds for its emitters, handed to the emitter that reports unusable game files.
-    private async Task<Diagnostic[]> WhatTheMissingGameFilesEmitterSays(Loadout.ReadOnly loadout)
+    // The emitter that reports unusable game files, handed the tree DiagnosticManager would give it.
+    private async Task<Diagnostic[]> WhatTheMissingGameFilesEmitterSays(Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> tree)
     {
-        var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
-        Synchronizer.ProcessSyncTree(tree);
         var emitter = new UndeployableLoadoutDueToMissingGameFiles(ServiceProvider);
         var found = new List<Diagnostic>();
         await foreach (var diagnostic in emitter.Diagnose(Refresh(loadout), tree.ToFrozenDictionary(), CancellationToken.None))
@@ -726,25 +728,30 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         return found.ToArray();
     }
 
+    // The disk and the previous state name the file by xxHash3, the loadout by SHA-1, and no relation joins them: the
+    // node warns of an extraction it cannot do, yet it only looks different.
     [Fact]
     public async Task AnUnresolvedVanillaFile_GetsNoMissingGameFilesCard()
     {
-        var loadout = await CreateLoadout();
-        await TheIndexRememberedTheVanillaFilesXxHash3WithNoRelation();
-        var node = await VanillaNodeNow(loadout);
+        var (loadout, tree) = await VanillaTreeNamedOnDiskBy(await HashOf(VanillaText), recordRelation: false);
+        var node = tree[new GamePath(LocationId.Game, Vanilla)];
+        node.Actions.Should().HaveFlag(Actions.WarnOfUnableToExtract, "this is the node the emitter has to decide about");
         node.IdentityUnresolved.Should().BeTrue("the two kinds have no recorded digest between them");
 
-        (await WhatTheMissingGameFilesEmitterSays(loadout)).Should().BeEmpty("the next apply reads the file and settles whether it differs");
+        (await WhatTheMissingGameFilesEmitterSays(loadout, tree)).Should().BeEmpty("the next apply reads the file and settles whether it differs");
     }
 
+    // Gone from the folder, the file has no bytes to read, so being unresolved against the loadout changes nothing.
     [Fact]
     public async Task ADeletedVanillaFile_IsStillReportedMissing()
     {
-        var loadout = await CreateLoadout();
-        await TheIndexRememberedTheVanillaFilesXxHash3WithNoRelation();
-        File.Delete((GameFolder / Vanilla).ToString());
+        var (loadout, tree) = await VanillaTreeNamedOnDiskBy(await HashOf(VanillaText), recordRelation: false, removeFromDisk: true);
+        var node = tree[new GamePath(LocationId.Game, Vanilla)];
+        node.HaveDisk.Should().BeFalse();
+        node.IdentityUnresolved.Should().BeTrue("the previous state and the loadout name it by kinds no relation joins");
+        node.Actions.Should().HaveFlag(Actions.WarnOfUnableToExtract);
 
-        var diagnostic = (await WhatTheMissingGameFilesEmitterSays(loadout)).Should().ContainSingle().Subject;
+        var diagnostic = (await WhatTheMissingGameFilesEmitterSays(loadout, tree)).Should().ContainSingle().Subject;
 
         diagnostic.Should().BeOfType<Diagnostic<SilverModManager.Games.FileHashes.Diagnostics.UndeployableLoadoutDueToMissingGameFilesMessageData>>()
             .Which.MessageData.Files.Should().Contain(Vanilla);
