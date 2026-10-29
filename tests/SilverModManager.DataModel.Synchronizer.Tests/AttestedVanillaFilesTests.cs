@@ -502,6 +502,37 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
     }
 
     [Fact]
+    public async Task AGameUpdatedAfterItWasRegistered_ASecondSyncWithTheAdoptedIdsReadsAndBacksUpNoVanillaFile()
+    {
+        var loadout = await CreateLoadout();
+        SteamUpdatesTheGame(cachesTheNewManifests: true);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        Refresh(loadout).LocatorIds.Select(id => id.Value).Should().Contain(NewGameManifestId.ToString());
+        FullHashes.Reset();
+
+        // The registry still holds the ids from before the update, as it does until the app restarts.
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        FullyHashed.Should().BeEmpty("the store vouches for the new build's files, so the index has nothing to read");
+        Overrides(Refresh(loadout)).Should().BeEquivalentTo(PlayerFiles, "an unchanged vanilla file is not an external change");
+        await EveryVanillaFileIsOnDiskAndNoneWasBackedUp();
+    }
+
+    [Fact]
+    public async Task AGameUpdatedAfterItWasRegistered_RescanningAndBuildingATreeReadNoVanillaFile()
+    {
+        var loadout = await CreateLoadout();
+        SteamUpdatesTheGame(cachesTheNewManifests: true);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        FullHashes.Reset();
+
+        await Synchronizer.RescanExternalChanges(Refresh(loadout));
+        await Synchronizer.BuildSyncTree(Refresh(loadout));
+
+        FullyHashed.Should().BeEmpty("the index works from the build located now, not the ids the registry kept");
+    }
+
+    [Fact]
     public async Task AGameUpdatedWhenTheBaselineCannotBeRebuilt_RefusesTheApplyAndLeavesEveryVanillaFileAlone()
     {
         var loadout = await CreateLoadout();
