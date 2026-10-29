@@ -12,8 +12,27 @@ using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.UI.Tests.Pages;
 
-public class DiagnosticListViewModelTests(IServiceProvider provider) : AUiTest(provider)
+public class DiagnosticListViewModelTests(IServiceProvider provider) : AUiTest(provider), IDisposable
 {
+    // The settings manager is shared with other UI tests, so put the default back.
+    public void Dispose() => Provider.GetRequiredService<ISettingsManager>().Set(new DiagnosticSettings());
+
+    private readonly record struct DetailsOnlyData(string Path) : IDiagnosticMessageData
+    {
+        public void Format(IDiagnosticWriter writer, ref DiagnosticWriterState state, DiagnosticMessage message) => writer.Write(ref state, message.Value);
+    }
+
+    private static Diagnostic WithPath(string path) => new Diagnostic<DetailsOnlyData>
+    {
+        Id = new DiagnosticId(),
+        Title = "missing file",
+        Severity = DiagnosticSeverity.Warning,
+        Summary = DiagnosticMessage.From("A file is missing"),
+        Details = DiagnosticMessage.From("The file {Path} is missing"),
+        DataReferences = new Dictionary<DataReferenceDescription, IDataReference>(),
+        MessageData = new DetailsOnlyData(path),
+    };
+
     private static readonly LoadoutId Loadout = LoadoutId.From(EntityId.From(0xBEEF));
 
     private static Diagnostic Make(string title, DiagnosticSeverity severity) => new()
@@ -123,5 +142,40 @@ public class DiagnosticListViewModelTests(IServiceProvider provider) : AUiTest(p
         source.OnNext(changed);
 
         await EventuallyOnUi(() => vm.DiagnosticEntries.Select(e => e.Title).Should().Contain("renamed"));
+    }
+
+    [Fact]
+    public async Task Test_ARefreshThatChangesOnlyAFieldTheDetailsShow_ReplacesTheEntries()
+    {
+        SetMinimumSeverity(DiagnosticSeverity.Suggestion);
+        var (vm, source) = await Create();
+        var first = WithPath("a.txt");
+        source.OnNext([first]);
+        await EventuallyOnUi(() => vm.DiagnosticEntries.Should().HaveCount(1));
+        var before = vm.DiagnosticEntries;
+
+        source.OnNext([WithPath("b.txt") with { Id = first.Id }]);
+
+        await EventuallyOnUi(() => vm.DiagnosticEntries.Should().NotBeSameAs(before));
+    }
+
+    [Fact]
+    public async Task Test_ARefreshWithEqualMessageData_KeepsTheEntries()
+    {
+        SetMinimumSeverity(DiagnosticSeverity.Suggestion);
+        var (vm, source) = await Create();
+        var first = WithPath("a.txt");
+        source.OnNext([first]);
+        await EventuallyOnUi(() => vm.DiagnosticEntries.Should().HaveCount(1));
+        var before = vm.DiagnosticEntries;
+
+        source.OnNext([WithPath("a.txt") with { Id = first.Id }]);
+        await Task.Delay(500);
+
+        await OnUi(() =>
+        {
+            vm.DiagnosticEntries.Should().BeSameAs(before);
+            return Task.CompletedTask;
+        });
     }
 }

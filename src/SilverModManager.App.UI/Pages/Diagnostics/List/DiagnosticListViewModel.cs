@@ -133,12 +133,15 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
 
             // diagnostics to entries
             filteredDiagnostics
+                // Formatting a summary can read the database, so the entries are built off the UI thread and only the finished array is marshalled.
+                .ObserveOn(RxApp.TaskpoolScheduler)
                 .Select(diagnostics => diagnostics
                     .Select(diagnostic => (IDiagnosticEntryViewModel)new DiagnosticEntryViewModel(diagnostic, diagnosticWriter))
                     .ToArray()
                 )
                 // A refresh that finds the same diagnostics must not swap the array: the list would jump back to the top.
                 .DistinctUntilChanged(SameEntries.Instance)
+                .OnUI()
                 .BindToVM(this, vm => vm.DiagnosticEntries)
                 .DisposeWith(disposable);
 
@@ -238,8 +241,10 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
     }
 
     /// <summary>
-    /// Entries are the same when every row would look and behave the same: id, title, severity, formatted summary,
-    /// details and actions. The creation time and data references differ on every refresh and are ignored.
+    /// Entries are the same when every row would look and behave the same. The diagnostics are compared as records, which
+    /// includes the message data the details are formatted from (formatting here could read the database); only the creation
+    /// time, which differs on every refresh, is ignored. Data references and actions are compared by content because the
+    /// containers holding them compare by reference.
     /// </summary>
     private sealed class SameEntries : IEqualityComparer<IDiagnosticEntryViewModel[]>
     {
@@ -253,10 +258,21 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
             {
                 var (a, b) = (x[i], y[i]);
                 if (a.Title != b.Title || a.Summary != b.Summary || a.Severity != b.Severity) return false;
-                if (!a.Diagnostic.Id.Equals(b.Diagnostic.Id) || a.Diagnostic.Details != b.Diagnostic.Details) return false;
-                if (a.Diagnostic.MoreDetails != b.Diagnostic.MoreDetails || !a.Diagnostic.Actions.SequenceEqual(b.Diagnostic.Actions)) return false;
+                if (!SameDiagnostic(a.Diagnostic, b.Diagnostic)) return false;
             }
             return true;
+        }
+
+        private static bool SameDiagnostic(Diagnostic a, Diagnostic b)
+        {
+            if (!a.Actions.SequenceEqual(b.Actions)) return false;
+            if (a.DataReferences.Count != b.DataReferences.Count) return false;
+            foreach (var (key, reference) in a.DataReferences)
+            {
+                if (!b.DataReferences.TryGetValue(key, out var other) || !reference.Equals(other)) return false;
+            }
+
+            return (a with { CreatedAt = b.CreatedAt, DataReferences = b.DataReferences, Actions = b.Actions }).Equals(b);
         }
 
         public int GetHashCode(IDiagnosticEntryViewModel[] obj) => obj.Length;
