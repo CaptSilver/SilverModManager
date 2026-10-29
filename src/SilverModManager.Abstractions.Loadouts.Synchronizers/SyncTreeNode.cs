@@ -128,4 +128,10 @@ public record struct SyncNode
     /// other, so whether they name the same bytes is not known until the file is read.
     /// </summary>
     public bool IdentityUnresolved { get; set; }
+
+    /// <summary>
+    /// True when a read gave the disk part its xxHash3 in this tree but the recorded disk state still names the file
+    /// by the identity it had. The apply writes the new identity to that entry.
+    /// </summary>
+    public bool DiskNamedByRead { get; set; }
 }

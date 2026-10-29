@@ -114,6 +114,41 @@ public sealed class MissingGameFilesEmitterTests : IDisposable
         (await Diagnose(tree)).Should().BeEmpty();
     }
 
+    // The disk part is SHA-1 and the loadout part xxHash3 with no recorded digest joining them: whether the file
+    // differs is not known until it is read, so it is neither mismatched nor safe to call changed.
+    [Fact]
+    public async Task AGameFileWhoseKindsNoRecordedDigestJoins_IsNotCalledMismatched()
+    {
+        var tree = Tree(("data/unread.pak", Unresolved(withDisk: true)));
+
+        (await Diagnose(tree)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AGameFileGoneFromDiskWithMixedKindsInItsOtherParts_IsStillReportedMissing()
+    {
+        var tree = Tree(("data/gone.pak", Unresolved(withDisk: false)));
+
+        var diagnostic = (await Diagnose(tree)).Should().ContainSingle().Subject;
+
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.UndeployableLoadoutDueToMissingGameFilesMessageData>>().Subject.MessageData;
+        data.Files.Should().Contain("data/gone.pak");
+    }
+
+    private static SyncNode Unresolved(bool withDisk)
+    {
+        var node = new SyncNode
+        {
+            Previous = new SyncNodePart { Identity = FileIdentity.Sha1(Sha1Value.From(new byte[20])), Size = Size.From(10), LastModifiedTicks = 0 },
+            Loadout = Part(Expected),
+            SourceItemType = LoadoutSourceItemType.Game,
+            Actions = Actions.WarnOfUnableToExtract,
+            IdentityUnresolved = true,
+        };
+        if (withDisk) node.Disk = new SyncNodePart { Identity = FileIdentity.Sha1(Sha1Value.From(new byte[20])), Size = Size.From(10), LastModifiedTicks = 0 };
+        return node;
+    }
+
     private static SyncNodePart Part(Hash hash) => new() { Identity = FileIdentity.XxHash3(hash), Size = Size.From(10), LastModifiedTicks = 0 };
 
     private static SyncNode Node(Hash? disk, Actions actions = Actions.WarnOfUnableToExtract, LoadoutSourceItemType source = LoadoutSourceItemType.Game)

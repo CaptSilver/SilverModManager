@@ -661,6 +661,72 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         await Hashes.RecordIndexedFiles(GameInstallation, remembered);
     }
 
+    // The index remembers the file's xxHash3 under its new modification time, but no digest joins that xxHash3 to the
+    // SHA-1 the store gave the loadout and the last sync: the disk reads as xxHash3, the other parts as SHA-1.
+    private async Task TheIndexRememberedTheVanillaFilesXxHash3WithNoRelation()
+    {
+        var hashes = await HashOf(VanillaText);
+        HashRelation.FindBySha1(Hashes.Local, hashes.Sha1).Should().BeEmpty("the fixture starts with no relation for these bytes");
+        var file = GameFolder / Vanilla;
+        File.SetLastWriteTimeUtc(file.ToString(), DateTime.UtcNow.AddMinutes(30));
+        var fingerprint = SilverModManager.Sdk.IO.FileFingerprint.Of(file);
+        await Hashes.RecordIndexedFiles(GameInstallation, [new IndexedFileHash(new GamePath(LocationId.Game, Vanilla), fingerprint.Size, fingerprint.LastModified, hashes.XxHash3)]);
+    }
+
+    // Thirty bytes the player added: with the vanilla file's fifteen counted they pass the forty-byte cap, without
+    // them they do not, so the cap is crossed only when the unresolved file is wrongly counted.
+    private async Task AddAnUnmanagedFileThatAloneFitsTheCap()
+        => await File.WriteAllTextAsync((GameFolder / "unmanaged.bin").ToString(), new string('x', 30));
+
+    private async Task<SyncNode> VanillaNodeNow(Loadout.ReadOnly loadout)
+    {
+        var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
+        Synchronizer.ProcessSyncTree(tree);
+        return tree[new GamePath(LocationId.Game, Vanilla)];
+    }
+
+    [Fact]
+    public async Task AVanillaFileWhoseNamesNoRelationJoins_IsReadOnceBeforeTheBackupQuestionAndNotCounted()
+    {
+        var loadout = await CreateLoadout();
+        await TheIndexRememberedTheVanillaFilesXxHash3WithNoRelation();
+        await AddAnUnmanagedFileThatAloneFitsTheCap();
+        var prompt = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        _prompt.Inner = prompt;
+        (await VanillaNodeNow(loadout)).IdentityUnresolved.Should().BeTrue("the two kinds have no recorded digest between them");
+        FullHashes.Reset();
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        FullyHashed.Where(p => p == Vanilla).Should().ContainSingle("the file is read once, before anything counts it");
+        prompt.Asked.Should().BeEmpty("a file nobody has shown to differ is not counted against the backup cap");
+        var node = await VanillaNodeNow(loadout);
+        node.Actions.Should().Be(Actions.DoNothing);
+        node.IdentityUnresolved.Should().BeFalse();
+        var hashes = await HashOf(VanillaText);
+        HashRelation.FindBySha1(Hashes.Local, hashes.Sha1).Should().NotBeEmpty("the read recorded the digests of the bytes");
+
+        FullHashes.Reset();
+        await Synchronizer.Synchronize(Refresh(loadout));
+        FullyHashed.Should().NotContain(Vanilla);
+    }
+
+    [Fact]
+    public async Task AResetWithAnUnresolvedVanillaFile_ReadsItOnceAndAsksNothing()
+    {
+        var loadout = await CreateLoadout();
+        await TheIndexRememberedTheVanillaFilesXxHash3WithNoRelation();
+        await AddAnUnmanagedFileThatAloneFitsTheCap();
+        var prompt = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        _prompt.Inner = prompt;
+        FullHashes.Reset();
+
+        await Synchronizer.ResetToOriginalGameState(GameInstallation, Refresh(loadout).LocatorIds.ToArray());
+
+        FullyHashed.Where(p => p == Vanilla).Should().ContainSingle();
+        prompt.Asked.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task SwitchingLoadouts_ReadsNoVanillaFile()
     {

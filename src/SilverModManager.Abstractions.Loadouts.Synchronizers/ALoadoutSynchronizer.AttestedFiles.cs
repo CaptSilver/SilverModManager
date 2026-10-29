@@ -43,6 +43,9 @@ public partial class ALoadoutSynchronizer
         CancellationToken cancellationToken = default,
         SynchronizeLoadoutJob? job = null)
     {
+        // Nodes the earlier pass already read are xxHash3 by now; this covers a caller that comes straight here.
+        await ResolveUnresolvedIdentities(tree, installation, cancellationToken, job);
+
         var wanted = NodesNeedingBytes(tree);
         var reads = wanted.Count == 0 ? [] : await ReadAndSettle(wanted, installation, cancellationToken, ProgressOfReading(tree, wanted, job));
 
@@ -61,6 +64,12 @@ public partial class ALoadoutSynchronizer
             resolved[read.Path] = node;
         }
 
+        // Files an earlier read named: their actions are worked out, but the disk state entry still has the old name.
+        foreach (var (path, named) in tree)
+        {
+            if (named.DiskNamedByRead) resolved[path] = named;
+        }
+
         await NameArchivedGameFilesByTheirArchiveKey(tree, resolved);
         if (resolved.Count == 0) return;
 
@@ -76,8 +85,10 @@ public partial class ALoadoutSynchronizer
         AdjustActions(resolved);
         ApplyBackupOverflowChoice(resolved, choice);
 
-        foreach (var (path, node) in resolved)
+        foreach (var (path, entry) in resolved)
         {
+            var node = entry;
+            node.DiskNamedByRead = false;
             tree[path] = node;
 
             // A deleted entry is retracted and an overwritten one is rewritten by the backend in this same
@@ -88,6 +99,60 @@ public partial class ALoadoutSynchronizer
             tx.Add(node.Disk.EntityId, DiskStateEntry.XxHash3, node.Disk.Identity.XxHash3());
         }
     }
+
+    /// <summary>
+    /// Reads, once, every node whose present parts are named by kinds no recorded digest joins, so the file is
+    /// compared by its bytes before anything counts it as changed or asks about backing it up. The digests found are
+    /// recorded in the local hashes database (so the next tree aligns through a relation and nothing is read again),
+    /// each part that names the bytes read is rewritten to their xxHash3 in memory, and the node's actions are worked
+    /// out again. Writes no <see cref="DiskStateEntry"/>: that row belongs to the apply's transaction.
+    /// </summary>
+    /// <remarks>
+    /// Runs without <see cref="_lock"/>, from <see cref="ResolveBackupOverflow"/>, the same class of work as the
+    /// index. A part named by a SHA-1 that is not the bytes read keeps it: it is a different file, and the node's
+    /// signature treats that like any other change.
+    /// </remarks>
+    internal async Task ResolveUnresolvedIdentities(
+        Dictionary<GamePath, SyncNode> tree,
+        GameInstallation installation,
+        CancellationToken cancellationToken,
+        SynchronizeLoadoutJob? job = null)
+    {
+        var wanted = tree.Where(kv => kv.Value.IdentityUnresolved && kv.Value.HaveDisk).Select(kv => kv.Key).ToList();
+        if (wanted.Count == 0) return;
+
+        var reads = await ReadAndSettle(wanted, installation, cancellationToken, ProgressOfReading(tree, wanted, job));
+        var resolved = new Dictionary<GamePath, SyncNode>();
+        foreach (var read in reads)
+        {
+            var node = tree[read.Path];
+            var xxHash3 = FileIdentity.XxHash3(read.Hashes.XxHash3);
+            if (node.Disk.Identity.MatchSameKind(xxHash3) != IdentityMatch.Same) node.DiskNamedByRead = true;
+            node.Disk = node.Disk with { Identity = xxHash3 };
+            if (node.HavePrevious && NamesTheBytesRead(node.Previous, read)) node.Previous = node.Previous with { Identity = xxHash3 };
+            if (node.HaveLoadout && NamesTheBytesRead(node.Loadout, read)) node.Loadout = node.Loadout with { Identity = xxHash3 };
+            resolved[read.Path] = node;
+        }
+
+        foreach (var path in resolved.Keys.ToArray())
+        {
+            var node = resolved[path];
+            MapActions(path, ref node);
+            resolved[path] = node;
+        }
+
+        AdjustActions(resolved);
+        foreach (var (path, read) in resolved)
+        {
+            // The file was read, so whether it differs is known; a part left as a SHA-1 is a different file.
+            var node = read;
+            node.IdentityUnresolved = false;
+            tree[path] = node;
+        }
+    }
+
+    private static bool NamesTheBytesRead(SyncNodePart part, WholeRead read)
+        => part.Identity.Kind == HashKind.Sha1 && part.Size == read.Hashes.Size && read.Hashes.Sha1 == Sha1Value.From(part.Identity.Digest);
 
     /// <summary>
     /// A game file the store vouched for is named by its SHA-1, and when a mod covered it the app archived the bytes

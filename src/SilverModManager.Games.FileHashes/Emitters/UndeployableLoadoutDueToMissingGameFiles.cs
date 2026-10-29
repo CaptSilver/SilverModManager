@@ -38,9 +38,18 @@ public class UndeployableLoadoutDueToMissingGameFiles : ILoadoutDiagnosticEmitte
         var missing = new Group();
         var mismatched = new Group();
 
+        var notYetComparable = 0;
         foreach (var (gamePath, node) in syncTree)
         {
             if (node.SourceItemType is not LoadoutSourceItemType.Game || !node.Actions.HasFlag(Actions.WarnOfUnableToExtract)) continue;
+
+            // Its parts are named by kinds no recorded digest joins, so it only looks different. The next apply reads it.
+            if (node.IdentityUnresolved && node.HaveDisk)
+            {
+                notYetComparable++;
+                continue;
+            }
+
             if (node.HaveDisk)
             {
                 _logger.LogDebug("`{Path}` is counted as differing from the app's file data: disk {Disk}, loadout {Loadout}", gamePath, node.Disk.Identity, node.Loadout.Identity);
@@ -48,6 +57,9 @@ public class UndeployableLoadoutDueToMissingGameFiles : ILoadoutDiagnosticEmitte
 
             (node.HaveDisk ? mismatched : missing).Add(gamePath, node);
         }
+
+        if (notYetComparable > 0)
+            _logger.LogDebug("{Count} game files are kept out of the mismatched list because their identities are not comparable until they are read", notYetComparable);
 
         var game = loadout.Installation.Name;
         var store = loadout.Installation.Store.Value;

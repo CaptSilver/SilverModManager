@@ -30,6 +30,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
 {
     private readonly SwitchableBackupOverflowPrompt _prompt = new();
 
+    private int _wholeReads;
     private bool _indexingFails;
     private bool _readingFails;
 
@@ -38,7 +39,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         base.AddServices(services)
             .AddSingleton(new BackupLimit(Size.KB * 8))
             .AddSingleton<IBackupOverflowPrompt>(_prompt)
-            .AddSingleton<IFullFileHasher>(new SwitchableFileHasher(() => _readingFails));
+            .AddSingleton<IFullFileHasher>(new SwitchableFileHasher(() => _readingFails, () => Interlocked.Increment(ref _wholeReads)));
 
         // The real indexer, behind a switch that makes it report a failing disk.
         var real = services.Last(d => d.ServiceType == typeof(IGameLocationsService));
@@ -48,12 +49,18 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
     }
 
     /// <summary>The real hasher, behind a switch that makes a file read as one that changed under it.</summary>
-    private sealed class SwitchableFileHasher(Func<bool> fails) : IFullFileHasher
+    private sealed class SwitchableFileHasher(Func<bool> fails, Action? onRead = null) : IFullFileHasher
     {
         public ValueTask<Hash> Hash(AbsolutePath file, CancellationToken cancellationToken)
             => fails() ? throw new GameFileChangedWhileReadException(file) : MultiHashFileHasher.Instance.Hash(file, cancellationToken);
 
         public ValueTask<MultiHash> HashAll(AbsolutePath file, CancellationToken cancellationToken)
+        {
+            onRead?.Invoke();
+            return HashAllOrFail(file, cancellationToken);
+        }
+
+        private ValueTask<MultiHash> HashAllOrFail(AbsolutePath file, CancellationToken cancellationToken)
             => fails() ? throw new GameFileChangedWhileReadException(file) : MultiHashFileHasher.Instance.HashAll(file, cancellationToken);
     }
 
@@ -523,6 +530,39 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         await SynchronizerService.Synchronize(second.LoadoutId, BackupOverflowChoice.AdoptInPlace);
 
         LoadoutManager.GetCurrentlyActiveLoadout(GameInstallation).Value.Should().Be(second.LoadoutId, "the reset's copies can only be made, so the answer stands for them");
+    }
+
+    [Fact]
+    public async Task AFileWhoseDiskAndLoadoutNamesNoRelationJoins_IsReadOnceAndNeverCounted()
+    {
+        await CreateLoadout();
+        var prompt = new RecordingPrompt(BackupOverflowChoice.BackUpAnyway);
+        _prompt.Inner = prompt;
+        var bytes = BytesOf("unresolved.bin", 12 * 1024);
+        (GameDir / "unresolved.bin").Parent.CreateDirectory();
+        await File.WriteAllBytesAsync((GameDir / "unresolved.bin").ToString(), bytes);
+        var hashes = await MultiHasher.HashStream(new MemoryStream(bytes));
+        var path = new GamePath(LocationId.Game, "unresolved.bin");
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [path] = new SyncNode
+            {
+                Disk = new SyncNodePart { Identity = FileIdentity.Sha1(hashes.Sha1), Size = hashes.Size, LastModifiedTicks = 1 },
+                Loadout = new SyncNodePart { Identity = FileIdentity.XxHash3(hashes.XxHash3), Size = hashes.Size, LastModifiedTicks = 1 },
+                SourceItemType = LoadoutSourceItemType.Game,
+                Actions = Actions.BackupFile | Actions.ExtractToDisk,
+                IdentityUnresolved = true,
+            },
+        };
+        _wholeReads = 0;
+
+        var (_, asked) = await ((ALoadoutSynchronizer)Synchronizer).ResolveBackupOverflow(tree, GameInstallation, preset: null, CancellationToken.None);
+
+        asked.Should().BeFalse("the same bytes need no backup");
+        prompt.Asked.Should().BeEmpty();
+        tree[path].Actions.Should().Be(Actions.DoNothing);
+        tree[path].IdentityUnresolved.Should().BeFalse();
+        _wholeReads.Should().Be(1);
     }
 
     // The folder changed while the dialog was open: a file that has to be backed up joined the ones that only wanted a copy.

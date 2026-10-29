@@ -605,8 +605,19 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         AdjustActions(tree);
     }
 
-    private static IdentityMatch MatchParts(bool haveLeft, SyncNodePart left, bool haveRight, SyncNodePart right) =>
-        haveLeft && haveRight ? left.Identity.MatchSameKind(right.Identity) : IdentityMatch.Different;
+    /// <summary>
+    /// Two kinds with no join are unknown, unless the recorded digests of one side's bytes name other bytes than the
+    /// other side: that is a known difference, and reading the file would only repeat it.
+    /// </summary>
+    private IdentityMatch MatchParts(bool haveLeft, SyncNodePart left, bool haveRight, SyncNodePart right)
+    {
+        if (!haveLeft || !haveRight) return IdentityMatch.Different;
+
+        var match = left.Identity.MatchSameKind(right.Identity);
+        return match == IdentityMatch.Unknown && _identityResolver.Resolve(left.Identity, right.Identity, left.Size) == IdentityMatch.Different
+            ? IdentityMatch.Different
+            : match;
+    }
 
     /// <summary>
     /// Signs one node and gives it the actions that signature maps to.
@@ -1164,6 +1175,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         BackupOverflowOperation operation = BackupOverflowOperation.Apply,
         SynchronizeLoadoutJob? job = null)
     {
+        // A file whose parts no recorded digest compares is read first: counting it would ask about a file that may be unchanged.
+        await ResolveUnresolvedIdentities(syncTree, installation, cancellationToken, job);
+
         // The operation the player started names the question; the leg only knows its own step.
         var overflow = await MeasureBackupOverflow(syncTree, installation, BackupOverflowAnswer.Active?.Operation ?? operation, cancellationToken);
         if (overflow is null) return (BackupOverflowChoice.BackUpAnyway, false);
