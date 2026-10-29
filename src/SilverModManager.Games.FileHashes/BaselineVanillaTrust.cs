@@ -59,7 +59,12 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotMa
 
         if (index.NonVanilla.TryGetValue(wanted, out var listed))
         {
-            reason = $"listed as {Describe(listed)}";
+            reason = listed switch
+            {
+                NonVanillaReason.NotInManifest => $"listed as {Describe(listed)}",
+                NonVanillaReason.SizeDiffers => VanillaTrustReasons.ListedAsSizeDiffers,
+                _ => VanillaTrustReasons.ListedAsModified,
+            };
             return false;
         }
 
@@ -82,7 +87,7 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotMa
 
         if (recorded != current)
         {
-            reason = "the game's copy differs from the checked baseline";
+            reason = VanillaTrustReasons.DiffersFromBaseline;
             return false;
         }
 
@@ -100,6 +105,7 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotMa
         var wanted = path.Path.ToString();
         var index = StoreListOf(db, installation);
         var complete = index.Complete;
+        var unreadable = false;
 
         if (index.Recorded.TryGetValue(wanted, out var recorded))
             return Compare(recorded, currentHashes, out reason);
@@ -110,12 +116,19 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotMa
             {
                 case Verdict.Found: return reason.Length == 0;
                 case Verdict.NotListedInAnyManifest: complete = true; break;
+                case Verdict.SomeUnreadable: unreadable = true; break;
             }
         }
 
         if (complete)
         {
             reason = VanillaTrustReasons.NotInstalledByStore;
+            return false;
+        }
+
+        if (unreadable)
+        {
+            reason = VanillaTrustReasons.StoreFileListUnreadable;
             return false;
         }
 
@@ -161,7 +174,7 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotMa
         return index;
     }
 
-    private enum Verdict { Found, NotListedInAnyManifest, Unknown }
+    private enum Verdict { Found, NotListedInAnyManifest, SomeUnreadable, Unknown }
 
     /// <summary>
     /// Reads the depot manifests Steam saved for the installed build's ids. <see cref="Verdict.Found"/> carries the
@@ -175,11 +188,12 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotMa
         if (manifestSource is null || locator.StoreRoot is not { } storeRoot) return Verdict.Unknown;
 
         var allRead = !locator.LocatorIds.IsEmpty;
+        var anyUnreadable = false;
         foreach (var id in locator.LocatorIds)
         {
             if (!ulong.TryParse(id.Value, out var manifestId)) { allRead = false; continue; }
-            var files = ManifestFiles(manifestSource, storeRoot, locator.Path, manifestId);
-            if (files is null) { allRead = false; continue; }
+            var files = ManifestFiles(manifestSource, storeRoot, locator.Path, manifestId, out var unreadable);
+            if (files is null) { allRead = false; anyUnreadable |= unreadable; continue; }
             if (!files.TryGetValue(wanted, out var sha1)) continue;
 
             if (sha1 == currentHashes.Sha1) return Verdict.Found;
@@ -187,11 +201,12 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotMa
             return Verdict.Found;
         }
 
-        return allRead ? Verdict.NotListedInAnyManifest : Verdict.Unknown;
+        return allRead ? Verdict.NotListedInAnyManifest : anyUnreadable ? Verdict.SomeUnreadable : Verdict.Unknown;
     }
 
-    private Dictionary<string, Sha1Value>? ManifestFiles(IDepotManifestSource source, AbsolutePath storeRoot, AbsolutePath installPath, ulong manifestId)
+    private Dictionary<string, Sha1Value>? ManifestFiles(IDepotManifestSource source, AbsolutePath storeRoot, AbsolutePath installPath, ulong manifestId, out bool unreadable)
     {
+        unreadable = false;
         if (_manifests.TryGetValue(manifestId, out var kept)) return kept;
 
         try
@@ -199,6 +214,7 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotMa
             if (!source.TryGetManifestPath(storeRoot, ManifestId.From(manifestId), installPath, out var manifestPath)) return null;
             if (source.Read(manifestPath) is not LocalManifestResult.Parsed parsed)
             {
+                unreadable = true;
                 if (_loggedUnreadable.TryAdd(manifestId, 0))
                     logger?.LogDebug("The saved depot manifest {ManifestId} cannot be read without Steam's depot key, so it cannot vouch for game files", manifestId);
                 return null;
@@ -211,7 +227,8 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotMa
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            // Never into a merge plan: an unreadable file is the same as one Steam has not saved.
+            // Never into a merge plan: an unreadable file vouches for nothing.
+            unreadable = true;
             if (_loggedUnreadable.TryAdd(manifestId, 0))
                 logger?.LogDebug(e, "Could not read the saved depot manifest {ManifestId}", manifestId);
             return null;

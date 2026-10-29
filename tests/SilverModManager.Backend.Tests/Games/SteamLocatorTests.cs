@@ -261,7 +261,8 @@ public class SteamLocatorTests
     }
 
     // The numbers are what Steam writes: 1026 is UpdateRequired|UpdateStarted, 516 is FullyInstalled|UpdatePaused,
-    // 36 is FullyInstalled|FilesMissing and 132 FullyInstalled|FilesCorrupt.
+    // 36 is FullyInstalled|FilesMissing, 132 FullyInstalled|FilesCorrupt, 8388612 FullyInstalled|UpdateStopping
+    // and 2052 FullyInstalled|Uninstalling.
     [Theory]
     [InlineData("4", false, false)]
     [InlineData("6", false, false)]
@@ -271,6 +272,8 @@ public class SteamLocatorTests
     [InlineData("516", true, false)]
     [InlineData("260", true, false)]
     [InlineData("1048576", true, false)]
+    [InlineData("8388612", true, false)]
+    [InlineData("2052", true, false)]
     [InlineData("36", false, true)]
     [InlineData("132", false, true)]
     public void Locate_SeparatesAnUpdateRunningFromFilesTheStoreCallsDamaged(string stateFlags, bool inProgress, bool damaged)

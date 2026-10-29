@@ -497,7 +497,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         var act = () => Synchronizer.Synchronize(Refresh(loadout));
 
         var refusal = await act.Should().ThrowAsync<UserFacingException>();
-        refusal.Which.Message.Should().StartWith("Steam is updating").And.Contain("try again when it finishes").And.Contain("Nothing was changed");
+        refusal.Which.Message.Should().StartWith("Steam is updating").And.Contain("try again when it finishes").And.Contain("resume the update in Steam").And.Contain("Nothing was changed");
         await EveryVanillaFileIsOnDiskAndNoneWasBackedUp();
         Refresh(loadout).LocatorIds.Select(id => id.Value).Should().NotContain(NewGameManifestId.ToString(), "a refused apply writes nothing");
 
@@ -602,6 +602,35 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         registered.LocatorResult.LocatorIds.Select(id => id.Value).Should().Contain(NewGameManifestId.ToString(), "readers of the registry see the build installed now");
         GameRegistry.LocateGameInstallations().Single(i => i.Game.GameId == registered.Game.GameId).LocatorResult.LocatorIds
             .Should().BeEquivalentTo(registered.LocatorResult.LocatorIds);
+    }
+
+    [Fact]
+    public async Task ARegistryCopyTakenMidUpdateWhenSteamSettlesOnTheSameBuild_TheFirstSyncClearsTheUpdateFlags()
+    {
+        var loadout = await CreateLoadout();
+        var current = Refresh(loadout).InstallationInstance;
+        var settled = current.LocatorResult;
+        GameRegistry.RefreshInstallation(new GameInstallation(new GameLocatorResult
+        {
+            Game = settled.Game,
+            Path = settled.Path,
+            Store = settled.Store,
+            StoreIdentifier = settled.StoreIdentifier,
+            LocatorIds = settled.LocatorIds,
+            Locator = settled.Locator,
+            Platform = settled.Platform,
+            StoreRoot = settled.StoreRoot,
+            StoreBuildId = settled.StoreBuildId,
+            StoreUpdatePending = true,
+            StoreUpdateInProgress = true,
+        }, current.Locations));
+        Refresh(loadout).InstallationInstance.LocatorResult.StoreUpdateInProgress.Should().BeTrue("the registry holds the copy taken mid-update");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        var registered = Refresh(loadout).InstallationInstance.LocatorResult;
+        registered.StoreUpdateInProgress.Should().BeFalse();
+        registered.StoreUpdatePending.Should().BeFalse();
     }
 
     [Fact]

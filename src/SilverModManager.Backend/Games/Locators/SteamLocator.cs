@@ -102,7 +102,7 @@ internal class SteamLocator : IGameLocator
     // players who update only on launch.
     private const StateFlags UpdateInProgressFlags = StateFlags.UpdateRunning | StateFlags.UpdateStarted | StateFlags.UpdatePaused
         | StateFlags.Downloading | StateFlags.Staging | StateFlags.Committing | StateFlags.Preallocating
-        | StateFlags.AddingFiles | StateFlags.Reconfiguring | StateFlags.Validating;
+        | StateFlags.AddingFiles | StateFlags.Reconfiguring | StateFlags.Validating | StateFlags.UpdateStopping | StateFlags.Uninstalling;
 
     private readonly HashSet<uint> _loggedStalePrefixes = [];
 

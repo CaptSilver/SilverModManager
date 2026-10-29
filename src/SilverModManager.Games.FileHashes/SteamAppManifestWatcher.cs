@@ -40,7 +40,18 @@ internal sealed class SteamAppManifestWatcher : IHostedService, IDisposable
     public Task StartAsync(CancellationToken cancellationToken)
     {
         // Locating games can take a while on first call; startup must not wait for it.
-        _ = Task.Run(Watch, CancellationToken.None);
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                Watch();
+            }
+            catch (Exception e)
+            {
+                // Without this the watcher would silently never arm.
+                _logger.LogError(e, "Could not start watching the Steam libraries for game updates; an update is noticed at the next apply or restart");
+            }
+        }, CancellationToken.None);
         return Task.CompletedTask;
     }
 
@@ -80,7 +91,12 @@ internal sealed class SteamAppManifestWatcher : IHostedService, IDisposable
                 watcher.Created += (_, _) => Poke();
                 watcher.Renamed += (_, _) => Poke();
                 watcher.EnableRaisingEvents = true;
-                lock (_lock) _watchers.Add(watcher);
+                lock (_lock)
+                {
+                    // Stopped while this one was being set up: nothing will dispose it later.
+                    if (_stopping.IsCancellationRequested) watcher.Dispose();
+                    else _watchers.Add(watcher);
+                }
             }
             catch (Exception e)
             {
@@ -137,6 +153,8 @@ internal sealed class SteamAppManifestWatcher : IHostedService, IDisposable
 
     public void Dispose()
     {
+        // A late event after disposal must not re-create the timer.
+        try { _stopping.Cancel(); } catch (ObjectDisposedException) { }
         lock (_lock)
         {
             foreach (var watcher in _watchers) watcher.Dispose();

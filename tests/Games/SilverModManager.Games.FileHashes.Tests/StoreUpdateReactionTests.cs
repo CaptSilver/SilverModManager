@@ -84,6 +84,23 @@ public sealed class StoreUpdateReactionTests : IDisposable
     }
 
     [Fact]
+    public async Task Check_TheRegistryCopyWasTakenMidUpdateAndTheStoreSettlesOnTheSameBuild_RefreshesBaselineAndHealthCheck()
+    {
+        var id = await HashRows.AddLoadout(_main, GameStore.Steam, GamePath, "old");
+        var row = Loadout.Load(_main.Db, id).Installation;
+        _registry.TryGetMetadata(Arg.Any<GameInstallation>(), out Arg.Any<GameInstallMetadata.ReadOnly>())
+            .Returns(call => { call[1] = row; return true; });
+        StoreSays(Result("old", "build-1"));
+
+        var outcome = await _reaction.Check(Installation("old", "build-1", inProgress: true), TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(StoreUpdateOutcome.Refreshed);
+        _registry.Received(1).RefreshInstallation(Arg.Is<GameInstallation>(i => !i.LocatorResult.StoreUpdateInProgress && !i.LocatorResult.StoreUpdatePending));
+        await _hashes.Received(1).EnsureLocalBaseline(Arg.Any<GameInstallation>(), Arg.Any<CancellationToken>());
+        await _diagnostics.Received(1).RefreshAsync(Loadout.Load(_main.Db, id).LoadoutId);
+    }
+
+    [Fact]
     public async Task Check_TheGameIsGone_ChangesNothing()
     {
         _locator.TryLocate(Arg.Any<IGameData>(), out Arg.Any<GameLocatorResult?>()).Returns(false);
@@ -141,9 +158,9 @@ public sealed class StoreUpdateReactionTests : IDisposable
         };
     }
 
-    private GameInstallation Installation(string id, string build)
+    private GameInstallation Installation(string id, string build, bool inProgress = false)
     {
-        var result = Result(id, build);
+        var result = Result(id, build, inProgress);
         return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, result.Path)));
     }
 }

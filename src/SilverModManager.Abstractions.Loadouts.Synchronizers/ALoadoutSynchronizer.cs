@@ -705,14 +705,14 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // Judged on what the store says now, not on the registry's copy. While the store writes the files they match
         // no single build, so nothing read from them (the index, the backups, a merge base) can be trusted.
         if (gameLocatorResult.StoreUpdateInProgress)
-            throw new SynchronizerPreflightException($"{gameLocatorResult.Store} is updating {registered.Game.DisplayName}; try again when it finishes. Nothing was changed.");
+            throw new SynchronizerPreflightException($"{gameLocatorResult.Store} is updating {registered.Game.DisplayName}; try again when it finishes (resume the update in {gameLocatorResult.Store} if it is paused). Nothing was changed.");
         if (gameLocatorResult.StoreFilesDamaged)
             throw new SynchronizerPreflightException($"{gameLocatorResult.Store} reports some of {registered.Game.DisplayName}'s files as missing or damaged. Verify the game's files in {gameLocatorResult.Store}, then apply again. Nothing was changed.");
 
         // The registry keeps the ids the game was found with until the app restarts, and every later read of
         // loadout.InstallationInstance (the apply, reconcile, override reprocessing, the store's attested file
         // list) would look the build up by them. Hand the registry the install as it is now.
-        if (!gameLocatorResult.LocatorIds.ToHashSet().SetEquals(registered.LocatorResult.LocatorIds))
+        if (!gameLocatorResult.HasSameStoreStateAs(registered.LocatorResult))
             _gameRegistry.RefreshInstallation(located);
 
         var metadataLocatorIds = gameLocatorResult.LocatorIds;

@@ -134,4 +134,18 @@ public class GameLocatorResult
     /// the user chose to update only on launch, or the store has no such setting.
     /// </summary>
     public bool StoreUpdatesInBackground { get; init; }
+
+    /// <summary>
+    /// True when <paramref name="other"/> describes the same build in the same store state: same ids, build,
+    /// update target, pending/in-progress/damaged flags and last write. A copy captured mid-update that the
+    /// store later settles on the same build differs here, which comparing the build alone would miss.
+    /// </summary>
+    public bool HasSameStoreStateAs(GameLocatorResult other) =>
+        StoreBuildId == other.StoreBuildId
+        && StoreTargetBuildId == other.StoreTargetBuildId
+        && StoreUpdatePending == other.StoreUpdatePending
+        && StoreUpdateInProgress == other.StoreUpdateInProgress
+        && StoreFilesDamaged == other.StoreFilesDamaged
+        && StoreLastWrite == other.StoreLastWrite
+        && LocatorIds.Select(id => id.Value).ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(other.LocatorIds.Select(id => id.Value));
 }

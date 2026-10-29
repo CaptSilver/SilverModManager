@@ -164,7 +164,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
         var text = Summary(card) + " " + Details(card);
         text.Should().Contain("the game's own copy of scripts/x.ws")
             .And.Contain("Steam has not saved the file list for the installed build yet")
-            .And.Contain("Alpha").And.Contain("Beta's lines 12–13, 40–40")
+            .And.Contain("Alpha").And.Contain("Beta's changes at lines 12–13 and line 40 of the merged file")
             .And.Contain("Let Steam finish the update").And.Contain("apply again");
         text.Should().NotContain("Load Order").And.NotContain("Test Order page");
     }
@@ -178,8 +178,35 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
 
         card.Severity.Should().Be(DiagnosticSeverity.Warning);
         var text = Summary(card) + " " + Details(card);
-        text.Should().Contain("differs from the store's file list").And.Contain("Verify the game's files in Steam").And.Contain("Beta's lines 4–7");
+        text.Should().Contain("differs from the store's file list").And.Contain("Verify the game's files in Steam").And.Contain("Beta's changes at lines 4–7 of the merged file");
         text.Should().NotContain("Load Order").And.NotContain("Test Order page");
+    }
+
+    [Theory]
+    [InlineData(VanillaTrustReasons.DiffersFromBaseline)]
+    [InlineData(VanillaTrustReasons.ListedAsModified)]
+    [InlineData(VanillaTrustReasons.ListedAsSizeDiffers)]
+    public async Task AnOriginalChangedSinceTheBaseline_SaysToVerifyTheGamesFiles(string reason)
+    {
+        var output = TwoWayOutput(Script, reason, new LinesKept(Script, 4, 7, "Alpha", "Beta"));
+
+        var card = (await Run([Merged()], [output])).Should().ContainSingle().Which;
+
+        card.Severity.Should().Be(DiagnosticSeverity.Warning);
+        (Summary(card) + " " + Details(card)).Should().Contain(reason).And.Contain("Verify the game's files in Steam").And.NotContain("keep only one");
+    }
+
+    [Fact]
+    public async Task AFileListSteamSavedButTheAppCannotRead_DoesNotClaimSteamHasNotSavedItAndDoesNotSayToWait()
+    {
+        var output = TwoWayOutput(Script, VanillaTrustReasons.StoreFileListUnreadable, new LinesKept(Script, 4, 7, "Alpha", "Beta"));
+
+        var card = (await Run([Merged()], [output])).Should().ContainSingle().Which;
+
+        card.Severity.Should().Be(DiagnosticSeverity.Warning);
+        var text = Summary(card) + " " + Details(card);
+        text.Should().Contain("cannot be read").And.Contain("keep only one of the mods that ship this file");
+        text.Should().NotContain("has not saved").And.NotContain("Let Steam finish").And.NotContain("Load Order");
     }
 
     [Fact]

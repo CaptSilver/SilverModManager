@@ -119,6 +119,12 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Eng
                 VanillaTrustReasons.DiffersFromStoreList =>
                     $"the game's copy differs from the store's file list for the installed build (another tool or an earlier merge changed it), so {both} were merged two-way and {dropped} are dropped. " +
                     "Verify the game's files in Steam to restore the original, then apply again",
+                VanillaTrustReasons.DiffersFromBaseline or VanillaTrustReasons.ListedAsModified or VanillaTrustReasons.ListedAsSizeDiffers =>
+                    $"{untrusted.Reason}, so there is no original to merge against; {both} were merged two-way and {dropped} are dropped. " +
+                    "Verify the game's files in Steam to restore the original, then apply again",
+                VanillaTrustReasons.StoreFileListUnreadable =>
+                    $"{untrusted.Reason}, so the app cannot tell the game's lines from the mods'; {both} were merged two-way and {dropped} are dropped. " +
+                    "If a mod's content is missing in game, keep only one of the mods that ship this file",
                 VanillaTrustReasons.NotInstalledByStore =>
                     $"the store did not install this file, so there is no original to merge against; {both} were merged two-way and {dropped} are dropped. " +
                     "If a mod's content is missing in game, keep only one of the mods that ship this file",
@@ -131,15 +137,17 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Eng
         }
     }
 
-    // "Beta's lines 12–13, 40–40 and Gamma's lines 3–3"; a merge that notes no lines just says the mod's changes.
+    // "Beta's changes at lines 12–13 and line 40 of the merged file and Gamma's changes at line 3 of the merged file".
+    // The numbers are positions in the winner's file, which is the merged file in a two-way fold. A merge that notes
+    // no lines just says the mod's changes.
     private static string DroppedLines(MergedOutput output, string[] losers)
     {
         var parts = new List<string>();
         foreach (var loser in losers)
         {
             var ranges = output.Notes.OfType<LinesKept>().Where(k => k.DroppedMod == loser).OrderBy(k => k.FirstLine)
-                .Select(k => $"{k.FirstLine}–{k.LastLine}").ToArray();
-            parts.Add(ranges.Length == 0 ? $"{loser}'s own changes" : $"{loser}'s lines {string.Join(", ", ranges)}");
+                .Select(k => k.FirstLine == k.LastLine ? $"line {k.FirstLine}" : $"lines {k.FirstLine}–{k.LastLine}").ToArray();
+            parts.Add(ranges.Length == 0 ? $"{loser}'s own changes" : $"{loser}'s changes at {string.Join(" and ", ranges)} of the merged file");
         }
 
         return string.Join(" and ", parts);

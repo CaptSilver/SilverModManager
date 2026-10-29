@@ -40,14 +40,94 @@ public sealed class SteamAppManifestWatcherTests : IDisposable
         _registry.LocateGameInstallations().Returns([installation]);
         _locator.TryLocate(Arg.Any<IGameData>(), out Arg.Any<GameLocatorResult?>())
             .Returns(call => { Interlocked.Increment(ref _looks); call[1] = installation.LocatorResult; return true; });
-        using var watcher = Watcher();
+        // A debounce much longer than the burst, so an event the file system delivers late does not become a second look.
+        using var watcher = Watcher(TimeSpan.FromMilliseconds(500));
         watcher.Watch();
 
         for (var i = 0; i < 5; i++) await File.WriteAllTextAsync(Path.Combine(_steamapps, "appmanifest_1.acf"), "x" + i, TestContext.Current.CancellationToken);
 
         await WaitFor(() => Volatile.Read(ref _looks) >= 1);
-        await Task.Delay(300, TestContext.Current.CancellationToken);
+        await Task.Delay(1200, TestContext.Current.CancellationToken);
         Volatile.Read(ref _looks).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AManifestWrittenToATempFileAndRenamedIntoPlace_LeadsToALook()
+    {
+        var installation = Installation(GameStore.Steam, Path.Combine(_steamapps, "common", "Game"));
+        _registry.LocateGameInstallations().Returns([installation]);
+        _locator.TryLocate(Arg.Any<IGameData>(), out Arg.Any<GameLocatorResult?>())
+            .Returns(call => { Interlocked.Increment(ref _looks); call[1] = installation.LocatorResult; return true; });
+        using var watcher = Watcher();
+        watcher.Watch();
+
+        var temp = Path.Combine(_steamapps, "appmanifest_1.acf.tmp");
+        await File.WriteAllTextAsync(temp, "x", TestContext.Current.CancellationToken);
+        File.Move(temp, Path.Combine(_steamapps, "appmanifest_1.acf"));
+
+        await WaitFor(() => Volatile.Read(ref _looks) >= 1);
+        Volatile.Read(ref _looks).Should().BeGreaterThanOrEqualTo(1);
+    }
+
+    [Fact]
+    public async Task AfterStopAsync_AManifestChangeLeadsToNoLook()
+    {
+        var installation = Installation(GameStore.Steam, Path.Combine(_steamapps, "common", "Game"));
+        _registry.LocateGameInstallations().Returns([installation]);
+        _locator.TryLocate(Arg.Any<IGameData>(), out Arg.Any<GameLocatorResult?>())
+            .Returns(call => { Interlocked.Increment(ref _looks); call[1] = installation.LocatorResult; return true; });
+        using var watcher = Watcher();
+        watcher.Watch();
+
+        await watcher.StopAsync(TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(_steamapps, "appmanifest_1.acf"), "x", TestContext.Current.CancellationToken);
+
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        Volatile.Read(ref _looks).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task WatchAfterStopAsync_StartsNoWatcher()
+    {
+        var installation = Installation(GameStore.Steam, Path.Combine(_steamapps, "common", "Game"));
+        _registry.LocateGameInstallations().Returns([installation]);
+        _locator.TryLocate(Arg.Any<IGameData>(), out Arg.Any<GameLocatorResult?>())
+            .Returns(call => { Interlocked.Increment(ref _looks); call[1] = installation.LocatorResult; return true; });
+        using var watcher = Watcher();
+        await watcher.StopAsync(TestContext.Current.CancellationToken);
+        watcher.Watch();
+
+        await File.WriteAllTextAsync(Path.Combine(_steamapps, "appmanifest_1.acf"), "x", TestContext.Current.CancellationToken);
+
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        Volatile.Read(ref _looks).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task WhenLocatingTheRegisteredGamesThrows_StartAsyncLogsItInsteadOfLosingIt()
+    {
+        _registry.LocateGameInstallations().Returns(_ => throw new InvalidOperationException("registry broke"));
+        var logger = new CapturingLogger<SteamAppManifestWatcher>();
+        using var watcher = new SteamAppManifestWatcher(_registry, Reaction(), logger, TimeSpan.FromMilliseconds(100));
+
+        await watcher.StartAsync(TestContext.Current.CancellationToken);
+        await WaitFor(() => logger.Errors.Count > 0);
+
+        logger.Errors.Should().ContainSingle().Which.Should().Contain("Could not start watching");
+    }
+
+    private sealed class CapturingLogger<T> : Microsoft.Extensions.Logging.ILogger<T>
+    {
+        public System.Collections.Concurrent.ConcurrentBag<string> Errors { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == Microsoft.Extensions.Logging.LogLevel.Error) Errors.Add(formatter(state, exception));
+        }
     }
 
     [Fact]
@@ -80,11 +160,14 @@ public sealed class SteamAppManifestWatcherTests : IDisposable
         _locator.DidNotReceiveWithAnyArgs().TryLocate(default!, out _);
     }
 
-    private SteamAppManifestWatcher Watcher() => new(
+    private SteamAppManifestWatcher Watcher(TimeSpan? debounce = null) => new(
         _registry,
-        new StoreUpdateReaction(_registry, Substitute.For<IFileHashesService>(), Substitute.For<IDiagnosticManager>(), _host.OpenInMemory("main"), NullLogger<StoreUpdateReaction>.Instance),
+        Reaction(),
         NullLogger<SteamAppManifestWatcher>.Instance,
-        TimeSpan.FromMilliseconds(100));
+        debounce ?? TimeSpan.FromMilliseconds(100));
+
+    private StoreUpdateReaction Reaction() =>
+        new(_registry, Substitute.For<IFileHashesService>(), Substitute.For<IDiagnosticManager>(), _host.OpenInMemory("main"), NullLogger<StoreUpdateReaction>.Instance);
 
     private static async Task WaitFor(Func<bool> condition)
     {

@@ -6,7 +6,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NSubstitute;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.Abstractions.Games.Merge.Tests.Fixtures;
+using SilverModManager.Games.FileHashes;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -217,6 +220,67 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
         threeWay.Strategy.Should().Be("text-3way");
         threeWay.Notes.OfType<VanillaBaseUntrusted>().Should().BeEmpty();
         threeWay.Notes.OfType<LinesKept>().Should().BeEmpty();
+    }
+
+    private const string UpdatedVanilla = "a\nb\nc\nd\ne\n";
+    private const string LowerModsInserts = "a\nb\nc\nd\nvar tt_creator;\ntt_creator = owner;\ne\n";
+
+    /// <summary>
+    /// The state after a store update seen by the running app: no local baseline for the new build, only the
+    /// store's own file list. The real trust is asked, over the one row <paramref name="storeListedContent"/> describes.
+    /// </summary>
+    private async Task<MergedOutput> PlanAfterAStoreUpdate(string? storeListedContent, bool storeListCovers)
+    {
+        var loadout = await CreateLoadout();
+        var rel = $"scripts/store-list-{Guid.NewGuid():N}.txt";
+        await WriteVanilla(rel, UpdatedVanilla);
+        await Mod(loadout, "A", "modA", 2, Text(rel, "a\nBB\nc\nd\ne\n"));
+        await Mod(loadout, "B", "modB", 1, Text(rel, LowerModsInserts));
+        loadout = Refresh(loadout);
+
+        var hashes = Substitute.For<IFileHashesService>();
+        hashes.Local.Returns(_ => Connection.Db);
+        hashes.CoversInstalledBuild(default).ReturnsForAnyArgs(storeListCovers);
+        hashes.GetGameFiles(Arg.Any<GameInstallation>()).Returns(_ => storeListedContent is null ? [] :
+        [
+            new GameFileRecord
+            {
+                Path = new GamePath(LocationId.Game, $"vanilla/{rel}"),
+                Size = Size.FromLong(Encoding.UTF8.GetByteCount(storeListedContent)),
+                Identity = FileIdentity.XxHash3(MultiHasher.HashStream(new MemoryStream(Encoding.UTF8.GetBytes(storeListedContent))).GetAwaiter().GetResult().XxHash3),
+            },
+        ]);
+
+        var engine = new MergeEngine(FileStore, new BaselineVanillaTrust(hashes), NullLogger<MergeEngine>.Instance, _ => _game);
+        return engine.Plan(loadout, MergeSourceMode.Apply).Single(o => o.RelPath == rel);
+    }
+
+    [Fact]
+    public async Task NoBaselineForTheNewBuildButTheStoresListVouchesForTheFile_BothModsNonOverlappingEditsSurvive()
+    {
+        var output = await PlanAfterAStoreUpdate(UpdatedVanilla, storeListCovers: true);
+
+        AsText(output).Should().Be("a\nBB\nc\nd\nvar tt_creator;\ntt_creator = owner;\ne\n");
+        output.Strategy.Should().Be("text-3way");
+        output.Notes.OfType<VanillaBaseUntrusted>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task NoBaselineForTheNewBuildAndTheStoresListHasAnotherCopy_FoldsTwoWayAndSaysTheCopyDiffers()
+    {
+        var output = await PlanAfterAStoreUpdate("a\nsomething else\n", storeListCovers: true);
+
+        AsText(output).Should().NotContain("tt_creator");
+        output.Notes.OfType<VanillaBaseUntrusted>().Should().ContainSingle().Which.Reason.Should().Be(VanillaTrustReasons.DiffersFromStoreList);
+    }
+
+    [Fact]
+    public async Task NoBaselineAndNoStoreListForAStoreWithoutOnDiskLists_FoldsTwoWayAndSaysTheCopyWasNotChecked()
+    {
+        var output = await PlanAfterAStoreUpdate(null, storeListCovers: false);
+
+        AsText(output).Should().NotContain("tt_creator");
+        output.Notes.OfType<VanillaBaseUntrusted>().Should().ContainSingle().Which.Reason.Should().Be(VanillaTrustReasons.NotCheckedAgainstStoreList);
     }
 
     /// <summary>A contest over its own rel whose result depends on the vanilla copy: A edits line 1, B line 3.</summary>

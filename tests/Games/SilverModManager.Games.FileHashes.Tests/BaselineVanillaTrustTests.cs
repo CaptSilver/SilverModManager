@@ -54,7 +54,7 @@ public sealed class BaselineVanillaTrustTests : IDisposable
         await AddReport(baseline, "content/content0/scripts/x.ws", NonVanillaReason.HashDiffers);
 
         IsTrusted("content/content0/Scripts/X.ws", out var reason).Should().BeFalse();
-        reason.Should().Be("listed as modified");
+        reason.Should().Be(VanillaTrustReasons.ListedAsModified);
     }
 
     [Theory]
@@ -224,12 +224,30 @@ public sealed class BaselineVanillaTrustTests : IDisposable
     }
 
     [Fact]
-    public void NoBaselineNoRows_TheSavedManifestNeedsADepotKey_IsTreatedAsNotSavedAndDoesNotThrow()
+    public void NoBaselineNoRows_TheSavedManifestNeedsADepotKey_SaysTheListIsSavedButUnreadableAndDoesNotThrow()
     {
         _depotcache.AddEncrypted(7);
 
         IsTrusted("x.ws", out var reason, locatorIds: ["7"]).Should().BeFalse();
-        reason.Should().Be(VanillaTrustReasons.StoreFileListNotSavedYet);
+        reason.Should().Be(VanillaTrustReasons.StoreFileListUnreadable);
+    }
+
+    [Fact]
+    public void NoBaselineNoRows_OneManifestIsUnreadableAndAnotherNotSaved_SaysUnreadable()
+    {
+        _depotcache.AddEncrypted(7);
+
+        IsTrusted("x.ws", out var reason, locatorIds: ["7", "8"]).Should().BeFalse();
+        reason.Should().Be(VanillaTrustReasons.StoreFileListUnreadable);
+    }
+
+    [Fact]
+    public void NoBaselineNoRows_AnUnreadableManifestDoesNotHideAnotherThatListsTheFile()
+    {
+        _depotcache.AddEncrypted(7);
+        _depotcache.Add(8, ("x.ws", "vanilla"));
+
+        IsTrusted("x.ws", out _, locatorIds: ["7", "8"]).Should().BeTrue();
     }
 
     [Fact]

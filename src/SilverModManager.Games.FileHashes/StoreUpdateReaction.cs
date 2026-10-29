@@ -78,9 +78,9 @@ public sealed class StoreUpdateReaction(
         }
 
         var before = registered.LocatorResult;
-        if (fresh.StoreBuildId == before.StoreBuildId
-            && fresh.LocatorIds.Select(id => id.Value).ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(before.LocatorIds.Select(id => id.Value)))
-            return StoreUpdateOutcome.Unchanged;
+        // The registry's copy can have been taken mid-update or while Steam reported damage; settling on the same
+        // build still has to clear those flags and let the skipped baseline be built.
+        if (fresh.HasSameStoreStateAs(before)) return StoreUpdateOutcome.Unchanged;
 
         var located = new GameInstallation(fresh, registered.Locations);
         registry.RefreshInstallation(located);

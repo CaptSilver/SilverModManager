@@ -208,6 +208,37 @@ public class HeadlessHostProfileTests
         else hostedServices.Should().NotContain("LocalBaselineStartupPass");
     }
 
+    [Theory]
+    [InlineData("as-main", false)]
+    [InlineData("run", false)]
+    [InlineData("as-main-ui", true)]
+    public void OnlyTheGuiProfileRegistersTheSteamUpdateWatcher(string input, bool registered)
+    {
+        var services = Describe(Mode(input.Split(' ')));
+
+        var hostedServices = services.Where(d => d.ServiceType == typeof(IHostedService)).Select(d => d.ImplementationType?.Name);
+        if (registered) hostedServices.Should().Contain("SteamAppManifestWatcher");
+        else hostedServices.Should().NotContain("SteamAppManifestWatcher");
+    }
+
+    [Fact]
+    public void GuiGraphRegistersEveryServiceTheSteamUpdateWatcherAsksFor()
+    {
+        var services = Describe(Mode("as-main-ui"));
+        var registered = services.Select(d => d.ServiceType).ToHashSet();
+        var watcher = services.Single(d => d.ImplementationType?.Name == "SteamAppManifestWatcher").ImplementationType!;
+        var reaction = services.Single(d => d.ServiceType.Name == "StoreUpdateReaction").ServiceType;
+
+        // A missing registration only shows when the hosted service starts, which crashes the window at launch.
+        foreach (var type in new[] { watcher, reaction })
+        {
+            var parameters = type.GetConstructors(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .Where(c => !c.IsPrivate).OrderByDescending(c => c.GetParameters().Length).First().GetParameters();
+            foreach (var parameter in parameters.Where(p => p.ParameterType != typeof(TimeSpan) && !p.ParameterType.IsGenericType))
+                registered.Should().Contain(parameter.ParameterType, $"{type.Name} asks for {parameter.ParameterType.Name}");
+        }
+    }
+
     [Fact]
     public void GuiGraphKeepsTheCliServerAndNxmRegistration()
     {

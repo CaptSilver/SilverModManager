@@ -37,4 +37,16 @@ public static class VanillaTrustReasons
 
     /// <summary>The store's file list for the installed build does not have the file.</summary>
     public const string NotInstalledByStore = "not a file the store installed";
+
+    /// <summary>Steam saved the file list for the installed build but the app cannot read it (it needs a depot key the app does not have).</summary>
+    public const string StoreFileListUnreadable = "Steam's saved file list for the installed build cannot be read by the app";
+
+    /// <summary>The baseline lists the file as changed from the store's copy.</summary>
+    public const string ListedAsModified = "listed as modified";
+
+    /// <summary>The baseline lists the file with another size than the store's copy.</summary>
+    public const string ListedAsSizeDiffers = "listed as a different size from the store's copy";
+
+    /// <summary>The file was changed after the baseline was built.</summary>
+    public const string DiffersFromBaseline = "the game's copy differs from the checked baseline";
 }
