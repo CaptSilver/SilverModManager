@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.Witcher.Witcher1;
 using SilverModManager.Games.Witcher.Witcher2;
 using SilverModManager.Games.Witcher.Witcher3;
@@ -23,6 +24,9 @@ public static class Services
             .AddWitcherModsSettingsNoticeModel()
             .AddWitcherModSortOrderModel()
             .AddWitcherModSortOrderItemModel()
+            .AddSingleton<ITool, RunGameTool<Witcher1Game>>()
+            .AddSingleton<ITool, RunGameTool<Witcher2Game>>()
+            .AddSingleton<ITool, RunGameTool<Witcher3Game>>()
             .AddGame<Witcher1Game>()
             .AddGame<Witcher2Game>()
             .AddModule("witcher3", "Commands for The Witcher 3")

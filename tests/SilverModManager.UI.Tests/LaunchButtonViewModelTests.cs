@@ -36,7 +36,7 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         public LaunchButtonViewModel ViewModel = null!;
     }
 
-    private async Task<Rig> Build(PresenterRig? presenter = null, Func<Exception>? failure = null)
+    private async Task<Rig> Build(PresenterRig? presenter = null, Func<Exception>? failure = null, bool withoutRunTool = false)
     {
         var rig = new Rig();
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Launch button");
@@ -46,7 +46,7 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         tool.WaitingForSteam.Returns(rig.Waiting);
 
         var toolManager = Substitute.For<IToolManager>();
-        toolManager.GetTools(Arg.Any<Loadout.ReadOnly>()).Returns([tool]);
+        toolManager.GetTools(Arg.Any<Loadout.ReadOnly>()).Returns(withoutRunTool ? [] : [tool]);
         toolManager.RunTool(Arg.Any<ITool>(), Arg.Any<Loadout.ReadOnly>(), Arg.Any<IJobMonitor>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
@@ -169,6 +169,21 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         var dialog = presenter.Dialogs.Should().ContainSingle().Subject;
         dialog.WindowTitle.Should().Be("The game was not started");
         PresenterRig.Body(dialog).Should().Contain("Steam is updating the game.");
+        presenter.Log.Entries.Should().NotContain(e => e.Level >= LogLevel.Error);
+        rig.ViewModel.Label.Should().Be(Language.LaunchButtonViewModel_LaunchGame_LAUNCH);
+    }
+
+    [Fact]
+    public async Task AGameWithNoRunTool_IsOnePlainRefusalNamingTheGame()
+    {
+        var presenter = new PresenterRig(Provider);
+        var rig = await Build(presenter, withoutRunTool: true);
+
+        await rig.ViewModel.Command.Execute().ToTask().WaitAsync(TimeSpan.FromSeconds(10));
+
+        var dialog = presenter.Dialogs.Should().ContainSingle().Subject;
+        dialog.WindowTitle.Should().Be("The game was not started");
+        PresenterRig.Body(dialog).Should().Contain(rig.GameName).And.Contain("no way to start");
         presenter.Log.Entries.Should().NotContain(e => e.Level >= LogLevel.Error);
         rig.ViewModel.Label.Should().Be(Language.LaunchButtonViewModel_LaunchGame_LAUNCH);
     }

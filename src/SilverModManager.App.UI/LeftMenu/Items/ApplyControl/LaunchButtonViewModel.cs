@@ -9,6 +9,7 @@ using SilverModManager.App.UI.Overlays;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
@@ -79,8 +80,9 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
         IDisposable? waitingSubscription = null;
         try
         {
-            var tool = _toolManager.GetTools(marker).OfType<IRunGameTool>().First();
             var gameName = marker.InstallationInstance.Game.DisplayName;
+            var tool = _toolManager.GetTools(marker).OfType<IRunGameTool>().FirstOrDefault()
+                ?? throw new NoRunGameToolException(gameName);
             waitingSubscription = tool.WaitingForSteam.Subscribe(waiting => SetWaitingForSteam(waiting, gameName));
             var cancellationToken = launchCancellation.Token;
             await Task.Run(async () => await _toolManager.RunTool(tool, marker, _monitor, token: cancellationToken), cancellationToken);
@@ -125,3 +127,11 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
     private void SetLabelToRunning() => Label = Language.LaunchButtonViewModel_LaunchGame_RUNNING;
     private void SetLabelToLaunch() => Label = Language.LaunchButtonViewModel_LaunchGame_LAUNCH;
 }
+
+/// <summary>Refuses a launch for a game the app has no run tool for, instead of failing with an empty sequence.</summary>
+public sealed class NoRunGameToolException(string gameName)
+    : UserFacingException($"The app has no way to start {gameName} yet, so the game was not launched.")
+{
+    public override string Title => "The game was not started";
+}
+
