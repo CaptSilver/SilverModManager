@@ -488,6 +488,47 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
     }
 
     [Fact]
+    public async Task AGameSteamIsStillUpdating_RefusesTheApplyUntilItFinishes()
+    {
+        var loadout = await CreateLoadout();
+        SteamUpdatesTheGame(cachesTheNewManifests: true);
+        SteamLibraryFixture.SetStateFlags(Install, 1026);
+
+        var act = () => Synchronizer.Synchronize(Refresh(loadout));
+
+        var refusal = await act.Should().ThrowAsync<UserFacingException>();
+        refusal.Which.Message.Should().StartWith("Steam is updating").And.Contain("try again when it finishes").And.Contain("Nothing was changed");
+        await EveryVanillaFileIsOnDiskAndNoneWasBackedUp();
+        Refresh(loadout).LocatorIds.Select(id => id.Value).Should().NotContain(NewGameManifestId.ToString(), "a refused apply writes nothing");
+
+        SteamLibraryFixture.SetStateFlags(Install, 4);
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+        Refresh(loadout).LocatorIds.Select(id => id.Value).Should().Contain(NewGameManifestId.ToString());
+    }
+
+    [Fact]
+    public async Task AGameSteamReportsAsMissingFiles_RefusesTheApplyAndSaysToVerifyThem()
+    {
+        var loadout = await CreateLoadout();
+        SteamLibraryFixture.SetStateFlags(Install, 36);
+
+        var act = () => Synchronizer.Synchronize(Refresh(loadout));
+
+        var refusal = await act.Should().ThrowAsync<UserFacingException>();
+        refusal.Which.Message.Should().Contain("missing or damaged").And.Contain("Verify the game's files in Steam");
+    }
+
+    [Fact]
+    public async Task AGameSteamFlagsAsNeedingAnUpdateButIsNotWriting_StillApplies()
+    {
+        var loadout = await CreateLoadout();
+        SteamLibraryFixture.SetStateFlags(Install, 6);
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+    }
+
+    [Fact]
     public async Task AGameUpdatedToABuildTheStoreHasManifestsFor_RebuildsTheBaselineAndTouchesNoVanillaFile()
     {
         var loadout = await CreateLoadout();

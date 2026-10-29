@@ -157,6 +157,16 @@ public sealed class SteamLibraryFixture : IDisposable
     }
 
     /// <summary>
+    /// Rewrites the <c>StateFlags</c> of the install's app manifest: 4 is a settled install, 1026 one Steam is
+    /// updating, 36 one it reports as missing files.
+    /// </summary>
+    public static void SetStateFlags(SteamInstall install, int stateFlags)
+    {
+        var path = install.AppManifest.ToString();
+        File.WriteAllText(path, System.Text.RegularExpressions.Regex.Replace(File.ReadAllText(path), "(\"StateFlags\"\\s+\")\\d+(\")", $"${{1}}{stateFlags}${{2}}"));
+    }
+
+    /// <summary>
     /// Saves a manifest of a depot the install has since moved past, beside the current one, like the old
     /// manifests Steam leaves in its depotcache after an update.
     /// </summary>
