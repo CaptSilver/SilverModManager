@@ -44,16 +44,17 @@ public sealed class BackupOverflowAnswer
     /// <summary>
     /// Moves the operation on to its next leg: the question of the leg after the game exited is worded for that
     /// leg, not for the launch that opened the scope. Opens a scope when none is active, otherwise retargets the
-    /// active one and returns a handle that leaves it open. <paramref name="defaultAnswer"/> stands in for a
+    /// active one and returns a handle that leaves it open and puts the earlier operation back when disposed. <paramref name="defaultAnswer"/> stands in for a
     /// question nothing has answered yet; an answer already given stands.
     /// </summary>
     public static IDisposable BeginLeg(BackupOverflowOperation operation, BackupOverflowChoice? defaultAnswer = null)
     {
         if (Current.Value is { } active)
         {
+            var earlier = active.Operation;
             active.Operation = operation;
             active._answer ??= defaultAnswer;
-            return Joined.Instance;
+            return new Leg(active, earlier);
         }
 
         var scope = new BackupOverflowAnswer(operation) { _answer = defaultAnswer };
@@ -67,6 +68,11 @@ public sealed class BackupOverflowAnswer
         {
             if (ReferenceEquals(Current.Value, scope)) Current.Value = null;
         }
+    }
+
+    private sealed class Leg(BackupOverflowAnswer scope, BackupOverflowOperation earlier) : IDisposable
+    {
+        public void Dispose() => scope.Operation = earlier;
     }
 
     private sealed class Joined : IDisposable

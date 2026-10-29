@@ -157,15 +157,18 @@ public sealed record BackupOverflow(
     /// <summary>What the folders left out of the list hold.</summary>
     public Size HiddenSize => Size.FromLong((long)((Groups ?? []).Sum(g => (long)g.Size.Value) - ListedGroups.Sum(g => (long)g.Size.Value)));
 
-    /// <summary>The operation as a noun, for "this ...": what the dialog says the files are copied for.</summary>
-    public string OperationNoun => Operation switch
+    /// <summary>
+    /// What the player was doing, as an "-ing" phrase for "by ..." and "because ...": what the dialog says deletes,
+    /// replaces or changes the files.
+    /// </summary>
+    public string OperationPhrase => Operation switch
     {
-        BackupOverflowOperation.Manage => "first sync",
-        BackupOverflowOperation.Apply => "apply",
-        BackupOverflowOperation.Launch => "launch",
-        BackupOverflowOperation.Switch => "switch",
-        BackupOverflowOperation.Reset => "clean-up",
-        _ => "check",
+        BackupOverflowOperation.Manage => "adding the game",
+        BackupOverflowOperation.Apply => "applying the loadout",
+        BackupOverflowOperation.Launch => "starting the game",
+        BackupOverflowOperation.Switch => "switching loadouts",
+        BackupOverflowOperation.Reset => "putting the folder back",
+        _ => "keeping what the game wrote",
     };
 
     /// <summary>"1 file" or "3 files".</summary>
@@ -183,10 +186,10 @@ public sealed record BackupOverflow(
     public string Opening(string gameName)
     {
         if (Operation == BackupOverflowOperation.AfterPlay)
-            return $"While {gameName} ran, {Files(FileCount)} ({TotalText}) appeared or changed in its folder. {WhatTheyAre()}";
+            return $"While {gameName} ran, {Files(FileCount)} ({TotalText}) appeared or changed. {WhatTheyAre()}";
 
         if (!OnlyMustBackUp)
-            return $"{gameName} has {Files(FileCount)} ({TotalText}) in its folder that the app has no copy of. {WhatTheyAre()}";
+            return $"{gameName} has {Files(FileCount)} ({TotalText}) that the app has no copy of. {WhatTheyAre()}";
 
         var subject = Operation switch
         {
@@ -197,7 +200,7 @@ public sealed record BackupOverflow(
             _ => $"Putting the {gameName} folder back",
         };
         var verb = Operation == BackupOverflowOperation.Reset ? "deletes" : "deletes or replaces";
-        return $"{subject} {verb} {Files(FileCount)} ({TotalText}) in the game folder, and the app copies them first so it can put them back.";
+        return $"{subject} {verb} {Files(FileCount)} ({TotalText}), and the app copies them first so it can put them back.";
     }
 
     /// <summary>The sentence that says what the files are, led by the biggest kind.</summary>
@@ -209,9 +212,9 @@ public sealed record BackupOverflow(
         var lead = kinds[0] switch
         {
             BackupOverflowKind.Appeared => "These are not from this app and not your mods: you, Steam or another program put them in the game folder.",
-            BackupOverflowKind.GameFileChanged => "These are the game's own files, and they changed since the app last saw them. A game update does that.",
+            BackupOverflowKind.GameFileChanged => "These are the game's own files, new or changed since the app last saw them. A game update does that.",
             BackupOverflowKind.ModFileChanged => "These are mod files that changed since the app put them in place; something edited them.",
-            _ => $"This {OperationNoun} replaces or rewrites them, or takes them over as the loadout's, so the app copies them first.",
+            _ => $"The app copies them first because {OperationPhrase} deletes, replaces or changes them.",
         };
         if (kinds.Count == 1) return lead;
 
@@ -220,9 +223,9 @@ public sealed record BackupOverflow(
         var tail = second switch
         {
             BackupOverflowKind.Appeared => "were put there by you, Steam or another program",
-            BackupOverflowKind.GameFileChanged => "are the game's own files that changed",
+            BackupOverflowKind.GameFileChanged => "are the game's own files, new or changed",
             BackupOverflowKind.ModFileChanged => "are mod files that changed",
-            _ => $"are replaced or taken over by this {OperationNoun}",
+            _ => $"are changed by {OperationPhrase}",
         };
         return $"{lead} {Files(count)} ({FormatSize(size)}) {tail}.";
     }
@@ -252,7 +255,7 @@ public sealed record BackupOverflow(
         BackupOverflowKind.Appeared => ", not from the app",
         BackupOverflowKind.GameFileChanged => ", game files",
         BackupOverflowKind.ModFileChanged => ", mod files",
-        _ => $", copied before this {OperationNoun}",
+        _ => ", copied first",
     };
 }
 
@@ -313,7 +316,7 @@ public sealed class BackupOverflowException : UserFacingException
     public static BackupOverflowException AdoptWouldLoseFiles(GameInstallation installation, BackupOverflow overflow) => new(
         installation,
         overflow,
-        $"{BackupOverflow.Files(overflow.MustBackUpCount)} ({overflow.MustBackUpText}) of these are deleted or replaced by this {overflow.OperationNoun}, so keeping them where they are would lose them. " +
+        $"{BackupOverflow.Files(overflow.MustBackUpCount)} ({overflow.MustBackUpText}) of these are deleted or replaced by {overflow.OperationPhrase}, so keeping them where they are would lose them. " +
         "Back them up, or leave the folder as it is.",
         "Use --large-files backup.");
 

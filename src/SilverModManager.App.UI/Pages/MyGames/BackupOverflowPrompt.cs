@@ -37,23 +37,30 @@ public sealed record BackupOverflowPrompt(string Title, string Markdown, DialogB
             if (overflow.MustBackUpCount > 0)
             {
                 paragraphs.Add(overflow.CanAdopt
-                    ? $"{BackupOverflow.Files(overflow.MustBackUpCount)} ({overflow.MustBackUpText}) of them are deleted or replaced by this {overflow.OperationNoun} and are copied either way; keeping the rest where they are leaves {overflow.MustBackUpText} to back up."
-                    : $"{BackupOverflow.Files(overflow.MustBackUpCount)} ({overflow.MustBackUpText}) of them are deleted or replaced by this {overflow.OperationNoun}, which is over {overflow.LimitText} by itself, so they cannot be kept where they are.");
+                    ? $"{BackupOverflow.Files(overflow.MustBackUpCount)} ({overflow.MustBackUpText}) of them are deleted or replaced by {overflow.OperationPhrase} and are copied either way; keeping the rest where they are leaves {overflow.MustBackUpText} to back up."
+                    : $"{BackupOverflow.Files(overflow.MustBackUpCount)} ({overflow.MustBackUpText}) of them are deleted or replaced by {overflow.OperationPhrase}, which is over {overflow.LimitText} by itself, so they cannot be kept where they are.");
             }
         }
 
-        paragraphs.Add($"**Back up {overflow.TotalText}** copies {(overflow.FileCount == 1 ? "it" : "them")} now{BackUpTail(overflow.Operation)}. It needs that much free disk space and takes a while.");
+        var offersKeep = overflow.CanAdopt && overflow.Operation != BackupOverflowOperation.Reset;
+        var next = NextStep(overflow.Operation);
 
-        if (overflow.CanAdopt && overflow.Operation != BackupOverflowOperation.Reset)
+        paragraphs.Add($"**Back up {overflow.TotalText}** copies {(overflow.FileCount == 1 ? "it" : "them")} now{(next is null ? "" : ", then " + next)}. It needs that much free disk space and takes a while.");
+
+        if (offersKeep)
         {
-            paragraphs.Add($"**{KeepLabel}** copies nothing now. The app still copies a file before it deletes or replaces it (switching loadouts, cleaning the folder), and asks again then if that is over {overflow.LimitText}. Two things it cannot bring back: a file deleted outside the app, and these files if you remove the game and have its folder cleaned.");
+            paragraphs.Add($"**{KeepLabel}** copies nothing{(next is null ? "" : " and " + next)}. The app still copies a file before it deletes or replaces it (for example when you switch loadouts), and asks again then if that is over {overflow.LimitText}. It cannot bring back a file deleted outside the app, or these files once you remove the game from the app.");
         }
 
         paragraphs.Add(CancelSentence(overflow));
 
         List<DialogButtonDefinition> buttons = [];
-        if (overflow.CanAdopt && overflow.Operation != BackupOverflowOperation.Reset) buttons.Add(new DialogButtonDefinition(KeepLabel, Adopt));
-        buttons.Add(new DialogButtonDefinition($"Back up {overflow.TotalText}", ButtonDefinitionId.Accept, ButtonAction.Accept, ButtonStyling.Primary));
+        // Enter takes the choice that costs nothing: a player who does not follow the question must not start a copy of
+        // tens of gigabytes by pressing it.
+        if (offersKeep) buttons.Add(new DialogButtonDefinition(KeepLabel, Adopt, ButtonAction.Accept, ButtonStyling.Primary));
+        buttons.Add(offersKeep
+            ? new DialogButtonDefinition($"Back up {overflow.TotalText}", ButtonDefinitionId.Accept)
+            : new DialogButtonDefinition($"Back up {overflow.TotalText}", ButtonDefinitionId.Accept, ButtonAction.Accept, ButtonStyling.Primary));
         if (!(afterPlay && overflow.CanAdopt)) buttons.Add(new DialogButtonDefinition(CancelLabel(overflow.Operation), ButtonDefinitionId.Cancel));
 
         return new BackupOverflowPrompt(title, string.Join("\n\n", paragraphs), buttons.ToArray());
@@ -66,7 +73,7 @@ public sealed record BackupOverflowPrompt(string Title, string Markdown, DialogB
         BackupOverflowOperation.Apply => "Back up files before applying?",
         BackupOverflowOperation.Launch => "Back up files before starting the game?",
         BackupOverflowOperation.Switch => "Back up files before switching loadouts?",
-        BackupOverflowOperation.Reset => "Back up files before cleaning the folder?",
+        BackupOverflowOperation.Reset => "Back up files before changing the folder?",
         _ => "Back up files the game wrote?",
     };
 
@@ -77,18 +84,19 @@ public sealed record BackupOverflowPrompt(string Title, string Markdown, DialogB
         BackupOverflowOperation.Apply => "Don't apply",
         BackupOverflowOperation.Launch => "Don't start the game",
         BackupOverflowOperation.Switch => "Stay on this loadout",
-        BackupOverflowOperation.Reset => "Leave the folder as it is",
+        BackupOverflowOperation.Reset => "Leave everything as it is",
         _ => "Decide later",
     };
 
-    private static string BackUpTail(BackupOverflowOperation operation) => operation switch
+    /// <summary>What goes ahead once the question is answered, or null when nothing waits on it.</summary>
+    private static string? NextStep(BackupOverflowOperation operation) => operation switch
     {
-        BackupOverflowOperation.Manage => ", then adds the game",
-        BackupOverflowOperation.Apply => ", then applies the loadout",
-        BackupOverflowOperation.Launch => ", then starts the game",
-        BackupOverflowOperation.Switch => ", then switches",
-        BackupOverflowOperation.Reset => ", then cleans the folder",
-        _ => "",
+        BackupOverflowOperation.Manage => "adds the game",
+        BackupOverflowOperation.Apply => "applies the loadout",
+        BackupOverflowOperation.Launch => "starts the game",
+        BackupOverflowOperation.Switch => "switches",
+        BackupOverflowOperation.Reset => "goes ahead",
+        _ => null,
     };
 
     private static string CancelSentence(BackupOverflow overflow) => overflow.Operation switch
@@ -97,7 +105,7 @@ public sealed record BackupOverflowPrompt(string Title, string Markdown, DialogB
         BackupOverflowOperation.Apply => $"**{CancelLabel(overflow.Operation)}** changes nothing; the loadout stays as it was on disk.",
         BackupOverflowOperation.Launch => $"**{CancelLabel(overflow.Operation)}** changes nothing; the game is not started.",
         BackupOverflowOperation.Switch => $"**{CancelLabel(overflow.Operation)}** changes nothing.",
-        BackupOverflowOperation.Reset => $"**{CancelLabel(overflow.Operation)}** changes nothing; the files stay and show as External Changes in the loadout.",
+        BackupOverflowOperation.Reset => $"**{CancelLabel(overflow.Operation)}** changes nothing; no file is removed.",
         _ when overflow.CanAdopt => "Closing this window keeps them where they are.",
         _ => $"**{CancelLabel(overflow.Operation)}** leaves the loadout applied and these files as they are; the app asks again the next time you apply or switch.",
     };

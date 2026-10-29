@@ -44,7 +44,7 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
     {
         var md = BackupOverflowPrompt.For("The Witcher 3", Overflow).Markdown;
 
-        md.Should().Contain("switching loadouts").And.Contain("5.0 GB").And.NotContain("cannot restore them");
+        md.Should().Contain("you switch loadouts").And.Contain("5.0 GB").And.NotContain("cannot restore them");
         md.Should().NotContain("silvermod").And.NotContain("backup-game-files").And.NotContain("`");
     }
 
@@ -75,7 +75,7 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
     [InlineData(BackupOverflowOperation.Apply, "Don't apply")]
     [InlineData(BackupOverflowOperation.Launch, "Don't start the game")]
     [InlineData(BackupOverflowOperation.Switch, "Stay on this loadout")]
-    [InlineData(BackupOverflowOperation.Reset, "Leave the folder as it is")]
+    [InlineData(BackupOverflowOperation.Reset, "Leave everything as it is")]
     public void CancelButtonNamesWhatItStops(BackupOverflowOperation operation, string label)
     {
         var prompt = BackupOverflowPrompt.For("The Witcher 3", Overflow with { Operation = operation });
@@ -90,7 +90,7 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
     [InlineData(BackupOverflowOperation.Apply, "Back up files before applying?")]
     [InlineData(BackupOverflowOperation.Launch, "Back up files before starting the game?")]
     [InlineData(BackupOverflowOperation.Switch, "Back up files before switching loadouts?")]
-    [InlineData(BackupOverflowOperation.Reset, "Back up files before cleaning the folder?")]
+    [InlineData(BackupOverflowOperation.Reset, "Back up files before changing the folder?")]
     [InlineData(BackupOverflowOperation.AfterPlay, "Back up files the game wrote?")]
     public void TitleNamesTheOperation(BackupOverflowOperation operation, string title)
         => BackupOverflowPrompt.For("The Witcher 3", Overflow with { Operation = operation }).Title.Should().Be(title);
@@ -124,7 +124,7 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
 
     [Fact]
     public void ChangedGameFiles_AreSaidToBeAGameUpdate()
-        => BackupOverflowPrompt.For("X", Witcher()).Markdown.Should().Contain("the game's own files, and they changed since the app last saw them. A game update does that.");
+        => BackupOverflowPrompt.For("X", Witcher()).Markdown.Should().Contain("the game's own files, new or changed since the app last saw them. A game update does that.");
 
     [Fact]
     public void ChangedModFiles_AreSaidToHaveBeenEdited()
@@ -144,7 +144,7 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
 
         var md = BackupOverflowPrompt.For("X", overflow).Markdown;
 
-        md.Should().Contain("the game's own files, and they changed").And.Contain("5 files (5.0 GB) were put there by you, Steam or another program.");
+        md.Should().Contain("the game's own files, new or changed").And.Contain("5 files (5.0 GB) were put there by you, Steam or another program.");
         md.IndexOf("game's own files", StringComparison.Ordinal).Should().BeLessThan(md.IndexOf("were put there", StringComparison.Ordinal));
     }
 
@@ -166,7 +166,7 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
         };
 
         foreach (var md in overflows.Select(o => BackupOverflowPrompt.For("X", o).Markdown))
-            md.ToLowerInvariant().Should().NotContainAny("added files", "adopt", "ingest", "manages", "silvermod", "`");
+            md.ToLowerInvariant().Should().NotContainAny("added files", "adopt", "ingest", "manages", "silvermod", "`", "first sync", "this check", "loadout's", "clean-up", "external changes");
     }
 
     [Fact]
@@ -175,7 +175,7 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
         var prompt = BackupOverflowPrompt.For("The Witcher 3: Wild Hunt", Witcher());
 
         prompt.Markdown.Should().Contain("then starts the game").And.Contain("**Don't start the game** changes nothing; the game is not started.");
-        prompt.Markdown.Should().Contain("95 files (45.0 GB) in its folder that the app has no copy of");
+        prompt.Markdown.Should().Contain("95 files (45.0 GB) that the app has no copy of").And.NotContain("in its folder");
     }
 
     [Fact]
@@ -199,11 +199,75 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
     }
 
     [Fact]
-    public void OnlyBackUpIsTheEnterKeyDefault()
+    public void KeepIsTheEnterKeyDefaultWhenItIsOffered()
     {
         var buttons = BackupOverflowPrompt.For("The Witcher 3", Overflow).Buttons;
 
-        buttons.Where(b => b.ButtonAction == ButtonAction.Accept).Select(b => b.Text).Should().Equal("Back up 14.7 GB");
+        buttons.Where(b => b.ButtonAction == ButtonAction.Accept).Select(b => b.Text).Should().Equal("Keep them where they are");
+    }
+
+    [Fact]
+    public void BackUpIsTheEnterKeyDefaultWhenNothingCanStayWhereItIs()
+    {
+        var overflow = Overflow with { Adoptable = Size.Zero, AdoptableCount = 0, MustBackUp = Size.GB * 6, MustBackUpCount = 10 };
+
+        BackupOverflowPrompt.For("The Witcher 3", overflow).Buttons.Where(b => b.ButtonAction == ButtonAction.Accept).Select(b => b.Text).Should().Equal("Back up 6.0 GB");
+    }
+
+    [Fact]
+    public void ButtonsStillAnswerWithTheirOwnIds()
+    {
+        var buttons = BackupOverflowPrompt.For("The Witcher 3", Overflow).Buttons;
+
+        buttons.Single(b => b.Text == "Keep them where they are").Id.Should().Be(BackupOverflowPrompt.Adopt);
+        buttons.Single(b => b.Text.StartsWith("Back up")).Id.Should().Be(ButtonDefinitionId.Accept);
+    }
+
+    [Theory]
+    [InlineData(BackupOverflowOperation.Manage, "copies nothing and adds the game")]
+    [InlineData(BackupOverflowOperation.Apply, "copies nothing and applies the loadout")]
+    [InlineData(BackupOverflowOperation.Launch, "copies nothing and starts the game")]
+    [InlineData(BackupOverflowOperation.Switch, "copies nothing and switches")]
+    public void KeepSaysWhatHappensNext_LikeBackUpDoes(BackupOverflowOperation operation, string keepTail)
+    {
+        var md = BackupOverflowPrompt.For("The Witcher 3", Overflow with { Operation = operation }).Markdown;
+
+        md.Should().Contain($"**Keep them where they are** {keepTail}");
+        md.Should().Contain("**Back up 14.7 GB** copies them now, then ");
+    }
+
+    [Fact]
+    public void KeepDoesNotContradictItselfAboutCleaning()
+    {
+        var md = BackupOverflowPrompt.For("The Witcher 3", Witcher()).Markdown;
+
+        md.Should().NotContain("cleaning").And.NotContain("cleaned");
+        md.Should().Contain("once you remove the game from the app");
+    }
+
+    [Theory]
+    [InlineData(BackupOverflowKind.Appeared)]
+    [InlineData(BackupOverflowKind.GameFileChanged)]
+    [InlineData(BackupOverflowKind.MustBackUp)]
+    public void ResetWording_FitsCleaningRemovingAndDeleting(BackupOverflowKind kind)
+    {
+        var overflow = Witcher(kind, BackupOverflowOperation.Reset) with { Adoptable = Size.Zero, AdoptableCount = 0, MustBackUp = Size.GB * 45, MustBackUpCount = 95 };
+
+        var prompt = BackupOverflowPrompt.For("The Witcher 3", overflow);
+
+        prompt.Title.Should().NotContain("cleaning");
+        prompt.Markdown.Should().NotContain("External Changes").And.NotContain("clean");
+        prompt.Markdown.Should().Contain("**Leave everything as it is** changes nothing; no file is removed.");
+    }
+
+    [Fact]
+    public void FilesOutsideTheGameFolder_AreNotSaidToBeInTheGameFolder()
+    {
+        var overflow = Witcher() with { Groups = [Group("Saves/slot1", 3, Size.GB * 1), Group("AppData/Foo", 2, Size.GB * 1)] };
+
+        var md = BackupOverflowPrompt.For("The Witcher 3", overflow).Markdown;
+
+        md.Should().Contain("- Saves/slot1 — 3 files").And.NotContain("in its folder").And.NotContain("in the game folder");
     }
 
     [Fact]

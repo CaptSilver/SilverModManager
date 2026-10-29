@@ -1039,7 +1039,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         SynchronizeLoadoutJob? job = null)
     {
         // The operation the player started names the question; the leg only knows its own step.
-        var overflow = await MeasureBackupOverflow(syncTree, BackupOverflowAnswer.Active?.Operation ?? operation, cancellationToken);
+        var overflow = await MeasureBackupOverflow(syncTree, installation, BackupOverflowAnswer.Active?.Operation ?? operation, cancellationToken);
         if (overflow is null) return (BackupOverflowChoice.BackUpAnyway, false);
 
         if (preset == BackupOverflowChoice.Refuse) throw new BackupOverflowException(installation, overflow);
@@ -1096,7 +1096,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// The size of every file the tree would back up that the file store does not already hold, split into the
     /// files that stay on disk and only want a copy and the ones that must be archived. Null when the total fits.
     /// </summary>
-    private async Task<BackupOverflow?> MeasureBackupOverflow(Dictionary<GamePath, SyncNode> syncTree, BackupOverflowOperation operation, CancellationToken cancellationToken)
+    private async Task<BackupOverflow?> MeasureBackupOverflow(Dictionary<GamePath, SyncNode> syncTree, GameInstallation installation, BackupOverflowOperation operation, CancellationToken cancellationToken)
     {
         // A path the synchronizer never writes loses its backup in RunActions; counting it here would ask about
         // files that are never copied.
@@ -1105,7 +1105,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         long adoptable = 0, mustBackUp = 0;
         var adoptableCount = 0;
         var mustBackUpCount = 0;
-        var counted = new ConcurrentBag<(GamePath Path, ulong Size, BackupOverflowKind Kind)>();
+        var measured = new ConcurrentBag<MeasuredFile>();
         await Parallel.ForEachAsync(syncTree, new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = cancellationToken }, async (item, _) =>
         {
             var node = item.Value;
@@ -1123,11 +1123,13 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 Interlocked.Increment(ref mustBackUpCount);
             }
 
-            counted.Add((item.Key, node.Disk.Size.Value, KindOf(node)));
+            measured.Add(new MeasuredFile(item.Key, node.Disk.Size.Value, KindOf(node), node.Disk.Identity));
         });
 
         var overflow = new BackupOverflow(Size.FromLong(adoptable), adoptableCount, Size.FromLong(mustBackUp), mustBackUpCount, _backupLimit.Maximum, operation);
         if (overflow.Total <= overflow.Limit) return null;
+
+        var counted = TellGameFilesApart(measured, installation);
 
         return overflow with
         {
@@ -1145,6 +1147,35 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 .GroupBy(c => c.Kind)
                 .ToDictionary(g => g.Key, g => (g.Count(), Size.From((ulong)g.Sum(c => (long)c.Size)))),
         };
+    }
+
+    /// <summary>A file the sync would back up, with what the dialog says it is.</summary>
+    internal readonly record struct MeasuredFile(GamePath Path, ulong Size, BackupOverflowKind Kind, FileIdentity Identity);
+
+    /// <summary>
+    /// A file that exists only on disk looks the same whether a person dropped it there or a game update wrote it.
+    /// The store's file list for the installed build tells them apart: a disk-only file with a listed path and size
+    /// (and the same hash, when the list's hash is of the kind the sync computes) is one of the game's own files.
+    /// </summary>
+    internal MeasuredFile[] TellGameFilesApart(IEnumerable<MeasuredFile> measured, GameInstallation installation)
+    {
+        var all = measured.ToArray();
+        if (!all.Any(c => c.Kind == BackupOverflowKind.Appeared && c.Path.LocationId == LocationId.Game)) return all;
+
+        var listed = new Dictionary<string, GameFileRecord>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in _fileHashService.GetGameFiles(installation))
+        {
+            if (file.Path.LocationId == LocationId.Game) listed[file.Path.Path.ToString()] = file;
+        }
+
+        return all.Select(c => c.Kind == BackupOverflowKind.Appeared && IsListed(listed, c.Path, c.Size, c.Identity) ? c with { Kind = BackupOverflowKind.GameFileChanged } : c).ToArray();
+    }
+
+    private static bool IsListed(Dictionary<string, GameFileRecord> listed, GamePath path, ulong size, FileIdentity identity)
+    {
+        if (path.LocationId != LocationId.Game || !listed.TryGetValue(path.Path.ToString(), out var record)) return false;
+        if (record.Size.Value != size) return false;
+        return record.Identity.Kind != identity.Kind || record.Identity.Equals(identity);
     }
 
     /// <summary>
@@ -1166,13 +1197,22 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var segments = path.Path.ToString().Split('/', StringSplitOptions.RemoveEmptyEntries);
         var folders = segments.Take(Math.Min(2, segments.Length - 1)).ToArray();
         var isGameFolder = path.LocationId == LocationId.Game;
-        if (folders.Length == 0) return isGameFolder ? BackupOverflow.GameFolderName : path.LocationId.ToString();
+        if (folders.Length == 0) return isGameFolder ? BackupOverflow.GameFolderName : LocationLabel(path.LocationId);
         var joined = string.Join('/', folders);
-        return isGameFolder ? joined : $"{path.LocationId}/{joined}";
+        return isGameFolder ? joined : $"{LocationLabel(path.LocationId)}/{joined}";
     }
 
     private static string DisplayPathOf(GamePath path)
-        => path.LocationId == LocationId.Game ? path.Path.ToString() : $"{path.LocationId}/{path.Path}";
+        => path.LocationId == LocationId.Game ? path.Path.ToString() : $"{LocationLabel(path.LocationId)}/{path.Path}";
+
+    /// <summary>A location as a player names it, not as the app does ("AppDataRoaming", "Preferences").</summary>
+    private static string LocationLabel(LocationId location)
+    {
+        if (location == LocationId.Saves) return "Saves";
+        if (location == LocationId.Preferences) return "Settings";
+        if (location == LocationId.AppData || location == LocationId.AppDataRoaming) return "AppData";
+        return location.ToString();
+    }
 
     /// <summary>
     /// Applies an adopt answer: files that stay on disk and only want a copy are ingested without one. Every other

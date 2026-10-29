@@ -610,6 +610,102 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         asked.Kinds.Keys.OrderBy(k => k).Should().Equal(BackupOverflowKind.Appeared, BackupOverflowKind.GameFileChanged, BackupOverflowKind.ModFileChanged, BackupOverflowKind.MustBackUp);
     }
 
+    private GameFileRecord KnownGameFile() => ServiceProvider.GetRequiredService<IFileHashesService>().GetGameFiles(GameInstallation).First(f => f.Size.Value > 0);
+
+    private static ALoadoutSynchronizer.MeasuredFile Appeared(GamePath path, ulong size, FileIdentity identity)
+        => new(path, size, BackupOverflowKind.Appeared, identity);
+
+    private BackupOverflowKind[] Classify(params ALoadoutSynchronizer.MeasuredFile[] files)
+        => ((ALoadoutSynchronizer)Synchronizer).TellGameFilesApart(files, GameInstallation).Select(f => f.Kind).ToArray();
+
+    private static SyncNode DiskOnlyNode(FileIdentity identity, Size size)
+    {
+        var part = new SyncNodePart { Identity = identity, Size = size, LastModifiedTicks = 1 };
+        var none = new SyncNodePart { Identity = FileIdentity.None, Size = Size.Zero, LastModifiedTicks = 0 };
+        return new SyncNode { Disk = part, Previous = none, Loadout = none, Actions = Actions.BackupFile | Actions.IngestFromDisk };
+    }
+
+    private async Task<BackupOverflow> Measure(Dictionary<GamePath, SyncNode> tree)
+    {
+        var prompt = new RecordingPrompt(BackupOverflowChoice.BackUpAnyway);
+        _prompt.Inner = prompt;
+        await ((ALoadoutSynchronizer)Synchronizer).ResolveBackupOverflow(tree, GameInstallation, preset: null, CancellationToken.None, operation: BackupOverflowOperation.Launch);
+        return prompt.Asked.Should().ContainSingle().Which;
+    }
+
+    [Fact]
+    public void DiskOnlyFileOfTheInstalledBuildsList_IsAGameFileThatChanged()
+    {
+        var known = KnownGameFile();
+
+        Classify(Appeared(known.Path, known.Size.Value, known.Identity)).Should().Equal(BackupOverflowKind.GameFileChanged);
+    }
+
+    [Fact]
+    public void ListedPathOfAnotherCase_IsStillTheSameGameFile()
+    {
+        var known = KnownGameFile();
+        var upper = new GamePath(known.Path.LocationId, known.Path.Path.ToString().ToUpperInvariant());
+
+        Classify(Appeared(upper, known.Size.Value, known.Identity)).Should().Equal(BackupOverflowKind.GameFileChanged);
+    }
+
+    [Fact]
+    public void DiskOnlyFileWithAListedPathButAnotherSize_StillAppeared()
+    {
+        var known = KnownGameFile();
+
+        Classify(Appeared(known.Path, known.Size.Value + 9, known.Identity)).Should().Equal(BackupOverflowKind.Appeared);
+    }
+
+    [Fact]
+    public void DiskOnlyFileWithAListedPathAndSizeButAnotherHash_StillAppeared()
+    {
+        var known = KnownGameFile();
+
+        Classify(Appeared(known.Path, known.Size.Value, FileIdentity.XxHash3(Hash.From(0xC2)))).Should().Equal(BackupOverflowKind.Appeared);
+    }
+
+    [Fact]
+    public void DiskOnlyFileTheListDoesNotHave_StillAppeared()
+        => Classify(Appeared(new GamePath(LocationId.Game, "somebody/else.bin"), 9, FileIdentity.XxHash3(Hash.From(0xC3)))).Should().Equal(BackupOverflowKind.Appeared);
+
+    [Fact]
+    public void OtherKindsAndLocations_AreLeftAlone()
+    {
+        var known = KnownGameFile();
+        var saves = Appeared(new GamePath(LocationId.Saves, known.Path.Path.ToString()), known.Size.Value, known.Identity);
+        var modFile = Appeared(known.Path, known.Size.Value, known.Identity) with { Kind = BackupOverflowKind.ModFileChanged };
+
+        Classify(saves, modFile).Should().Equal(BackupOverflowKind.Appeared, BackupOverflowKind.ModFileChanged);
+    }
+
+    [Fact]
+    public async Task OverflowMeasure_FilesOutsideTheGameFolder_AreNamedForThePlayer()
+    {
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [new GamePath(LocationId.AppDataRoaming, "Foo/bar/x.bin")] = MeasuredNode(0xD1, Actions.BackupFile | Actions.IngestFromDisk, kb: 9),
+            [new GamePath(LocationId.Saves, "slot1/a.sav")] = MeasuredNode(0xD2, Actions.BackupFile | Actions.IngestFromDisk, kb: 6),
+        };
+
+        var asked = await Measure(tree);
+
+        asked.Groups!.Select(g => g.Folder).Should().BeEquivalentTo("AppData/Foo/bar", "Saves/slot1");
+        asked.Examples!.Select(e => e.Path).Should().Contain("AppData/Foo/bar/x.bin");
+    }
+
+    [Fact]
+    public void EndingALeg_PutsTheOperationTheScopeStartedWithBack()
+    {
+        using var play = BackupOverflowAnswer.Begin(BackupOverflowOperation.Launch);
+
+        using (BackupOverflowAnswer.BeginLeg(BackupOverflowOperation.AfterPlay))
+            BackupOverflowAnswer.Active!.Operation.Should().Be(BackupOverflowOperation.AfterPlay);
+
+        BackupOverflowAnswer.Active!.Operation.Should().Be(BackupOverflowOperation.Launch);
+    }
+
     /// <summary>A run-game tool whose run is one more sync, the way the launch session syncs before it starts the process.</summary>
     private sealed class SyncingRunTool(GameId game, ISynchronizerService synchronizer, LoadoutId loadoutId) : IRunGameTool
     {
