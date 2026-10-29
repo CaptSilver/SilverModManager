@@ -83,7 +83,8 @@ public class BackupPackProgressTests
 {
     private static (SynchronizeLoadoutJob Job, List<SyncProgress> Seen, IDisposable Subscription) Watch()
     {
-        var job = new SynchronizeLoadoutJob(SilverModManager.Sdk.Loadouts.LoadoutId.From(1UL));
+        // No throttle, so the test sees every report the packer makes and not just the ones the UI would.
+        var job = new SynchronizeLoadoutJob(SilverModManager.Sdk.Loadouts.LoadoutId.From(1UL)) { PublishInterval = TimeSpan.Zero };
         var seen = new List<SyncProgress>();
         var subscription = job.Progress.Where(p => p.Phase is not null).Subscribe(seen.Add);
         return (job, seen, subscription);

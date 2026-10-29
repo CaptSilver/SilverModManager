@@ -13,10 +13,20 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 public record SynchronizeLoadoutJob(LoadoutId LoadoutId, BindableReactiveProperty<string> StatusMessage) : IJobDefinition<Unit>
 {
     // Reports come from the parallel hashing and extraction workers; the UI only needs a few per second.
-    private static readonly TimeSpan PublishInterval = TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan DefaultPublishInterval = TimeSpan.FromMilliseconds(100);
 
     // A reference holds the mutable throttle state: a field of the record itself would feed its generated equality.
     private readonly PublishGate _gate = new();
+
+    /// <summary>
+    /// The shortest time between two published in-progress reports. Tests set it to zero to observe every report
+    /// instead of the thinned-out ones.
+    /// </summary>
+    internal TimeSpan PublishInterval
+    {
+        get => _gate.Interval;
+        init => _gate.Interval = value;
+    }
 
     public SynchronizeLoadoutJob(LoadoutId loadoutId) : this(loadoutId, new BindableReactiveProperty<string>()) {}
 
@@ -49,7 +59,7 @@ public record SynchronizeLoadoutJob(LoadoutId LoadoutId, BindableReactivePropert
 
             // Bytes are the finer measure when known: a packer reports files N/N throughout and only its bytes move.
             var completes = bytesTotal.HasValue ? bytesDone >= bytesTotal : filesTotal.HasValue && filesDone >= filesTotal;
-            var due = Stopwatch.GetElapsedTime(_gate.LastPublishedAt) >= PublishInterval;
+            var due = Stopwatch.GetElapsedTime(_gate.LastPublishedAt) >= _gate.Interval;
             if (samePhase && !completes && !due) return;
 
             Publish(progress, progress.Text);
@@ -73,5 +83,6 @@ public record SynchronizeLoadoutJob(LoadoutId LoadoutId, BindableReactivePropert
     private sealed class PublishGate
     {
         public long LastPublishedAt = Stopwatch.GetTimestamp();
+        public TimeSpan Interval = DefaultPublishInterval;
     }
 }
