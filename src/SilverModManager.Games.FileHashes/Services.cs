@@ -39,6 +39,7 @@ public static class Services
             .AddEpicGameStoreBuildModel()
             .AddFileHashesQueriesSql()
             .AddSingleton<IFileHashesService, FileHashesService>()
+            .AddSingleton<IFileIdentityResolver, RecordedDigestResolver>()
             .AddSingleton<IVanillaTrust, BaselineVanillaTrust>()
             .AddSingleton<IHostedService>(s => (IHostedService)s.GetRequiredService<IFileHashesService>())
             .AddSettings<FileHashesServiceSettings>()
