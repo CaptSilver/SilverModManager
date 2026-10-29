@@ -597,15 +597,26 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         AdjustActions(tree);
     }
 
+    private static IdentityMatch MatchParts(bool haveLeft, SyncNodePart left, bool haveRight, SyncNodePart right) =>
+        haveLeft && haveRight ? left.Identity.MatchSameKind(right.Identity) : IdentityMatch.Different;
+
     /// <summary>
     /// Signs one node and gives it the actions that signature maps to.
     /// </summary>
     private void MapActions(GamePath path, ref SyncNode item)
     {
+        var diskPrev = MatchParts(item.HaveDisk, item.Disk, item.HavePrevious, item.Previous);
+        var prevLoadout = MatchParts(item.HavePrevious, item.Previous, item.HaveLoadout, item.Loadout);
+        var diskLoadout = MatchParts(item.HaveDisk, item.Disk, item.HaveLoadout, item.Loadout);
+        item.IdentityUnresolved = diskPrev == IdentityMatch.Unknown || prevLoadout == IdentityMatch.Unknown || diskLoadout == IdentityMatch.Unknown;
+
         var signature = SignatureBuilder.Build(
-            diskHash: item.HaveDisk ? item.Disk.Identity : Optional<FileIdentity>.None,
-            prevHash: item.HavePrevious ? item.Previous.Identity : Optional<FileIdentity>.None,
-            loadoutHash: item.HaveLoadout ? item.Loadout.Identity : Optional<FileIdentity>.None,
+            diskExists: item.HaveDisk,
+            prevExists: item.HavePrevious,
+            loadoutExists: item.HaveLoadout,
+            diskPrev: diskPrev,
+            prevLoadout: prevLoadout,
+            diskLoadout: diskLoadout,
             diskArchived: item.HaveDisk && HaveArchive(item.Disk.Identity, item.Disk.Size),
             prevArchived: item.HavePrevious && HaveArchive(item.Previous.Identity, item.Previous.Size),
             loadoutArchived: item.HaveLoadout && HaveArchive(item.Loadout.Identity, item.Loadout.Size),

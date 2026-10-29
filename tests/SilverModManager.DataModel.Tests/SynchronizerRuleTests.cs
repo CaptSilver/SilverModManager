@@ -107,13 +107,35 @@ public class SynchronizerRuleTests
     }
 
 
+    private static IdentityMatch MatchOf(Optional<FileIdentity> a, Optional<FileIdentity> b) =>
+        a.HasValue && b.HasValue ? (a.Value.Equals(b.Value) ? IdentityMatch.Same : IdentityMatch.Different) : IdentityMatch.Different;
+
+    [Fact]
+    public void Build_UnknownMatch_LeavesTheEqualsBitClear_AndMapsLikeChanged()
+    {
+        var unknown = SignatureBuilder.Build(true, false, true, IdentityMatch.Different, IdentityMatch.Different, IdentityMatch.Unknown, false, false, false, false, LoadoutSourceItemType.Game);
+        var different = SignatureBuilder.Build(true, false, true, IdentityMatch.Different, IdentityMatch.Different, IdentityMatch.Different, false, false, false, false, LoadoutSourceItemType.Game);
+        unknown.Should().NotHaveFlag(DiskEqualsLoadout);
+        ActionMapping.MapActions(unknown).Should().Be(ActionMapping.MapActions(different));
+    }
+
+    [Fact]
+    public void Build_SameMatch_SetsTheEqualsBit()
+    {
+        var sig = SignatureBuilder.Build(true, true, true, IdentityMatch.Same, IdentityMatch.Same, IdentityMatch.Same, false, false, false, false, LoadoutSourceItemType.Loadout);
+        sig.Should().HaveFlag(DiskEqualsPrev | PrevEqualsLoadout | DiskEqualsLoadout);
+    }
+
     [Fact]
     public void DiskAndLoadoutIdentitiesOfDifferentKinds_AreNotEqualInTheSignature()
     {
         var sha1 = FileIdentity.Sha1(Sha1Value.FromHex(new string('A', 40)));
         var xxHash3 = FileIdentity.XxHash3(Hash.From(0xFAD01));
 
-        var sig = SignatureBuilder.Build(diskHash: sha1, prevHash: Optional<FileIdentity>.None, loadoutHash: xxHash3, false, false, false, false, LoadoutSourceItemType.Game);
+        var sig = SignatureBuilder.Build(
+            diskExists: true, prevExists: false, loadoutExists: true,
+            diskPrev: IdentityMatch.Different, prevLoadout: IdentityMatch.Different, diskLoadout: sha1.MatchSameKind(xxHash3),
+            false, false, false, false, LoadoutSourceItemType.Game);
 
         sig.Should().NotHaveFlag(DiskEqualsLoadout);
         sig.Should().HaveFlag(DiskExists).And.HaveFlag(LoadoutExists);
@@ -124,7 +146,10 @@ public class SynchronizerRuleTests
     {
         var sha1 = FileIdentity.Sha1(Sha1Value.FromHex(new string('A', 40)));
 
-        var sig = SignatureBuilder.Build(diskHash: sha1, prevHash: sha1, loadoutHash: Optional<FileIdentity>.None, false, false, false, false, LoadoutSourceItemType.Game);
+        var sig = SignatureBuilder.Build(
+            diskExists: true, prevExists: true, loadoutExists: false,
+            diskPrev: sha1.MatchSameKind(sha1), prevLoadout: IdentityMatch.Different, diskLoadout: IdentityMatch.Different,
+            false, false, false, false, LoadoutSourceItemType.Game);
 
         sig.Should().HaveFlag(DiskEqualsPrev);
     }
@@ -156,10 +181,12 @@ public class SynchronizerRuleTests
             // If the file is intrinsic, we'll always have it
             where fileType != LoadoutSourceItemType.Intrinsic || (fileType == LoadoutSourceItemType.Intrinsic && !loadout.HasValue)
             let sig = SignatureBuilder.Build(
-            
-                diskHash: disk,
-                prevHash: prev,
-                loadoutHash: loadout,
+                diskExists: disk.HasValue,
+                prevExists: prev.HasValue,
+                loadoutExists: loadout.HasValue,
+                diskPrev: MatchOf(disk, prev),
+                prevLoadout: MatchOf(prev, loadout),
+                diskLoadout: MatchOf(disk, loadout),
                 diskArchived: disk.HasValue && archivedState.Contains(disk.Value),
                 prevArchived: prev.HasValue && archivedState.Contains(prev.Value),
                 loadoutArchived: loadout.HasValue && archivedState.Contains(loadout.Value),

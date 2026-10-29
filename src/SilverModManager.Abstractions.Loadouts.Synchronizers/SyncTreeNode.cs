@@ -122,4 +122,10 @@ public record struct SyncNode
     /// Actions that can be performed on this node.
     /// </summary>
     public Actions Actions { get; set; }
+
+    /// <summary>
+    /// True when two present parts carry identities of different kinds and no recorded digest converts one into the
+    /// other, so whether they name the same bytes is not known until the file is read.
+    /// </summary>
+    public bool IdentityUnresolved { get; set; }
 }

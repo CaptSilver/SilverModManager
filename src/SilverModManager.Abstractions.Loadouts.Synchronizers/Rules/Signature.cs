@@ -1,4 +1,3 @@
-using DynamicData.Kernel;
 using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
@@ -79,29 +78,30 @@ public enum Signature : ushort
 public static class SignatureBuilder
 {
     /// <summary>
-    /// Builds the final <see cref="Signature"/> from the arguments.
+    /// Builds the final <see cref="Signature"/> from the arguments. An equality bit is set only for
+    /// <see cref="IdentityMatch.Same"/>; <see cref="IdentityMatch.Unknown"/> leaves it clear, so the pair maps like a change.
     /// </summary>
     /// <returns></returns>
-    public static Signature Build(Optional<FileIdentity> diskHash, Optional<FileIdentity> prevHash, Optional<FileIdentity> loadoutHash, bool diskArchived, bool prevArchived, bool loadoutArchived, bool pathIsIgnored, LoadoutSourceItemType? sourceItemType)
+    public static Signature Build(bool diskExists, bool prevExists, bool loadoutExists, IdentityMatch diskPrev, IdentityMatch prevLoadout, IdentityMatch diskLoadout, bool diskArchived, bool prevArchived, bool loadoutArchived, bool pathIsIgnored, LoadoutSourceItemType? sourceItemType)
     {
         var sig = Signature.Empty;
 
-        if (diskHash.HasValue)
+        if (diskExists)
             sig |= Signature.DiskExists;
         
-        if (prevHash.HasValue)
+        if (prevExists)
             sig |= Signature.PrevExists;
         
-        if (loadoutHash.HasValue)
+        if (loadoutExists)
             sig |= Signature.LoadoutExists;
 
-        if (diskHash.HasValue && prevHash.HasValue && diskHash.Value == prevHash.Value)
+        if (diskExists && prevExists && diskPrev == IdentityMatch.Same)
             sig |= Signature.DiskEqualsPrev;
         
-        if (prevHash.HasValue && loadoutHash.HasValue && prevHash.Value == loadoutHash.Value)
+        if (prevExists && loadoutExists && prevLoadout == IdentityMatch.Same)
             sig |= Signature.PrevEqualsLoadout;
         
-        if (diskHash.HasValue && loadoutHash.HasValue && diskHash.Value == loadoutHash.Value)
+        if (diskExists && loadoutExists && diskLoadout == IdentityMatch.Same)
             sig |= Signature.DiskEqualsLoadout;
 
         if (diskArchived)
