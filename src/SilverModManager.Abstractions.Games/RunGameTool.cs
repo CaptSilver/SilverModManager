@@ -53,11 +53,21 @@ public class RunGameTool<T> : IRunGameTool
     /// </summary>
     protected virtual bool UseShell { get; set; } = false;
 
-    /// <summary>How long Steam, then its reaper for the game, get to show up after the URI is opened.</summary>
-    protected virtual TimeSpan StartTimeout => TimeSpan.FromMinutes(5);
+    /// <summary>
+    /// How long Steam's reaper for the game gets to show up once Steam is running. A launcher or dialog Steam is
+    /// waiting on is not something to sit behind for minutes, so this is short; a launch wrapper that has
+    /// registered itself extends it.
+    /// </summary>
+    protected virtual TimeSpan StartTimeout => TimeSpan.FromSeconds(60);
+
+    /// <summary>How long Steam itself gets to be running after the URI is opened; it may be starting from cold.</summary>
+    protected virtual TimeSpan SteamStartTimeout => TimeSpan.FromMinutes(2);
 
     /// <summary>How often the process table is looked at while waiting.</summary>
     protected virtual TimeSpan PollInterval => TimeSpan.FromMilliseconds(300);
+
+    /// <summary>The clock the waits run on; tests replace it so they never sit through a real timeout.</summary>
+    protected virtual TimeProvider Clock => TimeProvider.System;
 
     private const int ReaperGoneAfterMisses = 3;
 
@@ -247,6 +257,9 @@ public class RunGameTool<T> : IRunGameTool
         Cancelled,
     }
 
+    /// <summary>How a wait for Steam ended, and for a timeout, the limit that ran out.</summary>
+    private readonly record struct SteamWait(SteamRunOutcome Outcome, TimeSpan Limit = default);
+
     private async Task RunThroughSteam(Loadout.ReadOnly loadout, string storeId, LaunchSpec spec, CancellationToken cancellationToken)
     {
         if (!uint.TryParse(storeId, out var appId))
@@ -257,7 +270,7 @@ public class RunGameTool<T> : IRunGameTool
         // https://developer.valvesoftware.com/wiki/Steam_browser_protocol
         var steamUrl = $"steam://run/{storeId}";
 
-        var outcome = SteamRunOutcome.Cancelled;
+        var outcome = new SteamWait(SteamRunOutcome.Cancelled);
         using (var launch = _launchSessions.BeginSession(loadout, spec))
         {
             // The URI opens only once the session has the lock and the loadout is applied, so Steam never
@@ -270,11 +283,11 @@ public class RunGameTool<T> : IRunGameTool
         }
 
         // Said after the session has finished, so the user is not told to retry while the lock is still held.
-        if (outcome == SteamRunOutcome.TimedOut)
+        if (outcome.Outcome == SteamRunOutcome.TimedOut)
         {
             _serviceProvider.GetRequiredService<IDesktopNotifier>().Notify(
                 ApplicationConstants.ProductName,
-                $"Steam did not start {_game.DisplayName} within {DescribeTimeout(StartTimeout)}. Make sure Steam is running and signed in, then press Play again.");
+                $"Steam did not start {_game.DisplayName} within {DescribeTimeout(outcome.Limit)}. Make sure Steam is running and signed in, then press Play again.");
         }
     }
 
@@ -303,7 +316,7 @@ public class RunGameTool<T> : IRunGameTool
         }
     }
 
-    private async Task<SteamRunOutcome> WaitForSteamGame(IGameLaunch launch, uint appId, CancellationToken cancellationToken)
+    private async Task<SteamWait> WaitForSteamGame(IGameLaunch launch, uint appId, CancellationToken cancellationToken)
     {
         SetWaitingForSteam(+1);
         var waiting = true;
@@ -322,15 +335,15 @@ public class RunGameTool<T> : IRunGameTool
         }
     }
 
-    private async Task<SteamRunOutcome> WaitForSteamGame(IGameLaunch launch, uint appId, CancellationToken cancellationToken, Action gameStarted)
+    private async Task<SteamWait> WaitForSteamGame(IGameLaunch launch, uint appId, CancellationToken cancellationToken, Action gameStarted)
     {
-        if (await PollUntil(_processTracker.IsSteamRunning, launch, cancellationToken) is { } steamFailure) return steamFailure;
+        if (await PollUntil(_processTracker.IsSteamRunning, SteamStartTimeout, launch, cancellationToken) is { } steamFailure) return steamFailure;
 
         // NOTE(erri120): Reaper is a custom tool for cleaning up child processes
         // See https://github.com/sonic2kk/steamtinkerlaunch/wiki/Steam-Reaper for details.
         // Only the reaper Steam started for this app counts: another game's reaper may be running already.
         TrackedProcess? reaper = null;
-        if (await PollUntil(() => (reaper = _processTracker.FindReaperForApp(appId)) is not null, launch, cancellationToken) is { } reaperFailure)
+        if (await PollUntil(() => (reaper = _processTracker.FindReaperForApp(appId)) is not null, StartTimeout, launch, cancellationToken) is { } reaperFailure)
             return reaperFailure;
 
         gameStarted();
@@ -341,17 +354,17 @@ public class RunGameTool<T> : IRunGameTool
             // A /proc entry that can't be read for a moment drops out of one scan. Taking that for the exit would
             // shut the game down while it runs, so the reaper has to be missing from several scans in a row.
             misses = _processTracker.FindReaperForApp(appId)?.Pid == reaper.Pid ? 0 : misses + 1;
-            if (misses >= ReaperGoneAfterMisses) return SteamRunOutcome.Exited;
+            if (misses >= ReaperGoneAfterMisses) return new SteamWait(SteamRunOutcome.Exited);
             try
             {
-                await Task.Delay(PollInterval, cancellationToken);
+                await Task.Delay(PollInterval, Clock, cancellationToken);
             }
             catch (OperationCanceledException)
             {
                 break;
             }
         }
-        return SteamRunOutcome.Cancelled;
+        return new SteamWait(SteamRunOutcome.Cancelled);
     }
 
     /// <summary>
@@ -359,34 +372,34 @@ public class RunGameTool<T> : IRunGameTool
     /// not final while a Steam wrapper has recorded itself in the launch's state file: that means the game is on
     /// its way and the process table has just not caught up.
     /// </summary>
-    private async Task<SteamRunOutcome?> PollUntil(Func<bool> condition, IGameLaunch launch, CancellationToken cancellationToken)
+    private async Task<SteamWait?> PollUntil(Func<bool> condition, TimeSpan timeout, IGameLaunch launch, CancellationToken cancellationToken)
     {
-        var started = Stopwatch.StartNew();
+        var started = Clock.GetTimestamp();
         while (!cancellationToken.IsCancellationRequested)
         {
             if (condition()) return null;
 
-            if (started.Elapsed >= StartTimeout)
+            if (Clock.GetElapsedTime(started) >= timeout)
             {
                 // Read the file afresh every time: the wrapper writes it from another process.
                 if (!launch.WrapperActive)
                 {
-                    _logger.LogWarning("Steam did not start the game within `{Timeout:g}`", StartTimeout);
-                    return SteamRunOutcome.TimedOut;
+                    _logger.LogWarning("Steam did not start the game within `{Timeout:g}`", timeout);
+                    return new SteamWait(SteamRunOutcome.TimedOut, timeout);
                 }
-                started.Restart();
+                started = Clock.GetTimestamp();
             }
 
             try
             {
-                await Task.Delay(PollInterval, cancellationToken);
+                await Task.Delay(PollInterval, Clock, cancellationToken);
             }
             catch (OperationCanceledException)
             {
                 break;
             }
         }
-        return SteamRunOutcome.Cancelled;
+        return new SteamWait(SteamRunOutcome.Cancelled);
     }
 
     private async Task RunThroughHeroic(string type, string productId, CancellationToken cancellationToken, string[] commandLineArgs)

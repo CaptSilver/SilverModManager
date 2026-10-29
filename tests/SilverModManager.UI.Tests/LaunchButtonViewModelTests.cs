@@ -5,6 +5,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI;
@@ -36,7 +37,7 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         public LaunchButtonViewModel ViewModel = null!;
     }
 
-    private async Task<Rig> Build(PresenterRig? presenter = null, Func<Exception>? failure = null, bool withoutRunTool = false)
+    private async Task<Rig> Build(PresenterRig? presenter = null, Func<Exception>? failure = null, bool withoutRunTool = false, TimeProvider? clock = null)
     {
         var rig = new Rig();
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Launch button");
@@ -65,7 +66,8 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
             Connection,
             monitor,
             presenter?.Services ?? Provider,
-            Provider.GetRequiredService<GameRunningTracker>())
+            Provider.GetRequiredService<GameRunningTracker>(),
+            clock)
         {
             LoadoutId = loadout.LoadoutId,
         };
@@ -103,6 +105,71 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         await Eventually(() => !rig.ViewModel.IsWaitingForSteam);
         rig.ViewModel.Label.Should().Be(Language.LaunchButtonViewModel_LaunchGame_RUNNING);
 
+        rig.Finish.SetResult();
+        await run.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task AfterTenSecondsOfWaiting_TheLabelAddsAHintThatSteamMayBeWaitingOnAWindow()
+    {
+        var clock = new FakeTimeProvider();
+        var rig = await Build(clock: clock);
+        var run = rig.ViewModel.Command.Execute().ToTask();
+        await rig.Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        rig.Waiting.OnNext(true);
+        await Eventually(() => rig.ViewModel.IsWaitingForSteam);
+        var plain = string.Format(Language.LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM, rig.GameName);
+
+        clock.Advance(TimeSpan.FromSeconds(9.5));
+        rig.ViewModel.Label.Should().Be(plain, "the hint is for a wait that drags on");
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+        await Eventually(() => rig.ViewModel.Label != plain);
+        rig.ViewModel.Label.Should().Be(Language.LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM_SLOW);
+        rig.ViewModel.IsWaitingForSteam.Should().BeTrue("Cancel stays available next to the hint");
+
+        rig.Finish.SetResult();
+        await run.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task AGameThatShowsUpBeforeTenSeconds_NeverGetsTheHint()
+    {
+        var clock = new FakeTimeProvider();
+        var rig = await Build(clock: clock);
+        var run = rig.ViewModel.Command.Execute().ToTask();
+        await rig.Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        rig.Waiting.OnNext(true);
+        await Eventually(() => rig.ViewModel.IsWaitingForSteam);
+
+        clock.Advance(TimeSpan.FromSeconds(5));
+        rig.Waiting.OnNext(false);
+        await Eventually(() => !rig.ViewModel.IsWaitingForSteam);
+        clock.Advance(TimeSpan.FromSeconds(30));
+
+        rig.ViewModel.Label.Should().Be(Language.LaunchButtonViewModel_LaunchGame_RUNNING);
+        rig.Finish.SetResult();
+        await run.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task ASecondWait_StartsItsOwnTenSeconds()
+    {
+        var clock = new FakeTimeProvider();
+        var rig = await Build(clock: clock);
+        var run = rig.ViewModel.Command.Execute().ToTask();
+        await rig.Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        rig.Waiting.OnNext(true);
+        await Eventually(() => rig.ViewModel.IsWaitingForSteam);
+        clock.Advance(TimeSpan.FromSeconds(8));
+        rig.Waiting.OnNext(false);
+        await Eventually(() => !rig.ViewModel.IsWaitingForSteam);
+
+        rig.Waiting.OnNext(true);
+        await Eventually(() => rig.ViewModel.IsWaitingForSteam);
+        clock.Advance(TimeSpan.FromSeconds(8));
+
+        rig.ViewModel.Label.Should().Be(string.Format(Language.LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM, rig.GameName));
         rig.Finish.SetResult();
         await run.WaitAsync(TimeSpan.FromSeconds(10));
     }

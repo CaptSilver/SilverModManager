@@ -45,9 +45,23 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
     private readonly IJobMonitor _monitor;
     private readonly IServiceProvider _serviceProvider;
     private readonly GameRunningTracker _gameRunningTracker;
+    private readonly TimeProvider _timeProvider;
 
-    public LaunchButtonViewModel(ILogger<ILaunchButtonViewModel> logger, IToolManager toolManager, IConnection conn, IJobMonitor monitor, IServiceProvider serviceProvider, GameRunningTracker gameRunningTracker)
+    /// <summary>
+    /// How long the wait for the game may take before the label hints that Steam or the game's launcher may be
+    /// waiting on a window of its own (a licence, an update, a launcher's own chooser).
+    /// </summary>
+    public static readonly TimeSpan SlowStartHintDelay = TimeSpan.FromSeconds(10);
+
+    // Guards the label state below: the tool reports from its own thread and the hint timer from another.
+    private readonly object _labelLock = new();
+    private string _waitingGameName = "";
+    private bool _slowStart;
+    private ITimer? _slowStartTimer;
+
+    public LaunchButtonViewModel(ILogger<ILaunchButtonViewModel> logger, IToolManager toolManager, IConnection conn, IJobMonitor monitor, IServiceProvider serviceProvider, GameRunningTracker gameRunningTracker, TimeProvider? timeProvider = null)
     {
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _logger = logger;
         _toolManager = toolManager;
         _conn = conn;
@@ -100,6 +114,7 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
         finally
         {
             waitingSubscription?.Dispose();
+            StopSlowStartTimer();
             _launchCancellation = null;
         }
         IsWaitingForSteam = false;
@@ -120,10 +135,44 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
 
     private void SetWaitingForSteam(bool waiting, string gameName)
     {
-        IsWaitingForSteam = waiting;
-        Label = waiting
-            ? string.Format(Language.LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM, gameName)
-            : Language.LaunchButtonViewModel_LaunchGame_RUNNING;
+        lock (_labelLock)
+        {
+            _waitingGameName = gameName;
+            _slowStart = false;
+            StopSlowStartTimer();
+            IsWaitingForSteam = waiting;
+            if (waiting)
+                _slowStartTimer = _timeProvider.CreateTimer(_ => MarkSlowStart(), null, SlowStartHintDelay, Timeout.InfiniteTimeSpan);
+            Label = WaitingLabel(waiting);
+        }
+    }
+
+    private void MarkSlowStart()
+    {
+        lock (_labelLock)
+        {
+            // The wait may have ended between the timer firing and getting here.
+            if (!IsWaitingForSteam) return;
+            _slowStart = true;
+            Label = WaitingLabel(waiting: true);
+        }
+    }
+
+    private void StopSlowStartTimer()
+    {
+        lock (_labelLock)
+        {
+            _slowStartTimer?.Dispose();
+            _slowStartTimer = null;
+        }
+    }
+
+    private string WaitingLabel(bool waiting)
+    {
+        if (!waiting) return Language.LaunchButtonViewModel_LaunchGame_RUNNING;
+        return _slowStart
+            ? Language.LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM_SLOW
+            : string.Format(Language.LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM, _waitingGameName);
     }
 
     private void SetLabelToRunning() => Label = Language.LaunchButtonViewModel_LaunchGame_RUNNING;

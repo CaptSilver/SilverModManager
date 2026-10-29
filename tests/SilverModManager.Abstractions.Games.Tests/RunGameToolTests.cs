@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Games.TestFramework;
@@ -56,6 +57,7 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
     private sealed class FastTool(IServiceProvider provider, StubbedGame game) : RunGameTool<StubbedGame>(provider, game)
     {
         protected override TimeSpan StartTimeout => TimeSpan.FromMilliseconds(80);
+        protected override TimeSpan SteamStartTimeout => TimeSpan.FromMilliseconds(80);
         protected override TimeSpan PollInterval => TimeSpan.FromMilliseconds(5);
     }
 
@@ -361,6 +363,84 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
 
         foundAfterTheMiss.Should().BeTrue("a single scan that misses the reaper must not end the wait, or the game gets shut down while it runs");
         Session.Events.Should().Equal("lock", "running", "finish", "release");
+    }
+
+    // The production timeouts on a clock the test drives, so nothing here waits in real time.
+    private sealed class ClockedTool(IServiceProvider provider, StubbedGame game, TimeProvider clock) : RunGameTool<StubbedGame>(provider, game)
+    {
+        protected override TimeProvider Clock => clock;
+        public TimeSpan DefaultStartTimeout => StartTimeout;
+        public TimeSpan DefaultSteamStartTimeout => SteamStartTimeout;
+    }
+
+    // Runs the tool while stepping the fake clock until it finishes, and returns how much fake time that took.
+    private async Task<TimeSpan> RunOnFakeClock(Loadout.ReadOnly loadout, FakeTimeProvider clock, Action<TimeSpan>? atEachStep = null)
+    {
+        var tool = new ClockedTool(ServiceProvider, Game, clock);
+        var begin = clock.GetUtcNow();
+        var run = Task.Run(() => tool.Execute(loadout, CancellationToken.None, []));
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(20);
+        while (!run.IsCompleted)
+        {
+            if (DateTime.UtcNow > deadline) throw new TimeoutException("the launch never ended");
+            clock.Advance(TimeSpan.FromMilliseconds(300));
+            atEachStep?.Invoke(clock.GetUtcNow() - begin);
+            await Task.Delay(1);
+        }
+        await run;
+        return clock.GetUtcNow() - begin;
+    }
+
+    [Fact]
+    public void TheDefaults_GiveSteamTwoMinutesAndTheGameSixtySecondsOnceSteamIsRunning()
+    {
+        var tool = new ClockedTool(ServiceProvider, Game, TimeProvider.System);
+
+        tool.DefaultStartTimeout.Should().Be(TimeSpan.FromSeconds(60));
+        tool.DefaultSteamStartTimeout.Should().Be(TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public async Task SteamLaunch_WithoutSteam_GivesUpAfterTwoMinutesAndSaysSo()
+    {
+        _cancelOnOpen = false;
+        Tracker.SteamRunning = false;
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+
+        var took = await RunOnFakeClock(loadout, new FakeTimeProvider());
+
+        took.Should().BeGreaterThanOrEqualTo(TimeSpan.FromMinutes(2)).And.BeLessThan(TimeSpan.FromMinutes(2.1));
+        Notifier.Notifications.Should().ContainSingle().Which.Body.Should().Contain("within 2 minutes");
+    }
+
+    [Fact]
+    public async Task SteamLaunch_WithSteamButNoGame_GivesUpSixtySecondsAfterSteamIsRunningAndSaysSo()
+    {
+        _cancelOnOpen = false;
+        Tracker.SteamRunning = true;
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+
+        var took = await RunOnFakeClock(loadout, new FakeTimeProvider());
+
+        took.Should().BeGreaterThanOrEqualTo(TimeSpan.FromSeconds(60)).And.BeLessThan(TimeSpan.FromSeconds(62));
+        Notifier.Notifications.Should().ContainSingle().Which.Body.Should().Contain("within 1 minute");
+    }
+
+    [Fact]
+    public async Task SteamLaunch_AWrapperThatRegisteredExtendsTheSixtySecondsAsBefore()
+    {
+        _cancelOnOpen = false;
+        Tracker.SteamRunning = true;
+        var elapsed = TimeSpan.Zero;
+        var reaperReturned = 0;
+        Tracker.ReaperForApp = _ => elapsed > TimeSpan.FromSeconds(100) && reaperReturned++ < 1 ? new TrackedProcess(77, "reaper") : null;
+        Session.WrapperActive = () => reaperReturned == 0;
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+
+        await RunOnFakeClock(loadout, new FakeTimeProvider(), at => elapsed = at);
+
+        Notifier.Notifications.Should().BeEmpty();
+        reaperReturned.Should().BeGreaterThan(0);
     }
 
     [Fact]
