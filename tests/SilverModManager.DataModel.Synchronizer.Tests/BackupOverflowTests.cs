@@ -2,6 +2,9 @@ using System.Collections.Frozen;
 using FluentAssertions;
 using SilverModManager.Backend.Games;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using R3;
+using SilverModManager.DataModel;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
@@ -161,7 +164,8 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         var act = async () => await LoadoutManager.CreateLoadout(GameInstallation, largeFiles: BackupOverflowChoice.Refuse);
 
         var refusal = (await act.Should().ThrowAsync<BackupOverflowException>()).Which;
-        refusal.Message.Should().Contain("--large-files adopt").And.Contain("--large-files backup").And.Contain("16 KB").And.Contain("loadout create").And.Contain("manages a game");
+        refusal.CommandLineHint.Should().Contain("--large-files adopt").And.Contain("--large-files backup").And.Contain("loadout create");
+        refusal.Message.Should().Contain("16 KB").And.Contain("not your mods").And.NotContain("`");
         prompt.Asked.Should().BeEmpty();
         VisibleLoadouts.Should().Be(0);
         (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeFalse();
@@ -178,24 +182,48 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
 
         var act = async () => await SynchronizerService.Synchronize(loadout.LoadoutId, BackupOverflowChoice.Refuse);
 
-        var message = (await act.Should().ThrowAsync<BackupOverflowException>()).Which.Message;
-        message.Should().Contain("loadout synchronize").And.Contain("applies a loadout").And.NotContain("loadout create");
+        var refusal = (await act.Should().ThrowAsync<BackupOverflowException>()).Which;
+        refusal.CommandLineHint.Should().Contain("loadout synchronize").And.NotContain("loadout create");
+        refusal.Message.Should().NotContain("`").And.NotContain("silvermod");
     }
 
     [Theory]
-    [InlineData(BackupOverflowOperation.Manage, "manages a game", "loadout create --game", "--large-files adopt")]
-    [InlineData(BackupOverflowOperation.Apply, "applies a loadout", "loadout synchronize", "--large-files adopt")]
-    [InlineData(BackupOverflowOperation.Launch, "launches a modded game", "loadout synchronize", "launch again")]
-    [InlineData(BackupOverflowOperation.Switch, "switches loadouts", "backup-game-files", "try again")]
-    [InlineData(BackupOverflowOperation.Reset, "puts the game folder back", "backup-game-files", "try again")]
-    public void RefusalWording_FollowsTheOperation(BackupOverflowOperation operation, string verbPhrase, string cliHint, string tail)
+    [InlineData(BackupOverflowOperation.Manage, "Files were not backed up", "loadout create --game", "--large-files adopt", "keep them where they are")]
+    [InlineData(BackupOverflowOperation.Apply, "Files were not backed up", "loadout synchronize", "--large-files adopt", "leave them where they are")]
+    [InlineData(BackupOverflowOperation.Launch, "The game was not started", "loadout synchronize", "launch again", "then launch again")]
+    [InlineData(BackupOverflowOperation.Switch, "Files were not backed up", "backup-game-files", "try again", "try again")]
+    [InlineData(BackupOverflowOperation.Reset, "Files were not backed up", "backup-game-files", "try again", "try again")]
+    public void RefusalWording_FollowsTheOperation(BackupOverflowOperation operation, string title, string cliHint, string tail, string tailPhrase)
     {
         var overflow = new BackupOverflow(Size.KB * 16, 4, Size.Zero, 0, Size.KB * 8, operation);
 
+        var refusal = new BackupOverflowException(GameInstallation, overflow);
+
+        refusal.Title.Should().Be(title);
+        refusal.CommandLineHint.Should().Contain(cliHint).And.Contain(tail).And.Contain(tailPhrase);
+        if (operation is BackupOverflowOperation.Switch or BackupOverflowOperation.Reset) refusal.CommandLineHint.Should().NotContain("--large-files");
+    }
+
+    [Fact]
+    public void RefusalMessage_HasNoCommandLine()
+    {
+        var overflow = new BackupOverflow(Size.KB * 16, 4, Size.Zero, 0, Size.KB * 8, BackupOverflowOperation.Apply);
+
         var message = new BackupOverflowException(GameInstallation, overflow).Message;
 
-        message.Should().Contain(verbPhrase).And.Contain(cliHint).And.Contain(tail);
-        if (operation is BackupOverflowOperation.Switch or BackupOverflowOperation.Reset) message.Should().NotContain("--large-files");
+        message.Should().NotContain("`").And.NotContain("silvermod").And.NotContain("--large-files").And.NotContain("added files");
+        message.Should().Contain("nothing was changed");
+    }
+
+    [Fact]
+    public void AdoptWouldLoseFiles_SaysItInPlayerWordsAndKeepsTheFlagInTheHint()
+    {
+        var overflow = new BackupOverflow(Size.KB * 16, 4, Size.KB * 12, 3, Size.KB * 8, BackupOverflowOperation.Switch);
+
+        var refusal = BackupOverflowException.AdoptWouldLoseFiles(GameInstallation, overflow);
+
+        refusal.Message.Should().Contain("3 files (12 KB)").And.Contain("keeping them where they are would lose them").And.NotContain("--large-files").And.NotContain("adopt");
+        refusal.CommandLineHint.Should().Be("Use --large-files backup.");
     }
 
     [Fact]
@@ -219,7 +247,8 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
 
         var refusal = (await act.Should().ThrowAsync<BackupOverflowException>()).Which;
         refusal.Declined.Should().BeTrue();
-        refusal.Message.Should().Contain("--large-files adopt").And.Contain("16 KB");
+        refusal.CommandLineHint.Should().Contain("--large-files adopt");
+        refusal.Message.Should().Contain("16 KB");
         VisibleLoadouts.Should().Be(0);
         (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeFalse();
     }
@@ -366,7 +395,8 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         var act = async () => await LoadoutManager.CleanGameFolder(Refresh(loadout), BackupOverflowChoice.AdoptInPlace);
 
         var refusal = (await act.Should().ThrowAsync<BackupOverflowException>()).Which;
-        refusal.Message.Should().Contain("deleted").And.Contain("--large-files backup");
+        refusal.Message.Should().Contain("deleted or replaced").And.NotContain("--large-files");
+        refusal.CommandLineHint.Should().Contain("--large-files backup");
         for (var i = 0; i < 4; i++) OnDisk($"ext{i}.bin").Should().BeTrue();
         ExternalChanges(Refresh(loadout)).Should().HaveCount(4, "a refused clean leaves the files as External Changes");
         LoadoutManager.GetCurrentlyActiveLoadout(GameInstallation).HasValue.Should().BeTrue("the install stays managed");
@@ -536,6 +566,165 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
 
         await act.Should().ThrowAsync<BackupOverflowException>();
         prompt.Asked.Should().BeEmpty("an explicit answer from the command line is never second-guessed with a dialog");
+    }
+
+    private static SyncNode MeasuredNode(ulong hash, Actions actions, ulong kb = 6, bool loadout = false, bool previous = false, bool gameFile = false)
+    {
+        SyncNodePart Part() => new() { Identity = FileIdentity.XxHash3(Hash.From(hash)), Size = Size.KB * kb, LastModifiedTicks = 1 };
+        return new SyncNode
+        {
+            Disk = Part(),
+            Loadout = loadout ? Part() : new SyncNodePart { Identity = FileIdentity.None, Size = Size.Zero, LastModifiedTicks = 0 },
+            Previous = previous ? Part() : new SyncNodePart { Identity = FileIdentity.None, Size = Size.Zero, LastModifiedTicks = 0 },
+            Signature = gameFile ? Signature.IsGameFile : default,
+            Actions = actions,
+        };
+    }
+
+    [Fact]
+    public async Task OverflowMeasure_GroupsByFolderAndKind()
+    {
+        var prompt = new RecordingPrompt(BackupOverflowChoice.BackUpAnyway);
+        _prompt.Inner = prompt;
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [new GamePath(LocationId.Game, "content/content0/bundles/a.bundle")] = MeasuredNode(0xA1, Actions.BackupFile | Actions.IngestFromDisk, kb: 9),
+            [new GamePath(LocationId.Game, "content/content0/b.bundle")] = MeasuredNode(0xA2, Actions.BackupFile | Actions.IngestFromDisk, loadout: true, gameFile: true),
+            [new GamePath(LocationId.Game, "mods/m/y.dll")] = MeasuredNode(0xA3, Actions.BackupFile | Actions.IngestFromDisk, previous: true),
+            [new GamePath(LocationId.Game, "replaced.bin")] = MeasuredNode(0xA4, Actions.BackupFile | Actions.ExtractToDisk, kb: 1),
+        };
+
+        await ((ALoadoutSynchronizer)Synchronizer).ResolveBackupOverflow(tree, GameInstallation, preset: null, CancellationToken.None, operation: BackupOverflowOperation.Launch);
+
+        var asked = prompt.Asked.Should().ContainSingle().Which;
+        asked.Operation.Should().Be(BackupOverflowOperation.Launch);
+        asked.Groups.Should().BeEquivalentTo(new[]
+        {
+            new BackupOverflowGroup("content/content0", 1, Size.KB * 9, BackupOverflowKind.Appeared),
+            new BackupOverflowGroup("content/content0", 1, Size.KB * 6, BackupOverflowKind.GameFileChanged),
+            new BackupOverflowGroup("mods/m", 1, Size.KB * 6, BackupOverflowKind.ModFileChanged),
+            new BackupOverflowGroup(BackupOverflow.GameFolderName, 1, Size.KB * 1, BackupOverflowKind.MustBackUp),
+        });
+        asked.Examples!.Select(e => e.Path).Should().Equal("content/content0/bundles/a.bundle", "content/content0/b.bundle", "mods/m/y.dll");
+        asked.Kinds[BackupOverflowKind.Appeared].Should().Be((1, Size.KB * 9));
+        asked.Kinds.Keys.OrderBy(k => k).Should().Equal(BackupOverflowKind.Appeared, BackupOverflowKind.GameFileChanged, BackupOverflowKind.ModFileChanged, BackupOverflowKind.MustBackUp);
+    }
+
+    /// <summary>A run-game tool whose run is one more sync, the way the launch session syncs before it starts the process.</summary>
+    private sealed class SyncingRunTool(GameId game, ISynchronizerService synchronizer, LoadoutId loadoutId) : IRunGameTool
+    {
+        public IEnumerable<GameId> GameIds => [game];
+        public string Name => "Syncing run";
+        public System.IObservable<bool> WaitingForSteam { get; } = new System.Reactive.Subjects.BehaviorSubject<bool>(false);
+        public System.IObservable<bool> RunningInstallStep { get; } = new System.Reactive.Subjects.BehaviorSubject<bool>(false);
+        public ValueTask<LaunchSpec> GetLaunchSpec(Loadout.ReadOnly loadout, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public IJobTask<ITool, Unit> StartJob(Loadout.ReadOnly loadout, IJobMonitor monitor, CancellationToken cancellationToken)
+            => monitor.Begin<ITool, Unit>(this, async _ =>
+            {
+                await synchronizer.Synchronize(loadoutId, cancellationToken: cancellationToken);
+                return Unit.Default;
+            });
+    }
+
+    [Fact]
+    public async Task PlayOverTheCap_AsksOnceWithLaunchWording()
+    {
+        var loadout = await CreateLoadout();
+        WriteExternalFiles(count: 4, eachBytes: 4096);
+        var prompt = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        _prompt.Inner = prompt;
+        var tool = new SyncingRunTool(loadout.Game.GameId, SynchronizerService, loadout.LoadoutId);
+        var toolManager = new ToolManager(NullLogger<ToolManager>.Instance, [tool], [], SynchronizerService);
+
+        await toolManager.RunTool(tool, loadout, ServiceProvider.GetRequiredService<IJobMonitor>());
+
+        var asked = prompt.Asked.Should().ContainSingle("the apply, the tool's own sync and the ingest after it share one answer").Which;
+        asked.Operation.Should().Be(BackupOverflowOperation.Launch);
+    }
+
+    [Fact]
+    public async Task AfterPlayIngest_KeepsAppearedFilesWithoutAsking()
+    {
+        var prompt = new RecordingPrompt(BackupOverflowChoice.Refuse);
+        _prompt.Inner = prompt;
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [new GamePath(LocationId.Game, "save/a.bin")] = MeasuredNode(0xB1, Actions.BackupFile | Actions.IngestFromDisk, kb: 6),
+            [new GamePath(LocationId.Game, "save/b.bin")] = MeasuredNode(0xB2, Actions.BackupFile | Actions.IngestFromDisk, kb: 6),
+        };
+
+        using var leg = BackupOverflowAnswer.BeginLeg(BackupOverflowOperation.AfterPlay, BackupOverflowChoice.AdoptInPlace);
+        var (choice, asked) = await ((ALoadoutSynchronizer)Synchronizer).ResolveBackupOverflow(tree, GameInstallation, preset: null, CancellationToken.None);
+
+        choice.Should().Be(BackupOverflowChoice.AdoptInPlace);
+        asked.Should().BeFalse();
+        prompt.Asked.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AfterPlayIngest_AsksWhenKeepingWouldLoseFiles()
+    {
+        var prompt = new RecordingPrompt(BackupOverflowChoice.BackUpAnyway);
+        _prompt.Inner = prompt;
+
+        using var leg = BackupOverflowAnswer.BeginLeg(BackupOverflowOperation.AfterPlay, BackupOverflowChoice.AdoptInPlace);
+        await ((ALoadoutSynchronizer)Synchronizer).ResolveBackupOverflow(TreeWhereAdoptingLosesFiles(), GameInstallation, preset: null, CancellationToken.None);
+
+        prompt.Asked.Should().ContainSingle().Which.Operation.Should().Be(BackupOverflowOperation.AfterPlay);
+    }
+
+    [Fact]
+    public async Task AfterPlayIngest_AfterAPlayThatAskedNothing_UsesAfterPlayWording()
+    {
+        var prompt = new RecordingPrompt(BackupOverflowChoice.BackUpAnyway);
+        _prompt.Inner = prompt;
+
+        // The Play opened its scope as a launch; the leg after the game moves it on.
+        using var play = BackupOverflowAnswer.Begin(BackupOverflowOperation.Launch);
+        using var leg = BackupOverflowAnswer.BeginLeg(BackupOverflowOperation.AfterPlay, BackupOverflowChoice.AdoptInPlace);
+        await ((ALoadoutSynchronizer)Synchronizer).ResolveBackupOverflow(TreeWhereAdoptingLosesFiles(), GameInstallation, preset: null, CancellationToken.None);
+
+        prompt.Asked.Should().ContainSingle().Which.Operation.Should().Be(BackupOverflowOperation.AfterPlay);
+    }
+
+    [Fact]
+    public async Task AfterPlayIngest_HonoursABackUpAnswerGivenBeforeTheLaunch()
+    {
+        var prompt = new RecordingPrompt(BackupOverflowChoice.Refuse);
+        _prompt.Inner = prompt;
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [new GamePath(LocationId.Game, "save/a.bin")] = MeasuredNode(0xB1, Actions.BackupFile | Actions.IngestFromDisk, kb: 6),
+            [new GamePath(LocationId.Game, "save/b.bin")] = MeasuredNode(0xB2, Actions.BackupFile | Actions.IngestFromDisk, kb: 6),
+        };
+
+        using var play = BackupOverflowAnswer.Begin(BackupOverflowOperation.Launch);
+        BackupOverflowAnswer.Active!.Remember(BackupOverflowChoice.BackUpAnyway);
+        using var leg = BackupOverflowAnswer.BeginLeg(BackupOverflowOperation.AfterPlay, BackupOverflowChoice.AdoptInPlace);
+        var (choice, asked) = await ((ALoadoutSynchronizer)Synchronizer).ResolveBackupOverflow(tree, GameInstallation, preset: null, CancellationToken.None);
+
+        choice.Should().Be(BackupOverflowChoice.BackUpAnyway);
+        asked.Should().BeFalse();
+        prompt.Asked.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DeclinedLaunchQuestion_ChangesNothingAndNamesTheOutcome()
+    {
+        WriteExternalFiles(4, 4096);
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, largeFiles: BackupOverflowChoice.AdoptInPlace);
+        for (var i = 0; i < 3; i++) WriteExternalFile($"late{i}.bin", 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.Refuse);
+        var filesBefore = Directory.EnumerateFiles(GameDir.ToString(), "*", SearchOption.AllDirectories).Count();
+
+        using var play = BackupOverflowAnswer.Begin(BackupOverflowOperation.Launch);
+        var act = async () => await SynchronizerService.Synchronize(loadout.LoadoutId);
+
+        var declined = (await act.Should().ThrowAsync<BackupOverflowException>()).Which;
+        declined.Declined.Should().BeTrue();
+        declined.Title.Should().Be("The game was not started");
+        Directory.EnumerateFiles(GameDir.ToString(), "*", SearchOption.AllDirectories).Count().Should().Be(filesBefore);
     }
 
     [Fact]

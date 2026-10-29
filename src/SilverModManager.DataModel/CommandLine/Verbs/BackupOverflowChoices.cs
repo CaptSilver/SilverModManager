@@ -25,7 +25,7 @@ public static class BackupOverflowChoices
 
 /// <summary>A <c>--large-files</c> value that is neither <c>adopt</c> nor <c>backup</c>.</summary>
 public sealed class InvalidLargeFilesOptionException(string value)
-    : UserFacingException($"`--large-files {value}` is not a choice. Use `--large-files adopt` to manage the added files where they are, or `--large-files backup` to back them all up.")
+    : UserFacingException($"`--large-files {value}` is not a choice. Use `--large-files adopt` to keep the files where they are, or `--large-files backup` to copy them all first.")
 {
     /// <inheritdoc />
     public override string Title => "Unknown --large-files value";

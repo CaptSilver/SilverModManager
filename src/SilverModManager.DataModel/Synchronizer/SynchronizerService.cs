@@ -191,7 +191,7 @@ public class SynchronizerService : ISynchronizerService
     /// changed while it was read, changed nothing, so the rows it was measured against are still the loadout's.
     /// </summary>
     private static bool ApplyBeganWriting(SynchronizeLoadoutJob job)
-        => job.Progress.Value.Phase is { } phase && phase != SyncPhases.Collecting && phase != SyncPhases.ReadingBackups;
+        => job.Progress.Value.Phase is { } phase && phase != SyncPhases.Collecting && phase != SyncPhases.ReadingBackups && phase != SyncPhases.WaitingForAnswer;
 
     private async Task<List<(EntityId Entity, AttributeId Attribute, ValueTag Tag, byte[] Value)>> RemoveExternalChanges(Loadout.ReadOnly loadout)
     {

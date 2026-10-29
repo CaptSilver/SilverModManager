@@ -45,5 +45,6 @@ public static class SyncPhases
     public const string WritingIntrinsics = "Writing intrinsic files";
     public const string UpdatingDeletedFiles = "Updating deleted files";
     public const string RecordingChanges = "Recording changes";
+    public const string WaitingForAnswer = "Waiting for your answer";
     public const string CleaningUp = "Archive Cleanup";
 }

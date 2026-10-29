@@ -29,4 +29,10 @@ public abstract class UserFacingException : Exception
     /// A follow-up the dialog offers next to OK, stamped by whoever knows the context the refusal came from.
     /// </summary>
     public UserFacingAction? Action { get; set; }
+
+    /// <summary>
+    /// What to type at a terminal to get past this refusal, or null. Only the command line reads it: a dialog has
+    /// buttons for the same choices and a command in front of a player who pressed Play means nothing.
+    /// </summary>
+    public virtual string? CommandLineHint => null;
 }

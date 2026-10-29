@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Logging;
 using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using SilverModManager.App.UI.Controls.Navigation;
@@ -100,6 +101,10 @@ public sealed class ErrorPresenter(IServiceProvider serviceProvider, ILogger<Err
         try
         {
             var refusal = UserFacingErrors.Find(exception);
+
+            // The player answered the backup question a moment ago and nothing was changed; the log has the line.
+            if (refusal is BackupOverflowException { Declined: true }) return;
+
             await DispatcherHelper.EnsureOnUIThreadAsync(() => refusal is null ? ShowCrash(exception, headline) : ShowRefusal(refusal));
         }
         catch (Exception e)

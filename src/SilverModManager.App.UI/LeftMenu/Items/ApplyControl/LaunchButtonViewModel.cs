@@ -42,6 +42,19 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
             .Switch()
             .OnUI();
 
+    // The phase of this installation's launch session as last seen; null while none reports one.
+    private LaunchPhase? _phase;
+
+    private IObservable<LaunchPhase?> SessionPhase() => this.WhenAnyValue(vm => vm.LoadoutId)
+            .ObserveOn(RxApp.TaskpoolScheduler)
+            .Select(loadoutId =>
+            {
+                var marker = Sdk.Loadouts.Loadout.Load(_conn.Db, loadoutId);
+                return marker.IsValid() ? _activeSessions.WhenPhase(marker.InstallationInstance) : Observable.Return<LaunchPhase?>(null);
+            })
+            .Switch()
+            .OnUI();
+
     [Reactive] public partial bool CanLaunch { get; set; } = true;
 
     [Reactive] public partial string Label { get; set; } = Language.LaunchButtonViewModel_LaunchGame_LAUNCH;
@@ -98,10 +111,12 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
             IsRunningObservable.Subscribe(isRunning =>
             {
                 if (isRunning)
-                    SetLabelToRunning();
+                    ShowPhase(_phase ?? (_launchCancellation is null ? LaunchPhase.Running : LaunchPhase.Preparing));
                 else
                     SetLabelToLaunch();
             }).DisposeWith(cd);
+
+            SessionPhase().Subscribe(ShowPhase).DisposeWith(cd);
         });
 
         Command = ReactiveCommand.CreateFromObservable(() => Observable.StartAsync(LaunchGame, RxApp.TaskpoolScheduler));
@@ -116,7 +131,8 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
         // The token from StartAsync is only cancelled when the subscription goes away, so Cancel needs its own.
         using var launchCancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
         _launchCancellation = launchCancellation;
-        SetLabelToRunning();
+        _phase = null;
+        Label = Language.LaunchButtonViewModel_LaunchGame_APPLYING;
         IDisposable? waitingSubscription = null;
         try
         {
@@ -125,7 +141,8 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
                 ?? throw new NoRunGameToolException(gameName);
             waitingSubscription = new System.Reactive.Disposables.CompositeDisposable(
                 tool.WaitingForSteam.Subscribe(waiting => SetWaitingForSteam(waiting, gameName)),
-                tool.RunningInstallStep.Subscribe(running => SetRunningInstallStep(running, gameName)));
+                tool.RunningInstallStep.Subscribe(running => SetRunningInstallStep(running, gameName)),
+                _activeSessions.WhenPhase(marker.InstallationInstance).Subscribe(ShowPhase));
             var cancellationToken = launchCancellation.Token;
             await Task.Run(async () => await _toolManager.RunTool(tool, marker, _monitor, token: cancellationToken), cancellationToken);
         }
@@ -170,7 +187,11 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
             IsWaitingForSteam = waiting;
             if (waiting)
                 _slowStartTimer = _timeProvider.CreateTimer(_ => MarkSlowStart(), null, SlowStartHintDelay, Timeout.InfiniteTimeSpan);
-            Label = WaitingLabel(waiting);
+
+            // The tool reports "not waiting" as soon as it is subscribed to, long before the game exists; only a
+            // session that has reached its running phase turns that back into the running label.
+            if (waiting) Label = WaitingLabel(true);
+            else if (_phase is { } phase) Label = LabelFor(phase);
         }
     }
 
@@ -214,7 +235,30 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
             : string.Format(Language.LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM, _waitingGameName);
     }
 
-    private void SetLabelToRunning() => Label = Language.LaunchButtonViewModel_LaunchGame_RUNNING;
+    /// <summary>
+    /// Says what the launch is doing. The button must not claim the game runs while the loadout is still being
+    /// applied, which is when the backup question can appear. A running session that reports no phase (a launch
+    /// Steam started through the wrapper) is a running game.
+    /// </summary>
+    private void ShowPhase(LaunchPhase? phase)
+    {
+        lock (_labelLock)
+        {
+            _phase = phase;
+            if (phase is null) return;
+
+            // The Steam wait labels are set from inside the running phase; a phase report must not wipe them.
+            if (IsWaitingForSteam) return;
+            Label = LabelFor(phase.Value);
+        }
+    }
+
+    private static string LabelFor(LaunchPhase phase) => phase switch
+    {
+        LaunchPhase.Preparing => Language.LaunchButtonViewModel_LaunchGame_APPLYING,
+        LaunchPhase.Finishing => Language.LaunchButtonViewModel_LaunchGame_FINISHING,
+        _ => Language.LaunchButtonViewModel_LaunchGame_RUNNING,
+    };
     private void SetLabelToLaunch() => Label = Language.LaunchButtonViewModel_LaunchGame_LAUNCH;
 }
 

@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
@@ -42,6 +44,10 @@ public class ToolManager : IToolManager
         CancellationToken token = default)
     {
         if (!tool.GameIds.Contains(loadout.Game.GameId)) throw new NotSupportedException("Tool does not support this game");
+
+        // A Play is up to three syncs (the apply, the launch session's own before the process and its ingest after it),
+        // and the player is asked at most once: the scope carries the first answer to the others.
+        using var answer = BackupOverflowAnswer.Begin(tool is IRunGameTool ? BackupOverflowOperation.Launch : BackupOverflowOperation.Apply);
 
         _logger.LogInformation("Applying loadout {LoadoutId} on {GameName} {GameVersion}", 
             loadout.Id, loadout.InstallationInstance.Game.DisplayName, loadout.GameVersion);

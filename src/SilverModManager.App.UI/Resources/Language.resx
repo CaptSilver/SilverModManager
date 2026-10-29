@@ -125,6 +125,12 @@
     <data name="LaunchButtonViewModel_LaunchGame_RUNNING" xml:space="preserve">
         <value>GAME RUNNING...</value>
     </data>
+    <data name="LaunchButtonViewModel_LaunchGame_APPLYING" xml:space="preserve">
+        <value>APPLYING LOADOUT...</value>
+    </data>
+    <data name="LaunchButtonViewModel_LaunchGame_FINISHING" xml:space="preserve">
+        <value>FINISHING UP...</value>
+    </data>
     <data name="LaunchButtonViewModel_LaunchGame_LAUNCH" xml:space="preserve">
         <value>PLAY</value>
     </data>

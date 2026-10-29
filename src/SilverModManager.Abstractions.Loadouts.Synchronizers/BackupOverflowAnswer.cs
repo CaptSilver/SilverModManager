@@ -18,7 +18,7 @@ public sealed class BackupOverflowAnswer
     private BackupOverflowAnswer(BackupOverflowOperation operation) => Operation = operation;
 
     /// <summary>What the player started, which names the question's wording whichever leg puts it.</summary>
-    internal BackupOverflowOperation Operation { get; }
+    internal BackupOverflowOperation Operation { get; private set; }
 
     /// <summary>The scope the current operation runs in, or null outside one.</summary>
     internal static BackupOverflowAnswer? Active => Current.Value;
@@ -37,6 +37,26 @@ public sealed class BackupOverflowAnswer
         if (Current.Value is not null) return Joined.Instance;
 
         var scope = new BackupOverflowAnswer(operation);
+        Current.Value = scope;
+        return new Owner(scope);
+    }
+
+    /// <summary>
+    /// Moves the operation on to its next leg: the question of the leg after the game exited is worded for that
+    /// leg, not for the launch that opened the scope. Opens a scope when none is active, otherwise retargets the
+    /// active one and returns a handle that leaves it open. <paramref name="defaultAnswer"/> stands in for a
+    /// question nothing has answered yet; an answer already given stands.
+    /// </summary>
+    public static IDisposable BeginLeg(BackupOverflowOperation operation, BackupOverflowChoice? defaultAnswer = null)
+    {
+        if (Current.Value is { } active)
+        {
+            active.Operation = operation;
+            active._answer ??= defaultAnswer;
+            return Joined.Instance;
+        }
+
+        var scope = new BackupOverflowAnswer(operation) { _answer = defaultAnswer };
         Current.Value = scope;
         return new Owner(scope);
     }

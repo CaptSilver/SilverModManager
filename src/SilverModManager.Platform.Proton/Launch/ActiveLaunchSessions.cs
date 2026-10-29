@@ -21,6 +21,9 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
     private readonly object _lock = new();
     private readonly Dictionary<(GameStore Store, string StoreId), int> _counts = new();
 
+    // Where each launch that reports one stands. A registration without a session (a forwarded Steam launch) has none.
+    private readonly Dictionary<(GameStore Store, string StoreId), LaunchPhase> _phases = new();
+
     // Says which installation's count just changed. Subscribers read the count themselves.
     private readonly Subject<(GameStore, string)> _changes = new();
 
@@ -55,6 +58,41 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
         }).DistinctUntilChanged();
     }
 
+    /// <summary>
+    /// The phase the launch of <paramref name="installation"/> is in (the current one on subscribe, then each
+    /// change), or null when no launch reports one. The button's label follows it, so it does not claim the game
+    /// is running while the loadout is still being applied.
+    /// </summary>
+    public IObservable<LaunchPhase?> WhenPhase(GameInstallation installation)
+    {
+        var key = KeyOf(installation);
+        return Observable.Create<LaunchPhase?>(observer =>
+        {
+            var gate = new object();
+            void Emit()
+            {
+                lock (gate)
+                {
+                    lock (_lock) observer.OnNext(_phases.TryGetValue(key, out var phase) ? phase : null);
+                }
+            }
+            var subscription = _changes.Where(changed => changed == key).Subscribe(_ => Emit());
+            Emit();
+            return subscription;
+        }).DistinctUntilChanged();
+    }
+
+    internal void ReportPhase(GameInstallation installation, LaunchPhase phase)
+    {
+        var key = KeyOf(installation);
+        lock (_lock)
+        {
+            if (!_counts.ContainsKey(key)) return;
+            _phases[key] = phase;
+        }
+        _changes.OnNext(key);
+    }
+
     /// <inheritdoc />
     public IGameLaunch BeginSession(Loadout.ReadOnly loadout, LaunchSpec? runSpec = null)
     {
@@ -86,7 +124,11 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
         lock (_lock)
         {
             var remaining = _counts[key] - 1;
-            if (remaining == 0) _counts.Remove(key);
+            if (remaining == 0)
+            {
+                _counts.Remove(key);
+                _phases.Remove(key);
+            }
             else _counts[key] = remaining;
         }
         _changes.OnNext(key);

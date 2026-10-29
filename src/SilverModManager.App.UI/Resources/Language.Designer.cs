@@ -2125,6 +2125,24 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to APPLYING LOADOUT....
+        /// </summary>
+        public static string LaunchButtonViewModel_LaunchGame_APPLYING {
+            get {
+                return ResourceManager.GetString("LaunchButtonViewModel_LaunchGame_APPLYING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to FINISHING UP....
+        /// </summary>
+        public static string LaunchButtonViewModel_LaunchGame_FINISHING {
+            get {
+                return ResourceManager.GetString("LaunchButtonViewModel_LaunchGame_FINISHING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Cancel.
         /// </summary>
         public static string LaunchButtonViewModel_LaunchGame_CANCEL {

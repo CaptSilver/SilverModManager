@@ -1028,7 +1028,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         CancellationToken cancellationToken,
         bool presetIsAnAnswer = false,
         bool adoptOnlyBacksUp = false,
-        BackupOverflowOperation operation = BackupOverflowOperation.Apply)
+        BackupOverflowOperation operation = BackupOverflowOperation.Apply,
+        SynchronizeLoadoutJob? job = null)
     {
         // The operation the player started names the question; the leg only knows its own step.
         var overflow = await MeasureBackupOverflow(syncTree, BackupOverflowAnswer.Active?.Operation ?? operation, cancellationToken);
@@ -1058,7 +1059,19 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         {
             // Either no answer yet, or the folder changed since the player gave theirs and adopting would now lose files.
             asked = true;
-            choice = await _backupOverflowPrompt.Ask(installation, overflow, cancellationToken);
+
+            // The sidebar would otherwise keep showing the finished "Collecting files (n/n)" for as long as a person
+            // takes to answer.
+            job?.SetStatus(SyncPhases.WaitingForAnswer);
+            try
+            {
+                choice = await _backupOverflowPrompt.Ask(installation, overflow, cancellationToken);
+            }
+            finally
+            {
+                job?.SetStatus(SyncPhases.Collecting);
+            }
+
             if (choice == BackupOverflowChoice.Refuse) throw new BackupOverflowException(installation, overflow) { Declined = true };
             scope?.Remember(choice);
         }
@@ -1085,6 +1098,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         long adoptable = 0, mustBackUp = 0;
         var adoptableCount = 0;
         var mustBackUpCount = 0;
+        var counted = new ConcurrentBag<(GamePath Path, ulong Size, BackupOverflowKind Kind)>();
         await Parallel.ForEachAsync(syncTree, new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = cancellationToken }, async (item, _) =>
         {
             var node = item.Value;
@@ -1101,11 +1115,57 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 Interlocked.Add(ref mustBackUp, (long)node.Disk.Size.Value);
                 Interlocked.Increment(ref mustBackUpCount);
             }
+
+            counted.Add((item.Key, node.Disk.Size.Value, KindOf(node)));
         });
 
         var overflow = new BackupOverflow(Size.FromLong(adoptable), adoptableCount, Size.FromLong(mustBackUp), mustBackUpCount, _backupLimit.Maximum, operation);
-        return overflow.Total <= overflow.Limit ? null : overflow;
+        if (overflow.Total <= overflow.Limit) return null;
+
+        return overflow with
+        {
+            Groups = counted
+                .GroupBy(c => (Folder: FolderOf(c.Path), c.Kind))
+                .Select(g => new BackupOverflowGroup(g.Key.Folder, g.Count(), Size.From((ulong)g.Sum(c => (long)c.Size)), g.Key.Kind))
+                .OrderByDescending(g => g.Size.Value).ThenBy(g => g.Folder, StringComparer.Ordinal)
+                .ToArray(),
+            Examples = counted
+                .OrderByDescending(c => c.Size).ThenBy(c => c.Path.ToString(), StringComparer.Ordinal)
+                .Take(3)
+                .Select(c => new BackupOverflowExample(DisplayPathOf(c.Path), Size.From(c.Size), c.Kind))
+                .ToArray(),
+            ByKind = counted
+                .GroupBy(c => c.Kind)
+                .ToDictionary(g => g.Key, g => (g.Count(), Size.From((ulong)g.Sum(c => (long)c.Size)))),
+        };
     }
+
+    /// <summary>
+    /// What a file the sync would copy is to the player. Read from the node's state and not its source item type,
+    /// which defaults to "loadout" on a node that exists only on disk.
+    /// </summary>
+    private static BackupOverflowKind KindOf(SyncNode node)
+    {
+        if (node.Actions != (Actions.BackupFile | Actions.IngestFromDisk)) return BackupOverflowKind.MustBackUp;
+        if (!node.HavePrevious && !node.HaveLoadout) return BackupOverflowKind.Appeared;
+        return node.Signature.HasFlag(Signature.IsGameFile) || (node.HaveLoadout && node.SourceItemType == LoadoutSourceItemType.Game)
+            ? BackupOverflowKind.GameFileChanged
+            : BackupOverflowKind.ModFileChanged;
+    }
+
+    /// <summary>The folder a player would look in: the first two segments, with the location named unless it is the game folder.</summary>
+    private static string FolderOf(GamePath path)
+    {
+        var segments = path.Path.ToString().Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var folders = segments.Take(Math.Min(2, segments.Length - 1)).ToArray();
+        var isGameFolder = path.LocationId == LocationId.Game;
+        if (folders.Length == 0) return isGameFolder ? BackupOverflow.GameFolderName : path.LocationId.ToString();
+        var joined = string.Join('/', folders);
+        return isGameFolder ? joined : $"{path.LocationId}/{joined}";
+    }
+
+    private static string DisplayPathOf(GamePath path)
+        => path.LocationId == LocationId.Game ? path.Path.ToString() : $"{path.LocationId}/{path.Path}";
 
     /// <summary>
     /// Applies an adopt answer: files that stay on disk and only want a copy are ingested without one. Every other
@@ -1275,7 +1335,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var tree = BuildSyncTreeFromIndex(loadout, metadata);
         ProcessSyncTree(tree);
 
-        var (choice, asked) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, largeFiles, cancellationToken);
+        var (choice, asked) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, largeFiles, cancellationToken, job: job);
         if (asked)
         {
             // The folder can change while the question is open, so the answer is applied to a tree of the folder as
@@ -1283,7 +1343,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             metadata = await ReindexState(installation, job, cancellationToken);
             tree = BuildSyncTreeFromIndex(loadout, metadata);
             ProcessSyncTree(tree);
-            (choice, _) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, choice, cancellationToken, presetIsAnAnswer: true);
+            (choice, _) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, choice, cancellationToken, presetIsAnAnswer: true, job: job);
         }
 
         loadout = await RunActions(tree, loadout, job, choice);

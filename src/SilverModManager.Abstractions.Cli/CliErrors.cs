@@ -21,10 +21,14 @@ public static class CliErrors
     public const int CrashExitCode = -1;
 
     /// <summary>
-    /// The sentence to print for <paramref name="exception"/>: the refusal's message, or where to find the details of a crash.
+    /// The sentence to print for <paramref name="exception"/>: the refusal's message followed by its command line hint, or where to find the details of a crash.
     /// </summary>
-    public static string Describe(Exception exception) =>
-        UserFacingErrors.Find(exception)?.Message ?? CrashPointer;
+    public static string Describe(Exception exception) => UserFacingErrors.Find(exception) switch
+    {
+        null => CrashPointer,
+        { CommandLineHint: { } hint } refusal => $"{refusal.Message}{Environment.NewLine}{Environment.NewLine}{hint}",
+        var refusal => refusal.Message,
+    };
 
     /// <summary>
     /// The exit code for <paramref name="exception"/>: <see cref="RefusalExitCode"/> or <see cref="CrashExitCode"/>.

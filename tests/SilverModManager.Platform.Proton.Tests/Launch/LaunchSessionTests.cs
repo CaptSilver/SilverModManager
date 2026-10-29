@@ -835,6 +835,72 @@ public class LaunchSessionTests : IDisposable
         _notifier.Received(1).Notify(Arg.Any<string>(), Arg.Is<string>(m => m.Contains("ingest broke")));
     }
 
+    private BackupOverflowException DeclinedQuestion() => new(_installation, new BackupOverflow(Size.GB * 45, 95, Size.Zero, 0, Size.GB * 5, BackupOverflowOperation.Launch)) { Declined = true };
+
+    [Fact]
+    public async Task SyncsBracketTheGameProcess()
+    {
+        await Run(NewSession());
+
+        var running = _events.SkipWhile(e => e != "start").TakeWhile(e => !e.StartsWith("finish") && e != "sync").ToList();
+        _events.IndexOf("sync").Should().BeLessThan(_events.IndexOf("start"), "the loadout is applied before the process exists");
+        running.Should().NotContain("sync", "nothing is applied to the game folder while the game runs");
+        _events.Last().Should().Be("sync", "the game's changes are taken in after it exits");
+        _events.Count(e => e == "sync").Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ADeclinedBackupQuestion_BeforeTheGame_SaysNothingWasChanged()
+    {
+        var declined = DeclinedQuestion();
+        _synchronizer.FailOn = 1;
+        _synchronizer.FailWith = declined;
+
+        var result = await Run(NewSession());
+
+        result.Message.Should().Be("Test Game was not started; nothing was changed.");
+        result.Refused.Should().BeTrue();
+        result.Cause.Should().BeSameAs(declined);
+        _processes.Started.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ADeclinedBackupQuestion_AfterThePlay_SaysTheLoadoutIsStillApplied_WithoutSoundingLikeACrash()
+    {
+        _synchronizer.FailOn = 2;
+        _synchronizer.FailWith = DeclinedQuestion();
+
+        var result = await Run(NewSession());
+
+        result.LoadoutStillApplied.Should().BeTrue();
+        result.Message.Should().Be("Test Game has exited. Loadout 'My Loadout' is still applied, and the files the game wrote are not in it yet; the app asks about them again when you apply or switch.");
+        result.Message.Should().NotContain("failed");
+    }
+
+    [Fact]
+    public async Task TheIngestAfterThePlay_RunsAsTheAfterPlayLegThatKeepsFilesByDefault()
+    {
+        var seen = new List<(BackupOverflowOperation Operation, BackupOverflowChoice? Remembered)?>();
+        _synchronizer.OnSync = () => seen.Add(BackupOverflowAnswer.Active is { } active ? (active.Operation, active.Remembered) : null);
+
+        await Run(NewSession());
+
+        seen.Should().Equal(null, (BackupOverflowOperation.AfterPlay, BackupOverflowChoice.AdoptInPlace));
+    }
+
+    [Fact]
+    public async Task TheLaunchReportsItsPhase_SoTheButtonDoesNotClaimTheGameRunsWhileTheLoadoutIsApplied()
+    {
+        var phases = new List<LaunchPhase?>();
+        using var subscription = _active.WhenPhase(_installation).Subscribe(phases.Add);
+
+        var session = NewSession();
+        await Run(session);
+        session.Release();
+
+        phases.Should().Equal(null, LaunchPhase.Preparing, LaunchPhase.Running, LaunchPhase.Finishing, null);
+    }
+
     [Fact]
     public async Task AnUnavailableLaunchLock_IsLoggedWithItsException()
     {

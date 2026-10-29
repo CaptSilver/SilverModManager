@@ -40,6 +40,14 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         public string GameName = "";
         public GameInstallation Installation = null!;
         public LaunchButtonViewModel ViewModel = null!;
+        public ActiveLaunchSessions Sessions = null!;
+
+        /// <summary>What the launch session does once the loadout is applied and the process exists.</summary>
+        public void GameIsRunning()
+        {
+            Sessions.Register(Installation);
+            Sessions.ReportPhase(Installation, LaunchPhase.Running);
+        }
     }
 
     private async Task<Rig> Build(PresenterRig? presenter = null, Func<Exception>? failure = null, bool withoutRunTool = false, TimeProvider? clock = null, ActiveLaunchSessions? sessions = null, IConnection? connection = null)
@@ -67,6 +75,7 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
             });
 
         var monitor = Provider.GetRequiredService<IJobMonitor>();
+        rig.Sessions = sessions ?? new ActiveLaunchSessions(null);
         rig.ViewModel = new LaunchButtonViewModel(
             NullLogger<ILaunchButtonViewModel>.Instance,
             toolManager,
@@ -74,7 +83,7 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
             monitor,
             presenter?.Services ?? Provider,
             Provider.GetRequiredService<GameRunningTracker>(),
-            sessions ?? new ActiveLaunchSessions(null),
+            rig.Sessions,
             clock)
         {
             LoadoutId = loadout.LoadoutId,
@@ -98,7 +107,9 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         var rig = await Build();
         var run = rig.ViewModel.Command.Execute().ToTask();
         await rig.Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
-        rig.ViewModel.Label.Should().Be(Language.LaunchButtonViewModel_LaunchGame_RUNNING);
+        rig.ViewModel.Label.Should().Be(Language.LaunchButtonViewModel_LaunchGame_APPLYING, "no game exists until the session reports it running");
+        rig.GameIsRunning();
+        await Eventually(() => rig.ViewModel.Label == Language.LaunchButtonViewModel_LaunchGame_RUNNING);
         rig.ViewModel.IsWaitingForSteam.Should().BeFalse();
 
         rig.Waiting.OnNext(true);
@@ -167,6 +178,7 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         var rig = await Build(clock: clock);
         var run = rig.ViewModel.Command.Execute().ToTask();
         await rig.Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        rig.GameIsRunning();
         rig.Waiting.OnNext(true);
         await Eventually(() => rig.ViewModel.IsWaitingForSteam);
 
@@ -200,6 +212,31 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         rig.ViewModel.Label.Should().Be(string.Format(Language.LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM, rig.GameName));
         rig.Finish.SetResult();
         await run.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task LaunchLabel_FollowsThePhase()
+    {
+        var rig = await Build();
+        var run = rig.ViewModel.Command.Execute().ToTask();
+        await rig.Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var applying = Language.LaunchButtonViewModel_LaunchGame_APPLYING;
+        rig.ViewModel.Label.Should().Be(applying).And.NotBe(Language.LaunchButtonViewModel_LaunchGame_RUNNING);
+
+        rig.Sessions.Register(rig.Installation);
+        rig.Sessions.ReportPhase(rig.Installation, LaunchPhase.Preparing);
+        await Task.Delay(50);
+        rig.ViewModel.Label.Should().Be(applying, "the loadout is still being applied while the session prepares");
+
+        rig.Sessions.ReportPhase(rig.Installation, LaunchPhase.Running);
+        await Eventually(() => rig.ViewModel.Label == Language.LaunchButtonViewModel_LaunchGame_RUNNING);
+
+        rig.Sessions.ReportPhase(rig.Installation, LaunchPhase.Finishing);
+        await Eventually(() => rig.ViewModel.Label == Language.LaunchButtonViewModel_LaunchGame_FINISHING);
+
+        rig.Finish.SetResult();
+        await run.WaitAsync(TimeSpan.FromSeconds(10));
+        rig.ViewModel.Label.Should().Be(Language.LaunchButtonViewModel_LaunchGame_LAUNCH);
     }
 
     [Fact]

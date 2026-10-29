@@ -332,7 +332,9 @@ public class HardlinkBackendTests(ITestOutputHelper helper)
 
         var act = () => ((ALoadoutSynchronizer)Synchronizer).ResolveBackupOverflow(tree, GameInstallation, preset: null, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<BackupOverflowException>()).Which.Message.Should().Contain("6.0 GB").And.Contain("--large-files backup");
+        var refusal = (await act.Should().ThrowAsync<BackupOverflowException>()).Which;
+        refusal.Message.Should().Contain("6.0 GB");
+        refusal.CommandLineHint.Should().Contain("--large-files backup");
     }
 
     private static SyncNode BackupNode(ulong hash, Size size) => new()

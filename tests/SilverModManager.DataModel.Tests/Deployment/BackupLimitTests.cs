@@ -34,6 +34,8 @@ public class BackupLimitTests(ITestOutputHelper helper) : AStubbedGameIsolatedTe
         // The question is settled before the synchronizer lock is taken or a file is read; the default prompt refuses.
         var act = () => ((ALoadoutSynchronizer)Synchronizer).ResolveBackupOverflow(tree, GameInstallation, preset: null, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<BackupOverflowException>()).Which.Message.Should().Contain("6.0 GB").And.Contain("--large-files backup");
+        var refusal = (await act.Should().ThrowAsync<BackupOverflowException>()).Which;
+        refusal.Message.Should().Contain("6.0 GB");
+        refusal.CommandLineHint.Should().Contain("--large-files backup");
     }
 }

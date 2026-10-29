@@ -14,7 +14,7 @@ namespace SilverModManager.App.UI.Pages.MyGames;
 
 /// <summary>
 /// Puts the backup-cap question to the player in a modal dialog. Closing the window answers the cancel button: a
-/// closed window is not consent to copy gigabytes.
+/// closed window is not consent to copy gigabytes (after play it keeps the files, since nothing can be undone there).
 /// </summary>
 public sealed class DialogBackupOverflowPrompt(IServiceProvider serviceProvider, IWindowManager windowManager) : IBackupOverflowPrompt
 {
@@ -46,6 +46,10 @@ public sealed class DialogBackupOverflowPrompt(IServiceProvider serviceProvider,
 
         if (pressed == ButtonDefinitionId.Accept) return BackupOverflowChoice.BackUpAnyway;
         if (pressed == BackupOverflowPrompt.Adopt) return BackupOverflowChoice.AdoptInPlace;
+
+        // After the game closed its files are already on disk: closing the window can only mean "leave them", the
+        // harmless answer, not a refusal that would report the loadout as still applied.
+        if (overflow.Operation == BackupOverflowOperation.AfterPlay && overflow.CanAdopt) return BackupOverflowChoice.AdoptInPlace;
         return BackupOverflowChoice.Refuse;
     }
 }

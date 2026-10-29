@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.NexusModsApi;
@@ -63,6 +64,7 @@ public sealed class LaunchSession
     private IGameProcess? _process;
     private Task? _terminating;
 
+    private GameInstallation? _installation;
     private InstallationLock? _lock;
     private IDisposable? _registration;
     private bool _started;
@@ -264,6 +266,8 @@ public sealed class LaunchSession
         }
 
         _registration = _activeSessions.Register(context.Installation);
+        _installation = context.Installation;
+        _activeSessions.ReportPhase(context.Installation, LaunchPhase.Preparing);
 
         foreach (var gate in _gates)
         {
@@ -289,6 +293,12 @@ public sealed class LaunchSession
                 await gate.Prepare(context, cancellationToken);
                 prepared.Add(gate);
             }
+        }
+        catch (BackupOverflowException declined) when (declined.Declined)
+        {
+            // The player answered the backup question a moment ago with "don't start"; nothing was written.
+            LogCause(declined, "{Game} was not started: the backup question for {Loadout} was declined", game, context.LoadoutName);
+            return new LaunchFailure($"{game} was not started; nothing was changed.", Refused: true, Cause: declined);
         }
         catch (Exception e)
         {
@@ -440,6 +450,7 @@ public sealed class LaunchSession
     {
         _phase = phase;
         if (_stop is not null) _stop.Phase = phase;
+        if (_installation is { } installation) _activeSessions.ReportPhase(installation, phase);
     }
 
     private void OnStopping(PosixSignal signal, LaunchPhase signalPhase)
@@ -532,6 +543,13 @@ public sealed class LaunchSession
         void Record(Exception e, string what)
         {
             LogCause(e, "{What} failed for {Loadout}", what, context.LoadoutName);
+            if (e is BackupOverflowException { Declined: true })
+            {
+                failure ??= new LaunchFailure($"{context.Installation.Game.DisplayName} has exited. Loadout '{context.LoadoutName}' is still applied, and the files the game wrote are not in it yet; the app asks about them again when you apply or switch.",
+                    Cause: e, LoadoutStillApplied: true);
+                return;
+            }
+
             failure ??= new LaunchFailure($"{context.Installation.Game.DisplayName} has exited, but {what} failed: {e.Message} " +
                                           $"Loadout '{context.LoadoutName}' is still applied. Apply or revert it from SilverModManager before playing the game outside it.",
                 Cause: e, LoadoutStillApplied: true);
@@ -560,6 +578,9 @@ public sealed class LaunchSession
 
         try
         {
+            // Files a game writes into its own folder are the game's: keep them where they are unless keeping
+            // would lose files, and never put the launch's wording on a question asked after the game closed.
+            using var leg = BackupOverflowAnswer.BeginLeg(BackupOverflowOperation.AfterPlay, BackupOverflowChoice.AdoptInPlace);
             await _synchronizer.Synchronize(context.LoadoutId);
         }
         catch (Exception e)

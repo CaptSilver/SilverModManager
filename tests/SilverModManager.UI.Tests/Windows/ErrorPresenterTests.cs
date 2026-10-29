@@ -11,7 +11,9 @@ using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Pages.Diagnostics;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
+using NexusMods.Paths;
 using SilverModManager.Sdk.Errors;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.UI.Tests.Helpers;
@@ -111,6 +113,33 @@ public class ErrorPresenterTests(IServiceProvider provider) : AUiTest(provider)
         var dialog = rig.Dialogs.Should().ContainSingle().Subject;
         dialog.WindowTitle.Should().NotBe("The loadout was not applied");
         PresenterRig.Body(dialog).Should().Contain("written to the log");
+    }
+
+    [Fact]
+    public async Task ErrorPresenter_ShowsNothingForADeclinedQuestion()
+    {
+        var installation = (await SeedLoadoutRow(GameStore.Steam, "Declined")).InstallationInstance;
+        var declined = new BackupOverflowException(installation, new BackupOverflow(Size.GB * 45, 95, Size.Zero, 0, Size.GB * 5, BackupOverflowOperation.Launch)) { Declined = true };
+        var rig = new PresenterRig(Provider);
+
+        // The way a Play that was cancelled at the question reaches the presenter: the launch rethrows the cause itself.
+        await rig.Presenter.Report(declined, "launching the game");
+        await rig.Presenter.Report(new AggregateException(new BackupOverflowException(installation, declined.Overflow) { Declined = true }), "applying");
+
+        rig.Dialogs.Should().BeEmpty("the player answered the question a moment ago and nothing was changed");
+    }
+
+    [Fact]
+    public async Task ARefusedQuestionThatWasNotAnswered_StillGetsItsDialog_WithoutACommandLine()
+    {
+        var installation = (await SeedLoadoutRow(GameStore.Steam, "Refused")).InstallationInstance;
+        var refused = new BackupOverflowException(installation, new BackupOverflow(Size.GB * 45, 95, Size.Zero, 0, Size.GB * 5, BackupOverflowOperation.Apply));
+        var rig = new PresenterRig(Provider);
+
+        await rig.Presenter.Report(refused, "applying");
+
+        var body = PresenterRig.Body(rig.Dialogs.Should().ContainSingle().Subject);
+        body.Should().Contain("nothing was changed").And.NotContain("silvermod").And.NotContain("--large-files");
     }
 
     [Fact]
