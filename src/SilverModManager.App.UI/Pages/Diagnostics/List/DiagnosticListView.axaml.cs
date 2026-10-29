@@ -17,15 +17,15 @@ namespace SilverModManager.App.UI.Pages.Diagnostics;
 [UsedImplicitly]
 public partial class DiagnosticListView : ReactiveUserControl<IDiagnosticListViewModel>
 {
-    private (DiagnosticId Id, string Title, string Summary)[] _shownIds = [];
+    private DiagnosticRowKey[] _shownRows = [];
 
     private void ShowEntries(IDiagnosticEntryViewModel[] entries)
     {
         var scroller = HealthCheckItemsControl.FindAncestorOfType<ScrollViewer>();
         var offset = scroller?.Offset ?? default;
-        var ids = entries.Select(entry => (entry.Diagnostic.Id, entry.Title, entry.Summary)).ToArray();
-        var keepOffset = scroller is not null && ids.SequenceEqual(_shownIds);
-        _shownIds = ids;
+        var rows = DiagnosticListScroll.KeysOf(entries);
+        var keepOffset = scroller is not null && DiagnosticListScroll.KeepsOffset(_shownRows, rows);
+        _shownRows = rows;
 
         HealthCheckItemsControl.ItemsSource = entries;
         if (scroller is null) return;

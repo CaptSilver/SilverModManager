@@ -213,6 +213,28 @@ public class DiagnosticListVirtualizationTests(IServiceProvider provider) : AUiT
     }
 
     [Fact]
+    public async Task Test_ReplacingTheEntriesWithTheSameDiagnosticsAtTheEnd_KeepsTheScrollOffset()
+    {
+        var diagnostics = Diagnostics(1000);
+        var (vm, view) = await ShowAsync(0);
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            vm.DiagnosticEntries = Wrap(diagnostics);
+            Dispatcher.UIThread.RunJobs();
+            var scroller = List(view).FindAncestorOfType<ScrollViewer>()!;
+            scroller.ScrollToEnd();
+            Dispatcher.UIThread.RunJobs();
+            var end = scroller.Offset.Y;
+            end.Should().BeGreaterThan(0);
+
+            vm.DiagnosticEntries = Wrap(diagnostics);
+            Dispatcher.UIThread.RunJobs();
+
+            scroller.Offset.Y.Should().Be(end);
+        });
+    }
+
+    [Fact]
     public async Task Test_ReplacingTheEntriesWithOtherDiagnostics_ScrollsBackToTheTop()
     {
         var (vm, view) = await ShowAsync(0);
