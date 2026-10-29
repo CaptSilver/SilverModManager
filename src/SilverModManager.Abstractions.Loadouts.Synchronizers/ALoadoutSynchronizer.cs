@@ -291,8 +291,13 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         foreach (var other in new[] { first, second })
         {
             if (other.Identity.IsNone || other.Identity.Kind == HashKind.Sha1) continue;
-            Logger.LogTrace("No relation joins the SHA-1 and the {OtherKind} part of `{Path}`: {Identity} ({Size} bytes) against {OtherIdentity} ({OtherSize} bytes); searched the local hashes and the downloaded hashes",
-                other.Identity.Kind, path, part.Identity, part.Size, other.Identity, other.Size);
+            var databases = _fileHashService.Databases.Count;
+            if (other.Identity.TryXxHash3(out var xxHash3) && _fileHashService.TryFindRelation(xxHash3, out var relation))
+                Logger.LogTrace("Relation for {XxHash3} of `{Path}` names {RelationSha1} ({RelationSize} bytes), not {Identity} ({Size} bytes); searched {Databases} hash database(s)",
+                    xxHash3, path, relation.Sha1, relation.Size, part.Identity, part.Size, databases);
+            else
+                Logger.LogTrace("No relation for the {OtherKind} part {OtherIdentity} of `{Path}` to join {Identity} ({Size} bytes); searched {Databases} hash database(s)",
+                    other.Identity.Kind, other.Identity, path, part.Identity, part.Size, databases);
         }
     }
 
@@ -1247,7 +1252,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         if (record.Size.Value != size) return false;
         if (record.Identity.Kind == identity.Kind) return record.Identity.Equals(identity);
         if (record.Identity.Kind == HashKind.Sha1 && identity.TryXxHash3(out var xxHash3) && _fileHashService.TryFindRelation(xxHash3, out var relation))
-            return relation.Sha1 == Sha1Value.From(record.Identity.Digest) && relation.Size.Value == size;
+        {
+            var joined = relation.Sha1 == Sha1Value.From(record.Identity.Digest) && relation.Size.Value == size;
+            if (!joined)
+                Logger.LogTrace("`{Path}` is not the listed file: the relation for {XxHash3} names {RelationSha1} ({RelationSize} bytes), the list has {ListedIdentity}", path, xxHash3, relation.Sha1, relation.Size, record.Identity);
+            return joined;
+        }
         Logger.LogTrace("`{Path}` is listed by path and size only: no relation joins the list's {ListedIdentity} to the disk's {Identity}", path, record.Identity, identity);
         return true;
     }
