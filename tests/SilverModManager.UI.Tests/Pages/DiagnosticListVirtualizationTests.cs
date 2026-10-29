@@ -235,6 +235,34 @@ public class DiagnosticListVirtualizationTests(IServiceProvider provider) : AUiT
     }
 
     [Fact]
+    public async Task Test_AnItemsSourceSwapThatResetsTheScroller_IsUndoneForTheSameDiagnostics()
+    {
+        // Headless Avalonia keeps the offset across an ItemsSource swap by itself, so the restore in the view would
+        // go unnoticed. The swap here resets the offset the way a layout pass on the real list can, and the view has
+        // to put the user's place back.
+        var diagnostics = Diagnostics(1000);
+        var (vm, view) = await ShowAsync(0);
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            vm.DiagnosticEntries = Wrap(diagnostics);
+            Dispatcher.UIThread.RunJobs();
+            var list = List(view);
+            var scroller = list.FindAncestorOfType<ScrollViewer>()!;
+            scroller.Offset = new Avalonia.Vector(0, 3000);
+            Dispatcher.UIThread.RunJobs();
+            list.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == ItemsControl.ItemsSourceProperty) scroller.Offset = default;
+            };
+
+            vm.DiagnosticEntries = Wrap(diagnostics);
+            Dispatcher.UIThread.RunJobs();
+
+            scroller.Offset.Y.Should().Be(3000);
+        });
+    }
+
+    [Fact]
     public async Task Test_ReplacingTheEntriesWithOtherDiagnostics_ScrollsBackToTheTop()
     {
         var (vm, view) = await ShowAsync(0);
