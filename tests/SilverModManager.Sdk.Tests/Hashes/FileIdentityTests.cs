@@ -171,4 +171,56 @@ public class FileIdentityTests
         ia.GetHashCode().Should().Be(ia2.GetHashCode());
         ia.Equals(ib).Should().BeFalse();
     }
+
+    [Fact]
+    public void EveryFactoryRoundTripsThroughItsExtractor()
+    {
+        var hashes = MultiHasher.HashStream(new MemoryStream("round trip"u8.ToArray())).Result;
+
+        FileIdentity.Md5(hashes.Md5).TryMd5(out var md5).Should().BeTrue();
+        md5.Should().Be(hashes.Md5);
+
+        FileIdentity.Crc32(hashes.Crc32).TryCrc32(out var crc32).Should().BeTrue();
+        crc32.Should().Be(hashes.Crc32);
+
+        FileIdentity.XxHash64(hashes.XxHash64).TryXxHash64(out var xxHash64).Should().BeTrue();
+        xxHash64.Should().Be(hashes.XxHash64);
+
+        FileIdentity.Sha1(hashes.Sha1).TrySha1(out var sha1).Should().BeTrue();
+        sha1.Should().Be(hashes.Sha1);
+    }
+
+    [Fact]
+    public void AnExtractorRefusesAnotherKind()
+    {
+        var xxh3 = FileIdentity.XxHash3(Hash.From(1));
+        xxh3.TrySha1(out _).Should().BeFalse();
+        xxh3.TryMd5(out _).Should().BeFalse();
+        xxh3.TryCrc32(out _).Should().BeFalse();
+        xxh3.TryXxHash64(out _).Should().BeFalse("an xxHash64 and an xxHash3 are both eight bytes but not the same name");
+        FileIdentity.XxHash64(Hash.From(1)).TryXxHash3(out _).Should().BeFalse();
+        FileIdentity.Sha1(Sha1Value.From(new byte[20])).TryCrc32(out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Sha256Identity_HasThirtyTwoBytesAndItsOwnName()
+    {
+        var identity = FileIdentity.Sha256(Sha256Value.From(new byte[32]));
+        identity.Kind.Should().Be(HashKind.Sha256);
+        identity.Digest.Length.Should().Be(32);
+        identity.ToString().Should().StartWith("sha256:");
+    }
+
+    [Theory]
+    [InlineData(HashKind.XxHash3)]
+    [InlineData(HashKind.Sha1)]
+    [InlineData(HashKind.Md5)]
+    [InlineData(HashKind.XxHash64)]
+    [InlineData(HashKind.Crc32)]
+    public void MultiHashIdentity_MatchesTheFactoryForThatKind(HashKind kind)
+    {
+        var hashes = MultiHasher.HashStream(new MemoryStream("multi"u8.ToArray())).Result;
+        hashes.Identity(kind).Should().Be(FileIdentity.Of(hashes, kind));
+        hashes.Identity(kind).Kind.Should().Be(kind);
+    }
 }

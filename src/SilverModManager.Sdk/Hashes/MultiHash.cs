@@ -42,4 +42,9 @@ public record MultiHash
     /// The size of the data in bytes.
     /// </summary>
     public required Size Size { get; init; }
+
+    /// <summary>
+    /// The digest of <paramref name="kind"/> as an identity. Throws for a kind this record does not carry.
+    /// </summary>
+    public FileIdentity Identity(HashKind kind) => FileIdentity.Of(this, kind);
 }

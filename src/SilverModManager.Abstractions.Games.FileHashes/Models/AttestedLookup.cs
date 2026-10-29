@@ -7,4 +7,8 @@ namespace SilverModManager.Abstractions.Games.FileHashes.Models;
 /// <summary>
 /// One <see cref="AttestedFile"/> row, detached from the database it was read from.
 /// </summary>
-public readonly record struct AttestedLookup(EntityId Id, RelativePath Path, Sha1Value Sha1, Size Size, DateTimeOffset ModifiedUtc);
+public readonly record struct AttestedLookup(EntityId Id, RelativePath Path, Sha1Value Sha1, Size Size, DateTimeOffset ModifiedUtc)
+{
+    /// <summary>The manifest's SHA-1 as an identity.</summary>
+    public FileIdentity Identity => FileIdentity.Sha1(Sha1);
+}

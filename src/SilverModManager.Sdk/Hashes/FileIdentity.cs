@@ -58,6 +58,28 @@ public readonly struct FileIdentity : IEquatable<FileIdentity>
     /// </summary>
     public static FileIdentity Sha1(Sha1Value sha1) => new(HashKind.Sha1, sha1.AsSpan());
 
+    /// <summary>An MD5 identity, the sixteen bytes <see cref="Md5Value.AsSpan"/> yields.</summary>
+    public static FileIdentity Md5(Md5Value md5) => new(HashKind.Md5, md5.AsSpan());
+
+    /// <summary>A SHA-256 identity, the thirty-two bytes <see cref="Sha256Value.AsSpan"/> yields.</summary>
+    public static FileIdentity Sha256(Sha256Value sha256) => new(HashKind.Sha256, sha256.AsSpan());
+
+    /// <summary>A CRC-32 identity: four big-endian bytes.</summary>
+    public static FileIdentity Crc32(Crc32Value crc32)
+    {
+        Span<byte> bytes = stackalloc byte[sizeof(uint)];
+        BinaryPrimitives.WriteUInt32BigEndian(bytes, crc32.Value);
+        return new FileIdentity(HashKind.Crc32, bytes);
+    }
+
+    /// <summary>An xxHash64 identity: eight big-endian bytes, tagged apart from xxHash3 so the two never compare equal.</summary>
+    public static FileIdentity XxHash64(Hash hash)
+    {
+        Span<byte> bytes = stackalloc byte[sizeof(ulong)];
+        BinaryPrimitives.WriteUInt64BigEndian(bytes, hash.Value);
+        return new FileIdentity(HashKind.XxHash64, bytes);
+    }
+
     /// <summary>
     /// An identity of any kind, including one this build has no factory for.
     /// </summary>
@@ -78,19 +100,9 @@ public readonly struct FileIdentity : IEquatable<FileIdentity>
         {
             case HashKind.XxHash3: return XxHash3(hashes.XxHash3);
             case HashKind.Sha1: return Sha1(hashes.Sha1);
-            case HashKind.Md5: return new FileIdentity(kind, hashes.Md5.AsSpan());
-            case HashKind.XxHash64:
-            {
-                Span<byte> bytes = stackalloc byte[sizeof(ulong)];
-                BinaryPrimitives.WriteUInt64BigEndian(bytes, hashes.XxHash64.Value);
-                return new FileIdentity(kind, bytes);
-            }
-            case HashKind.Crc32:
-            {
-                Span<byte> bytes = stackalloc byte[sizeof(uint)];
-                BinaryPrimitives.WriteUInt32BigEndian(bytes, hashes.Crc32.Value);
-                return new FileIdentity(kind, bytes);
-            }
+            case HashKind.Md5: return Md5(hashes.Md5);
+            case HashKind.XxHash64: return XxHash64(hashes.XxHash64);
+            case HashKind.Crc32: return Crc32(hashes.Crc32);
             default:
                 throw new InvalidOperationException($"A MultiHash has no {kind} digest");
         }
@@ -107,6 +119,58 @@ public readonly struct FileIdentity : IEquatable<FileIdentity>
     public bool TryXxHash3(out Hash hash)
     {
         if (Kind == HashKind.XxHash3 && _length == sizeof(ulong))
+        {
+            hash = Hash.From(BinaryPrimitives.ReadUInt64BigEndian(Digest));
+            return true;
+        }
+
+        hash = default;
+        return false;
+    }
+
+    /// <summary>The SHA-1 of a SHA-1 identity, or false for any other kind.</summary>
+    public bool TrySha1(out Sha1Value sha1)
+    {
+        if (Kind == HashKind.Sha1 && _length == 20)
+        {
+            sha1 = Sha1Value.From(Digest);
+            return true;
+        }
+
+        sha1 = default;
+        return false;
+    }
+
+    /// <summary>The MD5 of an MD5 identity, or false for any other kind.</summary>
+    public bool TryMd5(out Md5Value md5)
+    {
+        if (Kind == HashKind.Md5 && _length == 16)
+        {
+            md5 = Md5Value.From(Digest);
+            return true;
+        }
+
+        md5 = default;
+        return false;
+    }
+
+    /// <summary>The CRC-32 of a CRC-32 identity, or false for any other kind.</summary>
+    public bool TryCrc32(out Crc32Value crc32)
+    {
+        if (Kind == HashKind.Crc32 && _length == sizeof(uint))
+        {
+            crc32 = Crc32Value.From(BinaryPrimitives.ReadUInt32BigEndian(Digest));
+            return true;
+        }
+
+        crc32 = default;
+        return false;
+    }
+
+    /// <summary>The xxHash64 of an xxHash64 identity, or false for any other kind.</summary>
+    public bool TryXxHash64(out Hash hash)
+    {
+        if (Kind == HashKind.XxHash64 && _length == sizeof(ulong))
         {
             hash = Hash.From(BinaryPrimitives.ReadUInt64BigEndian(Digest));
             return true;
