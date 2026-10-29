@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using FluentAssertions;
+using SilverModManager.Games.Larian.BaldursGate3;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.UI.Tests;
@@ -26,7 +27,7 @@ public class LocationDisplayNameTests
         }
     }
 
-    private static IEnumerable<IReadOnlyDictionary<string, string>> GameLocationNames()
+    private static IEnumerable<IReadOnlyDictionary<string, string>> GameNameMaps(string fieldSuffix)
     {
         foreach (var dll in Directory.GetFiles(AppContext.BaseDirectory, "SilverModManager.*.dll"))
         {
@@ -38,7 +39,7 @@ public class LocationDisplayNameTests
             foreach (var type in types.Where(t => !t.ContainsGenericParameters))
             {
                 var fields = type.GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-                    .Where(f => f.FieldType == typeof(IReadOnlyDictionary<string, string>) && f.Name.EndsWith("LocationNames", StringComparison.Ordinal)).ToArray();
+                    .Where(f => f.FieldType == typeof(IReadOnlyDictionary<string, string>) && f.Name.EndsWith(fieldSuffix, StringComparison.Ordinal)).ToArray();
                 if (fields.Length == 0) continue;
                 RuntimeHelpers.RunClassConstructor(type.TypeHandle);
                 foreach (var field in fields) yield return (IReadOnlyDictionary<string, string>)field.GetValue(null)!;
@@ -47,13 +48,13 @@ public class LocationDisplayNameTests
     }
 
     // Ids whose label is deliberately the id itself: the plain word is what a player calls the place.
-    private static readonly string[] MayShareTheirLabel = ["Saves", "AppData", "Mods"];
+    private static readonly string[] MayShareTheirLabel = [LocationId.Saves.ToString(), LocationId.AppData.ToString(), Bg3Constants.ModsLocationId.ToString()];
 
     [Fact]
     public void EveryLocationIdDefinedInTheApp_IsNamedByTheAppOrItsGame()
     {
         var all = DefinedLocationIds().ToArray();
-        var gameNames = GameLocationNames().SelectMany(d => d).ToDictionary(kv => kv.Key, kv => kv.Value);
+        var gameNames = GameNameMaps("LocationNames").SelectMany(d => d).ToDictionary(kv => kv.Key, kv => kv.Value);
 
         all.Select(a => a.Id.ToString()).Should().Contain(["WitcherDocuments", "PlayerProfiles", "ScriptExtenderConfig", "OpenMwConfig", "Mods", "Me3Mods", "Me3Host", "Data"]);
         var unnamed = all.Where(a => a.Id != LocationId.Unknown && !a.Id.IsNamed && !gameNames.ContainsKey(a.Id.ToString())).Select(a => a.Field);
@@ -64,14 +65,15 @@ public class LocationDisplayNameTests
             .Select(kv => kv.Key).Should().BeEmpty();
     }
 
-    // Each name ends "in <name>" and "to <name>": a folder noun needs its article, so it is a phrase, not a label.
+    // A sentence phrase for a folder sits after "in" and "to" ("in the mod loader folder"), so a phrase that
+    // names a folder needs its article. Row labels ("Mod loader folder") are not phrases and are not checked.
     [Fact]
-    public void EveryNameReadsAfterInAndTo()
+    public void AFolderNameInASentence_TakesItsArticle()
     {
-        var gameNames = GameLocationNames().SelectMany(d => d).Select(kv => (Field: kv.Key, Sentence: kv.Value));
-        var appNames = DefinedLocationIds().Where(a => a.Id.IsNamed).Select(a => (a.Field, Sentence: a.Id.SentenceName));
+        var gamePhrases = GameNameMaps("LocationSentenceNames").SelectMany(d => d).Select(kv => (Field: kv.Key, Sentence: kv.Value));
+        var appPhrases = DefinedLocationIds().Where(a => a.Id.IsNamed).Select(a => (a.Field, Sentence: a.Id.SentenceName));
 
-        gameNames.Concat(appNames)
+        gamePhrases.Concat(appPhrases)
             .Where(n => n.Sentence.Contains("folder", StringComparison.OrdinalIgnoreCase) && !n.Sentence.StartsWith("the ", StringComparison.Ordinal))
             .Select(n => n.Field).Should().BeEmpty();
     }
