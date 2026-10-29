@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
-using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -23,7 +22,10 @@ internal class GameRegistry : IGameRegistry
     private readonly HashSet<(EntityId Row, string Folder)> _loggedAmbiguousMoves = [];
     private readonly Dictionary<EntityId, string> _pendingMoves = [];
 
-    private Optional<ImmutableArray<GameInstallation>> _cachedInstallations = Optional<ImmutableArray<GameInstallation>>.None;
+    // A reference, not the array struct itself: LocateGameInstallations reads it outside the lock and
+    // RefreshInstallation writes it from a background thread, and a struct wider than a word can be read torn.
+    private sealed record Cached(ImmutableArray<GameInstallation> Installations);
+    private volatile Cached? _cachedInstallations;
 
     public GameRegistry(IServiceProvider serviceProvider)
     {
@@ -38,18 +40,17 @@ internal class GameRegistry : IGameRegistry
     {
         // Under the lock so a clear cannot land between RefreshInstallation's read and write and be undone by it,
         // and a locate in flight finishes before the cache is dropped.
-        lock (_lock) _cachedInstallations = Optional<ImmutableArray<GameInstallation>>.None;
+        lock (_lock) _cachedInstallations = null;
     }
 
     public void RefreshInstallation(GameInstallation located)
     {
         lock (_lock)
         {
-            if (!_cachedInstallations.HasValue) return;
+            if (_cachedInstallations is not { } current) return;
 
             var folder = InstallFolder(located);
-            var cached = _cachedInstallations.Value;
-            var builder = cached.ToBuilder();
+            var builder = current.Installations.ToBuilder();
             for (var i = 0; i < builder.Count; i++)
             {
                 var candidate = builder[i];
@@ -58,17 +59,17 @@ internal class GameRegistry : IGameRegistry
                 builder[i] = located;
             }
 
-            _cachedInstallations = builder.ToImmutable();
+            _cachedInstallations = new Cached(builder.ToImmutable());
         }
     }
 
     public ImmutableArray<GameInstallation> LocateGameInstallations()
     {
-        if (_cachedInstallations.HasValue) return _cachedInstallations.Value;
+        if (_cachedInstallations is { } cached) return cached.Installations;
 
         lock (_lock)
         {
-            if (_cachedInstallations.HasValue) return _cachedInstallations.Value;
+            if (_cachedInstallations is { } locked) return locked.Installations;
 
             var results = new List<GameInstallation>();
             var problems = new ProblemSink();
@@ -114,7 +115,7 @@ internal class GameRegistry : IGameRegistry
 
             var installations = results.ToImmutableArray();
             Problems = problems.Problems;
-            _cachedInstallations = installations;
+            _cachedInstallations = new Cached(installations);
 
             _logger.LogInformation("Found {Count} game installations", installations.Length);
             return installations;
