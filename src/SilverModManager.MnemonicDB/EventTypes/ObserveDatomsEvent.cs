@@ -11,6 +11,13 @@ namespace SilverModManager.MnemonicDB.EventTypes;
 public record ObserveDatomsEvent<TDescriptor>(TDescriptor Descriptor, IObserver<ChangeSet<Datom, DatomKey, IDb>> Observer) : IObserveDatomsEvent
 where TDescriptor : ISliceDescriptor
 {
+    public string Describe(IDb db)
+    {
+        var (from, to, _) = Descriptor;
+        var attribute = from.A.Value <= db.AttributeCache.MaxAttrId ? db.AttributeCache.GetSymbol(from.A).ToString() : from.A.ToString();
+        return $"{typeof(TDescriptor).Name} on {attribute}, entities {from.E} to {to.E}";
+    }
+
     public (Datom From, Datom To, IObserver<ChangeSet<Datom, DatomKey, IDb>> Observer) Prime(IDb db)
     {
         var datoms = db.Datoms(Descriptor);

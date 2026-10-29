@@ -289,7 +289,7 @@ public sealed class Connection : IConnection
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An observer failed while being primed");
+            _logger.LogError(ex, "An observer failed while being primed and was dropped: {Subscription}", observeDatomsEvent.Describe(Db));
             primed = default;
             return false;
         }
