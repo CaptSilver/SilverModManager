@@ -1,6 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework.Helpers;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.SingleProcess;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Networking.Thunderstore.Tests.Fixtures;
 using SilverModManager.Abstractions.Games;
@@ -40,5 +45,58 @@ public class CollectionReapplyOrderVerbTests(ITestOutputHelper helper) : AIsolat
         var (_, output) = await ThunderstoreVerbFixtures.Run(ServiceProvider, "collection", "reapply-order", "--help");
 
         output.Should().Contain("reapply-order");
+    }
+
+    /// <summary>A collection of the offline helper installed into the loadout, with no mods: enough for the verb to find and re-apply.</summary>
+    private async Task<Loadout.ReadOnly> LoadoutWithACollection()
+    {
+        var (file, revision, _) = await new OfflineCollections(ServiceProvider, Connection, LibraryService, TemporaryFileManager).Create([]);
+        var loadout = await CreateLoadout();
+
+        using var tx = Connection.BeginTransaction();
+        var group = new NexusCollectionLoadoutGroup.New(tx, out var id)
+        {
+            CollectionId = revision.Collection,
+            RevisionId = revision,
+            LibraryFileId = file,
+            CollectionGroup = new CollectionGroup.New(tx, id)
+            {
+                IsReadOnly = true,
+                LoadoutItemGroup = new LoadoutItemGroup.New(tx, id)
+                {
+                    IsGroup = true,
+                    LoadoutItem = new LoadoutItem.New(tx, id) { Name = revision.Collection.Name, LoadoutId = loadout.LoadoutId, IsDisabled = true },
+                },
+            },
+        };
+        await tx.Commit();
+        return loadout;
+    }
+
+    [Fact]
+    public async Task AReapplyNamesTheCollectionAndExitsZero()
+    {
+        var loadout = await LoadoutWithACollection();
+
+        var (code, output) = await ThunderstoreVerbFixtures.Run(ServiceProvider, "collection", "reapply-order", "--loadout", loadout.Name, "--collection", "offline");
+
+        code.Should().Be(0, output);
+        output.Should().Contain("Offline: the load order was applied again.");
+    }
+
+    [Fact]
+    public async Task ARefusalWhileTheGameRunsIsAPlainSentenceAndExitsOne()
+    {
+        var loadout = await LoadoutWithACollection();
+        ServiceProvider.GetRequiredService<FakeGameLaunchSession>().Running = true;
+
+        // The refusal is printed through "{0}", which the shared Run helper reads back unformatted.
+        var renderer = new LoggingRenderer();
+        var code = await ServiceProvider.GetRequiredService<CommandLineConfigurator>()
+            .RunAsync(["collection", "reapply-order", "--loadout", loadout.Name, "--collection", "offline"], renderer, CancellationToken.None);
+        var output = string.Concat(renderer.Logs.OfType<Text>().Select(t => string.Format(t.Template, t.Arguments ?? [])));
+
+        code.Should().Be(1, output);
+        output.Should().Contain("is running from SilverModManager").And.Contain("apply the load order again").And.NotContain("Details are in the log").And.NotContain(" at SilverModManager");
     }
 }
