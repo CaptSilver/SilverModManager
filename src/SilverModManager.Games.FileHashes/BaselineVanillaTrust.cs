@@ -1,8 +1,12 @@
 using System.Collections.Concurrent;
 using NexusMods.Hashing.xxHash3;
+using Microsoft.Extensions.Logging;
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.Abstractions.Games.Merge;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.Abstractions.Steam.Values;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
@@ -18,13 +22,23 @@ namespace SilverModManager.Games.FileHashes;
 /// Absence of a non-vanilla row is not enough, because a baseline also leaves unlisted, ignored and unreadable files
 /// without one, and a file edited after the baseline was built has no row either.
 /// </summary>
-public sealed class BaselineVanillaTrust(IFileHashesService fileHashes) : IVanillaTrust
+public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotManifestSource? manifestSource = null, ILogger<BaselineVanillaTrust>? logger = null) : IVanillaTrust
 {
     private sealed record BaselineIndex(TxId Basis, Dictionary<string, FileIdentity> Recorded, Dictionary<string, NonVanillaReason> NonVanilla);
 
     // The merge engine asks about every contested path on each refresh, so the rows are read once per baseline
     // and database state instead of once per question.
     private readonly ConcurrentDictionary<EntityId, BaselineIndex> _indexes = new();
+
+    // What the store's file list for an installed build says, for the window before a baseline exists for it (a
+    // game updated while the app ran). Keyed by the installation and the database state, like the baseline index.
+    private sealed record StoreListIndex(TxId Basis, Dictionary<string, FileIdentity> Recorded, bool Complete);
+    private readonly ConcurrentDictionary<string, StoreListIndex> _storeLists = new();
+
+    // A manifest id names immutable content, so a parsed manifest is kept for good. A read that failed is not kept:
+    // Steam may save the file later.
+    private readonly ConcurrentDictionary<ulong, Dictionary<string, Sha1Value>> _manifests = new();
+    private readonly ConcurrentDictionary<ulong, byte> _loggedUnreadable = new();
 
     public bool IsTrusted(GameInstallation installation, GamePath path, MultiHash currentHashes, out string reason)
     {
@@ -37,11 +51,7 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes) : IVanil
 
         var db = fileHashes.Local;
         var baseline = LocalBaselineCoordinator.FindBaselineFor(db, installation);
-        if (baseline is null)
-        {
-            reason = "the installed files have not been checked against the store's file list";
-            return false;
-        }
+        if (baseline is null) return IsTrustedByStoreList(db, installation, path, currentHashes, out reason);
 
         var index = IndexOf(db, baseline.Value);
         // Manifests built on Windows and the folder on disk can differ in case.
@@ -78,6 +88,134 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes) : IVanil
 
         reason = "";
         return true;
+    }
+
+    /// <summary>
+    /// No baseline was built for the installed build's ids, which is the state between a store update and the
+    /// next baseline build. The store's own file list for those ids still settles the question, and the hashes of
+    /// the bytes are already in hand.
+    /// </summary>
+    private bool IsTrustedByStoreList(IDb db, GameInstallation installation, GamePath path, MultiHash currentHashes, out string reason)
+    {
+        var wanted = path.Path.ToString();
+        var index = StoreListOf(db, installation);
+        var complete = index.Complete;
+
+        if (index.Recorded.TryGetValue(wanted, out var recorded))
+            return Compare(recorded, currentHashes, out reason);
+
+        if (installation.LocatorResult.Store == GameStore.Steam)
+        {
+            switch (FromSavedManifests(installation, wanted, currentHashes, out reason))
+            {
+                case Verdict.Found: return reason.Length == 0;
+                case Verdict.NotListedInAnyManifest: complete = true; break;
+            }
+        }
+
+        if (complete)
+        {
+            reason = VanillaTrustReasons.NotInstalledByStore;
+            return false;
+        }
+
+        reason = installation.LocatorResult.Store == GameStore.Steam ? VanillaTrustReasons.StoreFileListNotSavedYet : VanillaTrustReasons.NotCheckedAgainstStoreList;
+        return false;
+    }
+
+    private static bool Compare(FileIdentity recorded, MultiHash currentHashes, out string reason)
+    {
+        FileIdentity current;
+        try
+        {
+            current = FileIdentity.Of(currentHashes, recorded.Kind);
+        }
+        catch (InvalidOperationException)
+        {
+            reason = "recorded with a hash kind this build cannot compute";
+            return false;
+        }
+
+        if (recorded != current)
+        {
+            reason = VanillaTrustReasons.DiffersFromStoreList;
+            return false;
+        }
+
+        reason = "";
+        return true;
+    }
+
+    private StoreListIndex StoreListOf(IDb db, GameInstallation installation)
+    {
+        var locator = installation.LocatorResult;
+        var key = $"{locator.Store}|{LocalBaselineCoordinator.GamePathOf(installation)}|{string.Join(',', locator.LocatorIds.Select(id => id.Value).Order(StringComparer.OrdinalIgnoreCase))}";
+        if (_storeLists.TryGetValue(key, out var cached) && cached.Basis == db.BasisTxId) return cached;
+
+        var recorded = new Dictionary<string, FileIdentity>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in fileHashes.GetGameFiles(installation))
+            recorded[file.Path.Path.ToString()] = file.Identity;
+
+        var index = new StoreListIndex(db.BasisTxId, recorded, fileHashes.CoversInstalledBuild(new LocatorIdsWithGameStore(locator.Store, locator.LocatorIds.ToArray())));
+        _storeLists[key] = index;
+        return index;
+    }
+
+    private enum Verdict { Found, NotListedInAnyManifest, Unknown }
+
+    /// <summary>
+    /// Reads the depot manifests Steam saved for the installed build's ids. <see cref="Verdict.Found"/> carries the
+    /// answer in <paramref name="reason"/> (empty means the SHA-1 matched); the other two say whether every id's
+    /// manifest was readable and none lists the file, or some manifest could not be read.
+    /// </summary>
+    private Verdict FromSavedManifests(GameInstallation installation, string wanted, MultiHash currentHashes, out string reason)
+    {
+        reason = "";
+        var locator = installation.LocatorResult;
+        if (manifestSource is null || locator.StoreRoot is not { } storeRoot) return Verdict.Unknown;
+
+        var allRead = !locator.LocatorIds.IsEmpty;
+        foreach (var id in locator.LocatorIds)
+        {
+            if (!ulong.TryParse(id.Value, out var manifestId)) { allRead = false; continue; }
+            var files = ManifestFiles(manifestSource, storeRoot, locator.Path, manifestId);
+            if (files is null) { allRead = false; continue; }
+            if (!files.TryGetValue(wanted, out var sha1)) continue;
+
+            if (sha1 == currentHashes.Sha1) return Verdict.Found;
+            reason = VanillaTrustReasons.DiffersFromStoreList;
+            return Verdict.Found;
+        }
+
+        return allRead ? Verdict.NotListedInAnyManifest : Verdict.Unknown;
+    }
+
+    private Dictionary<string, Sha1Value>? ManifestFiles(IDepotManifestSource source, AbsolutePath storeRoot, AbsolutePath installPath, ulong manifestId)
+    {
+        if (_manifests.TryGetValue(manifestId, out var kept)) return kept;
+
+        try
+        {
+            if (!source.TryGetManifestPath(storeRoot, ManifestId.From(manifestId), installPath, out var manifestPath)) return null;
+            if (source.Read(manifestPath) is not LocalManifestResult.Parsed parsed)
+            {
+                if (_loggedUnreadable.TryAdd(manifestId, 0))
+                    logger?.LogDebug("The saved depot manifest {ManifestId} cannot be read without Steam's depot key, so it cannot vouch for game files", manifestId);
+                return null;
+            }
+
+            var files = new Dictionary<string, Sha1Value>(StringComparer.OrdinalIgnoreCase);
+            foreach (var file in parsed.Manifest.Files) files[file.Path.ToString()] = file.Hash;
+            _manifests[manifestId] = files;
+            return files;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Never into a merge plan: an unreadable file is the same as one Steam has not saved.
+            if (_loggedUnreadable.TryAdd(manifestId, 0))
+                logger?.LogDebug(e, "Could not read the saved depot manifest {ManifestId}", manifestId);
+            return null;
+        }
     }
 
     private BaselineIndex IndexOf(IDb db, LocalBaseline.ReadOnly baseline)
