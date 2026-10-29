@@ -374,6 +374,18 @@ public class SteamLaunchOptionDecisionTests
     }
 
     [Fact]
+    public void Witcher3OnTheHardlinkDefaultIsOfferedTheLaunchOptionThatSkipsREDprelauncher()
+    {
+        var dx12 = GameRoot.Combine("bin/x64_dx12/witcher3.exe");
+
+        var diagnostic = Evaluate(NotOurs, LinkPlan, new LaunchSpec(dx12, []), launcherSkip: ["--launcher-skip"]);
+
+        diagnostic.Should().NotBeNull();
+        diagnostic!.Severity.Should().Be(DiagnosticSeverity.Suggestion);
+        SkippedOf(diagnostic).Should().Contain("--launcher-skip").And.NotContain("not applied");
+    }
+
+    [Fact]
     public void AFuseRootFiresItWithTheLoadoutBullet()
     {
         var diagnostic = Evaluate(NotOurs, FusePlan, new LaunchSpec(Primary, []));

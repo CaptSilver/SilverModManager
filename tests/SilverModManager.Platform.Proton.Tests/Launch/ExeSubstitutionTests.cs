@@ -9,6 +9,7 @@ public class ExeSubstitutionTests
 {
     private const string SkyrimRoot = "/games/steamapps/common/Skyrim Special Edition";
     private const string CyberpunkRoot = "/games/steamapps/common/Cyberpunk 2077";
+    private const string Witcher3Root = "/games/steamapps/common/The Witcher 3";
     private const string BannerlordRoot = "/games/steamapps/common/Mount & Blade II Bannerlord";
 
     private static AbsolutePath Path_(string path) => FileSystem.Shared.FromUnsanitizedFullPath(path);
@@ -132,6 +133,20 @@ public class ExeSubstitutionTests
             Spec($"{CyberpunkRoot}/bin/x64/Cyberpunk2077.exe", "-modded"), loaderResolved: true);
 
         result.Argv.Should().Equal(SteamCommand("1091500", $"{CyberpunkRoot}/bin/x64/Cyberpunk2077.exe", "-modded", "--launcher-skip"));
+    }
+
+    [Theory]
+    [InlineData("bin/x64_dx12/witcher3.exe")]
+    [InlineData("bin/x64/witcher3.exe")]
+    public void Test_Witcher3REDprelauncherReplacedByTheGameExe(string primary)
+    {
+        // Steam spells the launcher in lower case; the wrapper passes the primary exe and no loader.
+        var argv = SteamCommand("292030", $"{Witcher3Root}/redprelauncher.exe", "--launcher-skip");
+
+        var result = ExeSubstitution.Apply(argv, Path_(Witcher3Root), Spec($"{Witcher3Root}/{primary}"), loaderResolved: false);
+
+        result.Refusal.Should().BeNull();
+        result.Argv.Should().Equal(SteamCommand("292030", $"{Witcher3Root}/{primary}", "--launcher-skip"));
     }
 
     [Fact]

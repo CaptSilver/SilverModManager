@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Games.Witcher.Witcher3;
 using SilverModManager.Sdk.Games;
@@ -29,6 +30,15 @@ public class Witcher3Dx12PrimaryFileTests(ITestOutputHelper helper) : AWitcher3P
     public void PrimaryFile_IsTheDx12ExeWhenPresent()
     {
         Game.GetPrimaryFile(GameInstallation).Should().Be(new GamePath(LocationId.Game, "bin/x64_dx12/witcher3.exe"));
+    }
+
+    // Steam's only launch entry for Witcher 3 is REDprelauncher.exe, which opens a renderer picker. Declaring the
+    // argument is what makes the app offer its Steam launch option, whose wrapper swaps that exe for the game's.
+    [Fact]
+    public void Witcher3DeclaresTheArgumentThatSkipsREDprelauncher()
+    {
+        ((IGameLauncherSkip)Game).LauncherSkipArguments.Should().Equal("--launcher-skip");
+        GameLauncherSkip.For(Game).Should().Equal("--launcher-skip");
     }
 }
 
