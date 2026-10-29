@@ -34,7 +34,8 @@ public static class UserFacingErrors
         return new JoinedRefusal(
             string.Join(Environment.NewLine, leaves.Select(l => l.Message).Distinct(StringComparer.Ordinal)),
             leaves[0].Title,
-            leaves[0].Action
+            leaves[0].Action,
+            string.Join(' ', leaves.Select(l => l.CommandLineHint).OfType<string>().Distinct(StringComparer.Ordinal)) is { Length: > 0 } hints ? hints : null
         );
     }
 
@@ -65,12 +66,15 @@ public static class UserFacingErrors
 
     private sealed class JoinedRefusal : UserFacingException
     {
-        public JoinedRefusal(string message, string title, UserFacingAction? action) : base(message)
+        public JoinedRefusal(string message, string title, UserFacingAction? action, string? commandLineHint) : base(message)
         {
             Title = title;
             Action = action;
+            CommandLineHint = commandLineHint;
         }
 
         public override string Title { get; }
+
+        public override string? CommandLineHint { get; }
     }
 }

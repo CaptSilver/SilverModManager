@@ -25,4 +25,21 @@ public class CliErrorsCommandLineHintTests
     public void AHintBehindAWrapper_IsStillPrinted()
         => CliErrors.Describe(new AggregateException(new Refusal("Nothing was changed.", "Try again.")))
             .Should().EndWith("Try again.");
+
+    [Fact]
+    public void SeveralRefusals_KeepEachDistinctHint()
+    {
+        var joined = new AggregateException(new Refusal("First.", "Use --large-files backup."), new Refusal("Second.", "Use --large-files backup."), new Refusal("Third.", "Try again."));
+
+        var text = CliErrors.Describe(joined);
+
+        text.Should().Contain("First.").And.Contain("Second.").And.Contain("Third.");
+        text.Split("Use --large-files backup.").Should().HaveCount(2, "the same hint is printed once");
+        text.Should().Contain("Try again.");
+    }
+
+    [Fact]
+    public void SeveralRefusalsWithoutHints_PrintJustTheMessages()
+        => CliErrors.Describe(new AggregateException(new Refusal("First.", null), new Refusal("Second.", null)))
+            .Should().Be($"First.{Environment.NewLine}Second.");
 }
