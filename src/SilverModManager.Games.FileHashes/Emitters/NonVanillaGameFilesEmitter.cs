@@ -1,6 +1,7 @@
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games;
@@ -28,11 +29,13 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
 {
     private readonly IFileHashesService _fileHashes;
     private readonly IGameRegistry _registry;
+    private readonly ILogger? _logger;
 
-    public NonVanillaGameFilesEmitter(IFileHashesService fileHashes, IGameRegistry registry)
+    public NonVanillaGameFilesEmitter(IFileHashesService fileHashes, IGameRegistry registry, ILogger<NonVanillaGameFilesEmitter>? logger = null)
     {
         _fileHashes = fileHashes;
         _registry = registry;
+        _logger = logger;
     }
 
     // Without a sync tree nothing is known to be managed, so every non-vanilla row is listed. The
@@ -61,7 +64,7 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         var unmanaged = NonVanillaFile.FindByBaseline(db, baseline.Value.Id)
             // A baseline built before the synchronizer filtered a path still holds its row; a new baseline would not.
             .Where(f => !isFiltered(new GamePath(LocationId.Game, f.Path)))
-            .Where(f => !IsManagedByLoadout(loadout.Db, syncTree, overridesGroup, gameInstalled, f.Path))
+            .Where(f => !IsManagedByLoadout(loadout.Db, syncTree, overridesGroup, gameInstalled, f.Path, _logger))
             .ToArray();
         var files = unmanaged
             .Where(f => !isGameWritten(new GamePath(LocationId.Game, f.Path)))
@@ -120,25 +123,41 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
             : _ => false;
 
     /// <summary>
-    /// Whether the loadout deploys or intends to deploy the file, or the game handles it itself. A file the game
-    /// installed itself (a Creation) is checked first: its node is Game-typed like a changed vanilla file, which
-    /// must stay listed, so only the game-installed record can tell them apart. Three kinds
-    /// of node do not count: ones that only carry a disk or previous state (no loadout hash), a file the
-    /// loadout merely recorded from the game's initial state, and files in the overrides group, which is where
-    /// the game folder's unmanaged files are filed when the game is first managed.
+    /// Whether the loadout deploys or intends to deploy the file, an earlier apply deployed it, or the game handles
+    /// it itself. A file the game installed itself (a Creation) is checked first: its node is Game-typed like a
+    /// changed vanilla file, which must stay listed, so only the game-installed record can tell them apart. Files in
+    /// the overrides group do not count, whatever the previous state says: that is where the game folder's
+    /// unmanaged files are filed when the game is first managed, so they are the user's own. Three kinds of node
+    /// do not count either: ones that only carry a disk state, a file the loadout merely recorded from the game's
+    /// initial state, and a loadout node with no hash. A non-game node with a previous state does count even when the loadout
+    /// no longer lists the path (a disabled mod, a merged file no merge plans any more): this app wrote the file and
+    /// the next apply removes it, so it was not there beforehand.
     /// </summary>
-    private static bool IsManagedByLoadout(IDb loadoutDb, FrozenDictionary<GamePath, SyncNode> syncTree, EntityId overridesGroup, IReadOnlyDictionary<GamePath, (Hash Hash, Size Size)> gameInstalled, RelativePath path)
+    private static bool IsManagedByLoadout(IDb loadoutDb, FrozenDictionary<GamePath, SyncNode> syncTree, EntityId overridesGroup, IReadOnlyDictionary<GamePath, (Hash Hash, Size Size)> gameInstalled, RelativePath path, ILogger? logger)
     {
-        if (gameInstalled.ContainsKey(new GamePath(LocationId.Game, path))) return true;
+        var gamePath = new GamePath(LocationId.Game, path);
+        if (gameInstalled.ContainsKey(gamePath)) return true;
 
-        if (!syncTree.TryGetValue(new GamePath(LocationId.Game, path), out var node)) return false;
-
-        return node.SourceItemType switch
+        if (!syncTree.TryGetValue(gamePath, out var node))
         {
-            LoadoutSourceItemType.Loadout => node.HaveLoadout && !IsInGroup(loadoutDb, node.Loadout.EntityId, overridesGroup),
-            LoadoutSourceItemType.Intrinsic => true,
-            _ => false,
-        };
+            logger?.LogTrace("`{Path}` is not managed: the sync tree has no node for it", path);
+            return false;
+        }
+
+        if (node.SourceItemType == LoadoutSourceItemType.Intrinsic) return true;
+
+        if (node.SourceItemType == LoadoutSourceItemType.Loadout && node.HaveLoadout && IsInGroup(loadoutDb, node.Loadout.EntityId, overridesGroup))
+        {
+            logger?.LogTrace("`{Path}` is not managed: the loadout holds it in its overrides group", path);
+            return false;
+        }
+
+        // A game file changed since it was tracked is the very thing this notice is for, whatever the previous state says.
+        if (node.HavePrevious && node.SourceItemType != LoadoutSourceItemType.Game) return true;
+
+        var managed = node.SourceItemType == LoadoutSourceItemType.Loadout && node.HaveLoadout;
+        if (!managed) logger?.LogTrace("`{Path}` is not managed: source {Source}, loadout identity {HaveLoadout}, previous state {HavePrevious}", path, node.SourceItemType, node.HaveLoadout, node.HavePrevious);
+        return managed;
     }
 
     private static bool IsInGroup(IDb db, EntityId itemId, EntityId groupId)

@@ -246,6 +246,55 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     }
 
     [Fact]
+    public async Task FilesAnEarlierApplyDeployedThatTheLoadoutNoLongerWants_AreLeftOut()
+    {
+        // A disabled mod's files and a merged copy no merge plans any more stay on disk until the next apply
+        // removes them. This app put them there, so they are not something that was there beforehand.
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("mods/off/off.pak", NonVanillaReason.NotInManifest), ("stray.txt", NonVanillaReason.NotInManifest));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+        var tree = Tree(
+            ("mods/off/off.pak", Applied(LoadoutSourceItemType.Loadout)),
+            ("stray.txt", new SyncNode { SourceItemType = LoadoutSourceItemType.Loadout, Disk = Part() })
+        );
+
+        var diagnostic = (await Diagnose(loadout, tree)).Should().ContainSingle().Subject;
+
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
+        data.FileCount.Should().Be(1);
+        data.Files.Should().Contain("stray.txt").And.NotContain("off.pak");
+    }
+
+    [Fact]
+    public async Task AGameFileChangedSinceItWasTracked_StaysListed()
+    {
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("a.esm", NonVanillaReason.HashDiffers));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+        var tree = Tree(("a.esm", Applied(LoadoutSourceItemType.Game)));
+
+        var diagnostic = (await Diagnose(loadout, tree)).Should().ContainSingle().Subject;
+
+        diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData.Files.Should().Contain("a.esm");
+    }
+
+    [Fact]
+    public async Task AnOverridesFileAnEarlierApplyDeployed_StaysListed()
+    {
+        // Ingested files are deployed back like any other, but they came from the game folder, not from a mod.
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("found.dll", NonVanillaReason.NotInManifest));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+        var (foundItem, _) = await AddItems(loadout);
+        loadout = Loadout.Load(_main.Db, loadout.Id);
+        var tree = Tree(("found.dll", Applied(LoadoutSourceItemType.Loadout, foundItem)));
+
+        var diagnostic = (await Diagnose(loadout, tree)).Should().ContainSingle().Subject;
+
+        diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData.Files.Should().Contain("found.dll");
+    }
+
+    [Fact]
     public async Task FilesTheGameInstalled_AreLeftOut_ButAChangedVanillaFileStaysListed()
     {
         // Both are Game-typed nodes with no loadout hash, so the node alone cannot tell them apart: only the
@@ -426,6 +475,12 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
         var part = new SyncNodePart { EntityId = item, Identity = hasLoadoutHash ? FileIdentity.XxHash3(Hash.From(1)) : FileIdentity.None, Size = Size.From(1), LastModifiedTicks = 0 };
         return new SyncNode { SourceItemType = source, Loadout = part };
     }
+
+    private static SyncNodePart Part() => new() { Identity = FileIdentity.XxHash3(Hash.From(1)), Size = Size.From(1), LastModifiedTicks = 0 };
+
+    /// <summary>A node an earlier apply deployed: on disk and in the previous state, with a loadout side only when <paramref name="item"/> names one.</summary>
+    private static SyncNode Applied(LoadoutSourceItemType source, EntityId? item = null)
+        => new() { SourceItemType = source, Disk = Part(), Previous = Part(), Loadout = item is { } id ? Part() with { EntityId = id } : default };
 
     private static FrozenDictionary<GamePath, SyncNode> Tree(params (string Path, SyncNode Node)[] nodes)
         => nodes.ToFrozenDictionary(n => new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(n.Path)), n => n.Node);
