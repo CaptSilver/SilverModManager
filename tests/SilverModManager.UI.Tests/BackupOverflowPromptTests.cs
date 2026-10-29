@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Pages.MyGames;
 using SilverModManager.UI.Sdk.Dialog;
@@ -300,7 +301,7 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
 
         var md = BackupOverflowPrompt.For("X", overflow).Markdown;
 
-        md.Should().Contain("the game or another program wrote them in the game folder.").And.NotContain("Steam");
+        md.Should().Contain("the game or another program wrote them to the game folder.").And.NotContain("Steam");
     }
 
     [Fact]
@@ -311,8 +312,95 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
             Groups = [Group("Saves/slot1", 2, Size.GB * 1, BackupOverflowKind.Appeared, "Saves")],
         };
 
-        BackupOverflowPrompt.For("X", overflow).Markdown.Should().Contain("the game or another program wrote them in Saves.");
+        BackupOverflowPrompt.For("X", overflow).Markdown.Should().Contain("the game or another program wrote them to Saves.");
     }
+
+    [Fact]
+    public void ThreePlaces_AreJoinedWithCommasAndAnd()
+    {
+        var overflow = Witcher(BackupOverflowKind.Appeared) with
+        {
+            Groups =
+            [
+                Group("bin/x64", 3, Size.GB * 1, BackupOverflowKind.Appeared),
+                Group("Saves/slot1", 2, Size.GB * 1, BackupOverflowKind.Appeared, "Saves"),
+                Group("AppData/Foo", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.AppData.DisplayName),
+                Group("AppData/Bar", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.AppDataRoaming.DisplayName),
+            ],
+        };
+
+        BackupOverflowPrompt.For("X", overflow).Markdown.Should().Contain("put them in the game folder, AppData and Saves.");
+    }
+
+    [Fact]
+    public void ARoamingAndALocalAppDataGroup_AreOnePlace()
+    {
+        var overflow = Witcher(BackupOverflowKind.Appeared) with
+        {
+            Groups =
+            [
+                Group("AppData/Foo", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.AppData.DisplayName),
+                Group("AppData/Bar", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.AppDataRoaming.DisplayName),
+            ],
+        };
+
+        BackupOverflowPrompt.For("X", overflow).Markdown.Should().Contain("put them in AppData.");
+    }
+
+    [Fact]
+    public void TheModLoaderFolder_ReadsAfterIn()
+    {
+        var overflow = Witcher(BackupOverflowKind.Appeared) with
+        {
+            Groups = [Group("Mod loader folder/bin", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.Me3Host.DisplayName)],
+        };
+
+        BackupOverflowPrompt.For("X", overflow).Markdown.Should().Contain("put them in Mod loader folder.");
+    }
+
+    [Fact]
+    public void ModsFolder_ReadsAfterIn()
+    {
+        var overflow = Witcher(BackupOverflowKind.Appeared) with
+        {
+            Groups = [Group("Mods/Foo", 2, Size.GB * 1, BackupOverflowKind.Appeared, LocationId.Me3Mods.DisplayName)],
+        };
+
+        BackupOverflowPrompt.For("X", overflow).Markdown.Should().Contain("put them in Mods.");
+    }
+
+    [Fact]
+    public void AnUnnamedPlace_IsSaidToBeOtherFolders()
+    {
+        var overflow = Witcher(BackupOverflowKind.Appeared) with
+        {
+            Groups = [Group("Other folders/Foo", 2, Size.GB * 1, BackupOverflowKind.Appeared, BackupOverflow.OtherFoldersPhrase)],
+        };
+
+        BackupOverflowPrompt.For("X", overflow).Markdown.Should().Contain("put them in other folders.").And.NotContain("Game data");
+    }
+
+    [Fact]
+    public void WithNoFolders_ThePlaceIsLeftOut()
+    {
+        var overflow = Witcher(BackupOverflowKind.Appeared) with { Groups = null };
+
+        var md = BackupOverflowPrompt.For("X", overflow).Markdown;
+
+        md.Should().Contain("you, Steam or another program put them there.").And.NotContain("in the game folder");
+    }
+
+    [Fact]
+    public void WithNoAppearedFolders_ThePlaceIsLeftOut()
+    {
+        var overflow = Witcher(BackupOverflowKind.Appeared) with { Groups = [Group("content/a", 2, Size.GB * 1, BackupOverflowKind.GameFileChanged)] };
+
+        BackupOverflowPrompt.For("X", overflow).Markdown.Should().Contain("put them there.").And.NotContain("in the game folder");
+    }
+
+    [Fact]
+    public void TheGameFolderIsNamedFromOneSource()
+        => BackupOverflow.GameFolderName.Should().Be(LocationId.Game.DisplayName);
 
     [Fact]
     public void GuiContainer_ResolvesTheDialogPrompt()

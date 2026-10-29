@@ -15,6 +15,7 @@ using SilverModManager.Sdk.Hashes;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
 using Xunit;
@@ -699,7 +700,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
     [Fact]
     public async Task OverflowMeasure_GameSpecificLocation_UsesItsRegisteredNameNotItsId()
     {
-        var documents = LocationId.From("SyncTestsGameDocuments", "Documents");
+        var documents = LocationId.From(StubbedGame.NamedLocationId);
         var tree = new Dictionary<GamePath, SyncNode>
         {
             [new GamePath(documents, "Foo/x.ini")] = MeasuredNode(0xD3, Actions.BackupFile | Actions.IngestFromDisk, kb: 9),
@@ -710,6 +711,46 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         asked.Groups!.Single().Folder.Should().Be("Documents/Foo");
         asked.Groups!.Single().Location.Should().Be("Documents");
         asked.Examples!.Single().Path.Should().Be("Documents/Foo/x.ini");
+    }
+
+    [Fact]
+    public async Task OverflowMeasure_LocationNobodyNamed_ReadsAsOtherFolders()
+    {
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [new GamePath(LocationId.From("SyncTestsNobodyNamedThis"), "Foo/x.ini")] = MeasuredNode(0xD4, Actions.BackupFile | Actions.IngestFromDisk, kb: 9),
+        };
+
+        var asked = await Measure(tree);
+
+        asked.Groups!.Single().Folder.Should().Be("Other folders/Foo");
+        asked.Groups!.Single().Location.Should().Be("other folders");
+    }
+
+    [Fact]
+    public async Task OverflowMeasure_UnknownLocation_ReadsAsOtherFolders()
+    {
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [new GamePath(LocationId.Unknown, "Foo/x.ini")] = MeasuredNode(0xD5, Actions.BackupFile | Actions.IngestFromDisk, kb: 9),
+        };
+
+        var asked = await Measure(tree);
+
+        asked.Groups!.Single().Location.Should().Be("other folders");
+    }
+
+    [Fact]
+    public async Task OverflowMeasure_FilesDirectlyInTheGameFolder_UseTheGameFolderLabel()
+    {
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [new GamePath(LocationId.Game, "x.bin")] = MeasuredNode(0xD6, Actions.BackupFile | Actions.IngestFromDisk, kb: 9),
+        };
+
+        var asked = await Measure(tree);
+
+        asked.Groups!.Single().Folder.Should().Be(LocationId.Game.DisplayName);
     }
 
     [Fact]

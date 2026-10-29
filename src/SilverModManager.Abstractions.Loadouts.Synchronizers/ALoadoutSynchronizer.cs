@@ -1134,14 +1134,14 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         return overflow with
         {
             Groups = counted
-                .GroupBy(c => (Folder: FolderOf(c.Path), c.Kind, Location: c.Path.LocationId == LocationId.Game ? null : c.Path.LocationId.DisplayName))
+                .GroupBy(c => (Folder: FolderOf(c.Path, installation), c.Kind, Location: SentencePlaceOf(c.Path.LocationId, installation)))
                 .Select(g => new BackupOverflowGroup(g.Key.Folder, g.Count(), Size.From((ulong)g.Sum(c => (long)c.Size)), g.Key.Kind, g.Key.Location))
                 .OrderByDescending(g => g.Size.Value).ThenBy(g => g.Folder, StringComparer.Ordinal)
                 .ToArray(),
             Examples = counted
                 .OrderByDescending(c => c.Size).ThenBy(c => c.Path.ToString(), StringComparer.Ordinal)
                 .Take(3)
-                .Select(c => new BackupOverflowExample(DisplayPathOf(c.Path), Size.From(c.Size), c.Kind))
+                .Select(c => new BackupOverflowExample(DisplayPathOf(c.Path, installation), Size.From(c.Size), c.Kind))
                 .ToArray(),
             ByKind = counted
                 .GroupBy(c => c.Kind)
@@ -1192,18 +1192,34 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <summary>The folder a player would look in: the first two segments, with the location named unless it is the game folder.</summary>
-    private static string FolderOf(GamePath path)
+    private static string FolderOf(GamePath path, GameInstallation installation)
     {
         var segments = path.Path.ToString().Split('/', StringSplitOptions.RemoveEmptyEntries);
         var folders = segments.Take(Math.Min(2, segments.Length - 1)).ToArray();
         var isGameFolder = path.LocationId == LocationId.Game;
-        if (folders.Length == 0) return isGameFolder ? BackupOverflow.GameFolderName : path.LocationId.DisplayName;
+        if (folders.Length == 0) return isGameFolder ? BackupOverflow.GameFolderName : LocationNameOf(path.LocationId, installation);
         var joined = string.Join('/', folders);
-        return isGameFolder ? joined : $"{path.LocationId.DisplayName}/{joined}";
+        return isGameFolder ? joined : $"{LocationNameOf(path.LocationId, installation)}/{joined}";
     }
 
-    private static string DisplayPathOf(GamePath path)
-        => path.LocationId == LocationId.Game ? path.Path.ToString() : $"{path.LocationId.DisplayName}/{path.Path}";
+    private static string DisplayPathOf(GamePath path, GameInstallation installation)
+        => path.LocationId == LocationId.Game ? path.Path.ToString() : $"{LocationNameOf(path.LocationId, installation)}/{path.Path}";
+
+    /// <summary>The name a player knows the location by: the game's own name for it, else the app's, else "Other folders".</summary>
+    private static string LocationNameOf(LocationId id, GameInstallation installation)
+        => installation.Game.LocationNames.TryGetValue(id.ToString(), out var name) ? name : id.DisplayName;
+
+    /// <summary>
+    /// The location as the backup question's sentence names it: null for the game folder, the name for a named
+    /// location, and "other folders" for one nobody named.
+    /// </summary>
+    private static string? SentencePlaceOf(LocationId id, GameInstallation installation)
+    {
+        if (id == LocationId.Game) return null;
+        return id.IsNamed || installation.Game.LocationNames.ContainsKey(id.ToString())
+            ? LocationNameOf(id, installation)
+            : BackupOverflow.OtherFoldersPhrase;
+    }
 
     /// <summary>
     /// Applies an adopt answer: files that stay on disk and only want a copy are ingested without one. Every other

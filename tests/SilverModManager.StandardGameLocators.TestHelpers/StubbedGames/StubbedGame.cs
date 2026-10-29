@@ -43,6 +43,11 @@ public class StubbedGame : IGame, IGameData<StubbedGame>
 
     public GamePath GetPrimaryFile(GameInstallation installation) => new(LocationId.Game, "");
 
+    /// <summary>A location only this game names, so a test can tell the game's name from a registered one.</summary>
+    public const string NamedLocationId = "SyncTestsGameDocuments";
+
+    public IReadOnlyDictionary<string, string> LocationNames { get; } = new Dictionary<string, string> { [NamedLocationId] = "Documents" };
+
     public ILoadoutSynchronizer Synchronizer => new DefaultSynchronizer(_serviceProvider);
 
     public ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult)

@@ -25,6 +25,19 @@ public class NativeBuildTests(IServiceProvider serviceProvider)
         => serviceProvider.GetServices<IGame>().OfType<global::SilverModManager.Games.Larian.BaldursGate3.BaldursGate3>().Single();
 
     [Fact]
+    public void BaldursGate3_NamesItsLocationsForAPathReadBeforeItsConstantsAreTouched()
+    {
+        // From(string) only: no Bg3Constants field is read before the game is asked.
+        var mods = LocationId.From("Mods");
+        var profiles = LocationId.From("PlayerProfiles");
+        var extender = LocationId.From("ScriptExtenderConfig");
+
+        ((IGameData)Game).LocationNames[mods.ToString()].Should().Be("Mods");
+        ((IGameData)Game).LocationNames[profiles.ToString()].Should().Be("Profiles");
+        ((IGameData)Game).LocationNames[extender.ToString()].Should().Be("Script Extender settings");
+    }
+
+    [Fact]
     public void BaldursGate3_DeclaresItsNativeBuild()
     {
         Game.HasNativeLinuxBuild.Should().BeTrue();

@@ -7,9 +7,11 @@ namespace SilverModManager.Games.AdvancedInstaller.UI.SelectLocation;
 public class SuggestedEntryDesignViewModel() : SuggestedEntryViewModel(
     Guid.NewGuid(),
     CreateDesignAbsolutePath(),
-    LocationId.From("Data"),
+    DataLocation,
     new GamePath(LocationId.Game, "Data"))
 {
+    private static readonly LocationId DataLocation = LocationId.From("Data", "Data folder");
+
     private static AbsolutePath CreateDesignAbsolutePath()
     {
         var fs = new InMemoryFileSystem();

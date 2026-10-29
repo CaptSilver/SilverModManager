@@ -35,7 +35,12 @@ namespace SilverModManager.Games.CreationEngine.Morrowind;
 public class Morrowind(IServiceProvider provider) : ACreationEngineGame<Morrowind>(provider), IGameData<Morrowind>, IHasIniFiles, ITimestampOrderedGame
 {
     /// <summary>The folder that holds the user's openmw.cfg, present only when exactly one is found.</summary>
-    public static readonly LocationId OpenMwConfig = LocationId.From("OpenMwConfig", "OpenMW settings");
+    public static readonly LocationId OpenMwConfig = LocationId.From("OpenMwConfig");
+
+    private static readonly IReadOnlyDictionary<string, string> OpenMwLocationNames = new Dictionary<string, string> { ["OpenMwConfig"] = "OpenMW settings" };
+
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, string> LocationNames => OpenMwLocationNames;
 
     public static readonly GamePath OpenMwConfigFile = new(OpenMwConfig, OpenMwConfigLocation.FileName);
 

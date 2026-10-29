@@ -27,5 +27,32 @@ public class LocationIdDisplayNameTests
 
     [Fact]
     public void AnIdWithNoName_GetsANeutralLabelNotTheId()
-        => LocationId.From("DisplayNameTestsNoName").DisplayName.Should().Be("Game data");
+    {
+        var id = LocationId.From("DisplayNameTestsNoName");
+
+        id.DisplayName.Should().Be("Other folders");
+        id.IsNamed.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Unknown_IsNotNamedSoItReadsAsOtherFolders()
+    {
+        LocationId.Unknown.IsNamed.Should().BeFalse();
+        LocationId.Unknown.DisplayName.Should().Be(LocationId.UnnamedDisplayName);
+    }
+
+    // Each label is the prefix of a folder row ("Mods/Foo") and the end of "in <label>".
+    [Theory]
+    [InlineData("Me3Mods", "Mods")]
+    [InlineData("Me3Host", "Mod loader folder")]
+    public void Me3Locations_ReadAsAFolderPrefixAndAfterIn(string id, string expected)
+        => LocationId.From(id).DisplayName.Should().Be(expected);
+
+    [Fact]
+    public void TheGameFolderLabel_IsOneSentenceFriendlyName()
+        => LocationId.Game.DisplayName.Should().Be("Game folder");
+
+    [Fact]
+    public void ANamedLocation_IsNamed()
+        => LocationId.From("DisplayNameTestsRegistered", "Documents").IsNamed.Should().BeTrue();
 }

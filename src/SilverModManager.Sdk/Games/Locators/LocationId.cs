@@ -14,7 +14,7 @@ public readonly partial struct LocationId
     private static readonly ConcurrentDictionary<ushort, string> DisplayNames = new();
 
     /// <summary>What a player is told for a location nobody gave a name.</summary>
-    public const string UnnamedDisplayName = "Game data";
+    public const string UnnamedDisplayName = "Other folders";
 
     /// <summary>
     /// Converts the string to a LocationId.
@@ -25,11 +25,15 @@ public readonly partial struct LocationId
     public override string ToString() => HashPool[Value];
 
     /// <summary>
-    /// The location as a player names it ("Settings", not "Preferences"). A location nobody named reads
-    /// <see cref="UnnamedDisplayName"/>, never its internal id. A game registers the name where it defines the
-    /// id, so the id's own static initializer has to have run for the name to be known.
+    /// The location as a player names it ("Settings", not "Preferences"): the name that heads a folder row
+    /// ("Settings/Foo") and ends "in Settings". A location nobody named reads <see cref="UnnamedDisplayName"/>,
+    /// never its internal id. Only the app's own locations are named here; a game names its own through
+    /// <see cref="IGameData.LocationNames"/>, which does not depend on static initialization order.
     /// </summary>
     public string DisplayName => DisplayNames.TryGetValue(Value, out var name) ? name : UnnamedDisplayName;
+
+    /// <summary>Whether a name was registered for this location. Game-specific names come from the game instead.</summary>
+    public bool IsNamed => DisplayNames.ContainsKey(Value);
 
     /// <summary>Converts the string to a LocationId and registers the name a player knows it by.</summary>
     public static LocationId From(string value, string displayName)
@@ -40,9 +44,9 @@ public readonly partial struct LocationId
     }
 
     /// <summary>
-    /// Unknown game folder type, used for default values.
+    /// Unknown game folder type, used for default values. Unnamed, so it reads as <see cref="UnnamedDisplayName"/>.
     /// </summary>
-    public static readonly LocationId Unknown = From("Unknown", "Other");
+    public static readonly LocationId Unknown = From("Unknown");
 
     /// <summary>
     /// The path for the game installation.
@@ -77,5 +81,5 @@ public readonly partial struct LocationId
     /// <summary>
     /// Where Elden Ring's me3 mod loader is deployed, outside the game folder.
     /// </summary>
-    public static readonly LocationId Me3Host = From("Me3Host", "Mod loader");
+    public static readonly LocationId Me3Host = From("Me3Host", "Mod loader folder");
 }

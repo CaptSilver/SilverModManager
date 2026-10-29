@@ -6,7 +6,10 @@ namespace SilverModManager.Games.Witcher;
 public static class WitcherConstants
 {
     /// <summary>Documents/The Witcher 3, where the game keeps mods.settings, its settings files and the saves.</summary>
-    public static readonly LocationId WitcherDocuments = LocationId.From("WitcherDocuments", "Documents");
+    public static readonly LocationId WitcherDocuments = LocationId.From("WitcherDocuments");
+
+    /// <summary>What a player calls the Witcher locations, keyed by id string so reading a name never needs the fields above.</summary>
+    public static readonly IReadOnlyDictionary<string, string> LocationNames = new Dictionary<string, string> { ["WitcherDocuments"] = "Documents" };
 
     public const string W3ModsFolder = "Mods";
     public const string W3DlcFolder = "dlc";

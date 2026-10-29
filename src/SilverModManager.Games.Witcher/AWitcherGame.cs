@@ -12,6 +12,9 @@ public abstract class AWitcherGame<TSelf>(IServiceProvider provider) : AGame<TSe
 {
     private StoreIdentifiers? _storeIdentifiers;
 
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, string> LocationNames => WitcherConstants.LocationNames;
+
     protected abstract StoreIdentifiers CreateStoreIdentifiers();
 
     // Built on first read: the ids come from a virtual member and the base constructor runs before a derived one.

@@ -91,8 +91,11 @@ public sealed record BackupOverflow(
     /// <summary>How many folders the dialog lists before it folds the rest into one line.</summary>
     public const int ListedFolders = 5;
 
+    /// <summary>How the sentence names files in locations nobody gave a name.</summary>
+    public const string OtherFoldersPhrase = "other folders";
+
     /// <summary>The folder name for files directly in the game folder.</summary>
-    public const string GameFolderName = "(game folder)";
+    public static string GameFolderName => LocationId.Game.DisplayName;
 
     /// <summary>Bytes of every file that would be backed up.</summary>
     public Size Total => Adoptable + MustBackUp;
@@ -235,15 +238,20 @@ public sealed record BackupOverflow(
         ? "the game or another program wrote them"
         : "you, Steam or another program put them";
 
-    /// <summary>"in the game folder", or the named places when any of the not-from-the-app files sit elsewhere.</summary>
+    /// <summary>
+    /// Where the not-from-the-app files are: "in the game folder, AppData and Saves" (after play: "to ..."), or
+    /// "there" when no folder was measured, so the sentence never claims a place it does not know.
+    /// </summary>
     private string WhereAppeared()
     {
         var appeared = (Groups ?? []).Where(g => g.Kind == BackupOverflowKind.Appeared).ToArray();
         var places = new List<string>();
-        if (appeared.Length == 0 || appeared.Any(g => g.Location is null)) places.Add("the game folder");
+        if (appeared.Any(g => g.Location is null)) places.Add("the " + GameFolderName.ToLowerInvariant());
         places.AddRange(appeared.Select(g => g.Location).OfType<string>().Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal));
+        if (places.Count == 0) return "there";
+
         var list = places.Count == 1 ? places[0] : string.Join(", ", places.Take(places.Count - 1)) + " and " + places[^1];
-        return "in " + list;
+        return (Operation == BackupOverflowOperation.AfterPlay ? "to " : "in ") + list;
     }
 
     /// <summary>

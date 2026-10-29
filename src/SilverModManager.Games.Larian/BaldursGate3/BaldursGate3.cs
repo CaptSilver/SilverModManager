@@ -32,6 +32,9 @@ public class BaldursGate3 : IGame, IGameData<BaldursGate3>, IWineDllOverrideRequ
         GOGProductIds = [1456460669L],
     };
 
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, string> LocationNames => Bg3Constants.LocationNames;
+
     public IStreamFactory IconImage { get; }
     public IStreamFactory TileImage { get; }
 

@@ -17,6 +17,10 @@ public class MorrowindTests(IServiceProvider serviceProvider)
     private IGame Game => serviceProvider.GetServices<IGame>().OfType<CreationEngine.Morrowind.Morrowind>().Single();
 
     [Fact]
+    public void NamesTheOpenMwSettingsFromAnIdParsedFromText()
+        => Game.LocationNames[LocationId.From("OpenMwConfig").ToString()].Should().Be("OpenMW settings");
+
+    [Fact]
     public void OnlyTheGameFolderIsALocation()
     {
         var prefix = ProtonTestPrefix.Create();

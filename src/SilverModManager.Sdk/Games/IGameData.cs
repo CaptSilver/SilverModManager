@@ -58,6 +58,13 @@ public interface IGameData
     /// </summary>
     RelativePath? NativeLinuxPrimaryFile => null;
 
+    /// <summary>
+    /// The names a player knows this game's own locations by, keyed by the location's id string. Keyed by string and
+    /// read from the game, so the name does not depend on whether a static <see cref="LocationId"/> field of the game
+    /// has been touched yet.
+    /// </summary>
+    IReadOnlyDictionary<string, string> LocationNames => ImmutableDictionary<string, string>.Empty;
+
     ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult);
 
     /// <summary>
