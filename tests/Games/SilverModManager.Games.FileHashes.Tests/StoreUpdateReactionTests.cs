@@ -132,6 +132,18 @@ public sealed class StoreUpdateReactionTests : IDisposable
     }
 
     [Fact]
+    public async Task Check_FilesStayDamagedOnTheSameBuildAndOnlyTheLastWriteMoves_DoesNotClaimItRefreshesTheFileList()
+    {
+        var before = new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.Zero);
+        StoreSays(Result("old", "build-1", damaged: true, lastWrite: before.AddHours(1)));
+
+        var outcome = await _reaction.Check(Installation("old", "build-1", damaged: true, lastWrite: before), TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(StoreUpdateOutcome.StateChanged);
+        _log.Messages.Should().ContainSingle().Which.Should().Contain("damaged files").And.NotContain("refreshing its file list");
+    }
+
+    [Fact]
     public async Task Check_TheGameIsGone_ChangesNothing()
     {
         _locator.TryLocate(Arg.Any<IGameData>(), out Arg.Any<GameLocatorResult?>()).Returns(false);
@@ -171,7 +183,7 @@ public sealed class StoreUpdateReactionTests : IDisposable
         _locator.TryLocate(Arg.Any<IGameData>(), out Arg.Any<GameLocatorResult?>())
             .Returns(call => { call[1] = result; return true; });
 
-    private GameLocatorResult Result(string id, string build, bool inProgress = false, bool damaged = false)
+    private GameLocatorResult Result(string id, string build, bool inProgress = false, bool damaged = false, DateTimeOffset? lastWrite = null)
     {
         var game = Substitute.For<SubstitutableGame>();
         var path = FileSystem.Shared.FromUnsanitizedFullPath(GamePath);
@@ -187,12 +199,13 @@ public sealed class StoreUpdateReactionTests : IDisposable
             StoreUpdateInProgress = inProgress,
             StoreUpdatePending = inProgress,
             StoreFilesDamaged = damaged,
+            StoreLastWrite = lastWrite,
         };
     }
 
-    private GameInstallation Installation(string id, string build, bool inProgress = false)
+    private GameInstallation Installation(string id, string build, bool inProgress = false, bool damaged = false, DateTimeOffset? lastWrite = null)
     {
-        var result = Result(id, build, inProgress);
+        var result = Result(id, build, inProgress, damaged, lastWrite);
         return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, result.Path)));
     }
 

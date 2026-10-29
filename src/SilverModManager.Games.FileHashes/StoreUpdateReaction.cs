@@ -17,7 +17,10 @@ public enum StoreUpdateOutcome
     /// <summary>The store is writing the game's files; nothing was changed so the registry never holds a half-updated state.</summary>
     UpdateInProgress,
 
-    /// <summary>The store moved the game to another build: the registry, the local baseline and the Health Check were brought up to it.</summary>
+    /// <summary>
+    /// The store moved the game to another build: the registry and the Health Check were brought up to it, and so was
+    /// the local baseline once the store is settled. While files are reported damaged the baseline waits for a verify.
+    /// </summary>
     Refreshed,
 
     /// <summary>
@@ -151,6 +154,10 @@ public sealed class StoreUpdateReaction(
         else if (fresh.StoreFilesDamaged && !before.StoreFilesDamaged)
         {
             logger.LogInformation("{Store} now reports damaged files for {Game} (build {BuildId}); updating its Health Check", fresh.Store, name, build);
+        }
+        else if (fresh.StoreFilesDamaged)
+        {
+            logger.LogInformation("The state in {Store} changed for {Game} (build {BuildId}) while it still reports damaged files; its file list is refreshed once the files are verified", fresh.Store, name, build);
         }
         else
         {
