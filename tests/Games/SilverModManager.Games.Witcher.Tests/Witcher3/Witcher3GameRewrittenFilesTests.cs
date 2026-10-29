@@ -246,6 +246,28 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task ANewerRevisionListedMeanwhileDoesNotMakeTheMergeCheckRefuseTheApply()
+    {
+        var loadout = await CreateLoadout();
+        await Synchronizer.Synchronize(Refresh(loadout));
+        var held = Refresh(loadout);
+        var tree = await Synchronizer.BuildSyncTree(held);
+
+        // A commit lands while the apply runs, and a refresh (a diagnostics pass, the page) lists the newer
+        // revision, which drops the listing of the revision the apply holds.
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(held.Id, Loadout.Name, "renamed while the apply runs");
+            await tx.Commit();
+        }
+        ((ALoadoutSynchronizer)Synchronizer).WinningFilesForTest(Refresh(loadout));
+
+        var apply = async () => await Synchronizer.RunActions(tree, held);
+
+        await apply.Should().NotThrowAsync<MergeApplyRefusedException>("the check lists the revision it judges again instead of refusing");
+    }
+
+    [Fact]
     public async Task OneApplyHealingTheOverridesLeavesNothingElseToApply()
     {
         var loadout = await CreateLoadout();

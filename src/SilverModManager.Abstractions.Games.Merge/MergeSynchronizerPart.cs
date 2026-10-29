@@ -126,12 +126,18 @@ public sealed class MergeSynchronizerPart(IMergeEngine engine, ILogger logger) :
     /// </summary>
     public void CheckOutputs(Dictionary<GamePath, SyncNode> tree, Loadout.ReadOnly loadout)
     {
-        if (_listingFailures.TryGetValue(loadout.LoadoutId, out var failed) && failed.Revision == loadout.Db.BasisTxId)
-            throw MergeApplyRefusedException.ListingFailed(failed.Reason);
+        ThrowIfListingFailed(loadout);
 
         var plan = PlanOutputs(loadout);
-        // The tree is built from the listing of this revision. Without one, or if the plan has since moved, the two
-        // cannot be compared and the write could meet a file the plan lacks.
+        // The tree is built from the listing of this revision. A listing of a newer revision evicts it, so a refresh
+        // that ran while the apply held this revision leaves none; list it again (reading loadout rows only) rather
+        // than refuse. If the plan has since moved, the two cannot be compared and the write could meet a file the
+        // plan lacks.
+        if (!_listed.ContainsKey((loadout.LoadoutId, loadout.Db.BasisTxId)))
+        {
+            IntrinsicFiles(loadout, logger);
+            ThrowIfListingFailed(loadout);
+        }
         if (!_listed.TryGetValue((loadout.LoadoutId, loadout.Db.BasisTxId), out var known)) throw MergeApplyRefusedException.Changed();
         var listed = known.Files;
 
@@ -151,6 +157,12 @@ public sealed class MergeSynchronizerPart(IMergeEngine engine, ILogger logger) :
         }
 
         _checked[loadout.LoadoutId] = (loadout.Db.BasisTxId, plan.ToDictionary(o => o.RelPath, StringComparer.OrdinalIgnoreCase));
+    }
+
+    private void ThrowIfListingFailed(Loadout.ReadOnly loadout)
+    {
+        if (_listingFailures.TryGetValue(loadout.LoadoutId, out var failed) && failed.Revision == loadout.Db.BasisTxId)
+            throw MergeApplyRefusedException.ListingFailed(failed.Reason);
     }
 
     /// <summary>
