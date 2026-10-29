@@ -335,6 +335,28 @@ public class Witcher3InstallerTests(ITestOutputHelper outputHelper) : AWitcher3A
     }
 
     [Fact]
+    public void BinInsideAModFolderThatAlsoHoldsANestedDlc_IsPlacedOnce()
+    {
+        var plan = Witcher3InstallPlan.Plan(
+            ["modX/content/a.ws", "modX/dlcY/content/b.bundle", "modX/bin/x64/d.dll"], "Example Mod.zip");
+        plan.Should().NotBeNull();
+        plan!.IsAmbiguous.Should().BeFalse();
+        plan.Placements.Select(p => p.Target.ToString()).Should().BeEquivalentTo(
+            ["{Game}/Mods/modX/content/a.ws", "{Game}/dlc/dlcY/content/b.bundle", "{Game}/bin/x64/d.dll"]);
+    }
+
+    [Fact]
+    public void MenuModWithSeveralContentWrappers_AreVariantsAndTheOutcomeNamesThem()
+    {
+        var plan = Witcher3InstallPlan.Plan(
+            ["modMenu/bin/config/r4game/user_config_matrix/pc/m.xml", "modMenu/Option A/content/a.bundle", "modMenu/Option B/content/a.bundle"], "Example Mod.zip");
+        plan.Should().NotBeNull();
+        plan!.IsAmbiguous.Should().BeTrue();
+        plan.Placements.Should().BeEmpty();
+        plan.Variants.Should().BeEquivalentTo("Option A", "Option B");
+    }
+
+    [Fact]
     public void VariantsWithTheSameFolderName_AreToldApartByTheirWrapper()
     {
         var plan = Witcher3InstallPlan.Plan(

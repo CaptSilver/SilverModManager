@@ -46,7 +46,7 @@ internal static class Witcher3InstallPlan
         var paths = archivePaths.Select(p => new ArchivePath(p)).ToArray();
         var modName = Witcher3ModInstaller.ModNameFromArchive(archiveFileName);
 
-        var outcome = Claim(MenuMod(paths, modName))
+        var outcome = MenuMod(paths, modName)
                       ?? Claim(TopLevelMods(paths))
                       ?? Mixed(paths)
                       ?? ModFolders(paths)
@@ -81,7 +81,7 @@ internal static class Witcher3InstallPlan
             return string.Join('/', folder);
         });
 
-    private static Placement[]? MenuMod(ArchivePath[] paths, string archiveModName)
+    private static PlanOutcome? MenuMod(ArchivePath[] paths, string archiveModName)
     {
         if (!paths.Any(p => p.Lower.Contains(MenuConfigFolder, StringComparison.Ordinal) || p.Lower.EndsWith(PartSuffix, StringComparison.Ordinal)))
             return null;
@@ -94,6 +94,13 @@ internal static class Witcher3InstallPlan
             : paths.FirstOrDefault(p => p.Lower.EndsWith(PartSuffix, StringComparison.Ordinal))?.Segments[..^1] ?? [];
         var root = rootSegments.Length > 0 ? string.Join('/', rootSegments) + "/" : "";
         var modName = rootSegments.Length > 0 ? rootSegments[^1] : archiveModName;
+
+        // Two or more wrappers over content (Option A, Option B) are variants of one mod, not one mod.
+        var wrappers = paths.Where(p => !p.IsDocumentation && p.Lower.StartsWith(root.ToLowerInvariant(), StringComparison.Ordinal))
+            .Select(p => new ArchivePath(p.Original[root.Length..]))
+            .Where(p => p.ContentIndex == 1 && p.FolderKind() == ContentFolderKind.None)
+            .Select(p => p.Segments[0]).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        if (wrappers.Length > 1) return Variants(VariantNames(wrappers.Select(w => new[] { w }).ToArray()));
 
         var placements = new List<Placement>();
         var taken = new HashSet<GamePath>();
@@ -134,7 +141,7 @@ internal static class Witcher3InstallPlan
                 Place(path.Original, relative);
         }
 
-        return placements.ToArray();
+        return new PlanOutcome(placements.ToArray(), false);
     }
 
     private static ArchivePath[] MenuXmls(ArchivePath[] paths) =>
@@ -187,7 +194,8 @@ internal static class Witcher3InstallPlan
 
         var placements = PlaceInFolders(paths, folders).ToList();
         placements.AddRange(scripts.Select(p => new Placement(p.Original, Target(ScriptsTarget(mods[0].Segments[^1], p.Segments[(mods[0].Segments.Length - 1)..])))));
-        foreach (var path in paths.Where(p => !p.IsDocumentation))
+        var placed = placements.Select(p => p.Source).ToHashSet();
+        foreach (var path in paths.Where(p => !p.IsDocumentation && !placed.Contains(p.Original)))
         {
             if (folders.FirstOrDefault(f => IsBeside(path, f, Bin)) is { } folder)
                 placements.Add(new Placement(path.Original, Target(Bin + "/" + string.Join('/', path.Segments[folder.Segments.Length..]))));
