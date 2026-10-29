@@ -34,9 +34,12 @@ public sealed class ModOrderDroppedEmitter : ADroppedItemEmitter
         foreach (var group in Groups(loadout))
         {
             var first = group[0];
+            var entries = string.Join('\n', group.Select(row => $"- **{row.Item}**: {row.Reason}"));
             var card = group.Count == 1
                 ? Card(new DroppedItem(first.Item, first.Source, first.Reason, first.Page))
-                : DroppedItemDiagnostics.CreateDroppedItems(group.Count, first.Source, string.Join('\n', group.Select(row => $"- **{row.Item}**: {row.Reason}")), first.Page);
+                : IsRuleDrop(first)
+                    ? DroppedItemDiagnostics.CreateDroppedRules(group.Count, first.Source, entries, first.Page)
+                    : DroppedItemDiagnostics.CreateDroppedItems(group.Count, first.Source, entries, first.Page);
 
             // Only a Nexus collection has a manifest to read the order from again, and only its order entries come out of it.
             yield return !IsRuleDrop(first) && NexusCollectionLoadoutGroup.Load(loadout.Db, first.ContainerId.Value).IsValid()

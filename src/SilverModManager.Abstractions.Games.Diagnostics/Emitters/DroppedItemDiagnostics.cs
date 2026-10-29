@@ -70,4 +70,28 @@ Change the order on the {Page} page.
             .AddValue<string>("Page")
         )
         .Finish();
+
+    /// <summary>One card for the collection rules that name no mod of the collection. Rules are not load order entries.</summary>
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate DroppedRules = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 4))
+        .WithTitle("Something was left out")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{Count} of {Source}'s mod rules name no mod of the collection")
+        .WithDetails("""
+{Count} of {Source}'s mod rules were left out because no mod of the collection matched them:
+
+{Entries}
+
+The next import of the collection writes them again. See the {Page} page.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<int>("Count")
+            .AddValue<string>("Source")
+            .AddValue<string>("Entries")
+            .AddValue<string>("Page")
+        )
+        .Finish();
 }

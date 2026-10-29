@@ -109,8 +109,9 @@ public class ModOrderDroppedEmitterTests(ITestOutputHelper helper) : ACyberpunkI
         var order = diagnostics.Single(d => d.FormatSummary(new PlainDiagnosticWriter()).Contains("Ghost"));
         order.FormatDetails(new PlainDiagnosticWriter()).Should().Contain("Load Order page").And.NotContain("rule");
         var rules = diagnostics.Single(d => d != order);
-        rules.FormatSummary(new PlainDiagnosticWriter()).Should().Be("2 entries of collection X's load order are not used");
-        rules.FormatDetails(new PlainDiagnosticWriter()).Should().Contain("rule 'a before b'").And.Contain("rule 'c after d'").And.Contain("Collection X page").And.NotContain("Ghost");
+        rules.FormatSummary(new PlainDiagnosticWriter()).Should().Be("2 of collection X's mod rules name no mod of the collection");
+        var details = rules.FormatDetails(new PlainDiagnosticWriter());
+        details.Should().Contain("rule 'a before b'").And.Contain("rule 'c after d'").And.Contain("Collection X page").And.NotContain("Ghost").And.NotContain("load order");
     }
 
     [Fact]
