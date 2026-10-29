@@ -135,7 +135,7 @@ internal static class Witcher3InstallPlan
     /// <c>content</c> folder inside it (a witcherscript.toml, say) go along; documentation does not. Anything
     /// outside the folders is left for the unplaced-files report.
     /// </summary>
-    private static Placement[] PlaceInFolders(ArchivePath[] paths, ContentFolder[] folders)
+    private static Placement[]? PlaceInFolders(ArchivePath[] paths, ContentFolder[] folders)
     {
         var placements = new List<Placement>();
         foreach (var path in paths)
@@ -145,17 +145,35 @@ internal static class Witcher3InstallPlan
             var insideContent = path.Segments[folder.Segments.Length].Equals(Content, StringComparison.OrdinalIgnoreCase);
             if (!insideContent && path.IsDocumentation) continue;
 
+            // A bin folder beside content is a script extender or config set, not part of the mod folder.
+            if (!insideContent && path.Segments[folder.Segments.Length].Equals(Bin, StringComparison.OrdinalIgnoreCase))
+            {
+                placements.Add(new Placement(path.Original, Target(Bin + "/" + string.Join('/', path.Segments[(folder.Segments.Length + 1)..]))));
+                continue;
+            }
+
             var root = folder.Kind == ContentFolderKind.Dlc ? WitcherConstants.W3DlcFolder : WitcherConstants.W3ModsFolder;
             placements.Add(new Placement(path.Original, Target(root + "/" + string.Join('/', path.Segments[(folder.Segments.Length - 1)..]))));
         }
-        return placements.ToArray();
+        return WithoutCollisions(placements);
+    }
+
+    /// <summary>
+    /// Null when two files land on the same target (case-insensitive). Dropping a wrapper folder can fold two
+    /// variants of a mod onto each other, and which one would be deployed is undefined, so the user picks by hand.
+    /// </summary>
+    private static Placement[]? WithoutCollisions(List<Placement> placements)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        return placements.All(p => seen.Add(p.Target.ToString())) ? placements.ToArray() : null;
     }
 
     private sealed record ContentFolder(string[] Segments, ContentFolderKind Kind);
 
     /// <summary>
     /// Everything under a <c>Mods</c> folder, wherever the folder sits. The <c>bin</c> folder and the <c>dlc</c>
-    /// or <c>dlc*</c> folders beside it go to the game's own folders.
+    /// or <c>dlc*</c> folders beside it go to the game's own folders, and so do <c>mod*</c> and <c>dlc*</c>
+    /// content folders found outside the Mods folder.
     /// </summary>
     private static Placement[]? TopLevelMods(ArchivePath[] paths)
     {
@@ -164,19 +182,31 @@ internal static class Witcher3InstallPlan
         var wrapper = first.Segments[..first.ModsIndex];
 
         var placements = new List<Placement>();
+        var placed = new HashSet<string>();
         foreach (var path in paths.Where(p => p.Segments.Length > wrapper.Length + 1 && p.StartsWith(wrapper)))
         {
             var rest = path.Segments[wrapper.Length..];
+            string? target = null;
             if (rest[0].Equals(WitcherConstants.W3ModsFolder, StringComparison.OrdinalIgnoreCase))
-                placements.Add(new Placement(path.Original, Target(WitcherConstants.W3ModsFolder + "/" + string.Join('/', rest[1..]))));
+                target = WitcherConstants.W3ModsFolder + "/" + string.Join('/', rest[1..]);
+            else if (path.IsDocumentation)
+                continue;
             else if (rest[0].Equals(Bin, StringComparison.OrdinalIgnoreCase))
-                placements.Add(new Placement(path.Original, Target(Bin + "/" + string.Join('/', rest[1..]))));
+                target = Bin + "/" + string.Join('/', rest[1..]);
             else if (rest[0].Equals(WitcherConstants.W3DlcFolder, StringComparison.OrdinalIgnoreCase))
-                placements.Add(new Placement(path.Original, Target(WitcherConstants.W3DlcFolder + "/" + string.Join('/', rest[1..]))));
-            else if (rest[0].StartsWith("dlc", StringComparison.OrdinalIgnoreCase) && path.StartsWith([..wrapper, rest[0]]) && rest.Length > 2)
-                placements.Add(new Placement(path.Original, Target(WitcherConstants.W3DlcFolder + "/" + string.Join('/', rest))));
+                target = WitcherConstants.W3DlcFolder + "/" + string.Join('/', rest[1..]);
+            else if (rest[0].StartsWith("dlc", StringComparison.OrdinalIgnoreCase) && rest.Length > 2)
+                target = WitcherConstants.W3DlcFolder + "/" + string.Join('/', rest);
+
+            if (target is null) continue;
+            placements.Add(new Placement(path.Original, Target(target)));
+            placed.Add(path.Original);
         }
-        return placements.ToArray();
+
+        var others = paths.Where(p => !placed.Contains(p.Original)).ToArray();
+        if (PlaceInFolders(others, ContentFolders(others)) is { } extra) placements.AddRange(extra);
+        else return null;
+        return WithoutCollisions(placements);
     }
 
     private static Placement[]? BareContent(ArchivePath[] paths, string modName)
@@ -196,13 +226,22 @@ internal static class Witcher3InstallPlan
     private static Placement[]? WrapperContent(ArchivePath[] paths)
     {
         var wrappers = paths.Where(p => p.ContentIndex == 1 && p.FolderKind() == ContentFolderKind.None).Select(p => p.Segments[0]).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        if (wrappers.Length == 0) return null;
+        // Several wrappers are variants of one mod (Option A, Option B); the user has to pick.
+        if (wrappers.Length != 1) return null;
 
-        return paths
-            .Where(p => p.Segments.Length > 2 && wrappers.Contains(p.Segments[0], StringComparer.OrdinalIgnoreCase)
-                        && (p.Segments[1].Equals(Content, StringComparison.OrdinalIgnoreCase) || !p.IsDocumentation))
-            .Select(p => new Placement(p.Original, Target($"{WitcherConstants.W3ModsFolder}/{Witcher3ModInstaller.ModFolderName(p.Segments[0])}/{string.Join('/', p.Segments[1..])}")))
-            .ToArray();
+        var placements = new List<Placement>();
+        foreach (var path in paths.Where(p => p.Segments.Length > 1 && p.Segments[0].Equals(wrappers[0], StringComparison.OrdinalIgnoreCase)))
+        {
+            var insideContent = path.Segments[1].Equals(Content, StringComparison.OrdinalIgnoreCase);
+            if (insideContent && path.Segments.Length > 2)
+                placements.Add(new Placement(path.Original, Target($"{WitcherConstants.W3ModsFolder}/{Witcher3ModInstaller.ModFolderName(path.Segments[0])}/{string.Join('/', path.Segments[1..])}")));
+            else if (path.IsDocumentation) continue;
+            else if (path.Segments.Length > 2 && path.Segments[1].Equals(Bin, StringComparison.OrdinalIgnoreCase))
+                placements.Add(new Placement(path.Original, Target(Bin + "/" + string.Join('/', path.Segments[2..]))));
+            else if (!insideContent)
+                placements.Add(new Placement(path.Original, Target($"{WitcherConstants.W3ModsFolder}/{Witcher3ModInstaller.ModFolderName(path.Segments[0])}/{string.Join('/', path.Segments[1..])}")));
+        }
+        return placements.ToArray();
     }
 
     /// <summary>
@@ -223,7 +262,7 @@ internal static class Witcher3InstallPlan
             else if (path.Segments.Length > 1 && path.Segments[0].StartsWith("dlc", StringComparison.OrdinalIgnoreCase))
                 rest = path.Segments;
 
-            if (rest is not null)
+            if (rest is not null && (!path.IsDocumentation || path.ContentIndex >= 0))
                 placements.Add(new Placement(path.Original, Target(WitcherConstants.W3DlcFolder + "/" + string.Join('/', rest))));
         }
         return placements.Count == 0 ? null : placements.ToArray();
@@ -243,7 +282,10 @@ internal static class Witcher3InstallPlan
             var segments = path.Segments[skip..];
             if (segments.Length == 0) continue;
             if (segments.Length > 1 && segments[0].Equals(Bin, StringComparison.OrdinalIgnoreCase))
-                placements.Add(new Placement(path.Original, Target(Bin + "/" + string.Join('/', segments[1..]))));
+            {
+                if (!path.IsDocumentation)
+                    placements.Add(new Placement(path.Original, Target(Bin + "/" + string.Join('/', segments[1..]))));
+            }
             else if (segments.Length == 1 && ContentExtensions.Contains(path.Extension))
                 placements.Add(new Placement(path.Original, Target($"{WitcherConstants.W3ModsFolder}/{modName}/{Content}/{segments[0]}")));
         }

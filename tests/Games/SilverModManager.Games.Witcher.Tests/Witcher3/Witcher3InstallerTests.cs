@@ -42,8 +42,8 @@ public class Witcher3InstallerTests(ITestOutputHelper outputHelper) : AWitcher3A
             ["mod_E3Runes/content/blob0.bundle", "mod_E3Runes/content/collision.cache.tmp", "mod_E3Runes/content/metadata.store", "mod_E3Runes/content/texture.cache"]),
         ("Mod folder with bundles and caches", "Example Mod.zip",
             ["modBloodTrails/content/blob0.bundle", "modBloodTrails/content/metadata.store", "modBloodTrails/content/scripts/local/BloodTrails.ws", "modBloodTrails/content/texture.cache"]),
-        ("Mod folder with an underscore and a caps mod prefix", "Example Mod.zip",
-            ["mod_WolfArmorsRestored_TypeA/content/blob0.bundle", "MODShout/content/x.ws"]),
+        ("Mod folder with an underscore and a variant suffix", "Example Mod.zip",
+            ["mod_WolfArmorsRestored_TypeA/content/blob0.bundle"]),
         ("Wrapper over content", "Example Mod.zip", ["My Cool Mod v1.2/content/scripts/a.ws"]),
         ("Loose game content files", "Example Mod.zip", ["blob0.bundle", "metadata.store", "texture.cache", "readme.txt"]),
         ("Root bin folder", "Example Mod.zip", ["bin/x64/dinput8.dll", "bin/config/base/visuals.ini"]),
@@ -68,6 +68,57 @@ public class Witcher3InstallerTests(ITestOutputHelper outputHelper) : AWitcher3A
         var group = await InstallThroughGame(loadout, archive);
 
         await VerifyChildren(ChildrenFilesAndHashes(group)).UseParameters(testCaseName);
+    }
+
+    private static string[] PlanTargets(string archiveName, params string[] paths) =>
+        Witcher3InstallPlan.Plan(paths, archiveName)?.Select(p => p.Target.ToString()).Order(StringComparer.Ordinal).ToArray() ?? [];
+
+    [Theory]
+    [InlineData("Option A/content/blob0.bundle", "Option B/content/blob0.bundle")]
+    [InlineData("Option A/modFoo/content/a.ws", "Option B/modFoo/content/a.ws")]
+    public void VariantArchives_AreLeftForTheManualInstaller(params string[] paths)
+    {
+        Witcher3InstallPlan.Plan(paths, "Example Mod.zip").Should().BeNull();
+    }
+
+    [Fact]
+    public void ModFolderPrefix_IsCaseInsensitive()
+    {
+        PlanTargets("Example Mod.zip", "MODShout/content/x.ws").Should().Equal("{Game}/Mods/MODShout/content/x.ws");
+    }
+
+    [Fact]
+    public void ModsFolder_AlsoPlacesModAndDlcFoldersOutsideIt()
+    {
+        PlanTargets("Example Mod.zip", "Mods/modA/content/x.ws", "Other/dlcB/content/y.bundle")
+            .Should().Equal("{Game}/Mods/modA/content/x.ws", "{Game}/dlc/dlcB/content/y.bundle");
+        PlanTargets("Example Mod.zip", "Mods/modA/content/x.ws", "modB/content/y.ws", "dlcC/content/z.bundle")
+            .Should().Equal("{Game}/Mods/modA/content/x.ws", "{Game}/Mods/modB/content/y.ws", "{Game}/dlc/dlcC/content/z.bundle");
+    }
+
+    [Fact]
+    public void BinBesideContent_GoesToTheGameBinFolder()
+    {
+        PlanTargets("Example Mod.zip", "Wrap/content/a.ws", "Wrap/bin/x64/d.dll")
+            .Should().Equal("{Game}/Mods/modWrap/content/a.ws", "{Game}/bin/x64/d.dll");
+        PlanTargets("Example Mod.zip", "modFoo/content/a.ws", "modFoo/bin/x64/d.dll")
+            .Should().Equal("{Game}/Mods/modFoo/content/a.ws", "{Game}/bin/x64/d.dll");
+    }
+
+    [Fact]
+    public void WrapperProjectFile_GoesAlongWithTheContent()
+    {
+        PlanTargets("Example Mod.zip", "Wrap/content/a.ws", "Wrap/witcherscript.toml", "Wrap/readme.txt")
+            .Should().Equal("{Game}/Mods/modWrap/content/a.ws", "{Game}/Mods/modWrap/witcherscript.toml");
+    }
+
+    [Fact]
+    public void DocumentationInBinAndDlc_IsNotPlaced()
+    {
+        PlanTargets("Example Mod.zip", "Wrap/Mods/modFoo/content/a.ws", "Wrap/bin/readme.txt", "Wrap/dlc/readme.txt", "Wrap/bin/x64/d.dll")
+            .Should().Equal("{Game}/Mods/modFoo/content/a.ws", "{Game}/bin/x64/d.dll");
+        PlanTargets("Example Mod.zip", "bin/readme.txt", "bin/x64/d.dll").Should().Equal("{Game}/bin/x64/d.dll");
+        PlanTargets("Example Mod.zip", "dlc/readme.txt", "dlc/dlcFoo/content/a.bundle").Should().Equal("{Game}/dlc/dlcFoo/content/a.bundle");
     }
 
     [Fact]
