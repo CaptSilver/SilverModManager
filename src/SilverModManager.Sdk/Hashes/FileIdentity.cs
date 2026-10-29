@@ -150,8 +150,30 @@ public readonly struct FileIdentity : IEquatable<FileIdentity>
     /// </summary>
     public static FileIdentity ParseHex(ReadOnlySpan<char> hex) => Read(Convert.FromHexString(hex));
 
-    /// <inheritdoc/>
-    public bool Equals(FileIdentity other) => _kind == other._kind && Digest.SequenceEqual(other.Digest);
+    /// <summary>
+    /// Same recorded name: kind, length and digest bytes agree. An xxHash3 and a SHA-1 of one file are not equal here;
+    /// <see cref="MatchSameKind"/> is how a caller finds out it is looking at that case.
+    /// </summary>
+    public bool Equals(FileIdentity other)
+    {
+        if (_kind != other._kind || _length != other._length) return false;
+        return _length == sizeof(ulong)
+            ? BinaryPrimitives.ReadUInt64BigEndian(Digest) == BinaryPrimitives.ReadUInt64BigEndian(other.Digest)
+            : Digest.SequenceEqual(other.Digest);
+    }
+
+    /// <summary>
+    /// Whether the two identities name the same bytes, when they can say. <see cref="IdentityMatch.Same"/> or
+    /// <see cref="IdentityMatch.Different"/> when the kinds agree (<see cref="None"/> matches only <see cref="None"/>),
+    /// <see cref="IdentityMatch.Unknown"/> when they differ. Never throws and never reads anything; the caller decides
+    /// what Unknown means for it.
+    /// </summary>
+    public IdentityMatch MatchSameKind(FileIdentity other)
+    {
+        if (IsNone || other.IsNone) return IsNone && other.IsNone ? IdentityMatch.Same : IdentityMatch.Different;
+        if (_kind != other._kind) return IdentityMatch.Unknown;
+        return Equals(other) ? IdentityMatch.Same : IdentityMatch.Different;
+    }
 
     /// <inheritdoc/>
     public override bool Equals([NotNullWhen(true)] object? obj) => obj is FileIdentity other && Equals(other);
@@ -161,7 +183,9 @@ public readonly struct FileIdentity : IEquatable<FileIdentity>
     {
         var hash = new HashCode();
         hash.Add(_kind);
-        hash.AddBytes(Digest);
+        hash.Add(_length);
+        if (_length == sizeof(ulong)) hash.Add(BinaryPrimitives.ReadUInt64BigEndian(Digest));
+        else hash.AddBytes(Digest);
         return hash.ToHashCode();
     }
 

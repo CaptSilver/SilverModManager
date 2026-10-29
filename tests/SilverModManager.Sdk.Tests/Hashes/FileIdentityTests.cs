@@ -117,4 +117,58 @@ public class FileIdentityTests
         (a == b).Should().BeTrue();
         (a != FileIdentity.XxHash3(Hash.From(43))).Should().BeTrue();
     }
+
+    private static MultiHash HashesOf(byte[] bytes) => MultiHasher.HashStream(new MemoryStream(bytes)).Result;
+
+    [Theory]
+    [InlineData(HashKind.XxHash3, HashKind.XxHash3, true, IdentityMatch.Same)]
+    [InlineData(HashKind.XxHash3, HashKind.XxHash3, false, IdentityMatch.Different)]
+    [InlineData(HashKind.XxHash3, HashKind.Sha1, true, IdentityMatch.Unknown)]
+    [InlineData(HashKind.Sha1, HashKind.Sha1, true, IdentityMatch.Same)]
+    public void MatchSameKind_TruthTable(HashKind leftKind, HashKind rightKind, bool sameBytes, IdentityMatch expected)
+    {
+        var bytes = "the same bytes"u8.ToArray();
+        var other = "other bytes"u8.ToArray();
+        var left = FileIdentity.Of(HashesOf(bytes), leftKind);
+        var right = FileIdentity.Of(HashesOf(sameBytes ? bytes : other), rightKind);
+        left.MatchSameKind(right).Should().Be(expected);
+    }
+
+    [Fact]
+    public void MatchSameKind_None_MatchesOnlyNone()
+    {
+        FileIdentity.None.MatchSameKind(FileIdentity.None).Should().Be(IdentityMatch.Same);
+        FileIdentity.None.MatchSameKind(FileIdentity.XxHash3(Hash.From(1))).Should().Be(IdentityMatch.Different);
+        FileIdentity.Sha1(Sha1Value.From(new byte[20])).MatchSameKind(FileIdentity.None).Should().Be(IdentityMatch.Different);
+    }
+
+    [Fact]
+    public void Equals_AcrossKinds_IsFalseAndDoesNotThrow()
+    {
+        var xxh3 = FileIdentity.XxHash3(Hash.From(1));
+        var sha1 = FileIdentity.Sha1(Sha1Value.From(new byte[20]));
+        xxh3.Equals(sha1).Should().BeFalse();
+        new HashSet<FileIdentity> { xxh3, sha1 }.Should().HaveCount(2);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(4)]
+    [InlineData(8)]
+    [InlineData(16)]
+    [InlineData(20)]
+    [InlineData(32)]
+    public void EqualsAndHashCode_AgreeWithByteCompare_ForEveryLength(int length)
+    {
+        var a = new byte[length];
+        Random.Shared.NextBytes(a);
+        var b = a.ToArray();
+        b[^1] ^= 1;
+        var ia = FileIdentity.Of(HashKind.Crc32, a);
+        var ia2 = FileIdentity.Of(HashKind.Crc32, a);
+        var ib = FileIdentity.Of(HashKind.Crc32, b);
+        ia.Equals(ia2).Should().BeTrue();
+        ia.GetHashCode().Should().Be(ia2.GetHashCode());
+        ia.Equals(ib).Should().BeFalse();
+    }
 }

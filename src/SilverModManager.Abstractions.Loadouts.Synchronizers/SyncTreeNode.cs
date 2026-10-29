@@ -20,7 +20,7 @@ public readonly record struct PathNodePair(GamePath Path, SyncNode Node);
 /// A grouping of (optional) entityId, identity, size and modified time. 8 bytes for the entity id, size and time, and 34 for the
 /// identity (kind, length and a 32 byte digest buffer), so about 56 bytes with padding.
 /// </summary>
-public readonly struct SyncNodePart
+public readonly struct SyncNodePart : IEquatable<SyncNodePart>
 {
     /// <summary>
     /// Default constructor.
@@ -58,6 +58,19 @@ public readonly struct SyncNodePart
     /// True if the entity ID has a value.
     /// </summary>
     public bool HaveEntityId => EntityId.Value != 0;
+
+    /// <inheritdoc/>
+    public bool Equals(SyncNodePart other) =>
+        EntityId.Equals(other.EntityId)
+        && Identity.Equals(other.Identity)
+        && Size.Equals(other.Size)
+        && LastModifiedTicks == other.LastModifiedTicks;
+
+    /// <inheritdoc/>
+    public override bool Equals(object? obj) => obj is SyncNodePart other && Equals(other);
+
+    /// <inheritdoc/>
+    public override int GetHashCode() => HashCode.Combine(EntityId, Identity, Size, LastModifiedTicks);
 }
 
 /// <summary>
