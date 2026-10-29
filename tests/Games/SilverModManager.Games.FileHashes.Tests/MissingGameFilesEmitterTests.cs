@@ -60,6 +60,16 @@ public sealed class MissingGameFilesEmitterTests : IDisposable
     }
 
     [Fact]
+    public async Task ADataMismatchSaysHowToPutTheListedContentsBack()
+    {
+        var tree = Tree(("data/changed.pak", Node(disk: OnDisk)));
+
+        var diagnostic = (await Diagnose(tree)).Should().ContainSingle().Subject;
+
+        diagnostic.Details.Value.Should().Contain("Verify the game's files in {Store}");
+    }
+
+    [Fact]
     public async Task MissingAndMismatchedFilesAreEachListedUnderTheirOwnDiagnostic()
     {
         var tree = Tree(
