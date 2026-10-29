@@ -252,9 +252,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             var disk = node.Disk;
             var previous = node.Previous;
             var loadout = node.Loadout;
-            RenameBySharedRelation(ref disk, previous, loadout);
-            RenameBySharedRelation(ref previous, disk, loadout);
-            RenameBySharedRelation(ref loadout, disk, previous);
+            RenameBySharedRelation(path, ref disk, previous, loadout);
+            RenameBySharedRelation(path, ref previous, disk, loadout);
+            RenameBySharedRelation(path, ref loadout, disk, previous);
             node.Disk = disk;
             node.Previous = previous;
             node.Loadout = loadout;
@@ -274,7 +274,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
     }
 
-    private void RenameBySharedRelation(ref SyncNodePart part, SyncNodePart first, SyncNodePart second)
+    private void RenameBySharedRelation(GamePath path, ref SyncNodePart part, SyncNodePart first, SyncNodePart second)
     {
         if (part.Identity.Kind != HashKind.Sha1) return;
         foreach (var other in new[] { first, second })
@@ -284,6 +284,15 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
             part = part with { Identity = other.Identity };
             return;
+        }
+
+        // Left as a SHA-1 beside an xxHash3 part: the pair stays mixed and reads as changed.
+        if (!Logger.IsEnabled(LogLevel.Trace)) return;
+        foreach (var other in new[] { first, second })
+        {
+            if (other.Identity.IsNone || other.Identity.Kind == HashKind.Sha1) continue;
+            Logger.LogTrace("No relation joins the SHA-1 and the {OtherKind} part of `{Path}`: {Identity} ({Size} bytes) against {OtherIdentity} ({OtherSize} bytes); searched the local hashes and the downloaded hashes",
+                other.Identity.Kind, path, part.Identity, part.Size, other.Identity, other.Size);
         }
     }
 
@@ -1239,6 +1248,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         if (record.Identity.Kind == identity.Kind) return record.Identity.Equals(identity);
         if (record.Identity.Kind == HashKind.Sha1 && identity.TryXxHash3(out var xxHash3) && _fileHashService.TryFindRelation(xxHash3, out var relation))
             return relation.Sha1 == Sha1Value.From(record.Identity.Digest) && relation.Size.Value == size;
+        Logger.LogTrace("`{Path}` is listed by path and size only: no relation joins the list's {ListedIdentity} to the disk's {Identity}", path, record.Identity, identity);
         return true;
     }
 

@@ -2,6 +2,8 @@ using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games.Merge;
@@ -17,10 +19,12 @@ namespace SilverModManager.Games.FileHashes.Emitters;
 public class UndeployableLoadoutDueToMissingGameFiles : ILoadoutDiagnosticEmitter
 {
     private readonly IConnection _connection;
+    private readonly ILogger _logger;
 
     public UndeployableLoadoutDueToMissingGameFiles(IServiceProvider serviceProvider)
     {
         _connection = serviceProvider.GetRequiredService<IConnection>();
+        _logger = serviceProvider.GetService<ILogger<UndeployableLoadoutDueToMissingGameFiles>>() ?? NullLogger<UndeployableLoadoutDueToMissingGameFiles>.Instance;
     }
 
     public IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, CancellationToken cancellationToken) => throw new NotSupportedException();
@@ -37,6 +41,11 @@ public class UndeployableLoadoutDueToMissingGameFiles : ILoadoutDiagnosticEmitte
         foreach (var (gamePath, node) in syncTree)
         {
             if (node.SourceItemType is not LoadoutSourceItemType.Game || !node.Actions.HasFlag(Actions.WarnOfUnableToExtract)) continue;
+            if (node.HaveDisk)
+            {
+                _logger.LogDebug("`{Path}` is counted as differing from the app's file data: disk {Disk}, loadout {Loadout}", gamePath, node.Disk.Identity, node.Loadout.Identity);
+            }
+
             (node.HaveDisk ? mismatched : missing).Add(gamePath, node);
         }
 

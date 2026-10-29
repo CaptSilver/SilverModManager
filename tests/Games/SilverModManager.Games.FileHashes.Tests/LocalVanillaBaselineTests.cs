@@ -151,6 +151,18 @@ public sealed class LocalVanillaBaselineTests : IDisposable
     }
 
     [Fact]
+    public async Task Sha1Mismatch_StillRecordsTheRelationBetweenItsXxHash3AndSha1()
+    {
+        WriteFile("a.esm", "modded!");
+
+        await Build([Manifest(1, ("a.esm", "vanilla"))]);
+
+        var hashes = await Hash("modded!");
+        var relation = HashRelation.FindBySha1(_store.Db, hashes.Sha1).Should().ContainSingle("the read already produced both digests").Subject;
+        relation.XxHash3.Should().Be(hashes.XxHash3);
+    }
+
+    [Fact]
     public async Task ZeroSizeFileInTheManifest_IsVanilla()
     {
         WriteFile("empty.txt", "");

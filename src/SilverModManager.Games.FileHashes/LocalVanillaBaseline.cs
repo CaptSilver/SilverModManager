@@ -186,7 +186,7 @@ internal sealed class LocalVanillaBaseline
 
             // A file taken from the store gets a row too, so the index that follows finds its hash by fingerprint
             // instead of reading three blocks of every file the store already vouched for.
-            readFiles.Add(new IndexedFileHash(new GamePath(LocationId.Game, candidate.Path), candidate.Size, new DateTimeOffset(candidate.ModifiedUtc), hash.XxHash3));
+            readFiles.Add(new IndexedFileHash(new GamePath(LocationId.Game, candidate.Path), candidate.Size, new DateTimeOffset(candidate.ModifiedUtc), hash.XxHash3, hash));
 
             if (candidate.Entry is { } entry && entry.Sha1 != hash.Sha1)
             {
@@ -238,7 +238,7 @@ internal sealed class LocalVanillaBaseline
         // Left out of RetractAt on purpose: the index writes rows under the same install path for files that
         // are not vanilla, and a rebuild after every game update must not cost that read again. Both writers
         // replace by key, so rows do not pile up.
-        LocalFileHashRows.Record(tx, localStore.Db, request.GamePath, readFiles);
+        LocalFileHashRows.Record(tx, localStore.Db, request.GamePath, readFiles, hashRelations);
         foreach (var entry in nonVanilla)
         {
             _ = new NonVanillaFile.New(tx)

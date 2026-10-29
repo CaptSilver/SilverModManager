@@ -31,10 +31,12 @@ public static class LocalFileHashRows
     /// Replaces the rows of the given files in <paramref name="tx"/>. A file that carries all its digests also gets a
     /// bare <see cref="HashRelation"/>: that is what lets a later baseline resolve the file from its hashes instead of
     /// reading it, and what joins a SHA-1 to the xxHash3 the file is archived under.
+    /// A caller that already made relations in <paramref name="tx"/> passes them as <paramref name="relations"/>, so the
+    /// same bytes do not get a second row.
     /// </summary>
-    public static void Record(ITransaction tx, IDb db, string gamePath, IEnumerable<IndexedFileHash> files)
+    public static void Record(ITransaction tx, IDb db, string gamePath, IEnumerable<IndexedFileHash> files, Dictionary<Hash, HashRelationId>? relations = null)
     {
-        var relations = new Dictionary<Hash, HashRelationId>();
+        relations ??= new Dictionary<Hash, HashRelationId>();
         foreach (var file in files)
         {
             if (file.Hashes is { } hashes) _ = EnsureHashRelation(tx, db, relations, hashes);
