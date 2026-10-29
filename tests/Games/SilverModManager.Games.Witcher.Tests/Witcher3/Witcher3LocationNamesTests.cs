@@ -15,7 +15,7 @@ public class Witcher3LocationNamesTests(ITestOutputHelper helper)
         .AddUniversalGameLocator<Witcher3Game>(new Version("4.0"), locationsFileSystem: IsolatedKnownFolders.Create);
 
     [Fact]
-    public void TheDocumentsFolder_IsNamedForAPathReadBeforeTheConstantsAreTouched()
+    public void TheGameNamesItsDocumentsLocationForAnIdParsedFromText()
     {
         var id = LocationId.From("WitcherDocuments");
 

@@ -46,7 +46,8 @@ public class LocationDisplayNameTests
         }
     }
 
-    private static readonly LocationId[] MayShareTheirLabel = [LocationId.Saves, LocationId.AppData];
+    // Ids whose label is deliberately the id itself: the plain word is what a player calls the place.
+    private static readonly string[] MayShareTheirLabel = ["Saves", "AppData", "Mods"];
 
     [Fact]
     public void EveryLocationIdDefinedInTheApp_IsNamedByTheAppOrItsGame()
@@ -57,11 +58,21 @@ public class LocationDisplayNameTests
         all.Select(a => a.Id.ToString()).Should().Contain(["WitcherDocuments", "PlayerProfiles", "ScriptExtenderConfig", "OpenMwConfig", "Mods", "Me3Mods", "Me3Host", "Data"]);
         var unnamed = all.Where(a => a.Id != LocationId.Unknown && !a.Id.IsNamed && !gameNames.ContainsKey(a.Id.ToString())).Select(a => a.Field);
         unnamed.Should().BeEmpty();
-        all.Where(a => a.Id.IsNamed && a.Id.DisplayName == a.Id.ToString() && !MayShareTheirLabel.Contains(a.Id))
+        all.Where(a => a.Id.IsNamed && a.Id.DisplayName == a.Id.ToString() && !MayShareTheirLabel.Contains(a.Id.ToString()))
             .Select(a => a.Field).Should().BeEmpty();
+        gameNames.Where(kv => kv.Value == kv.Key && !MayShareTheirLabel.Contains(kv.Key))
+            .Select(kv => kv.Key).Should().BeEmpty();
     }
 
+    // Each name ends "in <name>" and "to <name>": a folder noun needs its article, so it is a phrase, not a label.
     [Fact]
-    public void WitcherDocuments_IsCalledDocuments()
-        => SilverModManager.Games.Witcher.WitcherConstants.LocationNames["WitcherDocuments"].Should().Be("Documents");
+    public void EveryNameReadsAfterInAndTo()
+    {
+        var gameNames = GameLocationNames().SelectMany(d => d).Select(kv => (Field: kv.Key, Sentence: kv.Value));
+        var appNames = DefinedLocationIds().Where(a => a.Id.IsNamed).Select(a => (a.Field, Sentence: a.Id.SentenceName));
+
+        gameNames.Concat(appNames)
+            .Where(n => n.Sentence.Contains("folder", StringComparison.OrdinalIgnoreCase) && !n.Sentence.StartsWith("the ", StringComparison.Ordinal))
+            .Select(n => n.Field).Should().BeEmpty();
+    }
 }

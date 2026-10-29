@@ -25,9 +25,9 @@ public class NativeBuildTests(IServiceProvider serviceProvider)
         => serviceProvider.GetServices<IGame>().OfType<global::SilverModManager.Games.Larian.BaldursGate3.BaldursGate3>().Single();
 
     [Fact]
-    public void BaldursGate3_NamesItsLocationsForAPathReadBeforeItsConstantsAreTouched()
+    public void BaldursGate3_NamesItsLocationsForIdsParsedFromText()
     {
-        // From(string) only: no Bg3Constants field is read before the game is asked.
+        // Ids built from text, as a stored path yields them, not read from a Bg3Constants field.
         var mods = LocationId.From("Mods");
         var profiles = LocationId.From("PlayerProfiles");
         var extender = LocationId.From("ScriptExtenderConfig");

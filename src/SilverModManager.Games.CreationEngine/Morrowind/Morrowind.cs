@@ -37,7 +37,7 @@ public class Morrowind(IServiceProvider provider) : ACreationEngineGame<Morrowin
     /// <summary>The folder that holds the user's openmw.cfg, present only when exactly one is found.</summary>
     public static readonly LocationId OpenMwConfig = LocationId.From("OpenMwConfig");
 
-    private static readonly IReadOnlyDictionary<string, string> OpenMwLocationNames = new Dictionary<string, string> { ["OpenMwConfig"] = "OpenMW settings" };
+    private static readonly IReadOnlyDictionary<string, string> OpenMwLocationNames = new Dictionary<string, string> { [OpenMwConfig.ToString()] = "OpenMW settings" };
 
     /// <inheritdoc />
     public IReadOnlyDictionary<string, string> LocationNames => OpenMwLocationNames;

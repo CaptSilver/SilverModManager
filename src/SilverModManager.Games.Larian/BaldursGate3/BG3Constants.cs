@@ -14,12 +14,12 @@ public static class Bg3Constants
 
     public static readonly LocationId ScriptExtenderConfigLocationId = LocationId.From("ScriptExtenderConfig");
 
-    /// <summary>What a player calls BG3's locations, keyed by id string so reading a name never needs the fields above.</summary>
+    /// <summary>What a player calls BG3's locations, keyed by the id strings of the fields above.</summary>
     public static readonly IReadOnlyDictionary<string, string> LocationNames = new Dictionary<string, string>
     {
-        ["Mods"] = "Mods",
-        ["PlayerProfiles"] = "Profiles",
-        ["ScriptExtenderConfig"] = "Script Extender settings",
+        [ModsLocationId.ToString()] = "Mods",
+        [PlayerProfilesLocationId.ToString()] = "Profiles",
+        [ScriptExtenderConfigLocationId.ToString()] = "Script Extender settings",
     };
 
     public static readonly GamePath BG3SEGamePath = new(LocationId.Game, "bin/DWrite.dll");
