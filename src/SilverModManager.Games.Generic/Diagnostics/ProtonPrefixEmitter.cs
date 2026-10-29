@@ -34,7 +34,7 @@ public class ProtonPrefixEmitter(IFileSystem hostFileSystem) : ILoadoutDiagnosti
             yield return diagnostic;
 
         var synchronizer = installation.GetGame().Synchronizer;
-        foreach (var diagnostic in DiagnoseProtectedItems(loadout, synchronizer))
+        foreach (var diagnostic in DiagnoseProtectedItems(loadout, synchronizer, installation.Game.DisplayName))
             yield return diagnostic;
     }
 
@@ -81,9 +81,9 @@ public class ProtonPrefixEmitter(IFileSystem hostFileSystem) : ILoadoutDiagnosti
     /// One diagnostic per enabled group that has files the synchronizer leaves out because they sit on a
     /// protected path.
     /// </summary>
-    private static IEnumerable<Diagnostic> DiagnoseProtectedItems(Loadout.ReadOnly loadout, ILoadoutSynchronizer synchronizer)
+    private static IEnumerable<Diagnostic> DiagnoseProtectedItems(Loadout.ReadOnly loadout, ILoadoutSynchronizer synchronizer, string gameName)
     {
-        var skippedByGroup = new Dictionary<LoadoutItemGroupId, (LoadoutItemGroup.ReadOnly Group, List<GamePath> Paths)>();
+        var skippedByGroup = new Dictionary<LoadoutItemGroupId, (LoadoutItemGroup.ReadOnly Group, List<GamePath> Paths, List<GamePath> GameWritten)>();
 
         foreach (var item in LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemWithTargetPath())
         {
@@ -94,12 +94,19 @@ public class ProtonPrefixEmitter(IFileSystem hostFileSystem) : ILoadoutDiagnosti
 
             var group = loadoutItem.Parent;
             if (!skippedByGroup.TryGetValue(group.LoadoutItemGroupId, out var entry))
-                skippedByGroup[group.LoadoutItemGroupId] = entry = (group, []);
-            entry.Paths.Add(path);
+                skippedByGroup[group.LoadoutItemGroupId] = entry = (group, [], []);
+
+            // The card for saves tells the player to allow save files, which is no help for a file the game rebuilds itself.
+            (synchronizer.IsGameWrittenPath(path) ? entry.GameWritten : entry.Paths).Add(path);
         }
 
-        foreach (var (group, paths) in skippedByGroup.Values)
-            yield return Diagnostics.CreateLoadoutItemsTargetProtectedPath(group.ToReference(loadout), FormatPaths(paths));
+        foreach (var (group, paths, gameWritten) in skippedByGroup.Values)
+        {
+            if (paths.Count > 0)
+                yield return Diagnostics.CreateLoadoutItemsTargetProtectedPath(group.ToReference(loadout), FormatPaths(paths));
+            if (gameWritten.Count > 0)
+                yield return Diagnostics.CreateLoadoutItemsTargetGameWrittenPath(group.ToReference(loadout), gameName, FormatPaths(gameWritten));
+        }
     }
 
     private static string FormatPaths(List<GamePath> paths)

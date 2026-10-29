@@ -177,4 +177,30 @@ The prefix was read from disk without running anything. A DLL in `system32` does
             .AddValue<string>("Instructions")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate LoadoutItemsTargetGameWrittenPath = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 8))
+        .WithTitle("Files Target A File The Game Writes Itself")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("'{Group}' has files the game writes itself")
+        .WithDetails("""
+**{Group}** contains files at paths that {GameName} writes itself, so these files are left out when the loadout is
+applied:
+
+{Paths}
+
+The files stay in the loadout. The game rebuilds them when it starts, and a copy from a mod would be overwritten
+or would stop the game from refreshing its own.
+
+Remove the files from the mod if they are not meant to be there.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddDataReference<LoadoutItemGroupReference>("Group")
+            .AddValue<string>("GameName")
+            .AddValue<string>("Paths")
+        )
+        .Finish();
 }

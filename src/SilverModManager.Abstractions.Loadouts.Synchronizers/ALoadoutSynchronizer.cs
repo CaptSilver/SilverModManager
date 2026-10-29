@@ -912,23 +912,27 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             .ToHashSet();
 
         // Find all files in the overrides that match a path in the new files
-        var toDelete = from grp in LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemGroup().OfTypeLoadoutOverridesGroup()
+        var toDelete = (from grp in LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemGroup().OfTypeLoadoutOverridesGroup()
             from item in grp.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath()
             let path = (GamePath)item.TargetPath
-            where versionFiles.Contains(path)
-            select item;
+            where versionFiles.Contains(path) || IsGameOutputOnFilteredPath(path)
+            select (Item: item, Promote: versionFiles.Contains(path))).ToList();
 
         // No files to process, return early
-        if (!toDelete.Any())
+        if (toDelete.Count == 0)
             return loadout;
 
         using var tx = Connection.BeginTransaction();
         var gameMetadataId = loadout.InstallationId;
 
         // Delete all the matching override files
-        foreach (var file in toDelete)
+        foreach (var (file, promote) in toDelete)
         {
             tx.Delete(file, recursive: false);
+
+            // A file the game writes is not a game file to root, only a row that should never have been filed.
+            if (!promote)
+                continue;
 
             // The backed up file is being 'promoted' to a game file, which needs
             // to be rooted explicitly in case the user uses a feature like 'undo'
@@ -947,6 +951,13 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var result = await tx.Commit();
         return loadout.Rebase(result.Db);
     }
+
+    /// <summary>
+    /// Whether an override on this path can only be something the game wrote itself and the sync leaves alone. An
+    /// earlier build that did not filter the path filed the game's output as the player's overrides; the sync never
+    /// deploys such a row, so it is dropped rather than left to read as a mod that cannot be deployed.
+    /// </summary>
+    private bool IsGameOutputOnFilteredPath(GamePath path) => IsGameWrittenPath(path) && GamePathFilter.ShouldFilter(path);
 
     /// <summary>
     /// Alternative to <see cref="RunActions"/> that ignores changes and optionally clears the last sync loadout metadata

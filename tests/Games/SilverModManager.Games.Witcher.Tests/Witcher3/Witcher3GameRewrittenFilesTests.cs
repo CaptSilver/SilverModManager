@@ -199,6 +199,40 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task OverridesAnEarlierBuildFiledForTheGamesOwnOutputAreDroppedAndTheFilesStayOnDisk()
+    {
+        var loadout = await CreateLoadout();
+        await Legacy().Synchronize(Refresh(loadout));
+        await TheGameRunsOnce();
+        await Legacy().Synchronize(Refresh(loadout));
+        OverridePaths(loadout).Should().Contain([Stamp, CompiledScripts], "the earlier synchronizer filed the game's output as the player's overrides");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        OverridePaths(Refresh(loadout)).Should().NotContain(GameRewritten, "the game's own output is not the player's mod");
+        foreach (var path in GameRewritten)
+            (await (GameFolder / path).ReadAllTextAsync()).Should().Be("written by the game: " + path, "healing the loadout deletes nothing from the game folder");
+    }
+
+    [Fact]
+    public async Task AModFileOnAPathTheGameRewritesIsExplainedAsTheGamesOwnOutputNotAsASave()
+    {
+        var loadout = await CreateLoadout();
+        using (var tx = Connection.BeginTransaction())
+        {
+            var group = AddEmptyGroup(tx, loadout.LoadoutId, "mod that ships the stamp");
+            AddFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, Stamp), "a stamp from a mod");
+            await tx.Commit();
+        }
+
+        var diagnostics = await RunEmittersOnProcessedTree(Refresh(loadout));
+
+        var card = diagnostics.Select(Describe).Should().ContainSingle(text => text.Contains("mod that ships the stamp")).Which;
+        card.Should().Contain(Stamp).And.Contain("writes itself");
+        card.Should().NotContain("save folder").And.NotContain("Allow save files");
+    }
+
+    [Fact]
     public async Task AResetLeavesWhatTheGameRewroteAsItIs()
     {
         var loadout = await CreateLoadout();

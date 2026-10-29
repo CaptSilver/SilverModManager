@@ -39,6 +39,9 @@ public sealed class Witcher3Synchronizer(IServiceProvider provider, IGame game) 
         GamePathFilters.Create(path => RewrittenByTheGame.Contains(path)
                                        || (path.LocationId == WitcherConstants.WitcherDocuments && !ManagedDocuments.Contains(path)));
 
+    // The game's own output, so an override an earlier build filed for one of these is dropped on the next sync.
+    public override bool IsGameWrittenPath(GamePath path) => RewrittenByTheGame.Contains(path) || base.IsGameWrittenPath(path);
+
     // INI tweaks (a menu mod's *.part.txt) live in the loadout to be merged into the game's settings; the folder
     // means nothing to the game, so none of it is written.
     protected override void AdjustActions(Dictionary<GamePath, SyncNode> tree)
