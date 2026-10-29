@@ -519,6 +519,55 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
     }
 
     [Fact]
+    public async Task AGameUpdatedAfterItWasRegistered_ASecondSyncQueuesNoBackupOrIngestForAVanillaFile()
+    {
+        var loadout = await CreateLoadout();
+        SteamUpdatesTheGame(cachesTheNewManifests: true);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
+
+        foreach (var file in CyberpunkSteamInstall.GameFiles.Concat(CyberpunkSteamInstall.ExpansionFiles))
+        {
+            var actions = tree[new GamePath(LocationId.Game, file.Path)].Actions;
+            actions.Should().NotHaveFlag(Actions.BackupFile, $"`{file.Path}` is the game's own").And.NotHaveFlag(Actions.IngestFromDisk);
+        }
+    }
+
+    [Fact]
+    public async Task AGameUpdatedAfterItWasRegistered_AModOverAVanillaFileSettlesItsAttestedRowAgainstTheNewBuild()
+    {
+        var loadout = await CreateLoadout();
+        SteamUpdatesTheGame(cachesTheNewManifests: true);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        FullHashes.Reset();
+        await AddMod(loadout, Vanilla);
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        FullyHashed.Should().ContainSingle().Which.Should().Be(Vanilla);
+        (await FileStore.HaveFile(System.Text.Encoding.UTF8.GetBytes(VanillaText).xxHash3())).Should().BeTrue("the vanilla bytes were archived before the mod replaced them");
+        var baseline = LocalBaseline.All(Hashes.Local).Single(b => b.LocatorIds.Contains(NewGameManifestId.ToString()));
+        AttestedFile.FindByBaseline(Hashes.Local, baseline.Id).Select(r => r.Path.ToString()).Should().NotContain(Vanilla, "the read settled the row");
+        baseline.Files.Select(f => f.Path.ToString()).Should().Contain(Vanilla, "the read promoted the row on the new build's baseline");
+    }
+
+    [Fact]
+    public async Task AGameUpdatedAfterItWasRegistered_TheFirstSyncRefreshesTheRegistrysCopyOfTheInstall()
+    {
+        var loadout = await CreateLoadout();
+        SteamUpdatesTheGame(cachesTheNewManifests: true);
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        var registered = Refresh(loadout).InstallationInstance;
+        registered.LocatorResult.LocatorIds.Select(id => id.Value).Should().Contain(NewGameManifestId.ToString(), "readers of the registry see the build installed now");
+        GameRegistry.LocateGameInstallations().Single(i => i.Game.GameId == registered.Game.GameId).LocatorResult.LocatorIds
+            .Should().BeEquivalentTo(registered.LocatorResult.LocatorIds);
+    }
+
+    [Fact]
     public async Task AGameUpdatedAfterItWasRegistered_RescanningAndBuildingATreeReadNoVanillaFile()
     {
         var loadout = await CreateLoadout();

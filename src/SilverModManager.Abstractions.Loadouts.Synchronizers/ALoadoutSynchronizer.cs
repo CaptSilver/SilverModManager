@@ -701,6 +701,13 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         var gameLocatorResult = located.LocatorResult;
+
+        // The registry keeps the ids the game was found with until the app restarts, and every later read of
+        // loadout.InstallationInstance (the apply, reconcile, override reprocessing, the store's attested file
+        // list) would look the build up by them. Hand the registry the install as it is now.
+        if (!gameLocatorResult.LocatorIds.ToHashSet().SetEquals(registered.LocatorResult.LocatorIds))
+            _gameRegistry.RefreshInstallation(located);
+
         var metadataLocatorIds = gameLocatorResult.LocatorIds;
         var newLocatorIds = metadataLocatorIds.Distinct().ToArray();
 
@@ -1446,11 +1453,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var metadata = _gameRegistry.ForceGetMetadata(installation);
         var previousState = GetDiskState(metadata);
 
-        // The metadata row is the registry's, but the store's file list is read by the build as it is now. A game that
-        // cannot be located keeps the registry's copy; the index then fails on the folder the way it always has.
-        var indexed = TryLocateNow(installation, out var located) ? located : installation;
         var indexGameResult = await _gameLocationsService.IndexGame(
-            installation: indexed,
+            installation: installation,
             previousDiskState: previousState,
             filter: Synchronizers.GamePathFilters.Create(path => GamePathFilter.ShouldFilter(path) && !IsTrackedProtectedFile(previousState, path)),
             cancellationToken: cancellationToken,

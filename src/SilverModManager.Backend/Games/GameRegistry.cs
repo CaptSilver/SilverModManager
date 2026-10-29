@@ -39,6 +39,27 @@ internal class GameRegistry : IGameRegistry
         _cachedInstallations = Optional<ImmutableArray<GameInstallation>>.None;
     }
 
+    public void RefreshInstallation(GameInstallation located)
+    {
+        lock (_lock)
+        {
+            if (!_cachedInstallations.HasValue) return;
+
+            var folder = InstallFolder(located);
+            var cached = _cachedInstallations.Value;
+            var builder = cached.ToBuilder();
+            for (var i = 0; i < builder.Count; i++)
+            {
+                var candidate = builder[i];
+                if (candidate.Game.GameId != located.Game.GameId || candidate.LocatorResult.Store != located.LocatorResult.Store) continue;
+                if (!InstallPaths.AreSameFolder(InstallFolder(candidate).ToString(), folder)) continue;
+                builder[i] = located;
+            }
+
+            _cachedInstallations = builder.ToImmutable();
+        }
+    }
+
     public ImmutableArray<GameInstallation> LocateGameInstallations()
     {
         if (_cachedInstallations.HasValue) return _cachedInstallations.Value;

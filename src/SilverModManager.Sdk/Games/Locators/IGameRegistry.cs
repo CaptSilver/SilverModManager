@@ -25,6 +25,14 @@ public interface IGameRegistry
     void ClearCache();
 
     /// <summary>
+    /// Replaces the cached copy of an install with one the store located again after the game updated. Every
+    /// loadout resolves its installation through the cache, and the store's file list is looked up by the ids
+    /// the copy carries, so a copy left on the old build makes the whole install read as modified.
+    /// Does nothing when the cache holds no copy of that game, store and folder.
+    /// </summary>
+    void RefreshInstallation(GameInstallation located);
+
+    /// <summary>
     /// Tries to get the game installation for a loadout.
     /// </summary>
     bool TryGetGameInstallation(Loadout.ReadOnly loadout, [NotNullWhen(true)] out GameInstallation? gameInstallation);
