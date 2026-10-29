@@ -161,6 +161,22 @@ public class Witcher3VortexOrderFormatTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public void Read_PicksByTheParsedNameWhenTwoModsShareModIdAndVersion()
+    {
+        var root = JsonSerializer.Deserialize<CollectionRoot>(
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Witcher3", "Order", "Resources", "vortex-collection-install-ids.json")),
+            ServiceProvider.GetRequiredService<JsonSerializerOptions>())!;
+        var domain = root.Mods[0].DomainName;
+        Mod Twin(string name, uint file) => new() { Name = name, Version = "5.01.3", DomainName = domain, Source = new ModSource { Type = ModSourceType.NexusMods, ModId = ModId.From(12954), FileId = FileId.From(file) } };
+        var twins = new CollectionRoot { Info = root.Info, Mods = [Twin("One", 1), Twin("Two", 2)] };
+
+        var (entries, unmapped) = Format.Read(Json("""[{"id":"modX","modId":"Two 12954 5.01.3 2026-10-07T11-00Z aBcDeFgHi","data":{"prefix":2}}]"""), twins);
+
+        unmapped.Should().BeEmpty();
+        entries.Single().Reference.FileId.Should().Be(FileId.From(2));
+    }
+
+    [Fact]
     public void Read_ParsesANameThatHoldsDigitsAndParentheses()
     {
         var (entries, _) = ReadInstallIdFixture();

@@ -10,6 +10,9 @@ public class VortexInstallIdTests
     [InlineData("Actual Items In Bestiary 13378 1 2026-10-03T16-30Z yShfiQago", "Actual Items In Bestiary", 13378u, "1")]
     [InlineData("Extended Death Screen 5.00.1 (Remastered) 8060 5.00.1 2026-10-05T09-12Z Qw3rTyUiO", "Extended Death Screen 5.00.1 (Remastered)", 8060u, "5.00.1")]
     [InlineData("BASE - All 12954 5.01.3 2026-10-07T11-00Z aBcDeFgHi", "BASE - All", 12954u, "5.01.3")]
+    [InlineData("BASE - All 12954 Final 2026-10-07T11-00Z aBcDeFgHi", "BASE - All", 12954u, "Final")]
+    [InlineData("BASE - All 12954 v5.01-beta 2026-10-07T11-00Z aBcDeFgHi", "BASE - All", 12954u, "v5.01-beta")]
+    [InlineData("BASE - All 12954 5.01.3 2026-10-07T11-00-42Z aBcDeFgHi", "BASE - All", 12954u, "5.01.3")]
     public void TryParse_Spaced(string id, string name, uint modId, string version)
     {
         VortexInstallId.TryParse(id, out var parsed).Should().BeTrue();
@@ -20,6 +23,9 @@ public class VortexInstallIdTests
     [InlineData("Better Icons-2000-1-0-1700000000", "Better Icons", 2000u)]
     [InlineData("Friendly HUD-365-1234-3-2-1700000000", "Friendly HUD", 365u)]
     [InlineData("Name-123-1700000000", "Name", 123u)]
+    [InlineData("Mod-123-beta-1700000000", "Mod", 123u)]
+    [InlineData("Mod-123-Final-1700000000", "Mod", 123u)]
+    [InlineData("Mod-123-v2-beta-1700000000", "Mod", 123u)]
     public void TryParse_DashedArchiveName(string id, string name, uint modId)
     {
         VortexInstallId.TryParse(id, out var parsed).Should().BeTrue();
