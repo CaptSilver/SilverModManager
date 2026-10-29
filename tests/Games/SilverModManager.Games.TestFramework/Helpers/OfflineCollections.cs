@@ -6,6 +6,7 @@ using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Collections.Json;
 using SilverModManager.Abstractions.GuidedInstallers;
 using SilverModManager.Abstractions.Library;
+using SilverModManager.Collections;
 using SilverModManager.Games.FOMOD;
 using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
@@ -19,7 +20,7 @@ using SilverModManager.Sdk.NexusModsApi;
 
 using ModSource = SilverModManager.Abstractions.Collections.Json.ModSource;
 
-namespace SilverModManager.Collections.Tests;
+namespace SilverModManager.Games.TestFramework.Helpers;
 
 using CollectionResult = (NexusModsCollectionLibraryFile.ReadOnly File, CollectionRevisionMetadata.ReadOnly Revision, CollectionDownload.ReadOnly[] Items);
 
@@ -27,7 +28,7 @@ using CollectionResult = (NexusModsCollectionLibraryFile.ReadOnly File, Collecti
 /// Builds a collection that is already in the database: the collection.json is written as a library file, the downloads are
 /// entities, and nothing touches the network. The mods are zips on disk, or (from a manifest) files the library already holds.
 /// </summary>
-internal sealed class OfflineCollections(IServiceProvider serviceProvider, IConnection connection, ILibraryService libraryService, TemporaryFileManager temporaryFileManager)
+public sealed class OfflineCollections(IServiceProvider serviceProvider, IConnection connection, ILibraryService libraryService, TemporaryFileManager temporaryFileManager)
 {
     private const string ModuleConfig = """
         <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">

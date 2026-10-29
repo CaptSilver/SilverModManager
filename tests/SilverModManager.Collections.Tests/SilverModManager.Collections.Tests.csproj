@@ -10,6 +10,7 @@
     
     <ItemGroup>
         <Using Include="Xunit"/>
+        <Using Include="SilverModManager.Games.TestFramework.Helpers"/>
     </ItemGroup>
 
     <ItemGroup>
