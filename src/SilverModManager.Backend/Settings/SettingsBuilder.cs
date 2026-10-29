@@ -93,12 +93,19 @@ internal class SettingsBuilder : ISettingsBuilder
             {
                 var newValue = Cast<TSettings, TProperty>(obj);
 
+                // The init setter edits its target in place. Run it on a copy: the current object may be the
+                // registration's shared default (nothing saved yet), and edited in place it would stop being the default.
+                var copy = (TSettings)MemberwiseCloneMethod.Invoke(settings, null)!;
+
                 // void Set_Property(TSettings this, TProperty newValue)
-                setDelegate.DynamicInvoke([settings, newValue]);
-                return settings;
+                setDelegate.DynamicInvoke([copy, newValue]);
+                return copy;
             });
         }
     }
+
+    private static readonly MethodInfo MemberwiseCloneMethod = typeof(object).GetMethod("MemberwiseClone", BindingFlags.Instance | BindingFlags.NonPublic)
+        ?? throw new InvalidOperationException("object.MemberwiseClone not found");
 
     private static TProperty Cast<TSettings, TProperty>(object obj)
         where TSettings : class, ISettings, new()

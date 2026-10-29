@@ -57,6 +57,7 @@ public class SettingTextControlTests(IServiceProvider provider) : AUiTest(provid
             viewModel.TextContainer.Update(Settings);
 
             Settings.Get<HttpProxySettings>().HttpProxy.Should().Be("socks5://127.0.0.1:1080");
+            viewModel.TextContainer.DefaultValue.Should().BeEmpty("saving a value must not change the declared default");
             viewModel.TextContainer.HasChanged.Should().BeFalse();
         }
         finally
