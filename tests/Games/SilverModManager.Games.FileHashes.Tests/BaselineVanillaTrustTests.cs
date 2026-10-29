@@ -91,6 +91,31 @@ public sealed class BaselineVanillaTrustTests : IDisposable
     }
 
     [Fact]
+    public async Task AnOldBuildBaselineAndStoreRowsForTheNewIds_TheStoresListDecidesAndTheOldBaselineVouchesForNothing()
+    {
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("x.ws", "old vanilla")]);
+        await HashRows.BuiltForLocatorIds(_local, GamePath, "1001");
+        StoreRows(("x.ws", "new vanilla"));
+
+        IsTrusted("x.ws", out var reason, content: "new vanilla", locatorIds: ["1002"]).Should().BeTrue("the store's list for the new ids lists this copy");
+        reason.Should().BeEmpty();
+        IsTrusted("x.ws", out reason, content: "old vanilla", locatorIds: ["1002"]).Should().BeFalse("the old build's copy matches the old baseline, which no longer applies");
+        reason.Should().Be(VanillaTrustReasons.DiffersFromStoreList);
+    }
+
+    [Fact]
+    public async Task AnOldBuildBaselineListingTheFileNonVanillaAndTheSavedManifestOfTheNewIds_TheManifestDecides()
+    {
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReport(baseline, "x.ws", NonVanillaReason.HashDiffers);
+        await HashRows.BuiltForLocatorIds(_local, GamePath, "1001");
+        _depotcache.Add(1002, ("x.ws", "new vanilla"));
+
+        IsTrusted("x.ws", out var reason, content: "new vanilla", locatorIds: ["1002"]).Should().BeTrue();
+        reason.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task AListedFileEditedAfterTheBaselineWasBuiltIsUntrusted()
     {
         await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("x.ws", "vanilla")]);

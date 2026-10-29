@@ -14,6 +14,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Games.TestFramework;
+using SilverModManager.Games.TestFramework.Helpers;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.IO;
@@ -229,11 +230,12 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
     /// The state after a store update seen by the running app: no local baseline for the new build, only the
     /// store's own file list. The real trust is asked, over the one row <paramref name="storeListedContent"/> describes.
     /// </summary>
-    private async Task<MergedOutput> PlanAfterAStoreUpdate(string? storeListedContent, bool storeListCovers)
+    private async Task<MergedOutput> PlanAfterAStoreUpdate(string? storeListedContent, bool storeListCovers, string? oldBuildBaselineContent = null)
     {
         var loadout = await CreateLoadout();
         var rel = $"scripts/store-list-{Guid.NewGuid():N}.txt";
         await WriteVanilla(rel, UpdatedVanilla);
+        if (oldBuildBaselineContent is not null) await AddBaselineOfTheOldBuild(rel, oldBuildBaselineContent);
         await Mod(loadout, "A", "modA", 2, Text(rel, "a\nBB\nc\nd\ne\n"));
         await Mod(loadout, "B", "modB", 1, Text(rel, LowerModsInserts));
         loadout = Refresh(loadout);
@@ -253,6 +255,38 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
 
         var engine = new MergeEngine(FileStore, new BaselineVanillaTrust(hashes), NullLogger<MergeEngine>.Instance, _ => _game);
         return engine.Plan(loadout, MergeSourceMode.Apply).Single(o => o.RelPath == rel);
+    }
+
+    /// <summary>
+    /// The baseline built before the update: same store and folder, the old build's ids. The registry has since been
+    /// refreshed to the new ids, so it describes files the update replaced.
+    /// </summary>
+    private async Task AddBaselineOfTheOldBuild(string rel, string content)
+    {
+        var baseline = await LocalBaselineRows.AddLocalBaseline(Connection, GameInstallation.LocatorResult.Store,
+            GameInstallation.Locations[LocationId.Game].Path.ToString(), LocalBaselineKind.DepotManifests, [($"vanilla/{rel}", content)]);
+        using var tx = Connection.BeginTransaction();
+        tx.Add(baseline, LocalBaseline.LocatorIds, "ids-of-the-old-build");
+        await tx.Commit();
+    }
+
+    [Fact]
+    public async Task AnOldBuildBaselineExistsAndTheRegistryHasNewIds_TheStoresListForTheNewBuildDecidesAndTheOldBaselineIsNotUsed()
+    {
+        var output = await PlanAfterAStoreUpdate(UpdatedVanilla, storeListCovers: true, oldBuildBaselineContent: Vanilla);
+
+        AsText(output).Should().Be("a\nBB\nc\nd\nvar tt_creator;\ntt_creator = owner;\ne\n");
+        output.Strategy.Should().Be("text-3way");
+        output.Notes.OfType<VanillaBaseUntrusted>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AnOldBuildBaselineExistsAndTheStoresListHasAnotherCopy_SaysTheCopyDiffersFromTheStoresListNotFromTheBaseline()
+    {
+        var output = await PlanAfterAStoreUpdate("a\nsomething else\n", storeListCovers: true, oldBuildBaselineContent: UpdatedVanilla);
+
+        AsText(output).Should().NotContain("tt_creator");
+        output.Notes.OfType<VanillaBaseUntrusted>().Should().ContainSingle().Which.Reason.Should().Be(VanillaTrustReasons.DiffersFromStoreList);
     }
 
     [Fact]
