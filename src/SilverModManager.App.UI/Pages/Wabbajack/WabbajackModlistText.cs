@@ -10,6 +10,12 @@ namespace SilverModManager.App.UI.Pages.Wabbajack;
 /// <summary>A line of text for the page and whether it should be shown as a warning.</summary>
 public readonly record struct WabbajackNote(string Text, bool IsWarning);
 
+/// <summary>What the line under the toolbar says. <paramref name="Fraction"/> is null when there is nothing to draw a bar from.</summary>
+public readonly record struct WabbajackStatus(string Text, double? Fraction, bool IsIndeterminate, bool IsWarning);
+
+/// <summary>What the list itself says about itself: its description and, when it gives a link, its readme.</summary>
+public sealed record WabbajackModlistBlurb(string Description, Uri? Readme);
+
 /// <summary>What a finished check found, for the log: archives by what is left to do about them.</summary>
 public readonly record struct WabbajackPlanCounts(int Ready, int ToGet, int ByHand, int GameFilesDiffer);
 
@@ -117,13 +123,51 @@ public static class WabbajackModlistText
     public static bool CanInstall(ArchivePlan plan, bool skipMissingArchives)
         => skipMissingArchives || plan.Rows.All(IsAvailable);
 
+    /// <summary>
+    /// The one line under the toolbar. The first thing that applies wins, so a sentence several buttons share (the
+    /// list is being checked) is shown once, as the check's own progress. A button's own reason stays in its tooltip.
+    /// </summary>
+    /// <param name="installBlockedReason">Wins over Download's because it names the next step towards the goal.</param>
+    /// <param name="planSummary">What is left to get; shown when both Install and Download are allowed.</param>
+    public static WabbajackStatus Status(
+        string errorText,
+        string installProgressText, double installFraction,
+        string checkText, double checkFraction, bool isCheckIndeterminate,
+        AcquireProgress? downloads,
+        string installBlockedReason, string downloadBlockedReason,
+        string planSummary)
+    {
+        if (errorText != "") return new WabbajackStatus(errorText, null, false, true);
+        if (installProgressText != "") return new WabbajackStatus(installProgressText, installFraction, false, false);
+        if (checkText != "") return new WabbajackStatus(checkText, checkFraction, isCheckIndeterminate, false);
+        if (downloads is { Total: > 0 } running && running.Finished < running.Total)
+            return new WabbajackStatus(Downloads(running), (double)running.Finished / running.Total, false, false);
+        if (installBlockedReason != "") return new WabbajackStatus(installBlockedReason, null, false, false);
+        if (downloadBlockedReason != "") return new WabbajackStatus(downloadBlockedReason, null, false, false);
+        return new WabbajackStatus(planSummary, null, false, false);
+    }
+
+    /// <summary>The "what is still to get" line while nothing is running.</summary>
+    public static string PlanSummary(ArchivePlan plan)
+    {
+        var missing = plan.Rows.Count(row => !IsAvailable(row));
+        return missing == 0 ? "Every archive is available" : $"{missing} of {plan.Rows.Count} archives still to get";
+    }
+
+    /// <summary>Whether a description needs "Show more": several lines, or one that would wrap past three.</summary>
+    public static bool IsLongDescription(string text) => text.Contains('\n') || text.Length > 240;
+
+    /// <summary>The description trimmed, and the readme only if it is an https link (Wabbajack lists put a URL there).</summary>
+    public static WabbajackModlistBlurb Blurb(string description, string readme)
+        => new(description.Trim(), Uri.TryCreate(readme, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps ? uri : null);
+
     private const string CheckingTheList = "Checking the list against your library and game files. This can take a while for a big list.";
-    private const string CheckFailed = "The list could not be checked, see the message above.";
+    private const string CheckFailed = "The list could not be checked.";
 
     /// <summary>Why Install is off, as a sentence for the page, or "" while it is allowed.</summary>
     public static string InstallBlockedReason(bool hasLoadout, bool isPlanning, bool planReady, bool isInstalling, ArchivePlan plan, bool skipMissingArchives)
     {
-        if (isInstalling) return "An install is running. Its progress is shown below.";
+        if (isInstalling) return "An install is running.";
         if (isPlanning) return CheckingTheList;
         if (!planReady) return CheckFailed;
         if (!hasLoadout) return "Choose a loadout to install into.";
@@ -145,7 +189,7 @@ public static class WabbajackModlistText
     /// <summary>Why Download is off, as a sentence for the page, or "" while it is allowed.</summary>
     public static string DownloadBlockedReason(bool isPlanning, bool isPreparing, bool planReady, bool isDownloading, ArchivePlan plan)
     {
-        if (isDownloading) return "Downloads are running. Their progress is shown above.";
+        if (isDownloading) return "Downloads are running.";
         // Download plans the list afresh before it starts, which takes as long as the first check.
         if (isPlanning || isPreparing) return CheckingTheList;
         if (!planReady) return CheckFailed;

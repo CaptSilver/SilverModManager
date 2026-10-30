@@ -76,6 +76,12 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
             banner);
     }
 
+    public async Task<WabbajackModlistBlurb> ReadBlurb(LibraryFileId file, CancellationToken cancellationToken)
+    {
+        var list = await ReadList(file, cancellationToken);
+        return WabbajackModlistText.Blurb(list.Description, list.Readme);
+    }
+
     private async Task<Bitmap?> ReadBanner(LibraryFileId file, WabbajackModlistLibraryFile.ReadOnly modlist, CancellationToken cancellationToken)
     {
         lock (_lock)

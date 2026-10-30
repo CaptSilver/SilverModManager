@@ -124,6 +124,10 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         /// <summary>Whether the last plan was made on the UI thread, where a long one would freeze the page.</summary>
         public bool? PlannedOnUiThread { get; private set; }
 
+        public WabbajackModlistBlurb Blurb { get; set; } = new("", null);
+
+        public Task<WabbajackModlistBlurb> ReadBlurb(LibraryFileId file, CancellationToken cancellationToken) => Task.FromResult(Blurb);
+
         public async Task<ArchivePlan> BuildPlan(LibraryFileId file, SilverModManager.Sdk.Loadouts.LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)
         {
             PlannedFor.Add(target);
@@ -545,7 +549,7 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
 
         vm.ErrorText.Should().Contain("The game is not installed");
         vm.CanInstall.Should().BeFalse("an empty plan only means the check failed");
-        vm.InstallBlockedReason.Should().Contain("could not be checked").And.Contain("message above");
+        vm.InstallBlockedReason.Should().Be("The list could not be checked.");
         vm.DownloadBlockedReason.Should().Contain("could not be checked");
     }
 
@@ -589,6 +593,31 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         vm.DownloadBlockedReason.Should().Contain("None of the 2 missing archives can be fetched by the app")
             .And.Contain("Open page");
     }
+
+    [Fact]
+    public async Task Load_ShowsTheListsDescriptionAndReadme_AndTheHeaderStats()
+    {
+        var (vm, service, _) = await Open(Plan(Row(ArchiveState.Have)), load: false);
+        service.Blurb = new WabbajackModlistBlurb("A big list.", new Uri("https://example.com/readme"));
+
+        await vm.LoadAsync(CancellationToken.None);
+
+        vm.Description.Should().Be("A big list.");
+        vm.ReadmeUri.Should().Be(new Uri("https://example.com/readme"));
+        vm.ArchiveCountText.Should().Be("2 archives");
+        vm.ArchiveSizeText.Should().Be((Size.GB * 5).ToString());
+    }
+
+    [Fact]
+    public async Task Status_SaysTheBlockingReasonOnce_AndThePlanSummaryWhenNothingBlocks()
+    {
+        var (vm, _, _) = await Open(Plan(Row(ArchiveState.Manual), Row(ArchiveState.Have, "b.7z")));
+        vm.Status.Text.Should().Be(vm.InstallBlockedReason);
+
+        vm.SkipMissingArchives = true;
+        vm.Status.Text.Should().Be(vm.DownloadBlockedReason, "install is allowed, so the line falls to Download's reason");
+    }
+
 
     [Fact]
     public async Task Download_WhileRunning_SaysDownloadsAreRunning_AndTheReasonGoesWhenTheyFinish()

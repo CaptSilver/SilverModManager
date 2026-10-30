@@ -57,7 +57,7 @@ public partial class WabbajackModlistViewModelTests
     }
 
     [Fact]
-    public async Task ADisabledButton_ShowsItsReasonUnderneathAndInItsTooltip()
+    public async Task ADisabledButton_KeepsItsReasonInItsTooltip_AndThePageSaysTheBlockingOneOnce()
     {
         var (vm, _, _) = await Open(Plan(Row(ArchiveState.Manual, "a.7z"), Row(ArchiveState.Have, "b.7z")));
         var view = await ShowView(vm);
@@ -72,26 +72,26 @@ public partial class WabbajackModlistViewModelTests
             download.IsEffectivelyEnabled.Should().BeFalse();
             nextFive.IsEffectivelyEnabled.Should().BeFalse();
 
-            var installReason = view.FindControl<TextBlock>("InstallReasonText")!;
-            installReason.IsVisible.Should().BeTrue();
-            installReason.Text.Should().Contain("1 of 2 archives is not in your library yet");
-            ToolTip.GetTip(install).Should().Be(installReason.Text);
+            ToolTip.GetTip(install).Should().Be(vm.InstallBlockedReason);
+            vm.InstallBlockedReason.Should().Contain("1 of 2 archives is not in your library yet");
             ToolTip.GetShowOnDisabled(install).Should().BeTrue();
 
-            var downloadReason = view.FindControl<TextBlock>("DownloadReasonText")!;
-            downloadReason.IsVisible.Should().BeTrue();
-            downloadReason.Text.Should().Contain("The missing archive cannot be fetched by the app");
-            ToolTip.GetTip(download).Should().Be(downloadReason.Text);
+            ToolTip.GetTip(download).Should().Be(vm.DownloadBlockedReason);
+            vm.DownloadBlockedReason.Should().Contain("The missing archive cannot be fetched by the app");
 
-            var nextFiveReason = view.FindControl<TextBlock>("OpenNextFiveReasonText")!;
-            nextFiveReason.Text.Should().Be(downloadReason.Text, "Download cannot be pressed, so pointing at it would help no one");
-            ToolTip.GetTip(nextFive).Should().Be(nextFiveReason.Text);
+            vm.OpenNextFiveBlockedReason.Should().Be(vm.DownloadBlockedReason, "Download cannot be pressed, so pointing at it would help no one");
+            ToolTip.GetTip(nextFive).Should().Be(vm.OpenNextFiveBlockedReason);
             ToolTip.GetShowOnDisabled(nextFive).Should().BeTrue();
+
+            // Install's reason names the next step, so it is the one the page shows, and only there.
+            view.FindControl<TextBlock>("StatusText")!.Text.Should().Be(vm.InstallBlockedReason);
+            TextsIn(view).Count(text => text == vm.InstallBlockedReason).Should().Be(1);
+            TextsIn(view).Should().NotContain(vm.DownloadBlockedReason);
         });
     }
 
     [Fact]
-    public async Task AnEnabledButton_ShowsNoReason()
+    public async Task AnEnabledButton_HasNoReasonToShow()
     {
         var (vm, _, _) = await Open(Plan(Row(ArchiveState.Have, "b.7z")));
         var view = await ShowView(vm);
@@ -99,13 +99,14 @@ public partial class WabbajackModlistViewModelTests
         await EventuallyOnUi(() =>
         {
             Render((Window)view.GetVisualRoot()!);
-            view.FindControl<Button>("InstallButton")!.IsEffectivelyEnabled.Should().BeTrue();
-            view.FindControl<TextBlock>("InstallReasonText")!.IsVisible.Should().BeFalse();
+            var install = view.FindControl<Button>("InstallButton")!;
+            install.IsEffectivelyEnabled.Should().BeTrue();
+            ToolTip.GetTip(install).Should().BeNull();
         });
     }
 
     [Fact]
-    public async Task WhileTheListIsChecked_TheViewShowsTheReasonAndAProgressLineWithABar()
+    public async Task WhileTheListIsChecked_TheViewShowsOneProgressLineWithABar_AndNoReasonSentence()
     {
         var (vm, service, _) = await Open(Plan(Row(ArchiveState.Have)), load: false);
         var gate = new TaskCompletionSource();
@@ -117,22 +118,21 @@ public partial class WabbajackModlistViewModelTests
         // No Render tick while the bar is indeterminate: its endless animation never lets the headless tick finish.
         await EventuallyOnUi(() =>
         {
-            var line = view.FindControl<TextBlock>("CheckText")!;
-            var bar = view.FindControl<ProgressBar>("CheckBar")!;
+            var line = view.FindControl<TextBlock>("StatusText")!;
+            var bar = view.FindControl<ProgressBar>("StatusBar")!;
             line.IsVisible.Should().BeTrue();
-            line.Text.Should().NotBeEmpty();
+            line.Text.Should().Be(vm.CheckText).And.NotBeEmpty();
             bar.IsVisible.Should().BeTrue();
             bar.IsIndeterminate.Should().BeTrue("nothing has been counted yet");
-            view.FindControl<TextBlock>("DownloadReasonText")!.IsVisible.Should().BeTrue();
-            view.FindControl<TextBlock>("DownloadReasonText")!.Text.Should().Contain("Checking the list");
-            view.FindControl<TextBlock>("InstallReasonText")!.IsVisible.Should().BeTrue();
+            vm.DownloadBlockedReason.Should().Contain("Checking the list");
+            TextsIn(view).Should().NotContain(text => text.Contains("Checking the list against"), "the buttons keep that reason in their tooltips");
         });
 
         service.LastProgress!.Report(new SilverModManager.Wabbajack.Acquire.PlanProgress(SilverModManager.Wabbajack.Acquire.PlanPhase.CheckingLibrary, 412, 1294));
         await EventuallyOnUi(() =>
         {
-            view.FindControl<TextBlock>("CheckText")!.Text.Should().Be("Checking archives against your library: 412 of 1294");
-            var bar = view.FindControl<ProgressBar>("CheckBar")!;
+            view.FindControl<TextBlock>("StatusText")!.Text.Should().Be("Checking archives against your library: 412 of 1294");
+            var bar = view.FindControl<ProgressBar>("StatusBar")!;
             bar.IsIndeterminate.Should().BeFalse();
             bar.Value.Should().BeApproximately(412d / 1294, 1e-6);
         });
@@ -142,8 +142,8 @@ public partial class WabbajackModlistViewModelTests
         {
             Render((Window)view.GetVisualRoot()!);
             vm.IsPlanning.Should().BeFalse();
-            view.FindControl<TextBlock>("CheckText")!.IsVisible.Should().BeFalse();
-            view.FindControl<ProgressBar>("CheckBar")!.IsVisible.Should().BeFalse();
+            view.FindControl<TextBlock>("StatusText")!.Text.Should().NotContain("Checking archives");
+            view.FindControl<ProgressBar>("StatusBar")!.IsVisible.Should().BeFalse();
         });
     }
 

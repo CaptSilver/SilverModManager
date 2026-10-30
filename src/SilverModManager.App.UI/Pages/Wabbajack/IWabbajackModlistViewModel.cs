@@ -22,8 +22,22 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
     string Version { get; }
     string GameName { get; }
 
-    /// <summary>Archive count and download size, e.g. "312 archives, 48.2 GB".</summary>
-    string ArchiveSummary { get; }
+    /// <summary>E.g. "312 archives".</summary>
+    string ArchiveCountText { get; }
+
+    /// <summary>The download size of every archive, e.g. "48.2 GB".</summary>
+    string ArchiveSizeText { get; }
+
+    /// <summary>The list's own description, or empty.</summary>
+    string Description { get; }
+
+    /// <summary>The list's readme, when it gives a link to one.</summary>
+    Uri? ReadmeUri { get; }
+
+    ReactiveCommand<Unit, Unit> OpenReadmeCommand { get; }
+
+    /// <summary>The single line under the toolbar: an error, progress, or the one thing that blocks the buttons.</summary>
+    WabbajackStatus Status { get; }
 
     Bitmap? Banner { get; }
 
@@ -35,7 +49,7 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
 
     IReadOnlyList<WabbajackArchiveRow> Archives { get; }
 
-    /// <summary>The line above the archive table: what is still to get, or downloading progress.</summary>
+    /// <summary>What is still to get, or that every archive is available.</summary>
     string AcquireText { get; }
 
     /// <summary>The inbox files the last check could not match to an archive, or empty.</summary>

@@ -20,6 +20,10 @@ using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Pages.LoadoutPage;
 using SilverModManager.App.UI.Pages.MyGames;
 using SilverModManager.App.UI.Pages.Settings;
+using SilverModManager.App.UI.Pages.Wabbajack;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.Collections;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -145,6 +149,34 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
         var png = await Capture(
             () => new CollectionInstructionsView { Instructions = CollectionInstructions.From(root, Provider) },
             isReady: window => window.GetVisualDescendants().OfType<MarkdownScrollViewer>().Any());
+        await VerifyPng(png);
+    }
+
+    /// <summary>
+    /// A modlist's page while its game files are being hashed: header with the list's description, Download and
+    /// Install in the toolbar, one status line with a bar, and the archive table.
+    /// </summary>
+    [Fact]
+    public async Task Test_WabbajackModlist()
+    {
+        static WabbajackArchiveRow Archive(ArchiveState state, string name, long size)
+            => new(new ArchivePlanRow(new ArchiveEntry(FileIdentity.XxHash64(Hash.From((ulong)name.Length)), size, name, "", new ManualState(new Uri("https://example.com/a"), "get it")), state, null, null, null));
+
+        const string Checking = "Checking the list against your library and game files. This can take a while for a big list.";
+        var png = await Capture(() => new WabbajackModlistView
+        {
+            DataContext = new WabbajackModlistDesignViewModel
+            {
+                IsPlanning = true,
+                CheckText = "Hashing game files: 3.2 of 15.1 GB (Data/Skyrim - Textures1.bsa)",
+                CheckFraction = 0.21,
+                InstallBlockedReason = Checking,
+                DownloadBlockedReason = Checking,
+                OpenNextFiveBlockedReason = Checking,
+                Description = "A heavily reworked Skyrim VR with new textures, combat and a lot of quests. Needs a fast machine and a patient afternoon.",
+                Archives = [Archive(ArchiveState.Have, "SKSEVR.7z", 3_000_000), Archive(ArchiveState.Browser, "Textures Pack.7z", 4_200_000_000), Archive(ArchiveState.Manual, "Hand Made.zip", 90_000_000)],
+            },
+        });
         await VerifyPng(png);
     }
 

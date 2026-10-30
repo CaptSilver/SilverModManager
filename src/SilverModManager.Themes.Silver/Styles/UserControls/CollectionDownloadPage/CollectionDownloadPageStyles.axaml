@@ -5,7 +5,8 @@
         xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
         xmlns:reactiveUi="http://reactiveui.net"
         xmlns:markdownRenderer="clr-namespace:SilverModManager.App.UI.Controls.MarkdownRenderer;assembly=SilverModManager.App.UI"
-        xmlns:loadoutPage="clr-namespace:SilverModManager.App.UI.Pages.LoadoutPage;assembly=SilverModManager.App.UI">
+        xmlns:loadoutPage="clr-namespace:SilverModManager.App.UI.Pages.LoadoutPage;assembly=SilverModManager.App.UI"
+        xmlns:wabbajack="clr-namespace:SilverModManager.App.UI.Pages.Wabbajack;assembly=SilverModManager.App.UI">
 
     <Design.PreviewWith>
         <Border Width="1000" Height="800">
@@ -17,7 +18,8 @@
     </Design.PreviewWith>
 
     <Style Selector="collections|CollectionDownloadView,
-    loadoutPage|CollectionLoadoutView">
+    loadoutPage|CollectionLoadoutView,
+    wabbajack|WabbajackModlistView">
 
         <Style Selector="^ Grid#Body">
 
@@ -113,6 +115,14 @@
                                         </Style>
                                     </Style>
 
+                                    <!-- plain items of a modlist's line (game, version); a collection's items have their own panels -->
+                                    <Style Selector="^ > TextBlock.Tag">
+                                        <Setter Property="VerticalAlignment" Value="Center" />
+                                        <Setter Property="Theme" Value="{StaticResource BodySMNormalTheme}" />
+                                        <Setter Property="Foreground"
+                                                Value="{StaticResource NeutralTranslucentModerateBrush}" />
+                                    </Style>
+
                                     <Style Selector="^ StackPanel#RevisionsPanel">
                                         <Setter Property="Orientation" Value="Horizontal" />
                                         <Setter Property="VerticalAlignment" Value="Center" />
@@ -162,6 +172,16 @@
                                             <Setter Property="Foreground"
                                                     Value="{StaticResource NeutralTranslucentModerateBrush}" />
                                             <Setter Property="Theme" Value="{StaticResource BodySMNormalTheme}" />
+                                        </Style>
+                                    </Style>
+
+                                    <!-- a modlist's extracted size next to the free space: a warning when it will not fit -->
+                                    <Style Selector="^ StackPanel#FreeSpacePanel.Warning">
+                                        <Style Selector="^ > TextBlock">
+                                            <Setter Property="Foreground" Value="{StaticResource WarningStrongBrush}" />
+                                        </Style>
+                                        <Style Selector="^ > icons|UnifiedIcon">
+                                            <Setter Property="Foreground" Value="{StaticResource WarningStrongBrush}" />
                                         </Style>
                                     </Style>
 

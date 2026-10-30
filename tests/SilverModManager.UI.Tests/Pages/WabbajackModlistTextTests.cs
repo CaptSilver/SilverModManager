@@ -95,7 +95,7 @@ public class WabbajackModlistTextTests
     [Fact]
     public void InstallBlockedReason_NamesARunningInstallBeforeAnythingElse()
         => WabbajackModlistText.InstallBlockedReason(false, true, false, true, Plan(Row(ArchiveState.Manual)), false)
-            .Should().Be("An install is running. Its progress is shown below.");
+            .Should().Be("An install is running.");
 
     [Fact]
     public void InstallBlockedReason_SaysTheListIsBeingChecked()
@@ -105,7 +105,7 @@ public class WabbajackModlistTextTests
     [Fact]
     public void InstallBlockedReason_SaysWhenTheCheckDidNotFinish()
         => WabbajackModlistText.InstallBlockedReason(true, false, false, false, Plan(), false)
-            .Should().Contain("could not be checked").And.Contain("message above");
+            .Should().Be("The list could not be checked.");
 
     [Fact]
     public void InstallBlockedReason_AsksForALoadoutWhenNoneIsPicked()
@@ -136,7 +136,7 @@ public class WabbajackModlistTextTests
     [Fact]
     public void DownloadBlockedReason_CoversRunningCheckingFailedEmptyDoneAndManual()
     {
-        WabbajackModlistText.DownloadBlockedReason(false, false, true, true, Plan(Row(ArchiveState.Browser))).Should().Be("Downloads are running. Their progress is shown above.");
+        WabbajackModlistText.DownloadBlockedReason(false, false, true, true, Plan(Row(ArchiveState.Browser))).Should().Be("Downloads are running.");
         WabbajackModlistText.DownloadBlockedReason(true, false, false, false, Plan()).Should().StartWith("Checking the list");
         WabbajackModlistText.DownloadBlockedReason(false, false, false, false, Plan()).Should().Contain("could not be checked");
         WabbajackModlistText.DownloadBlockedReason(false, false, true, false, Plan()).Should().Be("The list names no archives.");
@@ -220,5 +220,73 @@ public class WabbajackModlistTextTests
             Row(ArchiveState.GameFileVersion)));
 
         counts.Should().Be(new WabbajackPlanCounts(Ready: 2, ToGet: 3, ByHand: 2, GameFilesDiffer: 1));
+    }
+
+    private const string Checking = "Checking the list against your library and game files. This can take a while for a big list.";
+
+    private static WabbajackStatus Status(
+        string error = "", string install = "", double installFraction = 0,
+        string check = "", double checkFraction = 0, bool checkIndeterminate = false,
+        AcquireProgress? downloads = null, string installReason = "", string downloadReason = "", string plan = "plan")
+        => WabbajackModlistText.Status(error, install, installFraction, check, checkFraction, checkIndeterminate, downloads, installReason, downloadReason, plan);
+
+    [Fact]
+    public void Status_ShowsAnErrorAsAWarningAheadOfARunningInstall()
+        => Status(error: "boom", install: "Writing files: 1 of 2", installFraction: 0.5)
+            .Should().Be(new WabbajackStatus("boom", null, false, true));
+
+    [Fact]
+    public void Status_ShowsInstallProgressWithItsFraction()
+        => Status(install: "Writing files: 1 of 2", installFraction: 0.5, check: "Reading the list")
+            .Should().Be(new WabbajackStatus("Writing files: 1 of 2", 0.5, false, false));
+
+    [Fact]
+    public void Status_ShowsTheCheckOnceWhenBothReasonsRepeatTheCheckingSentence()
+        => Status(check: "Hashing game files: 3.2 of 15.1 GB", checkFraction: 0.2, installReason: Checking, downloadReason: Checking)
+            .Should().Be(new WabbajackStatus("Hashing game files: 3.2 of 15.1 GB", 0.2, false, false));
+
+    [Fact]
+    public void Status_PassesOnAnIndeterminateCheck()
+        => Status(check: "Reading the list", checkIndeterminate: true).IsIndeterminate.Should().BeTrue();
+
+    [Fact]
+    public void Status_ShowsDownloadProgressWhileArchivesAreStillComing()
+        => Status(downloads: new AcquireProgress(1, 4), installReason: "later")
+            .Should().Be(new WabbajackStatus("Downloading archives: 1 of 4", 0.25, false, false));
+
+    [Fact]
+    public void Status_IgnoresFinishedDownloadsAndFallsToTheReason()
+        => Status(downloads: new AcquireProgress(4, 4), installReason: "Get what is missing.")
+            .Text.Should().Be("Get what is missing.");
+
+    [Fact]
+    public void Status_PrefersInstallsReasonOverDownloadsBecauseItNamesTheNextStep()
+        => Status(installReason: "Get what is missing.", downloadReason: "Every archive is already in your library.")
+            .Should().Be(new WabbajackStatus("Get what is missing.", null, false, false));
+
+    [Fact]
+    public void Status_FallsToDownloadsReasonWhenInstallIsAllowed()
+        => Status(downloadReason: "Every archive is already in your library.").Text.Should().Be("Every archive is already in your library.");
+
+    [Fact]
+    public void Status_FallsToThePlanSummaryWhenBothButtonsAreOn()
+        => Status(plan: "3 of 9 archives still to get").Should().Be(new WabbajackStatus("3 of 9 archives still to get", null, false, false));
+
+    [Fact]
+    public void IsLongDescription_IsTrueForLongTextAndForSeveralLines()
+    {
+        WabbajackModlistText.IsLongDescription("A short line.").Should().BeFalse();
+        WabbajackModlistText.IsLongDescription(new string('a', 241)).Should().BeTrue();
+        WabbajackModlistText.IsLongDescription("One\nTwo").Should().BeTrue();
+    }
+
+    [Fact]
+    public void Blurb_TrimsTheDescription_AndKeepsOnlyAnHttpsReadme()
+    {
+        WabbajackModlistText.Blurb("  A list.\n", "https://example.com/readme").Should()
+            .Be(new WabbajackModlistBlurb("A list.", new Uri("https://example.com/readme")));
+        WabbajackModlistText.Blurb("x", "").Readme.Should().BeNull();
+        WabbajackModlistText.Blurb("x", "README.md").Readme.Should().BeNull();
+        WabbajackModlistText.Blurb("x", "http://example.com/readme").Readme.Should().BeNull("only https links are opened from the page");
     }
 }

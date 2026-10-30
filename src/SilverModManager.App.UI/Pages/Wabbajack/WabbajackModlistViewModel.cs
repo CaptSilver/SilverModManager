@@ -45,7 +45,6 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
     private WabbajackModlistDetails? _details;
     private ArchivePlan _plan = new([]);
-    private AcquireProgress? _downloads;
     private CancellationTokenSource? _acquireCancellation;
     private WabbajackModlistLoadoutGroupId? _groupId;
     private bool _loadStarted;
@@ -68,7 +67,12 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     [Reactive] public partial string Author { get; private set; } = "";
     [Reactive] public partial string Version { get; private set; } = "";
     [Reactive] public partial string GameName { get; private set; } = "";
-    [Reactive] public partial string ArchiveSummary { get; private set; } = "";
+    [Reactive] public partial string ArchiveCountText { get; private set; } = "";
+    [Reactive] public partial string ArchiveSizeText { get; private set; } = "";
+    [Reactive] public partial string Description { get; private set; } = "";
+    [Reactive] public partial Uri? ReadmeUri { get; private set; }
+    [Reactive] public partial WabbajackStatus Status { get; private set; }
+    [Reactive] public partial AcquireProgress? Downloads { get; private set; }
     [Reactive] public partial Bitmap? Banner { get; private set; }
 
     [Reactive] public partial IReadOnlyList<WabbajackLoadoutChoice> LoadoutChoices { get; private set; } = [WabbajackLoadoutChoice.CreateNew];
@@ -112,6 +116,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     public ReactiveCommand<Unit, Unit> OpenInboxFolderCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenHealthCheckCommand { get; }
     public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenReadmeCommand { get; }
 
     public WabbajackModlistViewModel(
         IWindowManager windowManager,
@@ -133,6 +138,17 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         this.WhenAnyValue(vm => vm.SkipMissingArchives, vm => vm.IsPlanning, vm => vm.IsDownloading, vm => vm.HasStartedDownloads)
             .Subscribe(_ => Recompute());
 
+        // Ten inputs decide the one status line; a single subscription keeps them from being refreshed by hand at every setter.
+        this.WhenAnyValue(
+                vm => vm.ErrorText, vm => vm.ProgressText, vm => vm.ProgressFraction, vm => vm.CheckText, vm => vm.CheckFraction,
+                vm => vm.IsCheckIndeterminate, vm => vm.Downloads, vm => vm.InstallBlockedReason, vm => vm.DownloadBlockedReason, vm => vm.AcquireText,
+                (error, install, installFraction, check, checkFraction, indeterminate, downloads, installReason, downloadReason, plan) =>
+                    WabbajackModlistText.Status(error, install, installFraction, check, checkFraction, indeterminate, downloads, installReason, downloadReason, plan))
+            .Subscribe(status => Status = status);
+
+        OpenReadmeCommand = ReactiveCommand.Create(
+            () => { if (ReadmeUri is { } readme) _provider.GetRequiredService<IOSInterop>().OpenUri(readme); },
+            this.WhenAnyValue(vm => vm.ReadmeUri).Select(uri => uri is not null));
         SelectLoadoutCommand = ReactiveCommand.CreateFromTask<WabbajackLoadoutChoice>(async choice => await Guarded(token => SelectLoadoutAsync(choice, token)));
         InstallCommand = ReactiveCommand.CreateFromTask(InstallAsync, this.WhenAnyValue(vm => vm.CanInstall));
         OpenPageCommand = ReactiveCommand.Create<WabbajackArchiveRow>(row =>
@@ -215,9 +231,13 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
                 Author = _details.Author;
                 Version = _details.Version;
                 GameName = _details.GameType;
-                ArchiveSummary = $"{_details.ArchiveCount} archives, {_details.ArchiveSize}";
+                ArchiveCountText = $"{_details.ArchiveCount} archives";
+                ArchiveSizeText = _details.ArchiveSize.ToString();
                 Banner = _details.Banner;
                 TabTitle = _details.Name;
+
+                // Read after Open so the name and stats show before the list is parsed; the plan below reuses the parse.
+                await ShowBlurb(token);
 
                 RefreshLoadoutChoices();
                 // Without a loadout of the game, "Create new loadout" is the only way forward, so it starts out picked.
@@ -235,6 +255,21 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
                 IsPlanning = false;
                 ClearCheck();
             }
+        }
+    }
+
+    // A list that cannot be read fails again in the check below, with the message the page shows; the header just goes without.
+    private async Task ShowBlurb(CancellationToken token)
+    {
+        try
+        {
+            var blurb = await Task.Run(() => _service.ReadBlurb(FileId, token), token);
+            Description = blurb.Description;
+            ReadmeUri = blurb.Readme;
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _logger?.LogDebug(e, "No description for '{List}'", Name);
         }
     }
 
@@ -279,7 +314,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
             // Show is what makes the plan the acquirer's current one: from here on it matches the rows to whatever
             // reaches the library, without fetching anything.
-            _downloads = null;
+            Downloads = null;
             _acquirer.Show(plan);
             _planReady = true;
             // The acquirer keeps no rows when no page is active (the user left while planning); the page then
@@ -379,7 +414,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             // Another loadout was picked while planning; its own plan is the one on the page now.
             if (token.IsCancellationRequested) return;
 
-            _downloads = null;
+            Downloads = null;
             HasStartedDownloads = true;
             IsDownloading = true;
             var run = _acquirer.Run(plan, new Progress<AcquireProgress>(OnDownloadProgress), token);
@@ -421,8 +456,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
     private void OnDownloadProgress(AcquireProgress progress)
     {
-        _downloads = progress;
-        AcquireText = DescribePlan();
+        Downloads = progress;
     }
 
     private void ApplyPlan(ArchivePlan plan)
@@ -436,17 +470,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         FreeSpaceText = note.Text;
         IsFreeSpaceWarning = note.IsWarning;
 
-        AcquireText = DescribePlan();
+        AcquireText = WabbajackModlistText.PlanSummary(plan);
         Recompute();
-    }
-
-    private string DescribePlan()
-    {
-        if (_downloads is { Total: > 0 } downloads && downloads.Finished < downloads.Total)
-            return WabbajackModlistText.Downloads(downloads);
-
-        var missing = _plan.Rows.Count(row => !WabbajackModlistText.IsAvailable(row));
-        return missing == 0 ? "Every archive is available" : $"{missing} of {_plan.Rows.Count} archives still to get";
     }
 
     private void Recompute()

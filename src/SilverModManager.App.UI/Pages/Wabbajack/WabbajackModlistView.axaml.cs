@@ -19,7 +19,8 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
     {
         InitializeComponent();
 
-        DragDrop.SetAllowDrop(DropZone, true);
+        // The header and toolbar sit outside the scrolled part, and the page says "anywhere on this page".
+        DragDrop.SetAllowDrop(Body, true);
 
         this.WhenActivated(disposables =>
         {
@@ -30,28 +31,39 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
 
             this.BindCommand(ViewModel, vm => vm.DownloadCommand, view => view.DownloadButton).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.OpenNextFiveCommand, view => view.OpenNextFiveButton).DisposeWith(disposables);
-            this.BindCommand(ViewModel, vm => vm.CheckInboxCommand, view => view.CheckInboxButton).DisposeWith(disposables);
-            this.BindCommand(ViewModel, vm => vm.OpenInboxFolderCommand, view => view.OpenInboxButton).DisposeWith(disposables);
+            MenuCheckInbox.Command = viewModel.CheckInboxCommand;
+            MenuOpenInboxFolder.Command = viewModel.OpenInboxFolderCommand;
+            MenuOpenReadme.Command = viewModel.OpenReadmeCommand;
+            MenuRemove.Command = viewModel.RemoveCommand;
             this.BindCommand(ViewModel, vm => vm.InstallCommand, view => view.InstallButton).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.InstallCommand, view => view.ResumeButton).DisposeWith(disposables);
-            this.BindCommand(ViewModel, vm => vm.RemoveCommand, view => view.RemoveButton).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.OpenHealthCheckCommand, view => view.HealthCheckButton).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SkipMissingArchives, view => view.SkipBox.IsChecked).DisposeWith(disposables);
 
-            OnUi(vm => vm.WhenAnyValue(x => x.Name)).Subscribe(text => NameText.Text = text).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.Author, x => x.Version, x => x.GameName, (author, version, game) => $"{author}, version {version}, for {game}"))
-                .Subscribe(text => DetailsText.Text = text).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.ArchiveSummary)).Subscribe(text => SummaryText.Text = text).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.Name)).Subscribe(text => CollectionName.Text = text).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.Author)).Subscribe(text => AuthorName.Text = text).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.GameName)).Subscribe(text => GameText.Text = text).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.Version)).Subscribe(text => VersionText.Text = $"Version {text}").DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.ArchiveCountText)).Subscribe(text => ArchiveCount.Text = text).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.ArchiveSizeText)).Subscribe(text => ArchiveSize.Text = text).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.Banner)).Subscribe(bitmap =>
             {
-                BannerImage.Source = bitmap;
-                BannerImage.IsVisible = bitmap is not null;
+                CollectionImage.Source = bitmap;
+                HeaderImageBorder.Background = bitmap is null ? null : new ImageBrush { Source = bitmap, Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Top };
             }).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.ErrorText)).Subscribe(text =>
+            OnUi(vm => vm.WhenAnyValue(x => x.Description)).Subscribe(text =>
             {
-                ErrorText.Text = text;
-                ErrorText.IsVisible = text != "";
+                DescriptionText.Text = text;
+                DescriptionPanel.IsVisible = text != "";
+                DescriptionToggle.IsVisible = WabbajackModlistText.IsLongDescription(text);
             }).DisposeWith(disposables);
+            DescriptionToggle.Click += (_, _) =>
+            {
+                var expand = DescriptionText.MaxLines != 0;
+                DescriptionText.MaxLines = expand ? 0 : CollapsedLines;
+                DescriptionToggle.Text = expand ? "Show less" : "Show more";
+            };
+            OnUi(vm => vm.WhenAnyValue(x => x.ReadmeUri)).Subscribe(uri => MenuOpenReadme.IsVisible = uri is not null).DisposeWith(disposables);
 
             OnUi(vm => vm.WhenAnyValue(x => x.LoadoutChoices)).Subscribe(choices =>
             {
@@ -70,21 +82,22 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
 
             OnUi(vm => vm.WhenAnyValue(x => x.FreeSpaceText, x => x.IsFreeSpaceWarning)).Subscribe(state =>
             {
-                FreeSpaceText.Text = state.Item1;
-                FreeSpaceText.Foreground = state.Item2 ? Brushes.OrangeRed : null;
+                FreeSpace.Text = state.Item1;
+                FreeSpacePanel.IsVisible = state.Item1 != "";
+                FreeSpacePanel.Classes.Set("Warning", state.Item2);
             }).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.InstallBlockedReason)).Subscribe(text => ShowReason(InstallReasonText, text, InstallButton, ResumeButton)).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.DownloadBlockedReason)).Subscribe(text => ShowReason(DownloadReasonText, text, DownloadButton)).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.OpenNextFiveBlockedReason)).Subscribe(text => ShowReason(OpenNextFiveReasonText, text, OpenNextFiveButton)).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.CheckText)).Subscribe(text =>
+            OnUi(vm => vm.WhenAnyValue(x => x.InstallBlockedReason)).Subscribe(text => ShowReason(text, InstallButton, ResumeButton)).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.DownloadBlockedReason)).Subscribe(text => ShowReason(text, DownloadButton)).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.OpenNextFiveBlockedReason)).Subscribe(text => ShowReason(text, OpenNextFiveButton)).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.Status)).Subscribe(status =>
             {
-                CheckText.Text = text;
-                CheckText.IsVisible = text != "";
-                CheckBar.IsVisible = text != "";
+                StatusText.Text = status.Text;
+                StatusText.IsVisible = status.Text != "";
+                StatusText.Classes.Set("Warning", status.IsWarning);
+                StatusBar.IsVisible = status.Fraction is not null || status.IsIndeterminate;
+                StatusBar.IsIndeterminate = status.IsIndeterminate;
+                StatusBar.Value = status.Fraction ?? 0;
             }).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.IsCheckIndeterminate)).Subscribe(indeterminate => CheckBar.IsIndeterminate = indeterminate).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.CheckFraction)).Subscribe(fraction => CheckBar.Value = fraction).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.AcquireText)).Subscribe(text => AcquireText.Text = text).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.InboxText)).Subscribe(text =>
             {
                 InboxText.Text = text;
@@ -114,16 +127,8 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
             {
                 ResumeButton.IsVisible = state.Item1 && !state.Item3;
                 InstallButton.IsVisible = !state.Item1;
-                RemoveButton.IsVisible = state.Item2;
+                MenuRemove.IsVisible = state.Item2;
             }).DisposeWith(disposables);
-
-            OnUi(vm => vm.WhenAnyValue(x => x.ProgressText)).Subscribe(text =>
-            {
-                ProgressText.Text = text;
-                ProgressText.IsVisible = text != "";
-                ProgressBar.IsVisible = text != "";
-            }).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.ProgressFraction)).Subscribe(fraction => ProgressBar.Value = fraction).DisposeWith(disposables);
 
             OnUi(vm => vm.WhenAnyValue(x => x.SkippedFiles)).Subscribe(skipped =>
             {
@@ -145,11 +150,12 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
         });
     }
 
-    // A disabled button says why, in a line under it and in its tooltip (which a disabled control only shows when asked to).
-    private static void ShowReason(TextBlock line, string reason, params Control[] buttons)
+    private const int CollapsedLines = 3;
+
+    // A disabled button says why in its tooltip (which a disabled control only shows when asked to). The page's
+    // status line carries the one reason that matters, so the buttons don't each print their own.
+    private static void ShowReason(string reason, params Control[] buttons)
     {
-        line.Text = reason;
-        line.IsVisible = reason != "";
         foreach (var button in buttons)
         {
             ToolTip.SetShowOnDisabled(button, true);

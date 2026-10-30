@@ -41,6 +41,9 @@ public interface IWabbajackModlistService
 {
     Task<WabbajackModlistDetails> Open(LibraryFileId file, CancellationToken cancellationToken);
 
+    /// <summary>The list's own description and readme link, read from the parsed list.</summary>
+    Task<WabbajackModlistBlurb> ReadBlurb(LibraryFileId file, CancellationToken cancellationToken);
+
     /// <summary>
     /// Matches the list's archives to the library and the loadout's game files. A null <paramref name="target"/> is a
     /// loadout that does not exist yet: the game files come from the game's installation.

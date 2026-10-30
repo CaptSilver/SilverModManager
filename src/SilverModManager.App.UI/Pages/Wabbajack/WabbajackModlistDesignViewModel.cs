@@ -15,34 +15,43 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public string Author => "Someone";
     public string Version => "1.0.0";
     public string GameName => "SkyrimSpecialEdition";
-    public string ArchiveSummary => "312 archives, 48.2 GB";
+    public string ArchiveCountText { get; init; } = "312 archives";
+    public string ArchiveSizeText { get; init; } = "48.2 GB";
+    public string Description { get; init; } = "";
+    public Uri? ReadmeUri { get; init; }
+    public ReactiveCommand<Unit, Unit> OpenReadmeCommand { get; } = ReactiveCommand.Create(() => { });
+
+    // Computed from the same inputs the real view model feeds the rule, so a state set here shows what the page would.
+    public WabbajackStatus Status => WabbajackModlistText.Status(
+        ErrorText, ProgressText, ProgressFraction, CheckText, CheckFraction, IsCheckIndeterminate, null,
+        InstallBlockedReason, DownloadBlockedReason, AcquireText);
     public Bitmap? Banner => null;
     public IReadOnlyList<WabbajackLoadoutChoice> LoadoutChoices { get; } = [new(null, "Create new loadout")];
     public WabbajackLoadoutChoice? SelectedLoadout => null;
     public ReactiveCommand<WabbajackLoadoutChoice, Unit> SelectLoadoutCommand { get; } = ReactiveCommand.Create<WabbajackLoadoutChoice>(_ => { });
-    public IReadOnlyList<WabbajackArchiveRow> Archives => [];
-    public string AcquireText => "3 of 312 archives still to get";
-    public string InboxText => "In the inbox but not part of this list: wrong.zip";
+    public IReadOnlyList<WabbajackArchiveRow> Archives { get; init; } = [];
+    public string AcquireText { get; init; } = "3 of 312 archives still to get";
+    public string InboxText { get; init; } = "In the inbox but not part of this list: wrong.zip";
     public string ExtractedSizeText => "120 GB";
-    public string FreeSpaceText => "Extracted size: at least 120 GB, 80 GB free";
-    public bool IsFreeSpaceWarning => true;
+    public string FreeSpaceText { get; init; } = "Extracted size: at least 120 GB, 80 GB free";
+    public bool IsFreeSpaceWarning { get; init; } = true;
     public IReadOnlyList<WabbajackGameFileChoice> GameFilesReplaced => [];
     public bool SkipMissingArchives { get; set; }
-    public bool CanInstall => false;
-    public string InstallBlockedReason => "3 of 312 archives are not in your library yet.";
-    public string DownloadBlockedReason => "";
-    public string OpenNextFiveBlockedReason => "Press Download first.";
-    public bool IsPlanning => false;
-    public string CheckText => "";
-    public double CheckFraction => 0;
-    public bool IsCheckIndeterminate => false;
-    public bool CanDownload => true;
-    public bool IsInstalling => false;
-    public string ProgressText => "";
-    public double ProgressFraction => 0;
-    public string ErrorText => "";
-    public bool CanResume => false;
-    public bool IsInstalled => false;
+    public bool CanInstall { get; init; } = false;
+    public string InstallBlockedReason { get; init; } = "3 of 312 archives are not in your library yet.";
+    public string DownloadBlockedReason { get; init; } = "";
+    public string OpenNextFiveBlockedReason { get; init; } = "Press Download first.";
+    public bool IsPlanning { get; init; } = false;
+    public string CheckText { get; init; } = "";
+    public double CheckFraction { get; init; } = 0;
+    public bool IsCheckIndeterminate { get; init; } = false;
+    public bool CanDownload { get; init; } = true;
+    public bool IsInstalling { get; init; } = false;
+    public string ProgressText { get; init; } = "";
+    public double ProgressFraction { get; init; } = 0;
+    public string ErrorText { get; init; } = "";
+    public bool CanResume { get; init; } = false;
+    public bool IsInstalled { get; init; } = false;
     public IReadOnlyList<WabbajackSkippedRow> SkippedFiles => [];
     public ReactiveCommand<Unit, Unit> DownloadCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> InstallCommand { get; } = ReactiveCommand.Create(() => { });

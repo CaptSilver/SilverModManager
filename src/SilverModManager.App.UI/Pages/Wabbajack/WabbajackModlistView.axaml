@@ -7,63 +7,127 @@
     xmlns:reactive="http://reactiveui.net"
     xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.Wabbajack"
     xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
     mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="800"
     x:Class="SilverModManager.App.UI.Pages.Wabbajack.WabbajackModlistView">
 
-    <ScrollViewer>
-        <StackPanel Margin="24" Spacing="{StaticResource Spacing-4}" x:Name="DropZone">
-            <Image x:Name="BannerImage" MaxHeight="220" Stretch="UniformToFill" HorizontalAlignment="Left" />
-            <TextBlock x:Name="NameText" Theme="{StaticResource HeadingSMSemiTheme}" />
-            <TextBlock x:Name="DetailsText" />
-            <TextBlock x:Name="SummaryText" />
-            <TextBlock x:Name="ErrorText" TextWrapping="Wrap" Foreground="Red" />
+    <Design.DataContext>
+        <local:WabbajackModlistDesignViewModel />
+    </Design.DataContext>
 
-            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
-                <TextBlock Text="Install into" VerticalAlignment="Center" />
-                <ComboBox x:Name="LoadoutBox" MinWidth="280" />
+    <reactive:ReactiveUserControl.Styles>
+        <Style Selector="TextBlock#StatusText.Warning">
+            <Setter Property="Foreground" Value="{DynamicResource DangerStrongBrush}" />
+        </Style>
+    </reactive:ReactiveUserControl.Styles>
+
+    <reactive:ReactiveUserControl.Resources>
+        <MenuFlyout x:Key="ModlistMenuFlyout">
+            <MenuItem x:Name="MenuCheckInbox" Header="Check inbox" />
+            <MenuItem x:Name="MenuOpenInboxFolder" Header="Open inbox folder" />
+            <MenuItem x:Name="MenuOpenReadme" Header="Open readme" IsVisible="False" />
+            <MenuItem x:Name="MenuRemove" Header="Remove modlist" Classes="Critical" IsVisible="False" />
+        </MenuFlyout>
+    </reactive:ReactiveUserControl.Resources>
+
+    <!-- header, toolbar, the one status line, then the archives. Styled by the Collections page's header rules. -->
+    <Grid x:Name="Body" RowDefinitions="Auto, Auto, Auto, *">
+
+        <Border x:Name="HeaderImageBorder" Grid.Row="0" />
+
+        <Border x:Name="HeaderBorder" Grid.Row="0">
+            <StackPanel x:Name="Header">
+                <Border x:Name="MainContentBorder">
+                    <Grid x:Name="MainContent" ColumnDefinitions="*, Auto">
+
+                        <DockPanel Grid.Column="0" x:Name="CollectionTitles">
+                            <Border DockPanel.Dock="Left" x:Name="CollectionImageBorder">
+                                <Image x:Name="CollectionImage" />
+                            </Border>
+                            <StackPanel>
+                                <TextBlock x:Name="Title" Text="Wabbajack modlist" />
+                                <TextBlock x:Name="CollectionName" />
+                            </StackPanel>
+                        </DockPanel>
+
+                        <StackPanel Grid.Column="1" x:Name="CollectionDetails">
+                            <StackPanel x:Name="TagsPanel">
+                                <StackPanel x:Name="AuthorStackPanel">
+                                    <TextBlock x:Name="AuthorName" />
+                                </StackPanel>
+                                <Ellipse Fill="{StaticResource NeutralTranslucentWeakBrush}" Width="4" Height="4" />
+                                <TextBlock x:Name="GameText" Classes="Tag" />
+                                <Ellipse Fill="{StaticResource NeutralTranslucentWeakBrush}" Width="4" Height="4" />
+                                <TextBlock x:Name="VersionText" Classes="Tag" />
+                            </StackPanel>
+
+                            <StackPanel x:Name="StatsPanel">
+                                <StackPanel>
+                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.ModsOutline}" />
+                                    <TextBlock x:Name="ArchiveCount" />
+                                </StackPanel>
+                                <StackPanel ToolTip.Tip="Download size of every archive">
+                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.HardDrive}" />
+                                    <TextBlock x:Name="ArchiveSize" />
+                                </StackPanel>
+                                <StackPanel x:Name="FreeSpacePanel" ToolTip.Tip="Extracted size, next to the free space where archives are kept">
+                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.HardDrive}" />
+                                    <TextBlock x:Name="FreeSpace" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <StackPanel x:Name="DescriptionPanel" Margin="0,12,0,0" Spacing="4" IsVisible="False">
+                    <TextBlock x:Name="DescriptionText" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
+                    <controls:StandardButton x:Name="DescriptionToggle" Type="Tertiary" ShowIcon="None" Size="Toolbar" Text="Show more" HorizontalAlignment="Left" IsVisible="False" />
+                </StackPanel>
             </StackPanel>
+        </Border>
 
-            <TextBlock x:Name="FreeSpaceText" TextWrapping="Wrap" />
+        <controls:Statusbar x:Name="Toolbar" Grid.Row="1">
+            <controls:StandardButton Flyout="{StaticResource ModlistMenuFlyout}"
+                                     ShowLabel="False"
+                                     LeftIcon="{x:Static icons:IconValues.MoreVertical}"
+                                     ShowIcon="Left"
+                                     Size="Toolbar" />
+            <controls:StandardButton x:Name="DownloadButton" Type="Secondary" Fill="Strong" Size="Toolbar" Text="Download" />
+            <controls:StandardButton x:Name="InstallButton" Type="Primary" Fill="Strong" Size="Toolbar" Text="Install" />
+            <controls:StandardButton x:Name="ResumeButton" Type="Primary" Fill="Strong" Size="Toolbar" Text="Resume" />
+            <ComboBox x:Name="LoadoutBox" MaxHeight="24" MinWidth="220" PlaceholderText="Install into…" ToolTip.Tip="Loadout the list is installed into" />
+            <CheckBox x:Name="SkipBox" Content="Skip files from missing archives" VerticalAlignment="Center" />
+            <Separator />
+            <controls:StandardButton x:Name="OpenNextFiveButton" Type="Secondary" Fill="Weak" Size="Toolbar" Text="Open next five" />
+        </controls:Statusbar>
 
-            <TextBlock x:Name="CheckText" IsVisible="False" />
-            <ProgressBar x:Name="CheckBar" Minimum="0" Maximum="1" IsVisible="False" HorizontalAlignment="Left" MinWidth="280" />
-
-            <TextBlock x:Name="AcquireText" />
-            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
-                <controls:StandardButton x:Name="DownloadButton" Type="Primary" Size="Toolbar" Text="Download" />
-                <controls:StandardButton x:Name="OpenNextFiveButton" Type="Secondary" Size="Toolbar" Text="Open next five" />
-                <controls:StandardButton x:Name="CheckInboxButton" Type="Secondary" Size="Toolbar" Text="Check inbox" />
-                <controls:StandardButton x:Name="OpenInboxButton" Type="Secondary" Size="Toolbar" Text="Open inbox folder" />
-            </StackPanel>
-            <TextBlock x:Name="DownloadReasonText" TextWrapping="Wrap" Opacity="0.8" IsVisible="False" />
-            <TextBlock x:Name="OpenNextFiveReasonText" TextWrapping="Wrap" Opacity="0.8" IsVisible="False" />
-            <TextBlock x:Name="InboxText" TextWrapping="Wrap" />
-            <TextBlock Text="Drop downloaded archives anywhere on this page to add them to the inbox." Opacity="0.7" />
-            <StackPanel x:Name="ArchiveRows" Spacing="2" />
-
-            <StackPanel x:Name="GameFilesPanel" Spacing="2">
-                <TextBlock Text="Game files this list replaces" Theme="{StaticResource HeadingSMSemiTheme}" />
-                <TextBlock Text="Tick a file to keep the copy in the game folder." Opacity="0.7" />
-                <StackPanel x:Name="GameFileRows" />
-            </StackPanel>
-
-            <CheckBox x:Name="SkipBox" Content="Skip files from missing archives" />
-
-            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
-                <controls:StandardButton x:Name="InstallButton" Type="Primary" Size="Toolbar" Text="Install" />
-                <controls:StandardButton x:Name="ResumeButton" Type="Secondary" Size="Toolbar" Text="Resume" />
-                <controls:StandardButton x:Name="RemoveButton" Type="Secondary" Size="Toolbar" Text="Remove modlist" />
-            </StackPanel>
-            <TextBlock x:Name="InstallReasonText" TextWrapping="Wrap" Opacity="0.8" IsVisible="False" />
-            <TextBlock x:Name="ProgressText" />
-            <ProgressBar x:Name="ProgressBar" Minimum="0" Maximum="1" />
-
-            <StackPanel x:Name="SkippedPanel" Spacing="2">
-                <TextBlock Text="Files that were skipped" Theme="{StaticResource HeadingSMSemiTheme}" />
-                <controls:StandardButton x:Name="HealthCheckButton" Type="Secondary" Size="Toolbar" Text="Open Health Check" HorizontalAlignment="Left" />
-                <StackPanel x:Name="SkippedRows" />
-            </StackPanel>
+        <StackPanel x:Name="StatusPanel" Grid.Row="2" Margin="24,8" Spacing="4">
+            <TextBlock x:Name="StatusText" TextWrapping="Wrap" />
+            <ProgressBar x:Name="StatusBar" Minimum="0" Maximum="1" HorizontalAlignment="Left" MinWidth="280" IsVisible="False" />
         </StackPanel>
-    </ScrollViewer>
+
+        <ScrollViewer Grid.Row="3">
+            <StackPanel x:Name="Content" Margin="24,0,24,24" Spacing="{StaticResource Spacing-4}">
+                <StackPanel x:Name="ArchivesPanel" Spacing="2">
+                    <TextBlock Text="Archives" Theme="{StaticResource HeadingSMSemiTheme}" />
+                    <TextBlock Text="Drop downloaded archives anywhere on this page to add them to the inbox." Opacity="0.7" />
+                    <TextBlock x:Name="InboxText" TextWrapping="Wrap" />
+                    <StackPanel x:Name="ArchiveRows" Spacing="2" />
+                </StackPanel>
+
+                <StackPanel x:Name="GameFilesPanel" Spacing="2">
+                    <TextBlock Text="Game files this list replaces" Theme="{StaticResource HeadingSMSemiTheme}" />
+                    <TextBlock Text="Tick a file to keep the copy in the game folder." Opacity="0.7" />
+                    <StackPanel x:Name="GameFileRows" />
+                </StackPanel>
+
+                <StackPanel x:Name="SkippedPanel" Spacing="2">
+                    <TextBlock Text="Files that were skipped" Theme="{StaticResource HeadingSMSemiTheme}" />
+                    <controls:StandardButton x:Name="HealthCheckButton" Type="Secondary" Size="Toolbar" Text="Open Health Check" HorizontalAlignment="Left" />
+                    <StackPanel x:Name="SkippedRows" />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 
 </reactive:ReactiveUserControl>
