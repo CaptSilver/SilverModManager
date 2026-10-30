@@ -9,8 +9,8 @@ namespace SilverModManager.Abstractions.Serialization.Json;
 
 public abstract class AExpressionConverterGenerator<T> : JsonConverter<T>
 {
-    protected Lazy<WriteDelegate> WriterFunction = default!;
-    protected Lazy<ReadDelegate> ReaderFunction = default!;
+    protected Lazy<WriteDelegate> WriterFunction { get; }
+    protected Lazy<ReadDelegate> ReaderFunction { get; }
     protected readonly Type Type;
 
     protected delegate T? ReadDelegate(ref Utf8JsonReader read, Type typeToConvert, JsonSerializerOptions options);
@@ -30,6 +30,19 @@ public abstract class AExpressionConverterGenerator<T> : JsonConverter<T>
     protected AExpressionConverterGenerator()
     {
         Type = typeof(T);
+        // Lazy, so the generated delegates are built on first use and the subclass is fully constructed by then.
+        ReaderFunction = new Lazy<ReadDelegate>(GenerateReaderFunction);
+        WriterFunction = new Lazy<WriteDelegate>(GenerateWriter);
+    }
+
+    protected abstract ReadDelegate GenerateReaderFunction();
+
+    protected abstract WriteDelegate GenerateWriter();
+
+    private static string FirstStringArgument(CustomAttributeData attribute)
+    {
+        return attribute.ConstructorArguments.FirstOrDefault().Value as string
+            ?? throw new JsonException($"{attribute.AttributeType.Name} does not have a string as its first argument");
     }
 
     public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -51,7 +64,7 @@ public abstract class AExpressionConverterGenerator<T> : JsonConverter<T>
             .Select(p =>
             {
                 var name = p.CustomAttributes.Where(c => c.AttributeType == typeof(JsonPropertyNameAttribute))
-                    .Select(a => (string)a.ConstructorArguments.FirstOrDefault().Value!)
+                    .Select(FirstStringArgument)
                     .FirstOrDefault() ?? p.Name;
 
                 return new MemberRecord
@@ -72,7 +85,7 @@ public abstract class AExpressionConverterGenerator<T> : JsonConverter<T>
     protected string GetNameAttr()
     {
         var nameAttr = Type.CustomAttributes.Where(t => t.AttributeType == typeof(JsonNameAttribute))
-            .Select(t => (string)t.ConstructorArguments.First().Value!)
+            .Select(FirstStringArgument)
             .FirstOrDefault();
 
         if (nameAttr == default)

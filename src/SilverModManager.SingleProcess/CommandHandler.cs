@@ -33,7 +33,8 @@ internal class CommandHandler(IServiceProvider serviceProvider, List<Func<Invoca
             }
 
             // Invoke the method
-            return await (Task<int>)methodInfo.Invoke(null, args)!;
+            return await (methodInfo.Invoke(null, args) as Task<int>
+                          ?? throw new InvalidOperationException($"{methodInfo.Name} did not return a Task<int>"));
         }
         catch (Exception ex)
         {

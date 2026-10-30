@@ -54,7 +54,7 @@ public class ProgressTask : IAsyncDisposable
     public async Task Increment(double increment)
     {
         Debug.Assert(_maxValue.HasValue);
-        var progress = (double)increment / _maxValue!.Value;
+        var progress = (double)increment / _maxValue.Value;
         await IncrementProgress(progress);
     }
 }

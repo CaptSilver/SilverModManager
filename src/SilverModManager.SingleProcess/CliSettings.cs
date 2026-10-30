@@ -51,6 +51,6 @@ public class CliSettings() : ISettings
     /// <summary>
     /// The path to the sync file, this file is used to publish the process id of the main process, and the TCP port it's listening on.
     /// </summary>
-    public AbsolutePath SyncFile { get; set; } = default!;
+    public AbsolutePath SyncFile { get; set; } = default;
     
 }

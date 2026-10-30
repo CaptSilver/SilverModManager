@@ -122,7 +122,7 @@ public static class ServiceExtensions
     {
         return serviceCollection
             .AddOptionParser<bool>(s => bool.TryParse(s, out var b) ? (b, null) : (Value: false, $"Invalid boolean `{s}`"))
-            .AddOptionParser<int>(s => int.TryParse(s, out var i) ? (i, null) : (Value: 0, $"Invalid integer `{i}`"))
+            .AddOptionParser<int>(s => int.TryParse(s, out var i) ? (i, null) : (Value: 0, $"Invalid integer `{s}`"))
             .AddOptionParser<string>(s => (Value: s, null));
     }
 }

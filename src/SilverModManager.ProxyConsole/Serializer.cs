@@ -115,9 +115,9 @@ public class Serializer
     {
         var deserialized = await ReceiveAsync();
 
-        if (deserialized is not TMessage)
-            UnexpectedMessageException.Throw(typeof(TMessage), deserialized?.GetType() ?? typeof(object));
-        return (TMessage)deserialized!;
+        if (deserialized is TMessage message) return message;
+
+        throw UnexpectedMessageException.Create(typeof(TMessage), deserialized?.GetType() ?? typeof(object));
     }
 
     /// <summary>

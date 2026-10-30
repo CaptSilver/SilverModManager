@@ -110,7 +110,8 @@ public class DiagnosticTemplateIncrementalSourceGenerator : IIncrementalGenerato
             {
                 // Id
                 cw.Append($"Id = new {Constants.DiagnosticsNamespace}.DiagnosticId(");
-                var args = parsedData.IdCreationExpression.ArgumentList!.Arguments;
+                var args = (parsedData.IdCreationExpression.ArgumentList
+                    ?? throw new InvalidOperationException($"The id of diagnostic {diagnosticName} has no argument list")).Arguments;
                 if (args[0].Expression is LiteralExpressionSyntax literalSource)
                 {
                     cw.Append($"source: \"{literalSource.Token.ValueText}\",");
@@ -370,10 +371,10 @@ public class DiagnosticTemplateIncrementalSourceGenerator : IIncrementalGenerato
             ExpressionSyntax? expression,
             string expectedName,
             out SeparatedSyntaxList<ArgumentSyntax> arguments,
-            out ExpressionSyntax next)
+            out ExpressionSyntax? next)
         {
             arguments = [];
-            next = expression!;
+            next = expression;
 
             if (expression is not InvocationExpressionSyntax invocationExpressionSyntax) return false;
             if (invocationExpressionSyntax.Expression is not MemberAccessExpressionSyntax memberAccessExpressionSyntax) return false;

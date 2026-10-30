@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.Invocation;
@@ -10,6 +11,7 @@ using SilverModManager.Abstractions.Cli;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.CLI.Types;
 using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.Sdk.Reflection;
 
 namespace SilverModManager.SingleProcess;
 
@@ -24,6 +26,7 @@ public class CommandLineConfigurator
     private readonly ModuleDefinition[] _moduleDefinitions;
     private readonly IServiceProvider _provider;
     private readonly MethodInfo _makeOptionMethod;
+    private readonly MethodInfo _makeNullableOptionMethod;
 
     private ILogger _logger;
 
@@ -36,7 +39,8 @@ public class CommandLineConfigurator
     {
         _provider = provider;
         _logger = provider.GetRequiredService<ILogger<CommandLineConfigurator>>();
-        _makeOptionMethod = GetType().GetMethod(nameof(MakeOption), BindingFlags.Instance | BindingFlags.NonPublic)!;
+        _makeOptionMethod = GetType().GetRequiredMethod(nameof(MakeOption), BindingFlags.Instance | BindingFlags.NonPublic);
+        _makeNullableOptionMethod = GetType().GetRequiredMethod(nameof(MakeNullableOption), BindingFlags.Instance | BindingFlags.NonPublic);
         _verbDefinitions = verbDefinitions.ToArray();
         _moduleDefinitions = moduleDefinitions.ToArray();
 
@@ -107,8 +111,11 @@ public class CommandLineConfigurator
                 }
                 else
                 {
-                    var option = (Option)_makeOptionMethod.MakeGenericMethod(optionDefinition.Type)
-                        .Invoke(this, [optionDefinition])!;
+                    var underlyingType = Nullable.GetUnderlyingType(optionDefinition.Type);
+                    var option = (underlyingType is null ? _makeOptionMethod : _makeNullableOptionMethod)
+                        .MakeGenericMethod(underlyingType ?? optionDefinition.Type)
+                        .Invoke(this, [optionDefinition]) as Option
+                        ?? throw new InvalidOperationException($"MakeOption<{optionDefinition.Type}> returned no option for --{optionDefinition.LongName}");
 
                     option.IsRequired = !optionDefinition.IsOptional;
                     
@@ -174,38 +181,70 @@ public class CommandLineConfigurator
         return command;
     }
 
-    private Option MakeOption<T>(OptionDefinition optionDefinition) where T : notnull
+    private static string[] OptionAliases(OptionDefinition optionDefinition)
     {
         // An option may have no short form; `--secrets-file` must not be reachable as anything the pre-host scan misses.
-        var aliases = string.IsNullOrEmpty(optionDefinition.ShortName)
-            ? new[] { "--" + optionDefinition.LongName }
-            : new[] { "-" + optionDefinition.ShortName, "--" + optionDefinition.LongName };
+        return string.IsNullOrEmpty(optionDefinition.ShortName)
+            ? ["--" + optionDefinition.LongName]
+            : ["-" + optionDefinition.ShortName, "--" + optionDefinition.LongName];
+    }
 
-        ParseArgument<T> parser = result =>
+    private Option MakeOption<T>(OptionDefinition optionDefinition) where T : notnull
+    {
+        ParseArgument<T?> parser = result =>
         {
             // A flag given without a value, such as --write, is true. Only an explicit --write false is parsed.
             if (typeof(T) == typeof(bool) && result.Tokens.Count == 0) return (T)(object)true;
 
-            var service = _provider.GetService<IOptionParser<T>>();
-            if (service is null) return default!;
-            try
-            {
-                if (service.TryParse(result.Tokens.Single().Value, out var itm, out var error)) return itm;
-                result.ErrorMessage = error;
-            }
-            catch (Exception ex)
-            {
-                // A parser should report a bad value through its error, but one that throws instead must still fail
-                // only this command. Escaping here would leave the client without an exit code and the server with
-                // an unobserved task exception.
-                _logger.LogFailure(ex, "The parser for --{Option} threw", optionDefinition.LongName);
-                result.ErrorMessage = CliErrors.Describe(ex);
-            }
-            return default!;
+            return TryParseValue<T>(optionDefinition, result, out var value) ? value : default;
         };
 
-        var option = new Option<T>(aliases, parser, false, optionDefinition.HelpText);
-        return option;
+        return new Option<T?>(OptionAliases(optionDefinition), parser, false, optionDefinition.HelpText);
+    }
+
+    /// <summary>
+    /// An option declared as <c>int?</c> and the like: parsed with the parser of the underlying type, and null when
+    /// the option is left out.
+    /// </summary>
+    private Option MakeNullableOption<T>(OptionDefinition optionDefinition) where T : struct
+    {
+        ParseArgument<T?> parser = result =>
+        {
+            if (typeof(T) == typeof(bool) && result.Tokens.Count == 0) return (T)(object)true;
+
+            return TryParseValue<T>(optionDefinition, result, out var value) ? value : null;
+        };
+
+        return new Option<T?>(OptionAliases(optionDefinition), parser, false, optionDefinition.HelpText);
+    }
+
+    private bool TryParseValue<T>(OptionDefinition optionDefinition, ArgumentResult result, [NotNullWhen(true)] out T? value) where T : notnull
+    {
+        value = default;
+
+        // A verb option whose type has no registered parser can never be filled; failing the command says so
+        // instead of running the verb with nothing.
+        var service = _provider.GetService<IOptionParser<T>>();
+        if (service is null)
+        {
+            result.ErrorMessage = $"No parser is registered for the type {typeof(T).Name} of --{optionDefinition.LongName}";
+            return false;
+        }
+
+        try
+        {
+            if (service.TryParse(result.Tokens.Single().Value, out value, out var error)) return true;
+            result.ErrorMessage = error;
+        }
+        catch (Exception ex)
+        {
+            // A parser should report a bad value through its error, but one that throws instead must still fail
+            // only this command. Escaping here would leave the client without an exit code and the server with
+            // an unobserved task exception.
+            _logger.LogFailure(ex, "The parser for --{Option} threw", optionDefinition.LongName);
+            result.ErrorMessage = CliErrors.Describe(ex);
+        }
+        return false;
     }
 
     private async Task<bool> RunLink(string[] args, CancellationToken cancellationToken)

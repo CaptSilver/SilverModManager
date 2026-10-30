@@ -52,7 +52,8 @@ public class AbstractClassConverterGenerator<T> : JsonConverter<T>
         foreach (var type in GetSubClasses())
         {
             var nameAttr = type.CustomAttributes.Where(t => t.AttributeType == typeof(JsonNameAttribute))
-                .Select(t => (string)t.ConstructorArguments.First().Value!)
+                .Select(t => t.ConstructorArguments.First().Value as string
+                    ?? throw new JsonException($"The JsonNameAttribute of {type} does not have a string name"))
                 .FirstOrDefault();
 
             if (nameAttr == default)
@@ -63,7 +64,7 @@ public class AbstractClassConverterGenerator<T> : JsonConverter<T>
                 .Select(t => t.ConstructorArguments.First());
 
             foreach (var alias in aliases)
-                _registry[(string)alias.Value!] = type;
+                _registry[alias.Value as string ?? throw new JsonException($"A JsonAliasAttribute of {type} does not have a string alias")] = type;
         }
     }
 
@@ -94,6 +95,8 @@ public class AbstractClassConverterGenerator<T> : JsonConverter<T>
 
     public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
     {
-        JsonSerializer.Serialize(writer, value, value!.GetType(), options);
+        var runtimeType = ((object?)value)?.GetType()
+            ?? throw new JsonException($"Cannot write a null {typeof(T)} through the abstract-class converter");
+        JsonSerializer.Serialize(writer, value, runtimeType, options);
     }
 }

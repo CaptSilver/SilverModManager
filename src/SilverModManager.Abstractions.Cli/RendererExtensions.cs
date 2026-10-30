@@ -9,6 +9,11 @@ namespace SilverModManager.Abstractions.Cli;
 /// </summary>
 public static class RendererExtensions
 {
+    // object.ToString() may return null; a cell or template argument with no text renders as nothing.
+    private static string Display(object value) => value.ToString() ?? string.Empty;
+
+    private static string[] DisplayAll(object[] values) => values.Select(Display).ToArray();
+
     /// <summary>
     /// Creates a new <see cref="Table"/> renderable from the given column names and rows.
     /// </summary>
@@ -20,7 +25,7 @@ public static class RendererExtensions
         await renderer.RenderAsync(new Table
         {
             Columns = columns.Select(s => (IRenderable)Renderable.Text(s)).ToArray(),
-            Rows = rows.Select(r => r.Select(c => (IRenderable)Renderable.Text(c.ToString()!)).ToArray()).ToArray()
+            Rows = rows.Select(r => r.Select(c => (IRenderable)Renderable.Text(Display(c))).ToArray()).ToArray()
         });
     }
 
@@ -41,7 +46,7 @@ public static class RendererExtensions
             var rowPrepared = GC.AllocateArray<IRenderable>(row.Length);
             for (var i = 0; i < row.Length; i++)
             {
-                rowPrepared[i] = Renderable.Text(row[i]!.ToString()!);
+                rowPrepared[i] = Renderable.Text(row[i] is { } cell ? Display(cell) : string.Empty);
             }
             return rowPrepared;
         }
@@ -110,7 +115,7 @@ public static class RendererExtensions
     public static async ValueTask Text(this IRenderer renderer, string template, params object[] args)
     {
         // Todo: implement custom conversion and formatting for the arguments
-        await renderer.RenderAsync(Renderable.Text(template, args.Select(a => a.ToString()!).ToArray()));
+        await renderer.RenderAsync(Renderable.Text(template, DisplayAll(args)));
     }
     
     /// <summary>
@@ -121,7 +126,7 @@ public static class RendererExtensions
     public static async ValueTask TextLine(this IRenderer renderer, string template, params object[] args)
     {
         // Todo: implement custom conversion and formatting for the arguments
-        await renderer.RenderAsync(Renderable.Text(template + "\n", args.Select(a => a.ToString()!).ToArray()));
+        await renderer.RenderAsync(Renderable.Text(template + "\n", DisplayAll(args)));
     }
     
     /// <summary>
@@ -132,7 +137,7 @@ public static class RendererExtensions
     public static async ValueTask<int> InputError(this IRenderer renderer, string template, params object[] args)
     {
         // Todo: implement custom conversion and formatting for the arguments
-        await renderer.RenderAsync(Renderable.Text(template, args.Select(a => a.ToString()!).ToArray()));
+        await renderer.RenderAsync(Renderable.Text(template, DisplayAll(args)));
         return -1;
     }
 

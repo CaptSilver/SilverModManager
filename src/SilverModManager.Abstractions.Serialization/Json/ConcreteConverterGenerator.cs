@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using System.Text.Json;
+using SilverModManager.Sdk.Reflection;
 
 #pragma warning disable CS1591
 
@@ -13,14 +14,16 @@ namespace SilverModManager.Abstractions.Serialization.Json;
 /// </summary>
 public class ConcreteConverterGenerator<T> : AExpressionConverterGenerator<T>
 {
+    private readonly IServiceProvider _provider;
+
     public ConcreteConverterGenerator(IServiceProvider provider)
     {
-        ReaderFunction = new Lazy<ReadDelegate>(() => GenerateReaderFunction(provider));
-        WriterFunction = new Lazy<WriteDelegate>(GenerateWriter);
+        _provider = provider;
     }
 
-    private ReadDelegate GenerateReaderFunction(IServiceProvider provider)
+    protected override ReadDelegate GenerateReaderFunction()
     {
+        var provider = _provider;
         var members = GetMembers();
 
         var readerParam = Expression.Parameter(typeof(Utf8JsonReader).MakeByRefType(), "reader");
@@ -31,7 +34,7 @@ public class ConcreteConverterGenerator<T> : AExpressionConverterGenerator<T>
 
         exprs.Add(Expression.IfThen(Expression.NotEqual(Expression.Property(readerParam, "TokenType"),
                 Expression.Constant(JsonTokenType.StartObject)),
-            Expression.Throw(Expression.New(typeof(JsonException).GetConstructor(new[] { typeof(string) })!,
+            Expression.Throw(Expression.New(typeof(JsonException).GetRequiredConstructor([typeof(string)]),
                 Expression.Constant("Expected StartObject")))));
 
         var readNext = Expression.Call(readerParam, "Read", null);
@@ -69,14 +72,13 @@ public class ConcreteConverterGenerator<T> : AExpressionConverterGenerator<T>
                     Expression.Break(endOfSwitch)),
                 Expression.Constant(m.RealName));
         })
-            .Where(c => c != null)
-            .Select(c => c!)
+            .OfType<SwitchCase>()
             .Append(Expression.SwitchCase(
                 Expression.Block(readNext, Expression.Break(endOfSwitch)),
                 Expression.Constant("$type")));
 
         loopExprs.Add(Expression.Switch(Expression.Call(readerParam, "GetString", null),
-            Expression.Throw(Expression.New(typeof(NotImplementedException).GetConstructor(new[] { typeof(string) })!,
+            Expression.Throw(Expression.New(typeof(NotImplementedException).GetRequiredConstructor([typeof(string)]),
                 Expression.Add(
                     Expression.Constant($"Unknown property on {Type.Name}: "),
                     Expression.Call(readerParam, "GetString", null),
@@ -100,7 +102,7 @@ public class ConcreteConverterGenerator<T> : AExpressionConverterGenerator<T>
 
     }
 
-    private WriteDelegate GenerateWriter()
+    protected override WriteDelegate GenerateWriter()
     {
         var nameAttr = GetNameAttr();
         var members = GetMembers();

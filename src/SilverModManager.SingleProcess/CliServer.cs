@@ -73,10 +73,11 @@ public sealed class CliServer : IHostedService, IDisposable
         // Before the port is published, so a client that finds the port also finds the token.
         _launchToken = LaunchToken.Create(_syncFile.TokenPath);
 
-        _tcpListener = new TcpListener(IPAddress.Loopback, 0);
-        _tcpListener.Start();
-        Task.Run(async () => await StartListeningAsync(), _cancellationTokenSource.Token);
-        var port = ((IPEndPoint)_tcpListener.LocalEndpoint).Port;
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        _tcpListener = listener;
+        listener.Start();
+        Task.Run(async () => await StartListeningAsync(listener), _cancellationTokenSource.Token);
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
         if (!_syncFile.TrySetMain(MainKind.Gui, port))
         {
@@ -88,20 +89,20 @@ public sealed class CliServer : IHostedService, IDisposable
         return Task.CompletedTask;
     }
 
-    private async Task StartListeningAsync()
+    private async Task StartListeningAsync(TcpListener listener)
     {
         while (_started && !_cancellationTokenSource.IsCancellationRequested)
         {
             try
             {
-                var found = await _tcpListener!.AcceptTcpClientAsync(Token);
+                var found = await listener.AcceptTcpClientAsync(Token);
                 found.NoDelay = true; // Disable Nagle's algorithm to reduce delay.
 
                 var id = Guid.NewGuid();
                 var task = Task.Run(() => HandleClientAsync(id, found), Token);
                 _ = _runningClients.GetOrAdd(id, task);
 
-                _logger.LogInformation("Accepted TCP connection from {RemoteEndPoint}", ((IPEndPoint)found.Client.RemoteEndPoint!).Port);
+                _logger.LogInformation("Accepted TCP connection from {RemoteEndPoint}", (found.Client.RemoteEndPoint as IPEndPoint)?.Port);
             }
             catch (OperationCanceledException)
             {

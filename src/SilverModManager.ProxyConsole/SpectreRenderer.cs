@@ -17,7 +17,10 @@ public class SpectreRenderer : IRenderer
 {
     private readonly Spectre.Console.IAnsiConsole _console;
     private Channel<IRenderable>? _progressChannel;
-    private Task? _progressTask = null;
+    private Task? _progressTask;
+
+    private Channel<IRenderable> ProgressChannel => _progressChannel
+        ?? throw new InvalidOperationException("Progress was not started: render a StartProgress first");
 
     /// <summary>
     /// Wraps the given <see cref="Spectre.Console.IAnsiConsole"/> instance as a <see cref="IRenderer"/>.
@@ -91,13 +94,13 @@ public class SpectreRenderer : IRenderer
                 await StopProgress(stopProgress);
                 break;
             case CreateProgressTask createProgressTask:
-                _progressChannel!.Writer.TryWrite(createProgressTask);
+                ProgressChannel.Writer.TryWrite(createProgressTask);
                 break;
             case DeleteProgressTask deleteProgressTask:
-                _progressChannel!.Writer.TryWrite(deleteProgressTask);
+                ProgressChannel.Writer.TryWrite(deleteProgressTask);
                 break;
             case UpdateTask updateTask:
-                _progressChannel!.Writer.TryWrite(updateTask);
+                ProgressChannel.Writer.TryWrite(updateTask);
                 break;
             default:
                 var spectre = await ToSpectreAsync(renderable);
@@ -109,15 +112,15 @@ public class SpectreRenderer : IRenderer
 
     private async Task StopProgress(StopProgress _)
     {
-        Debug.Assert(_progressChannel != null);
-        _progressChannel.Writer.TryComplete();
-        await _progressTask!;
+        ProgressChannel.Writer.TryComplete();
+        await (_progressTask ?? throw new InvalidOperationException("Progress was not started: render a StartProgress first"));
     }
 
     private void StartProgress(StartProgress _)
     {
         Debug.Assert(_progressChannel == null);
-        _progressChannel = Channel.CreateUnbounded<IRenderable>();
+        var channel = Channel.CreateUnbounded<IRenderable>();
+        _progressChannel = channel;
         _progressTask = _console.Progress()
             .HideCompleted(true)
             .Columns(
@@ -127,13 +130,13 @@ public class SpectreRenderer : IRenderer
                 new RemainingTimeColumn(), 
                 new TaskDescriptionColumn {Alignment = Justify.Left}
             )
-            .StartAsync(ProgressTask);
+            .StartAsync(context => ProgressTask(context, channel));
     }
 
-    private async Task ProgressTask(ProgressContext context)
+    private static async Task ProgressTask(ProgressContext context, Channel<IRenderable> channel)
     {
         var tasks = new Dictionary<Guid, ProgressTask>();
-        await foreach (var renderable in _progressChannel!.Reader.ReadAllAsync())
+        await foreach (var renderable in channel.Reader.ReadAllAsync())
         {
             switch (renderable)
             {

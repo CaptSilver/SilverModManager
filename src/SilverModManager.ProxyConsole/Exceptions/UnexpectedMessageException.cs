@@ -21,7 +21,15 @@ public class UnexpectedMessageException : Exception
     /// <exception cref="UnexpectedMessageException"></exception>
     public static void Throw(Type expectedType, Type actualType)
     {
-        throw new UnexpectedMessageException(expectedType, actualType);
+        throw Create(expectedType, actualType);
+    }
+
+    /// <summary>
+    /// Creates a new <see cref="UnexpectedMessageException"/> for the caller to throw, so the compiler sees the throw.
+    /// </summary>
+    public static UnexpectedMessageException Create(Type expectedType, Type actualType)
+    {
+        return new UnexpectedMessageException(expectedType, actualType);
     }
 
 }

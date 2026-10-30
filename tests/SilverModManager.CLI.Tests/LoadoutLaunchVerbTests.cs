@@ -258,4 +258,28 @@ public class LoadoutLaunchVerbTests(IServiceProvider provider)
         exitCode.Should().Be(0);
         Output(renderer).Should().Contain("launch in progress");
     }
+
+    [Fact]
+    public async Task AWaitThatIsNotANumberIsRefused()
+    {
+        var setup = await Arrange(loadout => loadout);
+        var services = new ServiceCollection()
+            .AddLogging()
+            .AddDefaultParsers()
+            .AddSingleton(provider.GetRequiredService<IConnection>())
+            .AddSingleton<CommandLineConfigurator>()
+            .AddCLI()
+            .AddModule("loadout", "Commands for managing a specific loadout")
+            .AddSingleton<WindowHost>()
+            .AddSingleton(setup.Command)
+            .AddLaunchVerbs()
+            .BuildServiceProvider();
+
+        var renderer = new LoggingRenderer();
+        var exitCode = await services.GetRequiredService<CommandLineConfigurator>()
+            .RunAsync(["loadout", "launch", "--loadout", setup.Loadout.LoadoutId.Value.ToString(), "--wait", "soon"], renderer, CancellationToken.None);
+
+        exitCode.Should().NotBe(0);
+        Output(renderer).Should().Contain("Invalid integer `soon`");
+    }
 }
