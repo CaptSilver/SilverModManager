@@ -68,7 +68,7 @@ public class TreeDataGridViewHelperTests(IServiceProvider provider) : AUiTest(pr
     {
         public Avalonia.Controls.TreeDataGrid Grid { get; } = new();
 
-        public GridView(Func<FakeViewModel, TreeDataGridAdapter<CompositeItemModel<EntityId>, EntityId>> getAdapter, bool dragAndDrop = false)
+        public GridView(Func<FakeViewModel, TreeDataGridAdapter<CompositeItemModel<EntityId>, EntityId>?> getAdapter, bool dragAndDrop = false)
         {
             Content = Grid;
             TreeDataGridViewHelper.SetupTreeDataGridAdapter(this, Grid, getAdapter, dragAndDrop);
@@ -115,6 +115,35 @@ public class TreeDataGridViewHelperTests(IServiceProvider provider) : AUiTest(pr
         });
 
         requested.Should().Equal(viewModel);
+    }
+
+    [Fact]
+    public async Task SelectAllShortcut_WhenTheViewModelHasNoAdapter_DoesNothing()
+    {
+        var asked = 0;
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var view = new GridView(_ => { asked++; return null; }) { ViewModel = new FakeViewModel() };
+            ShowRendered(Track(new Window { Width = 400, Height = 200, Content = view }));
+            PressCtrlA(view.Grid);
+        });
+
+        asked.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Deactivation_WhenTheViewModelHasNoAdapter_DoesNothing()
+    {
+        var asked = 0;
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var view = new GridView(_ => { asked++; return null; }) { ViewModel = new FakeViewModel() };
+            var window = Track(new Window { Width = 400, Height = 200, Content = view });
+            ShowRendered(window);
+            window.Close();
+        });
+
+        asked.Should().Be(1);
     }
 
     [Fact]

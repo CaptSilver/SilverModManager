@@ -9,6 +9,7 @@ using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.App.UI.Controls.Diagnostics;
 using SilverModManager.App.UI.Extensions;
 using SilverModManager.App.UI.Resources;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using Reloaded.Memory.Extensions;
 
@@ -42,11 +43,7 @@ public partial class DiagnosticListView : ReactiveUserControl<IDiagnosticListVie
         this.WhenActivated(disposable =>
             {
                 // update headers whenever the counts change
-                this.WhenAnyValue(
-                        view => view.ViewModel!.NumCritical,
-                        view => view.ViewModel!.NumWarnings,
-                        view => view.ViewModel!.NumSuggestions
-                    )
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.NumCritical, x => x.NumWarnings, x => x.NumSuggestions))
                     .Subscribe(counts =>
                         {
                             var (numCritical, numWarnings, numSuggestions) = counts;
@@ -94,7 +91,9 @@ public partial class DiagnosticListView : ReactiveUserControl<IDiagnosticListVie
                     })
                     .Subscribe(filter =>
                     {
-                        ViewModel!.Filter = filter;
+                        // The tab can change while the view is between view models; there is nothing to filter then.
+                        if (ViewModel is not { } viewModel) return;
+                        viewModel.Filter = filter;
                     })
                     .DisposeWith(disposable);
             }

@@ -36,8 +36,8 @@ public partial class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFi
 {
     // IViewLoadoutGroupFilesViewModel
     [Reactive] public partial LoadoutGroupFilesPageContext? Context { get; set; }
-    [Reactive] public partial ReactiveCommand<NavigationInformation> OpenEditorCommand { get; [UsedImplicitly] set; } = null!;
-    [Reactive] public partial ReactiveCommand<Unit> RemoveCommand { get; [UsedImplicitly] set; } = null!;
+    public ReactiveCommand<NavigationInformation> OpenEditorCommand { get; }
+    public ReactiveCommand<Unit> RemoveCommand { get; }
     public ReactiveCommand<Unit> UndoTreatAsMineCommand { get; }
     public ReactiveCommand<Unit> RefreshCommand { get; }
     [Reactive] public partial CompositeItemModel<GamePath>? SelectedItem { get; set; }
@@ -104,6 +104,73 @@ public partial class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFi
             .Select(connection, static (context, conn) => FindExternalChangesLoadout(conn, context).HasValue)
             .ToReactiveCommand<Unit>(async (_, _) => await RescanGameFolder(logger, provider, connection));
 
+        // Like the commands above, these watch only this view model, so they are built here and never unset.
+        OpenEditorCommand = this.ObservePropertyChanged(vm => vm.SelectedItem)
+            .Select((this, connection), static (item, state) =>
+            {
+                // Without a selection or a page context there is no file to open.
+                if (item is null || state.Item1.Context is not { } context)
+                    return false;
+
+                var itemWithPath = LoadoutItemGroupHelpers.FindMatchingFile
+                    (state.connection, context.GroupIds, item.Key, false);
+
+                // Don't open the editor if no file is found (it's a directory),
+                // or if it is not a LoadoutFile (it's a DeletedFile).
+                return itemWithPath.HasValue && itemWithPath.Value.IsLoadoutFile();
+            })
+            .ToReactiveCommand<NavigationInformation>(info =>
+            {
+                if (SelectedItem is not { } selected || Context is not { } context) return;
+
+                // Note(sewer): Is it possible to avoid a double entity load here?
+                var gamePath = selected.Key;
+                var itemWithPath = LoadoutItemGroupHelpers.FindMatchingFile(connection, context.GroupIds, gamePath);
+
+                if (!itemWithPath.HasValue || !itemWithPath.Value.TryGetAsLoadoutFile(out var loadoutItem))
+                    return;
+
+                var pageData = new PageData
+                {
+                    FactoryId = TextEditorPageFactory.StaticId,
+                    Context = new TextEditorPageContext
+                    {
+                        FileId = loadoutItem.LoadoutFileId, // not null because command was executable
+                        FilePath = gamePath.Path,
+                        IsReadOnly = context.IsReadOnly,
+                    },
+                };
+
+                var workspaceController = windowManager.ActiveWorkspaceController;
+
+                var behavior = workspaceController.GetOpenPageBehavior(pageData, info);
+                var workspaceId = workspaceController.ActiveWorkspaceId;
+                workspaceController.OpenPage(workspaceId, pageData, behavior);
+            });
+
+        var writeableContextObservable = this.ObservePropertyChanged(vm => vm.Context).Select(context => context is { IsReadOnly: false });
+        var hasSelectionObservable = this.ObservePropertyChanged(vm => vm.SelectedItem).Select(item => item is not null);
+
+        // ReSharper disable once InvokeAsExtensionMethod
+        RemoveCommand = Observable.CombineLatest(
+                writeableContextObservable, hasSelectionObservable,
+                resultSelector: (isWritable, hasSelection) => isWritable && hasSelection
+            )
+            .ToReactiveCommand<Unit>(async (_, _) =>
+                {
+                    if (SelectedItem is not { } selected || Context is not { } context) return;
+                    var gamePath = selected.Key;
+
+                    // Unselect last item.
+                    SelectedItem = null;
+
+                    var result = await LoadoutItemGroupHelpers.RemoveFileOrFolder(connection, context.GroupIds, gamePath, requireAllGroups: false);
+                    if (result == LoadoutItemGroupHelpers.GroupOperationStatus.NoItemsDeleted)
+                        logger.LogError("Unable to find Loadout files with path `{Path}` in groups: {Groups}",
+                            gamePath, string.Join(", ", context.GroupIds));
+                }
+            );
+
         this.WhenActivated(disposables =>
         {
             // The folder may have changed since External Changes was last built. The reindex only writes when it
@@ -119,82 +186,13 @@ public partial class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFi
             // immediate disposal is preferable for saving CPU cycles and memory.
             SerialDisposable treeDataGridAdapterDisposable = new();
             
-            OpenEditorCommand = this.ObservePropertyChanged(vm => vm.SelectedItem)
-                .Select((this, connection), static (item, state) =>
-                {
-                    // If no item is currently selected, we obviously can't open the editor.
-                    if (item == null)
-                        return false;
-
-                    var gamePath = item.Key;
-                    var itemWithPath = LoadoutItemGroupHelpers.FindMatchingFile
-                        (state.connection, state.Item1.Context!.GroupIds, gamePath, false);
-                    
-                    // Don't open the editor if no file is found (it's a directory),
-                    // or if it is not a LoadoutFile (it's a DeletedFile).
-                    return itemWithPath.HasValue && itemWithPath.Value.IsLoadoutFile();
-                }
-            )
-            .ToReactiveCommand<NavigationInformation>(info =>
-            {
-                // Note(sewer): Is it possible to avoid a double entity load here?
-                var gamePath = SelectedItem!.Key;
-                var itemWithPath = LoadoutItemGroupHelpers.FindMatchingFile(connection, Context!.GroupIds, gamePath);
-
-                if (!itemWithPath.HasValue || !itemWithPath.Value.TryGetAsLoadoutFile(out var loadoutItem)) 
-                    return;
-
-                var pageData = new PageData
-                {
-                    FactoryId = TextEditorPageFactory.StaticId,
-                    Context = new TextEditorPageContext
-                    {
-                        FileId = loadoutItem.LoadoutFileId, // not null because command was executable
-                        FilePath = gamePath.Path,
-                        IsReadOnly = Context!.IsReadOnly,
-                    },
-                };
-
-                var workspaceController = windowManager.ActiveWorkspaceController;
-
-                var behavior = workspaceController.GetOpenPageBehavior(pageData, info);
-                var workspaceId = workspaceController.ActiveWorkspaceId;
-                workspaceController.OpenPage(workspaceId, pageData, behavior);
-            })
-            .DisposeWith(disposables);
-
-            var writeableContextObservable = this.ObservePropertyChanged(vm => vm.Context).Select(context => context is { IsReadOnly: false });
-            var hasSelectionObservable = this.ObservePropertyChanged(vm => vm.SelectedItem).Select(item => item is not null);
-            
-            // ReSharper disable once InvokeAsExtensionMethod
-            RemoveCommand = Observable.CombineLatest(
-                    writeableContextObservable, hasSelectionObservable,
-                    resultSelector: (isWritable, hasSelection) => isWritable && hasSelection
-                )
-                .ToReactiveCommand<Unit>(async (_, _) =>
-                    {
-                        var gamePath = SelectedItem!.Key;
-                        
-                        // Unselect last item.
-                        SelectedItem = null;
-                        
-                        var result = await LoadoutItemGroupHelpers.RemoveFileOrFolder(connection, Context!.GroupIds, gamePath, requireAllGroups: false);
-                        if (result == LoadoutItemGroupHelpers.GroupOperationStatus.NoItemsDeleted)
-                            logger.LogError("Unable to find Loadout files with path `{Path}` in groups: {Groups}", 
-                                gamePath, string.Join(", ", Context!.GroupIds));
-
-                    }
-                )
-                .DisposeWith(disposables);
-            
             // Set the title based on the first valid group
             this.ObservePropertyChanged(vm => vm.Context)
                 .WhereNotNull()
                 // ReSharper disable once HeapView.CanAvoidClosure
-                .Select(context => LoadoutItemGroupHelpers.GetFirstValidGroup(connection, context.GroupIds))
-                .Where(group => group != null)
-                .Do(group => TabTitle = group!.Value.AsLoadoutItem().Name)
-                .Subscribe()
+                .Select(context => LoadoutItemGroupHelpers.GetFirstValidGroup(connection, context.GroupIds)?.AsLoadoutItem().Name)
+                .WhereNotNull()
+                .Subscribe(name => TabTitle = name)
                 .DisposeWith(disposables);
 
             // Populate the file tree

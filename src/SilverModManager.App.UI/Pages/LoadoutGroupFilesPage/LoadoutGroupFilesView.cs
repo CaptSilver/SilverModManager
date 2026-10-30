@@ -1,7 +1,10 @@
+using System.Reactive.Linq;
+using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
 
@@ -13,7 +16,7 @@ public partial class LoadoutGroupFilesView : ReactiveUserControl<ILoadoutGroupFi
     public LoadoutGroupFilesView()
     {
         InitializeComponent();
-        TreeDataGridViewHelper.SetupTreeDataGridAdapter<LoadoutGroupFilesView, ILoadoutGroupFilesViewModel, CompositeItemModel<GamePath>, GamePath>(this, TreeDataGrid, vm => vm.FileTreeAdapter!);
+        TreeDataGridViewHelper.SetupTreeDataGridAdapter<LoadoutGroupFilesView, ILoadoutGroupFilesViewModel, CompositeItemModel<GamePath>, GamePath>(this, TreeDataGrid, vm => vm.FileTreeAdapter);
 
         this.WhenActivated(disposables =>
         {
@@ -23,7 +26,13 @@ public partial class LoadoutGroupFilesView : ReactiveUserControl<ILoadoutGroupFi
             this.OneWayBind(ViewModel, vm => vm.FileTreeAdapter, view => view.SearchControl.Adapter)
                 .AddTo(disposables);
 
-            this.OneWayBind(ViewModel, vm => vm.FileTreeAdapter!.Source.Value, view => view.TreeDataGrid.Source)
+            // The adapter arrives with the page context; until then the grid has no source.
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.FileTreeAdapter))
+                .Select(adapter => adapter is null
+                    ? System.Reactive.Linq.Observable.Return<ITreeDataGridSource?>(null)
+                    : adapter.WhenAnyValue(a => a.Source.Value).Select(source => (ITreeDataGridSource?)source))
+                .Switch()
+                .Subscribe(source => TreeDataGrid.Source = source)
                 .AddTo(disposables);
             
             this.BindCommand(ViewModel, vm => vm.OpenEditorCommand, view => view.OpenEditorMenuItem)

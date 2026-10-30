@@ -23,15 +23,11 @@ src/SilverModManager.App.UI/Pages/Changelog/ChangelogPageView.cs	1
 src/SilverModManager.App.UI/Pages/Changelog/ChangelogPageViewModel.cs	2
 src/SilverModManager.App.UI/Pages/DebugControls/DebugControlsPageView.axaml.cs	2
 src/SilverModManager.App.UI/Pages/DebugControls/DebugControlsPageViewModel.cs	1
-src/SilverModManager.App.UI/Pages/Diagnostics/List/DiagnosticListView.axaml.cs	4
 src/SilverModManager.App.UI/Pages/Diff/ApplyDiff/ApplyDiffDesignViewModel.cs	1
 src/SilverModManager.App.UI/Pages/Diff/ApplyDiff/ApplyDiffViewModel.cs	1
-src/SilverModManager.App.UI/Pages/Downloads/DownloadsPageViewModel.cs	10
 src/SilverModManager.App.UI/Pages/LibraryPage/Collections/CollectionCardView.axaml.cs	2
 src/SilverModManager.App.UI/Pages/LibraryPage/LibraryView.axaml.cs	2
 src/SilverModManager.App.UI/Pages/LibraryPage/LibraryViewModel.cs	1
-src/SilverModManager.App.UI/Pages/LoadoutGroupFilesPage/LoadoutGroupFilesView.cs	2
-src/SilverModManager.App.UI/Pages/LoadoutGroupFilesPage/LoadoutGroupFilesViewModel.cs	10
 src/SilverModManager.App.UI/Pages/LoadoutPage/CollectionLoadoutDesignViewModel.cs	1
 src/SilverModManager.App.UI/Pages/LoadoutPage/CollectionLoadoutView.axaml.cs	5
 src/SilverModManager.App.UI/Pages/LoadoutPage/Dialogs/CollectionPublished/DialogCollectionPublishedView.axaml.cs	5
@@ -41,7 +37,6 @@ src/SilverModManager.App.UI/Pages/ObservableInfo/ObservableInfoPageView.axaml.cs
 src/SilverModManager.App.UI/Pages/ProtocolRegistration/ProtocolRegistrationTestPageView.axaml.cs	3
 src/SilverModManager.App.UI/Pages/Settings/SettingsView.axaml.cs	2
 src/SilverModManager.App.UI/Pages/Sorting/LoadOrder/LoadOrderView.axaml.cs	3
-src/SilverModManager.App.UI/Pages/SteamLaunchOption/SteamLaunchOptionView.axaml.cs	6
 src/SilverModManager.App.UI/Pages/TextEdit/TextEditorPageView.axaml.cs	3
 src/SilverModManager.App.UI/WorkspaceSystem/AddPanelButton/AddPanelDropDownView.axaml.cs	2
 src/SilverModManager.App.UI/WorkspaceSystem/Panel/PanelView.axaml.cs	10

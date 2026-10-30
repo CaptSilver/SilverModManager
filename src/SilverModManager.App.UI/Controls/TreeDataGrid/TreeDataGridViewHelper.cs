@@ -12,11 +12,12 @@ public static class TreeDataGridViewHelper
 {
     /// <summary>
     /// Sets up the <see cref="TreeDataGridAdapter{TModel, TKey}"/> for the current view.
+    /// <paramref name="getAdapter"/> may return null for a view model that has no adapter yet; events are ignored until it has one.
     /// </summary>
     public static void SetupTreeDataGridAdapter<TView, TViewModel, TItemModel, TKey>(
         TView view,
         Avalonia.Controls.TreeDataGrid treeDataGrid,
-        Func<TViewModel, TreeDataGridAdapter<TItemModel, TKey>> getAdapter,
+        Func<TViewModel, TreeDataGridAdapter<TItemModel, TKey>?> getAdapter,
         bool enableDragAndDrop = false)
         where TView : ReactiveUserControl<TViewModel>
         where TViewModel : class, IViewModelInterface
@@ -45,7 +46,7 @@ public static class TreeDataGridViewHelper
                 {
                     // Rows are recycled, so the view can be attached with no view model; read it as the event fires.
                     if (tuple.Model is not TItemModel model || state.view.ViewModel is not { } viewModel) return;
-                    state.getAdapter(viewModel).ModelActivationSubject.OnNext((model, tuple.Item2));
+                    state.getAdapter(viewModel)?.ModelActivationSubject.OnNext((model, tuple.Item2));
                 })
                 .AddTo(disposables);
             
@@ -58,7 +59,7 @@ public static class TreeDataGridViewHelper
                     .Subscribe((view, getAdapter), static (eventArgs, state) =>
                     {
                         if (state.view.ViewModel is not { } viewModel) return;
-                        state.getAdapter(viewModel).OnRowDragStarted(eventArgs.sender, eventArgs.e);
+                        state.getAdapter(viewModel)?.OnRowDragStarted(eventArgs.sender, eventArgs.e);
                     })
                     .AddTo(disposables);
                 
@@ -68,7 +69,7 @@ public static class TreeDataGridViewHelper
                     .Subscribe((view, getAdapter), static (eventArgs, state) =>
                     {
                         if (state.view.ViewModel is not { } viewModel) return;
-                        state.getAdapter(viewModel).OnRowDragOver(eventArgs.sender, eventArgs.e);
+                        state.getAdapter(viewModel)?.OnRowDragOver(eventArgs.sender, eventArgs.e);
                     })
                     .AddTo(disposables);
 
@@ -78,7 +79,7 @@ public static class TreeDataGridViewHelper
                     .Subscribe((view, getAdapter), static (eventArgs, state) =>
                     {
                         if (state.view.ViewModel is not { } viewModel) return;
-                        state.getAdapter(viewModel).OnRowDrop(eventArgs.sender, eventArgs.e);
+                        state.getAdapter(viewModel)?.OnRowDrop(eventArgs.sender, eventArgs.e);
                     })
                     .AddTo(disposables);
             }
@@ -95,7 +96,8 @@ public static class TreeDataGridViewHelper
                 {
                     if (state.view.ViewModel is not { } viewModel) return;
 
-                    var adapter = state.getAdapter(viewModel);
+                    if (state.getAdapter(viewModel) is not { } adapter) return;
+
                     // Select all items
                     adapter.SelectAll();
                     
@@ -109,7 +111,7 @@ public static class TreeDataGridViewHelper
                 {
                     if (input.view.ViewModel is not { } viewModel) return;
 
-                    var adapter = input.getAdapter(viewModel);
+                    if (input.getAdapter(viewModel) is not { } adapter) return;
                     if (!adapter.SortingOptions.UseSortingStatePersistence)
                         return;
                     var sortingState = GetSortingState(input.treeDataGrid);

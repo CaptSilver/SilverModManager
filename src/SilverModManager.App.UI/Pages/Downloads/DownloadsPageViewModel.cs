@@ -24,16 +24,16 @@ public partial class DownloadsPageViewModel : APageViewModel<IDownloadsPageViewM
     public string HeaderDescription { get; private set; } = string.Empty;
 
     public DownloadsTreeDataGridAdapter Adapter { get; }
-    public ReactiveCommand<Unit> PauseAllCommand { get; private set; } = null!;
-    public ReactiveCommand<Unit> ResumeAllCommand { get; private set; } = null!;
-    public ReactiveCommand<Unit> PauseSelectedCommand { get; private set; } = null!;
-    public ReactiveCommand<Unit> ResumeSelectedCommand { get; private set; } = null!;
-    public ReactiveCommand<Unit> CancelSelectedCommand { get; private set; } = null!;
-    public Observable<bool> SelectionHasRunningItems { get; private set; } = null!;
-    public Observable<bool> SelectionHasPausedItems { get; private set; } = null!;
-    public Observable<bool> SelectionHasActiveItems { get; private set; } = null!;
-    public Observable<bool> HasRunningItems { get; private set; } = null!;
-    public Observable<bool> HasPausedItems { get; private set; } = null!;
+    public ReactiveCommand<Unit> PauseAllCommand { get; }
+    public ReactiveCommand<Unit> ResumeAllCommand { get; }
+    public ReactiveCommand<Unit> PauseSelectedCommand { get; }
+    public ReactiveCommand<Unit> ResumeSelectedCommand { get; }
+    public ReactiveCommand<Unit> CancelSelectedCommand { get; }
+    public Observable<bool> SelectionHasRunningItems { get; }
+    public Observable<bool> SelectionHasPausedItems { get; }
+    public Observable<bool> SelectionHasActiveItems { get; }
+    public Observable<bool> HasRunningItems { get; }
+    public Observable<bool> HasPausedItems { get; }
 
     public DownloadsPageViewModel(IWindowManager windowManager, IServiceProvider serviceProvider, DownloadsPageContext context) : base(windowManager)
     {
@@ -54,6 +54,9 @@ public partial class DownloadsPageViewModel : APageViewModel<IDownloadsPageViewM
         (HeaderTitle, HeaderDescription) = context.GameScope.HasValue
             ? (string.Format(Language.DownloadsLeftMenu_GameSpecificDownloads, downloadsDataProvider.ResolveGameName(context.GameScope.Value)), Language.DownloadsPage_GameSpecificDownloads_Description)
             : (Language.DownloadsLeftMenu_AllDownloads, Language.DownloadsPage_AllDownloads_Description);
+
+        var isActive = new R3.ReactiveProperty<bool>(false);
+        Observable<bool> WhileActive(Observable<bool> canRun) => isActive.Select(canRun, static (active, source) => active ? source : R3.Observable.Return(false)).Switch();
 
         // Create observables and commands
         var runningCountChanges = downloadsService.GetDownloadsByStatus(JobStatus.Running)
@@ -114,8 +117,81 @@ public partial class DownloadsPageViewModel : APageViewModel<IDownloadsPageViewM
                 .ToObservable()
                 .Prepend(false);
 
+        // Commands with CanExecute - context-aware implementation. They are built once and only
+        // watch the downloads while the page is active, so a hidden page holds no subscriptions.
+        PauseAllCommand = context.GameScope.HasValue
+            ? WhileActive(HasRunningItems).ToReactiveCommand<Unit>(_ => downloadsService.PauseAllForGame(context.GameScope.Value))
+            : WhileActive(HasRunningItems).ToReactiveCommand<Unit>(_ => downloadsService.PauseAll());
+        
+        ResumeAllCommand = context.GameScope.HasValue
+            ? WhileActive(HasPausedItems).ToReactiveCommand<Unit>(_ => downloadsService.ResumeAllForGame(context.GameScope.Value))
+            : WhileActive(HasPausedItems).ToReactiveCommand<Unit>(_ => downloadsService.ResumeAll());
+        
+        PauseSelectedCommand = WhileActive(SelectionHasRunningItems).ToReactiveCommand<Unit>(
+            executeAsync: (_, _) =>
+            {
+                foreach (var model in Adapter.SelectedModels)
+                {
+                    var downloadRef = model.GetOptional<DownloadRef>(DownloadColumns.DownloadRefComponentKey);
+                    var statusComponent = model.GetOptional<DownloadComponents.StatusComponent>(DownloadColumns.Status.ComponentKey);
+                    
+                    // Only pause downloads that are currently running
+                    if (downloadRef.HasValue && statusComponent is { HasValue: true, Value.Status.Value: JobStatus.Running })
+                        downloadsService.PauseDownload(downloadRef.Value.Download);
+                }
+
+                return ValueTask.CompletedTask;
+            },
+            awaitOperation: AwaitOperation.Parallel,
+            initialCanExecute: false,
+            configureAwait: false
+        );
+        
+        ResumeSelectedCommand = WhileActive(SelectionHasPausedItems).ToReactiveCommand<Unit>(
+            executeAsync: (_, _) =>
+            {
+                foreach (var model in Adapter.SelectedModels)
+                {
+                    var downloadRef = model.GetOptional<DownloadRef>(DownloadColumns.DownloadRefComponentKey);
+                    var statusComponent = model.GetOptional<DownloadComponents.StatusComponent>(DownloadColumns.Status.ComponentKey);
+                    
+                    // Only resume downloads that are currently paused
+                    if (downloadRef.HasValue && statusComponent.HasValue && statusComponent.Value.Status.Value == JobStatus.Paused)
+                        downloadsService.ResumeDownload(downloadRef.Value.Download);
+                }
+
+                return ValueTask.CompletedTask;
+            },
+            awaitOperation: AwaitOperation.Parallel,
+            initialCanExecute: false,
+            configureAwait: false
+        );
+
+        CancelSelectedCommand = WhileActive(SelectionHasActiveItems).ToReactiveCommand<Unit>(
+            executeAsync: (_, _) =>
+            {
+                foreach (var model in Adapter.SelectedModels)
+                {
+                    var downloadRef = model.GetOptional<DownloadRef>(DownloadColumns.DownloadRefComponentKey);
+                    var statusComponent = model.GetOptional<DownloadComponents.StatusComponent>(DownloadColumns.Status.ComponentKey);
+                    
+                    // Only cancel downloads that are currently active (running or paused)
+                    if (downloadRef.HasValue && statusComponent.HasValue && statusComponent.Value.Status.Value.IsActive())
+                        downloadsService.CancelDownload(downloadRef.Value.Download);
+                }
+
+                return ValueTask.CompletedTask;
+            },
+            awaitOperation: AwaitOperation.Parallel,
+            initialCanExecute: false,
+            configureAwait: false
+        );
+
         this.WhenActivated(disposables =>
         {
+            isActive.Value = true;
+            Disposable.Create(isActive, static active => active.Value = false).AddTo(disposables);
+
             Adapter.Activate().AddTo(disposables);
             
             // Track selection count using count property
@@ -151,75 +227,6 @@ public partial class DownloadsPageViewModel : APageViewModel<IDownloadsPageViewM
                         }
                     );
                 }
-            ).AddTo(disposables);
-
-            // Commands with CanExecute - context-aware implementation
-            PauseAllCommand = context.GameScope.HasValue
-                ? HasRunningItems.ToReactiveCommand<Unit>(_ => downloadsService.PauseAllForGame(context.GameScope.Value)).AddTo(disposables)
-                : HasRunningItems.ToReactiveCommand<Unit>(_ => downloadsService.PauseAll()).AddTo(disposables);
-            
-            ResumeAllCommand = context.GameScope.HasValue
-                ? HasPausedItems.ToReactiveCommand<Unit>(_ => downloadsService.ResumeAllForGame(context.GameScope.Value)).AddTo(disposables)
-                : HasPausedItems.ToReactiveCommand<Unit>(_ => downloadsService.ResumeAll()).AddTo(disposables);
-            
-            PauseSelectedCommand = SelectionHasRunningItems.ToReactiveCommand<Unit>(
-                executeAsync: (_, _) =>
-                {
-                    foreach (var model in Adapter.SelectedModels)
-                    {
-                        var downloadRef = model.GetOptional<DownloadRef>(DownloadColumns.DownloadRefComponentKey);
-                        var statusComponent = model.GetOptional<DownloadComponents.StatusComponent>(DownloadColumns.Status.ComponentKey);
-                        
-                        // Only pause downloads that are currently running
-                        if (downloadRef.HasValue && statusComponent is { HasValue: true, Value.Status.Value: JobStatus.Running })
-                            downloadsService.PauseDownload(downloadRef.Value.Download);
-                    }
-
-                    return ValueTask.CompletedTask;
-                },
-                awaitOperation: AwaitOperation.Parallel,
-                initialCanExecute: false,
-                configureAwait: false
-            ).AddTo(disposables);
-            
-            ResumeSelectedCommand = SelectionHasPausedItems.ToReactiveCommand<Unit>(
-                executeAsync: (_, _) =>
-                {
-                    foreach (var model in Adapter.SelectedModels)
-                    {
-                        var downloadRef = model.GetOptional<DownloadRef>(DownloadColumns.DownloadRefComponentKey);
-                        var statusComponent = model.GetOptional<DownloadComponents.StatusComponent>(DownloadColumns.Status.ComponentKey);
-                        
-                        // Only resume downloads that are currently paused
-                        if (downloadRef.HasValue && statusComponent.HasValue && statusComponent.Value.Status.Value == JobStatus.Paused)
-                            downloadsService.ResumeDownload(downloadRef.Value.Download);
-                    }
-
-                    return ValueTask.CompletedTask;
-                },
-                awaitOperation: AwaitOperation.Parallel,
-                initialCanExecute: false,
-                configureAwait: false
-            ).AddTo(disposables);
-
-            CancelSelectedCommand = SelectionHasActiveItems.ToReactiveCommand<Unit>(
-                executeAsync: (_, _) =>
-                {
-                    foreach (var model in Adapter.SelectedModels)
-                    {
-                        var downloadRef = model.GetOptional<DownloadRef>(DownloadColumns.DownloadRefComponentKey);
-                        var statusComponent = model.GetOptional<DownloadComponents.StatusComponent>(DownloadColumns.Status.ComponentKey);
-                        
-                        // Only cancel downloads that are currently active (running or paused)
-                        if (downloadRef.HasValue && statusComponent.HasValue && statusComponent.Value.Status.Value.IsActive())
-                            downloadsService.CancelDownload(downloadRef.Value.Download);
-                    }
-
-                    return ValueTask.CompletedTask;
-                },
-                awaitOperation: AwaitOperation.Parallel,
-                initialCanExecute: false,
-                configureAwait: false
             ).AddTo(disposables);
         });
     }
