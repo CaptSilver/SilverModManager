@@ -43,6 +43,7 @@ public sealed class ForumCredentialCache : IForumTokenCache, ISecretPrimable, ID
     private readonly object _lock = new();
     private readonly object _publishLock = new();
     private readonly ReactiveProperty<bool> _hasCredential = new(false);
+    private readonly Subject<Unit> _changes = new();
     private readonly IDisposable _subscriptions;
 
     private Held? _held;
@@ -89,6 +90,12 @@ public sealed class ForumCredentialCache : IForumTokenCache, ISecretPrimable, ID
     /// True while a token is held. Replays the current value to a new subscriber.
     /// </summary>
     public ReadOnlyReactiveProperty<bool> HasCredential => _hasCredential;
+
+    /// <summary>
+    /// Fires after every write, removal or reload, including one that swaps a token for another. HasCredential
+    /// cannot say that: an expired token replaced by a fresh one is true before and after.
+    /// </summary>
+    public Observable<Unit> Changes => _changes;
 
     /// <summary>
     /// The last known state of the store's ability to take a write. False until the first load.
@@ -219,6 +226,7 @@ public sealed class ForumCredentialCache : IForumTokenCache, ISecretPrimable, ID
     {
         _subscriptions.Dispose();
         _hasCredential.Dispose();
+        _changes.Dispose();
     }
 
     private void Publish()
@@ -228,6 +236,7 @@ public sealed class ForumCredentialCache : IForumTokenCache, ISecretPrimable, ID
             bool has;
             lock (_lock) has = _held is not null;
             _hasCredential.Value = has;
+            _changes.OnNext(Unit.Default);
         }
     }
 

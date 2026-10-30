@@ -31,8 +31,8 @@ public sealed class ForumAccounts : IForumAccounts
         var cache = _credentials.Cache(site);
         if (cache.Current is not { } token) return new ForumAccountStatus(ForumAccountState.SignedOut, "");
 
-        var usable = token.CanRefresh || !token.HasExpired(_time.GetUtcNow());
-        return new ForumAccountStatus(usable ? ForumAccountState.SignedIn : ForumAccountState.Expired, cache.Source);
+        var state = _login.IsSignedIn(site) ? ForumAccountState.SignedIn : ForumAccountState.Expired;
+        return new ForumAccountStatus(state, cache.Source);
     }
 
     /// <inheritdoc />
@@ -41,7 +41,27 @@ public sealed class ForumAccounts : IForumAccounts
     /// <inheritdoc />
     public Task SignOut(ForumSite site, CancellationToken cancellationToken) => _login.SignOut(site, cancellationToken);
 
-    // HasCredential replays its current value, which is not a change.
-    private Observable<ForumSite> Announce(ForumSite site)
-        => _credentials.Cache(site).HasCredential.Skip(1).DistinctUntilChanged().Select(_ => site);
+    // Every write announces, but a refresh swapping one usable token for another changes nothing a page shows, and
+    // would make the modlist page check its whole list again. So only a change of what the account reads as counts:
+    // signed out, signed in, expired, or where the token is kept.
+    private Observable<ForumSite> Announce(ForumSite site) => Observable.Defer(() =>
+    {
+        var last = Reading(site);
+        return _credentials.Cache(site).Changes
+            .Where(_ =>
+            {
+                var now = Reading(site);
+                var changed = now != last;
+                last = now;
+                return changed;
+            })
+            .Select(_ => site);
+    });
+
+    // Read from the cache, not StatusOf: a site without a client id still has a token that can come and go.
+    private (bool Held, bool SignedIn, string Source) Reading(ForumSite site)
+    {
+        var cache = _credentials.Cache(site);
+        return (cache.Current is not null, _login.IsSignedIn(site), cache.Source);
+    }
 }

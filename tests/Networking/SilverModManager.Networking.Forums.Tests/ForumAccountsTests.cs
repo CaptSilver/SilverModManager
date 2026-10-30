@@ -103,6 +103,33 @@ public class ForumAccountsTests : IDisposable
     }
 
     [Fact]
+    public async Task ChangedAnnouncesAnExpiredTokenThatIsReplacedByAFreshOne()
+    {
+        var accounts = await Create();
+        await Store(ForumSite.LoversLab, new OAuthToken("old", null, Start - TimeSpan.FromMinutes(1)));
+        var seen = new List<ForumSite>();
+        using var subscription = accounts.Changed.Subscribe(state => seen.Add(state));
+
+        await Store(ForumSite.LoversLab, new OAuthToken("new", null, Start + TimeSpan.FromHours(1)));
+
+        seen.Should().Equal(ForumSite.LoversLab);
+        accounts.StatusOf(ForumSite.LoversLab).State.Should().Be(ForumAccountState.SignedIn);
+    }
+
+    [Fact]
+    public async Task ChangedStaysSilentWhenARefreshReplacesAUsableTokenWithAnother()
+    {
+        var accounts = await Create();
+        await Store(ForumSite.LoversLab, new OAuthToken("old", "r", Start + TimeSpan.FromMinutes(1)));
+        var seen = new List<ForumSite>();
+        using var subscription = accounts.Changed.Subscribe(state => seen.Add(state));
+
+        await Store(ForumSite.LoversLab, new OAuthToken("new", "r", Start + TimeSpan.FromHours(1)));
+
+        seen.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task ChangedIsSilentAboutTheCurrentStateAndTheOtherSite()
     {
         var accounts = await Create();
