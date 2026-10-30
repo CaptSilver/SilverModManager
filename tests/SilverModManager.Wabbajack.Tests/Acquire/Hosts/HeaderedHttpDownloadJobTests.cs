@@ -57,6 +57,18 @@ public class HeaderedHttpDownloadJobTests(IServiceProvider provider, TemporaryFi
         host.Seen.Should().BeEmpty();
     }
 
+    [Fact(Timeout = 60000)]
+    public async Task ABodyThatGoesQuiet_FailsNamingTheHostAndLeavesNoPartialFile()
+    {
+        var host = new FakeHost((_, _) => new HttpResponseMessage(HttpStatusCode.OK) { Content = StallingContent.After(Content(50_000)) });
+        await using var destination = Files.CreateFile();
+
+        var act = async () => await Begin(JobFor(host, destination, ["Accept: */*"]) with { IdleTimeout = TimeSpan.FromMilliseconds(150) });
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Message.Should().Be("files.test stopped sending data");
+        destination.Path.FileExists.Should().BeFalse();
+    }
+
     [Fact]
     public async Task AWebPageInsteadOfTheFileFailsAskingForTheBrowser()
     {

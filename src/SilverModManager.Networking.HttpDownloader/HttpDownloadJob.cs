@@ -13,6 +13,8 @@ using NexusMods.Paths;
 using Polly;
 using Polly.Retry;
 using System.ComponentModel;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using ReactiveUI;
@@ -61,6 +63,21 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>
+    /// How long the body may send nothing before the connection is treated as dead and the rest of the file is asked for again.
+    /// </summary>
+    public TimeSpan IdleTimeout { get; init; } = IdleReads.DefaultTimeout;
+
+    /// <summary>
+    /// How many times in a row a silent connection is asked again without any new bytes arriving before the job fails.
+    /// </summary>
+    public int MaxIdleRetries { get; init; } = 3;
+
+    /// <summary>
+    /// The clock the idle limit runs on.
+    /// </summary>
+    public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
+
     private readonly HttpDownloadState _state = new();
     
     public bool SupportsPausing => true;
@@ -94,17 +111,30 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
     /// <inheritdoc/>
     public async ValueTask<AbsolutePath> StartAsync(IJobContext<HttpDownloadJob> context)
     {
-        var result = await ResiliencePipeline.ExecuteAsync(
-            callback: static (tuple, _) =>
+        // A stalled connection fails the attempt like any dropped one, but asking again straight away is enough:
+        // the wait was already the idle limit. Only stalls that bring no new bytes count towards giving up.
+        var stallsWithoutProgress = 0;
+        while (true)
+        {
+            var before = _state.TotalBytesDownloaded;
+            try
             {
-                var (self, context) = tuple;
-                return self.StartAsyncImpl(context);
-            },
-            state: (this, context),
-            cancellationToken: context.CancellationToken
-        );
-
-        return result;
+                return await ResiliencePipeline.ExecuteAsync(
+                    callback: static (tuple, _) =>
+                    {
+                        var (self, context) = tuple;
+                        return self.StartAsyncImpl(context);
+                    },
+                    state: (this, context),
+                    cancellationToken: context.CancellationToken
+                );
+            }
+            catch (DownloadStalledException) when (!context.JobCancellationToken.IsPaused && !context.JobCancellationToken.IsCancelled)
+            {
+                if (_state.TotalBytesDownloaded > before) stallsWithoutProgress = 0;
+                if (++stallsWithoutProgress > MaxIdleRetries) throw;
+            }
+        }
     }
 
     private async ValueTask<AbsolutePath> StartAsyncImpl(IJobContext<HttpDownloadJob> context)
@@ -115,6 +145,12 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
         
         Logger.LogDebug("Requesting headers of `{Uri}`", Uri.GetLeftPart(UriPartial.Path));
         await WithHostTimeoutReported(() => FetchMetadata(context).AsTask(), context);
+        if (!_state.AcceptRanges.Value && _state.TotalBytesDownloaded > Size.Zero)
+        {
+            // Without ranges the only way to ask again is for the whole file, which then has to overwrite from the start.
+            Logger.LogInformation("The server does not support ranges, restarting the download from the beginning");
+            _state.TotalBytesDownloaded = Size.Zero;
+        }
         Logger.LogDebug("Downloading `{Uri}`, {Length} bytes", Uri.GetLeftPart(UriPartial.Path), _state.ContentLength);
 
         await context.YieldAsync();
@@ -196,10 +232,15 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
 
         try
         {
-            await response.Content.CopyToAsync(outputStream, context.CancellationToken);
+            await CopyBody(response, outputStream, context.CancellationToken);
         }
-        catch (TaskCanceledException)
+        catch (OperationCanceledException)
         {
+            throw;
+        }
+        catch (DownloadStalledException)
+        {
+            // Already logged where it was raised, and the caller asks again.
             throw;
         }
         catch (Exception e)
@@ -221,6 +262,27 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
         return Destination;
     }
     
+    /// <summary>
+    /// Copies the body in 1 MB blocks, each read bounded by <see cref="IdleTimeout"/>. A plain CopyToAsync waits on a
+    /// connection that has died without a reset for as long as the process lives.
+    /// </summary>
+    private async Task CopyBody(HttpResponseMessage response, Stream destination, CancellationToken token)
+    {
+        await using var body = await response.Content.ReadAsStreamAsync(token);
+        var buffer = GC.AllocateUninitializedArray<byte>(HashingLimits.ReadBlockSize);
+        try
+        {
+            int read;
+            while ((read = await IdleReads.ReadAsync(body, buffer, Uri.Authority, IdleTimeout, TimeProvider, token)) > 0)
+                await destination.WriteAsync(buffer.AsMemory(0, read), token);
+        }
+        catch (DownloadStalledException)
+        {
+            Logger.LogWarning("`{Host}` sent no data for {Idle}, downloaded `{DownloadedBytes}` from `{TotalBytes}` bytes", Uri.Authority, IdleTimeout, destination.Position, destination.Length);
+            throw;
+        }
+    }
+
     /// <summary>
     /// HttpClient reports its own timeout as a cancellation, and a connect timeout as a plain network error. Left alone
     /// the first looks like the user cancelled and the second gets retried several times over, so both become a

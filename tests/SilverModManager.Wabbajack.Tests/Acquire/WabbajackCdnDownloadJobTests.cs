@@ -46,6 +46,24 @@ public class WabbajackCdnDownloadJobTests(IServiceProvider provider, TemporaryFi
         downloaded.DownloadPageUri.Should().Be(CdnUrl);
     }
 
+    [Fact(Timeout = 60000)]
+    public async Task APartThatGoesQuietIsAskedForAgain()
+    {
+        var fixture = new CdnFixture();
+        var handler = new CdnHandler(fixture)
+        {
+            Respond = (path, earlier) => path.EndsWith("/parts/1", StringComparison.Ordinal) && earlier == 0
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = StallingContent.After(fixture.Parts[1][..10]) }
+                : null,
+        };
+        await using var destination = temporaryFileManager.CreateFile();
+
+        await Begin(JobFor(handler, destination) with { IdleTimeout = TimeSpan.FromMilliseconds(150) });
+
+        (await destination.Path.ReadAllBytesAsync()).Should().Equal(fixture.Content);
+        handler.RequestsFor("/parts/1").Should().Be(2);
+    }
+
     [Fact]
     public async Task ACorruptedPartFailsTheJobNamingThePart()
     {

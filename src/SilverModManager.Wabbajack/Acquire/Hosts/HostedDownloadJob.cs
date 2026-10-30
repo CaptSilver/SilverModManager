@@ -3,6 +3,8 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Downloads;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Errors;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 
@@ -41,6 +43,12 @@ public abstract record HostedDownloadJob : IDownloadJob
 
     /// <summary>The pause before the first retry; each one after waits twice as long as the last.</summary>
     public TimeSpan RetryDelay { get; init; } = TimeSpan.FromSeconds(1);
+
+    /// <summary>How long a body may send nothing before the host is treated as dead and the download fails.</summary>
+    public TimeSpan IdleTimeout { get; init; } = IdleReads.DefaultTimeout;
+
+    /// <summary>The clock the idle limit runs on.</summary>
+    public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
 
     /// <summary>The host's name as the user knows it. Also the throttle's key, so every job for the host shares its slots.</summary>
     protected abstract string HostName { get; }
@@ -106,7 +114,7 @@ public abstract record HostedDownloadJob : IDownloadJob
 public sealed class HostTransfer
 {
     /// <summary>Large reads keep the write loop out of the way of the network; the file is hashed later in the same block size.</summary>
-    private const int BlockSize = 1024 * 1024;
+    private const int BlockSize = HashingLimits.ReadBlockSize;
 
     private readonly HostedDownloadJob _job;
     private readonly IJobContext _context;
@@ -143,7 +151,8 @@ public sealed class HostTransfer
         => response.Content.Headers.ContentType?.MediaType is "text/html" or "application/xhtml+xml";
 
     /// <summary>
-    /// Writes the response body to the destination in 1 MB blocks, reporting progress. <paramref name="decrypt"/> wraps
+    /// Writes the response body to the destination in 1 MB blocks, reporting progress. A body that sends nothing for
+    /// <see cref="HostedDownloadJob.IdleTimeout"/> fails the transfer with a <see cref="DownloadStalledException"/>. <paramref name="decrypt"/> wraps
     /// the network stream for hosts that encrypt what they serve. A web page, a failure status or a body that is not
     /// <paramref name="expectedSize"/> bytes fails the transfer.
     /// </summary>
@@ -151,8 +160,9 @@ public sealed class HostTransfer
     {
         var token = _context.CancellationToken;
         EnsureSuccess(response);
+        var host = hostName ?? response.RequestMessage?.RequestUri?.Host ?? _job.Url.Host;
         if (IsWebPage(response))
-            throw new HostRefusedException($"{hostName ?? response.RequestMessage?.RequestUri?.Host} sent a web page instead of the file; download it in your browser");
+            throw new HostRefusedException($"{host} sent a web page instead of the file; download it in your browser");
 
         var total = expectedSize ?? response.Content.Headers.ContentLength;
         await using var network = await response.Content.ReadAsStreamAsync(token);
@@ -163,7 +173,7 @@ public sealed class HostTransfer
             var buffer = GC.AllocateUninitializedArray<byte>(BlockSize);
             written = 0;
             int read;
-            while ((read = await source.ReadAsync(buffer, token)) > 0)
+            while ((read = await IdleReads.ReadAsync(source, buffer, host, _job.IdleTimeout, _job.TimeProvider, token)) > 0)
             {
                 await _context.YieldAsync();
                 await file.WriteAsync(buffer.AsMemory(0, read), token);

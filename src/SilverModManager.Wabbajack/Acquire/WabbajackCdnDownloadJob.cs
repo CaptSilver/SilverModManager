@@ -10,6 +10,7 @@ using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Wabbajack.Format;
@@ -49,6 +50,12 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
 
     /// <summary>The pause before the first retry; each one after waits twice as long as the last.</summary>
     public TimeSpan RetryDelay { get; init; } = TimeSpan.FromSeconds(1);
+
+    /// <summary>How long a response may send nothing before the request counts as failed and is asked for again.</summary>
+    public TimeSpan IdleTimeout { get; init; } = IdleReads.DefaultTimeout;
+
+    /// <summary>The clock the idle limit runs on.</summary>
+    public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
 
     private string? _originalFileName;
 
@@ -94,7 +101,7 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
         var definition = await WithRetries($"the definition of {Url}", async () =>
         {
             using var message = MakeMessage(new Uri($"{Url.AbsoluteUri.TrimEnd('/')}/definition.json.gz"));
-            using var response = await Client.SendAsync(message, token);
+            using var response = await Client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, token);
             // Gone is gone; anything else (a busy CDN, a 5xx, a dropped connection) is worth asking again.
             if (response.StatusCode == HttpStatusCode.NotFound)
                 throw new PermanentFailureException(new HttpRequestException($"The CDN has no file at {Url}", null, HttpStatusCode.NotFound));
@@ -180,20 +187,22 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
         return WithRetries($"part {part.Index} of {definition.OriginalFileName}", async () =>
         {
             using var message = MakeMessage(new Uri($"{Url.AbsoluteUri.TrimEnd('/')}/parts/{part.Index}"));
-            using var response = await Client.SendAsync(message, token);
+            using var response = await Client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, token);
             if (!response.IsSuccessStatusCode)
                 throw new InvalidDataException($"Bad response ({(int)response.StatusCode}) for part {part.Index} of {definition.OriginalFileName}");
 
-            var bytes = await response.Content.ReadAsByteArrayAsync(token);
+            await using var body = await response.Content.ReadAsStreamAsync(token);
+            var bytes = await IdleReads.ReadToEndAsync(body, Url.Host, IdleTimeout, TimeProvider, token);
             if (bytes.Length != part.Size || !FileIdentity.XxHash64(Xx64Hasher.Hash(bytes)).Equals(part.Hash))
                 throw new InvalidDataException($"Invalid hash for part {part.Index} of {definition.OriginalFileName}");
             return bytes;
         }, token);
     }
 
-    private static async Task<FileDefinition> ReadDefinition(HttpResponseMessage response, CancellationToken token)
+    private async Task<FileDefinition> ReadDefinition(HttpResponseMessage response, CancellationToken token)
     {
-        await using var stream = await response.Content.ReadAsStreamAsync(token);
+        await using var network = await response.Content.ReadAsStreamAsync(token);
+        await using var stream = new MemoryStream(await IdleReads.ReadToEndAsync(network, Url.Host, IdleTimeout, TimeProvider, token));
         await using var gzip = new GZipStream(stream, CompressionMode.Decompress);
         using var document = await JsonDocument.ParseAsync(gzip, cancellationToken: token);
         return FileDefinition.Read(document.RootElement);
