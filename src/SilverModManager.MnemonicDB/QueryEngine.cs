@@ -125,6 +125,11 @@ public class QueryEngine : IQueryEngine, IAsyncDisposable
     private static readonly FieldInfo AllConnectionsField = PoolField("_allConnections");
     private static readonly FieldInfo IdleConnectionsField = PoolField("_connections");
 
+    // DuckDB.Connect refuses to hand out a connection once this is set, which is the only way to stop new queries
+    // from starting. Its DisposeAsync sets it too, but only as its first step, after the point where it destroys
+    // connections without looking at who uses them.
+    private static readonly FieldInfo RefusesQueriesField = PoolField("_disposed");
+
     private static FieldInfo PoolField(string name) =>
         typeof(NexusMods.HyperDuck.DuckDB).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)
         ?? throw new InvalidOperationException($"NexusMods.HyperDuck.DuckDB no longer has a field named {name}; the query drain cannot count running queries");
@@ -148,16 +153,26 @@ public class QueryEngine : IQueryEngine, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (Volatile.Read(ref _closed) == 1) return;
+
+        // From here no query can start: with queries arriving back to back there would never be a moment with none
+        // running. The ones already running finish.
+        RefusesQueriesField.SetValue(_db, true);
         var deadline = DateTime.UtcNow + QueryDrainWait;
         while (ConnectionsInUse() > 0)
         {
             // A query that never finishes is a hang elsewhere. Closing DuckDB under it destroys the connection it is
-            // running on and crashes the process, so DuckDB stays open until the process exits.
+            // running on and crashes the process, so DuckDB stays open, and closed to new queries, until the process
+            // exits.
             if (DateTime.UtcNow >= deadline) return;
             await Task.Delay(10).ConfigureAwait(false);
         }
 
         if (Interlocked.Exchange(ref _closed, 1) == 1) return;
+
+        // DuckDB.DisposeAsync does nothing once the flag is set, so it is put back for the call that closes it. A
+        // query that starts in the instant between the two is not stopped.
+        RefusesQueriesField.SetValue(_db, false);
         _attrEnumLogicalType.Dispose();
         await _db.DisposeAsync().ConfigureAwait(false);
     }

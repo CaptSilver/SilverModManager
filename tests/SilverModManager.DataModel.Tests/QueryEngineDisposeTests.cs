@@ -39,6 +39,24 @@ public class QueryEngineDisposeTests
         connect.Should().Throw<ObjectDisposedException>("DuckDB is closed once the queries have finished");
     }
 
+    // Without this a steady stream of queries never leaves a moment with none running, and the wait never ends.
+    [Fact]
+    public async Task AQueryThatStartsWhileDisposeIsWaitingIsRefused()
+    {
+        await using var provider = BuildProvider();
+        var engine = (QueryEngine)provider.GetRequiredService<IQueryEngine>();
+
+        var running = engine.DuckDb.Connect();
+        var dispose = engine.DisposeAsync().AsTask();
+        await Task.Delay(100);
+
+        var connect = () => engine.DuckDb.Connect();
+        connect.Should().Throw<ObjectDisposedException>("new queries must not keep the running count from reaching zero");
+
+        running.Dispose();
+        await dispose.WaitAsync(TimeSpan.FromSeconds(30));
+    }
+
     [Fact]
     public async Task DisposeLeavesDuckDbOpenWhenAQueryNeverFinishes()
     {
@@ -49,8 +67,9 @@ public class QueryEngineDisposeTests
         var stuck = engine.DuckDb.Connect();
         await engine.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(30));
 
-        // Closing it under the query would crash the process; the engine leaves it open instead.
-        using var another = engine.DuckDb.Connect();
+        // Closing it under the query would crash the process; the engine leaves it open, and the query's own
+        // connection still works.
+        stuck.Query("SELECT 1").Dispose();
         stuck.Dispose();
     }
 
