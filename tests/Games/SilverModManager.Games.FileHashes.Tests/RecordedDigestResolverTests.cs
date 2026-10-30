@@ -361,6 +361,76 @@ public sealed class RecordedDigestResolverTests : IDisposable
         scoped.Resolve(FileIdentity.Sha1(a.Sha1), FileIdentity.XxHash3(a.XxHash3), a.Size).Should().Be(IdentityMatch.Unknown);
     }
 
+    [Fact]
+    public async Task ScopedWithFewIdentitiesOverALargeDatabase_LooksEachUpInsteadOfReadingTheAttribute()
+    {
+        var recorded = await Hashed("recorded");
+        var bulk = await AddBulkRows(_downloaded, (RecordedDigestResolver.ScanFrom + 8) * RecordedDigestResolver.ScanRowsPerLookup + 500);
+        await AddRow(_downloaded, recorded);
+        var unrecorded = await HashedMany("few-unrecorded", RecordedDigestResolver.ScanFrom + 7);
+        var expected = unrecorded.Append(recorded).Select(f => FileIdentity.Sha1(f.Sha1)).ToList();
+
+        var scoped = _resolver.Scoped(expected);
+
+        _resolver.QueriesIssued.Should().Be(0, "a seek per identity costs less than walking every row");
+        scoped.Resolve(FileIdentity.Sha1(recorded.Sha1), FileIdentity.XxHash3(recorded.XxHash3), recorded.Size).Should().Be(IdentityMatch.Same);
+        scoped.Resolve(FileIdentity.Sha1(bulk[0].Sha1), FileIdentity.XxHash3(bulk[0].XxHash3), bulk[0].Size).Should().Be(IdentityMatch.Same);
+        var miss = unrecorded[0];
+        scoped.Resolve(FileIdentity.Sha1(miss.Sha1), FileIdentity.XxHash3(miss.XxHash3), miss.Size).Should().Be(IdentityMatch.Unknown);
+        _resolver.QueriesIssued.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task ScopedWithManyIdentitiesOverASmallDatabase_ReadsTheAttributeOncePerDatabase()
+    {
+        var recorded = await HashedMany("small-recorded", 20);
+        foreach (var f in recorded) await AddRow(_downloaded, f);
+        var unrecorded = await HashedMany("small-unrecorded", 200);
+        var expected = recorded.Concat(unrecorded).Select(f => FileIdentity.Sha1(f.Sha1)).ToList();
+
+        var scoped = _resolver.Scoped(expected);
+
+        _resolver.QueriesIssued.Should().Be(2, "one walk of the SHA-1 attribute in each of the two databases");
+        foreach (var f in recorded) scoped.Resolve(FileIdentity.Sha1(f.Sha1), FileIdentity.XxHash3(f.XxHash3), f.Size).Should().Be(IdentityMatch.Same);
+        foreach (var f in unrecorded) scoped.TryConvert(FileIdentity.Sha1(f.Sha1), f.Size, HashKind.XxHash3, out _).Should().BeFalse();
+        _resolver.QueriesIssued.Should().Be(2 + recorded.Count * 2, "only the recorded identities still need their row loaded");
+    }
+
+    [Fact]
+    public async Task ScopedChoice_FollowsTheRowCountOfEveryDatabaseTogether()
+    {
+        // Neither database alone is big enough to make a seek the cheaper path, the two together are.
+        var expectedCount = RecordedDigestResolver.ScanFrom;
+        var half = expectedCount * RecordedDigestResolver.ScanRowsPerLookup / 2 + 200;
+        await AddBulkRows(_local, half);
+        await AddBulkRows(_downloaded, half);
+        var expected = (await HashedMany("together", expectedCount)).Select(f => FileIdentity.Sha1(f.Sha1)).ToList();
+
+        _resolver.Scoped(expected);
+
+        _resolver.QueriesIssued.Should().Be(0);
+    }
+
+    /// <summary>
+    /// Writes <paramref name="count"/> rows in one transaction, which is how a downloaded database is built.
+    /// </summary>
+    private static async Task<List<MultiHash>> AddBulkRows(IConnection store, int count)
+    {
+        var all = await HashedMany($"bulk-{Guid.NewGuid():N}", count);
+        using var tx = store.BeginTransaction();
+        foreach (var hashes in all)
+        {
+            _ = new HashRelation.New(tx)
+            {
+                MinimalHash = hashes.MinimalHash, XxHash3 = hashes.XxHash3, Sha1 = hashes.Sha1, XxHash64 = hashes.XxHash64,
+                Crc32 = hashes.Crc32, Md5 = hashes.Md5, Size = hashes.Size,
+            };
+        }
+
+        await tx.Commit();
+        return all;
+    }
+
     private static IFileStore StoreHolding(params Hash[] held)
     {
         var store = Substitute.For<IFileStore>();

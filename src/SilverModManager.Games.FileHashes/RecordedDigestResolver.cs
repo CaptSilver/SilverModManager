@@ -13,9 +13,10 @@ namespace SilverModManager.Games.FileHashes;
 /// <summary>
 /// Joins file identities of different kinds through the <see cref="HashRelation"/> rows of the local store and
 /// then the downloaded one. Caches nothing: the local store changes under it, so use <see cref="Scoped"/> for a
-/// pass that asks the same question many times.
+/// pass that asks the same question many times. <paramref name="rowsPerLookup"/> is the <see cref="ScanRowsPerLookup"/>
+/// the scoped pass uses; benchmarks pass other values to force one path.
 /// </summary>
-internal sealed class RecordedDigestResolver(IFileHashesService fileHashes) : IFileIdentityResolver
+internal sealed class RecordedDigestResolver(IFileHashesService fileHashes, int rowsPerLookup = RecordedDigestResolver.ScanRowsPerLookup) : IFileIdentityResolver
 {
     public bool TryConvert(FileIdentity identity, Size size, HashKind kind, out FileIdentity converted)
     {
@@ -60,16 +61,23 @@ internal sealed class RecordedDigestResolver(IFileHashesService fileHashes) : IF
     public IFileIdentityResolver Scoped(IEnumerable<FileIdentity> expected) => new Memo(this, Prefetch(expected));
 
     /// <summary>
-    /// Below this many distinct identities of one hash kind a pass asks the index about each one, which costs less
-    /// than reading the kind's whole attribute.
+    /// Below this many distinct identities of one hash kind a pass asks the index about each one, whatever the
+    /// databases hold.
     /// </summary>
     internal const int ScanFrom = 32;
+
+    /// <summary>
+    /// Rows, across the databases, that walking an attribute may cover per expected identity before a seek for each
+    /// identity is cheaper. Measured with RecordedDigestScope: a seek in both databases cost about 5 us per identity
+    /// and a row of the walk about 0.3 us, a ratio of 15 or so.
+    /// </summary>
+    internal const int ScanRowsPerLookup = 16;
 
     private static readonly HashKind[] ScannableKinds = [HashKind.XxHash3, HashKind.Sha1, HashKind.Md5, HashKind.XxHash64, HashKind.Crc32];
 
     /// <summary>
-    /// Reads each hash kind's attribute once per database and notes which of the expected identities any row
-    /// records. A pass whose identities have no rows, a tree of files nothing recorded, then asks the index nothing
+    /// For each hash kind with enough expected identities for it to be cheaper than a seek apiece, reads the
+    /// attribute once per database and notes which of the expected identities any row records. A pass whose identities have no rows, a tree of files nothing recorded, then asks the index nothing
     /// more, where one question per identity would allocate more than the tree itself.
     /// </summary>
     private Presence? Prefetch(IEnumerable<FileIdentity> expected)
@@ -81,22 +89,45 @@ internal sealed class RecordedDigestResolver(IFileHashesService fileHashes) : IF
             (byKind[(int)identity.Kind] ??= []).Add(identity);
         }
 
+        var databases = fileHashes.Databases;
+        long? rows = null;
         Presence? presence = null;
         foreach (var kind in ScannableKinds)
         {
             if (byKind[(int)kind] is not { } list) continue;
             var distinct = Distinct(list);
             if (distinct.Length < ScanFrom) continue;
+            // Every database has to be walked or none: an identity only counts as unrecorded once all of them
+            // were read, so a walk of the small one beside a seek in the big one would save nothing.
+            if ((rows ??= EstimatedRows(databases)) > (long)distinct.Length * rowsPerLookup) continue;
             (presence ??= new Presence()).Add(kind, distinct);
         }
 
         if (presence is null) return null;
-        foreach (var db in fileHashes.Databases)
+        foreach (var db in databases)
         {
             foreach (var kind in ScannableKinds) presence.Scan(db, kind, ref _queriesIssued);
         }
 
         return presence;
+    }
+
+    /// <summary>
+    /// Upper bound on the rows one attribute holds across <paramref name="databases"/>: the entities allocated so far.
+    /// MnemonicDB keeps no per-attribute count, and ids are handed out in sequence, so the highest one is a single
+    /// seek. Path rows share the partition, so a database with many paths per file reads high, which only tips the
+    /// choice towards seeking.
+    /// </summary>
+    private static long EstimatedRows(IReadOnlyList<IDb> databases)
+    {
+        long rows = 0;
+        foreach (var db in databases)
+        {
+            if (db.Snapshot.TryGetMaxIdInPartition(PartitionId.Entity, out var last))
+                rows += (long)(last.Value - PartitionId.Entity.MinValue.Value) + 1;
+        }
+
+        return rows;
     }
 
     private static bool IsScannable(HashKind kind) => kind is HashKind.XxHash3 or HashKind.Sha1 or HashKind.Md5 or HashKind.XxHash64 or HashKind.Crc32;
