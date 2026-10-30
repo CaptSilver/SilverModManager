@@ -25,17 +25,46 @@ public class Backend : IStoreBackend
     private volatile bool _disposed;
 
     /// <summary>
-    /// Guards <see cref="_openIterators"/> and <see cref="_closing"/>. Iterators are opened by DuckDB scans on
-    /// pool threads, and the native database must not be freed under any of them.
+    /// Native calls in progress. DuckDB scans run on pool threads and read through iterators, and the native
+    /// database must not be freed while one of those calls is inside it.
     /// </summary>
-    private readonly object _iteratorGate = new();
-    private readonly HashSet<IntPtr> _openIterators = new();
-    private bool _closing;
+    private int _activeUses;
+
+    private volatile bool _closing;
+    private volatile bool _dbClosed;
+    private readonly object _useGate = new();
 
     /// <summary>
-    /// How long <see cref="Dispose"/> waits for open iterators before it gives up on closing the database.
+    /// How long <see cref="Dispose"/> waits for native calls in progress before it gives up on closing the database.
     /// </summary>
-    internal TimeSpan IteratorWait { get; set; } = TimeSpan.FromSeconds(30);
+    internal TimeSpan UseWait { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Marks a native call on the database or one of its iterators as in progress, for as long as the returned lease
+    /// lives. Refused with <see cref="ObjectDisposedException"/> once the backend is closing, so a query that runs
+    /// after shutdown fails with an exception instead of reading freed memory.
+    /// </summary>
+    internal UseLease BeginUse()
+    {
+        if (_closing) throw new ObjectDisposedException(nameof(Backend));
+        Interlocked.Increment(ref _activeUses);
+        if (!_closing) return new UseLease(this);
+
+        // Dispose began between the check and the increment.
+        EndUse();
+        throw new ObjectDisposedException(nameof(Backend));
+    }
+
+    private void EndUse()
+    {
+        if (Interlocked.Decrement(ref _activeUses) != 0 || !_closing) return;
+        lock (_useGate) Monitor.PulseAll(_useGate);
+    }
+
+    internal readonly struct UseLease(Backend backend) : IDisposable
+    {
+        public void Dispose() => backend.EndUse();
+    }
 
     /// <summary>
     /// Default constructor
@@ -59,7 +88,7 @@ public class Backend : IStoreBackend
     /// <inheritdoc />
     public ISnapshot GetSnapshot()
     {
-        lock (_iteratorGate) ObjectDisposedException.ThrowIf(_closing, this);
+        using var _ = BeginUse();
         var snapShot = Db!.CreateSnapshot();
         var readOptions = new ReadOptions()
             .SetTotalOrderSeek(false)
@@ -108,33 +137,26 @@ public class Backend : IStoreBackend
     }
 
     /// <summary>
-    /// Opens a native iterator and counts it as open until <see cref="ReleaseIterator"/>. Refuses once the backend
-    /// is closing, so a query that starts after shutdown fails with an exception instead of reading freed memory.
+    /// Opens a native iterator. The caller releases it with <see cref="ReleaseIterator"/>.
     /// </summary>
     internal Iterator NewIterator(ReadOptions options)
     {
-        lock (_iteratorGate)
-        {
-            ObjectDisposedException.ThrowIf(_closing, this);
-            var iterator = Db!.NewIterator(null, options);
-            _openIterators.Add(iterator.Handle);
-            return iterator;
-        }
+        using var _ = BeginUse();
+        return Db!.NewIterator(null, options);
     }
 
     /// <summary>
-    /// Frees an iterator from <see cref="NewIterator"/>. Safe to call twice for the same iterator.
+    /// Frees an iterator from <see cref="NewIterator"/>. Once the database is closed the iterator is left alone: it
+    /// belongs to a database that no longer exists, and destroying it would run native code on freed memory.
     /// </summary>
     internal void ReleaseIterator(Iterator iterator)
     {
-        var handle = iterator.Handle;
-        lock (_iteratorGate)
-        {
-            if (!_openIterators.Contains(handle)) return;
-            iterator.Dispose();
-            _openIterators.Remove(handle);
-            if (_openIterators.Count == 0) Monitor.PulseAll(_iteratorGate);
-        }
+        if (_dbClosed) return;
+        UseLease lease;
+        try { lease = BeginUse(); }
+        catch (ObjectDisposedException) { return; }
+
+        using (lease) iterator.Dispose();
     }
 
     /// <summary>
@@ -187,21 +209,23 @@ public class Backend : IStoreBackend
         if (_disposed) return;
         _disposed = true;
 
-        // A query still scanning holds an iterator on the native database, and freeing the database under it
-        // crashes the process. New iterators are refused from here on, so the open ones can only drain.
-        lock (_iteratorGate)
+        // A scan in the middle of a native call must finish before the database is freed. From here on no new call
+        // starts, so the calls in progress can only drain; a scan that resumes later fails with an exception.
+        // Iterators nobody released (DuckDB never tells a table function that its query is over) are not waited for.
+        lock (_useGate)
         {
             _closing = true;
-            var deadline = DateTime.UtcNow + IteratorWait;
-            while (_openIterators.Count > 0)
+            var deadline = DateTime.UtcNow + UseWait;
+            while (Volatile.Read(ref _activeUses) > 0)
             {
                 var remaining = deadline - DateTime.UtcNow;
-                // An iterator that is never released is a leak elsewhere; leaving the database open until the
-                // process exits is the safe way to end up with it.
-                if (remaining <= TimeSpan.Zero || !Monitor.Wait(_iteratorGate, remaining)) return;
+                // A call that never returns is a hang elsewhere; leaving the database open until the process
+                // exits is the safe way to end up with it.
+                if (remaining <= TimeSpan.Zero || !Monitor.Wait(_useGate, remaining)) return;
             }
         }
 
+        _dbClosed = true;
         Db?.Dispose();
     }
 }

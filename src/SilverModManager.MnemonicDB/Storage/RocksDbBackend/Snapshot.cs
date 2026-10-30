@@ -49,8 +49,9 @@ internal sealed class Snapshot : ADatomsIndex<RocksDbIteratorWrapper>, IRefDatom
             .SetTotalOrderSeek(true)
             .SetSnapshot(_snapshot)
             .SetPinData(false);
-        var it = _backend.NewIterator(options);
-        using var release = new Release(_backend, it);
+        using var lease = _backend.BeginUse();
+        var it = _backend.Db!.NewIterator(null, options);
+        using var release = new Release(it);
         it.Seek(spanTo);
         it.Prev();
 
@@ -80,8 +81,8 @@ internal sealed class Snapshot : ADatomsIndex<RocksDbIteratorWrapper>, IRefDatom
         return new RocksDbIteratorWrapper(_backend, _backend.NewIterator(options));
     }
 
-    private readonly struct Release(Backend backend, Iterator iterator) : IDisposable
+    private readonly struct Release(Iterator iterator) : IDisposable
     {
-        public void Dispose() => backend.ReleaseIterator(iterator);
+        public void Dispose() => iterator.Dispose();
     }
 }

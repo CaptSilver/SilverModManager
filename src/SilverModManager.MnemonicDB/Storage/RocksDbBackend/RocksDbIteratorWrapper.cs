@@ -25,6 +25,7 @@ internal struct RocksDbIteratorWrapper : ILowLevelIterator, IRefDatomPeekingEnum
     public unsafe bool MoveNext<TSliceDescriptor>(TSliceDescriptor descriptor, bool useHistory = false) 
         where TSliceDescriptor : ISliceDescriptor, allows ref struct
     {
+        using var lease = _backend.BeginUse();
         if (_started == false)
         {
             descriptor.Reset(this, useHistory);
@@ -53,6 +54,7 @@ internal struct RocksDbIteratorWrapper : ILowLevelIterator, IRefDatomPeekingEnum
     {
         get 
         {
+            using var lease = _backend.BeginUse();
             var vPtr = Native.Instance.rocksdb_iter_value(_iterator.Handle, out var vLen);
             return new Ptr((byte*)vPtr, (int)vLen);
         }
@@ -64,11 +66,15 @@ internal struct RocksDbIteratorWrapper : ILowLevelIterator, IRefDatomPeekingEnum
     }
 
 
-    public void SeekTo(ReadOnlySpan<byte> span) => 
+    public void SeekTo(ReadOnlySpan<byte> span)
+    {
+        using var lease = _backend.BeginUse();
         _iterator.Seek(span);
+    }
 
     public void SeekToPrev(ReadOnlySpan<byte> span)
     {
+        using var lease = _backend.BeginUse();
         _iterator.Seek(span);
         if (!_iterator.Valid())
             _iterator.SeekToLast();
@@ -76,9 +82,15 @@ internal struct RocksDbIteratorWrapper : ILowLevelIterator, IRefDatomPeekingEnum
             _iterator.Prev();
     }
 
-    public void Next() => 
+    public void Next()
+    {
+        using var lease = _backend.BeginUse();
         _iterator.Next();
+    }
 
-    public void Prev() => 
+    public void Prev()
+    {
+        using var lease = _backend.BeginUse();
         _iterator.Prev();
+    }
 }
