@@ -50,7 +50,7 @@ public sealed class DoctorReporter(
         var result = installation.LocatorResult;
         var store = result.Store.Value.ToLowerInvariant();
 
-        var steamAppId = SteamApp(installation);
+        var steamApp = SteamApp(installation);
         var prefix = prefixResolver.Resolve(installation);
         return new DoctorInstallation(
             installation.Game.DisplayName,
@@ -58,9 +58,9 @@ public sealed class DoctorReporter(
             result.StoreIdentifier,
             managed.Loadouts,
             DescribePrefix(prefix),
-            steamAppId is { } id ? DescribeProton(result.LinuxCompatabilityDataProvider!, id) : null,
+            steamApp is { } proton ? DescribeProton(proton.Provider, proton.AppId) : null,
             DescribeRunner(installation),
-            steamAppId is { } app ? DescribeLaunchOptions(result.LinuxCompatabilityDataProvider!, app) : null,
+            steamApp is { } options ? DescribeLaunchOptions(options.Provider, options.AppId) : null,
             DescribeLock(store, result.StoreIdentifier),
             managed.Deployment ?? [])
         {
@@ -96,14 +96,14 @@ public sealed class DoctorReporter(
     }
 
     /// <summary>
-    /// The app id for a Steam game whose Steam installation is known; the Proton and launch option sections
-    /// need both.
+    /// The app id for a Steam game whose Steam installation is known, with the provider that knows it; the
+    /// Proton and launch option sections need both.
     /// </summary>
-    private static uint? SteamApp(GameInstallation installation)
+    private static (ILinuxCompatabilityDataProvider Provider, uint AppId)? SteamApp(GameInstallation installation)
     {
         var result = installation.LocatorResult;
-        if (result.Store != GameStore.Steam || result.LinuxCompatabilityDataProvider is null) return null;
-        return uint.TryParse(result.StoreIdentifier, out var id) ? id : null;
+        if (result.Store != GameStore.Steam || result.LinuxCompatabilityDataProvider is not { } provider) return null;
+        return uint.TryParse(result.StoreIdentifier, out var id) ? (provider, id) : null;
     }
 
     private static DoctorPrefix DescribePrefix(PrefixResolution resolution)

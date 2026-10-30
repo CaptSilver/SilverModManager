@@ -136,5 +136,5 @@ public sealed partial record LaunchStatusReport(IReadOnlyList<LaunchStatusEntry>
         mounts = Mounts,
     }, CliJson.Options);
 
-    private static string PhaseName(LaunchPhase? phase) => phase.ToString()!.ToLowerInvariant();
+    private static string PhaseName(LaunchPhase? phase) => phase is { } known ? known.ToString().ToLowerInvariant() : string.Empty;
 }

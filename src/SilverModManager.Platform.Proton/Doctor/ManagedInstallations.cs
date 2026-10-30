@@ -34,9 +34,10 @@ internal sealed class LoadoutManagedInstallations(
         var registered = backends.Select(b => b.Id).ToHashSet();
         return Loadout.All(db)
             .Where(loadout => loadout.IsVisible())
-            .Select(loadout => (Loadout: loadout, Found: registry.TryGetGameInstallation(loadout, out var installation) ? installation : null))
-            .Where(x => x.Found is not null)
-            .GroupBy(x => x.Found!)
+            .SelectMany(loadout => registry.TryGetGameInstallation(loadout, out var installation)
+                ? [(Loadout: loadout, Found: installation)]
+                : Array.Empty<(Loadout.ReadOnly Loadout, GameInstallation Found)>())
+            .GroupBy(x => x.Found)
             .Select(group => new ManagedInstallation(
                 group.Key,
                 group.Select(x => x.Loadout.Name).Order(StringComparer.Ordinal).ToArray(),

@@ -141,14 +141,6 @@ src/SilverModManager.Networking.NexusWebApi/NexusModsLibrary.Collections.cs	2
 src/SilverModManager.Networking.Steam/CDNPool.cs	3
 src/SilverModManager.Networking.Steam/CLI/Verbs.cs	1
 src/SilverModManager.Networking.Steam/ProductInfoParser.cs	4
-src/SilverModManager.Platform.Proton/Doctor/DoctorReporter.cs	2
-src/SilverModManager.Platform.Proton/Doctor/ManagedInstallations.cs	1
-src/SilverModManager.Platform.Proton/Launch/GameProcess.cs	2
-src/SilverModManager.Platform.Proton/Launch/LaunchSession.cs	4
-src/SilverModManager.Platform.Proton/Launch/LaunchStatus.cs	1
-src/SilverModManager.Platform.Proton/Protontricks/ProtontricksStrategy.cs	1
-src/SilverModManager.Platform.Proton/Support/SupportBundleWriter.cs	1
-src/SilverModManager.Platform.Proton/Verbs/DeploymentCommand.cs	1
 src/SilverModManager.ProxyConsole/Serializer.cs	1
 src/SilverModManager.ProxyConsole/SpectreRenderer.cs	5
 src/SilverModManager.Sdk/ConfigurablePath.cs	1

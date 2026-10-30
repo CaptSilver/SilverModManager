@@ -79,9 +79,9 @@ public sealed class SupportBundleWriter(
     private static string LaunchOptionsText(DoctorReport report)
     {
         var sb = new StringBuilder();
-        foreach (var installation in report.Installations.Where(i => i.LaunchOptions is not null))
+        foreach (var installation in report.Installations)
         {
-            var options = installation.LaunchOptions!;
+            if (installation.LaunchOptions is not { } options) continue;
             sb.Append(installation.Game).Append(" (").Append(installation.StoreId).Append("): ")
                 .AppendLine(options.Line ?? $"<{options.Status}>");
         }

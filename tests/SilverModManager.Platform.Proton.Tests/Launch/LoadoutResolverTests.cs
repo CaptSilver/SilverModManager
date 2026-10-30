@@ -95,6 +95,44 @@ public class LoadoutResolverTests(IConnection connection)
         => new(name, game, command.Length > 0 ? command : ["game.exe"]);
 
     [Fact]
+    public async Task TryResolveGame_ByAppIdOrNameReturnsTheInstallationAndNoError()
+    {
+        var seeded = await Install("100", "Alpha");
+        await Install("200", "Beta");
+
+        Resolver().TryResolveGame("100", out var byId, out var idError).Should().BeTrue();
+        Resolver().TryResolveGame(" alpha ", out var byName, out var nameError).Should().BeTrue();
+
+        byId.Should().BeSameAs(seeded.Installation);
+        byName.Should().BeSameAs(seeded.Installation);
+        idError.Should().BeNull();
+        nameError.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task TryResolveGame_NoMatchGivesAnErrorAndNoInstallation()
+    {
+        await Install("100", "Alpha");
+
+        Resolver().TryResolveGame("Gamma", out var installation, out var error).Should().BeFalse();
+
+        installation.Should().BeNull();
+        error.Should().Contain("No installed game matches --game 'Gamma'");
+    }
+
+    [Fact]
+    public async Task TryResolveGame_SeveralMatchesNameEachAndAskForTheAppId()
+    {
+        await Install("100", "Twin");
+        await Install("200", "Twin");
+
+        Resolver().TryResolveGame("Twin", out var installation, out var error).Should().BeFalse();
+
+        installation.Should().BeNull();
+        error.Should().Contain("More than one installed game matches --game 'Twin'").And.Contain("steam 100").And.Contain("steam 200").And.Contain("Use the Steam app id");
+    }
+
+    [Fact]
     public async Task ResolvesTheOnlyLoadoutWithThatName()
     {
         var seeded = await Install("100", "Alpha", (Name("Main"), LoadoutKind.Default), (Name("Other"), LoadoutKind.Default));

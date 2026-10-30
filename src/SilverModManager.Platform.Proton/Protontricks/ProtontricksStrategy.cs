@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton.ToolRunner;
 using SilverModManager.Sdk;
@@ -28,26 +29,38 @@ public sealed class ProtontricksStrategy(AggregateProtontricksDependency protont
         if (command.Exe is not { } exe)
             return ToolRunPlan.Failed($"protontricks-launch can only run an executable, so '{command.Program}' cannot be run through protontricks.");
 
-        var (dependency, appId, diagnostic) = Resolve(installation, prefix);
-        if (diagnostic is not null) return ToolRunPlan.Failed(diagnostic);
+        var resolution = Resolve(installation, prefix);
+        if (!resolution.IsResolved) return ToolRunPlan.Failed(resolution.Diagnostic);
 
-        var argv = dependency!.MakeLaunchArgv(appId, exe, WineRunSupport.Arguments(command, prefix.Path).ToList());
+        var argv = resolution.Dependency.MakeLaunchArgv(resolution.AppId, exe, WineRunSupport.Arguments(command, prefix.Path).ToList());
         return ToolRunPlan.Runnable(StrategyName, argv, exe.Parent, command.Env ?? new Dictionary<string, string>());
     }
 
-    private (IProtontricksDependency? Dependency, long AppId, string? Diagnostic) Resolve(GameInstallation installation, ResolvedPrefix prefix)
+    private Resolution Resolve(GameInstallation installation, ResolvedPrefix prefix)
     {
         var gameName = installation.Game.DisplayName;
 
         if (installation.LocatorResult.Store != GameStore.Steam || prefix.ProtonAppId is not { } appId)
-            return (null, 0, $"{gameName} is not a Steam game with a known app id, so protontricks has no app to launch the program in.");
+            return Resolution.Failed($"{gameName} is not a Steam game with a known app id, so protontricks has no app to launch the program in.");
 
         // The probe runs on the thread pool so that blocking on it from a thread with a synchronization context,
         // such as the UI thread, cannot deadlock on its continuations.
         var dependency = Task.Run(() => protontricks.FindAvailable().AsTask()).GetAwaiter().GetResult();
         if (dependency is null)
-            return (null, 0, $"Neither protontricks nor its Flatpak is installed. See {protontricks.Homepage}.");
+            return Resolution.Failed($"Neither protontricks nor its Flatpak is installed. See {protontricks.Homepage}.");
 
-        return (dependency, appId, null);
+        return Resolution.Found(dependency, appId);
+    }
+
+    /// <summary>Either the protontricks to run through and the Steam app to run in, or why neither is available.</summary>
+    private sealed record Resolution(IProtontricksDependency? Dependency, long AppId, string? Diagnostic)
+    {
+        [MemberNotNullWhen(true, nameof(Dependency))]
+        [MemberNotNullWhen(false, nameof(Diagnostic))]
+        public bool IsResolved => Dependency is not null;
+
+        public static Resolution Found(IProtontricksDependency dependency, long appId) => new(dependency, appId, null);
+
+        public static Resolution Failed(string diagnostic) => new(null, 0, diagnostic);
     }
 }

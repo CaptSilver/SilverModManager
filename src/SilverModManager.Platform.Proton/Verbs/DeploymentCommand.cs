@@ -72,8 +72,7 @@ public sealed class DeploymentCommand(
 
         if ((use is null) == !recommended) return await Fail(renderer, "Give exactly one of --use <backend> or --recommended.");
 
-        var installation = resolver.ResolveGame(game, out var gameError);
-        if (installation is null) return await Fail(renderer, gameError!);
+        if (!resolver.TryResolveGame(game, out var installation, out var gameError)) return await Fail(renderer, gameError);
         if (!registry.TryGetMetadata(installation, out var metadata)) return await Fail(renderer, $"{installation.Game.DisplayName} is not managed.");
 
         var registered = backends.Select(b => b.Id).ToHashSet();

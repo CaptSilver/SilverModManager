@@ -21,6 +21,26 @@ public sealed record LaunchResult(int ExitCode, string? Message, bool Refused = 
 /// <summary>Why a launch failed, before it is reported.</summary>
 internal sealed record LaunchFailure(string Message, bool Refused = false, Exception? Cause = null, bool LoadoutStillApplied = false);
 
+/// <summary>How a launch ended: a result for a game that ran to the end, a failure for one that did not.</summary>
+internal abstract record RunOutcome
+{
+    public static implicit operator RunOutcome(LaunchFailure failure) => new Failed(failure);
+
+    public static implicit operator RunOutcome(LaunchResult result) => new Completed(result);
+
+    public abstract LaunchResult Resolve(Func<LaunchFailure, LaunchResult> onFailure);
+
+    private sealed record Failed(LaunchFailure Failure) : RunOutcome
+    {
+        public override LaunchResult Resolve(Func<LaunchFailure, LaunchResult> onFailure) => onFailure(Failure);
+    }
+
+    private sealed record Completed(LaunchResult Result) : RunOutcome
+    {
+        public override LaunchResult Resolve(Func<LaunchFailure, LaunchResult> onFailure) => Result;
+    }
+}
+
 /// <summary>
 /// The command a launch will start, with the steps that produced it, so the log can show how the final argv came
 /// about.
@@ -72,7 +92,6 @@ public sealed class LaunchSession
     private bool _keepRunningState;
     // True when the caller awaits the launch and shows its failure, as the app does; the run verb has no one else to tell the user.
     private bool _callerReports;
-    private LaunchResult? _result;
 
     public LaunchSession(
         IInstallationLockFactory lockFactory,
@@ -202,10 +221,10 @@ public sealed class LaunchSession
         _started = true;
         _callerReports = whileRunning is not null;
 
-        LaunchFailure? failure;
+        RunOutcome outcome;
         if (_stop is null)
         {
-            failure = await RunCore(context, resolvePlan, whileRunning, cancellationToken);
+            outcome = await RunCore(context, resolvePlan, whileRunning, cancellationToken);
         }
         else
         {
@@ -214,16 +233,14 @@ public sealed class LaunchSession
             {
                 // A signal that came in before we subscribed still counts.
                 if (_stop.Signal is not null) OnStopping(_stop.Signal.Value, _stop.PhaseAtSignal ?? LaunchPhase.Preparing);
-                failure = await RunCore(context, resolvePlan, whileRunning, cancellationToken);
+                outcome = await RunCore(context, resolvePlan, whileRunning, cancellationToken);
             }
             finally
             {
                 _stop.Stopping -= OnStopping;
             }
         }
-        if (failure is null) return _result!;
-
-        return ReportFailure(failure);
+        return outcome.Resolve(ReportFailure);
     }
 
     private LaunchResult ReportFailure(LaunchFailure failure)
@@ -248,16 +265,18 @@ public sealed class LaunchSession
         => _logger.Log(_callerReports ? LogLevel.Warning : LogLevel.Error, e, message, args);
 
     /// <summary>
-    /// Returns the failure, or null with <see cref="_result"/> set when the game ran to the end.
+    /// Returns the failure, or the result when the game ran to the end.
     /// </summary>
-    private async Task<LaunchFailure?> RunCore(LaunchContext context, Func<LaunchPlan>? resolvePlan, Func<CancellationToken, Task>? whileRunning, CancellationToken cancellationToken)
+    private async Task<RunOutcome> RunCore(LaunchContext context, Func<LaunchPlan>? resolvePlan, Func<CancellationToken, Task>? whileRunning, CancellationToken cancellationToken)
     {
         var game = context.Installation.Game.DisplayName;
 
+        InstallationLock heldLock;
         try
         {
-            _lock = _lockFactory.Create(context.Installation.LocatorResult.Store.Value.ToLowerInvariant(), context.Installation.LocatorResult.StoreIdentifier);
-            if (!_lock.TryAcquire()) return new LaunchFailure(DescribeHolder(game, _lock), Refused: true);
+            heldLock = _lockFactory.Create(context.Installation.LocatorResult.Store.Value.ToLowerInvariant(), context.Installation.LocatorResult.StoreIdentifier);
+            _lock = heldLock;
+            if (!heldLock.TryAcquire()) return new LaunchFailure(DescribeHolder(game, heldLock), Refused: true);
         }
         catch (Exception e) when (e is IOException or InvalidOperationException)
         {
@@ -285,7 +304,7 @@ public sealed class LaunchSession
         var prepared = new List<ILaunchGate>();
         try
         {
-            _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Preparing, WineOverridesOf(context), RecordedLaunchOf(context));
+            heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Preparing, WineOverridesOf(context), RecordedLaunchOf(context));
             using (SyncOrigin.Begin(SyncTrigger.Launch)) await _synchronizer.Synchronize(context.LoadoutId);
             foreach (var gate in _gates)
             {
@@ -324,7 +343,7 @@ public sealed class LaunchSession
                     LogPlan(plan, game);
                     if (BeginRunning())
                     {
-                        _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context));
+                        heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context));
                         using var process = _processFactory.Start(plan.Process, context.Installation);
                         AttachProcess(process);
                         try
@@ -338,12 +357,12 @@ public sealed class LaunchSession
                         }
                     }
                 }
-                else if (BeginRunning())
+                else if (whileRunning is { } waitWhileRunning && BeginRunning())
                 {
-                    _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context));
+                    heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context));
                     try
                     {
-                        await whileRunning!(cancellationToken);
+                        await waitWhileRunning(cancellationToken);
                     }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
@@ -379,13 +398,12 @@ public sealed class LaunchSession
         }
 
         var stopped = BeginFinishing();
-        var finishFailure = await Finish(context, prepared);
+        var finishFailure = await Finish(context, prepared, heldLock);
 
         if (startFailure is not null) return startFailure;
         if (finishFailure is not null) return finishFailure;
 
-        _result = new LaunchResult(stopped ? StoppedExitCode : exit!.ExitCode, null);
-        return null;
+        return new LaunchResult(stopped || exit is null ? StoppedExitCode : exit.ExitCode, null);
     }
 
     /// <summary>
@@ -543,7 +561,7 @@ public sealed class LaunchSession
     /// stop the others or the ingest, so a bad teardown can't cost the user their game's changes. Returns the first
     /// failure.
     /// </summary>
-    private async Task<LaunchFailure?> Finish(LaunchContext context, IReadOnlyList<ILaunchGate> gates)
+    private async Task<LaunchFailure?> Finish(LaunchContext context, IReadOnlyList<ILaunchGate> gates, InstallationLock heldLock)
     {
         LaunchFailure? failure = null;
         void Record(Exception e, string what)
@@ -573,7 +591,7 @@ public sealed class LaunchSession
 
         try
         {
-            _lock!.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Finishing, WineOverridesOf(context), RecordedLaunchOf(context));
+            heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Finishing, WineOverridesOf(context), RecordedLaunchOf(context));
         }
         catch (Exception e)
         {

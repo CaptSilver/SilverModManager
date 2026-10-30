@@ -131,18 +131,23 @@ public sealed class LoadoutResolver(IConnection connection, IGameRegistry regist
     /// The one installation <paramref name="game"/> names, by Steam app id or display name. Nothing is guessed
     /// when it names none or several.
     /// </summary>
-    public GameInstallation? ResolveGame(string game, out string? error)
+    public bool TryResolveGame(string game, [NotNullWhen(true)] out GameInstallation? installation, [NotNullWhen(false)] out string? error)
     {
         var matches = ByGame(registry.LocateGameInstallations(), game);
-        error = matches.Count switch
+        if (matches.Count == 1)
         {
-            1 => null,
-            0 => NoGameMatch(game),
-            _ => $"More than one installed game matches --game '{game}': "
-                 + string.Join(", ", matches.Select(m => $"{m.Game.DisplayName} ({m.LocatorResult.Store.Value.ToLowerInvariant()} {m.LocatorResult.StoreIdentifier})"))
-                 + ". Use the Steam app id.",
-        };
-        return error is null ? matches[0] : null;
+            installation = matches[0];
+            error = null;
+            return true;
+        }
+
+        installation = null;
+        error = matches.Count == 0
+            ? NoGameMatch(game)
+            : $"More than one installed game matches --game '{game}': "
+              + string.Join(", ", matches.Select(m => $"{m.Game.DisplayName} ({m.LocatorResult.Store.Value.ToLowerInvariant()} {m.LocatorResult.StoreIdentifier})"))
+              + ". Use the Steam app id.";
+        return false;
     }
 
     private static IReadOnlyList<GameInstallation> ByGame(IReadOnlyList<GameInstallation> installations, string game)

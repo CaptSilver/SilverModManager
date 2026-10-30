@@ -227,7 +227,9 @@ public sealed partial class GameProcess : IGameProcess
         await _process.WaitForExitAsync(cancellationToken);
         var exitCode = _process.ExitCode;
 
-        var survivor = _tracker is null || _installation is null ? null : await ShutDownStragglersAsync(cancellationToken);
+        var survivor = _tracker is { } tracker && _installation is { } installation
+            ? await ShutDownStragglersAsync(tracker, installation, cancellationToken)
+            : null;
         return new GameProcessResult(exitCode, survivor);
     }
 
@@ -261,8 +263,8 @@ public sealed partial class GameProcess : IGameProcess
     /// The child is gone but Wine servers, the reaper or the game itself can outlive it. They get the grace
     /// to leave on their own, then SIGTERM, then SIGKILL.
     /// </summary>
-    private Task<TrackedProcess?> ShutDownStragglersAsync(CancellationToken cancellationToken)
-        => StragglerShutdown.RunAsync(_tracker!, _installation!, _grace, cancellationToken, _excludedPids);
+    private Task<TrackedProcess?> ShutDownStragglersAsync(IProcessTracker tracker, GameInstallation installation, CancellationToken cancellationToken)
+        => StragglerShutdown.RunAsync(tracker, installation, _grace, cancellationToken, _excludedPids);
 
     /// <summary>
     /// Whether a pid can be signalled as one process. <c>kill(2)</c> reads 0 as our process group and -1 as
