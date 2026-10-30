@@ -830,6 +830,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
         public Task SettleAttested(GameInstallation installation, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, CancellationToken cancellationToken = default)
             => AttestedFileRows.Settle(local, gameKey, read, logger);
 
+        public Task RecordHashRelations(IReadOnlyList<MultiHash> hashes, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public ValueTask<IDb> GetFileHashesDb() => throw new NotSupportedException();
         public Task CheckForUpdate(bool forceUpdate = false) => throw new NotSupportedException();
         public IEnumerable<VanityVersion> GetKnownVanityVersions(NexusModsGameId nexusModsGameId) => throw new NotSupportedException();

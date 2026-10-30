@@ -1248,6 +1248,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         public Task RemoveLocalBaseline(GameStore store, string gamePath, CancellationToken cancellationToken = default) => inner.RemoveLocalBaseline(store, gamePath, cancellationToken);
         public Task WaitForLocalBaselineBuild(GameInstallation installation, CancellationToken cancellationToken = default) => inner.WaitForLocalBaselineBuild(installation, cancellationToken);
         public Task RecordIndexedFiles(GameInstallation installation, IReadOnlyList<IndexedFileHash> files, CancellationToken cancellationToken = default) => inner.RecordIndexedFiles(installation, files, cancellationToken);
+        public Task RecordHashRelations(IReadOnlyList<MultiHash> hashes, CancellationToken cancellationToken = default) => inner.RecordHashRelations(hashes, cancellationToken);
         public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out FileIdentity identity) => inner.TryGetFingerprintedHash(installation, path, size, modifiedUtc, out identity);
         public System.Collections.Frozen.FrozenDictionary<GamePath, AttestedLookup> AttestedFiles(GameInstallation installation) => inner.AttestedFiles(installation);
         public DynamicData.Kernel.Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, FileIdentity Identity)> files) => inner.SuggestVersionData(gameInstallation, files);

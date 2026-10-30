@@ -57,6 +57,7 @@ public class BareHashApiGuard
         ["SilverModManager.Deployment.Vfs.VfsCatalogEntry+New"] = "permanent",
         ["SilverModManager.Deployment.Vfs.VfsCatalogEntry+ReadOnly"] = "permanent",
         ["SilverModManager.Games.FileHashes.DTOs.Asset"] = "permanent",
+        ["SilverModManager.Sdk.Hashes.FileHashing"] = "permanent",
         ["SilverModManager.Sdk.Hashes.FileIdentity"] = "permanent",
         ["SilverModManager.Sdk.Hashes.HashAttribute"] = "permanent",
         ["SilverModManager.Sdk.Hashes.HashJsonConverter"] = "permanent",
