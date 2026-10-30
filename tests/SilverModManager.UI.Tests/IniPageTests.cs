@@ -58,6 +58,12 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
 
     private Loadout.ReadOnly Fresh(Loadout.ReadOnly loadout) => Loadout.Load(Connection.Db, loadout.LoadoutId);
 
+    /// <summary>
+    /// Keeps the garbage collector off a seeded file until the row that owns it commits. Other tests in the run
+    /// collect garbage on this same store, and bytes with no row yet are exactly what a collection deletes.
+    /// </summary>
+    private static IDisposable PinUntilCommitted(byte[] bytes) => FileStorePins.Pin(FileIdentity.XxHash3(bytes.xxHash3()));
+
     private async Task<Hash> Store(string content)
     {
         var bytes = Encoding.UTF8.GetBytes(content);
@@ -69,6 +75,7 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
 
     private async Task SeedBaseline(Loadout.ReadOnly loadout, GamePath path, string content)
     {
+        using var pin = PinUntilCommitted(Encoding.UTF8.GetBytes(content));
         var hash = await Store(content);
         using var tx = Connection.BeginTransaction();
         _ = new LoadoutIniState.New(tx)
@@ -90,6 +97,7 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
 
     private async Task<EntityId> SeedTweak(Loadout.ReadOnly loadout, string mod, string tweakFile, string content, ulong priority, bool modDisabled = false, bool settingsGroup = false)
     {
+        using var pin = PinUntilCommitted(Encoding.UTF8.GetBytes(content));
         var hash = await Store(content);
         using var tx = Connection.BeginTransaction();
         var group = new LoadoutItemGroup.New(tx, out var groupId)
@@ -195,6 +203,7 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
     {
         var loadout = await SeedLoadout("Bom");
         var original = new byte[] { 0xEF, 0xBB, 0xBF }.Concat(Encoding.UTF8.GetBytes(PrefsText)).ToArray();
+        using var pin = PinUntilCommitted(original);
         await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("x.ini", new MemoryStream(original)), FileIdentity.XxHash3(original.xxHash3()), Size.FromLong(original.Length))]);
         using (var tx = Connection.BeginTransaction())
         {
