@@ -11,6 +11,7 @@ using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Storage.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.FileStore;
@@ -21,9 +22,11 @@ using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.StandardGameLocators.TestHelpers;
 
-public class StubbedFileHasherService : IFileHashesService
+public class StubbedFileHasherService : IFileHashesService, IDisposable
 {
     private readonly IServiceProvider _provider;
+    private IStoreBackend? _backend;
+    private IStoreBackend? _localBackend;
     private DatomStore? _datomStore;
     private Connection? _connection;
     private DatomStore? _localStore;
@@ -54,6 +57,7 @@ public class StubbedFileHasherService : IFileHashesService
             if (_localConnection is null)
             {
                 var backend = new MnemonicDB.Storage.RocksDbBackend.Backend();
+                _localBackend = backend;
                 _localStore = new DatomStore(_provider.GetRequiredService<ILogger<DatomStore>>(), DatomStoreSettings.InMemory, backend);
                 _localConnection = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), _localStore, _provider, [], prefix: "local_hashes", queryEngine: _provider.GetRequiredService<IQueryEngine>());
             }
@@ -66,6 +70,7 @@ public class StubbedFileHasherService : IFileHashesService
     {
         EnsureLocal();
         var backend = new MnemonicDB.Storage.RocksDbBackend.Backend();
+        lock (_localLock) _backend = backend;
         var settings = DatomStoreSettings.InMemory;
         _datomStore = new DatomStore(_provider.GetRequiredService<ILogger<DatomStore>>(), settings, backend);
         _connection = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), _datomStore, _provider, [], prefix: "hashes", queryEngine: _provider.GetRequiredService<IQueryEngine>());
@@ -131,6 +136,34 @@ public class StubbedFileHasherService : IFileHashesService
 
         _versionFiles = versionFiles;
         return db;
+    }
+
+    /// <summary>
+    /// Closes the two databases this service opened. The container disposes it, and nothing else would: left open,
+    /// their RocksDB threads are still running when the test host calls native exit().
+    /// </summary>
+    public void Dispose()
+    {
+        // A build that is still running creates the stores this method has to close.
+        if (_db.IsValueCreated)
+        {
+            try { _db.Value.Wait(TimeSpan.FromSeconds(30)); }
+            catch (AggregateException) { /* a failed build leaves whatever it created, which is closed below */ }
+        }
+
+        try { CloseStore(_connection, _datomStore, _backend); }
+        finally { CloseStore(_localConnection, _localStore, _localBackend); }
+    }
+
+    // The connection reads through the store and the store through the backend, so they close in that order.
+    private static void CloseStore(Connection? connection, DatomStore? store, IStoreBackend? backend)
+    {
+        try { connection?.Dispose(); }
+        finally
+        {
+            try { store?.Dispose(); }
+            finally { backend?.Dispose(); }
+        }
     }
 
     public Task CheckForUpdate(bool forceUpdate = false)
@@ -260,6 +293,15 @@ public class StubbedFileHasherService : IFileHashesService
     }
 
     public IReadOnlyList<IDb> Databases => [Local, Current];
+
+    /// <summary>The storage backends this service has opened so far.</summary>
+    public IReadOnlyList<IStoreBackend> Backends
+    {
+        get
+        {
+            lock (_localLock) return new[] { _localBackend, _backend }.OfType<IStoreBackend>().ToArray();
+        }
+    }
 
     public bool TryGetVanityVersion(LocatorIdsWithGameStore locatorIdsWithGameStore, out VanityVersion version)
     {

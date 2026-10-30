@@ -25,6 +25,7 @@
     </ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="SilverModManager.DataModel.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Games.Generic.Tests" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\SilverModManager.MnemonicDB.Abstractions\SilverModManager.MnemonicDB.Abstractions.csproj"/>
