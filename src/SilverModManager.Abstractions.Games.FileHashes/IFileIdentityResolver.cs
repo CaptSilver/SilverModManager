@@ -31,4 +31,11 @@ public interface IFileIdentityResolver
 
     /// <summary>A memo over this resolver for one pass (a tree build, a reset, a plan).</summary>
     IFileIdentityResolver Scoped();
+
+    /// <summary>
+    /// A memo over this resolver for one pass that will ask about <paramref name="expected"/>. A resolver may answer
+    /// for the whole set up front, with a query per hash kind instead of one per identity; an identity outside the set
+    /// is still answered, one lookup at a time.
+    /// </summary>
+    IFileIdentityResolver Scoped(IEnumerable<FileIdentity> expected) => Scoped();
 }

@@ -283,6 +283,84 @@ public sealed class RecordedDigestResolverTests : IDisposable
         key.Should().BeNull();
     }
 
+    private static FileIdentity IdentityOf(MultiHash hashes, HashKind kind) => FileIdentity.Of(hashes, kind);
+
+    private static async Task<List<MultiHash>> HashedMany(string prefix, int count)
+    {
+        List<MultiHash> all = [];
+        for (var i = 0; i < count; i++) all.Add(await Hashed($"{prefix}-{i}"));
+        return all;
+    }
+
+    [Fact]
+    public async Task ScopedOverManyUnrecordedIdentities_QueriesOncePerKindAndDatabase_NotPerIdentity()
+    {
+        var files = await HashedMany("unrecorded", 300);
+        var expected = files.SelectMany(f => new[] { FileIdentity.Sha1(f.Sha1), FileIdentity.XxHash3(f.XxHash3) }).ToList();
+
+        var scoped = _resolver.Scoped(expected);
+        foreach (var f in files)
+        {
+            scoped.Resolve(FileIdentity.Sha1(f.Sha1), FileIdentity.XxHash3(f.XxHash3), f.Size).Should().Be(IdentityMatch.Unknown);
+            scoped.StoreKeyCandidates(FileIdentity.Sha1(f.Sha1), f.Size).Should().BeEmpty();
+        }
+
+        // Two kinds (SHA-1 and xxHash3) in two databases.
+        _resolver.QueriesIssued.Should().BeLessThanOrEqualTo(4);
+    }
+
+    [Theory]
+    [InlineData(HashKind.Sha1)]
+    [InlineData(HashKind.Md5)]
+    [InlineData(HashKind.XxHash64)]
+    [InlineData(HashKind.Crc32)]
+    public async Task ScopedWithExpectedIdentities_AnswersLikeTheUnscopedResolver_ForEveryKind(HashKind kind)
+    {
+        var files = await HashedMany($"mixed-{kind}", 100);
+        for (var i = 0; i < files.Count; i += 2) await AddRow(i % 4 == 0 ? _local : _downloaded, files[i]);
+        var expected = files.SelectMany(f => new[] { IdentityOf(f, kind), FileIdentity.XxHash3(f.XxHash3) }).ToList();
+
+        var scoped = _resolver.Scoped(expected);
+
+        for (var i = 0; i < files.Count; i++)
+        {
+            var f = files[i];
+            var recorded = i % 2 == 0;
+            scoped.TryConvert(IdentityOf(f, kind), f.Size, HashKind.XxHash3, out var viaScope).Should().Be(recorded, $"file {i} as {kind}");
+            scoped.TryConvert(FileIdentity.XxHash3(f.XxHash3), f.Size, kind, out var back).Should().Be(recorded, $"file {i} back to {kind}");
+            scoped.Resolve(IdentityOf(f, kind), FileIdentity.XxHash3(f.XxHash3), f.Size)
+                .Should().Be(recorded ? IdentityMatch.Same : IdentityMatch.Unknown);
+            if (recorded)
+            {
+                viaScope.Should().Be(FileIdentity.XxHash3(f.XxHash3));
+                back.Should().Be(IdentityOf(f, kind));
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ScopedWithExpectedIdentities_StillAnswersAnIdentityItWasNotToldAbout()
+    {
+        var files = await HashedMany("told", 100);
+        var late = await Hashed("late");
+        await AddRow(_local, late);
+
+        var scoped = _resolver.Scoped(files.Select(f => FileIdentity.Sha1(f.Sha1)).ToList());
+
+        scoped.Resolve(FileIdentity.Sha1(late.Sha1), FileIdentity.XxHash3(late.XxHash3), late.Size).Should().Be(IdentityMatch.Same);
+    }
+
+    [Fact]
+    public async Task ScopedWithExpectedIdentities_ASmallSetIsLookedUpOnDemand()
+    {
+        var a = await Hashed("alpha");
+
+        var scoped = _resolver.Scoped([FileIdentity.Sha1(a.Sha1)]);
+
+        _resolver.QueriesIssued.Should().Be(0);
+        scoped.Resolve(FileIdentity.Sha1(a.Sha1), FileIdentity.XxHash3(a.XxHash3), a.Size).Should().Be(IdentityMatch.Unknown);
+    }
+
     private static IFileStore StoreHolding(params Hash[] held)
     {
         var store = Substitute.For<IFileStore>();
