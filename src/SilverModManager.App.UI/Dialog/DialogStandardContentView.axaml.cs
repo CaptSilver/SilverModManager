@@ -7,6 +7,7 @@ using SilverModManager.App.UI.Dialog.Enums;
 using ReactiveUI;
 using Avalonia.ReactiveUI;
 using SilverModManager.UI.Sdk;
+using SilverModManager.App.UI.Extensions;
 
 namespace SilverModManager.App.UI.Dialog;
 
@@ -22,8 +23,7 @@ public partial class DialogStandardContentView : ReactiveUserControl<IDialogStan
 
                 CopyDetailsButton.Command = ReactiveCommand.CreateFromTask(async () =>
                 {
-                    var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
-                    if (clipboard is null) return;
+                    if (!this.TryGetClipboard(out var clipboard)) return;
 
                     await clipboard.SetTextAsync(ViewModel?.CopyText ?? ViewModel?.MarkdownRenderer?.Contents);
                 });

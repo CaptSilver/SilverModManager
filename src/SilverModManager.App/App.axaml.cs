@@ -53,6 +53,8 @@ public class App : Application
         Locator.CurrentMutable.Register(() => _provider.GetRequiredService<InjectedViewLocator>(), typeof(IViewLocator));
 
         Locator.CurrentMutable.UseMicrosoftExtensionsLoggingWithWrappingFullLogger(loggerFactory);
+        // Views are built by XAML and cannot take constructor arguments, so they reach the logger through the locator.
+        Locator.CurrentMutable.RegisterConstant(loggerFactory);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

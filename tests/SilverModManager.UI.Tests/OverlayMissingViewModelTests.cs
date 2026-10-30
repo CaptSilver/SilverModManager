@@ -3,6 +3,8 @@ using System.Reactive.Linq;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Overlays;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
@@ -157,35 +159,67 @@ public class OverlayMissingViewModelTests(IServiceProvider provider) : AUiTest(p
         });
     }
 
-    [Fact]
-    public async Task MessageBoxOk_CopyDetailsWithoutAWindow_DoesNothing()
+    /// <summary>Collects what views log through the factory registered with the service locator.</summary>
+    private sealed class CapturingLoggerFactory : ILoggerFactory, ILoggerProvider, ILogger
     {
-        var (view, window) = await Show(() => new MessageBoxOkView { ViewModel = new MessageBoxOkDesignViewModel() });
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+        public void AddProvider(ILoggerProvider provider) { }
+        public ILogger CreateLogger(string categoryName) => this;
+        public void Dispose() { }
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
 
-        await OnUi(async () =>
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Entries.Add((logLevel, formatter(state, exception)));
+    }
+
+    /// <summary>Presses a copy button after the view lost its window, and returns what was logged meanwhile.</summary>
+    private async Task<List<(LogLevel Level, string Message)>> PressCopyWithoutAWindow(Func<Control> create, string buttonName)
+    {
+        var logs = new CapturingLoggerFactory();
+        Splat.DependencyResolverMixins.RegisterConstant<ILoggerFactory>(Splat.Locator.CurrentMutable, logs);
+        try
         {
-            var command = CommandOf(view, "CopyDetailsButton");
-            window.Content = null;
+            var (view, window) = await Show(create);
 
-            var act = async () => await command.Execute().FirstOrDefaultAsync();
+            await OnUi(async () =>
+            {
+                var command = CommandOf(view, buttonName);
+                window.Content = null;
 
-            await act.Should().NotThrowAsync();
-        });
+                var act = async () => await command.Execute().FirstOrDefaultAsync();
+
+                await act.Should().NotThrowAsync();
+            });
+        }
+        finally
+        {
+            Splat.Locator.CurrentMutable.UnregisterCurrent(typeof(ILoggerFactory));
+        }
+        return logs.Entries;
     }
 
     [Fact]
-    public async Task NexusLogin_CopyLinkWithoutAWindow_DoesNothing()
+    public async Task MessageBoxOk_CopyDetailsWithoutAWindow_LogsAndDoesNothing()
     {
-        var (view, window) = await Show(() => new NexusLoginOverlayView { ViewModel = new FakeNexusLogin() });
+        var entries = await PressCopyWithoutAWindow(() => new MessageBoxOkView { ViewModel = new MessageBoxOkDesignViewModel() }, "CopyDetailsButton");
 
-        await OnUi(async () =>
-        {
-            var command = CommandOf(view, "CopyButton");
-            window.Content = null;
+        entries.Should().Contain(e => e.Level == LogLevel.Trace && e.Message.Contains("clipboard"));
+    }
 
-            var act = async () => await command.Execute().FirstOrDefaultAsync();
+    [Fact]
+    public async Task NexusLogin_CopyLinkWithoutAWindow_LogsAndDoesNothing()
+    {
+        var entries = await PressCopyWithoutAWindow(() => new NexusLoginOverlayView { ViewModel = new FakeNexusLogin() }, "CopyButton");
 
-            await act.Should().NotThrowAsync();
-        });
+        entries.Should().Contain(e => e.Level == LogLevel.Trace && e.Message.Contains("clipboard"));
+    }
+
+    [Fact]
+    public async Task StandardDialog_CopyDetailsWithoutAWindow_LogsAndDoesNothing()
+    {
+        var entries = await PressCopyWithoutAWindow(() => new DialogStandardContentView { ViewModel = new DialogStandardContentDesignViewModel() }, "CopyDetailsButton");
+
+        entries.Should().Contain(e => e.Level == LogLevel.Trace && e.Message.Contains("clipboard"));
     }
 }

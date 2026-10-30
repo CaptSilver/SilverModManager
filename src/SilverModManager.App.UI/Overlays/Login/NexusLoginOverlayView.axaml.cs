@@ -3,6 +3,7 @@ using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
+using SilverModManager.App.UI.Extensions;
 
 namespace SilverModManager.App.UI.Overlays.Login;
 
@@ -15,8 +16,7 @@ public partial class NexusLoginOverlayView : ReactiveUserControl<INexusLoginOver
         {
             CopyButton.Command = ReactiveCommand.CreateFromTask(async () =>
             {
-                var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
-                if (clipboard is null) return;
+                if (!this.TryGetClipboard(out var clipboard)) return;
 
                 await clipboard.SetTextAsync(ViewModel?.Uri?.ToString());
             });

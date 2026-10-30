@@ -7,6 +7,7 @@ using R3;
 using ReactiveUI;
 using ReactiveCommand = ReactiveUI.ReactiveCommand;
 using SilverModManager.UI.Sdk;
+using SilverModManager.App.UI.Extensions;
 
 namespace SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 
@@ -48,8 +49,7 @@ public partial class MessageBoxOkView : ReactiveUserControl<IMessageBoxOkViewMod
             
             CopyDetailsButton.Command = ReactiveCommand.CreateFromTask(async () =>
             {
-                var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
-                if (clipboard is null) return;
+                if (!this.TryGetClipboard(out var clipboard)) return;
 
                 await clipboard.SetTextAsync(ViewModel?.MarkdownRenderer?.Contents);
             });
