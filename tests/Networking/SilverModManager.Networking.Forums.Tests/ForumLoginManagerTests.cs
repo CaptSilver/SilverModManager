@@ -5,7 +5,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Backend.Jobs;
 using SilverModManager.Networking.Forums.Auth;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.Networking.Forums.Tests;
@@ -17,19 +20,34 @@ public class ForumLoginManagerTests : IDisposable
     private readonly FakeTimeProvider _time = new(Start);
     private readonly InMemorySecretStore _store = new();
     private readonly ForumCredentials _credentials;
+    private readonly JobMonitor _monitor = new(NullLogger<JobMonitor>.Instance);
+    private readonly IOSInterop _os = Substitute.For<IOSInterop>();
+    private readonly StubHandler _forum = new();
+    private readonly TaskCompletionSource<Uri> _opened = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public ForumLoginManagerTests() => _credentials = new ForumCredentials(_store, NullLoggerFactory.Instance);
+    public ForumLoginManagerTests()
+    {
+        _credentials = new ForumCredentials(_store, NullLoggerFactory.Instance);
+        _os.When(o => o.OpenUri(Arg.Any<Uri>())).Do(call => _opened.TrySetResult(call.Arg<Uri>()));
+    }
 
-    public void Dispose() => _credentials.Dispose();
+    public void Dispose()
+    {
+        _credentials.Dispose();
+        _monitor.Dispose();
+    }
+
+    private ForumLoginManager NewManager(ForumOAuth oauth)
+        => new(oauth, _credentials, _time, _monitor, _os, NullLogger<ForumLoginManager>.Instance);
 
     private async Task<ForumLoginManager> Create(string loversLabClientId = "ll-client", string vectorPlexusClientId = "vp-client")
     {
         await _credentials.PrimeAsync(CancellationToken.None);
-        var oauth = new ForumOAuth(new HttpClient(), _credentials, site => ForumEndpoints.For(site) with
+        var oauth = new ForumOAuth(new HttpClient(_forum), _credentials, site => ForumEndpoints.For(site) with
         {
             ClientId = site == ForumSite.LoversLab ? loversLabClientId : vectorPlexusClientId,
         }, _time, NullLogger<ForumOAuth>.Instance);
-        return new ForumLoginManager(oauth, _credentials, _time);
+        return NewManager(oauth);
     }
 
     private async Task Store(ForumSite site, OAuthToken token)
@@ -121,10 +139,83 @@ public class ForumLoginManagerTests : IDisposable
         var settings = Substitute.For<ISettingsManager>();
         settings.Get<ForumAuthSettings>(Arg.Any<string?>()).Returns(new ForumAuthSettings());
         var oauth = new ForumOAuth(new HttpClient(), _credentials, settings, _time, NullLogger<ForumOAuth>.Instance);
-        var manager = new ForumLoginManager(oauth, _credentials, _time);
+        var manager = NewManager(oauth);
 
         manager.CanSignIn(ForumSite.LoversLab).Should().BeFalse();
         manager.CanSignIn(ForumSite.VectorPlexus).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SignInStoresTheTokenTheForumIssuesForThatSiteOnly()
+    {
+        var manager = await Create();
+        _forum.Reply(System.Net.HttpStatusCode.OK, """{"access_token":"issued","refresh_token":"r","expires_in":3600}""");
+
+        var signIn = manager.SignIn(ForumSite.LoversLab, CancellationToken.None);
+        var opened = await _opened.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var query = System.Web.HttpUtility.ParseQueryString(opened.Query);
+        using var browser = new HttpClient();
+        using var _ = await browser.GetAsync(new Uri($"{query["redirect_uri"]}?code=c&state={Uri.EscapeDataString(query["state"]!)}"));
+        await signIn.WaitAsync(TimeSpan.FromSeconds(10));
+
+        (await _credentials.For(ForumSite.LoversLab).GetTokenAsync(CancellationToken.None))!.AccessToken.Should().Be("issued");
+        (await _credentials.For(ForumSite.VectorPlexus).GetTokenAsync(CancellationToken.None)).Should().BeNull();
+        manager.IsSignedIn(ForumSite.LoversLab).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ADeclinedSignInLeavesTheSiteSignedOutAndSaysSo()
+    {
+        var manager = await Create();
+
+        var signIn = manager.SignIn(ForumSite.LoversLab, CancellationToken.None);
+        var opened = await _opened.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var query = System.Web.HttpUtility.ParseQueryString(opened.Query);
+        using var browser = new HttpClient();
+        using var _ = await browser.GetAsync(new Uri($"{query["redirect_uri"]}?error=access_denied&state={Uri.EscapeDataString(query["state"]!)}"));
+
+        await signIn.Invoking(t => t.WaitAsync(TimeSpan.FromSeconds(10))).Should().ThrowAsync<SignInDeclinedException>();
+        manager.IsSignedIn(ForumSite.LoversLab).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CancellingASignInLeavesTheSiteSignedOutWithoutAnError()
+    {
+        var manager = await Create();
+        using var cts = new CancellationTokenSource();
+
+        var signIn = manager.SignIn(ForumSite.LoversLab, cts.Token);
+        await _opened.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await cts.CancelAsync();
+
+        await signIn.WaitAsync(TimeSpan.FromSeconds(10));
+        manager.IsSignedIn(ForumSite.LoversLab).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SignInRefusesWithoutAClientIdAndStartsNoJob()
+    {
+        var manager = await Create(loversLabClientId: "");
+
+        await manager.Invoking(m => m.SignIn(ForumSite.LoversLab, CancellationToken.None)).Should()
+            .ThrowAsync<SignInNotSetUpException>().WithMessage("Sign-in for LoversLab isn't set up yet");
+
+        _os.DidNotReceive().OpenUri(Arg.Any<Uri>());
+        _monitor.Snapshot().Should().BeEmpty();
+        _forum.Requests.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SignOutForgetsThatSitesTokenOnly()
+    {
+        var manager = await Create();
+        await Store(ForumSite.LoversLab, new OAuthToken("a", "r", Start + TimeSpan.FromHours(1)));
+        await Store(ForumSite.VectorPlexus, new OAuthToken("b", "r", Start + TimeSpan.FromHours(1)));
+
+        await manager.SignOut(ForumSite.LoversLab, CancellationToken.None);
+
+        manager.IsSignedIn(ForumSite.LoversLab).Should().BeFalse();
+        manager.IsSignedIn(ForumSite.VectorPlexus).Should().BeTrue();
     }
 
     [Fact]
@@ -136,6 +227,8 @@ public class ForumLoginManagerTests : IDisposable
             .AddLogging()
             .AddSingleton<ISecretStore>(_store)
             .AddSingleton(settings)
+            .AddSingleton<IJobMonitor>(_monitor)
+            .AddSingleton(_os)
             .AddForums();
         using var provider = services.BuildServiceProvider();
 

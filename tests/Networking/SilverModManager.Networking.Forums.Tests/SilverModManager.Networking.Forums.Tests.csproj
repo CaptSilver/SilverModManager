@@ -5,6 +5,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\..\src\SilverModManager.Networking.Forums\SilverModManager.Networking.Forums.csproj" />
+        <ProjectReference Include="..\..\..\src\SilverModManager.Backend\SilverModManager.Backend.csproj" />
         <ProjectReference Include="..\..\..\src\SilverModManager.Secrets\SilverModManager.Secrets.csproj" />
         <ProjectReference Include="..\..\..\src\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
     </ItemGroup>
