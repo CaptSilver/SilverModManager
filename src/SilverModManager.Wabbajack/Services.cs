@@ -8,6 +8,7 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Sdk;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Cli;
@@ -40,7 +41,16 @@ public static class Services
             .AddSingleton<ExpectedNexusDownloads>()
             .AddSingleton<IExpectedNexusDownloads>(provider => provider.GetRequiredService<ExpectedNexusDownloads>())
             .AddSingleton<IArchiveDownloadJobs, ArchiveDownloadJobs>()
-            .AddSingleton<IArchiveAcquirer, ArchiveAcquirer>()
+            .AddSingleton<IArchiveAcquirer>(provider => new ArchiveAcquirer(
+                provider.GetRequiredService<ILibraryService>(),
+                provider.GetRequiredService<ILibraryArchiveLocator>(),
+                provider.GetRequiredService<IConnection>(),
+                provider.GetRequiredService<IArchiveDownloadJobs>(),
+                provider.GetRequiredService<TemporaryFileManager>(),
+                provider.GetRequiredService<IOSInterop>(),
+                provider.GetRequiredService<ExpectedNexusDownloads>(),
+                provider.GetService<TimeProvider>() ?? TimeProvider.System,
+                provider.GetRequiredService<ILogger<ArchiveAcquirer>>()))
             .AddSingleton<ArchiveInbox>()
             .AddSingleton<IModlistDownloadJobs, ModlistDownloadJobs>()
             .AddSingleton(provider => new WabbajackGalleryDownloader(

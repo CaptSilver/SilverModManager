@@ -32,6 +32,14 @@ public interface IArchiveAcquirer
     /// <summary>Opens the pages of up to <paramref name="count"/> Browser rows that have not been opened yet, and returns how many it opened.</summary>
     int OpenNext(int count);
 
+    /// <summary>
+    /// Tells the acquirer a page is showing its plan, and looks the rows up once to catch what arrived while no page
+    /// was. While at least one page is attached the rows are matched against the library as it changes; dispose the
+    /// handle when the page goes away. With no page, no run and no Nexus Mods file expected, the acquirer stops
+    /// watching the library and forgets the plan, so a page that comes back calls <see cref="Show"/> again.
+    /// </summary>
+    IDisposable Attach();
+
     /// <summary>Looks the Browser, Manual and Unsupported rows up in the library again.</summary>
     void Recheck();
 

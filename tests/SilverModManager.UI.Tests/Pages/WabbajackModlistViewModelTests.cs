@@ -58,6 +58,17 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
             return 0;
         }
 
+        public int AttachedPages { get; private set; }
+
+        public IDisposable Attach()
+        {
+            AttachedPages++;
+            return System.Reactive.Disposables.Disposable.Create(() => AttachedPages--);
+        }
+
+        /// <summary>Like the real acquirer once no page, run or expected download needs the plan.</summary>
+        public void Forget() => Plan = new([]);
+
         public void Recheck() { }
         public void Release() => Releases++;
 
@@ -300,6 +311,33 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         acquirer.Runs.Should().Be(0, "coming back must not start anything");
         acquirer.Shown.Should().HaveCount(1, "coming back must not plan the list again");
         vm.SelectedLoadout.Should().Be(chosen);
+    }
+
+    [Fact]
+    public async Task ThePage_IsAttachedToTheAcquirerOnlyWhileItIsActive()
+    {
+        var (vm, _, acquirer) = await Open(Plan(Row(ArchiveState.Manual)));
+        acquirer.AttachedPages.Should().Be(0);
+
+        var activation = vm.Activator.Activate();
+        acquirer.AttachedPages.Should().Be(1);
+
+        activation.Dispose();
+        acquirer.AttachedPages.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ComingBack_ShowsThePlanAgainWhenTheAcquirerForgotIt()
+    {
+        var (vm, _, acquirer) = await Open(Plan(Row(ArchiveState.Manual, "mine.7z")));
+        vm.Activator.Activate().Dispose();
+        acquirer.Forget();
+
+        using var back = vm.Activator.Activate();
+
+        acquirer.Shown.Should().HaveCount(2);
+        acquirer.Plan.Rows.Should().ContainSingle().Which.Archive.Name.Should().Be("mine.7z");
+        vm.Archives.Should().ContainSingle().Which.Name.Should().Be("mine.7z");
     }
 
     [Fact]

@@ -18,14 +18,21 @@ public sealed class ArchiveAcquirer(
     TemporaryFileManager temporaryFileManager,
     IOSInterop osInterop,
     ExpectedNexusDownloads expectedDownloads,
+    TimeProvider time,
     ILogger<ArchiveAcquirer> logger) : IArchiveAcquirer, IDisposable
 {
     private const int ConcurrentDownloads = 4;
 
+    public static readonly TimeSpan RecheckInterval = TimeSpan.FromSeconds(1);
+
     private readonly Lock _lock = new();
     private ArchivePlanRow[] _rows = [];
     private IDisposable? _subscription;
+    private ITimer? _timer;
+    private bool _recheckDue;
     private bool _expecting;
+    private int _pages;
+    private ArchivePlanRow[]? _running;
 
     public event Action<ArchivePlan>? PlanChanged;
 
@@ -45,9 +52,10 @@ public sealed class ArchiveAcquirer(
         {
             _rows = rows;
             _expecting = expecting;
+            _running = expecting ? rows : null;
         }
         UpdateExpected();
-        _subscription = connection.Revisions.Subscribe(_ => Recheck());
+        UpdateWatching(forgetIdlePlan: false);
         // Files that arrived between building the plan and now.
         Recheck();
         return rows;
@@ -61,20 +69,32 @@ public sealed class ArchiveAcquirer(
         var finished = 0;
         progress?.Report(new AcquireProgress(0, automatic.Length));
 
-        using var gate = new SemaphoreSlim(ConcurrentDownloads);
-        await Task.WhenAll(automatic.Select(async index =>
+        try
         {
-            await gate.WaitAsync(cancellationToken);
-            try
+            using var gate = new SemaphoreSlim(ConcurrentDownloads);
+            await Task.WhenAll(automatic.Select(async index =>
             {
-                await Download(rows, index, cancellationToken);
-            }
-            finally
+                await gate.WaitAsync(cancellationToken);
+                try
+                {
+                    await Download(rows, index, cancellationToken);
+                }
+                finally
+                {
+                    gate.Release();
+                    progress?.Report(new AcquireProgress(Interlocked.Increment(ref finished), automatic.Length));
+                }
+            }));
+        }
+        finally
+        {
+            lock (_lock)
             {
-                gate.Release();
-                progress?.Report(new AcquireProgress(Interlocked.Increment(ref finished), automatic.Length));
+                if (ReferenceEquals(_running, rows)) _running = null;
             }
-        }));
+            // The rows stay readable: callers look at the plan once the run is over.
+            if (IsCurrent(rows)) UpdateWatching(forgetIdlePlan: false);
+        }
     }
 
     private async Task Download(ArchivePlanRow[] rows, int index, CancellationToken cancellationToken)
@@ -123,6 +143,31 @@ public sealed class ArchiveAcquirer(
         return pages.Count;
     }
 
+    public IDisposable Attach()
+    {
+        lock (_lock) _pages++;
+        UpdateWatching(forgetIdlePlan: false);
+        // What arrived while no page was watching.
+        Recheck();
+        return new PageHandle(this);
+    }
+
+    private void Detach()
+    {
+        lock (_lock) _pages--;
+        UpdateWatching(forgetIdlePlan: true);
+    }
+
+    private sealed class PageHandle(ArchiveAcquirer owner) : IDisposable
+    {
+        private int _disposed;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0) owner.Detach();
+        }
+    }
+
     public void Recheck()
     {
         var db = connection.Db;
@@ -141,14 +186,76 @@ public sealed class ArchiveAcquirer(
 
         if (!changed) return;
         UpdateExpected();
+        UpdateWatching(forgetIdlePlan: false);
         PlanChanged?.Invoke(Plan);
     }
 
     public void Release()
     {
-        _subscription?.Dispose();
-        _subscription = null;
+        StopWatching();
         expectedDownloads.Clear(this);
+    }
+
+    /// <summary>
+    /// The library is only worth watching for a page that shows the plan, a run that is downloading it, or Nexus
+    /// Mods files the user is fetching in a browser. Anything else would scan every row on every database revision
+    /// of the whole app for a plan nobody looks at.
+    /// </summary>
+    private void UpdateWatching(bool forgetIdlePlan)
+    {
+        lock (_lock)
+        {
+            var needed = _pages > 0
+                || _running is not null
+                || (_expecting && _rows.Any(r => r.State == ArchiveState.Browser));
+            if (needed)
+            {
+                if (_subscription is null)
+                {
+                    _timer = time.CreateTimer(_ => RecheckDue(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+                    _subscription = connection.Revisions.Subscribe(_ => ScheduleRecheck());
+                }
+                return;
+            }
+
+            StopWatching();
+            // A page that comes back shows its plan again, which looks the rows up afresh. Rows a run or a
+            // caller may still read are kept.
+            if (forgetIdlePlan) _rows = [];
+        }
+    }
+
+    private void StopWatching()
+    {
+        lock (_lock)
+        {
+            _subscription?.Dispose();
+            _subscription = null;
+            _timer?.Dispose();
+            _timer = null;
+            _recheckDue = false;
+        }
+    }
+
+    /// <summary>Many revisions in a row cost one scan, after <see cref="RecheckInterval"/>.</summary>
+    private void ScheduleRecheck()
+    {
+        lock (_lock)
+        {
+            if (_timer is null || _recheckDue) return;
+            _recheckDue = true;
+            _timer.Change(RecheckInterval, Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    private void RecheckDue()
+    {
+        lock (_lock)
+        {
+            if (!_recheckDue) return;
+            _recheckDue = false;
+        }
+        Recheck();
     }
 
     public void Dispose() => Release();

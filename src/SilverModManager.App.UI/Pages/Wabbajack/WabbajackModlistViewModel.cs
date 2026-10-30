@@ -145,6 +145,12 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         // expected, until the next run replaces this plan: another loadout here, or another modlist's page.
         this.WhenActivated(d =>
         {
+            // The acquirer matches the rows to the library only while a page like this one is active.
+            _acquirer.Attach().DisposeWith(d);
+            // It forgets a plan nobody shows, so a page that comes back to an empty one gives its plan back. Another
+            // list's plan is left alone: its page or its downloads still need it.
+            if (_planReady && _plan.Rows.Count > 0 && _acquirer.Plan.Rows.Count == 0) _acquirer.Show(_plan);
+
             Observable.FromEvent<Action<ArchivePlan>, ArchivePlan>(h => h, h => _acquirer.PlanChanged += h, h => _acquirer.PlanChanged -= h)
                 .Where(IsThisList)
                 .Subscribe(ApplyPlan)
