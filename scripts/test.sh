@@ -75,6 +75,14 @@ else
     echo "warning: no reflink-capable folder under $reflink_parent; reflink tests use the test binaries' folder" >&2
 fi
 
+# A test host that dies on a native fault (exit 139) leaves nothing to read in the log. Have the runtime write a
+# crash report and a heap dump of it, outside the throwaway XDG dirs so they outlive this run. Open the dump with
+# dotnet-dump analyze; the .crashreport.json beside it already has the faulting thread's stack.
+dump_dir="${SILVER_TEST_DUMPS:-/var/tmp/silvermod-test-dumps}"
+mkdir -p "$dump_dir"
+export DOTNET_DbgEnableMiniDump=1 DOTNET_DbgMiniDumpType=2 DOTNET_EnableCrashReport=1 \
+       DOTNET_DbgMiniDumpName="$dump_dir/core.%p"
+
 # Exit code 8 is MTP's "zero tests ran". Helper projects and projects whose tests
 # are all filtered out hit it, so it must not fail the run.
 #
@@ -89,7 +97,15 @@ done
 
 # Left alone, the whole suite starts one test host per project at once, on top of the build.
 # SILVER_TEST_MODULES caps how many run together (default 8).
+before_dumps=$(find "$dump_dir" -maxdepth 1 -name 'core.*' 2>/dev/null | wc -l)
+status=0
 dotnet test "${target[@]}" --ignore-exit-code 8 \
     --max-parallel-test-modules "${SILVER_TEST_MODULES:-8}" \
     -p:XunitArgs="--filter-not-trait RequiresNetworking=True --filter-not-trait RequiresApiKey=True --filter-not-trait RequiresProton=True --filter-not-trait RequiresSecretService=True --filter-not-trait FlakeyTest=True" \
-    "$@"
+    "$@" || status=$?
+
+after_dumps=$(find "$dump_dir" -maxdepth 1 -name 'core.*' 2>/dev/null | wc -l)
+if (( after_dumps > before_dumps )); then
+    echo "A test host crashed; its dump and crash report are in $dump_dir" >&2
+fi
+exit "$status"
