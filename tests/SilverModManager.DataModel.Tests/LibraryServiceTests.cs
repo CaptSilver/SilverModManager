@@ -40,8 +40,16 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
         var archivePath = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine(fileName);
         archivePath.FileExists.Should().BeTrue();
 
-        var act = async () => await _libraryService.AddLocalFile(archivePath);
-        await act.Should().ThrowAsync<PathException>(because: "archive encoding isn't UTF-8 and extracting results in invalid unicode characters");
+        // The entry names are GBK bytes without the zip's UTF-8 flag. The zip spec says such names are CP437, so
+        // they import under their CP437 spelling instead of failing the whole archive.
+        var localFile = await _libraryService.AddLocalFile(archivePath);
+        localFile.AsLibraryFile().TryGetAsLibraryArchive(out var libraryArchive).Should().BeTrue();
+        libraryArchive.IsValid().Should().BeTrue();
+
+        var paths = libraryArchive.Children.Select(x => x.Path.ToString()).ToArray();
+        paths.Should().Contain("[FS]Ningqi's Forever Spring Costume/manifest.json");
+        paths.Should().Contain("[FS]Ningqi's Forever Spring Costume/Hairs/│√╛╒╗¿┬├/│√╛╒╗¿┬├╨í╛φ╖ó/hair.json");
+        paths.Should().NotContain(p => p.Contains('�'));
     }
 
     [Fact]
