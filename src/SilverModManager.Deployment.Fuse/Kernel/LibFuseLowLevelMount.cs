@@ -383,7 +383,6 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     internal static string NameOf(IntPtr name) =>
         Marshal.PtrToStringUTF8(name) ?? throw new InvalidOperationException("FUSE passed a null name pointer");
 
-    // The lookup that found no mount has no logger either; the kernel still needs an answer.
     // init and destroy have no request to answer. With no mount there is no logger and nobody left to
     // serve the filesystem, so stop the process with the reason; the unhandled exception did that already,
     // just without saying why.
@@ -393,6 +392,7 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
         else mount._logger.LogError(e, "FUSE {Callback} threw", callback);
     }
 
+    // No mount means no logger, and the kernel still needs an answer.
     private static void FailRequest(LibFuseLowLevelMount? mount, IntPtr req, Exception e)
     {
         if (mount is null) LibFuse3LowLevel.fuse_reply_err(req, EIO);

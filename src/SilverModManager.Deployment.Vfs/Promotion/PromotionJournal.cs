@@ -45,7 +45,7 @@ public sealed record PromotionJournal(GameInstallMetadataId Installation, Loadou
             Installation = Installation.Value.Value.ToString("x", CultureInfo.InvariantCulture),
             Target = Target.Value.Value.ToString("x", CultureInfo.InvariantCulture),
             Recorded = Recorded,
-            Entries = Entries.Select(e => new EntryDto
+            Entries = Entries.Select(e => (EntryDto?)new EntryDto
             {
                 Path = e.Path.ToString(),
                 Kind = e.Kind == JournalEntryKind.File ? "file" : "whiteout",
@@ -87,8 +87,9 @@ public sealed record PromotionJournal(GameInstallMetadataId Installation, Loadou
             if (installation != expectedInstallation)
                 throw new InvalidDataException($"Promotion journal {file} belongs to installation {dto.Installation}, not {expectedInstallation.Value.Value:x}");
 
-            var entries = (dto.Entries ?? throw new InvalidDataException($"Promotion journal {file} has no entry list")).Select((e, index) =>
+            var entries = (dto.Entries ?? throw new InvalidDataException($"Promotion journal {file} has no entry list")).Select((entry, index) =>
             {
+                var e = entry ?? throw new InvalidDataException($"Promotion journal {file} entry {index} is null");
                 T Need<T>(T? value, string field) where T : class =>
                     value ?? throw new InvalidDataException($"Promotion journal {file} entry {index} ({e.Kind}) is missing '{field}'");
                 T NeedValue<T>(T? value, string field) where T : struct =>
@@ -125,7 +126,7 @@ public sealed record PromotionJournal(GameInstallMetadataId Installation, Loadou
         public string? Installation { get; set; }
         public string? Target { get; set; }
         public bool Recorded { get; set; }
-        public List<EntryDto>? Entries { get; set; }
+        public List<EntryDto?>? Entries { get; set; }
     }
 
     private sealed class EntryDto

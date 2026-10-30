@@ -49,6 +49,20 @@ public class PromotionJournalTests : IDisposable
     }
 
     [Fact]
+    public void Read_rejects_a_null_entry()
+    {
+        var file = _directory.Combine("journal.json");
+        new PromotionJournal(Installation, Target, [FileEntry()]).Write(file);
+        var json = JsonNode.Parse(File.ReadAllText(file.ToString()))!.AsObject();
+        json["entries"]!.AsArray()[0] = null;
+        File.WriteAllText(file.ToString(), json.ToJsonString());
+
+        var act = () => PromotionJournal.Read(file, Installation);
+
+        act.Should().Throw<InvalidDataException>().WithMessage("*entry 0*");
+    }
+
+    [Fact]
     public void AWhiteoutEntryMissingItsPathNamesTheJournalTheEntryAndTheField()
     {
         var whiteout = new JournalEntry(RelativePath.FromUnsanitizedInput("Data/gone.txt"), JournalEntryKind.Whiteout, Size.Zero, default, 0);
