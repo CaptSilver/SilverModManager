@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using FluentAssertions;
 using SilverModManager.App.GarbageCollection.Errors;
@@ -80,18 +81,21 @@ public class ArchiveGarbageCollectorTests
     }
 
     [Theory, AutoFileSystem]
-    public void AddReferencedFile_IgnoresAnIdentityOfAnotherKind(AbsolutePath archivePath)
+    public void AddReferencedFile_ThrowsForAnIdentityOfAnotherKind(AbsolutePath archivePath)
     {
         var collector = new ArchiveGarbageCollector<MockParsedHeaderState, MockFileHash>();
         var hash1 = (Hash)1;
         collector.AddArchive(archivePath, new MockParsedHeaderState(hash1));
 
-        // Same eight bytes, tagged xxHash64: it names no archive entry.
-        collector.AddReferencedFile(FileIdentity.XxHash64(hash1));
+        // A SHA-1 root names no archive entry; skipping it would let the collector delete bytes still in use,
+        // so it is a programming error whatever throwOnUnknownFile says.
+        var sha1 = FileIdentity.Sha1(Sha1Value.From(new byte[20]));
+        var act = () => collector.AddReferencedFile(sha1);
+        act.Should().Throw<InvalidOperationException>();
+        var strict = () => collector.AddReferencedFile(sha1, true);
+        strict.Should().Throw<InvalidOperationException>();
 
         collector.HashToArchive[hash1].Entries[hash1].GetRefCount().Should().Be(0);
-        var act = () => collector.AddReferencedFile(FileIdentity.XxHash64(hash1), true);
-        act.Should().Throw<UnknownFileException>();
     }
 
     [Theory, AutoFileSystem]

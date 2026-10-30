@@ -76,22 +76,20 @@ public readonly struct ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWra
     /// </summary>
     /// <param name="identity">
     ///     The identity of the file whose ref count is to be incremented. Archives are keyed by xxHash3, so an
-    ///     identity of any other kind names no archive entry and is ignored.
+    ///     identity of any other kind is a programming error.
     /// </param>
     /// <param name="throwOnUnknownFile">Throws if an unknown file is being added to the ref counter.</param>
+    /// <exception cref="InvalidOperationException">
+    ///     <paramref name="identity"/> is not an xxHash3. Skipping it would let the collector delete bytes that are
+    ///     still in use, so this throws whatever <paramref name="throwOnUnknownFile"/> says.
+    /// </exception>
     /// <exception cref="UnknownFileException">
     ///     An archive is being added via <see cref="AddReferencedFile"/> but
     ///     was not originally collected via <see cref="AddArchive"/>.
     /// </exception>
     public void AddReferencedFile(FileIdentity identity, bool throwOnUnknownFile = false)
     {
-        if (!identity.TryXxHash3(out var hash))
-        {
-            if (throwOnUnknownFile)
-                ThrowHelpers.ThrowUnknownFileException(identity);
-
-            return;
-        }
+        var hash = identity.XxHash3();
 
         if (!HashToArchive.TryGetValue(hash, out var archiveRef))
         {

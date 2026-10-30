@@ -13,9 +13,12 @@ public static class FileStorePins
     private static readonly object Gate = new();
     private static readonly Dictionary<FileIdentity, int> Counts = new();
 
-    /// <summary>Pins <paramref name="identity"/> until the returned scope is disposed. Pins nest: each call counts once.</summary>
+    /// <summary>Pins an xxHash3 <paramref name="identity"/> until the returned scope is disposed. Pins nest: each call counts once.</summary>
     public static IDisposable Pin(FileIdentity identity)
     {
+        // The collector keys backups by xxHash3; a pin of another kind would be dropped and the bytes deleted.
+        if (identity.Kind != HashKind.XxHash3)
+            throw new InvalidOperationException($"A backup is keyed by xxHash3, not {identity}");
         lock (Gate)
         {
             Counts[identity] = Counts.GetValueOrDefault(identity) + 1;
