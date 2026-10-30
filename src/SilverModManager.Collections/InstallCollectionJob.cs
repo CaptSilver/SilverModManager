@@ -14,6 +14,7 @@ using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
@@ -197,7 +198,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "Failed to install `{DownloadName}` (index={Index}) into `{CollectionName}/{RevisionNumber}`", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
+                Logger.LogFailure(e, "Failed to install `{DownloadName}` (index={Index}) into `{CollectionName}/{RevisionNumber}`", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
                 var failed = new FailedItem(modAndDownload.Download, modAndDownload.Mod.Name, e);
                 _failedItems.Enqueue(failed);
                 Progress.ModFailed(failed.Name, failed.Reason);

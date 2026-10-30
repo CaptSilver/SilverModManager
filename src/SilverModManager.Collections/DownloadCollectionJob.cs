@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Jobs;
 
 namespace SilverModManager.Collections;
@@ -45,7 +46,7 @@ public class DownloadCollectionJob : IJobDefinitionWithStart<DownloadCollectionJ
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "Exception while downloading `{DownloadName}` from `{CollectionName}/{RevisionNumber}`", download.Name, download.CollectionRevision.Collection.Slug, download.CollectionRevision.RevisionNumber);
+                Logger.LogFailure(e, "Exception while downloading `{DownloadName}` from `{CollectionName}/{RevisionNumber}`", download.Name, download.CollectionRevision.Collection.Slug, download.CollectionRevision.RevisionNumber);
             }
         });
 

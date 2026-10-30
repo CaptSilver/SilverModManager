@@ -51,12 +51,10 @@ public class NexusModsDownloadJob : INexusModsDownloadJob, IJobDefinitionWithSta
         catch (Exception e)
         {
             // A plain refusal (the host kept dropping the connection) reaches the user through the failed job; an Error line would also open the crash dialog.
-            Logger.Log(LogLevelOf(e), e, "Exception while downloading file `{GameId}/{ModId}/{FileId}`", FileMetadata.Uid.GameId, FileMetadata.ModPage.Uid.ModId, FileMetadata.Uid.FileId);
+            Logger.LogFailure(e, "Exception while downloading file `{GameId}/{ModId}/{FileId}`", FileMetadata.Uid.GameId, FileMetadata.ModPage.Uid.ModId, FileMetadata.Uid.FileId);
             throw;
         }
     }
-
-    internal static LogLevel LogLevelOf(Exception failure) => UserFacingErrors.Find(failure) is null ? LogLevel.Error : LogLevel.Warning;
 
     /// <inheritdoc/>
     public ValueTask AddMetadata(ITransaction tx, LibraryFile.New libraryFile)

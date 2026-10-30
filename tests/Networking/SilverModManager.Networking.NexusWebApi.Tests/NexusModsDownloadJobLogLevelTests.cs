@@ -12,12 +12,27 @@ namespace SilverModManager.Networking.NexusWebApi.Tests;
 /// </summary>
 public class NexusModsDownloadJobLogLevelTests
 {
+    private sealed class LevelLogger : ILogger
+    {
+        public LogLevel? Level;
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => Level = logLevel;
+    }
+
+    private static LogLevel? LevelOf(Exception failure)
+    {
+        var logger = new LevelLogger();
+        logger.LogFailure(failure, "Exception while downloading file");
+        return logger.Level;
+    }
+
     [Fact]
     public void AHostThatKeptDroppingTheConnection_IsLoggedAsAWarning()
     {
         var failure = new ConnectionDroppedException("cdn.test", NexusMods.Paths.Size.FromLong(10), DynamicData.Kernel.Optional<NexusMods.Paths.Size>.None, new IOException("unexpected EOF"));
 
-        NexusModsDownloadJob.LogLevelOf(failure).Should().Be(LogLevel.Warning);
+        LevelOf(failure).Should().Be(LogLevel.Warning);
     }
 
     [Fact]
@@ -25,12 +40,12 @@ public class NexusModsDownloadJobLogLevelTests
     {
         var failure = new AggregateException(new DownloadStalledException("cdn.test"));
 
-        NexusModsDownloadJob.LogLevelOf(failure).Should().Be(LogLevel.Warning);
+        LevelOf(failure).Should().Be(LogLevel.Warning);
     }
 
     [Fact]
     public void AnUnexpectedFailure_IsLoggedAsAnError()
     {
-        NexusModsDownloadJob.LogLevelOf(new InvalidOperationException("bug")).Should().Be(LogLevel.Error);
+        LevelOf(new InvalidOperationException("bug")).Should().Be(LogLevel.Error);
     }
 }
