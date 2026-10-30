@@ -27,6 +27,9 @@ public sealed class ArchiveDownloadJobs(IServiceProvider provider, NexusModsLibr
     {
         switch (row.Archive.State)
         {
+            case HttpState { Headers.Length: > 0 } http:
+                return HeaderedHttpDownloadJob.Create(provider, http.Url, http.Headers, row.Archive.Name, destination);
+
             case HttpState http:
                 return HttpDownloadJob.Create(provider, http.Url, new Uri(http.Url.GetLeftPart(UriPartial.Path)), destination);
 
@@ -35,6 +38,15 @@ public sealed class ArchiveDownloadJobs(IServiceProvider provider, NexusModsLibr
 
             case MegaState mega:
                 return MegaDownloadJob.Create(provider, mega.Url, row.Archive.Name, destination);
+
+            case GoogleDriveState drive:
+                return GoogleDriveDownloadJob.Create(provider, drive.Id, row.Archive.Name, destination);
+
+            case MediaFireState mediaFire:
+                return MediaFireDownloadJob.Create(provider, mediaFire.Url, row.Archive.Name, destination);
+
+            case ModDbState modDb:
+                return ModDbDownloadJob.Create(provider, modDb.Url, row.Archive.Name, destination);
 
             case NexusState nexus:
                 var domain = WabbajackGames.NexusDomainFor(nexus.GameName)

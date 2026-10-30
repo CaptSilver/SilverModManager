@@ -129,8 +129,14 @@ public sealed class HostTransfer
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         foreach (var (name, value) in headers ?? []) request.Headers.TryAddWithoutValidation(name, value);
         using var response = await Send(request, token);
-        if (!response.IsSuccessStatusCode) throw _job.ExplainStatus(response);
+        EnsureSuccess(response);
         return await response.Content.ReadAsStringAsync(token);
+    }
+
+    /// <summary>Throws the job's reason for a failure status; a success passes.</summary>
+    public void EnsureSuccess(HttpResponseMessage response)
+    {
+        if (!response.IsSuccessStatusCode) throw _job.ExplainStatus(response);
     }
 
     public static bool IsWebPage(HttpResponseMessage response)
@@ -144,7 +150,7 @@ public sealed class HostTransfer
     public async Task Save(HttpResponseMessage response, long? expectedSize = null, Func<Stream, Stream>? decrypt = null, string? hostName = null)
     {
         var token = _context.CancellationToken;
-        if (!response.IsSuccessStatusCode) throw _job.ExplainStatus(response);
+        EnsureSuccess(response);
         if (IsWebPage(response))
             throw new HostRefusedException($"{hostName ?? response.RequestMessage?.RequestUri?.Host} sent a web page instead of the file; download it in your browser");
 
