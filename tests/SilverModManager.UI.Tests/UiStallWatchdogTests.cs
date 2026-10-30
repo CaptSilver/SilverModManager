@@ -28,9 +28,12 @@ public class UiStallWatchdogTests
             return gate.Task;
         }, stalls);
         watchdog.Start();
+        // Hold the gate open until the first stall is reported, then a further 300 ms, so the second report's
+        // lateness is at least threshold + 300 ms however late the loop thread started.
+        await WaitForStalls(stalls, 1);
         await Task.Delay(300);
         gate.SetResult();
-        await Task.Delay(100);
+        await WaitForStalls(stalls, 2);
 
         lock (stalls)
         {
@@ -76,12 +79,15 @@ public class UiStallWatchdogTests
     }
 
     /// <summary>Waits for the watchdog thread to report, not for a guessed time: how soon it runs depends on machine load.</summary>
-    private static async Task WaitForStalls(List<StallFingerprint> stalls, int count)
+    private static Task WaitForStalls(List<StallFingerprint> stalls, int count)
+        => WaitUntil(() => { lock (stalls) return stalls.Count >= count; });
+
+    private static async Task WaitUntil(Func<bool> condition)
     {
         var deadline = System.Diagnostics.Stopwatch.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
-            lock (stalls) if (stalls.Count >= count) return;
+            if (condition()) return;
             await Task.Delay(10);
         }
     }
@@ -135,7 +141,10 @@ public class UiStallWatchdogTests
             stall => { lock (stalls) stalls.Add(stall); },
             ex => { lock (errors) errors.Add(ex); });
         watchdog.Start();
-        await Task.Delay(400);
+        await WaitUntil(() =>
+        {
+            lock (errors) lock (stalls) return errors.Count >= 1 && stalls.Count >= 1;
+        });
 
         watchdog.LoopThread.IsAlive.Should().BeTrue();
         lock (errors) errors.Should().ContainSingle().Which.Should().BeOfType<ArgumentException>();
