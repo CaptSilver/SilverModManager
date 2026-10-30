@@ -4,6 +4,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.ReactiveUI;
 using R3;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Pages;
 
@@ -21,10 +22,10 @@ public partial class ProtocolRegistrationTestPageView : ReactiveUserControl<IPro
             this.BindCommand(ViewModel, vm => vm.CommandStopTest, view => view.ButtonStopTest)
                 .AddTo(disposable);
 
-            this.WhenAnyValue(
-                    view => view.ViewModel!.IsTestRunning.Value,
-                    view => view.ViewModel!.HasTestResult.Value,
-                    view => view.ViewModel!.FailedTest.Value)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(
+                    x => x.IsTestRunning.Value,
+                    x => x.HasTestResult.Value,
+                    x => x.FailedTest.Value))
                 .OnUI()
                 .Subscribe(tuple =>
                 {

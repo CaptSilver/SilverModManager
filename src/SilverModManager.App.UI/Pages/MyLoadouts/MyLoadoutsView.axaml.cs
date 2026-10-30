@@ -2,6 +2,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Pages.MyLoadouts;
 
@@ -25,7 +26,7 @@ public partial class MyLoadoutsView : ReactiveUserControl<IMyLoadoutsViewModel>
             this.BindCommand(ViewModel, vm => vm.ShowAllGamesCommand, v => v.ShowAllGamesButton)
                 .DisposeWith(d);
 
-            this.WhenAnyValue(v => v.ViewModel!.GameSectionViewModels.Count)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.GameSectionViewModels.Count))
                 .Select(count => count == 0)
                 .OnUI()
                 .BindToView(this, view => view.MyLoadoutsEmptyState.IsActive);

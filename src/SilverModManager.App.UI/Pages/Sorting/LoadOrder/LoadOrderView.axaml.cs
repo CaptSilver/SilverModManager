@@ -6,6 +6,7 @@ using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Extensions;
 using SilverModManager.App.UI.Resources;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Pages.Sorting;
 
@@ -32,7 +33,7 @@ public partial class LoadOrderView : ReactiveUserControl<ILoadOrderViewModel>
                     .DisposeWith(disposables);
 
                 // Trophy bar
-                this.WhenAnyValue(view => view.ViewModel!.IsWinnerTop)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsWinnerTop))
                     .Subscribe(isWinnerTop =>
                         {
                             DockPanel.SetDock(TrophyIcon, isWinnerTop ? Dock.Top : Dock.Bottom);
@@ -44,7 +45,7 @@ public partial class LoadOrderView : ReactiveUserControl<ILoadOrderViewModel>
                     .DisposeWith(disposables);
 
                 // Trophy bar arrow: it points at the trophy, wherever the winner is.
-                this.WhenAnyValue(view => view.ViewModel!.IsWinnerTop)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsWinnerTop))
                     .Subscribe(isWinnerTop =>
                         {
                             ArrowUpIcon.IsVisible = isWinnerTop;
@@ -54,7 +55,7 @@ public partial class LoadOrderView : ReactiveUserControl<ILoadOrderViewModel>
                     .DisposeWith(disposables);
 
                 // trophy tooltip
-                this.WhenAnyValue(view => view.ViewModel!.TrophyToolTip)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.TrophyToolTip))
                     .Subscribe(tooltip => { ToolTip.SetTip(TrophyBarDockPanel, tooltip); })
                     .DisposeWith(disposables);
 

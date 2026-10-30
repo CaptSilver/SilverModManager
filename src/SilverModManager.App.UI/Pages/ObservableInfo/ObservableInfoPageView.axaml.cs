@@ -4,6 +4,7 @@ using Avalonia.ReactiveUI;
 using DynamicData.Kernel;
 using R3;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Pages.ObservableInfo;
 
@@ -36,7 +37,7 @@ public partial class ObservableInfoPageView : ReactiveUserControl<IObservableInf
                 })
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.SelectedItem.Value)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.SelectedItem.Value))
                 .SubscribeWithErrorLogging(optional =>
                 {
                     if (!(ViewModel?.TrackStackTraces ?? false)) return;

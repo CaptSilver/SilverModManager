@@ -227,7 +227,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
             .Select(x => x.CanOpen);
 
         OpenFilePickerCommand = canUseFilePicker.ToReactiveCommand<Unit>(
-            executeAsync: (_, cancellationToken) => AddFilesFromDisk(StorageProvider!, cancellationToken),
+            executeAsync: (_, cancellationToken) => AddFilesFromDisk(RequireStorageProvider(StorageProvider), cancellationToken),
             awaitOperation: AwaitOperation.Parallel,
             initialCanExecute: true,
             configureAwait: false
@@ -930,6 +930,12 @@ After asking design, we're choosing to simply open the mod page for now.
         await LibraryItemRemover.RemoveAsync(_connection, _serviceProvider.GetRequiredService<IOverlayController>(), _libraryService, toRemove);
         
         _notificationService.ShowToast(Language.ToastNotification_Items_deleted);
+    }
+
+    // The command only runs while a provider is set, but it can be cleared between the check and the run.
+    internal static IStorageProvider RequireStorageProvider(IStorageProvider? storageProvider)
+    {
+        return storageProvider ?? throw new FilePickerUnavailableException();
     }
 
     private async ValueTask AddFilesFromDisk(IStorageProvider storageProvider, CancellationToken cancellationToken)

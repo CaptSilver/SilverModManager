@@ -9,6 +9,7 @@ using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Pages.LibraryPage.Collections;
 
@@ -23,7 +24,7 @@ public partial class CollectionCardView : ReactiveUserControl<ICollectionCardVie
             this.OneWayBind(ViewModel, vm => vm.Name, view => view.TitleText.Text)
                 .DisposeWith(d);
             
-            this.WhenAnyValue(view => view.ViewModel!.Name)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Name))
                 .SubscribeWithErrorLogging(name =>
                 {
                     TitleText.Text = name;
@@ -50,7 +51,7 @@ public partial class CollectionCardView : ReactiveUserControl<ICollectionCardVie
             this.BindCommand(ViewModel, vm => vm.OpenCollectionDownloadPageCommand, view => view.DownloadButton)
                 .DisposeWith(d);
 
-            this.WhenAnyValue(view => view.ViewModel!.IsCollectionInstalled)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsCollectionInstalled))
                 .SubscribeWithErrorLogging(isInstalled =>
                 {
                     DownloadButton.Text = isInstalled ? "Installed" : "Download";

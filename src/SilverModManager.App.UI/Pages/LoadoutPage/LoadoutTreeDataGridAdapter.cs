@@ -27,13 +27,11 @@ public class LoadoutTreeDataGridAdapter :
 
     private readonly ILoadoutDataProvider[] _loadoutDataProviders;
     private readonly LoadoutFilter _loadoutFilter;
-    private readonly IConnection _connection;
 
     public LoadoutTreeDataGridAdapter(IServiceProvider serviceProvider, LoadoutFilter loadoutFilter) : base(serviceProvider)
     {
         _loadoutDataProviders = serviceProvider.GetServices<ILoadoutDataProvider>().ToArray();
         _loadoutFilter = loadoutFilter;
-        _connection = serviceProvider.GetRequiredService<IConnection>();
     }
 
     protected override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> GetRootsObservable(bool viewHierarchical)

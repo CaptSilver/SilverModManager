@@ -3,6 +3,7 @@ using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Pages.Changelog;
 
@@ -21,7 +22,7 @@ public partial class ChangelogPageView : ReactiveUserControl<IChangelogPageViewM
             this.OneWayBind(ViewModel, vm => vm.MarkdownRendererViewModel, view => view.ViewModelViewHost.ViewModel)
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(vm => vm.ViewModel!.ParsedChangelog)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.ParsedChangelog))
                 .WhereNotNull()
                 .Select(parsedChangelog => parsedChangelog.Versions
                     .Select(kv => kv.Key.ToString())

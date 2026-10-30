@@ -68,7 +68,7 @@ public class DebugControlsPageDesignViewModel : APageViewModel<IDebugControlsPag
     public DebugControlsPageDesignViewModel() : base(new DesignWindowManager()) { }
     public ReactiveCommand<Unit, Unit> GenerateUnhandledException { get; }= ReactiveCommand.Create(() => { });
     public IWindowManager WindowManager { get; } = new DesignWindowManager();
-    public IServiceProvider ServiceProvider { get; } = null!;
+    public IServiceProvider ServiceProvider { get; } = new ServiceCollection().BuildServiceProvider();
 
     public IMarkdownRendererViewModel MarkdownRenderer { get; } = new MarkdownRendererViewModel() 
     {

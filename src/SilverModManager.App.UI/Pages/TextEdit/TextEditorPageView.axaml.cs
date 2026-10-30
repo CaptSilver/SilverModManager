@@ -10,6 +10,7 @@ using JetBrains.Annotations;
 using NexusMods.Paths;
 using ReactiveUI;
 using TextMateSharp.Grammars;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Pages.TextEdit;
 
@@ -24,11 +25,12 @@ public partial class TextEditorPageView : ReactiveUserControl<ITextEditorPageVie
         CopyButton.Command = copyCommand;
 
         var pasteCommand = ReactiveCommand.Create(() => TextEditor.Paste(),
-            this.WhenAnyValue(
-                view => view.TextEditor.CanPaste,
-                view => view.ViewModel!.IsReadOnly,
-                (canPaste, isReadOnly) => canPaste && !isReadOnly
-            )
+            this.WhenAnyValue(view => view.TextEditor.CanPaste)
+                .CombineLatest(
+                    // A view with no view model leaves the editor as it is, so it counts as editable.
+                    this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsReadOnly)).StartWith(false),
+                    (canPaste, isReadOnly) => canPaste && !isReadOnly
+                )
         );
         PasteButton.Command = pasteCommand;
 
@@ -53,8 +55,9 @@ public partial class TextEditorPageView : ReactiveUserControl<ITextEditorPageVie
             this.Bind(ViewModel, vm => vm.Theme, view => view.ThemeSelector.SelectedItem)
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.Theme)
-                .SubscribeWithErrorLogging(theme => textMate.SetTheme(registryOptions.LoadTheme(theme)));
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Theme))
+                .SubscribeWithErrorLogging(theme => textMate.SetTheme(registryOptions.LoadTheme(theme)))
+                .DisposeWith(disposables);
 
             this.Bind(ViewModel, vm => vm.FontSize, view => view.TextEditor.FontSize)
                 .DisposeWith(disposables);
@@ -71,7 +74,7 @@ public partial class TextEditorPageView : ReactiveUserControl<ITextEditorPageVie
                 .DisposeWith(disposables);
 
             // setting up the document
-            this.WhenAnyValue(view => view.ViewModel!.Document)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Document))
                 .SubscribeWithErrorLogging(document =>
                 {
                     TextEditor.Document = document;

@@ -76,7 +76,9 @@ public partial class DebugControlsPageView : ReactiveUserControl<IDebugControlsP
 
     private void ShowModalExampleMarkdown_OnClick(object? sender, RoutedEventArgs e)
     {
-        var markdownRendererViewModel = ViewModel!.ServiceProvider.GetRequiredService<IMarkdownRendererViewModel>();
+        if (ViewModel is not { } viewModel) return;
+
+        var markdownRendererViewModel = viewModel.ServiceProvider.GetRequiredService<IMarkdownRendererViewModel>();
         markdownRendererViewModel.Contents = MarkdownRendererViewModel.DebugText;
 
         ShowModal(DialogFactory.CreateStandardDialog(
@@ -127,9 +129,11 @@ public partial class DebugControlsPageView : ReactiveUserControl<IDebugControlsP
 
     private async void ShowModalPremium_OnClick(object? sender, RoutedEventArgs e)
     {
+        if (ViewModel is not { } viewModel) return;
+
         await PremiumDialog.ShowUpdatePremiumDialog(
-            ViewModel!.WindowManager,
-            ViewModel.ServiceProvider.GetRequiredService<IOSInterop>()
+            viewModel.WindowManager,
+            viewModel.ServiceProvider.GetRequiredService<IOSInterop>()
         );
     }
 }

@@ -20,10 +20,10 @@ public partial class SettingsView : ReactiveUserControl<ISettingsPageViewModel>
                 this.BindCommand(ViewModel,viewModel => viewModel.CancelCommand,view => view.CancelButton)
                     .DisposeWith(d);
 
-                this.WhenAnyValue(
-                    view => view.ViewModel!.SettingEntries,
-                    view => view.ViewModel!.Sections
-                ).Select(tuple =>
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(
+                    x => x.SettingEntries,
+                    x => x.Sections
+                )).Select(tuple =>
                 {
                     var (entries, sections) = tuple;
 

@@ -9,6 +9,14 @@ using SilverModManager.App.UI.WorkspaceSystem;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Jobs;
 using R3;
+using DynamicData;
+using DynamicData.Kernel;
+using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.App.UI.Pages.LoadoutPage;
 
@@ -16,7 +24,25 @@ public class CollectionLoadoutDesignViewModel : APageViewModel<ICollectionLoadou
 {
     public CollectionLoadoutDesignViewModel() : base(new DesignWindowManager()) { }
 
-    public LoadoutTreeDataGridAdapter Adapter { get; } = null!;
+    public LoadoutTreeDataGridAdapter Adapter { get; } = new EmptyAdapter();
+    
+    /// <summary>
+    /// A load order tree with no rows, so the page can be designed without a loadout in the database.
+    /// </summary>
+    private sealed class EmptyAdapter() : LoadoutTreeDataGridAdapter(DesignServices, new LoadoutFilter
+    {
+        LoadoutId = default,
+        CollectionGroupId = Optional<LoadoutItemGroupId>.None,
+    })
+    {
+        private static readonly IServiceProvider DesignServices = new ServiceCollection()
+            .AddSingleton<ISettingsManager, DesignSettingsManager>()
+            .BuildServiceProvider();
+
+        protected override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> GetRootsObservable(bool viewHierarchical) =>
+            System.Reactive.Linq.Observable.Empty<IChangeSet<CompositeItemModel<EntityId>, EntityId>>();
+    }
+
     public bool IsCollectionEnabled => true;
     public int InstalledModsCount { get; } = 10;
     public string Name => "Vanilla+ [Quality of Life]";

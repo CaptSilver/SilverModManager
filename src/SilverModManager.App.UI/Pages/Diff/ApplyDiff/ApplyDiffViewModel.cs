@@ -23,7 +23,7 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
     private DiffTreeViewModel? _fileTreeViewModel;
     private LoadoutId _loadoutId;
 
-    [Reactive] public partial IViewModelInterface BodyViewModel { get; set; } = null!;
+    [Reactive] public partial IViewModelInterface? BodyViewModel { get; set; }
 
     [Reactive] public partial bool LoadFailed { get; private set; }
 

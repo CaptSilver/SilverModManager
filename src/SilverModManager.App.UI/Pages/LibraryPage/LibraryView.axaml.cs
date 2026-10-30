@@ -6,6 +6,7 @@ using SilverModManager.App.UI.Resources;
 using SilverModManager.MnemonicDB.Abstractions;
 using R3;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Pages.LibraryPage;
 
@@ -140,7 +141,7 @@ public partial class LibraryView : ReactiveUserControl<ILibraryViewModel>
                 this.OneWayBind(ViewModel, vm => vm.HasAnyUpdatesAvailable, view => view.UpdateAllButton.IsVisible)
                     .AddTo(disposables);
 
-                this.WhenAnyValue(view => view.ViewModel!.InstallationTargets.Count)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.InstallationTargets.Count))
                     .OnUI()
                     .SubscribeWithErrorLogging(count =>
                     {
@@ -155,7 +156,7 @@ public partial class LibraryView : ReactiveUserControl<ILibraryViewModel>
 
                 InstallationTargetSelector.SelectedIndex = 0;
 
-                this.WhenAnyValue(view => view.ViewModel!.SelectionCount)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.SelectionCount))
                     .WhereNotNull()
                     .SubscribeWithErrorLogging(count =>
                         {

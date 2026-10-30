@@ -12,6 +12,7 @@ using Avalonia.ReactiveUI;
 using Avalonia.VisualTree;
 using ReactiveUI;
 using SilverModManager.App.UI.Controls.Spine;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Pages.MyGames;
 
@@ -60,11 +61,11 @@ public partial class MyGamesView : ReactiveUserControl<IMyGamesViewModel>
 
         this.WhenActivated(d =>
             {
-                this.WhenAnyValue(view => view.ViewModel!.InstalledGames)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.InstalledGames))
                     .BindToView(this, view => view.DetectedGamesItemsControl.ItemsSource)
                     .DisposeWith(d);
 
-                this.WhenAnyValue(view => view.ViewModel!.SupportedGames)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.SupportedGames))
                     .BindToView(this, view => view.SupportedGamesItemsControl.ItemsSource)
                     .DisposeWith(d);
 
@@ -77,7 +78,7 @@ public partial class MyGamesView : ReactiveUserControl<IMyGamesViewModel>
                 this.OneWayBind(ViewModel, vm => vm.LocatorProblemsNotice, view => view.LocatorProblemsNotice.IsVisible, notice => !string.IsNullOrEmpty(notice))
                     .DisposeWith(d);
 
-                this.WhenAnyValue(view  => view.ViewModel!.InstalledGames.Count)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.InstalledGames.Count))
                     .Select(installedCount  => installedCount == 0)
                     .Subscribe(isEmpty =>
                         {

@@ -9,6 +9,7 @@ using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.MnemonicDB.Abstractions;
 using R3;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Pages.LoadoutPage;
 
@@ -33,7 +34,7 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
             this.OneWayBind(ViewModel, vm => vm.TileImage, view => view.CollectionImage.Source)
                 .AddTo(disposables);
             
-            this.WhenAnyValue(view => view.ViewModel!.TileImage)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.TileImage))
                 .Subscribe(image =>
                 {
                     CollectionImageBorder.IsVisible = image != null;
@@ -111,7 +112,7 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
             this.OneWayBind(ViewModel, vm => vm.IsReadOnly, view => view.ReadOnlyPillStack.IsVisible)
                 .AddTo(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.IsCollectionEnabled)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsCollectionEnabled))
                 .WhereNotNull()
                 .SubscribeWithErrorLogging(value =>
                     {
@@ -120,26 +121,28 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
                 )
                 .DisposeWith(disposables);
             
-            this.WhenAnyValue(view => view.ViewModel!.OverallRating)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.OverallRating))
                 .Select(rating =>
                 {
-                    return rating.Value switch
+                    var className = rating.Value switch
                     {
                         >= 0.75 => "HighRating",
                         >= 0.5 => "MidRating",
                         >= 0.01 => "LowRating",
                         _ => "NoRating",
                     };
+                    return (className, rating);
                 })
-                .Subscribe(className =>
+                .Subscribe(state =>
                     {
+                        var (className, rating) = state;
                         OverallRatingPanel.Classes.Add(className);
-                        OverallRating.Text = className == "NoRating" ? "--" : ViewModel!.OverallRating.Value.ToString("P0");
+                        OverallRating.Text = className == "NoRating" ? "--" : rating.Value.ToString("P0");
                     }
                 )
                 .DisposeWith(disposables);
             
-            this.WhenAnyValue(view => view.ViewModel!.BackgroundImage)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.BackgroundImage))
                 .WhereNotNull()
                 .SubscribeWithErrorLogging(image => HeaderImageBorder.Background = new ImageBrush { Source = image, Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Top})
                 .DisposeWith(disposables);

@@ -57,11 +57,10 @@ public partial class ChangelogPageViewModel : APageViewModel<IChangelogPageViewM
             this.WhenAnyValue(
                 vm => vm.ParsedChangelog,
                 vm => vm.TargetVersion)
-                .Where(_ => _fullChangelog is not null)
                 .SubscribeWithErrorLogging(tuple =>
                 {
                     var (parsedChangelog, targetVersion) = tuple;
-                    if (parsedChangelog is null) return;
+                    if (parsedChangelog is null || _fullChangelog is not { } fullChangelog) return;
 
                     string? contents = null;
                     if (targetVersion is not null)
@@ -69,7 +68,7 @@ public partial class ChangelogPageViewModel : APageViewModel<IChangelogPageViewM
                         contents = parsedChangelog.GetVersionSection(targetVersion);
                     }
 
-                    MarkdownRendererViewModel.Contents = contents ?? _fullChangelog!;
+                    MarkdownRendererViewModel.Contents = contents ?? fullChangelog;
 
                     var index = targetVersion is null ? 0 : parsedChangelog.Versions
                         .Select(kv => kv.Key)
@@ -84,9 +83,9 @@ public partial class ChangelogPageViewModel : APageViewModel<IChangelogPageViewM
                 {
                     // "ALL" is at index 0
                     var actualIndex = index - 1;
-                    if (actualIndex < 0) return null;
+                    if (actualIndex < 0 || ParsedChangelog is not { } parsedChangelog) return null;
 
-                    return ParsedChangelog!.Versions[actualIndex].Key;
+                    return parsedChangelog.Versions[actualIndex].Key;
                 })
                 .BindToVM(this, vm => vm.TargetVersion)
                 .DisposeWith(disposables);
