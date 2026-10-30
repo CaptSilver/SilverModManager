@@ -7,7 +7,7 @@ namespace SilverModManager.Networking.Forums.Auth;
 
 /// <summary>
 /// The OAuth conversation with a forum: the authorize URL, the code exchange, and keeping the stored token
-/// usable. Every entry point refuses while the site has no client id, and sends nothing.
+/// usable. Sign-in, the code exchange and refresh refuse while the site has no client id, and send nothing.
 /// </summary>
 /// <remarks>
 /// Tokens, codes, verifiers and request bodies never reach a log. The HTTP client passed in must not log request
@@ -44,7 +44,10 @@ public sealed class ForumOAuth
     public bool HasClientId(ForumSite site) => !string.IsNullOrWhiteSpace(_endpoints(site).ClientId);
 
     /// <summary>
-    /// The site's endpoints as they stand, with or without a client id.
+    /// The site's endpoints as they stand, with or without a client id. Only for lookups that carry a token the user
+    /// already has (the files API with a stored or environment-supplied token); anything that starts or renews a
+    /// sign-in goes through <see cref="RequireClientId"/>. Whether a forum row is fetched at all is decided by the
+    /// archive classification, which stays on Manual until sign-in is set up.
     /// </summary>
     public ForumEndpoints EndpointsFor(ForumSite site) => _endpoints(site);
 

@@ -162,6 +162,48 @@ public class ForumLoginJobTests : IDisposable
     }
 
     [Fact]
+    public async Task APageThatCannotBeOpenedFailsWithThatErrorAndLeavesNothingUnobserved()
+    {
+        Uri? authorize = null;
+        var os = Substitute.For<IOSInterop>();
+        os.When(o => o.OpenUri(Arg.Any<Uri>())).Do(call =>
+        {
+            authorize = call.Arg<Uri>();
+            throw new InvalidOperationException("no browser");
+        });
+        // Faults left behind by other tests surface at the next collection, so flush them before listening.
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        var unobserved = new List<Exception>();
+        void OnUnobserved(object? sender, UnobservedTaskExceptionEventArgs e) => unobserved.AddRange(e.Exception.Flatten().InnerExceptions);
+        TaskScheduler.UnobservedTaskException += OnUnobserved;
+        try
+        {
+            var task = ForumLoginJob.Create(_monitor, Oauth(), os, ForumSite.LoversLab, NullLogger.Instance);
+            var act = async () => await task;
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("no browser");
+
+            using var client = new TcpClient();
+            var connect = async () => await client.ConnectAsync(IPAddress.Loopback, Parse(authorize!).Redirect.Port);
+            await connect.Should().ThrowAsync<SocketException>();
+
+            // The abandoned wait faults when the listener closes under it; that fault must have been observed.
+            for (var i = 0; i < 3; i++)
+            {
+                await Task.Delay(50);
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
+
+            unobserved.Should().NotContain(e => e is ObjectDisposedException || e is SocketException || e is OperationCanceledException);
+        }
+        finally
+        {
+            TaskScheduler.UnobservedTaskException -= OnUnobserved;
+        }
+    }
+
+    [Fact]
     public async Task SilenceEndsWithTheTimedOutMessage()
     {
         var task = Begin(timeout: TimeSpan.FromMilliseconds(200));
