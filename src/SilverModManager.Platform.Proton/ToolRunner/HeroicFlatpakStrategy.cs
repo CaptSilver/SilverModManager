@@ -24,16 +24,22 @@ public sealed class HeroicFlatpakStrategy(IProcessRunner processRunner) : IToolR
     public ToolRunVia? Via => ToolRunVia.HeroicFlatpak;
 
     public string? CheckRunnable(GameInstallation installation, ResolvedPrefix prefix)
-        => CheckRunner(installation, prefix) ?? (_heroic.IsInstalled() ? null : _heroic.MissingText);
+        => CheckRunnable(installation, prefix, out _);
+
+    // The narrowed runner comes out of the check so Plan does not repeat the null test.
+    private string? CheckRunnable(GameInstallation installation, ResolvedPrefix prefix, out AbsolutePath wine)
+    {
+        var diagnostic = CheckRunner(installation, prefix, out wine);
+        return diagnostic ?? (_heroic.IsInstalled() ? null : _heroic.MissingText);
+    }
 
     public ToolRunPlan Plan(
         GameInstallation installation,
         ResolvedPrefix prefix,
         PrefixCommand command)
     {
-        var diagnostic = CheckRunnable(installation, prefix);
+        var diagnostic = CheckRunnable(installation, prefix, out var wine);
         if (diagnostic is not null) return ToolRunPlan.Failed(diagnostic);
-        if (prefix.WineBinary is not { } wine) return ToolRunPlan.Failed(WineRunSupport.NoRunner(installation));
 
         // Every variable goes as --env rather than on the flatpak process: flatpak resets some host variables
         // on the way into the sandbox, and --env also wins over anything the app's manifest sets.
@@ -46,10 +52,12 @@ public sealed class HeroicFlatpakStrategy(IProcessRunner processRunner) : IToolR
         return ToolRunPlan.Runnable(StrategyName, WineRunSupport.Argv(head, command, prefix.Path), WineRunSupport.WorkingDirectory(command, prefix), new Dictionary<string, string>());
     }
 
-    private static string? CheckRunner(GameInstallation installation, ResolvedPrefix prefix)
+    private static string? CheckRunner(GameInstallation installation, ResolvedPrefix prefix, out AbsolutePath runner)
     {
-        if (prefix.WineBinary is not { } runner) return WineRunSupport.NoRunner(installation);
+        runner = default;
+        if (prefix.WineBinary is not { } wine) return WineRunSupport.NoRunner(installation);
 
+        runner = wine;
         return WineRunSupport.IsProtonScript(runner)
             ? $"{installation.Game.DisplayName} uses the Proton runner '{runner}' in Heroic's Flatpak, and running programs in a Proton runner inside the Flatpak is not supported."
             : null;
