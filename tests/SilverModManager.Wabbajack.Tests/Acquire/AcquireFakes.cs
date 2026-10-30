@@ -39,6 +39,7 @@ internal sealed record FakeDownloadJob : IJobDefinitionWithStart<FakeDownloadJob
     public required byte[] Bytes { get; init; }
     public required ConcurrencyGauge Gauge { get; init; }
     public Exception? Failure { get; init; }
+    public Task? Gate { get; init; }
 
     public async ValueTask<AbsolutePath> StartAsync(IJobContext<FakeDownloadJob> context)
     {
@@ -46,6 +47,7 @@ internal sealed record FakeDownloadJob : IJobDefinitionWithStart<FakeDownloadJob
         try
         {
             await Task.Delay(40, context.CancellationToken);
+            if (Gate is not null) await Gate.WaitAsync(context.CancellationToken);
             if (Failure is not null) throw Failure;
             await Destination.WriteAllBytesAsync(Bytes);
             return Destination;
@@ -84,6 +86,9 @@ internal sealed class FakeDownloadJobs(IServiceProvider provider) : IArchiveDown
     public Dictionary<FileIdentity, Exception> Failures { get; } = new();
     public List<ArchiveState> Requested { get; } = [];
 
+    /// <summary>When set, every download waits for this task to complete before writing its bytes.</summary>
+    public Task? Gate { get; set; }
+
     public Task<IJobTask<IDownloadJob, AbsolutePath>> Create(ArchivePlanRow row, AbsolutePath destination, CancellationToken cancellationToken)
     {
         lock (Requested) Requested.Add(row.State);
@@ -93,6 +98,7 @@ internal sealed class FakeDownloadJobs(IServiceProvider provider) : IArchiveDown
             Bytes = Content.GetValueOrDefault(row.Archive.XxHash64, [1, 2, 3]),
             Gauge = Gauge,
             Failure = Failures.GetValueOrDefault(row.Archive.XxHash64),
+            Gate = Gate,
         };
         IJobTask<IDownloadJob, AbsolutePath> task = provider.GetRequiredService<IJobMonitor>().Begin<FakeDownloadJob, AbsolutePath>(job);
         return Task.FromResult(task);

@@ -7,6 +7,7 @@ using NSubstitute;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Pages;
 using SilverModManager.App.UI.Pages.LibraryPage.Collections;
 using SilverModManager.App.UI.Pages.Wabbajack;
 using SilverModManager.App.UI.Windows;
@@ -279,6 +280,64 @@ public class WabbajackModlistCardViewModelTests(IServiceProvider provider) : AUi
         foreach (var row in WabbajackModlistArchive.FindByModlist(Connection.Db, list).Where(r => r.Identity.Equals(identity)))
             tx.Add(row.Id, WabbajackModlistArchive.FetchedFiles, file);
         await tx.Commit();
+    }
+
+    [Fact]
+    public async Task RemovingAListLeavesAnArchiveAnotherListNamesOutOfTheModsTab()
+    {
+        var (list, _) = await AddList("Removed first");
+        var (other, _) = await AddList("Still installed");
+        var (_, sharedId) = await AddArchive(list, "shared-m.7z");
+        await AddArchive(other, "shared-m.7z");
+        var shared = await AddLibraryFile("shared-m.7z", sharedId);
+        await MarkFetched(list, sharedId, shared);
+        var plan = Remover.Plan(LibraryFileId.From(list));
+
+        await Remover.Remove(plan, deleteArchives: true, _workspace);
+
+        LibraryFile.Load(Connection.Db, shared).IsValid().Should().BeTrue();
+        WabbajackModlistArchive.FindByModlist(Connection.Db, other).Single().FetchedFiles.Select(f => f.Id).Should().Equal(shared);
+        var shown = new List<bool>();
+        using var subscription = LibraryDataProviderHelper.IsShownInMods(Connection, shared).Subscribe(value => { lock (shown) shown.Add(value); });
+        await Eventually(() => { lock (shown) shown.Should().NotBeEmpty().And.EndWith(false); });
+    }
+
+    [Fact]
+    public async Task AFetchedFileThatIsAMemberOfAnotherArchiveIsNeverOfferedForDeletion()
+    {
+        var (list, _) = await AddList("Linked a member");
+        var (_, memberId) = await AddArchive(list, "member.7z");
+        memberId.TryXxHash64(out var xx).Should().BeTrue();
+        EntityId member;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var parentBytes = System.Text.Encoding.UTF8.GetBytes("parent.zip" + Guid.NewGuid());
+            var parent = new LibraryFile.New(tx, out var parentId)
+            {
+                FileName = "parent.zip",
+                Hash = parentBytes.xxHash3(),
+                Size = Size.From(1_000),
+                LibraryItem = new LibraryItem.New(tx, parentId) { Name = "parent.zip" },
+            };
+            _ = new LibraryArchive.New(tx, parentId) { IsArchive = true, LibraryFile = parent };
+            var memberBytes = System.Text.Encoding.UTF8.GetBytes("member.7z" + Guid.NewGuid());
+            var memberFile = new LibraryFile.New(tx, out var memberEntity)
+            {
+                FileName = "member.7z",
+                Hash = memberBytes.xxHash3(),
+                XxHash64 = xx,
+                Size = Size.From(1_000),
+                LibraryItem = new LibraryItem.New(tx, memberEntity) { Name = "member.7z" },
+            };
+            _ = new LibraryArchiveFileEntry.New(tx, memberEntity) { Path = RelativePath.FromUnsanitizedInput("inside/member.7z"), ParentId = parentId, LibraryFile = memberFile };
+            var result = await tx.Commit();
+            member = result.Remap(memberFile).Id;
+        }
+        await MarkFetched(list, memberId, member);
+
+        var plan = Remover.Plan(LibraryFileId.From(list));
+
+        plan.OwnedArchives.Should().BeEmpty();
     }
 
     [Fact]

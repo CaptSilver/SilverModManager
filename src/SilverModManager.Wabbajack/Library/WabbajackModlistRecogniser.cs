@@ -12,7 +12,7 @@ namespace SilverModManager.Wabbajack.Library;
 /// <summary>
 /// Marks a <c>.wabbajack</c> file that holds a modlist with a <see cref="WabbajackModlistLibraryFile"/>.
 /// </summary>
-public sealed class WabbajackModlistRecogniser(ILogger<WabbajackModlistRecogniser> logger) : ILibraryFileRecogniser
+public sealed class WabbajackModlistRecogniser(ILogger<WabbajackModlistRecogniser> logger, IConnection connection) : ILibraryFileRecogniser
 {
     private static readonly Extension WabbajackExtension = new(".wabbajack");
     private static readonly string[] ModlistFileNames = ["modlist", "modlist.json"];
@@ -57,13 +57,20 @@ public sealed class WabbajackModlistRecogniser(ILogger<WabbajackModlistRecognise
         {
             // An archive named by a hash this app does not use (the list format only has xxHash64) cannot be joined to the library.
             if (archive.XxHash64.Kind != HashKind.XxHash64) continue;
-            _ = new WabbajackModlistArchive.New(tx)
+            var row = new WabbajackModlistArchive.New(tx)
             {
                 ModlistId = modlist,
                 Identity = archive.XxHash64,
                 Size = Size.From((ulong)archive.Size),
                 Name = archive.Name,
             };
+
+            // Another list already had the app fetch this file. It stays out of the Mods tab for as long as any list names it.
+            var fetched = WabbajackModlistArchive.FindByIdentity(connection.Db, archive.XxHash64)
+                .SelectMany(other => other.FetchedFiles)
+                .Select(file => (EntityId?)file.Id)
+                .FirstOrDefault();
+            if (fetched is { } inherited) tx.Add(row.Id, WabbajackModlistArchive.FetchedFiles, inherited);
         }
     }
 }

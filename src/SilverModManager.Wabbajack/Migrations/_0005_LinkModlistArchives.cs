@@ -18,7 +18,7 @@ namespace SilverModManager.Wabbajack.Migrations;
 /// <remarks>
 /// The list is read back from the file store, which cannot be done inside the transaction, so the rows are worked out
 /// in <see cref="Prepare"/>. A file the user had before this ran and that matches a list is marked too: hash matching
-/// cannot tell it from one the app fetched. It stays visible while a loadout uses it and is hidden from the Mods tab
+/// cannot tell it from one the app fetched. A member of one of the user's archives is never marked. It stays visible while a loadout uses it and is hidden from the Mods tab
 /// otherwise, until it is installed or the list is removed. A list that cannot be read keeps no rows.
 /// </remarks>
 // ReSharper disable once InconsistentNaming
@@ -68,7 +68,7 @@ public sealed class _0005_LinkModlistArchives(IFileStore fileStore, ILogger<_000
                     Size = Size.From((ulong)archive.Size),
                     Name = archive.Name,
                 };
-                if (locator.FindByXxHash64(db, archive.XxHash64) is { } held) tx.Add(row.Id, WabbajackModlistArchive.FetchedFiles, held.Id);
+                if (locator.FindTopLevelByXxHash64(db, archive.XxHash64) is { } held) tx.Add(row.Id, WabbajackModlistArchive.FetchedFiles, held.Id);
             }
         }
 

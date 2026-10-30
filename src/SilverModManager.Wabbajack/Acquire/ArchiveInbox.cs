@@ -91,8 +91,8 @@ public sealed class ArchiveInbox(
                 if (added && plan.FindArchive(hash) is not null)
                 {
                     // Only a file this scan added came for the list; one the library already held was the user's.
-                    if (plan.Modlist is { } modlist && addedHere.Contains(hash) && locator.FindByXxHash64(connection.Db, hash) is { } held)
-                        await FetchedArchives.Mark(connection, modlist, hash, held);
+                    if (plan.Modlist is not null && addedHere.Contains(hash) && locator.FindTopLevelByXxHash64(connection.Db, hash) is { } held)
+                        await FetchedArchives.Mark(connection, hash, held);
                     file.Delete();
                 }
                 else unmatched.Add(new UnmatchedInbox(file.FileName, hash));

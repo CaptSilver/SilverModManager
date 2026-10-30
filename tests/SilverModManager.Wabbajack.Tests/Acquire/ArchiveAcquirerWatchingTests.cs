@@ -225,6 +225,8 @@ public class ArchiveAcquirerWatchingTests : IDisposable
             Interlocked.Increment(ref Calls);
             return null;
         }
+
+        public LibraryFile.ReadOnly? FindTopLevelByXxHash64(IDb db, FileIdentity identity) => FindByXxHash64(db, identity);
     }
 
     /// <summary>Holds every download until <see cref="Fail"/>, then fails it.</summary>

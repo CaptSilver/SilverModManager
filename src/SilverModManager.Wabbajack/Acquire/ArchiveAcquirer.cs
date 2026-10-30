@@ -114,7 +114,8 @@ public sealed class ArchiveAcquirer(
             if (file.XxHash64Identity() is { } downloaded && downloaded.Equals(row.Archive.XxHash64))
             {
                 Update(rows, index, r => r with { State = ArchiveState.Have, Reason = null, Library = file });
-                if (modlist is { } list && IsCurrent(rows)) await FetchedArchives.Mark(connection, list, row.Archive.XxHash64, file);
+                // The download was started for this list, so it was fetched for it even if the plan has since been replaced.
+                if (modlist is not null) await FetchedArchives.Mark(connection, row.Archive.XxHash64, file);
             }
             else
                 Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = "hash mismatch", Page = OriginalUrl(r) });
@@ -178,7 +179,7 @@ public sealed class ArchiveAcquirer(
     {
         var db = connection.Db;
         var changed = false;
-        List<(LibraryFileId Modlist, FileIdentity Archive, LibraryFile.ReadOnly File)>? fetched = null;
+        List<(FileIdentity Archive, LibraryFile.ReadOnly File)>? fetched = null;
         lock (_lock)
         {
             for (var i = 0; i < _rows.Length; i++)
@@ -188,8 +189,9 @@ public sealed class ArchiveAcquirer(
                 if (locator.FindByXxHash64(db, row.Archive.XxHash64) is not { } held) continue;
                 // A Browser row is one the library lacked when the plan was built and the run sent the user to fetch,
                 // so its arrival is the download the run asked for. Manual and Unsupported rows are the user's own adds.
-                if (row.State == ArchiveState.Browser && _expecting && _modlist is { } modlist)
-                    (fetched ??= []).Add((modlist, row.Archive.XxHash64, held));
+                if (row.State == ArchiveState.Browser && _expecting && _modlist is not null
+                    && locator.FindTopLevelByXxHash64(db, row.Archive.XxHash64) is { } topLevel)
+                    (fetched ??= []).Add((row.Archive.XxHash64, topLevel));
                 _rows[i] = row with { State = ArchiveState.Have, Reason = null, Library = held };
                 changed = true;
             }
@@ -203,11 +205,11 @@ public sealed class ArchiveAcquirer(
         PlanChanged?.Invoke(Plan);
     }
 
-    private async Task MarkFetched(List<(LibraryFileId Modlist, FileIdentity Archive, LibraryFile.ReadOnly File)> fetched)
+    private async Task MarkFetched(List<(FileIdentity Archive, LibraryFile.ReadOnly File)> fetched)
     {
         try
         {
-            foreach (var (modlist, archive, file) in fetched) await FetchedArchives.Mark(connection, modlist, archive, file);
+            foreach (var (archive, file) in fetched) await FetchedArchives.Mark(connection, archive, file);
         }
         catch (Exception e)
         {

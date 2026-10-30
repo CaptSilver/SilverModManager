@@ -247,4 +247,92 @@ public class FetchedArchiveTests(ITestOutputHelper helper) : AcquireTestBase<Fet
         row.Name.Should().Be("a.7z");
         row.FetchedFiles.Should().BeEmpty();
     }
+
+    /// <summary>A second list, with another name and file, that names <paramref name="archives"/>.</summary>
+    private async Task<LibraryFileId> AddSecondModlist(params ArchiveEntry[] archives)
+    {
+        await using var folder = TemporaryFileManager.CreateFolder();
+        var path = WabbajackFixture.Write(folder.Path, ListWith(archives) with { Name = "Second" }, fileName: "second.wabbajack");
+        return LibraryFileId.From((await LibraryService.AddLocalFile(path)).AsLibraryFile().Id);
+    }
+
+    [Fact]
+    public async Task ADownloadIsMarkedOnEveryListThatNamesTheArchive()
+    {
+        using var page = Acquirer.Attach();
+        var entry = Named(new HttpState(new Uri(Mirror, "a.7z"), []), Content);
+        var first = await AddModlist(entry);
+        var second = await AddSecondModlist(entry);
+        Jobs.Content[entry.XxHash64] = Content;
+
+        await Acquirer.Run(new ArchivePlan([new ArchivePlanRow(entry, ArchiveState.Automatic, null, null, null)], first), null, CancellationToken.None);
+
+        RowFor(first, Content).FetchedFiles.Should().ContainSingle();
+        RowFor(second, Content).FetchedFiles.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task AListAddedAfterAnotherFetchedTheArchiveInheritsTheMark()
+    {
+        using var page = Acquirer.Attach();
+        var entry = Named(new HttpState(new Uri(Mirror, "a.7z"), []), Content);
+        var first = await AddModlist(entry);
+        Jobs.Content[entry.XxHash64] = Content;
+        await Acquirer.Run(new ArchivePlan([new ArchivePlanRow(entry, ArchiveState.Automatic, null, null, null)], first), null, CancellationToken.None);
+
+        var second = await AddSecondModlist(entry);
+
+        RowFor(second, Content).FetchedFiles.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task AListAddedWhenNoListFetchedTheArchiveStartsUnmarked()
+    {
+        await AddToLibrary(Content);
+        var entry = Named(new HttpState(new Uri(Mirror, "a.7z"), []), Content);
+
+        var modlist = await AddModlist(entry);
+
+        RowFor(modlist, Content).FetchedFiles.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ADownloadStillInFlightWhenThePlanIsReplacedIsMarkedForItsList()
+    {
+        using var page = Acquirer.Attach();
+        var entry = Named(new HttpState(new Uri(Mirror, "a.7z"), []), Content);
+        var modlist = await AddModlist(entry);
+        Jobs.Content[entry.XxHash64] = Content;
+        var gate = new TaskCompletionSource();
+        Jobs.Gate = gate.Task;
+        var run = Acquirer.Run(new ArchivePlan([new ArchivePlanRow(entry, ArchiveState.Automatic, null, null, null)], modlist), null, CancellationToken.None);
+        await WaitFor(() => { lock (Jobs.Requested) return Jobs.Requested.Count == 1; });
+
+        Acquirer.Show(new ArchivePlan([], modlist));
+        gate.SetResult();
+        await run;
+
+        await WaitFor(() => RowFor(modlist, Content).FetchedFiles.Any());
+    }
+
+    [Fact]
+    public async Task AMemberOfAnotherArchiveIsNeverMarkedFetched()
+    {
+        using var page = Acquirer.Attach();
+        var entry = Named(new NexusState("SkyrimSpecialEdition", 77, 4242, null, null, null, false), Content, "mod.txt");
+        var modlist = await AddModlist(entry);
+        await Acquirer.Run(new ArchivePlan([BrowserRow(entry)], modlist), null, CancellationToken.None);
+
+        await using var folder = TemporaryFileManager.CreateFolder();
+        var zipPath = folder.Path.Combine("users.zip");
+        using (var zip = new System.IO.Compression.ZipArchive(File.Create(zipPath.ToString()), System.IO.Compression.ZipArchiveMode.Create))
+        {
+            using var member = zip.CreateEntry("inside.txt").Open();
+            member.Write(Content);
+        }
+        await LibraryService.AddLocalFile(zipPath);
+
+        await WaitFor(() => Acquirer.Plan.Rows[0].State == ArchiveState.Have);
+        RowFor(modlist, Content).FetchedFiles.Should().BeEmpty("a member belongs to the user's archive");
+    }
 }

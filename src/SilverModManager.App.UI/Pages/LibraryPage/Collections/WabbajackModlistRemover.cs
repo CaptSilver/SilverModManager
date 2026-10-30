@@ -10,6 +10,7 @@ using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Library;
 using SilverModManager.Wabbajack.Models;
 
 namespace SilverModManager.App.UI.Pages.LibraryPage.Collections;
@@ -61,6 +62,8 @@ public sealed class WabbajackModlistRemover(IServiceProvider provider)
             {
                 var file = LibraryFile.Load(db, fetched.Id);
                 if (!file.IsValid()) continue;
+                // A member of one of the user's archives is not ours to delete, whatever linked it.
+                if (LibraryArchiveLocator.IsArchiveMember(db, file.Id)) continue;
 
                 var otherList = OtherListNaming(db, row, modlist);
                 if (otherList is not null)
@@ -89,6 +92,19 @@ public sealed class WabbajackModlistRemover(IServiceProvider provider)
     }
 
     /// <summary>
+    /// Passes the row's fetched file to the rows of other lists that name the same archive, so the file does not turn
+    /// into a top-level Mods entry while one of them still needs it.
+    /// </summary>
+    private void HandOver(ITransaction tx, WabbajackModlistArchive.ReadOnly row)
+    {
+        foreach (var other in WabbajackModlistArchive.FindByIdentity(_connection.Db, row.Identity))
+        {
+            if (other.ModlistId.Value == row.ModlistId.Value || other.FetchedFiles.Any()) continue;
+            foreach (var fetched in row.FetchedFiles) tx.Add(other.Id, WabbajackModlistArchive.FetchedFiles, fetched.Id);
+        }
+    }
+
+    /// <summary>
     /// Deletes the list's installs first (the group before its metadata, as removing a collection does), then the
     /// chosen archives, the list's archive rows and the list's file.
     /// </summary>
@@ -109,7 +125,11 @@ public sealed class WabbajackModlistRemover(IServiceProvider provider)
 
         using (var tx = _connection.BeginTransaction())
         {
-            foreach (var row in WabbajackModlistArchive.FindByModlist(_connection.Db, plan.Modlist.Value)) tx.Delete(row.Id, recursive: false);
+            foreach (var row in WabbajackModlistArchive.FindByModlist(_connection.Db, plan.Modlist.Value))
+            {
+                HandOver(tx, row);
+                tx.Delete(row.Id, recursive: false);
+            }
             await tx.Commit();
         }
 
