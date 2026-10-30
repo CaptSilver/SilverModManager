@@ -26,6 +26,10 @@ public static class DataStoreReferenceMarker
         where TParsedHeaderState : ICanProvideFileHashes<TFileEntryWrapper>
         where TFileEntryWrapper : IHaveFileHash
     {
+        // The pins come first. A job pins before it stores and unpins after its row commits, so a hash is either
+        // still in this list or already in a snapshot taken after it. Reading them after the snapshot leaves a
+        // gap where the job commits and unpins in between and neither sees the hash.
+        var pinned = FileStorePins.Pinned();
         var db = connection.Db;
         var loadoutFiles = LoadoutFile.All(db);
         var isLoadoutValidDict = new Dictionary<LoadoutId, bool>();
@@ -44,7 +48,7 @@ public static class DataStoreReferenceMarker
         MarkItemsMarkedAsBackups(archiveGc, db);
 
         // Bytes a running job stored but has not yet recorded in any of the above.
-        foreach (var identity in FileStorePins.Pinned())
+        foreach (var identity in pinned)
             archiveGc.AddReferencedFile(identity);
     }
 
