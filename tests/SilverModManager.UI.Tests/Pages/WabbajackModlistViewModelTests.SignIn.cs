@@ -147,6 +147,26 @@ public partial class WabbajackModlistViewModelTests
     }
 
     [Fact]
+    public async Task AnAccountChangedWhileTheListIsChecked_ChecksTheListAgainWhenTheCheckEnds()
+    {
+        var rig = new SignInRig(Provider);
+        var (vm, service, _) = await Open(Plan(ForumRow(ArchiveState.SignIn)), services: rig.Services);
+        using var activation = vm.Activator.Activate();
+        var gate = new TaskCompletionSource();
+        service.PlanGate = gate;
+        vm.SelectLoadoutCommand.Execute(vm.SelectedLoadout!).Subscribe();
+        await WaitUntil(() => vm.IsPlanning);
+        var checks = service.PlannedFor.Count;
+
+        rig.Changed.OnNext(ForumSite.LoversLab);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+        service.PlannedFor.Count.Should().Be(checks, "the running check owns the plan");
+        gate.SetResult();
+
+        await EventuallyOnUi(() => service.PlannedFor.Count.Should().Be(checks + 1, "one more check, for the sign-in"));
+    }
+
+    [Fact]
     public async Task AnAccountChangeOfASiteTheListDoesNotUse_LeavesThePlanAlone()
     {
         var rig = new SignInRig(Provider);

@@ -59,6 +59,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     // False from the moment a pick starts planning until its plan arrives, and after a plan that failed.
     // Only a pick that planned successfully sets it; the acquirer re-announcing a plan must not.
     private bool _planReady;
+    private readonly HashSet<ForumSite> _accountsChangedWhileBusy = [];
 
     // Download plans the list again before it starts, and the button is off for that time.
     private bool _isPreparingDownloads;
@@ -238,6 +239,13 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
                     .ObserveOn(RxApp.MainThreadScheduler)
                     .Subscribe(site => _ = RecheckAfterAccountChange(site))
                     .DisposeWith(d);
+                // A change that came while the page was busy is checked once it stops.
+                this.WhenAnyValue(vm => vm.IsPlanning, vm => vm.IsDownloading, vm => vm.IsInstalling, (planning, downloading, installing) => planning || downloading || installing)
+                    .DistinctUntilChanged()
+                    .Where(busy => !busy)
+                    .ObserveOn(RxApp.MainThreadScheduler)
+                    .Subscribe(_ => RecheckPendingAccountChanges())
+                    .DisposeWith(d);
             }
 
             // Rows that changed while the page was away.
@@ -253,12 +261,35 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         });
     }
 
-    private async Task RecheckAfterAccountChange(ForumSite site)
+    private Task RecheckAfterAccountChange(ForumSite site)
     {
-        // Not while a check, a download or an install is under way: each owns the plan until it ends.
-        if (!_planReady || IsPlanning || IsDownloading || IsInstalling || SelectedLoadout is not { } choice) return;
-        if (!_plan.Rows.Any(row => row.Archive.State is LoversLabState && site == ForumSite.LoversLab
-                                   || row.Archive.State is VectorPlexusState && site == ForumSite.VectorPlexus)) return;
+        // Not while a check, a download or an install is under way: each owns the plan until it ends. Run skips the
+        // rows that wait for a sign-in, so one can be signed in mid-download; the change is kept for when it ends.
+        if (IsBusyWithPlan)
+        {
+            _accountsChangedWhileBusy.Add(site);
+            return Task.CompletedTask;
+        }
+
+        return RecheckForSites([site]);
+    }
+
+    private void RecheckPendingAccountChanges()
+    {
+        if (_accountsChangedWhileBusy.Count == 0 || IsBusyWithPlan) return;
+        var sites = _accountsChangedWhileBusy.ToArray();
+        _accountsChangedWhileBusy.Clear();
+        _ = RecheckForSites(sites);
+    }
+
+    private bool IsBusyWithPlan => !_planReady || IsPlanning || IsDownloading || IsInstalling;
+
+    // One check covers every site, so several sites that changed together start it once.
+    private async Task RecheckForSites(IReadOnlyCollection<ForumSite> sites)
+    {
+        if (SelectedLoadout is not { } choice) return;
+        if (!_plan.Rows.Any(row => row.Archive.State is LoversLabState && sites.Contains(ForumSite.LoversLab)
+                                   || row.Archive.State is VectorPlexusState && sites.Contains(ForumSite.VectorPlexus))) return;
 
         await Guarded(token => SelectLoadoutAsync(choice, token));
     }
