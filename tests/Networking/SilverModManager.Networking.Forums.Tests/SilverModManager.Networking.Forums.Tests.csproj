@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <XunitStartupAssembly>SilverModManager.Networking.Forums.Tests</XunitStartupAssembly>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\SilverModManager.Networking.Forums\SilverModManager.Networking.Forums.csproj" />
+        <ProjectReference Include="..\..\..\src\SilverModManager.Secrets\SilverModManager.Secrets.csproj" />
+        <ProjectReference Include="..\..\..\src\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    </ItemGroup>
+</Project>
