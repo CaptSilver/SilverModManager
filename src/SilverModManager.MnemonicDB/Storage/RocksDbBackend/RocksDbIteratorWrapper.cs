@@ -10,15 +10,17 @@ internal struct RocksDbIteratorWrapper : ILowLevelIterator, IRefDatomPeekingEnum
     private Ptr _key;
     private bool _started;
     private readonly Iterator _iterator;
+    private readonly Backend _backend;
 
-    public RocksDbIteratorWrapper(Iterator iterator)
+    public RocksDbIteratorWrapper(Backend backend, Iterator iterator)
     {
+        _backend = backend;
         _iterator = iterator;
         _started = false;
     }
 
     public void Dispose() => 
-        _iterator.Dispose();
+        _backend.ReleaseIterator(_iterator);
 
     public unsafe bool MoveNext<TSliceDescriptor>(TSliceDescriptor descriptor, bool useHistory = false) 
         where TSliceDescriptor : ISliceDescriptor, allows ref struct
