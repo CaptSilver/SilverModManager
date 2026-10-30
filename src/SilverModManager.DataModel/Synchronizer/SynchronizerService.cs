@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 ﻿using System.Reactive.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -431,17 +432,26 @@ public class SynchronizerService : ISynchronizerService
     public IObservable<LoadoutWithTxId> LastAppliedRevisionFor(GameInstallation gameInstallation)
     {
         return GameInstallMetadata.Observe(_conn, _gameRegistry.ForceGetMetadata(gameInstallation))
-            .Select(metadata =>
-                {
-                    if (GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastId) 
-                        && GameInstallMetadata.LastSyncedLoadoutTransaction.TryGetValue(metadata, out var txId))
-                    {
-                        return new LoadoutWithTxId(lastId, TxId.From(txId.Value));
-                    }
+            .Select(metadata => AppliedStateOf(metadata).Last);
+    }
 
-                    return default(LoadoutWithTxId);
-                }
-            );
+    /// <summary>
+    /// The loadout last applied to an installation with the transaction that recorded it, and the transaction of the
+    /// last disk rescan. Both are default while the installation has never been applied or scanned.
+    /// </summary>
+    private static (LoadoutWithTxId Last, TxId ScanTx) AppliedStateOf(GameInstallMetadata.ReadOnly metadata)
+    {
+        var last = default(LoadoutWithTxId);
+        if (GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastId)
+            && GameInstallMetadata.LastSyncedLoadoutTransaction.TryGetValue(metadata, out var txId))
+        {
+            last = new LoadoutWithTxId(lastId, TxId.From(txId.Value));
+        }
+
+        var scanTx = GameInstallMetadata.LastScannedDiskStateTransaction.TryGetValue(metadata, out var scanned)
+            ? TxId.From(scanned.Value)
+            : default(TxId);
+        return (last, scanTx);
     }
 
     
@@ -454,6 +464,9 @@ public class SynchronizerService : ISynchronizerService
     } 
     
     private readonly Dictionary<LoadoutId, Observable<LoadoutSynchronizerState>> _statusObservables = new();
+
+    // The inputs of a loadout as of an apply never change, and a status is asked for far more often than applies run.
+    private readonly ConcurrentDictionary<(LoadoutId Id, TxId Tx), SyncInputs> _inputsAtApply = new();
     private readonly SemaphoreSlim _statusSemaphore = new(1, 1);
     private readonly IFileHashesService _fileHashesService;
 
@@ -496,42 +509,46 @@ public class SynchronizerService : ISynchronizerService
 
         var isBusy = loadoutState.ObservePropertyChanged(l => l.Busy);
 
-        var lastApplied = LastAppliedRevisionFor(loadout.InstallationInstance)
+        var metadataId = _gameRegistry.ForceGetMetadata(loadout.InstallationInstance);
+
+        // The streams below only say "look again". What they carry is not trusted for the decision: it is made from
+        // one snapshot taken when it is made, so a revision that meets a stale applied state cannot flicker.
+        var appliedState = GameInstallMetadata.Observe(_conn, metadataId)
+            .Select(metadata => AppliedStateOf(metadata))
             .ToObservable();
 
-        var revisions = LoadoutQueries2.RevisionsWithChildUpdates(_conn, loadoutId)
+        var revisions = LoadoutQueries2.SyncInputRevisions(_conn, loadoutId)
             .ToObservable()
-            // Use DB transaction, since child updates are not part of the loadout
-            .Select(rev => (loadout: rev, revDbTx: _conn.Db.BasisTxId));
+            // Only here to make each emission different from the last, so DistinctUntilChanged lets it through.
+            .Select(rev => rev.Db.BasisTxId);
 
         var statusFailureLogged = 0;
-        var statusObservable = isBusy.CombineLatest(lastApplied,
+        var statusObservable = isBusy.CombineLatest(appliedState,
                 revisions,
-                (busy, last, rev) => (busy, last, rev.loadout, rev.revDbTx)
+                (busy, applied, revisionBasis) => (busy, applied, revisionBasis)
             )
-            
             .DistinctUntilChanged()
             .SelectAwait(
                 async (tuple, cancellationToken) =>
                 {
                     // To make sure the DB is loaded, before we start diffing
                     await _fileHashesService.GetFileHashesDb();
-                 
-                    var (busy, last, rev, revDbTx) = tuple;
-                    
-                    // if the loadout is not found, it means it was deleted
-                    if (!rev.IsValid())
-                        return LoadoutSynchronizerState.OtherLoadoutSynced;
-                    
-                    if (busy)
-                        return LoadoutSynchronizerState.Pending;
 
-                    if (last.Id != loadoutId && last != default(LoadoutWithTxId))
-                        return LoadoutSynchronizerState.OtherLoadoutSynced;
+                    var busy = tuple.busy;
+                    var db = _conn.Db;
+                    var rev = Loadout.Load(db, loadoutId);
+                    var (last, scanTx) = AppliedStateOf(GameInstallMetadata.Load(db, metadataId));
 
-                    // Last DB revision is the same in the applied loadout
-                    if (last.Id == rev.LoadoutId && revDbTx == last.Tx)
-                        return LoadoutSynchronizerState.Current;
+                    var verdict = StatusDecision.Decide(
+                        busy, rev.IsValid(), loadoutId, last, scanTx,
+                        () => SyncInputRevision.Read(db, loadoutId),
+                        () => _inputsAtApply.GetOrAdd((loadoutId, last.Tx), static (key, conn) => SyncInputRevision.Read(conn.AsOf(key.Tx), key.Id), _conn));
+                    switch (verdict)
+                    {
+                        case StatusVerdict.Pending: return LoadoutSynchronizerState.Pending;
+                        case StatusVerdict.OtherLoadoutSynced: return LoadoutSynchronizerState.OtherLoadoutSynced;
+                        case StatusVerdict.Current: return LoadoutSynchronizerState.Current;
+                    }
 
                     // Potentially long operation, run on thread pool
                     bool diffFound;

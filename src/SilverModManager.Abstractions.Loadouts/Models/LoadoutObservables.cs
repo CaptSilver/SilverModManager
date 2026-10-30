@@ -26,4 +26,19 @@ public class LoadoutQueries2
             .Observe(x => x.LoadoutId)
             .QueryWhenChanged(_ => Loadout.Load(connection.Db, id));
     }
+
+    /// <summary>
+    /// Like <see cref="RevisionsWithChildUpdates"/>, but over everything an apply reads
+    /// (<c>loadouts.SyncInputsForLoadout</c>), so it also fires when a game-installed claim changes.
+    /// </summary>
+    public static IObservable<Loadout.ReadOnly> SyncInputRevisions(IConnection connection, LoadoutId id)
+    {
+        return connection.Query<(EntityId LoadoutId, ulong Max, long Count)>($"""
+                SELECT {id}, MAX(d.T), COUNT(d.E) FROM 
+                loadouts.SyncInputsForLoadout({connection}, {id}) ents
+                LEFT JOIN mdb_Datoms() d ON d.E = ents.Id
+                """)
+            .Observe(x => x.LoadoutId)
+            .QueryWhenChanged(_ => Loadout.Load(connection.Db, id));
+    }
 }

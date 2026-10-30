@@ -41,6 +41,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="SilverModManager.DataModel.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.DataModel.Synchronizer.Tests" />
         <InternalsVisibleTo Include="SilverModManager.App.GarbageCollection.DataModel.Tests"/>
         <InternalsVisibleTo Include="SilverModManager.Games.TestFramework"/>
         <InternalsVisibleTo Include="SilverModManager.Platform.Proton"/>

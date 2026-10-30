@@ -18,6 +18,9 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Games.TestFramework.Helpers;
 using SilverModManager.Games.Witcher.Witcher3;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
@@ -304,6 +307,123 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
         var status = await (await SynchronizerService.StatusForLoadout(loadout.LoadoutId))
             .Where(state => state != LoadoutSynchronizerState.Pending).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
         status.Should().Be(LoadoutSynchronizerState.Current);
+    }
+
+    private async Task<LoadoutSynchronizerState> StatusNow(Loadout.ReadOnly loadout) =>
+        await (await SynchronizerService.StatusForLoadout(loadout.LoadoutId))
+            .Where(state => state != LoadoutSynchronizerState.Pending).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+
+    // A commit to anything else (a diagnostics result, the library, another game) moves the database head but
+    // not what an apply would write. The Witcher always has work for mods.settings unless the status can tell
+    // the loadout is as it was applied, so it must not read the head.
+    [Fact]
+    public async Task ACommitOutsideTheLoadoutAfterAnApplyLeavesNothingToApply()
+    {
+        var loadout = await CreateLoadout();
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        await CommitAnUnrelatedLoadout();
+
+        (await StatusNow(loadout)).Should().Be(LoadoutSynchronizerState.Current);
+    }
+
+    [Fact]
+    public async Task AModAddedAfterAnApplyNeedsAnotherApply()
+    {
+        var loadout = await CreateLoadout();
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            var group = AddEmptyGroup(tx, loadout.LoadoutId, "late mod");
+            AddFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, "Mods/modLate/late.ws"), "late");
+            await tx.Commit();
+        }
+
+        (await StatusNow(loadout)).Should().Be(LoadoutSynchronizerState.NeedsSync);
+    }
+
+    // The status is a stream the Apply button stays subscribed to: it has to move when the loadout changes under it,
+    // and the commit that does it is not the one the apply recorded.
+    [Fact]
+    public async Task AModAddedWhileTheStatusIsWatchedTurnsItToNeedsSyncAndAnotherApplyTurnsItBack()
+    {
+        var loadout = await CreateLoadout();
+        await Synchronizer.Synchronize(Refresh(loadout));
+        var seen = new System.Collections.Concurrent.ConcurrentQueue<LoadoutSynchronizerState>();
+        using var subscription = (await SynchronizerService.StatusForLoadout(loadout.LoadoutId)).Subscribe(seen.Enqueue);
+        (await StatusNow(loadout)).Should().Be(LoadoutSynchronizerState.Current);
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            var group = AddEmptyGroup(tx, loadout.LoadoutId, "late mod");
+            AddFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, "Mods/modLate/late.ws"), "late");
+            await tx.Commit();
+        }
+        await WaitFor(() => seen.LastOrDefault() == LoadoutSynchronizerState.NeedsSync);
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+        await CommitAnUnrelatedLoadout();
+        await WaitFor(() => seen.LastOrDefault() == LoadoutSynchronizerState.Current);
+    }
+
+    private static async Task WaitFor(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (!condition())
+        {
+            if (DateTime.UtcNow > deadline) throw new TimeoutException("the status never reached the expected state");
+            await Task.Delay(25);
+        }
+    }
+
+    // Removing a mod that is the only provider of its files retracts datoms and asserts none, so the newest
+    // datom of the loadout does not move; the status still has to notice.
+    [Fact]
+    public async Task RemovingTheOnlyModAfterAnApplyNeedsAnotherApply()
+    {
+        var loadout = await CreateLoadout();
+        LoadoutItemGroupId group;
+        using (var tx = Connection.BeginTransaction())
+        {
+            group = AddEmptyGroup(tx, loadout.LoadoutId, "only mod");
+            AddFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, "Mods/modOnly/only.ws"), "only");
+            var result = await tx.Commit();
+            group = LoadoutItemGroupId.From(result[group.Value]);
+        }
+        await Synchronizer.Synchronize(Refresh(loadout));
+        await CommitAnUnrelatedLoadout();
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Delete(group, recursive: true);
+            await tx.Commit();
+        }
+
+        (await StatusNow(loadout)).Should().Be(LoadoutSynchronizerState.NeedsSync);
+    }
+
+    private async Task CommitAnUnrelatedLoadout()
+    {
+        using var tx = Connection.BeginTransaction();
+        var install = new GameInstallMetadata.New(tx)
+        {
+            Store = GameStore.Unknown,
+            Path = "/games/" + Guid.NewGuid(),
+            GameId = Witcher3Game.NexusModsGameId.Value,
+            Name = "Another game",
+            Game = GameId.From("Test.AnotherGame"),
+        };
+        _ = new Loadout.New(tx)
+        {
+            Name = Guid.NewGuid().ToString(),
+            ShortName = "ZZZ",
+            InstallationId = install,
+            LoadoutKind = LoadoutKind.Default,
+            Revision = 0,
+            GameVersion = VanityVersion.From("Unknown"),
+        };
+        await tx.Commit();
     }
 
     [Fact]

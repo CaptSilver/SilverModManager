@@ -23,6 +23,13 @@ SELECT sortItem.Id FROM mdb_SortOrder(Db=>db) sortOrder
     JOIN mdb_SortOrderItem(Db=>db) sortItem ON sortOrder.Id = sortItem.ParentSortOrder
     WHERE sortOrder.Loadout = loadoutId;
 
+-- Everything an apply reads from a loadout: what the loadout tracks, plus the claims that keep the game-installed
+-- recognizer from adopting a path again. Kept apart from TrackedEntitiesForLoadout because undo reverts that set.
+CREATE MACRO loadouts.SyncInputsForLoadout(db, loadoutId) AS TABLE
+SELECT Id FROM loadouts.TrackedEntitiesForLoadout(db, loadoutId)
+UNION ALL
+SELECT Id FROM mdb_GameInstalledClaim(Db=>db) WHERE Loadout = loadoutId;
+
 -- Returns all collection download rules
 CREATE OR REPLACE MACRO loadouts.CollectionDownloadRules (db) AS TABLE
 SELECT
