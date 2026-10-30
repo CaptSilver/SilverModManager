@@ -88,7 +88,6 @@ src/SilverModManager.App.UI/WorkspaceSystem/Panel/PanelViewModel.cs	1
 src/SilverModManager.App.UI/WorkspaceSystem/PanelResizer/PanelResizerView.axaml.cs	4
 src/SilverModManager.App.UI/WorkspaceSystem/PanelTabHeader/PanelTabHeaderView.axaml.cs	5
 src/SilverModManager.App.UI/WorkspaceSystem/Workspace/WorkspaceViewModel.cs	2
-src/SilverModManager.Deployment.Vfs/Tree/VfsTree.cs	35
 src/SilverModManager.Games.AdvancedInstaller.UI/Content/Left/ModContent/ModContentView.axaml.cs	1
 src/SilverModManager.Games.AdvancedInstaller.UI/Content/Left/ModContent/TreeEntry/ModContentTreeEntryView.axaml.cs	2
 src/SilverModManager.Games.AdvancedInstaller.UI/Content/Right/Preview/PreviewView.axaml.cs	1

@@ -1,5 +1,8 @@
 using SilverModManager.Sdk.Hashes;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Native;
@@ -24,7 +27,7 @@ public sealed class VfsTree : IVfsOperations
     private readonly object _gate = new();
     private readonly InodeTable _inodes = new();
     private readonly Dictionary<ulong, VfsNode> _byIno = new();
-    private readonly VfsNode _root;
+    private readonly VfsDirectory _root;
     private readonly DateTimeOffset _created = DateTimeOffset.UtcNow;
     private readonly VfsCachePolicy _policy;
     private StagingDirectory? _staging;
@@ -40,6 +43,9 @@ public sealed class VfsTree : IVfsOperations
     /// it after the session is up; the mount clears it again on unmount.
     /// </summary>
     public IVfsInvalidationSink? Invalidation { get; set; }
+
+    /// <summary>Where broken-invariant reports go. Nothing is logged until a mount sets it.</summary>
+    public ILogger Logger { get; set; } = NullLogger.Instance;
 
     private VfsTree(VfsCachePolicy policy)
     {
@@ -109,10 +115,10 @@ public sealed class VfsTree : IVfsOperations
     }
 
     // The child directory called name, made if it is not there. A file standing in its place gives way, keeping its spelling.
-    private VfsNode EnsureDirectory(VfsNode parent, string segment, bool lower)
+    private VfsDirectory EnsureDirectory(VfsDirectory parent, string segment, bool lower)
     {
         var key = new VfsNameKey(segment);
-        if (parent.Children!.TryGetValue(key, out var child) && child.IsDirectory) return child;
+        if (parent.Children.TryGetValue(key, out var child) && child is VfsDirectory existingDirectory) return existingDirectory;
 
         var name = child?.DisplayName ?? segment;
         if (child is not null) Unindex(child);
@@ -131,9 +137,9 @@ public sealed class VfsTree : IVfsOperations
         for (var i = 0; i < segments.Length - 1; i++)
         {
             var key = new VfsNameKey(segments[i]);
-            if (directory.Children!.TryGetValue(key, out var child) && child.IsDirectory)
+            if (directory.Children.TryGetValue(key, out var child) && child is VfsDirectory childDirectory)
             {
-                directory = child;
+                directory = childDirectory;
                 continue;
             }
 
@@ -144,7 +150,7 @@ public sealed class VfsTree : IVfsOperations
         }
 
         var leafKey = new VfsNameKey(segments[^1]);
-        directory.Children!.TryGetValue(leafKey, out var existing);
+        directory.Children.TryGetValue(leafKey, out var existing);
 
         if (source.Kind == VfsSourceKind.Hidden)
         {
@@ -155,12 +161,11 @@ public sealed class VfsTree : IVfsOperations
         }
 
         if (existing is not null) Unindex(existing);
-        var file = new VfsNode
+        var file = new VfsFile
         {
             Ino = _inodes.GetOrAdd(directory.Ino, leafKey),
             ParentIno = directory.Ino,
             DisplayName = existing?.DisplayName ?? segments[^1],
-            IsDirectory = false,
             Source = source,
             Backing = scanned,
             Shadows = source.FromStaging && existing is not null,
@@ -169,14 +174,12 @@ public sealed class VfsTree : IVfsOperations
         _byIno[file.Ino] = file;
     }
 
-    private VfsNode NewDirectory(ulong ino, ulong parent, string name, bool lower) => new()
+    private static VfsDirectory NewDirectory(ulong ino, ulong parent, string name, bool lower) => new()
     {
         Lower = lower,
         Ino = ino,
         ParentIno = parent,
         DisplayName = name,
-        IsDirectory = true,
-        Children = new Dictionary<VfsNameKey, VfsNode>(),
     };
 
     // Drops a replaced or hidden node and everything below it from the inode index; the
@@ -184,8 +187,8 @@ public sealed class VfsTree : IVfsOperations
     private void Unindex(VfsNode node)
     {
         _byIno.Remove(node.Ino);
-        if (node.Children is null) return;
-        foreach (var child in node.Children.Values) Unindex(child);
+        if (node is not VfsDirectory directory) return;
+        foreach (var child in directory.Children.Values) Unindex(child);
     }
 
     private VfsEntry EntryFor(VfsNode node)
@@ -196,23 +199,23 @@ public sealed class VfsTree : IVfsOperations
 
     private VfsAttr AttrFor(VfsNode node)
     {
+        if (node is not VfsFile file)
+        {
+            var subdirectories = (uint)((VfsDirectory)node).Children.Values.Count(c => c is VfsDirectory);
+            return new VfsAttr(node.Ino, DirectoryMode, DirectorySize, _created, _created, 2 + subdirectories);
+        }
+
         // A staged file changes under the tree, so its numbers are read from disk each time.
-        if (!node.IsDirectory && node.Source!.Value is { FromStaging: true, RealPath: { } staged }
+        if (file.Source is { FromStaging: true, RealPath: { } staged }
             && LibcStat.TryStat(staged.ToString(), out var stat) == 0)
             return new VfsAttr(node.Ino, stat.Mode, (ulong)stat.Size, stat.MTime, stat.CTime, 1);
 
-        if (node.Backing is { } scanned)
+        if (file.Backing is { } scanned)
             return new VfsAttr(node.Ino, scanned.Mode, scanned.Size.Value, scanned.MTime, scanned.CTime, 1);
 
-        if (!node.IsDirectory)
-        {
-            var source = node.Source!.Value;
-            var (mtime, ctime) = TimesOf(source);
-            return new VfsAttr(node.Ino, RegularFileMode, source.Size.Value, mtime, ctime, 1);
-        }
-
-        var subdirectories = (uint)node.Children!.Values.Count(c => c.IsDirectory);
-        return new VfsAttr(node.Ino, DirectoryMode, DirectorySize, _created, _created, 2 + subdirectories);
+        var source = file.Source;
+        var (mtime, ctime) = TimesOf(source);
+        return new VfsAttr(node.Ino, RegularFileMode, source.Size.Value, mtime, ctime, 1);
     }
 
     // A staged file's times are the real file's. One with no real file behind it (or one that
@@ -229,11 +232,10 @@ public sealed class VfsTree : IVfsOperations
     {
         lock (_gate)
         {
-            if (!_byIno.TryGetValue(parent, out var directory)) return VfsResult<VfsEntry>.Failure(Errno.ENOENT);
-            if (!directory.IsDirectory) return VfsResult<VfsEntry>.Failure(Errno.ENOTDIR);
+            if (!TryGetDirectory(parent, out var directory, out var directoryError)) return VfsResult<VfsEntry>.Failure(directoryError);
             RecordSpelling(parent, name);
             // A missing name is a negative entry (inode 0), which the kernel may cache for NegativeTtl.
-            return directory.Children!.TryGetValue(new VfsNameKey(name), out var child)
+            return directory.Children.TryGetValue(new VfsNameKey(name), out var child)
                 ? VfsResult<VfsEntry>.Success(EntryFor(child))
                 : VfsResult<VfsEntry>.Success(new VfsEntry(0, default, _policy.NegativeTtl, TimeSpan.Zero));
         }
@@ -260,6 +262,11 @@ public sealed class VfsTree : IVfsOperations
     // Callers hold the lock.
     private void InvalidateInode(ulong ino) => Invalidation?.InvalidateInode(ino);
 
+    internal VfsNode? NodeForTesting(ulong ino)
+    {
+        lock (_gate) return _byIno.GetValueOrDefault(ino);
+    }
+
     // Inode numbers are kept for the life of the tree, so there is no per-lookup count to release.
     public void Forget(ulong ino, ulong lookups) { }
 
@@ -279,11 +286,10 @@ public sealed class VfsTree : IVfsOperations
     {
         lock (_gate)
         {
-            if (!_byIno.TryGetValue(ino, out var directory)) return VfsResult<VfsDirPage>.Failure(Errno.ENOENT);
-            if (!directory.IsDirectory) return VfsResult<VfsDirPage>.Failure(Errno.ENOTDIR);
+            if (!TryGetDirectory(ino, out var directory, out var directoryError)) return VfsResult<VfsDirPage>.Failure(directoryError);
 
             // Offsets are positions in the name-sorted listing, so a page can resume where the last ended.
-            var entries = directory.Children!.Values
+            var entries = directory.Children.Values
                 .OrderBy(c => c.DisplayName, StringComparer.Ordinal)
                 .Select((c, index) => new VfsDirEntry(c.DisplayName, EntryFor(c), (ulong)index + 1))
                 .Skip((int)Math.Min(offset, int.MaxValue))
@@ -298,12 +304,12 @@ public sealed class VfsTree : IVfsOperations
         var writing = (flags & (VfsOpenFlags.Write | VfsOpenFlags.Truncate | VfsOpenFlags.Append)) != 0;
         if (writing && _staging is null) return VfsResult<VfsOpenFile>.Failure(Errno.EROFS);
 
-        VfsNode node;
+        VfsFile node;
         lock (_gate)
         {
             if (!_byIno.TryGetValue(ino, out var found)) return VfsResult<VfsOpenFile>.Failure(Errno.ENOENT);
-            if (found.IsDirectory) return VfsResult<VfsOpenFile>.Failure(Errno.EISDIR);
-            node = found;
+            if (found is not VfsFile file) return VfsResult<VfsOpenFile>.Failure(Errno.EISDIR);
+            node = file;
         }
 
         try
@@ -313,7 +319,7 @@ public sealed class VfsTree : IVfsOperations
                 return VfsResult<VfsOpenFile>.Failure(error);
 
             VfsFileSource source;
-            lock (_gate) source = node.Source!.Value;
+            lock (_gate) source = node.Source;
             if (source.RealPath is not { } realPath) return VfsResult<VfsOpenFile>.Failure(Errno.EIO);
 
             // Only a staged file is ever opened for writing; the backing directory and the loose store are read-only here.
@@ -375,16 +381,16 @@ public sealed class VfsTree : IVfsOperations
 
     public VfsResult<VfsAttr> SetAttr(ulong ino, VfsSetAttr change)
     {
-        VfsNode node;
+        VfsFile node;
         lock (_gate)
         {
             if (!_byIno.TryGetValue(ino, out var found)) return VfsResult<VfsAttr>.Failure(Errno.ENOENT);
-            node = found;
             var nothing = change is { Size: null, MTime: null, Mode: null };
-            if (nothing) return VfsResult<VfsAttr>.Success(AttrFor(node));
+            if (nothing) return VfsResult<VfsAttr>.Success(AttrFor(found));
 
             // Directories have no stored mode or times to change.
-            if (node.IsDirectory) return VfsResult<VfsAttr>.Failure(change.Size is null ? Errno.ENOSYS : Errno.EISDIR);
+            if (found is not VfsFile file) return VfsResult<VfsAttr>.Failure(change.Size is null ? Errno.ENOSYS : Errno.EISDIR);
+            node = file;
         }
 
         if (_staging is null) return VfsResult<VfsAttr>.Failure(Errno.EROFS);
@@ -395,7 +401,8 @@ public sealed class VfsTree : IVfsOperations
 
             lock (_gate)
             {
-                var real = node.Source!.Value.RealPath!.Value.ToString();
+                if (!TryRealPath(node.Source, out var realPath)) return VfsResult<VfsAttr>.Failure(Errno.EIO);
+                var real = realPath.ToString();
                 if (change.Size is { } size)
                 {
                     using var handle = File.OpenHandle(real, FileMode.Open, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
@@ -417,10 +424,9 @@ public sealed class VfsTree : IVfsOperations
 
         lock (_gate)
         {
-            if (!_byIno.TryGetValue(parent, out var directory)) return VfsResult<(VfsEntry, VfsOpenFile)>.Failure(Errno.ENOENT);
-            if (!directory.IsDirectory) return VfsResult<(VfsEntry, VfsOpenFile)>.Failure(Errno.ENOTDIR);
+            if (!TryGetDirectory(parent, out var directory, out var directoryError)) return VfsResult<(VfsEntry, VfsOpenFile)>.Failure(directoryError);
             var key = new VfsNameKey(name);
-            if (directory.Children!.ContainsKey(key)) return VfsResult<(VfsEntry, VfsOpenFile)>.Failure(Errno.EEXIST);
+            if (directory.Children.ContainsKey(key)) return VfsResult<(VfsEntry, VfsOpenFile)>.Failure(Errno.EEXIST);
 
             var relative = PathOf(directory, name);
             var real = _staging.PathFor(relative);
@@ -430,12 +436,11 @@ public sealed class VfsTree : IVfsOperations
                 var handle = File.OpenHandle(real.ToString(), FileMode.CreateNew, FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete);
                 File.SetUnixFileMode(real.ToString(), (UnixFileMode)(mode & 0xFFF));
 
-                var file = new VfsNode
+                var file = new VfsFile
                 {
                     Ino = _inodes.GetOrAdd(directory.Ino, key),
                     ParentIno = directory.Ino,
                     DisplayName = name,
-                    IsDirectory = false,
                     Source = new VfsFileSource(relative, VfsSourceKind.Staged, real, Size.Zero, FileIdentity.None, FromStaging: true),
                 };
                 directory.Children[key] = file;
@@ -457,10 +462,9 @@ public sealed class VfsTree : IVfsOperations
 
         lock (_gate)
         {
-            if (!_byIno.TryGetValue(parent, out var directory)) return VfsResult<VfsEntry>.Failure(Errno.ENOENT);
-            if (!directory.IsDirectory) return VfsResult<VfsEntry>.Failure(Errno.ENOTDIR);
+            if (!TryGetDirectory(parent, out var directory, out var directoryError)) return VfsResult<VfsEntry>.Failure(directoryError);
             var key = new VfsNameKey(name);
-            if (directory.Children!.ContainsKey(key)) return VfsResult<VfsEntry>.Failure(Errno.EEXIST);
+            if (directory.Children.ContainsKey(key)) return VfsResult<VfsEntry>.Failure(Errno.EEXIST);
 
             try { _staging.PathFor(PathOf(directory, name)).CreateDirectory(); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return VfsResult<VfsEntry>.Failure(ErrnoOf(ex)); }
@@ -480,15 +484,18 @@ public sealed class VfsTree : IVfsOperations
         lock (_gate)
         {
             if (!TryGetChild(parent, name, out var directory, out var node, out var error)) return VfsResult.Failure(error);
-            if (node.IsDirectory) return VfsResult.Failure(Errno.EISDIR);
+            if (node is not VfsFile file) return VfsResult.Failure(Errno.EISDIR);
 
-            var source = node.Source!.Value;
+            var source = file.Source;
             var relative = PathOf(node);
+            // Looked up before the whiteout is written, so a broken source leaves nothing half done.
+            AbsolutePath staged = default;
+            if (source.FromStaging && !TryRealPath(source, out staged)) return VfsResult.Failure(Errno.EIO);
             try
             {
                 // The name must stay gone after a remount, so the whiteout is written before anything is deleted.
-                if (!source.FromStaging || node.Shadows) AddWhiteout(relative);
-                if (source.FromStaging) File.Delete(source.RealPath!.Value.ToString());
+                if (!source.FromStaging || file.Shadows) AddWhiteout(_staging, relative);
+                if (source.FromStaging) File.Delete(staged.ToString());
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return VfsResult.Failure(ErrnoOf(ex)); }
 
@@ -505,13 +512,13 @@ public sealed class VfsTree : IVfsOperations
         lock (_gate)
         {
             if (!TryGetChild(parent, name, out var directory, out var node, out var error)) return VfsResult.Failure(error);
-            if (!node.IsDirectory) return VfsResult.Failure(Errno.ENOTDIR);
-            if (node.Children!.Count > 0) return VfsResult.Failure(Errno.ENOTEMPTY);
+            if (node is not VfsDirectory removed) return VfsResult.Failure(Errno.ENOTDIR);
+            if (removed.Children.Count > 0) return VfsResult.Failure(Errno.ENOTEMPTY);
 
             var relative = PathOf(node);
             try
             {
-                if (node.Lower) AddWhiteout(relative);
+                if (removed.Lower) AddWhiteout(_staging, relative);
                 var staged = _staging.PathFor(relative);
                 if (staged.DirectoryExists()) Directory.Delete(staged.ToString());
             }
@@ -530,10 +537,10 @@ public sealed class VfsTree : IVfsOperations
 
         // A file from below staging is copied up under its old name first, which takes the long copy
         // out of the lock; what is left to do is the same plain rename a staged file gets.
-        VfsNode? toCopy = null;
+        VfsFile? toCopy = null;
         lock (_gate)
         {
-            if (TryGetChild(parent, name, out _, out var found, out _) && !found.IsDirectory && !found.Source!.Value.FromStaging) toCopy = found;
+            if (TryGetChild(parent, name, out _, out var found, out _) && found is VfsFile { Source.FromStaging: false } unstaged) toCopy = unstaged;
         }
         if (toCopy is not null)
         {
@@ -544,27 +551,28 @@ public sealed class VfsTree : IVfsOperations
         lock (_gate)
         {
             if (!TryGetChild(parent, name, out var fromDirectory, out var node, out var error)) return VfsResult.Failure(error);
-            if (!_byIno.TryGetValue(newParent, out var toDirectory)) return VfsResult.Failure(Errno.ENOENT);
-            if (!toDirectory.IsDirectory) return VfsResult.Failure(Errno.ENOTDIR);
+            if (!TryGetDirectory(newParent, out var toDirectory, out var toError)) return VfsResult.Failure(toError);
 
             var fromKey = new VfsNameKey(node.DisplayName);
             var toKey = new VfsNameKey(newName);
-            toDirectory.Children!.TryGetValue(toKey, out var target);
+            toDirectory.Children.TryGetValue(toKey, out var target);
             if (target == node) target = null;
 
-            if (node.IsDirectory)
+            var movedDirectory = node as VfsDirectory;
+            var movedFile = node as VfsFile;
+            if (movedDirectory is not null)
             {
                 // Files below staging cannot move between directories in place and the error that tells a tool to copy instead is EXDEV.
-                if (!IsStagedOnly(node)) return VfsResult.Failure(Errno.EXDEV);
-                for (var up = toDirectory; ; up = _byIno[up.ParentIno])
+                if (!IsStagedOnly(movedDirectory)) return VfsResult.Failure(Errno.EXDEV);
+                for (VfsNode up = toDirectory; ; up = _byIno[up.ParentIno])
                 {
                     if (up == node) return VfsResult.Failure(Errno.EINVAL);
                     if (up.Ino == IVfsOperations.RootInode) break;
                 }
-                if (target is not null && !target.IsDirectory) return VfsResult.Failure(Errno.ENOTDIR);
-                if (target is not null && target.Children!.Count > 0) return VfsResult.Failure(Errno.ENOTEMPTY);
+                if (target is VfsFile) return VfsResult.Failure(Errno.ENOTDIR);
+                if (target is VfsDirectory { Children.Count: > 0 }) return VfsResult.Failure(Errno.ENOTEMPTY);
             }
-            else if (target is { IsDirectory: true })
+            else if (target is VfsDirectory)
             {
                 return VfsResult.Failure(Errno.EISDIR);
             }
@@ -577,18 +585,31 @@ public sealed class VfsTree : IVfsOperations
             // path, which is not where it is when staging spells a parent differently from the tree
             // (staged data/ under a backing Data/); moving it in place would leave its files behind,
             // so that is refused like a directory with files from below.
-            var from = node.IsDirectory ? _staging.PathFor(oldPath) : node.Source!.Value.RealPath!.Value;
-            if (node.IsDirectory && !from.DirectoryExists()) return VfsResult.Failure(Errno.EXDEV);
+            AbsolutePath from;
+            if (movedFile is null)
+            {
+                from = _staging.PathFor(oldPath);
+                if (!from.DirectoryExists()) return VfsResult.Failure(Errno.EXDEV);
+            }
+            else if (!TryRealPath(movedFile.Source, out from))
+            {
+                return VfsResult.Failure(Errno.EIO);
+            }
             var to = _staging.PathFor(newPath);
-            var needsWhiteout = !node.IsDirectory && node.Shadows;
-            var shadowsAfter = target is not null && (target.IsDirectory || !target.Source!.Value.FromStaging || target.Shadows);
+            var needsWhiteout = movedFile is { Shadows: true };
+            var shadowsAfter = target switch
+            {
+                null => false,
+                VfsFile file => !file.Source.FromStaging || file.Shadows,
+                _ => true,
+            };
             try
             {
                 // Written first, as Unlink does: staged files go over whiteouts when the tree is rebuilt,
                 // so if the move then fails the old name still shows its staged copy.
-                if (needsWhiteout) AddWhiteout(oldPath);
+                if (needsWhiteout) AddWhiteout(_staging, oldPath);
                 to.Parent.CreateDirectory();
-                if (node.IsDirectory)
+                if (movedFile is null)
                 {
                     if (to.DirectoryExists()) Directory.Delete(to.ToString());
                     Directory.Move(from.ToString(), to.ToString());
@@ -605,20 +626,20 @@ public sealed class VfsTree : IVfsOperations
                 Unindex(target);
                 toDirectory.Children.Remove(toKey);
                 // The emptied lower directory is still there underneath, so removing this one later must whiteout it.
-                if (target.IsDirectory) node.Lower = target.Lower;
+                if (target is VfsDirectory) node.Lower = target.Lower;
             }
-            fromDirectory.Children!.Remove(fromKey);
+            fromDirectory.Children.Remove(fromKey);
             var moved = _inodes.Move(fromDirectory.Ino, fromKey, toDirectory.Ino, toKey);
             Debug.Assert(moved, "Every node in the tree has an inode number under its parent and name.");
             node.ParentIno = toDirectory.Ino;
             node.DisplayName = newName;
             toDirectory.Children[toKey] = node;
 
-            if (node.IsDirectory) Relocate(node);
-            else
+            if (movedDirectory is not null) Relocate(movedDirectory, _staging);
+            if (movedFile is not null)
             {
-                node.Shadows = shadowsAfter;
-                node.Source = node.Source!.Value with { Path = newPath, RealPath = to };
+                movedFile.Shadows = shadowsAfter;
+                movedFile.Source = movedFile.Source with { Path = newPath, RealPath = to };
             }
             InvalidateName(fromDirectory.Ino, name);
             InvalidateName(toDirectory.Ino, newName);
@@ -629,20 +650,44 @@ public sealed class VfsTree : IVfsOperations
     private static bool IsValidName(string name) => name.Length > 0 && name is not ("." or "..") && !name.Contains('/') && !name.Contains('\0');
 
     // Callers hold the lock.
-    private bool TryGetChild(ulong parent, string name, out VfsNode directory, out VfsNode node, out Errno error)
+    private bool TryGetChild(ulong parent, string name, [MaybeNullWhen(false)] out VfsDirectory directory, [MaybeNullWhen(false)] out VfsNode node, out Errno error)
     {
-        node = null!;
-        if (!_byIno.TryGetValue(parent, out directory!)) { error = Errno.ENOENT; return false; }
-        if (!directory.IsDirectory) { error = Errno.ENOTDIR; return false; }
-        if (!directory.Children!.TryGetValue(new VfsNameKey(name), out var child)) { error = Errno.ENOENT; return false; }
-        node = child;
+        node = default;
+        if (!TryGetDirectory(parent, out directory, out error)) return false;
+        if (!directory.Children.TryGetValue(new VfsNameKey(name), out node)) { error = Errno.ENOENT; return false; }
         error = default;
         return true;
     }
 
-    private void Detach(VfsNode directory, VfsNode node)
+    // Callers hold the lock. ENOENT when nothing has this inode, ENOTDIR when it is a file.
+    private bool TryGetDirectory(ulong ino, [MaybeNullWhen(false)] out VfsDirectory directory, out Errno error)
     {
-        directory.Children!.Remove(new VfsNameKey(node.DisplayName));
+        directory = default;
+        error = default;
+        if (!_byIno.TryGetValue(ino, out var node)) { error = Errno.ENOENT; return false; }
+        if (node is not VfsDirectory found) { error = Errno.ENOTDIR; return false; }
+        directory = found;
+        return true;
+    }
+
+    // A staged or copied file gets its real path when the source is made, so a missing one is a
+    // broken tree. Operations never throw, so the caller answers EIO.
+    private bool TryRealPath(in VfsFileSource source, out AbsolutePath real)
+    {
+        if (source.RealPath is { } found)
+        {
+            real = found;
+            return true;
+        }
+
+        Logger.LogTrace("Source for {Path} ({Kind}) has no real path", source.Path, source.Kind);
+        real = default;
+        return false;
+    }
+
+    private void Detach(VfsDirectory directory, VfsNode node)
+    {
+        directory.Children.Remove(new VfsNameKey(node.DisplayName));
         Unindex(node);
     }
 
@@ -661,31 +706,41 @@ public sealed class VfsTree : IVfsOperations
     }
 
     // A directory can be moved by renaming its staging directory only when everything under it lives there.
-    private static bool IsStagedOnly(VfsNode directory)
+    private static bool IsStagedOnly(VfsDirectory directory)
     {
         if (directory.Lower) return false;
-        return directory.Children!.Values.All(child => child.IsDirectory
-            ? IsStagedOnly(child)
-            : child.Source!.Value.FromStaging && !child.Shadows);
+        return directory.Children.Values.All(child => child switch
+        {
+            VfsDirectory subdirectory => IsStagedOnly(subdirectory),
+            VfsFile file => file.Source.FromStaging && !file.Shadows,
+            _ => false,
+        });
     }
 
     // After a directory moved, the files below it are somewhere else on disk.
-    private void Relocate(VfsNode directory)
+    private void Relocate(VfsDirectory directory, StagingDirectory staging)
     {
-        foreach (var child in directory.Children!.Values)
+        foreach (var child in directory.Children.Values)
         {
-            if (child.IsDirectory) { Relocate(child); continue; }
-            var path = PathOf(child);
-            child.Source = child.Source!.Value with { Path = path, RealPath = _staging!.PathFor(path) };
+            switch (child)
+            {
+                case VfsDirectory subdirectory:
+                    Relocate(subdirectory, staging);
+                    break;
+                case VfsFile file:
+                    var path = PathOf(file);
+                    file.Source = file.Source with { Path = path, RealPath = staging.PathFor(path) };
+                    break;
+            }
         }
     }
 
     // Callers hold the lock.
-    private void AddWhiteout(RelativePath path)
+    private void AddWhiteout(StagingDirectory staging, RelativePath path)
     {
         if (_whiteouts.ContainsKey(path.ToString())) return;
         _whiteouts[path.ToString()] = path;
-        try { _staging!.WriteWhiteouts(_whiteouts.Values); }
+        try { staging.WriteWhiteouts(_whiteouts.Values); }
         catch
         {
             _whiteouts.Remove(path.ToString());
@@ -696,7 +751,7 @@ public sealed class VfsTree : IVfsOperations
     // Puts the file's bytes under the staging directory, unless they already are, so a write has
     // somewhere to land that is not the backing directory or the loose store. Returns the error to
     // report, or null once the node's source is a staging file.
-    private Errno? EnsureStaged(VfsNode node, bool copyContents)
+    private Errno? EnsureStaged(VfsFile node, bool copyContents)
     {
         if (_staging is null) return Errno.EROFS;
 
@@ -707,7 +762,7 @@ public sealed class VfsTree : IVfsOperations
             lock (_gate)
             {
                 if (!_byIno.TryGetValue(node.Ino, out var live) || live != node) return Errno.ENOENT;
-                source = node.Source!.Value;
+                source = node.Source;
                 if (source.FromStaging) return null;
                 if (source.RealPath is null) return Errno.EIO;
                 destination = _staging.PathFor(PathOf(node));
