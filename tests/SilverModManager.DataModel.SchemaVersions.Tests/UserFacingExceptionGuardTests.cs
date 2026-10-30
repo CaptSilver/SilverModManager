@@ -75,6 +75,7 @@ public class UserFacingExceptionGuardTests
         ["SilverModManager.Networking.Steam.Exceptions.FailedToGetRequestCode"] = "Caught by the Steam verbs, which word the failure.",
         ["SilverModManager.Networking.Thunderstore.ThunderstoreBlobIntegrityException"] = "A blob whose bytes do not match its content-addressed URL; the index cache catches it and refetches.",
         ["SilverModManager.ProxyConsole.Exceptions.UnexpectedMessageException"] = "A protocol violation between the proxy console and its host; a bug.",
+        ["SilverModManager.Networking.HttpDownloader.BodyStoppedException"] = "Internal to the download job; its resume loop either asks again or throws the plain reason it carries.",
         ["SilverModManager.Secrets.SecretService.SecretServiceException"] = "Internal to the secret-service client; its store turns it into an unavailable result.",
         ["SilverModManager.Secrets.SecretService.SecretServiceStore+UnavailableException"] = "Internal to the secret-service client; its store turns it into an unavailable result.",
         ["SilverModManager.SingleProcess.Exceptions.HeadlessMainRunning"] = "Startup catches it to decide whether to start a main process; it never reaches a dialog.",

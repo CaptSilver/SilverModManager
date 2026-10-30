@@ -74,7 +74,13 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
     public int MaxIdleRetries { get; init; } = 3;
 
     /// <summary>
-    /// The clock the idle limit runs on.
+    /// The wait before the first new request after the connection dropped mid-body. It doubles for each further attempt
+    /// that brings no new bytes. A silent connection is asked again at once, since the idle limit was already the wait.
+    /// </summary>
+    public TimeSpan RetryDelay { get; init; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// The clock the idle limit and the retry wait run on.
     /// </summary>
     public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
 
@@ -111,9 +117,10 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
     /// <inheritdoc/>
     public async ValueTask<AbsolutePath> StartAsync(IJobContext<HttpDownloadJob> context)
     {
-        // A stalled connection fails the attempt like any dropped one, but asking again straight away is enough:
-        // the wait was already the idle limit. Only stalls that bring no new bytes count towards giving up.
-        var stallsWithoutProgress = 0;
+        // The body can stop two ways: the connection goes silent, or it is cut (EOF, reset). Both end the attempt with
+        // a BodyStoppedException, and the answer is the same: ask again for the rest. Only stops that bring no new
+        // bytes count towards giving up, so a long download over a flaky link still finishes.
+        var stopsWithoutProgress = 0;
         while (true)
         {
             var before = _state.TotalBytesDownloaded;
@@ -129,13 +136,29 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
                     cancellationToken: context.CancellationToken
                 );
             }
-            catch (DownloadStalledException) when (!context.JobCancellationToken.IsPaused && !context.JobCancellationToken.IsCancelled)
+            catch (BodyStoppedException stopped) when (!context.JobCancellationToken.IsPaused && !context.JobCancellationToken.IsCancelled)
             {
-                if (_state.TotalBytesDownloaded > before) stallsWithoutProgress = 0;
-                if (++stallsWithoutProgress > MaxIdleRetries) throw;
+                if (_state.TotalBytesDownloaded > before) stopsWithoutProgress = 0;
+                if (++stopsWithoutProgress > MaxIdleRetries) throw stopped.Reason;
+                // A silent connection already waited out the idle limit.
+                if (!stopped.WasSilent)
+                    await Task.Delay(ResumeDelay(RetryDelay, stopsWithoutProgress), TimeProvider, context.CancellationToken);
             }
         }
     }
+
+    /// <summary>
+    /// The wait before asking again: <paramref name="baseDelay"/> for the first attempt without progress, doubling
+    /// for each one after, never more than 30 seconds.
+    /// </summary>
+    internal static TimeSpan ResumeDelay(TimeSpan baseDelay, int attemptsWithoutProgress)
+    {
+        var doublings = Math.Clamp(attemptsWithoutProgress - 1, 0, 20);
+        var delay = baseDelay * Math.Pow(2, doublings);
+        return delay > MaxResumeDelay ? MaxResumeDelay : delay;
+    }
+
+    private static readonly TimeSpan MaxResumeDelay = TimeSpan.FromSeconds(30);
 
     private async ValueTask<AbsolutePath> StartAsyncImpl(IJobContext<HttpDownloadJob> context)
     {
@@ -238,7 +261,7 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
         {
             throw;
         }
-        catch (DownloadStalledException)
+        catch (BodyStoppedException)
         {
             // Already logged where it was raised, and the caller asks again.
             throw;
@@ -264,24 +287,44 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
     
     /// <summary>
     /// Copies the body in 1 MB blocks, each read bounded by <see cref="IdleTimeout"/>. A plain CopyToAsync waits on a
-    /// connection that has died without a reset for as long as the process lives.
+    /// connection that has died without a reset for as long as the process lives. A body that goes silent or is cut
+    /// ends the attempt with a <see cref="BodyStoppedException"/> so the caller can ask for the rest.
     /// </summary>
     private async Task CopyBody(HttpResponseMessage response, Stream destination, CancellationToken token)
     {
         await using var body = await response.Content.ReadAsStreamAsync(token);
         var buffer = GC.AllocateUninitializedArray<byte>(HashingLimits.ReadBlockSize);
-        try
+        while (true)
         {
             int read;
-            while ((read = await IdleReads.ReadAsync(body, buffer, Uri.Authority, IdleTimeout, TimeProvider, token)) > 0)
-                await destination.WriteAsync(buffer.AsMemory(0, read), token);
-        }
-        catch (DownloadStalledException)
-        {
-            Logger.LogWarning("`{Host}` sent no data for {Idle}, downloaded `{DownloadedBytes}` from `{TotalBytes}` bytes", Uri.Authority, IdleTimeout, destination.Position, destination.Length);
-            throw;
+            try
+            {
+                read = await IdleReads.ReadAsync(body, buffer, Uri.Authority, IdleTimeout, TimeProvider, token);
+            }
+            catch (DownloadStalledException stalled)
+            {
+                Logger.LogWarning("`{Host}` sent no data for {Idle}, downloaded `{DownloadedBytes}` from `{TotalBytes}` bytes", Uri.Authority, IdleTimeout, destination.Position, destination.Length);
+                throw new BodyStoppedException(stalled, wasSilent: true);
+            }
+            catch (Exception e) when (!token.IsCancellationRequested && IsConnectionDrop(e))
+            {
+                Logger.LogWarning(e, "`{Host}` cut the connection, downloaded `{DownloadedBytes}` from `{TotalBytes}` bytes", Uri.Authority, destination.Position, destination.Length);
+                var total = _state.ContentLength.HasValue ? _state.ContentLength.Value : Optional<Size>.None;
+                throw new BodyStoppedException(new ConnectionDroppedException(Uri.Authority, Size.FromLong(destination.Position), total, e), wasSilent: false);
+            }
+
+            if (read == 0) return;
+            await destination.WriteAsync(buffer.AsMemory(0, read), token);
         }
     }
+
+    /// <summary>
+    /// What a connection cut in the middle of a body looks like to the reader: an unexpected EOF, a reset, a response
+    /// that ended before its Content-Length. Writing to the disk is not part of this check, it only covers the read.
+    /// </summary>
+    internal static bool IsConnectionDrop(Exception exception)
+        => exception is IOException or SocketException
+           || exception is HttpRequestException { InnerException: IOException or SocketException };
 
     /// <summary>
     /// HttpClient reports its own timeout as a cancellation, and a connect timeout as a plain network error. Left alone
@@ -417,6 +460,46 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
             .Build();
 
         return pipeline;
+    }
+}
+
+/// <summary>
+/// One attempt at the body ended before the file did, either because the connection went silent or because it was cut.
+/// Never leaves the job: <see cref="Reason"/> is what the user sees if asking again keeps failing.
+/// </summary>
+internal sealed class BodyStoppedException(UserFacingException reason, bool wasSilent) : Exception(reason.Message, reason)
+{
+    public UserFacingException Reason { get; } = reason;
+
+    public bool WasSilent { get; } = wasSilent;
+}
+
+/// <summary>
+/// The connection to a download host kept breaking in the middle of the body and asking again got no further.
+/// </summary>
+public class ConnectionDroppedException(string host, Size downloaded, Optional<Size> total, Exception inner)
+    : UserFacingException(Describe(host, downloaded, total), inner)
+{
+    public override string Title => "The download connection dropped";
+
+    /// <summary>The host (and port, when not the default) whose connection kept dropping.</summary>
+    public string Host { get; } = host;
+
+    private static string Describe(string host, Size downloaded, Optional<Size> total)
+        => total.HasValue
+            ? $"{host} kept dropping the connection; downloaded {Format(downloaded)} of {Format(total.Value)}"
+            : $"{host} kept dropping the connection; downloaded {Format(downloaded)}";
+
+    private static string Format(Size size)
+    {
+        var bytes = (double)size.Value;
+        return bytes switch
+        {
+            >= 1_000_000_000 => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{bytes / 1_000_000_000:0.##} GB"),
+            >= 1_000_000 => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{bytes / 1_000_000:0.##} MB"),
+            >= 1_000 => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{bytes / 1_000:0.##} KB"),
+            _ => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{bytes:0} B"),
+        };
     }
 }
 
