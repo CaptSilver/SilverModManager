@@ -6,7 +6,10 @@ using Avalonia.VisualTree;
 using FluentAssertions;
 using ReactiveUI;
 using SilverModManager.App.UI.Pages.Wabbajack;
+using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
 
 namespace SilverModManager.UI.Tests.Pages;
 
@@ -18,6 +21,17 @@ public partial class WabbajackModlistViewModelTests
 
     private static ArchivePlan WithState(ArchivePlan plan, int index, ArchiveState state, string? reason = null)
         => plan with { Rows = plan.Rows.Select((row, i) => i == index ? row with { State = state, Reason = reason } : row).ToArray() };
+
+    [Fact]
+    public void AForumRow_NamesItsSiteTheWayTheReasonDoes()
+    {
+        var hash = FileIdentity.XxHash64(Hash.From(1UL));
+        var url = new Uri("https://example.com/a");
+        ArchivePlanRow PlanFor(DownloadState state) => new(new ArchiveEntry(hash, 1, "a.7z", "", state), ArchiveState.Manual, null, url, null);
+
+        new WabbajackArchiveRow(PlanFor(new LoversLabState(url, "a.7z", 1, false))).Source.Should().Be("LoversLab");
+        new WabbajackArchiveRow(PlanFor(new VectorPlexusState(url, "a.7z", 1, false))).Source.Should().Be("VectorPlexus");
+    }
 
     [Fact]
     public async Task OneArchiveChanging_UpdatesThatRowInPlace_AndLeavesTheRestAlone()

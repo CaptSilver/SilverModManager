@@ -313,8 +313,8 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         var cases = new (DownloadState State, string? Reason)[]
         {
             (new ManualState(url, "Click the big button"), "Click the big button"),
-            (new LoversLabState(url, "a.7z", 1, false), "needs your LoversLab login; download it in your browser"),
-            (new VectorPlexusState(url, "a.7z", 1, false), "needs your VectorPlexus login; download it in your browser"),
+            (new LoversLabState(url, "a.7z", 1, false), "Download 'a.7z' from the LoversLab page"),
+            (new VectorPlexusState(url, "a.7z", 1, false), "Download 'a.7z' from the VectorPlexus page"),
         };
 
         foreach (var (state, reason) in cases)
@@ -324,6 +324,27 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
             row.Page.Should().Be(url, state.GetType().Name);
             row.Reason.Should().Be(reason, state.GetType().Name);
         }
+    }
+
+    [Theory]
+    [InlineData("LoversLab", true, null, "A forum attachment; download it from the page")]
+    [InlineData("LoversLab", false, "x.7z", "Download 'x.7z' from the LoversLab page")]
+    [InlineData("LoversLab", false, null, "Download the file from the LoversLab page")]
+    [InlineData("VectorPlexus", true, null, "A forum attachment; download it from the page")]
+    [InlineData("VectorPlexus", false, "x.7z", "Download 'x.7z' from the VectorPlexus page")]
+    [InlineData("VectorPlexus", false, null, "Download the file from the VectorPlexus page")]
+    public async Task AForumRowSaysWhichFileToFetchFromThePage(string site, bool attachment, string? fileName, string reason)
+    {
+        var url = new Uri("https://example.invalid/file");
+        DownloadState state = site == "LoversLab"
+            ? new LoversLabState(url, fileName, 1, attachment)
+            : new VectorPlexusState(url, fileName, 1, attachment);
+
+        var row = await RowFor(Entry(state));
+
+        row.State.Should().Be(ArchiveState.Manual);
+        row.Reason.Should().Be(reason);
+        row.Page.Should().Be(url);
     }
 
     [Fact]

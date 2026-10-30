@@ -184,12 +184,18 @@ public sealed class ArchiveInventory(
             ManualState manual => Row(archive, ArchiveState.Manual, manual.Prompt, manual.Url),
             MegaState mega when !MegaLink.TryParse(mega.Url, out _) => Row(archive, ArchiveState.Manual, "the MEGA link is not a file link this app can read; download it in your browser", mega.Url),
             MegaState or GoogleDriveState or MediaFireState or ModDbState => Row(archive, ArchiveState.Automatic),
-            LoversLabState loversLab => Row(archive, ArchiveState.Manual, "needs your LoversLab login; download it in your browser", loversLab.Url),
-            VectorPlexusState vectorPlexus => Row(archive, ArchiveState.Manual, "needs your VectorPlexus login; download it in your browser", vectorPlexus.Url),
+            LoversLabState loversLab => Row(archive, ArchiveState.Manual, ForumReason("LoversLab", loversLab.IsAttachment, loversLab.FileName), loversLab.Url),
+            VectorPlexusState vectorPlexus => Row(archive, ArchiveState.Manual, ForumReason("VectorPlexus", vectorPlexus.IsAttachment, vectorPlexus.FileName), vectorPlexus.Url),
             UnsupportedState unsupported => Row(archive, ArchiveState.Unsupported, $"the list uses a source this app cannot download from ({unsupported.TypeName})", Uri.TryCreate(unsupported.Url, UriKind.Absolute, out var url) ? url : null),
             _ => Row(archive, ArchiveState.Unsupported, $"the list uses a source this app does not know ({archive.State.GetType().Name})"),
         };
     }
+
+    /// <summary>What to do on a forum row the app cannot fetch: name the file the list expects when it says which.</summary>
+    private static string ForumReason(string site, bool isAttachment, string? fileName) =>
+        isAttachment ? "A forum attachment; download it from the page"
+        : string.IsNullOrEmpty(fileName) ? $"Download the file from the {site} page"
+        : $"Download '{fileName}' from the {site} page";
 
     private static ArchivePlanRow Row(ArchiveEntry archive, ArchiveState state, string? reason = null, Uri? page = null)
         => new(archive, state, reason, page, null);

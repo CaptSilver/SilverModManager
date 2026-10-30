@@ -31,7 +31,7 @@ public sealed class WabbajackArchiveRow(ArchivePlanRow plan) : ReactiveObject
         GoogleDriveState => "Google Drive",
         MediaFireState => "MediaFire",
         ModDbState => "ModDB",
-        LoversLabState => "Lovers Lab",
+        LoversLabState => "LoversLab",
         VectorPlexusState => "VectorPlexus",
         UnsupportedState unsupported => unsupported.TypeName,
         var other => other.GetType().Name,
