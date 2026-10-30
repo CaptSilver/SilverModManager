@@ -103,8 +103,14 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         public List<SilverModManager.Sdk.Loadouts.LoadoutId> InstalledInto { get; } = [];
         public IReadOnlyList<UnmatchedInbox> Unmatched { get; set; } = [];
 
+        /// <summary>Whether the list was read on the UI thread, where parsing a big one would freeze the page.</summary>
+        public bool? OpenedOnUiThread { get; private set; }
+
         public Task<WabbajackModlistDetails> Open(LibraryFileId file, CancellationToken cancellationToken)
-            => Task.FromResult(new WabbajackModlistDetails("Test list", "Someone", "1.2.3", "SkyrimSpecialEdition", game, 2, Size.GB * 5, Size.GB * 9, Banner: null));
+        {
+            OpenedOnUiThread = Avalonia.Threading.Dispatcher.UIThread.CheckAccess();
+            return Task.FromResult(new WabbajackModlistDetails("Test list", "Someone", "1.2.3", "SkyrimSpecialEdition", game, 2, Size.GB * 5, Size.GB * 9, Banner: null));
+        }
 
         /// <summary>When set, the next plan waits for it, like a list whose game files take a while to hash.</summary>
         public TaskCompletionSource? PlanGate { get; set; }

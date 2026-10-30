@@ -73,6 +73,16 @@ public partial class WabbajackModlistViewModelTests
     }
 
     [Fact]
+    public async Task TheFirstLoadReadsTheListOffTheUiThread()
+    {
+        var (vm, service, _) = await Open(Plan(Row(ArchiveState.Have)), load: false);
+
+        await Dispatcher.UIThread.InvokeAsync(() => vm.LoadAsync(CancellationToken.None));
+
+        service.OpenedOnUiThread.Should().BeFalse("parsing a big list on the UI thread freezes the window before any progress shows");
+    }
+
+    [Fact]
     public async Task APickThatIsReplacedWhileItsCheckRuns_NeverOverwritesTheNewerPick()
     {
         var (vm, service, acquirer) = await Open(Plan(Row(ArchiveState.Manual, "old.7z")), game: GameId.From("CreationEngine.NoSuchGame"), load: false);

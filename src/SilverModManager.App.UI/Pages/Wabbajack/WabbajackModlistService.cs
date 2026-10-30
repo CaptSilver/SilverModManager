@@ -127,6 +127,8 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
 
     public async Task<IReadOnlyList<RelativePath>> GameFilesReplaced(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)
     {
+        // Unifying the paths and finding the roots below takes a while on a big list; say so instead of leaving the hashing line up.
+        progress?.Report(new PlanProgress(PlanPhase.CheckingGameFolder));
         var list = await ReadList(file, cancellationToken);
         var installation = target is { } loadoutId ? Loadout.Load(_connection.Db, loadoutId).InstallationInstance : InstallationFor(file);
         if (installation.Game is not IMo2InstanceTarget mo2) return [];

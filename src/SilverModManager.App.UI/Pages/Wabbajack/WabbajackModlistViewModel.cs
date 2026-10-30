@@ -199,7 +199,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         {
             await Guarded(async token =>
             {
-                _details = await _service.Open(FileId, token);
+                // Parsing the list and decoding its banner take seconds for a big list; on the UI thread the bar could not move.
+                _details = await Task.Run(() => _service.Open(FileId, token), token);
                 Name = _details.Name;
                 Author = _details.Author;
                 Version = _details.Version;
@@ -256,7 +257,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             var replaced = await OffUi(progress => _service.GameFilesReplaced(FileId, choice.Id, progress, token), token);
             if (token.IsCancellationRequested)
             {
-                _logger?.LogInformation("Check of modlist '{List}' dropped: another loadout was picked", Name);
+                _logger?.LogInformation(
+                    "Check of modlist '{List}' dropped: {Reason}", Name,
+                    cancellationToken.IsCancellationRequested ? "the page was closed" : "another loadout was picked");
                 return;
             }
 
