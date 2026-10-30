@@ -23,6 +23,14 @@ public class Backend : IStoreBackend
     private Env? _env;
     private IntPtr _sliceTransform;
     private volatile bool _disposed;
+    private DbOptions? _options;
+    private BlockBasedTableOptions? _tableOptions;
+
+    /// <summary>
+    /// The options the database was opened with. The backend keeps them until the database is closed, so the managed
+    /// wrappers never free the native options while RocksDB's own threads may still read them.
+    /// </summary>
+    internal DbOptions? Options => _options;
 
     /// <summary>
     /// Native calls in progress. DuckDB scans run on pool threads and read through iterators, and the native
@@ -113,7 +121,7 @@ public class Backend : IStoreBackend
         else
             _env = Env.CreateDefaultEnv();
         
-        var options = new DbOptions()
+        var options = _options = new DbOptions()
             .SetCreateIfMissing()
             .SetCreateMissingColumnFamilies()
             .SetCompression(Compression.Zstd)
@@ -121,12 +129,17 @@ public class Backend : IStoreBackend
             .SetPrefixExtractor(_sliceTransform)
             .SetEnv(_env.Handle);
 
-        var tableOptions = new BlockBasedTableOptions()
+        var tableOptions = _tableOptions = new BlockBasedTableOptions()
             .SetFilterPolicy(BloomFilterPolicy.Create(10,true));
 
         options.SetBlockBasedTableFactory(tableOptions);
         
         Native.Instance.rocksdb_options_set_bottommost_compression(options.Handle, (int)Compression.Zstd);
+
+        // Nothing reads the statistics dumps in the info log or the persisted stats column family. Left on, a timer
+        // thread inside RocksDB wakes up every few minutes to produce them for as long as the database is open.
+        Native.Instance.rocksdb_options_set_stats_dump_period_sec(options.Handle, 0);
+        Native.Instance.rocksdb_options_set_stats_persist_period_sec(options.Handle, 0);
 
         var nativePath = settings.Path?.ToString() ?? "/dev/in-memory";
         

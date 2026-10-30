@@ -97,6 +97,21 @@ public class BackendDisposeTests
         }
     }
 
+    // Nothing reads RocksDB's periodic statistics dumps, and the timer thread that writes them is one more native
+    // thread running inside the database while it closes.
+    [Fact]
+    public async Task TheDatabaseDoesNotDumpStatisticsOnATimer()
+    {
+        await using var provider = BuildProvider();
+        provider.GetRequiredService<IConnection>(); // opens the database
+        var backend = (RocksDbBackend)provider.GetRequiredService<IStoreBackend>();
+
+        var options = backend.Options;
+        options.Should().NotBeNull();
+        Native.Instance.rocksdb_options_get_stats_dump_period_sec(options!.Handle).Should().Be(0);
+        Native.Instance.rocksdb_options_get_stats_persist_period_sec(options.Handle).Should().Be(0);
+    }
+
     [Fact]
     public async Task ANativeCallAfterDisposeIsRefused()
     {
