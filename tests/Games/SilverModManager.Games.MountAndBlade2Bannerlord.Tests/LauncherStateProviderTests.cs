@@ -21,6 +21,6 @@ public class LauncherStateProviderTests(LauncherManagerFactory factory)
         var act = () => provider.GetState();
 
         act.Should().Throw<NotSupportedException>()
-            .WithMessage($"*{nameof(ILauncherStateProvider.GetState)}*");
+            .WithMessage($"*{nameof(ILauncherStateProvider.GetState)}*does not order load orders*");
     }
 }
