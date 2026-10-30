@@ -107,19 +107,27 @@ public sealed class UiThreadMonitor : IDisposable
             var stalled = TimeSpan.FromMilliseconds(Environment.TickCount64 - Interlocked.Read(ref _lastBeatTicks));
             if (stalled >= _stallLimit)
             {
+                string? report = null;
                 lock (_gate)
                 {
-                    var running = _running.Count == 0 ? "no test" : string.Join(", ", _running);
-                    _stuckMessage =
-                        $"The UI thread has not run a job for {stalled.TotalSeconds:F0} s while {running} was running; " +
-                        $"the last thing it was asked to do was: {_lastOperation}. It is spinning, most likely in a render tick " +
-                        "that keeps finding another frame to draw (an endless animation such as an indeterminate ProgressBar is the " +
-                        "usual cause). Every UI test after this one fails at once.";
+                    if (_stuckMessage is null)
+                    {
+                        var running = _running.Count == 0 ? "no test" : string.Join(", ", _running);
+                        _stuckMessage = report =
+                            $"The UI thread has not run a job for {stalled.TotalSeconds:F0} s while {running} was running; " +
+                            $"the last thing it was asked to do was: {_lastOperation}. It is spinning, most likely in a render tick " +
+                            "that keeps finding another frame to draw (an endless animation such as an indeterminate ProgressBar is the " +
+                            "usual cause). Every UI test that starts while it is stuck fails at once.";
+                    }
                 }
 
-                // The failing test shows only that it timed out; this line says why.
-                Console.Error.WriteLine(StuckMessage);
-                return;
+                // The failing test shows only that it timed out; this line says why. Once per stall.
+                if (report is not null) Console.Error.WriteLine(report);
+            }
+            else
+            {
+                // A thread that was only slow and runs jobs again is not stuck: later tests must run.
+                lock (_gate) _stuckMessage = null;
             }
 
             _stop.Token.WaitHandle.WaitOne(_interval);

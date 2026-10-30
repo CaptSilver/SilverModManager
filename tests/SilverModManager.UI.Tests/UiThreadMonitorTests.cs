@@ -85,6 +85,28 @@ public class UiThreadMonitorTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Fact]
+    public async Task AUiThreadThatStalledAndThenRecovered_NoLongerFailsLaterTests()
+    {
+        using var monitor = new UiThreadMonitor(stallLimit: TimeSpan.FromSeconds(1), interval: TimeSpan.FromMilliseconds(100));
+        await Dispatcher.UIThread.InvokeAsync(() => { });
+
+        var release = SpinUiThread(out var finished);
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        while (monitor.StuckMessage is null && DateTime.UtcNow < deadline) await Task.Delay(50);
+        monitor.StuckMessage.Should().NotBeNull("the stall itself is still reported");
+
+        release.Set();
+        await finished;
+
+        deadline = DateTime.UtcNow.AddSeconds(15);
+        while (monitor.StuckMessage is not null && DateTime.UtcNow < deadline) await Task.Delay(50);
+
+        monitor.StuckMessage.Should().BeNull("the thread runs jobs again, so it is not spinning any more");
+        var act = () => monitor.TestStarted("Later.Test");
+        act.Should().NotThrow();
+    }
+
+    [Fact]
     public void EveryFactAndTheoryInThisProject_CarriesATimeout()
     {
         var fact = typeof(UiThreadMonitorTests).GetMethod(nameof(EveryFactAndTheoryInThisProject_CarriesATimeout))!.GetCustomAttribute<Xunit.FactAttribute>();
