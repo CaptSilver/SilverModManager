@@ -155,6 +155,56 @@ public sealed class StoreUpdateReactionTests : IDisposable
     }
 
     [Fact]
+    public async Task Check_TheStoreStaysBusy_SaysSoOnce()
+    {
+        StoreSays(Result("new", "build-2", inProgress: true));
+
+        for (var i = 0; i < 5; i++) await _reaction.Check(Installation("old", "build-1"), TestContext.Current.CancellationToken);
+
+        _log.Messages.Should().ContainSingle().Which.Should().Contain("is being updated by Steam");
+    }
+
+    [Fact]
+    public async Task Check_AnotherUpdateStartsAfterTheFirstSettled_SaysSoAgain()
+    {
+        var installation = Installation("old", "build-1");
+        StoreSays(Result("new", "build-2", inProgress: true));
+        await _reaction.Check(installation, TestContext.Current.CancellationToken);
+        StoreSays(Result("new", "build-2"));
+        await _reaction.Check(installation, TestContext.Current.CancellationToken);
+
+        StoreSays(Result("newer", "build-3", inProgress: true));
+        await _reaction.Check(installation, TestContext.Current.CancellationToken);
+
+        _log.Messages.Count(m => m.Contains("is being updated by Steam")).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Check_TheStoreStaysBusyOnTwoGames_SaysSoOncePerGame()
+    {
+        StoreSays(Result("new", "build-2", inProgress: true));
+        var second = Installation("old", "build-1", path: "/steam/steamapps/common/Other");
+
+        for (var i = 0; i < 3; i++)
+        {
+            await _reaction.Check(Installation("old", "build-1"), TestContext.Current.CancellationToken);
+            await _reaction.Check(second, TestContext.Current.CancellationToken);
+        }
+
+        _log.Messages.Where(m => m.Contains("is being updated by Steam")).Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Check_TheGameStaysGone_SaysSoOnce()
+    {
+        _locator.TryLocate(Arg.Any<IGameData>(), out Arg.Any<GameLocatorResult?>()).Returns(false);
+
+        for (var i = 0; i < 5; i++) await _reaction.Check(Installation("old", "build-1"), TestContext.Current.CancellationToken);
+
+        _log.Debugs.Should().ContainSingle().Which.Should().Contain("not found by its locator any more");
+    }
+
+    [Fact]
     public async Task Check_TheBaselineBuildFails_StillRefreshesTheRegistry()
     {
         _hashes.EnsureLocalBaseline(Arg.Any<GameInstallation>(), Arg.Any<CancellationToken>())
@@ -183,14 +233,14 @@ public sealed class StoreUpdateReactionTests : IDisposable
         _locator.TryLocate(Arg.Any<IGameData>(), out Arg.Any<GameLocatorResult?>())
             .Returns(call => { call[1] = result; return true; });
 
-    private GameLocatorResult Result(string id, string build, bool inProgress = false, bool damaged = false, DateTimeOffset? lastWrite = null)
+    private GameLocatorResult Result(string id, string build, bool inProgress = false, bool damaged = false, DateTimeOffset? lastWrite = null, string path = GamePath)
     {
         var game = Substitute.For<SubstitutableGame>();
-        var path = FileSystem.Shared.FromUnsanitizedFullPath(GamePath);
+        var gamePath = FileSystem.Shared.FromUnsanitizedFullPath(path);
         return new GameLocatorResult
         {
             Game = game,
-            Path = path,
+            Path = gamePath,
             Store = GameStore.Steam,
             StoreIdentifier = "1",
             LocatorIds = [LocatorId.From(id)],
@@ -203,15 +253,17 @@ public sealed class StoreUpdateReactionTests : IDisposable
         };
     }
 
-    private GameInstallation Installation(string id, string build, bool inProgress = false, bool damaged = false, DateTimeOffset? lastWrite = null)
+    private GameInstallation Installation(string id, string build, bool inProgress = false, bool damaged = false, DateTimeOffset? lastWrite = null, string path = GamePath)
     {
-        var result = Result(id, build, inProgress, damaged, lastWrite);
+        var result = Result(id, build, inProgress, damaged, lastWrite, path);
         return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, result.Path)));
     }
 
     private sealed class CapturingLogger : ILogger<StoreUpdateReaction>
     {
         public System.Collections.Concurrent.ConcurrentQueue<string> Messages { get; } = [];
+
+        public System.Collections.Concurrent.ConcurrentQueue<string> Debugs { get; } = [];
 
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -220,6 +272,7 @@ public sealed class StoreUpdateReactionTests : IDisposable
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
             if (logLevel == LogLevel.Information) Messages.Enqueue(formatter(state, exception));
+            if (logLevel == LogLevel.Debug) Debugs.Enqueue(formatter(state, exception));
         }
     }
 }

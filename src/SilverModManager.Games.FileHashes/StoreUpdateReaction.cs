@@ -54,6 +54,10 @@ public sealed class StoreUpdateReaction(
     // A second fire for the same folder (Steam rewrites the manifest many times) waits for the first.
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _perFolder = new(StringComparer.Ordinal);
 
+    // What the last check of each folder found, so a state that lasts (a download that takes an hour, a game that
+    // stays uninstalled) is logged when it begins and not on every check. Guarded by the folder's gate.
+    private readonly ConcurrentDictionary<string, StoreUpdateOutcome> _lastOutcome = new(StringComparer.Ordinal);
+
     /// <summary>
     /// Locates <paramref name="registered"/> again and refreshes everything that depends on the store's view of it
     /// when that view differs from the registry's copy: another build or other ids (<see cref="StoreUpdateOutcome.Refreshed"/>),
@@ -62,11 +66,15 @@ public sealed class StoreUpdateReaction(
     /// </summary>
     public async Task<StoreUpdateOutcome> Check(GameInstallation registered, CancellationToken cancellationToken = default)
     {
-        var gate = _perFolder.GetOrAdd(registered.LocatorResult.Path.ToString(), static _ => new SemaphoreSlim(1, 1));
+        var folder = registered.LocatorResult.Path.ToString();
+        var gate = _perFolder.GetOrAdd(folder, static _ => new SemaphoreSlim(1, 1));
         await gate.WaitAsync(cancellationToken);
         try
         {
-            return await CheckCore(registered, cancellationToken);
+            StoreUpdateOutcome? previous = _lastOutcome.TryGetValue(folder, out var last) ? last : null;
+            var outcome = await CheckCore(registered, previous, cancellationToken);
+            _lastOutcome[folder] = outcome;
+            return outcome;
         }
         finally
         {
@@ -74,18 +82,20 @@ public sealed class StoreUpdateReaction(
         }
     }
 
-    private async Task<StoreUpdateOutcome> CheckCore(GameInstallation registered, CancellationToken cancellationToken)
+    private async Task<StoreUpdateOutcome> CheckCore(GameInstallation registered, StoreUpdateOutcome? previous, CancellationToken cancellationToken)
     {
         var name = registered.Game.DisplayName;
         if (!registered.LocatorResult.Locator.TryLocate(registered.Game, out var fresh))
         {
-            logger.LogDebug("{Game} is not found by its locator any more, leaving the registry as it is", name);
+            if (previous != StoreUpdateOutcome.NotFound)
+                logger.LogDebug("{Game} is not found by its locator any more, leaving the registry as it is", name);
             return StoreUpdateOutcome.NotFound;
         }
 
         if (fresh.StoreUpdateInProgress)
         {
-            logger.LogInformation("{Game} is being updated by {Store}; the app refreshes it when the update finishes", name, fresh.Store);
+            if (previous != StoreUpdateOutcome.UpdateInProgress)
+                logger.LogInformation("{Game} is being updated by {Store}; the app refreshes it when the update finishes", name, fresh.Store);
             return StoreUpdateOutcome.UpdateInProgress;
         }
 
