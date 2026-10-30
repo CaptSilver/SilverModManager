@@ -222,6 +222,35 @@ public class WabbajackModlistTextTests
         counts.Should().Be(new WabbajackPlanCounts(Ready: 2, ToGet: 3, ByHand: 2, GameFilesDiffer: 1));
     }
 
+    [Fact]
+    public void ModOrganizerItselfIsCountedApartAndNeverBlocksAnInstall()
+    {
+        var plan = Plan(Row(ArchiveState.Have), Row(ArchiveState.NotNeeded));
+
+        WabbajackModlistText.Counts(plan).Should().Be(new WabbajackPlanCounts(Ready: 1, ToGet: 0, ByHand: 0, GameFilesDiffer: 0, NotNeeded: 1));
+        WabbajackModlistText.IsAvailable(plan.Rows[1]).Should().BeTrue();
+        WabbajackModlistText.CanInstall(plan, skipMissingArchives: false).Should().BeTrue();
+        WabbajackModlistText.InstallBlockedReason(true, false, true, false, plan, false).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ModOrganizerItselfSaysSoInTheStateColumnAndIsLeftOutOfTheMissingCount()
+    {
+        var plan = Plan(Row(ArchiveState.Manual), Row(ArchiveState.NotNeeded), Row(ArchiveState.NotNeeded));
+
+        WabbajackModlistText.State(plan.Rows[1]).Should().Be("Not needed: Mod Organizer 2 itself");
+        WabbajackModlistText.InstallBlockedReason(true, false, true, false, plan, false).Should().Contain("1 of 1 archives is not in your library yet");
+    }
+
+    [Fact]
+    public void ModOrganizerItselfAddsNothingToTheExtractedSize()
+    {
+        var (size, lowerBound) = WabbajackModlistText.ExtractedSize(Plan(Row(ArchiveState.NotNeeded)));
+
+        size.Value.Should().Be(0);
+        lowerBound.Should().BeFalse();
+    }
+
     private const string Checking = "Checking the list against your library and game files. This can take a while for a big list.";
 
     private static WabbajackStatus Status(

@@ -153,22 +153,26 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
         var context = new Mo2Context(
             await SelectedProfile(list, tos, listArchive, cancellationToken),
-            GameRootFolders(installation, target, tos),
+            Mo2Layout.GameRootFolders(installation, target, tos),
             target.ProfileSettingsFiles(installation),
             relative => target.ModFilePath(installation, relative));
 
         var placements = Classify(list, tos, context);
         var bsaInputs = CollectBsaInputs(placements);
 
-        var plan = await Inventory.Build(list, Connection.Db, loadout, cancellationToken);
-        var missing = plan.Rows.Where(r => r.State is not (ArchiveState.Have or ArchiveState.GameFile)).ToArray();
+        // Mod Organizer 2's own files are the app's job: they are dropped here and its archive is not fetched.
+        var program = Mo2Program.Find(list, context.GameRootFolders);
+        placements = DropProgramFiles(placements, program, context.GameRootFolders);
+        var gameFiles = Inventory.GameFilesFor(loadout);
+        var plan = await Inventory.Build(list, Connection.Db, gameFiles, cancellationToken, program: program);
+        var missing = plan.Rows.Where(r => r.State is not (ArchiveState.Have or ArchiveState.GameFile or ArchiveState.NotNeeded)).ToArray();
         if (missing.Length > 0 && !Options.SkipMissingArchives) throw new ArchivesMissingException(missing);
 
         var (estimate, isLowerBound) = EstimateExtractedSize(plan);
         Progress.SetEstimate(estimate, isLowerBound);
         CountPathsNeverInstalled(placements, list);
 
-        return new Checked(loadout, list, listArchive, plan, Inventory.GameFilesFor(loadout), placements, bsaInputs);
+        return new Checked(loadout, list, listArchive, plan, gameFiles, placements, bsaInputs);
     }
 
     private static IMo2InstanceTarget RequireTarget(GameInstallation installation)
@@ -219,24 +223,6 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             .FirstOrDefault() ?? "";
     }
 
-    private static IReadOnlySet<string> GameRootFolders(GameInstallation installation, IMo2InstanceTarget target, IReadOnlyList<RelativePath> tos)
-    {
-        var folders = new Dictionary<string, HashSet<RelativePath>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var to in tos)
-        {
-            var parts = to.ToString().Split('/');
-            if (parts.Length < 2) continue;
-
-            if (!folders.TryGetValue(parts[0], out var files)) folders[parts[0]] = files = [];
-            if (parts.Length == 2) files.Add(RelativePath.FromUnsanitizedInput(parts[1]));
-        }
-
-        return folders
-            .Where(folder => target.IsGameRootFolder(installation, folder.Key, folder.Value))
-            .Select(folder => folder.Key)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-    }
-
     private static IReadOnlyList<Placement> Classify(ModList list, IReadOnlyList<RelativePath> tos, Mo2Context context)
     {
         var placements = new List<Placement>(list.Directives.Count);
@@ -271,6 +257,17 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         return placements.Select(p => unified.TryGetValue(p.Index, out var path) ? p with { Path = path } : p).ToArray();
     }
 
+    /// <summary>
+    /// A file taken from a Mod Organizer 2 release that lands in the program or a tool folder goes nowhere, even when
+    /// the release is kept for another file: the app never installs the program.
+    /// </summary>
+    private static IReadOnlyList<Placement> DropProgramFiles(IReadOnlyList<Placement> placements, Mo2ProgramArchives program, IReadOnlySet<string> gameRootFolders)
+        => placements.Select(p => p.Directive is FromArchive from
+                                  && program.IsRecognised(from.Source.ArchiveXxHash64)
+                                  && Mo2Program.IsProgramLocation(p.To, gameRootFolders)
+            ? p with { Target = new Mo2Target.Dropped("Mod Organizer 2 program file"), Group = null, Path = null }
+            : p).ToArray();
+
     private static Dictionary<string, Dictionary<string, Placement>> CollectBsaInputs(IReadOnlyList<Placement> placements)
     {
         var inputs = new Dictionary<string, Dictionary<string, Placement>>();
@@ -301,7 +298,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                         ? archive.Children.Aggregate(0UL, (sum, entry) => sum + entry.AsLibraryFile().Size.Value)
                         : library.Size.Value;
                     break;
-                case ArchiveState.GameFile or ArchiveState.GameFileVersion:
+                case ArchiveState.GameFile or ArchiveState.GameFileVersion or ArchiveState.NotNeeded:
                     break;
                 default:
                     total += (ulong)row.Archive.Size;

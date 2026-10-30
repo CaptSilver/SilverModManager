@@ -26,7 +26,7 @@ public sealed record WabbajackArchiveRow(ArchivePlanRow Plan)
         var other => other.GetType().Name,
     };
     public string StateText => WabbajackModlistText.State(Plan);
-    public string Reason => Plan.Reason ?? "";
+    public string Reason => Plan.Reason ?? Plan.Note ?? "";
 
     /// <summary>A held archive can be installed on its own, as a mod of the loadout.</summary>
     public bool CanInstall => Plan.State == ArchiveState.Have && Plan.Library is not null;

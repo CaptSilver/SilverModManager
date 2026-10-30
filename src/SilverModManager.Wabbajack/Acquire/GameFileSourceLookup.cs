@@ -38,6 +38,9 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
     public GameFileSourceLookup(Loadout.ReadOnly loadout, IConnection connection, IFileStore fileStore, IFileIdentityResolver identityResolver, IFileHashesService fileHashes)
         : this(loadout.InstallationInstance, (EntityId)loadout.InstallationId, connection, fileStore, identityResolver, fileHashes) { }
 
+    /// <summary>The installation whose game files this reads.</summary>
+    public GameInstallation Installation => installation;
+
     private readonly record struct Backup(FileIdentity Key, FileIdentity Original, Size Size);
 
     /// <summary>The bytes a lookup reads: the live file with the fingerprint it had, or the store's copy of the original.</summary>

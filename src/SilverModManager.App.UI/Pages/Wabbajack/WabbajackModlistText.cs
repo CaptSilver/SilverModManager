@@ -17,7 +17,7 @@ public readonly record struct WabbajackStatus(string Text, double? Fraction, boo
 public sealed record WabbajackModlistBlurb(string Description, Uri? Readme);
 
 /// <summary>What a finished check found, for the log: archives by what is left to do about them.</summary>
-public readonly record struct WabbajackPlanCounts(int Ready, int ToGet, int ByHand, int GameFilesDiffer);
+public readonly record struct WabbajackPlanCounts(int Ready, int ToGet, int ByHand, int GameFilesDiffer, int NotNeeded = 0);
 
 /// <summary>The decisions and wording of the modlist page that don't need a view model around them.</summary>
 public static class WabbajackModlistText
@@ -65,7 +65,8 @@ public static class WabbajackModlistText
         plan.Rows.Count(row => row.State is ArchiveState.Have or ArchiveState.GameFile),
         plan.Rows.Count(row => row.State is ArchiveState.Automatic or ArchiveState.Browser),
         plan.Rows.Count(row => row.State is ArchiveState.Manual or ArchiveState.Unsupported),
-        plan.Rows.Count(row => row.State == ArchiveState.GameFileVersion));
+        plan.Rows.Count(row => row.State == ArchiveState.GameFileVersion),
+        plan.Rows.Count(row => row.State == ArchiveState.NotNeeded));
 
     /// <summary>The line for the archive downloads the acquirer is running.</summary>
     public static string Downloads(AcquireProgress progress)
@@ -105,7 +106,7 @@ public static class WabbajackModlistText
                         ? archive.Children.Aggregate(0UL, (sum, entry) => sum + entry.AsLibraryFile().Size.Value)
                         : row.Library?.Size.Value ?? (ulong)row.Archive.Size;
                     break;
-                case ArchiveState.GameFile or ArchiveState.GameFileVersion:
+                case ArchiveState.GameFile or ArchiveState.GameFileVersion or ArchiveState.NotNeeded:
                     break;
                 default:
                     total += (ulong)row.Archive.Size;
@@ -117,7 +118,7 @@ public static class WabbajackModlistText
     }
 
     /// <summary>The same test the install job applies: only archives in the library and the game's own files count as available.</summary>
-    public static bool IsAvailable(ArchivePlanRow row) => row.State is ArchiveState.Have or ArchiveState.GameFile;
+    public static bool IsAvailable(ArchivePlanRow row) => row.State is ArchiveState.Have or ArchiveState.GameFile or ArchiveState.NotNeeded;
 
     /// <summary>Whether Install may start: every archive is available, or the user chose to go without the missing ones.</summary>
     public static bool CanInstall(ArchivePlan plan, bool skipMissingArchives)
@@ -151,7 +152,7 @@ public static class WabbajackModlistText
     public static string PlanSummary(ArchivePlan plan)
     {
         var missing = plan.Rows.Count(row => !IsAvailable(row));
-        return missing == 0 ? "Every archive is available" : $"{missing} of {plan.Rows.Count} archives still to get";
+        return missing == 0 ? "Every archive is available" : $"{missing} of {Wanted(plan)} archives still to get";
     }
 
     /// <summary>The description trimmed, and the readme only if it is an https link (Wabbajack lists put a URL there).</summary>
@@ -173,13 +174,16 @@ public static class WabbajackModlistText
         var differing = plan.Rows.Count(row => row.State == ArchiveState.GameFileVersion);
         var missing = plan.Rows.Count(row => !IsAvailable(row)) - differing;
         var parts = new List<string>();
-        if (missing > 0) parts.Add($"{missing} of {plan.Rows.Count} {(missing == 1 ? "archives is" : "archives are")} not in your library yet.");
+        if (missing > 0) parts.Add($"{missing} of {Wanted(plan)} {(missing == 1 ? "archives is" : "archives are")} not in your library yet.");
         if (differing > 0) parts.Add($"{GameFilesDiffer(differing)} from the version the list was made for.");
         parts.Add(missing > 0
             ? "Get what is missing, or tick \"Skip files from missing archives\"."
             : "Put back the game files the list was made for, or tick \"Skip files from missing archives\".");
         return string.Join(" ", parts);
     }
+
+    /// <summary>The archives the install reads: all but Mod Organizer 2, which is never installed.</summary>
+    private static int Wanted(ArchivePlan plan) => plan.Rows.Count(row => row.State != ArchiveState.NotNeeded);
 
     private static string GameFilesDiffer(int count) => count == 1 ? "1 game file differs" : $"{count} game files differ";
 
@@ -233,6 +237,7 @@ public static class WabbajackModlistText
         ArchiveState.GameFile => "Game file",
         ArchiveState.GameFileVersion => "Game file differs",
         ArchiveState.Unsupported => "Not available",
+        ArchiveState.NotNeeded => "Not needed: Mod Organizer 2 itself",
         _ => throw new ArgumentOutOfRangeException(nameof(row), row.State, "Unknown archive state"),
     };
 }

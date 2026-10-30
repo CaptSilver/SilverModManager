@@ -325,8 +325,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
             var counts = WabbajackModlistText.Counts(plan);
             _logger?.LogInformation(
-                "Checked modlist '{List}' in {Seconds:0.0} s: {Ready} ready, {ToGet} to get, {ByHand} by hand, {Differing} game files differ",
-                Name, Stopwatch.GetElapsedTime(started).TotalSeconds, counts.Ready, counts.ToGet, counts.ByHand, counts.GameFilesDiffer);
+                "Checked modlist '{List}' in {Seconds:0.0} s: {Ready} ready, {ToGet} to get, {ByHand} by hand, {Differing} game files differ, {NotNeeded} not needed",
+                Name, Stopwatch.GetElapsedTime(started).TotalSeconds, counts.Ready, counts.ToGet, counts.ByHand, counts.GameFilesDiffer, counts.NotNeeded);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {

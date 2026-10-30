@@ -27,14 +27,18 @@ public enum ArchiveState
 
     /// <summary>A source the app cannot fetch from.</summary>
     Unsupported,
+
+    /// <summary>Mod Organizer 2 itself, which the list ships and the app replaces. It is never fetched and never blocks an install.</summary>
+    NotNeeded,
 }
 
 /// <summary>
 /// One archive of the list and what to do about it. <paramref name="Library"/> is set for <see cref="ArchiveState.Have"/>;
 /// <paramref name="Page"/> for the states that send the user somewhere. <paramref name="Opened"/> is set once a
-/// <see cref="ArchiveState.Browser"/> row's page has been opened in the user's browser.
+/// <see cref="ArchiveState.Browser"/> row's page has been opened in the user's browser. <paramref name="Note"/> explains
+/// a row that is not what its name suggests, such as a Mod Organizer 2 release the list still takes a file from.
 /// </summary>
-public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, string? Reason, Uri? Page, LibraryFile.ReadOnly? Library, bool Opened = false);
+public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, string? Reason, Uri? Page, LibraryFile.ReadOnly? Library, bool Opened = false, string? Note = null);
 
 /// <summary>
 /// The rows for every archive of a list, in the list's order. <paramref name="Modlist"/> is the library file of the

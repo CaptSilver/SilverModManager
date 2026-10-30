@@ -83,6 +83,57 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         ServiceProvider.GetRequiredService<ArchiveInventory>().Should().NotBeNull();
     }
 
+    private static ArchiveEntry Mo2Release(ulong id = 0x40) => new(Xx64.From(id), 85_879_000, "Mod.Organizer-2.4.4.7z", "", new HttpState(new Uri("https://github.com/ModOrganizer2/modorganizer/releases/download/v2.4.4/Mod.Organizer-2.4.4.7z"), []));
+
+    private static FromArchive Taken(ArchiveEntry archive, string to)
+        => new(RelativePath.FromUnsanitizedInput(to), Xx64.From(1), 1, new ArchiveHashPath(archive.XxHash64, [RelativePath.FromUnsanitizedInput("m")]));
+
+    [Fact]
+    public async Task ModOrganizerItselfIsNotNeededWhileTheRestOfTheListKeepsItsStates()
+    {
+        var mo2 = Mo2Release();
+        var other = Entry(new HttpState(new Uri("https://example.invalid/a.zip"), []), Xx64.From(0x41));
+        var list = ListWith(mo2, other) with
+        {
+            Directives = [Taken(mo2, "ModOrganizer.exe"), Taken(mo2, "plugins/x.py"), Taken(other, "mods/A/a.txt")],
+        };
+        var loadout = await CreateLoadout();
+
+        var plan = await Inventory().Build(list, Connection.Db, loadout);
+
+        plan.Rows.Select(r => r.State).Should().Equal(ArchiveState.NotNeeded, ArchiveState.Automatic);
+        plan.Rows[0].Archive.Should().Be(mo2);
+        plan.Rows[0].Page.Should().BeNull("nothing is fetched for it");
+    }
+
+    [Fact]
+    public async Task AnArchiveOfModOrganizerTheLibraryAlreadyHoldsIsStillNotNeeded()
+    {
+        await using var zip = await CreateTestArchive(new Dictionary<RelativePath, byte[]> { [RelativePath.FromUnsanitizedInput("ModOrganizer.exe")] = "exe"u8.ToArray() });
+        var library = await RegisterLocalArchive(zip.Path);
+        var held = library.AsLibraryFile();
+        var mo2 = new ArchiveEntry(held.XxHash64Identity()!.Value, (long)held.Size.Value, "Mod.Organizer-2.4.4.7z", "", new HttpState(new Uri("https://example.invalid/m.7z"), []));
+        var loadout = await CreateLoadout();
+
+        var plan = await Inventory().Build(ListWith(mo2) with { Directives = [Taken(mo2, "ModOrganizer.exe")] }, Connection.Db, loadout);
+
+        plan.Rows.Should().ContainSingle().Which.State.Should().Be(ArchiveState.NotNeeded);
+    }
+
+    [Fact]
+    public async Task ModOrganizerIsKeptWithANoteWhenTheListTakesAFileFromItForAMod()
+    {
+        var mo2 = Mo2Release();
+        var list = ListWith(mo2) with { Directives = [Taken(mo2, "ModOrganizer.exe"), Taken(mo2, "mods/Tool/Data/x.esp")] };
+        var loadout = await CreateLoadout();
+
+        var plan = await Inventory().Build(list, Connection.Db, loadout);
+
+        var row = plan.Rows.Should().ContainSingle().Subject;
+        row.State.Should().Be(ArchiveState.Automatic);
+        row.Note.Should().Contain("mods/Tool/Data/x.esp");
+    }
+
     [Fact]
     public async Task AnArchiveAddedToTheLibraryIsHave()
     {

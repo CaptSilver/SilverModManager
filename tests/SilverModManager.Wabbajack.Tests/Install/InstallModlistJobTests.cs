@@ -448,6 +448,79 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         skip.To.Should().Be("mods/A/a.txt");
     }
 
+    private static ArchiveEntry Mo2Release(string name = "Mod.Organizer-2.4.4.7z")
+        => new(Xx64.From(0x4D4F32), 85_879_000, name, "", new HttpState(new Uri("https://example.invalid/mo2.7z"), []));
+
+    private static FromArchive FromMo2(ArchiveEntry mo2, string to, string member = "m")
+        => new(P(to), Xx64.From(1), 1, new ArchiveHashPath(mo2.XxHash64, [P(member)]));
+
+    [Fact]
+    public async Task ModOrganizerItselfIsNeitherRequiredNorInstalledNorLeftInTheToolFolder()
+    {
+        var mo2 = Mo2Release();
+        var list = new ListBuilder();
+        list.Archives.Add(mo2);
+        list.Directives.AddRange(
+        [
+            FromMo2(mo2, "ModOrganizer.exe"), FromMo2(mo2, "uibase.dll"), FromMo2(mo2, "dlls/x.dll"),
+            FromMo2(mo2, "python/Lib/os.py"), FromMo2(mo2, "plugins/basic/y.py"), FromMo2(mo2, "tools/helper/z.exe"),
+        ]);
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (job, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        SkipsOf(group).Should().BeEmpty();
+        TreeOf(group).Should().BeEmpty("none of Mod Organizer's files belongs in a loadout");
+        var extras = ExtrasOf(group);
+        (extras.DirectoryExists() ? extras.EnumerateFiles().ToArray() : []).Should().BeEmpty("a program folder of Mod Organizer is not a tool the list needs");
+        job.Progress.DroppedCount.Should().Be(6);
+        job.Progress.ExtraCount.Should().Be(0);
+        job.Progress.IsEstimateLowerBound.Should().BeFalse("an archive nobody reads adds nothing to the estimate");
+        job.Progress.EstimatedExtractedSize.Value.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ModOrganizerWithAFileForAModIsKeptAndOnlyThatFileIsInstalled()
+    {
+        var needed = "a mod file"u8.ToArray();
+        var zip = await AddZip("Mod.Organizer-2.4.4.7z", new() { ["ModOrganizer.exe"] = "exe"u8.ToArray(), ["dlls/x.dll"] = "dll"u8.ToArray(), ["extra/tool.esp"] = needed });
+        var list = new ListBuilder();
+        list.Archives.Add(zip);
+        list.Directives.AddRange(
+        [
+            list.Member("ModOrganizer.exe", zip, "ModOrganizer.exe", "exe"u8.ToArray()),
+            list.Member("dlls/x.dll", zip, "dlls/x.dll", "dll"u8.ToArray()),
+            list.Member("mods/Tool/tool.esp", zip, "extra/tool.esp", needed),
+        ]);
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        SkipsOf(group).Should().BeEmpty();
+        var tree = TreeOf(group);
+        tree.Keys.Should().BeEquivalentTo("Tool");
+        tree["Tool"].Keys.Should().BeEquivalentTo("Game/Data/tool.esp");
+        var extras = ExtrasOf(group);
+        (extras.DirectoryExists() ? extras.EnumerateFiles().ToArray() : []).Should().BeEmpty("the program files of a kept archive are still not written anywhere");
+    }
+
+    [Fact]
+    public async Task AMissingModOrganizerThatTheListNeedsAFileFromStillBlocksTheInstall()
+    {
+        var mo2 = Mo2Release();
+        var list = new ListBuilder();
+        list.Archives.Add(mo2);
+        list.Directives.Add(FromMo2(mo2, "mods/Tool/tool.esp"));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var refused = await Record.ExceptionAsync(() => Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>())));
+
+        refused.Should().BeOfType<ArchivesMissingException>().Which.Rows.Should().ContainSingle(r => r.Archive.Name == "Mod.Organizer-2.4.4.7z");
+    }
+
     [Fact]
     public async Task AMemberThatIsNotInItsArchiveOrDoesNotHashToTheListsValueIsSkipped()
     {

@@ -1,4 +1,5 @@
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Games.Modlists;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Sdk.Games;
 
@@ -66,6 +67,25 @@ public static class Mo2Layout
         "dlls", "plugins", "stylesheets", "translations", "tutorials", "licenses", "QtQml", "QtQuick.2", "platforms",
         "styles", "pythoncore", "resources", "NCC", "explorer++", "loot", "webcache", "logs", "downloads",
     };
+
+    /// <summary>The top-level folders of the list that hold a copy of the game ("Stock Game"), by what the game says is one.</summary>
+    public static IReadOnlySet<string> GameRootFolders(GameInstallation installation, IMo2InstanceTarget target, IReadOnlyList<RelativePath> tos)
+    {
+        var folders = new Dictionary<string, HashSet<RelativePath>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var to in tos)
+        {
+            var parts = to.ToString().Split('/');
+            if (parts.Length < 2) continue;
+
+            if (!folders.TryGetValue(parts[0], out var files)) folders[parts[0]] = files = [];
+            if (parts.Length == 2) files.Add(RelativePath.FromUnsanitizedInput(parts[1]));
+        }
+
+        return folders
+            .Where(folder => target.IsGameRootFolder(installation, folder.Key, folder.Value))
+            .Select(folder => folder.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
 
     /// <summary>
     /// <paramref name="to"/> is a directive's destination with its path casing already unified

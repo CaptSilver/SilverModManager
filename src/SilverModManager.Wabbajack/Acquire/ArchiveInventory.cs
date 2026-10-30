@@ -15,6 +15,8 @@ using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Library;
+using SilverModManager.Wabbajack.Mapping;
+using SilverModManager.Abstractions.Games.Modlists;
 
 namespace SilverModManager.Wabbajack.Acquire;
 
@@ -52,8 +54,9 @@ public sealed class ArchiveInventory(
     /// Matches every archive of <paramref name="list"/>. The archives that only need a lookup go first, then the game
     /// files, which are read from disk and take the time; <paramref name="progress"/> follows both.
     /// </summary>
-    public async Task<ArchivePlan> Build(ModList list, IDb db, GameFileSourceLookup gameFiles, CancellationToken cancellationToken = default, IProgress<PlanProgress>? progress = null)
+    public async Task<ArchivePlan> Build(ModList list, IDb db, GameFileSourceLookup gameFiles, CancellationToken cancellationToken = default, IProgress<PlanProgress>? progress = null, Mo2ProgramArchives? program = null)
     {
+        program ??= FindModOrganizer(list, gameFiles.Installation);
         var rows = new ArchivePlanRow[list.Archives.Count];
         var gate = new PlanProgressGate(progress);
 
@@ -63,7 +66,7 @@ public sealed class ArchiveInventory(
         foreach (var index in lookups)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            rows[index] = await Classify(list.Archives[index], db, gameFiles, cancellationToken);
+            rows[index] = await ClassifyWithModOrganizer(list.Archives[index], program, db, gameFiles, cancellationToken);
             gate.Report(new PlanProgress(PlanPhase.CheckingLibrary, ++done, lookups.Length));
         }
 
@@ -124,6 +127,27 @@ public sealed class ArchiveInventory(
         {
             ExceptionDispatchInfo.Capture(real).Throw();
         }
+    }
+
+    /// <summary>
+    /// The Mod Organizer 2 release among the archives is not fetched, whether or not the library holds it: nothing
+    /// of it is installed. One the list still takes a mod's or the game's file from is looked up like any other.
+    /// </summary>
+    private async Task<ArchivePlanRow> ClassifyWithModOrganizer(ArchiveEntry archive, Mo2ProgramArchives program, IDb db, GameFileSourceLookup gameFiles, CancellationToken cancellationToken)
+    {
+        if (program.NotNeeded.Contains(archive.XxHash64))
+            return new ArchivePlanRow(archive, ArchiveState.NotNeeded, null, null, null);
+
+        var row = await Classify(archive, db, gameFiles, cancellationToken);
+        return program.Kept.TryGetValue(archive.XxHash64, out var why) ? row with { Note = why } : row;
+    }
+
+    private static Mo2ProgramArchives FindModOrganizer(ModList list, GameInstallation installation)
+    {
+        var roots = installation.Game is IMo2InstanceTarget target
+            ? Mo2Layout.GameRootFolders(installation, target, list.Directives.Select(d => d.To).ToArray())
+            : new HashSet<string>();
+        return Mo2Program.Find(list, roots);
     }
 
     private async Task<ArchivePlanRow> Classify(ArchiveEntry archive, IDb db, GameFileSourceLookup gameFiles, CancellationToken cancellationToken)
