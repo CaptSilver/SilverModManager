@@ -47,4 +47,14 @@ public class ProductInfoParserTests
 
         act.Should().Throw<InvalidDataException>().WithMessage($"*branch 'beta'*'{missing}'*");
     }
+
+    [Fact]
+    public void ABranchWithoutANameThrowsNamingTheDepot()
+    {
+        var depot = Depot("489831", new KeyValue(null));
+
+        var act = () => ProductInfoParser.TryParseDownloadableDepot(AppId.From(1), depot, out _);
+
+        act.Should().Throw<InvalidDataException>().WithMessage("*depot 489831*no name*");
+    }
 }

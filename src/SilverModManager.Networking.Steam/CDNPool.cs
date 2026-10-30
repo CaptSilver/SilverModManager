@@ -62,7 +62,7 @@ public class CDNPool
     /// </summary>
     internal async Task<string> GetCDNAuthTokenAsync(AppId appId, DepotId depotId, Server server)
     {
-        var host = server.Host ?? throw new InvalidDataException($"A CDN server (type '{server.Type}') has no host");
+        var host = server.Host ?? throw new InvalidDataException($"Steam CDN server {server.VHost ?? server.Type ?? "of unknown type"} has no host");
 
         // Check if we already have an auth token for this server
         if (_authTokens.TryGetValue((host, depotId), out var token))
