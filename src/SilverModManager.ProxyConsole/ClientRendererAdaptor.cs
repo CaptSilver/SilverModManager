@@ -28,8 +28,9 @@ public class ClientRendererAdaptor
         _stream = duplexStream;
         _renderer = renderer;
         _serializer = new Serializer(duplexStream, provider.GetRequiredService<IEnumerable<IRenderableDefinition>>());
-        _task = Task.Run(ForwardCommands);
+        // Before the read loop starts: its first message is the question these answer.
         _args = args ?? Array.Empty<string>();
+        _task = Task.Run(ForwardCommands);
     }
 
     /// <summary>
