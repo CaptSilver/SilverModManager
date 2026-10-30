@@ -93,6 +93,7 @@ public static class ProcessStartup
 {
     /// <summary>The exit code of a <c>run</c> that never got to launch, matching the launch session's own failures.</summary>
     private const int RunFailureExitCode = 125;
+    private static readonly TimeSpan HostStopTimeout = TimeSpan.FromSeconds(15);
 
     private const int ClaimAttempts = 3;
 
@@ -308,7 +309,10 @@ public static class ProcessStartup
         finally
         {
             // Wait for 15 seconds for the host to stop, otherwise kill the process
-            var stopped = !hostStarted || host.StopAsync().Wait(timeout: TimeSpan.FromSeconds(15));
+            var stopped = !hostStarted || host.StopAsync().Wait(timeout: HostStopTimeout);
+
+            // Written before the teardown so the sinks are still up; otherwise the log ends on whatever service logged last.
+            if (!stopped) logger.LogWarning("The host did not stop within {Seconds} s; the process will exit without waiting for it", HostStopTimeout.TotalSeconds);
 
             // Database first, then the launch session's lock, then the slot: a process that sees the slot
             // free may open the database and a game folder at once.

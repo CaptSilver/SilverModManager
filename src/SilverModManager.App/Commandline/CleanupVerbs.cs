@@ -14,6 +14,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.FileExtractor;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.ProxyConsole;
 using SilverModManager.Sdk.ProxyConsole;
 
 namespace SilverModManager.App.Commandline;
@@ -44,9 +45,22 @@ internal static class CleanupVerbs
 
         var exitCode = await Uninstall(renderer, loggerFactory.CreateLogger(nameof(CleanupVerbs)), settingsManager, fileSystem, syncService, managedInstallations);
 
-        // The database this process holds is gone, and shutting down normally would write to it and recreate the
-        // folders just deleted, so the process ends here with the uninstall's own exit code.
-        Environment.Exit(exitCode);
+        return EndProcess(renderer, loggerFactory.CreateLogger(nameof(CleanupVerbs)), exitCode, Environment.Exit);
+    }
+
+    /// <summary>
+    /// The database this process holds is gone, and shutting down normally would write to it and recreate the
+    /// folders just deleted, so the process ends here with the uninstall's own exit code. A second instance can send
+    /// this verb to the running window, which then vanishes without the host ever starting a stop; the log line is
+    /// the only record of why.
+    /// </summary>
+    internal static int EndProcess(IRenderer renderer, ILogger logger, int exitCode, Action<int> exit)
+    {
+        var origin = renderer is ProxiedRenderer
+            ? "a second instance, through the CLI server"
+            : "this process's own command line";
+        logger.LogInformation("uninstall-app is ending the process with exit code {ExitCode}, requested by {Origin}", exitCode, origin);
+        exit(exitCode);
         return exitCode;
     }
 

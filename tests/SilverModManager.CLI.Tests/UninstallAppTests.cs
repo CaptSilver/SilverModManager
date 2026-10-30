@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
 using NSubstitute;
@@ -103,5 +104,35 @@ public sealed class UninstallAppTests : IDisposable
         exitCode.Should().Be(-1);
         Text.Should().Contain("Details are in the log at").And.NotContain("bad settings");
         LogFolder.DirectoryExists().Should().BeTrue();
+    }
+
+    private sealed class InfoLog : ILogger
+    {
+        public List<string> Messages { get; } = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            Messages.Add($"{logLevel}: {formatter(state, exception)}");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(-1)]
+    public void TheVerbEndingTheProcess_SaysSoInTheLogBeforeItExits(int exitCode)
+    {
+        var log = new InfoLog();
+        var exitedWith = new List<int>();
+
+        var returned = CleanupVerbs.EndProcess(_renderer, log, exitCode, code =>
+        {
+            // The line has to be on disk-bound sinks before the process is gone.
+            log.Messages.Should().ContainSingle();
+            exitedWith.Add(code);
+        });
+
+        returned.Should().Be(exitCode);
+        exitedWith.Should().Equal(exitCode);
+        log.Messages.Single().Should().StartWith("Information: ").And.Contain("uninstall-app").And.Contain($"exit code {exitCode}").And.Contain("requested by");
     }
 }
