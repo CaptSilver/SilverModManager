@@ -45,13 +45,42 @@ public sealed class ArchiveInventory(
     public Task<ArchivePlan> Build(ModList list, IDb db, Loadout.ReadOnly loadout, CancellationToken cancellationToken = default)
         => Build(list, db, GameFilesFor(loadout), cancellationToken);
 
-    public async Task<ArchivePlan> Build(ModList list, IDb db, GameFileSourceLookup gameFiles, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Matches every archive of <paramref name="list"/>. The archives that only need a lookup go first, then the game
+    /// files, which are read from disk and take the time; <paramref name="progress"/> follows both.
+    /// </summary>
+    public async Task<ArchivePlan> Build(ModList list, IDb db, GameFileSourceLookup gameFiles, CancellationToken cancellationToken = default, IProgress<PlanProgress>? progress = null)
     {
-        var rows = new List<ArchivePlanRow>(list.Archives.Count);
-        foreach (var archive in list.Archives)
+        var rows = new ArchivePlanRow[list.Archives.Count];
+        var gate = new PlanProgressGate(progress);
+
+        var lookups = Enumerable.Range(0, rows.Length).Where(i => list.Archives[i].State is not GameFileSourceState).ToArray();
+        var done = 0;
+        gate.Report(new PlanProgress(PlanPhase.CheckingLibrary, 0, lookups.Length));
+        foreach (var index in lookups)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            rows.Add(await Classify(archive, db, gameFiles, cancellationToken));
+            rows[index] = await Classify(list.Archives[index], db, gameFiles, cancellationToken);
+            gate.Report(new PlanProgress(PlanPhase.CheckingLibrary, ++done, lookups.Length));
+        }
+
+        var reads = Enumerable.Range(0, rows.Length).Where(i => list.Archives[i].State is GameFileSourceState).ToArray();
+        var totalBytes = reads.Sum(i => list.Archives[i].Size);
+        long bytesBefore = 0;
+        foreach (var index in reads)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var archive = list.Archives[index];
+            var name = ((GameFileSourceState)archive.State).GameFile.ToString();
+            long thisFile = 0;
+            var before = bytesBefore;
+            gate.Report(new PlanProgress(PlanPhase.HashingGameFiles, before, totalBytes, name));
+            rows[index] = await ClassifyGameFile(archive, (GameFileSourceState)archive.State, gameFiles,
+                read => gate.Report(new PlanProgress(PlanPhase.HashingGameFiles, before + Math.Min(thisFile += read, archive.Size), totalBytes, name)),
+                cancellationToken);
+            // A file read from the store's recorded hashes was not read at all; it still counts as done.
+            bytesBefore += archive.Size;
+            gate.Report(new PlanProgress(PlanPhase.HashingGameFiles, bytesBefore, totalBytes, name));
         }
         return new ArchivePlan(rows);
     }
@@ -60,7 +89,7 @@ public sealed class ArchiveInventory(
     {
         // A game file is never in the library, whatever its hash says.
         if (archive.State is GameFileSourceState gameFile)
-            return await ClassifyGameFile(archive, gameFile, gameFiles, cancellationToken);
+            return await ClassifyGameFile(archive, gameFile, gameFiles, null, cancellationToken);
 
         if (locator.FindByXxHash64(db, archive.XxHash64) is { } held)
             return new ArchivePlanRow(archive, ArchiveState.Have, null, null, held);
@@ -135,9 +164,9 @@ public sealed class ArchiveInventory(
         return null;
     }
 
-    private static async Task<ArchivePlanRow> ClassifyGameFile(ArchiveEntry archive, GameFileSourceState state, GameFileSourceLookup gameFiles, CancellationToken cancellationToken)
+    private static async Task<ArchivePlanRow> ClassifyGameFile(ArchiveEntry archive, GameFileSourceState state, GameFileSourceLookup gameFiles, Action<int>? onRead, CancellationToken cancellationToken)
     {
-        var described = await gameFiles.Describe(state.GameFile, cancellationToken);
+        var described = await gameFiles.Describe(state.GameFile, cancellationToken, onRead);
         if (described is null)
             return Row(archive, ArchiveState.GameFileVersion, $"'{state.GameFile}' is not in your game folder; the list was made for game version {state.GameVersion}");
 

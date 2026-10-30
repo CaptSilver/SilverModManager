@@ -65,16 +65,17 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
     /// The digests and size of the file as <see cref="Open"/> would read it, or null when the game folder has no such
     /// file. The xxHash64 comes from the vanilla file hashes when the xxHash3 is known there, else from one read.
     /// </summary>
-    public async Task<(FileIdentity XxHash3, FileIdentity XxHash64, Size Size)?> Describe(RelativePath gameFile, CancellationToken cancellationToken = default)
+    /// <param name="onRead">Told how many bytes each read of the file returned, so a caller can show how far a big file has got. Not called for a file already described.</param>
+    public async Task<(FileIdentity XxHash3, FileIdentity XxHash64, Size Size)?> Describe(RelativePath gameFile, CancellationToken cancellationToken = default, Action<int>? onRead = null)
     {
         if (_described.TryGetValue(gameFile, out var cached)) return cached;
 
-        var result = await DescribeUncached(gameFile, cancellationToken);
+        var result = await DescribeUncached(gameFile, onRead, cancellationToken);
         _described[gameFile] = result;
         return result;
     }
 
-    private async Task<(FileIdentity, FileIdentity, Size)?> DescribeUncached(RelativePath gameFile, CancellationToken cancellationToken)
+    private async Task<(FileIdentity, FileIdentity, Size)?> DescribeUncached(RelativePath gameFile, Action<int>? onRead, CancellationToken cancellationToken)
     {
         if (await FindBackup(gameFile) is { } backup)
         {
@@ -83,7 +84,7 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
             // The recorded relation answers without reading the bytes again.
             if (identityResolver.TryConvert(backup, size, HashKind.XxHash64, out var known)) return (backup, known, size);
 
-            var hashes = await Hasher.HashAsync(stored, cancellationToken: cancellationToken);
+            var hashes = await Hasher.HashAsync(Counting(stored, onRead), cancellationToken: cancellationToken);
             return (FileIdentity.XxHash3(hashes.Hash1), FileIdentity.XxHash64(hashes.Hash2), size);
         }
 
@@ -91,9 +92,11 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
         if (!live.FileExists) return null;
 
         await using var stream = SequentialFileRead.Open(live);
-        var both = await Hasher.HashAsync(stream, cancellationToken: cancellationToken);
+        var both = await Hasher.HashAsync(Counting(stream, onRead), cancellationToken: cancellationToken);
         return (FileIdentity.XxHash3(both.Hash1), FileIdentity.XxHash64(both.Hash2), live.FileInfo.Size);
     }
+
+    private static Stream Counting(Stream stream, Action<int>? onRead) => onRead is null ? stream : new ReadCountingStream(stream, onRead);
 
     private AbsolutePath LivePath(RelativePath gameFile)
         => installation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, gameFile));

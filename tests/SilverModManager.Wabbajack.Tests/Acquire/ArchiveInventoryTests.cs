@@ -288,6 +288,56 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         plan.Rows.Single().State.Should().Be(ArchiveState.GameFile, "the backups belong to the installation, not to a loadout");
     }
 
+    private sealed class Reports : IProgress<PlanProgress>
+    {
+        public List<PlanProgress> All { get; } = [];
+        public void Report(PlanProgress value) => All.Add(value);
+    }
+
+    [Fact]
+    public async Task BuildReportsHowManyArchivesItHasCheckedAgainstTheLibrary()
+    {
+        var loadout = await CreateLoadout();
+        var archives = Enumerable.Range(1, 3)
+            .Select(i => Entry(new HttpState(new Uri($"https://example.invalid/{i}.zip"), []), Hash64([(byte)i]), 10, $"{i}.zip"))
+            .ToArray();
+        var reports = new Reports();
+
+        await Inventory().Build(ListWith(archives), Connection.Db, Inventory().GameFilesFor(loadout), CancellationToken.None, reports);
+
+        reports.All.Should().NotBeEmpty();
+        reports.All.Should().OnlyContain(report => report.Phase == PlanPhase.CheckingLibrary);
+        reports.All.Should().OnlyContain(report => report.Total == 3);
+        reports.All.Last().Done.Should().Be(3, "the last report of a phase is never held back");
+    }
+
+    [Fact]
+    public async Task BuildReportsTheBytesOfAGameFileItHashes()
+    {
+        var state = new GameFileSourceState("SkyrimSpecialEdition", GameBsa, Hash64(GameBsaBytes), GameVersion);
+        var loadout = await CreateLoadout();
+        var reports = new Reports();
+
+        await Inventory().Build(ListWith(Entry(state, Hash64(GameBsaBytes), GameBsaBytes.Length)), Connection.Db, Inventory().GameFilesFor(loadout), CancellationToken.None, reports);
+
+        var hashing = reports.All.Where(report => report.Phase == PlanPhase.HashingGameFiles).ToArray();
+        hashing.Should().NotBeEmpty("a file the app has to read says how far it got");
+        hashing.Should().OnlyContain(report => report.Total == GameBsaBytes.Length);
+        hashing.Last().Done.Should().Be(GameBsaBytes.Length);
+        hashing.Last().Item.Should().Contain(GameBsa.ToString());
+        reports.All.Select(report => report.Phase).Should().BeInAscendingOrder("a phase never comes back once the next one began");
+    }
+
+    [Fact]
+    public async Task BuildWithoutAProgressSinkStillPlans()
+    {
+        var loadout = await CreateLoadout();
+
+        var plan = await Inventory().Build(ListWith(Entry(new HttpState(new Uri("https://example.invalid/a.zip"), []))), Connection.Db, Inventory().GameFilesFor(loadout), CancellationToken.None, null);
+
+        plan.Rows.Should().ContainSingle();
+    }
+
     // What a previous Apply leaves: the original in the store, pinned, and the live file replaced.
     private async Task BackUpGameBsaAndChangeTheLiveFile(Loadout.ReadOnly loadout)
     {
