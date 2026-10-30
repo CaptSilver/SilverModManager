@@ -96,10 +96,11 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
                 .BindTo(this, view => view.OverlayBorder.IsVisible)
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(view => view.IsActive)
-                .Subscribe(isActive =>
+            // CombineLatest so a view model that arrives or is swapped later gets the current value.
+            this.WhenAnyValue(view => view.IsActive, view => view.ViewModel)
+                .Subscribe(static state =>
                 {
-                    if (ViewModel is { } viewModel) viewModel.IsActive = isActive;
+                    if (state.Item2 is { } viewModel) viewModel.IsActive = state.Item1;
                 })
                 .DisposeWith(disposables);
 

@@ -144,11 +144,11 @@ public static class ReactiveExtensions
         return item
             .WithLatestFrom(latestCommand, static (value, latest) => (Value: value, latest.Command, latest.CanExecute))
             .Where(static invocation => invocation.CanExecute)
-            .Subscribe(static invocation =>
-            {
-                if (invocation.Command is { } current)
-                    current.Execute(invocation.Value).Catch(Observable.Empty<TResult>()).Subscribe();
-            });
+            // Executions live inside the subscription, so disposing the binding cancels any still running.
+            .SelectMany(static invocation => invocation.Command is { } current
+                ? current.Execute(invocation.Value).Catch(Observable.Empty<TResult>())
+                : Observable.Empty<TResult>())
+            .Subscribe();
     }
         
 }

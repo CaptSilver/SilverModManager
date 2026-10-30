@@ -1,4 +1,4 @@
-using System.Reactive;
+﻿using System.Reactive;
 using System.Reactive.Subjects;
 using FluentAssertions;
 using ReactiveUI;
@@ -88,5 +88,22 @@ public class InvokeReactiveCommandTests
 
         first.Should().Equal(1);
         second.Should().Equal(2);
+    }
+
+    [Fact]
+    public void Test_InvokeReactiveCommand_DisposingTheBindingDisposesAnInFlightExecution()
+    {
+        var view = new FakeView();
+        var source = new Subject<int>();
+        var running = new Subject<Unit>();
+        var command = ReactiveCommand.CreateFromObservable<int, Unit>(_ => running, outputScheduler: System.Reactive.Concurrency.Scheduler.Immediate);
+        view.ViewModel = new FakeViewModel { Command = command };
+        var binding = source.InvokeReactiveCommand(view.WhenViewModel(vm => vm.WhenAnyValue(x => x.Command)));
+
+        source.OnNext(1);
+        running.HasObservers.Should().BeTrue();
+        binding.Dispose();
+
+        running.HasObservers.Should().BeFalse();
     }
 }
