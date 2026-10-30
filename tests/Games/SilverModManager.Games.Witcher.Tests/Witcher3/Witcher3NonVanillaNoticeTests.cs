@@ -128,7 +128,7 @@ public class Witcher3NonVanillaNoticeTests(ITestOutputHelper helper)
     {
         await DiagnosticManager.RefreshAsync(loadout.LoadoutId);
         var diagnostics = await DiagnosticManager.GetLoadoutDiagnostics(loadout.LoadoutId).FirstAsync();
-        return diagnostics.Select(Describe).Where(text => text.Contains("already there before", StringComparison.Ordinal)).ToArray();
+        return diagnostics.Select(Describe).Where(text => text.Contains("came from outside this app", StringComparison.Ordinal)).ToArray();
     }
 
     [Fact]
