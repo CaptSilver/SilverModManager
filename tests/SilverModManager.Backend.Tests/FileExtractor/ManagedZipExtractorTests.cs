@@ -148,6 +148,14 @@ public class ManagedZipExtractorTests
         (await ExtractNames(zip)).Should().Equal("filename_with_\u00EFo\u00F6.txt");
     }
 
+    // macOS Archive Utility and several Linux tools write UTF-8 names without bit 11.
+    [Fact]
+    public async Task UnflaggedNamesThatAreValidUtfEightKeepTheirUtfEightSpelling()
+    {
+        var zip = ZipWithRawName("pl", [0xC3, 0xB6, 0xD0, 0x9F], ".esp");
+        (await ExtractNames(zip)).Should().Equal("pl\u00F6\u041F.esp");
+    }
+
     [Fact]
     public async Task WindowsOneTwoFiveTwoQuotesDecodeWithoutFailing()
     {

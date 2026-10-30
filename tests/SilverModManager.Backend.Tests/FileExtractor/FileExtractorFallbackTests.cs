@@ -69,6 +69,30 @@ public class FileExtractorFallbackTests
     }
 
     [Fact]
+    public async Task FilesLeftBehindInADestinationThatDidNotExistAreRemovedToo()
+    {
+        var first = new ScriptedExtractor(Priority.Highest,
+            dest =>
+            {
+                Directory.CreateDirectory(dest.ToString());
+                File.WriteAllText(dest.Combine("half.txt").ToString(), "partial");
+            },
+            new PathException("Input contains invalid characters"));
+        var second = new ScriptedExtractor(Priority.Normal, dest =>
+        {
+            Directory.CreateDirectory(dest.ToString());
+            File.WriteAllText(dest.Combine("ok.txt").ToString(), "ok");
+        });
+        using var temporaryFileManager = CreateTemporaryFileManager();
+        await using var parent = temporaryFileManager.CreateFolder();
+        var destination = parent.Path.Combine("not-yet");
+
+        await Create(first, second).ExtractAllAsync(ZipSignature(), destination, TestContext.Current.CancellationToken);
+
+        destination.EnumerateFiles().Select(f => f.FileName.ToString()).Should().Equal("ok.txt");
+    }
+
+    [Fact]
     public async Task WhenEveryExtractorFailsTheFailureCarriesTheLastCause()
     {
         var first = new ScriptedExtractor(Priority.Highest, failure: new PathException("bad name"));

@@ -24,15 +24,56 @@ internal class ManagedZipExtractor : IExtractor
     }
 
     // The zip spec stores a name as code page 437 unless general purpose bit 11 says UTF-8. SharpZipLib's
-    // default decodes an unflagged name with the host's encoding, which on Linux is UTF-8, so every byte above
-    // 0x7F came out as U+FFFD and the path layer rejected the entry.
+    // default decodes an unflagged name with the host's encoding, which on Linux is UTF-8, so a CP437 name
+    // came out as U+FFFD and the path layer rejected the entry. Plain CP437 would break the other way: macOS
+    // and several Linux tools write UTF-8 names without the flag, and those must keep decoding as UTF-8.
     private static readonly Encoding _codePage437 = GetCodePage437();
-    private static readonly StringCodec _stringCodec = StringCodec.FromEncoding(_codePage437);
+    private static readonly StringCodec _stringCodec = StringCodec.FromEncoding(new Utf8ThenCodePage437Encoding(_codePage437));
 
     private static Encoding GetCodePage437()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         return Encoding.GetEncoding(437);
+    }
+
+    /// <summary>
+    /// Decodes bytes as UTF-8 when they are valid UTF-8, otherwise as code page 437. Genuine CP437 text with
+    /// high bytes is almost never valid UTF-8, and every name that decoded before still decodes the same way.
+    /// </summary>
+    private sealed class Utf8ThenCodePage437Encoding(Encoding codePage437) : Encoding
+    {
+        private static readonly UTF8Encoding _strictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
+        private bool TryUtf8(ReadOnlySpan<byte> bytes, out string text)
+        {
+            try
+            {
+                text = _strictUtf8.GetString(bytes);
+                return true;
+            }
+            catch (DecoderFallbackException)
+            {
+                text = string.Empty;
+                return false;
+            }
+        }
+
+        private string Decode(ReadOnlySpan<byte> bytes) => TryUtf8(bytes, out var text) ? text : codePage437.GetString(bytes);
+
+        public override int GetByteCount(char[] chars, int index, int count) => codePage437.GetByteCount(chars, index, count);
+        public override int GetBytes(char[] chars, int charIndex, int charCount, byte[] bytes, int byteIndex) => codePage437.GetBytes(chars, charIndex, charCount, bytes, byteIndex);
+        public override int GetCharCount(byte[] bytes, int index, int count) => Decode(bytes.AsSpan(index, count)).Length;
+
+        public override int GetChars(byte[] bytes, int byteIndex, int byteCount, char[] chars, int charIndex)
+        {
+            var text = Decode(bytes.AsSpan(byteIndex, byteCount));
+            text.CopyTo(0, chars, charIndex, text.Length);
+            return text.Length;
+        }
+
+        public override string GetString(byte[] bytes, int index, int count) => Decode(bytes.AsSpan(index, count));
+        public override int GetMaxByteCount(int charCount) => codePage437.GetMaxByteCount(charCount);
+        public override int GetMaxCharCount(int byteCount) => byteCount;
     }
 
     public async Task ExtractAllAsync(IStreamFactory source, AbsolutePath destination, CancellationToken cancellationToken = default)

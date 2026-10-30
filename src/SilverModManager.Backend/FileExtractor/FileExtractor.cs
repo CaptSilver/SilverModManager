@@ -61,6 +61,7 @@ public class FileExtractor : IFileExtractor
     {
         var extractors = await FindExtractors(sFn);
         var startedEmpty = IsEmpty(dest);
+        var folderExisted = Directory.Exists(dest.ToString());
         Exception? lastFailure = null;
         foreach (var extractor in extractors)
         {
@@ -79,7 +80,7 @@ public class FileExtractor : IFileExtractor
                 // extractor decodes names its own way, so it gets its turn like it does for any other failure.
                 _logger.LogWarning(ex, "Extracting {File} via {Extractor} failed, trying the next extractor", sFn.FileName, extractor);
                 lastFailure = ex;
-                if (startedEmpty) Clear(dest);
+                if (startedEmpty) Clear(dest, removeFolder: !folderExisted);
             }
         }
 
@@ -91,11 +92,11 @@ public class FileExtractor : IFileExtractor
     private static bool IsEmpty(AbsolutePath folder)
     {
         var path = folder.ToString();
-        return Directory.Exists(path) && !Directory.EnumerateFileSystemEntries(path).Any();
+        return !Directory.Exists(path) || !Directory.EnumerateFileSystemEntries(path).Any();
     }
 
     // Whatever a failed extractor wrote would otherwise end up beside the next extractor's output.
-    private static void Clear(AbsolutePath folder)
+    private static void Clear(AbsolutePath folder, bool removeFolder)
     {
         var path = folder.ToString();
         if (!Directory.Exists(path)) return;
@@ -104,6 +105,8 @@ public class FileExtractor : IFileExtractor
             if (Directory.Exists(entry) && (File.GetAttributes(entry) & FileAttributes.ReparsePoint) == 0) Directory.Delete(entry, recursive: true);
             else File.Delete(entry);
         }
+
+        if (removeFolder) Directory.Delete(path);
     }
 
     /// <inheritdoc/>
