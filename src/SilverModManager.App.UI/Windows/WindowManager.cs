@@ -154,7 +154,7 @@ internal sealed class WindowManager : ReactiveObject, IWindowManager
 
         try
         {
-            window.WorkspaceController.FromData(optionalWindowData.Value.WindowData);
+            window.WorkspaceController.FromData(optionalWindowData.Value.ReadWindowData(_logger));
             return true;
         }
         catch (Exception e)
