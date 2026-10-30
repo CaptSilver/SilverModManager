@@ -9,10 +9,17 @@ namespace SilverModManager.Wabbajack;
 public record WabbajackSettings : ISettings
 {
     /// <summary>
-    /// Where archives that were downloaded in a browser are picked up from. This is a folder of our own, so the
-    /// user's Downloads folder is never read.
+    /// Where archives that were downloaded in a browser are picked up from. This is a folder of our own. The user's
+    /// Downloads folder is only read when <see cref="PickUpFromDownloads"/> is on, and then only for the names the
+    /// current plan expects.
     /// </summary>
     public ConfigurablePath InboxPath { get; init; }
+
+    /// <summary>Whether finished browser downloads are picked up from the Downloads folder. Off unless the user turns it on.</summary>
+    public bool PickUpFromDownloads { get; init; }
+
+    /// <summary>The folder to watch when pickup is on. Empty means the XDG download folder.</summary>
+    public string DownloadsFolder { get; init; } = "";
 
     /// <summary>
     /// Where files of an installed modlist that have no place in the loadout (tools, configs outside the game) are

@@ -57,6 +57,7 @@ public static class Services
                 provider.GetService<TimeProvider>() ?? TimeProvider.System,
                 provider.GetRequiredService<ILogger<ArchiveAcquirer>>()))
             .AddSingleton<ArchiveInbox>()
+            .AddSingleton<DownloadsPickup>()
             .AddSingleton<IModlistDownloadJobs, ModlistDownloadJobs>()
             .AddSingleton(provider => new WabbajackGalleryDownloader(
                 provider.GetRequiredService<IModlistDownloadJobs>(),

@@ -15,7 +15,8 @@ public sealed record UnmatchedInbox(string FileName, FileIdentity XxHash64);
 
 /// <summary>
 /// The folder the user drops archives into when the app cannot fetch them itself. Only the inbox folder from
-/// <see cref="WabbajackSettings"/> is read; the user's Downloads folder is never looked at.
+/// <see cref="WabbajackSettings"/> is read here. The user's Downloads folder is looked at only by
+/// <see cref="DownloadsPickup"/>, when the user turned that on, and it hands matching files to this inbox.
 /// </summary>
 public sealed class ArchiveInbox(
     WabbajackPaths paths,

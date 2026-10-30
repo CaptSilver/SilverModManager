@@ -26,6 +26,7 @@ public class Startup
             {
                 InboxPath = new ConfigurablePath(null, TestScratch.Combine($"{SettingsRoot}/Inbox")),
                 ExtrasRoot = new ConfigurablePath(null, TestScratch.Combine($"{SettingsRoot}/Extras")),
+                DownloadsFolder = TestScratch.Combine($"{SettingsRoot}/Downloads").ToString(),
                 GalleryCachePath = new ConfigurablePath(null, TestScratch.Combine($"{SettingsRoot}/Gallery")),
             });
     }

@@ -43,6 +43,7 @@ public abstract class AcquireTestBase<TTest>(ITestOutputHelper helper)
             {
                 InboxPath = new ConfigurablePath(null, TestScratch.Combine($"{Startup.SettingsRoot}/Inbox-{Guid.NewGuid()}")),
                 ExtrasRoot = new ConfigurablePath(null, TestScratch.Combine($"{Startup.SettingsRoot}/Extras-{Guid.NewGuid()}")),
+                DownloadsFolder = TestScratch.Combine($"{Startup.SettingsRoot}/Downloads-{Guid.NewGuid()}").ToString(),
             })
             .AddUniversalGameLocator<SkyrimSe>(new Version(GameVersion), StubGameFiles, locationsFileSystem: IsolatedPrefixFileSystem.Create);
     }
