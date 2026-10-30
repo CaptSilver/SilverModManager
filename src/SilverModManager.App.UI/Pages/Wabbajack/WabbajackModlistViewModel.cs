@@ -50,7 +50,11 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     private bool _loadStarted;
 
     // False from the moment a pick starts planning until its plan arrives, and after a plan that failed.
+    // Only a pick that planned successfully sets it; the acquirer re-announcing a plan must not.
     private bool _planReady;
+
+    // Download plans the list again before it starts, and the button is off for that time.
+    private bool _isPreparingDownloads;
 
     [Reactive] public partial LibraryFileId FileId { get; set; }
 
@@ -228,6 +232,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             // reaches the library, without fetching anything.
             _downloads = null;
             _acquirer.Show(plan);
+            _planReady = true;
             ApplyPlan(_acquirer.Plan);
             RefreshInstalledState();
         }
@@ -249,24 +254,34 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         _acquireCancellation = new CancellationTokenSource();
         var token = _acquireCancellation.Token;
 
-        ArchivePlan plan;
+        _isPreparingDownloads = true;
+        Recompute();
         try
         {
-            plan = await _service.BuildPlan(FileId, SelectedLoadout?.Id, token);
-        }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
-        {
-            return;
-        }
-        // Another loadout was picked while planning; its own plan is the one on the page now.
-        if (token.IsCancellationRequested) return;
+            ArchivePlan plan;
+            try
+            {
+                plan = await _service.BuildPlan(FileId, SelectedLoadout?.Id, token);
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                return;
+            }
+            // Another loadout was picked while planning; its own plan is the one on the page now.
+            if (token.IsCancellationRequested) return;
 
-        _downloads = null;
-        HasStartedDownloads = true;
-        IsDownloading = true;
-        var run = _acquirer.Run(plan, new Progress<AcquireProgress>(OnDownloadProgress), token);
-        ApplyPlan(_acquirer.Plan);
-        _ = ObserveDownloads(run, token);
+            _downloads = null;
+            HasStartedDownloads = true;
+            IsDownloading = true;
+            var run = _acquirer.Run(plan, new Progress<AcquireProgress>(OnDownloadProgress), token);
+            ApplyPlan(_acquirer.Plan);
+            _ = ObserveDownloads(run, token);
+        }
+        finally
+        {
+            _isPreparingDownloads = false;
+            Recompute();
+        }
     }
 
     private async Task ObserveDownloads(Task run, CancellationToken token)
@@ -303,7 +318,6 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     private void ApplyPlan(ArchivePlan plan)
     {
         _plan = plan;
-        _planReady = true;
         Archives = plan.Rows.Select(row => new WabbajackArchiveRow(row)).ToArray();
 
         var (estimate, isLowerBound) = WabbajackModlistText.ExtractedSize(plan);
@@ -329,8 +343,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     {
         var hasLoadout = SelectedLoadout is not null;
         InstallBlockedReason = WabbajackModlistText.InstallBlockedReason(hasLoadout, IsPlanning, _planReady, IsInstalling, _plan, SkipMissingArchives);
-        DownloadBlockedReason = WabbajackModlistText.DownloadBlockedReason(IsPlanning, _planReady, IsDownloading, _plan);
-        OpenNextFiveBlockedReason = WabbajackModlistText.OpenNextFiveBlockedReason(HasStartedDownloads);
+        DownloadBlockedReason = WabbajackModlistText.DownloadBlockedReason(IsPlanning, _isPreparingDownloads, _planReady, IsDownloading, _plan);
+        OpenNextFiveBlockedReason = WabbajackModlistText.OpenNextFiveBlockedReason(HasStartedDownloads, DownloadBlockedReason, _plan);
 
         // The reasons are the single source: a button is on exactly when it has none to give.
         CanInstall = InstallBlockedReason == "";

@@ -84,7 +84,7 @@ public partial class WabbajackModlistViewModelTests
             ToolTip.GetTip(download).Should().Be(downloadReason.Text);
 
             var nextFiveReason = view.FindControl<TextBlock>("OpenNextFiveReasonText")!;
-            nextFiveReason.Text.Should().Contain("Press Download first");
+            nextFiveReason.Text.Should().Be(downloadReason.Text, "Download cannot be pressed, so pointing at it would help no one");
             ToolTip.GetTip(nextFive).Should().Be(nextFiveReason.Text);
             ToolTip.GetShowOnDisabled(nextFive).Should().BeTrue();
         });

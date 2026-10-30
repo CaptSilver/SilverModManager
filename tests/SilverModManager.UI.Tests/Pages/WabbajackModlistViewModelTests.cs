@@ -101,13 +101,13 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         public async Task<ArchivePlan> BuildPlan(LibraryFileId file, SilverModManager.Sdk.Loadouts.LoadoutId? target, CancellationToken cancellationToken)
         {
             PlannedFor.Add(target);
-            if (PlanFailure is { } failure) throw failure;
             var plan = Plan;
             if (PlanGate is { } gate)
             {
                 PlanGate = null;
                 await gate.Task;
             }
+            if (PlanFailure is { } failure) throw failure;
             return plan;
         }
 
@@ -560,5 +560,89 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         vm.ProgressText.Should().NotBeEmpty("the user sees that something is happening");
         vm.InstallBlockedReason.Should().Contain("An install is running");
         service.Run.Done.SetResult();
+    }
+
+    [Fact]
+    public async Task ComingBackToThePage_AfterAFailedCheck_DoesNotMakeInstallAvailable()
+    {
+        var (vm, service, _) = await Open(Plan(Row(ArchiveState.Have)), load: false);
+        service.PlanFailure = new InvalidOperationException("The game is not installed");
+        await vm.LoadAsync(CancellationToken.None);
+
+        vm.Activator.Activate().Dispose();
+        using var back = vm.Activator.Activate();
+
+        vm.CanInstall.Should().BeFalse("the empty plan is what a failed check leaves behind");
+        vm.InstallBlockedReason.Should().Contain("could not be checked");
+        vm.DownloadBlockedReason.Should().Contain("could not be checked");
+    }
+
+    [Fact]
+    public async Task APlanChangeWhileAnotherPickIsChecked_AndThenFails_DoesNotMakeInstallAvailable()
+    {
+        var plan = Plan(Row(ArchiveState.Have));
+        var (vm, service, acquirer) = await Open(plan, createsLoadouts: true);
+        using var activation = vm.Activator.Activate();
+        var gate = new TaskCompletionSource();
+        service.PlanGate = gate;
+        service.PlanFailure = new InvalidOperationException("The game is not installed");
+
+        vm.SelectLoadoutCommand.Execute(CreateNew(vm)).Subscribe();
+        await WaitUntil(() => vm.IsPlanning);
+        acquirer.Change(plan);
+        gate.SetResult();
+        await WaitUntil(() => !vm.IsPlanning);
+
+        vm.CanInstall.Should().BeFalse("the old pick's plan is not the new pick's");
+        vm.InstallBlockedReason.Should().Contain("could not be checked");
+    }
+
+    [Fact]
+    public async Task Download_WhileItPlansTheListAgain_SaysSo()
+    {
+        var (vm, service, acquirer) = await Open(Plan(Row(ArchiveState.Automatic)));
+        acquirer.RunGate = new TaskCompletionSource();
+        var gate = new TaskCompletionSource();
+        service.PlanGate = gate;
+
+        vm.DownloadCommand.Execute().Subscribe();
+        await WaitUntil(() => service.PlannedFor.Count == 2);
+
+        vm.CanDownload.Should().BeFalse();
+        vm.DownloadBlockedReason.Should().NotBeEmpty("a button that is off says why");
+        vm.DownloadBlockedReason.Should().Contain("Checking the list");
+
+        gate.SetResult();
+        await WaitUntil(() => acquirer.Runs == 1);
+        vm.DownloadBlockedReason.Should().Contain("Downloads are running");
+        acquirer.RunGate.SetResult();
+    }
+
+    [Fact]
+    public async Task OpenNextFive_WhenDownloadIsOff_GivesDownloadsReasonInsteadOfPointingAtDownload()
+    {
+        var (vm, _, _) = await Open(Plan(Row(ArchiveState.Have, "a.7z")));
+
+        vm.OpenNextFiveBlockedReason.Should().NotBeEmpty();
+        vm.OpenNextFiveBlockedReason.Should().NotContain("Press Download first");
+        vm.OpenNextFiveBlockedReason.Should().Contain("Every archive is already in your library");
+    }
+
+    [Fact]
+    public async Task OpenNextFive_WhenNoArchiveNeedsTheBrowser_SaysSo()
+    {
+        var (vm, _, _) = await Open(Plan(Row(ArchiveState.Automatic, "a.7z")));
+
+        vm.CanDownload.Should().BeTrue();
+        vm.OpenNextFiveBlockedReason.Should().Be("No archive needs your browser.");
+    }
+
+    [Fact]
+    public async Task Install_WhenOnlyGameFilesDiffer_DoesNotTellYouToGetAnything()
+    {
+        var (vm, _, _) = await Open(Plan(Row(ArchiveState.GameFileVersion, "Skyrim.exe"), Row(ArchiveState.Have, "c.7z")));
+
+        vm.InstallBlockedReason.Should().NotContain("Get what is missing");
+        vm.InstallBlockedReason.Should().Contain("Skip files from missing archives");
     }
 }

@@ -131,28 +131,52 @@ public class WabbajackModlistTextTests
 
     [Fact]
     public void DownloadBlockedReason_IsEmptyWhenAnArchiveCanBeFetched()
-        => WabbajackModlistText.DownloadBlockedReason(false, true, false, Plan(Row(ArchiveState.Browser))).Should().BeEmpty();
+        => WabbajackModlistText.DownloadBlockedReason(false, false, true, false, Plan(Row(ArchiveState.Browser))).Should().BeEmpty();
 
     [Fact]
     public void DownloadBlockedReason_CoversRunningCheckingFailedEmptyDoneAndManual()
     {
-        WabbajackModlistText.DownloadBlockedReason(false, true, true, Plan(Row(ArchiveState.Browser))).Should().Be("Downloads are running. Their progress is shown above.");
-        WabbajackModlistText.DownloadBlockedReason(true, false, false, Plan()).Should().StartWith("Checking the list");
-        WabbajackModlistText.DownloadBlockedReason(false, false, false, Plan()).Should().Contain("could not be checked");
-        WabbajackModlistText.DownloadBlockedReason(false, true, false, Plan()).Should().Be("The list names no archives.");
-        WabbajackModlistText.DownloadBlockedReason(false, true, false, Plan(Row(ArchiveState.Have))).Should().StartWith("Every archive is already in your library");
-        WabbajackModlistText.DownloadBlockedReason(false, true, false, Plan(Row(ArchiveState.Manual), Row(ArchiveState.Unsupported, "b")))
+        WabbajackModlistText.DownloadBlockedReason(false, false, true, true, Plan(Row(ArchiveState.Browser))).Should().Be("Downloads are running. Their progress is shown above.");
+        WabbajackModlistText.DownloadBlockedReason(true, false, false, false, Plan()).Should().StartWith("Checking the list");
+        WabbajackModlistText.DownloadBlockedReason(false, false, false, false, Plan()).Should().Contain("could not be checked");
+        WabbajackModlistText.DownloadBlockedReason(false, false, true, false, Plan()).Should().Be("The list names no archives.");
+        WabbajackModlistText.DownloadBlockedReason(false, false, true, false, Plan(Row(ArchiveState.Have))).Should().StartWith("Every archive is already in your library");
+        WabbajackModlistText.DownloadBlockedReason(false, false, true, false, Plan(Row(ArchiveState.Manual), Row(ArchiveState.Unsupported, "b")))
             .Should().StartWith("None of the 2 missing archives can be fetched by the app").And.Contain("Open page");
-        WabbajackModlistText.DownloadBlockedReason(false, true, false, Plan(Row(ArchiveState.Manual), Row(ArchiveState.GameFileVersion, "b")))
+        WabbajackModlistText.DownloadBlockedReason(false, false, true, false, Plan(Row(ArchiveState.Manual), Row(ArchiveState.GameFileVersion, "b")))
             .Should().StartWith("The missing archive cannot be fetched by the app").And.Contain("1 game file differs");
-        WabbajackModlistText.DownloadBlockedReason(false, true, false, Plan(Row(ArchiveState.GameFileVersion, "b")))
+        WabbajackModlistText.DownloadBlockedReason(false, false, true, false, Plan(Row(ArchiveState.GameFileVersion, "b")))
             .Should().StartWith("1 game file differs from the version the list was made for").And.Contain("downloading cannot change that");
     }
 
     [Fact]
-    public void OpenNextFiveBlockedReason_SaysToPressDownloadFirst()
+    public void DownloadBlockedReason_SaysTheListIsBeingCheckedWhilePreparingTheDownloads()
+        => WabbajackModlistText.DownloadBlockedReason(false, true, true, false, Plan(Row(ArchiveState.Automatic))).Should().StartWith("Checking the list");
+
+    [Fact]
+    public void InstallBlockedReason_OnlyTellsYouToGetArchivesWhenSomeAreMissing()
     {
-        WabbajackModlistText.OpenNextFiveBlockedReason(false).Should().Contain("Press Download first");
-        WabbajackModlistText.OpenNextFiveBlockedReason(true).Should().BeEmpty();
+        var onlyDiffering = WabbajackModlistText.InstallBlockedReason(true, false, true, false, Plan(Row(ArchiveState.GameFileVersion), Row(ArchiveState.Have, "b")), false);
+        onlyDiffering.Should().NotContain("Get what is missing").And.Contain("Skip files from missing archives");
+
+        var missing = WabbajackModlistText.InstallBlockedReason(true, false, true, false, Plan(Row(ArchiveState.Manual), Row(ArchiveState.GameFileVersion, "b")), false);
+        missing.Should().Contain("Get what is missing");
     }
+
+    [Fact]
+    public void OpenNextFiveBlockedReason_SaysToPressDownloadFirst_OnlyWhenDownloadCanBePressed()
+    {
+        var browser = Plan(Row(ArchiveState.Browser));
+        WabbajackModlistText.OpenNextFiveBlockedReason(false, "", browser).Should().Contain("Press Download first");
+        WabbajackModlistText.OpenNextFiveBlockedReason(true, "", browser).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void OpenNextFiveBlockedReason_RepeatsDownloadsReasonWhenDownloadIsOff()
+        => WabbajackModlistText.OpenNextFiveBlockedReason(false, "Every archive is already in your library.", Plan(Row(ArchiveState.Have)))
+            .Should().Be("Every archive is already in your library.");
+
+    [Fact]
+    public void OpenNextFiveBlockedReason_SaysWhenNoArchiveNeedsTheBrowser()
+        => WabbajackModlistText.OpenNextFiveBlockedReason(false, "", Plan(Row(ArchiveState.Automatic))).Should().Be("No archive needs your browser.");
 }

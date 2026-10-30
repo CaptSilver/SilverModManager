@@ -100,17 +100,20 @@ public static class WabbajackModlistText
         var parts = new List<string>();
         if (missing > 0) parts.Add($"{missing} of {plan.Rows.Count} {(missing == 1 ? "archives is" : "archives are")} not in your library yet.");
         if (differing > 0) parts.Add($"{GameFilesDiffer(differing)} from the version the list was made for.");
-        parts.Add("Get what is missing, or tick \"Skip files from missing archives\".");
+        parts.Add(missing > 0
+            ? "Get what is missing, or tick \"Skip files from missing archives\"."
+            : "Put back the game files the list was made for, or tick \"Skip files from missing archives\".");
         return string.Join(" ", parts);
     }
 
     private static string GameFilesDiffer(int count) => count == 1 ? "1 game file differs" : $"{count} game files differ";
 
     /// <summary>Why Download is off, as a sentence for the page, or "" while it is allowed.</summary>
-    public static string DownloadBlockedReason(bool isPlanning, bool planReady, bool isDownloading, ArchivePlan plan)
+    public static string DownloadBlockedReason(bool isPlanning, bool isPreparing, bool planReady, bool isDownloading, ArchivePlan plan)
     {
         if (isDownloading) return "Downloads are running. Their progress is shown above.";
-        if (isPlanning) return CheckingTheList;
+        // Download plans the list afresh before it starts, which takes as long as the first check.
+        if (isPlanning || isPreparing) return CheckingTheList;
         if (!planReady) return CheckFailed;
         if (plan.Rows.Any(row => row.State is ArchiveState.Automatic or ArchiveState.Browser)) return "";
         if (plan.Rows.Count == 0) return "The list names no archives.";
@@ -129,9 +132,17 @@ public static class WabbajackModlistText
         return string.Join(" ", parts);
     }
 
-    /// <summary>Why "Open next five" is off, as a sentence for the page, or "" while it is allowed.</summary>
-    public static string OpenNextFiveBlockedReason(bool hasStartedDownloads)
-        => hasStartedDownloads ? "" : "Press Download first. The app only expects your browser downloads once it has started them.";
+    /// <summary>
+    /// Why "Open next five" is off, as a sentence for the page, or "" while it is allowed. When Download cannot be
+    /// pressed either, pointing at it would send the user nowhere, so its own reason is repeated.
+    /// </summary>
+    public static string OpenNextFiveBlockedReason(bool hasStartedDownloads, string downloadBlockedReason, ArchivePlan plan)
+    {
+        if (hasStartedDownloads) return "";
+        if (downloadBlockedReason != "") return downloadBlockedReason;
+        if (!plan.Rows.Any(row => row.State == ArchiveState.Browser)) return "No archive needs your browser.";
+        return "Press Download first. The app only expects your browser downloads once it has started them.";
+    }
 
     /// <summary>The loadouts among <paramref name="loadouts"/> whose game is <paramref name="game"/>, in the order given.</summary>
     public static IReadOnlyList<LoadoutId> LoadoutsFor(IEnumerable<(LoadoutId Id, GameId Game)> loadouts, GameId game)
