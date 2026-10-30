@@ -22,6 +22,7 @@ namespace SilverModManager.UI.Tests;
 public class AUiTest : IAsyncDisposable
 {
     private readonly List<Window> _windows = [];
+    private readonly string _testName;
 
     protected IServiceProvider Provider;
 
@@ -31,6 +32,8 @@ public class AUiTest : IAsyncDisposable
     public AUiTest(IServiceProvider provider)
     {
         Provider = provider;
+        _testName = TestContext.Current.Test?.TestDisplayName ?? GetType().Name;
+        UiThreadMonitor.Shared.TestStarted(_testName);
 
         // Do this to trigger the AvaloniaApp constructor/initialization
         App = provider.GetRequiredService<AvaloniaApp>();
@@ -64,6 +67,7 @@ public class AUiTest : IAsyncDisposable
     /// </summary>
     protected static void Render(Window window)
     {
+        UiThreadMonitor.Shared.Operation($"Render({window.GetType().Name} \"{window.Title}\"), a layout pass, a headless render tick and the queued jobs");
         window.UpdateLayout();
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         Dispatcher.UIThread.RunJobs();
@@ -71,6 +75,7 @@ public class AUiTest : IAsyncDisposable
 
     public virtual async ValueTask DisposeAsync()
     {
+        UiThreadMonitor.Shared.TestFinished(_testName);
         Window[] windows;
         lock (_windows)
         {
@@ -228,7 +233,9 @@ public class AUiTest : IAsyncDisposable
         {
             try
             {
-                await action();
+                UiThreadMonitor.Shared.ThrowIfStuck();
+                // An action awaiting a UI thread that stopped running jobs never ends, so it is cut off, with an explanation, instead of waiting for ever.
+                await UiThreadMonitor.Shared.WithinAsync(action(), UiThreadMonitor.ActionCap(maxTimeout.Value));
                 return;
             }
             catch (Exception)
