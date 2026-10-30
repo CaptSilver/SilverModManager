@@ -228,6 +228,20 @@ internal sealed class Transaction : IMainTransaction, ISubTransaction
         return new Transaction(_connection, parentTransaction: this);
     }
 
+    public bool IsEmpty
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _datoms.Count == 0
+                       && _tempEntities is not { Count: > 0 }
+                       && _txFunctions is not { Count: > 0 }
+                       && _internalTxFunction is null;
+            }
+        }
+    }
+
     public void Reset()
     {
         _datoms.Reset();

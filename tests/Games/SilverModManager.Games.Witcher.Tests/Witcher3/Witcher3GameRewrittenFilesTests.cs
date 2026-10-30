@@ -284,6 +284,28 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
         status.Should().Be(LoadoutSynchronizerState.Current, "the heal belongs to the apply that made it");
     }
 
+    // The load order is reconciled in the background whenever a loadout item changes, and an apply that heals the
+    // overrides changes items. Under load that pass lands after the apply has recorded itself. When it has
+    // nothing to change it must not commit at all: any later commit makes the status diff the loadout against the
+    // disk, and mods.settings is rewritten on every sync, so the diff always finds work.
+    [Fact]
+    public async Task ReconcilingTheLoadOrderAfterAnApplyCommitsNothingAndLeavesNothingToApply()
+    {
+        var loadout = await CreateLoadout();
+        await Legacy().Synchronize(Refresh(loadout));
+        await TheGameRunsOnce();
+        await Legacy().Synchronize(Refresh(loadout));
+        await Synchronizer.Synchronize(Refresh(loadout));
+        var basisAfterApply = Connection.Db.BasisTxId;
+
+        await Game.SortOrderManager.UpdateLoadOrders(loadout.LoadoutId);
+
+        Connection.Db.BasisTxId.Should().Be(basisAfterApply, "the load order was already up to date, so there is nothing to record");
+        var status = await (await SynchronizerService.StatusForLoadout(loadout.LoadoutId))
+            .Where(state => state != LoadoutSynchronizerState.Pending).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+        status.Should().Be(LoadoutSynchronizerState.Current);
+    }
+
     [Fact]
     public async Task AChangedGameFileSettlesWithinTheApplyThatIngestsIt()
     {

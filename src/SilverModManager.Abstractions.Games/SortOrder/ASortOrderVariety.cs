@@ -344,6 +344,10 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
         
         PersistSortOrderCore(sortOrderId, newOrder, tx, startingDb, token);
 
+        // A reconcile that finds the stored order already right writes nothing. Committing it anyway still takes a
+        // transaction id, and one that lands after an apply recorded itself reads as a change to apply again.
+        if (tx.IsEmpty) return true;
+
         var sortOrderTxId = GetMaxTxIdForSortOrder(sortOrderId, startingDb) ;
         if (sortOrderTxId == default(TxId)) return false;
         

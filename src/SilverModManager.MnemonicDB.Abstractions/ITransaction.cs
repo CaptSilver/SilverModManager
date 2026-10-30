@@ -110,6 +110,13 @@ public interface ITransaction : IDisposable
     ISubTransaction CreateSubTransaction();
 
     /// <summary>
+    /// True while the transaction holds nothing to write: no datoms, no attached entities, no functions. Committing it would still
+    /// take a transaction id and wake every observer of the database, so a caller that may have nothing to change
+    /// asks first.
+    /// </summary>
+    bool IsEmpty { get; }
+
+    /// <summary>
     /// Resets the transaction.
     /// </summary>
     void Reset();

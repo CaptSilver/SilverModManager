@@ -109,6 +109,9 @@ internal class InternalTransaction(IDb basisDb, IndexSegmentBuilder datoms) : IT
     }
 
     /// <inheritdoc />
+    public bool IsEmpty => datoms.Count == 0 && _temporaryEntities is not { Count: > 0 };
+
+    /// <inheritdoc />
     public void Reset()
     {
         throw new NotSupportedException();
