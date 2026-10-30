@@ -7,6 +7,7 @@ using SilverModManager.Networking.NexusWebApi;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Wabbajack.Acquire.Hosts;
 using SilverModManager.Wabbajack.Format;
 
 namespace SilverModManager.Wabbajack.Acquire;
@@ -31,6 +32,9 @@ public sealed class ArchiveDownloadJobs(IServiceProvider provider, NexusModsLibr
 
             case WabbajackCdnState cdn:
                 return WabbajackCdnDownloadJob.Create(provider, cdn.Url, destination);
+
+            case MegaState mega:
+                return MegaDownloadJob.Create(provider, mega.Url, row.Archive.Name, destination);
 
             case NexusState nexus:
                 var domain = WabbajackGames.NexusDomainFor(nexus.GameName)

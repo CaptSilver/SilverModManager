@@ -44,6 +44,7 @@ public static class Services
             .AddSingleton<INestedArchiveOpener, BsaMemberOpener>()
             .AddSingleton<ExpectedNexusDownloads>()
             .AddSingleton<IExpectedNexusDownloads>(provider => provider.GetRequiredService<ExpectedNexusDownloads>())
+            .AddSingleton<HostThrottle>()
             .AddSingleton<IArchiveDownloadJobs, ArchiveDownloadJobs>()
             .AddSingleton<IArchiveAcquirer>(provider => new ArchiveAcquirer(
                 provider.GetRequiredService<ILibraryService>(),

@@ -97,7 +97,7 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
             using var response = await Client.SendAsync(message, token);
             // Gone is gone; anything else (a busy CDN, a 5xx, a dropped connection) is worth asking again.
             if (response.StatusCode == HttpStatusCode.NotFound)
-                throw new PermanentCdnException(new HttpRequestException($"The CDN has no file at {Url}", null, HttpStatusCode.NotFound));
+                throw new PermanentFailureException(new HttpRequestException($"The CDN has no file at {Url}", null, HttpStatusCode.NotFound));
             response.EnsureSuccessStatusCode();
             return await ReadDefinition(response, token);
         }, token);
@@ -204,31 +204,8 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
     /// lands on some of them. Each request is retried with a growing pause rather than failing the whole download over
     /// a hiccup. A file the CDN does not have is not retried, and nor is the user cancelling.
     /// </summary>
-    private async Task<T> WithRetries<T>(string what, Func<Task<T>> request, CancellationToken token)
-    {
-        var delay = RetryDelay;
-        for (var attempt = 1;; attempt++)
-        {
-            try
-            {
-                return await request();
-            }
-            catch (OperationCanceledException) when (token.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (PermanentCdnException e)
-            {
-                throw e.Error;
-            }
-            catch (Exception e) when (attempt < Attempts)
-            {
-                Logger.LogWarning("Fetching {What} failed ({Message}), attempt {Attempt} of {Attempts}, waiting {Delay}", what, e.Message, attempt, Attempts, delay);
-                await Task.Delay(delay, token);
-                delay *= 2;
-            }
-        }
-    }
+    private Task<T> WithRetries<T>(string what, Func<Task<T>> request, CancellationToken token)
+        => DownloadRetries.Run(Logger, what, Attempts, RetryDelay, request, token);
 
     /// <inheritdoc/>
     public ValueTask AddMetadata(ITransaction transaction, LibraryFile.New libraryFile)
@@ -246,12 +223,6 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
             LibraryFile = libraryFile,
         };
         return ValueTask.CompletedTask;
-    }
-
-    /// <summary>Carries an error that retrying cannot fix out of <see cref="WithRetries{T}"/>.</summary>
-    private sealed class PermanentCdnException(Exception error) : Exception(error.Message, error)
-    {
-        public Exception Error { get; } = error;
     }
 
     private sealed record FileDefinition(string OriginalFileName, long Size, FileIdentity Hash, IReadOnlyList<PartDefinition> Parts)
