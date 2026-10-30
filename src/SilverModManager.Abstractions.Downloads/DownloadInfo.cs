@@ -9,6 +9,7 @@ using R3;
 
 [assembly: InternalsVisibleTo("SilverModManager.Library")]
 [assembly: InternalsVisibleTo("SilverModManager.Library.Tests")]
+[assembly: InternalsVisibleTo("SilverModManager.UI.Tests")]
 
 namespace SilverModManager.Abstractions.Downloads;
 
