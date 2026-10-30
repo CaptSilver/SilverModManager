@@ -265,7 +265,9 @@ public static class ImagePipelines
     internal static HttpClient CreateThumbnailHttpClient()
     {
         var handler = new ThumbnailThrottleHandler(new SocketsHttpHandler { ConnectTimeout = TimeSpan.FromSeconds(30) });
-        var client = new HttpClient(handler);
+        // The timeout covers queueing for a slot and waiting out a host's pause, so it has to outlast the longest
+        // pause the handler will sit through, plus a normal download. Otherwise the wait ends as a silent cancel.
+        var client = new HttpClient(handler) { Timeout = ThumbnailThrottleHandler.LongestWait + TimeSpan.FromMinutes(2) };
         client.DefaultRequestHeaders.UserAgent.Add(ApplicationConstants.UserAgent);
         return client;
     }

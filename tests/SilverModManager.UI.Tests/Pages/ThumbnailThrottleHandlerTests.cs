@@ -143,4 +143,48 @@ public class ThumbnailThrottleHandlerTests
 
         inner.Requests.Should().HaveCount(2);
     }
+
+    [Fact]
+    public async Task RequestsWaitingOutAPause_DoNotHoldTheSlotsFromOtherHosts()
+    {
+        var (client, inner, time) = Build(maxConcurrency: 2);
+        inner.Respond = r => Task.FromResult(r.RequestUri!.Host == "i.imgur.com" ? TooManyRequests(TimeSpan.FromSeconds(20)) : new HttpResponseMessage(HttpStatusCode.OK));
+        await client.GetAsync(Imgur);
+        inner.Respond = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+
+        var waiting = Enumerable.Range(0, 4).Select(i => client.GetAsync(new Uri($"https://i.imgur.com/w{i}.png"))).ToList();
+        await Task.Delay(100);
+        waiting.Should().OnlyContain(t => !t.IsCompleted);
+
+        var other = client.GetAsync(Thunderstore);
+        var finished = await Task.WhenAny(other, Task.Delay(TimeSpan.FromSeconds(5)));
+        finished.Should().BeSameAs(other, "requests parked behind a pause must not occupy the concurrency slots");
+
+        time.Advance(TimeSpan.FromSeconds(21));
+        (await Task.WhenAll(waiting)).Should().OnlyContain(r => r.StatusCode == HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task APauseJustUnderTheLongestWait_IsWaitedOutRatherThanFailed()
+    {
+        var (client, inner, time) = Build();
+        inner.Respond = _ => Task.FromResult(TooManyRequests(ThumbnailThrottleHandler.LongestWait - TimeSpan.FromSeconds(1)));
+        await client.GetAsync(Imgur);
+
+        inner.Respond = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        var next = client.GetAsync(OtherImgur);
+        await Task.Delay(100);
+        next.IsCompleted.Should().BeFalse();
+
+        time.Advance(ThumbnailThrottleHandler.LongestWait);
+        (await next).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public void TheThumbnailClientTimeout_OutlastsTheLongestPauseItMayWaitOut()
+    {
+        using var client = SilverModManager.App.UI.ImagePipelines.CreateThumbnailHttpClient();
+
+        client.Timeout.Should().BeGreaterThan(ThumbnailThrottleHandler.LongestWait + TimeSpan.FromSeconds(30));
+    }
 }

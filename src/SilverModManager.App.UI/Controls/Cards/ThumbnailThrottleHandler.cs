@@ -31,11 +31,9 @@ public sealed class ThumbnailThrottleHandler : DelegatingHandler
     {
         var host = request.RequestUri?.Host ?? "";
 
-        await _slots.WaitAsync(cancellationToken);
+        await AcquireSlotAsync(host, cancellationToken);
         try
         {
-            await WaitOutPauseAsync(host, cancellationToken);
-
             var response = await base.SendAsync(request, cancellationToken);
             if (response.StatusCode == HttpStatusCode.TooManyRequests) PauseHost(host, response);
             return response;
@@ -45,6 +43,23 @@ public sealed class ThumbnailThrottleHandler : DelegatingHandler
             _slots.Release();
         }
     }
+
+    // A paused host's requests wait before they take a slot. Waiting inside a slot would let four parked imgur
+    // requests keep every other host's thumbnails from loading for the length of the pause. A 429 can land while we
+    // queue for a slot, so the pause is checked again once one is ours.
+    private async Task AcquireSlotAsync(string host, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            await WaitOutPauseAsync(host, cancellationToken);
+            await _slots.WaitAsync(cancellationToken);
+            if (!IsPaused(host)) return;
+
+            _slots.Release();
+        }
+    }
+
+    private bool IsPaused(string host) => _pausedUntil.TryGetValue(host, out var until) && until > _time.GetUtcNow();
 
     private async Task WaitOutPauseAsync(string host, CancellationToken cancellationToken)
     {
