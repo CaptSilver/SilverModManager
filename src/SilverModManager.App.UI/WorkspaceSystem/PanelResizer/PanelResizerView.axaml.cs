@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Extensions;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.WorkspaceSystem;
 
@@ -44,7 +45,7 @@ public partial class PanelResizerView : ReactiveUserControl<IPanelResizerViewMod
                 .Subscribe()
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.ActualPoints)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.ActualPoints))
                 .SubscribeWithErrorLogging(tuple =>
                 {
                     if (ViewModel is null) return;
@@ -94,7 +95,7 @@ public partial class PanelResizerView : ReactiveUserControl<IPanelResizerViewMod
                     _isPressed = false;
                 })
                 .Select(_ => Unit.Default)
-                .InvokeReactiveCommand(this, view => view.ViewModel!.DragEndCommand)
+                .InvokeReactiveCommand(this.WhenViewModel(vm => vm.WhenAnyValue(x => x.DragEndCommand)))
                 .DisposeWith(disposables);
 
             // drag
@@ -104,14 +105,13 @@ public partial class PanelResizerView : ReactiveUserControl<IPanelResizerViewMod
                 .Where(_ => _isPressed)
                 .Select(eventPattern =>
                 {
-                    if (ViewModel is null) return 0.0;
+                    if (ViewModel is null || Parent is not Control parent) return 0.0;
 
-                    var parent = (Parent as Control)!;
                     var currentPos = eventPattern.EventArgs.GetPosition(parent);
 
                     return ViewModel.IsHorizontal ? currentPos.Y : currentPos.X;
                 })
-                .InvokeReactiveCommand(this, view => view.ViewModel!.DragStartCommand)
+                .InvokeReactiveCommand(this.WhenViewModel(vm => vm.WhenAnyValue(x => x.DragStartCommand)))
                 .DisposeWith(disposables);
         });
     }

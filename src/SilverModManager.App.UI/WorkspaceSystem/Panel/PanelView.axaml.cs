@@ -6,6 +6,7 @@ using Avalonia.Controls.Metadata;
 using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.WorkspaceSystem;
 
@@ -21,7 +22,7 @@ public partial class PanelView : ReactiveUserControl<IPanelViewModel>
 
         this.WhenActivated(disposables =>
         {
-            this.WhenAnyValue(view => view.ViewModel!.LogicalBounds)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.LogicalBounds))
                 .Do(logicalBounds =>
                 {
                     var left = logicalBounds.Left.IsCloseTo(0.0) ? 0.0 : DefaultPadding;
@@ -72,7 +73,7 @@ public partial class PanelView : ReactiveUserControl<IPanelViewModel>
                 .DisposeWith(disposables);
 
             // set the bounds
-            this.WhenAnyValue(view => view.ViewModel!.ActualBounds)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.ActualBounds))
                 .SubscribeWithErrorLogging(bounds =>
                 {
                     Width = bounds.Width;
@@ -89,11 +90,11 @@ public partial class PanelView : ReactiveUserControl<IPanelViewModel>
             this.BindCommand(ViewModel, vm => vm.CloseCommand, view => view.ClosePanelButton2)
                 .DisposeWith(disposables);
 
-            this.WhenAnyObservable(view => view.ViewModel!.CloseCommand.CanExecute)
+            this.WhenViewModel(vm => vm.CloseCommand.CanExecute)
                 .BindToView(this, view => view.ClosePanelButton.IsVisible)
                 .DisposeWith(disposables);
             
-            this.WhenAnyObservable(view => view.ViewModel!.CloseCommand.CanExecute)
+            this.WhenViewModel(vm => vm.CloseCommand.CanExecute)
                 .BindToView(this, view => view.FloatingClosePanelBorder.IsVisible)
                 .DisposeWith(disposables);
 
@@ -101,7 +102,7 @@ public partial class PanelView : ReactiveUserControl<IPanelViewModel>
             this.BindCommand(ViewModel, vm => vm.PopoutCommand, view => view.PopOutPanelButton)
                 .DisposeWith(disposables);
 
-            this.WhenAnyObservable(view => view.ViewModel!.PopoutCommand.CanExecute)
+            this.WhenViewModel(vm => vm.PopoutCommand.CanExecute)
                 .BindToView(this, view => view.PopOutPanelButton.IsVisible)
                 .DisposeWith(disposables);
 
@@ -143,8 +144,7 @@ public partial class PanelView : ReactiveUserControl<IPanelViewModel>
                 .BindToView(this, view => view.TabHeaderScrollViewer.Offset)
                 .DisposeWith(disposables);
             
-            this.WhenAnyValue(view => view.ViewModel!.Tabs.Count,
-                view => view.ViewModel!.IsAlone)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Tabs.Count, x => x.IsAlone))
                 .Select(tuple =>
                     {
                         // we need a floating tab close button if there is only one tab and the panel is not alone
@@ -160,7 +160,7 @@ public partial class PanelView : ReactiveUserControl<IPanelViewModel>
                 .DisposeWith(disposables);
 
             // pseudo classes
-            this.WhenAnyValue(view => view.ViewModel!.Tabs.Count)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Tabs.Count))
                 .Select(count => count == 1)
                 .SubscribeWithErrorLogging(hasOneTab =>
                     {
@@ -170,11 +170,11 @@ public partial class PanelView : ReactiveUserControl<IPanelViewModel>
                 )
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.IsSelected)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsSelected))
                 .SubscribeWithErrorLogging(isSelected => PseudoClasses.Set(":selected", isSelected))
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.IsAlone)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsAlone))
                 .SubscribeWithErrorLogging(isAlone =>
                     {
                         PseudoClasses.Set(":alone", isAlone);

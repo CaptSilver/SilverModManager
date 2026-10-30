@@ -7,6 +7,7 @@ using Avalonia.Platform;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Windows;
+using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.UI.Sdk.Dialog.Enums;
 using R3;
@@ -67,7 +68,7 @@ public partial class DialogWindow : ReactiveWindow<IDialogViewModel>, IDisposabl
                 GenerateButtons();
                
                 
-                this.WhenAnyValue(view => view.ViewModel!.ShowChrome)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.ShowChrome))
                     .Subscribe(showChrome =>
                     {
                         Titlebar.IsVisible = showChrome;
@@ -85,7 +86,8 @@ public partial class DialogWindow : ReactiveWindow<IDialogViewModel>, IDisposabl
         this.DataContextChanged += (sender, args) =>
         {
             // Bind the CloseCommand to the Window's close action
-            _serialDisposable.Disposable = ViewModel!.ButtonPressCommand.Subscribe( id => 
+            // A cleared view model leaves nothing to listen to.
+            _serialDisposable.Disposable = ViewModel?.ButtonPressCommand.Subscribe( id => 
             {
                 Close();
             });

@@ -169,7 +169,8 @@ public partial class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarView
         NewTabCommand = ReactiveCommand.Create(() =>
             {
                 var workspaceId = workspaceController.ActiveWorkspaceId;
-                var panelId = workspaceController.ActiveWorkspace.SelectedPanel.Id;
+                var panelId = (workspaceController.ActiveWorkspace.SelectedPanel
+                    ?? throw new InvalidOperationException("The active workspace has no selected panel to open a tab in")).Id;
 
                 workspaceController.OpenPage(workspaceId,
                     Optional<PageData>.None,

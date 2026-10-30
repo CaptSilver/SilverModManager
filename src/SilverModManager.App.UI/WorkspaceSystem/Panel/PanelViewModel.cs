@@ -45,7 +45,7 @@ public partial class PanelViewModel : AViewModel<IPanelViewModel>, IPanelViewMod
 
     [Reactive] public partial bool IsAlone { get; set; }
 
-    [Reactive] public partial IPanelTabViewModel SelectedTab { get; private set; } = null!;
+    [Reactive] public partial IPanelTabViewModel? SelectedTab { get; private set; }
     [Reactive] private partial PanelTabId SelectedTabId { get; set; }
 
     private readonly ILogger _logger;

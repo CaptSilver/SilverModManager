@@ -1,8 +1,6 @@
 # Null-forgiving operators (x!) per file under src. Counts may only go down.
 # Regenerate with UPDATE_NULL_FORGIVING_BASELINE=1, see NullForgivingGuardTests.
 src/SilverModManager.Abstractions.NexusWebApi/DTOs/DownloadLink.cs	3
-src/SilverModManager.App.UI/Dialog/DialogStandardContentView.axaml.cs	8
-src/SilverModManager.App.UI/Dialog/DialogWindow.axaml.cs	2
 src/SilverModManager.App.UI/LeftMenu/Items/ApplyControl/ApplyControlView.axaml.cs	1
 src/SilverModManager.App.UI/LeftMenu/Items/ApplyControl/LaunchButtonDesignViewModel.cs	1
 src/SilverModManager.App.UI/LeftMenu/Items/ApplyControl/LaunchButtonView.axaml.cs	4
@@ -19,9 +17,3 @@ src/SilverModManager.App.UI/Overlays/RemoveGame/RemoveGameOverlayView.axaml.cs	2
 src/SilverModManager.App.UI/Overlays/Updater/UpdaterDesignView.axaml.cs	2
 src/SilverModManager.App.UI/Overlays/Updater/UpdaterViewModel.cs	1
 src/SilverModManager.App.UI/Overlays/Welcome/WelcomeOverlayView.axaml.cs	1
-src/SilverModManager.App.UI/WorkspaceSystem/AddPanelButton/AddPanelDropDownView.axaml.cs	2
-src/SilverModManager.App.UI/WorkspaceSystem/Panel/PanelView.axaml.cs	10
-src/SilverModManager.App.UI/WorkspaceSystem/Panel/PanelViewModel.cs	1
-src/SilverModManager.App.UI/WorkspaceSystem/PanelResizer/PanelResizerView.axaml.cs	4
-src/SilverModManager.App.UI/WorkspaceSystem/PanelTabHeader/PanelTabHeaderView.axaml.cs	5
-src/SilverModManager.App.UI/WorkspaceSystem/Workspace/WorkspaceViewModel.cs	2

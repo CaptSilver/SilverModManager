@@ -5,6 +5,7 @@ using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using SilverModManager.App.UI.Resources;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.WorkspaceSystem;
 
@@ -22,7 +23,7 @@ public partial class AddPanelDropDownView : ReactiveUserControl<IAddPanelDropDow
                 .DisposeWith(disposables);
 
             // disable the dropdown if there are no items
-            this.WhenAnyValue(view => view.ViewModel!.AddPanelButtonViewModels.Count)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.AddPanelButtonViewModels.Count))
                 .Select(count => count > 0)
                 .Subscribe(b =>
                 {
@@ -32,7 +33,7 @@ public partial class AddPanelDropDownView : ReactiveUserControl<IAddPanelDropDow
                 .DisposeWith(disposables);
 
             // close the dropdown when one of the items is pressed
-            this.WhenAnyValue(view => view.ViewModel!.SelectedIndex)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.SelectedIndex))
                 .Subscribe(_ => { CreatePanelComboBox.IsDropDownOpen = false;})
                 .DisposeWith(disposables);
 

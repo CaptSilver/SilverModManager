@@ -60,7 +60,10 @@ public partial class LeftMenuItemViewModel : AViewModel<ILeftMenuItemViewModel>,
             isActiveObservable = workspaceIsActiveObservable.Select(workspace => workspace.Panels
                 .ToObservableChangeSet()
                 .FilterOnObservable(panel => panel
-                    .WhenAnyValue(p => p.SelectedTab.Contents)
+                    .WhenAnyValue(p => p.SelectedTab)
+                    .Select(ContentsOf)
+                    .Switch()
+                    .DistinctUntilChanged()
                     .Select(selectedTabContents =>
                     {
                         // The SelectedTab Contents can be null at startup
@@ -83,7 +86,7 @@ public partial class LeftMenuItemViewModel : AViewModel<ILeftMenuItemViewModel>,
 
             // Should be 'Selected' only if there are multiple panels and the page is open and selected in the selected panel 
             isSelectedObservable = workspaceIsActiveObservable
-                .Select(workspace => workspace.WhenAnyValue(w => w.SelectedTab.Contents))
+                .Select(workspace => workspace.WhenAnyValue(w => w.SelectedTab).Select(ContentsOf).Switch().DistinctUntilChanged())
                 .Switch()
                 .Select(selectedTabContents =>
                     {
@@ -117,6 +120,8 @@ public partial class LeftMenuItemViewModel : AViewModel<ILeftMenuItemViewModel>,
                 .DisposeWith(d);
         });
     }
+
+    /// <summary>The tab's page as it changes; nothing is shown while no tab is selected.</summary>
+    private static IObservable<Page?> ContentsOf(IPanelTabViewModel? tab)
+        => tab is null ? Observable.Return<Page?>(null) : tab.WhenAnyValue(t => t.Contents).Select(static contents => (Page?)contents);
 }
-
-

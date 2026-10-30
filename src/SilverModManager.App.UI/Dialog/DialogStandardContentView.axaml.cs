@@ -6,6 +6,7 @@ using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Dialog.Enums;
 using ReactiveUI;
 using Avalonia.ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Dialog;
 
@@ -19,7 +20,13 @@ public partial class DialogStandardContentView : ReactiveUserControl<IDialogStan
             {
                 // COMMANDS
 
-                CopyDetailsButton.Command = ReactiveCommand.CreateFromTask(async () => { await TopLevel.GetTopLevel(this)!.Clipboard!.SetTextAsync(ViewModel?.CopyText ?? ViewModel?.MarkdownRenderer?.Contents); });
+                CopyDetailsButton.Command = ReactiveCommand.CreateFromTask(async () =>
+                {
+                    var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+                    if (clipboard is null) return;
+
+                    await clipboard.SetTextAsync(ViewModel?.CopyText ?? ViewModel?.MarkdownRenderer?.Contents);
+                });
                 
                 this.OneWayBind(ViewModel,
                         vm => vm.ShowMarkdownCopyButton,
@@ -84,31 +91,31 @@ public partial class DialogStandardContentView : ReactiveUserControl<IDialogStan
                 // HIDE CONTROLS IF NOT NEEDED
 
                 // only show the text if not null or empty
-                this.WhenAnyValue(view => view.ViewModel!.Text)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Text))
                     .Select(string.IsNullOrWhiteSpace)
                     .Subscribe(b => TextTextBlock.IsVisible = !b)
                     .DisposeWith(disposables);
 
                 // only show the heading if not null or empty
-                this.WhenAnyValue(view => view.ViewModel!.Heading)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Heading))
                     .Select(string.IsNullOrWhiteSpace)
                     .Subscribe(b => HeaderTextBlock.IsVisible = !b)
                     .DisposeWith(disposables);
 
                 // only show the icon if the icon is not null
-                this.WhenAnyValue(view => view.ViewModel!.Icon)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Icon))
                     .Select(icon => icon is not null)
                     .Subscribe(b => Icon.IsVisible = b)
                     .DisposeWith(disposables);
 
                 // only show the markdown container if markdown is not null
-                this.WhenAnyValue(view => view.ViewModel!.MarkdownRenderer)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.MarkdownRenderer))
                     .Select(markdown => markdown is not null)
                     .Subscribe(b => MarkdownContainer.IsVisible = b)
                     .DisposeWith(disposables);
 
                 // only show the input stack if not null or empty
-                this.WhenAnyValue(view => view.ViewModel!.InputLabel)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.InputLabel))
                     .Select(string.IsNullOrWhiteSpace)
                     .Subscribe(b =>
                         {
@@ -121,7 +128,7 @@ public partial class DialogStandardContentView : ReactiveUserControl<IDialogStan
                     .DisposeWith(disposables);
 
                 // only show the bottom text if not null or empty
-                this.WhenAnyValue(view => view.ViewModel!.BottomText)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.BottomText))
                     .Select(string.IsNullOrWhiteSpace)
                     .Subscribe(b => BottomTextTextBlock.IsVisible = !b)
                     .DisposeWith(disposables);

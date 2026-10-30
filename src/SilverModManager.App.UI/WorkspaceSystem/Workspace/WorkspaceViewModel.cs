@@ -37,11 +37,11 @@ public partial class WorkspaceViewModel : AViewModel<IWorkspaceViewModel>, IWork
     public IWorkspaceContext Context { get; set; } = EmptyContext.Instance;
 
     /// <inheritdoc/>
-    [Reactive] public partial IPanelViewModel SelectedPanel { get; private set; } = null!;
+    [Reactive] public partial IPanelViewModel? SelectedPanel { get; private set; }
 
     /// <inheritdoc/>
     [Reactive]
-    public partial IPanelTabViewModel SelectedTab { get; [UsedImplicitly] private set; } = null!;
+    public partial IPanelTabViewModel? SelectedTab { get; [UsedImplicitly] private set; }
 
     /// <inheritdoc/>
     [Reactive] public partial bool IsActive { get; set; }
@@ -141,14 +141,14 @@ public partial class WorkspaceViewModel : AViewModel<IWorkspaceViewModel>, IWork
                 {
                     foreach (var panel in Panels)
                     {
-                        panel.IsSelected = panel.Id == selectedPanel.Id;
+                        panel.IsSelected = panel.Id == selectedPanel?.Id;
                     }
                 })
                 .DisposeWith(disposables);
 
             // selected tab
             this.WhenAnyValue(vm => vm.SelectedPanel)
-                .Select(panel => panel.WhenAnyValue(x => x.SelectedTab))
+                .Select(panel => panel is null ? Observable.Return<IPanelTabViewModel?>(null) : panel.WhenAnyValue(x => x.SelectedTab))
                 .Switch()
                 .BindToVM(this, vm => vm.SelectedTab)
                 .DisposeWith(disposables);
@@ -382,7 +382,7 @@ public partial class WorkspaceViewModel : AViewModel<IWorkspaceViewModel>, IWork
     /// </summary>
     private bool TrySelectPage(PageData pageData)
     {
-        var panel = Panels.FirstOrDefault(panel => panel.SelectedTab.Contents.PageData.Context.Equals(pageData.Context));
+        var panel = Panels.FirstOrDefault(panel => panel.SelectedTab?.Contents.PageData.Context.Equals(pageData.Context) == true);
         if (panel is null) return false;
 
         panel.IsSelected = true;

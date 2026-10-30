@@ -39,9 +39,9 @@ public interface IWorkspaceViewModel : IViewModelInterface
     /// </summary>
     public bool IsActive { get; set; }
 
-    public IPanelViewModel SelectedPanel { get; }
+    public IPanelViewModel? SelectedPanel { get; }
 
-    public IPanelTabViewModel SelectedTab { get; }
+    public IPanelTabViewModel? SelectedTab { get; }
 
     public ReadOnlyObservableCollection<IPanelViewModel> Panels { get; }
 

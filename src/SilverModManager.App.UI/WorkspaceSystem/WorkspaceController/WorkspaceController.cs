@@ -412,13 +412,17 @@ internal sealed class WorkspaceController : ReactiveObject, IWorkspaceController
     }
 
     private OpenPageBehavior CreateOpenPageBehavior(OpenPageBehaviorType behaviorType)
+        => CreateOpenPageBehavior(ActiveWorkspace, behaviorType);
+
+    internal static OpenPageBehavior CreateOpenPageBehavior(IWorkspaceViewModel workspace, OpenPageBehaviorType behaviorType)
     {
-        var selectedPanel = ActiveWorkspace.SelectedPanel;
-        var selectedTab = selectedPanel.SelectedTab;
+        var selectedPanel = workspace.SelectedPanel
+            ?? throw new InvalidOperationException("The workspace has no selected panel to open the page in");
 
         return behaviorType switch
         {
-            OpenPageBehaviorType.ReplaceTab => new OpenPageBehavior.ReplaceTab(selectedPanel.Id, selectedTab.Id),
+            OpenPageBehaviorType.ReplaceTab => new OpenPageBehavior.ReplaceTab(selectedPanel.Id,
+                (selectedPanel.SelectedTab ?? throw new InvalidOperationException("The selected panel has no selected tab to replace")).Id),
             OpenPageBehaviorType.NewTab => new OpenPageBehavior.NewTab(selectedPanel.Id),
             OpenPageBehaviorType.NewPanel => new OpenPageBehavior.NewPanel(Optional<WorkspaceGridState>.None),
         };

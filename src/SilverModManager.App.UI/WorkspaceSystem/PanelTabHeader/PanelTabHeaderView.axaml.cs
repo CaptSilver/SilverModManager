@@ -7,6 +7,7 @@ using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using SilverModManager.App.UI.Extensions;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.WorkspaceSystem;
 
@@ -19,7 +20,7 @@ public partial class PanelTabHeaderView : ReactiveUserControl<IPanelTabHeaderVie
 
         this.WhenActivated(disposables =>
         {
-            this.WhenAnyValue(view => view.ViewModel!.Icon)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Icon))
                 .Do(icon =>
                 {
                     Icon.IsVisible = !icon.Value.IsT0;
@@ -33,7 +34,7 @@ public partial class PanelTabHeaderView : ReactiveUserControl<IPanelTabHeaderVie
             this.OneWayBind(ViewModel, vm => vm.CanClose, view => view.CloseTabButton.IsVisible)
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.Title)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Title))
                 .Subscribe(title =>
                 {
                     ToolTip.SetTip(this, title);
@@ -43,7 +44,7 @@ public partial class PanelTabHeaderView : ReactiveUserControl<IPanelTabHeaderVie
             this.BindCommand(ViewModel, vm => vm.CloseTabCommand, view => view.CloseTabButton)
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(vm => vm.ViewModel!.IsSelected)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsSelected))
                 .Subscribe(isSelected =>
                 {
                     if (isSelected) Container.Classes.Add("Selected");
@@ -54,8 +55,10 @@ public partial class PanelTabHeaderView : ReactiveUserControl<IPanelTabHeaderVie
             Observable.FromEventPattern<PointerPressedEventArgs>(
                     addHandler => Container.PointerPressed += addHandler,
                     removeHandler => Container.PointerPressed -= removeHandler
-                ).Select(_ => true)
-                .BindToView(this, view => view.ViewModel!.IsSelected)
+                ).Subscribe(_ =>
+                {
+                    if (ViewModel is not null) ViewModel.IsSelected = true;
+                })
                 .DisposeWith(disposables);
                 
             Observable
@@ -67,7 +70,7 @@ public partial class PanelTabHeaderView : ReactiveUserControl<IPanelTabHeaderVie
                 .Where(eventArgs => eventArgs.InitialPressMouseButton == MouseButton.Middle &&
                                     Bounds.Contains(eventArgs.GetPosition(this)))
                 .Select(_ => Unit.Default)
-                .InvokeReactiveCommand(this, view => view.ViewModel!.CloseTabCommand)
+                .InvokeReactiveCommand(this.WhenViewModel(vm => vm.WhenAnyValue(x => x.CloseTabCommand)))
                 .DisposeWith(disposables);
         });
     }
