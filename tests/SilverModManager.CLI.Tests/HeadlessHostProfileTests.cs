@@ -109,6 +109,17 @@ public class HeadlessHostProfileTests
     }
 
     [Fact]
+    public void OnlyTheWindowGraphResumesAnInterruptedModlistDownload()
+    {
+        static bool Resumes(IServiceCollection services)
+            => services.Any(d => d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(SilverModManager.Wabbajack.Acquire.ModlistDownloadResumer));
+
+        Resumes(Describe(Mode("as-main"))).Should().BeFalse("a game launch or one-shot verb would start hours of downloads that die with the process");
+        Resumes(Describe(Mode("run"))).Should().BeFalse();
+        Resumes(Describe(Mode())).Should().BeTrue();
+    }
+
+    [Fact]
     public void HeadlessGraphRegistersNoSecretServiceStore()
     {
         Describe(Mode("as-main")).Where(d => d.ServiceType == typeof(ISecretServiceStore)).Should().BeEmpty();

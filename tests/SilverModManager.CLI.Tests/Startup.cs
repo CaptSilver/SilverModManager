@@ -61,6 +61,8 @@ public class Startup
                 .AddSingleton(Substitute.For<IArchiveAcquirer>())
                 .AddSingleton(Substitute.For<IModlistPlanner>())
                 .AddSingleton<ModlistDownloads>()
+                // The verbs run as in the window process; the refusal without one is tested on its own host.
+                .AddSingleton<SilverModManager.Platform.Proton.Launch.WindowHost>()
                 .AddHttpDownloader()
                 .AddSecrets(new SecretStoreOptions { Mode = SecretStoreMode.NonInteractive, Backend = SecretBackendChoice.Memory })
                 .AddNexusWebApi()

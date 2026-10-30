@@ -127,6 +127,8 @@ public static class Services
                 // Steam updates games while the app is closed, so managed games are checked once at startup.
                 services.AddLocalBaselineStartupPass();
                 services.AddSteamUpdateWatcher();
+                // A download batch the last window left unfinished continues; a headless main would lose it on exit.
+                services.AddModlistDownloadResumer();
                 // Steam prunes manifests of old builds; each one is read and saved while it is still there.
                 Games.FromSoft.Services.AddSavedManifestsStartupPass(services);
                 break;

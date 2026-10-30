@@ -307,7 +307,13 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     /// <summary>Shows a run this page did not start: whether it is going and how far it has got.</summary>
     private void ShowRunStatus(AcquireStatus status)
     {
-        if (_ownsRun || status.Modlist != FileId) return;
+        if (status.Modlist != FileId)
+        {
+            // Another list's batch starting or ending changes whether this page may start its own.
+            Recompute();
+            return;
+        }
+        if (_ownsRun) return;
         // A finished run's last status stays on the acquirer; it is only worth showing while the run is going.
         if (!status.IsRunning && !IsDownloading) return;
         Downloads = new AcquireProgress(status.Finished, status.Total);
@@ -639,6 +645,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         var hasLoadout = SelectedLoadout is not null;
         InstallBlockedReason = WabbajackModlistText.InstallBlockedReason(hasLoadout, IsPlanning, _planReady, IsInstalling, _plan, SkipMissingArchives);
         DownloadBlockedReason = WabbajackModlistText.DownloadBlockedReason(IsPlanning, _isPreparingDownloads, _planReady, IsDownloading, _plan);
+        // The acquirer works on one list at a time; starting here would abandon the other list's batch.
+        if (DownloadBlockedReason == "" && _acquirer.Status is { IsRunning: true } running && running.Modlist != FileId)
+            DownloadBlockedReason = "Another modlist's downloads are running. Cancel them or wait for them to finish.";
         OpenNextFiveBlockedReason = WabbajackModlistText.OpenNextFiveBlockedReason(HasStartedDownloads, DownloadBlockedReason, _plan);
 
         // The reasons are the single source: a button is on exactly when it has none to give.

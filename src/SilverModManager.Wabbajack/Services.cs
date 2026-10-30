@@ -29,7 +29,6 @@ public static class Services
     {
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, WabbajackSkippedFilesEmitter>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WabbajackModlistRemovalWatcher>());
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ModlistDownloadResumer>());
         return services
             .AddWabbajackModlistLibraryFileModel()
             .AddWabbajackModlistArchiveModel()
@@ -77,6 +76,17 @@ public static class Services
                 provider.GetService<TimeProvider>() ?? TimeProvider.System,
                 provider.GetRequiredService<ILogger<WabbajackGalleryClient>>()))
             .AddSingleton<ILibraryFileRecogniser, WabbajackModlistRecogniser>();
+    }
+
+    /// <summary>
+    /// Continues, once the window is up, the modlist download the last session left unfinished. Only the window
+    /// process adds it: a game launch or a one-shot verb in a headless main must not start hours of downloads that
+    /// end with the process.
+    /// </summary>
+    public static IServiceCollection AddModlistDownloadResumer(this IServiceCollection services)
+    {
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ModlistDownloadResumer>());
+        return services;
     }
 
     public static IServiceCollection AddWabbajackSettings(this IServiceCollection services)

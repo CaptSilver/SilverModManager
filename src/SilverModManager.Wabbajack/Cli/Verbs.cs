@@ -2,6 +2,7 @@ using System.IO.Compression;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Cli;
 using NexusMods.Paths;
+using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk.ProxyConsole;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
@@ -74,9 +75,13 @@ public static class Verbs
 
     [Verb("wabbajack download", "Starts downloading a modlist's archives in the running app and returns at once. Progress shows on the modlist's page and in 'wabbajack status'")]
     private static async Task<int> Download([Injected] IRenderer renderer, [Injected] IModlistCatalog catalog, [Injected] ModlistDownloads downloads,
-        [Injected] CancellationToken token,
+        [Injected] IServiceProvider services, [Injected] CancellationToken token,
         [Option("m", "modlist", "The modlist: its name, its id from 'wabbajack list', or the file name of its .wabbajack in the library")] string modlist)
     {
+        // The batch outlives this command, which only the window process can allow: a headless main exits with the verb.
+        if (services.GetService<WindowHost>() is null)
+            throw new WindowRequiredException("Downloading a modlist needs the SilverModManager window to be open, because the downloads go on after this command ends. Open SilverModManager and try again.");
+
         var start = await downloads.Start(catalog.Find(modlist), token);
         await renderer.TextLine("{0}", BatchStatusText.Started(start));
         return 0;

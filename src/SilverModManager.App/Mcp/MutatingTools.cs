@@ -27,7 +27,7 @@ public static class MutatingTools
         VerbTool.Create(context, "wabbajack_download",
             "Starts downloading a Wabbajack modlist's archives in the running app, the same as the Download button on the modlist's page, " +
             "and returns once the batch is under way with how many archives download automatically, need the browser, need hand work or are already there. " +
-            "The batch goes on in the app and continues after a restart. Follow it with wabbajack_status. Find the modlists with wabbajack_list.",
+            "It needs the SilverModManager window to be open, because the batch goes on in the app and continues after a restart. Follow it with wabbajack_status. Find the modlists with wabbajack_list.",
             readOnly: false, ["wabbajack", "download"], takesLoadout: false, context.Limits.SlowReadTimeout,
             options: [WabbajackModlistParam(required: true)]),
         VerbTool.Create(context, "wabbajack_cancel",

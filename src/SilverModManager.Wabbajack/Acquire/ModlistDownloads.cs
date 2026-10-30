@@ -18,6 +18,12 @@ public sealed class DownloadBusyException(string message) : UserFacingException(
     public override string Title => "Downloads already running";
 }
 
+/// <summary>The downloads go on after the command ends, which only the process that shows the window can allow.</summary>
+public sealed class WindowRequiredException(string message) : UserFacingException(message)
+{
+    public override string Title => "Window not open";
+}
+
 /// <summary>
 /// Starts a modlist's archive downloads without a page, for the command line and for the restart after a close, and
 /// runs them in the app's acquirer, so the modlist page shows them like any other batch.
@@ -93,11 +99,36 @@ public sealed class ModlistDownloads(
             return;
         }
 
+        // Planning a big list takes minutes; a start that arrives meanwhile must see this list as taken.
+        try
+        {
+            if (Claim(modlist) is not null)
+            {
+                logger.LogInformation("Not resuming the download of '{List}': it was started again already", modlist.Name);
+                return;
+            }
+        }
+        catch (DownloadBusyException busy)
+        {
+            logger.LogInformation("Not resuming the download of '{List}': {Reason}", modlist.Name, busy.Message);
+            return;
+        }
+
         logger.LogInformation("Resuming the download of '{List}' after a restart", modlist.Name);
         try
         {
-            var plan = await planner.BuildPlan(id, null, null, cancellationToken);
-            await acquirer.Run(plan, null, cancellationToken);
+            Task run;
+            try
+            {
+                var plan = await planner.BuildPlan(id, null, null, cancellationToken);
+                run = acquirer.Run(plan, null, cancellationToken);
+            }
+            finally
+            {
+                lock (_lock) _starting = null;
+            }
+
+            await run;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

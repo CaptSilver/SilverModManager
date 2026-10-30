@@ -8,6 +8,7 @@ using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.ProxyConsole;
 using SilverModManager.SingleProcess;
 using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Cli;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Library;
 using Table = SilverModManager.Sdk.ProxyConsole.Table;
@@ -94,6 +95,31 @@ public class WabbajackBatchVerbTests(IServiceProvider provider)
     }
 
     [Fact]
+    public async Task DownloadWithoutTheWindowIsRefusedBecauseTheBatchWouldEndWithTheCommand()
+    {
+        Arrange();
+        // A headless main: the same verbs and doubles, but no WindowHost.
+        var headless = new ServiceCollection()
+            .AddLogging()
+            .AddSingleton<CommandLineConfigurator>()
+            .AddCLI()
+            .AddWabbajackVerbs()
+            .AddSingleton(Catalog)
+            .AddSingleton(Acquirer)
+            .AddSingleton(Planner)
+            .AddSingleton(Substitute.For<SilverModManager.Sdk.Settings.ISettingsManager>())
+            .AddSingleton<ModlistDownloads>()
+            .BuildServiceProvider();
+        var renderer = new LoggingRenderer();
+
+        var exitCode = await headless.GetRequiredService<CommandLineConfigurator>().RunAsync(["wabbajack", "download", "--modlist", "Skyrim list"], renderer, CancellationToken.None);
+
+        exitCode.Should().Be(CliErrors.RefusalExitCode);
+        string.Join("\n", Lines(renderer)).Should().Contain("needs the SilverModManager window to be open");
+        await Acquirer.DidNotReceive().Run(Arg.Any<ArchivePlan>(), Arg.Any<IProgress<AcquireProgress>?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task DownloadTakesTheShortOptionToo()
     {
         Arrange();
@@ -147,7 +173,7 @@ public class WabbajackBatchVerbTests(IServiceProvider provider)
 
         var (exitCode, _) = await Run("wabbajack", "download");
 
-        exitCode.Should().NotBe(0);
+        exitCode.Should().Be(CliErrors.RefusalExitCode);
         await Acquirer.DidNotReceiveWithAnyArgs().Run(default!, default, default);
     }
 

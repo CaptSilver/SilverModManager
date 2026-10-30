@@ -146,6 +146,37 @@ public class ModlistDownloadsTests
     }
 
     [Fact]
+    public async Task AStartDuringAResumesPlanningDoesNotRunTheListTwice()
+    {
+        PendingDownload.Set(_settings, Skyrim.Id);
+        _planner.Gate = new TaskCompletionSource();
+        var resume = _downloads.Resume(CancellationToken.None);
+
+        var again = await _downloads.Start(Skyrim, CancellationToken.None);
+        var other = () => _downloads.Start(Fallout, CancellationToken.None);
+
+        again.AlreadyRunning.Should().BeTrue();
+        await other.Should().ThrowAsync<DownloadBusyException>();
+        _planner.Gate.SetResult();
+        await resume;
+        _acquirer.Runs.Should().ContainSingle().Which.Modlist.Should().Be(Skyrim.Id);
+    }
+
+    [Fact]
+    public async Task AResumeDuringAStartsPlanningLeavesTheStartToRun()
+    {
+        PendingDownload.Set(_settings, Skyrim.Id);
+        _planner.Gate = new TaskCompletionSource();
+        var start = _downloads.Start(Skyrim, CancellationToken.None);
+
+        await _downloads.Resume(CancellationToken.None);
+        _planner.Gate.SetResult();
+        await start;
+
+        _acquirer.Runs.Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task ResumeDoesNothingWhenNoRunWasLeftUnfinished()
     {
         await _downloads.Resume(CancellationToken.None);

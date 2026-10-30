@@ -63,4 +63,20 @@ public partial class WabbajackModlistViewModelTests
 
         acquirer.Shown.Count.Should().BeGreaterThan(shownBefore, "picking again drops the page's own run and shows the new plan");
     }
+
+    [Fact]
+    public async Task DownloadIsOffWhileAnotherListsBatchRunsAndComesBackWhenItEnds()
+    {
+        var other = SilverModManager.Sdk.Library.LibraryFileId.From(SilverModManager.MnemonicDB.Abstractions.EntityId.From(0xBEEF));
+        var (vm, _, acquirer) = await Open(Plan(Row(ArchiveState.Automatic)), runUnderWay: RunningFor(other));
+        using var activation = vm.Activator.Activate();
+
+        vm.CanDownload.Should().BeFalse();
+        vm.DownloadBlockedReason.Should().Contain("Another modlist's downloads are running");
+
+        acquirer.ChangeStatus(RunningFor(other, finished: 3, running: false));
+
+        vm.CanDownload.Should().BeTrue();
+        vm.DownloadBlockedReason.Should().BeEmpty();
+    }
 }
