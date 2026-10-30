@@ -1,22 +1,6 @@
 # Null-forgiving operators (x!) per file under src. Counts may only go down.
 # Regenerate with UPDATE_NULL_FORGIVING_BASELINE=1, see NullForgivingGuardTests.
 src/SilverModManager.Abstractions.NexusWebApi/DTOs/DownloadLink.cs	3
-src/SilverModManager.App.UI/Controls/Alerts/Alert.axaml.cs	1
-src/SilverModManager.App.UI/Controls/CollectionMenuItem/CollectionMenuItem.axaml.cs	2
-src/SilverModManager.App.UI/Controls/GameWidget/GameWidget.axaml.cs	3
-src/SilverModManager.App.UI/Controls/GameWidget/GameWidgetDesignViewModel.cs	1
-src/SilverModManager.App.UI/Controls/LoadoutBadge/LoadoutBadge.axaml.cs	3
-src/SilverModManager.App.UI/Controls/LoadoutBadge/LoadoutBadgeViewModel.cs	1
-src/SilverModManager.App.UI/Controls/LoadoutCard/Standard/LoadoutCardView.axaml.cs	5
-src/SilverModManager.App.UI/Controls/MarkdownRenderer/MarkdownRendererView.axaml.cs	1
-src/SilverModManager.App.UI/Controls/MiniGameWidget/Standard/MiniGameWidget.axaml.cs	2
-src/SilverModManager.App.UI/Controls/Settings/SettingEntries/SettingEntryView.axaml.cs	2
-src/SilverModManager.App.UI/Controls/Settings/SettingEntries/SettingInteractionControls/PathsList/SettingPathsViewModel.cs	1
-src/SilverModManager.App.UI/Controls/Spine/Buttons/Download/SpineDownloadButtonView.axaml.cs	6
-src/SilverModManager.App.UI/Controls/Spine/Buttons/Image/ImageButton.axaml.cs	1
-src/SilverModManager.App.UI/Controls/Spine/SpineViewModel.cs	1
-src/SilverModManager.App.UI/Controls/TopBar/TopBarView.axaml.cs	9
-src/SilverModManager.App.UI/Controls/TopBar/TopBarViewModel.cs	1
 src/SilverModManager.App.UI/Dialog/DialogStandardContentView.axaml.cs	8
 src/SilverModManager.App.UI/Dialog/DialogWindow.axaml.cs	2
 src/SilverModManager.App.UI/LeftMenu/Items/ApplyControl/ApplyControlView.axaml.cs	1

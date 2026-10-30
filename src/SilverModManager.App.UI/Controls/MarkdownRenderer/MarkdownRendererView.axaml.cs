@@ -14,7 +14,7 @@ public partial class MarkdownRendererView : ReactiveUserControl<IMarkdownRendere
 
         this.WhenActivated(disposables =>
         {
-            var viewModel = ViewModel!;
+            if (ViewModel is not { } viewModel) return;
 
             MarkdownScrollViewer.Plugins.HyperlinkCommand = viewModel.OpenLinkCommand;
             MarkdownScrollViewer.Plugins.PathResolver = viewModel.PathResolver;

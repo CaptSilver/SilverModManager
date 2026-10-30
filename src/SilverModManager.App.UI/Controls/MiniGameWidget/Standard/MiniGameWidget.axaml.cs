@@ -3,6 +3,7 @@ using System.Reactive.Disposables;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.ReactiveUI;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.App.UI.Controls.MiniGameWidget.Standard;
@@ -18,7 +19,7 @@ public partial class MiniGameWidget : ReactiveUserControl<IMiniGameWidgetViewMod
                 this.OneWayBind(ViewModel, vm => vm.Image, v => v.GameImage.Source)
                     .DisposeWith(d);
 
-                this.WhenAnyValue(view => view.ViewModel!.Name)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Name))
                     .Subscribe(name =>
                         {
                             NameTextBlock.Text = name;
@@ -33,7 +34,7 @@ public partial class MiniGameWidget : ReactiveUserControl<IMiniGameWidgetViewMod
                 this.BindCommand<MiniGameWidget, IMiniGameWidgetViewModel, ReactiveCommand<Unit, Unit>, StandardButton>(ViewModel, vm => vm.GiveFeedbackCommand, view => view.ButtonGameNotFound)
                     .DisposeWith(d);
 
-                this.WhenAnyValue(view => view.ViewModel!.Game)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Game))
                     .Subscribe(game =>
                     {
                         GogGrid.IsVisible = !(game?.StoreIdentifiers.GOGProductIds.IsEmpty ?? false);

@@ -40,7 +40,7 @@ public interface ITopBarViewModel : IViewModelInterface
     /// </summary>
     public string AccountTooltip { get; }
 
-    public IAddPanelDropDownViewModel AddPanelDropDownViewModel { get; set; }
+    public IAddPanelDropDownViewModel? AddPanelDropDownViewModel { get; set; }
     
     public IPanelTabViewModel? SelectedTab { get; set; }
 }

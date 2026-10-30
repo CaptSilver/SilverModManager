@@ -12,7 +12,7 @@ namespace SilverModManager.App.UI.Controls.GameWidget;
 
 public partial class GameWidgetDesignViewModel : AViewModel<IGameWidgetViewModel>, IGameWidgetViewModel
 {
-    [Reactive] public partial GameInstallation? Installation { get; set; } = null!;
+    [Reactive] public partial GameInstallation? Installation { get; set; }
     public string Name { get; } = "Cyberpunk 2077";
     public string Version { get; set; }
     public string Store { get; set; }

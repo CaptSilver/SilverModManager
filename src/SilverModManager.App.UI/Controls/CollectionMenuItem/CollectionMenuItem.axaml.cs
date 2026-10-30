@@ -1,6 +1,7 @@
 using System.Reactive.Disposables;
 using Avalonia.Controls;
 using Avalonia.ReactiveUI;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.App.UI.Controls.CollectionMenuItem;
@@ -23,7 +24,7 @@ public partial class CollectionMenuItem : ReactiveUserControl<ICollectionMenuIte
                 .DisposeWith(d);
 
             // Handle tooltip through property change notification
-            this.WhenAnyValue(x => x.ViewModel!.ToolTipText)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.ToolTipText))
                 .Subscribe(tooltipText =>
                 {
                     if (!string.IsNullOrEmpty(tooltipText))
@@ -38,7 +39,7 @@ public partial class CollectionMenuItem : ReactiveUserControl<ICollectionMenuIte
                 .DisposeWith(d);
 
             // Disable controls when IsReadOnly is true
-            this.WhenAnyValue(x => x.ViewModel!.IsReadOnly)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsReadOnly))
                 .Subscribe(isReadOnly =>
                 {
                     CollectionName.IsEnabled = !isReadOnly;

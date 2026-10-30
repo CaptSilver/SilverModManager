@@ -25,25 +25,30 @@ public partial class SettingPathsViewModel : AViewModel<ISettingPathsViewModel>,
     public IStorageProvider? StorageProvider { get; set; }
     public ReactiveCommand CommandChangeLocation { get; }
 
+    internal async ValueTask ChangeLocation()
+    {
+        if (StorageProvider is not { } storageProvider) throw new FolderPickerUnavailableException();
+
+        var paths = await storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            AllowMultiple = false,
+            Title = "Select a folder",
+        });
+
+        if (paths.Count != 1) return;
+        var localPath = paths[0].TryGetLocalPath();
+        if (localPath is null) return;
+
+        ConfigurablePathsContainer.CurrentValue = [new ConfigurablePath(null, localPath)];
+    }
+
     public SettingPathsViewModel(IOSInterop osInterop, ConfigurablePathsContainer pathsContainer)
     {
         ConfigurablePathsContainer = pathsContainer;
 
         CommandChangeLocation = new ReactiveCommand(
-            executeAsync: async (_, cancellationToken) =>
-            {
-                var paths = await StorageProvider!.OpenFolderPickerAsync(new FolderPickerOpenOptions
-                {
-                    AllowMultiple = false,
-                    Title = "Select a folder",
-                });
-
-                if (paths.Count != 1) return;
-                var localPath = paths[0].TryGetLocalPath();
-                if (localPath is null) return;
-
-                ConfigurablePathsContainer.CurrentValue = [new ConfigurablePath(null, localPath)];
-            }, awaitOperation: AwaitOperation.Drop, configureAwait: false, maxSequential: 1
+            executeAsync: async (_, cancellationToken) => await ChangeLocation(),
+            awaitOperation: AwaitOperation.Drop, configureAwait: false, maxSequential: 1
         );
 
         this.WhenActivated(disposables =>

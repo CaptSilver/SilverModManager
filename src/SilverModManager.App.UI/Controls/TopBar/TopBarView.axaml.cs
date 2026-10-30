@@ -1,9 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reactive.Disposables;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Metadata;
+using Avalonia.Logging;
 using Avalonia.ReactiveUI;
 using DynamicData.Binding;
+using SilverModManager.UI.Sdk;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
@@ -25,10 +28,14 @@ public partial class TopBarView : ReactiveUserControl<ITopBarViewModel>
                 this.OneWayBind(ViewModel, vm => vm.ActiveWorkspaceSubtitle, view => view.ActiveWorkspaceSubtitleTextBlock.Text)
                     .DisposeWith(d);
 
-                this.BindCommand(ViewModel, vm => vm.SelectedTab!.GoBackInHistoryCommand, view => view.GoBackInHistory)
-                    .DisposeWith(d);
-
-                this.BindCommand(ViewModel, vm => vm.SelectedTab!.GoForwardInHistoryCommand, view => view.GoForwardInHistory)
+                // The selected tab comes and goes, and an expression tree cannot say ?., so follow it by hand.
+                this.WhenViewModel(vm => vm.WhenAnyValue(x => x.SelectedTab))
+                    .Subscribe(tab =>
+                        {
+                            GoBackInHistory.Command = tab?.GoBackInHistoryCommand;
+                            GoForwardInHistory.Command = tab?.GoForwardInHistoryCommand;
+                        }
+                    )
                     .DisposeWith(d);
 
                 this.OneWayBind(ViewModel, vm => vm.AddPanelDropDownViewModel, view => view.AddPanelViewModelViewHost.ViewModel)
@@ -84,10 +91,7 @@ public partial class TopBarView : ReactiveUserControl<ITopBarViewModel>
                 this.BindCommand(ViewModel, vm => vm.LogoutCommand, view => view.SignOutMenuItem)
                     .DisposeWith(d);
 
-                this.WhenAnyValue(
-                        view => view.ViewModel!.IsLoggedIn,
-                        view => view.ViewModel!.UserRole
-                    )
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsLoggedIn, x => x.UserRole))
                     .Subscribe(userinfo =>
                         {
                             var (isLoggedIn, userRole) = userinfo;
@@ -100,13 +104,11 @@ public partial class TopBarView : ReactiveUserControl<ITopBarViewModel>
                     )
                     .DisposeWith(d);
 
-                this.WhenValueChanged(x => x.ViewModel!.AccountTooltip
-                    )
+                this.WhenViewModel(vm => vm.WhenValueChanged(x => x.AccountTooltip))
                     .Subscribe(tip => { ToolTip.SetTip(AvatarMenuItemButton, tip); })
                     .DisposeWith(d);
 
-                this.WhenValueChanged(x => x.ViewModel!.IsLoggedIn
-                    )
+                this.WhenViewModel(vm => vm.WhenValueChanged(x => x.IsLoggedIn))
                     .Subscribe(b =>
                         {
                             AvatarMenuItemButton.IsVisible = b;
@@ -124,21 +126,29 @@ public partial class TopBarView : ReactiveUserControl<ITopBarViewModel>
 
     private void CloseWindow(object sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        var hostWindow = (Window)this.VisualRoot!;
+        if (!TryGetHostWindow(out var hostWindow)) return;
         hostWindow.Close();
     }
 
     private void MaximizeWindow(object sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        var hostWindow = (Window)this.VisualRoot!;
+        if (!TryGetHostWindow(out var hostWindow)) return;
 
         hostWindow.WindowState = hostWindow.WindowState == WindowState.Normal ? WindowState.Maximized : WindowState.Normal;
     }
 
     private void MinimizeWindow(object sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        var hostWindow = (Window)this.VisualRoot!;
+        if (!TryGetHostWindow(out var hostWindow)) return;
         hostWindow.WindowState = WindowState.Minimized;
+    }
+
+    private bool TryGetHostWindow([NotNullWhen(true)] out Window? hostWindow)
+    {
+        hostWindow = VisualRoot as Window;
+        if (hostWindow is null)
+            Logger.TryGet(LogEventLevel.Verbose, LogArea.Control)?.Log(this, "Top bar window button pressed while not attached to a window");
+        return hostWindow is not null;
     }
 
     private void SubscribeToWindowState(CompositeDisposable d)

@@ -2,6 +2,7 @@
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Extensions;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using static SilverModManager.App.UI.Helpers.StyleConstants.SpineDownloadButton;
 
@@ -15,31 +16,31 @@ public partial class SpineDownloadButtonView : ReactiveUserControl<ISpineDownloa
 
         this.WhenActivated(d =>
         {
-            this.WhenAnyValue(view => view.ViewModel!.Click)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Click))
                 .BindToUi(this, view => view.ParentButton.Command)
                 .DisposeWith(d);
 
-            this.WhenAnyValue(view => view.ViewModel!.Progress)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Progress))
                 .Select(p => p.HasValue)
                 .BindToClasses(ParentButton, Progress, Idle)
                 .DisposeWith(d);
 
-            this.WhenAnyValue(view => view.ViewModel!.IsActive)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsActive))
                 .BindToActive(ParentButton)
                 .DisposeWith(d);
 
-            this.WhenAnyValue(view => view.ViewModel!.Progress)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Progress))
                 .Where(p => p.HasValue)
                 .Select(p => p.Value.Value * 360)
                 .BindToUi(this, vm => vm.ProgressArc.SweepAngle)
                 .DisposeWith(d);
 
-            this.WhenAnyValue(view => view.ViewModel!.Number)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Number))
                 .Select(n => n.ToString("###0.0"))
                 .BindToUi(this, view => view.NumberTextBlock.Text)
                 .DisposeWith(d);
 
-            this.WhenAnyValue(view => view.ViewModel!.Units)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Units))
                 .Select(n => n.ToUpperInvariant())
                 .BindToUi(this, view => view.UnitsTextBlock.Text)
                 .DisposeWith(d);

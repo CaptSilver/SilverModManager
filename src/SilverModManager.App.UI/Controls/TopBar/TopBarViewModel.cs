@@ -65,7 +65,7 @@ public partial class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarView
 
     [Reactive] public partial string AccountTooltip { get; private set; } = string.Empty;
 
-    [Reactive] public partial IAddPanelDropDownViewModel AddPanelDropDownViewModel { get; set; } = null!;
+    [Reactive] public partial IAddPanelDropDownViewModel? AddPanelDropDownViewModel { get; set; }
 
     [Reactive] public partial IPanelTabViewModel? SelectedTab { get; set; }
 

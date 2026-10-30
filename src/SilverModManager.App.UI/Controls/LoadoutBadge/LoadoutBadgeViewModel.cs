@@ -25,7 +25,7 @@ public partial class LoadoutBadgeViewModel : AViewModel<ILoadoutBadgeViewModel>,
             
             this.WhenAnyValue(vm => vm.LoadoutValue)
                 .Where(l => l.HasValue)
-                .Select(l => l!.Value)
+                .Select(l => l.Value)
                 .Do(loadout =>
                 {
                     LoadoutShortName = loadout.ShortName;

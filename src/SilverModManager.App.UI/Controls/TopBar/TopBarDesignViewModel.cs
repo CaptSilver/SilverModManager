@@ -24,7 +24,7 @@ public partial class TopBarDesignViewModel : AViewModel<ITopBarViewModel>, ITopB
     [Reactive] public partial IImage Avatar { get; set; } = new Bitmap(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/DesignTime/cyberpunk_game.png")));
     [Reactive] public partial string ActiveWorkspaceTitle { get; set; } = "Home";
     [Reactive] public partial string ActiveWorkspaceSubtitle { get; set; } = "Loadout A";
-    [Reactive] public partial IAddPanelDropDownViewModel AddPanelDropDownViewModel { get; set; } = new AddPanelDropDownDesignViewModel();
+    [Reactive] public partial IAddPanelDropDownViewModel? AddPanelDropDownViewModel { get; set; } = new AddPanelDropDownDesignViewModel();
 
     public ReactiveUI.ReactiveCommand<Unit, Unit> NewTabCommand => ReactiveCommand.Create<Unit, Unit>(_ => Unit.Default);
     public ReactiveUI.ReactiveCommand<NavigationInformation, Unit> OpenSettingsCommand => ReactiveCommand.Create<NavigationInformation, Unit>(_ => Unit.Default);

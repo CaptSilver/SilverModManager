@@ -3,6 +3,7 @@ using System.Reactive.Linq;
 using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Resources;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.App.UI.Controls.LoadoutCard;
@@ -55,7 +56,7 @@ public partial class LoadoutCardView : ReactiveUserControl<ILoadoutCardViewModel
                     .DisposeWith(d);
                 
                 // Last applied visibility
-                this.WhenAnyValue(view => view.ViewModel!.IsLoadoutApplied)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsLoadoutApplied))
                     .Select(isApplied => !isApplied)
                     .OnUI()
                     .BindToView(this, view => view.LastAppliedTimeTextBlock.IsVisible)
@@ -81,8 +82,8 @@ public partial class LoadoutCardView : ReactiveUserControl<ILoadoutCardViewModel
                 
                 // Hide Delete button if last loadout
                 Observable.CombineLatest(
-                        this.WhenAnyValue(view => view.ViewModel!.IsLastLoadout),
-                        this.WhenAnyValue(view => view.ViewModel!.IsLoadoutApplied),
+                        this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsLastLoadout)),
+                        this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsLoadoutApplied)),
                         (isLastLoadout, isApplied) => !isLastLoadout && !isApplied
                     )
                     .OnUI()
@@ -90,7 +91,7 @@ public partial class LoadoutCardView : ReactiveUserControl<ILoadoutCardViewModel
                     .DisposeWith(d);
                 
                 // Deleting state
-                this.WhenAnyValue(view => view.ViewModel!.IsDeleting)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsDeleting))
                     .OnUI()
                     .Subscribe(isDeleting =>
                     {
@@ -103,7 +104,7 @@ public partial class LoadoutCardView : ReactiveUserControl<ILoadoutCardViewModel
                     .DisposeWith(d);
                 
                 // Skeleton Creating state
-                this.WhenAnyValue(view => view.ViewModel!.IsSkeleton)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsSkeleton))
                     .OnUI()
                     .Subscribe(isSkeleton =>
                     {

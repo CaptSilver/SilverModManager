@@ -2,6 +2,7 @@ using System.Reactive.Disposables;
 using Avalonia.Controls;
 using Avalonia.Controls.Metadata;
 using Avalonia.ReactiveUI;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.App.UI.Controls.LoadoutBadge;
@@ -15,17 +16,17 @@ public partial class LoadoutBadge : ReactiveUserControl<ILoadoutBadgeViewModel>
 
         this.WhenActivated(d =>
             {
-                this.WhenAnyValue(x => x.ViewModel!.IsLoadoutSelected)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsLoadoutSelected))
                     .OnUI()
                     .Subscribe(SetSelected)
                     .DisposeWith(d);
 
-                this.WhenAnyValue(x => x.ViewModel!.IsLoadoutApplied)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsLoadoutApplied))
                     .OnUI()
                     .Subscribe(SetApplied)
                     .DisposeWith(d);
 
-                this.WhenAnyValue(x => x.ViewModel!.IsLoadoutInProgress)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsLoadoutInProgress))
                     .OnUI()
                     .Subscribe(SetInProgress)
                     .DisposeWith(d);

@@ -3,6 +3,7 @@ using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.App.UI.Controls.Spine.Buttons.Image;
@@ -15,7 +16,7 @@ public partial class ImageButton : ReactiveUserControl<IImageButtonViewModel>
 
         this.WhenActivated(d =>
         {
-            this.WhenAnyValue(vm => vm.ViewModel!.IsActive)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsActive))
                 .StartWith(false)
                 .SubscribeWithErrorLogging(SetClasses)
                 .DisposeWith(d);

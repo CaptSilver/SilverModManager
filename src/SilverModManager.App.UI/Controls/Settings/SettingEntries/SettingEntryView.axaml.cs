@@ -3,6 +3,7 @@ using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using SilverModManager.App.UI.Resources;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.App.UI.Controls.Settings.SettingEntries;
@@ -22,11 +23,11 @@ public partial class SettingEntryView : ReactiveUserControl<ISettingEntryViewMod
                 .Subscribe()
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(x =>
-                    x.ViewModel!.InteractionControlViewModel.ValueContainer.HasChanged,
-                    x => x.ViewModel!.Config.Options.RequiresRestart,
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(
+                    x => x.InteractionControlViewModel.ValueContainer.HasChanged,
+                    x => x.Config.Options.RequiresRestart,
                     (hasChanged, requiresRestart) => requiresRestart && hasChanged
-                )
+                ))
                 .BindToView(this, view => view.RequiresRestartBanner.IsVisible)
                 .DisposeWith(disposables);
             

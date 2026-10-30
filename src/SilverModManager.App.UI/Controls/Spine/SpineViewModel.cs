@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using DynamicData;
 using DynamicData.Binding;
@@ -270,7 +271,7 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
         _activeSpineItem = itemToActivate;
     }
 
-    private Bitmap LoadImageFromStream(Stream iconStream)
+    internal IImage LoadImageFromStream(Stream iconStream)
     {
         try
         {
@@ -279,8 +280,8 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
         catch (Exception ex)
         {
             _logger.LogError(ex, "Skia image load error, while loading image from stream");
-            // Null images are fine, they will be ignored
-            return null!;
+            // The same blank image a button shows before it has an icon.
+            return Initializers.IImage;
         }
     }
 

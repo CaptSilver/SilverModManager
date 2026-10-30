@@ -36,8 +36,8 @@ public class Alert : ContentControl
     /// <summary>
     /// Defines the DismissCommand attached property of the <see cref="Alert"/>.
     /// </summary>
-    public static readonly AttachedProperty<ReactiveCommand<Unit, AlertSettingsWrapper>> DismissCommandProperty =
-        AvaloniaProperty.RegisterAttached<Alert, TemplatedControl, ReactiveCommand<Unit, AlertSettingsWrapper>>(nameof(DismissCommand));
+    public static readonly AttachedProperty<ReactiveCommand<Unit, AlertSettingsWrapper?>> DismissCommandProperty =
+        AvaloniaProperty.RegisterAttached<Alert, TemplatedControl, ReactiveCommand<Unit, AlertSettingsWrapper?>>(nameof(DismissCommand));
 
     /// <summary>
     /// Defines the AlertSettings attached property of the <see cref="Alert"/>.
@@ -147,7 +147,7 @@ public class Alert : ContentControl
     /// <summary>
     /// Gets the Dismiss command of the <see cref="Alert"/>.
     /// </summary>
-    public ReactiveCommand<Unit, AlertSettingsWrapper> DismissCommand
+    public ReactiveCommand<Unit, AlertSettingsWrapper?> DismissCommand
     {
         get => GetValue(DismissCommandProperty);
         private set => SetValue(DismissCommandProperty, value);
@@ -173,13 +173,16 @@ public class Alert : ContentControl
         // The command can only be executed if canDismiss is true
         DismissCommand = ReactiveCommand.Create(() =>
             {
+                // canDismiss keeps the button from running this without settings; the command can still be executed directly.
+                if (AlertSettings is not { } settings) return null;
+
                 IsDismissed = true;
 
                 // Call the DismissAlert method on the AlertSettings object
-                AlertSettings!.DismissAlert();
+                settings.DismissAlert();
 
                 // Return the AlertSettings object
-                return AlertSettings;
+                return settings;
             }, canDismiss
         );
     }

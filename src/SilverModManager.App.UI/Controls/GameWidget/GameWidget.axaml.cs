@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Extensions;
 using SilverModManager.App.UI.Resources;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.App.UI.Controls.GameWidget;
@@ -17,7 +18,7 @@ public partial class GameWidget : ReactiveUserControl<IGameWidgetViewModel>
 
         this.WhenActivated(d =>
             {
-                this.WhenAnyValue(view => view.ViewModel!.State)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.State))
                     .Subscribe(state =>
                         {
                             DetectedGameStackPanel.IsVisible = state == GameWidgetState.DetectedGame;
@@ -29,7 +30,7 @@ public partial class GameWidget : ReactiveUserControl<IGameWidgetViewModel>
                     )
                     .DisposeWith(d);
                 
-                this.WhenAnyValue(view => view.ViewModel!.Store)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Store))
                     .Subscribe(store =>
                         {
                             // Update the tooltip text for the game store
@@ -38,7 +39,7 @@ public partial class GameWidget : ReactiveUserControl<IGameWidgetViewModel>
                     )
                     .DisposeWith(d);
                 
-                this.WhenAnyValue(view => view.ViewModel!.Name)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Name))
                     .Subscribe(name =>
                         {
                             // Update the tooltip for the game name
