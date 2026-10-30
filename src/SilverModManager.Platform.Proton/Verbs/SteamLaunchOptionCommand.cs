@@ -29,22 +29,22 @@ public sealed class SteamLaunchOptionCommand(LoadoutResolver resolver, ISteamLau
         var resolution = resolver.Resolve(new LaunchArgs(loadout, game, NoCommand));
         if (!resolution.IsResolved)
         {
-            await renderer.TextLine(resolution.Error!);
+            await renderer.TextLine(resolution.Error);
             return resolution.ExitCode;
         }
 
-        var loadoutValue = resolution.Loadout!.Value;
+        var loadoutValue = resolution.Loadout.Value;
         if (write)
         {
             return replaceOtherManager is null
-                ? await Write(renderer, resolution.Installation!, loadoutValue)
-                : await Replace(renderer, resolution.Installation!, loadoutValue, replaceOtherManager);
+                ? await Write(renderer, resolution.Installation, loadoutValue)
+                : await Replace(renderer, resolution.Installation, loadoutValue, replaceOtherManager);
         }
 
         await renderer.TextLine(launchOptions.ComposeLine(loadoutValue));
         await renderer.TextLine("Paste this into the game's Properties > Launch Options in Steam, or run again with --write while Steam is closed.");
         await renderer.TextLine("The line runs the current deploy of the loadout.");
-        var overrides = WineDllOverrideRequirements.For(resolution.Installation!.Game, loadoutValue);
+        var overrides = WineDllOverrideRequirements.For(resolution.Installation.Game, loadoutValue);
         if (overrides.Count > 0)
         {
             await renderer.TextLine($"It also sets {WineParser.WineDllOverridesEnvironmentVariableName} to {WineParser.MergeDllOverrides("", overrides)}, which {resolution.Installation.Game.DisplayName} needs for its mods.");
@@ -64,17 +64,24 @@ public sealed class SteamLaunchOptionCommand(LoadoutResolver resolver, ISteamLau
         var result = launchOptions.Write(installation, loadout);
         if (result.IsRefused)
         {
-            await renderer.TextLine(result.Refusal!);
+            await renderer.TextLine(result.Refusal);
             if (result.Replacement is { } replacement) await PrintReplacementOffer(renderer, installation, loadout, replacement);
             return LaunchSession.FailureExitCode;
         }
 
         // A write only succeeds for a Steam game, which always carries its config path.
-        var localConfig = installation.LocatorResult.LinuxCompatabilityDataProvider!.SteamLocalConfigPath;
+        if (installation.LocatorResult.LinuxCompatabilityDataProvider is not { } provider) return await NoCompatibilityData(renderer, installation);
+        var localConfig = provider.SteamLocalConfigPath;
         await renderer.TextLine($"Set the launch options of {installation.Game.DisplayName} in {localConfig}:");
-        await renderer.TextLine(result.Line!);
+        await renderer.TextLine(result.Line);
         await renderer.TextLine($"The previous file was kept as {result.Backup}. The line runs the current deploy of the loadout.");
         return 0;
+    }
+
+    private static async Task<int> NoCompatibilityData(IRenderer renderer, GameInstallation installation)
+    {
+        await renderer.TextLine($"Steam did not report a compatibility data folder for {installation.Game.DisplayName}.");
+        return LaunchSession.FailureExitCode;
     }
 
     private async Task PrintReplacementOffer(IRenderer renderer, GameInstallation installation, Loadout.ReadOnly loadout, LocalConfigVdfWriter.Replacement replacement)
@@ -102,15 +109,17 @@ public sealed class SteamLaunchOptionCommand(LoadoutResolver resolver, ISteamLau
         var result = launchOptions.Replace(installation, loadout, confirmedOldLine);
         if (result.IsRefused)
         {
-            await renderer.TextLine(result.Refusal!);
+            await renderer.TextLine(result.Refusal);
             return LaunchSession.FailureExitCode;
         }
 
-        var localConfig = installation.LocatorResult.LinuxCompatabilityDataProvider!.SteamLocalConfigPath;
+        if (installation.LocatorResult.LinuxCompatabilityDataProvider is not { } provider) return await NoCompatibilityData(renderer, installation);
+        if (result.Replacement is not { } replacement) throw new InvalidOperationException("Replace succeeded without recording the line it replaced");
+        var localConfig = provider.SteamLocalConfigPath;
         await renderer.TextLine($"Replaced the launch options of {installation.Game.DisplayName} in {localConfig}:");
-        await renderer.TextLine(result.Replacement!.OldLine);
+        await renderer.TextLine(replacement.OldLine);
         await renderer.TextLine("with:");
-        await renderer.TextLine(result.Line!);
+        await renderer.TextLine(result.Line);
         await renderer.TextLine($"The old line is recorded in {result.ReplacedLineRecord}. The previous file was kept as {result.Backup}. The line runs the current deploy of the loadout.");
         return 0;
     }

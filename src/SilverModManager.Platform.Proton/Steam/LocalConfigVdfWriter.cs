@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
@@ -36,6 +37,8 @@ public sealed class LocalConfigVdfWriter(IProcessTracker processTracker)
         /// <summary>
         /// Whether the edit was refused.
         /// </summary>
+        [MemberNotNullWhen(true, nameof(Refusal))]
+        [MemberNotNullWhen(false, nameof(Line))]
         public bool IsRefused => Refusal is not null;
     }
 
@@ -56,22 +59,23 @@ public sealed class LocalConfigVdfWriter(IProcessTracker processTracker)
     /// </summary>
     public Result SetLauncherSpan(AbsolutePath localConfig, uint appId, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments)
     {
-        var (refusal, root, app, options) = OpenLaunchOptions(localConfig, appId);
-        if (refusal is not null) return Refuse(refusal);
+        var location = OpenLaunchOptions(localConfig, appId);
+        if (location.IsRefused) return Refuse(location.Refusal);
+        var (root, app, options) = (location.Root, location.App, location.Options);
         var path = localConfig.ToString();
 
         var edit = SteamLaunchOptionLine.Rewrite(options?.Value ?? "", shimPath, loadoutName, overrides, launcherSkipArguments);
-        if (edit.IsRefused) return RefuseWithReplacement(edit.Refusal!, options?.Value ?? "", shimPath, loadoutName, overrides, launcherSkipArguments);
+        if (edit.IsRefused) return RefuseWithReplacement(edit.Refusal, options?.Value ?? "", shimPath, loadoutName, overrides, launcherSkipArguments);
 
-        if (options is null) app!.Children.Add(options = new KeyValue("LaunchOptions"));
+        if (options is null) app.Children.Add(options = new KeyValue("LaunchOptions"));
         options.Value = edit.Line;
 
         var backup = localConfig.Parent.Combine(localConfig.FileName + BackupSuffix);
         File.Copy(path, backup.ToString(), overwrite: true);
 
-        WriteAtomically(path, root!);
+        WriteAtomically(path, root);
 
-        return VerifyWritten(localConfig, appId, shimPath, loadoutName, overrides, edit.Line!, backup) ?? new Result(edit.Line, null, backup);
+        return VerifyWritten(localConfig, appId, shimPath, loadoutName, overrides, edit.Line, backup) ?? new Result(edit.Line, null, backup);
     }
 
     /// <summary>
@@ -83,28 +87,30 @@ public sealed class LocalConfigVdfWriter(IProcessTracker processTracker)
     /// </summary>
     public Result ReplaceLaunchOptions(AbsolutePath localConfig, uint appId, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments, string expectedOldLine, AbsolutePath record)
     {
-        var (refusal, root, app, options) = OpenLaunchOptions(localConfig, appId);
-        if (refusal is not null) return Refuse(refusal);
+        var location = OpenLaunchOptions(localConfig, appId);
+        if (location.IsRefused) return Refuse(location.Refusal);
+        var root = location.Root;
         var path = localConfig.ToString();
 
-        var current = options?.Value ?? "";
+        var current = location.Options?.Value ?? "";
         if (!string.Equals(current, expectedOldLine, StringComparison.Ordinal))
         {
             return Refuse($"The launch options are no longer the line that was shown. They are now: {current}. Look at them again before replacing.");
         }
 
-        if (SteamLaunchOptionLine.FindOtherManager(current) is not { } manager)
+        // No LaunchOptions node reads as an empty line, which is never another manager's.
+        if (location.Options is not { } options || SteamLaunchOptionLine.FindOtherManager(current) is not { } manager)
         {
             return Refuse($"Steam's launch options for {appId} are not another manager's line; use the ordinary write.");
         }
 
         var edit = SteamLaunchOptionLine.Replace(current, shimPath, loadoutName, overrides, launcherSkipArguments);
-        if (edit.IsRefused) return Refuse(edit.Refusal!);
+        if (edit.IsRefused) return Refuse(edit.Refusal);
 
         try
         {
             record.Parent.CreateDirectory();
-            File.AppendAllText(record.ToString(), RecordBlock(path, appId, current, edit.Line!), new UTF8Encoding(false));
+            File.AppendAllText(record.ToString(), RecordBlock(path, appId, current, edit.Line), new UTF8Encoding(false));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -118,15 +124,15 @@ public sealed class LocalConfigVdfWriter(IProcessTracker processTracker)
             return Refuse($"The backup copy {backup} could not be written ({ex.Message}), so the launch options were left alone. The old line is in {record}.");
         }
 
-        options!.Value = edit.Line;
-        try { WriteAtomically(path, root!); }
+        options.Value = edit.Line;
+        try { WriteAtomically(path, root); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return Refuse($"Steam's {path} could not be written ({ex.Message}), so the launch options were left alone. The old line is in {record}.");
         }
 
-        var replacement = new Replacement(manager.Name, current, edit.Line!);
-        return VerifyWritten(localConfig, appId, shimPath, loadoutName, overrides, edit.Line!, backup)
+        var replacement = new Replacement(manager.Name, current, edit.Line);
+        return VerifyWritten(localConfig, appId, shimPath, loadoutName, overrides, edit.Line, backup)
                ?? new Result(edit.Line, null, backup, replacement, record);
     }
 
@@ -134,28 +140,41 @@ public sealed class LocalConfigVdfWriter(IProcessTracker processTracker)
         => $"replaced {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffZ}\nconfig {configPath}\napp {appId}\nold {oldLine}\nnew {newLine}\n\n";
 
     /// <summary>
+    /// Where the app's launch options live, or why they cannot be edited. <c>Options</c> is null when the app has
+    /// none yet.
+    /// </summary>
+    private sealed record LaunchOptionsLocation(string? Refusal, KeyValue? Root, KeyValue? App, KeyValue? Options)
+    {
+        [MemberNotNullWhen(true, nameof(Refusal))]
+        [MemberNotNullWhen(false, nameof(Root), nameof(App))]
+        public bool IsRefused => Refusal is not null;
+
+        public static LaunchOptionsLocation Refused(string refusal) => new(refusal, null, null, null);
+    }
+
+    /// <summary>
     /// The checks both edits share before touching the file, and the nodes that hold the app's launch options
     /// (<c>Options</c> is null when the app has none yet).
     /// </summary>
-    private (string? Refusal, KeyValue? Root, KeyValue? App, KeyValue? Options) OpenLaunchOptions(AbsolutePath localConfig, uint appId)
+    private LaunchOptionsLocation OpenLaunchOptions(AbsolutePath localConfig, uint appId)
     {
         if (processTracker.IsSteamRunning())
         {
-            return ("Steam rewrites its config on exit, so a launch option written while Steam is running " +
-                    "is lost. Close Steam completely (including the tray icon) and try again.", null, null, null);
+            return LaunchOptionsLocation.Refused("Steam rewrites its config on exit, so a launch option written while Steam is running " +
+                                                 "is lost. Close Steam completely (including the tray icon) and try again.");
         }
 
         var path = localConfig.ToString();
-        if (!localConfig.FileExists) return ($"Steam's {path} does not exist, so there is nowhere to store the launch options.", null, null, null);
+        if (!localConfig.FileExists) return LaunchOptionsLocation.Refused($"Steam's {path} does not exist, so there is nowhere to store the launch options.");
 
         KeyValue? root;
         try { root = VdfFile.Read(localConfig); }
         catch (Exception ex) when (ex is not OperationCanceledException) { root = null; }
-        if (root is null) return ($"Steam's {path} could not be parsed, so it was left alone.", null, null, null);
+        if (root is null) return LaunchOptionsLocation.Refused($"Steam's {path} could not be parsed, so it was left alone.");
 
         var app = GetOrAddSection(GetOrAddSection(GetOrAddSection(GetOrAddSection(root, "Software"), "Valve"), "Steam"), "apps");
         app = GetOrAddSection(app, appId.ToString());
-        return (null, root, app, app.Children.FirstOrDefault(c => IsNamed(c, "LaunchOptions")));
+        return new LaunchOptionsLocation(null, root, app, app.Children.FirstOrDefault(c => IsNamed(c, "LaunchOptions")));
     }
 
     /// <summary>
@@ -166,7 +185,7 @@ public sealed class LocalConfigVdfWriter(IProcessTracker processTracker)
     {
         var read = LocalConfigLaunchOptions.Read(localConfig, appId);
         var parsed = read.Line is null ? null : SteamLaunchOptionLine.Parse(read.Line);
-        if (read.Line == expectedLine && parsed is { HasSpan: true } && parsed.ShimPath == shimPath && parsed.LoadoutName == loadoutName && ReadsBack(read.Line!, overrides)) return null;
+        if (read.Line == expectedLine && parsed is { HasSpan: true } && parsed.ShimPath == shimPath && parsed.LoadoutName == loadoutName && ReadsBack(expectedLine, overrides)) return null;
 
         File.Copy(backup.ToString(), localConfig.ToString(), overwrite: true);
         return Refuse($"Steam's {localConfig} did not read back the launch options that were written, so the original was restored.");
@@ -177,7 +196,7 @@ public sealed class LocalConfigVdfWriter(IProcessTracker processTracker)
         if (SteamLaunchOptionLine.FindOtherManager(current) is not { } manager) return Refuse(refusal);
 
         var replace = SteamLaunchOptionLine.Replace(current, shimPath, loadoutName, overrides, launcherSkipArguments);
-        return replace.IsRefused ? Refuse(refusal) : new Result(null, refusal, null, new Replacement(manager.Name, current, replace.Line!));
+        return replace.IsRefused ? Refuse(refusal) : new Result(null, refusal, null, new Replacement(manager.Name, current, replace.Line));
     }
 
     /// <summary>

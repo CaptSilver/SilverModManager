@@ -132,7 +132,7 @@ public partial class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunch
     {
         ShowReplacement(result.Replacement);
         return result.IsRefused
-            ? result.Refusal!
+            ? result.Refusal
             : $"Set the launch options of {Installation.Game.DisplayName} to: {result.Line} " +
               $"The previous file was kept as {result.Backup}. The line runs the current deploy of the loadout.";
     }
@@ -238,7 +238,7 @@ public partial class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunch
         {
             // A fresh replacement means the line changed; the next press confirms the current one.
             if (result.Replacement is not null) ShowReplacement(result.Replacement);
-            Message = result.Refusal!;
+            Message = result.Refusal;
             return;
         }
 

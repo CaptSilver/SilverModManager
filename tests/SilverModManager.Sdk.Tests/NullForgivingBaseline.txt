@@ -88,7 +88,6 @@ src/SilverModManager.App.UI/Pages/ProtocolRegistration/ProtocolRegistrationTestP
 src/SilverModManager.App.UI/Pages/Settings/SettingsView.axaml.cs	2
 src/SilverModManager.App.UI/Pages/Sorting/LoadOrder/LoadOrderView.axaml.cs	3
 src/SilverModManager.App.UI/Pages/SteamLaunchOption/SteamLaunchOptionView.axaml.cs	6
-src/SilverModManager.App.UI/Pages/SteamLaunchOption/SteamLaunchOptionViewModel.cs	2
 src/SilverModManager.App.UI/Pages/TextEdit/TextEditorPageView.axaml.cs	3
 src/SilverModManager.App.UI/Pages/Tools/ToolsPageView.axaml.cs	10
 src/SilverModManager.App.UI/ViewLocator.cs	3
@@ -148,13 +147,8 @@ src/SilverModManager.Platform.Proton/Launch/GameProcess.cs	2
 src/SilverModManager.Platform.Proton/Launch/LaunchSession.cs	4
 src/SilverModManager.Platform.Proton/Launch/LaunchStatus.cs	1
 src/SilverModManager.Platform.Proton/Protontricks/ProtontricksStrategy.cs	1
-src/SilverModManager.Platform.Proton/Steam/LocalConfigVdfWriter.cs	12
-src/SilverModManager.Platform.Proton/Steam/SteamLaunchOptionLine.cs	3
 src/SilverModManager.Platform.Proton/Support/SupportBundleWriter.cs	1
-src/SilverModManager.Platform.Proton/ToolRunner/HeroicFlatpakStrategy.cs	1
-src/SilverModManager.Platform.Proton/ToolRunner/SteamProtonStrategy.cs	2
 src/SilverModManager.Platform.Proton/Verbs/DeploymentCommand.cs	1
-src/SilverModManager.Platform.Proton/Verbs/SteamLaunchOptionCommand.cs	12
 src/SilverModManager.ProxyConsole/Serializer.cs	1
 src/SilverModManager.ProxyConsole/SpectreRenderer.cs	5
 src/SilverModManager.Sdk/ConfigurablePath.cs	1

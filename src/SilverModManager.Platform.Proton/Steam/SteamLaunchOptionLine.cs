@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using SilverModManager.Sdk;
 
@@ -49,6 +50,8 @@ public static class SteamLaunchOptionLine
         /// <summary>
         /// Whether the edit was refused.
         /// </summary>
+        [MemberNotNullWhen(true, nameof(Refusal))]
+        [MemberNotNullWhen(false, nameof(Line))]
         public bool IsRefused => Refusal is not null;
     }
 
@@ -67,7 +70,7 @@ public static class SteamLaunchOptionLine
     {
         var prefix = WithDllOverrides("", overrides);
         if (prefix.IsRefused) throw new ArgumentException(prefix.Refusal, nameof(overrides));
-        return Join(prefix.Line!, Span(shimPath, loadoutName), WithLauncherSkip("", launcherSkipArguments));
+        return Join(prefix.Line, Span(shimPath, loadoutName), WithLauncherSkip("", launcherSkipArguments));
     }
 
     private static string Span(string shimPath, string loadoutName)
@@ -111,7 +114,7 @@ public static class SteamLaunchOptionLine
         var prefix = WithDllOverrides(parsed.Prefix, overrides);
         if (prefix.IsRefused) return prefix;
 
-        return new Edit(Join(prefix.Line!, Span(shimPath, loadoutName), WithLauncherSkip(parsed.Tail, launcherSkipArguments)), null);
+        return new Edit(Join(prefix.Line, Span(shimPath, loadoutName), WithLauncherSkip(parsed.Tail, launcherSkipArguments)), null);
     }
 
     /// <summary>
@@ -171,7 +174,7 @@ public static class SteamLaunchOptionLine
         if (prefix.IsRefused) return prefix;
 
         var tail = commentedOut ? "" : existingLine[end..].Trim();
-        var line = Join(prefix.Line!, Compose(shimPath, loadoutName, [], []), WithLauncherSkip(tail, launcherSkipArguments));
+        var line = Join(prefix.Line, Compose(shimPath, loadoutName, [], []), WithLauncherSkip(tail, launcherSkipArguments));
         return Refuse(Scan(line)) is { } refusal ? new Edit(null, refusal) : new Edit(line, null);
     }
 

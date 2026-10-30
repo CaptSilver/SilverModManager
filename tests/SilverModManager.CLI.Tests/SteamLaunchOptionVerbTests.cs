@@ -102,7 +102,7 @@ public class SteamLaunchOptionVerbTests(IConnection connection) : IDisposable
         _metadataId = committed.Remap(metadata).Id;
     }
 
-    private SteamLaunchOptionCommand Command()
+    private SteamLaunchOptionCommand Command(ISteamLaunchOptionWriter? writer = null)
     {
         var registry = Substitute.For<IGameRegistry>();
         registry.LocateGameInstallations().Returns(_ => _installation is null ? ImmutableArray<GameInstallation>.Empty : [_installation]);
@@ -117,7 +117,7 @@ public class SteamLaunchOptionVerbTests(IConnection connection) : IDisposable
 
         var environment = Substitute.For<IEnvironmentReader>();
         environment.Get("XDG_DATA_HOME").Returns(DataHome);
-        return new SteamLaunchOptionCommand(new LoadoutResolver(connection, registry, environment), new SteamLaunchOptionWriter(new LocalConfigVdfWriter(_tracker), environment, FileSystem.Shared, registry));
+        return new SteamLaunchOptionCommand(new LoadoutResolver(connection, registry, environment), writer ?? new SteamLaunchOptionWriter(new LocalConfigVdfWriter(_tracker), environment, FileSystem.Shared, registry));
     }
 
     private static string[] Lines(LoggingRenderer renderer)
@@ -344,6 +344,21 @@ public class SteamLaunchOptionVerbTests(IConnection connection) : IDisposable
         Output(renderer).Should().Contain(RecordFile).And.Contain(ConfigFile).And.Contain(FluorineLine);
         File.ReadAllText(RecordFile).Should().Contain("old " + FluorineLine);
         LocalConfigLaunchOptions.Read(Absolute(ConfigFile), uint.Parse(AppId)).Line.Should().Be(Span);
+    }
+
+    [Fact]
+    public async Task ReplaceThatSucceedsWithoutRecordingTheOldLineIsReportedAsAFault()
+    {
+        await Install();
+        WriteShim();
+        WriteConfig(FluorineLine);
+        var writer = Substitute.For<ISteamLaunchOptionWriter>();
+        writer.Replace(Arg.Any<GameInstallation>(), Arg.Any<Loadout.ReadOnly>(), Arg.Any<string>())
+            .Returns(new LocalConfigVdfWriter.Result(Span, null, Absolute(ConfigFile + ".silvermod-bak")));
+
+        var act = () => Command(writer).RunAsync(new LoggingRenderer(), LoadoutName, null, write: true, replaceOtherManager: FluorineLine);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*without recording*");
     }
 
     [Fact]
