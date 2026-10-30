@@ -143,6 +143,31 @@ public class MegaDownloadJobTests(IServiceProvider provider, TemporaryFileManage
     }
 
     [Fact]
+    public async Task AnApiThatKeepsAnsweringAnHttpErrorGivesAPlainReason()
+    {
+        var host = new FakeHost((_, _) => new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        await using var destination = Files.CreateFile();
+        var job = JobFor(host, destination) with { Attempts = 3 };
+
+        var act = async () => await Begin(job);
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Message.Should().Be("MEGA answered 500; download it in your browser");
+        host.Seen.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task AnOverQuotaHttpAnswerFromTheApiGetsTheQuotaMessage()
+    {
+        var host = new FakeHost((_, _) => new HttpResponseMessage((HttpStatusCode)509));
+        await using var destination = Files.CreateFile();
+        var job = JobFor(host, destination) with { Attempts = 2 };
+
+        var act = async () => await Begin(job);
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Message.Should().Be(MegaDownloadJob.QuotaMessage);
+    }
+
+    [Fact]
     public async Task AnOverQuotaAnswerFromTheDownloadServerSendsTheUserToTheirBrowser()
     {
         var host = ServingFile([], (request, _) => request.Uri == DownloadUrl ? new HttpResponseMessage((HttpStatusCode)509) : null);

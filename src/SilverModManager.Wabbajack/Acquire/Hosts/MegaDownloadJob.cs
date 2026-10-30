@@ -62,7 +62,7 @@ public sealed record MegaDownloadJob : HostedDownloadJob, IJobDefinitionWithStar
             Content = new StringContent($"[{{\"a\":\"g\",\"g\":1,\"p\":\"{fileId}\"}}]", Encoding.UTF8, "application/json"),
         };
         using var response = await transfer.Send(request, token);
-        response.EnsureSuccessStatusCode();
+        transfer.EnsureSuccess(response);
         using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(token), cancellationToken: token);
 
         var answer = document.RootElement.ValueKind == JsonValueKind.Array && document.RootElement.GetArrayLength() > 0 ? document.RootElement[0] : document.RootElement;
