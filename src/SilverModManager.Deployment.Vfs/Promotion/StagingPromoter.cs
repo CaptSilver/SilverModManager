@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
@@ -63,9 +64,9 @@ public sealed class StagingPromoter
         var entries = new List<JournalEntry>(files.Count + whiteouts.Count);
         foreach (var file in files)
         {
-            var hash = await _hasher.Hash(_staging.Installation, file.RealPath, token);
+            var identity = FileIdentity.XxHash3(await _hasher.Hash(_staging.Installation, file.RealPath, token));
             var mode = (uint)File.GetUnixFileMode(file.RealPath.ToString());
-            entries.Add(new JournalEntry(file.Path, JournalEntryKind.File, file.Size, hash, mode));
+            entries.Add(new JournalEntry(file.Path, JournalEntryKind.File, file.Size, identity, mode));
         }
         entries.AddRange(whiteouts.Select(w => new JournalEntry(w, JournalEntryKind.Whiteout, Size.Zero, default, 0)));
 
@@ -133,10 +134,10 @@ public sealed class StagingPromoter
             var changed = await FindChanged(files, token);
             if (changed.Count > 0) return Block(journal, paths, changed);
 
-            await _sink.Backup(files.Select(f => (f.Hash, f.Size, (IStreamFactory)new NativeFileStreamFactory(_staging.PathFor(f.Path)))).ToList(), token);
+            await _sink.Backup(files.Select(f => (f.Identity, f.Size, (IStreamFactory)new NativeFileStreamFactory(_staging.PathFor(f.Path)))).ToList(), token);
             await _sink.Record(
                 journal.Target,
-                files.Select(f => new PromotedFile(f.Path, f.Hash, f.Size)).ToList(),
+                files.Select(f => new PromotedFile(f.Path, f.Identity, f.Size)).ToList(),
                 journal.Entries.Where(e => e.Kind == JournalEntryKind.Whiteout).Select(e => e.Path).ToList(),
                 token);
 
@@ -156,7 +157,8 @@ public sealed class StagingPromoter
         foreach (var file in files)
         {
             var path = _staging.PathFor(file.Path);
-            if (!path.FileExists || await _hasher.Hash(_staging.Installation, path, token) != file.Hash)
+            // Both sides are xxHash3 identities, so Equals answers "same bytes".
+            if (!path.FileExists || !FileIdentity.XxHash3(await _hasher.Hash(_staging.Installation, path, token)).Equals(file.Identity))
                 changed.Add(file.Path);
         }
         return changed;

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -103,7 +104,7 @@ public class VfsSessionFactoryTests(IServiceProvider serviceProvider) : IDisposa
         public List<string> Calls { get; } = [];
         public List<LoadoutId> Loadouts { get; } = [];
 
-        public Task Backup(IReadOnlyList<(Hash Hash, Size Size, IStreamFactory Stream)> files, CancellationToken token = default)
+        public Task Backup(IReadOnlyList<(FileIdentity Identity, Size Size, IStreamFactory Stream)> files, CancellationToken token = default)
         {
             Calls.Add("backup");
             return Task.CompletedTask;

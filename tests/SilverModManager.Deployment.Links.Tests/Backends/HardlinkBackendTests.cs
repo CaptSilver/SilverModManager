@@ -26,7 +26,7 @@ public class HardlinkBackendTests(ITestOutputHelper helper)
 
     private HardlinkDeploymentBackend Hardlink => Backend<HardlinkDeploymentBackend>();
 
-    private async Task<(Loadout.ReadOnly Loadout, EntityId Group, Dictionary<string, Hash> Hashes)> Deploy(params (string Path, string Content)[] files)
+    private async Task<(Loadout.ReadOnly Loadout, EntityId Group, Dictionary<string, FileIdentity> Hashes)> Deploy(params (string Path, string Content)[] files)
     {
         var loadout = await NewLoadout();
         var (group, hashes) = await AddMod(loadout, "Mod", files);
@@ -75,7 +75,7 @@ public class HardlinkBackendTests(ITestOutputHelper helper)
         var (_, hashes) = await AddMod(loadout, "Mod", ("x/target.txt", "the replacement"));
 
         // A staged file for some other hash, linked where the new file is about to go.
-        var otherHash = Hash.From(0x1122334455667788UL);
+        var otherHash = FileIdentity.XxHash3(Hash.From(0x1122334455667788UL));
         var staged = Store.PathFor(MetadataId, otherHash);
         staged.Parent.CreateDirectory();
         await File.WriteAllTextAsync(staged.ToString(), "staged bytes that must survive");
@@ -168,7 +168,7 @@ public class HardlinkBackendTests(ITestOutputHelper helper)
         Store.Contains(MetadataId, hash).Should().BeFalse("the damaged staged file was released");
 
         var restored = await Store.Ensure(MetadataId, hash);
-        (await restored.XxHash3Async()).Should().Be(hash);
+        FileIdentity.XxHash3(await restored.XxHash3Async()).Should().Be(hash);
         Stat(restored).Inode.Should().NotBe(storeInode);
         File.ReadAllText(OnDisk(sibling).ToString()).Should().Be(Original);
     }
@@ -184,7 +184,7 @@ public class HardlinkBackendTests(ITestOutputHelper helper)
         var tree = await BuildTree(loadout);
         var node = tree[GamePathOf("a/x.txt")];
         node.Disk.Identity.Should().NotBe(node.Previous.Identity, "after the reindex the disk side holds the new content");
-        Store.Contains(MetadataId, node.Disk.Identity.XxHash3()).Should().BeFalse("which has no staged file to compare against");
+        Store.Contains(MetadataId, node.Disk.Identity).Should().BeFalse("which has no staged file to compare against");
         node.Actions.Should().HaveFlag(Actions.IngestFromDisk);
 
         using var tx = Connection.BeginTransaction();
@@ -192,6 +192,22 @@ public class HardlinkBackendTests(ITestOutputHelper helper)
 
         Store.Contains(MetadataId, hash).Should().BeFalse();
         Stat(OnDisk("a/x.txt")).Inode.Should().Be(storeInode);
+    }
+
+    [Fact]
+    public async Task Extract_RejectsALoadoutPartNamedByAnotherKindThanXxHash3()
+    {
+        var loadout = await NewLoadout();
+        var path = GamePathOf("a/x.txt");
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [path] = new() { Loadout = new SyncNodePart { Identity = FileIdentity.Sha1(Sha1Hasher.Hash("a vanilla file"u8)), Size = Size.From(1), LastModifiedTicks = 1 }, Actions = Actions.ExtractToDisk },
+        };
+        using var tx = Connection.BeginTransaction();
+
+        var act = async () => await Hardlink.Extract(ContextFor(tree, tx, loadout), tree);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
     private static SyncNodePart Sha1Part(SyncNodePart like) => new()
@@ -275,7 +291,7 @@ public class HardlinkBackendTests(ITestOutputHelper helper)
         await Synchronizer.ResetToOriginalGameState(GameInstallation, GameInstallation.LocatorResult.LocatorIds.Distinct().ToArray());
 
         var restored = await Store.Ensure(MetadataId, hash);
-        (await restored.XxHash3Async()).Should().Be(hash);
+        FileIdentity.XxHash3(await restored.XxHash3Async()).Should().Be(hash);
     }
 
     [Fact]
@@ -300,7 +316,7 @@ public class HardlinkBackendTests(ITestOutputHelper helper)
     public async Task WriteIntrinsics_OverALinkedPath_NeverTruncatesTheStoreFile()
     {
         var loadout = await NewLoadout();
-        var otherHash = Hash.From(0x0102030405060708UL);
+        var otherHash = FileIdentity.XxHash3(Hash.From(0x0102030405060708UL));
         var staged = Store.PathFor(MetadataId, otherHash);
         staged.Parent.CreateDirectory();
         await File.WriteAllTextAsync(staged.ToString(), "staged bytes that must survive");

@@ -53,7 +53,7 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
         var modsHash = Hash("mods/valid-only");
         var otherHash = Hash("other/valid-only");
         var orphanHash = Hash("orphan");
-        await _fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("orphan", new MemoryStream(Encoding.UTF8.GetBytes("orphan"))), FileIdentity.XxHash3(orphanHash), Size.FromLong(6))]);
+        await _fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("orphan", new MemoryStream(Encoding.UTF8.GetBytes("orphan"))), orphanHash, Size.FromLong(6))]);
 
         var otherInstallation = GameInstallMetadataId.From(EntityId.From(0xABCDEF));
         await _staging.Ensure(installation, modsHash);
@@ -90,8 +90,8 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
             await tx.Commit();
         }
         await _fileStore.BackupFiles([
-            new ArchivedFileEntry(new MemoryStreamFactory("deployed", new MemoryStream(Encoding.UTF8.GetBytes("deployed"))), FileIdentity.XxHash3(deployed), Size.FromLong(8)),
-            new ArchivedFileEntry(new MemoryStreamFactory("elsewhere", new MemoryStream(Encoding.UTF8.GetBytes("elsewhere"))), FileIdentity.XxHash3(elsewhere), Size.FromLong(9)),
+            new ArchivedFileEntry(new MemoryStreamFactory("deployed", new MemoryStream(Encoding.UTF8.GetBytes("deployed"))), deployed, Size.FromLong(8)),
+            new ArchivedFileEntry(new MemoryStreamFactory("elsewhere", new MemoryStream(Encoding.UTF8.GetBytes("elsewhere"))), elsewhere, Size.FromLong(9)),
         ]);
         await _staging.Ensure(installation, deployed);
         await _staging.Ensure(installation, elsewhere);
@@ -118,7 +118,7 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
             var old = tx.TempId(DiskStateEntry.EntryPartition);
             tx.Add(old, DiskStateEntry.Path, new GamePath(LocationId.Game, "mods/legacy").ToGamePathParentTuple(installation));
             tx.Add(old, DiskStateEntry.Game, installation);
-            tx.Add(old, DiskStateEntry.XxHash3, legacy);
+            tx.Add(old, DiskStateEntry.XxHash3, legacy.XxHash3());
             tx.Add(old, DiskStateEntry.Size, Size.FromLong(1));
             tx.Add(old, DiskStateEntry.LastModified, DateTimeOffset.UnixEpoch);
             AddDiskState(tx, installation, new GamePath(LocationId.Game, "mods/migrated"), migrated);
@@ -132,9 +132,9 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
             await tx.Commit();
         }
         await _fileStore.BackupFiles([
-            new ArchivedFileEntry(new MemoryStreamFactory("legacy", new MemoryStream(Encoding.UTF8.GetBytes("legacy row"))), FileIdentity.XxHash3(legacy), Size.FromLong(10)),
-            new ArchivedFileEntry(new MemoryStreamFactory("migrated", new MemoryStream(Encoding.UTF8.GetBytes("migrated row"))), FileIdentity.XxHash3(migrated), Size.FromLong(12)),
-            new ArchivedFileEntry(new MemoryStreamFactory("unrelated", new MemoryStream(Encoding.UTF8.GetBytes("not named by any row"))), FileIdentity.XxHash3(unrelated), Size.FromLong(20)),
+            new ArchivedFileEntry(new MemoryStreamFactory("legacy", new MemoryStream(Encoding.UTF8.GetBytes("legacy row"))), legacy, Size.FromLong(10)),
+            new ArchivedFileEntry(new MemoryStreamFactory("migrated", new MemoryStream(Encoding.UTF8.GetBytes("migrated row"))), migrated, Size.FromLong(12)),
+            new ArchivedFileEntry(new MemoryStreamFactory("unrelated", new MemoryStream(Encoding.UTF8.GetBytes("not named by any row"))), unrelated, Size.FromLong(20)),
         ]);
         foreach (var hash in new[] { legacy, migrated, unrelated }) await _staging.Ensure(installation, hash);
 
@@ -163,7 +163,7 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
         gc.IsCompleted.Should().BeFalse("the sweep has to wait for the hold");
 
         // An apply under a hold reads the archives; that must not queue behind the collector.
-        var extract = Task.Run(() => _fileStore.ExtractFiles([(FileIdentity.XxHash3(hash), temp)], TestContext.Current.CancellationToken), TestContext.Current.CancellationToken);
+        var extract = Task.Run(() => _fileStore.ExtractFiles([(hash, temp)], TestContext.Current.CancellationToken), TestContext.Current.CancellationToken);
         await extract.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
         hold.Dispose();
@@ -212,7 +212,7 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
         }
         var live = Hash("mods/two-filesystems");
         var dead = Hash("nobody holds this");
-        await _fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("dead", new MemoryStream(Encoding.UTF8.GetBytes("nobody holds this"))), FileIdentity.XxHash3(dead), Size.FromLong(17))]);
+        await _fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("dead", new MemoryStream(Encoding.UTF8.GetBytes("nobody holds this"))), dead, Size.FromLong(17))]);
 
         // The "other filesystem" is a temp directory the locator says is a second device.
         var fileSystem = serviceProvider.GetRequiredService<IFileSystem>();
@@ -359,7 +359,7 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
         public required ILooseStagingStore First { get; init; }
         public required ILooseStagingStore Second { get; init; }
 
-        public static async Task<TwoFilesystems> Create(IServiceProvider serviceProvider, IFileStore fileStore, GameInstallMetadataId installation, params Hash[] hashes)
+        public static async Task<TwoFilesystems> Create(IServiceProvider serviceProvider, IFileStore fileStore, GameInstallMetadataId installation, params FileIdentity[] hashes)
         {
             var fileSystem = serviceProvider.GetRequiredService<IFileSystem>();
             var temp = fileSystem.GetKnownPath(KnownPath.TempDirectory).Combine($"gc-moved-game-{Guid.NewGuid():N}");
@@ -417,13 +417,13 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
         public AbsolutePath? RootOf(AbsolutePath path) => mount;
     }
 
-    private static void AddDiskState(ITransaction tx, GameInstallMetadataId installation, GamePath path, Hash hash)
+    private static void AddDiskState(ITransaction tx, GameInstallMetadataId installation, GamePath path, FileIdentity identity)
     {
         _ = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
         {
             Path = path.ToGamePathParentTuple(installation),
-            Identity = FileIdentity.XxHash3(hash),
-            XxHash3 = hash,
+            Identity = identity,
+            XxHash3 = identity.XxHash3(),
             Size = Size.FromLong(1),
             LastModified = DateTimeOffset.UnixEpoch.UtcDateTime,
             GameId = installation,
@@ -434,7 +434,7 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
 
     private void RunGc(ILooseStagingStore staging, StagingStoreLookup? storeFor = null) => RunGarbageCollector.Do(_logger, _dataModelSettings.ArchiveLocations, _fileStore, Connection, staging, _plans, new HashSet<DeploymentBackendId> { StagingBackend }, storeFor);
 
-    private static Hash Hash(string content) => Encoding.UTF8.GetBytes(content).xxHash3();
+    private static FileIdentity Hash(string content) => FileIdentity.XxHash3(Encoding.UTF8.GetBytes(content).xxHash3());
 
     public class Startup
     {

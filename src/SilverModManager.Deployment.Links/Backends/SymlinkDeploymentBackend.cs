@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Loadouts.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Deployment.Links.Probe;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Native;
@@ -64,25 +65,25 @@ public sealed class SymlinkDeploymentBackend(CopyDeploymentBackend copy, ILooseS
     }
 
     /// <inheritdoc />
-    protected override IReadOnlySet<Hash> HashesLinkedElsewhere(DeploymentContext context, IReadOnlyDictionary<Hash, AbsolutePath> storeFiles)
+    protected override IReadOnlySet<FileIdentity> HashesLinkedElsewhere(DeploymentContext context, IReadOnlyDictionary<FileIdentity, AbsolutePath> storeFiles)
     {
         // Disk state is the only record of what earlier applies linked; a symlink holds no count. Only the
         // paths whose content is one of the hashes being extracted can be a link to one of these files.
-        var linked = new HashSet<Hash>();
+        var linked = new HashSet<FileIdentity>();
         foreach (var (path, node) in context.SyncTree)
         {
             // Disk content of another kind than xxHash3 is not something the app deployed, so no staged file holds it.
-            if (!node.HaveDisk || !node.Disk.Identity.TryXxHash3(out var diskHash)) continue;
-            if (!storeFiles.TryGetValue(diskHash, out var storeFile) || linked.Contains(diskHash)) continue;
-            if (HasLinkIdentity(context.Locations.ToAbsolutePath(path), storeFile)) linked.Add(diskHash);
+            if (!node.HaveDisk || node.Disk.Identity.Kind != HashKind.XxHash3) continue;
+            if (!storeFiles.TryGetValue(node.Disk.Identity, out var storeFile) || linked.Contains(node.Disk.Identity)) continue;
+            if (HasLinkIdentity(context.Locations.ToAbsolutePath(path), storeFile)) linked.Add(node.Disk.Identity);
         }
         return linked;
     }
 
     /// <inheritdoc />
-    protected override bool TryFindLinkedStoreHash(GameInstallMetadataId installation, AbsolutePath deployed, Func<IReadOnlyDictionary<(ulong Device, ulong Inode), Hash>> storeInodes, out Hash hash)
+    protected override bool TryFindLinkedStoreHash(GameInstallMetadataId installation, AbsolutePath deployed, Func<IReadOnlyDictionary<(ulong Device, ulong Inode), FileIdentity>> storeInodes, out FileIdentity identity)
     {
-        hash = default;
+        identity = default;
         if (LibcStat.TryLStat(deployed.ToString(), out var stat) != 0 || (stat.Mode & LibcStat.TypeMask) != LibcStat.Symlink) return false;
         if (LibcLinks.TryReadLink(deployed.ToString(), out var target) != 0) return false;
 
@@ -90,12 +91,12 @@ public sealed class SymlinkDeploymentBackend(CopyDeploymentBackend copy, ILooseS
         var name = Path.GetFileName(target);
         if (name.Length != 16 || !ulong.TryParse(name, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var value)) return false;
 
-        hash = Hash.From(value);
-        return Store.PathFor(installation, hash).ToString() == target;
+        identity = FileIdentity.XxHash3(Hash.From(value));
+        return Store.PathFor(installation, identity).ToString() == target;
     }
 
     /// <inheritdoc />
-    protected override void RepairStoreAfterWriteThrough(ILooseStagingStore store, GameInstallMetadataId installation, Hash previous, AbsolutePath deployed, AbsolutePath storeFile)
+    protected override void RepairStoreAfterWriteThrough(ILooseStagingStore store, GameInstallMetadataId installation, FileIdentity previous, AbsolutePath deployed, AbsolutePath storeFile)
     {
         var modified = File.GetLastWriteTimeUtc(storeFile.ToString());
 

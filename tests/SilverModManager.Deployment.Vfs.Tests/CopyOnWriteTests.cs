@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using SilverModManager.Deployment.Vfs.Testing;
@@ -52,7 +53,7 @@ public class CopyOnWriteTests : IDisposable
         var file = _loose.Combine(Guid.NewGuid().ToString("N"));
         File.WriteAllBytes(file.ToString(), Bytes(text));
         if (mode is { } m) File.SetUnixFileMode(file.ToString(), m);
-        return new VfsFileSource(RelativePath.FromUnsanitizedInput(path), VfsSourceKind.Staged, file, Size.From((ulong)Bytes(text).Length), Hash.From(2));
+        return new VfsFileSource(RelativePath.FromUnsanitizedInput(path), VfsSourceKind.Staged, file, Size.From((ulong)Bytes(text).Length), FileIdentity.XxHash3(Hash.From(2)));
     }
 
     private async Task<FakeFuseKernel> Mount(params VfsFileSource[] sources)

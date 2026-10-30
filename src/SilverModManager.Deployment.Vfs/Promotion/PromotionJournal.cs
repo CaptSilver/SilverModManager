@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -11,7 +12,7 @@ namespace SilverModManager.Deployment.Vfs;
 public enum JournalEntryKind { File, Whiteout }
 
 /// <summary>One staged change. Whiteouts have no content, so their size, hash and mode are zero.</summary>
-public readonly record struct JournalEntry(RelativePath Path, JournalEntryKind Kind, Size Size, Hash Hash, uint Mode);
+public readonly record struct JournalEntry(RelativePath Path, JournalEntryKind Kind, Size Size, FileIdentity Identity, uint Mode);
 
 /// <summary>
 /// What a promotion is about to do, written down before anything is stored so a crash can be
@@ -49,7 +50,7 @@ public sealed record PromotionJournal(GameInstallMetadataId Installation, Loadou
                 Path = e.Path.ToString(),
                 Kind = e.Kind == JournalEntryKind.File ? "file" : "whiteout",
                 Size = e.Kind == JournalEntryKind.File ? e.Size.Value : null,
-                XxHash3 = e.Kind == JournalEntryKind.File ? ((ulong)e.Hash).ToString("x16", CultureInfo.InvariantCulture) : null,
+                XxHash3 = e.Kind == JournalEntryKind.File ? ((ulong)e.Identity.XxHash3()).ToString("x16", CultureInfo.InvariantCulture) : null,
                 Mode = e.Kind == JournalEntryKind.File ? e.Mode : null,
             }).ToList(),
         };
@@ -92,9 +93,9 @@ public sealed record PromotionJournal(GameInstallMetadataId Installation, Loadou
                     RelativePath.FromUnsanitizedInput(e.Path!),
                     JournalEntryKind.File,
                     Size.From(e.Size!.Value),
-                    Hash.From(ulong.Parse(e.XxHash3!, NumberStyles.HexNumber, CultureInfo.InvariantCulture)),
+                    FileIdentity.XxHash3(Hash.From(ulong.Parse(e.XxHash3!, NumberStyles.HexNumber, CultureInfo.InvariantCulture))),
                     e.Mode!.Value),
-                "whiteout" => new JournalEntry(RelativePath.FromUnsanitizedInput(e.Path!), JournalEntryKind.Whiteout, Size.Zero, Hash.From(0UL), 0),
+                "whiteout" => new JournalEntry(RelativePath.FromUnsanitizedInput(e.Path!), JournalEntryKind.Whiteout, Size.Zero, FileIdentity.None, 0),
                 _ => throw new InvalidDataException($"Promotion journal {file} has an entry of unknown kind '{e.Kind}'"),
             }).ToArray();
 

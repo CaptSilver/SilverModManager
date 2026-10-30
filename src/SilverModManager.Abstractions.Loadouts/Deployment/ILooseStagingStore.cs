@@ -1,6 +1,6 @@
-using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Abstractions.Loadouts.Deployment;
 
@@ -32,26 +32,28 @@ public interface ILooseStagingStore
     ILooseStagingStore ForRoot(AbsolutePath root);
 
     /// <summary>
-    /// Where the file with this hash is, or would be, staged for the installation.
+    /// Where the file with this identity is, or would be, staged for the installation. Staged names are
+    /// xxHash3 keys, so any other kind of identity throws <see cref="InvalidOperationException"/>, here and in
+    /// every other member that takes one.
     /// </summary>
-    AbsolutePath PathFor(GameInstallMetadataId installation, Hash hash);
+    AbsolutePath PathFor(GameInstallMetadataId installation, FileIdentity identity);
 
     /// <summary>
     /// Makes sure the file is staged, extracting it from the file store if it is not, and returns its path.
     /// A file that is already staged is not extracted again. A crash while extracting never leaves
     /// a partial file under the final name.
     /// </summary>
-    ValueTask<AbsolutePath> Ensure(GameInstallMetadataId installation, Hash hash, CancellationToken token = default);
+    ValueTask<AbsolutePath> Ensure(GameInstallMetadataId installation, FileIdentity identity, CancellationToken token = default);
 
     /// <summary>
     /// Whether the file is staged for the installation.
     /// </summary>
-    bool Contains(GameInstallMetadataId installation, Hash hash);
+    bool Contains(GameInstallMetadataId installation, FileIdentity identity);
 
     /// <summary>
     /// Every file staged for the installation. Empty when nothing was ever staged for it.
     /// </summary>
-    IEnumerable<(Hash Hash, AbsolutePath Path)> Enumerate(GameInstallMetadataId installation);
+    IEnumerable<(FileIdentity Identity, AbsolutePath Path)> Enumerate(GameInstallMetadataId installation);
 
     /// <summary>
     /// The installations that have a staging directory. The link <see cref="MergeInstallation"/> leaves in place of
@@ -70,7 +72,7 @@ public interface ILooseStagingStore
     /// own path goes: a link made from it into a game folder keeps the bytes alive and is not touched.
     /// The next <see cref="Ensure"/> extracts the file again.
     /// </summary>
-    bool Release(GameInstallMetadataId installation, Hash hash);
+    bool Release(GameInstallMetadataId installation, FileIdentity identity);
 
     /// <summary>
     /// Hands everything staged for <paramref name="from"/> to <paramref name="into"/>, in this store and in every
@@ -105,10 +107,10 @@ public interface ILooseStagingStore
     /// only in the store its deployed file links from.
     /// </remarks>
     /// <returns>The number of staged files deleted.</returns>
-    int Sweep(Func<IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>>> live);
+    int Sweep(Func<IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>>> live);
 
     /// <summary>
-    /// <see cref="Sweep(Func{IReadOnlyDictionary{GameInstallMetadataId, IReadOnlySet{Hash}}})"/>, with a
+    /// <see cref="Sweep(Func{IReadOnlyDictionary{GameInstallMetadataId, IReadOnlySet{FileIdentity}}})"/>, with a
     /// live set of its own for each store.
     /// </summary>
     int Sweep(Func<StagingLiveness> live);

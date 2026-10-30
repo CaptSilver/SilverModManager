@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.IO;
 using System.Text;
 using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
@@ -55,6 +56,17 @@ public class LoadoutPromotionSinkTests(ITestOutputHelper helper) : AStubbedGameI
 
     private static readonly GamePath NewFile = new(LocationId.Game, "Data/new.txt");
     private static readonly GamePath Vanilla = new(LocationId.Game, "Data/image.dds");
+
+    [Fact]
+    public async Task Backup_RejectsAnIdentityOfAnotherKindThanXxHash3()
+    {
+        var sink = new LoadoutPromotionSink(FileStore, Connection);
+        var sha1 = FileIdentity.Sha1(Sha1Value.From(new byte[20]));
+
+        var act = async () => await sink.Backup([(sha1, Size.From(1), new MemoryStreamFactory("a", new MemoryStream([1])))]);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
 
     [Fact]
     public async Task StagedFilesAndWhiteoutsBecomeOverridesRows()

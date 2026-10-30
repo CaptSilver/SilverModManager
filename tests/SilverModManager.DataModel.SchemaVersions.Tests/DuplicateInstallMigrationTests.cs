@@ -208,11 +208,11 @@ public class DuplicateInstallMigrationTests
         await provider.GetRequiredService<MigrationService>().MigrateAll();
 
         var store = provider.GetRequiredService<ILooseStagingStore>();
-        store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<Hash>>
+        store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>>
         {
-            [GameInstallMetadataId.From(seed.Canonical)] = new HashSet<Hash> { hash },
+            [GameInstallMetadataId.From(seed.Canonical)] = new HashSet<FileIdentity> { FileIdentity.XxHash3(hash) },
         });
-        store.Contains(GameInstallMetadataId.From(seed.Canonical), hash).Should().BeTrue();
+        store.Contains(GameInstallMetadataId.From(seed.Canonical), FileIdentity.XxHash3(hash)).Should().BeTrue();
         store.Installations().Should().Equal([GameInstallMetadataId.From(seed.Canonical)]);
         File.ReadAllText(link.ToString()).Should().Be("deployed by the duplicate");
     }
@@ -419,7 +419,7 @@ public class DuplicateInstallMigrationTests
     // Written by hand rather than through Ensure: the file store in this host has no archives.
     private static AbsolutePath StageFile(IServiceProvider provider, EntityId installation, Hash hash, string content)
     {
-        var path = provider.GetRequiredService<ILooseStagingStore>().PathFor(GameInstallMetadataId.From(installation), hash);
+        var path = provider.GetRequiredService<ILooseStagingStore>().PathFor(GameInstallMetadataId.From(installation), FileIdentity.XxHash3(hash));
         path.Parent.CreateDirectory();
         File.WriteAllText(path.ToString(), content);
         return path;

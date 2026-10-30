@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -56,7 +57,7 @@ public class MountRoundTripTests(ITestOutputHelper output) : IDisposable
         {
             var file = loose.Combine(Guid.NewGuid().ToString("N"));
             await file.WriteAllBytesAsync(content);
-            sources.Add(new VfsFileSource(RelativePath.FromUnsanitizedInput(path), VfsSourceKind.Staged, file, Size.From((ulong)content.Length), Hash.From(2)));
+            sources.Add(new VfsFileSource(RelativePath.FromUnsanitizedInput(path), VfsSourceKind.Staged, file, Size.From((ulong)content.Length), FileIdentity.XxHash3(Hash.From(2))));
         }
 
         var staging = new StagingDirectory(_directory.Combine("staging"), GameInstallMetadataId.From(0xABC));

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -47,6 +48,8 @@ public class PromotionTests : IDisposable
 
     private static Hash HashOf(string text) => Hash.From(System.IO.Hashing.XxHash3.HashToUInt64(Encoding.UTF8.GetBytes(text)));
 
+    private static FileIdentity IdentityOf(string text) => FileIdentity.XxHash3(HashOf(text));
+
     [Fact]
     public async Task PromoteStoresFilesRecordsThemAndEmptiesStaging()
     {
@@ -59,12 +62,12 @@ public class PromotionTests : IDisposable
         result.Status.Should().Be(PromotionStatus.Promoted);
         result.Files.Select(f => f.ToString()).Should().BeEquivalentTo("Data/a.txt", "Data/sub/b.txt");
         _sink.JournalExistedDuringBackup.Should().BeTrue("the journal has to be on disk before anything is stored");
-        _sink.BackedUp.Should().BeEquivalentTo([HashOf("alpha"), HashOf("beta")]);
+        _sink.BackedUp.Should().BeEquivalentTo([IdentityOf("alpha"), IdentityOf("beta")]);
         var record = _sink.Records.Should().ContainSingle().Subject;
         record.Loadout.Should().Be(Target);
-        record.Files.Select(f => (f.Path.ToString(), f.Hash, f.Size.Value)).Should().BeEquivalentTo([
-            ("Data/a.txt", HashOf("alpha"), 5UL),
-            ("Data/sub/b.txt", HashOf("beta"), 4UL),
+        record.Files.Select(f => (f.Path.ToString(), f.Identity, f.Size.Value)).Should().BeEquivalentTo([
+            ("Data/a.txt", IdentityOf("alpha"), 5UL),
+            ("Data/sub/b.txt", IdentityOf("beta"), 4UL),
         ]);
         record.Deleted.Select(d => d.ToString()).Should().BeEquivalentTo("Data/gone.txt");
 
@@ -125,7 +128,7 @@ public class PromotionTests : IDisposable
         var recovered = await NewPromoter().Recover();
 
         recovered.Status.Should().Be(PromotionStatus.Recovered);
-        _sink.BackedUp.Should().BeEquivalentTo([HashOf("alpha"), HashOf("beta")], "the entry stored before the fault is not stored twice");
+        _sink.BackedUp.Should().BeEquivalentTo([IdentityOf("alpha"), IdentityOf("beta")], "the entry stored before the fault is not stored twice");
         _sink.Records.Should().ContainSingle();
         _staging.Scan().Should().BeEmpty();
         _staging.JournalFile.FileExists.Should().BeFalse();
@@ -159,6 +162,19 @@ public class PromotionTests : IDisposable
     }
 
     [Fact]
+    public void TheJournalRejectsAFileEntryNamedByAnotherKindThanXxHash3()
+    {
+        var sha1 = FileIdentity.Sha1(Sha1Value.From(new byte[20]));
+        var journal = new PromotionJournal(Installation, Target, [
+            new JournalEntry(RelativePath.FromUnsanitizedInput("Data/a.txt"), JournalEntryKind.File, Size.From(1), sha1, 0x1a4),
+        ]);
+
+        var act = () => journal.Write(_staging.JournalFile);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
     public async Task RecoverOnlyFinishesTheCleanupOnceTheChangesAreRecorded()
     {
         // What a crash after Record, partway through deleting the staged files, leaves behind:
@@ -166,8 +182,8 @@ public class PromotionTests : IDisposable
         Stage("Data/left.txt", "left behind");
         _staging.WriteWhiteouts([RelativePath.FromUnsanitizedInput("Data/gone.txt")]);
         new PromotionJournal(Installation, Target, [
-            new JournalEntry(RelativePath.FromUnsanitizedInput("Data/deleted-already.txt"), JournalEntryKind.File, Size.From(3), HashOf("abc"), 0x1a4),
-            new JournalEntry(RelativePath.FromUnsanitizedInput("Data/left.txt"), JournalEntryKind.File, Size.From(11), HashOf("left behind"), 0x1a4),
+            new JournalEntry(RelativePath.FromUnsanitizedInput("Data/deleted-already.txt"), JournalEntryKind.File, Size.From(3), IdentityOf("abc"), 0x1a4),
+            new JournalEntry(RelativePath.FromUnsanitizedInput("Data/left.txt"), JournalEntryKind.File, Size.From(11), IdentityOf("left behind"), 0x1a4),
             new JournalEntry(RelativePath.FromUnsanitizedInput("Data/gone.txt"), JournalEntryKind.Whiteout, Size.Zero, default, 0),
         ], Recorded: true).Write(_staging.JournalFile);
 
@@ -191,7 +207,7 @@ public class PromotionTests : IDisposable
         await NewPromoter().Promote(Target);
 
         seen!.Recorded.Should().BeFalse("the marker is written after Record returns, not before");
-        seen.Entries.Should().ContainSingle().Which.Hash.Should().Be(HashOf("alpha"));
+        seen.Entries.Should().ContainSingle().Which.Identity.Should().Be(IdentityOf("alpha"));
     }
 
     [Fact]
@@ -293,10 +309,10 @@ public class PromotionTests : IDisposable
 
     private sealed class FaultingSink(StagingDirectory staging) : IPromotionSink
     {
-        private readonly HashSet<Hash> _known = [];
+        private readonly HashSet<FileIdentity> _known = [];
 
         public List<string> Calls { get; } = [];
-        public List<Hash> BackedUp { get; } = [];
+        public List<FileIdentity> BackedUp { get; } = [];
         public List<RecordCall> Records { get; } = [];
         public bool JournalExistedDuringBackup { get; private set; }
         public int? FailAfterBackupEntries { get; set; }
@@ -304,20 +320,20 @@ public class PromotionTests : IDisposable
         public Action? OnBackup { get; set; }
         public Action? OnRecord { get; set; }
 
-        public Task Backup(IReadOnlyList<(Hash Hash, Size Size, IStreamFactory Stream)> files, CancellationToken token = default)
+        public Task Backup(IReadOnlyList<(FileIdentity Identity, Size Size, IStreamFactory Stream)> files, CancellationToken token = default)
         {
             Calls.Add("backup");
             JournalExistedDuringBackup = staging.JournalFile.FileExists;
             OnBackup?.Invoke();
 
             var stored = 0;
-            foreach (var (hash, _, _) in files)
+            foreach (var (identity, _, _) in files)
             {
-                // A store that already has the hash skips it, as the real sink does.
-                if (_known.Contains(hash)) continue;
+                // A store that already has the identity skips it, as the real sink does.
+                if (_known.Contains(identity)) continue;
                 if (stored++ >= FailAfterBackupEntries) throw new InvalidOperationException("injected fault during backup");
-                _known.Add(hash);
-                BackedUp.Add(hash);
+                _known.Add(identity);
+                BackedUp.Add(identity);
             }
             return Task.CompletedTask;
         }

@@ -8,6 +8,7 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.Query;
@@ -468,5 +469,25 @@ public class DiskStateRowTests(ITestOutputHelper helper) : AStubbedGameTest<Disk
         DiskStateEntry.FindByGame(Connection.Db, duplicate).Should().BeEmpty();
         GameInstallMetadata.LastSyncedLoadout.Contains(GameInstallMetadata.Load(Connection.Db, duplicate)).Should().BeFalse();
         GameInstallMetadata.Load(Connection.Db, canonical.Id).LastSyncedLoadout.Id.Should().Be(lastSyncedBefore);
+    }
+
+    [Fact]
+    public async Task RecordingAFileWhoseIdentityIsNotXxHash3_Throws()
+    {
+        var metadata = await LoadoutManager.ManageInstallation(GameInstallation);
+        using var tx = Connection.BeginTransaction();
+        var context = new DeploymentContext
+        {
+            Synchronizer = (ALoadoutSynchronizer)Synchronizer,
+            Installation = GameInstallation,
+            MetadataId = metadata.Id,
+            SyncTree = new Dictionary<GamePath, SyncNode>(),
+            Transaction = tx,
+        };
+        var identity = FileIdentity.Sha1(Sha1Hasher.Hash("depot"u8));
+
+        var act = () => DeployedFileRows.Record(tx, context, Plain, new SyncNode(), identity, Size.FromLong(5), DateTimeOffset.UtcNow);
+
+        act.Should().Throw<InvalidOperationException>().Which.Message.Should().Contain("Sha1");
     }
 }

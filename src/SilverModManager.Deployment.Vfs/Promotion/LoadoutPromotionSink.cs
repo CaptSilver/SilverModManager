@@ -33,14 +33,13 @@ public sealed class LoadoutPromotionSink : IPromotionSink
         _connection = connection;
     }
 
-    public async Task Backup(IReadOnlyList<(Hash Hash, Size Size, IStreamFactory Stream)> files, CancellationToken token = default)
+    public async Task Backup(IReadOnlyList<(FileIdentity Identity, Size Size, IStreamFactory Stream)> files, CancellationToken token = default)
     {
         var missing = new List<ArchivedFileEntry>();
-        var seen = new HashSet<Hash>();
-        foreach (var (hash, size, stream) in files)
+        var seen = new HashSet<FileIdentity>();
+        foreach (var (identity, size, stream) in files)
         {
-            if (!seen.Add(hash)) continue;
-            var identity = FileIdentity.XxHash3(hash);
+            if (!seen.Add(identity)) continue;
             if (await _fileStore.HaveFile(identity)) continue;
             missing.Add(new ArchivedFileEntry(stream, identity, size));
         }
@@ -68,11 +67,11 @@ public sealed class LoadoutPromotionSink : IPromotionSink
             if (existing.HasValue && existing.Value.TryGetAsDeletedFile(out _))
             {
                 tx.Delete(existing.Value, recursive: false);
-                OverridesGroupItems.AddFile(tx, loadout, overrides, path, file.Hash, file.Size);
+                OverridesGroupItems.AddFile(tx, loadout, overrides, path, file.Identity.XxHash3(), file.Size);
                 continue;
             }
 
-            OverridesGroupItems.UpsertFile(tx, loadout, overrides, path, file.Hash, file.Size);
+            OverridesGroupItems.UpsertFile(tx, loadout, overrides, path, file.Identity.XxHash3(), file.Size);
         }
         foreach (var path in deleted)
             OverridesGroupItems.AddReifiedDelete(tx, loadout, overrides, new GamePath(LocationId.Game, path));

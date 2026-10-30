@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -26,7 +27,7 @@ public static class VfsSources
         IReadOnlyDictionary<GamePath, SyncNode> tree,
         IReadOnlyCollection<GamePath> deletedWinners,
         GamePath mountRoot,
-        Func<Hash, AbsolutePath> stagedPathFor)
+        Func<FileIdentity, AbsolutePath> stagedPathFor)
     {
         var sources = new List<VfsFileSource>();
         var unserved = new List<GamePath>();
@@ -41,9 +42,9 @@ public static class VfsSources
                     sources.Add(new VfsFileSource(
                         RelativeTo(path, mountRoot),
                         VfsSourceKind.Staged,
-                        stagedPathFor(node.Loadout.Identity.XxHash3()),
+                        stagedPathFor(node.Loadout.Identity),
                         node.Loadout.Size,
-                        node.Loadout.Identity.XxHash3()));
+                        node.Loadout.Identity));
                     break;
 
                 // A vanilla file, or a file only the disk knows about (MergeStates gives those the default
@@ -64,7 +65,7 @@ public static class VfsSources
         foreach (var path in deletedWinners)
         {
             if (!IsUnder(path, mountRoot)) continue;
-            sources.Add(new VfsFileSource(RelativeTo(path, mountRoot), VfsSourceKind.Hidden, RealPath: null, Size.Zero, Hash.Zero));
+            sources.Add(new VfsFileSource(RelativeTo(path, mountRoot), VfsSourceKind.Hidden, RealPath: null, Size.Zero, FileIdentity.None));
         }
 
         return new VfsSourceSet(sources, unserved);

@@ -3,6 +3,7 @@ using SilverModManager.Abstractions.Loadouts.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Deployment.Links.Probe;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Native;
@@ -46,32 +47,32 @@ public sealed class HardlinkDeploymentBackend(CopyDeploymentBackend copy, ILoose
     }
 
     /// <inheritdoc />
-    protected override IReadOnlySet<Hash> HashesLinkedElsewhere(DeploymentContext context, IReadOnlyDictionary<Hash, AbsolutePath> storeFiles)
+    protected override IReadOnlySet<FileIdentity> HashesLinkedElsewhere(DeploymentContext context, IReadOnlyDictionary<FileIdentity, AbsolutePath> storeFiles)
     {
         // A staged file nothing links to has one name: its own. Another one means some game path holds it.
-        var linked = new HashSet<Hash>();
-        foreach (var (hash, storeFile) in storeFiles)
+        var linked = new HashSet<FileIdentity>();
+        foreach (var (identity, storeFile) in storeFiles)
         {
-            if (LibcStat.TryStat(storeFile.ToString(), out var stat) == 0 && stat.NLink >= 2) linked.Add(hash);
+            if (LibcStat.TryStat(storeFile.ToString(), out var stat) == 0 && stat.NLink >= 2) linked.Add(identity);
         }
         return linked;
     }
 
     /// <inheritdoc />
-    protected override bool TryFindLinkedStoreHash(GameInstallMetadataId installation, AbsolutePath deployed, Func<IReadOnlyDictionary<(ulong Device, ulong Inode), Hash>> storeInodes, out Hash hash)
+    protected override bool TryFindLinkedStoreHash(GameInstallMetadataId installation, AbsolutePath deployed, Func<IReadOnlyDictionary<(ulong Device, ulong Inode), FileIdentity>> storeInodes, out FileIdentity identity)
     {
         // A staged file that nothing is linked to has one name; a deployed file with one name cannot be a link to it.
-        hash = default;
+        identity = default;
         return LibcStat.TryStat(deployed.ToString(), out var stat) == 0
                && stat.NLink >= 2
-               && storeInodes().TryGetValue((stat.Device, stat.Inode), out hash);
+               && storeInodes().TryGetValue((stat.Device, stat.Inode), out identity);
     }
 
     /// <inheritdoc />
-    protected override void RepairStoreAfterWriteThrough(ILooseStagingStore store, GameInstallMetadataId installation, Hash previous, AbsolutePath deployed, AbsolutePath storeFile)
+    protected override void RepairStoreAfterWriteThrough(ILooseStagingStore store, GameInstallMetadataId installation, FileIdentity previous, AbsolutePath deployed, AbsolutePath storeFile)
     {
         // The game path keeps the inode and the bytes written to it. The staged name goes, and Ensure
-        // extracts the hash from the archives the next time it is needed.
+        // extracts the file from the archives the next time it is needed.
         store.Release(installation, previous);
     }
 }

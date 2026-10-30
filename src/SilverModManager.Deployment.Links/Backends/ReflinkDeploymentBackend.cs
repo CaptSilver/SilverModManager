@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Sdk.Native;
 using SilverModManager.Deployment.Links.Probe;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 
@@ -52,16 +53,16 @@ public sealed class ReflinkDeploymentBackend(CopyDeploymentBackend copy, ILooseS
     protected override bool HasLinkIdentity(AbsolutePath deployed, AbsolutePath storeFile) => false;
 
     /// <inheritdoc />
-    protected override IReadOnlySet<Hash> HashesLinkedElsewhere(DeploymentContext context, IReadOnlyDictionary<Hash, AbsolutePath> storeFiles) => new HashSet<Hash>();
+    protected override IReadOnlySet<FileIdentity> HashesLinkedElsewhere(DeploymentContext context, IReadOnlyDictionary<FileIdentity, AbsolutePath> storeFiles) => new HashSet<FileIdentity>();
 
     /// <inheritdoc />
-    protected override bool TryFindLinkedStoreHash(GameInstallMetadataId installation, AbsolutePath deployed, Func<IReadOnlyDictionary<(ulong Device, ulong Inode), Hash>> storeInodes, out Hash hash)
+    protected override bool TryFindLinkedStoreHash(GameInstallMetadataId installation, AbsolutePath deployed, Func<IReadOnlyDictionary<(ulong Device, ulong Inode), FileIdentity>> storeInodes, out FileIdentity identity)
     {
-        hash = default;
+        identity = default;
         return false;
     }
 
     /// <inheritdoc />
-    protected override void RepairStoreAfterWriteThrough(ILooseStagingStore store, GameInstallMetadataId installation, Hash previous, AbsolutePath deployed, AbsolutePath storeFile)
+    protected override void RepairStoreAfterWriteThrough(ILooseStagingStore store, GameInstallMetadataId installation, FileIdentity previous, AbsolutePath deployed, AbsolutePath storeFile)
         => throw new InvalidOperationException("A reflink never shares an inode with the staged file, so there is nothing to repair.");
 }

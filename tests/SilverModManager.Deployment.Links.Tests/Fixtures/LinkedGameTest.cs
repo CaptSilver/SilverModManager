@@ -171,17 +171,17 @@ public abstract class LinkedGameTest<TTest>(ITestOutputHelper helper, Placement 
     /// Adds a mod with the given files to the game folder and archives their contents. Returns the mod's
     /// group, for enabling and disabling, and each file's hash.
     /// </summary>
-    protected async Task<(EntityId Group, Dictionary<string, Hash> Hashes)> AddMod(Loadout.ReadOnly loadout, string name, params (string Path, string Content)[] files)
+    protected async Task<(EntityId Group, Dictionary<string, FileIdentity> Hashes)> AddMod(Loadout.ReadOnly loadout, string name, params (string Path, string Content)[] files)
     {
         using var tx = Connection.BeginTransaction();
         var group = AddEmptyGroup(tx, loadout.LoadoutId, name);
         var archived = new List<ArchivedFileEntry>();
-        var hashes = new Dictionary<string, Hash>();
+        var hashes = new Dictionary<string, FileIdentity>();
         foreach (var (path, content) in files)
         {
             AddFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, path), content, out var hash, out var size);
             archived.Add(new ArchivedFileEntry(new MemoryStreamFactory(path, new MemoryStream(Encoding.UTF8.GetBytes(content))), FileIdentity.XxHash3(hash), size));
-            hashes[path] = hash;
+            hashes[path] = FileIdentity.XxHash3(hash);
         }
         await FileStore.BackupFiles(archived);
         var result = await tx.Commit();

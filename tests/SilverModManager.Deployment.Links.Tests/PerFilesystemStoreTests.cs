@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.GC;
@@ -68,9 +69,9 @@ public class ReflinkThroughAGameFilesystemStoreTests(ITestOutputHelper helper)
         var perFilesystem = Store.ForRoot(OnDisk(""));
         var defaultFile = await Store.Ensure(MetadataId, hashes["a/y.txt"], TestContext.Current.CancellationToken);
 
-        var deleted = Store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<Hash>>
+        var deleted = Store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>>
         {
-            [MetadataId] = new HashSet<Hash> { hashes["a/x.txt"] },
+            [MetadataId] = new HashSet<FileIdentity> { hashes["a/x.txt"] },
         });
 
         deleted.Should().Be(2);

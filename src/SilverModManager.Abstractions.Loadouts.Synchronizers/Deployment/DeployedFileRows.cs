@@ -15,18 +15,20 @@ internal static class DeployedFileRows
     /// </summary>
     /// <param name="writeTime">The deployed path's modification time as the next index will read it.</param>
     internal static void Record(ITransaction tx, DeploymentContext context, GamePath path, SyncNode node, DateTimeOffset writeTime)
-        => Record(tx, context, path, node, node.Loadout.Identity.XxHash3(), node.Loadout.Size, writeTime);
+        => Record(tx, context, path, node, node.Loadout.Identity, node.Loadout.Size, writeTime);
 
     /// <summary>
     /// Records the bytes just written to <paramref name="path"/>. A generated file has no loadout hash to take
-    /// them from, so the caller passes the hash and size of what it rendered.
+    /// them from, so the caller passes the identity and size of what it rendered.
     /// </summary>
-    internal static void Record(ITransaction tx, DeploymentContext context, GamePath path, SyncNode node, Hash hash, Size size, DateTimeOffset writeTime)
+    internal static void Record(ITransaction tx, DeploymentContext context, GamePath path, SyncNode node, FileIdentity identity, Size size, DateTimeOffset writeTime)
     {
+        // DiskStateEntry keeps the xxHash3 key as a column of its own beside the identity.
+        var hash = identity.XxHash3();
         if (node.HaveDisk)
         {
             var id = node.Disk.EntityId;
-            tx.Add(id, DiskStateEntry.Identity, FileIdentity.XxHash3(hash));
+            tx.Add(id, DiskStateEntry.Identity, identity);
             tx.Add(id, DiskStateEntry.XxHash3, hash);
             tx.Add(id, DiskStateEntry.Size, size);
             tx.Add(id, DiskStateEntry.LastModified, writeTime);
@@ -36,7 +38,7 @@ internal static class DeployedFileRows
             _ = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
             {
                 Path = path.ToGamePathParentTuple(context.MetadataId),
-                Identity = FileIdentity.XxHash3(hash),
+                Identity = identity,
                 XxHash3 = hash,
                 Size = size,
                 LastModified = writeTime,

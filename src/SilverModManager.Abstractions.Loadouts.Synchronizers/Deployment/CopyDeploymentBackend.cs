@@ -296,7 +296,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             rendered.Position = 0;
             var hash = await Xx3Hasher.HashAsync(rendered);
             var writeTime = new DateTimeOffset(resolvedPath.FileInfo.LastWriteTimeUtc);
-            DeployedFileRows.Record(context.Transaction, context, path, node, hash, Size.From((ulong)rendered.Length), writeTime);
+            DeployedFileRows.Record(context.Transaction, context, path, node, FileIdentity.XxHash3(hash), Size.From((ulong)rendered.Length), writeTime);
         }
     }
 

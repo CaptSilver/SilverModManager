@@ -44,17 +44,48 @@ public class LooseStagingStoreTests
     }
 
     // The first byte of the hash picks the two-character directory the file lands in.
-    private Hash Add(byte firstByte, ulong rest, string content = "x")
+    private FileIdentity Add(byte firstByte, ulong rest, string content = "x")
     {
         var h = Hash.From((ulong)firstByte << 56 | rest);
         _contents.Files[h] = System.Text.Encoding.UTF8.GetBytes(content);
-        return h;
+        return FileIdentity.XxHash3(h);
+    }
+
+    private static readonly FileIdentity Sha1Identity = FileIdentity.Sha1(Sha1Value.From(new byte[20]));
+
+    // Staged file names are xxHash3 keys, so another kind has no name to be staged under. Failing loudly beats
+    // quietly staging nothing.
+    [Fact]
+    public async Task EveryApi_RejectsANonXxHash3Identity()
+    {
+        // A sweep with no store directory never asks what is live.
+        await _store.Ensure(InstallA, Add(0x11, 2));
+        var path = () => _store.PathFor(InstallA, Sha1Identity);
+        var ensure = async () => await _store.Ensure(InstallA, Sha1Identity);
+        var contains = () => _store.Contains(InstallA, Sha1Identity);
+        var release = () => _store.Release(InstallA, Sha1Identity);
+        var sweep = () => _store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>> { [InstallA] = new HashSet<FileIdentity> { Sha1Identity } });
+
+        path.Should().Throw<InvalidOperationException>();
+        await ensure.Should().ThrowAsync<InvalidOperationException>();
+        contains.Should().Throw<InvalidOperationException>();
+        release.Should().Throw<InvalidOperationException>();
+        sweep.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task Enumerate_ReturnsXxHash3Identities()
+    {
+        var identity = Add(0x11, 1);
+        await _store.Ensure(InstallA, identity);
+
+        _store.Enumerate(InstallA).Select(e => e.Identity).Should().Equal(identity);
     }
 
     [Fact]
     public void PathFor_UsesInstallationHashPrefixAndSixteenHexDigits()
     {
-        var path = _store.PathFor(InstallA, Hash.From(0xab00_0000_0000_0cdeUL));
+        var path = _store.PathFor(InstallA, FileIdentity.XxHash3(Hash.From(0xab00_0000_0000_0cdeUL)));
 
         path.Should().Be(_store.Root.Combine("a1").Combine("ab").Combine("ab00000000000cde"));
     }
@@ -122,8 +153,8 @@ public class LooseStagingStoreTests
         await _store.Ensure(InstallA, h2, TestContext.Current.CancellationToken);
         await _store.Ensure(InstallB, h1, TestContext.Current.CancellationToken);
 
-        _store.Enumerate(InstallA).Select(x => x.Hash).Should().BeEquivalentTo([h1, h2]);
-        _store.Enumerate(InstallA).Should().OnlyContain(x => x.Path == _store.PathFor(InstallA, x.Hash));
+        _store.Enumerate(InstallA).Select(x => x.Identity).Should().BeEquivalentTo([h1, h2]);
+        _store.Enumerate(InstallA).Should().OnlyContain(x => x.Path == _store.PathFor(InstallA, x.Identity));
         _store.Installations().Should().BeEquivalentTo([InstallA, InstallB]);
     }
 
@@ -137,9 +168,9 @@ public class LooseStagingStoreTests
         await _store.Ensure(InstallA, h2, TestContext.Current.CancellationToken);
         await _store.Ensure(InstallB, h3, TestContext.Current.CancellationToken);
 
-        var deleted = _store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<Hash>>
+        var deleted = _store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>>
         {
-            [InstallA] = new HashSet<Hash> { h1 },
+            [InstallA] = new HashSet<FileIdentity> { h1 },
         });
 
         deleted.Should().Be(2);
@@ -156,10 +187,10 @@ public class LooseStagingStoreTests
     {
         _store.Root.DirectoryExists().Should().BeFalse();
 
-        _store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<Hash>>()).Should().Be(0);
+        _store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>>()).Should().Be(0);
         _store.Enumerate(InstallA).Should().BeEmpty();
         _store.Installations().Should().BeEmpty();
-        _store.Contains(InstallA, Hash.From(1)).Should().BeFalse();
+        _store.Contains(InstallA, FileIdentity.XxHash3(Hash.From(1))).Should().BeFalse();
 
         _store.Root.DirectoryExists().Should().BeFalse();
     }
@@ -176,7 +207,7 @@ public class LooseStagingStoreTests
         var path = await _store.Ensure(InstallA, hash, TestContext.Current.CancellationToken);
 
         var hold = _store.Hold();
-        var sweep = Task.Run(() => _store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<Hash>>()), TestContext.Current.CancellationToken);
+        var sweep = Task.Run(() => _store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>>()), TestContext.Current.CancellationToken);
 
         (await Task.WhenAny(sweep, Task.Delay(NotYet, TestContext.Current.CancellationToken))).Should().NotBe(sweep);
         path.FileExists.Should().BeTrue();
@@ -198,7 +229,7 @@ public class LooseStagingStoreTests
         {
             inLive.Set();
             finishLive.Wait();
-            return new Dictionary<GameInstallMetadataId, IReadOnlySet<Hash>> { [InstallA] = new HashSet<Hash> { hash } };
+            return new Dictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>> { [InstallA] = new HashSet<FileIdentity> { hash } };
         }), TestContext.Current.CancellationToken);
         inLive.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken).Should().BeTrue();
 
@@ -231,7 +262,7 @@ public class LooseStagingStoreTests
         hold.Dispose();
         hold.Dispose();
 
-        var sweep = Task.Run(() => _store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<Hash>>()), TestContext.Current.CancellationToken);
+        var sweep = Task.Run(() => _store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>>()), TestContext.Current.CancellationToken);
         (await Task.WhenAny(sweep, Task.Delay(NotYet, TestContext.Current.CancellationToken))).Should().NotBe(sweep, "the other hold is still open");
         path.FileExists.Should().BeTrue();
 
@@ -250,7 +281,7 @@ public class LooseStagingStoreTests
         var sweep = Task.Run(() => _store.Sweep(() =>
         {
             liveRan = true;
-            return new Dictionary<GameInstallMetadataId, IReadOnlySet<Hash>> { [InstallA] = new HashSet<Hash> { hash } };
+            return new Dictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>> { [InstallA] = new HashSet<FileIdentity> { hash } };
         }), TestContext.Current.CancellationToken);
 
         await Task.Delay(NotYet, TestContext.Current.CancellationToken);
@@ -311,10 +342,10 @@ public class LooseStagingStoreTests
             File.SetLastWriteTimeUtc(file.ToString(), DateTime.UtcNow.AddHours(-1));
         }
 
-        var deleted = _store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<Hash>>
+        var deleted = _store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>>
         {
-            [InstallA] = new HashSet<Hash> { live },
-            [InstallB] = new HashSet<Hash>(),
+            [InstallA] = new HashSet<FileIdentity> { live },
+            [InstallB] = new HashSet<FileIdentity>(),
         });
 
         deleted.Should().Be(0, "only staged files are counted");

@@ -13,7 +13,7 @@ public class VfsSourcesRuleTests
     private static readonly GamePath Root = new(LocationId.Game, "Data");
     private static readonly AbsolutePath StagingRoot = FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory).Combine("vfs-sources-rule-tests");
 
-    private static AbsolutePath StagedPathFor(Hash hash) => StagingRoot.Combine(hash.ToString());
+    private static AbsolutePath StagedPathFor(FileIdentity identity) => StagingRoot.Combine(identity.XxHash3().ToString());
 
     private static SyncNodePart Part(ulong hash, ulong size) => new()
     {
@@ -44,9 +44,9 @@ public class VfsSourcesRuleTests
         set.Sources.Should().ContainSingle().Which.Should().Be(new VfsFileSource(
             RelativePath.FromUnsanitizedInput("mod/a.pak"),
             VfsSourceKind.Staged,
-            StagedPathFor(Hash.From(0xA1)),
+            StagedPathFor(FileIdentity.XxHash3(Hash.From(0xA1))),
             Size.From(12),
-            Hash.From(0xA1)));
+            FileIdentity.XxHash3(Hash.From(0xA1))));
         set.Unserved.Should().BeEmpty();
     }
 
@@ -115,7 +115,7 @@ public class VfsSourcesRuleTests
         var set = Run(tree);
 
         set.Sources.Select(s => s.Path.ToString()).Should().Equal("x.pak");
-        set.Sources[0].Hash.Should().Be(Hash.From(0xD2));
+        set.Sources[0].Identity.Should().Be(FileIdentity.XxHash3(Hash.From(0xD2)));
     }
 
     [Fact]

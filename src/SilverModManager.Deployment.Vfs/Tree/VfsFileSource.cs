@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
@@ -21,4 +22,4 @@ public enum VfsSourceKind
 /// <paramref name="FromStaging"/> marks a file the game wrote into the staging directory, as opposed to
 /// one the loadout provides, so promotion can tell the two apart.
 /// </summary>
-public readonly record struct VfsFileSource(RelativePath Path, VfsSourceKind Kind, AbsolutePath? RealPath, Size Size, Hash Hash, bool FromStaging = false);
+public readonly record struct VfsFileSource(RelativePath Path, VfsSourceKind Kind, AbsolutePath? RealPath, Size Size, FileIdentity Identity, bool FromStaging = false);

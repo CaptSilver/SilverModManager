@@ -1,6 +1,6 @@
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Deployment;
-using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -44,7 +44,7 @@ public static class StagingReferenceMarker
 
         // One lookup per folder: it stats the path to find its filesystem.
         var storeByFolder = new Dictionary<(GameInstallMetadataId, DeploymentBackendId, GamePath), ILooseStagingStore?>();
-        void MarkLive(GameInstallMetadataId installation, DeploymentPlan plan, GamePath path, Hash hash)
+        void MarkLive(GameInstallMetadataId installation, DeploymentPlan plan, GamePath path, FileIdentity identity)
         {
             var backend = plan.BackendFor(path);
             if (!stagingBackends.Contains(backend)) return;
@@ -53,8 +53,8 @@ public static class StagingReferenceMarker
             if (!storeByFolder.TryGetValue(key, out var store))
                 storeByFolder[key] = store = storeFor?.Invoke(installation, backend, path.Parent);
 
-            if (store is null) live.AddEverywhere(installation, hash);
-            else live.Add(store.Root, installation, hash);
+            if (store is null) live.AddEverywhere(installation, identity);
+            else live.Add(store.Root, installation, identity);
         }
 
         foreach (var installation in GameInstallMetadata.All(db))
@@ -66,7 +66,7 @@ public static class StagingReferenceMarker
             // file the app never staged, which no link points at.
             foreach (var entry in DiskStateEntry.FindByGame(db, installation))
             {
-                if (entry.IdentityOf().TryXxHash3(out var hash)) MarkLive(id, plan, entry.Path, hash);
+                if (entry.IdentityOf() is { Kind: HashKind.XxHash3 } identity) MarkLive(id, plan, entry.Path, identity);
             }
         }
 
@@ -84,7 +84,7 @@ public static class StagingReferenceMarker
             var installationId = item.Loadout.InstallationId;
             if (!planByInstallation.TryGetValue(installationId, out var plan)) continue;
 
-            MarkLive(installationId, plan, loadoutFile.AsLoadoutItemWithTargetPath().TargetPath, loadoutFile.Hash);
+            MarkLive(installationId, plan, loadoutFile.AsLoadoutItemWithTargetPath().TargetPath, FileIdentity.XxHash3(loadoutFile.Hash));
         }
 
         return live;

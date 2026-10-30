@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using SilverModManager.Deployment.Vfs.Testing;
 using NexusMods.Hashing.xxHash3;
@@ -8,10 +9,10 @@ namespace SilverModManager.Deployment.Vfs.Tests;
 public class VfsTreeTests
 {
     private static VfsFileSource Backing(string path) =>
-        new(RelativePath.FromUnsanitizedInput(path), VfsSourceKind.Backing, null, Size.From(3), Hash.From(1));
+        new(RelativePath.FromUnsanitizedInput(path), VfsSourceKind.Backing, null, Size.From(3), FileIdentity.XxHash3(Hash.From(1)));
 
     private static VfsFileSource Hidden(string path) =>
-        new(RelativePath.FromUnsanitizedInput(path), VfsSourceKind.Hidden, null, Size.Zero, Hash.From(0));
+        new(RelativePath.FromUnsanitizedInput(path), VfsSourceKind.Hidden, null, Size.Zero, FileIdentity.XxHash3(Hash.From(0)));
 
     private static async Task<FakeFuseKernel> Mount(params VfsFileSource[] sources)
     {

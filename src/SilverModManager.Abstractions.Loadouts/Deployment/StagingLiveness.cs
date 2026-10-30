@@ -1,6 +1,6 @@
-using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Abstractions.Loadouts.Deployment;
 
@@ -17,34 +17,34 @@ public delegate ILooseStagingStore? StagingStoreLookup(GameInstallMetadataId ins
 /// </summary>
 public sealed class StagingLiveness
 {
-    private readonly Dictionary<AbsolutePath, Dictionary<GameInstallMetadataId, HashSet<Hash>>> _byStore = new();
-    private readonly Dictionary<GameInstallMetadataId, HashSet<Hash>> _everywhere = new();
+    private readonly Dictionary<AbsolutePath, Dictionary<GameInstallMetadataId, HashSet<FileIdentity>>> _byStore = new();
+    private readonly Dictionary<GameInstallMetadataId, HashSet<FileIdentity>> _everywhere = new();
 
     /// <summary>
-    /// Keeps <paramref name="hash"/> in the store rooted at <paramref name="storeRoot"/> only.
+    /// Keeps <paramref name="identity"/> in the store rooted at <paramref name="storeRoot"/> only.
     /// </summary>
-    public void Add(AbsolutePath storeRoot, GameInstallMetadataId installation, Hash hash)
+    public void Add(AbsolutePath storeRoot, GameInstallMetadataId installation, FileIdentity identity)
     {
         if (!_byStore.TryGetValue(storeRoot, out var installations)) _byStore[storeRoot] = installations = new();
-        Add(installations, installation, hash);
+        Add(installations, installation, identity);
     }
 
     /// <summary>
-    /// Keeps <paramref name="hash"/> in every store. For a file whose store can't be told, so none is
+    /// Keeps <paramref name="identity"/> in every store. For a file whose store can't be told, so none is
     /// swept out from under a link that might point into it.
     /// </summary>
-    public void AddEverywhere(GameInstallMetadataId installation, Hash hash) => Add(_everywhere, installation, hash);
+    public void AddEverywhere(GameInstallMetadataId installation, FileIdentity identity) => Add(_everywhere, installation, identity);
 
     /// <summary>
     /// Liveness that holds the same hashes in every store.
     /// </summary>
-    public static StagingLiveness Everywhere(IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>> live)
+    public static StagingLiveness Everywhere(IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>> live)
     {
         var liveness = new StagingLiveness();
         foreach (var (installation, hashes) in live)
         {
             if (hashes.Count == 0) liveness._everywhere.TryAdd(installation, []);
-            foreach (var hash in hashes) liveness.AddEverywhere(installation, hash);
+            foreach (var identity in hashes) liveness.AddEverywhere(installation, identity);
         }
         return liveness;
     }
@@ -53,9 +53,9 @@ public sealed class StagingLiveness
     /// What the store rooted at <paramref name="storeRoot"/> keeps. An installation that is missing loses
     /// its directory in that store.
     /// </summary>
-    public IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>> For(AbsolutePath storeRoot)
+    public IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>> For(AbsolutePath storeRoot)
     {
-        var result = new Dictionary<GameInstallMetadataId, HashSet<Hash>>();
+        var result = new Dictionary<GameInstallMetadataId, HashSet<FileIdentity>>();
         foreach (var (installation, hashes) in _everywhere) result[installation] = [..hashes];
 
         if (_byStore.TryGetValue(storeRoot, out var own))
@@ -66,12 +66,13 @@ public sealed class StagingLiveness
                 merged.UnionWith(hashes);
             }
         }
-        return result.ToDictionary(kv => kv.Key, kv => (IReadOnlySet<Hash>)kv.Value);
+        return result.ToDictionary(kv => kv.Key, kv => (IReadOnlySet<FileIdentity>)kv.Value);
     }
 
-    private static void Add(Dictionary<GameInstallMetadataId, HashSet<Hash>> installations, GameInstallMetadataId installation, Hash hash)
+    private static void Add(Dictionary<GameInstallMetadataId, HashSet<FileIdentity>> installations, GameInstallMetadataId installation, FileIdentity identity)
     {
         if (!installations.TryGetValue(installation, out var hashes)) installations[installation] = hashes = [];
-        hashes.Add(hash);
+        // Staged names are xxHash3 keys. Another kind would never match a staged file, and the sweep would delete it.
+        hashes.Add(identity.Kind == HashKind.XxHash3 ? identity : throw new InvalidOperationException($"{identity} is a {identity.Kind} identity, not an xxHash3"));
     }
 }

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Diagnostics;
 using System.Text;
 using FluentAssertions;
@@ -219,7 +220,7 @@ public class PromotionSizePolicyTests : IDisposable
     {
         public List<string> Calls { get; } = [];
 
-        public Task Backup(IReadOnlyList<(Hash Hash, Size Size, IStreamFactory Stream)> files, CancellationToken token = default)
+        public Task Backup(IReadOnlyList<(FileIdentity Identity, Size Size, IStreamFactory Stream)> files, CancellationToken token = default)
         {
             Calls.Add("backup");
             return Task.CompletedTask;

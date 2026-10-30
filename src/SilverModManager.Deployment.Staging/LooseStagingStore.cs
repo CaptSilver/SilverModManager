@@ -228,16 +228,16 @@ public sealed class LooseStagingStore : ILooseStagingStore
     internal int GateCount { get { lock (_gates) return _gates.Count; } }
 
     /// <inheritdoc/>
-    public AbsolutePath PathFor(GameInstallMetadataId installation, Hash hash)
+    public AbsolutePath PathFor(GameInstallMetadataId installation, FileIdentity identity)
     {
-        var name = HashToName(hash);
+        var name = HashToName(identity.XxHash3());
         return InstallationDirectory(installation).Combine(name[..2]).Combine(name);
     }
 
     /// <inheritdoc/>
-    public async ValueTask<AbsolutePath> Ensure(GameInstallMetadataId installation, Hash hash, CancellationToken token = default)
+    public async ValueTask<AbsolutePath> Ensure(GameInstallMetadataId installation, FileIdentity identity, CancellationToken token = default)
     {
-        var path = PathFor(installation, hash);
+        var path = PathFor(installation, identity);
         if (path.FileExists) return path;
 
         var gate = EnterGate(path);
@@ -262,8 +262,8 @@ public sealed class LooseStagingStore : ILooseStagingStore
             var temp = path.Parent.Combine($".{path.FileName}.tmp");
             if (temp.FileExists) temp.Delete();
 
-            _logger.LogDebug("Staging {Hash} for {Installation} at {Path}", hash, installation, path);
-            await _fileStore.ExtractFiles([(FileIdentity.XxHash3(hash), temp)], token);
+            _logger.LogDebug("Staging {Hash} for {Installation} at {Path}", identity, installation, path);
+            await _fileStore.ExtractFiles([(identity, temp)], token);
             await temp.MoveToAsync(path, overwrite: true, token);
             return path;
         }
@@ -293,17 +293,17 @@ public sealed class LooseStagingStore : ILooseStagingStore
     }
 
     /// <inheritdoc/>
-    public bool Contains(GameInstallMetadataId installation, Hash hash) => PathFor(installation, hash).FileExists;
+    public bool Contains(GameInstallMetadataId installation, FileIdentity identity) => PathFor(installation, identity).FileExists;
 
     /// <inheritdoc/>
-    public IEnumerable<(Hash Hash, AbsolutePath Path)> Enumerate(GameInstallMetadataId installation)
+    public IEnumerable<(FileIdentity Identity, AbsolutePath Path)> Enumerate(GameInstallMetadataId installation)
     {
         var directory = InstallationDirectory(installation);
         if (!directory.DirectoryExists()) yield break;
 
         foreach (var file in directory.EnumerateFiles(recursive: true))
         {
-            if (TryParseHash(file.FileName, out var hash)) yield return (hash, file);
+            if (TryParseHash(file.FileName, out var hash)) yield return (FileIdentity.XxHash3(hash), file);
         }
     }
 
@@ -328,9 +328,9 @@ public sealed class LooseStagingStore : ILooseStagingStore
     }
 
     /// <inheritdoc/>
-    public bool Release(GameInstallMetadataId installation, Hash hash)
+    public bool Release(GameInstallMetadataId installation, FileIdentity identity)
     {
-        var path = PathFor(installation, hash);
+        var path = PathFor(installation, identity);
         if (!path.FileExists) return false;
         path.Delete();
         return true;
@@ -422,7 +422,7 @@ public sealed class LooseStagingStore : ILooseStagingStore
     }
 
     /// <inheritdoc/>
-    public int Sweep(Func<IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>>> liveFactory)
+    public int Sweep(Func<IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>>> liveFactory)
         => Sweep(() => StagingLiveness.Everywhere(liveFactory()));
 
     /// <inheritdoc/>
@@ -457,7 +457,7 @@ public sealed class LooseStagingStore : ILooseStagingStore
         return deleted;
     }
 
-    private int SweepOne(IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>> live, DateTime sweepStart)
+    private int SweepOne(IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>> live, DateTime sweepStart)
     {
         var deleted = 0;
         foreach (var installation in Installations().ToArray())
@@ -471,9 +471,9 @@ public sealed class LooseStagingStore : ILooseStagingStore
                 continue;
             }
 
-            foreach (var (hash, path) in Enumerate(installation).ToArray())
+            foreach (var (identity, path) in Enumerate(installation).ToArray())
             {
-                if (liveHashes.Contains(hash)) continue;
+                if (liveHashes.Contains(identity)) continue;
                 path.Delete();
                 deleted++;
             }

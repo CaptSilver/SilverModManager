@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using SilverModManager.Deployment.Vfs.Testing;
 using NexusMods.Hashing.xxHash3;
@@ -37,7 +38,7 @@ public class BackingAndReadTests : IDisposable
         var file = _staged.Combine(Guid.NewGuid().ToString("N"));
         var bytes = System.Text.Encoding.UTF8.GetBytes(text);
         await file.WriteAllBytesAsync(bytes);
-        return new VfsFileSource(RelativePath.FromUnsanitizedInput(path), VfsSourceKind.Staged, file, Size.From((ulong)bytes.Length), Hash.From(2));
+        return new VfsFileSource(RelativePath.FromUnsanitizedInput(path), VfsSourceKind.Staged, file, Size.From((ulong)bytes.Length), FileIdentity.XxHash3(Hash.From(2)));
     }
 
     private async Task<FakeFuseKernel> Mount(IReadOnlyList<VfsFileSource> sources, VfsCachePolicy? policy = null)
@@ -102,7 +103,7 @@ public class BackingAndReadTests : IDisposable
     public async Task HiddenSourceRemovesABackingFile()
     {
         await WriteBacking("Data/vanilla.txt", "vanilla");
-        var hidden = new VfsFileSource(RelativePath.FromUnsanitizedInput("data/VANILLA.txt"), VfsSourceKind.Hidden, null, Size.Zero, Hash.Zero);
+        var hidden = new VfsFileSource(RelativePath.FromUnsanitizedInput("data/VANILLA.txt"), VfsSourceKind.Hidden, null, Size.Zero, FileIdentity.None);
         var kernel = await Mount([hidden]);
 
         kernel.Resolve("Data/vanilla.txt").Error.Should().Be(Errno.ENOENT);

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Diagnostics;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -74,7 +75,7 @@ public sealed class VfsTree : IVfsOperations
         foreach (var whiteout in staging.ReadWhiteouts())
         {
             _whiteouts[whiteout.ToString()] = whiteout;
-            Insert(new VfsFileSource(whiteout, VfsSourceKind.Hidden, null, Size.Zero, Hash.Zero));
+            Insert(new VfsFileSource(whiteout, VfsSourceKind.Hidden, null, Size.Zero, FileIdentity.None));
         }
 
         foreach (var entry in staging.Scan())
@@ -87,7 +88,7 @@ public sealed class VfsTree : IVfsOperations
             }
             else
             {
-                Insert(new VfsFileSource(entry.Path, VfsSourceKind.Staged, entry.RealPath, entry.Size, Hash.Zero, FromStaging: true));
+                Insert(new VfsFileSource(entry.Path, VfsSourceKind.Staged, entry.RealPath, entry.Size, FileIdentity.None, FromStaging: true));
             }
         }
     }
@@ -99,7 +100,7 @@ public sealed class VfsTree : IVfsOperations
 
         if (!entry.IsDirectory)
         {
-            Insert(new VfsFileSource(entry.Path, VfsSourceKind.Backing, root.Combine(entry.Path), entry.Size, Hash.Zero), entry);
+            Insert(new VfsFileSource(entry.Path, VfsSourceKind.Backing, root.Combine(entry.Path), entry.Size, FileIdentity.None), entry);
             return;
         }
 
@@ -435,7 +436,7 @@ public sealed class VfsTree : IVfsOperations
                     ParentIno = directory.Ino,
                     DisplayName = name,
                     IsDirectory = false,
-                    Source = new VfsFileSource(relative, VfsSourceKind.Staged, real, Size.Zero, Hash.Zero, FromStaging: true),
+                    Source = new VfsFileSource(relative, VfsSourceKind.Staged, real, Size.Zero, FileIdentity.None, FromStaging: true),
                 };
                 directory.Children[key] = file;
                 _byIno[file.Ino] = file;

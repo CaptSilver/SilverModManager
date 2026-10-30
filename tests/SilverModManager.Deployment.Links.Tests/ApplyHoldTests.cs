@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
@@ -62,7 +63,7 @@ public class ApplyHoldTests(ITestOutputHelper helper)
 
         public async Task Extract(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes)
         {
-            Sweep = Task.Run(() => store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<Hash>>()));
+            Sweep = Task.Run(() => store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>>()));
             await Task.Delay(500);
             SweepFinishedDuringExtract = Sweep.IsCompleted;
             await inner.Extract(context, nodes);

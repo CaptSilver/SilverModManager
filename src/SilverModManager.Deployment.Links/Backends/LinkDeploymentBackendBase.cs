@@ -106,20 +106,20 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
     /// Of the staged files, the hashes whose file is already linked from some deployed path outside the
     /// extraction in progress.
     /// </summary>
-    protected abstract IReadOnlySet<Hash> HashesLinkedElsewhere(DeploymentContext context, IReadOnlyDictionary<Hash, AbsolutePath> storeFiles);
+    protected abstract IReadOnlySet<FileIdentity> HashesLinkedElsewhere(DeploymentContext context, IReadOnlyDictionary<FileIdentity, AbsolutePath> storeFiles);
 
     /// <summary>
     /// Gives the store back a file it can trust after the deployed path <paramref name="deployed"/> was
     /// written through. The deployed path keeps the written bytes.
     /// </summary>
-    protected abstract void RepairStoreAfterWriteThrough(ILooseStagingStore store, GameInstallMetadataId installation, Hash previous, AbsolutePath deployed, AbsolutePath storeFile);
+    protected abstract void RepairStoreAfterWriteThrough(ILooseStagingStore store, GameInstallMetadataId installation, FileIdentity previous, AbsolutePath deployed, AbsolutePath storeFile);
 
     /// <summary>
     /// Finds which staged file <paramref name="deployed"/> is a link to, by name, when that is not already
     /// known. <paramref name="storeInodes"/> maps the (device, inode) of every staged file to its hash and is
     /// only built when a backend asks for it.
     /// </summary>
-    protected abstract bool TryFindLinkedStoreHash(GameInstallMetadataId installation, AbsolutePath deployed, Func<IReadOnlyDictionary<(ulong Device, ulong Inode), Hash>> storeInodes, out Hash hash);
+    protected abstract bool TryFindLinkedStoreHash(GameInstallMetadataId installation, AbsolutePath deployed, Func<IReadOnlyDictionary<(ulong Device, ulong Inode), FileIdentity>> storeInodes, out FileIdentity identity);
 
     /// <summary>
     /// The installation's directory in the staging store for <paramref name="root"/>, where the preflight
@@ -240,9 +240,9 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
 
         // A hash can be wanted in two stores when the loadout puts the same file under roots on two filesystems.
         var stores = new StoreLookup(this, context);
-        var storeFiles = new Dictionary<ILooseStagingStore, Dictionary<Hash, AbsolutePath>>();
+        var storeFiles = new Dictionary<ILooseStagingStore, Dictionary<FileIdentity, AbsolutePath>>();
         foreach (var group in extract.GroupBy(x => stores.For(x.Key)))
-            storeFiles[group.Key] = await EnsureVerified(context, group.Key, group.Select(static x => x.Value.Loadout.Identity.XxHash3()).Distinct());
+            storeFiles[group.Key] = await EnsureVerified(context, group.Key, group.Select(static x => x.Value.Loadout.Identity).Distinct());
 
         // Unlink first: whatever is at a target may be a link to a staged file, which must neither be written
         // through nor counted as a link this apply still holds.
@@ -253,12 +253,12 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
             File.Delete(target.ToString());
         }
 
-        var linked = new HashSet<(ILooseStagingStore Store, Hash Hash)>();
+        var linked = new HashSet<(ILooseStagingStore Store, FileIdentity Identity)>();
         if (SharesStoreFile)
         {
             foreach (var (groupStore, files) in storeFiles)
             {
-                foreach (var hash in HashesLinkedElsewhere(context, files)) linked.Add((groupStore, hash));
+                foreach (var identity in HashesLinkedElsewhere(context, files)) linked.Add((groupStore, identity));
             }
         }
         var itemIndex = 0;
@@ -266,12 +266,12 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
         {
             context.Job?.ReportProgress(SyncPhases.Deploying, itemIndex++, extract.Count);
 
-            var hash = node.Loadout.Identity.XxHash3();
+            var identity = node.Loadout.Identity;
             var pathStore = stores.For(path);
-            var storeFile = storeFiles[pathStore][hash];
+            var storeFile = storeFiles[pathStore][identity];
             var target = context.Locations.ToAbsolutePath(path);
 
-            var privateCopy = SharesStoreFile && linked.Contains((pathStore, hash));
+            var privateCopy = SharesStoreFile && linked.Contains((pathStore, identity));
             if (!privateCopy)
             {
                 var errno = Place(storeFile, target);
@@ -288,7 +288,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
                 }
                 else if (SharesStoreFile)
                 {
-                    linked.Add((pathStore, hash));
+                    linked.Add((pathStore, identity));
                 }
             }
 
@@ -319,29 +319,29 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
     /// Stages every hash and returns the staged paths. A file that was staged before this call is hashed
     /// first, and a file whose bytes no longer match its name is released and staged again.
     /// </summary>
-    private async Task<Dictionary<Hash, AbsolutePath>> EnsureVerified(DeploymentContext context, ILooseStagingStore store, IEnumerable<Hash> hashes)
+    private async Task<Dictionary<FileIdentity, AbsolutePath>> EnsureVerified(DeploymentContext context, ILooseStagingStore store, IEnumerable<FileIdentity> identities)
     {
         var installation = context.MetadataId;
-        var storeFiles = new Dictionary<Hash, AbsolutePath>();
-        var reused = new List<Hash>();
-        foreach (var hash in hashes)
+        var storeFiles = new Dictionary<FileIdentity, AbsolutePath>();
+        var reused = new List<FileIdentity>();
+        foreach (var identity in identities)
         {
-            if (store.Contains(installation, hash)) reused.Add(hash);
-            storeFiles[hash] = await store.Ensure(installation, hash);
+            if (store.Contains(installation, identity)) reused.Add(identity);
+            storeFiles[identity] = await store.Ensure(installation, identity);
         }
 
         // A file Ensure just extracted is trusted. Only one that was already there can have been written through.
-        await Parallel.ForEachAsync(reused, new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders }, async (hash, token) =>
+        await Parallel.ForEachAsync(reused, new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders }, async (identity, token) =>
         {
-            var actual = await storeFiles[hash].XxHash3Async(token: token);
-            if (actual == hash) return;
+            var actual = FileIdentity.XxHash3(await storeFiles[identity].XxHash3Async(token: token));
+            if (actual.Equals(identity)) return;
 
             logger.LogWarning(
                 "Staged file {StoreFile} holds {Actual} instead of {Hash}, something wrote through a link to it. Staging it again",
-                storeFiles[hash], actual, hash
+                storeFiles[identity], actual, identity
             );
-            store.Release(installation, hash);
-            await store.Ensure(installation, hash, token);
+            store.Release(installation, identity);
+            await store.Ensure(installation, identity, token);
         });
 
         return storeFiles;
@@ -351,7 +351,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
     /// Whether the deployed file is a link to a staged file whose name no longer matches the bytes, which is to
     /// say the staged file was written through the link. Returns the name (hash) of that staged file.
     /// </summary>
-    private bool TryFindDamagedStoreFile(DeploymentContext context, ILooseStagingStore store, AbsolutePath deployed, SyncNode node, Lazy<IReadOnlyDictionary<(ulong, ulong), Hash>> storeInodes, out Hash damaged)
+    private bool TryFindDamagedStoreFile(DeploymentContext context, ILooseStagingStore store, AbsolutePath deployed, SyncNode node, Lazy<IReadOnlyDictionary<(ulong, ulong), FileIdentity>> storeInodes, out FileIdentity damaged)
     {
         damaged = default;
         if (!node.HaveDisk) return false;
@@ -360,34 +360,35 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
         // now, which has no staged file, so only the previous hash can name the one that was written through.
         // A previous part of another kind (a vanilla file the app never touched) was never linked from the store.
         if (node.HavePrevious && node.Previous.Identity.MatchSameKind(node.Disk.Identity) != IdentityMatch.Same
-            && node.Previous.Identity.TryXxHash3(out var previousHash)
-            && HasLinkIdentity(deployed, store.PathFor(context.MetadataId, previousHash)))
+            && node.Previous.Identity.Kind == HashKind.XxHash3
+            && HasLinkIdentity(deployed, store.PathFor(context.MetadataId, node.Previous.Identity)))
         {
-            damaged = previousHash;
+            damaged = node.Previous.Identity;
             return true;
         }
 
         // A reset passes the current disk state as the previous one, so the link itself has to say which
         // staged file it leads to. A link to the file named for the content on disk is intact. Content of another
         // kind than xxHash3 was never deployed by the app, so it cannot be a link to a staged file.
-        if (!node.Disk.Identity.TryXxHash3(out var diskHash)) return false;
-        if (HasLinkIdentity(deployed, store.PathFor(context.MetadataId, diskHash))) return false;
-        return TryFindLinkedStoreHash(context.MetadataId, deployed, () => storeInodes.Value, out damaged) && damaged != diskHash;
+        var disk = node.Disk.Identity;
+        if (disk.Kind != HashKind.XxHash3) return false;
+        if (HasLinkIdentity(deployed, store.PathFor(context.MetadataId, disk))) return false;
+        return TryFindLinkedStoreHash(context.MetadataId, deployed, () => storeInodes.Value, out damaged) && !damaged.Equals(disk);
     }
 
     // Every store the nodes' folders use: a hard link to a staged file is recognised by inode, whichever store holds it.
-    private Lazy<IReadOnlyDictionary<(ulong, ulong), Hash>> StoreInodes(DeploymentContext context, StoreLookup stores, IEnumerable<GamePath> paths) => new(() =>
+    private Lazy<IReadOnlyDictionary<(ulong, ulong), FileIdentity>> StoreInodes(DeploymentContext context, StoreLookup stores, IEnumerable<GamePath> paths) => new(() =>
     {
-        var inodes = new Dictionary<(ulong, ulong), Hash>();
+        var inodes = new Dictionary<(ulong, ulong), FileIdentity>();
         var seen = new HashSet<ILooseStagingStore>();
         foreach (var path in paths)
         {
             var pathStore = stores.For(path);
             if (!seen.Add(pathStore)) continue;
 
-            foreach (var (hash, file) in pathStore.Enumerate(context.MetadataId))
+            foreach (var (identity, file) in pathStore.Enumerate(context.MetadataId))
             {
-                if (LibcStat.TryStat(file.ToString(), out var stat) == 0) inodes[(stat.Device, stat.Inode)] = hash;
+                if (LibcStat.TryStat(file.ToString(), out var stat) == 0) inodes[(stat.Device, stat.Inode)] = identity;
             }
         }
         return inodes;
@@ -402,8 +403,9 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
         // Nothing there: nothing to take, and the row can still go.
         if (LibcStat.TryLStat(deployed.ToString(), out _) != 0) return true;
 
-        if (node.HavePrevious && node.Previous.Identity.TryXxHash3(out var previousHash)
-            && HasLinkIdentity(deployed, store.PathFor(context.MetadataId, previousHash))) return true;
+        // A previous part of another kind was never staged, so it cannot be a link target; the fingerprint below decides.
+        if (node.HavePrevious && node.Previous.Identity.Kind == HashKind.XxHash3
+            && HasLinkIdentity(deployed, store.PathFor(context.MetadataId, node.Previous.Identity))) return true;
 
         // Private copies, generated files and a store path that is gone have no link identity, so the
         // fingerprint the index recorded is all there is to go on.

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts.Deployment;
@@ -59,11 +60,11 @@ public class PerFilesystemStoreTests : IDisposable
         return root;
     }
 
-    private Hash Add(ulong value, string content = "x")
+    private FileIdentity Add(ulong value, string content = "x")
     {
         var hash = Hash.From(value);
         _contents.Files[hash] = System.Text.Encoding.UTF8.GetBytes(content);
-        return hash;
+        return FileIdentity.XxHash3(hash);
     }
 
     // Per user, so two accounts sharing a mount never share (or can plant) a store.
@@ -185,7 +186,7 @@ public class PerFilesystemStoreTests : IDisposable
         store.Installations().Should().BeEmpty();
     }
 
-    private static readonly Dictionary<GameInstallMetadataId, IReadOnlySet<Hash>> Nothing = new();
+    private static readonly Dictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>> Nothing = new();
 
     [Fact]
     public async Task Sweep_KeepsLiveAndDropsDeadFilesInEveryStore()
@@ -201,9 +202,9 @@ public class PerFilesystemStoreTests : IDisposable
         await other.Ensure(InstallA, deadSteam, token);
         await other.Ensure(InstallB, deadSteam, token);
 
-        var deleted = store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<Hash>>
+        var deleted = store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>>
         {
-            [InstallA] = new HashSet<Hash> { liveHome, liveSteam },
+            [InstallA] = new HashSet<FileIdentity> { liveHome, liveSteam },
         });
 
         deleted.Should().Be(3);
@@ -418,9 +419,9 @@ public class PerFilesystemStoreTests : IDisposable
         var keptSharedInode = InodeOf(keptShared);
 
         store.MergeInstallation(InstallB, InstallA);
-        store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<Hash>>
+        store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<FileIdentity>>
         {
-            [InstallA] = new HashSet<Hash> { shared, onlyB, onlyBSteam },
+            [InstallA] = new HashSet<FileIdentity> { shared, onlyB, onlyBSteam },
         });
 
         File.ReadAllText(symlinked.ToString()).Should().Be("only b", "a symlink to the merged row's file still resolves");

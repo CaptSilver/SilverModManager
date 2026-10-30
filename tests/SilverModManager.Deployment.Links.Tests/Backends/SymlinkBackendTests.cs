@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
 using FluentAssertions;
 using SilverModManager.Abstractions.Loadouts;
@@ -22,7 +23,7 @@ public abstract class SymlinkBackendTestsBase<TTest>(ITestOutputHelper helper, P
 
     protected SymlinkDeploymentBackend Symlink => Backend<SymlinkDeploymentBackend>();
 
-    protected async Task<(Loadout.ReadOnly Loadout, EntityId Group, Dictionary<string, Hash> Hashes)> Deploy(params (string Path, string Content)[] files)
+    protected async Task<(Loadout.ReadOnly Loadout, EntityId Group, Dictionary<string, FileIdentity> Hashes)> Deploy(params (string Path, string Content)[] files)
     {
         var loadout = await NewLoadout();
         var (group, hashes) = await AddMod(loadout, "Mod", files);
@@ -49,7 +50,7 @@ public abstract class SymlinkBackendTestsBase<TTest>(ITestOutputHelper helper, P
         File.ReadAllText(path.ToString()).Should().Be(Edited);
         Store.Contains(MetadataId, hash).Should().BeFalse();
         var restored = await Store.Ensure(MetadataId, hash);
-        (await restored.XxHash3Async()).Should().Be(hash);
+        FileIdentity.XxHash3(await restored.XxHash3Async()).Should().Be(hash);
     }
 
     [Fact]
@@ -63,7 +64,7 @@ public abstract class SymlinkBackendTestsBase<TTest>(ITestOutputHelper helper, P
         await Synchronizer.ResetToOriginalGameState(GameInstallation, GameInstallation.LocatorResult.LocatorIds.Distinct().ToArray());
 
         var restored = await Store.Ensure(MetadataId, hash);
-        (await restored.XxHash3Async()).Should().Be(hash);
+        FileIdentity.XxHash3(await restored.XxHash3Async()).Should().Be(hash);
     }
 }
 

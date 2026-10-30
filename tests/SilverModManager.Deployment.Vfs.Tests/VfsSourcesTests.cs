@@ -1,4 +1,9 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
@@ -25,7 +30,7 @@ public class VfsSourcesTests(ITestOutputHelper helper) : AStubbedGameIsolatedTes
         .GetKnownPath(KnownPath.TempDirectory)
         .Combine($"vfs-sources-tests-{Guid.NewGuid():N}");
 
-    private AbsolutePath StagedPathFor(Hash hash) => _staging.Combine(hash.ToString());
+    private AbsolutePath StagedPathFor(FileIdentity identity) => _staging.Combine(identity.XxHash3().ToString());
 
     protected override async Task GenerateGameFiles()
     {
@@ -63,8 +68,8 @@ public class VfsSourcesTests(ITestOutputHelper helper) : AStubbedGameIsolatedTes
 
         var set = VfsSources.FromSyncTree(tree, deleted, DataRoot, StagedPathFor);
 
-        var picked = tree[new GamePath(LocationId.Game, "Data/conflict.txt")].Loadout.Identity.XxHash3();
-        picked.Should().Be(fromHighHash, "winning all conflicts for High puts its copy of the file on top");
+        var picked = tree[new GamePath(LocationId.Game, "Data/conflict.txt")].Loadout.Identity;
+        picked.Should().Be(FileIdentity.XxHash3(fromHighHash), "winning all conflicts for High puts its copy of the file on top");
         tree[new GamePath(LocationId.Game, "Data/only-in-low.txt")].Loadout.Identity.XxHash3().Should().Be(onlyLowHash);
         set.Unserved.Should().BeEmpty();
         set.Sources.Select(s => s.Path.ToString()).Should().BeEquivalentTo("conflict.txt", "only-in-low.txt", "image.dds");
@@ -72,7 +77,7 @@ public class VfsSourcesTests(ITestOutputHelper helper) : AStubbedGameIsolatedTes
 
         var conflict = set.Sources.Single(s => s.Path == RelativePath.FromUnsanitizedInput("conflict.txt"));
         conflict.Kind.Should().Be(VfsSourceKind.Staged);
-        conflict.Hash.Should().Be(picked);
+        conflict.Identity.Should().Be(picked);
         set.Sources.Single(s => s.Path == RelativePath.FromUnsanitizedInput("image.dds")).Kind.Should().Be(VfsSourceKind.Hidden);
 
         _staging.CreateDirectory();
@@ -94,6 +99,26 @@ public class VfsSourcesTests(ITestOutputHelper helper) : AStubbedGameIsolatedTes
         {
             _staging.DeleteDirectory(recursive: true);
         }
+    }
+
+    [Fact]
+    public async Task ASha1LoadoutPart_ThroughTheStoresPathFor_Throws()
+    {
+        var metadata = await LoadoutManager.ManageInstallation(GameInstallation);
+        var store = ServiceProvider.GetRequiredService<ILooseStagingStore>();
+        var path = new GamePath(LocationId.Game, "Data/depot.bin");
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            [path] = new()
+            {
+                SourceItemType = LoadoutSourceItemType.Loadout,
+                Loadout = new SyncNodePart { Identity = FileIdentity.Sha1(Sha1Hasher.Hash("depot"u8)), Size = Size.FromLong(5), LastModifiedTicks = 0 },
+            },
+        };
+
+        var act = () => VfsSources.FromSyncTree(tree, [], DataRoot, identity => store.PathFor(metadata.Id, identity));
+
+        act.Should().Throw<InvalidOperationException>().Which.Message.Should().Contain("Sha1");
     }
 
     // Same shape the copy backend writes when the game deletes a file it was serving.
