@@ -128,17 +128,28 @@ Dismiss this note once you have read it.
         .WithId(new DiagnosticId(Source, number: 3))
         .WithTitle("Game files differ from the store's build")
         .WithSeverity(DiagnosticSeverity.Suggestion)
-        .WithSummary("{FileCount} file(s) in the {Game} folder are not the files {Store} installed")
+        .WithSummary("{FileCount} file(s) in {TheGame} folder came from outside this app")
         .WithDetails("""
-{FileCount} file(s) in the {Game} folder do not match the build {Store} installed. They are most likely mods or edits that were already there before this app managed the game. If the loadout is deployed with links, these are the files that get backed up before deployment.
+{FileCount} file(s) in {TheGame} folder are not the files {Store} installed, and nothing in this loadout puts them there. They are most likely mods or edits from before this app managed the game, or from another tool.
 
+## What To Do
+* Leave them. They are only listed so you know they are there.
+* To manage them like any other mod file, add them to the loadout from External Changes.
+* To get rid of them, delete them yourself, or verify the game's files in {Store} to restore the originals.
+
+## Where They Are
+{Folders}
+
+## Every File
 {Files}
 
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("Game")
+            .AddValue<string>("TheGame")
             .AddValue<string>("Store")
             .AddValue<int>("FileCount")
+            .AddValue<string>("Folders")
             .AddValue<string>("Files")
         )
         .Finish();

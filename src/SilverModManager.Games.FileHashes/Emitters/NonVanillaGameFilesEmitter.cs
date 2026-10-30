@@ -38,12 +38,15 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         _logger = logger;
     }
 
-    // Without a sync tree nothing is known to be managed, so every non-vanilla row is listed. The
+    // Without a sync tree nothing is known about the folder, so every non-vanilla row is listed. The
     // diagnostic manager always passes the tree.
     public IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
-        => Diagnose(loadout, FrozenDictionary<GamePath, SyncNode>.Empty, cancellationToken);
+        => DiagnoseCore(loadout, null, cancellationToken);
 
-    public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, CancellationToken cancellationToken)
+        => DiagnoseCore(loadout, syncTree, cancellationToken);
+
+    private async IAsyncEnumerable<Diagnostic> DiagnoseCore(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode>? syncTree, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await Task.Yield();
 
@@ -64,7 +67,10 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         var unmanaged = NonVanillaFile.FindByBaseline(db, baseline.Value.Id)
             // A baseline built before the synchronizer filtered a path still holds its row; a new baseline would not.
             .Where(f => !isFiltered(new GamePath(LocationId.Game, f.Path)))
-            .Where(f => !IsManagedByLoadout(loadout.Db, syncTree, overridesGroup, gameInstalled, f.Path, _logger))
+            // The rows are as old as the baseline: a path the sync tree has no node for is neither on disk nor in the
+            // loadout any more, and the card describes the folder as it is now.
+            .Where(f => syncTree is null || HasNode(syncTree, f.Path))
+            .Where(f => !IsManagedByLoadout(loadout.Db, syncTree ?? FrozenDictionary<GamePath, SyncNode>.Empty, overridesGroup, gameInstalled, f.Path, _logger))
             .ToArray();
         var files = unmanaged
             .Where(f => !isGameWritten(new GamePath(LocationId.Game, f.Path)))
@@ -73,6 +79,7 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         if (files.Length == 0) yield break;
         var gameWritten = unmanaged.Length - files.Length;
 
+        var folders = DescribeFolders(files.Select(f => f.Path));
         var list = new StringBuilder();
         foreach (var file in files)
         {
@@ -88,8 +95,10 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
 
         yield return Diagnostics.CreateNonVanillaGameFiles(
             Game: installation.Name,
+            TheGame: Diagnostics.WithArticle(installation.Name),
             Store: installation.Store.Value,
             FileCount: files.Length,
+            Folders: folders,
             Files: list.ToString()
         );
     }
@@ -164,6 +173,33 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
     {
         var item = LoadoutItem.Load(db, itemId);
         return item.IsValid() && item.HasParent() && item.ParentId.Value == groupId;
+    }
+
+    private bool HasNode(FrozenDictionary<GamePath, SyncNode> syncTree, RelativePath path)
+    {
+        if (syncTree.ContainsKey(new GamePath(LocationId.Game, path))) return true;
+        _logger?.LogTrace("`{Path}` is not listed: the sync tree has no node for it, so it is not in the folder", path);
+        return false;
+    }
+
+    // One line per top-level folder, sorted by name, with the files at the top of the game folder last.
+    private static string DescribeFolders(IEnumerable<RelativePath> paths)
+    {
+        var groups = paths
+            .GroupBy(p => p.Depth > 0 ? p.GetParts().First().ToString() : null)
+            .OrderBy(g => g.Key is null ? 1 : 0)
+            .ThenBy(g => g.Key, StringComparer.Ordinal);
+
+        var text = new StringBuilder();
+        foreach (var group in groups)
+        {
+            var count = group.Count();
+            var noun = count == 1 ? "file" : "files";
+            text.AppendLine(group.Key is null
+                ? $"* the top of the game folder: {count} {noun}"
+                : $"* `{group.Key}/`: {count} {noun}");
+        }
+        return text.ToString();
     }
 
     private static string DescribeReason(NonVanillaReason reason) => reason switch

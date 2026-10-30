@@ -179,6 +179,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
         await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest), ("data/deployed.pak", NonVanillaReason.NotInManifest), ("data/replaced.pak", NonVanillaReason.HashDiffers));
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
         var tree = Tree(
+            ("mod.esp", new SyncNode { SourceItemType = LoadoutSourceItemType.Game, Disk = Part() }),
             ("data/deployed.pak", Node(LoadoutSourceItemType.Loadout, hasLoadoutHash: true)),
             ("data/replaced.pak", Node(LoadoutSourceItemType.Loadout, hasLoadoutHash: true))
         );
@@ -207,8 +208,9 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     [Fact]
     public async Task FilesNobodyManages_StayListed()
     {
-        // A file the loadout only recorded as part of the game's initial state, a file that is on disk and
-        // in no loadout state at all, and a loadout file in another location all leave the report as it was.
+        // A file the loadout only recorded as part of the game's initial state and a file that is in the tree
+        // but in no loadout state at all stay listed. A path whose only node is in another location is not a
+        // file of the game folder, so it is not listed.
         var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReports(baseline, ("left/over.dll", NonVanillaReason.NotInManifest), ("stray.txt", NonVanillaReason.NotInManifest), ("saves.sav", NonVanillaReason.NotInManifest));
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
@@ -220,7 +222,9 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
 
         var diagnostic = (await Diagnose(loadout, tree.ToFrozenDictionary())).Should().ContainSingle().Subject;
 
-        diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData.FileCount.Should().Be(3);
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
+        data.FileCount.Should().Be(2);
+        data.Files.Should().Contain("left/over.dll").And.Contain("stray.txt").And.NotContain("saves.sav");
     }
 
     [Fact]
@@ -414,6 +418,90 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     }
 
     [Fact]
+    public async Task RowsForFilesThatAreNotOnDiskOrInTheLoadout_AreNotListed()
+    {
+        // The stored rows outlive the files: an apply removed these folders after the baseline was written.
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("Mods/gone/a.pak", NonVanillaReason.NotInManifest), ("dlc/gone/b.pak", NonVanillaReason.NotInManifest), ("real.txt", NonVanillaReason.NotInManifest));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+        var tree = Tree(("real.txt", new SyncNode { SourceItemType = LoadoutSourceItemType.Game, Disk = Part() }));
+
+        var diagnostic = (await Diagnose(loadout, tree)).Should().ContainSingle().Subject;
+
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
+        data.FileCount.Should().Be(1);
+        data.Files.Should().Contain("real.txt").And.NotContain("gone");
+    }
+
+    [Fact]
+    public async Task WhenNoStoredRowIsInTheFolderAnyMore_YieldsNothing()
+    {
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("Mods/gone/a.pak", NonVanillaReason.NotInManifest), ("dlc/gone/b.pak", NonVanillaReason.NotInManifest));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        (await Diagnose(loadout, Tree(("a.esm", new SyncNode { SourceItemType = LoadoutSourceItemType.Game, Disk = Part() })))).Should().BeEmpty();
+        (await Diagnose(loadout, FrozenDictionary<GamePath, SyncNode>.Empty)).Should().BeEmpty("a folder with nothing in it has nothing to report");
+    }
+
+    [Fact]
+    public async Task TheCardGroupsTheFilesByTopFolderWithCounts()
+    {
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline,
+            ("Mods/a/1.pak", NonVanillaReason.NotInManifest), ("Mods/b/2.pak", NonVanillaReason.NotInManifest), ("Mods/3.pak", NonVanillaReason.NotInManifest),
+            ("dlc/4.pak", NonVanillaReason.NotInManifest), ("root.ini", NonVanillaReason.HashDiffers));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
+        data.Folders.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Should().Equal(
+            "* `Mods/`: 3 files",
+            "* `dlc/`: 1 file",
+            "* the top of the game folder: 1 file"
+        );
+    }
+
+    [Fact]
+    public async Task TheCardSaysWhatTheFilesAreAndWhatToDoAboutThem()
+    {
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Suggestion);
+        diagnostic.Summary.Value.Should().Be("{FileCount} file(s) in {TheGame} folder came from outside this app");
+        var details = diagnostic.Details.Value;
+        details.Should().Contain("External Changes").And.Contain("Leave them").And.Contain("{Folders}").And.Contain("{Files}");
+        details.Should().NotContain("backed up before deployment", "the old text claimed more than the app checks");
+    }
+
+    [Theory]
+    [InlineData("The Witcher 3: Wild Hunt", "the Witcher 3: Wild Hunt")]
+    [InlineData("Cyberpunk 2077", "the Cyberpunk 2077")]
+    [InlineData("the Sims", "the Sims")]
+    [InlineData("Theme Hospital", "the Theme Hospital")]
+    public void TheGameName_GetsOneArticle(string name, string expected)
+    {
+        Diagnostics.WithArticle(name).Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task TheCardCarriesTheGameNameWithItsArticle()
+    {
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData.TheGame.Should().Be("the Test game");
+    }
+
+    [Fact]
     public async Task PlainOverload_UsesNoSyncTree_AndListsEverything()
     {
         var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
@@ -485,7 +573,14 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     private static FrozenDictionary<GamePath, SyncNode> Tree(params (string Path, SyncNode Node)[] nodes)
         => nodes.ToFrozenDictionary(n => new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(n.Path)), n => n.Node);
 
-    private Task<Diagnostic[]> Diagnose(Loadout.ReadOnly loadout) => Diagnose(loadout, FrozenDictionary<GamePath, SyncNode>.Empty);
+    // No tree handed over: nothing is known about the folder, so every stored row stands.
+    private async Task<Diagnostic[]> Diagnose(Loadout.ReadOnly loadout)
+    {
+        var results = new List<Diagnostic>();
+        await foreach (var diagnostic in _emitter.Diagnose(loadout, CancellationToken.None))
+            results.Add(diagnostic);
+        return results.ToArray();
+    }
 
     private async Task<Diagnostic[]> Diagnose(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> tree)
     {
