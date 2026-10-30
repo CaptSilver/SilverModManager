@@ -1,5 +1,7 @@
+using System.Collections.Immutable;
 using System.Reactive.Linq;
 using DynamicData;
+using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
@@ -16,6 +18,7 @@ using SilverModManager.Games.RedEngine.Cyberpunk2077;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.NexusModsApi;
@@ -87,10 +90,31 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
         return result.Remap(file).Id;
     }
 
-    private async Task<(EntityId Page, EntityId Item)> AddNexusFile(uint modId, uint fileId, string name, EntityId? existingPage = null)
+    /// <summary>
+    /// A Nexus game nothing else in the suite writes pages for. The host's database is shared, so a count of the
+    /// stubbed game's pages moves whenever another test adds one; this game's count only moves for this test.
+    /// </summary>
+    private static readonly NexusModsGameId IsolatedNexusGame = NexusModsGameId.From(987_654);
+
+    private LibraryFilter IsolatedFilter(Loadout.ReadOnly loadout) => new(loadout.LoadoutId, new IsolatedGame());
+
+    /// <summary>Only what the Mods tab's filter reads: which Nexus game the pages belong to.</summary>
+    private sealed class IsolatedGame : IGameData
+    {
+        public GameId GameId => GameId.From("isolated-nexus-game");
+        public Optional<NexusModsGameId> NexusModsGameId => Optional.Some(IsolatedNexusGame);
+        public StoreIdentifiers StoreIdentifiers => throw new NotSupportedException();
+        public string DisplayName => "Isolated game";
+        public IStreamFactory IconImage => throw new NotSupportedException();
+        public IStreamFactory TileImage => throw new NotSupportedException();
+        public ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult) => throw new NotSupportedException();
+        public GamePath GetPrimaryFile(GameInstallation installation) => throw new NotSupportedException();
+    }
+
+    private async Task<(EntityId Page, EntityId Item)> AddNexusFile(uint modId, uint fileId, string name, EntityId? existingPage = null, NexusModsGameId? nexusGame = null)
     {
         using var tx = Connection.BeginTransaction();
-        var game = NexusGame;
+        var game = nexusGame ?? NexusGame;
         var uid = new ModUid(ModId.From(modId), game);
         var page = existingPage is null
             ? new NexusModsModPageMetadata.New(tx)
@@ -155,25 +179,26 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
     public async Task ANexusFileTheAppFetchedForAModlistIsNotInTheModsTabUntilTheUserInstallsIt()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Main");
+        var filter = IsolatedFilter(loadout);
         var provider = new NexusModsDataProvider(Provider);
-        using var rows = provider.ObserveLibraryItems(Filter(loadout)).AsObservableCache();
-        var counts = Counts(provider.CountLibraryItems(Filter(loadout)));
-        // The host's database is shared with other tests, so the count is read relative to what is already there.
-        await Eventually(() => Last(counts).Should().BeGreaterThanOrEqualTo(0));
-        await Task.Delay(200);
-        var before = Last(counts);
+        using var rows = provider.ObserveLibraryItems(filter).AsObservableCache();
+        var counts = Counts(provider.CountLibraryItems(filter));
+        await Eventually(() => Last(counts).Should().Be(0));
 
-        var (page, item) = await AddNexusFile(7001, 8001, "Fetched.zip");
+        var (page, item) = await AddNexusFile(7001, 8001, "Fetched.zip", nexusGame: IsolatedNexusGame);
         await AddArchiveRow(await AddModlist(), "Fetched.zip", fetched: item);
+        // Changes reach the view in commit order, so once this page shows, the fetched file's page (written
+        // first, and hidden by the archive row) has been dealt with; no fixed delay stands in for that.
+        var (ownPage, _) = await AddNexusFile(7002, 8002, "Own.zip", nexusGame: IsolatedNexusGame);
+        await Eventually(() => rows.Lookup(ownPage).HasValue.Should().BeTrue());
+        await Eventually(() => Last(counts).Should().Be(1));
 
-        await Task.Delay(300);
         rows.Lookup(page).HasValue.Should().BeFalse();
-        Last(counts).Should().Be(before);
 
         await Install(loadout, item);
 
         await Eventually(() => rows.Lookup(page).HasValue.Should().BeTrue());
-        await Eventually(() => Last(counts).Should().Be(before + 1));
+        await Eventually(() => Last(counts).Should().Be(2));
     }
 
     [Fact]
