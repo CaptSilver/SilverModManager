@@ -37,7 +37,8 @@ public class GameFileHashingTests(ITestOutputHelper helper) : AcquireTestBase<Ga
         Connection,
         FileStore,
         ServiceProvider.GetRequiredService<IFileIdentityResolver>(),
-        ServiceProvider.GetRequiredService<IFileHashesService>());
+        ServiceProvider.GetRequiredService<IFileHashesService>(),
+        Fakes.Forums());
 
     private GameFileSourceLookup Lookup(Loadout.ReadOnly loadout, Func<AbsolutePath, Stream> open)
         => new(loadout, Connection, FileStore, ServiceProvider.GetRequiredService<IFileIdentityResolver>(), ServiceProvider.GetRequiredService<IFileHashesService>())

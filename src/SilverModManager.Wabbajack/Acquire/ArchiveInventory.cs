@@ -8,6 +8,7 @@ using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.Forums;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
@@ -31,7 +32,8 @@ public sealed class ArchiveInventory(
     IConnection connection,
     IFileStore fileStore,
     IFileIdentityResolver identityResolver,
-    IFileHashesService fileHashes)
+    IFileHashesService fileHashes,
+    IForumLoginState forums)
 {
     /// <summary>The reader of the loadout's game files that <see cref="Build"/> checked the list against.</summary>
     public GameFileSourceLookup GameFilesFor(Loadout.ReadOnly loadout) => new(loadout, connection, fileStore, identityResolver, fileHashes);
@@ -184,18 +186,31 @@ public sealed class ArchiveInventory(
             ManualState manual => Row(archive, ArchiveState.Manual, manual.Prompt, manual.Url),
             MegaState mega when !MegaLink.TryParse(mega.Url, out _) => Row(archive, ArchiveState.Manual, "the MEGA link is not a file link this app can read; download it in your browser", mega.Url),
             MegaState or GoogleDriveState or MediaFireState or ModDbState => Row(archive, ArchiveState.Automatic),
-            LoversLabState loversLab => Row(archive, ArchiveState.Manual, ForumReason("LoversLab", loversLab.IsAttachment, loversLab.FileName), loversLab.Url),
-            VectorPlexusState vectorPlexus => Row(archive, ArchiveState.Manual, ForumReason("VectorPlexus", vectorPlexus.IsAttachment, vectorPlexus.FileName), vectorPlexus.Url),
+            LoversLabState loversLab => ClassifyForum(archive, ForumSite.LoversLab, loversLab.Url, loversLab.FileId, loversLab.FileName, loversLab.IsAttachment),
+            VectorPlexusState vectorPlexus => ClassifyForum(archive, ForumSite.VectorPlexus, vectorPlexus.Url, vectorPlexus.FileId, vectorPlexus.FileName, vectorPlexus.IsAttachment),
             UnsupportedState unsupported => Row(archive, ArchiveState.Unsupported, $"the list uses a source this app cannot download from ({unsupported.TypeName})", Uri.TryCreate(unsupported.Url, UriKind.Absolute, out var url) ? url : null),
             _ => Row(archive, ArchiveState.Unsupported, $"the list uses a source this app does not know ({archive.State.GetType().Name})"),
         };
     }
 
-    /// <summary>What to do on a forum row the app cannot fetch: name the file the list expects when it says which.</summary>
-    private static string ForumReason(string site, bool isAttachment, string? fileName) =>
-        isAttachment ? "A forum attachment; download it from the page"
-        : string.IsNullOrEmpty(fileName) ? $"Download the file from the {site} page"
-        : $"Download '{fileName}' from the {site} page";
+    /// <summary>
+    /// A forum row is fetched through the site's files API, which needs the file's id and name from the list and a
+    /// sign-in. Each missing piece says what is missing; a site the app has no client id for sends the user to the page.
+    /// </summary>
+    private ArchivePlanRow ClassifyForum(ArchiveEntry archive, ForumSite site, Uri? url, long? fileId, string? fileName, bool isAttachment)
+    {
+        var siteName = site.DisplayName();
+        if (isAttachment) return Row(archive, ArchiveState.Manual, "A forum attachment; download it from the page", url);
+        if (fileId is null) return Row(archive, ArchiveState.Manual, "The list doesn't record the file id", url);
+        if (string.IsNullOrEmpty(fileName)) return Row(archive, ArchiveState.Manual, "The list doesn't record the file name", url);
+        if (!forums.CanSignIn(site)) return Row(archive, ArchiveState.Manual, $"Download '{fileName}' from the {siteName} page", url);
+
+        // The address can carry a csrf key and the page is logged and stored, so the row keeps only the path.
+        var page = url is null ? null : new Uri(url.GetLeftPart(UriPartial.Path));
+        return forums.IsSignedIn(site)
+            ? Row(archive, ArchiveState.Automatic, page: page)
+            : Row(archive, ArchiveState.SignIn, $"Sign in to {siteName} to download this", page);
+    }
 
     private static ArchivePlanRow Row(ArchiveEntry archive, ArchiveState state, string? reason = null, Uri? page = null)
         => new(archive, state, reason, page, null);

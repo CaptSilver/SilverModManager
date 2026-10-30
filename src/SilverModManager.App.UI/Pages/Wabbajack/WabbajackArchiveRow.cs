@@ -69,10 +69,10 @@ public sealed class WabbajackArchiveRow(ArchivePlanRow plan) : ReactiveObject
 
     private static bool CanInstallOf(ArchivePlanRow plan) => plan.State == ArchiveState.Have && plan.Library is not null;
 
-    /// <summary>Browser and Manual rows (and an unsupported one that names a page) can send the user to where the file is.</summary>
+    /// <summary>Browser, SignIn and Manual rows (and an unsupported one that names a page) can send the user to where the file is.</summary>
     public bool CanOpenPage => CanOpenPageOf(Plan);
 
-    private static bool CanOpenPageOf(ArchivePlanRow plan) => plan.Page is not null && plan.State is ArchiveState.Browser or ArchiveState.Manual or ArchiveState.Unsupported;
+    private static bool CanOpenPageOf(ArchivePlanRow plan) => plan.Page is not null && plan.State is ArchiveState.Browser or ArchiveState.SignIn or ArchiveState.Manual or ArchiveState.Unsupported;
 
     /// <summary>Takes the archive's new plan row, telling only what its change touches.</summary>
     public void Update(ArchivePlanRow plan)

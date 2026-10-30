@@ -310,6 +310,23 @@ public class DownloadsPickupTests(ITestOutputHelper helper) : AcquireTestBase<Do
     }
 
     [Fact]
+    public async Task ASignInRowIsExpectedLikeAManualOne()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        var row = new ArchivePlanRow(
+            Entry(new LoversLabState(new Uri("https://example.test/f"), "wanted.txt", 7, false), Hash64(Wanted), Wanted.Length, "wanted.txt"),
+            ArchiveState.SignIn, "Sign in to LoversLab to download this", new Uri("https://example.test/f"), null);
+        await Acquirer.Run(new ArchivePlan([row]), null, CancellationToken.None);
+        await Drop(DownloadsFolder, "wanted.txt", Wanted);
+        var (pickup, _) = NewPickup();
+
+        await pickup.Scan(CancellationToken.None);
+
+        Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Have);
+    }
+
+    [Fact]
     public async Task AFolderOfUnrelatedFiles_NeverGetsALinkCheck()
     {
         using var page = Acquirer.Attach();

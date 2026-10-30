@@ -191,10 +191,10 @@ public sealed class ArchiveAcquirer(
             for (var i = 0; i < _rows.Length; i++)
             {
                 var row = _rows[i];
-                if (row.State is not (ArchiveState.Browser or ArchiveState.Manual or ArchiveState.Unsupported)) continue;
+                if (row.State is not (ArchiveState.Browser or ArchiveState.SignIn or ArchiveState.Manual or ArchiveState.Unsupported)) continue;
                 if (locator.FindByXxHash64(db, row.Archive.XxHash64) is not { } held) continue;
                 // A Browser row is one the library lacked when the plan was built and the run sent the user to fetch,
-                // so its arrival is the download the run asked for. Manual and Unsupported rows are the user's own adds.
+                // so its arrival is the download the run asked for. Manual, SignIn and Unsupported rows are the user's own adds.
                 if (row.State == ArchiveState.Browser && _expecting && _modlist is not null
                     && locator.FindTopLevelByXxHash64(db, row.Archive.XxHash64) is { } topLevel)
                     (fetched ??= []).Add((row.Archive.XxHash64, topLevel));

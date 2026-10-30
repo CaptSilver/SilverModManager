@@ -229,6 +229,54 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
         Acquirer.Plan.Rows.Should().ContainSingle().Which.Should().Be(browser);
     }
 
+    private static ArchivePlanRow ForumRow(ArchiveState state, byte[] content, string name = "f.7z")
+        => new(Entry(new LoversLabState(new Uri("https://www.loverslab.com/files/file/1-x/?do=download&csrfKey=secret"), name, 7, false), Hash64(content), content.Length, name),
+            state, state == ArchiveState.SignIn ? "Sign in to LoversLab to download this" : null, new Uri("https://www.loverslab.com/files/file/1-x/"), null);
+
+    [Fact]
+    public async Task ASignInRowIsNotDownloadedByARun()
+    {
+        using var page = Acquirer.Attach();
+        var row = ForumRow(ArchiveState.SignIn, [1, 2, 3]);
+
+        await Acquirer.Run(new ArchivePlan([row]), null, CancellationToken.None);
+
+        _jobs.Requested.Should().BeEmpty();
+        Acquirer.Plan.Rows[0].Should().Be(row);
+    }
+
+    [Fact]
+    public async Task AFailingForumDownloadBecomesManualWithTheJobsReasonAndTheQueryFreePage()
+    {
+        using var page = Acquirer.Attach();
+        var content = new byte[] { 4, 5, 6 };
+        var row = ForumRow(ArchiveState.Automatic, content);
+        _jobs.Failures[row.Archive.XxHash64] = new IOException("Your LoversLab session expired. Sign in again, then download again.");
+
+        await Acquirer.Run(new ArchivePlan([row]), null, CancellationToken.None);
+
+        var failed = Acquirer.Plan.Rows[0];
+        failed.State.Should().Be(ArchiveState.Manual);
+        failed.Reason.Should().Be("Your LoversLab session expired. Sign in again, then download again.");
+        failed.Page.Should().Be(new Uri("https://www.loverslab.com/files/file/1-x/"));
+    }
+
+    [Fact]
+    public async Task AFileDroppedInTheLibraryCreditsASignInRow()
+    {
+        using var page = Acquirer.Attach();
+        var content = "the forum archive's bytes"u8.ToArray();
+        await Acquirer.Run(new ArchivePlan([ForumRow(ArchiveState.SignIn, content)]), null, CancellationToken.None);
+        Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.SignIn);
+
+        await using var file = TemporaryFileManager.CreateFile(new Extension(".txt"));
+        await file.Path.WriteAllBytesAsync(content);
+        await LibraryService.AddLocalFile(file.Path);
+
+        await WaitFor(() => Acquirer.Plan.Rows[0].State == ArchiveState.Have);
+        Acquirer.Plan.Rows[0].Library.Should().NotBeNull();
+    }
+
     [Fact]
     public async Task ManualAndUnsupportedRowsAreNotDownloaded()
     {
@@ -249,7 +297,8 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
             Connection,
             FileStore,
             ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileIdentityResolver>(),
-            ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileHashesService>());
+            ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileHashesService>(),
+            Fakes.Forums());
         var loadout = await CreateLoadout();
         var list = ListWith(states.Select((s, i) => Entry(s, Xx64.From((ulong)(i + 1) * 0x1111), 10, $"{i}.7z")).ToArray());
         var plan = await inventory.Build(list, Connection.Db, loadout);

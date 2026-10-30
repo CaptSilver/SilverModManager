@@ -83,6 +83,15 @@ internal static class Fakes
         login.IsPremium.Returns(premium);
         return login;
     }
+
+    /// <summary>The forum sign-in as the test wants it: a client id the app has, and a token it holds.</summary>
+    public static IForumLoginState Forums(bool canSignIn = false, bool signedIn = false)
+    {
+        var forums = Substitute.For<IForumLoginState>();
+        forums.CanSignIn(Arg.Any<ForumSite>()).Returns(canSignIn);
+        forums.IsSignedIn(Arg.Any<ForumSite>()).Returns(signedIn);
+        return forums;
+    }
 }
 
 /// <summary>A game-folder file system whose Documents and AppData sit in a throwaway Wine prefix.</summary>

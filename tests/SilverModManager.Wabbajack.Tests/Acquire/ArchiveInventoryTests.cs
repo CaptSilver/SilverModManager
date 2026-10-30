@@ -1,3 +1,4 @@
+using NSubstitute;
 using FluentAssertions;
 using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +15,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Networking.Forums;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Library;
@@ -22,19 +24,20 @@ namespace SilverModManager.Wabbajack.Tests.Acquire;
 
 public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<ArchiveInventoryTests>(helper)
 {
-    private ArchiveInventory Inventory(bool premium = false) => new(
+    private ArchiveInventory Inventory(bool premium = false, IForumLoginState? forums = null) => new(
         ServiceProvider.GetRequiredService<ILibraryArchiveLocator>(),
         Fakes.Login(premium),
         new FakeMappingCache(),
         Connection,
         FileStore,
         ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileIdentityResolver>(),
-        ServiceProvider.GetRequiredService<IFileHashesService>());
+        ServiceProvider.GetRequiredService<IFileHashesService>(),
+        forums ?? Fakes.Forums());
 
-    private async Task<ArchivePlanRow> RowFor(ArchiveEntry archive, bool premium = false)
+    private async Task<ArchivePlanRow> RowFor(ArchiveEntry archive, bool premium = false, IForumLoginState? forums = null)
     {
         var loadout = await CreateLoadout();
-        var plan = await Inventory(premium).Build(ListWith(archive), Connection.Db, loadout);
+        var plan = await Inventory(premium, forums).Build(ListWith(archive), Connection.Db, loadout);
         return plan.Rows.Should().ContainSingle().Subject;
     }
 
@@ -329,10 +332,10 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
     [Theory]
     [InlineData("LoversLab", true, null, "A forum attachment; download it from the page")]
     [InlineData("LoversLab", false, "x.7z", "Download 'x.7z' from the LoversLab page")]
-    [InlineData("LoversLab", false, null, "Download the file from the LoversLab page")]
+    [InlineData("LoversLab", false, null, "The list doesn't record the file name")]
     [InlineData("VectorPlexus", true, null, "A forum attachment; download it from the page")]
     [InlineData("VectorPlexus", false, "x.7z", "Download 'x.7z' from the VectorPlexus page")]
-    [InlineData("VectorPlexus", false, null, "Download the file from the VectorPlexus page")]
+    [InlineData("VectorPlexus", false, null, "The list doesn't record the file name")]
     public async Task AForumRowSaysWhichFileToFetchFromThePage(string site, bool attachment, string? fileName, string reason)
     {
         var url = new Uri("https://example.invalid/file");
@@ -345,6 +348,88 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         row.State.Should().Be(ArchiveState.Manual);
         row.Reason.Should().Be(reason);
         row.Page.Should().Be(url);
+    }
+
+    private static DownloadState Forum(ForumSite site, Uri? url, string? fileName, long? fileId, bool attachment = false) => site == ForumSite.LoversLab
+        ? new LoversLabState(url, fileName, fileId, attachment)
+        : new VectorPlexusState(url, fileName, fileId, attachment);
+
+    [Theory]
+    [InlineData(ForumSite.LoversLab)]
+    [InlineData(ForumSite.VectorPlexus)]
+    public async Task AForumRowIsManualWhenTheListHasNoFileIdOrNoFileNameEvenIfSignedIn(ForumSite site)
+    {
+        var forums = Fakes.Forums(canSignIn: true, signedIn: true);
+        var url = new Uri("https://example.invalid/file");
+
+        var noId = await RowFor(Entry(Forum(site, url, "x.7z", null)), forums: forums);
+        var noName = await RowFor(Entry(Forum(site, url, null, 5)), forums: forums);
+        var attachment = await RowFor(Entry(Forum(site, url, "x.7z", 5, attachment: true)), forums: forums);
+
+        noId.State.Should().Be(ArchiveState.Manual);
+        noId.Reason.Should().Be("The list doesn't record the file id");
+        noName.State.Should().Be(ArchiveState.Manual);
+        noName.Reason.Should().Be("The list doesn't record the file name");
+        attachment.State.Should().Be(ArchiveState.Manual);
+        attachment.Reason.Should().Be("A forum attachment; download it from the page");
+    }
+
+    [Theory]
+    [InlineData(ForumSite.LoversLab)]
+    [InlineData(ForumSite.VectorPlexus)]
+    public async Task AForumRowIsManualWithTheFileNameWhileTheSiteHasNoClientId(ForumSite site)
+    {
+        var url = new Uri("https://example.invalid/file");
+
+        var row = await RowFor(Entry(Forum(site, url, "x.7z", 5)), forums: Fakes.Forums(canSignIn: false, signedIn: true));
+
+        row.State.Should().Be(ArchiveState.Manual);
+        row.Reason.Should().Be($"Download 'x.7z' from the {site.DisplayName()} page");
+        row.Page.Should().Be(url);
+    }
+
+    [Theory]
+    [InlineData(ForumSite.LoversLab)]
+    [InlineData(ForumSite.VectorPlexus)]
+    public async Task AForumRowNeedsASignInWhenTheSiteCanBeSignedInToAndIsNot(ForumSite site)
+    {
+        var url = new Uri("https://example.invalid/files/file/1-x/?do=download&r=2&csrfKey=secret");
+
+        var row = await RowFor(Entry(Forum(site, url, "x.7z", 5)), forums: Fakes.Forums(canSignIn: true, signedIn: false));
+
+        row.State.Should().Be(ArchiveState.SignIn);
+        row.Reason.Should().Be($"Sign in to {site.DisplayName()} to download this");
+        row.Page.Should().Be(new Uri("https://example.invalid/files/file/1-x/"), "the page is shown and stored, so it carries no query");
+    }
+
+    [Theory]
+    [InlineData(ForumSite.LoversLab)]
+    [InlineData(ForumSite.VectorPlexus)]
+    public async Task AForumRowIsAutomaticOnceSignedIn(ForumSite site)
+    {
+        var url = new Uri("https://example.invalid/files/file/1-x/?do=download&r=2&csrfKey=secret");
+
+        var row = await RowFor(Entry(Forum(site, url, "x.7z", 5)), forums: Fakes.Forums(canSignIn: true, signedIn: true));
+
+        row.State.Should().Be(ArchiveState.Automatic);
+        row.Reason.Should().BeNull();
+        row.Page.Should().Be(new Uri("https://example.invalid/files/file/1-x/"));
+    }
+
+    [Fact]
+    public async Task OneSitesSignInDoesNotAnswerForTheOther()
+    {
+        var forums = Substitute.For<IForumLoginState>();
+        forums.CanSignIn(Arg.Any<ForumSite>()).Returns(true);
+        forums.IsSignedIn(ForumSite.LoversLab).Returns(true);
+        forums.IsSignedIn(ForumSite.VectorPlexus).Returns(false);
+
+        var loversLab = await RowFor(Entry(Forum(ForumSite.LoversLab, null, "x.7z", 5)), forums: forums);
+        var vectorPlexus = await RowFor(Entry(Forum(ForumSite.VectorPlexus, null, "x.7z", 5)), forums: forums);
+
+        loversLab.State.Should().Be(ArchiveState.Automatic);
+        loversLab.Page.Should().BeNull();
+        vectorPlexus.State.Should().Be(ArchiveState.SignIn);
     }
 
     [Fact]

@@ -63,7 +63,7 @@ public static class WabbajackModlistText
     /// <summary>Sorts the rows of a plan into the groups the log reports.</summary>
     public static WabbajackPlanCounts Counts(ArchivePlan plan) => new(
         plan.Rows.Count(row => row.State is ArchiveState.Have or ArchiveState.GameFile),
-        plan.Rows.Count(row => row.State is ArchiveState.Automatic or ArchiveState.Browser),
+        plan.Rows.Count(row => row.State is ArchiveState.Automatic or ArchiveState.Browser or ArchiveState.SignIn),
         plan.Rows.Count(row => row.State is ArchiveState.Manual or ArchiveState.Unsupported),
         plan.Rows.Count(row => row.State == ArchiveState.GameFileVersion),
         plan.Rows.Count(row => row.State == ArchiveState.NotNeeded));
@@ -199,9 +199,11 @@ public static class WabbajackModlistText
 
         var byHand = plan.Rows.Count(row => row.State is ArchiveState.Manual or ArchiveState.Unsupported);
         var differing = plan.Rows.Count(row => row.State == ArchiveState.GameFileVersion);
-        if (byHand == 0 && differing == 0) return "Every archive is already in your library or is a file of your game.";
+        var signIn = plan.Rows.Count(row => row.State == ArchiveState.SignIn);
+        if (byHand == 0 && differing == 0 && signIn == 0) return "Every archive is already in your library or is a file of your game.";
 
         var parts = new List<string>();
+        if (signIn > 0) parts.Add(signIn == 1 ? "The missing archive is on a forum you need to sign in to first." : $"{signIn} missing archives are on forums you need to sign in to first.");
         if (byHand > 0)
         {
             parts.Add(byHand == 1 ? "The missing archive cannot be fetched by the app." : $"None of the {byHand} missing archives can be fetched by the app.");
@@ -233,6 +235,7 @@ public static class WabbajackModlistText
         ArchiveState.Have => "In library",
         ArchiveState.Automatic => "Downloads automatically",
         ArchiveState.Browser => row.Opened ? "Waiting for your download" : "Needs a download in your browser",
+        ArchiveState.SignIn => "Needs you to sign in",
         ArchiveState.Manual => "Needs a manual download",
         ArchiveState.GameFile => "Game file",
         ArchiveState.GameFileVersion => "Game file differs",

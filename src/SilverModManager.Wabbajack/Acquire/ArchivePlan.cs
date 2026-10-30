@@ -16,6 +16,9 @@ public enum ArchiveState
     /// <summary>A Nexus Mods file the user fetches with "Mod manager download" on its page.</summary>
     Browser,
 
+    /// <summary>A forum file the app could fetch once the user signs in to the site; <see cref="ArchivePlanRow.Page"/> is the file's page.</summary>
+    SignIn,
+
     /// <summary>The user has to get it from <see cref="ArchivePlanRow.Page"/> and drop it in.</summary>
     Manual,
 

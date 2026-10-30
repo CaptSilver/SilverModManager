@@ -223,6 +223,27 @@ public class WabbajackModlistTextTests
     }
 
     [Fact]
+    public void Counts_PutARowThatNeedsASignInWithTheOnesTheAppCanGet()
+    {
+        var counts = WabbajackModlistText.Counts(Plan(Row(ArchiveState.Automatic), Row(ArchiveState.SignIn, "b"), Row(ArchiveState.Manual, "c")));
+
+        counts.Should().Be(new WabbajackPlanCounts(Ready: 0, ToGet: 2, ByHand: 1, GameFilesDiffer: 0));
+    }
+
+    [Fact]
+    public void State_SaysASignInRowNeedsTheUserToSignIn()
+        => WabbajackModlistText.State(Row(ArchiveState.SignIn)).Should().Be("Needs you to sign in");
+
+    [Fact]
+    public void DownloadBlockedReason_SaysToSignInWhenThatIsAllThatIsLeft()
+    {
+        WabbajackModlistText.DownloadBlockedReason(false, false, true, false, Plan(Row(ArchiveState.SignIn)))
+            .Should().Contain("sign in").And.NotContain("already in your library");
+        WabbajackModlistText.DownloadBlockedReason(false, false, true, false, Plan(Row(ArchiveState.Automatic), Row(ArchiveState.SignIn, "b")))
+            .Should().BeEmpty("the rest can still be downloaded");
+    }
+
+    [Fact]
     public void ModOrganizerItselfIsCountedApartAndNeverBlocksAnInstall()
     {
         var plan = Plan(Row(ArchiveState.Have), Row(ArchiveState.NotNeeded));

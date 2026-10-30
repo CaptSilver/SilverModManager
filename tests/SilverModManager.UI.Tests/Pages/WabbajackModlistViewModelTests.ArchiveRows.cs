@@ -180,4 +180,32 @@ public partial class WabbajackModlistViewModelTests
             block.TextLayout.TextLines.Count.Should().BeLessThanOrEqualTo(2);
         });
     }
+
+    private static ArchivePlan SignInPlan(int count)
+        => Plan(Enumerable.Range(0, count).Select(i => Row(ArchiveState.SignIn, $"archive-{i}.7z") with { Reason = "Sign in to LoversLab to download this", Page = new Uri("https://www.loverslab.com/files/file/1-x/") }).ToArray());
+
+    [Fact]
+    public void ASignInRowWithAPageCanOpenItsPage()
+    {
+        new WabbajackArchiveRow(SignInPlan(1).Rows[0]).CanOpenPage.Should().BeTrue();
+        new WabbajackArchiveRow(SignInPlan(1).Rows[0] with { Page = null }).CanOpenPage.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ASignInRow_ShowsItsStateUncutAndKeepsItsOpenPageButton()
+    {
+        var (vm, _, _) = await Open(SignInPlan(3));
+        var view = await ShowView(vm);
+
+        await EventuallyOnUi(() =>
+        {
+            Render((Window)view.GetVisualRoot()!);
+            var line = Lines(view).First();
+            var block = line.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == "Needs you to sign in");
+            block.TextTrimming.Should().Be(Avalonia.Media.TextTrimming.None);
+            block.DesiredSize.Width.Should().BeLessThanOrEqualTo(block.Bounds.Width + 0.5);
+            block.TextLayout.TextLines.Count.Should().BeLessThanOrEqualTo(2);
+            line.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, "Open page")).IsVisible.Should().BeTrue();
+        });
+    }
 }
