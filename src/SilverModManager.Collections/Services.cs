@@ -21,6 +21,6 @@ public static class Services
             .AddNexusCollectionReplicatedLoadoutGroupModel()
             .AddCollectionVerbs()
             .AddSingleton<CollectionDownloader>()
-            .AddSettings<DownloadSettings>();
+            .AddDownloadSettings();
     }
 }

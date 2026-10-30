@@ -68,6 +68,8 @@ internal sealed class ConcurrencyGauge
 
     public int Peak => _peak;
 
+    public int Current => Volatile.Read(ref _current);
+
     public void Enter()
     {
         var now = Interlocked.Increment(ref _current);

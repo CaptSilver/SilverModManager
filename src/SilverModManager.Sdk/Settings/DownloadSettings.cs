@@ -1,6 +1,5 @@
-using SilverModManager.Sdk.Settings;
 
-namespace SilverModManager.Collections;
+namespace SilverModManager.Sdk.Settings;
 
 public class DownloadSettings : ISettings
 {
@@ -27,7 +26,7 @@ public class DownloadSettings : ISettings
             {
                 Section = Sections.General,
                 DisplayName = "Max Parallel Downloads",
-                DescriptionFactory = _ => "Set the maximum number of downloads that can happen in parallel when downloading collections",
+                DescriptionFactory = _ => "Set the maximum number of downloads that can happen in parallel, for collections and for the archives of a Wabbajack modlist",
             },
             SingleValueMultipleChoiceContainerOptions.Create<int>(
                 valueComparer: EqualityComparer<int>.Default,

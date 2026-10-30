@@ -7,6 +7,7 @@ using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Settings;
 using SilverModManager.Wabbajack.Acquire.Hosts;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Library;
@@ -22,10 +23,9 @@ public sealed class ArchiveAcquirer(
     IOSInterop osInterop,
     ExpectedNexusDownloads expectedDownloads,
     TimeProvider time,
+    ISettingsManager settings,
     ILogger<ArchiveAcquirer> logger) : IArchiveAcquirer, IDisposable
 {
-    private const int ConcurrentDownloads = 4;
-
     public static readonly TimeSpan RecheckInterval = TimeSpan.FromSeconds(1);
 
     private readonly Lock _lock = new();
@@ -80,7 +80,8 @@ public sealed class ArchiveAcquirer(
 
         try
         {
-            using var gate = new SemaphoreSlim(ConcurrentDownloads);
+            // Read per run: the user's "downloads at once" choice applies from the next run on.
+            using var gate = new SemaphoreSlim(Math.Max(1, settings.Get<DownloadSettings>().MaxParallelDownloads));
             await Task.WhenAll(automatic.Select(async index =>
             {
                 await gate.WaitAsync(cancellationToken);

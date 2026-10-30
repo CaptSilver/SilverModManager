@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NexusMods.Paths;
 using NSubstitute;
+using SilverModManager.Sdk.Settings;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk;
@@ -50,7 +51,15 @@ public class ArchiveAcquirerWatchingTests : IDisposable
             Substitute.For<IOSInterop>(),
             _expected,
             _time,
+            Settings(),
             NullLogger<ArchiveAcquirer>.Instance);
+    }
+
+    private static ISettingsManager Settings()
+    {
+        var settings = Substitute.For<ISettingsManager>();
+        settings.Get<DownloadSettings>(Arg.Any<string?>()).Returns(new DownloadSettings());
+        return settings;
     }
 
     public void Dispose()

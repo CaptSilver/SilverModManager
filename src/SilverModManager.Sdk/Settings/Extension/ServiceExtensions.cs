@@ -16,6 +16,16 @@ public static class ServiceExtensions
         ));
     }
 
+    /// <summary>
+    /// Registers <see cref="DownloadSettings"/> unless it already is. Collections and Wabbajack both read it and either
+    /// can be present without the other.
+    /// </summary>
+    public static IServiceCollection AddDownloadSettings(this IServiceCollection serviceCollection)
+    {
+        var registered = serviceCollection.Any(d => d.ImplementationInstance is SettingsRegistration { ObjectType: var type } && type == typeof(DownloadSettings));
+        return registered ? serviceCollection : serviceCollection.AddSettings<DownloadSettings>();
+    }
+
     public static IServiceCollection AddStorageBackend<T>(
         this IServiceCollection serviceCollection,
         bool isDefault = false)

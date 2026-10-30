@@ -8,6 +8,7 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Library;
@@ -41,15 +42,28 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
         return (new ArchivePlan(rows), contents);
     }
 
-    [Fact]
-    public async Task NoMoreThanFourDownloadsRunAtOnceAndEveryRowEndsUpHeld()
+    [Theory]
+    [InlineData(2)]
+    [InlineData(7)]
+    public async Task TheDownloadsAtOnceSettingSetsHowManyArchivesTransferTogether(int atOnce)
     {
+        ServiceProvider.GetRequiredService<ISettingsManager>().Update<DownloadSettings>(_ => new DownloadSettings { MaxParallelDownloads = atOnce });
         using var page = Acquirer.Attach();
-        var (plan, _) = TenHttpRows();
+        var contents = Enumerable.Range(0, 20).Select(i => new byte[] { (byte)i, 8, 8, 8 }).ToArray();
+        var rows = contents.Select((c, i) => AutomaticRow(new HttpState(new Uri(Mirror, $"{i}.7z"), []), c, $"{i}.7z")).ToArray();
+        foreach (var content in contents) _jobs.Content[Hash64(content)] = content;
+        var release = new TaskCompletionSource();
+        _jobs.Gate = release.Task;
 
-        await Acquirer.Run(plan, null, CancellationToken.None);
+        var run = Acquirer.Run(new ArchivePlan(rows), null, CancellationToken.None);
+        // Every slot is taken while the jobs are held back, so the gauge reads the gate size itself.
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+        while (_jobs.Gauge.Current < atOnce && DateTime.UtcNow < deadline) await Task.Delay(5, TestContext.Current.CancellationToken);
+        _jobs.Gauge.Current.Should().Be(atOnce);
+        release.SetResult();
+        await run;
 
-        _jobs.Gauge.Peak.Should().BeInRange(2, 4);
+        _jobs.Gauge.Peak.Should().Be(atOnce);
         Acquirer.Plan.Rows.Should().OnlyContain(r => r.State == ArchiveState.Have && r.Library != null);
     }
 

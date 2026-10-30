@@ -55,6 +55,7 @@ public static class Services
                 provider.GetRequiredService<IOSInterop>(),
                 provider.GetRequiredService<ExpectedNexusDownloads>(),
                 provider.GetService<TimeProvider>() ?? TimeProvider.System,
+                provider.GetRequiredService<ISettingsManager>(),
                 provider.GetRequiredService<ILogger<ArchiveAcquirer>>()))
             .AddSingleton<ArchiveInbox>()
             .AddSingleton<DownloadsPickup>()
@@ -74,6 +75,6 @@ public static class Services
 
     public static IServiceCollection AddWabbajackSettings(this IServiceCollection services)
     {
-        return services.AddSettings<WabbajackSettings>();
+        return services.AddSettings<WabbajackSettings>().AddDownloadSettings();
     }
 }
