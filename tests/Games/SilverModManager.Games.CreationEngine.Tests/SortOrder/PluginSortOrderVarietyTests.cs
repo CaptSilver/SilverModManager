@@ -552,6 +552,9 @@ public class PluginSortOrderVarietyTests(ITestOutputHelper helper)
     public async Task DeleteSortOrder_RemovesTombstonesToo()
     {
         var (loadout, variety, id) = await Reconciled();
+        // The game's own manager is live from the first loadout and re-creates the order of a loadout that still
+        // exists, from a pass queued by the mod changes below. Only a loadout's removal deletes orders for good.
+        ((IDisposable)Game.SortOrderManager).Dispose();
         var mod = await AddMod(loadout, "Gone", "A.esp");
         await variety.ReconcileSortOrder(id);
         await RemoveMod(mod);
@@ -561,6 +564,21 @@ public class PluginSortOrderVarietyTests(ITestOutputHelper helper)
 
         Connection.Db.Datoms(SortOrderItem.ParentSortOrder, id).Should().BeEmpty();
         variety.GetSortOrderIdFor(loadout.LoadoutId, Db).HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task UpdateLoadOrders_ForADeletedLoadout_CreatesNoSortOrder()
+    {
+        // Deleting a loadout removes its items, and every removal queues a pass of the manager. A pass that runs
+        // after the manager has deleted the loadout's order used to make a fresh one for the loadout that was gone.
+        var (loadout, variety, _) = await Reconciled();
+        await LoadoutManager.DeleteLoadout(loadout.LoadoutId);
+        await WaitUntil(() => !variety.GetSortOrderIdFor(loadout.LoadoutId, Db).HasValue);
+
+        await Game.SortOrderManager.UpdateLoadOrders(loadout.LoadoutId);
+
+        variety.GetSortOrderIdFor(loadout.LoadoutId, Db).HasValue.Should().BeFalse();
+        LoadoutSortOrder.FindByParentEntity(Db, loadout.LoadoutId).Should().BeEmpty();
     }
 
     [Fact]

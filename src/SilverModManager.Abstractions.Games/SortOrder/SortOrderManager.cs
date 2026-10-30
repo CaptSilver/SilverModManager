@@ -43,6 +43,7 @@ public class SortOrderManager : ISortOrderManager, IDisposable
     public async ValueTask UpdateLoadOrders(LoadoutId loadoutId, Optional<CollectionGroupId> collectionGroupId = default, CancellationToken token = default)
     {
         using var running = TrackRunning();
+        if (!ParentStillExists(loadoutId, collectionGroupId)) return;
         var parentEntity = collectionGroupId.HasValue
             ? OneOf<LoadoutId, CollectionGroupId>.FromT1(collectionGroupId.Value)
             : OneOf<LoadoutId, CollectionGroupId>.FromT0(loadoutId);
@@ -55,9 +56,21 @@ public class SortOrderManager : ISortOrderManager, IDisposable
         }
     }
     
+    /// <summary>
+    /// Passes are queued by item changes, and deleting a loadout removes its items: a pass that runs after the
+    /// removal pass has deleted the loadout's sort orders would otherwise create new ones for a loadout that is gone.
+    /// </summary>
+    private bool ParentStillExists(LoadoutId loadoutId, Optional<CollectionGroupId> collectionGroupId)
+    {
+        var db = _connection.Db;
+        if (!Loadout.Load(db, loadoutId).IsValid()) return false;
+        return !collectionGroupId.HasValue || CollectionGroup.Load(db, collectionGroupId.Value).IsValid();
+    }
+
     protected async ValueTask CreateSortOrders(LoadoutId loadoutId, Optional<CollectionGroupId> collectionGroupId = default, CancellationToken token = default)
     {
         using var running = TrackRunning();
+        if (!ParentStillExists(loadoutId, collectionGroupId)) return;
         var parentEntity = collectionGroupId.HasValue
             ? OneOf<LoadoutId, CollectionGroupId>.FromT1(collectionGroupId.Value)
             : OneOf<LoadoutId, CollectionGroupId>.FromT0(loadoutId);
