@@ -51,7 +51,9 @@ public class ToolManager : IToolManager
 
         _logger.LogInformation("Applying loadout {LoadoutId} on {GameName} {GameVersion}", 
             loadout.Id, loadout.InstallationInstance.Game.DisplayName, loadout.GameVersion);
-        await _syncService.Synchronize(loadout);
+        var isGame = tool is IRunGameTool;
+        using (SyncOrigin.Begin(isGame ? SyncTrigger.Launch : SyncTrigger.ToolRun))
+            await _syncService.Synchronize(loadout);
         var appliedLoadout = loadout.Rebase();
 
         _logger.LogInformation("Running tool {ToolName} for loadout {LoadoutId} on {GameName} {GameVersion}", 
@@ -60,7 +62,8 @@ public class ToolManager : IToolManager
 
         _logger.LogInformation("Ingesting loadout {LoadoutId} from {GameName} {GameVersion}", 
             appliedLoadout.Id, appliedLoadout.InstallationInstance.Game.DisplayName, appliedLoadout.GameVersion);
-        await _syncService.Synchronize(appliedLoadout);
+        using (SyncOrigin.Begin(isGame ? SyncTrigger.AfterGameRun : SyncTrigger.ToolRun))
+            await _syncService.Synchronize(appliedLoadout);
 
         return appliedLoadout.Rebase();
     }

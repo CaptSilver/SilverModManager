@@ -99,6 +99,7 @@ public static class LoadoutManagementVerbs
         [Injected] ISynchronizerService syncService,
         [Option("large-files", "large-files", LargeFilesHelp, true)] string? largeFiles)
     {
+        using var origin = SyncOrigin.Begin(SyncTrigger.CommandLine);
         await syncService.Synchronize(loadout.LoadoutId, BackupOverflowChoices.Parse(largeFiles));
         return 0;
     }

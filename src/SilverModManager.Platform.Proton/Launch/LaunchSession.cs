@@ -286,7 +286,7 @@ public sealed class LaunchSession
         try
         {
             _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Preparing, WineOverridesOf(context), RecordedLaunchOf(context));
-            await _synchronizer.Synchronize(context.LoadoutId);
+            using (SyncOrigin.Begin(SyncTrigger.Launch)) await _synchronizer.Synchronize(context.LoadoutId);
             foreach (var gate in _gates)
             {
                 if (StopRequested) break;
@@ -581,6 +581,7 @@ public sealed class LaunchSession
             // Files a game writes into its own folder are the game's: keep them where they are unless keeping
             // would lose files, and never put the launch's wording on a question asked after the game closed.
             using var leg = BackupOverflowAnswer.BeginLeg(BackupOverflowOperation.AfterPlay, BackupOverflowChoice.AdoptInPlace);
+            using var origin = SyncOrigin.Begin(SyncTrigger.AfterGameRun);
             await _synchronizer.Synchronize(context.LoadoutId);
         }
         catch (Exception e)

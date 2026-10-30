@@ -1516,6 +1516,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         _ = MetadataOf(loadout);
 
         loadout = loadout.Rebase();
+        SyncOrigin.LogStart(Logger, $"sync of loadout {loadout.Name} ({loadout.LoadoutId}) at revision {loadout.Db.BasisTxId}");
 
         // After the rebase so a game judges the loadout as it is now, not the snapshot the caller held.
         await PreflightLoadout(loadout);
@@ -2141,6 +2142,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
     public async Task ResetToOriginalGameState(GameInstallation installation, LocatorId[] locatorIds, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default, bool discardBackups = false)
     {
+        SyncOrigin.LogStart(Logger, $"reset of the game folder of {installation.Game.DisplayName}");
+
         // Same reasoning as in Synchronize: the re-index below writes before RunActions would refuse.
         await Preflight(installation);
         EnsureBuildCovered(installation, locatorIds);

@@ -181,6 +181,7 @@ internal partial class LoadoutManager : ILoadoutManager
         try
         {
             using var answer = BackupOverflowAnswer.Begin(BackupOverflowOperation.Manage);
+            using var origin = SyncOrigin.Begin(SyncTrigger.ManageGame);
             await _synchronizerService.Synchronize(loadout.LoadoutId, largeFiles, cancellationToken);
         }
         catch (Exception e) when (e is BackupOverflowException or SynchronizerPreflightException or ExecutableInUseException or OperationCanceledException)
@@ -385,6 +386,7 @@ internal partial class LoadoutManager : ILoadoutManager
         var metadata = GameInstallMetadata.Load(_connection.Db, loadout.InstallationId);
         if (deactivateIfActive && GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastAppliedLoadout) && lastAppliedLoadout == loadoutId.Value)
         {
+            using var origin = SyncOrigin.Begin(SyncTrigger.DeleteLoadout);
             await DeactivateCurrentLoadout(loadout.InstallationInstance, cancellationToken: cancellationToken);
         }
 

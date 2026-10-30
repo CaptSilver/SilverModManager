@@ -19,13 +19,14 @@ public static class LoadoutApplier
     /// player in a dialog (a refusal in its own words, with a button to the Health Check when the synchronizer
     /// refused up front and nothing was written; anything else as a crash) and returns false.
     /// </summary>
-    public static async Task<bool> Apply(IServiceProvider serviceProvider, LoadoutId loadoutId)
+    public static async Task<bool> Apply(IServiceProvider serviceProvider, LoadoutId loadoutId, SyncTrigger trigger = SyncTrigger.ApplyButton)
     {
         var syncService = serviceProvider.GetRequiredService<ISynchronizerService>();
         var notificationService = serviceProvider.GetRequiredService<IWindowNotificationService>();
 
         try
         {
+            using var origin = SyncOrigin.Begin(trigger);
             await Task.Run(() => syncService.Synchronize(loadoutId));
             notificationService.ShowToast(Language.ToastNotification_Applied__0__successfully, ToastNotificationVariant.Success);
             return true;

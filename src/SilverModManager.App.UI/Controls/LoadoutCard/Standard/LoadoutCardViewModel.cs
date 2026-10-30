@@ -263,7 +263,7 @@ public partial class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, I
     private async Task SwitchToLoadout(Loadout.ReadOnly loadout)
     {
         // Only open the loadout once it is the applied one; a refused apply has already told the user why.
-        if (!await LoadoutApplier.Apply(_serviceProvider, loadout.LoadoutId)) return;
+        if (!await LoadoutApplier.Apply(_serviceProvider, loadout.LoadoutId, SyncTrigger.SwitchLoadout)) return;
         await VisitLoadoutCommand.Execute();
     }
 

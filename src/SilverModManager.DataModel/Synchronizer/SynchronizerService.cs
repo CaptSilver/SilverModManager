@@ -96,8 +96,11 @@ public class SynchronizerService : ISynchronizerService
         => SynchronizeCore(loadoutId, refuseWhileRunning: true, reselectBackends: true, largeFiles, cancellationToken);
 
     /// <inheritdoc />
-    public Task CleanGameFolder(LoadoutId loadoutId, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default)
-        => SynchronizeCore(loadoutId, refuseWhileRunning: true, reselectBackends: true, largeFiles, cancellationToken, cleanExternalChanges: true, operation: BackupOverflowOperation.Reset);
+    public async Task CleanGameFolder(LoadoutId loadoutId, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default)
+    {
+        using var origin = SyncOrigin.Begin(SyncTrigger.ResetGameFolder);
+        await SynchronizeCore(loadoutId, refuseWhileRunning: true, reselectBackends: true, largeFiles, cancellationToken, cleanExternalChanges: true, operation: BackupOverflowOperation.Reset);
+    }
 
     /// <summary>
     /// Synchronizes on behalf of a launch session, which holds the running-game state itself and so
@@ -226,6 +229,7 @@ public class SynchronizerService : ISynchronizerService
     /// <inheritdoc />
     public async Task UnManage(GameInstallation installation, bool runGc = true, bool cleanGameFolder = true, BackupOverflowChoice? largeFiles = null)
     {
+        using var origin = SyncOrigin.Begin(SyncTrigger.Unmanage);
         await _semaphore.WaitAsync();
         try
         {
@@ -241,6 +245,7 @@ public class SynchronizerService : ISynchronizerService
     /// <inheritdoc />
     public async Task<bool> ChangeDeploymentBackend(GameInstallation installation, GamePath root, DeploymentBackendId backend, bool chosen, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default)
     {
+        using var origin = SyncOrigin.Begin(SyncTrigger.DeploymentMethodSwitch);
         await _semaphore.WaitAsync(cancellationToken);
         try
         {
