@@ -89,6 +89,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     [Reactive] public partial IReadOnlyList<WabbajackGameFileChoice> GameFilesReplaced { get; private set; } = [];
 
     [Reactive] public partial bool SkipMissingArchives { get; set; }
+    [Reactive] public partial bool PickUpFromDownloads { get; set; }
+    [Reactive] public partial bool HasWaitingArchives { get; private set; }
+    [Reactive] public partial string PickUpTooltip { get; private set; } = "";
     [Reactive] public partial bool CanInstall { get; private set; }
     [Reactive] public partial bool CanDownload { get; private set; }
     [Reactive] public partial string InstallBlockedReason { get; private set; } = "";
@@ -114,6 +117,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     public ReactiveCommand<WabbajackArchiveRow, Unit> OpenPageCommand { get; }
     public ReactiveCommand<WabbajackArchiveRow, Unit> InstallArchiveCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenNextFiveCommand { get; }
+    public ReactiveCommand<Unit, Unit> ChooseDownloadsFolderCommand { get; }
+    public ReactiveCommand<Unit, Unit> UseDefaultDownloadsFolderCommand { get; }
     public ReactiveCommand<Unit, Unit> CheckInboxCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenInboxFolderCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenHealthCheckCommand { get; }
@@ -170,6 +175,30 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         OpenNextFiveCommand = ReactiveCommand.Create(() => { _acquirer.OpenNext(5); }, this.WhenAnyValue(vm => vm.HasStartedDownloads));
         CheckInboxCommand = ReactiveCommand.CreateFromTask(async () => await Guarded(async token => ShowUnmatched(await _service.CheckInbox(token))));
         OpenInboxFolderCommand = ReactiveCommand.Create(() => _service.OpenInboxFolder());
+        ChooseDownloadsFolderCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await Guarded(token => _service.ChooseDownloadsFolder(token));
+            ShowPickUpTooltip();
+        });
+        UseDefaultDownloadsFolderCommand = ReactiveCommand.Create(() =>
+        {
+            _service.UseDefaultDownloadsFolder();
+            ShowPickUpTooltip();
+        });
+
+        PickUpFromDownloads = _service.PickUpFromDownloads;
+        ShowPickUpTooltip();
+        this.WhenAnyValue(vm => vm.PickUpFromDownloads)
+            .Skip(1)
+            .Subscribe(on =>
+            {
+                _service.PickUpFromDownloads = on;
+                lock (_rowsLock)
+                {
+                    foreach (var row in Archives) row.PickUpHint = on;
+                }
+                ShowPickUpTooltip();
+            });
         OpenHealthCheckCommand = ReactiveCommand.Create(OpenHealthCheck);
         RemoveCommand = ReactiveCommand.CreateFromTask(RemoveAsync, this.WhenAnyValue(vm => vm.IsInstalled, vm => vm.IsInstalling, (installed, installing) => installed && !installing));
 
@@ -477,6 +506,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         IsFreeSpaceWarning = note.IsWarning;
 
         AcquireText = WabbajackModlistText.PlanSummary(plan);
+        HasWaitingArchives = plan.Rows.Any(row => row.State.WaitsForUser());
+        ShowPickUpTooltip();
         Recompute();
     }
 
@@ -492,9 +523,16 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
                 for (var i = 0; i < current.Count; i++) current[i].Update(plan.Rows[i]);
                 return;
             }
-            Archives = plan.Rows.Select(row => new WabbajackArchiveRow(row)).ToArray();
+            Archives = plan.Rows.Select(row => new WabbajackArchiveRow(row) { PickUpHint = PickUpFromDownloads }).ToArray();
         }
     }
+
+    private void ShowPickUpTooltip()
+        => PickUpTooltip = !PickUpFromDownloads
+            ? "Pickup is off"
+            : _service.IsWatchingDownloads
+                ? $"Watching {_service.DownloadsFolderText}"
+                : $"Not watching: {_service.DownloadsFolderText} is not a folder that exists";
 
     private void Recompute()
     {

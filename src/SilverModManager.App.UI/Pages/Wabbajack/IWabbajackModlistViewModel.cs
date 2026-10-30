@@ -117,6 +117,18 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
     /// <summary>Opens the pages of the next five Nexus Mods files that still need a download in the browser.</summary>
     ReactiveCommand<Unit, Unit> OpenNextFiveCommand { get; }
 
+    /// <summary>Notice finished browser downloads in the Downloads folder and add them to the library.</summary>
+    bool PickUpFromDownloads { get; set; }
+
+    /// <summary>At least one archive waits for a download in the browser, so the pickup switch has something to act on.</summary>
+    bool HasWaitingArchives { get; }
+
+    /// <summary>"Watching /home/you/Downloads" or "Pickup is off".</summary>
+    string PickUpTooltip { get; }
+
+    ReactiveCommand<Unit, Unit> ChooseDownloadsFolderCommand { get; }
+    ReactiveCommand<Unit, Unit> UseDefaultDownloadsFolderCommand { get; }
+
     ReactiveCommand<Unit, Unit> CheckInboxCommand { get; }
     ReactiveCommand<Unit, Unit> OpenInboxFolderCommand { get; }
     ReactiveCommand<Unit, Unit> OpenHealthCheckCommand { get; }

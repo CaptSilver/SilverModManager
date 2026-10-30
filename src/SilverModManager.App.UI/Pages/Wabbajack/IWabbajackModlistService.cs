@@ -76,4 +76,19 @@ public interface IWabbajackModlistService
 
     /// <summary>Copies files into the inbox folder, then checks it.</summary>
     Task<IReadOnlyList<UnmatchedInbox>> AddToInbox(IReadOnlyList<AbsolutePath> files, CancellationToken cancellationToken);
+
+    /// <summary>Whether finished browser downloads are picked up from the Downloads folder. Stored in the settings.</summary>
+    bool PickUpFromDownloads { get; set; }
+
+    /// <summary>The folder the pickup reads: the chosen one, or the user's download folder when none is chosen.</summary>
+    string DownloadsFolderText { get; }
+
+    /// <summary>The pickup has a watcher on <see cref="DownloadsFolderText"/> right now.</summary>
+    bool IsWatchingDownloads { get; }
+
+    /// <summary>Lets the user pick the Downloads folder. Cancelling the dialog changes nothing.</summary>
+    Task ChooseDownloadsFolder(CancellationToken cancellationToken);
+
+    /// <summary>Goes back to the user's download folder.</summary>
+    void UseDefaultDownloadsFolder();
 }

@@ -46,12 +46,17 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
             this.BindCommand(ViewModel, vm => vm.OpenNextFiveCommand, view => view.OpenNextFiveButton).DisposeWith(disposables);
             MenuCheckInbox.Command = viewModel.CheckInboxCommand;
             MenuOpenInboxFolder.Command = viewModel.OpenInboxFolderCommand;
+            MenuChooseDownloadsFolder.Command = viewModel.ChooseDownloadsFolderCommand;
+            MenuDefaultDownloadsFolder.Command = viewModel.UseDefaultDownloadsFolderCommand;
             MenuOpenReadme.Command = viewModel.OpenReadmeCommand;
             MenuRemove.Command = viewModel.RemoveCommand;
             this.BindCommand(ViewModel, vm => vm.InstallCommand, view => view.InstallButton).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.InstallCommand, view => view.ResumeButton).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.OpenHealthCheckCommand, view => view.HealthCheckButton).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SkipMissingArchives, view => view.SkipBox.IsChecked).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.PickUpFromDownloads, view => view.PickUpBox.IsChecked).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.HasWaitingArchives)).Subscribe(waiting => PickUpBox.IsVisible = waiting).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.PickUpTooltip)).Subscribe(text => ToolTip.SetTip(PickUpBox, text)).DisposeWith(disposables);
 
             OnUi(vm => vm.WhenAnyValue(x => x.Name)).Subscribe(text => CollectionName.Text = text).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.Author)).Subscribe(text => AuthorName.Text = text).DisposeWith(disposables);

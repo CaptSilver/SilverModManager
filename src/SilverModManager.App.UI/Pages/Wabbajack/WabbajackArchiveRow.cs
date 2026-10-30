@@ -39,8 +39,30 @@ public sealed class WabbajackArchiveRow(ArchivePlanRow plan) : ReactiveObject
 
     public string StateText => WabbajackModlistText.State(Plan);
 
-    /// <summary>Why the row is in its state, then what is worth knowing about the archive; either may be missing.</summary>
-    public string Reason => string.Join("; ", new[] { Plan.Reason, Plan.Note }.Where(text => !string.IsNullOrEmpty(text)));
+    private const string PickUpHintText = "Download it in your browser; it is picked up from Downloads automatically";
+
+    private bool _pickUpHint;
+
+    /// <summary>
+    /// The Downloads pickup is on, so a row that waits for a browser download says where the file will be noticed.
+    /// The page sets it on rows that exist already; the row does not know the setting itself.
+    /// </summary>
+    public bool PickUpHint
+    {
+        get => _pickUpHint;
+        set
+        {
+            if (_pickUpHint == value) return;
+            _pickUpHint = value;
+            // A row that is not waiting for a download shows no hint either way.
+            if (WaitsOf(Plan)) this.RaisePropertyChanged(nameof(Reason));
+        }
+    }
+
+    /// <summary>Why the row is in its state, then what is worth knowing about the archive and where its file will be picked up; any may be missing.</summary>
+    public string Reason => string.Join("; ", new[] { Plan.Reason, Plan.Note, _pickUpHint && WaitsOf(Plan) ? PickUpHintText : null }.Where(text => !string.IsNullOrEmpty(text)));
+
+    private static bool WaitsOf(ArchivePlanRow plan) => plan.State.WaitsForUser();
 
     /// <summary>A held archive can be installed on its own, as a mod of the loadout.</summary>
     public bool CanInstall => CanInstallOf(Plan);
@@ -60,7 +82,7 @@ public sealed class WabbajackArchiveRow(ArchivePlanRow plan) : ReactiveObject
         _plan = plan;
         this.RaisePropertyChanged(nameof(Plan));
         if (old.State != plan.State || old.Opened != plan.Opened) this.RaisePropertyChanged(nameof(StateText));
-        if (old.Reason != plan.Reason || old.Note != plan.Note) this.RaisePropertyChanged(nameof(Reason));
+        if (old.Reason != plan.Reason || old.Note != plan.Note || WaitsOf(old) != WaitsOf(plan)) this.RaisePropertyChanged(nameof(Reason));
         if (CanInstallOf(old) != CanInstall) this.RaisePropertyChanged(nameof(CanInstall));
         if (CanOpenPageOf(old) != CanOpenPage) this.RaisePropertyChanged(nameof(CanOpenPage));
     }

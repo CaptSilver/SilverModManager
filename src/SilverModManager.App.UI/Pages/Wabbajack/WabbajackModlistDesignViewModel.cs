@@ -32,6 +32,11 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public ReactiveCommand<WabbajackLoadoutChoice, Unit> SelectLoadoutCommand { get; } = ReactiveCommand.Create<WabbajackLoadoutChoice>(_ => { });
     public IReadOnlyList<WabbajackArchiveRow> Archives { get; init; } = [];
     public string AcquireText { get; init; } = "3 of 312 archives still to get";
+    public bool PickUpFromDownloads { get; set; } = true;
+    public bool HasWaitingArchives { get; init; } = true;
+    public string PickUpTooltip { get; init; } = "Watching /home/you/Downloads";
+    public ReactiveCommand<Unit, Unit> ChooseDownloadsFolderCommand { get; } = ReactiveCommand.Create(() => { });
+    public ReactiveCommand<Unit, Unit> UseDefaultDownloadsFolderCommand { get; } = ReactiveCommand.Create(() => { });
     public string InboxText { get; init; } = "In the inbox but not part of this list: wrong.zip";
     public string ExtractedSizeText => "120 GB";
     public string FreeSpaceText { get; init; } = "Extracted size: at least 120 GB, 80 GB free";

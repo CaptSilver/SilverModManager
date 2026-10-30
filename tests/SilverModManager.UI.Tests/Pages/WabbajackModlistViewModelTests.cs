@@ -169,6 +169,25 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         public Size? FreeSpace() => Free;
         public Task<IReadOnlyList<UnmatchedInbox>> CheckInbox(CancellationToken cancellationToken) => Task.FromResult(Unmatched);
         public void OpenInboxFolder() { }
+
+        public bool PickUpFromDownloads { get; set; }
+        public string DownloadsFolderText { get; set; } = "/home/test/Downloads";
+        public bool IsWatchingDownloads { get; set; }
+        public int FolderChoices { get; private set; }
+        public int FolderResets { get; private set; }
+
+        public Task ChooseDownloadsFolder(CancellationToken cancellationToken)
+        {
+            FolderChoices++;
+            DownloadsFolderText = "/mnt/chosen";
+            return Task.CompletedTask;
+        }
+
+        public void UseDefaultDownloadsFolder()
+        {
+            FolderResets++;
+            DownloadsFolderText = "/home/test/Downloads";
+        }
         public Task<IReadOnlyList<UnmatchedInbox>> AddToInbox(IReadOnlyList<AbsolutePath> files, CancellationToken cancellationToken) => Task.FromResult(Unmatched);
     }
 
@@ -179,10 +198,10 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
 
     private GameId TestGame => Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First().Game.GameId;
 
-    private async Task<(WabbajackModlistViewModel Vm, FakeService Service, FakeAcquirer Acquirer)> Open(ArchivePlan plan, GameId? game = null, Size? free = null, bool createsLoadouts = false, bool load = true, bool acquirerKeepsNothingShown = false)
+    private async Task<(WabbajackModlistViewModel Vm, FakeService Service, FakeAcquirer Acquirer)> Open(ArchivePlan plan, GameId? game = null, Size? free = null, bool createsLoadouts = false, bool load = true, bool acquirerKeepsNothingShown = false, bool pickUp = false)
     {
         await SeedLoadoutRow(GameStore.Steam, "Wabbajack target");
-        var service = new FakeService(game ?? TestGame, createsLoadouts ? async () => (await SeedLoadoutRow(GameStore.Steam, "Created by install")).LoadoutId : null) { Plan = plan, Free = free };
+        var service = new FakeService(game ?? TestGame, createsLoadouts ? async () => (await SeedLoadoutRow(GameStore.Steam, "Created by install")).LoadoutId : null) { Plan = plan, Free = free, PickUpFromDownloads = pickUp };
         var acquirer = new FakeAcquirer { KeepsNothingShown = acquirerKeepsNothingShown };
         var vm = new WabbajackModlistViewModel(Provider.GetRequiredService<IWindowManager>(), Connection, service, acquirer, Provider) { FileId = SomeFile };
         if (load) await vm.LoadAsync(CancellationToken.None);

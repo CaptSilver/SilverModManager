@@ -25,6 +25,8 @@
         <MenuFlyout x:Key="ModlistMenuFlyout">
             <MenuItem x:Name="MenuCheckInbox" Header="Check inbox" />
             <MenuItem x:Name="MenuOpenInboxFolder" Header="Open inbox folder" />
+            <MenuItem x:Name="MenuChooseDownloadsFolder" Header="Choose download folder..." />
+            <MenuItem x:Name="MenuDefaultDownloadsFolder" Header="Use the default download folder" />
             <MenuItem x:Name="MenuOpenReadme" Header="Open readme" IsVisible="False" />
             <MenuItem x:Name="MenuRemove" Header="Remove modlist" Classes="Critical" IsVisible="False" />
         </MenuFlyout>
@@ -97,6 +99,7 @@
             <controls:StandardButton x:Name="ResumeButton" Type="Primary" Fill="Strong" Size="Toolbar" Text="Resume" />
             <ComboBox x:Name="LoadoutBox" MaxHeight="24" MinWidth="220" PlaceholderText="Install into…" ToolTip.Tip="Loadout the list is installed into" />
             <CheckBox x:Name="SkipBox" Content="Skip files from missing archives" VerticalAlignment="Center" />
+            <CheckBox x:Name="PickUpBox" Content="Pick up finished downloads from your Downloads folder" VerticalAlignment="Center" IsVisible="False" />
             <Separator />
             <controls:StandardButton x:Name="OpenNextFiveButton" Type="Secondary" Fill="Weak" Size="Toolbar" Text="Open next five" />
         </controls:Statusbar>

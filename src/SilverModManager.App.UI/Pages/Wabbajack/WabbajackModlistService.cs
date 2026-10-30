@@ -1,5 +1,6 @@
 using System.Reactive.Linq;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform.Storage;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -246,4 +247,30 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
         }
         return await CheckInbox(cancellationToken);
     }
+
+    private ISettingsManager Settings => provider.GetRequiredService<ISettingsManager>();
+
+    public bool PickUpFromDownloads
+    {
+        get => Settings.Get<WabbajackSettings>().PickUpFromDownloads;
+        set => Settings.Update<WabbajackSettings>(settings => settings with { PickUpFromDownloads = value });
+    }
+
+    public string DownloadsFolderText => provider.GetRequiredService<DownloadsPickup>().Folder.ToString();
+
+    public bool IsWatchingDownloads => provider.GetRequiredService<DownloadsPickup>().IsWatching;
+
+    public async Task ChooseDownloadsFolder(CancellationToken cancellationToken)
+    {
+        var picked = await provider.GetRequiredService<IAvaloniaInterop>().OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Choose the folder your browser saves downloads to",
+            AllowMultiple = false,
+        });
+        if (picked.Length == 0) return;
+        Settings.Update<WabbajackSettings>(settings => settings with { DownloadsFolder = picked[0].ToString() });
+    }
+
+    public void UseDefaultDownloadsFolder()
+        => Settings.Update<WabbajackSettings>(settings => settings with { DownloadsFolder = "" });
 }
