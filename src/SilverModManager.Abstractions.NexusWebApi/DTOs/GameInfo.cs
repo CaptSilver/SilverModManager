@@ -25,7 +25,7 @@ public class GameInfo : IJsonArraySerializable<GameInfo>
     ///    This field is for deserialization only.
     /// </remarks>
     [JsonPropertyName("id")]
-    public required uint _Id { get; set; }
+    public uint _Id { get; set; }
 
     /// <summary>
     /// Returns the ID as typed ValueObject <see cref="NexusModsGameId"/>.
@@ -36,7 +36,7 @@ public class GameInfo : IJsonArraySerializable<GameInfo>
     /// Name of the game.
     /// </summary>
     [JsonPropertyName("name")]
-    public required string Name { get; set; }
+    public string? Name { get; set; }
 
     /// <summary>
     /// URL to the forum section on the Nexus forums dedicated to this game.
@@ -76,7 +76,7 @@ public class GameInfo : IJsonArraySerializable<GameInfo>
     ///    This value is often used in API requests.
     /// </remarks>
     [JsonPropertyName("domain_name")]
-    public required string DomainName { get; set; }
+    public string? DomainName { get; set; }
 
     /// <summary>
     /// Unix timestamp of when the game was approved by the site staff.

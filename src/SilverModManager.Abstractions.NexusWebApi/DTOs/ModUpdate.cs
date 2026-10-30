@@ -32,7 +32,7 @@ public class ModUpdate : IJsonArraySerializable<ModUpdate>
     ///    Expressed as a Unix timestamp.
     /// </remarks>
     [JsonPropertyName("latest_file_update")]
-    public required long LatestFileUpdated { get; set; }
+    public long LatestFileUpdated { get; set; }
 
     /// <summary>
     /// The last time a file on the mod page was updated.

@@ -16,14 +16,14 @@ public class Category : IJsonSerializable<Category>
     /// Unique identifier for the category.
     /// </summary>
     [JsonPropertyName("category_id")]
-    public required int CategoryId { get; set; }
+    public int CategoryId { get; set; }
 
     /// <summary>
     /// Human readable of the category.
     /// This gets displayed to the end user.
     /// </summary>
     [JsonPropertyName("name")]
-    public required string Name { get; set; }
+    public string? Name { get; set; }
 
     // TODO: Convenient way to handle this. [Note: Whether we will pick on this up is unknown; depends on state of GraphQL API down the road]
 

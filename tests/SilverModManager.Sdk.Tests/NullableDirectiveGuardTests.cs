@@ -44,7 +44,12 @@ public static partial class NullableDirectiveGuardTests
     {
         if (NullableDisable().IsMatch(line)) return true;
         var pragma = PragmaDisable().Match(line);
-        return pragma.Success && NullableCode().IsMatch(pragma.Groups["codes"].Value);
+        if (!pragma.Success) return false;
+        // A bare disable silences every warning, nullable ones included.
+        var codes = pragma.Groups["codes"].Value;
+        var comment = codes.IndexOf("//", StringComparison.Ordinal);
+        if (comment >= 0) codes = codes[..comment];
+        return string.IsNullOrWhiteSpace(codes) || NullableCode().IsMatch(codes);
     }
 
     [Fact]
@@ -52,6 +57,13 @@ public static partial class NullableDirectiveGuardTests
     {
         const string source = "#nullable disable\nclass C { }\n#pragma warning disable CS8618, 8625\n#pragma warning disable CS0168\n#nullable disable warnings\n#pragma warning disable CS8714\n";
         FindDisabledNullableDirectives(source).Should().Equal(1, 3, 5, 6);
+    }
+
+    [Fact]
+    public static void Test_FindDisabledNullableDirectives_MatchesBarePragmaDisable()
+    {
+        const string source = "#pragma warning disable\n#pragma warning disable // everything\n  #  pragma warning disable   \n#pragma warning disable CS1591 // docs\n";
+        FindDisabledNullableDirectives(source).Should().Equal(1, 2, 3);
     }
 
     [Fact]
