@@ -235,6 +235,18 @@ public class LoopbackCallbackListenerTests : IDisposable
     }
 
     [Fact]
+    public async Task ClosingTheListenerUnderAWaitCancelsItInsteadOfFaultingIt()
+    {
+        // A faulted wait that nobody awaits is reported as an unobserved task exception; a cancelled one is not.
+        var wait = Wait();
+
+        _listener.Dispose();
+
+        await wait.Invoking(w => w.WaitAsync(Long)).Should().ThrowAsync<OperationCanceledException>();
+        wait.IsCanceled.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task NothingFromTheQueryReachesTheLog()
     {
         var logger = new CapturingLogger();

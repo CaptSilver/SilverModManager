@@ -39,6 +39,7 @@ public sealed class LoopbackCallbackListener : IDisposable
     private readonly ILogger _logger;
     private readonly TimeSpan _requestTimeout;
     private int _waiting;
+    private int _closed;
 
     /// <param name="logger">Receives what the listener did, never what the requests carried.</param>
     /// <param name="requestTimeout">
@@ -86,13 +87,23 @@ public sealed class LoopbackCallbackListener : IDisposable
         {
             throw new SignInTimedOutException(siteName);
         }
+        catch (Exception e) when (Volatile.Read(ref _closed) == 1 && e is SocketException or ObjectDisposedException)
+        {
+            // Closing the listener aborts the pending accept. Ending as cancelled rather than faulted means a wait
+            // that its owner has already given up on is not reported as an unobserved task exception.
+            throw new OperationCanceledException("The sign-in listener was closed.", e);
+        }
         finally
         {
             _listener.Stop();
         }
     }
 
-    public void Dispose() => _listener.Stop();
+    public void Dispose()
+    {
+        Volatile.Write(ref _closed, 1);
+        _listener.Stop();
+    }
 
     /// <summary>
     /// Answers one connection. Returns the result when it was the real callback, null to keep waiting.

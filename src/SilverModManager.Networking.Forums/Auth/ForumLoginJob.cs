@@ -76,18 +76,10 @@ public sealed class ForumLoginJob : IForumLoginJob, IJobDefinitionWithStart<Foru
             var callback = listener.WaitAsync(state, Site.DisplayName(), _timeout, token);
 
             // The authorize URL carries the state and challenge, so it goes to the browser and the overlay only.
-            try
-            {
-                var authorize = _oauth.BuildAuthorizeUri(Site, listener.RedirectUri, state, challenge);
-                LoginUri.OnNext(authorize);
-                _os.OpenUri(authorize);
-            }
-            catch
-            {
-                // Leaving closes the listener under the wait, which then faults with nobody awaiting it.
-                _ = callback.ContinueWith(t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted);
-                throw;
-            }
+            // If opening it throws, leaving closes the listener under the wait, which then ends as cancelled.
+            var authorize = _oauth.BuildAuthorizeUri(Site, listener.RedirectUri, state, challenge);
+            LoginUri.OnNext(authorize);
+            _os.OpenUri(authorize);
 
             var code = (await callback).Code;
             return await _oauth.ExchangeCode(Site, code, verifier, listener.RedirectUri, token);
