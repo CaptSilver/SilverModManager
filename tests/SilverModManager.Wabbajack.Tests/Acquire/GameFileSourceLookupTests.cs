@@ -257,6 +257,22 @@ public class GameFileSourceLookupTests(ITestOutputHelper helper) : AcquireTestBa
     {
         var loadout = await CreateLoadout();
         await BackUpOriginal(loadout);
+        await loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, GameBsa)).WriteAllBytesAsync(GameBsaBytes.Append((byte)1).ToArray());
+        var recorded = Hash.From((await MultiHasher.HashStream(new MemoryStream(GameBsaBytes))).XxHash64.Value ^ 0xFFUL);
+        await RecordRelation(GameBsaBytes, _ => recorded);
+        long read = 0;
+
+        var described = await Lookup(Refresh(loadout)).Describe(GameBsa, onRead: n => read += n);
+
+        read.Should().Be(0, "the live file has another size, so it is not the original, and the relation names the backup's digests");
+        described!.Value.XxHash64.Should().Be(FileIdentity.XxHash64(recorded));
+    }
+
+    [Fact]
+    public async Task ABackedUpOriginalWithARecordedRelation_IsNotUnpackedWhenOnlyTheLiveFileIsRead()
+    {
+        var loadout = await CreateLoadout();
+        await BackUpOriginal(loadout);
         await ReplaceTheLiveFile(loadout);
         var recorded = Hash.From((await MultiHasher.HashStream(new MemoryStream(GameBsaBytes))).XxHash64.Value ^ 0xFFUL);
         await RecordRelation(GameBsaBytes, _ => recorded);
@@ -264,7 +280,7 @@ public class GameFileSourceLookupTests(ITestOutputHelper helper) : AcquireTestBa
 
         var described = await Lookup(Refresh(loadout)).Describe(GameBsa, onRead: n => read += n);
 
-        read.Should().Be(0);
+        read.Should().Be(LiveReadBytes, "the live file has the original's size and no recorded digest, so it is read once; the backup is not");
         described!.Value.XxHash64.Should().Be(FileIdentity.XxHash64(recorded));
     }
 
@@ -282,5 +298,70 @@ public class GameFileSourceLookupTests(ITestOutputHelper helper) : AcquireTestBa
         first.Should().BeGreaterThan(0);
         second.Should().Be(0);
         after!.Value.XxHash64.Should().Be(Hash64(GameBsaBytes));
+    }
+
+    /// <summary>The bytes one hashing of a file returns: the whole file for the full digests and again for the sampled minimal hash, which a file this small is entirely.</summary>
+    private static int LiveReadBytes => 2 * GameBsaBytes.Length;
+
+    /// <summary>Writes the same bytes again, so the file keeps its size but no recorded digest matches its modified time.</summary>
+    private static async Task Touch(Loadout.ReadOnly loadout, byte[] bytes)
+    {
+        var live = loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, GameBsa));
+        await live.WriteAllBytesAsync(bytes);
+        File.SetLastWriteTimeUtc(live.ToString(), DateTime.UtcNow.AddMinutes(5));
+    }
+
+    [Fact]
+    public async Task AnUnrecordedLiveFile_TheSizeOfTheBackup_IsReadLiveAndTheBackupIsNotUnpacked()
+    {
+        var loadout = await CreateLoadout();
+        await BackUpOriginal(loadout);
+        await Touch(loadout, GameBsaBytes);
+        long read = 0;
+        var opened = new List<AbsolutePath>();
+        var lookup = new GameFileSourceLookup(Refresh(loadout), Connection, FileStore,
+            ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileIdentityResolver>(),
+            ServiceProvider.GetRequiredService<IFileHashesService>())
+        {
+            OpenLive = file => { opened.Add(file); return SequentialFileRead.Open(file); },
+        };
+
+        var described = await lookup.Describe(GameBsa, onRead: n => read += n);
+
+        opened.Should().ContainSingle("the live file is read once");
+        read.Should().Be(LiveReadBytes, "it equals the original, so the backup is never unpacked on top of it");
+        described!.Value.XxHash64.Should().Be(Hash64(GameBsaBytes));
+    }
+
+    [Fact]
+    public async Task AnUnrecordedLiveFile_ThatEqualsTheBackup_IsRememberedByItsFingerprint()
+    {
+        var loadout = await CreateLoadout();
+        await BackUpOriginal(loadout);
+        await Touch(loadout, GameBsaBytes);
+        long second = 0;
+
+        await Lookup(Refresh(loadout)).Describe(GameBsa);
+        await Lookup(Refresh(loadout)).Describe(GameBsa, onRead: n => second += n);
+
+        second.Should().Be(0, "the live read left a fingerprint row and a relation");
+    }
+
+    [Fact]
+    public async Task AnUnrecordedLiveFile_ThatDiffersFromTheBackup_IsDescribedByTheBackup()
+    {
+        var loadout = await CreateLoadout();
+        await BackUpOriginal(loadout);
+        var changed = (byte[])GameBsaBytes.Clone();
+        changed[0] ^= 0xFF;
+        await Touch(loadout, changed);
+
+        var described = await Lookup(Refresh(loadout)).Describe(GameBsa);
+        var (stream, _) = await Lookup(Refresh(loadout)).Open(GameBsa);
+
+        described!.Value.XxHash64.Should().Be(Hash64(GameBsaBytes));
+        using var bytes = new MemoryStream();
+        await using (stream) await stream.CopyToAsync(bytes);
+        bytes.ToArray().Should().Equal(GameBsaBytes);
     }
 }

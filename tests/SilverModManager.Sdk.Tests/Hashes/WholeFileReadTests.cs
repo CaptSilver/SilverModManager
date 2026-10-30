@@ -114,4 +114,24 @@ public class WholeFileReadTests
             path.Delete();
         }
     }
+
+    [Fact]
+    public async Task TheSequentialOpener_OnTheRealFileSystem_ReadsWithoutAStreamBuffer()
+    {
+        var path = FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory).Combine("silver-sequential-" + Guid.NewGuid().ToString("N"));
+        await File.WriteAllBytesAsync(path.GetFullPath(), Random(OneMiB), TestContext.Current.CancellationToken);
+        try
+        {
+            await using var stream = SequentialFileRead.Open(path);
+
+            // A buffered FileStream takes a lock on every read and copies through a 4 KB buffer; the hasher asks for
+            // megabyte blocks, so the buffer only costs. The strategy is private, hence the reflection.
+            var strategy = typeof(FileStream).GetField("_strategy", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(stream)!;
+            strategy.GetType().Name.Should().NotContain("Buffered");
+        }
+        finally
+        {
+            path.Delete();
+        }
+    }
 }

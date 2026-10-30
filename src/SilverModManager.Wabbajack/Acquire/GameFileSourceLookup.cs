@@ -41,9 +41,11 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
     private readonly record struct Backup(FileIdentity Key, FileIdentity Original, Size Size);
 
     /// <summary>The bytes a lookup reads: the live file with the fingerprint it had, or the store's copy of the original.</summary>
-    private readonly record struct Source(Backup? Backup, AbsolutePath Live, FileFingerprint Fingerprint, FileIdentity? KnownIdentity);
+    /// <param name="LiveUnverified">The backup is a candidate only: the live file has the original's size but no recorded digest says whether it is the original.</param>
+    private readonly record struct Source(Backup? Backup, AbsolutePath Live, FileFingerprint Fingerprint, FileIdentity? KnownIdentity, bool LiveUnverified = false);
 
-    private readonly record struct Described(FileIdentity XxHash3, FileIdentity XxHash64, Size Size);
+    /// <param name="FromBackup">The digests are those of the store's copy of the original, because the live file is not it.</param>
+    private readonly record struct Described(FileIdentity XxHash3, FileIdentity XxHash64, Size Size, bool FromBackup = false);
 
     private readonly Lazy<Dictionary<GamePath, (FileIdentity Identity, Size Size, DateTimeOffset LastModified)>> _initialState
         = new(() => installationId is { } owner ? ReadDiskState(connection, owner, GameInstallMetadata.InitialDiskStateTransaction) : [], LazyThreadSafetyMode.ExecutionAndPublication);
@@ -81,13 +83,15 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
     {
         var source = await Locate(gameFile)
             ?? throw new FileNotFoundException($"The game folder has no '{gameFile}'.");
-        if (source.Backup is { } backup)
+        if (source.Backup is { } backup && !source.LiveUnverified)
             return (await fileStore.GetFileStream(backup.Key, cancellationToken), backup.Key);
 
         // Described once and remembered, so opening a file a second time costs no extra pass over it.
-        var described = await Describe(gameFile, cancellationToken)
+        var described = await DescribeOnce(gameFile, onRead: null, cancellationToken)
             ?? throw new FileNotFoundException($"The game folder has no '{gameFile}'.");
-        return (source.Live.Read(), described.XxHash3);
+        return described.FromBackup && source.Backup is { } original
+            ? (await fileStore.GetFileStream(original.Key, cancellationToken), original.Key)
+            : (source.Live.Read(), described.XxHash3);
     }
 
     /// <summary>
@@ -96,12 +100,15 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
     /// </summary>
     /// <param name="onRead">Told how many bytes each read of the file returned, so a caller can show how far a big file has got. Not called for a file that needs no read, or one already described.</param>
     public async Task<(FileIdentity XxHash3, FileIdentity XxHash64, Size Size)?> Describe(RelativePath gameFile, CancellationToken cancellationToken = default, Action<int>? onRead = null)
+        => await DescribeOnce(gameFile, onRead, cancellationToken) is { } result ? (result.XxHash3, result.XxHash64, result.Size) : null;
+
+    private async Task<Described?> DescribeOnce(RelativePath gameFile, Action<int>? onRead, CancellationToken cancellationToken)
     {
         // Several archives can name one file; whichever asks first reads it and the rest take its answer.
         var entry = _described.GetOrAdd(gameFile, _ => new Lazy<Task<Described?>>(() => DescribeUncached(gameFile, onRead, cancellationToken)));
         try
         {
-            return await entry.Value is { } result ? (result.XxHash3, result.XxHash64, result.Size) : null;
+            return await entry.Value;
         }
         catch
         {
@@ -115,17 +122,34 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
     {
         if (await Locate(gameFile) is not { } source) return null;
 
+        if (source.LiveUnverified)
+        {
+            // Nothing recorded says what the live file is. Reading it is a plain read and leaves a fingerprint row, where
+            // unpacking the backup is a decompression; the backup is only needed if the live file turns out to differ.
+            var (live, hashes) = await ReadLive(gameFile, source, onRead, cancellationToken);
+            if (source.Backup is { } candidate && IsOriginal(hashes, candidate)) return live;
+        }
+
         var known = source.Backup?.Key ?? source.KnownIdentity;
         var size = source.Backup?.Size ?? source.Fingerprint.Size;
         if (known is { } identity
             && identityResolver.TryConvert(identity, size, HashKind.XxHash3, out var xxHash3)
             && identityResolver.TryConvert(identity, size, HashKind.XxHash64, out var xxHash64))
-            return new Described(xxHash3, xxHash64, size);
+            return new Described(xxHash3, xxHash64, size, FromBackup: source.Backup is not null);
 
         return source.Backup is { } backup
             ? await ReadBackup(backup, onRead, cancellationToken)
-            : await ReadLive(gameFile, source, onRead, cancellationToken);
+            : (await ReadLive(gameFile, source, onRead, cancellationToken)).Described;
     }
+
+    /// <summary>
+    /// Whether the bytes just read are the backed-up original. Compares the digest the original is recorded under
+    /// straight from the read, which a recorded relation could not do before the row it is about to be given exists.
+    /// </summary>
+    private bool IsOriginal(MultiHash hashes, Backup backup)
+        => backup.Original.Kind is HashKind.XxHash3 or HashKind.Sha1 or HashKind.Md5 or HashKind.XxHash64 or HashKind.Crc32
+            ? FileIdentity.Of(hashes, backup.Original.Kind).MatchSameKind(backup.Original) == IdentityMatch.Same
+            : identityResolver.Resolve(FileIdentity.XxHash3(hashes.XxHash3), backup.Original, backup.Size) == IdentityMatch.Same;
 
     private async Task<Described> ReadBackup(Backup backup, Action<int>? onRead, CancellationToken cancellationToken)
     {
@@ -134,19 +158,25 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
         if (!stored.CanSeek)
         {
             var both = await Hasher.HashAsync(Counting(stored, onRead), cancellationToken: cancellationToken);
-            return new Described(FileIdentity.XxHash3(both.Hash1), FileIdentity.XxHash64(both.Hash2), size);
+            return new Described(FileIdentity.XxHash3(both.Hash1), FileIdentity.XxHash64(both.Hash2), size, FromBackup: true);
         }
 
         var hashes = await MultiHasher.HashStream(Counting(stored, onRead), cancellationToken);
         await Remember(() => fileHashes.RecordHashRelations([hashes], CancellationToken.None), "backed-up original");
-        return new Described(FileIdentity.XxHash3(hashes.XxHash3), FileIdentity.XxHash64(hashes.XxHash64), size);
+        return new Described(FileIdentity.XxHash3(hashes.XxHash3), FileIdentity.XxHash64(hashes.XxHash64), size, FromBackup: true);
     }
 
-    private async Task<Described> ReadLive(RelativePath gameFile, Source source, Action<int>? onRead, CancellationToken cancellationToken)
+    private async Task<(Described Described, MultiHash Hashes)> ReadLive(RelativePath gameFile, Source source, Action<int>? onRead, CancellationToken cancellationToken)
     {
         MultiHash hashes;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         await using (var stream = OpenLive(source.Live))
             hashes = await MultiHasher.HashStream(Counting(stream, onRead), cancellationToken);
+
+        // The only record of how fast a game folder reads; a crawl shows up here as a low MB/s on a named file.
+        connection.ServiceProvider.GetRequiredService<ILogger<GameFileSourceLookup>>()
+            .LogTrace("Hashed {File}: {Size} in {Elapsed} ms ({Rate:F1} MB/s)", gameFile, source.Fingerprint.Size, clock.ElapsedMilliseconds,
+                source.Fingerprint.Size.Value / 1e6 / Math.Max(clock.Elapsed.TotalSeconds, 1e-6));
 
         // The rows outlive this lookup, so they are written only for bytes read under a fingerprint that held.
         if (FileFingerprint.Of(source.Live) == source.Fingerprint)
@@ -154,7 +184,7 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
             var file = new IndexedFileHash(new GamePath(LocationId.Game, gameFile), source.Fingerprint.Size, source.Fingerprint.LastModified, FileIdentity.XxHash3(hashes.XxHash3), hashes);
             await Remember(() => fileHashes.RecordIndexedFiles(installation, [file], CancellationToken.None), gameFile.ToString());
         }
-        return new Described(FileIdentity.XxHash3(hashes.XxHash3), FileIdentity.XxHash64(hashes.XxHash64), source.Fingerprint.Size);
+        return (new Described(FileIdentity.XxHash3(hashes.XxHash3), FileIdentity.XxHash64(hashes.XxHash64), source.Fingerprint.Size), hashes);
     }
 
     /// <summary>
@@ -201,11 +231,13 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
 
         var fingerprint = FileFingerprint.Of(live);
         var known = KnownIdentity(gameFile, fingerprint);
-        if (backup is { } original
-            && !(known is { } liveIdentity
-                 && fingerprint.Size == original.Size
-                 && identityResolver.Resolve(liveIdentity, original.Original, original.Size) == IdentityMatch.Same))
-            return new Source(original, live, fingerprint, known);
+        if (backup is { } original)
+        {
+            if (fingerprint.Size != original.Size) return new Source(original, live, fingerprint, known);
+            if (known is not { } liveIdentity) return new Source(original, live, fingerprint, null, LiveUnverified: true);
+            if (identityResolver.Resolve(liveIdentity, original.Original, original.Size) != IdentityMatch.Same)
+                return new Source(original, live, fingerprint, known);
+        }
 
         return new Source(null, live, fingerprint, known);
     }

@@ -11,15 +11,18 @@ public static class SequentialFileRead
     private const int PosixFadvSequential = 2;
 
     /// <summary>
-    /// Opens the file through its file system and, on Linux, tells the kernel it will be read in order so it reads
-    /// ahead further. The stream's own 4 KB buffer is bypassed by any read at least that large, so a hasher asking
-    /// for <see cref="HashingLimits.ReadBlockSize"/> bytes at a time reaches the disk directly. The hint is
-    /// best-effort: a file system that does not return a <see cref="FileStream"/> is read as it comes.
+    /// Opens the file for a read from the first byte to the last. On the real file system the stream has no buffer of
+    /// its own: a hasher asks for <see cref="HashingLimits.ReadBlockSize"/> bytes at a time, so a 4 KB buffer would only
+    /// add a lock and a copy to every read. On Linux the kernel is also told the file will be read in order, so it reads
+    /// ahead further. The hint is best-effort. Any other file system (an in-memory one in tests) is read as it comes.
     /// </summary>
     public static Stream Open(AbsolutePath file)
     {
-        var stream = file.Read();
-        if (stream is FileStream { SafeFileHandle.IsInvalid: false } fileStream) AdviseSequential(fileStream);
+        if (file.FileSystem is not FileSystem) return file.Read();
+
+        var stream = new FileStream(file.GetFullPath(), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete,
+            bufferSize: 0, FileOptions.SequentialScan);
+        if (!stream.SafeFileHandle.IsInvalid) AdviseSequential(stream);
         return stream;
     }
 
