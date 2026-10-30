@@ -7,9 +7,11 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NexusMods.HyperDuck;
 using NexusMods.HyperDuck.Adaptor;
 using NexusMods.HyperDuck.Adaptor.Impls;
+using NexusMods.HyperDuck.Internals;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.QueryFunctions;
@@ -23,6 +25,7 @@ public class QueryEngine : IQueryEngine, IAsyncDisposable
 {
     public record ActiveConnection(ushort LocalId, string Name, ushort UniqueId, IConnection Connection);
     
+    private readonly ILogger<QueryEngine>? _logger;
     private readonly Registry _registry;
     private readonly NexusMods.HyperDuck.DuckDB _db;
     private readonly IAttribute[] _declaredAttributes;
@@ -39,6 +42,7 @@ public class QueryEngine : IQueryEngine, IAsyncDisposable
 
     public QueryEngine(IServiceProvider services)
     {
+        _logger = services.GetService<ILogger<QueryEngine>>();
         _registry = new Registry(services.GetServices<IResultAdaptorFactory>(),
             services.GetServices<IRowAdaptorFactory>(), 
             services.GetServices<IValueAdaptorFactory>(),
@@ -130,6 +134,15 @@ public class QueryEngine : IQueryEngine, IAsyncDisposable
     // connections without looking at who uses them.
     private static readonly FieldInfo RefusesQueriesField = PoolField("_disposed");
 
+    // HyperDuck's live-query updater, created on the first live query. The Lazy wrapping it is internal.
+    private static readonly FieldInfo LiveQueryUpdaterField = PoolField("LiveQueryUpdater");
+
+    // The updater only forgets its task after awaiting it successfully, so a faulted one is rethrown by every later
+    // DisposeAsync, including the one DuckDB makes while closing.
+    private static readonly FieldInfo UpdaterTaskField =
+        typeof(LiveQueryUpdater).GetField("_task", BindingFlags.Instance | BindingFlags.NonPublic)
+        ?? throw new InvalidOperationException("HyperDuck's LiveQueryUpdater no longer has a field named _task; a faulted updater cannot be cleared");
+
     private static FieldInfo PoolField(string name) =>
         typeof(NexusMods.HyperDuck.DuckDB).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)
         ?? throw new InvalidOperationException($"NexusMods.HyperDuck.DuckDB no longer has a field named {name}; the query drain cannot count running queries");
@@ -149,11 +162,43 @@ public class QueryEngine : IQueryEngine, IAsyncDisposable
         return Math.Max(0, all - idle);
     }
 
+    /// <summary>
+    /// HyperDuck's live-query updater, or null while no live query has been registered.
+    /// </summary>
+    internal LiveQueryUpdater? LiveQueryUpdaterIfStarted()
+    {
+        var lazy = (Lazy<LiveQueryUpdater>)LiveQueryUpdaterField.GetValue(_db)!;
+        return lazy.IsValueCreated ? lazy.Value : null;
+    }
+
+    private async ValueTask StopLiveQueryUpdater()
+    {
+        var updater = LiveQueryUpdaterIfStarted();
+        if (updater == null) return;
+        try
+        {
+            await updater.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // A pulse that failed earlier (typically because the connection it queries was disposed first) left the
+            // task faulted, and awaiting it rethrows. The updater is stopped either way, and DuckDB still has to close,
+            // which it cannot do while the faulted task is there to be rethrown again.
+            _logger?.LogWarning(ex, "A live query update failed before the query engine shut down");
+            UpdaterTaskField.SetValue(updater, null);
+        }
+    }
+
     private int _closed;
 
     public async ValueTask DisposeAsync()
     {
         if (Volatile.Read(ref _closed) == 1) return;
+
+        // The updater re-runs live queries every 250 ms and only treats a cancelled delay as a clean stop, so once
+        // queries are refused its next pulse throws, the task faults, and DuckDB.DisposeAsync rethrows that without
+        // closing anything. HyperDuck stops it first for the same reason, so it is stopped here first too.
+        await StopLiveQueryUpdater().ConfigureAwait(false);
 
         // From here no query can start: with queries arriving back to back there would never be a moment with none
         // running. The ones already running finish.

@@ -2,8 +2,10 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.MnemonicDB;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.MnemonicDB.Storage;
 using SilverModManager.MnemonicDB.Storage.Abstractions;
+using SilverModManager.Sdk.Games;
 using RocksDbBackend = SilverModManager.MnemonicDB.Storage.RocksDbBackend.Backend;
 
 namespace SilverModManager.DataModel.Tests;
@@ -19,7 +21,16 @@ public class QueryEngineDisposeTests
         .AddMnemonicDB()
         .AddDatomStoreSettings(new DatomStoreSettings())
         .AddSingleton<IStoreBackend, RocksDbBackend>()
+        .AddGameInstallMetadataModel()
         .BuildServiceProvider();
+
+    // A commit that adds a datom, which bumps the revision of the model table function that the live query depends on.
+    private static async Task CommitADatom(IConnection connection, string name)
+    {
+        using var tx = connection.BeginTransaction();
+        tx.Add(tx.TempId(), GameInstallMetadata.Name, name);
+        await tx.Commit();
+    }
 
     [Fact]
     public async Task DisposeWaitsForAQueryThatIsStillRunning()
@@ -99,6 +110,81 @@ public class QueryEngineDisposeTests
         engine.ConnectionsInUse().Should().Be(1);
         held.Dispose();
         engine.ConnectionsInUse().Should().Be(0);
+    }
+
+    // HyperDuck's live-query updater pulses every 250 ms and treats only a cancelled delay as a clean stop. If it is
+    // still running while the engine refuses queries, the pulse throws ObjectDisposedException, the updater task
+    // faults, and the later DuckDB.DisposeAsync rethrows it without closing anything.
+    [Fact]
+    public async Task DisposeWithALiveQueryRegisteredStopsTheUpdaterBeforeRefusingQueries()
+    {
+        await using var provider = BuildProvider();
+        var engine = (QueryEngine)provider.GetRequiredService<IQueryEngine>();
+        var connection = provider.GetRequiredService<IConnection>();
+        await CommitADatom(connection, "before");
+
+        using var subscription = connection
+            .Query<EntityId>($"SELECT Id FROM mdb_GameInstallMetadata(Db=>{connection})")
+            .Observe(x => x)
+            .Subscribe(_ => { });
+        await Task.Delay(600); // let the updater run a few pulses
+
+        var running = engine.DuckDb.Connect();
+        var dispose = engine.DisposeAsync().AsTask();
+        await Task.Delay(100);
+
+        // Changes the revision the live query depends on, so the next pulse would re-run it if the updater were alive.
+        await CommitADatom(connection, "during the drain");
+        await Task.Delay(800); // several pulses
+
+        running.Dispose();
+        await dispose.WaitAsync(TimeSpan.FromSeconds(30)); // rethrows if the updater faulted
+
+        var connect = () => engine.DuckDb.Connect();
+        connect.Should().Throw<ObjectDisposedException>();
+    }
+
+    // The updater's pulse fails once the connection it queries is gone, and the container disposes the connection before
+    // the engine. The failure must not stop DuckDB from closing.
+    [Fact]
+    public async Task DisposeStillClosesDuckDbWhenALiveQueryUpdateAlreadyFailed()
+    {
+        await using var provider = BuildProvider();
+        var engine = (QueryEngine)provider.GetRequiredService<IQueryEngine>();
+        var connection = provider.GetRequiredService<IConnection>();
+        await CommitADatom(connection, "before");
+        using var subscription = connection
+            .Query<EntityId>($"SELECT Id FROM mdb_GameInstallMetadata(Db=>{connection})")
+            .Observe(x => x)
+            .Subscribe(_ => { });
+
+        engine.LiveQueryUpdaterIfStarted()!.Add(new FailingLiveQuery());
+        await Task.Delay(600); // the next pulse throws and faults the updater task
+
+        await engine.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(30));
+
+        var connect = () => engine.DuckDb.Connect();
+        connect.Should().Throw<ObjectDisposedException>("DuckDB closed despite the faulted updater");
+    }
+
+    private sealed class FailingLiveQuery : NexusMods.HyperDuck.Internals.ILiveQuery
+    {
+        public ulong Id { get; } = NexusMods.HyperDuck.Internals.ILiveQuery.NextId();
+        public void Update() => throw new InvalidOperationException("live query failure injected by the test");
+        public void Dispose() { }
+    }
+
+    [Fact]
+    public async Task TheEngineCanFindHyperDucksLiveQueryUpdater()
+    {
+        // The updater hangs off a private member of DuckDB; a package update that renames it has to fail here.
+        await using var provider = BuildProvider();
+        var engine = (QueryEngine)provider.GetRequiredService<IQueryEngine>();
+
+        engine.LiveQueryUpdaterIfStarted().Should().BeNull("nothing has registered a live query yet");
+        var connection = provider.GetRequiredService<IConnection>();
+        using var subscription = connection.Query<EntityId>($"SELECT Id FROM mdb_GameInstallMetadata(Db=>{connection})").Observe(x => x).Subscribe(_ => { });
+        engine.LiveQueryUpdaterIfStarted().Should().NotBeNull();
     }
 
     // The shape that killed the process before the dispose test was narrowed to the backend: queries running while
