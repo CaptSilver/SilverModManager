@@ -77,7 +77,8 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                         x => x.IsInstalling.Value,
                         static (isDownloading, isInstalling) => isDownloading || isInstalling
                     ))
-                    .Subscribe(isActive => Spinner.IsVisible = isActive);
+                    .Subscribe(isActive => Spinner.IsVisible = isActive)
+                    .DisposeWith(d);
                 
                 this.WhenAnyValue(view => view.ViewModel)
                     .WhereNotNull()
