@@ -1,4 +1,6 @@
 using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.Internals;
 using RocksDbSharp;
@@ -7,7 +9,12 @@ namespace SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 
 internal struct RocksDbIteratorWrapper : ILowLevelIterator, IRefDatomPeekingEnumerator
 {
+    // The key and value are copied out of RocksDB while the lease is held. A lease only covers a native call, and
+    // the pointers RocksDB hands back point into memory the database owns. The caller reads them after the call has
+    // returned, which can be after the database was closed. The buffers are pinned so the pointers stay valid.
     private Ptr _key;
+    private byte[]? _keyBuffer;
+    private byte[]? _valueBuffer;
     private bool _started;
     private readonly Iterator _iterator;
     private readonly Backend _backend;
@@ -39,7 +46,7 @@ internal struct RocksDbIteratorWrapper : ILowLevelIterator, IRefDatomPeekingEnum
         if (_iterator.Valid())
         {
             var kPtr = Native.Instance.rocksdb_iter_key(_iterator.Handle, out var kLen);
-            _key = new Ptr((byte*)kPtr, (int)kLen);
+            _key = CopyOut(ref _keyBuffer, (byte*)kPtr, (int)kLen);
             return descriptor.ShouldContinue(_key.Span, useHistory);
         }
         return false;
@@ -56,8 +63,17 @@ internal struct RocksDbIteratorWrapper : ILowLevelIterator, IRefDatomPeekingEnum
         {
             using var lease = _backend.BeginUse();
             var vPtr = Native.Instance.rocksdb_iter_value(_iterator.Handle, out var vLen);
-            return new Ptr((byte*)vPtr, (int)vLen);
+            return CopyOut(ref _valueBuffer, (byte*)vPtr, (int)vLen);
         }
+    }
+
+    private static unsafe Ptr CopyOut(ref byte[]? buffer, byte* source, int length)
+    {
+        if (buffer is null || buffer.Length < length)
+            buffer = GC.AllocateUninitializedArray<byte>(Math.Max(length, 256), pinned: true);
+
+        new ReadOnlySpan<byte>(source, length).CopyTo(buffer);
+        return new Ptr((byte*)Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(buffer)), length);
     }
 
     public bool TryGetRetractionId(out TxId id)

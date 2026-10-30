@@ -215,6 +215,11 @@ public class Backend : IStoreBackend
         lock (_useGate)
         {
             _closing = true;
+
+            // BeginUse increments the count and then checks the flag; this side sets the flag and then reads the
+            // count. Without a full fence the flag store can be ordered after the count load, and both sides then
+            // see "not yet": the database would be freed under a call that has just started.
+            Interlocked.MemoryBarrier();
             var deadline = DateTime.UtcNow + UseWait;
             while (Volatile.Read(ref _activeUses) > 0)
             {

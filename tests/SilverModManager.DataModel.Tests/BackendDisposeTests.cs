@@ -6,7 +6,9 @@ using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.MnemonicDB.Storage;
 using SilverModManager.MnemonicDB.Storage.Abstractions;
+using RocksDbSharp;
 using RocksDbBackend = SilverModManager.MnemonicDB.Storage.RocksDbBackend.Backend;
+using RocksDbIteratorWrapper = SilverModManager.MnemonicDB.Storage.RocksDbBackend.RocksDbIteratorWrapper;
 
 namespace SilverModManager.DataModel.Tests;
 
@@ -66,6 +68,33 @@ public class BackendDisposeTests
         var resume = () => segment.MoveNext();
         resume.Should().Throw<ObjectDisposedException>();
         segment.Dispose(); // must not run native code either
+    }
+
+    // The lease covers a native call, not what the caller does with the memory the call returned. A key or value read
+    // after the lease ended, while the database closes, would be read from the closed database, so the wrapper hands
+    // out its own copy. Moving the native iterator on overwrites the memory a pointer into RocksDB would still show.
+    [Fact]
+    public async Task TheKeyAndValueOfARowAreCopiedOutOfTheDatabaseUnderTheLease()
+    {
+        await using var provider = BuildProvider();
+        var connection = provider.GetRequiredService<IConnection>();
+        var backend = (RocksDbBackend)provider.GetRequiredService<IStoreBackend>();
+        await connection.BeginTransaction().Commit();
+
+        var native = backend.NewIterator(new ReadOptions());
+        var rows = new RocksDbIteratorWrapper(backend, native);
+        rows.MoveNext(SliceDescriptor.AllEntities(PartitionId.Attribute)).Should().BeTrue("the store holds the attribute definitions");
+        var key = rows.Current;
+        var keyBefore = key.Span.ToArray();
+        var value = rows.ExtraValueSpan;
+        var valueBefore = value.Span.ToArray();
+
+        native.Next();
+        native.Next();
+
+        key.Span.ToArray().Should().Equal(keyBefore, "the key must not live in memory the database owns");
+        value.Span.ToArray().Should().Equal(valueBefore, "the value must not live in memory the database owns");
+        rows.Dispose();
     }
 
     [Fact]
