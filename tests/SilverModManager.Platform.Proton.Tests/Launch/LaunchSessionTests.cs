@@ -593,6 +593,16 @@ public class LaunchSessionTests : IDisposable
         recorded.Should().BeNull();
     }
 
+    [Fact]
+    public async Task ALaunchGivenNeitherAPlanNorAWait_FailsInsteadOfReportingAStoppedGame()
+    {
+        var result = await NewSession().Run(_context, resolvePlan: null, whileRunning: null, CancellationToken.None);
+
+        result.ExitCode.Should().Be(LaunchSession.FailureExitCode);
+        result.Message.Should().Contain("neither a plan nor a wait");
+        _processes.Started.Should().BeFalse();
+    }
+
     private RecordedLaunch? ReadRecorded()
     {
         using var reader = new InstallationLock(LockPath);

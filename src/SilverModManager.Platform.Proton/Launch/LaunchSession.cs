@@ -215,7 +215,7 @@ public sealed class LaunchSession
         return new RecordedLaunch(root, exe, spec.ExtraArgs);
     }
 
-    private async Task<LaunchResult> Run(LaunchContext context, Func<LaunchPlan>? resolvePlan, Func<CancellationToken, Task>? whileRunning, CancellationToken cancellationToken)
+    internal async Task<LaunchResult> Run(LaunchContext context, Func<LaunchPlan>? resolvePlan, Func<CancellationToken, Task>? whileRunning, CancellationToken cancellationToken)
     {
         if (_started) throw new InvalidOperationException("A launch session runs once.");
         _started = true;
@@ -357,9 +357,11 @@ public sealed class LaunchSession
                         }
                     }
                 }
-                else if (whileRunning is { } waitWhileRunning && BeginRunning())
+                else if (BeginRunning())
                 {
                     heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context));
+                    var waitWhileRunning = whileRunning
+                        ?? throw new InvalidOperationException("LaunchSession.RunCore was given neither a plan nor a wait");
                     try
                     {
                         await waitWhileRunning(cancellationToken);
@@ -403,7 +405,9 @@ public sealed class LaunchSession
         if (startFailure is not null) return startFailure;
         if (finishFailure is not null) return finishFailure;
 
-        return new LaunchResult(stopped || exit is null ? StoppedExitCode : exit.ExitCode, null);
+        if (stopped) return new LaunchResult(StoppedExitCode, null);
+        if (exit is null) throw new InvalidOperationException($"LaunchSession for {game} finished without a game exit or a stop request");
+        return new LaunchResult(exit.ExitCode, null);
     }
 
     /// <summary>
