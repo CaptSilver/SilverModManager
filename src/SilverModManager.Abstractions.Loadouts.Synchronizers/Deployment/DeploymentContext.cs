@@ -42,4 +42,9 @@ public sealed class DeploymentContext
     /// Created on first use and then reused by every backend and phase of the run.
     /// </summary>
     public EntityId? OverridesGroup { get; set; }
+
+    /// <summary>
+    /// How many empty folders <see cref="IDeploymentBackend.CleanDirectories"/> removed, for the sync's summary line.
+    /// </summary>
+    public int EmptyFoldersRemoved { get; set; }
 }

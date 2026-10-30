@@ -191,6 +191,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             itemIndex++;
 
             var resolvedPath = context.Locations.ToAbsolutePath(path);
+            _logger.LogTrace("Deleting {Path}", resolvedPath);
             resolvedPath.Delete();
 
             // Only delete the entry if we're not going to replace it
@@ -381,6 +382,8 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
 
             // Could have other empty directories as children, so we need to delete recursively
             absolutePath.DeleteDirectory(recursive: true);
+            context.EmptyFoldersRemoved++;
+            _logger.LogInformation("Removed the empty folder {Folder}", absolutePath);
         }
     }
 }

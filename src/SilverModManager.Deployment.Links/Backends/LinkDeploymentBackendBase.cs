@@ -212,6 +212,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
                 pathStore.Release(context.MetadataId, damaged);
             }
 
+            logger.LogTrace("Deleting {Path}", deployed);
             File.Delete(deployed.ToString());
 
             // Only delete the entry if we're not going to replace it
