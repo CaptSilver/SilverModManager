@@ -105,4 +105,61 @@ public class ThumbnailLoaderTests(IServiceProvider provider) : AUiTest(provider)
 
         Enumerable.Range(0, 200).Count(i => loader.TryGetCached(new Uri($"https://example.com/{i}.png")) is not null).Should().BeLessThan(100);
     }
+
+    /// <summary>A bitmap that was disposed has no platform image left; reading its size is how Avalonia's renderer found out.</summary>
+    private static void AssertUsable(IImage image) => image.Invoking(i => _ = i.Size).Should().NotThrow("an image a card may still draw must not be disposed");
+
+    [Fact]
+    public async Task AnImageThatLeavesTheCache_IsNotDisposed()
+    {
+        var pipeline = new FakePipeline { Respond = (_, _) => Task.FromResult(NewBitmap()) };
+        var loader = new ThumbnailLoader(pipeline, Placeholder(), capacity: 8);
+        var shown = await loader.LoadAsync(new Uri("https://example.com/shown.png"), CancellationToken.None);
+
+        for (var i = 0; i < 200; i++) await loader.LoadAsync(new Uri($"https://example.com/{i}.png"), CancellationToken.None);
+
+        loader.TryGetCached(new Uri("https://example.com/shown.png")).Should().BeNull("the image was pushed out");
+        AssertUsable(shown);
+    }
+
+    [Fact]
+    public async Task TwoLoadsOfOneUrl_ShareTheFirstImageAndNeitherIsDisposed()
+    {
+        var gate = new TaskCompletionSource();
+        var pipeline = new FakePipeline { Respond = async (_, _) => { await gate.Task; return NewBitmap(); } };
+        var loader = new ThumbnailLoader(pipeline, Placeholder());
+
+        var first = loader.LoadAsync(IconUrl, CancellationToken.None);
+        var second = loader.LoadAsync(IconUrl, CancellationToken.None);
+        gate.SetResult();
+        var images = await Task.WhenAll(first, second);
+
+        images[1].Should().BeSameAs(images[0]);
+        AssertUsable(images[0]);
+        AssertUsable(images[1]);
+    }
+
+    [Fact]
+    public async Task RenderingAnImage_AfterItWasPushedOutOfTheCache_DoesNotThrow()
+    {
+        var pipeline = new FakePipeline { Respond = (_, _) => Task.FromResult(NewBitmap()) };
+        var loader = new ThumbnailLoader(pipeline, Placeholder(), capacity: 8);
+        var shown = await loader.LoadAsync(new Uri("https://example.com/shown.png"), CancellationToken.None);
+        var control = await OnUi(() =>
+        {
+            var image = new Avalonia.Controls.Image { Source = shown, Width = 4, Height = 4 };
+            image.Measure(new Size(4, 4));
+            image.Arrange(new Rect(0, 0, 4, 4));
+            return Task.FromResult(image);
+        });
+
+        for (var i = 0; i < 200; i++) await loader.LoadAsync(new Uri($"https://example.com/{i}.png"), CancellationToken.None);
+
+        await OnUi(() =>
+        {
+            using var target = new RenderTargetBitmap(new PixelSize(4, 4));
+            target.Invoking(t => t.Render(control)).Should().NotThrow();
+            return Task.CompletedTask;
+        });
+    }
 }

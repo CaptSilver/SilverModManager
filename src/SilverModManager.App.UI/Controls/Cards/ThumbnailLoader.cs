@@ -15,33 +15,36 @@ public sealed class ThumbnailLoader : IThumbnailLoader
     public const int DefaultCapacity = 256;
 
     private readonly IResourceLoader<Uri, Bitmap> _pipeline;
-    private readonly ConcurrentLru<Uri, IImage> _cache;
+    // The cache holds images through a plain wrapper. BitFaster disposes any IDisposable value it evicts or replaces,
+    // and a Bitmap pushed out of the cache is usually still on screen in a card: drawing a disposed Bitmap throws a
+    // NullReferenceException from inside the renderer. Without the wrapper an evicted image is left to the GC.
+    private readonly ConcurrentLru<Uri, CachedImage> _cache;
     private readonly ILogger? _logger;
 
     public ThumbnailLoader(IResourceLoader<Uri, Bitmap> pipeline, IImage placeholder, int capacity = DefaultCapacity, ILogger? logger = null)
     {
         _pipeline = pipeline;
-        _cache = new ConcurrentLru<Uri, IImage>(capacity);
+        _cache = new ConcurrentLru<Uri, CachedImage>(capacity);
         _logger = logger;
         Placeholder = placeholder;
     }
 
     public IImage Placeholder { get; }
 
-    public IImage? TryGetCached(Uri url) => _cache.TryGet(url, out var image) ? image : null;
+    public IImage? TryGetCached(Uri url) => _cache.TryGet(url, out var entry) ? entry.Image : null;
 
     public async Task<IImage> LoadAsync(Uri url, CancellationToken cancellationToken)
     {
         // The pipeline's HTTP loader only speaks https; anything else in a catalog entry is not worth a request.
         if (!url.IsAbsoluteUri || url.Scheme != Uri.UriSchemeHttps) return Placeholder;
-        if (_cache.TryGet(url, out var cached)) return cached;
+        if (_cache.TryGet(url, out var cached)) return cached.Image;
 
         try
         {
             // Off the caller's (UI) thread: the pipeline decodes and resizes on whichever thread it is awaited from.
             var resource = await Task.Run(async () => await _pipeline.LoadResourceAsync(url, cancellationToken), cancellationToken);
-            _cache.AddOrUpdate(url, resource.Data);
-            return resource.Data;
+            // Two cards can load one URL at once; the second to finish takes the first one's image so both show the same.
+            return _cache.GetOrAdd(url, _ => new CachedImage(resource.Data)).Image;
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
@@ -49,4 +52,6 @@ public sealed class ThumbnailLoader : IThumbnailLoader
             return Placeholder;
         }
     }
+
+    private sealed record CachedImage(IImage Image);
 }
