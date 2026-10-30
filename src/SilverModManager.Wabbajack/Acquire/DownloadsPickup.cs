@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using R3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Hashes;
@@ -24,11 +25,26 @@ public sealed class DownloadsPickup(
 {
     private readonly SemaphoreSlim _scanning = new(1);
     private readonly Dictionary<string, (long Size, DateTime Modified)> _mismatches = new(StringComparer.Ordinal);
+    private readonly Lock _watchLock = new();
     private Timer? _rescan;
     private bool _missingFolderLogged;
+    private FileSystemWatcher? _watcher;
+    private IDisposable? _settingsSubscription;
+    private HashSet<string> _watchedNames = [];
+    private bool _following;
+    private bool _disposed;
 
     /// <summary>How long a file has to be unchanged before it counts as finished, and the wait before a re-scan.</summary>
     public TimeSpan DebounceInterval { get; set; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>Whether a watcher is on the Downloads folder right now.</summary>
+    public bool IsWatching
+    {
+        get
+        {
+            lock (_watchLock) return _watcher is not null;
+        }
+    }
 
     /// <summary>How a file is linked into the inbox; tests swap it to reach the copy fallback.</summary>
     internal Func<string, string, int> Link { get; set; } = LibcLinks.TryLink;
@@ -68,13 +84,7 @@ public sealed class DownloadsPickup(
             if (expected.Count == 0) return;
 
             var folder = Folder;
-            if (!folder.DirectoryExists())
-            {
-                if (!_missingFolderLogged) logger.LogInformation("The Downloads folder '{Folder}' does not exist, so nothing is picked up from it", folder);
-                _missingFolderLogged = true;
-                return;
-            }
-            _missingFolderLogged = false;
+            if (!FolderExists(folder)) return;
 
             var inboxFolder = paths.Inbox;
             var staged = false;
@@ -125,6 +135,111 @@ public sealed class DownloadsPickup(
         finally
         {
             _scanning.Release();
+        }
+    }
+
+    /// <summary>
+    /// Starts watching the Downloads folder for as long as the pickup is on and a row waits for the user. Idempotent.
+    /// Without a modlist page or run the acquirer holds no rows, so the watch ends with the last page.
+    /// </summary>
+    public void Follow()
+    {
+        lock (_watchLock)
+        {
+            if (_following || _disposed) return;
+            _following = true;
+            acquirer.PlanChanged += OnPlanChanged;
+            acquirer.PlanForgotten += Reevaluate;
+            _settingsSubscription = settings.GetChanges<WabbajackSettings>().Subscribe(_ => Reevaluate());
+        }
+        Reevaluate();
+    }
+
+    private void OnPlanChanged(ArchivePlan _) => Reevaluate();
+
+    private void Reevaluate()
+    {
+        var startedNow = false;
+        lock (_watchLock)
+        {
+            if (_disposed) return;
+
+            var pending = settings.Get<WabbajackSettings>().PickUpFromDownloads
+                ? acquirer.Plan.Rows.Where(row => row.State.WaitsForUser()).Select(row => row.Archive.Name).ToHashSet(StringComparer.Ordinal)
+                : [];
+            if (pending.Count == 0)
+            {
+                StopWatching();
+                return;
+            }
+
+            _watchedNames = pending;
+            // A plan changes after every finished archive; the folder is only looked up when there is no watcher yet.
+            if (_watcher is not null) return;
+
+            var folder = Folder;
+            if (!FolderExists(folder)) return;
+            _watcher = StartWatcher(folder);
+            startedNow = _watcher is not null;
+        }
+
+        // One look for what landed before the watch began.
+        if (startedNow) _ = RescanQuietly();
+    }
+
+    private FileSystemWatcher? StartWatcher(AbsolutePath folder)
+    {
+        try
+        {
+            var watcher = new FileSystemWatcher(folder.ToString())
+            {
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
+            };
+            watcher.Created += (_, e) => OnFileEvent(e.Name);
+            watcher.Changed += (_, e) => OnFileEvent(e.Name);
+            watcher.Renamed += (_, e) => OnFileEvent(e.Name);
+            watcher.Error += (_, e) => logger.LogWarning(e.GetException(), "Watching the Downloads folder '{Folder}' failed", folder);
+            watcher.EnableRaisingEvents = true;
+            return watcher;
+        }
+        catch (Exception e) when (e is IOException or ArgumentException or UnauthorizedAccessException)
+        {
+            logger.LogWarning(e, "Could not watch the Downloads folder '{Folder}'", folder);
+            return null;
+        }
+    }
+
+    // A busy folder raises events for files the plan never asked for; those cost one name comparison.
+    private void OnFileEvent(string? name)
+    {
+        if (name is null) return;
+        bool expected;
+        lock (_watchLock) expected = _watcher is not null && _watchedNames.Contains(name);
+        if (expected) ScheduleRescan();
+    }
+
+    private void StopWatching()
+    {
+        if (_watcher is null) return;
+        _watcher.Dispose();
+        _watcher = null;
+        _watchedNames = [];
+        _rescan?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        ForgetMismatches();
+    }
+
+    private bool FolderExists(AbsolutePath folder)
+    {
+        lock (_watchLock)
+        {
+            if (folder.DirectoryExists())
+            {
+                _missingFolderLogged = false;
+                return true;
+            }
+            if (!_missingFolderLogged) logger.LogInformation("The Downloads folder '{Folder}' does not exist, so nothing is picked up from it", folder);
+            _missingFolderLogged = true;
+            return false;
         }
     }
 
@@ -185,7 +300,7 @@ public sealed class DownloadsPickup(
         var expected = new Dictionary<string, List<(long Size, FileIdentity Hash)>>(StringComparer.Ordinal);
         foreach (var row in acquirer.Plan.Rows)
         {
-            if (row.State is not (ArchiveState.Browser or ArchiveState.Manual)) continue;
+            if (!row.State.WaitsForUser()) continue;
             if (!expected.TryGetValue(row.Archive.Name, out var list)) expected[row.Archive.Name] = list = [];
             list.Add((row.Archive.Size, row.Archive.XxHash64));
         }
@@ -216,6 +331,15 @@ public sealed class DownloadsPickup(
 
     public void Dispose()
     {
+        lock (_watchLock)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            acquirer.PlanChanged -= OnPlanChanged;
+            acquirer.PlanForgotten -= Reevaluate;
+            _settingsSubscription?.Dispose();
+            StopWatching();
+        }
         _rescan?.Dispose();
         _scanning.Dispose();
     }

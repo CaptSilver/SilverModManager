@@ -30,8 +30,10 @@ public sealed class ArchiveInbox(
     private static readonly HashSet<string> InProgressExtensions = new(StringComparer.OrdinalIgnoreCase) { ".part", ".crdownload", ".download", ".tmp" };
 
     private readonly SemaphoreSlim _scanning = new(1);
+    private readonly Lock _watchLock = new();
     private FileSystemWatcher? _watcher;
     private Timer? _debounce;
+    private bool _waitingForPlan;
 
     /// <summary>How long the folder has to be quiet before a change triggers a scan.</summary>
     public TimeSpan DebounceInterval { get; set; } = TimeSpan.FromSeconds(2);
@@ -107,11 +109,59 @@ public sealed class ArchiveInbox(
         }
     }
 
+    /// <summary>Whether the inbox folder is being watched.</summary>
+    public bool IsWatching
+    {
+        get
+        {
+            lock (_watchLock) return _watcher is not null;
+        }
+    }
+
+    /// <summary>
+    /// Starts <see cref="StartWatching"/> with the first plan that has a row waiting for the user, whatever the
+    /// Downloads setting says: a file dropped in the inbox is the user's own action. The inbox has no stop, so the
+    /// watch then runs until the app exits. Idempotent.
+    /// </summary>
+    public void WatchOnceArchivesAreWaiting()
+    {
+        lock (_watchLock)
+        {
+            if (_waitingForPlan || _watcher is not null) return;
+            _waitingForPlan = true;
+        }
+        acquirer.PlanChanged += OnPlanChanged;
+        StartWhenArchivesWait();
+    }
+
+    private void OnPlanChanged(ArchivePlan _) => StartWhenArchivesWait();
+
+    private void StartWhenArchivesWait()
+    {
+        if (!acquirer.Plan.Rows.Any(row => row.State.WaitsForUser())) return;
+        acquirer.PlanChanged -= OnPlanChanged;
+        try
+        {
+            StartWatching();
+        }
+        catch (Exception e) when (e is IOException or ArgumentException or UnauthorizedAccessException)
+        {
+            logger.LogWarning(e, "Could not watch the inbox folder; files dropped there are found when it is checked by hand");
+        }
+    }
+
     /// <summary>Scans whenever the folder has been quiet for <see cref="DebounceInterval"/> after a change.</summary>
     public void StartWatching()
     {
-        if (_watcher is not null) return;
+        lock (_watchLock)
+        {
+            if (_watcher is not null) return;
+            StartWatcher();
+        }
+    }
 
+    private void StartWatcher()
+    {
         _debounce = new Timer(_ => _ = ScanAfterChange());
         _watcher = new FileSystemWatcher(paths.Inbox.ToString())
         {
@@ -139,6 +189,7 @@ public sealed class ArchiveInbox(
 
     public void Dispose()
     {
+        acquirer.PlanChanged -= OnPlanChanged;
         _watcher?.Dispose();
         _debounce?.Dispose();
         _scanning.Dispose();

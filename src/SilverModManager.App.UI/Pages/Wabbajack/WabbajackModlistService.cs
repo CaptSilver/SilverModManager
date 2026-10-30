@@ -117,7 +117,15 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
             ? inventory.GameFilesFor(Loadout.Load(db, loadoutId))
             // The loadout does not exist yet; it will be created on this installation.
             : inventory.GameFilesFor(InstallationFor(file));
+        StartWatchingForDownloads();
         return (await inventory.Build(list, db, gameFiles, cancellationToken, progress)) with { Modlist = file };
+    }
+
+    // The first point a plan can exist. Both calls do nothing until a row waits for the user, and repeat calls change nothing.
+    private void StartWatchingForDownloads()
+    {
+        provider.GetRequiredService<ArchiveInbox>().WatchOnceArchivesAreWaiting();
+        provider.GetRequiredService<DownloadsPickup>().Follow();
     }
 
     private GameInstallation InstallationFor(LibraryFileId file)

@@ -117,6 +117,22 @@ public class ArchiveInboxTests(ITestOutputHelper helper) : AcquireTestBase<Archi
         Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Have);
     }
 
+    [Fact]
+    public async Task TheWatcherStartsWithTheFirstPlanThatHasWaitingRows_WhateverThePickupSetting()
+    {
+        using var page = Acquirer.Attach();
+        Inbox.WatchOnceArchivesAreWaiting();
+        Inbox.IsWatching.Should().BeFalse("nothing is waiting yet");
+
+        await Acquirer.Run(new ArchivePlan([]), null, CancellationToken.None);
+        Inbox.IsWatching.Should().BeFalse("an empty plan has nothing to wait for");
+
+        await RunWithManualRowFor(Wanted);
+
+        Inbox.IsWatching.Should().BeTrue();
+        Inbox.WatchOnceArchivesAreWaiting();
+    }
+
     private AbsolutePath NewFolder(string name)
     {
         var folder = TemporaryFileManager.CreateFolder().Path.Combine(name);

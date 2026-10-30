@@ -40,6 +40,8 @@ public sealed class ArchiveAcquirer(
 
     public event Action<ArchivePlan>? PlanChanged;
 
+    public event Action? PlanForgotten;
+
     public ArchivePlan Plan
     {
         get { lock (_lock) return new ArchivePlan(_rows.ToArray(), _modlist); }
@@ -63,6 +65,8 @@ public sealed class ArchiveAcquirer(
         UpdateWatching();
         // Files that arrived between building the plan and now.
         Recheck();
+        // Whoever follows the plan (the Downloads pickup) learns that it now has these rows.
+        PlanChanged?.Invoke(Plan);
         return rows;
     }
 
@@ -97,7 +101,7 @@ public sealed class ArchiveAcquirer(
             {
                 if (ReferenceEquals(_running, rows)) _running = null;
             }
-            if (IsCurrent(rows)) UpdateWatching();
+            if (IsCurrent(rows) && UpdateWatching()) PlanForgotten?.Invoke();
         }
     }
 
@@ -163,7 +167,7 @@ public sealed class ArchiveAcquirer(
     private void Detach()
     {
         lock (_lock) _pages--;
-        UpdateWatching();
+        if (UpdateWatching()) PlanForgotten?.Invoke();
     }
 
     private sealed class PageHandle(ArchiveAcquirer owner) : IDisposable
@@ -231,7 +235,8 @@ public sealed class ArchiveAcquirer(
     /// matched when a page comes back, which shows its plan again and looks the rows up afresh. The Nexus Mods
     /// files the plan expects are kept apart from the rows, so the nxm handler still accepts them.
     /// </summary>
-    private void UpdateWatching()
+    /// <returns>Whether it dropped rows, so the plan now reads as empty.</returns>
+    private bool UpdateWatching()
     {
         lock (_lock)
         {
@@ -242,11 +247,13 @@ public sealed class ArchiveAcquirer(
                     _timer = time.CreateTimer(_ => RecheckDue(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
                     _subscription = connection.Revisions.Subscribe(_ => ScheduleRecheck());
                 }
-                return;
+                return false;
             }
 
             StopWatching();
+            var dropped = _rows.Length > 0;
             _rows = [];
+            return dropped;
         }
     }
 

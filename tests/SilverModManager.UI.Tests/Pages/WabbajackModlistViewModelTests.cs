@@ -27,6 +27,7 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
     {
         public ArchivePlan Plan { get; private set; } = new([]);
         public event Action<ArchivePlan>? PlanChanged;
+        public event Action? PlanForgotten { add { } remove { } }
         public List<int> OpenNextCalls { get; } = [];
         public int Releases { get; private set; }
         public int Runs { get; private set; }

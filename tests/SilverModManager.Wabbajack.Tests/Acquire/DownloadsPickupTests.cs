@@ -1,11 +1,13 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Native;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Tests.Install;
 
 namespace SilverModManager.Wabbajack.Tests.Acquire;
 
@@ -30,7 +32,7 @@ public class DownloadsPickupTests(ITestOutputHelper helper) : AcquireTestBase<Do
 
     private void PickupIs(bool on) => Settings.Update<WabbajackSettings>(s => s with { PickUpFromDownloads = on });
 
-    private (DownloadsPickup Pickup, RecordingFileSystem Log) NewPickup(TimeSpan? debounce = null)
+    private (DownloadsPickup Pickup, RecordingFileSystem Log) NewPickup(TimeSpan? debounce = null, ILogger<DownloadsPickup>? logger = null)
     {
         var (fileSystem, log) = RecordingFileSystem.Wrap(NexusMods.Paths.FileSystem.Shared);
         var pickup = new DownloadsPickup(
@@ -39,7 +41,7 @@ public class DownloadsPickupTests(ITestOutputHelper helper) : AcquireTestBase<Do
             Acquirer,
             ServiceProvider.GetRequiredService<ArchiveInbox>(),
             fileSystem,
-            NullLogger<DownloadsPickup>.Instance)
+            logger ?? NullLogger<DownloadsPickup>.Instance)
         {
             DebounceInterval = debounce ?? TimeSpan.FromMinutes(1),
         };
@@ -433,5 +435,202 @@ public class DownloadsPickupTests(ITestOutputHelper helper) : AcquireTestBase<Do
         {
             File.SetUnixFileMode(locked, UnixFileMode.UserRead | UnixFileMode.UserWrite);
         }
+    }
+
+    private static async Task Until(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+        while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(50, TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task ThePickupWatchesOnlyOncePickingUpIsOnAndAnArchiveIsWaiting()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        _ = DownloadsFolder;
+        var (pickup, _) = NewPickup();
+        pickup.IsWatching.Should().BeFalse("nothing follows the plan before Follow");
+
+        pickup.Follow();
+        pickup.IsWatching.Should().BeFalse("no row is waiting yet");
+        await RunWithManualRows(("wanted.txt", Wanted));
+
+        pickup.IsWatching.Should().BeTrue();
+        pickup.Dispose();
+    }
+
+    [Fact]
+    public async Task FollowingTwice_StillWatchesOnce()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        _ = DownloadsFolder;
+        await RunWithManualRows(("wanted.txt", Wanted));
+        var (pickup, _) = NewPickup();
+
+        pickup.Follow();
+        pickup.Follow();
+
+        pickup.IsWatching.Should().BeTrue();
+        pickup.Dispose();
+    }
+
+    [Fact]
+    public async Task TheWatchEnds_WhenTheLastWaitingRowIsHeld()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        _ = DownloadsFolder;
+        await RunWithManualRows(("wanted.txt", Wanted));
+        var (pickup, _) = NewPickup();
+        pickup.Follow();
+        pickup.IsWatching.Should().BeTrue();
+
+        await InboxFolder.Combine("wanted.txt").WriteAllBytesAsync(Wanted);
+        await ServiceProvider.GetRequiredService<ArchiveInbox>().Scan(CancellationToken.None);
+        Acquirer.Recheck();
+
+        await Until(() => !pickup.IsWatching);
+        pickup.IsWatching.Should().BeFalse();
+        pickup.Dispose();
+    }
+
+    [Fact]
+    public async Task SwitchingThePickupOff_EndsTheWatchWhileRowsAreStillWaiting()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        _ = DownloadsFolder;
+        await RunWithManualRows(("wanted.txt", Wanted));
+        var (pickup, _) = NewPickup();
+        pickup.Follow();
+        pickup.IsWatching.Should().BeTrue();
+
+        PickupIs(false);
+
+        await Until(() => !pickup.IsWatching);
+        pickup.IsWatching.Should().BeFalse();
+        Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Manual);
+
+        PickupIs(true);
+        await Until(() => pickup.IsWatching);
+        pickup.IsWatching.Should().BeTrue("switching it back on starts the watch again");
+        pickup.Dispose();
+    }
+
+    [Fact]
+    public async Task ClosingThePage_EndsTheWatch()
+    {
+        var page = Acquirer.Attach();
+        PickupIs(true);
+        _ = DownloadsFolder;
+        await RunWithManualRows(("wanted.txt", Wanted));
+        var (pickup, _) = NewPickup();
+        pickup.Follow();
+        pickup.IsWatching.Should().BeTrue();
+
+        page.Dispose();
+
+        await Until(() => !pickup.IsWatching);
+        pickup.IsWatching.Should().BeFalse("the acquirer forgets a plan nobody shows");
+        pickup.Dispose();
+    }
+
+    [Fact]
+    public async Task AMissingFolder_IsNotWatchedAndIsSaidOnce()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        Settings.Update<WabbajackSettings>(s => s with { DownloadsFolder = DownloadsFolder.Combine("not-there").ToString() });
+        var logs = new CapturingLoggerProvider();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(logs));
+        var (pickup, _) = NewPickup(logger: factory.CreateLogger<DownloadsPickup>());
+
+        pickup.Follow();
+        await RunWithManualRows(("wanted.txt", Wanted));
+        await pickup.Scan(CancellationToken.None);
+
+        pickup.IsWatching.Should().BeFalse();
+        logs.Messages.Where(m => m.Contains("does not exist")).Should().ContainSingle();
+        pickup.Dispose();
+    }
+
+    [Fact]
+    public async Task AFileThatWasCompleteBeforeTheWatchStarted_IsPickedUpWithoutAnEvent()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        _ = DownloadsFolder;
+        await RunWithManualRows(("wanted.txt", Wanted));
+        await Drop(DownloadsFolder, "wanted.txt", Wanted);
+        var (pickup, _) = NewPickup();
+
+        pickup.Follow();
+
+        await Until(() => Acquirer.Plan.Rows[0].State == ArchiveState.Have);
+        Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Have);
+        pickup.Dispose();
+    }
+
+    [Fact]
+    public async Task AFileStillGrowingWhenSeen_IsPickedUpOnceItHasSettled()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        _ = DownloadsFolder;
+        await RunWithManualRows(("wanted.txt", Wanted));
+        var (pickup, _) = NewPickup(TimeSpan.FromMilliseconds(300));
+        pickup.Follow();
+
+        await Drop(DownloadsFolder, "wanted.txt", Wanted, settled: false);
+
+        await Until(() => Acquirer.Plan.Rows[0].State == ArchiveState.Have);
+        Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Have, "the last write raises no further event, so the scheduled look finds it");
+        pickup.Dispose();
+    }
+
+    [Fact]
+    public async Task APartFileIsIgnored_ThenPickedUpWhenRenamedToItsFinalName()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        _ = DownloadsFolder;
+        await RunWithManualRows(("wanted.txt", Wanted));
+        var (pickup, _) = NewPickup(TimeSpan.FromMilliseconds(100));
+        pickup.Follow();
+
+        await Drop(DownloadsFolder, "wanted.txt.part", Wanted);
+        await Task.Delay(600, TestContext.Current.CancellationToken);
+        Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Manual);
+
+        File.Move(DownloadsFolder.Combine("wanted.txt.part").ToString(), DownloadsFolder.Combine("wanted.txt").ToString());
+        File.SetLastWriteTimeUtc(DownloadsFolder.Combine("wanted.txt").ToString(), DateTime.UtcNow - TimeSpan.FromMinutes(5));
+
+        await Until(() => Acquirer.Plan.Rows[0].State == ArchiveState.Have);
+        Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Have);
+        pickup.Dispose();
+    }
+
+    [Fact]
+    public async Task WhatWasSetAsideAsWrongBytes_IsReadAgainAfterTheWatchEndsAndStartsAgain()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        _ = DownloadsFolder;
+        await RunWithManualRows(("wanted.txt", Wanted));
+        await Drop(DownloadsFolder, "wanted.txt", SameLength);
+        var (pickup, log) = NewPickup();
+        int Reads() => log.Calls.Count(c => c.Method is "ReadFile" or "OpenFile" or "Open" && c.Path.EndsWith("/wanted.txt"));
+        pickup.Follow();
+        await Until(() => Reads() == 1);
+
+        PickupIs(false);
+        await Until(() => !pickup.IsWatching);
+        PickupIs(true);
+
+        await Until(() => Reads() == 2);
+        Reads().Should().Be(2);
+        pickup.Dispose();
     }
 }

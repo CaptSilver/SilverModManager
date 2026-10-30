@@ -17,6 +17,13 @@ public interface IArchiveAcquirer
     event Action<ArchivePlan>? PlanChanged;
 
     /// <summary>
+    /// Raised when the acquirer drops the rows of <see cref="Plan"/> because no page shows it and no run is
+    /// downloading it. It is not a <see cref="PlanChanged"/>: a page still listening must not take the empty plan
+    /// for the list's.
+    /// </summary>
+    event Action? PlanForgotten;
+
+    /// <summary>
     /// Makes <paramref name="plan"/> current and keeps its rows matched against the library, but starts no download,
     /// opens no page and expects no Nexus Mods file. Replaces the current plan.
     /// </summary>
