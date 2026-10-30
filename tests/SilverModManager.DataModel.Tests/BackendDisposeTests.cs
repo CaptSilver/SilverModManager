@@ -112,6 +112,93 @@ public class BackendDisposeTests
         Native.Instance.rocksdb_options_get_stats_persist_period_sec(options.Handle).Should().Be(0);
     }
 
+    // A database still open when the process calls native exit() leaves RocksDB's background threads running into
+    // the exit teardown. The process-exit hook closes what is left; these tests drive the same routine on backends
+    // they own, so they cannot close a database another test in the process is using.
+    private static RocksDbBackend OpenInMemoryBackend()
+    {
+        var backend = new RocksDbBackend();
+        backend.Init(DatomStoreSettings.InMemory);
+        return backend;
+    }
+
+    [Fact]
+    public void ABackendIsListedAsOpenFromInitUntilItIsClosed()
+    {
+        var backend = OpenInMemoryBackend();
+        RocksDbBackend.OpenBackends().Should().Contain(backend);
+
+        backend.Dispose();
+        RocksDbBackend.OpenBackends().Should().NotContain(backend);
+    }
+
+    [Fact]
+    public void ClosingTheOpenBackendsClosesOneThatWasNeverDisposed()
+    {
+        var abandoned = OpenInMemoryBackend();
+
+        RocksDbBackend.CloseAll([abandoned], TimeSpan.FromSeconds(10));
+
+        var begin = () => abandoned.BeginUse();
+        begin.Should().Throw<ObjectDisposedException>();
+        RocksDbBackend.OpenBackends().Should().NotContain(abandoned);
+    }
+
+    [Fact]
+    public async Task ClosingTheOpenBackendsGivesUpOnABusyOneWithinTheBudgetAndStillClosesTheRest()
+    {
+        var busy = OpenInMemoryBackend();
+        var idle = OpenInMemoryBackend();
+        var lease = busy.BeginUse();
+        try
+        {
+            var started = DateTime.UtcNow;
+            await Task.Run(() => RocksDbBackend.CloseAll([busy, idle], TimeSpan.FromMilliseconds(300)));
+
+            (DateTime.UtcNow - started).Should().BeLessThan(TimeSpan.FromSeconds(10), "the exit hook must not stall the process");
+            RocksDbBackend.OpenBackends().Should().NotContain(idle);
+            RocksDbBackend.OpenBackends().Should().Contain(busy, "a database with a call inside it is not freed");
+        }
+        finally
+        {
+            lease.Dispose();
+            RocksDbBackend.CloseAll([busy], TimeSpan.FromSeconds(10));
+        }
+        RocksDbBackend.OpenBackends().Should().NotContain(busy);
+    }
+
+    [Fact]
+    public void ADisposeThatGivesUpLeavesTheBackendListedSoItCanBeClosedLater()
+    {
+        var backend = OpenInMemoryBackend();
+        backend.UseWait = TimeSpan.FromMilliseconds(100);
+        var lease = backend.BeginUse();
+
+        backend.Dispose(); // gives up: a call is still inside the database
+        RocksDbBackend.OpenBackends().Should().Contain(backend);
+
+        lease.Dispose();
+        RocksDbBackend.CloseAll([backend], TimeSpan.FromSeconds(10));
+        RocksDbBackend.OpenBackends().Should().NotContain(backend);
+    }
+
+    [Fact]
+    public void AnAbandonedBackendIsNotFinalizedWhileItsDatabaseIsOpen()
+    {
+        var weak = OpenAbandonedBackend();
+        for (var i = 0; i < 2; i++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
+
+        weak.TryGetTarget(out var backend).Should().BeTrue("finalizers free the database and its environment in no fixed order");
+        RocksDbBackend.CloseAll([backend!], TimeSpan.FromSeconds(10));
+    }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static WeakReference<RocksDbBackend> OpenAbandonedBackend() => new(OpenInMemoryBackend());
+
     [Fact]
     public async Task ANativeCallAfterDisposeIsRefused()
     {

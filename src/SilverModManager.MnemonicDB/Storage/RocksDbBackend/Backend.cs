@@ -74,6 +74,49 @@ public class Backend : IStoreBackend
         public void Dispose() => backend.EndUse();
     }
 
+    // Backends whose database is open. The list holds them strongly on purpose: an open database that nothing
+    // references would be finalized piecemeal (its RocksDb, its Env and its options each have a finalizer, in no fixed
+    // order), and the Env can be freed under a database that is still running. A backend that is never disposed stays
+    // here until the process-exit hook closes it.
+    private static readonly object s_openLock = new();
+    private static readonly HashSet<Backend> s_open = [];
+
+    // Closing happens under this lock, so a late Dispose and the exit hook never close the same database twice.
+    private readonly object _closeLock = new();
+
+    static Backend()
+    {
+        // Native exit() with a database still open leaves RocksDB's background threads running into the teardown.
+        // ProcessExit runs before it, on a normal return from Main and on Environment.Exit alike.
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => CloseAll(OpenBackends(), ExitBudget);
+    }
+
+    private static readonly TimeSpan ExitBudget = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// The backends whose database is currently open.
+    /// </summary>
+    internal static Backend[] OpenBackends()
+    {
+        lock (s_openLock) return s_open.ToArray();
+    }
+
+    /// <summary>
+    /// Closes the given backends, spending at most about <paramref name="budget"/> in total waiting for native calls
+    /// to finish. A backend that still has a call inside it when the budget runs out is left open, with its
+    /// background work stopped; the ones after it are still closed.
+    /// </summary>
+    internal static void CloseAll(IEnumerable<Backend> backends, TimeSpan budget)
+    {
+        var deadline = DateTime.UtcNow + budget;
+        foreach (var backend in backends)
+        {
+            var remaining = deadline - DateTime.UtcNow;
+            try { backend.Close(remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero); }
+            catch (Exception) { /* the process is ending; one database failing to close must not stop the rest */ }
+        }
+    }
+
     /// <summary>
     /// Default constructor
     /// </summary>
@@ -120,6 +163,10 @@ public class Backend : IStoreBackend
             _env = Env.CreateMemEnv();
         else
             _env = Env.CreateDefaultEnv();
+
+        // The backend frees the environment itself, after the database that uses it is closed. Left to its finalizer
+        // it could be freed while the database is open, or while the database's own threads are still running.
+        GC.SuppressFinalize(_env);
         
         var options = _options = new DbOptions()
             .SetCreateIfMissing()
@@ -143,10 +190,32 @@ public class Backend : IStoreBackend
 
         var nativePath = settings.Path?.ToString() ?? "/dev/in-memory";
         
-        if (_isReadOnly)
-            Db = RocksDb.OpenReadOnly(options, nativePath, false);
-        else 
-            Db = RocksDb.Open(options, nativePath);
+        try
+        {
+            if (_isReadOnly)
+                Db = RocksDb.OpenReadOnly(options, nativePath, false);
+            else
+                Db = RocksDb.Open(options, nativePath);
+        }
+        catch
+        {
+            DestroyEnv();
+            throw;
+        }
+
+        lock (s_openLock) s_open.Add(this);
+    }
+
+    private void CancelBackgroundWork()
+    {
+        if (Db is not null) Native.Instance.rocksdb_cancel_all_background_work(Db.Handle, true);
+    }
+
+    private void DestroyEnv()
+    {
+        if (_env is null || _env.Handle == IntPtr.Zero) return;
+        Native.Instance.rocksdb_env_destroy(_env.Handle);
+        _env = null;
     }
 
     /// <summary>
@@ -222,29 +291,60 @@ public class Backend : IStoreBackend
     {
         if (_disposed) return;
         _disposed = true;
+        Close(UseWait);
+    }
 
-        // A scan in the middle of a native call must finish before the database is freed. From here on no new call
-        // starts, so the calls in progress can only drain; a scan that resumes later fails with an exception.
-        // Iterators nobody released (DuckDB never tells a table function that its query is over) are not waited for.
-        lock (_useGate)
+    /// <summary>
+    /// Waits up to <paramref name="wait"/> for native calls in progress, then closes the database and frees its
+    /// environment. If a call is still inside the database the database stays open, with its background work
+    /// stopped, and a later call can close it.
+    /// </summary>
+    private void Close(TimeSpan wait)
+    {
+        if (!Monitor.TryEnter(_closeLock, wait)) return;
+        try
         {
-            _closing = true;
+            if (_dbClosed) return;
 
-            // BeginUse increments the count and then checks the flag; this side sets the flag and then reads the
-            // count. Without a full fence the flag store can be ordered after the count load, and both sides then
-            // see "not yet": the database would be freed under a call that has just started.
-            Interlocked.MemoryBarrier();
-            var deadline = DateTime.UtcNow + UseWait;
-            while (Volatile.Read(ref _activeUses) > 0)
+            // A scan in the middle of a native call must finish before the database is freed. From here on no new
+            // call starts, so the calls in progress can only drain; a scan that resumes later fails with an exception.
+            // Iterators nobody released (DuckDB never tells a table function that its query is over) are not waited
+            // for.
+            lock (_useGate)
             {
-                var remaining = deadline - DateTime.UtcNow;
-                // A call that never returns is a hang elsewhere; leaving the database open until the process
-                // exits is the safe way to end up with it.
-                if (remaining <= TimeSpan.Zero || !Monitor.Wait(_useGate, remaining)) return;
-            }
-        }
+                _closing = true;
 
-        _dbClosed = true;
-        Db?.Dispose();
+                // BeginUse increments the count and then checks the flag; this side sets the flag and then reads the
+                // count. Without a full fence the flag store can be ordered after the count load, and both sides then
+                // see "not yet": the database would be freed under a call that has just started.
+                Interlocked.MemoryBarrier();
+                var deadline = DateTime.UtcNow + wait;
+                while (Volatile.Read(ref _activeUses) > 0)
+                {
+                    var remaining = deadline - DateTime.UtcNow;
+                    if (remaining > TimeSpan.Zero && Monitor.Wait(_useGate, remaining)) continue;
+
+                    // A call that never returns is a hang elsewhere. Freeing the database under it would crash the
+                    // process, so it stays open; stopping its background work keeps flushes and compactions from
+                    // running into the exit.
+                    CancelBackgroundWork();
+                    return;
+                }
+            }
+
+            // The order matters: RocksDB's own threads (flush, compaction, the info-log timer) stop first, then the
+            // database goes, then the environment and options those threads were using.
+            CancelBackgroundWork();
+            _dbClosed = true;
+            Db?.Dispose();
+            DestroyEnv();
+            GC.KeepAlive(_options);
+            GC.KeepAlive(_tableOptions);
+            lock (s_openLock) s_open.Remove(this);
+        }
+        finally
+        {
+            Monitor.Exit(_closeLock);
+        }
     }
 }
