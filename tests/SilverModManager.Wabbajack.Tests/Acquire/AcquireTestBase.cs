@@ -1,6 +1,7 @@
 using GameFinder.Wine;
 using SkyrimSe = SilverModManager.Games.CreationEngine.SkyrimSE.SkyrimSE;
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Networking.Forums;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Abstractions.NexusWebApi.Types;
@@ -38,6 +39,7 @@ public abstract class AcquireTestBase<TTest>(ITestOutputHelper helper)
     {
         return base.AddServices(services)
             .AddCreationEngine()
+            .AddForums()
             .AddWabbajack()
             .OverrideSettingsForTests<WabbajackSettings>(settings => settings with
             {

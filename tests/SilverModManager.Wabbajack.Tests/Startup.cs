@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Networking.Forums;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Backend;
@@ -21,6 +22,7 @@ public class Startup
             .AddGames()
             .AddGameServices()
             .AddLoadoutAbstractions()
+            .AddForums()
             .AddWabbajack()
             .OverrideSettingsForTests<WabbajackSettings>(settings => settings with
             {

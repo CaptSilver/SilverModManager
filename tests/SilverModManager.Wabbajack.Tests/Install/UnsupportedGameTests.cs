@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Networking.Forums;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
@@ -19,6 +20,7 @@ public class UnsupportedGameTests(ITestOutputHelper helper) : AIsolatedGameTest<
 {
     protected override IServiceCollection AddServices(IServiceCollection services) => base.AddServices(services)
         .AddCreationEngine()
+        .AddForums()
         .AddWabbajack()
         .OverrideSettingsForTests<WabbajackSettings>(settings => settings with
         {

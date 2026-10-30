@@ -337,7 +337,7 @@ public class ForumOAuthTests
     }
 }
 
-internal sealed record RecordedRequest(HttpMethod Method, Uri Uri, string Body, string? ContentType, string? Authorization);
+internal sealed record RecordedRequest(HttpMethod Method, Uri Uri, string Body, string? ContentType, string? Authorization, string? UserAgent = null);
 
 /// <summary>
 /// A forum that answers from a script and keeps what it was asked, with the body read before the client disposes it.
@@ -347,6 +347,7 @@ internal sealed class StubHandler : HttpMessageHandler
     private readonly object _lock = new();
     private readonly List<RecordedRequest> _requests = [];
     private readonly List<(Func<RecordedRequest, bool> When, HttpStatusCode Status, string Body, Task? Gate, TimeSpan Delay)> _replies = [];
+    private readonly Queue<(HttpStatusCode Status, string Body, int? RetryAfterSeconds)> _once = new();
     private Exception? _failure;
 
     public IReadOnlyList<RecordedRequest> Requests
@@ -360,15 +361,37 @@ internal sealed class StubHandler : HttpMessageHandler
     public void ReplyWhen(Func<RecordedRequest, bool> when, HttpStatusCode status, string body, Task gate)
         => _replies.Insert(0, (when, status, body, gate, default));
 
+    /// <summary>
+    /// Answers the next request that no <see cref="ReplyWhen"/> rule claims, ahead of the standing reply; used to
+    /// script "429 once, then fine".
+    /// </summary>
+    public void ReplyOnce(HttpStatusCode status, string body, int? retryAfterSeconds = null)
+    {
+        lock (_lock) _once.Enqueue((status, body, retryAfterSeconds));
+    }
+
     public void Fail(Exception failure) => _failure = failure;
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var body = request.Content is null ? "" : await request.Content.ReadAsStringAsync(cancellationToken);
-        var recorded = new RecordedRequest(request.Method, request.RequestUri!, body, request.Content?.Headers.ContentType?.MediaType, request.Headers.Authorization?.ToString());
+        var recorded = new RecordedRequest(request.Method, request.RequestUri!, body, request.Content?.Headers.ContentType?.MediaType, request.Headers.Authorization?.ToString(), request.Headers.UserAgent.ToString());
         lock (_lock) _requests.Add(recorded);
 
         if (_failure is not null) throw _failure;
+        var claimed = _replies.FirstOrDefault(r => r.Gate is not null && r.When(recorded));
+        if (claimed.When is null)
+        {
+            (HttpStatusCode Status, string Body, int? RetryAfterSeconds)? scripted = null;
+            lock (_lock) if (_once.Count > 0) scripted = _once.Dequeue();
+            if (scripted is { } once)
+            {
+                var scriptedResponse = new HttpResponseMessage(once.Status) { Content = new StringContent(once.Body, Encoding.UTF8, "application/json") };
+                if (once.RetryAfterSeconds is { } seconds) scriptedResponse.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(seconds));
+                return scriptedResponse;
+            }
+        }
+
         var reply = _replies.First(r => r.When(recorded));
         if (reply.Gate is not null) await reply.Gate;
         if (reply.Delay > TimeSpan.Zero) await Task.Delay(reply.Delay, cancellationToken);

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Secrets;
 using SilverModManager.Networking.Forums.Auth;
+using SilverModManager.Networking.Forums.Downloads;
 using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.Networking.Forums;
@@ -32,6 +33,13 @@ public static class Services
                 sp.GetRequiredService<ISettingsManager>(),
                 sp.GetRequiredService<TimeProvider>(),
                 sp.GetRequiredService<ILogger<ForumOAuth>>()))
+            .AddSingleton(sp => new ForumFilesClient(
+                // Its requests carry the user's token, so it gets its own client for the same reason.
+                new HttpClient(new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(2) }),
+                sp.GetRequiredService<ForumOAuth>(),
+                sp.GetRequiredService<IForumCredentials>(),
+                sp.GetRequiredService<TimeProvider>(),
+                sp.GetRequiredService<ILogger<ForumFilesClient>>()))
             .AddSingleton<ForumLoginManager>()
             .AddSingleton<IForumLoginState>(sp => sp.GetRequiredService<ForumLoginManager>());
     }

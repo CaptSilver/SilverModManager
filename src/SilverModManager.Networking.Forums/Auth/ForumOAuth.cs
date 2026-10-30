@@ -44,6 +44,11 @@ public sealed class ForumOAuth
     public bool HasClientId(ForumSite site) => !string.IsNullOrWhiteSpace(_endpoints(site).ClientId);
 
     /// <summary>
+    /// The site's endpoints as they stand, with or without a client id.
+    /// </summary>
+    public ForumEndpoints EndpointsFor(ForumSite site) => _endpoints(site);
+
+    /// <summary>
     /// The site's endpoints with a client id. A request without one must not go out: it would be rejected or,
     /// worse, made as another app.
     /// </summary>
