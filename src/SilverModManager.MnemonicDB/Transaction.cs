@@ -198,6 +198,7 @@ internal sealed class Transaction : IMainTransaction, ISubTransaction
         Debug.Assert(_parentTransaction is null);
 
         IndexSegment built;
+        HashSet<ITxFunction>? functions;
         lock (_lock)
         {
             if (_tempEntities is not null)
@@ -212,13 +213,17 @@ internal sealed class Transaction : IMainTransaction, ISubTransaction
 
             // Build the datoms block here, so that future calls to add won't modify this while we're building
             built = _datoms.Build();
+
+            // The store thread runs these after Commit returns, and Dispose clears the transaction's own set, so
+            // the store thread gets a copy.
+            functions = _txFunctions is null ? null : [.. _txFunctions];
         }
         
         if (_internalTxFunction is not null)
             return await _connection.Transact(_internalTxFunction);
 
-        if (_txFunctions is not null) 
-            return await _connection.Transact(new CompoundTransaction(built, _txFunctions) { Connection = _connection });
+        if (functions is not null) 
+            return await _connection.Transact(new CompoundTransaction(built, functions) { Connection = _connection });
         
         return await _connection.Transact(new IndexSegmentTransaction(built));
     }
