@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using ReactiveUI;
 using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.Abstractions.NexusWebApi;
@@ -279,18 +280,27 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
     }
 
     // A file the library already holds is installed from there. Older downloads of the same file can sit in the library
-    // more than once; any of them installs the same files.
+    // more than once, so a copy that is already linked into this loadout wins (it may be enabled or just disabled);
+    // otherwise any copy installs the same files.
     private LibraryItem.ReadOnly? FindInLibrary(NexusModsGameId game, ModId modId, FileId fileId)
     {
+        LibraryItem.ReadOnly? first = null;
         foreach (var file in NexusModsFileMetadata.FindByUid(_connection.Db, new FileUid(fileId, game)))
         {
             if (file.ModPage.Uid.ModId != modId) continue;
             foreach (var found in NexusModsLibraryItem.FindByFileMetadata(_connection.Db, file))
-                return found.AsLibraryItem();
+            {
+                var item = found.AsLibraryItem();
+                if (IsLinkedIntoLoadout(item)) return item;
+                first ??= item;
+            }
         }
 
-        return null;
+        return first;
     }
+
+    private bool IsLinkedIntoLoadout(LibraryItem.ReadOnly item)
+        => LibraryLinkedLoadoutItem.FindByLibraryItem(_connection.Db, item).Any(link => link.AsLoadoutItem().LoadoutId == LoadoutId);
 
     private async Task<LibraryItem.ReadOnly> DownloadAsync(NexusModsGameId game, NexusModsModRow row, FileId fileId, CancellationToken cancellationToken)
     {

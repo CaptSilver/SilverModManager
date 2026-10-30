@@ -482,6 +482,35 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
         var ids = NewIds();
         Premium(f, ids);
         var item = await SeedNexusLibraryFile(f, ids.Mod, ids.File);
+        await LinkIntoLoadout(f, item);
+
+        await f.Vm.InstallAsync(RowOf(ids.Mod), CancellationToken.None);
+
+        Installed(f).Should().BeEmpty();
+        DownloadsStarted(f).Should().Be(0);
+        f.Vm.ErrorText.Should().Contain("Some mod").And.Contain("already");
+    }
+
+    [Fact]
+    public async Task Install_WhenAnotherCopyOfTheFileIsAlreadyInTheLoadout_SaysSoAndInstallsNothing()
+    {
+        var f = await Open(premium: true);
+        var ids = NewIds();
+        Premium(f, ids);
+        await SeedNexusLibraryFile(f, ids.Mod, ids.File);
+        await SeedNexusLibraryFile(f, ids.Mod, ids.File);
+        var third = await SeedNexusLibraryFile(f, ids.Mod, ids.File);
+        await LinkIntoLoadout(f, third);
+
+        await f.Vm.InstallAsync(RowOf(ids.Mod), CancellationToken.None);
+
+        Installed(f).Should().BeEmpty();
+        DownloadsStarted(f).Should().Be(0);
+        f.Vm.ErrorText.Should().Contain("already");
+    }
+
+    private async Task LinkIntoLoadout(Fixture f, LibraryItem.ReadOnly item)
+    {
         using (var tx = Connection.BeginTransaction())
         {
             var parent = DefaultCollection.Create(tx, f.LoadoutId);
@@ -493,12 +522,6 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
             _ = new LibraryLinkedLoadoutItem.New(tx, groupId) { LibraryItemId = item.Id, LoadoutItemGroup = group };
             await tx.Commit();
         }
-
-        await f.Vm.InstallAsync(RowOf(ids.Mod), CancellationToken.None);
-
-        Installed(f).Should().BeEmpty();
-        DownloadsStarted(f).Should().Be(0);
-        f.Vm.ErrorText.Should().Contain("Some mod").And.Contain("already");
     }
 
     [Fact]
