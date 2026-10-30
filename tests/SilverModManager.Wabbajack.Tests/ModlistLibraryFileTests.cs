@@ -99,4 +99,35 @@ public class ModlistLibraryFileTests(ILibraryService libraryService, IConnection
         added.AsLibraryFile().IsValid().Should().BeTrue();
         added.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out _).Should().BeFalse();
     }
+
+    [Fact]
+    public async Task AddingAModlistRecordsOneArchiveRowPerEntryAndNoneIsFetched()
+    {
+        await using var folder = temporaryFileManager.CreateFolder();
+        var list = WabbajackFixture.EmptyList("Rows") with
+        {
+            Archives =
+            [
+                new ArchiveEntry(Xx64.From(10), 1000, "one.7z", "", new HttpState(new Uri("https://example.invalid/one.7z"), [])),
+                new ArchiveEntry(Xx64.From(11), 2500, "two.7z", "", new HttpState(new Uri("https://example.invalid/two.7z"), [])),
+            ],
+        };
+        var path = WabbajackFixture.Write(folder.Path, list);
+
+        var added = await libraryService.AddLocalFile(path);
+
+        var rows = WabbajackModlistArchive.FindByModlist(connection.Db, added.AsLibraryFile().Id).ToArray();
+        rows.Select(r => (r.Name, r.Size.Value)).Should().BeEquivalentTo([("one.7z", 1000UL), ("two.7z", 2500UL)]);
+        rows.Select(r => r.Identity).Should().BeEquivalentTo([Xx64.From(10), Xx64.From(11)]);
+        rows.Should().OnlyContain(r => r.FetchedFiles.Count == 0);
+    }
+
+    [Fact]
+    public async Task TheRealModlistGetsOneArchiveRowPerEntry()
+    {
+        var added = await libraryService.AddLocalFile(FileSystem.Shared.FromUnsanitizedFullPath(WabbajackFixture.RealModlistPath));
+
+        added.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out var model).Should().BeTrue();
+        WabbajackModlistArchive.FindByModlist(connection.Db, model.Id).Count().Should().Be(model.ArchiveCount);
+    }
 }

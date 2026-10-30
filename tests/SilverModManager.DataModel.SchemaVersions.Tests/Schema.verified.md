@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x212836C64C1FE357
-   - Total attributes: 380
-   - Total namespaces: 106
+   - Fingerprint: 0xEAEE7EC0541E59D6
+   - Total attributes: 385
+   - Total namespaces: 107
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -374,6 +374,11 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.StardewValley.SMAPIManifestLoadoutFile/ManifestFile                      | Null                    | True    | False | False     | 
 | SilverModManager.StardewValley.SMAPIModDatabaseLoadoutFile/ModDatabaseFile                | Null                    | False   | False | False     | 
 | SilverModManager.StardewValley.SMAPIModLoadoutItem/Manifest                               | Reference               | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistArchive/FetchedFiles                                    | Reference               | True    | True  | False     | 
+| SilverModManager.Wabbajack.ModlistArchive/Identity                                        | Blob                    | True    | False | False     | 
+| SilverModManager.Wabbajack.ModlistArchive/Modlist                                         | Reference               | True    | False | False     | 
+| SilverModManager.Wabbajack.ModlistArchive/Name                                            | Utf8                    | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistArchive/Size                                            | UInt64                  | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/ArchiveCount                                | Int32                   | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/ArchiveSize                                 | UInt64                  | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/Author                                      | Utf8                    | False   | False | False     | 

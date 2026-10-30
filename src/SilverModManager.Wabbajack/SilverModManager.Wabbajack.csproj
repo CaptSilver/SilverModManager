@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
         <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
+        <ProjectReference Include="..\SilverModManager.DataModel.SchemaVersions\SilverModManager.DataModel.SchemaVersions.csproj" />
         <ProjectReference Include="..\SilverModManager.Wabbajack.Transforms\SilverModManager.Wabbajack.Transforms.csproj" />
         <ProjectReference Include="..\SilverModManager.Games.Bethesda.Archives\SilverModManager.Games.Bethesda.Archives.csproj" />
         <ProjectReference Include="..\SilverModManager.Abstractions.Cli\SilverModManager.Abstractions.Cli.csproj" />

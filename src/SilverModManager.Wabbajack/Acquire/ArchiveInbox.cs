@@ -65,12 +65,14 @@ public sealed class ArchiveInbox(
             }
 
             var unreadable = new List<(AbsolutePath Path, FileIdentity Hash)>();
+            var addedHere = new HashSet<FileIdentity>();
             foreach (var (file, hash) in found)
             {
                 if (locator.FindByXxHash64(connection.Db, hash) is not null) continue;
                 try
                 {
                     await library.AddLocalFile(file);
+                    addedHere.Add(hash);
                 }
                 catch (Exception e) when (e is not OperationCanceledException)
                 {
@@ -86,7 +88,13 @@ public sealed class ArchiveInbox(
             foreach (var (file, hash) in found)
             {
                 var added = !unreadable.Contains((file, hash)) && locator.FindByXxHash64(connection.Db, hash) is not null;
-                if (added && plan.FindArchive(hash) is not null) file.Delete();
+                if (added && plan.FindArchive(hash) is not null)
+                {
+                    // Only a file this scan added came for the list; one the library already held was the user's.
+                    if (plan.Modlist is { } modlist && addedHere.Contains(hash) && locator.FindByXxHash64(connection.Db, hash) is { } held)
+                        await FetchedArchives.Mark(connection, modlist, hash, held);
+                    file.Delete();
+                }
                 else unmatched.Add(new UnmatchedInbox(file.FileName, hash));
             }
 

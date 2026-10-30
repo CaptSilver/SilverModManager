@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Models;
@@ -39,7 +40,7 @@ public sealed class WabbajackModlistRecogniser(ILogger<WabbajackModlistRecognise
             return;
         }
 
-        _ = new WabbajackModlistLibraryFile.New(tx, file.Id)
+        var modlist = new WabbajackModlistLibraryFile.New(tx, file.Id)
         {
             LibraryFile = file,
             Name = list.Name,
@@ -51,5 +52,18 @@ public sealed class WabbajackModlistRecogniser(ILogger<WabbajackModlistRecognise
             InstallSize = Size.From((ulong)list.Directives.Sum(d => d.Size)),
             IsNsfw = list.IsNsfw,
         };
+
+        foreach (var archive in list.Archives)
+        {
+            // An archive named by a hash this app does not use (the list format only has xxHash64) cannot be joined to the library.
+            if (archive.XxHash64.Kind != HashKind.XxHash64) continue;
+            _ = new WabbajackModlistArchive.New(tx)
+            {
+                ModlistId = modlist,
+                Identity = archive.XxHash64,
+                Size = Size.From((ulong)archive.Size),
+                Name = archive.Name,
+            };
+        }
     }
 }

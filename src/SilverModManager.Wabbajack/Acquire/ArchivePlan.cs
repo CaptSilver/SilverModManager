@@ -36,8 +36,11 @@ public enum ArchiveState
 /// </summary>
 public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, string? Reason, Uri? Page, LibraryFile.ReadOnly? Library, bool Opened = false);
 
-/// <summary>The rows for every archive of a list, in the list's order.</summary>
-public sealed record ArchivePlan(IReadOnlyList<ArchivePlanRow> Rows)
+/// <summary>
+/// The rows for every archive of a list, in the list's order. <paramref name="Modlist"/> is the library file of the
+/// list the plan was built for; it is how a download is credited to the list that wanted it.
+/// </summary>
+public sealed record ArchivePlan(IReadOnlyList<ArchivePlanRow> Rows, LibraryFileId? Modlist = null)
 {
     /// <summary>The archive entry the list names with that xxHash64, if any.</summary>
     public ArchiveEntry? FindArchive(FileIdentity xxHash64)

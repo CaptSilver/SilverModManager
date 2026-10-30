@@ -8,6 +8,7 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.DataModel.SchemaVersions;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.Wabbajack.Acquire;
@@ -16,6 +17,7 @@ using SilverModManager.Wabbajack.Diagnostics;
 using SilverModManager.Wabbajack.Gallery;
 using SilverModManager.Wabbajack.Install;
 using SilverModManager.Wabbajack.Library;
+using SilverModManager.Wabbajack.Migrations;
 using SilverModManager.Wabbajack.Models;
 
 namespace SilverModManager.Wabbajack;
@@ -29,6 +31,8 @@ public static class Services
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WabbajackModlistRemovalWatcher>());
         return services
             .AddWabbajackModlistLibraryFileModel()
+            .AddWabbajackModlistArchiveModel()
+            .AddMigration<_0005_LinkModlistArchives>()
             .AddWabbajackModlistLoadoutGroupModel()
             .AddWabbajackSkippedFileModel()
             .AddWabbajackSettings()

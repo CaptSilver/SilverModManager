@@ -5,6 +5,8 @@ using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Library;
 
@@ -27,6 +29,7 @@ public sealed class ArchiveAcquirer(
 
     private readonly Lock _lock = new();
     private ArchivePlanRow[] _rows = [];
+    private LibraryFileId? _modlist;
     private IDisposable? _subscription;
     private ITimer? _timer;
     private bool _recheckDue;
@@ -38,7 +41,7 @@ public sealed class ArchiveAcquirer(
 
     public ArchivePlan Plan
     {
-        get { lock (_lock) return new ArchivePlan(_rows.ToArray()); }
+        get { lock (_lock) return new ArchivePlan(_rows.ToArray(), _modlist); }
     }
 
     public void Show(ArchivePlan plan) => Adopt(plan, expecting: false);
@@ -51,6 +54,7 @@ public sealed class ArchiveAcquirer(
         lock (_lock)
         {
             _rows = rows;
+            _modlist = plan.Modlist;
             _expecting = expecting;
             _running = expecting ? rows : null;
         }
@@ -77,7 +81,7 @@ public sealed class ArchiveAcquirer(
                 await gate.WaitAsync(cancellationToken);
                 try
                 {
-                    await Download(rows, index, cancellationToken);
+                    await Download(rows, plan.Modlist, index, cancellationToken);
                 }
                 finally
                 {
@@ -96,7 +100,7 @@ public sealed class ArchiveAcquirer(
         }
     }
 
-    private async Task Download(ArchivePlanRow[] rows, int index, CancellationToken cancellationToken)
+    private async Task Download(ArchivePlanRow[] rows, LibraryFileId? modlist, int index, CancellationToken cancellationToken)
     {
         // Still queued when a later run replaced the plan: nobody wants this archive any more.
         if (!IsCurrent(rows)) return;
@@ -108,7 +112,10 @@ public sealed class ArchiveAcquirer(
             var file = await library.AddDownload(job);
 
             if (file.XxHash64Identity() is { } downloaded && downloaded.Equals(row.Archive.XxHash64))
+            {
                 Update(rows, index, r => r with { State = ArchiveState.Have, Reason = null, Library = file });
+                if (modlist is { } list && IsCurrent(rows)) await FetchedArchives.Mark(connection, list, row.Archive.XxHash64, file);
+            }
             else
                 Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = "hash mismatch", Page = OriginalUrl(r) });
         }
@@ -171,6 +178,7 @@ public sealed class ArchiveAcquirer(
     {
         var db = connection.Db;
         var changed = false;
+        List<(LibraryFileId Modlist, FileIdentity Archive, LibraryFile.ReadOnly File)>? fetched = null;
         lock (_lock)
         {
             for (var i = 0; i < _rows.Length; i++)
@@ -178,15 +186,33 @@ public sealed class ArchiveAcquirer(
                 var row = _rows[i];
                 if (row.State is not (ArchiveState.Browser or ArchiveState.Manual or ArchiveState.Unsupported)) continue;
                 if (locator.FindByXxHash64(db, row.Archive.XxHash64) is not { } held) continue;
+                // A Browser row is one the library lacked when the plan was built and the run sent the user to fetch,
+                // so its arrival is the download the run asked for. Manual and Unsupported rows are the user's own adds.
+                if (row.State == ArchiveState.Browser && _expecting && _modlist is { } modlist)
+                    (fetched ??= []).Add((modlist, row.Archive.XxHash64, held));
                 _rows[i] = row with { State = ArchiveState.Have, Reason = null, Library = held };
                 changed = true;
             }
         }
 
+        if (fetched is not null) _ = MarkFetched(fetched);
+
         if (!changed) return;
         UpdateExpected();
         UpdateWatching();
         PlanChanged?.Invoke(Plan);
+    }
+
+    private async Task MarkFetched(List<(LibraryFileId Modlist, FileIdentity Archive, LibraryFile.ReadOnly File)> fetched)
+    {
+        try
+        {
+            foreach (var (modlist, archive, file) in fetched) await FetchedArchives.Mark(connection, modlist, archive, file);
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning(e, "Could not record which archives were fetched for a modlist");
+        }
     }
 
     public void Release()
