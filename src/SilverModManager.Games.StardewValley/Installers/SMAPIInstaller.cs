@@ -31,6 +31,7 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
     private readonly IFileHashesService _fileHashesService;
     private readonly IStreamSourceDispatcher _streamSource;
     private readonly IFullFileHasher _fullHasher;
+    private readonly IFileIdentityResolver _identityResolver;
 
     public SMAPIInstaller(
         IServiceProvider serviceProvider,
@@ -46,6 +47,7 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
         _fileHashesService = fileHashesService;
         _streamSource = streamSourceDispatcher;
         _fullHasher = serviceProvider.GetService<IFullFileHasher>() ?? MultiHashFileHasher.Instance;
+        _identityResolver = serviceProvider.GetRequiredService<IFileIdentityResolver>();
     }
 
     public override async ValueTask<InstallerResult> ExecuteAsync(
@@ -169,7 +171,8 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
         }
         else
         {
-            var (fileHash, fileSize, onDisk) = gameFile;
+            var (fileIdentity, fileSize, onDisk) = gameFile;
+            var fileHash = fileIdentity.XxHash3();
             var to = new GamePath(LocationId.Game, "StardewModdingAPI.deps.json");
             _ = new LoadoutFile.New(transaction, out var id)
             {
@@ -187,7 +190,6 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
                 },
             };
 
-            var fileIdentity = FileIdentity.XxHash3(fileHash);
             if (!await _fileStore.HaveFile(fileIdentity))
             {
                 // A file read from disk is archived from disk: the stream sources find a game file by the xxHash3 of
@@ -210,26 +212,19 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
     }
 
     /// <summary>
-    /// The game file's xxHash3 and size, and the file on disk when the hash had to be read from it. A game file the
-    /// store vouched for is known by its SHA-1 alone, so it is read once here and the attestation settled.
+    /// The game file's store key and size, and the file on disk when the key had to be read from it.
     /// </summary>
-    private async ValueTask<(Hash Hash, Size Size, AbsolutePath? OnDisk)?> TryGetGameFile(GamePath path, Loadout.ReadOnly loadout, CancellationToken cancellationToken)
+    internal readonly record struct GameFileSource(FileIdentity Identity, Size Size, AbsolutePath? OnDisk);
+
+    private async ValueTask<GameFileSource?> TryGetGameFile(GamePath path, Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
         if (_fileHashesService.GetGameFiles(loadout.InstallationInstance, loadout.LocatorIds)
             .Where(f => f.Path == path)
             .TryGetFirst(out var gameFileRecord))
         {
-            // The caller looks the file up in the library and the file store, which are keyed by xxHash3.
-            if (gameFileRecord.Identity.TryXxHash3(out var recorded)) return (recorded, gameFileRecord.Size, null);
-
             var file = loadout.InstallationInstance.Locations.ToAbsolutePath(path);
-            if (file.FileExists)
-            {
-                var (hashes, fingerprint) = await StableFileRead.Read(_fullHasher, file, cancellationToken);
-                if (_fileHashesService.AttestedFiles(loadout.InstallationInstance).TryGetValue(path, out var attested))
-                    await _fileHashesService.SettleAttested(loadout.InstallationInstance, [(attested, hashes, fingerprint)], cancellationToken);
-                return (hashes.XxHash3, hashes.Size, file);
-            }
+            var source = await FromRecord(gameFileRecord, file, loadout.InstallationInstance, cancellationToken);
+            if (source is not null) return source;
 
             Logger.LogWarning("The game file hashes list `{Path}` but it is missing on disk, using Loadout as fallback", path);
         }
@@ -245,6 +240,24 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
         var loadoutFile = LoadoutFile.Load(loadout.Db, entity.Id);
         Debug.Assert(loadoutFile.IsValid());
 
-        return (loadoutFile.Hash, loadoutFile.Size, null);
+        return new GameFileSource(FileIdentity.XxHash3(loadoutFile.Hash), loadoutFile.Size, null);
+    }
+
+    /// <summary>
+    /// A recorded game file as the library and file store know it, which is by xxHash3. A record known by another
+    /// digest is joined to the xxHash3 the store holds through a recorded relation, so nothing is read. Only a
+    /// record no relation reaches is read once and its attestation settled. Null when that file is not on disk.
+    /// </summary>
+    internal async ValueTask<GameFileSource?> FromRecord(GameFileRecord record, AbsolutePath file, GameInstallation installation, CancellationToken cancellationToken)
+    {
+        if (record.Identity.Kind == HashKind.XxHash3) return new GameFileSource(record.Identity, record.Size, null);
+        if (await _identityResolver.StoreKeyAsync(_fileStore, record.Identity, record.Size) is { } key)
+            return new GameFileSource(key, record.Size, null);
+
+        if (!file.FileExists) return null;
+        var (hashes, fingerprint) = await StableFileRead.Read(_fullHasher, file, cancellationToken);
+        if (_fileHashesService.AttestedFiles(installation).TryGetValue(record.Path, out var attested))
+            await _fileHashesService.SettleAttested(installation, [(attested, hashes, fingerprint)], cancellationToken);
+        return new GameFileSource(FileIdentity.XxHash3(hashes.XxHash3), hashes.Size, file);
     }
 }
