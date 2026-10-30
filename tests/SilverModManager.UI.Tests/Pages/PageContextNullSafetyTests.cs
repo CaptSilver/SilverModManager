@@ -7,6 +7,16 @@ using SilverModManager.App.UI.Pages.Diff.ApplyDiff;
 using SilverModManager.App.UI.Pages.LibraryPage;
 using SilverModManager.App.UI.Pages.LibraryPage.Collections;
 using SilverModManager.App.UI.Pages.LoadoutPage;
+using SilverModManager.App.UI.Pages.MyLoadouts;
+using SilverModManager.App.UI.Pages.TextEdit;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.Windows;
+using System.Collections.ObjectModel;
+using System.Reactive;
+using ReactiveUI;
+using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.App.UI.Pages.MyLoadouts.GameLoadoutsSectionEntry;
+using SilverModManager.App.UI.Controls;
 using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.UI.Tests.Pages;
@@ -78,5 +88,61 @@ public class PageContextNullSafetyTests(IServiceProvider provider) : AUiTest(pro
             var title = view.FindControl<TextBlock>("TitleText")!;
             ToolTip.GetTip(title).Should().Be(viewModel.Name);
         });
+    }
+
+    [Fact]
+    public async Task TextEditorView_KeepsPasteDisabledUntilTheViewModelAllowsEditing()
+    {
+        await OnUi(() =>
+        {
+            var view = new TextEditorPageView();
+            var window = Track(new Window { Content = view });
+            ShowRendered(window);
+            var paste = view.FindControl<Button>("PasteButton")!.Command!;
+
+            paste.CanExecute(null).Should().BeFalse("no view model has said the editor is writable");
+
+            view.ViewModel = Provider.GetRequiredService<ITextEditorPageViewModel>();
+            Render(window);
+
+            view.ViewModel.IsReadOnly.Should().BeTrue();
+            paste.CanExecute(null).Should().BeFalse("the view model starts read-only");
+        });
+    }
+
+    [Fact]
+    public async Task MyLoadoutsView_StopsTrackingTheEmptyStateOnceDeactivated()
+    {
+        await OnUi(() =>
+        {
+            var viewModel = new SectionsViewModel();
+            var view = new MyLoadoutsView { ViewModel = viewModel };
+            var window = Track(new Window { Content = view });
+            ShowRendered(window);
+            var emptyState = view.FindControl<EmptyState>("MyLoadoutsEmptyState")!;
+            emptyState.IsActive.Should().BeTrue("there are no sections yet");
+
+            window.Content = null;
+            Render(window);
+            viewModel.Sections.Add(new GameLoadoutsSectionEntryDesignViewModel());
+            Render(window);
+
+            emptyState.IsActive.Should().BeTrue("the deactivated view no longer follows the sections");
+        });
+    }
+
+    private sealed class SectionsViewModel : APageViewModel<IMyLoadoutsViewModel>, IMyLoadoutsViewModel
+    {
+        public ObservableCollection<IGameLoadoutsSectionEntryViewModel> Sections { get; } = [];
+
+        public SectionsViewModel() : base(new DesignWindowManager())
+        {
+            GameSectionViewModels = new ReadOnlyObservableCollection<IGameLoadoutsSectionEntryViewModel>(Sections);
+        }
+
+        public ReadOnlyObservableCollection<IGameLoadoutsSectionEntryViewModel> GameSectionViewModels { get; }
+        public bool IsFilteredToGame => false;
+        public string FilterHeadingText => "";
+        public ReactiveCommand<Unit, Unit> ShowAllGamesCommand { get; } = ReactiveCommand.Create(() => { });
     }
 }

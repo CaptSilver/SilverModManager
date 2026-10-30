@@ -27,8 +27,8 @@ public partial class TextEditorPageView : ReactiveUserControl<ITextEditorPageVie
         var pasteCommand = ReactiveCommand.Create(() => TextEditor.Paste(),
             this.WhenAnyValue(view => view.TextEditor.CanPaste)
                 .CombineLatest(
-                    // A view with no view model leaves the editor as it is, so it counts as editable.
-                    this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsReadOnly)).StartWith(false),
+                    // The view model starts read-only, so paste stays off until it says otherwise.
+                    this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsReadOnly)).StartWith(true),
                     (canPaste, isReadOnly) => canPaste && !isReadOnly
                 )
         );

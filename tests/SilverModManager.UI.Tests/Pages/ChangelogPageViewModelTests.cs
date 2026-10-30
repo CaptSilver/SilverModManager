@@ -23,4 +23,27 @@ public class ChangelogPageViewModelTests(IServiceProvider provider) : AUiTest(pr
 
         await Eventually(() => wrapper.VM.MarkdownRendererViewModel.Contents.Should().Be(expected));
     }
+
+    [Fact]
+    public async Task Test_AVersionWithoutReleaseNotesShowsTheFullChangelog()
+    {
+        using var wrapper = await OnUi(() => Task.FromResult(GetActivatedViewModel<IChangelogPageViewModel>()));
+        var viewModel = (ChangelogPageViewModel)wrapper.VM;
+        await Eventually(() => viewModel.ParsedChangelog.Should().NotBeNull());
+        var full = viewModel.MarkdownRendererViewModel.Contents;
+
+        await OnUi(() => { viewModel.TargetVersion = new Version(999, 0, 0); });
+
+        await Eventually(() => viewModel.SelectedIndex.Should().Be(0));
+        viewModel.MarkdownRendererViewModel.Contents.Should().Be(full);
+    }
+
+    [Fact]
+    public void Test_ParsingTextWithoutVersionHeadingsFindsNoReleaseNotes()
+    {
+        var parsed = ParsedChangelog.Parse("Nothing here yet.\nJust prose.");
+
+        parsed.Versions.Should().BeEmpty();
+        parsed.GetVersionSection(new Version(1, 0, 0)).Should().BeNull();
+    }
 }
