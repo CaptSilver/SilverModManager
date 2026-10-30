@@ -3,7 +3,9 @@ using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using SilverModManager.Abstractions.GOG.DTOs;
 using SilverModManager.Abstractions.GOG.Values;
+using NexusMods.Paths;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.Abstractions.Secrets;
 using SilverModManager.Sdk;
@@ -123,6 +125,30 @@ public class ClientTests : IDisposable
             ["session_id"] = session,
             ["user_id"] = userId,
         });
+
+    [Fact]
+    public async Task AFileInASmallFilesContainerFailsNamingThePathWhenTheDepotHasNoContainer()
+    {
+        var path = RelativePath.FromUnsanitizedInput("data/small.txt");
+        var depot = new DepotInfo
+        {
+            Items =
+            [
+                new DepotItem
+                {
+                    Path = path,
+                    Chunks = [],
+                    Type = DepotItemType.DepotFile,
+                    SfcRef = new SmallFileContainerRef { Offset = Size.From(0), Size = Size.From(4) },
+                },
+            ],
+        };
+
+        var act = async () => await _client.GetFileStream(ProductId.From(1), depot, path, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<InvalidDataException>()).WithMessage("*small files container*data/small.txt*");
+        _handler.Requests.Should().BeEmpty();
+    }
 
     private sealed class ScriptedHandler : HttpMessageHandler
     {

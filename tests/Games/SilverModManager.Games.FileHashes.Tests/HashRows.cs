@@ -90,6 +90,33 @@ internal static class HashRows
         await tx.Commit();
     }
 
+    /// <summary>A GOG version definition whose only build has no build id, which the schema allows.</summary>
+    public static async Task AddGogVersionDefinitionWithBuildlessBuild(IConnection store, string name)
+    {
+        using var tx = store.BeginTransaction();
+        var build = new GogBuild.New(tx)
+        {
+            ProductId = ProductId.From(10),
+            ManifestId = "buildless",
+            OperatingSystem = OperatingSystem.Windows,
+            VersionName = "gog",
+            Public = true,
+            FilesIds = [],
+            DepotsIds = [],
+        };
+        _ = new VersionDefinition.New(tx)
+        {
+            Name = name,
+            OperatingSystem = OperatingSystem.Windows,
+            GameId = GameId,
+            GOG = [],
+            Steam = [],
+            EpicBuildIds = [],
+            GogBuildsIds = [build.Id],
+        };
+        await tx.Commit();
+    }
+
     /// <summary>
     /// A baseline of the given kind that owns the manifest <paramref name="manifestId"/>, the way a build from
     /// depot manifests links them. Without <paramref name="files"/> it classified nothing.

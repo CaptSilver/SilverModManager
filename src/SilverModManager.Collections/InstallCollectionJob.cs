@@ -29,6 +29,14 @@ using ModAndDownload = (Mod Mod, CollectionDownload.ReadOnly Download);
 public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob, NexusCollectionLoadoutGroup.ReadOnly>
 { 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+    /// <summary>
+    /// The fallback installer needs the full game, not just its locator data.
+    /// </summary>
+    internal static IGame RequireGame(object game)
+    {
+        return game as IGame ?? throw new InvalidOperationException($"Game '{game.GetType().FullName}' is not an IGame, so a collection cannot be installed into it");
+    }
+
     public required NexusModsCollectionLibraryFile.ReadOnly SourceCollection { get; init; }
     public required CollectionRevisionMetadata.ReadOnly RevisionMetadata { get; init; }
     public required CollectionDownload.ReadOnly[] Items { get; init; }
@@ -175,7 +183,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         var installedBefore = CollectionOrderImport.Children(Connection.Db, containerId);
 
         var loadout = Loadout.Load(Connection.Db, TargetLoadout);
-        var game = (loadout.InstallationInstance.Game as IGame)!;
+        var game = RequireGame(loadout.InstallationInstance.Game);
         var fallbackInstaller = FallbackCollectionDownloadInstaller.Create(ServiceProvider, loadout, game);
 
         await Parallel.ForEachAsync(modsAndDownloads, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = context.CancellationToken }, async (modAndDownload, _) =>

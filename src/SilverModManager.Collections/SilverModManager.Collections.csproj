@@ -15,6 +15,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <InternalsVisibleTo Include="SilverModManager.Collections.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
       <EmbeddedResource Include="default-collection-image.webp" />
     </ItemGroup>
 

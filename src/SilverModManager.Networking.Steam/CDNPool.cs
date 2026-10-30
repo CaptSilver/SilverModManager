@@ -62,15 +62,17 @@ public class CDNPool
     /// </summary>
     internal async Task<string> GetCDNAuthTokenAsync(AppId appId, DepotId depotId, Server server)
     {
+        var host = server.Host ?? throw new InvalidDataException($"A CDN server (type '{server.Type}') has no host");
+
         // Check if we already have an auth token for this server
-        if (_authTokens.TryGetValue((server.Host!, depotId), out var token))
+        if (_authTokens.TryGetValue((host, depotId), out var token))
             return token;
         
-        var key = await _session.Content.GetCDNAuthToken(appId.Value, depotId.Value, server.Host!);
+        var key = await _session.Content.GetCDNAuthToken(appId.Value, depotId.Value, host);
         if (key.Result != EResult.OK)
             throw new Exception($"Failed to get CDN auth token for depot {depotId.Value}");
         
-        _authTokens.TryAdd((server.Host!, depotId), key.Token);
+        _authTokens.TryAdd((host, depotId), key.Token);
         return key.Token;
     }
 

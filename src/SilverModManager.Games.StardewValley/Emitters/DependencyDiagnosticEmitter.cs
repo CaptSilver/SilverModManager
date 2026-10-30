@@ -222,8 +222,9 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
                 var (loadoutItemId, manifest) = kv;
 
                 var minimumVersionDependencies = manifest.Dependencies
-                    .Where(x => uniqueIdToVersion.ContainsKey(x.UniqueID) && x.MinimumVersion is not null)
-                    .Select(x => (x.UniqueID, x.MinimumVersion))
+                    .SelectMany(x => x.MinimumVersion is { } minimum && uniqueIdToVersion.ContainsKey(x.UniqueID)
+                        ? new[] { (x.UniqueID, MinimumVersion: minimum) }
+                        : [])
                     .ToList();
 
                 var contentPack = manifest.ContentPackFor;
@@ -234,7 +235,7 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
                         {
                             var dependencyModId = uniqueIdToLoadoutItemId[dependency.UniqueID];
 
-                            var minimumVersion = dependency.MinimumVersion!;
+                            var minimumVersion = dependency.MinimumVersion;
                             var currentVersion = uniqueIdToVersion[dependency.UniqueID];
 
                             var isOutdated = currentVersion.IsOlderThan(minimumVersion);

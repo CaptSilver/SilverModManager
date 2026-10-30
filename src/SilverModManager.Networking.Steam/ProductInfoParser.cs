@@ -34,7 +34,12 @@ public static class ProductInfoParser
         return productInfo;
     }
 
-    private static bool TryParseDownloadableDepot(AppId appId, KeyValue depot, [NotNullWhen(true)] out Depot? result)
+    private static string RequiredValue(DepotId depotId, string branchName, KeyValue branch, string key)
+    {
+        return branch[key].Value ?? throw new InvalidDataException($"Depot {depotId.Value} branch '{branchName}' has no '{key}' value");
+    }
+
+    internal static bool TryParseDownloadableDepot(AppId appId, KeyValue depot, [NotNullWhen(true)] out Depot? result)
     {
         if (!uint.TryParse(depot.Name, out var parsedDepotId))
         {
@@ -57,9 +62,10 @@ public static class ProductInfoParser
         Dictionary<string, ManifestInfo> manifestInfos = new();
         foreach (var branch in manifestsKey.Children)
         {
-            var manifestId = ManifestId.From(ulong.Parse(branch["gid"].Value!));
-            var sizeOnDisk = Size.From(ulong.Parse(branch["size"].Value!));
-            var downloadSize = Size.From(ulong.Parse(branch["download"].Value!));
+            var branchName = branch.Name ?? throw new InvalidDataException($"A branch of depot {depotId.Value} has no name");
+            var manifestId = ManifestId.From(ulong.Parse(RequiredValue(depotId, branchName, branch, "gid")));
+            var sizeOnDisk = Size.From(ulong.Parse(RequiredValue(depotId, branchName, branch, "size")));
+            var downloadSize = Size.From(ulong.Parse(RequiredValue(depotId, branchName, branch, "download")));
 
             var manifestInfo = new ManifestInfo
             {
@@ -68,7 +74,7 @@ public static class ProductInfoParser
                 DownloadSize = downloadSize,
             };
 
-            manifestInfos[branch.Name!] = manifestInfo;
+            manifestInfos[branchName] = manifestInfo;
         }
 
         result = new Depot

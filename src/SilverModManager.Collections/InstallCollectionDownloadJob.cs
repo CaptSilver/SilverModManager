@@ -163,9 +163,9 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             return (await InstallReplicatedMod(patchedFiles), []);
         }
 
-        if (CollectionMod.Choices is { Type: ChoicesType.fomod })
+        if (CollectionMod.Choices is { Type: ChoicesType.fomod } choices)
         {
-            return (await InstallFomodWithPredefinedChoices(context.CancellationToken), patchedFiles);
+            return (await InstallFomodWithPredefinedChoices(choices, context.CancellationToken), patchedFiles);
         }
 
         var result = await LoadoutManager.InstallItem(
@@ -179,8 +179,9 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             fallbackInstaller: FallbackInstaller
         );
 
-        Debug.Assert(result.LoadoutItemGroup.HasValue);
-        return (result.LoadoutItemGroup!.Value, patchedFiles);
+        var installedGroup = result.LoadoutItemGroup
+            ?? throw new InvalidOperationException($"Installing '{Item.Name}' did not create a loadout group");
+        return (installedGroup, patchedFiles);
     }
 
     private Task<LoadoutItemGroup.ReadOnly> InstallBundledMod(CollectionDownloadBundled.ReadOnly download) => LoadoutManager.InstallItemWrapper(TargetLoadout, tx =>
@@ -256,7 +257,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
     /// <summary>
     /// Install a fomod with predefined choices.
     /// </summary>
-    private Task<LoadoutItemGroup.ReadOnly> InstallFomodWithPredefinedChoices(CancellationToken cancellationToken) => LoadoutManager.InstallItemWrapper(TargetLoadout, async tx =>
+    private Task<LoadoutItemGroup.ReadOnly> InstallFomodWithPredefinedChoices(Choices choices, CancellationToken cancellationToken) => LoadoutManager.InstallItemWrapper(TargetLoadout, async tx =>
     {
         var libraryFile = GetLibraryFile(Item, Connection.Db);
         if (!libraryFile.TryGetAsLibraryArchive(out var libraryArchive)) throw new NotSupportedException();
@@ -289,7 +290,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
         var loadout = new Loadout.ReadOnly(Connection.Db, TargetLoadout);
 
-        var options = CollectionMod.Choices!.Options;
+        var options = choices.Options;
         await fomodInstaller.ExecuteWithSavedChoicesAsync(libraryArchive, loadoutItemGroup, tx, loadout, options, CollectionMod.Name, cancellationToken);
 
         return loadoutItemGroup;

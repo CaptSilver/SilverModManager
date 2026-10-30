@@ -114,8 +114,7 @@ internal sealed class SMAPIWebApi : ISMAPIWebApi
         return smapiIDs
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(id => _cache.GetValueOrDefault(id))
-            .Where(mod => mod is not null)
-            .Select(mod => mod!)
+            .OfType<SMAPIWebApiMod>()
             .ToDictionary(mod => mod.UniqueId, mod => mod, StringComparer.OrdinalIgnoreCase);
     }
 

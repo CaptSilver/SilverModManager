@@ -940,7 +940,11 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     {
         if (gameStore == GameStore.GOG)
         {
-            return versionDefinition.GogBuilds.Select(build => LocatorId.From(build.BuildId!.Value.ToString())).ToArray();
+            return versionDefinition.GogBuilds
+                .Select(build => build.BuildId.HasValue
+                    ? LocatorId.From(build.BuildId.Value.ToString())
+                    : throw new InvalidDataException($"Version '{versionDefinition.Name}' lists a GOG build with no build id"))
+                .ToArray();
         }
 
         if (gameStore == GameStore.Steam)

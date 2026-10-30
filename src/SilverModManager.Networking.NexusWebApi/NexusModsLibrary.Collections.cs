@@ -400,10 +400,11 @@ public partial class NexusModsLibrary
             .ToFrozenDictionary(static tuple => tuple.Md5, static tuple => tuple.Download);
 
         var tagToDownload = modsAndDownloads
-            .Select(static tuple => (tuple.Mod.Source.Tag, tuple.Download))
-            .Where(static tuple => !string.IsNullOrWhiteSpace(tuple.Tag))
+            .SelectMany(static tuple => string.IsNullOrWhiteSpace(tuple.Mod.Source.Tag)
+                ? []
+                : new[] { (Tag: tuple.Mod.Source.Tag, tuple.Download) })
             .DistinctBy(static tuple => tuple.Tag, StringComparer.Ordinal)
-            .ToFrozenDictionary(static tuple => tuple.Tag!, static tuple => tuple.Download, StringComparer.Ordinal);
+            .ToFrozenDictionary(static tuple => tuple.Tag, static tuple => tuple.Download, StringComparer.Ordinal);
 
         var fileExpressionToDownload = modsAndDownloads
             .Select(static tuple => (tuple.Mod.Source.FileExpression, tuple.Download))
@@ -819,8 +820,7 @@ public partial class NexusModsLibrary
         {
             var files = revision.ModFiles
                 .Select(static modFiles => modFiles.File)
-                .Where(static modFile => modFile is not null)
-                .Select(static modFile => modFile!)
+                .OfType<IModFile>()
                 .Distinct(comparer: ModFileEqualityComparer.Instance)
                 .ToArray();
 

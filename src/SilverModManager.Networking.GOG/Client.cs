@@ -420,9 +420,16 @@ internal class Client : IClient
             if (itemInfo == null)
                 throw new KeyNotFoundException($"The path {path} was not found in the depot.");
 
+            // Checked before the secure URL request so corrupt depot data fails without a round trip.
+            var sfcRef = itemInfo.SfcRef;
+            var container = sfcRef == null
+                ? null
+                : depotInfo.SmallFilesContainer
+                  ?? throw new InvalidDataException($"The depot of product {productId} has no small files container, but '{path}' is stored in one");
+
             var secureUrl = await GetSecureUrl(productId, token);
 
-            if (itemInfo.SfcRef == null)
+            if (sfcRef == null || container == null)
             {
                 // No small file container, just return a stream to the chunks
                 var size = Size.FromLong(itemInfo.Chunks.Sum(c => (long)c.Size.Value));
@@ -434,11 +441,11 @@ internal class Client : IClient
             else
             {
                 // If the file is in a small file container, we need a stream to the outer container, and then a substream to the inner file
-                var subSize = Size.FromLong(depotInfo.SmallFilesContainer!.Chunks.Sum(c => (long)c.Size.Value));
-                var sfcSource = new ChunkedStreamSource(this, depotInfo.SmallFilesContainer!.Chunks, subSize,
+                var subSize = Size.FromLong(container.Chunks.Sum(c => (long)c.Size.Value));
+                var sfcSource = new ChunkedStreamSource(this, container.Chunks, subSize,
                     secureUrl, putInCache: true);
                 var sfcStream = new ChunkedStream<ChunkedStreamSource>(sfcSource);
-                var subStream = new SubStream(sfcStream, itemInfo.SfcRef.Offset, itemInfo.SfcRef.Size);
+                var subStream = new SubStream(sfcStream, sfcRef.Offset, sfcRef.Size);
                 return subStream;
             }
         }, token);

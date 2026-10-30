@@ -159,7 +159,9 @@ public static class Verbs
             {
                 await using var stream = file.Read();
                 var hash = await JsonSerializer.DeserializeAsync<MultiHash>(stream, options, token);
-                bag.Add(hash!.Sha1);
+                if (hash is null)
+                    throw new InvalidDataException("the file holds no hash");
+                bag.Add(hash.Sha1);
             }
             catch (Exception ex)
             {

@@ -225,6 +225,18 @@ public sealed class LookupsReadBothStoresTests : IDisposable
     }
 
     [Fact]
+    public async Task GetLocatorIdsForVersionDefinition_ABuildWithoutABuildIdThrowsNamingTheVersion()
+    {
+        var service = _harness.CreateService(_harness.NewDatabaseLocation());
+        await HashRows.AddGogVersionDefinitionWithBuildlessBuild(service.Local.Connection, "buildless-version");
+        var definition = VersionDefinition.All(service.Local.Connection.Db).Single();
+
+        var act = () => service.GetLocatorIdsForVersionDefinition(GameStore.GOG, definition);
+
+        act.Should().Throw<InvalidDataException>().WithMessage("*buildless-version*build id*");
+    }
+
+    [Fact]
     public async Task TryGetLocatorIdsForVanityVersion_FallsBackToTheLocalStore()
     {
         var service = await ServiceWithCentral(c => HashRows.AddSteamManifest(c, 1001, ("a.esm", "a")));
