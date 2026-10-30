@@ -173,10 +173,32 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
 
     private async Task SetEnabled(SortOrderId sortOrderId, SortItemKey<string> key, bool enabled, CancellationToken token)
     {
+        // A reconcile from the load-order manager can land between reading the folder and committing the switch;
+        // the guard rejects the commit and the next attempt reads the folder again.
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await SetEnabled(sortOrderId, key, enabled, Connection.Db, token);
+                return;
+            }
+            catch (InvalidOperationException ex) when (attempt < 4 && ex.Message.StartsWith(ChangedMessage, StringComparison.Ordinal))
+            {
+                _logger.LogDebug(ex, "The Witcher 3 load order {SortOrderId} changed while switching a folder, trying again", sortOrderId);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Stores the switch against <paramref name="db"/>, the revision the caller read the folder from. Throws when the
+    /// sort order has changed since then: the folder may have no stored row in <paramref name="db"/> and gain one
+    /// meanwhile, and a second row would lose the tie against the first.
+    /// </summary>
+    internal async Task SetEnabled(SortOrderId sortOrderId, SortItemKey<string> key, bool enabled, IDb db, CancellationToken token)
+    {
         if (key.Equals(WitcherModFolders.MergedKey))
             throw new InvalidOperationException($"{WitcherConstants.W3MergedFolder} is always loaded and cannot be switched off.");
 
-        var db = Connection.Db;
         var row = RetrieveSortOrder(sortOrderId, db).FirstOrDefault(r => r.Key.Equals(key))
             ?? throw new InvalidOperationException($"Folder '{key.Key}' is not in the load order {sortOrderId}.");
         row.IsEnabled = enabled;
@@ -187,7 +209,25 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
         // The user is answering the card about a replaced mods.settings.
         ModsSettingsNotices.Retract(db, sortOrderId, tx);
         token.ThrowIfCancellationRequested();
+        AddUnchangedSinceGuard(sortOrderId, db, tx);
         await tx.Commit();
+    }
+
+    /// <summary>
+    /// Makes the transaction fail when the sort order or one of its rows changed after <paramref name="startingDb"/>.
+    /// Returns false, adding nothing, when the sort order does not exist in <paramref name="startingDb"/>.
+    /// </summary>
+    private static bool AddUnchangedSinceGuard(SortOrderId sortOrderId, IDb startingDb, ITransaction tx)
+    {
+        var sortOrderTxId = GetMaxTxIdForSortOrder(sortOrderId, startingDb);
+        if (sortOrderTxId == default(TxId)) return false;
+        tx.Add(sortOrderId, sortOrderTxId, (_, txDb, orderId, oldTxId) =>
+        {
+            var currentTxId = GetMaxTxIdForSortOrder(orderId, txDb);
+            if (currentTxId > oldTxId || currentTxId == default(TxId))
+                throw new InvalidOperationException($"{ChangedMessage} Sort Order {orderId}, Current TxId: {currentTxId}, Old TxId: {oldTxId}");
+        });
+        return true;
     }
 
     /// <inheritdoc />
@@ -290,14 +330,7 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
         ModsSettingsNotices.Retract(startingDb, sortOrderId, tx);
 
         // The same guard as the base class: a switch or reconcile that landed since startingDb must not be overwritten.
-        var sortOrderTxId = GetMaxTxIdForSortOrder(sortOrderId, startingDb);
-        if (sortOrderTxId == default(TxId)) return false;
-        tx.Add(sortOrderId, sortOrderTxId, (_, txDb, orderId, oldTxId) =>
-        {
-            var currentTxId = GetMaxTxIdForSortOrder(orderId, txDb);
-            if (currentTxId > oldTxId || currentTxId == default(TxId))
-                throw new InvalidOperationException($"{ChangedMessage} Sort Order {orderId}, Current TxId: {currentTxId}, Old TxId: {oldTxId}");
-        });
+        if (!AddUnchangedSinceGuard(sortOrderId, startingDb, tx)) return false;
 
         try
         {

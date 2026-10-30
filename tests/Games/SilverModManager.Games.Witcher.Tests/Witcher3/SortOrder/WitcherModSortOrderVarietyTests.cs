@@ -368,6 +368,26 @@ public class WitcherModSortOrderVarietyTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task ASwitchBasedOnARevisionOlderThanTheStoredFolder_IsRefusedInsteadOfStoringASecondRow()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        await AddMod(loadout, "A", 1, "Mods/modA/a.ws");
+
+        // The load-order manager reconciles in the background after every mod change. If it stores modA's row between
+        // the switch reading the folder and committing, a second row for the folder lands beside it, the first row
+        // wins the tie and the switch is silently lost.
+        var staleDb = Db;
+        await variety.ReconcileSortOrder(id);
+
+        var switching = () => variety.SetEnabled(id, Key("modA"), false, staleDb, CancellationToken.None);
+
+        await switching.Should().ThrowAsync<InvalidOperationException>();
+        SortOrderItem.FindByParentSortOrder(Db, id).Should().HaveCount(1);
+        await variety.SetEnabled(id, Key("modA"), false);
+        variety.StoredOrder(Fresh(loadout)).Should().Equal((Merged, true), ("modA", false));
+    }
+
+    [Fact]
     public async Task AStaleStoredIndex_DoesNotChangeThePage()
     {
         var (loadout, variety, id) = await Reconciled();
