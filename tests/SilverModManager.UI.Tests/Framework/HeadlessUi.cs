@@ -8,6 +8,12 @@ namespace SilverModManager.UI.Tests.Framework;
 public static class HeadlessUi
 {
     public const string Collection = "Headless UI";
+
+    /// <summary>
+    /// Name of the xunit collection for classes that change the appearance (Glass) setting. It is one store for the
+    /// whole run, so two such classes in parallel reset it under each other.
+    /// </summary>
+    public const string GlassSettingsCollection = "Glass settings";
 }
 
 [CollectionDefinition(HeadlessUi.Collection, DisableParallelization = true)]

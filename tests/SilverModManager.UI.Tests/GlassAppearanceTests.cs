@@ -16,6 +16,7 @@ using SilverModManager.UI.Tests.Framework;
 
 namespace SilverModManager.UI.Tests;
 
+[Collection(HeadlessUi.GlassSettingsCollection)]
 public class GlassAppearanceTests(IServiceProvider provider) : AUiTest(provider)
 {
     private static readonly Color Surface = Color.Parse("#14181c");

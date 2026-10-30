@@ -11,10 +11,12 @@ using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk.Settings;
+using SilverModManager.UI.Tests.Framework;
 
 namespace SilverModManager.UI.Tests.Windows;
 
 /// <summary>Where the main window puts its parts: the bottom strips belong to the page area, not under the sidebars.</summary>
+[Collection(HeadlessUi.GlassSettingsCollection)]
 public class MainWindowLayoutTests(IServiceProvider provider) : AUiTest(provider)
 {
     private static (int Column, int ColumnSpan, int Row, int RowSpan) Cell(Window window, string name)

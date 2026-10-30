@@ -31,6 +31,18 @@ public class HeadlessUiIsolationTests(IServiceProvider provider) : AUiTest(provi
         collection!.Name.Should().Be(HeadlessUi.Collection);
     }
 
+    [Theory]
+    [InlineData(typeof(GlassAppearanceTests))]
+    [InlineData(typeof(MainWindowLayoutTests))]
+    public void ClassesThatSwitchGlassOn_ShareACollection(Type testClass)
+    {
+        // Both turn the appearance setting on and put it back when done, and the setting is one store for the whole
+        // run, so one class resetting it while the other attaches a window leaves that window opaque.
+        var collection = testClass.GetCustomAttribute<CollectionAttribute>();
+        collection.Should().NotBeNull($"{testClass.Name} changes the shared appearance setting");
+        collection!.Name.Should().Be(HeadlessUi.GlassSettingsCollection);
+    }
+
     [Fact]
     public void TheHeadlessCollection_DisablesParallelization()
     {
