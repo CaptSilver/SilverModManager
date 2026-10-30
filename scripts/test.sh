@@ -78,8 +78,15 @@ fi
 # A test host that dies on a native fault (exit 139) leaves nothing to read in the log. Have the runtime write a
 # crash report and a heap dump of it, outside the throwaway XDG dirs so they outlive this run. Open the dump with
 # dotnet-dump analyze; the .crashreport.json beside it already has the faulting thread's stack.
-dump_dir="${SILVER_TEST_DUMPS:-/var/tmp/silvermod-test-dumps}"
-mkdir -p "$dump_dir"
+# A dump holds the whole test host's memory, so the folder is per user and owner-only, and a path someone else
+# created or pointed elsewhere is refused rather than written into.
+dump_dir="${SILVER_TEST_DUMPS:-/var/tmp/silvermod-test-dumps-$(id -u)}"
+(umask 077; mkdir -p "$dump_dir")
+if [[ -L "$dump_dir" || ! -O "$dump_dir" ]]; then
+    echo "Refusing the test dump folder $dump_dir: it is a symlink or not owned by $(id -un)" >&2
+    exit 1
+fi
+chmod 700 "$dump_dir"
 export DOTNET_DbgEnableMiniDump=1 DOTNET_DbgMiniDumpType=2 DOTNET_EnableCrashReport=1 \
        DOTNET_DbgMiniDumpName="$dump_dir/core.%p"
 
