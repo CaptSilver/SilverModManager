@@ -28,6 +28,7 @@ public class ArchiveInboxTests(ITestOutputHelper helper) : AcquireTestBase<Archi
     [Fact]
     public async Task AFileDroppedInTheInboxIsMatchedByHashAndTheRowBecomesHeld()
     {
+        using var page = Acquirer.Attach();
         await RunWithManualRowFor(Wanted);
         await InboxFolder.Combine("whatever-the-browser-called-it.txt").WriteAllBytesAsync(Wanted);
 
@@ -42,6 +43,7 @@ public class ArchiveInboxTests(ITestOutputHelper helper) : AcquireTestBase<Archi
     [Fact]
     public async Task AFileThatMatchesNothingIsListedAndKept()
     {
+        using var page = Acquirer.Attach();
         await RunWithManualRowFor(Wanted);
         await InboxFolder.Combine("stray.txt").WriteAllBytesAsync(Stray);
 
@@ -68,6 +70,7 @@ public class ArchiveInboxTests(ITestOutputHelper helper) : AcquireTestBase<Archi
     [Fact]
     public async Task TheDownloadsFolderIsNeverLookedAt()
     {
+        using var page = Acquirer.Attach();
         await RunWithManualRowFor(Wanted);
         var home = TemporaryFileManager.CreateFolder();
         var downloads = home.Path.Combine("Downloads");
@@ -85,6 +88,7 @@ public class ArchiveInboxTests(ITestOutputHelper helper) : AcquireTestBase<Archi
     [Fact]
     public async Task AFileThatIsALinkOutOfTheInboxIsNotFollowed()
     {
+        using var page = Acquirer.Attach();
         await RunWithManualRowFor(Wanted);
         var outside = TemporaryFileManager.CreateFolder();
         await outside.Path.Combine("wanted.txt").WriteAllBytesAsync(Wanted);
@@ -99,6 +103,7 @@ public class ArchiveInboxTests(ITestOutputHelper helper) : AcquireTestBase<Archi
     [Fact]
     public async Task TheWatcherScansAfterAFileIsDropped()
     {
+        using var page = Acquirer.Attach();
         await RunWithManualRowFor(Wanted);
         Inbox.DebounceInterval = TimeSpan.FromMilliseconds(100);
         Inbox.StartWatching();

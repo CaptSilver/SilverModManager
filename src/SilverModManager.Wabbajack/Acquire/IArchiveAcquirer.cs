@@ -24,8 +24,9 @@ public interface IArchiveAcquirer
 
     /// <summary>
     /// Makes <paramref name="plan"/> current and downloads its Automatic rows. A download that fails turns its row
-    /// into a Manual one rather than failing the run. The plan stays current, and its other rows keep being matched
-    /// against the library, until <see cref="Release"/> or the next run.
+    /// into a Manual one rather than failing the run. While the run is under way, and while a page is attached, the
+    /// rows are matched against the library; afterwards the expected Nexus Mods files stay expected until
+    /// <see cref="Release"/> or the next run.
     /// </summary>
     Task Run(ArchivePlan plan, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken);
 
@@ -35,8 +36,9 @@ public interface IArchiveAcquirer
     /// <summary>
     /// Tells the acquirer a page is showing its plan, and looks the rows up once to catch what arrived while no page
     /// was. While at least one page is attached the rows are matched against the library as it changes; dispose the
-    /// handle when the page goes away. With no page, no run and no Nexus Mods file expected, the acquirer stops
-    /// watching the library and forgets the plan, so a page that comes back calls <see cref="Show"/> again.
+    /// handle when the page goes away. With no page and no run, the acquirer stops watching the library and
+    /// forgets the plan's rows (the Nexus Mods files it expects stay expected), so a page that comes back calls
+    /// <see cref="Show"/> again, which looks the rows up afresh.
     /// </summary>
     IDisposable Attach();
 

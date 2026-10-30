@@ -15,6 +15,8 @@ using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Library;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Downloads;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.Wabbajack.Tests.Acquire;
 
@@ -155,21 +157,63 @@ public class ArchiveAcquirerWatchingTests : IDisposable
     }
 
     [Fact]
-    public async Task ExpectedBrowserDownloadsKeepTheLookupGoingUntilReleased()
+    public async Task BrowserRowsLeftAfterARunDoNotKeepTheLookupGoingOnceNoPageIsShowing()
     {
-        await _acquirer.Run(new ArchivePlan([BrowserRow(1), ManualRow(2)]), null, CancellationToken.None);
+        var page = _acquirer.Attach();
+        await _acquirer.Run(new ArchivePlan([BrowserRow(1), BrowserRow(3), ManualRow(2)]), null, CancellationToken.None);
+        page.Dispose();
         _locator.Calls = 0;
 
-        Burst();
-        _time.Advance(ArchiveAcquirer.RecheckInterval);
-        _locator.Calls.Should().BeGreaterThan(0);
-
-        _acquirer.Release();
-        _locator.Calls = 0;
         Burst();
         _time.Advance(TimeSpan.FromMinutes(1));
+
         _locator.Calls.Should().Be(0);
         _revisions.HasObservers.Should().BeFalse();
+        _acquirer.Plan.Rows.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ARunThatEndsWithNoPageShowingForgetsItsRows()
+    {
+        await _acquirer.Run(new ArchivePlan([BrowserRow(1), ManualRow(2)]), null, CancellationToken.None);
+
+        _acquirer.Plan.Rows.Should().BeEmpty();
+        _revisions.HasObservers.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ARunThatEndsWhileAPageIsShowingKeepsItsRows()
+    {
+        using var page = _acquirer.Attach();
+        await _acquirer.Run(new ArchivePlan([BrowserRow(1), ManualRow(2)]), null, CancellationToken.None);
+
+        _acquirer.Plan.Rows.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ShowingAPlanWithNoPageShowingKeepsNoRowsAndWatchesNothing()
+    {
+        _acquirer.Show(ThreeManualRows());
+        _locator.Calls = 0;
+
+        Burst();
+        _time.Advance(TimeSpan.FromMinutes(1));
+
+        _acquirer.Plan.Rows.Should().BeEmpty();
+        _locator.Calls.Should().Be(0);
+        _revisions.HasObservers.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task TheFilesAPlanExpectsFromTheBrowserOutliveItsRows()
+    {
+        var page = _acquirer.Attach();
+        await _acquirer.Run(new ArchivePlan([BrowserRow(1)]), null, CancellationToken.None);
+        page.Dispose();
+
+        _expected.IsExpected(GameDomain.From("skyrim"), ModId.From(5), FileId.From(6)).Should().BeTrue();
+        _acquirer.Release();
+        _expected.IsExpected(GameDomain.From("skyrim"), ModId.From(5), FileId.From(6)).Should().BeFalse();
     }
 
     private sealed class CountingLocator : ILibraryArchiveLocator

@@ -37,9 +37,12 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         public TaskCompletionSource? RunGate { get; set; }
         public CancellationToken LastRunToken { get; private set; }
 
+        /// <summary>Like the real acquirer when a plan is shown while no page is active: it keeps no rows.</summary>
+        public bool KeepsNothingShown { get; set; }
+
         public void Show(ArchivePlan plan)
         {
-            Plan = plan;
+            Plan = KeepsNothingShown ? new([]) : plan;
             Shown.Add(plan);
         }
 
@@ -149,11 +152,11 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
 
     private GameId TestGame => Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First().Game.GameId;
 
-    private async Task<(WabbajackModlistViewModel Vm, FakeService Service, FakeAcquirer Acquirer)> Open(ArchivePlan plan, GameId? game = null, Size? free = null, bool createsLoadouts = false, bool load = true)
+    private async Task<(WabbajackModlistViewModel Vm, FakeService Service, FakeAcquirer Acquirer)> Open(ArchivePlan plan, GameId? game = null, Size? free = null, bool createsLoadouts = false, bool load = true, bool acquirerKeepsNothingShown = false)
     {
         await SeedLoadoutRow(GameStore.Steam, "Wabbajack target");
         var service = new FakeService(game ?? TestGame, createsLoadouts ? async () => (await SeedLoadoutRow(GameStore.Steam, "Created by install")).LoadoutId : null) { Plan = plan, Free = free };
-        var acquirer = new FakeAcquirer();
+        var acquirer = new FakeAcquirer { KeepsNothingShown = acquirerKeepsNothingShown };
         var vm = new WabbajackModlistViewModel(Provider.GetRequiredService<IWindowManager>(), Connection, service, acquirer, Provider) { FileId = SomeFile };
         if (load) await vm.LoadAsync(CancellationToken.None);
         return (vm, service, acquirer);
@@ -337,6 +340,14 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
 
         acquirer.Shown.Should().HaveCount(2);
         acquirer.Plan.Rows.Should().ContainSingle().Which.Archive.Name.Should().Be("mine.7z");
+        vm.Archives.Should().ContainSingle().Which.Name.Should().Be("mine.7z");
+    }
+
+    [Fact]
+    public async Task APlanTheAcquirerKeepsNothingOf_StillFillsThePage()
+    {
+        var (vm, _, _) = await Open(Plan(Row(ArchiveState.Manual, "mine.7z")), acquirerKeepsNothingShown: true);
+
         vm.Archives.Should().ContainSingle().Which.Name.Should().Be("mine.7z");
     }
 

@@ -55,7 +55,7 @@ public sealed class ArchiveAcquirer(
             _running = expecting ? rows : null;
         }
         UpdateExpected();
-        UpdateWatching(forgetIdlePlan: false);
+        UpdateWatching();
         // Files that arrived between building the plan and now.
         Recheck();
         return rows;
@@ -92,8 +92,7 @@ public sealed class ArchiveAcquirer(
             {
                 if (ReferenceEquals(_running, rows)) _running = null;
             }
-            // The rows stay readable: callers look at the plan once the run is over.
-            if (IsCurrent(rows)) UpdateWatching(forgetIdlePlan: false);
+            if (IsCurrent(rows)) UpdateWatching();
         }
     }
 
@@ -146,7 +145,7 @@ public sealed class ArchiveAcquirer(
     public IDisposable Attach()
     {
         lock (_lock) _pages++;
-        UpdateWatching(forgetIdlePlan: false);
+        UpdateWatching();
         // What arrived while no page was watching.
         Recheck();
         return new PageHandle(this);
@@ -155,7 +154,7 @@ public sealed class ArchiveAcquirer(
     private void Detach()
     {
         lock (_lock) _pages--;
-        UpdateWatching(forgetIdlePlan: true);
+        UpdateWatching();
     }
 
     private sealed class PageHandle(ArchiveAcquirer owner) : IDisposable
@@ -186,7 +185,7 @@ public sealed class ArchiveAcquirer(
 
         if (!changed) return;
         UpdateExpected();
-        UpdateWatching(forgetIdlePlan: false);
+        UpdateWatching();
         PlanChanged?.Invoke(Plan);
     }
 
@@ -197,18 +196,17 @@ public sealed class ArchiveAcquirer(
     }
 
     /// <summary>
-    /// The library is only worth watching for a page that shows the plan, a run that is downloading it, or Nexus
-    /// Mods files the user is fetching in a browser. Anything else would scan every row on every database revision
-    /// of the whole app for a plan nobody looks at.
+    /// The library is only worth watching for a page that shows the plan or a run that is downloading it. With
+    /// neither, the subscription goes and so do the rows: scanning every row on every database revision of the
+    /// whole app for a plan nobody looks at is what this exists to avoid. What the user fetched in the meantime is
+    /// matched when a page comes back, which shows its plan again and looks the rows up afresh. The Nexus Mods
+    /// files the plan expects are kept apart from the rows, so the nxm handler still accepts them.
     /// </summary>
-    private void UpdateWatching(bool forgetIdlePlan)
+    private void UpdateWatching()
     {
         lock (_lock)
         {
-            var needed = _pages > 0
-                || _running is not null
-                || (_expecting && _rows.Any(r => r.State == ArchiveState.Browser));
-            if (needed)
+            if (_pages > 0 || _running is not null)
             {
                 if (_subscription is null)
                 {
@@ -219,9 +217,7 @@ public sealed class ArchiveAcquirer(
             }
 
             StopWatching();
-            // A page that comes back shows its plan again, which looks the rows up afresh. Rows a run or a
-            // caller may still read are kept.
-            if (forgetIdlePlan) _rows = [];
+            _rows = [];
         }
     }
 

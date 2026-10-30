@@ -44,6 +44,7 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
     [Fact]
     public async Task NoMoreThanFourDownloadsRunAtOnceAndEveryRowEndsUpHeld()
     {
+        using var page = Acquirer.Attach();
         var (plan, _) = TenHttpRows();
 
         await Acquirer.Run(plan, null, CancellationToken.None);
@@ -55,6 +56,7 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
     [Fact]
     public async Task AFailedDownloadBecomesAManualRowWithItsUrlAndTheReason()
     {
+        using var page = Acquirer.Attach();
         var (plan, contents) = TenHttpRows();
         _jobs.Failures[Hash64(contents[3])] = new IOException("connection reset");
 
@@ -70,6 +72,7 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
     [Fact]
     public async Task ADownloadWhoseBytesDoNotMatchTheListedHashBecomesManual()
     {
+        using var page = Acquirer.Attach();
         var content = new byte[] { 1, 2, 3, 4 };
         var row = AutomaticRow(new HttpState(new Uri(Mirror, "a.7z"), []), content, "a.7z");
         _jobs.Content[row.Archive.XxHash64] = [9, 9, 9, 9];
@@ -100,6 +103,7 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
     [Fact]
     public async Task ABrowserRowBecomesHeldWhenALibraryFileWithTheRightHashAppears()
     {
+        using var page = Acquirer.Attach();
         var content = "the archive's bytes"u8.ToArray();
         var state = new NexusState("SkyrimSpecialEdition", 77, 4242, null, null, null, false);
         var row = new ArchivePlanRow(Entry(state, Hash64(content), content.Length, "mod.txt"), ArchiveState.Browser, null, new Uri("https://www.nexusmods.com/x"), null);
@@ -117,6 +121,7 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
     [Fact]
     public async Task OpenNextOpensTheBrowserRowsInBatches()
     {
+        using var page = Acquirer.Attach();
         var plan = await BrowserPlan(Enumerable.Range(0, 9).Select(i => new NexusState("Skyrim", 100 + i, 200 + i, null, null, null, false)));
         await Acquirer.Run(plan, null, CancellationToken.None);
 
@@ -151,6 +156,7 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
     [Fact]
     public async Task ShowingAPlanStartsNoDownloadOpensNoPageAndExpectsNoFile()
     {
+        using var page = Acquirer.Attach();
         var (automatic, _) = TenHttpRows();
         var browser = await BrowserPlan([new NexusState("Skyrim", 5, 6, null, null, null, false)]);
         var opened = ServiceProvider.GetRequiredService<OpenedUris>();
@@ -180,6 +186,7 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
     [Fact]
     public async Task DownloadsOfAReplacedPlanDoNotTouchTheNewPlan()
     {
+        using var page = Acquirer.Attach();
         var (first, _) = TenHttpRows();
         var browser = new ArchivePlanRow(Entry(new NexusState("Skyrim", 5, 6, null, null, null, false), Xx64.From(0x5151)), ArchiveState.Browser, null, new Uri("https://www.nexusmods.com/x"), null);
 
@@ -193,6 +200,7 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
     [Fact]
     public async Task ManualAndUnsupportedRowsAreNotDownloaded()
     {
+        using var page = Acquirer.Attach();
         var manual = new ArchivePlanRow(Entry(new ManualState(new Uri("https://example.test/m"), "get it")), ArchiveState.Manual, "get it", new Uri("https://example.test/m"), null);
         await Acquirer.Run(new ArchivePlan([manual]), null, CancellationToken.None);
 

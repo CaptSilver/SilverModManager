@@ -239,7 +239,10 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             _downloads = null;
             _acquirer.Show(plan);
             _planReady = true;
-            ApplyPlan(_acquirer.Plan);
+            // The acquirer keeps no rows when no page is active (the user left while planning); the page then
+            // shows the plan as built, and the next activation gives it back and looks the rows up.
+            var shown = _acquirer.Plan;
+            ApplyPlan(shown.Rows.Count > 0 ? shown : plan);
             RefreshInstalledState();
         }
         finally
