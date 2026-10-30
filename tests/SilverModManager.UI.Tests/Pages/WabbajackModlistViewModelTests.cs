@@ -457,6 +457,10 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         var gate = new TaskCompletionSource();
         service.PlanGate = gate;
         vm.DownloadCommand.Execute().Subscribe();
+        // The gate holds whichever plan reaches the service first. Download plans on a pool thread, and a pick
+        // made before that thread starts cancels it, so the pick's own plan would take the gate and the pick
+        // would wait for a release that only comes after it returns.
+        await WaitUntil(() => service.PlanGate is null);
 
         await vm.SelectLoadoutCommand.Execute(CreateNew(vm));
         gate.SetResult();
