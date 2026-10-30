@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Backend.FileExtractor.Extractors;
 using SilverModManager.Backend.FileExtractor.FileSignatures;
 using NexusMods.Paths;
-using NexusMods.Paths.Utilities;
 using SilverModManager.Sdk.FileExtractor;
 using SilverModManager.Sdk.IO;
 
@@ -61,6 +60,8 @@ public class FileExtractor : IFileExtractor
     public async Task ExtractAllAsync(IStreamFactory sFn, AbsolutePath dest, CancellationToken token = default)
     {
         var extractors = await FindExtractors(sFn);
+        var startedEmpty = IsEmpty(dest);
+        Exception? lastFailure = null;
         foreach (var extractor in extractors)
         {
             try
@@ -68,18 +69,41 @@ public class FileExtractor : IFileExtractor
                 await extractor.ExtractAllAsync(sFn, dest, token);
                 return;
             }
-            catch (PathException e)
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
             {
-                _logger.LogError(e, "Path exception while extracting via {Extractor}", extractor);
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "While extracting via {Extractor}", extractor);
+                // A name one extractor can't turn into a path (PathException) is no reason to give up: the next
+                // extractor decodes names its own way, so it gets its turn like it does for any other failure.
+                _logger.LogWarning(ex, "Extracting {File} via {Extractor} failed, trying the next extractor", sFn.FileName, extractor);
+                lastFailure = ex;
+                if (startedEmpty) Clear(dest);
             }
         }
 
-        throw new FileExtractionException($"No Extractors found for file {sFn.FileName}");
+        throw new FileExtractionException(lastFailure is null
+            ? $"No Extractors found for file {sFn.FileName}"
+            : $"No extractor could extract file {sFn.FileName}: {lastFailure.Message}", lastFailure);
+    }
+
+    private static bool IsEmpty(AbsolutePath folder)
+    {
+        var path = folder.ToString();
+        return Directory.Exists(path) && !Directory.EnumerateFileSystemEntries(path).Any();
+    }
+
+    // Whatever a failed extractor wrote would otherwise end up beside the next extractor's output.
+    private static void Clear(AbsolutePath folder)
+    {
+        var path = folder.ToString();
+        if (!Directory.Exists(path)) return;
+        foreach (var entry in Directory.EnumerateFileSystemEntries(path).ToArray())
+        {
+            if (Directory.Exists(entry) && (File.GetAttributes(entry) & FileAttributes.ReparsePoint) == 0) Directory.Delete(entry, recursive: true);
+            else File.Delete(entry);
+        }
     }
 
     /// <inheritdoc/>
