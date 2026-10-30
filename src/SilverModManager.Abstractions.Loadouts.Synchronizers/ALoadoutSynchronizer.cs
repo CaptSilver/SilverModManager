@@ -1653,25 +1653,30 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// the bytes differ from what the last apply recorded for it; any other generated file is always work.
     /// </summary>
     public async ValueTask<bool> ShouldSynchronize(Loadout.ReadOnly loadout, IEnumerable<PathPartPair> previousDiskState, IEnumerable<PathPartPair> lastScannedDiskState)
+        => (await EvaluateSynchronize(loadout, previousDiskState, lastScannedDiskState)).Needed;
+
+    /// <inheritdoc />
+    public async ValueTask<SynchronizeEvaluation> EvaluateSynchronize(Loadout.ReadOnly loadout, IEnumerable<PathPartPair> previousDiskState, IEnumerable<PathPartPair> lastScannedDiskState)
     {
         var syncTree = BuildSyncTree(lastScannedDiskState, previousDiskState, loadout);
         // Process the sync tree to get the actions populated in the nodes
         ProcessSyncTree(syncTree);
+        var waitsForArchive = syncTree.Values.Any(node => node.Actions.HasFlag(Actions.WarnOfUnableToExtract));
 
         // A file with no archive to extract it from is only a warning to an apply, so it is not work until the
         // archive is back and the same node maps to an extraction.
         var pending = syncTree.Where(n => n.Value.Actions != Actions.DoNothing && n.Value.Actions != Actions.WarnOfUnableToExtract).ToList();
-        if (pending.Count == 0) return false;
-        if (!pending.All(n => IsIntrinsicWriteOfAnUntouchedFile(n.Value))) return true;
+        if (pending.Count == 0) return new SynchronizeEvaluation(false, waitsForArchive);
+        if (!pending.All(n => IsIntrinsicWriteOfAnUntouchedFile(n.Value))) return new SynchronizeEvaluation(true, waitsForArchive);
 
         var files = IntrinsicFiles(loadout);
         foreach (var (path, node) in pending)
         {
-            if (!files.TryGetValue(path, out var file) || file is not IIntrinsicFileRenderedFromLoadout) return true;
-            if (!await RendersAsRecorded(file, loadout, syncTree, node)) return true;
+            if (!files.TryGetValue(path, out var file) || file is not IIntrinsicFileRenderedFromLoadout) return new SynchronizeEvaluation(true, waitsForArchive);
+            if (!await RendersAsRecorded(file, loadout, syncTree, node)) return new SynchronizeEvaluation(true, waitsForArchive);
         }
 
-        return false;
+        return new SynchronizeEvaluation(false, waitsForArchive);
     }
 
     /// <summary>

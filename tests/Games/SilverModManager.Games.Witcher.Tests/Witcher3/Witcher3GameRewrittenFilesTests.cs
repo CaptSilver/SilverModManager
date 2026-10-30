@@ -370,6 +370,39 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
         (await StatusNow(loadout)).Should().Be(LoadoutSynchronizerState.Current);
     }
 
+    private async Task AddLateFileOutsideMods(Loadout.ReadOnly loadout)
+    {
+        using var tx = Connection.BeginTransaction();
+        var group = AddEmptyGroup(tx, loadout.LoadoutId, "late file");
+        AddFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, "bin/x64/late.ws"), "late");
+        await tx.Commit();
+    }
+
+    // The apply was clean, so nothing recorded that a file is waiting for its archive. The status still has to
+    // notice the archive when it arrives, or it stays Current while an apply would extract the file. Nothing in
+    // the database changes when the archive lands in the file store, so the store's own change has to be enough.
+    [Fact]
+    public async Task AFileAddedWithoutItsArchiveAfterACleanApplyNeedsAnotherOnceTheArchiveIsBack()
+    {
+        var loadout = await CreateLoadout();
+        await Synchronizer.Synchronize(Refresh(loadout));
+        var states = new List<LoadoutSynchronizerState>();
+        using var watch = (await SynchronizerService.StatusForLoadout(loadout.LoadoutId)).Subscribe(states.Add);
+        await AddLateFileOutsideMods(loadout);
+
+        // Every evaluation emits, so the status has caught up with the late file once it has emitted again and
+        // then stays quiet. Only then is the file known to wait for its archive.
+        await Observable.Interval(TimeSpan.FromMilliseconds(250)).Select(_ => states.Count)
+            .Scan((Previous: -1, Now: 0), (last, now) => (last.Now, now))
+            .Where(count => count.Now >= 2 && count.Now == count.Previous).Timeout(TimeSpan.FromSeconds(60)).FirstAsync();
+        states.ToArray().Should().OnlyContain(state => state == LoadoutSynchronizerState.Current, "an apply could not extract it yet");
+
+        await TheArchiveOfTheLateModIsBack();
+
+        await Observable.Interval(TimeSpan.FromMilliseconds(50)).Select(_ => states.ToArray())
+            .Where(seen => seen.Contains(LoadoutSynchronizerState.NeedsSync)).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+    }
+
     [Fact]
     public async Task ResettingTheGameFolderForgetsThatTheLastApplyLeftFilesOut()
     {

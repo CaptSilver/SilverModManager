@@ -180,6 +180,12 @@ public class UnmanageUserFilesTests(ITestOutputHelper helper) : AStubbedGameTest
         public Task<byte[]> Load(FileIdentity identity, CancellationToken token = default) => inner.Load(identity, token);
         public AsyncFriendlyReaderWriterLock.WriteLockDisposable WriteLock() => inner.WriteLock();
         public void ReloadCaches() => inner.ReloadCaches();
+
+        public event Action? ArchivesChanged
+        {
+            add => inner.ArchivesChanged += value;
+            remove => inner.ArchivesChanged -= value;
+        }
     }
 
     private class WarningCapture(ConcurrentQueue<string> sink) : ILoggerProvider

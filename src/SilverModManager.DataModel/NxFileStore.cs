@@ -32,6 +32,9 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
     private readonly AsyncFriendlyReaderWriterLock _lock = new(); // See details on struct.
     private readonly AbsolutePath[] _archiveLocations;
     private readonly ILogger<NxFileStore> _logger;
+    /// <inheritdoc />
+    public event Action? ArchivesChanged;
+
     private FrozenDictionary<Hash, ArchiveContents> _archivesByEntry = FrozenDictionary<Hash, ArchiveContents>.Empty;
     private FrozenDictionary<AbsolutePath, ArchiveContents> _archives = FrozenDictionary<AbsolutePath, ArchiveContents>.Empty;
 
@@ -128,6 +131,7 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
         }
         _archivesByEntry = index.ToFrozenDictionary();
         _archives = archives.ToFrozenDictionary();
+        ArchivesChanged?.Invoke();
     }
 
     /// <summary>
@@ -175,6 +179,8 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
                 break;
             }
         }
+
+        ArchivesChanged?.Invoke();
     }
 
     private static void ArchiveValidation(FrozenDictionary<Hash, FileEntry> actualFiles, Dictionary<Hash, (ArchivedFileEntry, Stream)> expectedFiles)

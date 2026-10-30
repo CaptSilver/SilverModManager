@@ -167,6 +167,9 @@ public class LibraryFileDigestsTests(IConnection connection, IServiceProvider se
         public Task<byte[]> Load(FileIdentity identity, CancellationToken token = default) => throw new NotSupportedException();
         public AsyncFriendlyReaderWriterLock.WriteLockDisposable WriteLock() => throw new NotSupportedException();
         public void ReloadCaches() => throw new NotSupportedException();
+
+        // This store never gains an archive, so there is nobody to tell.
+        public event Action? ArchivesChanged { add { } remove { } }
     }
 
     public class Startup

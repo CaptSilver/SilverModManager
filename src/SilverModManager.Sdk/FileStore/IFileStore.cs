@@ -94,6 +94,12 @@ public interface IFileStore
     /// <remarks>This should be run under the store write lock since it updates the caches</remarks>
     /// </summary>
     void ReloadCaches();
+
+    /// <summary>
+    /// Raised after the set of archives the store can serve changed: files were backed up, or the caches were
+    /// reloaded. A file the loadout needs may have become available. May fire on any thread.
+    /// </summary>
+    event Action? ArchivesChanged;
 }
 
 

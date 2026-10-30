@@ -140,6 +140,13 @@ public interface ILoadoutSynchronizer
     /// to what the last apply wrote.
     /// </summary>
     public ValueTask<bool> ShouldSynchronize(Loadout.ReadOnly loadout, IEnumerable<PathPartPair> previousState, IEnumerable<PathPartPair> lastScannedState);
+
+    /// <summary>
+    /// As <see cref="ShouldSynchronize"/>, and also says whether the tree has a file an apply would leave out for
+    /// want of an archive. That file is not work yet, but it becomes work when the archive appears, which nothing
+    /// in the loadout shows.
+    /// </summary>
+    public ValueTask<SynchronizeEvaluation> EvaluateSynchronize(Loadout.ReadOnly loadout, IEnumerable<PathPartPair> previousState, IEnumerable<PathPartPair> lastScannedState);
     
     /// <summary>
     /// Computes the difference between a loadout and a disk state, assuming the loadout to be the newer state.
@@ -220,3 +227,10 @@ public interface ILoadoutSynchronizer
 
 public record struct FileConflictGroup(GamePath Path, FileConflictItem[] Items);
 public record struct FileConflictItem(bool IsEnabled, OneOf<LoadoutFile.ReadOnly, DeletedFile.ReadOnly> File);
+
+/// <summary>
+/// What <see cref="ILoadoutSynchronizer.EvaluateSynchronize"/> found.
+/// </summary>
+/// <param name="Needed">An apply would change something.</param>
+/// <param name="WaitsForArchive">A file in the tree has no archive to extract it from, so an apply would only warn.</param>
+public readonly record struct SynchronizeEvaluation(bool Needed, bool WaitsForArchive);

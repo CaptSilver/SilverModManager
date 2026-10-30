@@ -143,7 +143,7 @@ public class StubbedFileHasherService : IFileHashesService
         return [VanityVersion.From("1.0.Stubbed"), VanityVersion.From("1.1.Stubbed")];
     }
 
-    public async ValueTask<IDb> GetFileHashesDb() => await _db.Value;
+    public virtual async ValueTask<IDb> GetFileHashesDb() => await _db.Value;
 
     public IEnumerable<GameFileRecord> GetGameFiles(GameInstallation installation)
     {

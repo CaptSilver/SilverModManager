@@ -18,6 +18,7 @@ using DynamicData.Kernel;
 using SilverModManager.Sdk;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Errors;
+using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
@@ -28,7 +29,7 @@ using GameInstallMetadata = SilverModManager.Sdk.Games.GameInstallMetadata;
 namespace SilverModManager.DataModel.Synchronizer;
 
 /// <inheritdoc />
-public class SynchronizerService : ISynchronizerService
+public class SynchronizerService : ISynchronizerService, IDisposable
 {
     private readonly ILogger<SynchronizerService> _logger;
     private readonly IConnection _conn;
@@ -75,21 +76,73 @@ public class SynchronizerService : ISynchronizerService
     public IJobTask<ProcessLoadoutChangesJob, bool> GetShouldSynchronize(LoadoutId loadoutId)
     {
         return _jobMonitor.Begin(new ProcessLoadoutChangesJob(loadoutId),
-            ctx =>
-            {
-                var db = _conn.Db;
-                var loadout = Loadout.Load(db, loadoutId);
-                if (!loadout.IsValid())
-                    return ValueTask.FromResult(false);
-                var synchronizer = loadout.InstallationInstance.GetGame().Synchronizer;
-                var metaData = loadout.Installation;
-                var hasPreviousLoadout = GameInstallMetadata.LastSyncedLoadoutTransaction.TryGetValue(metaData, out var lastId);
+            async ctx => (await EvaluateSynchronize(loadoutId)).Needed);
+    }
 
-                var lastScannedDiskState = synchronizer.GetDiskStateForGame(metaData);
-                var previousDiskState = hasPreviousLoadout ? synchronizer.GetLastScannedDiskState(metaData) : lastScannedDiskState;
-        
-                return synchronizer.ShouldSynchronize(loadout, previousDiskState, lastScannedDiskState);
-            });
+    private ValueTask<SynchronizeEvaluation> EvaluateSynchronize(LoadoutId loadoutId)
+    {
+        var db = _conn.Db;
+        var loadout = Loadout.Load(db, loadoutId);
+        if (!loadout.IsValid())
+            return ValueTask.FromResult(new SynchronizeEvaluation(false, false));
+        var synchronizer = loadout.InstallationInstance.GetGame().Synchronizer;
+        var metaData = loadout.Installation;
+        var hasPreviousLoadout = GameInstallMetadata.LastSyncedLoadoutTransaction.TryGetValue(metaData, out var lastId);
+
+        var lastScannedDiskState = synchronizer.GetDiskStateForGame(metaData);
+        var previousDiskState = hasPreviousLoadout ? synchronizer.GetLastScannedDiskState(metaData) : lastScannedDiskState;
+
+        return synchronizer.EvaluateSynchronize(loadout, previousDiskState, lastScannedDiskState);
+    }
+
+    // Status evaluations run on the thread pool and read the database through DuckDB. They are counted so that
+    // Dispose can refuse new ones and wait for the running ones before the connection under them is closed.
+    private readonly object _evaluationGate = new();
+    private readonly CancellationTokenSource _shutdown = new();
+    private int _evaluationsRunning;
+    private bool _disposed;
+
+    private bool TryBeginEvaluation()
+    {
+        lock (_evaluationGate)
+        {
+            if (_disposed) return false;
+            _evaluationsRunning++;
+            return true;
+        }
+    }
+
+    private void EndEvaluation()
+    {
+        lock (_evaluationGate)
+        {
+            if (--_evaluationsRunning == 0) Monitor.PulseAll(_evaluationGate);
+        }
+    }
+
+    /// <summary>
+    /// Stops starting status evaluations and waits (up to 30 seconds) for the running ones, so none is still reading
+    /// the database when the connection and RocksDB are closed after this service.
+    /// </summary>
+    public void Dispose()
+    {
+        lock (_evaluationGate)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _shutdown.Cancel();
+
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+            while (_evaluationsRunning > 0)
+            {
+                var remaining = deadline - DateTime.UtcNow;
+                if (remaining <= TimeSpan.Zero || !Monitor.Wait(_evaluationGate, remaining))
+                {
+                    _logger.LogError("A status evaluation was still running 30 seconds after the synchronizer service was disposed");
+                    break;
+                }
+            }
+        }
     }
     
     /// <inheritdoc />
@@ -517,16 +570,29 @@ public class SynchronizerService : ISynchronizerService
             .Select(metadata => AppliedStateOf(metadata))
             .ToObservable();
 
+        // The epoch counts changes to the file store. A file store change moves no database revision, so without it
+        // the pipeline's DistinctUntilChanged would see the same values and drop the trigger.
+        var archiveEpoch = 0L;
         var inputRevisions = LoadoutQueries2.SyncInputRevisions(_conn, loadoutId)
             .ToObservable()
-            .Select(rev => rev.Db.BasisTxId);
+            .Select(rev => (Basis: rev.Db.BasisTxId, Epoch: Volatile.Read(ref archiveEpoch)));
 
-        // An archive that comes back (a library commit, a download finishing) is no input of the loadout, so while
-        // the last apply left files out for want of one every commit is a reason to look again.
-        var archiveChanges = _conn.Revisions
-            .ToObservable()
-            .Where(db => AppliedStateOf(GameInstallMetadata.Load(db, metadataId)).LeftUnextracted)
-            .Select(db => db.BasisTxId);
+        // An archive that comes back is no input of the loadout, so while a file is known to wait for one (the last
+        // apply left it out, or the last comparison found one) a change to the file store is a reason to look again.
+        // The comparison is the only thing that can see a waiting file that no apply has recorded.
+        var waitsForArchive = 0;
+        var fileStore = _serviceProvider.GetRequiredService<IFileStore>();
+        var archiveChanges = R3.Observable.Create<(TxId Basis, long Epoch)>(observer =>
+        {
+            void Changed()
+            {
+                if (Volatile.Read(ref waitsForArchive) == 1 || AppliedStateOf(GameInstallMetadata.Load(_conn.Db, metadataId)).LeftUnextracted)
+                    observer.OnNext((_conn.Db.BasisTxId, Interlocked.Increment(ref archiveEpoch)));
+            }
+
+            fileStore.ArchivesChanged += Changed;
+            return R3.Disposable.Create(() => fileStore.ArchivesChanged -= Changed);
+        });
 
         // Only here to make each emission different from the last, so DistinctUntilChanged lets it through.
         var revisions = inputRevisions.Merge(archiveChanges);
@@ -538,57 +604,18 @@ public class SynchronizerService : ISynchronizerService
             )
             .DistinctUntilChanged()
             .SelectAwait(
-                async (tuple, cancellationToken) =>
+                async (tuple, observerToken) =>
                 {
-                    // To make sure the DB is loaded, before we start diffing
-                    await _fileHashesService.GetFileHashesDb();
-
-                    var busy = tuple.busy;
-                    var db = _conn.Db;
-                    var rev = Loadout.Load(db, loadoutId);
-                    var (last, scanTx, leftUnextracted) = AppliedStateOf(GameInstallMetadata.Load(db, metadataId));
-
-                    var verdict = StatusDecision.Decide(
-                        busy, rev.IsValid(), loadoutId, last, scanTx,
-                        () => SyncInputRevision.Read(db, loadoutId),
-                        () => _inputsAtApply.GetOrAdd((loadoutId, last.Tx), static (key, conn) => SyncInputRevision.Read(conn.AsOf(key.Tx), key.Id), _conn),
-                        leftUnextracted);
-                    switch (verdict)
-                    {
-                        case StatusVerdict.Pending: return LoadoutSynchronizerState.Pending;
-                        case StatusVerdict.OtherLoadoutSynced: return LoadoutSynchronizerState.OtherLoadoutSynced;
-                        case StatusVerdict.Current: return LoadoutSynchronizerState.Current;
-                    }
-
-                    // Potentially long operation, run on thread pool
-                    bool diffFound;
+                    if (!TryBeginEvaluation()) return LoadoutSynchronizerState.Unavailable;
                     try
                     {
-                        diffFound = await Task.Run(async () =>
-                        {
-                            _logger.LogTrace("Checking for changes in loadout {LoadoutId}", loadoutId);
-                            var diffFound = await GetShouldSynchronize(loadoutId);
-                            _logger.LogTrace("Changes found in loadout {LoadoutId}: {DiffFound}", loadoutId, diffFound);
-                            return diffFound;
-                        }, cancellationToken);
+                        using var linked = CancellationTokenSource.CreateLinkedTokenSource(observerToken, _shutdown.Token);
+                        return await EvaluateStatus(tuple.busy, linked.Token, observerToken);
                     }
-                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    finally
                     {
-                        throw;
+                        EndEvaluation();
                     }
-                    catch (Exception e)
-                    {
-                        // An unhandled exception here would end the stream, and from there reach the UI thread
-                        // and take the process down. Every later revision would fail the same way, so only the
-                        // first failure is an error.
-                        if (Interlocked.Exchange(ref statusFailureLogged, 1) == 0)
-                            _logger.LogError(e, "Failed to compute the status of loadout `{LoadoutName}` ({LoadoutId})", rev.Name, loadoutId);
-                        else
-                            _logger.LogDebug(e, "Status of loadout `{LoadoutName}` ({LoadoutId}) is still unavailable", rev.Name, loadoutId);
-                        return LoadoutSynchronizerState.Unavailable;
-                    }
-
-                    return diffFound ? LoadoutSynchronizerState.NeedsSync : LoadoutSynchronizerState.Current;
                 },
                 awaitOperation: AwaitOperation.ThrottleFirstLast
             )
@@ -596,5 +623,81 @@ public class SynchronizerService : ISynchronizerService
             .RefCount();
 
         return statusObservable;
+
+        async Task<LoadoutSynchronizerState> EvaluateStatus(bool busy, CancellationToken cancellationToken, CancellationToken observerToken)
+        {
+            // To make sure the DB is loaded, before we start diffing
+            await _fileHashesService.GetFileHashesDb();
+
+            var db = _conn.Db;
+            var rev = Loadout.Load(db, loadoutId);
+            var (last, scanTx, leftUnextracted) = AppliedStateOf(GameInstallMetadata.Load(db, metadataId));
+
+            var verdict = StatusDecision.Decide(
+                busy, rev.IsValid(), loadoutId, last, scanTx,
+                () => SyncInputRevision.Read(db, loadoutId),
+                () => _inputsAtApply.GetOrAdd((loadoutId, last.Tx), static (key, conn) => SyncInputRevision.Read(conn.AsOf(key.Tx), key.Id), _conn),
+                leftUnextracted || Volatile.Read(ref waitsForArchive) == 1);
+            switch (verdict)
+            {
+                case StatusVerdict.Pending: return LoadoutSynchronizerState.Pending;
+                case StatusVerdict.OtherLoadoutSynced:
+                    Volatile.Write(ref waitsForArchive, 0);
+                    return LoadoutSynchronizerState.OtherLoadoutSynced;
+                case StatusVerdict.Current:
+                    Volatile.Write(ref waitsForArchive, 0);
+                    return LoadoutSynchronizerState.Current;
+            }
+
+            // Potentially long operation, run on thread pool
+            SynchronizeEvaluation evaluation;
+            try
+            {
+                evaluation = await Task.Run(async () =>
+                {
+                    _logger.LogTrace("Checking for changes in loadout {LoadoutId}", loadoutId);
+                    var found = await EvaluateSynchronizeAsJob(loadoutId);
+                    _logger.LogTrace("Changes found in loadout {LoadoutId}: {DiffFound}", loadoutId, found.Needed);
+                    return found;
+                }, cancellationToken);
+            }
+            catch (OperationCanceledException) when (observerToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // The service is shutting down. The stream is not ended with an error, since that would reach the UI thread.
+                return LoadoutSynchronizerState.Unavailable;
+            }
+            catch (Exception e)
+            {
+                // An unhandled exception here would end the stream, and from there reach the UI thread
+                // and take the process down. Every later revision would fail the same way, so only the
+                // first failure is an error.
+                if (Interlocked.Exchange(ref statusFailureLogged, 1) == 0)
+                    _logger.LogError(e, "Failed to compute the status of loadout `{LoadoutName}` ({LoadoutId})", rev.Name, loadoutId);
+                else
+                    _logger.LogDebug(e, "Status of loadout `{LoadoutName}` ({LoadoutId}) is still unavailable", rev.Name, loadoutId);
+                return LoadoutSynchronizerState.Unavailable;
+            }
+
+            Volatile.Write(ref waitsForArchive, evaluation.WaitsForArchive ? 1 : 0);
+            return evaluation.Needed ? LoadoutSynchronizerState.NeedsSync : LoadoutSynchronizerState.Current;
+        }
+    }
+
+    /// <summary>
+    /// <see cref="GetShouldSynchronize"/>, keeping the whole evaluation: the job reports only whether work was found.
+    /// </summary>
+    private async Task<SynchronizeEvaluation> EvaluateSynchronizeAsJob(LoadoutId loadoutId)
+    {
+        var evaluation = default(SynchronizeEvaluation);
+        await _jobMonitor.Begin(new ProcessLoadoutChangesJob(loadoutId), async _ =>
+        {
+            evaluation = await EvaluateSynchronize(loadoutId);
+            return evaluation.Needed;
+        });
+        return evaluation;
     }
 }
