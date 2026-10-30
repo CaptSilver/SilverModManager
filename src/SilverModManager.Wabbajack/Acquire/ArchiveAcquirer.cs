@@ -7,6 +7,7 @@ using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Acquire.Hosts;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Library;
 
@@ -331,6 +332,10 @@ public sealed class ArchiveAcquirer(
     {
         HttpState http => http.Url,
         WabbajackCdnState cdn => cdn.Url,
+        MegaState mega => mega.Url,
+        GoogleDriveState drive => GoogleDriveDownloadJob.PageFor(drive.Id),
+        MediaFireState mediaFire => mediaFire.Url,
+        ModDbState modDb => modDb.Url,
         _ => null,
     };
 }

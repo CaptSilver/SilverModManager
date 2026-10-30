@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace SilverModManager.Wabbajack.Acquire.Hosts;
 
 /// <summary>
@@ -35,7 +37,7 @@ public sealed class MegaLink
     /// <summary>The first half of the CTR counter block: words four and five of the key. The counter half starts at zero.</summary>
     public byte[] Nonce => Key[16..24];
 
-    public static bool TryParse(Uri url, out MegaLink? link)
+    public static bool TryParse(Uri url, [NotNullWhen(true)] out MegaLink? link)
     {
         link = null;
         var host = url.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? url.Host[4..] : url.Host;

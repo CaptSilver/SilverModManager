@@ -13,6 +13,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Wabbajack.Acquire.Hosts;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Library;
 using SilverModManager.Wabbajack.Mapping;
@@ -176,16 +177,15 @@ public sealed class ArchiveInventory(
 
         return archive.State switch
         {
-            HttpState { Headers.Length: > 0 } http => Row(archive, ArchiveState.Manual, "needs request headers", http.Url),
+            HttpState { Headers.Length: > 0 } http when HeaderPolicy.Refused(http.Headers).FirstOrDefault() is { } refused
+                => Row(archive, ArchiveState.Manual, $"the list asks for the request header {refused}, which this app does not send", http.Url),
             HttpState => Row(archive, ArchiveState.Automatic),
             WabbajackCdnState => Row(archive, ArchiveState.Automatic),
             ManualState manual => Row(archive, ArchiveState.Manual, manual.Prompt, manual.Url),
-            MegaState mega => Row(archive, ArchiveState.Manual, null, mega.Url),
-            GoogleDriveState drive => Row(archive, ArchiveState.Manual, null, new Uri($"https://drive.google.com/uc?id={drive.Id}&export=download")),
-            MediaFireState mediaFire => Row(archive, ArchiveState.Manual, null, mediaFire.Url),
-            ModDbState modDb => Row(archive, ArchiveState.Manual, null, modDb.Url),
-            LoversLabState loversLab => Row(archive, ArchiveState.Manual, null, loversLab.Url),
-            VectorPlexusState vectorPlexus => Row(archive, ArchiveState.Manual, null, vectorPlexus.Url),
+            MegaState mega when !MegaLink.TryParse(mega.Url, out _) => Row(archive, ArchiveState.Manual, "the MEGA link is not a file link this app can read; download it in your browser", mega.Url),
+            MegaState or GoogleDriveState or MediaFireState or ModDbState => Row(archive, ArchiveState.Automatic),
+            LoversLabState loversLab => Row(archive, ArchiveState.Manual, "needs your LoversLab login; download it in your browser", loversLab.Url),
+            VectorPlexusState vectorPlexus => Row(archive, ArchiveState.Manual, "needs your VectorPlexus login; download it in your browser", vectorPlexus.Url),
             UnsupportedState unsupported => Row(archive, ArchiveState.Unsupported, $"the list uses a source this app cannot download from ({unsupported.TypeName})", Uri.TryCreate(unsupported.Url, UriKind.Absolute, out var url) ? url : null),
             _ => Row(archive, ArchiveState.Unsupported, $"the list uses a source this app does not know ({archive.State.GetType().Name})"),
         };

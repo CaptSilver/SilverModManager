@@ -245,37 +245,84 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
     }
 
     [Fact]
-    public async Task AnHttpArchiveThatNeedsRequestHeadersIsManual()
+    public async Task AnHttpArchiveWhoseHeadersAreSafeToSendIsAutomatic()
     {
         var url = new Uri("https://example.invalid/a.7z");
 
-        var row = await RowFor(Entry(new HttpState(url, ["Authorization: x"])));
+        var row = await RowFor(Entry(new HttpState(url, ["Referer: https://example.invalid/", "User-Agent: Wabbajack"])));
+
+        row.State.Should().Be(ArchiveState.Automatic);
+        row.Reason.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("Authorization: x", "Authorization")]
+    [InlineData("Cookie: sid=1", "Cookie")]
+    [InlineData("X-Api-Key: k", "X-Api-Key")]
+    public async Task AnHttpArchiveThatNeedsAHeaderTheAppWillNotSendIsManualNamingIt(string header, string name)
+    {
+        var url = new Uri("https://example.invalid/a.7z");
+
+        var row = await RowFor(Entry(new HttpState(url, ["Accept: */*", header])));
 
         row.State.Should().Be(ArchiveState.Manual);
-        row.Reason.Should().Be("needs request headers");
+        row.Reason.Should().Be($"the list asks for the request header {name}, which this app does not send");
         row.Page.Should().Be(url);
     }
 
     [Fact]
-    public async Task EveryManualSourceCarriesItsPage()
+    public async Task EveryHostTheAppCanDownloadFromIsAutomaticAndCarriesNoReason()
     {
         var url = new Uri("https://example.invalid/file");
-        var cases = new (DownloadState State, Uri Page)[]
+        var mega = new Uri("https://mega.nz/file/AbCdEf12#" + new string('A', 43));
+        var states = new DownloadState[]
         {
-            (new ManualState(url, "Click the big button"), url),
-            (new MegaState(url), url),
-            (new GoogleDriveState("abc123"), new Uri("https://drive.google.com/uc?id=abc123&export=download")),
-            (new MediaFireState(url), url),
-            (new ModDbState(url), url),
-            (new LoversLabState(url, "a.7z"), url),
-            (new VectorPlexusState(url, "a.7z"), url),
+            new MegaState(mega),
+            new GoogleDriveState("abc123"),
+            new MediaFireState(url),
+            new ModDbState(url),
         };
 
-        foreach (var (state, page) in cases)
+        foreach (var state in states)
+        {
+            var row = await RowFor(Entry(state));
+            row.State.Should().Be(ArchiveState.Automatic, state.GetType().Name);
+            row.Reason.Should().BeNull(state.GetType().Name);
+        }
+    }
+
+    [Theory]
+    [InlineData("https://mega.nz/folder/AbCdEf12#abc")]
+    [InlineData("https://mega.nz/file/AbCdEf12")]
+    [InlineData("https://example.invalid/not-mega")]
+    public async Task AMegaLinkThatIsNotAFileLinkIsManualWithItsPage(string address)
+    {
+        var url = new Uri(address);
+
+        var row = await RowFor(Entry(new MegaState(url)));
+
+        row.State.Should().Be(ArchiveState.Manual);
+        row.Reason.Should().Be("the MEGA link is not a file link this app can read; download it in your browser");
+        row.Page.Should().Be(url);
+    }
+
+    [Fact]
+    public async Task ManualSourcesCarryTheirPageAndSayWhyTheAppCannotFetchThem()
+    {
+        var url = new Uri("https://example.invalid/file");
+        var cases = new (DownloadState State, string? Reason)[]
+        {
+            (new ManualState(url, "Click the big button"), "Click the big button"),
+            (new LoversLabState(url, "a.7z"), "needs your LoversLab login; download it in your browser"),
+            (new VectorPlexusState(url, "a.7z"), "needs your VectorPlexus login; download it in your browser"),
+        };
+
+        foreach (var (state, reason) in cases)
         {
             var row = await RowFor(Entry(state));
             row.State.Should().Be(ArchiveState.Manual, state.GetType().Name);
-            row.Page.Should().Be(page, state.GetType().Name);
+            row.Page.Should().Be(url, state.GetType().Name);
+            row.Reason.Should().Be(reason, state.GetType().Name);
         }
     }
 

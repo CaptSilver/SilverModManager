@@ -47,7 +47,7 @@ public sealed record MegaDownloadJob : HostedDownloadJob, IJobDefinitionWithStar
         if (!MegaLink.TryParse(Url, out var link))
             throw new HostRefusedException("The list's link is not a MEGA file link this app can read; download it in your browser");
 
-        var file = await DownloadRetries.Run(Logger, $"MEGA's answer for {link!.FileId}", Attempts, RetryDelay, () => Ask(transfer, link.FileId, token), token);
+        var file = await DownloadRetries.Run(Logger, $"MEGA's answer for {link.FileId}", Attempts, RetryDelay, () => Ask(transfer, link.FileId, token), token);
         ReportedFileName = ReadName(file.Attributes, link.AesKey);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, file.DownloadUrl);

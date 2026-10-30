@@ -70,6 +70,24 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
     }
 
     [Fact]
+    public async Task ADownloadFromAFileHostThatFailsLeavesTheUserTheHostsPage()
+    {
+        using var page = Acquirer.Attach();
+        var mega = new Uri("https://mega.nz/file/AbCdEf12#" + new string('A', 43));
+        var other = new Uri("https://example.test/page");
+        var states = new DownloadState[] { new MegaState(mega), new GoogleDriveState("abc123"), new MediaFireState(other), new ModDbState(other) };
+        var contents = states.Select((_, i) => new byte[] { (byte)i, 5, 5 }).ToArray();
+        foreach (var content in contents) _jobs.Failures[Hash64(content)] = new IOException("the host said no");
+        var rows = states.Select((state, i) => AutomaticRow(state, contents[i], $"{i}.7z")).ToArray();
+
+        await Acquirer.Run(new ArchivePlan(rows), null, CancellationToken.None);
+
+        Acquirer.Plan.Rows.Select(r => r.State).Should().OnlyContain(s => s == ArchiveState.Manual);
+        Acquirer.Plan.Rows.Select(r => r.Reason).Should().OnlyContain(r => r == "the host said no");
+        Acquirer.Plan.Rows.Select(r => r.Page).Should().Equal(mega, new Uri("https://drive.google.com/uc?id=abc123&export=download"), other, other);
+    }
+
+    [Fact]
     public async Task ADownloadWhoseBytesDoNotMatchTheListedHashBecomesManual()
     {
         using var page = Acquirer.Attach();
