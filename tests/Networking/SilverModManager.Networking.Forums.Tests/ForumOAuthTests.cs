@@ -317,6 +317,8 @@ public class ForumOAuthTests
             set { lock (_lock) _token = value; }
         }
 
+        public OAuthToken? Current => Token;
+
         public ValueTask<OAuthToken?> GetTokenAsync(CancellationToken cancellationToken) => new(Token);
 
         public ValueTask<SecretWriteResult> SetTokenAsync(OAuthToken token, CancellationToken cancellationToken)

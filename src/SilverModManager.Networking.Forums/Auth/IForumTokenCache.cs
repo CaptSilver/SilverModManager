@@ -8,6 +8,11 @@ namespace SilverModManager.Networking.Forums.Auth;
 public interface IForumTokenCache
 {
     /// <summary>
+    /// The token as of the last load or write, for callers that cannot await; null before the load has finished.
+    /// </summary>
+    OAuthToken? Current { get; }
+
+    /// <summary>
     /// The token the cache holds, or null when there is none.
     /// </summary>
     ValueTask<OAuthToken?> GetTokenAsync(CancellationToken cancellationToken);
