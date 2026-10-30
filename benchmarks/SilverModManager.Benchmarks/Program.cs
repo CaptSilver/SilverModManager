@@ -40,14 +40,11 @@ while (true)
     Console.ForegroundColor = origColour;
     Console.WriteLine("\nEnter any invalid number to exit.");
 
+    // End of input (a closed or piped stdin) and anything that is not a listed number end the menu; looping on them
+    // spins a core and prints the menu forever.
     var line = Console.ReadLine();
-    if (int.TryParse(line, out var result))
-    {
-        if (result >= 0 && result < benchmarks.Length)
-            StartBenchmark(benchmarks, result);
-        else
-            return;
-    }
+    if (!int.TryParse(line, out var result) || result < 0 || result >= benchmarks.Length) return;
+    StartBenchmark(benchmarks, result);
 }
 
 void PrintOption(int x, SelectableBenchmark benchmark)
