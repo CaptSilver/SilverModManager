@@ -79,6 +79,12 @@ public class JobMonitorTrackingTests : AJobsTest
     [Fact]
     public async Task Snapshot_ListsJobsWhileOtherThreadsStartAndFinishThem()
     {
+        // The churning jobs can finish before a snapshot catches any of them, so the one job the snapshot
+        // must see is held open until the churn is over.
+        using var held = new ManualResetEventSlim();
+        var heldJob = JobMonitor.Begin<ProgressReportingJob, double>(new ProgressReportingJob(1, TimeSpan.Zero, held));
+        var heldId = heldJob.Job.Id;
+
         var starting = Task.Run(async () =>
         {
             for (var i = 0; i < 300; i++)
@@ -86,14 +92,16 @@ public class JobMonitorTrackingTests : AJobsTest
         }, TestContext.Current.CancellationToken);
 
         var seen = 0;
-        while (!starting.IsCompleted)
+        do
         {
             // Enumerating Jobs here would throw "Collection was modified" from time to time.
-            seen += JobMonitor.Snapshot().Count(job => job.Status.IsActive() || job.Status == JobStatus.Completed);
+            seen += JobMonitor.Snapshot().Count(job => job.Id == heldId);
             Thread.Yield();
-        }
+        } while (!starting.IsCompleted);
 
         await starting;
-        seen.Should().BeGreaterThan(0, "the snapshot has to see the jobs the other thread ran");
+        held.Set();
+        await heldJob.Job.WaitAsync(TestContext.Current.CancellationToken);
+        seen.Should().BeGreaterThan(0, "the snapshot has to see the job that stays open while the other thread churns");
     }
 }
