@@ -64,7 +64,7 @@ public class BG3InstallerTests(ITestOutputHelper outputHelper) : ALibraryArchive
 
 
     private static SettingsTask VerifyChildren(
-        IEnumerable<(RelativePath FromPath, NexusMods.Hashing.xxHash3.Hash Hash, Sdk.Games.GamePath GamePath)> childrenFilesAndHashes,
+        IEnumerable<(RelativePath FromPath, Sdk.Hashes.FileIdentity Identity, Sdk.Games.GamePath GamePath)> childrenFilesAndHashes,
         string[] archivePaths,
         [CallerFilePath] string sourceFile = "")
     {
@@ -74,7 +74,7 @@ public class BG3InstallerTests(ITestOutputHelper outputHelper) : ALibraryArchive
                     new
                     {
                         FromPath = row.FromPath.ToString(),
-                        Hash = row.Hash.ToString(),
+                        Hash = row.Identity.XxHash3().ToString(),
                         ToGamePath = row.GamePath.ToString(),
                     }
                 // ReSharper disable once ExplicitCallerInfoArgument

@@ -68,8 +68,6 @@ public class BareHashApiGuard
         ["SilverModManager.Sdk.Library.LibraryFile+ReadOnly"] = "permanent",
         // Hashes of the schema itself, not of file content.
         ["SilverModManager.DataModel.SchemaVersions.SchemaFingerprint"] = "permanent",
-        // The installer snapshot tests print this column in Hash's 0x form; another element type rewrites every verified file.
-        ["SilverModManager.Games.TestFramework.ALibraryArchiveInstallerTests`2"] = "permanent",
         // The fixture manifests' JSON carries the file's xxHash3 under "Hash" and Hash's own converter reads it.
         ["SilverModManager.Games.TestFramework.Downloader.NexusModMetadata"] = "permanent",
         // These two hash a resource identifier (PersistedDbResource.ResourceIdentifierHash is a HashAttribute), not

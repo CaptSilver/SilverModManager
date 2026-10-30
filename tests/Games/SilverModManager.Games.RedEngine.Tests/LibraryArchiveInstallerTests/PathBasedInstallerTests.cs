@@ -54,7 +54,7 @@ public class PathBasedInstallerTests(ITestOutputHelper outputHelper) : ALibraryA
         await VerifyChildren(ChildrenFilesAndHashes(group), archivePaths).UseParameters(testCaseName);
     }
 
-    private SettingsTask VerifyChildren(IEnumerable<(RelativePath FromPath, Hash Hash, Sdk.Games.GamePath GamePath)> childrenFilesAndHashes, string[] archivePaths, [CallerFilePath] string sourceFile = "")
+    private SettingsTask VerifyChildren(IEnumerable<(RelativePath FromPath, Sdk.Hashes.FileIdentity Identity, Sdk.Games.GamePath GamePath)> childrenFilesAndHashes, string[] archivePaths, [CallerFilePath] string sourceFile = "")
     {
         var asArray = childrenFilesAndHashes.ToArray();
         
@@ -62,7 +62,7 @@ public class PathBasedInstallerTests(ITestOutputHelper outputHelper) : ALibraryA
                 new
                 {
                     FromPath = row.FromPath.ToString(),
-                    Hash = row.Hash.ToString(),
+                    Hash = row.Identity.XxHash3().ToString(),
                     ToGamePath = row.GamePath.ToString(),
                 }
             // ReSharper disable once ExplicitCallerInfoArgument

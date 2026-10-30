@@ -10,6 +10,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -85,9 +86,9 @@ public abstract class ALibraryArchiveInstallerTests<TTest, TGame>(ITestOutputHel
     }
 
     /// <summary>
-    /// Gets the children of this loadout item as a tuple of from path, hash and game path.
+    /// Gets the children of this loadout item as a tuple of from path, identity and game path.
     /// </summary>
-    protected IEnumerable<(RelativePath FromPath, Hash Hash, GamePath GamePath)> ChildrenFilesAndHashes(LoadoutItemGroup.ReadOnly group)
+    protected IEnumerable<(RelativePath FromPath, FileIdentity Identity, GamePath GamePath)> ChildrenFilesAndHashes(LoadoutItemGroup.ReadOnly group)
     {
         var db = Connection.Db;
 
@@ -101,9 +102,9 @@ public abstract class ALibraryArchiveInstallerTests<TTest, TGame>(ITestOutputHel
 
             var libraryFile = LibraryFile.FindByHash(db, file.Hash).First();
             if (libraryFile.TryGetAsLibraryArchiveFileEntry(out var entry )) 
-                yield return (entry.Path, libraryFile.Hash, itemWithTargetPath.TargetPath);
+                yield return (entry.Path, libraryFile.Identity, itemWithTargetPath.TargetPath);
             else 
-                yield return (libraryFile.FileName, libraryFile.Hash, itemWithTargetPath.TargetPath);
+                yield return (libraryFile.FileName, libraryFile.Identity, itemWithTargetPath.TargetPath);
         }
     }
 

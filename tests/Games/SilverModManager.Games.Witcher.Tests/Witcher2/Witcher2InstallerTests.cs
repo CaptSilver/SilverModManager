@@ -98,13 +98,13 @@ public class Witcher2InstallerTests(ITestOutputHelper outputHelper) : ALibraryAr
     }
 
     private static SettingsTask VerifyChildren(
-        IEnumerable<(RelativePath FromPath, Hash Hash, GamePath GamePath)> childrenFilesAndHashes,
+        IEnumerable<(RelativePath FromPath, Sdk.Hashes.FileIdentity Identity, GamePath GamePath)> childrenFilesAndHashes,
         [CallerFilePath] string sourceFile = "")
     {
         return Verify(childrenFilesAndHashes.Select(row => new
             {
                 FromPath = row.FromPath.ToString(),
-                Hash = row.Hash.ToString(),
+                Hash = row.Identity.XxHash3().ToString(),
                 ToGamePath = row.GamePath.ToString(),
             }),
             // ReSharper disable once ExplicitCallerInfoArgument
