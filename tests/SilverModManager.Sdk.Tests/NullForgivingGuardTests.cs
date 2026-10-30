@@ -1,4 +1,3 @@
-using System.Text;
 using FluentAssertions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -8,21 +7,12 @@ using Microsoft.CodeAnalysis.Text;
 namespace SilverModManager.Sdk.Tests;
 
 /// <summary>
-/// Nullable warnings already fail the build in <c>src</c>, so the way a null still reaches a crash is
-/// the null-forgiving operator (<c>x!</c>). This ratchet counts those per file against
-/// <c>NullForgivingBaseline.txt</c>: a file's count may go down but never up, and a new file starts at zero.
-/// <para>
-/// After removing suppressions, rewrite the baseline with
-/// <c>UPDATE_NULL_FORGIVING_BASELINE=1 scripts/test.sh --project tests/SilverModManager.Sdk.Tests --filter-class SilverModManager.Sdk.Tests.NullForgivingGuardTests</c>
-/// and commit the diff. The update refuses to raise a count.
-/// </para>
+/// Nullable warnings are errors in <c>src</c>, so the null-forgiving operator (<c>x!</c>) is the one way a
+/// null still reaches a crash. This test keeps it out of <c>src</c>; the directive and build-settings
+/// guards cover the other two ways to switch the checks off.
 /// </summary>
 public class NullForgivingGuardTests
 {
-    private const string UpdateVariable = "UPDATE_NULL_FORGIVING_BASELINE";
-
-    private static string BaselinePath(string root) => Path.Combine(root, "tests", "SilverModManager.Sdk.Tests", "NullForgivingBaseline.txt");
-
     /// <summary>
     /// Line numbers of every null-forgiving operator in <paramref name="source"/>. Code in an inactive
     /// <c>#if</c> branch has no syntax nodes, so the file is parsed with none of its conditional symbols and
@@ -65,40 +55,6 @@ public class NullForgivingGuardTests
             if (lines.Length > 0) result[file] = lines;
         }
         return result;
-    }
-
-    /// <summary>
-    /// Files whose count rose above the baseline (a file missing from it is allowed none), and baseline
-    /// entries whose file now has fewer, which must be written back so the gain can't be spent later.
-    /// </summary>
-    internal static (string[] Raised, string[] Stale) Compare(IReadOnlyDictionary<string, int[]> current, IReadOnlyDictionary<string, int> baseline)
-    {
-        var raised = current
-            .Where(kv => kv.Value.Length > baseline.GetValueOrDefault(kv.Key))
-            .OrderBy(kv => kv.Key, StringComparer.Ordinal)
-            .Select(kv => $"{kv.Key}: {kv.Value.Length} null-forgiving operators, baseline {baseline.GetValueOrDefault(kv.Key)}; at lines {string.Join(", ", kv.Value)}")
-            .ToArray();
-
-        var stale = baseline
-            .Select(kv => (File: kv.Key, Allowed: kv.Value, Now: current.GetValueOrDefault(kv.Key)?.Length ?? 0))
-            .Where(entry => entry.Now < entry.Allowed)
-            .OrderBy(entry => entry.File, StringComparer.Ordinal)
-            .Select(entry => $"{entry.File}: baseline {entry.Allowed}, now {entry.Now}")
-            .ToArray();
-
-        return (raised, stale);
-    }
-
-    private static Dictionary<string, int> ReadBaseline(string path)
-    {
-        var baseline = new Dictionary<string, int>();
-        foreach (var line in File.ReadLines(path))
-        {
-            if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#')) continue;
-            var tab = line.LastIndexOf('\t');
-            baseline[line[..tab]] = int.Parse(line[(tab + 1)..]);
-        }
-        return baseline;
     }
 
     [Fact]
@@ -144,62 +100,11 @@ public class NullForgivingGuardTests
     }
 
     [Fact]
-    public void Test_Compare_FailsAFileWhoseCountRoseNamingEachLine()
+    public void Test_NoNullForgivingOperatorsInSource()
     {
-        var current = new Dictionary<string, int[]> { ["src/A.cs"] = [3, 9], ["src/New.cs"] = [5] };
-        var baseline = new Dictionary<string, int> { ["src/A.cs"] = 1 };
+        var offenders = Scan(RepoScanGuard.FindRepoRoot()).Select(kv => $"{kv.Key}: lines {string.Join(", ", kv.Value)}");
 
-        var (raised, stale) = Compare(current, baseline);
-
-        raised.Should().Equal(
-            "src/A.cs: 2 null-forgiving operators, baseline 1; at lines 3, 9",
-            "src/New.cs: 1 null-forgiving operators, baseline 0; at lines 5");
-        stale.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void Test_Compare_ReportsLoweredCountsAsStaleBaseline()
-    {
-        var current = new Dictionary<string, int[]> { ["src/A.cs"] = [3], ["src/Same.cs"] = [1, 2] };
-        var baseline = new Dictionary<string, int> { ["src/A.cs"] = 2, ["src/Same.cs"] = 2, ["src/Gone.cs"] = 4 };
-
-        var (raised, stale) = Compare(current, baseline);
-
-        raised.Should().BeEmpty();
-        stale.Should().Equal("src/A.cs: baseline 2, now 1", "src/Gone.cs: baseline 4, now 0");
-    }
-
-    [Fact]
-    public void Test_NoNewNullForgivingOperatorsInSource()
-    {
-        var root = RepoScanGuard.FindRepoRoot();
-        var current = Scan(root);
-        var baselinePath = BaselinePath(root);
-
-        if (Environment.GetEnvironmentVariable(UpdateVariable) == "1")
-        {
-            var existing = File.Exists(baselinePath) ? ReadBaseline(baselinePath) : null;
-            if (existing is not null)
-            {
-                Compare(current, existing).Raised.Should().BeEmpty($"{UpdateVariable} only lowers counts; remove the new '!' instead of baselining it");
-            }
-
-            var sb = new StringBuilder();
-            sb.Append("# Null-forgiving operators (x!) per file under src. Counts may only go down.\n");
-            sb.Append("# Regenerate with UPDATE_NULL_FORGIVING_BASELINE=1, see NullForgivingGuardTests.\n");
-            foreach (var (file, lines) in current) sb.Append(file).Append('\t').Append(lines.Length).Append('\n');
-            File.WriteAllText(baselinePath, sb.ToString());
-            return;
-        }
-
-        File.Exists(baselinePath).Should().BeTrue($"{baselinePath} is the checked-in per-file baseline");
-        var baseline = ReadBaseline(baselinePath);
-
-        var (raised, stale) = Compare(current, baseline);
-
-        string.Join(Environment.NewLine, raised).Should().BeEmpty(
-            "new '!' suppressions hide nulls that crash at runtime; handle the null (early return, diagnostic, or a throw naming what was missing)");
-        string.Join(Environment.NewLine, stale).Should().BeEmpty(
-            $"counts went down, lock the gain in by regenerating the baseline with {UpdateVariable}=1");
+        string.Join(Environment.NewLine, offenders).Should().BeEmpty(
+            "a null-forgiving operator hides a null that crashes at runtime; handle it with an early return, a UserFacingException, or a throw naming what was missing");
     }
 }

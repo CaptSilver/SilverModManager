@@ -1,2 +1,0 @@
-# Null-forgiving operators (x!) per file under src. Counts may only go down.
-# Regenerate with UPDATE_NULL_FORGIVING_BASELINE=1, see NullForgivingGuardTests.
