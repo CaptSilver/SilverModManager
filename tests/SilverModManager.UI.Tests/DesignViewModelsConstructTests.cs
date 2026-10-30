@@ -16,6 +16,22 @@ public class DesignViewModelsConstructTests(IServiceProvider provider) : AUiTest
         .Where(type => type is { IsClass: true, IsAbstract: false, IsGenericTypeDefinition: false } && type.Name.EndsWith("DesignViewModel", StringComparison.Ordinal))
         .Where(type => type.GetConstructor(Type.EmptyTypes) is not null);
 
+    // Activator.CreateInstance wraps constructor exceptions in TargetInvocationException, which NotThrow<T> does not unwrap.
+    private static object? ConstructUnwrapped(Type type) =>
+        Activator.CreateInstance(type, BindingFlags.Public | BindingFlags.Instance | BindingFlags.DoNotWrapExceptions, null, null, null);
+
+    private sealed class NullDereferencingCtor
+    {
+        public NullDereferencingCtor() => _ = ((string?)null)!.Length;
+    }
+
+    [Fact]
+    public void ConstructUnwrapped_SurfacesANullReferenceFromTheConstructor()
+    {
+        var act = () => ConstructUnwrapped(typeof(NullDereferencingCtor));
+        act.Should().Throw<NullReferenceException>();
+    }
+
     [Fact]
     public async Task EveryDesignViewModel_ConstructsWithoutDereferencingNull()
     {
@@ -26,7 +42,7 @@ public class DesignViewModelsConstructTests(IServiceProvider provider) : AUiTest
         {
             foreach (var type in types)
             {
-                var act = () => Activator.CreateInstance(type);
+                var act = () => ConstructUnwrapped(type);
                 act.Should().NotThrow<ArgumentNullException>(type.FullName);
                 act.Should().NotThrow<NullReferenceException>(type.FullName);
             }

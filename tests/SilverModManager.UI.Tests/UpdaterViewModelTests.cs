@@ -131,6 +131,8 @@ public class UpdaterViewModelTests : IDisposable
             new Uri("https://example.com"), asset);
 
         withoutAsset.CommandDownloadReleaseAssetInBrowser.CanExecute().Should().BeFalse();
+        withoutAsset.CommandDownloadReleaseAssetInBrowser.Execute(R3.Unit.Default);
+        osInterop.ReceivedCalls().Should().BeEmpty();
         withAsset.CommandDownloadReleaseAssetInBrowser.Execute(R3.Unit.Default);
 
         osInterop.Received(1).OpenUri(asset);
