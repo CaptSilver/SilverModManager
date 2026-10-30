@@ -72,6 +72,7 @@ using SilverModManager.App.UI.Pages.SteamLaunchOption;
 using SilverModManager.App.UI.Pages.NexusCatalog;
 using SilverModManager.App.UI.Pages.Thunderstore;
 using SilverModManager.App.UI.Pages.Wabbajack;
+using SilverModManager.Networking.Forums;
 using SilverModManager.App.UI.Pages.WabbajackGallery;
 using SilverModManager.App.UI.Pages.TextEdit;
 using SilverModManager.App.UI.Pages.Tools;
@@ -139,6 +140,7 @@ public static class Services
             .AddViewModel<ApplyControlViewModel, IApplyControlViewModel>()
             .AddViewModel<MyGamesViewModel, IMyGamesViewModel>()
             .AddViewModel<NexusLoginOverlayViewModel, INexusLoginOverlayViewModel>()
+            .AddViewModel<ForumLoginOverlayViewModel, IForumLoginOverlayViewModel>()
             .AddViewModel<ApiKeyLoginOverlayViewModel, IApiKeyLoginOverlayViewModel>()
             .AddViewModel<SpineViewModel, ISpineViewModel>()
             .AddViewModel<TopBarViewModel, ITopBarViewModel>()
@@ -166,6 +168,7 @@ public static class Services
             .AddView<LaunchButtonView, ILaunchButtonViewModel>()
             .AddView<MyGamesView, IMyGamesViewModel>()
             .AddView<NexusLoginOverlayView, INexusLoginOverlayViewModel>()
+            .AddView<ForumLoginOverlayView, IForumLoginOverlayViewModel>()
             .AddView<ApiKeyLoginOverlayView, IApiKeyLoginOverlayViewModel>()
             .AddView<Spine, ISpineViewModel>()
             .AddView<TopBarView, ITopBarViewModel>()
@@ -197,6 +200,8 @@ public static class Services
             .AddViewModel<SettingEntryViewModel, ISettingEntryViewModel>()
             .AddView<SettingToggleControl, ISettingToggleViewModel>()
             .AddViewModel<SettingToggleViewModel, ISettingToggleViewModel>()
+            .AddView<SettingActionButtonControl, ISettingActionButtonViewModel>()
+            .AddViewModel<SettingActionButtonViewModel, ISettingActionButtonViewModel>()
             .AddView<SettingTextControl, ISettingTextViewModel>()
             .AddViewModel<SettingTextViewModel, ISettingTextViewModel>()
             .AddView<SettingSliderControl, ISettingSliderViewModel>()
@@ -370,6 +375,8 @@ public static class Services
 
             // Overlay Helpers
             .AddHostedService<NexusLoginOverlayService>()
+            .AddHostedService<ForumLoginOverlayService>()
+            .AddSingleton<IForumSignInFlow, ForumSignInFlow>()
             .AddHostedService<OpenUriFailureService>()
 
             // Settings
@@ -377,6 +384,7 @@ public static class Services
             .AddSingleton<IInteractionControlFactory<SingleValueMultipleChoiceContainerOptions>, SettingComboBoxFactory>()
             .AddSingleton<IInteractionControlFactory<BooleanContainerOptions>, SettingToggleFactory>()
             .AddSingleton<IInteractionControlFactory<TextContainerOptions>, SettingTextFactory>()
+            .AddSingleton<IInteractionControlFactory<ActionButtonContainerOptions>, SettingActionButtonFactory>()
             .AddSingleton<IInteractionControlFactory<SliderContainerOptions>, SettingSliderFactory>()
             .AddSingleton<IInteractionControlFactory<ConfigurablePathsContainerOption>, SettingPathsFactory>()
 

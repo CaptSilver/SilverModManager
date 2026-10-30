@@ -16,6 +16,7 @@ using SilverModManager.App.UI.Pages.Diagnostics;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.Forums;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -24,6 +25,7 @@ using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
 using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Install;
 using SilverModManager.Wabbajack.Models;
 using ReactiveUI;
@@ -115,6 +117,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     public ReactiveCommand<Unit, Unit> InstallCommand { get; }
     public ReactiveCommand<Unit, Unit> DownloadCommand { get; }
     public ReactiveCommand<WabbajackArchiveRow, Unit> OpenPageCommand { get; }
+    public ReactiveCommand<WabbajackArchiveRow, Unit> SignInToSourceCommand { get; }
     public ReactiveCommand<WabbajackArchiveRow, Unit> InstallArchiveCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenNextFiveCommand { get; }
     public ReactiveCommand<Unit, Unit> ChooseDownloadsFolderCommand { get; }
@@ -161,6 +164,12 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         OpenPageCommand = ReactiveCommand.Create<WabbajackArchiveRow>(row =>
         {
             if (row.Plan.Page is { } page) _provider.GetRequiredService<IOSInterop>().OpenUri(page);
+        });
+        SignInToSourceCommand = ReactiveCommand.CreateFromTask<WabbajackArchiveRow>(async (row, token) =>
+        {
+            if (row.Site is not { } site) return;
+            // The flow tells the user how it ended, so nothing is thrown back into the command.
+            await _provider.GetRequiredService<IForumSignInFlow>().Run(site, token);
         });
         InstallArchiveCommand = ReactiveCommand.CreateFromTask<WabbajackArchiveRow>(async row =>
         {
@@ -221,6 +230,16 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
                 .Select(announced => _acquirer.Plan.Rows.Count > 0 && IsThisList(_acquirer.Plan) ? _acquirer.Plan : announced)
                 .Subscribe(ApplyPlan)
                 .DisposeWith(d);
+            // Rows of a forum wait for a sign-in or were fetched with one; either way the account decides how they
+            // are classified, so a sign-in or sign-out checks the list again.
+            if (_provider.GetService<IForumAccounts>() is { } accounts)
+            {
+                accounts.ChangedSites()
+                    .ObserveOn(RxApp.MainThreadScheduler)
+                    .Subscribe(site => _ = RecheckAfterAccountChange(site))
+                    .DisposeWith(d);
+            }
+
             // Rows that changed while the page was away.
             if (_loadStarted && IsThisList(_acquirer.Plan)) ApplyPlan(_acquirer.Plan);
 
@@ -232,6 +251,16 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
             if (!_loadStarted) _ = LoadAsync(CancellationToken.None);
         });
+    }
+
+    private async Task RecheckAfterAccountChange(ForumSite site)
+    {
+        // Not while a check, a download or an install is under way: each owns the plan until it ends.
+        if (!_planReady || IsPlanning || IsDownloading || IsInstalling || SelectedLoadout is not { } choice) return;
+        if (!_plan.Rows.Any(row => row.Archive.State is LoversLabState && site == ForumSite.LoversLab
+                                   || row.Archive.State is VectorPlexusState && site == ForumSite.VectorPlexus)) return;
+
+        await Guarded(token => SelectLoadoutAsync(choice, token));
     }
 
     // The acquirer is one singleton for every modlist page; a plan of another list's archives is not this page's.

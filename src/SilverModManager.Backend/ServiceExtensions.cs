@@ -117,6 +117,12 @@ public static class ServiceExtensions
                 Priority: ushort.MaxValue - 1
             ))
             .AddSingleton(new SectionDescriptor(
+                Id: Sections.Accounts,
+                Name: "Accounts",
+                IconFunc: () => IconValues.Account,
+                Priority: ushort.MaxValue - 2
+            ))
+            .AddSingleton(new SectionDescriptor(
                 Id: Sections.Privacy,
                 Name: "Privacy",
                 IconFunc: () => IconValues.ShieldHalfFull

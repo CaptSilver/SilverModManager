@@ -41,6 +41,10 @@ public static class Services
                 sp.GetRequiredService<TimeProvider>(),
                 sp.GetRequiredService<ILogger<ForumFilesClient>>()))
             .AddSingleton<ForumLoginManager>()
-            .AddSingleton<IForumLoginState>(sp => sp.GetRequiredService<ForumLoginManager>());
+            .AddSingleton<IForumLoginState>(sp => sp.GetRequiredService<ForumLoginManager>())
+            .AddSingleton<IForumAccounts>(sp => new ForumAccounts(
+                sp.GetRequiredService<ForumLoginManager>(),
+                sp.GetRequiredService<ForumCredentials>(),
+                sp.GetRequiredService<TimeProvider>()));
     }
 }

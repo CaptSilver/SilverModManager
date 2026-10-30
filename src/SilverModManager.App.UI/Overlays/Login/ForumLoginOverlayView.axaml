@@ -1,0 +1,63 @@
+<reactiveUi:ReactiveUserControl
+    d:DesignHeight="260"
+    d:DesignWidth="600"
+    mc:Ignorable="d"
+    x:Class="SilverModManager.App.UI.Overlays.Login.ForumLoginOverlayView"
+    x:TypeArguments="login:IForumLoginOverlayViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactiveUi="http://reactiveui.net"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:login="clr-namespace:SilverModManager.App.UI.Overlays.Login"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    xmlns:progressRing="clr-namespace:SilverModManager.App.UI.Controls.ProgressRing"
+    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+    ClipToBounds="False">
+
+    <Design.DataContext>
+        <login:ForumLoginOverlayDesignerViewModel />
+    </Design.DataContext>
+
+    <Border Classes="Rounded-lg Low"
+            BorderBrush="{StaticResource StrokeTranslucentWeakBrush}"
+            BorderThickness="2"
+            BoxShadow="{StaticResource DropShadowMD}">
+        <StackPanel
+            Margin="24"
+            Orientation="Vertical"
+            Width="552">
+            <Grid ColumnDefinitions="*, Auto">
+                <TextBlock
+                    x:Name="HeadingTextBlock"
+                    Grid.Column="0"
+                    HorizontalAlignment="Left"
+                    Theme="{StaticResource HeadingXSSemiTheme}"
+                    VerticalAlignment="Center" />
+                <controls:StandardButton x:Name="CancelButton"
+                                         Grid.Column="1"
+                                         HorizontalAlignment="Right"
+                                         VerticalAlignment="Center"
+                                         ShowLabel="False"
+                                         ShowIcon="Left"
+                                         Type="Tertiary"
+                                         Fill="None"
+                                         LeftIcon="{x:Static icons:IconValues.Close}"/>
+            </Grid>
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        Classes="Spacing-2">
+                <progressRing:ProgressRing/>
+                <TextBlock
+                    x:Name="WaitingTextBlock"
+                    HorizontalAlignment="Center"
+                    Margin="0,27"
+                    VerticalAlignment="Center" />
+            </StackPanel>
+            <controls:StandardButton x:Name="OpenAgainButton"
+                                     HorizontalAlignment="Center"
+                                     Type="Tertiary"
+                                     Fill="None" />
+        </StackPanel>
+    </Border>
+</reactiveUi:ReactiveUserControl>

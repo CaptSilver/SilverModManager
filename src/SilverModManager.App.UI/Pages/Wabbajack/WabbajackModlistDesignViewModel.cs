@@ -65,6 +65,7 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public ReactiveCommand<Unit, Unit> InstallCommand => _install ??= ReactiveCommand.Create(() => { }, Observable.Return(CanInstall));
     private ReactiveCommand<Unit, Unit>? _download, _install, _openNextFive;
     public ReactiveCommand<WabbajackArchiveRow, Unit> OpenPageCommand { get; } = ReactiveCommand.Create<WabbajackArchiveRow>(_ => { });
+    public ReactiveCommand<WabbajackArchiveRow, Unit> SignInToSourceCommand { get; } = ReactiveCommand.Create<WabbajackArchiveRow>(_ => { });
     public ReactiveCommand<WabbajackArchiveRow, Unit> InstallArchiveCommand { get; } = ReactiveCommand.Create<WabbajackArchiveRow>(_ => { });
     public ReactiveCommand<Unit, Unit> OpenNextFiveCommand => _openNextFive ??= ReactiveCommand.Create(() => { }, Observable.Return(OpenNextFiveBlockedReason == ""));
     public ReactiveCommand<Unit, Unit> CheckInboxCommand { get; } = ReactiveCommand.Create(() => { });

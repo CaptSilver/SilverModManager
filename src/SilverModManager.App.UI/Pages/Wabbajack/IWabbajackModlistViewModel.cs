@@ -111,6 +111,9 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
 
     ReactiveCommand<WabbajackArchiveRow, Unit> OpenPageCommand { get; }
 
+    /// <summary>Signs in to the forum a row's archive comes from; the list is checked again once the account changes.</summary>
+    ReactiveCommand<WabbajackArchiveRow, Unit> SignInToSourceCommand { get; }
+
     /// <summary>Installs a held archive into the selected loadout as a mod of its own.</summary>
     ReactiveCommand<WabbajackArchiveRow, Unit> InstallArchiveCommand { get; }
 

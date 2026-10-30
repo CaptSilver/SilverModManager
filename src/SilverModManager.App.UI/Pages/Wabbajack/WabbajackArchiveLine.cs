@@ -18,13 +18,14 @@ public sealed class WabbajackArchiveLine : Grid
     private readonly TextBlock _reason = new() { TextWrapping = TextWrapping.Wrap, Opacity = 0.7, VerticalAlignment = VerticalAlignment.Center };
     private readonly Button _install = new() { Content = "Install" };
     private readonly Button _open = new() { Content = "Open page" };
+    private readonly Button _signIn = new() { Content = "Sign in" };
     private IDisposable? _subscription;
 
     public WabbajackArchiveLine(IWabbajackModlistViewModel viewModel, WabbajackArchiveRow row)
     {
         _row = row;
         Margin = new Thickness(0, 2);
-        ColumnDefinitions = new ColumnDefinitions("332,92,132,252,*,Auto,Auto");
+        ColumnDefinitions = new ColumnDefinitions("332,92,132,252,*,Auto,Auto,Auto");
 
         Add(new TextBlock { Text = row.Name, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center }, 0);
         Add(new TextBlock { Text = row.SizeText, VerticalAlignment = VerticalAlignment.Center }, 1);
@@ -32,10 +33,12 @@ public sealed class WabbajackArchiveLine : Grid
         Add(_state, 3);
         Add(_reason, 4);
         Add(_install, 5);
-        Add(_open, 6);
-        _install.Margin = _open.Margin = new Thickness(12, 0, 0, 0);
+        Add(_signIn, 6);
+        Add(_open, 7);
+        _install.Margin = _open.Margin = _signIn.Margin = new Thickness(12, 0, 0, 0);
         _install.Click += (_, _) => viewModel.InstallArchiveCommand.Execute(row).Subscribe();
         _open.Click += (_, _) => viewModel.OpenPageCommand.Execute(row).Subscribe();
+        _signIn.Click += (_, _) => viewModel.SignInToSourceCommand.Execute(row).Subscribe();
         Show();
     }
 
@@ -52,6 +55,7 @@ public sealed class WabbajackArchiveLine : Grid
         _reason.Text = _row.Reason;
         ToolTip.SetTip(_reason, _row.Reason == "" ? null : _row.Reason);
         _install.IsVisible = _row.CanInstall;
+        _signIn.IsVisible = _row.CanSignIn;
         _open.IsVisible = _row.CanOpenPage;
     }
 

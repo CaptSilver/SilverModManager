@@ -1,5 +1,6 @@
 using NexusMods.Paths;
 using ReactiveUI;
+using SilverModManager.Networking.Forums;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
 
@@ -74,6 +75,19 @@ public sealed class WabbajackArchiveRow(ArchivePlanRow plan) : ReactiveObject
 
     private static bool CanOpenPageOf(ArchivePlanRow plan) => plan.Page is not null && plan.State is ArchiveState.Browser or ArchiveState.SignIn or ArchiveState.Manual or ArchiveState.Unsupported;
 
+    /// <summary>A forum file the app can fetch once the user signs in to its site.</summary>
+    public bool CanSignIn => CanSignInOf(Plan);
+
+    private static bool CanSignInOf(ArchivePlanRow plan) => plan.State == ArchiveState.SignIn;
+
+    /// <summary>The forum the row's archive comes from, or null for any other source.</summary>
+    public ForumSite? Site => Plan.Archive.State switch
+    {
+        LoversLabState => ForumSite.LoversLab,
+        VectorPlexusState => ForumSite.VectorPlexus,
+        _ => null,
+    };
+
     /// <summary>Takes the archive's new plan row, telling only what its change touches.</summary>
     public void Update(ArchivePlanRow plan)
     {
@@ -85,5 +99,6 @@ public sealed class WabbajackArchiveRow(ArchivePlanRow plan) : ReactiveObject
         if (old.Reason != plan.Reason || old.Note != plan.Note || WaitsOf(old) != WaitsOf(plan)) this.RaisePropertyChanged(nameof(Reason));
         if (CanInstallOf(old) != CanInstall) this.RaisePropertyChanged(nameof(CanInstall));
         if (CanOpenPageOf(old) != CanOpenPage) this.RaisePropertyChanged(nameof(CanOpenPage));
+        if (CanSignInOf(old) != CanSignIn) this.RaisePropertyChanged(nameof(CanSignIn));
     }
 }

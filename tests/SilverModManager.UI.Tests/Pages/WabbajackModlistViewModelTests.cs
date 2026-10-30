@@ -198,12 +198,12 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
 
     private GameId TestGame => Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First().Game.GameId;
 
-    private async Task<(WabbajackModlistViewModel Vm, FakeService Service, FakeAcquirer Acquirer)> Open(ArchivePlan plan, GameId? game = null, Size? free = null, bool createsLoadouts = false, bool load = true, bool acquirerKeepsNothingShown = false, bool pickUp = false)
+    private async Task<(WabbajackModlistViewModel Vm, FakeService Service, FakeAcquirer Acquirer)> Open(ArchivePlan plan, GameId? game = null, Size? free = null, bool createsLoadouts = false, bool load = true, bool acquirerKeepsNothingShown = false, bool pickUp = false, IServiceProvider? services = null)
     {
         await SeedLoadoutRow(GameStore.Steam, "Wabbajack target");
         var service = new FakeService(game ?? TestGame, createsLoadouts ? async () => (await SeedLoadoutRow(GameStore.Steam, "Created by install")).LoadoutId : null) { Plan = plan, Free = free, PickUpFromDownloads = pickUp };
         var acquirer = new FakeAcquirer { KeepsNothingShown = acquirerKeepsNothingShown };
-        var vm = new WabbajackModlistViewModel(Provider.GetRequiredService<IWindowManager>(), Connection, service, acquirer, Provider) { FileId = SomeFile };
+        var vm = new WabbajackModlistViewModel(Provider.GetRequiredService<IWindowManager>(), Connection, service, acquirer, services ?? Provider) { FileId = SomeFile };
         if (load) await vm.LoadAsync(CancellationToken.None);
         return (vm, service, acquirer);
     }
