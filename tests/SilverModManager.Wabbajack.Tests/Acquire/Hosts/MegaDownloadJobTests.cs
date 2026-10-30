@@ -245,4 +245,15 @@ public class MegaDownloadJobTests(IServiceProvider provider, TemporaryFileManage
     }
 
     private static SilverModManager.Sdk.Hashes.FileIdentity Hash(byte[] bytes) => Xx64.Of(bytes);
+
+    [Fact(Timeout = 60000)]
+    public async Task AnApiAnswerThatGoesQuietAfterItsHeadersFailsNamingMega()
+    {
+        var host = new FakeHost((_, _) => FakeHost.SilentBody("application/json"));
+        await using var destination = Files.CreateFile();
+
+        var act = async () => await Begin(JobFor(host, destination) with { IdleTimeout = TimeSpan.FromMilliseconds(100), Attempts = 2 });
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Message.Should().Be("MEGA stopped sending data");
+    }
 }

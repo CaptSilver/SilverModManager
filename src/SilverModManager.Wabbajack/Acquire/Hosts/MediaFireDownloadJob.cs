@@ -41,7 +41,7 @@ public sealed record MediaFireDownloadJob : HostedDownloadJob, IJobDefinitionWit
             return;
         }
 
-        var html = await page.Content.ReadAsStringAsync(token);
+        var html = await transfer.ReadText(page, token);
         var link = FindLink(Url, html) ?? throw Explain(html);
         using var file = await transfer.Send(HostLinks.Get(link, Url), token);
         await transfer.Save(file, hostName: HostName);

@@ -126,4 +126,15 @@ public class ModDbDownloadJobTests(IServiceProvider provider, TemporaryFileManag
         await act.Should().ThrowAsync<Exception>();
         host.Seen.Count.Should().BeLessThanOrEqualTo(3);
     }
+
+    [Fact(Timeout = 60000)]
+    public async Task AnAddonPageThatGoesQuietAfterItsHeadersFailsNamingTheHost()
+    {
+        var host = new FakeHost((_, _) => FakeHost.SilentBody("text/html"));
+        await using var destination = Files.CreateFile();
+
+        var act = async () => await Begin(JobFor(host, destination) with { IdleTimeout = TimeSpan.FromMilliseconds(150) });
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Message.Should().Be("ModDB stopped sending data");
+    }
 }

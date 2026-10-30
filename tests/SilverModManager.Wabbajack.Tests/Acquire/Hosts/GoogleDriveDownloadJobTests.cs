@@ -149,4 +149,26 @@ public class GoogleDriveDownloadJobTests(IServiceProvider provider, TemporaryFil
             return true;
         }
     }
+
+    [Fact(Timeout = 60000)]
+    public async Task AScanPageThatGoesQuietAfterItsHeadersFailsNamingTheHost()
+    {
+        var host = new FakeHost((_, _) => FakeHost.SilentBody("text/html"));
+        await using var destination = Files.CreateFile();
+
+        var act = async () => await Begin(JobFor(host, destination) with { IdleTimeout = TimeSpan.FromMilliseconds(150) });
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Message.Should().Be("Google Drive stopped sending data");
+    }
+
+    [Fact(Timeout = 60000)]
+    public async Task AWarningPageThatGoesQuietAfterItsHeadersFailsNamingTheHost()
+    {
+        var host = new FakeHost((request, earlier) => earlier == 0 ? FakeHost.Html(Interstitial) : FakeHost.SilentBody("text/html"));
+        await using var destination = Files.CreateFile();
+
+        var act = async () => await Begin(JobFor(host, destination) with { IdleTimeout = TimeSpan.FromMilliseconds(150) });
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Message.Should().Be("Google Drive stopped sending data");
+    }
 }

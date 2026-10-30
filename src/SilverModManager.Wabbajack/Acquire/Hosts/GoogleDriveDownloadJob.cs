@@ -51,11 +51,11 @@ public sealed record GoogleDriveDownloadJob : HostedDownloadJob, IJobDefinitionW
             return;
         }
 
-        var html = await response.Content.ReadAsStringAsync(token);
+        var html = await transfer.ReadText(response, token);
         var form = ScanForm(first, html) ?? throw Explain(html);
         using var confirmed = await transfer.Send(HostLinks.Get(form), token);
         transfer.EnsureSuccess(confirmed);
-        if (HostTransfer.IsWebPage(confirmed)) throw Explain(await confirmed.Content.ReadAsStringAsync(token));
+        if (HostTransfer.IsWebPage(confirmed)) throw Explain(await transfer.ReadText(confirmed, token));
         await transfer.Save(confirmed, hostName: HostName);
     }
 

@@ -64,5 +64,13 @@ internal sealed class FakeHost(Func<SeenRequest, int, Task<HttpResponseMessage>>
         return response;
     }
 
+    /// <summary>Headers arrive, then the body never sends a byte: a landing page or API answer on a dead connection.</summary>
+    public static HttpResponseMessage SilentBody(string contentType)
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = StallingContent.After([]) };
+        response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+        return response;
+    }
+
     public static HttpResponseMessage Json(string json) => new(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
 }

@@ -63,7 +63,7 @@ public sealed record MegaDownloadJob : HostedDownloadJob, IJobDefinitionWithStar
         };
         using var response = await transfer.Send(request, token);
         transfer.EnsureSuccess(response);
-        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(token), cancellationToken: token);
+        using var document = JsonDocument.Parse(await transfer.ReadBytes(response, token));
 
         var answer = document.RootElement.ValueKind == JsonValueKind.Array && document.RootElement.GetArrayLength() > 0 ? document.RootElement[0] : document.RootElement;
         if (answer.ValueKind == JsonValueKind.Number) throw ForCode(answer.GetInt32());

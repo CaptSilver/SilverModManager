@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Downloads;
@@ -69,7 +70,7 @@ public abstract record HostedDownloadJob : IDownloadJob
         using var slot = await Throttle.Enter(HostName, token);
         try
         {
-            await Fetch(new HostTransfer(this, context), token);
+            await Fetch(new HostTransfer(this, context, HostName), token);
         }
         catch
         {
@@ -118,11 +119,13 @@ public sealed class HostTransfer
 
     private readonly HostedDownloadJob _job;
     private readonly IJobContext _context;
+    private readonly string _hostName;
 
-    internal HostTransfer(HostedDownloadJob job, IJobContext context)
+    internal HostTransfer(HostedDownloadJob job, IJobContext context, string hostName)
     {
         _job = job;
         _context = context;
+        _hostName = hostName;
     }
 
     public HttpClient Client => _job.Client;
@@ -138,7 +141,32 @@ public sealed class HostTransfer
         foreach (var (name, value) in headers ?? []) request.Headers.TryAddWithoutValidation(name, value);
         using var response = await Send(request, token);
         EnsureSuccess(response);
-        return await response.Content.ReadAsStringAsync(token);
+        return await ReadText(response, token);
+    }
+
+    /// <summary>
+    /// The whole body as text, read through the idle limit. <c>ReadAsStringAsync</c> would wait forever on a
+    /// connection that dies after the headers, and <c>ResponseHeadersRead</c> leaves the body outside HttpClient's timeout.
+    /// </summary>
+    public async Task<string> ReadText(HttpResponseMessage response, CancellationToken token)
+    {
+        var bytes = await ReadBytes(response, token);
+        var charset = response.Content.Headers.ContentType?.CharSet;
+        var encoding = Encoding.UTF8;
+        if (charset is not null)
+        {
+            try { encoding = Encoding.GetEncoding(charset.Trim('"')); }
+            catch (ArgumentException) { /* unknown label: fall back to UTF-8, like HttpContent does */ }
+        }
+        using var reader = new StreamReader(new MemoryStream(bytes), encoding, detectEncodingFromByteOrderMarks: true);
+        return await reader.ReadToEndAsync(token);
+    }
+
+    /// <summary>The whole body in memory, read through the idle limit; for small pages and API answers.</summary>
+    public async Task<byte[]> ReadBytes(HttpResponseMessage response, CancellationToken token)
+    {
+        await using var network = await response.Content.ReadAsStreamAsync(token);
+        return await IdleReads.ReadToEndAsync(network, _hostName, _job.IdleTimeout, _job.TimeProvider, token);
     }
 
     /// <summary>Throws the job's reason for a failure status; a success passes.</summary>
