@@ -26,6 +26,8 @@ internal static class StatusDecision
     /// Decides without a sync tree. The loadout is current while the newest of its inputs is no later than the apply,
     /// it has as many input datoms as right after the apply, and the disk index has not been rescanned since: the
     /// same inputs and the same disk render the same tree, so the apply would find nothing to do.
+    /// An apply that left files out for want of an archive is never current on this evidence: the archive coming
+    /// back changes nothing in the loadout, and only a comparison can see it.
     /// The database head is deliberately not consulted: commits to anything else (diagnostics, the library, another
     /// game) move it without changing what an apply writes.
     /// </summary>
@@ -38,13 +40,15 @@ internal static class StatusDecision
         LoadoutWithTxId lastApplied,
         TxId lastScanTx,
         Func<SyncInputs> inputsNow,
-        Func<SyncInputs> inputsAtApply)
+        Func<SyncInputs> inputsAtApply,
+        bool leftFilesUnextracted = false)
     {
         if (!loadoutExists) return StatusVerdict.OtherLoadoutSynced;
         if (busy) return StatusVerdict.Pending;
         if (lastApplied.Id != loadoutId && lastApplied != default(LoadoutWithTxId)) return StatusVerdict.OtherLoadoutSynced;
         if (lastApplied.Id != loadoutId) return StatusVerdict.Compare;
 
+        if (leftFilesUnextracted) return StatusVerdict.Compare;
         if (lastScanTx > lastApplied.Tx) return StatusVerdict.Compare;
 
         var now = inputsNow();

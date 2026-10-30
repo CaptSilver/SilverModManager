@@ -439,7 +439,7 @@ public class SynchronizerService : ISynchronizerService
     /// The loadout last applied to an installation with the transaction that recorded it, and the transaction of the
     /// last disk rescan. Both are default while the installation has never been applied or scanned.
     /// </summary>
-    private static (LoadoutWithTxId Last, TxId ScanTx) AppliedStateOf(GameInstallMetadata.ReadOnly metadata)
+    private static (LoadoutWithTxId Last, TxId ScanTx, bool LeftUnextracted) AppliedStateOf(GameInstallMetadata.ReadOnly metadata)
     {
         var last = default(LoadoutWithTxId);
         if (GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastId)
@@ -451,7 +451,7 @@ public class SynchronizerService : ISynchronizerService
         var scanTx = GameInstallMetadata.LastScannedDiskStateTransaction.TryGetValue(metadata, out var scanned)
             ? TxId.From(scanned.Value)
             : default(TxId);
-        return (last, scanTx);
+        return (last, scanTx, GameInstallMetadata.LastApplyLeftFilesUnextracted.TryGetValue(metadata, out var left) && left);
     }
 
     
@@ -517,10 +517,19 @@ public class SynchronizerService : ISynchronizerService
             .Select(metadata => AppliedStateOf(metadata))
             .ToObservable();
 
-        var revisions = LoadoutQueries2.SyncInputRevisions(_conn, loadoutId)
+        var inputRevisions = LoadoutQueries2.SyncInputRevisions(_conn, loadoutId)
             .ToObservable()
-            // Only here to make each emission different from the last, so DistinctUntilChanged lets it through.
             .Select(rev => rev.Db.BasisTxId);
+
+        // An archive that comes back (a library commit, a download finishing) is no input of the loadout, so while
+        // the last apply left files out for want of one every commit is a reason to look again.
+        var archiveChanges = _conn.Revisions
+            .ToObservable()
+            .Where(db => AppliedStateOf(GameInstallMetadata.Load(db, metadataId)).LeftUnextracted)
+            .Select(db => db.BasisTxId);
+
+        // Only here to make each emission different from the last, so DistinctUntilChanged lets it through.
+        var revisions = inputRevisions.Merge(archiveChanges);
 
         var statusFailureLogged = 0;
         var statusObservable = isBusy.CombineLatest(appliedState,
@@ -537,12 +546,13 @@ public class SynchronizerService : ISynchronizerService
                     var busy = tuple.busy;
                     var db = _conn.Db;
                     var rev = Loadout.Load(db, loadoutId);
-                    var (last, scanTx) = AppliedStateOf(GameInstallMetadata.Load(db, metadataId));
+                    var (last, scanTx, leftUnextracted) = AppliedStateOf(GameInstallMetadata.Load(db, metadataId));
 
                     var verdict = StatusDecision.Decide(
                         busy, rev.IsValid(), loadoutId, last, scanTx,
                         () => SyncInputRevision.Read(db, loadoutId),
-                        () => _inputsAtApply.GetOrAdd((loadoutId, last.Tx), static (key, conn) => SyncInputRevision.Read(conn.AsOf(key.Tx), key.Id), _conn));
+                        () => _inputsAtApply.GetOrAdd((loadoutId, last.Tx), static (key, conn) => SyncInputRevision.Read(conn.AsOf(key.Tx), key.Id), _conn),
+                        leftUnextracted);
                     switch (verdict)
                     {
                         case StatusVerdict.Pending: return LoadoutSynchronizerState.Pending;

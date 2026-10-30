@@ -811,6 +811,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastSyncedLoadout, loadout.Id);
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastSyncedLoadoutTransaction, EntityId.From(tx.ThisTxId.Value));
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastScannedDiskStateTransaction, EntityId.From(tx.ThisTxId.Value));
+        tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastApplyLeftFilesUnextracted,
+            syncTree.Values.Any(node => node.Actions.HasFlag(Actions.WarnOfUnableToExtract)));
         tx.Add(loadout.Id, Loadout.LastAppliedDateTime, DateTime.UtcNow);
         await tx.Commit();
 
@@ -1653,7 +1655,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // Process the sync tree to get the actions populated in the nodes
         ProcessSyncTree(syncTree);
 
-        var pending = syncTree.Where(n => n.Value.Actions != Actions.DoNothing).ToList();
+        // A file with no archive to extract it from is only a warning to an apply, so it is not work until the
+        // archive is back and the same node maps to an extraction.
+        var pending = syncTree.Where(n => n.Value.Actions != Actions.DoNothing && n.Value.Actions != Actions.WarnOfUnableToExtract).ToList();
         if (pending.Count == 0) return false;
         if (!pending.All(n => IsIntrinsicWriteOfAnUntouchedFile(n.Value))) return true;
 

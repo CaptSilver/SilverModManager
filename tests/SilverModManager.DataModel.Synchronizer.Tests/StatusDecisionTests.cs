@@ -24,12 +24,14 @@ public class StatusDecisionTests
         bool busy = false,
         bool exists = true,
         LoadoutId? appliedLoadout = null,
-        TxId? scanTx = null)
+        TxId? scanTx = null,
+        bool leftUnextracted = false)
         => StatusDecision.Decide(
             busy, exists, Loadout,
             new LoadoutWithTxId(appliedLoadout ?? Loadout, Applied),
             scanTx ?? Applied,
-            () => now, () => atApply);
+            () => now, () => atApply,
+            leftUnextracted);
 
     [Fact]
     public void InputsUnchangedSinceTheApplyAreCurrentWhateverTheDatabaseHead()
@@ -68,6 +70,13 @@ public class StatusDecisionTests
     public void ARescanSinceTheApplyDeclinesTheShortcut()
     {
         Decide(new SyncInputs(Earlier, 40), new SyncInputs(Earlier, 40), scanTx: Later).Should().Be(StatusVerdict.Compare);
+    }
+
+    [Fact]
+    public void AnApplyThatLeftFilesUnextractedDeclinesTheShortcutWhateverTheInputs()
+    {
+        // The archive that was missing is not a datom of the loadout, so the inputs look untouched.
+        Decide(new SyncInputs(Earlier, 40), new SyncInputs(Earlier, 40), leftUnextracted: true).Should().Be(StatusVerdict.Compare);
     }
 
     [Fact]

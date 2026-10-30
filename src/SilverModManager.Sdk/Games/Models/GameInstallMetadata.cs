@@ -68,6 +68,12 @@ public partial class GameInstallMetadata : IModelDefinition
     public static readonly ReferenceAttribute<Transaction> LastSyncedLoadoutTransaction = new(Namespace, nameof(LastSyncedLoadoutTransaction)) { IsOptional = true };
 
     /// <summary>
+    /// Whether the last apply left files out because no archive held their bytes. An archive coming back is not a
+    /// change to the loadout, so while this is set the apply status cannot trust the loadout's inputs alone.
+    /// </summary>
+    public static readonly BooleanAttribute LastApplyLeftFilesUnextracted = new(Namespace, nameof(LastApplyLeftFilesUnextracted)) { IsOptional = true };
+
+    /// <summary>
     /// The 'AsOf' transaction ID of the initial disk state when the game folder was first indexed
     /// </summary>
     public static readonly ReferenceAttribute<Transaction> InitialDiskStateTransaction = new(Namespace, nameof(InitialDiskStateTransaction)) { IsOptional = true };

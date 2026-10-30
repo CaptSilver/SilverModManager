@@ -327,6 +327,64 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
         (await StatusNow(loadout)).Should().Be(LoadoutSynchronizerState.Current);
     }
 
+    private async Task AddLateMod(Loadout.ReadOnly loadout)
+    {
+        using var tx = Connection.BeginTransaction();
+        var group = AddEmptyGroup(tx, loadout.LoadoutId, "late mod");
+        AddFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, "Mods/modLate/late.ws"), "late");
+        await tx.Commit();
+    }
+
+    private async Task TheArchiveOfTheLateModIsBack()
+    {
+        var bytes = Encoding.UTF8.GetBytes("late");
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("late.ws", new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length))]);
+    }
+
+    // The file store is not a database commit, so nothing in the loadout moves when an archive comes back. An apply
+    // that had to leave a file out has to be remembered as one, or the status never notices the archive.
+    [Fact]
+    public async Task AnApplyThatLeftAFileUnextractedNeedsAnotherOnceTheArchiveIsBack()
+    {
+        var loadout = await CreateLoadout();
+        await AddLateMod(loadout);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        (GameFolder / "Mods/modLate/late.ws").FileExists.Should().BeFalse("the archive was not there to extract it from");
+
+        await TheArchiveOfTheLateModIsBack();
+        await CommitAnUnrelatedLoadout();
+
+        (await StatusNow(loadout)).Should().Be(LoadoutSynchronizerState.NeedsSync);
+    }
+
+    // Applying again would only log the same warning, so the button has nothing to offer until the archive is back.
+    [Fact]
+    public async Task AFileWithNoArchiveIsNotWorkForAnotherApply()
+    {
+        var loadout = await CreateLoadout();
+        await AddLateMod(loadout);
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        await CommitAnUnrelatedLoadout();
+
+        (await StatusNow(loadout)).Should().Be(LoadoutSynchronizerState.Current);
+    }
+
+    [Fact]
+    public async Task AnApplyThatExtractedEverythingIsCurrentAgainAfterTheEarlierOneLeftAFileOut()
+    {
+        var loadout = await CreateLoadout();
+        await AddLateMod(loadout);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        await TheArchiveOfTheLateModIsBack();
+        await Synchronizer.Synchronize(Refresh(loadout));
+        (GameFolder / "Mods/modLate/late.ws").FileExists.Should().BeTrue();
+
+        await CommitAnUnrelatedLoadout();
+
+        (await StatusNow(loadout)).Should().Be(LoadoutSynchronizerState.Current);
+    }
+
     [Fact]
     public async Task AModAddedAfterAnApplyNeedsAnotherApply()
     {
@@ -354,12 +412,9 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
         using var subscription = (await SynchronizerService.StatusForLoadout(loadout.LoadoutId)).Subscribe(seen.Enqueue);
         (await StatusNow(loadout)).Should().Be(LoadoutSynchronizerState.Current);
 
-        using (var tx = Connection.BeginTransaction())
-        {
-            var group = AddEmptyGroup(tx, loadout.LoadoutId, "late mod");
-            AddFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, "Mods/modLate/late.ws"), "late");
-            await tx.Commit();
-        }
+        // With its archive, so the second apply extracts it and leaves the status to follow the loadout alone.
+        await TheArchiveOfTheLateModIsBack();
+        await AddLateMod(loadout);
         await WaitFor(() => seen.LastOrDefault() == LoadoutSynchronizerState.NeedsSync);
 
         await Synchronizer.Synchronize(Refresh(loadout));
