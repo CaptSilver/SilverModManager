@@ -118,14 +118,18 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
     public async ValueTask<AbsolutePath> StartAsync(IJobContext<HttpDownloadJob> context)
     {
         // The body can stop two ways: the connection goes silent, or it is cut (EOF, reset). Both end the attempt with
-        // a BodyStoppedException, and the answer is the same: ask again for the rest. Only stops that bring no new
-        // bytes count towards giving up, so a long download over a flaky link still finishes.
+        // a BodyStoppedException, and the answer is the same: ask again for the rest. Once a stop has happened, the
+        // new request failing to connect (the link is usually still down) counts as one more stop without progress,
+        // so it gets the same backoff and the same bound instead of the generic request retries. Only stops that
+        // bring no new bytes count towards giving up, so a long download over a flaky link still finishes.
         var stopsWithoutProgress = 0;
+        var resuming = false;
         while (true)
         {
             var before = _state.TotalBytesDownloaded;
             try
             {
+                if (resuming) return await StartAsyncImpl(context);
                 return await ResiliencePipeline.ExecuteAsync(
                     callback: static (tuple, _) =>
                     {
@@ -136,16 +140,31 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
                     cancellationToken: context.CancellationToken
                 );
             }
-            catch (BodyStoppedException stopped) when (!context.JobCancellationToken.IsPaused && !context.JobCancellationToken.IsCancelled)
+            catch (Exception e) when (!context.JobCancellationToken.IsPaused && !context.JobCancellationToken.IsCancelled && (e is BodyStoppedException || (resuming && IsConnectFailure(e))))
             {
+                resuming = true;
                 if (_state.TotalBytesDownloaded > before) stopsWithoutProgress = 0;
-                if (++stopsWithoutProgress > MaxIdleRetries) throw stopped.Reason;
+                if (++stopsWithoutProgress > MaxIdleRetries)
+                    throw e is BodyStoppedException stopped ? stopped.Reason : new ConnectionDroppedException(Uri.Authority, _state.TotalBytesDownloaded, _state.ContentLength, e);
+                // The stop itself was logged where it was raised; a failed request is logged here.
+                if (e is not BodyStoppedException)
+                    Logger.LogWarning(e, "Could not resume the download from `{DownloadedBytes}` bytes, trying again", _state.TotalBytesDownloaded);
                 // A silent connection already waited out the idle limit.
-                if (!stopped.WasSilent)
+                if (e is not BodyStoppedException { WasSilent: true })
+                {
                     await Task.Delay(ResumeDelay(RetryDelay, stopsWithoutProgress), TimeProvider, context.CancellationToken);
+                }
             }
         }
     }
+
+    /// <summary>
+    /// A request that never got an answer: no connection, a reset, a connect timeout. An HTTP error status is an
+    /// answer and is not covered.
+    /// </summary>
+    private static bool IsConnectFailure(Exception exception)
+        => exception is HostNotRespondingException or SocketException or HttpIOException
+           || exception is HttpRequestException { StatusCode: null };
 
     /// <summary>
     /// The wait before asking again: <paramref name="baseDelay"/> for the first attempt without progress, doubling

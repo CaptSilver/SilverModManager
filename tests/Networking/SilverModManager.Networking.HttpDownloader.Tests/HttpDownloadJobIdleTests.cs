@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Jobs;
@@ -33,7 +34,7 @@ public class HttpDownloadJobIdleTests
         return data;
     }
 
-    private HttpDownloadJob MakeJob(HttpClient client, AbsolutePath destination, int maxIdleRetries = 3, TimeSpan? idle = null) => new()
+    private HttpDownloadJob MakeJob(HttpClient client, AbsolutePath destination, int maxIdleRetries = 3, TimeSpan? idle = null, TimeProvider? timeProvider = null, TimeSpan? retryDelay = null) => new()
     {
         Client = client,
         Logger = NullLogger.Instance,
@@ -42,6 +43,8 @@ public class HttpDownloadJobIdleTests
         Destination = destination,
         IdleTimeout = idle ?? TimeSpan.FromMilliseconds(150),
         MaxIdleRetries = maxIdleRetries,
+        TimeProvider = timeProvider ?? TimeProvider.System,
+        RetryDelay = retryDelay ?? TimeSpan.Zero,
     };
 
     [Fact(Timeout = 60000)]
@@ -57,6 +60,26 @@ public class HttpDownloadJobIdleTests
 
         File.ReadAllBytes(destination.Path.ToString()).Should().Equal(data);
         server.GetRanges.Should().Equal(null, "bytes=100000-300000");
+    }
+
+    [Fact(Timeout = 60000)]
+    public async Task ASilentBody_IsAskedAgainWithoutWaitingForTheRetryDelay()
+    {
+        var data = MakeData(300_000);
+        var server = new StallingServer(data, attempt => attempt == 1 ? 100_000 : null);
+        using var client = new HttpClient(server);
+        await using var destination = _temporaryFileManager.CreateFile();
+
+        // The only thing the clock is advanced for is the idle limit; an hour of retry delay must not be waited on
+        var clock = new RecordingClock();
+        var task = _monitor.Begin<HttpDownloadJob, AbsolutePath>(MakeJob(client, destination.Path, idle: TimeSpan.FromSeconds(5), timeProvider: clock, retryDelay: TimeSpan.FromHours(1)));
+        await server.FirstStall.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        clock.Advance(TimeSpan.FromSeconds(5));
+
+        await task;
+        File.ReadAllBytes(destination.Path.ToString()).Should().Equal(data);
+        server.GetRanges.Should().Equal(null, "bytes=100000-300000");
+        clock.DueTimes.Should().NotContain(TimeSpan.FromHours(1));
     }
 
     [Fact(Timeout = 60000)]

@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Jobs;
@@ -34,7 +35,7 @@ public class HttpDownloadJobDropTests
         return data;
     }
 
-    private static HttpDownloadJob MakeJob(HttpClient client, AbsolutePath destination, int maxRetries = 3, TimeSpan? retryDelay = null) => new()
+    private static HttpDownloadJob MakeJob(HttpClient client, AbsolutePath destination, int maxRetries = 3, TimeSpan? retryDelay = null, TimeProvider? timeProvider = null) => new()
     {
         Client = client,
         Logger = NullLogger.Instance,
@@ -43,6 +44,7 @@ public class HttpDownloadJobDropTests
         Destination = destination,
         MaxIdleRetries = maxRetries,
         RetryDelay = retryDelay ?? TimeSpan.Zero,
+        TimeProvider = timeProvider ?? TimeProvider.System,
     };
 
     private static IOException Eof() => new("Received an unexpected EOF or 0 bytes from the transport stream.");
@@ -131,6 +133,75 @@ public class HttpDownloadJobDropTests
         HttpDownloadJob.ResumeDelay(TimeSpan.Zero, 5).Should().Be(TimeSpan.Zero);
     }
 
+    private static Exception LinkDown() => new HttpRequestException("The link is down", new SocketException((int)SocketError.NetworkUnreachable));
+
+    [Fact(Timeout = 60000)]
+    public async Task ALinkThatStaysDownAfterTheCut_FailsWithTheSamePlainMessageAfterTheLimit()
+    {
+        var data = MakeData(300_000);
+        // Request 1 is the HEAD, 2 the GET that is cut; everything after that cannot connect
+        var server = new DroppingServer(data, attempt => attempt == 1 ? (100_000, Eof()) : null, requestError: n => n > 2 ? LinkDown() : null);
+        using var client = new HttpClient(server);
+        await using var destination = _temporaryFileManager.CreateFile();
+
+        var task = _monitor.Begin<HttpDownloadJob, AbsolutePath>(MakeJob(client, destination.Path, maxRetries: 2));
+        var thrown = await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<ConnectionDroppedException>();
+
+        thrown.Which.Message.Should().Be("files.test kept dropping the connection; downloaded 100 KB of 300 KB");
+        thrown.Which.InnerException.Should().BeOfType<HttpRequestException>();
+        // The HEAD and the cut GET, then two resume attempts that could not connect: no extra retries on top
+        server.RequestCount.Should().Be(4);
+        task.Job.Status.Should().Be(JobStatus.Failed);
+    }
+
+    [Fact(Timeout = 60000)]
+    public async Task ALinkThatComesBackWithinTheLimit_CompletesTheFile()
+    {
+        var data = MakeData(300_000);
+        // The first two resume attempts cannot connect, the third gets through
+        var server = new DroppingServer(data, attempt => attempt == 1 ? (100_000, Eof()) : null, requestError: n => n is 3 or 4 ? LinkDown() : null);
+        using var client = new HttpClient(server);
+        await using var destination = _temporaryFileManager.CreateFile();
+
+        await _monitor.Begin<HttpDownloadJob, AbsolutePath>(MakeJob(client, destination.Path, maxRetries: 3));
+
+        File.ReadAllBytes(destination.Path.ToString()).Should().Equal(data);
+        server.GetRanges.Should().Equal(null, "bytes=100000-300000");
+    }
+
+    [Fact(Timeout = 60000)]
+    public async Task AfterACut_TheNextRequestWaitsTheRetryDelayAndDoublesWhenNothingArrives()
+    {
+        var data = MakeData(300_000);
+        var clock = new RecordingClock();
+        var server = new DroppingServer(data, attempt => attempt <= 3 ? (attempt == 1 ? 100_000 : 0, Eof()) : null);
+        using var client = new HttpClient(server);
+        await using var destination = _temporaryFileManager.CreateFile();
+
+        var delay = TimeSpan.FromSeconds(2);
+        var task = _monitor.Begin<HttpDownloadJob, AbsolutePath>(MakeJob(client, destination.Path, retryDelay: delay, timeProvider: clock));
+
+        await clock.WaitForTimer(delay);
+        server.GetRanges.Should().HaveCount(1);
+        clock.Advance(delay - TimeSpan.FromMilliseconds(1));
+        await Task.Yield();
+        server.GetRanges.Should().HaveCount(1, "the wait is not over yet");
+        clock.Advance(TimeSpan.FromMilliseconds(1));
+
+        // The second request got nothing, so the wait doubles
+        await clock.WaitForTimer(delay * 2);
+        clock.Advance(delay);
+        await Task.Yield();
+        server.GetRanges.Should().HaveCount(2, "twice the delay is needed after an attempt without progress");
+        clock.Advance(delay);
+
+        await clock.WaitForTimer(delay * 4);
+        clock.Advance(delay * 4);
+
+        await task;
+        File.ReadAllBytes(destination.Path.ToString()).Should().Equal(data);
+    }
+
     [Fact(Timeout = 60000)]
     public async Task TheUserCancellingWhileTheJobIsDroppingOrWaitingToResume_IsACancel()
     {
@@ -153,8 +224,15 @@ public class HttpDownloadJobDropTests
     /// Answers HEAD and GET for one file. For each GET, <paramref name="cut"/> gives how many bytes the body delivers
     /// before it throws the given exception (null: the whole rest of the file).
     /// </summary>
-    private sealed class DroppingServer(byte[] data, Func<int, (int After, Exception Error)?> cut, bool acceptRanges = true) : HttpMessageHandler
+    private sealed class DroppingServer(byte[] data, Func<int, (int After, Exception Error)?> cut, bool acceptRanges = true, Func<int, Exception?>? requestError = null) : HttpMessageHandler
     {
+        private int _requests;
+
+        /// <summary>Every request seen, HEAD and GET alike.</summary>
+        public int RequestCount => Volatile.Read(ref _requests);
+
+        private int CountRequest() => Interlocked.Increment(ref _requests);
+
         private readonly List<string?> _getRanges = [];
         private readonly TaskCompletionSource _firstRequest = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -167,6 +245,10 @@ public class HttpDownloadJobDropTests
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            var count = CountRequest();
+            var error = requestError?.Invoke(count);
+            if (error is not null) throw error;
+
             if (request.Method == HttpMethod.Head)
             {
                 var head = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([]) };
