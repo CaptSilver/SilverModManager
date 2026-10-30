@@ -16,14 +16,14 @@ public class DownloadLink : IJsonArraySerializable<DownloadLink>
 {
     /// <summary/>
     [JsonPropertyName("name")]
-    public string Name { get; set; } = null!;
+    public string? Name { get; set; }
 
     /// <summary>
     /// For deserialization only. Please use <see cref="ShortName"/>.
     /// </summary>
     [JsonPropertyName("short_name")]
     // ReSharper disable once InconsistentNaming
-    public string _ShortName { get; set; } = null!;
+    public required string _ShortName { get; set; }
 
     /// <summary>
     /// Name of the CDN server that handles your download request.
@@ -34,13 +34,13 @@ public class DownloadLink : IJsonArraySerializable<DownloadLink>
     /// Download URI used to download the files.
     /// </summary>
     [JsonPropertyName("URI")]
-    public Uri Uri { get; set; } = null!;
+    public required Uri Uri { get; set; }
 
     /// <inheritdoc />
     public static JsonTypeInfo<DownloadLink[]> GetArrayTypeInfo() => DownloadLinkArrayContext.Default.DownloadLinkArray;
 }
 
 /// <summary/>
-[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata)]
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata, RespectNullableAnnotations = true)]
 [JsonSerializable(typeof(DownloadLink[]))]
 public partial class DownloadLinkArrayContext : JsonSerializerContext { }

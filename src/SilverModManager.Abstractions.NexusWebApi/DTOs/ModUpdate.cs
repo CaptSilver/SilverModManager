@@ -3,8 +3,6 @@ using System.Text.Json.Serialization.Metadata;
 using SilverModManager.Abstractions.NexusWebApi.DTOs.Interfaces;
 using ModId = SilverModManager.Sdk.NexusModsApi.ModId;
 
-// 👇 Suppress uninitialised variables. Currently Nexus has mostly read-only API and we expect server to return the data.
-#pragma warning disable CS8618
 
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 namespace SilverModManager.Abstractions.NexusWebApi.DTOs;
@@ -20,7 +18,7 @@ public class ModUpdate : IJsonArraySerializable<ModUpdate>
     /// </summary>
     [JsonPropertyName("mod_id")]
     // ReSharper disable once InconsistentNaming
-    public ulong _ModId { get; set; }
+    public required ulong _ModId { get; set; }
 
     /// <summary>
     /// An individual mod ID that is unique for this game.
@@ -34,7 +32,7 @@ public class ModUpdate : IJsonArraySerializable<ModUpdate>
     ///    Expressed as a Unix timestamp.
     /// </remarks>
     [JsonPropertyName("latest_file_update")]
-    public long LatestFileUpdated { get; set; }
+    public required long LatestFileUpdated { get; set; }
 
     /// <summary>
     /// The last time a file on the mod page was updated.
@@ -48,7 +46,7 @@ public class ModUpdate : IJsonArraySerializable<ModUpdate>
     ///    Expressed as a Unix timestamp.
     /// </remarks>
     [JsonPropertyName("latest_mod_activity")]
-    public long LatestModActivity { get; set; }
+    public required long LatestModActivity { get; set; }
 
     /// <summary>
     /// The last time any change was made to the mod page.
@@ -60,6 +58,6 @@ public class ModUpdate : IJsonArraySerializable<ModUpdate>
 }
 
 /// <summary/>
-[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata)]
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata, RespectNullableAnnotations = true)]
 [JsonSerializable(typeof(ModUpdate[]))]
 public partial class ModUpdateArrayContext : JsonSerializerContext { }

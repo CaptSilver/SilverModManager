@@ -2,8 +2,6 @@ using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using SilverModManager.Abstractions.NexusWebApi.DTOs.Interfaces;
 
-// 👇 Suppress uninitialised variables. Currently Nexus has mostly read-only API and we expect server to return the data.
-#pragma warning disable CS8618
 
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 namespace SilverModManager.Abstractions.NexusWebApi.DTOs;
@@ -15,13 +13,13 @@ public class ModFiles : IJsonSerializable<ModFiles>
 {
     /// <summary/>
     [JsonPropertyName("files")]
-    public ModFile[] Files { get; set; }
+    public required ModFile[] Files { get; set; }
 
     /// <inheritdoc />
     public static JsonTypeInfo<ModFiles> GetTypeInfo() => ModFilesContext.Default.ModFiles;
 }
 
 /// <summary/>
-[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata)]
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata, RespectNullableAnnotations = true)]
 [JsonSerializable(typeof(ModFiles))]
 public partial class ModFilesContext : JsonSerializerContext { }

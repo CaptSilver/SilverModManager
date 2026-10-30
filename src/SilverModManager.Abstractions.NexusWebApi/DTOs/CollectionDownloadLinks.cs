@@ -44,6 +44,6 @@ public class CollectionLink
 // Note for future readers: JsonSourceGenerationMode.Serialization is for Serialization only;
 // this code will be redundant for us as we deserialize only; hence we don't generate it.
 /// <summary/>
-[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata)]
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata, RespectNullableAnnotations = true)]
 [JsonSerializable(typeof(CollectionDownloadLinks))]
 public partial class CollectionDownloadLinksContext : JsonSerializerContext { }

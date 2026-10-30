@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.NexusWebApi;
@@ -179,8 +180,17 @@ public class NexusApiClient : INexusApiClient
         if (!response.IsSuccessStatusCode)
             throw new HttpRequestException(response.ReasonPhrase, null, response.StatusCode);
 
-        var data = await response.Content.ReadFromJsonAsync(typeInfo, token)
-                   ?? throw new InvalidDataException($"{message.RequestUri} replied with the JSON literal null");
+        T? data;
+        try
+        {
+            data = await response.Content.ReadFromJsonAsync(typeInfo, token);
+        }
+        catch (JsonException e)
+        {
+            throw new NexusApiResponseException(message.RequestUri, e);
+        }
+
+        if (data is null) throw new InvalidDataException($"{message.RequestUri} replied with the JSON literal null");
         return new Response<T>
         {
             Data = data,

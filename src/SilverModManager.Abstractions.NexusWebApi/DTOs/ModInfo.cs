@@ -95,6 +95,6 @@ public class ModInfo : IJsonSerializable<ModInfo>
 }
 
 /// <summary/>
-[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata)]
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata, RespectNullableAnnotations = true)]
 [JsonSerializable(typeof(ModInfo))]
 public partial class ModInfoContext : JsonSerializerContext { }

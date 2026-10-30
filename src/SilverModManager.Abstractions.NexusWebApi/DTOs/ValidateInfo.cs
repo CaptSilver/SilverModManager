@@ -82,6 +82,6 @@ public class ValidateInfo : IJsonSerializable<ValidateInfo>
 }
 
 /// <summary/>
-[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata)]
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata, RespectNullableAnnotations = true)]
 [JsonSerializable(typeof(ValidateInfo))]
 public partial class ValidateInfoContext : JsonSerializerContext { }

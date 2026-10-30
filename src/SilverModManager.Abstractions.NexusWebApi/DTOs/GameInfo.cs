@@ -6,8 +6,6 @@ using SilverModManager.Sdk.NexusModsApi;
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable InconsistentNaming
 
-// 👇 Suppress uninitialised variables. Currently Nexus has mostly read-only API and we expect server to return the data.
-#pragma warning disable CS8618
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 namespace SilverModManager.Abstractions.NexusWebApi.DTOs;
 
@@ -27,7 +25,7 @@ public class GameInfo : IJsonArraySerializable<GameInfo>
     ///    This field is for deserialization only.
     /// </remarks>
     [JsonPropertyName("id")]
-    public uint _Id { get; set; }
+    public required uint _Id { get; set; }
 
     /// <summary>
     /// Returns the ID as typed ValueObject <see cref="NexusModsGameId"/>.
@@ -38,25 +36,25 @@ public class GameInfo : IJsonArraySerializable<GameInfo>
     /// Name of the game.
     /// </summary>
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public required string Name { get; set; }
 
     /// <summary>
     /// URL to the forum section on the Nexus forums dedicated to this game.
     /// </summary>
     [JsonPropertyName("forum_url")]
-    public Uri ForumUrl { get; set; }
+    public Uri? ForumUrl { get; set; }
 
     /// <summary>
     /// URL to the Nexus page for this game.
     /// </summary>
     [JsonPropertyName("nexusmods_url")]
-    public Uri NexusModsUrl { get; set; }
+    public Uri? NexusModsUrl { get; set; }
 
     /// <summary>
     /// Game's main genre.
     /// </summary>
     [JsonPropertyName("genre")]
-    public string Genre { get; set; }
+    public string? Genre { get; set; }
 
     /// <summary>
     /// Total number of uploaded files for this game title.
@@ -78,7 +76,7 @@ public class GameInfo : IJsonArraySerializable<GameInfo>
     ///    This value is often used in API requests.
     /// </remarks>
     [JsonPropertyName("domain_name")]
-    public string DomainName { get; set; }
+    public required string DomainName { get; set; }
 
     /// <summary>
     /// Unix timestamp of when the game was approved by the site staff.
@@ -119,13 +117,13 @@ public class GameInfo : IJsonArraySerializable<GameInfo>
     /// List of available categories for this individual game.
     /// </summary>
     [JsonPropertyName("categories")]
-    public List<Category> Categories { get; set; }
+    public List<Category>? Categories { get; set; }
 
     /// <inheritdoc />
     public static JsonTypeInfo<GameInfo[]> GetArrayTypeInfo() => GameInfoArrayContext.Default.GameInfoArray;
 }
 
 /// <summary/>
-[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata)]
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata, RespectNullableAnnotations = true)]
 [JsonSerializable(typeof(GameInfo[]))]
 public partial class GameInfoArrayContext : JsonSerializerContext { }

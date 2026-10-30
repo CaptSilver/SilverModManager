@@ -40,6 +40,6 @@ public record OAuthUserInfo : IJsonSerializable<OAuthUserInfo>
 }
 
 /// <summary/>
-[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata)]
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata, RespectNullableAnnotations = true)]
 [JsonSerializable(typeof(OAuthUserInfo))]
 public partial class OAuthUserInfoContext : JsonSerializerContext { }
