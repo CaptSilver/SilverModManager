@@ -21,7 +21,10 @@ using SilverModManager.Secrets;
 using SilverModManager.SingleProcess;
 using SilverModManager.StandardGameLocators;
 using SilverModManager.StandardGameLocators.TestHelpers;
+using NSubstitute;
+using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Cli;
+using SilverModManager.Wabbajack.Library;
 using Xunit.DependencyInjection.Logging;
 
 namespace SilverModManager.CLI.Tests;
@@ -53,6 +56,11 @@ public class Startup
                 .AddFileHashes()
                 .AddCLI()
                 .AddWabbajackVerbs()
+                // The verbs run against doubles; WabbajackBatchVerbTests sets them up.
+                .AddSingleton(Substitute.For<IModlistCatalog>())
+                .AddSingleton(Substitute.For<IArchiveAcquirer>())
+                .AddSingleton(Substitute.For<IModlistPlanner>())
+                .AddSingleton<ModlistDownloads>()
                 .AddHttpDownloader()
                 .AddSecrets(new SecretStoreOptions { Mode = SecretStoreMode.NonInteractive, Backend = SecretBackendChoice.Memory })
                 .AddNexusWebApi()

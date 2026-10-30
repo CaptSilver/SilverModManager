@@ -37,6 +37,7 @@ public sealed class McpTestHost : IAsyncDisposable
             .AddModule("loadouts", "Loadouts verbs")
             .AddModule("games", "Games verbs")
             .AddModule("settings", "Settings verbs")
+            .AddModule("wabbajack", "Wabbajack verbs")
             .AddModule("fromsoft", "FromSoft verbs")
             .AddModule("fromsoft merge", "Merge verbs")
             .AddModule("fromsoft vanilla", "Vanilla verbs")
@@ -51,6 +52,10 @@ public sealed class McpTestHost : IAsyncDisposable
             .AddVerb(() => Verbs.SettingsGet)
             .AddVerb(() => Verbs.SettingsSet)
             .AddVerb(() => Verbs.Diagnostics)
+            .AddVerb(() => Verbs.WabbajackList)
+            .AddVerb(() => Verbs.WabbajackDownload)
+            .AddVerb(() => Verbs.WabbajackStatus)
+            .AddVerb(() => Verbs.WabbajackCancel)
             .AddVerb(() => Verbs.Launch)
             .AddVerb(() => Verbs.Heartbeat)
             .AddSingleton<CommandLineConfigurator>();
@@ -176,6 +181,34 @@ public sealed class McpTestHost : IAsyncDisposable
         public static async Task<int> SettingsSet([Injected] IRenderer renderer, [Option("k", "key", "Key")] string key, [Option("v", "value", "Value")] string value)
         {
             await renderer.TextLine($"set key={key} value=[{value}]");
+            return 0;
+        }
+
+        [Verb("wabbajack list", "Stand-in for the modlist list")]
+        public static async Task<int> WabbajackList([Injected] IRenderer renderer)
+        {
+            await renderer.TextLine("wabbajack list");
+            return 0;
+        }
+
+        [Verb("wabbajack download", "Stand-in for the modlist download")]
+        public static async Task<int> WabbajackDownload([Injected] IRenderer renderer, [Option("m", "modlist", "Modlist")] string modlist)
+        {
+            await renderer.TextLine($"download modlist=[{modlist}]");
+            return 0;
+        }
+
+        [Verb("wabbajack status", "Stand-in for the modlist status")]
+        public static async Task<int> WabbajackStatus([Injected] IRenderer renderer, [Option("m", "modlist", "Modlist", true)] string? modlist)
+        {
+            await renderer.TextLine($"status modlist=[{modlist}]");
+            return 0;
+        }
+
+        [Verb("wabbajack cancel", "Stand-in for the modlist cancel")]
+        public static async Task<int> WabbajackCancel([Injected] IRenderer renderer)
+        {
+            await renderer.TextLine("cancel");
             return 0;
         }
 

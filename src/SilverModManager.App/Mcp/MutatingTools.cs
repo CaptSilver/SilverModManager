@@ -3,6 +3,10 @@ namespace SilverModManager.App.Mcp;
 /// <summary>The tools that change something. A read-only server does not offer them.</summary>
 public static class MutatingTools
 {
+    internal static ToolParam WabbajackModlistParam(bool required) => new(
+        "modlist", "The modlist: its name or id as wabbajack_list shows them, or the file name of its .wabbajack in the library." + (required ? "" : " Leave out for whichever batch ran last."),
+        Required: required);
+
     public static IReadOnlyList<McpTool> Create(McpToolContext context) =>
     [
         VerbTool.Create(context, "loadout_apply",
@@ -20,6 +24,15 @@ public static class MutatingTools
                 ReadOnlyTools.SettingKeyParam,
                 new ToolParam("value", "The new value: true or false, a number, the name of an option, or text. It cannot start with '-'.", Required: true),
             ]),
+        VerbTool.Create(context, "wabbajack_download",
+            "Starts downloading a Wabbajack modlist's archives in the running app, the same as the Download button on the modlist's page, " +
+            "and returns once the batch is under way with how many archives download automatically, need the browser, need hand work or are already there. " +
+            "The batch goes on in the app and continues after a restart. Follow it with wabbajack_status. Find the modlists with wabbajack_list.",
+            readOnly: false, ["wabbajack", "download"], takesLoadout: false, context.Limits.SlowReadTimeout,
+            options: [WabbajackModlistParam(required: true)]),
+        VerbTool.Create(context, "wabbajack_cancel",
+            "Stops the Wabbajack modlist download that is running. It is not resumed after a restart.",
+            readOnly: false, ["wabbajack", "cancel"], takesLoadout: false, context.Limits.ReadTimeout),
         VerbTool.Create(context, "game_launch",
             "Applies a loadout and starts its game, the same as the Play button, and returns once the launch is under way, not when the game exits. " +
             "It needs the SilverModManager window to be open. Check app_status afterwards for the game process. Find the loadout with loadouts_list.",

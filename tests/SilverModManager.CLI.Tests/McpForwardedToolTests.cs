@@ -53,6 +53,18 @@ public sealed class McpForwardedToolTests : IAsyncDisposable
     }
 
     [Fact(Timeout = TimeoutMs)]
+    public async Task TheWabbajackTools_PassTheModlistAndLeaveOutAnOptionalOneThatWasNotGiven()
+    {
+        var tools = await ToolsAsync();
+
+        (await McpTestHost.CallAsync(tools, "wabbajack_list")).Text.Trim().Should().Be("wabbajack list");
+        (await McpTestHost.CallAsync(tools, "wabbajack_download", new JsonObject { ["modlist"] = "Skyrim list" })).Text.Trim().Should().Be("download modlist=[Skyrim list]");
+        (await McpTestHost.CallAsync(tools, "wabbajack_status")).Text.Trim().Should().Be("status modlist=[]");
+        (await McpTestHost.CallAsync(tools, "wabbajack_status", new JsonObject { ["modlist"] = "Skyrim list" })).Text.Trim().Should().Be("status modlist=[Skyrim list]");
+        (await McpTestHost.CallAsync(tools, "wabbajack_cancel")).Text.Trim().Should().Be("cancel");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
     public async Task SettingsSet_AcceptsAnEmptyValueToClearASetting()
     {
         var result = await McpTestHost.CallAsync(await ToolsAsync(), "settings_set", new JsonObject { ["key"] = "HttpProxySettings.HttpProxy", ["value"] = "" });
