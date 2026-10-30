@@ -255,8 +255,10 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             // Rows that changed while the page was away.
             if (_loadStarted && IsThisList(_acquirer.Plan)) ApplyPlan(_acquirer.Plan);
 
-            // A batch started elsewhere shows here as it runs and ends.
+            // A batch started elsewhere shows here as it runs and ends. Its status comes from whichever thread runs
+            // the batch (a CLI verb's, a restart's), so it crosses to the UI thread before touching the page.
             Observable.FromEvent<Action<AcquireStatus>, AcquireStatus>(h => h, h => _acquirer.StatusChanged += h, h => _acquirer.StatusChanged -= h)
+                .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(ShowRunStatus)
                 .DisposeWith(d);
             if (_loadStarted && _acquirer.Status is { } current) ShowRunStatus(current);

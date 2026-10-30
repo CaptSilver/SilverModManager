@@ -31,12 +31,18 @@ public partial class WabbajackModlistViewModelTests
         using var activation = vm.Activator.Activate();
 
         acquirer.ChangeStatus(RunningFor(SomeFile, finished: 2));
-        vm.Downloads.Should().Be(new AcquireProgress(2, 3));
-        vm.IsDownloading.Should().BeTrue();
+        await EventuallyOnUi(() =>
+        {
+            vm.Downloads.Should().Be(new AcquireProgress(2, 3));
+            vm.IsDownloading.Should().BeTrue();
+        });
 
         acquirer.ChangeStatus(RunningFor(SomeFile, finished: 3, running: false));
-        vm.Downloads.Should().Be(new AcquireProgress(3, 3));
-        vm.IsDownloading.Should().BeFalse();
+        await EventuallyOnUi(() =>
+        {
+            vm.Downloads.Should().Be(new AcquireProgress(3, 3));
+            vm.IsDownloading.Should().BeFalse();
+        });
     }
 
     [Fact]
@@ -76,7 +82,10 @@ public partial class WabbajackModlistViewModelTests
 
         acquirer.ChangeStatus(RunningFor(other, finished: 3, running: false));
 
-        vm.CanDownload.Should().BeTrue();
-        vm.DownloadBlockedReason.Should().BeEmpty();
+        await EventuallyOnUi(() =>
+        {
+            vm.CanDownload.Should().BeTrue();
+            vm.DownloadBlockedReason.Should().BeEmpty();
+        });
     }
 }

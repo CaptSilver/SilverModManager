@@ -72,6 +72,30 @@ public sealed class ArchiveAcquirer(
         time.GetElapsedTime(state.Started, state.Ended ?? time.GetTimestamp()),
         state.Failures.TakeLast(AcquireStatus.FailuresKept).ToArray());
 
+    /// <summary>
+    /// Hands an event to each listener on its own, so one that throws (a page touching its UI from the wrong thread,
+    /// say) cannot stop a run or keep the others from hearing it.
+    /// </summary>
+    private void Notify<T>(Action<T>? listeners, T value) => NotifyEach(listeners, listener => ((Action<T>)listener)(value));
+
+    private void Notify(Action? listeners) => NotifyEach(listeners, listener => ((Action)listener)());
+
+    private void NotifyEach(Delegate? listeners, Action<Delegate> call)
+    {
+        if (listeners is null) return;
+        foreach (var listener in listeners.GetInvocationList())
+        {
+            try
+            {
+                call(listener);
+            }
+            catch (Exception e)
+            {
+                logger.LogWarning(e, "A listener of the archive downloads threw; the downloads go on");
+            }
+        }
+    }
+
     /// <summary>Changes the run's numbers and tells listeners, unless a later run has taken over the status.</summary>
     private void Record(RunState state, Action<RunState> change)
     {
@@ -82,7 +106,7 @@ public sealed class ArchiveAcquirer(
             if (!ReferenceEquals(_state, state)) return;
             snapshot = Snapshot(state);
         }
-        StatusChanged?.Invoke(snapshot);
+        Notify(StatusChanged, snapshot);
     }
 
     /// <summary>
@@ -143,7 +167,7 @@ public sealed class ArchiveAcquirer(
         // Files that arrived between building the plan and now.
         Recheck();
         // Whoever follows the plan (the Downloads pickup) learns that it now has these rows.
-        PlanChanged?.Invoke(Plan);
+        Notify(PlanChanged, Plan);
         return rows;
     }
 
@@ -200,7 +224,7 @@ public sealed class ArchiveAcquirer(
                 s.IsRunning = false;
                 s.Ended ??= time.GetTimestamp();
             });
-            if (IsCurrent(rows) && UpdateWatching()) PlanForgotten?.Invoke();
+            if (IsCurrent(rows) && UpdateWatching()) Notify(PlanForgotten);
         }
     }
 
@@ -257,7 +281,7 @@ public sealed class ArchiveAcquirer(
         }
 
         foreach (var page in pages) osInterop.OpenUri(page);
-        if (pages.Count > 0) PlanChanged?.Invoke(Plan);
+        if (pages.Count > 0) Notify(PlanChanged, Plan);
         return pages.Count;
     }
 
@@ -273,7 +297,7 @@ public sealed class ArchiveAcquirer(
     private void Detach()
     {
         lock (_lock) _pages--;
-        if (UpdateWatching()) PlanForgotten?.Invoke();
+        if (UpdateWatching()) Notify(PlanForgotten);
     }
 
     private sealed class PageHandle(ArchiveAcquirer owner) : IDisposable
@@ -313,7 +337,7 @@ public sealed class ArchiveAcquirer(
         if (!changed) return;
         UpdateExpected();
         UpdateWatching();
-        PlanChanged?.Invoke(Plan);
+        Notify(PlanChanged, Plan);
     }
 
     private async Task MarkFetched(List<(FileIdentity Archive, LibraryFile.ReadOnly File)> fetched)
@@ -417,7 +441,7 @@ public sealed class ArchiveAcquirer(
             rows[index] = change(rows[index]);
         }
         UpdateExpected();
-        PlanChanged?.Invoke(Plan);
+        Notify(PlanChanged, Plan);
     }
 
     /// <summary>Only Browser rows are expected: the user is sent to Nexus Mods for exactly those.</summary>

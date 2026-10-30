@@ -49,6 +49,33 @@ public class ArchiveAcquirerStatusTests(ITestOutputHelper helper) : AcquireTestB
     }
 
     [Fact]
+    public async Task AListenerThatThrowsDoesNotStopTheRun()
+    {
+        // A page that touches its UI from the wrong thread once killed a whole batch this way.
+        var heard = 0;
+        Action<AcquireStatus> throwingStatus = _ => throw new InvalidOperationException("Call from invalid thread");
+        Action<AcquireStatus> countingStatus = _ => Interlocked.Increment(ref heard);
+        Action<ArchivePlan> throwingPlan = _ => throw new InvalidOperationException("Call from invalid thread");
+        Acquirer.StatusChanged += throwingStatus;
+        Acquirer.StatusChanged += countingStatus;
+        Acquirer.PlanChanged += throwingPlan;
+        try
+        {
+            using var page = Acquirer.Attach();
+            await Acquirer.Run(Plan(ListA, "1.7z", "2.7z"), null, CancellationToken.None);
+        }
+        finally
+        {
+            Acquirer.StatusChanged -= throwingStatus;
+            Acquirer.StatusChanged -= countingStatus;
+            Acquirer.PlanChanged -= throwingPlan;
+        }
+
+        Acquirer.Status.Should().Match<AcquireStatus>(s => !s.IsRunning && s.Finished == 2 && s.Failures.Count == 0);
+        heard.Should().BeGreaterThan(0, "the other listeners still hear every change");
+    }
+
+    [Fact]
     public void BeforeAnyRunThereIsNoStatus()
     {
         Acquirer.Status.Should().BeNull();
