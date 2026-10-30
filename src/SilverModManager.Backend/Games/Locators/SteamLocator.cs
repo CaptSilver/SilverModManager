@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using GameFinder.StoreHandlers.Steam;
 using GameFinder.StoreHandlers.Steam.Models;
@@ -50,52 +51,89 @@ internal class SteamLocator : IGameLocator
 
             if (!_registeredGames.Games.TryGetValue(storeIdentifier, out var game)) continue;
 
-            var locatorIds = gameFinderGame.AppManifest.InstalledDepots
-                .Select(x => LocatorId.From(x.Value.ManifestId.Value.ToString()))
-                .ToImmutableArray();
-
-            // GetProtonPrefix() only checks that compatdata/<appid> exists, which Steam creates before
-            // Proton has written anything into it. Build the prefix from the manifest instead and ask
-            // ProtonPrefix.IsReady, so a game that was never launched still resolves its known folders
-            // into the prefix it will get rather than silently into the host's home.
-            var protonDirectory = CompatDataDirectory(gameFinderGame, libraries);
-            var prefix = new ProtonWinePrefix { ProtonDirectory = protonDirectory, ConfigurationDirectory = protonDirectory.Combine("pfx") };
-            var prefixReady = ProtonPrefix.IsReady(prefix.ConfigurationDirectory);
-
-            // A prefix outlives a switch to the native build, so a ready one only means Windows when the
-            // game isn't installed in its native form. Without a prefix, a game with a native build is it.
-            var isNativeBuild = game.HasNativeLinuxBuild && (!prefixReady || IsNativeInstall(game, gameFinderGame));
-            var isWindowsBuild = !isNativeBuild;
-            if (isNativeBuild && prefixReady) LogStalePrefix(gameFinderGame, prefix.ConfigurationDirectory);
-
-            var fileSystem = isWindowsBuild ? prefix.CreateOverlayFileSystem(_fileSystem) : _fileSystem;
-            var path = fileSystem.FromUnsanitizedFullPath(gameFinderGame.Path.GetFullPath());
-            var linuxCompatibilityDataProvider = prefixReady && isWindowsBuild ? new LinuxCompatibilityDataProvider(gameFinderGame, prefix.ConfigurationDirectory) : null;
-
-            yield return new GameLocatorResult
-            {
-                Game = game,
-                Path = path,
-                LocatorIds = locatorIds,
-                Platform = isWindowsBuild ? OSPlatform.Windows : OSPlatform.Linux,
-                WinePrefixPath = isWindowsBuild ? prefix.ConfigurationDirectory : null,
-                StoreIdentifier = storeIdentifier.ToString(),
-                Store = Store,
-                Locator = this,
-                LinuxCompatabilityDataProvider = linuxCompatibilityDataProvider,
-                Compatibility = isWindowsBuild ? new CompatibilityLayer(CompatibilityLayerKind.SteamProton, prefix.ConfigurationDirectory) : null,
-                StoreRoot = gameFinderGame.SteamPath,
-                StoreBuildId = gameFinderGame.AppManifest.BuildId.Value.ToString(),
-                StoreTargetBuildId = TargetBuildOf(gameFinderGame.AppManifest),
-                // A settled install's manifest holds FullyInstalled alone; any other flag (update required,
-                // running, paused, files missing) means the files may not match the listed build.
-                StoreUpdatePending = gameFinderGame.AppManifest.StateFlags != StateFlags.FullyInstalled,
-                StoreUpdateInProgress = (gameFinderGame.AppManifest.StateFlags & UpdateInProgressFlags) != 0,
-                StoreFilesDamaged = (gameFinderGame.AppManifest.StateFlags & (StateFlags.FilesMissing | StateFlags.FilesCorrupt)) != 0,
-                StoreLastWrite = LastWriteOf(gameFinderGame.AppManifest),
-                StoreUpdatesInBackground = gameFinderGame.AppManifest.AutoUpdateBehavior != AutoUpdateBehavior.UpdateOnLaunch,
-            };
+            yield return ToResult(game, gameFinderGame, libraries);
         }
+    }
+
+    /// <summary>
+    /// Locates one game by reading its own appmanifest, not the manifest of every game in every library as
+    /// <see cref="Locate()"/> does. Steam rewrites a manifest again and again while it downloads, and the app
+    /// looks at the game on each of those writes, so the full walk cost seconds each time.
+    /// </summary>
+    public bool TryLocate(IGameData game, [NotNullWhen(true)] out GameLocatorResult? locatorResult)
+    {
+        locatorResult = null;
+
+        // Locate gives an id to the first game registered for it; a later game claiming it is never found.
+        var appIds = game.StoreIdentifiers.SteamAppIds
+            .Where(id => _registeredGames.Games.TryGetValue(id, out var owner) && owner.GameId == game.GameId)
+            .ToArray();
+        if (appIds.Length == 0) return false;
+
+        if (!TryReadLibraryFolders(out var steamPath, out var libraryFolders)) return false;
+        var libraries = libraryFolders.Select(l => l.Path).Append(steamPath).Distinct().ToArray();
+
+        foreach (var library in libraryFolders)
+        {
+            foreach (var appId in appIds)
+            {
+                if (!TryReadManifest(library, $"appmanifest_{appId}.acf", out var manifest)) continue;
+                var installed = new SteamGame { SteamPath = steamPath, AppManifest = manifest, LibraryFolder = library };
+                locatorResult = ToResult(game, installed, libraries);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private GameLocatorResult ToResult(IGameData game, SteamGame gameFinderGame, IReadOnlyList<AbsolutePath> libraries)
+    {
+        var locatorIds = gameFinderGame.AppManifest.InstalledDepots
+            .Select(x => LocatorId.From(x.Value.ManifestId.Value.ToString()))
+            .ToImmutableArray();
+
+        // GetProtonPrefix() only checks that compatdata/<appid> exists, which Steam creates before
+        // Proton has written anything into it. Build the prefix from the manifest instead and ask
+        // ProtonPrefix.IsReady, so a game that was never launched still resolves its known folders
+        // into the prefix it will get rather than silently into the host's home.
+        var protonDirectory = CompatDataDirectory(gameFinderGame, libraries);
+        var prefix = new ProtonWinePrefix { ProtonDirectory = protonDirectory, ConfigurationDirectory = protonDirectory.Combine("pfx") };
+        var prefixReady = ProtonPrefix.IsReady(prefix.ConfigurationDirectory);
+
+        // A prefix outlives a switch to the native build, so a ready one only means Windows when the
+        // game isn't installed in its native form. Without a prefix, a game with a native build is it.
+        var isNativeBuild = game.HasNativeLinuxBuild && (!prefixReady || IsNativeInstall(game, gameFinderGame));
+        var isWindowsBuild = !isNativeBuild;
+        if (isNativeBuild && prefixReady) LogStalePrefix(gameFinderGame, prefix.ConfigurationDirectory);
+
+        var fileSystem = isWindowsBuild ? prefix.CreateOverlayFileSystem(_fileSystem) : _fileSystem;
+        var path = fileSystem.FromUnsanitizedFullPath(gameFinderGame.Path.GetFullPath());
+        var linuxCompatibilityDataProvider = prefixReady && isWindowsBuild ? new LinuxCompatibilityDataProvider(gameFinderGame, prefix.ConfigurationDirectory) : null;
+
+        return new GameLocatorResult
+        {
+            Game = game,
+            Path = path,
+            LocatorIds = locatorIds,
+            Platform = isWindowsBuild ? OSPlatform.Windows : OSPlatform.Linux,
+            WinePrefixPath = isWindowsBuild ? prefix.ConfigurationDirectory : null,
+            StoreIdentifier = gameFinderGame.AppId.Value.ToString(),
+            Store = Store,
+            Locator = this,
+            LinuxCompatabilityDataProvider = linuxCompatibilityDataProvider,
+            Compatibility = isWindowsBuild ? new CompatibilityLayer(CompatibilityLayerKind.SteamProton, prefix.ConfigurationDirectory) : null,
+            StoreRoot = gameFinderGame.SteamPath,
+            StoreBuildId = gameFinderGame.AppManifest.BuildId.Value.ToString(),
+            StoreTargetBuildId = TargetBuildOf(gameFinderGame.AppManifest),
+            // A settled install's manifest holds FullyInstalled alone; any other flag (update required,
+            // running, paused, files missing) means the files may not match the listed build.
+            StoreUpdatePending = gameFinderGame.AppManifest.StateFlags != StateFlags.FullyInstalled,
+            StoreUpdateInProgress = (gameFinderGame.AppManifest.StateFlags & UpdateInProgressFlags) != 0,
+            StoreFilesDamaged = (gameFinderGame.AppManifest.StateFlags & (StateFlags.FilesMissing | StateFlags.FilesCorrupt)) != 0,
+            StoreLastWrite = LastWriteOf(gameFinderGame.AppManifest),
+            StoreUpdatesInBackground = gameFinderGame.AppManifest.AutoUpdateBehavior != AutoUpdateBehavior.UpdateOnLaunch,
+        };
     }
 
     // Flags Steam sets while it writes the installed files. UpdateRequired alone is not one: it stays set for
@@ -170,29 +208,34 @@ internal class SteamLocator : IGameLocator
     /// </summary>
     private IEnumerable<SteamGame> FindAllGames()
     {
-        AbsolutePath steamPath;
-        LibraryFoldersManifest libraryFolders;
+        if (!TryReadLibraryFolders(out var steamPath, out var libraryFolders)) return [];
+        return libraryFolders.SelectMany(library => ReadLibrary(steamPath, library));
+    }
+
+    private bool TryReadLibraryFolders(out AbsolutePath steamPath, [NotNullWhen(true)] out LibraryFoldersManifest? libraryFolders)
+    {
+        steamPath = default;
+        libraryFolders = null;
         try
         {
-            if (!SteamLocationFinder.TryFindSteam(_fileSystem, _registry, _logger, out steamPath)) return [];
+            if (!SteamLocationFinder.TryFindSteam(_fileSystem, _registry, _logger, out steamPath)) return false;
 
             var libraryFoldersFilePath = SteamLocationFinder.GetLibraryFoldersFilePath(steamPath);
             var parsed = LibraryFoldersManifestParser.ParseManifestFile(libraryFoldersFilePath);
             if (parsed.IsFailed)
             {
                 _logger.LogWarning("Failed to parse library folders file '{FilePath}': {Errors}", libraryFoldersFilePath, parsed.Errors);
-                return [];
+                return false;
             }
 
             libraryFolders = parsed.Value;
+            return true;
         }
         catch (Exception e) when (IsStorageFailure(e))
         {
             _logger.LogWarning(e, "Could not read Steam's library folders");
-            return [];
+            return false;
         }
-
-        return libraryFolders.SelectMany(library => ReadLibrary(steamPath, library));
     }
 
     private IEnumerable<SteamGame> ReadLibrary(AbsolutePath steamPath, LibraryFolder library)
@@ -208,22 +251,8 @@ internal class SteamLocator : IGameLocator
             var games = new List<SteamGame>();
             foreach (var manifestPath in library.EnumerateAppManifestFilePaths().ToArray())
             {
-                // One unreadable manifest must not hide the rest of the library.
-                try
-                {
-                    var manifest = AppManifestParser.ParseManifestFile(manifestPath);
-                    if (manifest.IsFailed)
-                    {
-                        _logger.LogWarning("Failed to parse app manifest file '{Path}': {Errors}", manifestPath, manifest.Errors);
-                        continue;
-                    }
-
-                    games.Add(new SteamGame { SteamPath = steamPath, AppManifest = manifest.Value, LibraryFolder = library });
-                }
-                catch (Exception e) when (IsStorageFailure(e))
-                {
-                    _logger.LogWarning(e, "Skipping unreadable app manifest '{Path}'", manifestPath);
-                }
+                if (TryReadManifest(manifestPath, out var manifest))
+                    games.Add(new SteamGame { SteamPath = steamPath, AppManifest = manifest, LibraryFolder = library });
             }
 
             return games;
@@ -232,6 +261,33 @@ internal class SteamLocator : IGameLocator
         {
             _logger.LogWarning(e, "Skipping Steam library folder '{Path}', which could not be read", library.Path);
             return [];
+        }
+    }
+
+    private bool TryReadManifest(LibraryFolder library, string fileName, [NotNullWhen(true)] out AppManifest? manifest)
+        => TryReadManifest(library.Path.Combine("steamapps").Combine(fileName), out manifest);
+
+    // One unreadable or half-written manifest must not hide the rest of the library.
+    private bool TryReadManifest(AbsolutePath manifestPath, [NotNullWhen(true)] out AppManifest? manifest)
+    {
+        manifest = null;
+        try
+        {
+            if (!_fileSystem.FileExists(manifestPath)) return false;
+            var parsed = AppManifestParser.ParseManifestFile(manifestPath);
+            if (parsed.IsFailed)
+            {
+                _logger.LogWarning("Failed to parse app manifest file '{Path}': {Errors}", manifestPath, parsed.Errors);
+                return false;
+            }
+
+            manifest = parsed.Value;
+            return true;
+        }
+        catch (Exception e) when (IsStorageFailure(e))
+        {
+            _logger.LogWarning(e, "Skipping unreadable app manifest '{Path}'", manifestPath);
+            return false;
         }
     }
 
