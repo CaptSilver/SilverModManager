@@ -557,6 +557,66 @@ public class DownloadsPickupTests(ITestOutputHelper helper) : AcquireTestBase<Do
     }
 
     [Fact]
+    public async Task ChoosingAnotherFolderWhileWatching_MovesTheWatchToIt()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        var folderA = DownloadsFolder;
+        var folderB = folderA.Parent.Combine("browser-downloads");
+        folderB.CreateDirectory();
+        await RunWithManualRows(("wanted.txt", Wanted));
+        var (pickup, _) = NewPickup(TimeSpan.FromMilliseconds(100));
+        pickup.Follow();
+        pickup.IsWatching.Should().BeTrue();
+        pickup.WatchedFolder.Should().Be(folderA);
+
+        Settings.Update<WabbajackSettings>(s => s with { DownloadsFolder = folderB.ToString() });
+        await Drop(folderB, "wanted.txt", Wanted);
+
+        await Until(() => Acquirer.Plan.Rows[0].State == ArchiveState.Have);
+        Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Have, "the watch follows the folder the user chose");
+        pickup.IsWatching.Should().BeFalse("the row is held, so the watch ended");
+        pickup.Dispose();
+    }
+
+    [Fact]
+    public async Task ChoosingAnotherFolderWhileWatching_ReportsTheNewFolderAsWatched()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        var folderB = DownloadsFolder.Parent.Combine("browser-downloads");
+        folderB.CreateDirectory();
+        await RunWithManualRows(("wanted.txt", Wanted));
+        var (pickup, _) = NewPickup();
+        pickup.Follow();
+
+        Settings.Update<WabbajackSettings>(s => s with { DownloadsFolder = folderB.ToString() });
+
+        pickup.IsWatching.Should().BeTrue();
+        pickup.WatchedFolder.Should().Be(pickup.Folder);
+        pickup.WatchedFolder.Should().Be(folderB);
+        pickup.Dispose();
+    }
+
+    [Fact]
+    public async Task ChoosingAMissingFolderWhileWatching_EndsTheWatch()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        var folderA = DownloadsFolder;
+        await RunWithManualRows(("wanted.txt", Wanted));
+        var (pickup, _) = NewPickup();
+        pickup.Follow();
+        pickup.IsWatching.Should().BeTrue();
+
+        Settings.Update<WabbajackSettings>(s => s with { DownloadsFolder = folderA.Parent.Combine("gone").ToString() });
+
+        pickup.IsWatching.Should().BeFalse("a folder that does not exist cannot be watched");
+        pickup.WatchedFolder.Should().BeNull();
+        pickup.Dispose();
+    }
+
+    [Fact]
     public async Task AFileThatWasCompleteBeforeTheWatchStarted_IsPickedUpWithoutAnEvent()
     {
         using var page = Acquirer.Attach();

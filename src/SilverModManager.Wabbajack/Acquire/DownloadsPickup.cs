@@ -29,6 +29,7 @@ public sealed class DownloadsPickup(
     private Timer? _rescan;
     private bool _missingFolderLogged;
     private FileSystemWatcher? _watcher;
+    private AbsolutePath? _watchedFolder;
     private IDisposable? _settingsSubscription;
     private HashSet<string> _watchedNames = [];
     private bool _following;
@@ -43,6 +44,15 @@ public sealed class DownloadsPickup(
         get
         {
             lock (_watchLock) return _watcher is not null;
+        }
+    }
+
+    /// <summary>The folder the watcher is on, or null when nothing is watched.</summary>
+    public AbsolutePath? WatchedFolder
+    {
+        get
+        {
+            lock (_watchLock) return _watcher is null ? null : _watchedFolder;
         }
     }
 
@@ -173,13 +183,23 @@ public sealed class DownloadsPickup(
                 return;
             }
 
-            _watchedNames = pending;
-            // A plan changes after every finished archive; the folder is only looked up when there is no watcher yet.
-            if (_watcher is not null) return;
-
             var folder = Folder;
+            // A plan changes after every finished archive; the watcher only moves when the chosen folder did.
+            if (_watcher is not null)
+            {
+                if (_watchedFolder == folder)
+                {
+                    _watchedNames = pending;
+                    return;
+                }
+                StopWatching();
+                _missingFolderLogged = false;
+            }
+
+            _watchedNames = pending;
             if (!FolderExists(folder)) return;
             _watcher = StartWatcher(folder);
+            _watchedFolder = _watcher is null ? null : folder;
             startedNow = _watcher is not null;
         }
 
@@ -223,6 +243,7 @@ public sealed class DownloadsPickup(
         if (_watcher is null) return;
         _watcher.Dispose();
         _watcher = null;
+        _watchedFolder = null;
         _watchedNames = [];
         _rescan?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         ForgetMismatches();
