@@ -6,6 +6,8 @@ using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.UI.Sdk;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using R3;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -25,6 +27,8 @@ public partial class TopBarDesignViewModel : AViewModel<ITopBarViewModel>, ITopB
     [Reactive] public partial string ActiveWorkspaceTitle { get; set; } = "Home";
     [Reactive] public partial string ActiveWorkspaceSubtitle { get; set; } = "Loadout A";
     [Reactive] public partial IAddPanelDropDownViewModel? AddPanelDropDownViewModel { get; set; } = new AddPanelDropDownDesignViewModel();
+
+    public ILogger Logger { get; set; } = NullLogger.Instance;
 
     public ReactiveUI.ReactiveCommand<Unit, Unit> NewTabCommand => ReactiveCommand.Create<Unit, Unit>(_ => Unit.Default);
     public ReactiveUI.ReactiveCommand<NavigationInformation, Unit> OpenSettingsCommand => ReactiveCommand.Create<NavigationInformation, Unit>(_ => Unit.Default);

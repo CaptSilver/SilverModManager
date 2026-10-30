@@ -1,5 +1,6 @@
 using System.Reactive;
 using Avalonia.Media;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.WorkspaceSystem;
@@ -10,6 +11,11 @@ namespace SilverModManager.App.UI.Controls.TopBar;
 
 public interface ITopBarViewModel : IViewModelInterface
 {
+    /// <summary>
+    /// Where the view reports events that reach the developer-tools log, such as a window button pressed with no window.
+    /// </summary>
+    public ILogger Logger { get; }
+
     public string ActiveWorkspaceTitle { get; }
 
     public string ActiveWorkspaceSubtitle { get; }

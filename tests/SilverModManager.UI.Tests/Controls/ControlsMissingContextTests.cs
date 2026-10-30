@@ -1,7 +1,6 @@
 using System.Reactive.Linq;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Logging;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using FluentAssertions;
@@ -33,14 +32,6 @@ namespace SilverModManager.UI.Tests.Controls;
 /// </summary>
 public class ControlsMissingContextTests(IServiceProvider provider) : AUiTest(provider)
 {
-    private sealed class CapturingSink : ILogSink
-    {
-        public List<string> Messages { get; } = [];
-        public bool IsEnabled(LogEventLevel level, string area) => true;
-        public void Log(LogEventLevel level, string area, object? source, string messageTemplate) => Messages.Add(messageTemplate);
-        public void Log(LogEventLevel level, string area, object? source, string messageTemplate, params object?[] propertyValues) => Messages.Add(messageTemplate);
-    }
-
     [Theory]
     [InlineData("MinimizeButton")]
     [InlineData("MaximizeButton")]
@@ -49,23 +40,18 @@ public class ControlsMissingContextTests(IServiceProvider provider) : AUiTest(pr
     {
         await OnUi(() =>
         {
-            var sink = new CapturingSink();
-            var previous = Logger.Sink;
-            Logger.Sink = sink;
-            try
-            {
-                var view = new TopBarView();
-                var button = view.FindControl<Button>(buttonName)!;
+            var logger = Substitute.For<ILogger>();
+            logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+            var view = new TopBarView { ViewModel = new TopBarDesignViewModel { Logger = logger } };
+            var button = view.FindControl<Button>(buttonName)!;
 
-                var act = () => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var act = () => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-                act.Should().NotThrow();
-                sink.Messages.Should().ContainSingle(m => m.Contains("window"));
-            }
-            finally
-            {
-                Logger.Sink = previous;
-            }
+            act.Should().NotThrow();
+            var traces = logger.ReceivedCalls()
+                .Where(c => c.GetMethodInfo().Name == nameof(ILogger.Log) && (LogLevel)c.GetArguments()[0]! == LogLevel.Trace)
+                .ToList();
+            traces.Should().ContainSingle();
         });
     }
 

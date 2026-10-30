@@ -3,7 +3,7 @@ using System.Reactive.Disposables;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Metadata;
-using Avalonia.Logging;
+using Microsoft.Extensions.Logging;
 using Avalonia.ReactiveUI;
 using DynamicData.Binding;
 using SilverModManager.UI.Sdk;
@@ -147,7 +147,7 @@ public partial class TopBarView : ReactiveUserControl<ITopBarViewModel>
     {
         hostWindow = VisualRoot as Window;
         if (hostWindow is null)
-            Logger.TryGet(LogEventLevel.Verbose, LogArea.Control)?.Log(this, "Top bar window button pressed while not attached to a window");
+            ViewModel?.Logger.LogTrace("Top bar window button pressed while not attached to a window");
         return hostWindow is not null;
     }
 

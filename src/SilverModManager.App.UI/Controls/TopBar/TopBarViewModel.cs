@@ -36,6 +36,8 @@ public partial class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarView
     private readonly ILoginManager _loginManager;
     private readonly INexusCredentialSummary _credentialSummary;
     private readonly ILogger<TopBarViewModel> _logger;
+
+    public ILogger Logger => _logger;
     private readonly IWindowNotificationService _notificationService;
 
     [Reactive] public partial string ActiveWorkspaceTitle { get; [UsedImplicitly] set; } = string.Empty;
