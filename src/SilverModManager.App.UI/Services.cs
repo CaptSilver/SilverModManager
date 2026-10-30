@@ -99,6 +99,7 @@ public static class Services
             // JSON converters
             .AddSingleton<JsonConverter, RectJsonConverter>()
             .AddSingleton<JsonConverter, ColorJsonConverter>()
+            .AddSingleton<JsonConverter, TextEditorFileIdJsonConverter>()
             .AddSingleton<JsonConverter, AbstractClassConverterFactory<IPageFactoryContext>>()
             .AddSingleton<JsonConverter, AbstractClassConverterFactory<IWorkspaceContext>>()
 

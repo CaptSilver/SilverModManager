@@ -169,7 +169,7 @@ public partial class WabbajackGalleryViewModel : APageViewModel<IWabbajackGaller
             OpenPage(new PageData
             {
                 FactoryId = WabbajackModlistPageFactory.StaticId,
-                Context = new WabbajackModlistPageContext(file.Value),
+                Context = new WabbajackModlistPageContext { LibraryFileId = file.Value },
             });
         }
         // The download job can be cancelled from the jobs panel, which this page's token knows nothing about.

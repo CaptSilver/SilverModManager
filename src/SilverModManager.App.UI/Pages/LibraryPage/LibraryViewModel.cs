@@ -718,7 +718,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
         var page = new PageData
         {
             FactoryId = WabbajackModlistPageFactory.StaticId,
-            Context = new WabbajackModlistPageContext(message.File),
+            Context = new WabbajackModlistPageContext { LibraryFileId = message.File },
         };
         var workspaceController = WindowManager.ActiveWorkspaceController;
         workspaceController.OpenPage(WorkspaceId, page, workspaceController.GetOpenPageBehavior(page, new NavigationInformation(NavigationInput.Default, Optional<OpenPageBehaviorType>.None)));

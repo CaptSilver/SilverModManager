@@ -31,7 +31,7 @@ internal sealed class LibraryDropActions(ILibraryService libraryService, IConnec
         var page = new PageData
         {
             FactoryId = WabbajackModlistPageFactory.StaticId,
-            Context = new WabbajackModlistPageContext(file),
+            Context = new WabbajackModlistPageContext { LibraryFileId = file },
         };
         workspaceController.OpenPage(workspaceController.ActiveWorkspaceId, page, workspaceController.GetDefaultOpenPageBehavior(page, NavigationInput.Default));
     }

@@ -7,7 +7,10 @@ using SilverModManager.Sdk.Library;
 namespace SilverModManager.App.UI.Pages.Wabbajack;
 
 [JsonName("SilverModManager.App.UI.Pages.Wabbajack.WabbajackModlistPageContext")]
-public record WabbajackModlistPageContext(LibraryFileId LibraryFileId) : IPageFactoryContext;
+public record WabbajackModlistPageContext : IPageFactoryContext
+{
+    public required LibraryFileId LibraryFileId { get; init; }
+}
 
 [UsedImplicitly]
 public class WabbajackModlistPageFactory : APageFactory<IWabbajackModlistViewModel, WabbajackModlistPageContext>

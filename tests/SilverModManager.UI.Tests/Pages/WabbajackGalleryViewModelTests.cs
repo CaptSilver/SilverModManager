@@ -259,7 +259,7 @@ public class WabbajackGalleryViewModelTests(IServiceProvider provider) : AUiTest
         gallery.Downloads.Should().ContainSingle().Which.Title.Should().Be("Want");
         var page = pages.Should().ContainSingle().Subject;
         page.FactoryId.Should().Be(WabbajackModlistPageFactory.StaticId);
-        page.Context.Should().Be(new WabbajackModlistPageContext(gallery.DownloadedAs));
+        page.Context.Should().Be(new WabbajackModlistPageContext { LibraryFileId = gallery.DownloadedAs });
         vm.ErrorText.Should().BeEmpty();
     }
 
@@ -274,7 +274,7 @@ public class WabbajackGalleryViewModelTests(IServiceProvider provider) : AUiTest
         await vm.InstallCommand.Execute(vm.Lists.Single());
 
         gallery.Downloads.Should().BeEmpty();
-        pages.Should().ContainSingle().Which.Context.Should().Be(new WabbajackModlistPageContext(existing));
+        pages.Should().ContainSingle().Which.Context.Should().Be(new WabbajackModlistPageContext { LibraryFileId = existing });
     }
 
     [Fact]
