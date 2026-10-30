@@ -37,8 +37,9 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
     private readonly IFileStore _fileStore = provider.GetRequiredService<IFileStore>();
     private readonly ILogger<WabbajackModlistService> _logger = provider.GetRequiredService<ILogger<WabbajackModlistService>>();
 
+    private readonly ModlistPlanner _planner = provider.GetRequiredService<ModlistPlanner>();
+
     private readonly Lock _lock = new();
-    private (LibraryFileId File, ModList List)? _lastList;
     private readonly Dictionary<LibraryFileId, Bitmap?> _banners = new();
 
     private WabbajackModlistLibraryFile.ReadOnly Modlist(LibraryFileId file)
@@ -49,17 +50,7 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
             ? archive
             : throw new UnsupportedModlistException("The modlist file is not an expanded archive, so it cannot be read");
 
-    private async Task<ModList> ReadList(LibraryFileId file, CancellationToken cancellationToken)
-    {
-        lock (_lock)
-        {
-            if (_lastList is { } cached && cached.File == file) return cached.List;
-        }
-
-        var list = await ModlistArchive.ReadModlist(_fileStore, ArchiveOf(Modlist(file)), cancellationToken);
-        lock (_lock) _lastList = (file, list);
-        return list;
-    }
+    private Task<ModList> ReadList(LibraryFileId file, CancellationToken cancellationToken) => _planner.ReadList(file, cancellationToken);
 
     public async Task<WabbajackModlistDetails> Open(LibraryFileId file, CancellationToken cancellationToken)
     {
@@ -108,33 +99,8 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
         return banner;
     }
 
-    public async Task<ArchivePlan> BuildPlan(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)
-    {
-        progress?.Report(new PlanProgress(PlanPhase.ReadingList));
-        var list = await ReadList(file, cancellationToken);
-        var db = _connection.Db;
-        var inventory = provider.GetRequiredService<ArchiveInventory>();
-        var gameFiles = target is { } loadoutId
-            ? inventory.GameFilesFor(Loadout.Load(db, loadoutId))
-            // The loadout does not exist yet; it will be created on this installation.
-            : inventory.GameFilesFor(InstallationFor(file));
-        StartWatchingForDownloads();
-        return (await inventory.Build(list, db, gameFiles, cancellationToken, progress)) with { Modlist = file };
-    }
-
-    // The first point a plan can exist. Both calls do nothing until a row waits for the user, and repeat calls change nothing.
-    private void StartWatchingForDownloads()
-    {
-        provider.GetRequiredService<ArchiveInbox>().WatchOnceArchivesAreWaiting();
-        provider.GetRequiredService<DownloadsPickup>().Follow();
-    }
-
-    private GameInstallation InstallationFor(LibraryFileId file)
-    {
-        var game = WabbajackGames.GameIdFor(Modlist(file).GameType)
-            ?? throw new InvalidOperationException("The app has no title for the list's game");
-        return InstallationOf(game);
-    }
+    public Task<ArchivePlan> BuildPlan(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)
+        => _planner.BuildPlan(file, target, progress, cancellationToken);
 
     private GameInstallation InstallationOf(GameId game)
         => provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().FirstOrDefault(i => i.Game.GameId == game)
@@ -145,7 +111,7 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
         // Unifying the paths and finding the roots below takes a while on a big list; say so instead of leaving the hashing line up.
         progress?.Report(new PlanProgress(PlanPhase.CheckingGameFolder));
         var list = await ReadList(file, cancellationToken);
-        var installation = target is { } loadoutId ? Loadout.Load(_connection.Db, loadoutId).InstallationInstance : InstallationFor(file);
+        var installation = target is { } loadoutId ? Loadout.Load(_connection.Db, loadoutId).InstallationInstance : _planner.InstallationFor(file);
         if (installation.Game is not IMo2InstanceTarget mo2) return [];
 
         var gameFolder = installation.Locations[LocationId.Game].Path;
