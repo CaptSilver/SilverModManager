@@ -68,4 +68,46 @@ public class PinnedBackupCollectionRaceTests(IServiceProvider serviceProvider, I
         finishedJob.Should().BeTrue("the collection read the database");
         (await _fileStore.Load(identity)).Should().Equal(bytes);
     }
+
+    [Fact]
+    public async Task AJobThatPinsOrphanedBytesAndSkipsTheBackupAfterTheMarkReadThePinsKeepsThem()
+    {
+        var text = $"orphaned baseline {Guid.NewGuid()}";
+        var bytes = Encoding.UTF8.GetBytes(text);
+        var identity = FileIdentity.XxHash3(bytes.xxHash3());
+
+        // Stored earlier by a job that has long since finished and whose row is gone: nothing references it.
+        await _fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(text, new MemoryStream(bytes)), identity, Size.FromLong(bytes.Length))]);
+
+        // The job starts after the mark read the pins: it pins, sees the bytes (HaveFile takes no lock), skips
+        // BackupFiles and so never meets the collector's write lock, commits its row and unpins.
+        var jobRan = false;
+        var skippedBackup = false;
+        var connection = Substitute.For<IConnection>();
+        connection.Db.Returns(call =>
+        {
+            var snapshot = Connection.Db;
+            if (jobRan) return snapshot;
+            jobRan = true;
+            var pin = FileStorePins.Pin(identity);
+            skippedBackup = _fileStore.HaveFile(identity).AsTask().GetAwaiter().GetResult();
+            using var tx = Connection.BeginTransaction();
+            _ = new LibraryFile.New(tx, out var id)
+            {
+                FileName = "Orphan.ini",
+                Hash = identity.XxHash3(),
+                Size = Size.FromLong(bytes.Length),
+                LibraryItem = new LibraryItem.New(tx, id) { Name = "Orphan.ini" },
+            };
+            tx.Commit().GetAwaiter().GetResult();
+            pin.Dispose();
+            return snapshot;
+        });
+
+        RunGarbageCollector.Do(_logger, _dataModelSettings.ArchiveLocations, _fileStore, connection, _stagingStore, _plans, new HashSet<DeploymentBackendId>());
+
+        jobRan.Should().BeTrue("the collection read the database");
+        skippedBackup.Should().BeTrue("the bytes were already stored, so the job had nothing to back up");
+        (await _fileStore.Load(identity)).Should().Equal(bytes);
+    }
 }

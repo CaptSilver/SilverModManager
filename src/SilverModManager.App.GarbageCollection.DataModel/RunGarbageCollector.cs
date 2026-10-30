@@ -44,9 +44,16 @@ public static class RunGarbageCollector
         logger.LogInformation("Running garbage collector");
         using (store.WriteLock())
         {
+            // Watches pins from before the archives are listed until the caches are reloaded; disposed with the lock.
+            using var pins = FileStorePins.BeginCollection();
             var gc = new ArchiveGarbageCollector<NxParsedHeaderState, FileEntryWrapper>();
             DataStoreNxArchiveFinder.FindAllArchives(archiveLocations, gc);
             DataStoreReferenceMarker.MarkUsedFiles(connection, gc);
+
+            // Anything a job pinned while the mark ran may be in no snapshot yet. Sealing also makes new pins wait
+            // for the rewrite to finish.
+            foreach (var identity in pins.Seal())
+                gc.AddReferencedFile(identity);
             gc.CollectGarbage(new Progress<double>(), (progress, toArchive, toRemove, archive) =>
             {
                 logger.LogInformation("Repacking archive {From} files to {To}", toRemove.Count, toArchive.Count);
