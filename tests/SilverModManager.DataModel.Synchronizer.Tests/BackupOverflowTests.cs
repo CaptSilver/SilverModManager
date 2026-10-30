@@ -51,7 +51,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
     /// <summary>The real hasher, behind a switch that makes a file read as one that changed under it.</summary>
     private sealed class SwitchableFileHasher(Func<bool> fails, Action? onRead = null) : IFullFileHasher
     {
-        public ValueTask<Hash> Hash(AbsolutePath file, CancellationToken cancellationToken)
+        public ValueTask<FileIdentity> Hash(AbsolutePath file, CancellationToken cancellationToken)
             => fails() ? throw new GameFileChangedWhileReadException(file) : MultiHashFileHasher.Instance.Hash(file, cancellationToken);
 
         public ValueTask<MultiHash> HashAll(AbsolutePath file, CancellationToken cancellationToken)

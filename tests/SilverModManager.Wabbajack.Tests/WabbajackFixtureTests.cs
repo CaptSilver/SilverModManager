@@ -12,7 +12,7 @@ public class WabbajackFixtureTests(TemporaryFileManager temporaryFileManager)
     [Fact]
     public async Task AWrittenTwoDirectiveListReadsBackWithItsBlobs()
     {
-        var hash = Hash.From(0x1122334455667788UL);
+        var hash = Xx64.From(0x1122334455667788UL);
         var list = WabbajackFixture.EmptyList(
             "Round trip",
             new InlineFile(RelativePath.FromUnsanitizedInput("mods/A/a.txt"), hash, 3, "blob-a"),
@@ -32,6 +32,6 @@ public class WabbajackFixtureTests(TemporaryFileManager temporaryFileManager)
         ((InlineFile)read.Directives[0]).SourceDataId.Should().Be("blob-a");
         read.Directives[0].To.Should().Be(RelativePath.FromUnsanitizedInput("mods/A/a.txt"));
         ((FromArchive)read.Directives[1]).Source.Parts.Should().Equal(RelativePath.FromUnsanitizedInput("Data/b.esp"));
-        read.Directives.Select(d => d.XxHash64).Should().OnlyContain(h => h == hash);
+        read.Directives.Select(d => d.XxHash64).Should().OnlyContain(h => h.Equals(hash));
     }
 }

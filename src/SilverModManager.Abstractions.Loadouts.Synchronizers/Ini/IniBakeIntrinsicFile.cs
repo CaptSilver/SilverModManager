@@ -56,7 +56,7 @@ public sealed class IniBakeIntrinsicFile(GamePath path, IGameIniFiles game, IFil
         if (live.Length == 0) return;
 
         // A previous part of another kind is a vanilla file the app never baked an ini over.
-        Hash? deployed = node.HavePrevious && node.Previous.Identity.TryXxHash3(out var previousHash) ? previousHash : null;
+        FileIdentity? deployed = node.HavePrevious && node.Previous.Identity.Kind == HashKind.XxHash3 ? node.Previous.Identity : null;
         if (await GameInis.LastWrittenBytes(fileStore, state, deployed) is not { } written) return;
 
         var adopted = (await GameInis.ChangesByGame(game, fileStore, loadout, Path, live, written))

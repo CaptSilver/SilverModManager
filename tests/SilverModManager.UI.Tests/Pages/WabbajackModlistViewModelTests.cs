@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -124,7 +125,7 @@ public class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest
     }
 
     private static ArchivePlanRow Row(ArchiveState state, string name = "a.7z", long size = 1_000_000_000)
-        => new(new ArchiveEntry(Hash.From((ulong)name.GetHashCode()), size, name, "", new ManualState(new Uri("https://example.com/a"), "get it")), state, null, null, null);
+        => new(new ArchiveEntry(FileIdentity.XxHash64(Hash.From((ulong)name.GetHashCode())), size, name, "", new ManualState(new Uri("https://example.com/a"), "get it")), state, null, null, null);
 
     private static ArchivePlan Plan(params ArchivePlanRow[] rows) => new(rows);
 
@@ -300,7 +301,7 @@ public class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest
     public async Task CheckInbox_NamesTheFilesThatMatchedNothing()
     {
         var (vm, service, _) = await Open(Plan(Row(ArchiveState.Manual)));
-        service.Unmatched = [new UnmatchedInbox("wrong.zip", Hash.From(1)), new UnmatchedInbox("other.7z", Hash.From(2))];
+        service.Unmatched = [new UnmatchedInbox("wrong.zip", FileIdentity.XxHash64(Hash.From(1))), new UnmatchedInbox("other.7z", FileIdentity.XxHash64(Hash.From(2)))];
 
         await vm.CheckInboxCommand.Execute();
 

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using JetBrains.Annotations;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Sdk.Errors;
@@ -58,10 +59,10 @@ public sealed record OverridesMoveResult(GamePath[] Moved, GamePath[] Skipped);
 /// <param name="Path">The path asked about.</param>
 /// <param name="InOverrides">Whether the Overrides group has a row at the path. When false the rest is empty.</param>
 /// <param name="IsDelete">Whether that row records a deleted file rather than content.</param>
-/// <param name="Hash">The content hash of the Overrides file, absent for a delete.</param>
+/// <param name="Identity">The content identity of the Overrides file, absent for a delete.</param>
 /// <param name="TargetHasPath">Whether the target group already has a row at the path.</param>
 /// <param name="TargetIsDelete">Whether the target's row at the path is a delete marker.</param>
-/// <param name="TargetHash">The content hash of the target's file at the path, absent when it has none or is a delete.</param>
+/// <param name="TargetIdentity">The content identity of the target's file at the path, absent when it has none or is a delete.</param>
 /// <param name="WinnerAfterMove">
 /// The group whose row would provide the path once the move is done: the target when it outranks every other
 /// enabled group with the path, otherwise the group it would lose to. Absent when the target is disabled and
@@ -72,10 +73,10 @@ public sealed record OverridesMovePreview(
     GamePath Path,
     bool InOverrides,
     bool IsDelete,
-    Hash? Hash,
+    FileIdentity? Identity,
     bool TargetHasPath,
     bool TargetIsDelete,
-    Hash? TargetHash,
+    FileIdentity? TargetIdentity,
     LoadoutItemGroupId? WinnerAfterMove,
     bool WinsAfterMove);
 

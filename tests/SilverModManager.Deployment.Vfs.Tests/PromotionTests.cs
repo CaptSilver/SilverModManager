@@ -297,7 +297,7 @@ public class PromotionTests : IDisposable
         private readonly XxHash3FileHasher _real = new();
         private int _calls;
 
-        public async ValueTask<Hash> Hash(GameInstallMetadataId installation, AbsolutePath path, CancellationToken token = default)
+        public async ValueTask<FileIdentity> Hash(GameInstallMetadataId installation, AbsolutePath path, CancellationToken token = default)
         {
             // First pass hashes the file as it was staged; the verify pass finds it rewritten.
             if (path == file && _calls++ == 1) File.WriteAllText(file.ToString(), newText);

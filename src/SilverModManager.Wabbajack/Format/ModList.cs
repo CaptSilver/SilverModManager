@@ -1,4 +1,4 @@
-using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Wabbajack.Format;
 
@@ -20,4 +20,4 @@ public sealed record ModList(
     IReadOnlyList<Directive> Directives);
 
 /// <summary>One download the list needs. <c>Meta</c> is the ini text Wabbajack keeps beside it, unused here.</summary>
-public sealed record ArchiveEntry(Hash XxHash64, long Size, string Name, string Meta, DownloadState State);
+public sealed record ArchiveEntry(FileIdentity XxHash64, long Size, string Name, string Meta, DownloadState State);

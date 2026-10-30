@@ -84,7 +84,7 @@ public sealed class LocalVanillaBaselineTests : IDisposable
     public async Task Rebuild_KeepsTheFingerprintRowsOfFilesTheIndexRead()
     {
         WriteFile("a.esm", "vanilla");
-        var other = new IndexedFileHash(new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput("mods/x.esp")), Size.FromLong(3), DateTimeOffset.UnixEpoch.AddDays(1), (await Hash("mod")).XxHash3);
+        var other = new IndexedFileHash(new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput("mods/x.esp")), Size.FromLong(3), DateTimeOffset.UnixEpoch.AddDays(1), FileIdentity.XxHash3((await Hash("mod")).XxHash3));
         using (var tx = _store.BeginTransaction())
         {
             LocalFileHashRows.Record(tx, _store.Db, GamePathString, [other]);

@@ -387,7 +387,7 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
             return null;
         }
 
-        return new OptionImage(new OptionImage.ImageStoredFile(libraryArchiveEntry.AsLibraryFile().Hash));
+        return new OptionImage(new OptionImage.ImageStoredFile(libraryArchiveEntry.AsLibraryFile().Identity));
     }
 
     private static OptionType MakeOptionType(FomodInstaller.Interface.ui.Option option)

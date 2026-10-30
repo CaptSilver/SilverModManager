@@ -94,10 +94,10 @@ public class DiskStateRowTests(ITestOutputHelper helper) : AStubbedGameTest<Disk
         public void FailAfter(int calls) => _failAfter = calls;
         public void Reset() { _calls = 0; _failAfter = int.MaxValue; OnCall = null; }
 
-        public async ValueTask<Hash> Hash(AbsolutePath file, CancellationToken cancellationToken)
+        public async ValueTask<FileIdentity> Hash(AbsolutePath file, CancellationToken cancellationToken)
         {
             Enter(file);
-            return await file.XxHash3Async(token: CancellationToken.None);
+            return FileIdentity.XxHash3(await file.XxHash3Async(token: CancellationToken.None));
         }
 
         public async ValueTask<MultiHash> HashAll(AbsolutePath file, CancellationToken cancellationToken)

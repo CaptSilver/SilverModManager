@@ -43,12 +43,12 @@ public sealed class LibraryFileDigests(IFileStore fileStore, IConnection connect
     /// it. Returns null when the store holds no bytes for the file, and always for an archive: the store never
     /// holds an archive's own bytes, so a row from before the value was recorded cannot be back-filled.
     /// </summary>
-    public async ValueTask<Hash?> EnsureXxHash64(LibraryFile.ReadOnly file, CancellationToken cancellationToken = default)
+    public async ValueTask<FileIdentity?> EnsureXxHash64(LibraryFile.ReadOnly file, CancellationToken cancellationToken = default)
     {
-        if (file.XxHash64.HasValue) return file.XxHash64.Value;
+        if (file.XxHash64Identity() is { } recorded) return recorded;
 
         var current = LibraryFile.Load(connection.Db, file.Id);
-        if (current.IsValid() && current.XxHash64.HasValue) return current.XxHash64.Value;
+        if (current.IsValid() && current.XxHash64Identity() is { } written) return written;
 
         if (file.TryGetAsLibraryArchive(out _)) return null;
         if (!await fileStore.HaveFile(file.Identity)) return null;
@@ -62,6 +62,6 @@ public sealed class LibraryFileDigests(IFileStore fileStore, IConnection connect
         using var tx = connection.BeginTransaction();
         tx.Add(file.Id, LibraryFile.XxHash64, digest);
         await tx.Commit();
-        return digest;
+        return FileIdentity.XxHash64(digest);
     }
 }

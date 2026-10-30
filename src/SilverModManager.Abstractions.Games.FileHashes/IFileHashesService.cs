@@ -132,13 +132,13 @@ public interface IFileHashesService
     public Task RecordIndexedFiles(GameInstallation installation, IReadOnlyList<IndexedFileHash> files, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gives the hash recorded by <see cref="RecordIndexedFiles"/> for this exact location, path, size and modified time.
+    /// Gives the xxHash3 identity recorded by <see cref="RecordIndexedFiles"/> for this exact location, path, size and modified time.
     /// Accepts a row only for a file the app itself read and re-stat'ed unchanged, found by location and by the
     /// ordinal spelling of the path. It still accepts a same-size rewrite that restored the modified time, and on
     /// FAT/exFAT libraries (2 s timestamps) such a rewrite is easier to produce; the SHA-1 check of an attested
     /// file and the full read after any other change are what close those.
     /// </summary>
-    public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out Hash xxHash3);
+    public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out FileIdentity identity);
 
     /// <summary>
     /// The files the store vouches for that the installation's baseline recorded from the manifest without reading
@@ -167,7 +167,7 @@ public interface IFileHashesService
     /// <summary>
     /// Suggest version data for a given game installation and files.
     /// </summary>
-    public Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, Hash Hash)> files);
+    public Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, FileIdentity Identity)> files);
 }
 
 /// <summary>

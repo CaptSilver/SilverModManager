@@ -61,7 +61,7 @@ public sealed class WabbajackGalleryDownloader(
         }
     }
 
-    private static async Task Verify(GalleryEntry entry, AbsolutePath file, Hash expectedHash, ulong expectedSize, CancellationToken cancellationToken)
+    private static async Task Verify(GalleryEntry entry, AbsolutePath file, FileIdentity expectedHash, ulong expectedSize, CancellationToken cancellationToken)
     {
         if (!file.FileExists) throw new GalleryDownloadException($"Downloading '{entry.Title}' produced no file");
 
@@ -72,10 +72,10 @@ public sealed class WabbajackGalleryDownloader(
             throw new GalleryDownloadException($"'{entry.Title}' is {size} bytes but the gallery says its size is {expectedSize}; the file was deleted");
         }
 
-        Hash actual;
+        FileIdentity actual;
         await using (var stream = SequentialFileRead.Open(file))
-            actual = await Xx64Hasher.HashAsync(stream, cancellationToken: cancellationToken);
-        if (actual != expectedHash)
+            actual = FileIdentity.XxHash64(await Xx64Hasher.HashAsync(stream, cancellationToken: cancellationToken));
+        if (!actual.Equals(expectedHash))
         {
             file.Delete();
             throw new GalleryDownloadException(

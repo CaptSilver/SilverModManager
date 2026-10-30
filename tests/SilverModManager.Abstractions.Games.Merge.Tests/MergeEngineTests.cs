@@ -46,10 +46,10 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
 
     private MergeEngine Engine() => new(FileStore, _trust, NullLogger<MergeEngine>.Instance, _ => _game);
 
-    private async Task<Hash> AddModFile(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path, byte[] bytes)
+    private async Task<FileIdentity> AddModFile(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path, byte[] bytes)
     {
         AddFile(tx, loadoutId, groupId, path, bytes, out var hash, out var size);
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), size)]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), hash, size)]);
         return hash;
     }
 

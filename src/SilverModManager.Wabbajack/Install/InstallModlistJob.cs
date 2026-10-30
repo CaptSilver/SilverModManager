@@ -423,7 +423,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         return prepared.OrderBy(p => WriteOrder.Of(p.Placement.Directive)).ThenBy(p => p.Placement.Index).ToArray();
     }
 
-    private async Task<Prepared> Prepare(Checked check, Dictionary<Hash, ArchivePlanRow> rows, Placement placement, CancellationToken cancellationToken)
+    private async Task<Prepared> Prepare(Checked check, Dictionary<FileIdentity, ArchivePlanRow> rows, Placement placement, CancellationToken cancellationToken)
     {
         if (placement.Target is Mo2Target.GameRootFile root)
         {
@@ -455,7 +455,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     private static async Task<Prepared> PrepareVanillaFile(Checked check, Placement placement, FromArchive directive, ArchivePlanRow row, GameFileSourceState gameFile, CancellationToken cancellationToken)
     {
         var described = await check.GameFiles.Describe(gameFile.GameFile, cancellationToken);
-        if (described is { } mine && mine.XxHash64 == directive.XxHash64)
+        if (described is { } mine && mine.XxHash64.Equals(directive.XxHash64))
             return new Prepared(placement, null, null, Silent: true);
 
         var reason = row.Reason ?? $"'{gameFile.GameFile}' differs from the list's copy (game version {gameFile.GameVersion})";
@@ -463,7 +463,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     }
 
     /// <summary>The member a FromArchive-family directive reads, or <see cref="DirectiveSkipped"/> saying why there is none.</summary>
-    private async Task<ResolvedMember> ResolveMember(Dictionary<Hash, ArchivePlanRow> rows, FromArchive directive, CancellationToken cancellationToken)
+    private async Task<ResolvedMember> ResolveMember(Dictionary<FileIdentity, ArchivePlanRow> rows, FromArchive directive, CancellationToken cancellationToken)
     {
         if (!rows.TryGetValue(directive.Source.ArchiveXxHash64, out var row))
             throw new DirectiveSkipped(SkipKind.MemberNotFound, $"the list has no archive with hash {WabbajackHash.ToBase64(directive.Source.ArchiveXxHash64)}");
@@ -495,10 +495,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         {
             PatchedFromArchive patched => patched.FromHash,
             _ when directive.GetType() == typeof(FromArchive) => directive.XxHash64,
-            _ => (Hash?)null,
+            _ => (FileIdentity?)null,
         };
         if (expected is null) return member;
-        if (member.XxHash64 != expected)
+        if (member.XxHash64 is not { } actual || !actual.Equals(expected.Value))
             throw new DirectiveSkipped(SkipKind.HashMismatch, $"'{(directive.Source.Parts.Count > 0 ? directive.Source.Parts[^1].ToString() : row.Archive.Name)}' in '{row.Archive.Name}' is not the file the list was made with");
         return member;
     }
@@ -513,7 +513,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     private sealed class WriteState
     {
         /// <summary>Directive destinations, folded, to the file store hash and xxHash64 of what was written, for merges to read back and check.</summary>
-        public Dictionary<string, (Hash Store, Hash XxHash64)> Written { get; } = new();
+        public Dictionary<string, (FileIdentity Store, FileIdentity XxHash64)> Written { get; } = new();
 
         /// <summary>Textures of the batch being written that are already being re-encoded, taken by <see cref="Produce"/> when it reaches them.</summary>
         public Dictionary<Prepared, Task<GeneratedFile>> Textures { get; } = new(ReferenceEqualityComparer.Instance);
@@ -527,7 +527,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         public HashSet<string> NewGroups { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>Per group, the files an earlier run (or this one) already created, as path and hash.</summary>
-        public Dictionary<string, Dictionary<(GamePath Path, Hash Hash), KnownFile>> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, Dictionary<(GamePath Path, FileIdentity Identity), KnownFile>> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>A file row of a group. <see cref="Ids"/> is empty for one made in this run, and <see cref="Wanted"/> is set once this run's list asks for it.</summary>
@@ -607,7 +607,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             var files = state.Files[name] = new();
             foreach (var file in LoadoutItem.FindByParent(db, child.Id).OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile())
             {
-                var key = (file.AsLoadoutItemWithTargetPath().TargetPath, file.Hash);
+                var key = (file.AsLoadoutItemWithTargetPath().TargetPath, file.Identity);
                 if (!files.TryGetValue(key, out var known)) files[key] = known = new KnownFile();
                 known.Ids.Add(file.Id);
             }
@@ -776,17 +776,17 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     }
 
     /// <summary>
-    /// Makes <paramref name="hash"/> the loadout's baseline for a game INI. A file at the INI's real path would be a
+    /// Makes <paramref name="identity"/> the loadout's baseline for a game INI. A file at the INI's real path would be a
     /// second writer next to the bake, so the profile's INI is kept as the bake's starting point and the settings group
     /// holds only what is not an INI of the game (the loadout's tweak).
     /// </summary>
-    private void SetIniBaseline(ITransaction tx, LoadoutItemGroupId modlistGroup, WriteState state, string groupName, Checked check, GamePath iniPath, Hash hash)
+    private void SetIniBaseline(ITransaction tx, LoadoutItemGroupId modlistGroup, WriteState state, string groupName, Checked check, GamePath iniPath, FileIdentity identity)
     {
         EnsureGroup(tx, modlistGroup, state, groupName);
 
         if (GameInis.StateOf(check.Loadout, iniPath) is { } existing)
         {
-            tx.Add(existing.Id, LoadoutIniState.Baseline, hash);
+            tx.Add(existing.Id, LoadoutIniState.Baseline, identity.XxHash3());
             return;
         }
 
@@ -794,7 +794,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         {
             LoadoutId = TargetLoadout,
             Path = iniPath.ToGamePathParentTuple(TargetLoadout),
-            Baseline = hash,
+            Baseline = identity.XxHash3(),
         };
     }
 
@@ -820,9 +820,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         return group;
     }
 
-    private void AddFile(ITransaction tx, LoadoutItemGroupId modlistGroup, WriteState state, string groupName, GamePath path, Hash hash, Size size)
+    private void AddFile(ITransaction tx, LoadoutItemGroupId modlistGroup, WriteState state, string groupName, GamePath path, FileIdentity identity, Size size)
     {
-        if (state.Files.TryGetValue(groupName, out var known) && known.TryGetValue((path, hash), out var existing))
+        if (state.Files.TryGetValue(groupName, out var known) && known.TryGetValue((path, identity), out var existing))
         {
             existing.Wanted = true;
             return;
@@ -843,10 +843,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 },
                 TargetPath = path.ToGamePathParentTuple(TargetLoadout),
             },
-            Hash = hash,
+            Hash = identity.XxHash3(),
             Size = size,
         };
-        known[(path, hash)] = new KnownFile { Wanted = true };
+        known[(path, identity)] = new KnownFile { Wanted = true };
     }
 
     #endregion
@@ -992,7 +992,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     }
 
     /// <summary>The file store hash and size of what the directive writes, producing and storing the bytes when they are not a member already in the store.</summary>
-    private async Task<(Hash Hash, Size Size, Hash XxHash64)> Produce(Checked check, WriteState state, ExtrasFolder extras, Prepared item, CancellationToken cancellationToken)
+    private async Task<(FileIdentity Identity, Size Size, FileIdentity XxHash64)> Produce(Checked check, WriteState state, ExtrasFolder extras, Prepared item, CancellationToken cancellationToken)
     {
         var directive = item.Placement.Directive;
         switch (directive)
@@ -1000,7 +1000,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             case FromArchive when directive.GetType() == typeof(FromArchive):
             {
                 var member = RequireMember(item.Placement, item.Member);
-                return (member.StoreHash, member.Size, member.XxHash64 ?? directive.XxHash64);
+                return (member.StoreIdentity, member.Size, member.XxHash64 ?? directive.XxHash64);
             }
 
             case MergedPatch merged:
@@ -1021,20 +1021,20 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     private static bool IsHashUnchecked(Directive directive)
         => directive is InlineFile or ArchiveMeta && HashUnchecked.Contains(directive.To.FileName.ToString(), StringComparer.OrdinalIgnoreCase);
 
-    private async Task<(Hash, Size, Hash)> Generated(WriteState state, Directive directive, Func<Stream, Task> produce, bool checkHash, CancellationToken cancellationToken)
+    private async Task<(FileIdentity, Size, FileIdentity)> Generated(WriteState state, Directive directive, Func<Stream, Task> produce, bool checkHash, CancellationToken cancellationToken)
         => await Register(state, directive, await Writer.Generate(produce, cancellationToken), checkHash, cancellationToken);
 
     /// <summary>Queues a generated file for the file store, after checking it against the directive's hash when the list promises one.</summary>
-    private async Task<(Hash, Size, Hash)> Register(WriteState state, Directive directive, GeneratedFile file, bool checkHash, CancellationToken cancellationToken)
+    private async Task<(FileIdentity, Size, FileIdentity)> Register(WriteState state, Directive directive, GeneratedFile file, bool checkHash, CancellationToken cancellationToken)
     {
-        if (checkHash && file.XxHash64 != directive.XxHash64)
+        if (checkHash && !file.XxHash64.Equals(directive.XxHash64))
         {
             await file.DisposeAsync();
             throw new DirectiveSkipped(SkipKind.HashMismatch, $"the file made for '{directive.To}' does not match the one the list was made with");
         }
 
         // A texture recompressed here need not match the author's bytes; the list never checks it either.
-        if (directive is TransformedTexture && file.XxHash64 != directive.XxHash64)
+        if (directive is TransformedTexture && !file.XxHash64.Equals(directive.XxHash64))
             Logger.LogInformation("Texture {Path} was recompressed to {Actual} where the list records {Expected}", directive.To, file.XxHash64, directive.XxHash64);
 
         state.Pending.Add(file);
@@ -1111,12 +1111,12 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     /// <summary>The sources a merge names, already written by earlier directives, joined in the order the list gives.</summary>
     private async Task<Func<Stream, Task>> MergedBytes(Checked check, WriteState state, MergedPatch merged, CancellationToken cancellationToken)
     {
-        var hashes = new List<Hash>(merged.Sources.Count);
+        var hashes = new List<FileIdentity>(merged.Sources.Count);
         foreach (var source in merged.Sources)
         {
             if (!state.Written.TryGetValue(Fold(source.Path), out var written))
                 throw new DirectiveSkipped(SkipKind.Transform, $"'{source.Path}', which '{merged.To}' merges, was not installed");
-            if (written.XxHash64 != source.XxHash64)
+            if (!written.XxHash64.Equals(source.XxHash64))
                 throw new DirectiveSkipped(SkipKind.Transform, $"'{source.Path}', which '{merged.To}' merges, is not the file the list was made with");
             hashes.Add(written.Store);
         }
@@ -1129,7 +1129,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             {
                 foreach (var hash in hashes)
                 {
-                    await using var part = await FileStore.GetFileStream(FileIdentity.XxHash3(hash), cancellationToken);
+                    await using var part = await FileStore.GetFileStream(hash, cancellationToken);
                     await part.CopyToAsync(whole, cancellationToken);
                 }
             });

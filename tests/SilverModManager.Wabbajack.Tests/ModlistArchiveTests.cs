@@ -23,7 +23,7 @@ public class ModlistArchiveTests(ILibraryService libraryService, IFileStore file
     public async Task ReadsTheModlistAndABlobBackOutOfTheStore()
     {
         await using var folder = temporaryFileManager.CreateFolder();
-        var hash = Hash.From(42);
+        var hash = Xx64.From(42);
         var list = WabbajackFixture.EmptyList(
             "From the store",
             new InlineFile(RelativePath.FromUnsanitizedInput("a.txt"), hash, 5, "blob-1"));

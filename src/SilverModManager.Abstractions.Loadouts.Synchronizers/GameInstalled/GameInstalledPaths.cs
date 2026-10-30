@@ -1,4 +1,5 @@
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.HyperDuck;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
@@ -13,16 +14,16 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 public static class GameInstalledPaths
 {
     /// <summary>
-    /// Every game-installed path of the loadout with the hash and size it had at the last reconcile.
+    /// Every game-installed path of the loadout with the identity and size it had at the last reconcile.
     /// </summary>
-    public static IReadOnlyDictionary<GamePath, (Hash Hash, Size Size)> For(IDb db, LoadoutId loadoutId)
+    public static IReadOnlyDictionary<GamePath, (FileIdentity Identity, Size Size)> For(IDb db, LoadoutId loadoutId)
     {
-        var result = new Dictionary<GamePath, (Hash Hash, Size Size)>();
+        var result = new Dictionary<GamePath, (FileIdentity Identity, Size Size)>();
         // TODO: https://github.com/Nexus-Mods/NexusMods.MnemonicDB/issues/183
         var rows = db.Connection.Query<(LocationId Location, RelativePath Path, Hash Hash, Size Size)>(
             $"SELECT Path.Item2, Path.Item3, Hash, Size FROM mdb_GameInstalledFile(Db => {db}) WHERE Loadout = {loadoutId}"
         );
-        foreach (var row in rows) result[new GamePath(row.Location, row.Path)] = (row.Hash, row.Size);
+        foreach (var row in rows) result[new GamePath(row.Location, row.Path)] = (FileIdentity.XxHash3(row.Hash), row.Size);
         return result;
     }
 }

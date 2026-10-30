@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -56,7 +57,7 @@ public class RescanGameFolderTests(ITestOutputHelper helper) : ACyberpunkIsolate
         using (var tx = Connection.BeginTransaction())
         {
             var overrides = ((ALoadoutSynchronizer)Synchronizer).GetOrCreateOverridesGroup(tx, loadout);
-            OverridesGroupItems.UpsertFile(tx, loadout, overrides, pending, "pending".xxHash3AsUtf8(), Size.From(7));
+            OverridesGroupItems.UpsertFile(tx, loadout, overrides, pending, FileIdentity.XxHash3("pending".xxHash3AsUtf8()), Size.From(7));
             await tx.Commit();
         }
 

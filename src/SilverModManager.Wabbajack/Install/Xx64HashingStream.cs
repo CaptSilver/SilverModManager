@@ -1,5 +1,4 @@
 using System.IO.Hashing;
-using NexusMods.Hashing.xxHash3;
 using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Wabbajack.Install;
@@ -13,7 +12,7 @@ internal sealed class Xx64HashingStream(Stream? inner = null) : Stream
     private readonly XxHash64 _state = Xx64Hasher.Initialize();
 
     /// <summary>The hash of everything seen so far.</summary>
-    public Hash Hash => Xx64Hasher.Finish(_state);
+    public FileIdentity Hash => FileIdentity.XxHash64(Xx64Hasher.Finish(_state));
 
     public override bool CanRead => inner is { CanRead: true };
     public override bool CanSeek => false;

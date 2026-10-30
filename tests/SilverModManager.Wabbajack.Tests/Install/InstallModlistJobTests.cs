@@ -162,7 +162,7 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         var layers = IniTweakLayers.For(Loadout.Load(Connection.Db, loadout.LoadoutId), new GamePath(LocationId.Preferences, "Skyrim.ini"));
         var layer = layers.Should().ContainSingle().Subject;
         layer.Name.Should().Be(IniTweakLayers.LoadoutTweakName);
-        layer.Hash.Should().Be(Encoding.UTF8.GetBytes(InitTweaks).xxHash3());
+        layer.Identity.Should().Be(FileIdentity.XxHash3(Encoding.UTF8.GetBytes(InitTweaks).xxHash3()));
         IniTweakLayers.For(Loadout.Load(Connection.Db, loadout.LoadoutId), new GamePath(LocationId.Preferences, "SkyrimPrefs.ini")).Should().BeEmpty();
     }
 
@@ -427,10 +427,10 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
     [Fact]
     public async Task AnArchiveThatNeedsRequestHeadersIsMissingAndItsFilesAreSkippedOnlyWhenTheCallerAllowsIt()
     {
-        var headers = new ArchiveEntry(Hash.From(0x77), 10, "needs-headers.7z", "", new HttpState(new Uri("https://example.invalid/x.7z"), ["Authorization: x"]));
+        var headers = new ArchiveEntry(Xx64.From(0x77), 10, "needs-headers.7z", "", new HttpState(new Uri("https://example.invalid/x.7z"), ["Authorization: x"]));
         var list = new ListBuilder();
         list.Archives.Add(headers);
-        list.Directives.Add(new FromArchive(P("mods/A/a.txt"), Hash.From(1), 1, new ArchiveHashPath(headers.XxHash64, [P("a.txt")])));
+        list.Directives.Add(new FromArchive(P("mods/A/a.txt"), Xx64.From(1), 1, new ArchiveHashPath(headers.XxHash64, [P("a.txt")])));
         var loadout = await CreateLoadout();
         var modlist = await AddModlist(list.ToList(), list.Blobs);
 
@@ -454,8 +454,8 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         var archive = await AddZip("a.zip", new() { ["a.txt"] = "real"u8.ToArray() });
         var list = new ListBuilder();
         list.Archives.Add(archive);
-        list.Directives.Add(new FromArchive(P("mods/A/missing.txt"), Hash.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P("nope.txt")])));
-        list.Directives.Add(new FromArchive(P("mods/A/changed.txt"), Hash.From(2), 4, new ArchiveHashPath(archive.XxHash64, [P("a.txt")])));
+        list.Directives.Add(new FromArchive(P("mods/A/missing.txt"), Xx64.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P("nope.txt")])));
+        list.Directives.Add(new FromArchive(P("mods/A/changed.txt"), Xx64.From(2), 4, new ArchiveHashPath(archive.XxHash64, [P("a.txt")])));
         var loadout = await CreateLoadout();
         var modlist = await AddModlist(list.ToList(), list.Blobs);
 
@@ -513,7 +513,7 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
     public async Task ADirectiveWhoseResultDoesNotMatchTheListsHashIsSkipped()
     {
         var list = new ListBuilder();
-        list.Directives.Add(new InlineFile(P("mods/A/a.txt"), Hash.From(5), 1, list.Blob("not what was recorded"u8.ToArray())));
+        list.Directives.Add(new InlineFile(P("mods/A/a.txt"), Xx64.From(5), 1, list.Blob("not what was recorded"u8.ToArray())));
         var loadout = await CreateLoadout();
         var modlist = await AddModlist(list.ToList(), list.Blobs);
 
@@ -575,7 +575,7 @@ public class InstallModlistTransformTests(ITestOutputHelper helper) : InstallTes
         var list = new ListBuilder();
         list.Archives.Add(archive);
         var good = new PatchedFromArchive(P("mods/A/good.bin"), Hash64(new byte[] { 1, 2, 3, 4 }), 4, new ArchiveHashPath(archive.XxHash64, [P("base.bin")]), Hash64(new byte[] { 1, 2, 3 }), list.Blob([4]));
-        var bad = good with { To = P("mods/A/bad.bin"), XxHash64 = Hash.From(9) };
+        var bad = good with { To = P("mods/A/bad.bin"), XxHash64 = Xx64.From(9) };
         list.Directives.AddRange([good, bad]);
         var loadout = await CreateLoadout();
         var modlist = await AddModlist(list.ToList(), list.Blobs);
@@ -641,7 +641,7 @@ public class InstallModlistTextureTests(ITestOutputHelper helper) : InstallTestB
         var archive = await AddZip("a.zip", new() { ["t.dds"] = source });
         var list = new ListBuilder();
         list.Archives.Add(archive);
-        list.Directives.Add(new TransformedTexture(P("mods/A/t.dds"), Hash.From(7), 1, new ArchiveHashPath(archive.XxHash64, [P("t.dds")]), new ImageState(32, 32, 3, "BC7_UNORM")));
+        list.Directives.Add(new TransformedTexture(P("mods/A/t.dds"), Xx64.From(7), 1, new ArchiveHashPath(archive.XxHash64, [P("t.dds")]), new ImageState(32, 32, 3, "BC7_UNORM")));
         var loadout = await CreateLoadout();
         var modlist = await AddModlist(list.ToList(), list.Blobs);
 
@@ -650,7 +650,7 @@ public class InstallModlistTextureTests(ITestOutputHelper helper) : InstallTestB
         var written = await InstalledBytes(group, "A", "Game/Data/t.dds");
         DdsHeader.Read(written).Should().Be(new DdsHeader(32, 32, 3, Bc7: true));
         SkipsOf(group).Should().BeEmpty("a re-encoded texture is not expected to match the author's bytes");
-        _logs.Messages.Should().ContainSingle(m => m.Contains("mods/A/t.dds") && m.Contains(Hash64(written).ToString()) && m.Contains(Hash.From(7).ToString()));
+        _logs.Messages.Should().ContainSingle(m => m.Contains("mods/A/t.dds") && m.Contains(Hash64(written).ToString()) && m.Contains(Xx64.From(7).ToString()));
     }
 
     [Fact]
@@ -677,8 +677,8 @@ public class InstallModlistTextureTests(ITestOutputHelper helper) : InstallTestB
         var archive = await AddZip("a.zip", new() { ["one.dds"] = Bc1Dds(64), ["two.dds"] = Bc1Dds(32) });
         var list = new ListBuilder();
         list.Archives.Add(archive);
-        list.Directives.Add(new TransformedTexture(P("mods/A/one.dds"), Hash.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P("one.dds")]), new ImageState(16, 16, 1, "BC7_UNORM")));
-        list.Directives.Add(new TransformedTexture(P("mods/A/two.dds"), Hash.From(2), 1, new ArchiveHashPath(archive.XxHash64, [P("two.dds")]), new ImageState(8, 8, 1, "BC7_UNORM")));
+        list.Directives.Add(new TransformedTexture(P("mods/A/one.dds"), Xx64.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P("one.dds")]), new ImageState(16, 16, 1, "BC7_UNORM")));
+        list.Directives.Add(new TransformedTexture(P("mods/A/two.dds"), Xx64.From(2), 1, new ArchiveHashPath(archive.XxHash64, [P("two.dds")]), new ImageState(8, 8, 1, "BC7_UNORM")));
         var loadout = await CreateLoadout();
         var modlist = await AddModlist(list.ToList(), list.Blobs);
 
@@ -701,8 +701,8 @@ public class InstallModlistFailingBatchTests(ITestOutputHelper helper) : Install
         var archive = await AddZip("a.zip", new() { ["base.bin"] = [1, 2, 3], ["t.dds"] = Bc1Dds(8) });
         var list = new ListBuilder();
         list.Archives.Add(archive);
-        list.Directives.Add(new PatchedFromArchive(P("mods/A/patched.bin"), Hash.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P("base.bin")]), Hash64(new byte[] { 1, 2, 3 }), list.Blob([4])));
-        list.Directives.Add(new TransformedTexture(P("mods/A/t.dds"), Hash.From(2), 1, new ArchiveHashPath(archive.XxHash64, [P("t.dds")]), new ImageState(4, 4, 1, "BC7_UNORM")));
+        list.Directives.Add(new PatchedFromArchive(P("mods/A/patched.bin"), Xx64.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P("base.bin")]), Hash64(new byte[] { 1, 2, 3 }), list.Blob([4])));
+        list.Directives.Add(new TransformedTexture(P("mods/A/t.dds"), Xx64.From(2), 1, new ArchiveHashPath(archive.XxHash64, [P("t.dds")]), new ImageState(4, 4, 1, "BC7_UNORM")));
         var loadout = await CreateLoadout();
         var modlist = await AddModlist(list.ToList(), list.Blobs);
 

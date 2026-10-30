@@ -76,7 +76,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
         return tree;
     }
 
-    private IReadOnlyDictionary<GamePath, (Hash Hash, Size Size)> Installed(Loadout.ReadOnly loadout) =>
+    private IReadOnlyDictionary<GamePath, (FileIdentity Identity, Size Size)> Installed(Loadout.ReadOnly loadout) =>
         GameInstalledPaths.For(Connection.Db, loadout.LoadoutId);
 
     private GameInstalledItem.ReadOnly[] Items(Loadout.ReadOnly loadout) =>
@@ -111,7 +111,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
 
         var tree = await TreeOf(loadout);
         tree[CreationA].Actions.Should().Be(Actions.DoNothing);
-        Installed(loadout).Should().ContainKey(CreationA).WhoseValue.Hash.Should().Be(HashOf("alpha 1"));
+        Installed(loadout).Should().ContainKey(CreationA).WhoseValue.Identity.Should().Be(FileIdentity.XxHash3(HashOf("alpha 1")));
         OverridesPaths(Refresh(loadout)).Should().BeEmpty();
     }
 
@@ -127,7 +127,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
         var tree = await TreeOf(loadout);
         tree[CreationA].Actions.Should().Be(Actions.DoNothing);
         tree[CreationA].SourceItemType.Should().Be(LoadoutSourceItemType.Game);
-        Installed(loadout).Should().ContainKey(CreationA).WhoseValue.Hash.Should().Be(HashOf("alpha 1"));
+        Installed(loadout).Should().ContainKey(CreationA).WhoseValue.Identity.Should().Be(FileIdentity.XxHash3(HashOf("alpha 1")));
         OverridesPaths(Refresh(loadout)).Should().BeEmpty("the game owns the file, it is not an external change");
         (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("alpha 1")))).Should().BeFalse("nothing of the game's content is backed up");
         OnDisk(CreationA).FileExists.Should().BeTrue();
@@ -146,7 +146,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
 
         var tree = await TreeOf(loadout);
         tree[CreationA].Actions.Should().Be(Actions.DoNothing);
-        Installed(loadout)[CreationA].Hash.Should().Be(HashOf("alpha 2, updated by the game"), "the row follows the disk");
+        Installed(loadout)[CreationA].Identity.Should().Be(FileIdentity.XxHash3(HashOf("alpha 2, updated by the game")), "the row follows the disk");
         OverridesPaths(Refresh(loadout)).Should().BeEmpty();
         (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("alpha 2, updated by the game")))).Should().BeFalse();
         (await OnDisk(CreationA).ReadAllTextAsync()).Should().Be("alpha 2, updated by the game");

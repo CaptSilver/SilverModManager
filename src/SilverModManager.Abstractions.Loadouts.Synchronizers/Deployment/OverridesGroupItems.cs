@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using DynamicData.Kernel;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -45,11 +46,11 @@ public static class OverridesGroupItems
     }
 
     /// <summary>
-    /// Points the group's row at <paramref name="path"/> at the given content: writes the hash and
+    /// Points the group's row at <paramref name="path"/> at the given content: writes the content and
     /// size onto whatever row is already there, or adds a file. A row that was a reified
     /// delete becomes a file again.
     /// </summary>
-    public static UpsertOutcome UpsertFile(ITransaction tx, Loadout.ReadOnly loadout, LoadoutOverridesGroupId overrides, GamePath path, Hash hash, Size size)
+    public static UpsertOutcome UpsertFile(ITransaction tx, Loadout.ReadOnly loadout, LoadoutOverridesGroupId overrides, GamePath path, FileIdentity identity, Size size)
     {
         var existingRecord = FindAtPath(loadout, overrides, path);
         if (existingRecord.HasValue)
@@ -60,17 +61,17 @@ public static class OverridesGroupItems
             if (existingRecord.Value.TryGetAsDeletedFile(out var deleted))
                 tx.RetractAll(loadout.Db, deleted.Id, DeletedFile.Reason);
 
-            tx.Add(existingRecord.Value.Id, LoadoutFile.Hash, hash);
+            tx.Add(existingRecord.Value.Id, LoadoutFile.Hash, identity.XxHash3());
             tx.Add(existingRecord.Value.Id, LoadoutFile.Size, size);
             return UpsertOutcome.Updated;
         }
 
-        AddFile(tx, loadout, overrides, path, hash, size);
+        AddFile(tx, loadout, overrides, path, identity, size);
         return UpsertOutcome.Inserted;
     }
 
     /// <summary>Adds a file to the group without looking for one already at <paramref name="path"/>.</summary>
-    public static void AddFile(ITransaction tx, Loadout.ReadOnly loadout, LoadoutOverridesGroupId overrides, GamePath path, Hash hash, Size size)
+    public static void AddFile(ITransaction tx, Loadout.ReadOnly loadout, LoadoutOverridesGroupId overrides, GamePath path, FileIdentity identity, Size size)
     {
         var id = tx.TempId();
         var loadoutItem = new LoadoutItem.New(tx, id)
@@ -88,7 +89,7 @@ public static class OverridesGroupItems
         _ = new LoadoutFile.New(tx, id)
         {
             LoadoutItemWithTargetPath = loadoutItemWithTargetPath,
-            Hash = hash,
+            Hash = identity.XxHash3(),
             Size = size,
         };
     }

@@ -1,4 +1,4 @@
-using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 
@@ -16,9 +16,9 @@ public interface IFileTreeNode
     GamePath To { get; }
     
     /// <summary>
-    /// Hash of the file
+    /// Identity of the file
     /// </summary>
-    Hash Hash { get; }
+    FileIdentity Identity { get; }
     
     /// <summary>
     /// Size of the file

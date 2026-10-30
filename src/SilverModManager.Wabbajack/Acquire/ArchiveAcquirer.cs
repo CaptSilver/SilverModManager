@@ -88,7 +88,7 @@ public sealed class ArchiveAcquirer(
             var job = await downloadJobs.Create(row, destination.Path, cancellationToken);
             var file = await library.AddDownload(job);
 
-            if (file.XxHash64.HasValue && file.XxHash64.Value == row.Archive.XxHash64)
+            if (file.XxHash64Identity() is { } downloaded && downloaded.Equals(row.Archive.XxHash64))
                 Update(rows, index, r => r with { State = ArchiveState.Have, Reason = null, Library = file });
             else
                 Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = "hash mismatch", Page = OriginalUrl(r) });

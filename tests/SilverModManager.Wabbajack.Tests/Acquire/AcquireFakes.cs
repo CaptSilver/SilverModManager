@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Downloads;
 using NexusMods.Hashing.xxHash3;
@@ -79,8 +80,8 @@ internal sealed class ConcurrencyGauge
 internal sealed class FakeDownloadJobs(IServiceProvider provider) : IArchiveDownloadJobs
 {
     public ConcurrencyGauge Gauge { get; } = new();
-    public Dictionary<Hash, byte[]> Content { get; } = new();
-    public Dictionary<Hash, Exception> Failures { get; } = new();
+    public Dictionary<FileIdentity, byte[]> Content { get; } = new();
+    public Dictionary<FileIdentity, Exception> Failures { get; } = new();
     public List<ArchiveState> Requested { get; } = [];
 
     public Task<IJobTask<IDownloadJob, AbsolutePath>> Create(ArchivePlanRow row, AbsolutePath destination, CancellationToken cancellationToken)

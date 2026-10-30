@@ -63,7 +63,7 @@ public static class AttestedFileRows
     private static async Task SettleInTurn(IConnection local, string gamePath, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, ILogger logger)
     {
         var db = local.Db;
-        var relations = new Dictionary<Hash, HashRelationId>();
+        var relations = new Dictionary<FileIdentity, HashRelationId>();
         var fingerprints = new List<IndexedFileHash>(read.Count);
 
         using var tx = local.BeginTransaction();
@@ -77,7 +77,7 @@ public static class AttestedFileRows
             // The fingerprint row and the bytes' relation are written whatever the row's fate, so a baseline rebuilt
             // since finds the bytes by their SHA-1 and resolves the path instead of attesting it again. A promotion
             // writes the relation itself, below, so the fingerprint row must not add a second one.
-            fingerprints.Add(new IndexedFileHash(new GamePath(LocationId.Game, attested.Path), after.Size, after.LastModified, hashes.XxHash3, matches ? null : hashes));
+            fingerprints.Add(new IndexedFileHash(new GamePath(LocationId.Game, attested.Path), after.Size, after.LastModified, FileIdentity.XxHash3(hashes.XxHash3), matches ? null : hashes));
             if (!matches) continue;
 
             var relation = LocalFileHashRows.EnsureHashRelation(tx, db, relations, hashes);

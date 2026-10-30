@@ -1,5 +1,5 @@
 using System.Text.Json;
-using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 
 namespace SilverModManager.Wabbajack.Format;
@@ -66,7 +66,7 @@ internal readonly struct JsonObject
         };
     }
 
-    public Hash Hash(string name) => ParseHash(name, String(name));
+    public FileIdentity Hash(string name) => ParseHash(name, String(name));
 
     public RelativePath Path(string name) => ModlistPath.Sanitize(String(name));
 
@@ -85,7 +85,7 @@ internal readonly struct JsonObject
         return value.Value.ValueKind == JsonValueKind.Array ? value.Value.EnumerateArray() : throw Malformed(name, "is not an array");
     }
 
-    public Hash ParseHash(string name, string base64)
+    public FileIdentity ParseHash(string name, string base64)
     {
         try
         {

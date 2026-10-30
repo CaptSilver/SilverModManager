@@ -290,23 +290,23 @@ internal class GameLocationsService : IGameLocationsService
             if (after != fingerprint)
             {
                 _logger.LogDebug("File `{Path}` changed while it was read, not remembering its hash", file);
-                return new IndexFileResult(gamePath, FileIdentity.XxHash3(newHash.XxHash3), fingerprint.Size, fingerprint.LastModified);
+                return new IndexFileResult(gamePath, newHash.Identity, fingerprint.Size, fingerprint.LastModified);
             }
         }
 
         // The bytes of an attested path settle the row, which also writes the fingerprint row and the relation.
         if (attested is { } row && newHash.Hashes is { } hashes) reads.Settled.Add((row, hashes, fingerprint));
-        else if (!newHash.FromFingerprint) reads.Remembered.Add(new IndexedFileHash(gamePath, fingerprint.Size, fingerprint.LastModified, newHash.XxHash3, newHash.Hashes));
-        return new IndexFileResult(gamePath, FileIdentity.XxHash3(newHash.XxHash3), fingerprint.Size, fingerprint.LastModified);
+        else if (!newHash.FromFingerprint) reads.Remembered.Add(new IndexedFileHash(gamePath, fingerprint.Size, fingerprint.LastModified, newHash.Identity, newHash.Hashes));
+        return new IndexFileResult(gamePath, newHash.Identity, fingerprint.Size, fingerprint.LastModified);
     }
 
-    internal async ValueTask<Hash> HashFile(AbsolutePath file, GamePath gamePath, CancellationToken cancellationToken)
-        => (await HashFile(null, file, gamePath, FileFingerprint.Of(file), new IndexTally(), forceRead: false, allDigests: false, cancellationToken)).XxHash3;
+    internal async ValueTask<FileIdentity> HashFile(AbsolutePath file, GamePath gamePath, CancellationToken cancellationToken)
+        => (await HashFile(null, file, gamePath, FileFingerprint.Of(file), new IndexTally(), forceRead: false, allDigests: false, cancellationToken)).Identity;
 
-    /// <param name="XxHash3">The file's xxHash3.</param>
+    /// <param name="Identity">The file's xxHash3 identity.</param>
     /// <param name="Hashes">Every digest of the bytes, set when this call read the file in full to get them.</param>
     /// <param name="FromFingerprint">The hash came from the file's own fingerprint row, so recording it again would write what is already there.</param>
-    private readonly record struct HashedFile(Hash XxHash3, MultiHash? Hashes = null, bool FromFingerprint = false);
+    private readonly record struct HashedFile(FileIdentity Identity, MultiHash? Hashes = null, bool FromFingerprint = false);
 
     /// <param name="forceRead">Skip the remembered and stored hashes, because the caller needs every digest of the bytes.</param>
     /// <param name="allDigests">Take every digest in the same pass when a game-folder file is read in full.</param>
@@ -322,10 +322,10 @@ internal class GameLocationsService : IGameLocationsService
             }
 
             var lookup = await GetExistingHash(_fileHashesService.Databases, file, gamePath, cancellationToken);
-            if (lookup.Hash.HasValue)
+            if (lookup.Identity.HasValue)
             {
                 tally.FromStoredHash();
-                return new HashedFile(lookup.Hash.Value);
+                return new HashedFile(lookup.Identity.Value);
             }
 
             miss = lookup.Miss;
@@ -341,7 +341,7 @@ internal class GameLocationsService : IGameLocationsService
         if (gamePath.LocationId == LocationId.Game && allDigests)
         {
             var hashes = await _fullHasher.HashAll(file, cancellationToken);
-            return new HashedFile(hashes.XxHash3, hashes);
+            return new HashedFile(FileIdentity.XxHash3(hashes.XxHash3), hashes);
         }
 
         return new HashedFile(await _fullHasher.Hash(file, cancellationToken));
@@ -367,7 +367,7 @@ internal class GameLocationsService : IGameLocationsService
         var size = FileFingerprint.Of(file).Size;
         Optional<Hash> minimalHash = Optional<Hash>.None;
 
-        var foundHash = Optional<Hash>.None;
+        var foundHash = Optional<FileIdentity>.None;
         var sawSameSize = false;
         foreach (var pathHashRelation in candidates)
         {
@@ -381,11 +381,11 @@ internal class GameLocationsService : IGameLocationsService
 
             if (!foundHash.HasValue)
             {
-                foundHash = existingHashes.XxHash3;
+                foundHash = FileIdentity.XxHash3(existingHashes.XxHash3);
                 continue;
             }
 
-            if (existingHashes.XxHash3 != foundHash) return StoredHashLookup.Missed(StoredHashMiss.StoresDisagree);
+            if (!FileIdentity.XxHash3(existingHashes.XxHash3).Equals(foundHash.Value)) return StoredHashLookup.Missed(StoredHashMiss.StoresDisagree);
         }
 
         if (foundHash.HasValue) return StoredHashLookup.Found(foundHash.Value);

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Games.Merge;
@@ -43,7 +44,7 @@ public class ContributorAncestorTests
     private static Dictionary<int, byte[]> RowsOf(byte[] regulation)
         => Param.Read(FormatRegulation.Entries(regulation, ER).Single().Data).Rows.ToDictionary(r => r.Id, r => r.Data);
 
-    private static ProviderFile File(string package, ulong priority) => new(package, Path, Hash.From((ulong)package.GetHashCode()), priority, package);
+    private static ProviderFile File(string package, ulong priority) => new(package, Path, FileIdentity.XxHash3(Hash.From((ulong)package.GetHashCode())), priority, package);
 
     /// <summary>Folds the mods (highest priority first) onto <see cref="Game"/>; each is compared against the vanilla of the build it carries.</summary>
     private static MergePlan Plan(params (string Name, byte[] Regulation, byte[] Ancestor)[] mods)

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -142,7 +143,7 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
     /// no longer lists the path (a disabled mod, a merged file no merge plans any more): this app wrote the file and
     /// the next apply removes it, so it was not there beforehand.
     /// </summary>
-    private static bool IsManagedByLoadout(IDb loadoutDb, FrozenDictionary<GamePath, SyncNode> syncTree, EntityId overridesGroup, IReadOnlyDictionary<GamePath, (Hash Hash, Size Size)> gameInstalled, RelativePath path, ILogger? logger)
+    private static bool IsManagedByLoadout(IDb loadoutDb, FrozenDictionary<GamePath, SyncNode> syncTree, EntityId overridesGroup, IReadOnlyDictionary<GamePath, (FileIdentity Identity, Size Size)> gameInstalled, RelativePath path, ILogger? logger)
     {
         var gamePath = new GamePath(LocationId.Game, path);
         if (gameInstalled.ContainsKey(gamePath)) return true;

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -49,7 +50,7 @@ public class RegulationRebaseTests
     private static Dictionary<int, byte[]> RowsOf(byte[] regulation)
         => Param.Read(FormatRegulation.Entries(regulation, ER).Single().Data).Rows.ToDictionary(r => r.Id, r => r.Data);
 
-    private static ProviderFile File(string package, ulong priority) => new(package, Path, Hash.From((ulong)package.GetHashCode()), priority, package);
+    private static ProviderFile File(string package, ulong priority) => new(package, Path, FileIdentity.XxHash3(Hash.From((ulong)package.GetHashCode())), priority, package);
 
     private sealed class Counted
     {
@@ -170,7 +171,7 @@ public class RegulationRebaseLoadoutTests(ITestOutputHelper helper) : AVanillaDu
 {
     private const string RegulationPath = "regulation.bin";
 
-    private readonly Dictionary<Hash, int> _reads = new();
+    private readonly Dictionary<FileIdentity, int> _reads = new();
 
     private MergePlanCache Plans => ServiceProvider.GetRequiredService<MergePlanCache>();
 
@@ -190,12 +191,12 @@ public class RegulationRebaseLoadoutTests(ITestOutputHelper helper) : AVanillaDu
         return services;
     }
 
-    private sealed class CountingSources(Dictionary<Hash, int> reads, IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, ArchiveVanillas archives, InstalledBuilds builds, ILogger<LoadoutMergeSources> logger)
+    private sealed class CountingSources(Dictionary<FileIdentity, int> reads, IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, ArchiveVanillas archives, InstalledBuilds builds, ILogger<LoadoutMergeSources> logger)
         : LoadoutMergeSources(fileStore, baselines, dumps, archives, builds, logger)
     {
         public override byte[] ContributorBytes(ProviderFile file)
         {
-            lock (reads) reads[file.Hash] = reads.GetValueOrDefault(file.Hash) + 1;
+            lock (reads) reads[file.Identity] = reads.GetValueOrDefault(file.Identity) + 1;
             return base.ContributorBytes(file);
         }
     }
@@ -241,7 +242,7 @@ public class RegulationRebaseLoadoutTests(ITestOutputHelper helper) : AVanillaDu
         var loadout = await TwoRegulations(GameVersion);
         // The fixture regulations don't share the game's entries, so the merge itself refuses; it still reads both files.
         Plans.Current(loadout, MergeSourceMode.Report);
-        var hashes = ServiceProvider.GetRequiredService<LoadoutMergeSources>().Providers(loadout).Select(p => p.Hash).ToArray();
+        var hashes = ServiceProvider.GetRequiredService<LoadoutMergeSources>().Providers(loadout).Select(p => p.Identity).ToArray();
         var afterFirst = hashes.ToDictionary(h => h, h => _reads[h]);
 
         // Swapping the mods' priority changes the plan's inputs, so the second plan is made again rather than served from the cache.

@@ -233,20 +233,20 @@ public sealed class CleanupService(
     /// <summary>Puts each copied file into the loadout's overrides at its path inside the mods folder, so the overlay places it over the game folder.</summary>
     private async Task AddConfigFiles(Loadout.ReadOnly loadout, AbsolutePath gameFolder, IEnumerable<CleanupStep> copies, CancellationToken cancellationToken)
     {
-        var files = new List<(GamePath Path, Hash Hash, Size Size, AbsolutePath Source)>();
+        var files = new List<(GamePath Path, FileIdentity Identity, Size Size, AbsolutePath Source)>();
         foreach (var copy in copies)
         {
             var source = gameFolder / copy.RequiredSource;
             var bytes = await File.ReadAllBytesAsync(source.GetFullPath(), cancellationToken);
-            files.Add((new GamePath(LocationId.Me3Mods, copy.RequiredTarget), bytes.xxHash3(), Size.FromLong(bytes.Length), source));
+            files.Add((new GamePath(LocationId.Me3Mods, copy.RequiredTarget), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length), source));
         }
 
         if (files.Count == 0) return;
 
         var missing = new List<ArchivedFileEntry>();
-        foreach (var file in files.DistinctBy(f => f.Hash))
+        foreach (var file in files.DistinctBy(f => f.Identity))
         {
-            if (!await fileStore.HaveFile(FileIdentity.XxHash3(file.Hash))) missing.Add(new ArchivedFileEntry(new NativeFileStreamFactory(file.Source), FileIdentity.XxHash3(file.Hash), file.Size));
+            if (!await fileStore.HaveFile(file.Identity)) missing.Add(new ArchivedFileEntry(new NativeFileStreamFactory(file.Source), file.Identity, file.Size));
         }
 
         await fileStore.BackupFiles(missing, deduplicate: false, cancellationToken);
@@ -256,7 +256,7 @@ public sealed class CleanupService(
         var synchronizer = (ALoadoutSynchronizer)fresh.InstallationInstance.GetGame().Synchronizer;
         using var tx = connection.BeginTransaction();
         var overrides = synchronizer.GetOrCreateOverridesGroup(tx, fresh);
-        foreach (var file in files) OverridesGroupItems.UpsertFile(tx, fresh, overrides, file.Path, file.Hash, file.Size);
+        foreach (var file in files) OverridesGroupItems.UpsertFile(tx, fresh, overrides, file.Path, file.Identity, file.Size);
         await tx.Commit();
     }
 

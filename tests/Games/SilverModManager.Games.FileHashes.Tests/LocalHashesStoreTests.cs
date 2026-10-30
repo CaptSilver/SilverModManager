@@ -82,7 +82,7 @@ public sealed class LocalHashesStoreTests : IDisposable
             Locator = Substitute.For<IGameLocator>(),
         };
         var installation = new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, result.Path)));
-        var file = new IndexedFileHash(new GamePath(LocationId.Game, "a.bin"), Size.From(3), DateTimeOffset.UnixEpoch, Hash.From(1));
+        var file = new IndexedFileHash(new GamePath(LocationId.Game, "a.bin"), Size.From(3), DateTimeOffset.UnixEpoch, FileIdentity.XxHash3(Hash.From(1)));
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 
@@ -90,6 +90,46 @@ public sealed class LocalHashesStoreTests : IDisposable
 
         await act.Should().ThrowAsync<OperationCanceledException>();
         LocalFileHash.All(service.Local).Should().BeEmpty();
+    }
+
+    private static GameInstallation InstallationAt(string path)
+    {
+        var result = new GameLocatorResult
+        {
+            Game = Substitute.For<IGameData>(),
+            Path = FileSystem.Shared.FromUnsanitizedFullPath(path),
+            Store = GameStore.Steam,
+            StoreIdentifier = "1",
+            LocatorIds = [LocatorId.From("1002")],
+            Locator = Substitute.For<IGameLocator>(),
+        };
+        return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, result.Path)));
+    }
+
+    [Fact]
+    public async Task TryGetFingerprintedHash_GivesAnXxHash3Identity()
+    {
+        var service = CreateService();
+        var installation = InstallationAt("/games/test");
+        var path = new GamePath(LocationId.Game, "a.bin");
+        var stamp = DateTimeOffset.UnixEpoch.AddDays(3);
+        await service.RecordIndexedFiles(installation, [new IndexedFileHash(path, Size.From(3), stamp, FileIdentity.XxHash3(Hash.From(7)))]);
+
+        service.TryGetFingerprintedHash(installation, path, Size.From(3), stamp, out FileIdentity identity).Should().BeTrue();
+
+        identity.Kind.Should().Be(HashKind.XxHash3);
+        identity.XxHash3().Should().Be(Hash.From(7));
+    }
+
+    [Fact]
+    public async Task IndexedFileHash_RecordsTheXxHash3OfItsIdentity()
+    {
+        var service = CreateService();
+        var installation = InstallationAt("/games/test");
+        var path = new GamePath(LocationId.Game, "b.bin");
+        await service.RecordIndexedFiles(installation, [new IndexedFileHash(path, Size.From(3), DateTimeOffset.UnixEpoch, FileIdentity.XxHash3(Hash.From(9)))]);
+
+        LocalFileHash.All(service.Local).Should().ContainSingle().Which.XxHash3.Should().Be(Hash.From(9));
     }
 
     [Fact]

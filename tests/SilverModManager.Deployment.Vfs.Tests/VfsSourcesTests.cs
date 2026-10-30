@@ -69,8 +69,8 @@ public class VfsSourcesTests(ITestOutputHelper helper) : AStubbedGameIsolatedTes
         var set = VfsSources.FromSyncTree(tree, deleted, DataRoot, StagedPathFor);
 
         var picked = tree[new GamePath(LocationId.Game, "Data/conflict.txt")].Loadout.Identity;
-        picked.Should().Be(FileIdentity.XxHash3(fromHighHash), "winning all conflicts for High puts its copy of the file on top");
-        tree[new GamePath(LocationId.Game, "Data/only-in-low.txt")].Loadout.Identity.XxHash3().Should().Be(onlyLowHash);
+        picked.Should().Be(fromHighHash, "winning all conflicts for High puts its copy of the file on top");
+        tree[new GamePath(LocationId.Game, "Data/only-in-low.txt")].Loadout.Identity.Should().Be(onlyLowHash);
         set.Unserved.Should().BeEmpty();
         set.Sources.Select(s => s.Path.ToString()).Should().BeEquivalentTo("conflict.txt", "only-in-low.txt", "image.dds");
         set.Sources.Should().OnlyContain(s => !s.Path.ToString().StartsWith("Data/", StringComparison.OrdinalIgnoreCase));

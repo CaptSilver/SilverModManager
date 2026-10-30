@@ -1,5 +1,6 @@
 using SilverModManager.Games.Bethesda.Archives;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Wabbajack.Install;
 
@@ -12,7 +13,7 @@ internal static class BuiltArchiveCheck
 {
     /// <param name="archive">The built archive, readable and seekable. Left open.</param>
     /// <param name="written">Folded entry path to the xxHash64 of the bytes written for that input.</param>
-    public static async Task Verify(Stream archive, IReadOnlyDictionary<string, Hash> written, CancellationToken cancellationToken)
+    public static async Task Verify(Stream archive, IReadOnlyDictionary<string, FileIdentity> written, CancellationToken cancellationToken)
     {
         archive.Position = 0;
         await using var reader = await BethesdaArchive.Open(new LeaveOpenStream(archive), cancellationToken);
@@ -30,7 +31,7 @@ internal static class BuiltArchiveCheck
 
             using var hash = new Xx64HashingStream();
             await entry.CopyToAsync(hash, cancellationToken);
-            if (hash.Hash != expected)
+            if (!hash.Hash.Equals(expected))
                 throw new ArchiveMismatchException(path, $"'{path}' reads back from the built archive as different bytes than the file written for it");
         }
 

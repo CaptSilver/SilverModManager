@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -93,7 +94,7 @@ public class FileConflictPathsTests(IServiceProvider provider) : AUiTest(provide
 
     /// <summary>The merge index of a FromSoft game whose package files are the given (package, path) pairs.</summary>
     private static MergePathIndex Merges(params (string Package, string RelPath)[] files) => MergePathIndex.Build(
-        files.Select((f, i) => new ProviderFile(f.Package, f.RelPath, Hash.From((ulong)i + 1), (ulong)i + 1, f.Package)),
+        files.Select((f, i) => new ProviderFile(f.Package, f.RelPath, FileIdentity.XxHash3(Hash.From((ulong)i + 1)), (ulong)i + 1, f.Package)),
         EldenRingGame.Definition.Formats,
         new HashSet<string>());
 

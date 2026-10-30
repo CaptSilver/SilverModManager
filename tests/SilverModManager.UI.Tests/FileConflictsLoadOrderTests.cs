@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using Avalonia.Controls;
@@ -71,7 +72,7 @@ public class FileConflictsLoadOrderTests(IServiceProvider provider) : AUiTest(pr
     }
 
     private static ProviderFile File(string package, string relPath, ulong priority, string mod, LoadoutItemGroupId group, ulong content)
-        => new(package, relPath, Hash.From(content), priority, mod, LoadoutItemId.From(group.Value));
+        => new(package, relPath, FileIdentity.XxHash3(Hash.From(content)), priority, mod, LoadoutItemId.From(group.Value));
 
     private static MergePathIndex IndexOf(Mods mods, params string[] paths) => IndexWithVanilla(mods, [], paths);
 

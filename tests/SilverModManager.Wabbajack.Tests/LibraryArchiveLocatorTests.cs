@@ -51,12 +51,12 @@ public class LibraryArchiveLocatorTests(ILibraryService libraryService, IConnect
     [Fact]
     public void AnUnknownHashFindsNothing()
     {
-        locator.FindByXxHash64(connection.Db, Hash.From(0xDEADBEEF12345678)).Should().BeNull();
+        locator.FindByXxHash64(connection.Db, Xx64.From(0xDEADBEEF12345678)).Should().BeNull();
     }
 
-    private static async Task<Hash> Hash64(AbsolutePath path)
+    private static async Task<FileIdentity> Hash64(AbsolutePath path)
     {
         await using var stream = path.Read();
-        return await Xx64Hasher.HashAsync(stream);
+        return FileIdentity.XxHash64(await Xx64Hasher.HashAsync(stream));
     }
 }

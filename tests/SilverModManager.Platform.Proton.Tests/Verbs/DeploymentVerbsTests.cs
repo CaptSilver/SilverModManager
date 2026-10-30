@@ -104,7 +104,7 @@ public class DeploymentVerbsTests(ITestOutputHelper helper) : AStubbedGameIsolat
         {
             var group = AddEmptyGroup(tx, loadout.LoadoutId, "Mod");
             AddFile(tx, loadout.LoadoutId, group, FileA, "a content", out var hash, out var size);
-            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(FileA.FileName, new MemoryStream(Encoding.UTF8.GetBytes("a content"))), FileIdentity.XxHash3(hash), size)]);
+            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(FileA.FileName, new MemoryStream(Encoding.UTF8.GetBytes("a content"))), hash, size)]);
             await tx.Commit();
         }
 

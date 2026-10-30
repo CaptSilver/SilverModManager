@@ -96,7 +96,7 @@ public class FileWinnersTests(ITestOutputHelper helper) : ACyberpunkIsolatedGame
     public async Task LoadoutLayerIdentityFromSql_IsTheLoadoutFilesIdentityHex()
     {
         var loadout = await CreateLoadout();
-        Hash mineHash;
+        FileIdentity mineHash;
         using (var tx = Connection.BeginTransaction())
         {
             var g = AddEmptyGroup(tx, loadout.LoadoutId, "Mod");
@@ -106,7 +106,7 @@ public class FileWinnersTests(ITestOutputHelper helper) : ACyberpunkIsolatedGame
 
         var identity = Connection.Query<string>($"SELECT Identity FROM synchronizer.LeafLoadoutItems({Connection.Db}) WHERE Loadout = {loadout.LoadoutId}").Single();
 
-        identity.Should().Be(FileIdentity.XxHash3(mineHash).ToHex());
+        identity.Should().Be(mineHash.ToHex());
     }
 
     [Fact]
@@ -180,7 +180,7 @@ public class FileWinnersTests(ITestOutputHelper helper) : ACyberpunkIsolatedGame
     public async Task ALoadoutFileWinsWithItsOwnXxHash3Identity()
     {
         var loadout = await CreateLoadout();
-        Hash mineHash;
+        FileIdentity mineHash;
         using (var tx = Connection.BeginTransaction())
         {
             var g = AddEmptyGroup(tx, loadout.LoadoutId, "Mod");
@@ -191,7 +191,7 @@ public class FileWinnersTests(ITestOutputHelper helper) : ACyberpunkIsolatedGame
         var row = ((ALoadoutSynchronizer)Synchronizer).WinningFilesForTest(Refresh(loadout)).Single(r => r.Path == P("mine"));
 
         row.ItemType.Should().Be("Loadout");
-        FileIdentity.ParseHex(row.Identity).Should().Be(FileIdentity.XxHash3(mineHash));
+        FileIdentity.ParseHex(row.Identity).Should().Be(mineHash);
     }
 }
 

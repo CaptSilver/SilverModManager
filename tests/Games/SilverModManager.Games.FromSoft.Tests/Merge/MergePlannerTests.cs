@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using SilverModManager.Abstractions.Games.Merge;
@@ -28,7 +29,7 @@ public class MergePlannerTests
     private static readonly FromSoftFormatTraits Traits = MergeStrategiesTests.WithRegulation("regulation.test");
     private static readonly IReadOnlySet<string> NoVanilla = new HashSet<string>();
 
-    private static ProviderFile File(string package, string rel, ulong priority) => new(package, rel, Hash.From((ulong)(package.GetHashCode() ^ rel.GetHashCode())), priority, package);
+    private static ProviderFile File(string package, string rel, ulong priority) => new(package, rel, FileIdentity.XxHash3(Hash.From((ulong)(package.GetHashCode() ^ rel.GetHashCode()))), priority, package);
 
     private static byte[] B(string text) => Encoding.UTF8.GetBytes(text);
 

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using DynamicData.Kernel;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Games;
@@ -62,10 +63,10 @@ internal sealed class OverridesMover : IOverridesMover
                 path,
                 InOverrides: true,
                 IsDelete: row.Value.TryGetAsDeletedFile(out _),
-                Hash: HashOf(row.Value),
+                Identity: IdentityOf(row.Value),
                 TargetHasPath: existing.HasValue,
                 TargetIsDelete: existing.HasValue && existing.Value.TryGetAsDeletedFile(out _),
-                TargetHash: existing.HasValue ? HashOf(existing.Value) : null,
+                TargetIdentity: existing.HasValue ? IdentityOf(existing.Value) : null,
                 WinnerAfterMove: winner,
                 WinsAfterMove: winner == target);
         }).ToArray();
@@ -189,8 +190,8 @@ internal sealed class OverridesMover : IOverridesMover
             .FirstOrOptional(c => c.TargetPath == path);
     }
 
-    private static Hash? HashOf(LoadoutItemWithTargetPath.ReadOnly row) =>
-        row.TryGetAsLoadoutFile(out var file) && !row.TryGetAsDeletedFile(out _) ? file.Hash : null;
+    private static FileIdentity? IdentityOf(LoadoutItemWithTargetPath.ReadOnly row) =>
+        row.TryGetAsLoadoutFile(out var file) && !row.TryGetAsDeletedFile(out _) ? file.Identity : null;
 
     private static void RequireValidTarget(IDb db, LoadoutId loadoutId, LoadoutItemGroupId target)
     {

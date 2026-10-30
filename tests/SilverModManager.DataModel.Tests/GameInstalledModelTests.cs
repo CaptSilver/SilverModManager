@@ -189,10 +189,10 @@ public class GameInstalledModelTests(ITestOutputHelper helper) : ACyberpunkIsola
 
         var paths = GameInstalledPaths.For(result.Db, first.LoadoutId);
 
-        paths.Should().BeEquivalentTo(new Dictionary<GamePath, (Hash, Size)>
+        paths.Should().BeEquivalentTo(new Dictionary<GamePath, (FileIdentity, Size)>
         {
-            [DataPath("cc_five.esm")] = (Hash.From(0x11), Size.From(100)),
-            [DataPath("cc_five.bsa")] = (Hash.From(0x22), Size.From(200)),
+            [DataPath("cc_five.esm")] = (FileIdentity.XxHash3(Hash.From(0x11)), Size.From(100)),
+            [DataPath("cc_five.bsa")] = (FileIdentity.XxHash3(Hash.From(0x22)), Size.From(200)),
         });
         GameInstalledPaths.For(result.Db, second.LoadoutId).Should().ContainSingle()
             .Which.Key.Should().Be(DataPath("cc_six.esm"));

@@ -13,8 +13,8 @@ internal sealed class XxHash3FullFileHasher : IFullFileHasher
 {
     public static readonly XxHash3FullFileHasher Instance = new();
 
-    public async ValueTask<Hash> Hash(AbsolutePath file, CancellationToken cancellationToken)
-        => await file.XxHash3Async(token: cancellationToken);
+    public async ValueTask<FileIdentity> Hash(AbsolutePath file, CancellationToken cancellationToken)
+        => FileIdentity.XxHash3(await file.XxHash3Async(token: cancellationToken));
 
     public ValueTask<MultiHash> HashAll(AbsolutePath file, CancellationToken cancellationToken)
         => MultiHashFileHasher.Instance.HashAll(file, cancellationToken);

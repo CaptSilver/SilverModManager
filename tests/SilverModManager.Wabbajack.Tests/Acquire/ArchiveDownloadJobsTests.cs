@@ -36,7 +36,7 @@ public class ArchiveDownloadJobsTests(ITestOutputHelper helper) : AcquireTestBas
         var job = await Jobs.Create(AutomaticRow(new HttpState(PlainUrl, [])), destination.Path, CancellationToken.None);
         var file = await LibraryService.AddDownload(job);
 
-        file.XxHash64.Value.Should().Be(Hash64(PlainBytes));
+        file.XxHash64Identity().Should().Be(Hash64(PlainBytes));
         var http = job.JobDefinition.Should().BeOfType<HttpDownloadJob>().Subject;
         http.Uri.Should().Be(PlainUrl);
         http.DownloadPageUri.Should().Be(PlainUrl);
@@ -50,7 +50,7 @@ public class ArchiveDownloadJobsTests(ITestOutputHelper helper) : AcquireTestBas
         var job = await Jobs.Create(AutomaticRow(new WabbajackCdnState(CdnUrl)), destination.Path, CancellationToken.None);
         var file = await LibraryService.AddDownload(job);
 
-        file.XxHash64.Value.Should().Be(_cdn.FileHash);
+        file.XxHash64Identity().Should().Be(_cdn.FileHash);
         file.FileName.Should().Be(RelativePath.FromUnsanitizedInput(_cdn.OriginalFileName));
     }
 

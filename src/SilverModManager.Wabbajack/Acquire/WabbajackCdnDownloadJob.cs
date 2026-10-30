@@ -169,8 +169,8 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
             if (check.Length != definition.Size)
                 throw new InvalidDataException($"{definition.OriginalFileName} came to {check.Length} bytes, the CDN says {definition.Size}");
 
-            var hash = await Xx64Hasher.HashAsync(check, cancellationToken: token);
-            if (hash != definition.Hash)
+            var hash = FileIdentity.XxHash64(await Xx64Hasher.HashAsync(check, cancellationToken: token));
+            if (!hash.Equals(definition.Hash))
                 throw new InvalidDataException($"{definition.OriginalFileName} does not match the hash the CDN gives for it");
         }
 
@@ -187,7 +187,7 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
                 throw new InvalidDataException($"Bad response ({(int)response.StatusCode}) for part {part.Index} of {definition.OriginalFileName}");
 
             var bytes = await response.Content.ReadAsByteArrayAsync(token);
-            if (bytes.Length != part.Size || Xx64Hasher.Hash(bytes) != part.Hash)
+            if (bytes.Length != part.Size || !FileIdentity.XxHash64(Xx64Hasher.Hash(bytes)).Equals(part.Hash))
                 throw new InvalidDataException($"Invalid hash for part {part.Index} of {definition.OriginalFileName}");
             return bytes;
         }, token);
@@ -256,7 +256,7 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
         public Exception Error { get; } = error;
     }
 
-    private sealed record FileDefinition(string OriginalFileName, long Size, Hash Hash, IReadOnlyList<PartDefinition> Parts)
+    private sealed record FileDefinition(string OriginalFileName, long Size, FileIdentity Hash, IReadOnlyList<PartDefinition> Parts)
     {
         public static FileDefinition Read(JsonElement root)
         {
@@ -276,5 +276,5 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
             => element.GetProperty(name).GetString() ?? throw new InvalidDataException($"The CDN's file definition has no {name}");
     }
 
-    private sealed record PartDefinition(long Index, long Offset, long Size, Hash Hash);
+    private sealed record PartDefinition(long Index, long Offset, long Size, FileIdentity Hash);
 }

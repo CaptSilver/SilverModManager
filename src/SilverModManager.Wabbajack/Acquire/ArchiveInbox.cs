@@ -9,7 +9,7 @@ using SilverModManager.Wabbajack.Library;
 namespace SilverModManager.Wabbajack.Acquire;
 
 /// <summary>A file in the inbox that no archive of the current plan wants.</summary>
-public sealed record UnmatchedInbox(string FileName, Hash XxHash64);
+public sealed record UnmatchedInbox(string FileName, FileIdentity XxHash64);
 
 /// <summary>
 /// The folder the user drops archives into when the app cannot fetch them itself. Only the inbox folder from
@@ -45,7 +45,7 @@ public sealed class ArchiveInbox(
         await _scanning.WaitAsync(cancellationToken);
         try
         {
-            var found = new List<(AbsolutePath Path, Hash Hash)>();
+            var found = new List<(AbsolutePath Path, FileIdentity Hash)>();
             foreach (var file in paths.Inbox.EnumerateFiles(recursive: false).ToArray())
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -55,7 +55,7 @@ public sealed class ArchiveInbox(
                 {
                     await using (var stream = SequentialFileRead.Open(file))
                     {
-                        found.Add((file, await Xx64Hasher.HashAsync(stream, cancellationToken: cancellationToken)));
+                        found.Add((file, FileIdentity.XxHash64(await Xx64Hasher.HashAsync(stream, cancellationToken: cancellationToken))));
                     }
                 }
                 catch (IOException e)
@@ -64,7 +64,7 @@ public sealed class ArchiveInbox(
                 }
             }
 
-            var unreadable = new List<(AbsolutePath Path, Hash Hash)>();
+            var unreadable = new List<(AbsolutePath Path, FileIdentity Hash)>();
             foreach (var (file, hash) in found)
             {
                 if (locator.FindByXxHash64(connection.Db, hash) is not null) continue;

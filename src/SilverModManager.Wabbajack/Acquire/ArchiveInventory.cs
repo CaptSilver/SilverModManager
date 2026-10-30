@@ -25,11 +25,10 @@ public sealed class ArchiveInventory(
     IGameDomainToGameIdMappingCache mappingCache,
     IConnection connection,
     IFileStore fileStore,
-    IFileHashesService fileHashes,
     IFileIdentityResolver identityResolver)
 {
     /// <summary>The reader of the loadout's game files that <see cref="Build"/> checked the list against.</summary>
-    public GameFileSourceLookup GameFilesFor(Loadout.ReadOnly loadout) => new(loadout, connection, fileStore, fileHashes, identityResolver);
+    public GameFileSourceLookup GameFilesFor(Loadout.ReadOnly loadout) => new(loadout, connection, fileStore, identityResolver);
 
     /// <summary>
     /// The reader of an installation's game files when there is no loadout to go through, such as one the user picked
@@ -40,7 +39,7 @@ public sealed class ArchiveInventory(
         // An installation the app has never managed has no metadata row, and so no backups: the game folder is all there is.
         var registry = connection.ServiceProvider.GetRequiredService<IGameRegistry>();
         EntityId? installationId = registry.TryGetMetadata(installation, out var metadata) ? metadata.Id : null;
-        return new GameFileSourceLookup(installation, installationId, connection, fileStore, fileHashes, identityResolver);
+        return new GameFileSourceLookup(installation, installationId, connection, fileStore, identityResolver);
     }
 
     public Task<ArchivePlan> Build(ModList list, IDb db, Loadout.ReadOnly loadout, CancellationToken cancellationToken = default)
@@ -123,9 +122,9 @@ public sealed class ArchiveInventory(
                 var file = LibraryFile.Load(db, item.Id);
                 if (!file.IsValid()) continue;
 
-                if (file.XxHash64.HasValue)
+                if (file.XxHash64Identity() is { } known)
                 {
-                    if (file.XxHash64.Value == archive.XxHash64) return file;
+                    if (known.Equals(archive.XxHash64)) return file;
                     continue;
                 }
 
@@ -142,7 +141,7 @@ public sealed class ArchiveInventory(
         if (described is null)
             return Row(archive, ArchiveState.GameFileVersion, $"'{state.GameFile}' is not in your game folder; the list was made for game version {state.GameVersion}");
 
-        if (described.Value.XxHash64 == state.XxHash64) return Row(archive, ArchiveState.GameFile);
+        if (described.Value.XxHash64.Equals(state.XxHash64)) return Row(archive, ArchiveState.GameFile);
 
         var yours = gameFiles.InstalledVersion?.ToString() ?? "unknown";
         return Row(archive, ArchiveState.GameFileVersion,

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using DynamicData.Kernel;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -47,9 +48,9 @@ public readonly record struct LoadoutSourceItem
     public required Size Size { get; init; }
     
     /// <summary>
-    /// The known hash of the file.
+    /// The known identity of the file.
     /// </summary>
-    public required Hash Hash { get; init; }
+    public required FileIdentity Identity { get; init; }
     
     /// <summary>
     /// The Loadout item this item is associated with, if any.

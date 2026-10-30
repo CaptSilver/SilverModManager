@@ -36,7 +36,7 @@ public class VfsCatalogTests(ITestOutputHelper helper) : AStubbedGameIsolatedTes
     private async Task Record(IVfsCatalog catalog, GameInstallMetadataId installation, AbsolutePath path, FileFingerprint fingerprint, Hash hash)
     {
         using var tx = Connection.BeginTransaction();
-        catalog.Record(tx, installation, path, fingerprint, hash);
+        catalog.Record(tx, installation, path, fingerprint, FileIdentity.XxHash3(hash));
         await tx.Commit();
     }
 
@@ -57,7 +57,7 @@ public class VfsCatalogTests(ITestOutputHelper helper) : AStubbedGameIsolatedTes
         await Record(catalog, installation, SomeFile, Fingerprint, TheHash);
 
         catalog.TryGetHash(installation, SomeFile, Fingerprint, out var hash).Should().BeTrue();
-        hash.Should().Be(TheHash);
+        hash.Should().Be(FileIdentity.XxHash3(TheHash));
     }
 
     [Fact]
@@ -115,14 +115,14 @@ public class VfsCatalogTests(ITestOutputHelper helper) : AStubbedGameIsolatedTes
         VfsCatalogEntry.FindByInstallation(Connection.Db, installation).Should().ContainSingle();
         catalog.TryGetHash(installation, SomeFile, Fingerprint, out _).Should().BeFalse();
         catalog.TryGetHash(installation, SomeFile, newer, out var hash).Should().BeTrue();
-        hash.Should().Be(Hash.From(7));
+        hash.Should().Be(FileIdentity.XxHash3(Hash.From(7)));
     }
 
     private sealed class CountingHasher : IFileHasher
     {
         public int Calls;
 
-        public async ValueTask<Hash> Hash(GameInstallMetadataId installation, AbsolutePath file, CancellationToken token = default)
+        public async ValueTask<FileIdentity> Hash(GameInstallMetadataId installation, AbsolutePath file, CancellationToken token = default)
         {
             Calls++;
             return await new XxHash3FileHasher().Hash(installation, file, token);

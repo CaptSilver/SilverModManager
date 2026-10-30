@@ -55,8 +55,8 @@ public sealed class GameLocationsServiceHashingTests : IDisposable
 
         var result = await CreateService(empty, populated).HashFile(file, new GamePath(LocationId.Game, RelativeFile), CancellationToken.None);
 
-        result.Should().Be(Sentinel);
-        result.Should().NotBe(realHash);
+        result.Should().Be(FileIdentity.XxHash3(Sentinel));
+        result.Should().NotBe(FileIdentity.XxHash3(realHash));
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public sealed class GameLocationsServiceHashingTests : IDisposable
 
         var result = await CreateService(first, second).HashFile(file, new GamePath(LocationId.Game, RelativeFile), CancellationToken.None);
 
-        result.Should().Be(realHash);
+        result.Should().Be(FileIdentity.XxHash3(realHash));
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public sealed class GameLocationsServiceHashingTests : IDisposable
 
         var result = await CreateService(OpenStore(), OpenStore()).HashFile(file, new GamePath(LocationId.Game, RelativeFile), CancellationToken.None);
 
-        result.Should().Be(realHash);
+        result.Should().Be(FileIdentity.XxHash3(realHash));
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public sealed class GameLocationsServiceHashingTests : IDisposable
 
         var lookup = await GameLocationsService.GetExistingHash([populated], file, new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput("data/other.bin")), CancellationToken.None);
 
-        lookup.Hash.HasValue.Should().BeFalse();
+        lookup.Identity.HasValue.Should().BeFalse();
         lookup.Miss.Should().Be(StoredHashMiss.NoRowForPath);
     }
 
@@ -102,7 +102,7 @@ public sealed class GameLocationsServiceHashingTests : IDisposable
 
         var lookup = await GameLocationsService.GetExistingHash([populated], file, new GamePath(LocationId.Game, RelativeFile), CancellationToken.None);
 
-        lookup.Hash.HasValue.Should().BeFalse();
+        lookup.Identity.HasValue.Should().BeFalse();
         lookup.Miss.Should().Be(StoredHashMiss.SizeDiffers);
     }
 
@@ -115,7 +115,7 @@ public sealed class GameLocationsServiceHashingTests : IDisposable
 
         var lookup = await GameLocationsService.GetExistingHash([populated], file, new GamePath(LocationId.Game, RelativeFile), CancellationToken.None);
 
-        lookup.Hash.HasValue.Should().BeFalse();
+        lookup.Identity.HasValue.Should().BeFalse();
         lookup.Miss.Should().Be(StoredHashMiss.ContentDiffers);
     }
 
@@ -128,7 +128,7 @@ public sealed class GameLocationsServiceHashingTests : IDisposable
 
         var lookup = await GameLocationsService.GetExistingHash([first, second], file, new GamePath(LocationId.Game, RelativeFile), CancellationToken.None);
 
-        lookup.Hash.HasValue.Should().BeFalse();
+        lookup.Identity.HasValue.Should().BeFalse();
         lookup.Miss.Should().Be(StoredHashMiss.StoresDisagree);
     }
 
@@ -140,8 +140,8 @@ public sealed class GameLocationsServiceHashingTests : IDisposable
 
         var result = await CreateService(populated).HashFile(file, new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput("DATA/File.BIN")), CancellationToken.None);
 
-        result.Should().Be(Sentinel);
-        result.Should().NotBe(realHash);
+        result.Should().Be(FileIdentity.XxHash3(Sentinel));
+        result.Should().NotBe(FileIdentity.XxHash3(realHash));
     }
 
     private async Task<(AbsolutePath File, Hash XxHash3, Hash MinimalHash)> WriteFixture()

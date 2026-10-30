@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SilverModManager.Games.Bethesda.Archives;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Transforms;
@@ -37,7 +38,7 @@ public sealed class DirectiveTransforms(TemporaryFileManager temporaryFiles) : I
             throw new ArgumentException("An archive is checked by reading it back, so the stream it is written to must be readable and seekable", nameof(output));
 
         var archiveState = ArchiveStateJson.ParseArchiveState(state);
-        var written = new Dictionary<string, Hash>();
+        var written = new Dictionary<string, FileIdentity>();
         await using (var builder = BethesdaArchiveBuilder.Create(archiveState, temporaryFiles))
         {
             foreach (var element in fileStates)

@@ -1,4 +1,4 @@
-using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 
 namespace SilverModManager.Wabbajack.Format;
@@ -12,7 +12,7 @@ public sealed record HttpState(Uri Url, string[] Headers) : DownloadState;
 
 public sealed record WabbajackCdnState(Uri Url) : DownloadState;
 
-public sealed record GameFileSourceState(string Game, RelativePath GameFile, Hash XxHash64, string GameVersion) : DownloadState;
+public sealed record GameFileSourceState(string Game, RelativePath GameFile, FileIdentity XxHash64, string GameVersion) : DownloadState;
 
 public sealed record ManualState(Uri Url, string Prompt) : DownloadState;
 

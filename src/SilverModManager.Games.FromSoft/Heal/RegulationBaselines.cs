@@ -73,20 +73,20 @@ public sealed class RegulationBaselines(Func<AbsolutePath> root, IManifestVouchi
     /// version has alternates this is the first one; <see cref="VouchedHashes"/> has them all.
     /// </summary>
     /// <exception cref="HealException">A provenance file is there and cannot be read.</exception>
-    public IReadOnlyDictionary<string, Hash> Known()
+    public IReadOnlyDictionary<string, FileIdentity> Known()
     {
-        var known = new Dictionary<string, Hash>(StringComparer.Ordinal);
+        var known = new Dictionary<string, FileIdentity>(StringComparer.Ordinal);
         foreach (var (version, file, _) in KeptFiles().Where(k => !k.IsAlternate))
         {
-            if (VouchedHash(file) is { } hash) known[version] = hash;
+            if (VouchedHash(file) is { } hash) known[version] = FileIdentity.XxHash3(hash);
         }
         return known;
     }
 
     /// <summary>The xxHash3 of every vouched file kept, alternates included.</summary>
     /// <exception cref="HealException">A provenance file is there and cannot be read.</exception>
-    public IReadOnlySet<Hash> VouchedHashes()
-        => KeptFiles().Select(k => VouchedHash(k.File)).OfType<Hash>().ToHashSet();
+    public IReadOnlySet<FileIdentity> VouchedHashes()
+        => KeptFiles().Select(k => VouchedHash(k.File)).OfType<Hash>().Select(FileIdentity.XxHash3).ToHashSet();
 
     /// <summary>
     /// The xxHash3 of every validated file kept from a library archive, with where it was found, written as
@@ -94,14 +94,14 @@ public sealed class RegulationBaselines(Func<AbsolutePath> root, IManifestVouchi
     /// archive it was validated from serve packed files, since the checks were made on that archive's contents.
     /// </summary>
     /// <exception cref="HealException">A provenance file is there and cannot be read.</exception>
-    public IReadOnlyList<(Hash Hash, string Origin)> ValidatedFromArchives()
+    public IReadOnlyList<(FileIdentity Identity, string Origin)> ValidatedFromArchives()
     {
-        var found = new List<(Hash, string)>();
+        var found = new List<(FileIdentity, string)>();
         foreach (var kept in KeptFiles())
         {
             var provenance = ProvenanceOf(kept.File);
             if (provenance is not { Tier: BaselineTier.Validated, Source: BaselineSource.LibraryArchive, OriginalPath: { } origin }) continue;
-            found.Add((ReadSidecar(kept.File) ?? Hash.From(ulong.Parse(provenance.Xxh3, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture)), origin));
+            found.Add((FileIdentity.XxHash3(ReadSidecar(kept.File) ?? Hash.From(ulong.Parse(provenance.Xxh3, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture))), origin));
         }
         return found;
     }

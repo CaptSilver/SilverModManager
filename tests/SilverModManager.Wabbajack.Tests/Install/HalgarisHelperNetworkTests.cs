@@ -44,7 +44,7 @@ public class HalgarisHelperNetworkTests(ITestOutputHelper helper) : InstallTestB
         downloaded.FileExists.Should().BeTrue();
         new FileInfo(downloaded.ToString()).Length.Should().Be(ListSize);
         await using (var stream = File.OpenRead(downloaded.ToString()))
-            WabbajackHash.ToBase64(await Xx64Hasher.HashAsync(stream, cancellationToken: token)).Should().Be(ListHash);
+            WabbajackHash.ToBase64(FileIdentity.XxHash64(await Xx64Hasher.HashAsync(stream, cancellationToken: token))).Should().Be(ListHash);
 
         var added = await LibraryService.AddLocalFile(downloaded);
         added.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out var modlist).Should().BeTrue();

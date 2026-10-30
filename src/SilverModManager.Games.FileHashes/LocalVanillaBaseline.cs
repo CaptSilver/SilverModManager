@@ -172,7 +172,7 @@ internal sealed class LocalVanillaBaseline
             FilesIds = [],
         };
 
-        var hashRelations = new Dictionary<Hash, HashRelationId>();
+        var hashRelations = new Dictionary<FileIdentity, HashRelationId>();
         var pathIds = new List<EntityId>();
         var pathIdsByManifest = request.Manifests.Select(_ => new List<EntityId>()).ToArray();
         var readFiles = new List<IndexedFileHash>();
@@ -186,7 +186,7 @@ internal sealed class LocalVanillaBaseline
 
             // A file taken from the store gets a row too, so the index that follows finds its hash by fingerprint
             // instead of reading three blocks of every file the store already vouched for.
-            readFiles.Add(new IndexedFileHash(new GamePath(LocationId.Game, candidate.Path), candidate.Size, new DateTimeOffset(candidate.ModifiedUtc), hash.XxHash3, hash));
+            readFiles.Add(new IndexedFileHash(new GamePath(LocationId.Game, candidate.Path), candidate.Size, new DateTimeOffset(candidate.ModifiedUtc), FileIdentity.XxHash3(hash.XxHash3), hash));
 
             if (candidate.Entry is { } entry && entry.Sha1 != hash.Sha1)
             {

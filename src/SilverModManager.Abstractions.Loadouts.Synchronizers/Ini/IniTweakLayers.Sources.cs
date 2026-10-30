@@ -3,14 +3,14 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
-using Hash = NexusMods.Hashing.xxHash3.Hash;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 
 /// <summary>A tweak file for an INI as the editor lists it, whether or not it is applied.</summary>
 /// <param name="Name">The part of the file name before the bracketed target.</param>
 /// <param name="SourceName">The mod the file belongs to, or the game settings group for the loadout's own tweak.</param>
-/// <param name="Hash">The tweak's bytes in the file store.</param>
+/// <param name="Identity">The tweak's bytes in the file store.</param>
 /// <param name="FileId">The loadout item holding the file.</param>
 /// <param name="IsLoadoutTweak">Whether this is the loadout's own tweak.</param>
 /// <param name="IsSwitchedOn">Whether the file itself is on, apart from the mod above it.</param>
@@ -18,7 +18,7 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 public readonly record struct IniTweakSource(
     string Name,
     string SourceName,
-    Hash Hash,
+    FileIdentity Identity,
     EntityId FileId,
     bool IsLoadoutTweak,
     bool IsSwitchedOn,
@@ -44,7 +44,7 @@ public static partial class IniTweakLayers
             if (!TryParse(path, target.FileName.ToString(), out var name)) continue;
 
             var isLoadoutTweak = name.Equals(LoadoutTweakName, StringComparison.OrdinalIgnoreCase) && InGameSettingsGroup(item);
-            var source = new IniTweakSource(name, SourceNameOf(item, priorities), file.Hash, file.Id, isLoadoutTweak, !item.IsDisabled, item.IsEnabled());
+            var source = new IniTweakSource(name, SourceNameOf(item, priorities), file.Identity, file.Id, isLoadoutTweak, !item.IsDisabled, item.IsEnabled());
             found.Add((PriorityOf(item, priorities), isLoadoutTweak, path.ToString(), source));
         }
 
@@ -75,7 +75,7 @@ public static partial class IniTweakLayers
             if (knownTargets.Contains(target, StringComparer.OrdinalIgnoreCase)) continue;
 
             var isLoadoutTweak = name.Equals(LoadoutTweakName, StringComparison.OrdinalIgnoreCase) && InGameSettingsGroup(item);
-            found.Add((path.ToString(), target, new IniTweakSource(name, SourceNameOf(item, priorities), file.Hash, file.Id, isLoadoutTweak, true, true)));
+            found.Add((path.ToString(), target, new IniTweakSource(name, SourceNameOf(item, priorities), file.Identity, file.Id, isLoadoutTweak, true, true)));
         }
 
         return found.OrderBy(f => f.Path, StringComparer.Ordinal).Select(f => (f.Target, f.Source)).ToList();

@@ -118,16 +118,17 @@ public abstract class AGameTest<TGame> where TGame : IGame
     /// The file will be named with the given path, the hash will be the hash
     /// of the name, and the size will be the length of the name. 
     /// </summary>
-    public LoadoutFileId AddFile(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path, string? content, out Hash hash, out Size size)
-        => AddFile(tx, loadoutId, groupId, path, Encoding.UTF8.GetBytes(content ?? path.Path.ToString()), out hash, out size);
+    public LoadoutFileId AddFile(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path, string? content, out FileIdentity identity, out Size size)
+        => AddFile(tx, loadoutId, groupId, path, Encoding.UTF8.GetBytes(content ?? path.Path.ToString()), out identity, out size);
 
     /// <summary>
     /// Creates a file in the loadout for the given mod with exactly these bytes. Like the string overload it writes rows
     /// only; back the bytes up with <see cref="FileStore"/> when the test reads them.
     /// </summary>
-    public LoadoutFileId AddFile(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path, byte[] content, out Hash hash, out Size size)
+    public LoadoutFileId AddFile(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path, byte[] content, out FileIdentity identity, out Size size)
     {
-        hash = content.xxHash3();
+        var hash = content.xxHash3();
+        identity = FileIdentity.XxHash3(hash);
         size = Size.FromLong(content.Length);
         return AddFileInternal(tx, loadoutId, groupId, path, hash, size).Id;
     }
@@ -184,10 +185,10 @@ public abstract class AGameTest<TGame> where TGame : IGame
     ///     Specifying this parameter will add DB entries to simulate this being the original archive which
     ///     the files have come from.
     /// </param>
-    public async Task<(AbsolutePath archivePath, List<Hash> hashes)> AddModAsync(ITransaction tx, IEnumerable<RelativePath> paths, LoadoutId loadoutId, string modName, LibraryArchive.ReadOnly? libraryArchive = null)
+    public async Task<(AbsolutePath archivePath, List<FileIdentity> identities)> AddModAsync(ITransaction tx, IEnumerable<RelativePath> paths, LoadoutId loadoutId, string modName, LibraryArchive.ReadOnly? libraryArchive = null)
     {
         var records = new List<ArchivedFileEntry>();
-        var hashes = new List<Hash>();
+        var identities = new List<FileIdentity>();
         var modGroup = AddEmptyGroup(tx, loadoutId, modName);
         foreach (var path in paths)
         {
@@ -199,7 +200,7 @@ public abstract class AGameTest<TGame> where TGame : IGame
             AddFileInternal(tx, loadoutId, modGroup, new GamePath(LocationId.Game, path), hash, size);
             
             // Create the file to backup.
-            hashes.Add(hash);
+            identities.Add(FileIdentity.XxHash3(hash));
             if (!await FileStore.HaveFile(FileIdentity.XxHash3(hash)))
             {
                 records.Add(new ArchivedFileEntry(
@@ -224,7 +225,7 @@ public abstract class AGameTest<TGame> where TGame : IGame
         if (records.Count > 0)
             await FileStore.BackupFiles(records);
 
-        return (GetArchivePath(hashes.First()), hashes);
+        return (GetArchivePath(identities.First()), identities);
     }
 
     private static LibraryFile.New CreateLibraryFile(string fileName, ITransaction tx, out EntityId entityId) => new(tx, out entityId)
@@ -329,12 +330,12 @@ public abstract class AGameTest<TGame> where TGame : IGame
 
     
     
-    private AbsolutePath GetArchivePath(Hash hash)
+    private AbsolutePath GetArchivePath(FileIdentity identity)
     {
         if (FileStore is not NxFileStore store)
             throw new NotSupportedException("GetArchivePath is not currently supported in stubbed file stores.");
 
-        store.TryGetLocation(FileIdentity.XxHash3(hash), out var archivePath, out _).Should().BeTrue("Archive should exist");
+        store.TryGetLocation(identity, out var archivePath, out _).Should().BeTrue("Archive should exist");
         return archivePath;
     }
 }

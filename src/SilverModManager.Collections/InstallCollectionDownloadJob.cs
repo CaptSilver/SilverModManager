@@ -319,7 +319,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             var file = child.AsLibraryFile();
             hashes[md5] = new HashMapping()
             {
-                Hash = file.Hash,
+                Identity = file.Identity,
                 Size = file.Size,
             };
         });
@@ -334,7 +334,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
             var hashMapping = new HashMapping
             {
-                Hash = patchedFile.PatchedFileHashes.XxHash3,
+                Identity = FileIdentity.XxHash3(patchedFile.PatchedFileHashes.XxHash3),
                 Size = patchedFile.PatchedFileHashes.Size,
             };
 
@@ -377,7 +377,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             // Map the file to the specific path
             _ = new LoadoutFile.New(tx, out var fileId)
             {
-                Hash = libraryItem.Hash,
+                Hash = libraryItem.Identity.XxHash3(),
                 Size = libraryItem.Size,
                 LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, fileId)
                 {

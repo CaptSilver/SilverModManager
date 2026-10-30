@@ -171,7 +171,7 @@ public class MergedFileTests(ITestOutputHelper helper) : AVanillaDumpTest<Merged
     {
         var (loadout, _, _, _, _) = await TwoMsgbndMods(bothShipAPart: false);
         await Apply(loadout);
-        var before = Sources.Providers(Refresh(loadout)).ToDictionary(p => $"{p.PackageId}/{p.RelPath}", p => p.Hash);
+        var before = Sources.Providers(Refresh(loadout)).ToDictionary(p => $"{p.PackageId}/{p.RelPath}", p => p.Identity);
 
         var edited = Bytes("a copy someone dropped back in");
         var copy = Mods / "Alpha" / Msg;
@@ -181,7 +181,7 @@ public class MergedFileTests(ITestOutputHelper helper) : AVanillaDumpTest<Merged
 
         copy.FileExists.Should().BeFalse();
         (await FileStore.HaveFile(FileIdentity.XxHash3(edited.xxHash3()))).Should().BeTrue("the edit is kept before it is removed");
-        Sources.Providers(Refresh(loadout)).ToDictionary(p => $"{p.PackageId}/{p.RelPath}", p => p.Hash).Should().BeEquivalentTo(before);
+        Sources.Providers(Refresh(loadout)).ToDictionary(p => $"{p.PackageId}/{p.RelPath}", p => p.Identity).Should().BeEquivalentTo(before);
     }
 
     [Fact]

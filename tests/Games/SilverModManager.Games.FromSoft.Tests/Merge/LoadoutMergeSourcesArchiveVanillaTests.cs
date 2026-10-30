@@ -118,7 +118,7 @@ public class LoadoutMergeSourcesArchiveVanillaTests(ITestOutputHelper helper) : 
         notes.Should().NotContain(n => n is BaselineWillBeKept);
         ServiceProvider.GetRequiredService<VanillaDumps>().Find(Connection.Db, GameInstallation).Should().ContainSingle()
             .Which.Validated.Should().BeTrue("the archive the file was validated in may serve packed files, but only as a validated dump");
-        ServiceProvider.GetRequiredService<IVouchedRegulations>().Hashes(GameInstallation).Should().NotContain(vanilla.xxHash3(), "a validated file vouches for nothing");
+        ServiceProvider.GetRequiredService<IVouchedRegulations>().Hashes(GameInstallation).Should().NotContain(FileIdentity.XxHash3(vanilla.xxHash3()), "a validated file vouches for nothing");
         archive.Should().NotBeNull();
     }
 
@@ -206,9 +206,9 @@ public class LoadoutMergeSourcesArchiveVanillaTests(ITestOutputHelper helper) : 
         var archives = ServiceProvider.GetRequiredService<ArchiveVanillas>();
         var otherGame = Formats with { RegulationKey = [.. Enumerable.Repeat((byte)0x5A, 32)] };
 
-        archives.Find(Connection.Db, otherGame, OlderVersion, new HashSet<NexusMods.Hashing.xxHash3.Hash>()).Should().BeEmpty();
+        archives.Find(Connection.Db, otherGame, OlderVersion, new HashSet<FileIdentity>()).Should().BeEmpty();
 
-        archives.Find(Connection.Db, Formats, OlderVersion, new HashSet<NexusMods.Hashing.xxHash3.Hash>()).Should().ContainSingle().Which.Member.Should().Be(Member);
+        archives.Find(Connection.Db, Formats, OlderVersion, new HashSet<FileIdentity>()).Should().ContainSingle().Which.Member.Should().Be(Member);
     }
 
     [Fact]
@@ -217,7 +217,7 @@ public class LoadoutMergeSourcesArchiveVanillaTests(ITestOutputHelper helper) : 
         await RenameLibraryItem(await AddArchive("Randomizer", (Member, Table(OlderVersion))), "Randomizer 1.2");
 
         ServiceProvider.GetRequiredService<ArchiveVanillas>()
-            .Find(Connection.Db, Formats, OlderVersion, new HashSet<NexusMods.Hashing.xxHash3.Hash>())
+            .Find(Connection.Db, Formats, OlderVersion, new HashSet<FileIdentity>())
             .Should().ContainSingle().Which.ArchiveName.Should().Be("Randomizer 1.2");
     }
 

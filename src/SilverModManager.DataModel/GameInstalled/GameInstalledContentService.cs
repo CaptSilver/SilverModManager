@@ -43,7 +43,7 @@ internal sealed class GameInstalledContentService : IGameInstalledContentService
         // exists without one.
         // The recorded hash is from the last sync; the game may have rewritten the file since, and the archive must
         // hold the bytes the row will name. So the live file is hashed and its hash is the one used throughout.
-        var live = new Dictionary<GamePath, (Hash Hash, Size Size)>();
+        var live = new Dictionary<GamePath, (FileIdentity Identity, Size Size)>();
         var backups = new List<ArchivedFileEntry>();
         var notBackedUp = new List<GamePath>();
         foreach (var file in files)
@@ -52,9 +52,9 @@ internal sealed class GameInstalledContentService : IGameInstalledContentService
             var onDisk = loadout.InstallationInstance.Locations.ToAbsolutePath(path);
             if (!onDisk.FileExists) throw new InvalidOperationException($"`{path}` is no longer in the game folder");
 
-            var hash = await onDisk.XxHash3Async(token: token);
+            var identity = FileIdentity.XxHash3(await onDisk.XxHash3Async(token: token));
             var size = onDisk.FileInfo.Size;
-            live[path] = (hash, size);
+            live[path] = (identity, size);
 
             if (synchronizer.IsIgnoredBackupPath(path))
             {
@@ -62,7 +62,6 @@ internal sealed class GameInstalledContentService : IGameInstalledContentService
                 continue;
             }
 
-            var identity = FileIdentity.XxHash3(hash);
             if (await _fileStore.HaveFile(identity)) continue;
             backups.Add(new ArchivedFileEntry(new NativeFileStreamFactory(onDisk), identity, size));
         }
@@ -84,7 +83,7 @@ internal sealed class GameInstalledContentService : IGameInstalledContentService
                 ClaimedAt = DateTimeOffset.UtcNow,
             };
             tx.Delete(file.Id, recursive: false);
-            OverridesGroupItems.UpsertFile(tx, loadout, overrides, path, live[path].Hash, live[path].Size);
+            OverridesGroupItems.UpsertFile(tx, loadout, overrides, path, live[path].Identity, live[path].Size);
             moved.Add(path);
         }
 

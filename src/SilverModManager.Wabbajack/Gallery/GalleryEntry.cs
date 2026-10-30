@@ -1,4 +1,5 @@
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Wabbajack.Gallery;
@@ -46,7 +47,7 @@ public sealed record GalleryEntry
     public DateTimeOffset? DateUpdated { get; init; }
 
     /// <summary>The xxHash64 of the <c>.wabbajack</c> file.</summary>
-    public Hash? DownloadHash { get; init; }
+    public FileIdentity? DownloadHash { get; init; }
 
     /// <summary>The size of the <c>.wabbajack</c> file in bytes.</summary>
     public ulong? DownloadSize { get; init; }

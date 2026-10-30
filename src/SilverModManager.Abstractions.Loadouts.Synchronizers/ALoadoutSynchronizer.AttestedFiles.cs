@@ -213,7 +213,7 @@ public partial class ALoadoutSynchronizer
         foreach (var read in reads)
         {
             if (attested.TryGetValue(read.Path, out var row)) settle.Add((row, read.Hashes, read.Fingerprint));
-            else remember.Add(new IndexedFileHash(read.Path, read.Fingerprint.Size, read.Fingerprint.LastModified, read.Hashes.XxHash3, read.Hashes));
+            else remember.Add(new IndexedFileHash(read.Path, read.Fingerprint.Size, read.Fingerprint.LastModified, FileIdentity.XxHash3(read.Hashes.XxHash3), read.Hashes));
         }
 
         await _fileHashService.SettleAttested(installation, settle, cancellationToken);

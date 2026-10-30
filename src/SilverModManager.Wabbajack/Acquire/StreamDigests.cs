@@ -14,7 +14,7 @@ internal static class StreamDigests
     /// xxHash3 (the file store's key), xxHash64 (the modlist's) and the length in one pass. Counts bytes read because
     /// an opener's stream may not report a length or position.
     /// </summary>
-    public static async Task<(Hash XxHash3, Hash XxHash64, Size Size)> HashAndCount(Stream stream, CancellationToken cancellationToken)
+    public static async Task<(FileIdentity XxHash3, FileIdentity XxHash64, Size Size)> HashAndCount(Stream stream, CancellationToken cancellationToken)
     {
         var buffer = GC.AllocateUninitializedArray<byte>(BufferSize);
         var state = DigestHasher.Initialize();
@@ -26,6 +26,6 @@ internal static class StreamDigests
             length += read;
         }
         var hashes = DigestHasher.Finish(state);
-        return (hashes.Hash1, hashes.Hash2, Size.FromLong(length));
+        return (FileIdentity.XxHash3(hashes.Hash1), FileIdentity.XxHash64(hashes.Hash2), Size.FromLong(length));
     }
 }

@@ -594,7 +594,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         }
 
         if (recordRelation)
-            await Hashes.RecordIndexedFiles(GameInstallation, [new IndexedFileHash(path, diskBytes.Size, DateTimeOffset.UtcNow, diskBytes.XxHash3, diskBytes)]);
+            await Hashes.RecordIndexedFiles(GameInstallation, [new IndexedFileHash(path, diskBytes.Size, DateTimeOffset.UtcNow, FileIdentity.XxHash3(diskBytes.XxHash3), diskBytes)]);
 
         var synchronizer = (ALoadoutSynchronizer)Synchronizer;
         var metadata = GameInstallMetadata.Load(Connection.Db, Metadata);
@@ -662,7 +662,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         await CreateLoadout();
         var path = new GamePath(LocationId.Game, Vanilla);
         if (recordRelation)
-            await Hashes.RecordIndexedFiles(GameInstallation, [new IndexedFileHash(path, diskBytes.Size, DateTimeOffset.UtcNow, diskBytes.XxHash3, diskBytes)]);
+            await Hashes.RecordIndexedFiles(GameInstallation, [new IndexedFileHash(path, diskBytes.Size, DateTimeOffset.UtcNow, FileIdentity.XxHash3(diskBytes.XxHash3), diskBytes)]);
 
         var file = new ALoadoutSynchronizer.MeasuredFile(path, diskBytes.Size.Value, BackupOverflowKind.Appeared, FileIdentity.XxHash3(diskBytes.XxHash3));
         return ((ALoadoutSynchronizer)Synchronizer).TellGameFilesApart([file], GameInstallation).Single().Kind;
@@ -694,7 +694,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
             tx.Add(entry.Id, DiskStateEntry.XxHash3, hashes.XxHash3);
             var path = new GamePath(LocationId.Game, file.Path);
             var fingerprint = SilverModManager.Sdk.IO.FileFingerprint.Of(GameFolder / file.Path);
-            remembered.Add(new IndexedFileHash(path, fingerprint.Size, fingerprint.LastModified, hashes.XxHash3, hashes));
+            remembered.Add(new IndexedFileHash(path, fingerprint.Size, fingerprint.LastModified, FileIdentity.XxHash3(hashes.XxHash3), hashes));
         }
 
         await tx.Commit();
@@ -710,7 +710,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         var file = GameFolder / Vanilla;
         File.SetLastWriteTimeUtc(file.ToString(), DateTime.UtcNow.AddMinutes(30));
         var fingerprint = SilverModManager.Sdk.IO.FileFingerprint.Of(file);
-        await Hashes.RecordIndexedFiles(GameInstallation, [new IndexedFileHash(new GamePath(LocationId.Game, Vanilla), fingerprint.Size, fingerprint.LastModified, hashes.XxHash3)]);
+        await Hashes.RecordIndexedFiles(GameInstallation, [new IndexedFileHash(new GamePath(LocationId.Game, Vanilla), fingerprint.Size, fingerprint.LastModified, FileIdentity.XxHash3(hashes.XxHash3))]);
     }
 
     // Thirty bytes the player added: with the vanilla file's fifteen counted they pass the forty-byte cap, without
@@ -1248,8 +1248,8 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         public Task RemoveLocalBaseline(GameStore store, string gamePath, CancellationToken cancellationToken = default) => inner.RemoveLocalBaseline(store, gamePath, cancellationToken);
         public Task WaitForLocalBaselineBuild(GameInstallation installation, CancellationToken cancellationToken = default) => inner.WaitForLocalBaselineBuild(installation, cancellationToken);
         public Task RecordIndexedFiles(GameInstallation installation, IReadOnlyList<IndexedFileHash> files, CancellationToken cancellationToken = default) => inner.RecordIndexedFiles(installation, files, cancellationToken);
-        public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out Hash xxHash3) => inner.TryGetFingerprintedHash(installation, path, size, modifiedUtc, out xxHash3);
+        public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out FileIdentity identity) => inner.TryGetFingerprintedHash(installation, path, size, modifiedUtc, out identity);
         public System.Collections.Frozen.FrozenDictionary<GamePath, AttestedLookup> AttestedFiles(GameInstallation installation) => inner.AttestedFiles(installation);
-        public DynamicData.Kernel.Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, Hash Hash)> files) => inner.SuggestVersionData(gameInstallation, files);
+        public DynamicData.Kernel.Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, FileIdentity Identity)> files) => inner.SuggestVersionData(gameInstallation, files);
     }
 }

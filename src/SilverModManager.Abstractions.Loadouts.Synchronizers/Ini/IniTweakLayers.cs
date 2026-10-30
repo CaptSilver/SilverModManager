@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Abstractions.Loadouts.Extensions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -10,8 +10,8 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 
 /// <summary>One tweak file a mod, or the loadout itself, supplies for an INI.</summary>
 /// <param name="Name">The part of the file name before the bracketed target.</param>
-/// <param name="Hash">The tweak's bytes in the file store.</param>
-public readonly record struct IniTweakLayer(string Name, Hash Hash);
+/// <param name="Identity">The tweak's bytes in the file store.</param>
+public readonly record struct IniTweakLayer(string Name, FileIdentity Identity);
 
 /// <summary>
 /// Finds the tweaks that apply to one INI: <c>INI Tweaks/&lt;Name&gt; [&lt;Target.ini&gt;].ini</c> files in the
@@ -46,7 +46,7 @@ public static partial class IniTweakLayers
     /// the highest wins, then the loadout's own tweak.
     /// </summary>
     public static IReadOnlyList<IniTweakLayer> For(Loadout.ReadOnly loadout, GamePath target) =>
-        All(loadout, target).Where(t => t.IsEnabled).Select(t => new IniTweakLayer(t.Name, t.Hash)).ToList();
+        All(loadout, target).Where(t => t.IsEnabled).Select(t => new IniTweakLayer(t.Name, t.Identity)).ToList();
 
     private static bool TryParse(NexusMods.Paths.RelativePath path, string targetFileName, out string name)
     {

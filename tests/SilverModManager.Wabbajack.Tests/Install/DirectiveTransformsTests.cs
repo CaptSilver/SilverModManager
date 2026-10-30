@@ -125,7 +125,7 @@ public class DirectiveTransformsTests : IDisposable
     public async Task ReadingABuiltArchiveBackFindsAMemberWhoseBytesAreNotTheOnesWritten()
     {
         var archive = await Archive(new() { ["meshes/one.nif"] = [1, 2, 3] });
-        var written = new Dictionary<string, Hash> { ["meshes/one.nif"] = Xx64Hasher.Hash([9, 9, 9]) };
+        var written = new Dictionary<string, FileIdentity> { ["meshes/one.nif"] = Xx64.Of([9, 9, 9]) };
 
         var failure = await Record.ExceptionAsync(() => BuiltArchiveCheck.Verify(new MemoryStream(archive), written, CancellationToken.None));
 
@@ -137,7 +137,7 @@ public class DirectiveTransformsTests : IDisposable
     {
         var archive = await Archive(new() { ["meshes/one.nif"] = [1, 2, 3] });
 
-        var failure = await Record.ExceptionAsync(() => BuiltArchiveCheck.Verify(new MemoryStream(archive), new Dictionary<string, Hash>(), CancellationToken.None));
+        var failure = await Record.ExceptionAsync(() => BuiltArchiveCheck.Verify(new MemoryStream(archive), new Dictionary<string, FileIdentity>(), CancellationToken.None));
 
         failure.Should().BeOfType<ArchiveMismatchException>().Which.Message.Should().Contain("meshes/one.nif");
     }
@@ -146,10 +146,10 @@ public class DirectiveTransformsTests : IDisposable
     public async Task ReadingABuiltArchiveBackFindsAnInputTheArchiveDoesNotHold()
     {
         var archive = await Archive(new() { ["meshes/one.nif"] = [1, 2, 3] });
-        var written = new Dictionary<string, Hash>
+        var written = new Dictionary<string, FileIdentity>
         {
-            ["meshes/one.nif"] = Xx64Hasher.Hash([1, 2, 3]),
-            ["meshes/two.nif"] = Xx64Hasher.Hash([4, 5, 6]),
+            ["meshes/one.nif"] = Xx64.Of([1, 2, 3]),
+            ["meshes/two.nif"] = Xx64.Of([4, 5, 6]),
         };
 
         var failure = await Record.ExceptionAsync(() => BuiltArchiveCheck.Verify(new MemoryStream(archive), written, CancellationToken.None));
@@ -161,7 +161,7 @@ public class DirectiveTransformsTests : IDisposable
     public async Task ReadingABuiltArchiveBackAcceptsMembersThatMatchRegardlessOfCase()
     {
         var archive = await Archive(new() { ["meshes/one.nif"] = [1, 2, 3] });
-        var written = new Dictionary<string, Hash> { [BuiltArchiveCheck.Fold("Meshes\\ONE.nif")] = Xx64Hasher.Hash([1, 2, 3]) };
+        var written = new Dictionary<string, FileIdentity> { [BuiltArchiveCheck.Fold("Meshes\\ONE.nif")] = Xx64.Of([1, 2, 3]) };
 
         await BuiltArchiveCheck.Verify(new MemoryStream(archive), written, CancellationToken.None);
     }

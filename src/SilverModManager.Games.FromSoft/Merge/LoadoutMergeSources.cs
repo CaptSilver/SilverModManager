@@ -39,7 +39,7 @@ namespace SilverModManager.Games.FromSoft.Merge;
 /// </summary>
 public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, ArchiveVanillas archives, InstalledBuilds builds, ILogger<LoadoutMergeSources> logger)
 {
-    private readonly ConcurrentDictionary<Hash, string> _versions = new();
+    private readonly ConcurrentDictionary<FileIdentity, string> _versions = new();
     private readonly ConcurrentDictionary<string, byte> _unprioritised = new(StringComparer.Ordinal);
 
     /// <summary>
@@ -91,7 +91,7 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
             }
 
             var owner = mod ?? (chain.Length > 1 ? chain[1] : chain[0]);
-            providers.Add(new ProviderFile(parts[0], parts[1], file.Hash, (priority ?? ConflictPriority.MinValue).Value, owner.Name, owner.LoadoutItemId, priority is not null));
+            providers.Add(new ProviderFile(parts[0], parts[1], file.Identity, (priority ?? ConflictPriority.MinValue).Value, owner.Name, owner.LoadoutItemId, priority is not null));
         }
 
         return providers;
@@ -163,7 +163,7 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
     /// </summary>
     public virtual byte[] ContributorBytes(ProviderFile file)
     {
-        using var stream = fileStore.GetFileStream(FileIdentity.XxHash3(file.Hash)).GetAwaiter().GetResult();
+        using var stream = fileStore.GetFileStream(file.Identity).GetAwaiter().GetResult();
         using var buffer = new MemoryStream();
         stream.CopyTo(buffer);
         return buffer.ToArray();
@@ -175,7 +175,7 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
     /// </summary>
     public string VersionOf(GameInstallation installation, ProviderFile regulation)
     {
-        if (_versions.TryGetValue(regulation.Hash, out var known)) return known;
+        if (_versions.TryGetValue(regulation.Identity, out var known)) return known;
 
         var traits = TraitsOf(installation);
         string version;
@@ -188,7 +188,7 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
             throw new MergeException($"{regulation.PackageId}/{regulation.RelPath} is not a regulation this game's key opens: {exception.Message}");
         }
 
-        _versions[regulation.Hash] = version;
+        _versions[regulation.Identity] = version;
         return version;
     }
 
@@ -559,7 +559,7 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
         var installation = loadout.InstallationInstance;
         var traits = TraitsOf(installation);
         var version = VersionOf(installation, contributors[0]);
-        var candidates = archives.Find(loadout.Db, traits, version, contributors.Select(c => c.Hash).ToHashSet());
+        var candidates = archives.Find(loadout.Db, traits, version, contributors.Select(c => c.Identity).ToHashSet());
         if (candidates.Count == 0)
         {
             tried.Add($"regulations inside library archives (none of version {version} besides the mods' own)");
@@ -570,7 +570,7 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
         var game = GameBaseOrNull(installation, regulationName);
         foreach (var candidate in candidates)
         {
-            var bytes = archives.Read(candidate.Hash);
+            var bytes = archives.Read(candidate.Identity);
             var verdict = VanillaValidation.Check(bytes, game, mods, traits);
             if (!verdict.Passed)
             {

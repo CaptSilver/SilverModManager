@@ -15,7 +15,7 @@ internal sealed class CdnFixture
 
     public byte[] Content { get; }
     public string OriginalFileName { get; }
-    public Hash FileHash => Xx64Hasher.Hash(Content);
+    public FileIdentity FileHash => Xx64.Of(Content);
     public IReadOnlyList<byte[]> Parts { get; }
 
     public CdnFixture(int length = 250, string originalFileName = "Some Mod-123-1-0.7z")
@@ -32,7 +32,7 @@ internal sealed class CdnFixture
             Index = index,
             Offset = index * PartSize,
             Size = bytes.Length,
-            Hash = WabbajackHash.ToBase64(Xx64Hasher.Hash(bytes)),
+            Hash = WabbajackHash.ToBase64(Xx64.Of(bytes)),
         });
         var json = JsonSerializer.Serialize(new
         {

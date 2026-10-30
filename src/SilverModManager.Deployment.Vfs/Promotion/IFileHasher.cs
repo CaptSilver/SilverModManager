@@ -1,6 +1,7 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Deployment.Vfs;
 
@@ -10,5 +11,5 @@ namespace SilverModManager.Deployment.Vfs;
 /// </summary>
 public interface IFileHasher
 {
-    ValueTask<Hash> Hash(GameInstallMetadataId installation, AbsolutePath file, CancellationToken token = default);
+    ValueTask<FileIdentity> Hash(GameInstallMetadataId installation, AbsolutePath file, CancellationToken token = default);
 }

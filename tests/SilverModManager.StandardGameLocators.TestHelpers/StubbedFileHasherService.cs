@@ -240,8 +240,8 @@ public class StubbedFileHasherService : IFileHashesService
         await tx.Commit();
     }
 
-    public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out Hash xxHash3)
-        => LocalFileHashRows.TryGet(EnsureLocal(), GameKey(installation), path, size, modifiedUtc, out xxHash3);
+    public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out FileIdentity identity)
+        => LocalFileHashRows.TryGet(EnsureLocal(), GameKey(installation), path, size, modifiedUtc, out identity);
 
     private static string GameKey(GameInstallation installation) => installation.Locations[LocationId.Game].Path.ToString();
 
@@ -306,7 +306,7 @@ public class StubbedFileHasherService : IFileHashesService
         }
     }
 
-    public Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, Hash Hash)> files)
+    public Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, FileIdentity Identity)> files)
     {
         var filesSet = files.ToHashSet();
 
@@ -315,7 +315,7 @@ public class StubbedFileHasherService : IFileHashesService
         {
             var (locatorIds , _) = versionDefinition;
             var matchingCount = GetGameFiles((gameInstallation.LocatorResult.Store, [locatorIds]))
-                .Count(file => file.Identity.TryXxHash3(out var hash) && filesSet.Contains((file.Path, hash)));
+                .Count(file => filesSet.Contains((file.Path, file.Identity)));
 
             if (!TryGetVanityVersion((gameInstallation.LocatorResult.Store, [locatorIds]), out var version))
             {

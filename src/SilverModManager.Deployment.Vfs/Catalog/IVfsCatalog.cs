@@ -1,7 +1,7 @@
-using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Deployment.Vfs;
 
@@ -15,8 +15,8 @@ public interface IVfsCatalog
     /// True if a hash was recorded for <paramref name="path"/> with exactly this fingerprint. A
     /// difference in any field is a miss: there is no partial trust.
     /// </summary>
-    bool TryGetHash(GameInstallMetadataId installation, AbsolutePath path, FileFingerprint fingerprint, out Hash hash);
+    bool TryGetHash(GameInstallMetadataId installation, AbsolutePath path, FileFingerprint fingerprint, out FileIdentity hash);
 
     /// <summary>Records the hash, replacing whatever was recorded for the same installation and path.</summary>
-    void Record(ITransaction tx, GameInstallMetadataId installation, AbsolutePath path, FileFingerprint fingerprint, Hash hash);
+    void Record(ITransaction tx, GameInstallMetadataId installation, AbsolutePath path, FileFingerprint fingerprint, FileIdentity hash);
 }

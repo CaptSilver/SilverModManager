@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games.Merge;
@@ -20,7 +21,7 @@ public class LoadoutMergeSourcesDumpTests(ITestOutputHelper helper) : AVanillaDu
     private const string TalkPath = "script/talk/m00.talkesdbnd.dcx";
     private const string MsgPath = "msg/engus/item.msgbnd.dcx";
 
-    private readonly HashSet<Hash> _hashDatabase = [];
+    private readonly HashSet<FileIdentity> _hashDatabase = [];
     private readonly CountingInstalledBuilds _builds = new();
 
     private LoadoutMergeSources Sources => ServiceProvider.GetRequiredService<LoadoutMergeSources>();
@@ -33,9 +34,9 @@ public class LoadoutMergeSourcesDumpTests(ITestOutputHelper helper) : AVanillaDu
         return services;
     }
 
-    private sealed class ExtraVouching(IVouchedRegulations real, HashSet<Hash> extra) : IVouchedRegulations
+    private sealed class ExtraVouching(IVouchedRegulations real, HashSet<FileIdentity> extra) : IVouchedRegulations
     {
-        public IReadOnlySet<Hash> Hashes(GameInstallation installation) => real.Hashes(installation).Concat(extra).ToHashSet();
+        public IReadOnlySet<FileIdentity> Hashes(GameInstallation installation) => real.Hashes(installation).Concat(extra).ToHashSet();
     }
 
     private sealed class CountingInstalledBuilds : InstalledBuilds
@@ -192,7 +193,7 @@ public class LoadoutMergeSourcesDumpTests(ITestOutputHelper helper) : AVanillaDu
     public async Task TheRegulationAncestorComesFromADumpWhenNoBaselineIsKeptAndTheGameHasMovedOn()
     {
         var older = Regulation(OlderVersion, 0xB0);
-        _hashDatabase.Add(older.xxHash3());
+        _hashDatabase.Add(FileIdentity.XxHash3(older.xxHash3()));
         var loadout = await TwoMods(("regulation.bin", Regulation(OlderVersion, 1)));
         await AddDump("Dump", older, "vanilla");
         loadout = Refresh(loadout);
@@ -211,7 +212,7 @@ public class LoadoutMergeSourcesDumpTests(ITestOutputHelper helper) : AVanillaDu
         var kept = Regulation(OlderVersion, 0xB0);
         KeepBaseline(OlderVersion, kept);
         var dumped = Regulation(OlderVersion, 0xB1);
-        _hashDatabase.Add(dumped.xxHash3());
+        _hashDatabase.Add(FileIdentity.XxHash3(dumped.xxHash3()));
         var loadout = await TwoMods(("regulation.bin", Regulation(OlderVersion, 1)));
         await AddDump("Dump", dumped, "vanilla");
         loadout = Refresh(loadout);

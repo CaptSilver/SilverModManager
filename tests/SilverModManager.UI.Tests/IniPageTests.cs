@@ -297,7 +297,7 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
 
         var tweaks = IniTweakLayers.All(Fresh(loadout), PrefsPath).Where(l => l.IsLoadoutTweak).ToList();
         tweaks.Should().ContainSingle("saving twice updates the file instead of adding another");
-        Encoding.UTF8.GetString(await FileStore.Load(FileIdentity.XxHash3(tweaks[0].Hash))).Should().Be("[Display]\r\nbFull Screen=1\r\niSize H=1000\r\n");
+        Encoding.UTF8.GetString(await FileStore.Load(tweaks[0].Identity)).Should().Be("[Display]\r\nbFull Screen=1\r\niSize H=1000\r\n");
         editor.ResultText.Should().Contain("bFull Screen=1").And.Contain("iSize H=1000");
         LoadoutItem.FindByLoadout(Connection.Db, loadout.LoadoutId).OfTypeLoadoutItemGroup()
             .Count(g => g.IsGameSettingsGroup).Should().Be(1);

@@ -281,8 +281,8 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
         var lower = new GamePath(LocationId.Game, "mods/x.bin");
         var size = Size.From(10);
         var stamp = DateTimeOffset.UtcNow.AddHours(-1);
-        var upperHash = Hash.From(1);
-        var lowerHash = Hash.From(2);
+        var upperHash = FileIdentity.XxHash3(Hash.From(1));
+        var lowerHash = FileIdentity.XxHash3(Hash.From(2));
 
         await hashes.RecordIndexedFiles(_installation, [new IndexedFileHash(upper, size, stamp, upperHash)]);
         await hashes.RecordIndexedFiles(_installation, [new IndexedFileHash(lower, size, stamp, lowerHash)]);
@@ -527,7 +527,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
             await tx.Commit();
         }
         await new LocalRowsFileHashes(_connection, _gameDir.ToString(), [], Task.CompletedTask, NullLogger.Instance)
-            .RecordIndexedFiles(_installation, [new IndexedFileHash(Path(0), Size.FromLong(info.Length), new DateTimeOffset(info.LastWriteTimeUtc), hashes.XxHash3)]);
+            .RecordIndexedFiles(_installation, [new IndexedFileHash(Path(0), Size.FromLong(info.Length), new DateTimeOffset(info.LastWriteTimeUtc), FileIdentity.XxHash3(hashes.XxHash3))]);
 
         var second = await service.IndexGame(_installation, diskState, GamePathFilters.Empty);
 
@@ -821,8 +821,8 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
             await tx.Commit();
         }
 
-        public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out Hash xxHash3)
-            => LocalFileHashRows.TryGet(local.Db, gameKey, path, size, modifiedUtc, out xxHash3);
+        public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out FileIdentity identity)
+            => LocalFileHashRows.TryGet(local.Db, gameKey, path, size, modifiedUtc, out identity);
 
         public FrozenDictionary<GamePath, AttestedLookup> AttestedFiles(GameInstallation installation)
             => AttestedFileRows.Find(local.Db, installation.LocatorResult.Store, gameKey, installation.LocatorResult.LocatorIds);
@@ -842,7 +842,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
         public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task MoveLocalBaseline(GameStore store, string oldPath, string newPath, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task RemoveLocalBaseline(GameStore store, string gamePath, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public DynamicData.Kernel.Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, Hash Hash)> files) => throw new NotSupportedException();
+        public DynamicData.Kernel.Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, FileIdentity Identity)> files) => throw new NotSupportedException();
     }
 
     private sealed class CountingHasher : IFullFileHasher
@@ -857,12 +857,12 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
         public Action<AbsolutePath>? OnHash { get; set; }
         public void Reset() => _paths.Clear();
 
-        public async ValueTask<Hash> Hash(AbsolutePath file, CancellationToken cancellationToken)
+        public async ValueTask<FileIdentity> Hash(AbsolutePath file, CancellationToken cancellationToken)
         {
             await Enter(file, cancellationToken);
             try
             {
-                return await file.XxHash3Async(token: cancellationToken);
+                return FileIdentity.XxHash3(await file.XxHash3Async(token: cancellationToken));
             }
             finally
             {

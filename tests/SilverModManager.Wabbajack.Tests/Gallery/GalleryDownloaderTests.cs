@@ -39,7 +39,7 @@ public class GalleryDownloaderTests(IServiceProvider provider, ILibraryService l
         return File.ReadAllBytes(path.ToString());
     }
 
-    private static GalleryEntry EntryFor(byte[] bytes, Hash? hash = null, ulong? size = null) => new()
+    private static GalleryEntry EntryFor(byte[] bytes, FileIdentity? hash = null, ulong? size = null) => new()
     {
         Title = $"Fixture list {Guid.NewGuid():N}",
         Author = "Someone",
@@ -47,7 +47,7 @@ public class GalleryDownloaderTests(IServiceProvider provider, ILibraryService l
         MachineUrl = "fixture-list",
         Repository = "wabbajack-tools/mod-lists",
         Download = new Uri("https://authored-files.wabbajack.org/Fixture_List.wabbajack_ff"),
-        DownloadHash = hash ?? Xx64Hasher.Hash(bytes),
+        DownloadHash = hash ?? Xx64.Of(bytes),
         DownloadSize = size ?? (ulong)bytes.Length,
     };
 
@@ -94,7 +94,7 @@ public class GalleryDownloaderTests(IServiceProvider provider, ILibraryService l
         var bytes = ModlistBytes(folder.Path, "Tampered");
         var downloads = new FixedDownloads(provider, bytes);
 
-        var entry = EntryFor(bytes, hash: Hash.From(42));
+        var entry = EntryFor(bytes, hash: Xx64.From(42));
 
         var act = async () => await Downloader(downloads).Download(entry, TestContext.Current.CancellationToken);
 

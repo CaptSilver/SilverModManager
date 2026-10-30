@@ -68,10 +68,10 @@ public static class FullHashCounterExtensions
 
     private sealed class CountingFullFileHasher(FullHashCounter counter) : IFullFileHasher
     {
-        public async ValueTask<Hash> Hash(AbsolutePath file, CancellationToken cancellationToken)
+        public async ValueTask<FileIdentity> Hash(AbsolutePath file, CancellationToken cancellationToken)
         {
             counter.Add(file);
-            return await file.XxHash3Async(token: cancellationToken);
+            return FileIdentity.XxHash3(await file.XxHash3Async(token: cancellationToken));
         }
 
         public async ValueTask<MultiHash> HashAll(AbsolutePath file, CancellationToken cancellationToken)

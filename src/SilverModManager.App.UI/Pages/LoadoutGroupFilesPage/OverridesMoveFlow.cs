@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Loadouts;
@@ -142,7 +143,7 @@ internal sealed class OverridesMoveFlow(IServiceProvider provider, IWindowManage
         foreach (var preview in previews.Where(p => p.InOverrides && p.TargetHasPath))
         {
             lines.Add(string.Format(Language.ExternalChanges_Move_Duplicate,
-                preview.Path.Path, targetName, HashText(preview.TargetHash), HashText(preview.Hash)));
+                preview.Path.Path, targetName, IdentityText(preview.TargetIdentity), IdentityText(preview.Identity)));
         }
 
         foreach (var group in previews.Where(Loses).GroupBy(p => p.WinnerAfterMove))
@@ -157,7 +158,8 @@ internal sealed class OverridesMoveFlow(IServiceProvider provider, IWindowManage
         return string.Join(Environment.NewLine, lines);
     }
 
-    private static string HashText(Hash? hash) => hash is { } value ? value.ToHex() : Language.ExternalChanges_Move_Deleted;
+    private static string IdentityText(FileIdentity? identity) =>
+        identity is { } value ? (value.TryXxHash3(out var hash) ? hash.ToHex() : value.ToHex()) : Language.ExternalChanges_Move_Deleted;
 
     private string NameOf(LoadoutItemGroupId group) => LoadoutItemGroup.Load(connection.Db, group).AsLoadoutItem().Name;
 

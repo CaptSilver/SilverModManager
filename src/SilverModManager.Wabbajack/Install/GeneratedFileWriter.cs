@@ -1,4 +1,3 @@
-using NexusMods.Hashing.xxHash3;
 using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 using SilverModManager.Sdk.FileStore;
@@ -12,7 +11,7 @@ public sealed class GeneratedFile : IAsyncDisposable
 {
     private readonly TemporaryPath _temporary;
 
-    internal GeneratedFile(TemporaryPath temporary, Hash xxHash3, Hash xxHash64, Size size)
+    internal GeneratedFile(TemporaryPath temporary, FileIdentity xxHash3, FileIdentity xxHash64, Size size)
     {
         _temporary = temporary;
         XxHash3 = xxHash3;
@@ -23,10 +22,10 @@ public sealed class GeneratedFile : IAsyncDisposable
     public AbsolutePath Path => _temporary.Path;
 
     /// <summary>The key the file has in the file store.</summary>
-    public Hash XxHash3 { get; }
+    public FileIdentity XxHash3 { get; }
 
     /// <summary>The value a modlist records for it.</summary>
-    public Hash XxHash64 { get; }
+    public FileIdentity XxHash64 { get; }
 
     public Size Size { get; }
 
@@ -89,7 +88,7 @@ public sealed class GeneratedFileWriter(IFileStore store, TemporaryFileManager t
         {
             foreach (var batch in files.Chunk(StoreBatchSize))
             {
-                var entries = batch.Select(f => new ArchivedFileEntry(new NativeFileStreamFactory(f.Path), FileIdentity.XxHash3(f.XxHash3), f.Size));
+                var entries = batch.Select(f => new ArchivedFileEntry(new NativeFileStreamFactory(f.Path), f.XxHash3, f.Size));
                 await store.BackupFiles(entries, deduplicate: true, cancellationToken);
                 foreach (var file in batch) await file.DisposeAsync();
                 stored += batch.Length;

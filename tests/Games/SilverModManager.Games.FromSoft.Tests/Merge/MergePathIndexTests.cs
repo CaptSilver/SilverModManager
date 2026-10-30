@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using SilverModManager.Games.FromSoft.Formats;
 using SilverModManager.Games.FromSoft.Merge;
@@ -19,7 +20,7 @@ public class MergePathIndexTests
     private static readonly IReadOnlySet<string> NoVanilla = new HashSet<string>();
 
     private static ProviderFile File(string package, string rel, ulong priority = 1, string? name = null, bool hasPriority = true)
-        => new(package, rel, Hash.From((ulong)(package.GetHashCode() ^ rel.GetHashCode())), priority, name ?? package, HasPriority: hasPriority);
+        => new(package, rel, FileIdentity.XxHash3(Hash.From((ulong)(package.GetHashCode() ^ rel.GetHashCode()))), priority, name ?? package, HasPriority: hasPriority);
 
     private static string? WinnerOf(params ProviderFile[] files)
         => Build(null, files).Single().Winner?.PackageId;

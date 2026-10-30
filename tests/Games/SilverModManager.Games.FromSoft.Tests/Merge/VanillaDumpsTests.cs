@@ -137,13 +137,47 @@ public class VanillaDumpsTests(ITestOutputHelper helper) : AVanillaDumpTest<Vani
         Dumps.Find(Connection.Db, GameInstallation).Select(d => d.Root).Should().Equal("a", "b");
     }
 
-    private (VouchedRegulations Vouched, IFileHashesService Service) Vouching(Action<IFileHashesService> arrange)
+    private (VouchedRegulations Vouched, IFileHashesService Service) Vouching(Action<IFileHashesService> arrange, IFileIdentityResolver? resolver = null)
     {
         var service = Substitute.For<IFileHashesService>();
         service.Databases.Returns(Array.Empty<SilverModManager.MnemonicDB.Abstractions.IDb>());
         arrange(service);
         var baselines = ServiceProvider.GetRequiredService<RegulationBaselines>();
-        return (new VouchedRegulations(service, baselines, new InstalledBuilds(), NullLogger<VouchedRegulations>.Instance), service);
+        return (new VouchedRegulations(service, baselines, new InstalledBuilds(), resolver ?? new OwnKeyResolver(), NullLogger<VouchedRegulations>.Instance), service);
+    }
+
+    // A resolver with no recorded rows: an xxHash3 identity is its own store key and nothing else resolves.
+    private sealed class OwnKeyResolver : IFileIdentityResolver
+    {
+        public bool TryConvert(FileIdentity identity, Size size, HashKind kind, out FileIdentity converted)
+        {
+            converted = identity;
+            return identity.Kind == kind;
+        }
+
+        public IdentityMatch Resolve(FileIdentity left, FileIdentity right, Size size) => left.MatchSameKind(right);
+
+        public IEnumerable<FileIdentity> StoreKeyCandidates(FileIdentity identity, Size size)
+            => identity.Kind == HashKind.XxHash3 ? [identity] : [];
+
+        public IFileIdentityResolver Scoped() => this;
+    }
+
+    // A recorded relation joining one identity to an xxHash3.
+    private sealed class JoiningResolver(FileIdentity from, FileIdentity to) : IFileIdentityResolver
+    {
+        public bool TryConvert(FileIdentity identity, Size size, HashKind kind, out FileIdentity converted)
+        {
+            converted = identity.Equals(from) ? to : identity;
+            return converted.Kind == kind;
+        }
+
+        public IdentityMatch Resolve(FileIdentity left, FileIdentity right, Size size) => left.MatchSameKind(right);
+
+        public IEnumerable<FileIdentity> StoreKeyCandidates(FileIdentity identity, Size size)
+            => identity.Equals(from) ? [to] : identity.Kind == HashKind.XxHash3 ? [identity] : [];
+
+        public IFileIdentityResolver Scoped() => this;
     }
 
     private static GameFileRecord Record(string path, ulong hash) => new()
@@ -177,8 +211,23 @@ public class VanillaDumpsTests(ITestOutputHelper helper) : AVanillaDumpTest<Vani
 
         var hashes = vouched.Hashes(GameInstallation);
 
-        hashes.Should().Contain([Hash.From(0xA1UL), Hash.From(0xB1UL)]);
-        hashes.Should().NotContain(Hash.From(0xA2UL), "only the regulation's path counts");
+        hashes.Should().Contain([FileIdentity.XxHash3(Hash.From(0xA1UL)), FileIdentity.XxHash3(Hash.From(0xB1UL))]);
+        hashes.Should().NotContain(FileIdentity.XxHash3(Hash.From(0xA2UL)), "only the regulation's path counts");
+    }
+
+    [Fact]
+    public void ARecordKnownOnlyBySha1VouchesForTheXxHash3ARelationJoinsItTo()
+    {
+        var sha1Record = new GameFileRecord
+        {
+            Path = new GamePath(LocationId.Game, "Game/regulation.bin"),
+            Size = Size.From(1),
+            Identity = FileIdentity.Sha1(Sha1Value.From(new byte[20])),
+        };
+        var resolver = new JoiningResolver(sha1Record.Identity, FileIdentity.XxHash3(Hash.From(0xC1UL)));
+        var (vouched, _) = Vouching(service => Knows(service, ("1.0.0", [sha1Record])), resolver);
+
+        vouched.Hashes(GameInstallation).Should().Contain(FileIdentity.XxHash3(Hash.From(0xC1UL)));
     }
 
     [Fact]
@@ -188,7 +237,7 @@ public class VanillaDumpsTests(ITestOutputHelper helper) : AVanillaDumpTest<Vani
 
         var hashes = vouched.Hashes(GameInstallation);
 
-        hashes.Should().BeEquivalentTo([EldenRingInstall.RegulationFile.xxHash3()], "only the live install vouches");
+        hashes.Should().BeEquivalentTo([FileIdentity.XxHash3(EldenRingInstall.RegulationFile.xxHash3())], "only the live install vouches");
     }
 
     [Fact]

@@ -32,17 +32,17 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
     private ArchivePathResolver Resolver(ArchivePlan plan, Loadout.ReadOnly loadout, params INestedArchiveOpener[] openers)
     {
         var resolver = new ArchivePathResolver(plan, Connection.Db, FileStore,
-            new GameFileSourceLookup(loadout, Connection, FileStore, ServiceProvider.GetRequiredService<IFileHashesService>(), ServiceProvider.GetRequiredService<IFileIdentityResolver>()),
+            new GameFileSourceLookup(loadout, Connection, FileStore, ServiceProvider.GetRequiredService<IFileIdentityResolver>()),
             openers);
         _resolvers.Add(resolver);
         return resolver;
     }
 
-    private async Task<(ArchivePathResolver Resolver, Hash ArchiveHash)> ResolverOverZip(Dictionary<RelativePath, byte[]> files)
+    private async Task<(ArchivePathResolver Resolver, FileIdentity ArchiveHash)> ResolverOverZip(Dictionary<RelativePath, byte[]> files)
     {
         await using var zip = await CreateTestArchive(files);
         var library = await RegisterLocalArchive(zip.Path);
-        var hash = library.AsLibraryFile().XxHash64.Value;
+        var hash = library.AsLibraryFile().XxHash64Identity()!.Value;
         var loadout = await CreateLoadout();
         return (Resolver(new ArchivePlan([]), loadout), hash);
     }
@@ -63,7 +63,7 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
 
         var member = await resolver.Resolve(new ArchiveHashPath(archive, [P("a/b.txt")]), CancellationToken.None);
 
-        member.StoreHash.Should().Be(bytes.xxHash3());
+        member.StoreIdentity.Should().Be(FileIdentity.XxHash3(bytes.xxHash3()));
         member.XxHash64.Should().Be(Hash64(bytes));
         member.Size.Value.Should().Be((ulong)bytes.Length);
         (await ReadAll(member)).Should().Equal(bytes);
@@ -77,7 +77,7 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
 
         var member = await resolver.Resolve(new ArchiveHashPath(archive, [P("meshes/armor/helm.nif")]), CancellationToken.None);
 
-        member.StoreHash.Should().Be(bytes.xxHash3());
+        member.StoreIdentity.Should().Be(FileIdentity.XxHash3(bytes.xxHash3()));
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
     {
         var path = FileSystem.FromUnsanitizedFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, "Fixtures", "ZipInside7z.7z"));
         var library = await RegisterLocalArchive(path);
-        var archive = library.AsLibraryFile().XxHash64.Value;
+        var archive = library.AsLibraryFile().XxHash64Identity()!.Value;
         var loadout = await CreateLoadout();
         var resolver = Resolver(new ArchivePlan([]), loadout);
 
@@ -107,7 +107,7 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
 
         var member = await resolver.Resolve(new ArchiveHashPath(Hash64(bytes), []), CancellationToken.None);
 
-        member.StoreHash.Should().Be(added.AsLibraryFile().Hash);
+        member.StoreIdentity.Should().Be(added.AsLibraryFile().Identity);
         member.XxHash64.Should().Be(Hash64(bytes));
         (await ReadAll(member)).Should().Equal(bytes);
     }
@@ -123,7 +123,7 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
 
         var member = await resolver.Resolve(new ArchiveHashPath(gameHash, []), CancellationToken.None);
 
-        member.StoreHash.Should().Be(GameBsaBytes.xxHash3());
+        member.StoreIdentity.Should().Be(FileIdentity.XxHash3(GameBsaBytes.xxHash3()));
         member.XxHash64.Should().Be(gameHash);
         (await FileStore.HaveFile(FileIdentity.XxHash3(GameBsaBytes.xxHash3()))).Should().BeTrue("the game file is kept so later reads come from the store");
         (await ReadAll(member)).Should().Equal(GameBsaBytes);
@@ -184,7 +184,7 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
         await loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, GameBsa)).WriteAllBytesAsync(changed);
         var again = await resolver.Resolve(new ArchiveHashPath(gameHash, []), CancellationToken.None);
 
-        again.StoreHash.Should().Be(GameBsaBytes.xxHash3());
+        again.StoreIdentity.Should().Be(FileIdentity.XxHash3(GameBsaBytes.xxHash3()));
         (await ReadAll(again)).Should().Equal(GameBsaBytes);
     }
 
@@ -239,7 +239,7 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
 
         var member = await resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P("a.dds")]), CancellationToken.None);
 
-        member.StoreHash.Should().Be(inner.xxHash3());
+        member.StoreIdentity.Should().Be(FileIdentity.XxHash3(inner.xxHash3()));
         member.XxHash64.Should().Be(Hash64(inner));
         (await ReadAll(member)).Should().Equal(inner);
         (await FileStore.HaveFile(FileIdentity.XxHash3(inner.xxHash3()))).Should().BeTrue();
@@ -261,7 +261,7 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
         var loadout = await CreateLoadout();
         var resolver = Resolver(new ArchivePlan([]), loadout);
 
-        var act = () => resolver.Resolve(new ArchiveHashPath(Hash.From(0xABCDEF), [P("a.txt")]), CancellationToken.None);
+        var act = () => resolver.Resolve(new ArchiveHashPath(Xx64.From(0xABCDEF), [P("a.txt")]), CancellationToken.None);
 
         await act.Should().ThrowAsync<MemberNotFoundException>();
     }

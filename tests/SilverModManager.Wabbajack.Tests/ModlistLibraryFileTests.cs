@@ -19,7 +19,7 @@ public class ModlistLibraryFileTests(ILibraryService libraryService, IConnection
     public async Task AddingAModlistRecordsItsFields()
     {
         await using var folder = temporaryFileManager.CreateFolder();
-        var list = WabbajackFixture.EmptyList("Shiny list", new InlineFile(RelativePath.FromUnsanitizedInput("a.txt"), Hash.From(1), 700, "blob-1")) with
+        var list = WabbajackFixture.EmptyList("Shiny list", new InlineFile(RelativePath.FromUnsanitizedInput("a.txt"), Xx64.From(1), 700, "blob-1")) with
         {
             Author = "Someone",
             Version = "2.3.0.1",
@@ -27,8 +27,8 @@ public class ModlistLibraryFileTests(ILibraryService libraryService, IConnection
             IsNsfw = true,
             Archives =
             [
-                new ArchiveEntry(Hash.From(10), 1000, "one.7z", "", new HttpState(new Uri("https://example.invalid/one.7z"), [])),
-                new ArchiveEntry(Hash.From(11), 2500, "two.7z", "", new HttpState(new Uri("https://example.invalid/two.7z"), [])),
+                new ArchiveEntry(Xx64.From(10), 1000, "one.7z", "", new HttpState(new Uri("https://example.invalid/one.7z"), [])),
+                new ArchiveEntry(Xx64.From(11), 2500, "two.7z", "", new HttpState(new Uri("https://example.invalid/two.7z"), [])),
             ],
         };
         var path = WabbajackFixture.Write(folder.Path, list, new Dictionary<string, byte[]> { ["blob-1"] = [1, 2, 3] });

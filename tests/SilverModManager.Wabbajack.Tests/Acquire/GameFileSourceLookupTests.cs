@@ -23,7 +23,7 @@ namespace SilverModManager.Wabbajack.Tests.Acquire;
 public class GameFileSourceLookupTests(ITestOutputHelper helper) : AcquireTestBase<GameFileSourceLookupTests>(helper)
 {
     private GameFileSourceLookup Lookup(Loadout.ReadOnly loadout)
-        => new(loadout, Connection, FileStore, ServiceProvider.GetRequiredService<IFileHashesService>(), ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileIdentityResolver>());
+        => new(loadout, Connection, FileStore, ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileIdentityResolver>());
 
     private async Task BackUpOriginal(Loadout.ReadOnly loadout)
     {
@@ -72,7 +72,7 @@ public class GameFileSourceLookupTests(ITestOutputHelper helper) : AcquireTestBa
 
         var (stream, hash) = await Lookup(Refresh(loadout)).Open(GameBsa);
 
-        hash.Should().Be(GameBsaBytes.xxHash3(), "the backup of the original is found through the legacy row");
+        hash.Should().Be(FileIdentity.XxHash3(GameBsaBytes.xxHash3()), "the backup of the original is found through the legacy row");
         using var read = new MemoryStream();
         await using (stream) await stream.CopyToAsync(read);
         read.ToArray().Should().Equal(GameBsaBytes);
@@ -110,7 +110,39 @@ public class GameFileSourceLookupTests(ITestOutputHelper helper) : AcquireTestBa
 
         var (stream, hash) = await Lookup(Refresh(loadout)).Open(GameBsa);
 
-        hash.Should().Be(GameBsaBytes.xxHash3());
+        hash.Should().Be(FileIdentity.XxHash3(GameBsaBytes.xxHash3()));
         await stream.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task KnownXxHash64_ComesFromTheRecordedRelation()
+    {
+        var loadout = await CreateLoadout();
+        await BackUpOriginal(loadout);
+        await ReplaceTheLiveFile(loadout);
+        var hashes = await MultiHasher.HashStream(new MemoryStream(GameBsaBytes));
+        // A digest no read of the bytes would give: only the recorded relation can be the source of it.
+        var recorded = Hash.From(hashes.XxHash64.Value ^ 0xFFUL);
+        var local = ServiceProvider.GetRequiredService<IFileHashesService>().Local.Connection;
+        using (var tx = local.BeginTransaction())
+        {
+            _ = new HashRelation.New(tx)
+            {
+                MinimalHash = hashes.MinimalHash,
+                XxHash3 = hashes.XxHash3,
+                Sha1 = hashes.Sha1,
+                XxHash64 = recorded,
+                Md5 = hashes.Md5,
+                Size = hashes.Size,
+                Crc32 = hashes.Crc32,
+            };
+            await tx.Commit();
+        }
+
+        var described = await Lookup(Refresh(loadout)).Describe(GameBsa);
+
+        described.Should().NotBeNull();
+        described!.Value.XxHash3.Should().Be(FileIdentity.XxHash3(hashes.XxHash3));
+        described.Value.XxHash64.Should().Be(FileIdentity.XxHash64(recorded));
     }
 }

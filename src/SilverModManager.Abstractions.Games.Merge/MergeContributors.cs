@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.Logging;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Loadouts;
@@ -9,7 +10,7 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.Abstractions.Games.Merge;
 
 /// <summary>One enabled file under a mod folder. <paramref name="Rel"/> is the path below the folder in this file's own spelling; <paramref name="Prioritised"/> is whether the owning mod has a priority row, and <paramref name="Parent"/> the group the file sits directly in, which is what the synchronizer ranks a file by.</summary>
-public readonly record struct ContestedFile(string Package, string Rel, GamePath Target, Hash Hash, ulong Rank, string ModName, LoadoutItemGroupId Owner, bool Prioritised, LoadoutItemGroupId Parent);
+public readonly record struct ContestedFile(string Package, string Rel, GamePath Target, FileIdentity Identity, ulong Rank, string ModName, LoadoutItemGroupId Owner, bool Prioritised, LoadoutItemGroupId Parent);
 
 /// <summary>
 /// A path that more than one mod folder ships. <paramref name="Contributors"/> are ranked highest first, then by
@@ -83,7 +84,7 @@ public static class MergeContributors
             var ownerId = LoadoutItemGroupId.From(owner.LoadoutItemId.Value);
             if (!ranks.TryGetValue((package, ownerId), out var rank))
                 ranks[(package, ownerId)] = rank = game.Rank(loadout, package, ownerId);
-            files.Add(new ContestedFile(package, rel, target, file.Hash, rank, owner.Name, ownerId, mod is not null, LoadoutItemGroupId.From((chain.Length > 1 ? chain[1] : chain[0]).LoadoutItemId.Value)));
+            files.Add(new ContestedFile(package, rel, target, file.Identity, rank, owner.Name, ownerId, mod is not null, LoadoutItemGroupId.From((chain.Length > 1 ? chain[1] : chain[0]).LoadoutItemId.Value)));
         }
 
         return Collapse(files, FileWinners.Of(db, loadout.LoadoutId), logger)

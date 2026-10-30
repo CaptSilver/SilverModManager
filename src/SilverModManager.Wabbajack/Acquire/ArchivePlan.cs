@@ -1,4 +1,4 @@
-using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Wabbajack.Format;
 
@@ -40,11 +40,11 @@ public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, st
 public sealed record ArchivePlan(IReadOnlyList<ArchivePlanRow> Rows)
 {
     /// <summary>The archive entry the list names with that xxHash64, if any.</summary>
-    public ArchiveEntry? FindArchive(Hash xxHash64)
+    public ArchiveEntry? FindArchive(FileIdentity xxHash64)
     {
         foreach (var row in Rows)
         {
-            if (row.Archive.XxHash64 == xxHash64) return row.Archive;
+            if (row.Archive.XxHash64.Equals(xxHash64)) return row.Archive;
         }
         return null;
     }

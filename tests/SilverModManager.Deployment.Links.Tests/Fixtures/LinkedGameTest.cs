@@ -180,8 +180,8 @@ public abstract class LinkedGameTest<TTest>(ITestOutputHelper helper, Placement 
         foreach (var (path, content) in files)
         {
             AddFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, path), content, out var hash, out var size);
-            archived.Add(new ArchivedFileEntry(new MemoryStreamFactory(path, new MemoryStream(Encoding.UTF8.GetBytes(content))), FileIdentity.XxHash3(hash), size));
-            hashes[path] = FileIdentity.XxHash3(hash);
+            archived.Add(new ArchivedFileEntry(new MemoryStreamFactory(path, new MemoryStream(Encoding.UTF8.GetBytes(content))), hash, size));
+            hashes[path] = hash;
         }
         await FileStore.BackupFiles(archived);
         var result = await tx.Commit();

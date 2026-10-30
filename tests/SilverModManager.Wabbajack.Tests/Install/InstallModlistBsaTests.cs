@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Games.Bethesda.Archives;
@@ -71,7 +72,7 @@ public class InstallModlistBsaTests(ITestOutputHelper helper) : InstallTestBase<
         var list = new ListBuilder();
         list.Archives.Add(archive);
         // The recorded hash is not what the re-encode writes; the archive has to be checked against what was written.
-        list.Directives.Add(new TransformedTexture(P("TEMP_BSA_FILES/pack/textures/t.dds"), NexusMods.Hashing.xxHash3.Hash.From(7), 1,
+        list.Directives.Add(new TransformedTexture(P("TEMP_BSA_FILES/pack/textures/t.dds"), Xx64.From(7), 1,
             new ArchiveHashPath(archive.XxHash64, [P("t.dds")]), new ImageState(32, 32, 3, "BC7_UNORM")));
         list.Directives.Add(list.Bsa("mods/A/pack.bsa", "pack", "textures/t.dds"));
         var loadout = await CreateLoadout();
@@ -90,7 +91,7 @@ public class InstallModlistBsaTests(ITestOutputHelper helper) : InstallTestBase<
         var list = new ListBuilder();
         list.Directives.Add(list.Inline("TEMP_BSA_FILES/pack/one.txt", "1"));
         list.Directives.Add(list.Inline("TEMP_BSA_FILES/pack/two.txt", "2"));
-        list.Directives.Add(new CreateBsa(P("mods/A/pack.bsa"), NexusMods.Hashing.xxHash3.Hash.From(1), 2, P("pack"),
+        list.Directives.Add(new CreateBsa(P("mods/A/pack.bsa"), Xx64.From(1), 2, P("pack"),
             System.Text.Json.JsonDocument.Parse("{\"$type\":\"NotAnArchive\"}").RootElement, []));
         var loadout = await CreateLoadout();
         var modlist = await AddModlist(list.ToList(), list.Blobs);
@@ -144,7 +145,7 @@ public class InstallModlistBsaTests(ITestOutputHelper helper) : InstallTestBase<
         var archive = await AddZip("a.zip", new() { ["pack.bsa"] = bsa });
         var list = new ListBuilder();
         list.Archives.Add(archive);
-        list.Directives.Add(new FromArchive(P("mods/A/missing.nif"), Hash.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P("pack.bsa"), P("meshes/missing.nif")])));
+        list.Directives.Add(new FromArchive(P("mods/A/missing.nif"), Xx64.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P("pack.bsa"), P("meshes/missing.nif")])));
         var loadout = await CreateLoadout();
         var modlist = await AddModlist(list.ToList(), list.Blobs);
 
@@ -163,7 +164,7 @@ public class InstallModlistBsaTests(ITestOutputHelper helper) : InstallTestBase<
         list.Archives.Add(archive);
         list.Directives.Add(list.Member("mods/A/plain.bin", archive, "plain.bin", [1, 2]));
         list.Directives.Add(list.Patched("mods/A/patched.bin", archive, "patched.bin", [3, 4], [3, 4, 5, 6]));
-        list.Directives.Add(new TransformedTexture(P("mods/A/t.dds"), Hash.From(7), 1, new ArchiveHashPath(archive.XxHash64, [P("t.dds")]), new ImageState(32, 32, 3, "BC7_UNORM")));
+        list.Directives.Add(new TransformedTexture(P("mods/A/t.dds"), Xx64.From(7), 1, new ArchiveHashPath(archive.XxHash64, [P("t.dds")]), new ImageState(32, 32, 3, "BC7_UNORM")));
         list.Directives.Add(new FromArchive(P("mods/A/first.nif"), Hash64(TestArchives.FirstMemberData), TestArchives.FirstMemberData.Length,
             new ArchiveHashPath(archive.XxHash64, [P("pack.bsa"), TestArchives.FirstMemberPath])));
         list.Directives.Add(list.Inline("mods/A/inline.txt", "inline"));

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
@@ -234,10 +235,10 @@ public class OverridesMoverTests(ITestOutputHelper helper) : ACyberpunkIsolatedG
         var a = previews.Single(p => p.Path == PathA);
         a.InOverrides.Should().BeTrue();
         a.IsDelete.Should().BeFalse();
-        a.Hash.Should().Be("from overrides".xxHash3AsUtf8());
+        a.Identity.Should().Be(FileIdentity.XxHash3("from overrides".xxHash3AsUtf8()));
         a.TargetHasPath.Should().BeTrue();
         a.TargetIsDelete.Should().BeFalse();
-        a.TargetHash.Should().Be("old".xxHash3AsUtf8());
+        a.TargetIdentity.Should().Be(FileIdentity.XxHash3("old".xxHash3AsUtf8()));
 
         var b = previews.Single(p => p.Path == PathB);
         b.InOverrides.Should().BeFalse();
@@ -256,7 +257,7 @@ public class OverridesMoverTests(ITestOutputHelper helper) : ACyberpunkIsolatedG
 
         preview.InOverrides.Should().BeTrue();
         preview.IsDelete.Should().BeTrue();
-        preview.Hash.Should().BeNull();
+        preview.Identity.Should().BeNull();
     }
 
     [Fact]

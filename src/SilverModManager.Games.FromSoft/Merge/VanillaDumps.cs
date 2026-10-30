@@ -3,7 +3,6 @@ using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Games.FromSoft.Formats;
 using SilverModManager.Games.FromSoft.Heal;
-using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
@@ -21,16 +20,16 @@ namespace SilverModManager.Games.FromSoft.Merge;
 /// <param name="Version">The build stamp of the dump's regulation.</param>
 /// <param name="Members">Every file under <paramref name="Root"/>, by its path below it.</param>
 /// <param name="Validated">The regulation is a baseline the app kept after checking it, not one the game's own files vouch for.</param>
-public sealed record VanillaDump(EntityId ArchiveId, string ArchiveName, string Root, string Version, IReadOnlyDictionary<string, Hash> Members, bool Validated = false)
+public sealed record VanillaDump(EntityId ArchiveId, string ArchiveName, string Root, string Version, IReadOnlyDictionary<string, FileIdentity> Members, bool Validated = false)
 {
     /// <summary>
     /// The member that stands for the package-relative <paramref name="path"/>: the one at that path below the root,
     /// otherwise the one with that file name if it is the only one in the dump. A dump bundled by a mod author rarely
     /// mirrors the game's folder layout (<c>Vanilla/m00.talkesdbnd.dcx</c> for <c>script/talk/m00.talkesdbnd.dcx</c>).
     /// </summary>
-    public bool TryResolve(string path, out string member, out Hash hash)
+    public bool TryResolve(string path, out string member, out FileIdentity identity)
     {
-        if (Members.TryGetValue(path, out hash))
+        if (Members.TryGetValue(path, out identity))
         {
             member = path;
             return true;
@@ -40,11 +39,11 @@ public sealed record VanillaDump(EntityId ArchiveId, string ArchiveName, string 
         var same = Members.Where(m => FileName(m.Key).Equals(name, StringComparison.OrdinalIgnoreCase)).Take(2).ToArray();
         if (same.Length == 1)
         {
-            (member, hash) = (same[0].Key, same[0].Value);
+            (member, identity) = (same[0].Key, same[0].Value);
             return true;
         }
 
-        (member, hash) = (path, default);
+        (member, identity) = (path, default);
         return false;
     }
 
@@ -53,7 +52,7 @@ public sealed record VanillaDump(EntityId ArchiveId, string ArchiveName, string 
 
 /// <summary>A folder that looks like a vanilla dump but whose regulation the app cannot vouch for.</summary>
 /// <param name="Members">Every file under <paramref name="Root"/>, by its path below it.</param>
-public sealed record UnconfirmedDump(string ArchiveName, string Root, string RegulationName, string Version, IReadOnlyDictionary<string, Hash> Members)
+public sealed record UnconfirmedDump(string ArchiveName, string Root, string RegulationName, string Version, IReadOnlyDictionary<string, FileIdentity> Members)
 {
     /// <summary>Whether the folder has a copy of the package-relative <paramref name="path"/>, found the way <see cref="VanillaDump.TryResolve"/> finds one.</summary>
     public bool HoldsCopyOf(string path) => new VanillaDump(default, ArchiveName, Root, Version, Members).TryResolve(path, out _, out _);
@@ -75,7 +74,7 @@ public sealed record UnconfirmedDump(string ArchiveName, string Root, string Reg
 /// </summary>
 public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouched, RegulationBaselines baselines, ILogger<VanillaDumps> logger)
 {
-    private readonly ConcurrentDictionary<Hash, string?> _versions = new();
+    private readonly ConcurrentDictionary<FileIdentity, string?> _versions = new();
 
     /// <summary>Every recognised dump, in a stable order.</summary>
     public IReadOnlyList<VanillaDump> Find(IDb db, GameInstallation installation)
@@ -83,7 +82,7 @@ public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouch
         var traits = TraitsOf(installation);
         if (traits.RegulationFileName is not { } regulationName) return [];
 
-        var found = new Dictionary<(EntityId Archive, string Root), (LibraryArchive.ReadOnly Archive, Hash Regulation, bool Validated)>();
+        var found = new Dictionary<(EntityId Archive, string Root), (LibraryArchive.ReadOnly Archive, FileIdentity Regulation, bool Validated)>();
         foreach (var hash in vouched.Hashes(installation))
         {
             foreach (var entry in RegulationEntries(db, hash, regulationName))
@@ -125,13 +124,13 @@ public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouch
         {
             var path = entry.Path.ToString();
             if (!VanillaDump.FileName(path).Equals(regulationName, StringComparison.OrdinalIgnoreCase)) continue;
-            if (known.Contains(entry.AsLibraryFile().Hash)) continue;
-            if (validated.Any(v => v.Hash == entry.AsLibraryFile().Hash && ValidatedFrom(v.Origin, entry.Parent))) continue;
+            if (known.Contains(entry.AsLibraryFile().Identity)) continue;
+            if (validated.Any(v => v.Identity.Equals(entry.AsLibraryFile().Identity) && ValidatedFrom(v.Origin, entry.Parent))) continue;
 
             // Every mod ships its own regulation, so only a folder called Vanilla is taken for someone's attempt at a dump.
             var root = RootOf(path);
             if (!VanillaDump.FileName(root).Equals("Vanilla", StringComparison.OrdinalIgnoreCase)) continue;
-            if (VersionOf(entry.AsLibraryFile().Hash, traits) is not { } version) continue;
+            if (VersionOf(entry.AsLibraryFile().Identity, traits) is not { } version) continue;
 
             result.Add(new UnconfirmedDump(DisplayName(entry.Parent), root, regulationName, version, MembersUnder(entry.Parent, root)));
         }
@@ -160,9 +159,9 @@ public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouch
     /// <exception cref="MergeException">The dump has no such member.</exception>
     public byte[] Member(VanillaDump dump, string path)
     {
-        if (!dump.TryResolve(path, out _, out var hash))
+        if (!dump.TryResolve(path, out _, out var identity))
             throw new MergeException($"archive {dump.ArchiveName} holds no vanilla copy of {path}");
-        return ReadBytes(hash);
+        return ReadBytes(identity);
     }
 
     /// <summary>
@@ -172,8 +171,9 @@ public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouch
     internal static string DisplayName(LibraryArchive.ReadOnly archive) => archive.AsLibraryFile().AsLibraryItem().Name;
 
     // The regulation files of the library that have this content, as archive entries; a hash can also belong to a loose file.
-    private static IEnumerable<LibraryArchiveFileEntry.ReadOnly> RegulationEntries(IDb db, Hash hash, string regulationName)
+    private static IEnumerable<LibraryArchiveFileEntry.ReadOnly> RegulationEntries(IDb db, FileIdentity identity, string regulationName)
     {
+        if (!identity.TryXxHash3(out var hash)) yield break;
         foreach (var file in LibraryFile.FindByHash(db, hash))
         {
             var entry = LibraryArchiveFileEntry.Load(db, file.Id);
@@ -195,19 +195,19 @@ public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouch
         return slash < 0 ? "" : path[..slash];
     }
 
-    private static Dictionary<string, Hash> MembersUnder(LibraryArchive.ReadOnly archive, string root)
+    private static Dictionary<string, FileIdentity> MembersUnder(LibraryArchive.ReadOnly archive, string root)
     {
         var prefix = root.Length == 0 ? "" : root + "/";
-        var members = new Dictionary<string, Hash>(StringComparer.OrdinalIgnoreCase);
+        var members = new Dictionary<string, FileIdentity>(StringComparer.OrdinalIgnoreCase);
         foreach (var child in archive.Children)
         {
             var path = child.Path.ToString();
-            if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) members[path[prefix.Length..]] = child.AsLibraryFile().Hash;
+            if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) members[path[prefix.Length..]] = child.AsLibraryFile().Identity;
         }
         return members;
     }
 
-    private string? VersionOf(Hash regulation, FromSoftFormatTraits traits)
+    private string? VersionOf(FileIdentity regulation, FromSoftFormatTraits traits)
     {
         if (_versions.TryGetValue(regulation, out var known)) return known;
 
@@ -225,9 +225,9 @@ public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouch
         return version;
     }
 
-    private byte[] ReadBytes(Hash hash)
+    private byte[] ReadBytes(FileIdentity identity)
     {
-        using var stream = fileStore.GetFileStream(FileIdentity.XxHash3(hash)).GetAwaiter().GetResult();
+        using var stream = fileStore.GetFileStream(identity).GetAwaiter().GetResult();
         using var buffer = new MemoryStream();
         stream.CopyTo(buffer);
         return buffer.ToArray();

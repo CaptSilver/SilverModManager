@@ -762,8 +762,8 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     }
 
     /// <inheritdoc />
-    public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out Hash xxHash3)
-        => LocalFileHashRows.TryGet(Local, LocalBaselineCoordinator.GamePathOf(installation), path, size, modifiedUtc, out xxHash3);
+    public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out FileIdentity identity)
+        => LocalFileHashRows.TryGet(Local, LocalBaselineCoordinator.GamePathOf(installation), path, size, modifiedUtc, out identity);
 
     /// <inheritdoc />
     public IDb Current => _currentDb?.Db ?? Local;
@@ -957,7 +957,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     }
 
     /// <inheritdoc />
-    public Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, Hash Hash)> files)
+    public Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, FileIdentity Identity)> files)
     {
         // Version definitions are filed under Nexus ids, so a game without one has none to suggest.
         if (!gameInstallation.Game.NexusModsGameId.HasValue) return Optional<VersionData>.None;
@@ -970,7 +970,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             var locatorIds = GetLocatorIdsForVersionDefinition(gameInstallation.LocatorResult.Store, versionDefinition);
 
             var matchingCount = GetGameFiles((gameInstallation.LocatorResult.Store, locatorIds))
-                .Count(file => file.Identity.TryXxHash3(out var hash) && filesSet.Contains((file.Path, hash)));
+                .Count(file => filesSet.Contains((file.Path, file.Identity)));
 
             versionMatches.Add((new VersionData(locatorIds, VanityVersion.From(versionDefinition.Name)), matchingCount));
         }

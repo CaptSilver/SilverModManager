@@ -104,7 +104,7 @@ public static class GameInis
         var ini = IniDocument.Parse(baseline ?? await LoadBaseline(fileStore, loadout, path));
 
         foreach (var layer in IniTweakLayers.For(loadout, path))
-            ini.Merge(IniDocument.Parse(await fileStore.Load(FileIdentity.XxHash3(layer.Hash))));
+            ini.Merge(IniDocument.Parse(await fileStore.Load(layer.Identity)));
 
         if (game.ManagedKeysFile == path)
             foreach (var key in game.ManagedKeys(loadout))
@@ -137,9 +137,9 @@ public static class GameInis
     /// run before an ingest looks at it, so after a tweak was switched the recorded bake describes the next write,
     /// not the file the game changed.
     /// </remarks>
-    public static async Task<byte[]?> LastWrittenBytes(IFileStore fileStore, LoadoutIniState.ReadOnly state, Hash? deployed)
+    public static async Task<byte[]?> LastWrittenBytes(IFileStore fileStore, LoadoutIniState.ReadOnly state, FileIdentity? deployed)
     {
-        if (deployed is { } hash && FileIdentity.XxHash3(hash) is var deployedIdentity && await fileStore.HaveFile(deployedIdentity))
+        if (deployed is { } deployedIdentity && await fileStore.HaveFile(deployedIdentity))
             return await fileStore.Load(deployedIdentity);
         return state.LastBakedIdentity() is { } baked && await fileStore.HaveFile(baked)
             ? await fileStore.Load(baked)
@@ -160,7 +160,7 @@ public static class GameInis
         var managed = game.ManagedKeysFile == path ? game.ManagedKeys(loadout) : [];
         var tweaks = new List<(string Name, IniDocument Document)>();
         foreach (var layer in IniTweakLayers.For(loadout, path))
-            tweaks.Add((layer.Name, IniDocument.Parse(await fileStore.Load(FileIdentity.XxHash3(layer.Hash)))));
+            tweaks.Add((layer.Name, IniDocument.Parse(await fileStore.Load(layer.Identity))));
 
         var changes = new List<GameIniChange>();
         foreach (var section in left.Sections)

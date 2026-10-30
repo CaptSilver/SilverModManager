@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Library;
@@ -180,7 +181,7 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
     public async Task DownloadsOfAReplacedPlanDoNotTouchTheNewPlan()
     {
         var (first, _) = TenHttpRows();
-        var browser = new ArchivePlanRow(Entry(new NexusState("Skyrim", 5, 6, null, null, null, false), Hash.From(0x5151)), ArchiveState.Browser, null, new Uri("https://www.nexusmods.com/x"), null);
+        var browser = new ArchivePlanRow(Entry(new NexusState("Skyrim", 5, 6, null, null, null, false), Xx64.From(0x5151)), ArchiveState.Browser, null, new Uri("https://www.nexusmods.com/x"), null);
 
         var firstRun = Acquirer.Run(first, null, CancellationToken.None);
         await Acquirer.Run(new ArchivePlan([browser]), null, CancellationToken.None);
@@ -207,10 +208,9 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
             new FakeMappingCache(),
             Connection,
             FileStore,
-            ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileHashesService>(),
             ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileIdentityResolver>());
         var loadout = await CreateLoadout();
-        var list = ListWith(states.Select((s, i) => Entry(s, Hash.From((ulong)(i + 1) * 0x1111), 10, $"{i}.7z")).ToArray());
+        var list = ListWith(states.Select((s, i) => Entry(s, Xx64.From((ulong)(i + 1) * 0x1111), 10, $"{i}.7z")).ToArray());
         var plan = await inventory.Build(list, Connection.Db, loadout);
         plan.Rows.Should().OnlyContain(r => r.State == ArchiveState.Browser);
         return plan;

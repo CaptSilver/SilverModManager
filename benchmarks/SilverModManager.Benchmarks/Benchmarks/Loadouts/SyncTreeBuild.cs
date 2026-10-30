@@ -76,8 +76,7 @@ public class SyncTreeBuild() : ACyberpunkIsolatedGameTest<SyncTreeBuild>(new Nul
             var group = AddEmptyGroup(tx, _loadout, "Bench");
             for (var i = 0; i < NodeCount; i++)
             {
-                AddFile(tx, _loadout, group, paths[i], null, out var xxHash3, out var size);
-                var identity = FileIdentity.XxHash3(xxHash3);
+                AddFile(tx, _loadout, group, paths[i], null, out var identity, out var size);
                 if (i < mixedCount)
                 {
                     identity = FileIdentity.Sha1(multiHashes[i].Sha1);

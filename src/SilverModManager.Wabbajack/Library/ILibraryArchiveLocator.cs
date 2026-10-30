@@ -1,4 +1,4 @@
-using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Library;
 
@@ -14,13 +14,14 @@ public interface ILibraryArchiveLocator
     /// <c>.esp</c>). Callers that need an archive use <c>TryGetAsLibraryArchive</c> on the result. Files added
     /// before the hash was recorded are not found.
     /// </summary>
-    LibraryFile.ReadOnly? FindByXxHash64(IDb db, Hash hash);
+    LibraryFile.ReadOnly? FindByXxHash64(IDb db, FileIdentity identity);
 }
 
 public sealed class LibraryArchiveLocator : ILibraryArchiveLocator
 {
-    public LibraryFile.ReadOnly? FindByXxHash64(IDb db, Hash hash)
+    public LibraryFile.ReadOnly? FindByXxHash64(IDb db, FileIdentity identity)
     {
+        if (!identity.TryXxHash64(out var hash)) return null;
         foreach (var datom in db.Datoms(LibraryFile.XxHash64, hash))
         {
             var file = LibraryFile.Load(db, datom.E);

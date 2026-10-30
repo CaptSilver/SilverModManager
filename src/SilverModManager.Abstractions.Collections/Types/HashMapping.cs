@@ -1,4 +1,4 @@
-using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 
 namespace SilverModManager.Abstractions.Collections.Types;
@@ -9,9 +9,9 @@ namespace SilverModManager.Abstractions.Collections.Types;
 public struct HashMapping
 {
     /// <summary>
-    /// The xxHash64 hash of the file.
+    /// The identity of the file in the file store (an xxHash3).
     /// </summary>
-    public required Hash Hash { get; init; }
+    public required FileIdentity Identity { get; init; }
     
     /// <summary>
     /// The size of the file.

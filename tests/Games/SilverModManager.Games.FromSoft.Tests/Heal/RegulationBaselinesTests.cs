@@ -265,7 +265,7 @@ public sealed class RegulationBaselinesTests : IDisposable
         var baselines = Baselines();
         baselines.Adopt(HealFixtures.Game(GameRoot, Current), HealFixtures.Identity(Current));
 
-        baselines.Known().Should().BeEquivalentTo(new Dictionary<string, Hash> { ["11701000"] = Current.xxHash3() });
+        baselines.Known().Should().BeEquivalentTo(new Dictionary<string, FileIdentity> { ["11701000"] = FileIdentity.XxHash3(Current.xxHash3()) });
     }
 
     [Fact]
@@ -276,7 +276,7 @@ public sealed class RegulationBaselinesTests : IDisposable
         var kept = baselines.Adopt(HealFixtures.Game(GameRoot, Current), HealFixtures.Identity(Current));
         File.WriteAllText(kept.GetFullPath() + ".xxh3", Hash.From(42).Value.ToString("x16"));
 
-        baselines.Known()["11701000"].Should().Be(Hash.From(42));
+        baselines.Known()["11701000"].Should().Be(FileIdentity.XxHash3(Hash.From(42)));
     }
 
     [Fact]
@@ -292,7 +292,7 @@ public sealed class RegulationBaselinesTests : IDisposable
         Directory.CreateDirectory(Store);
         File.WriteAllBytes(Path.Combine(Store, "regulation-11601000.bin"), "1.16"u8.ToArray());
 
-        Baselines().Known().Should().BeEquivalentTo(new Dictionary<string, Hash> { ["11601000"] = "1.16"u8.ToArray().xxHash3() });
+        Baselines().Known().Should().BeEquivalentTo(new Dictionary<string, FileIdentity> { ["11601000"] = FileIdentity.XxHash3("1.16"u8.ToArray().xxHash3()) });
     }
 
     [Fact]
@@ -388,7 +388,7 @@ public sealed class RegulationBaselinesTests : IDisposable
         KeepValidated("11601000", "guessed at"u8.ToArray());
 
         baselines.Known().Keys.Should().Equal("11701000");
-        baselines.VouchedHashes().Should().BeEquivalentTo([Current.xxHash3()]);
+        baselines.VouchedHashes().Should().BeEquivalentTo([FileIdentity.XxHash3(Current.xxHash3())]);
     }
 
     [Fact]
@@ -487,7 +487,7 @@ public sealed class RegulationBaselinesTests : IDisposable
         provenance.Source.Should().Be(BaselineSource.SteamManifest);
         provenance.ManifestId.Should().Be(8950790353897081369);
         provenance.OriginalPath.Should().Be(file.GetFullPath());
-        baselines.Known()["11701000"].Should().Be(blob.xxHash3());
+        baselines.Known()["11701000"].Should().Be(FileIdentity.XxHash3(blob.xxHash3()));
         File.Exists(result.File.GetFullPath() + ".partial").Should().BeFalse();
     }
 
@@ -595,8 +595,8 @@ public sealed class RegulationBaselinesTests : IDisposable
         baselines.FindAll("11701000").Select(f => File.ReadAllBytes(f.GetFullPath())).Should().SatisfyRespectively(
             a => a.Should().Equal(first),
             b => b.Should().Equal(second));
-        baselines.VouchedHashes().Should().BeEquivalentTo([first.xxHash3(), second.xxHash3()]);
-        baselines.Known()["11701000"].Should().Be(first.xxHash3());
+        baselines.VouchedHashes().Should().BeEquivalentTo([FileIdentity.XxHash3(first.xxHash3()), FileIdentity.XxHash3(second.xxHash3())]);
+        baselines.Known()["11701000"].Should().Be(FileIdentity.XxHash3(first.xxHash3()));
         Directory.EnumerateFiles(Store, "*.bin").Should().HaveCount(2);
     }
 

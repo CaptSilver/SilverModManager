@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using Avalonia.Threading;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -164,7 +165,7 @@ public class MoveExternalChangesTests(IServiceProvider provider) : AUiTest(provi
     private static StandardDialogResult Accept(string input = "") => new() { ButtonId = ButtonDefinitionId.Accept, InputText = input };
 
     private static OverridesMovePreview NoConflict(GamePath path, LoadoutItemGroupId target) =>
-        new(path, true, false, Hash.From(0xC0FFEE), false, false, null, target, true);
+        new(path, true, false, FileIdentity.XxHash3(Hash.From(0xC0FFEE)), false, false, null, target, true);
 
     #region when the commands exist
 
@@ -335,7 +336,7 @@ public class MoveExternalChangesTests(IServiceProvider provider) : AUiTest(provi
         _mover.CreateEmptyGroup(seeded.Loadout, "Rock").Returns(created);
         _mover.Preview(seeded.Loadout, Arg.Any<GamePath[]>(), created).Returns(
         [
-            new OverridesMovePreview(ModelFile, true, false, Hash.From(0xC0FFEE), false, false, null, seeded.CollectionMember, false),
+            new OverridesMovePreview(ModelFile, true, false, FileIdentity.XxHash3(Hash.From(0xC0FFEE)), false, false, null, seeded.CollectionMember, false),
         ]);
         _answer = dialog => dialog.ContentViewModel is MoveToModDialogViewModel
             ? new StandardDialogResult { ButtonId = ButtonDefinitionId.Cancel }
@@ -426,7 +427,7 @@ public class MoveExternalChangesTests(IServiceProvider provider) : AUiTest(provi
         var otherWinner = seeded.CollectionMember;
         _mover.Preview(seeded.Loadout, Arg.Any<GamePath[]>(), seeded.PlainMod).Returns(
         [
-            new OverridesMovePreview(ModelFile, true, false, Hash.From(0xC0FFEE), true, false, Hash.From(0xBEEF), otherWinner, false),
+            new OverridesMovePreview(ModelFile, true, false, FileIdentity.XxHash3(Hash.From(0xC0FFEE)), true, false, FileIdentity.XxHash3(Hash.From(0xBEEF)), otherWinner, false),
             NoConflict(SecondModelFile, seeded.PlainMod),
         ]);
         _mover.Move(seeded.Loadout, Arg.Any<GamePath[]>(), seeded.PlainMod, Arg.Any<MoveOptions>())
@@ -467,7 +468,7 @@ public class MoveExternalChangesTests(IServiceProvider provider) : AUiTest(provi
             await Select(page, ModelFile);
             _mover.Preview(seeded.Loadout, Arg.Any<GamePath[]>(), seeded.PlainMod).Returns(
             [
-                new OverridesMovePreview(ModelFile, true, false, Hash.From(0xC0FFEE), false, false, null, seeded.CollectionMember, false),
+                new OverridesMovePreview(ModelFile, true, false, FileIdentity.XxHash3(Hash.From(0xC0FFEE)), false, false, null, seeded.CollectionMember, false),
             ]);
             _mover.Move(seeded.Loadout, Arg.Any<GamePath[]>(), seeded.PlainMod, Arg.Any<MoveOptions>())
                 .Returns(new OverridesMoveResult([ModelFile], []));

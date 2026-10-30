@@ -82,7 +82,7 @@ public class ModsettingsResetTests(ITestOutputHelper helper) : ModsettingsFixtur
         var overrides = LoadoutOverridesGroup.FindByOverridesFor(Connection.Db, loadout.Id).Single();
         using (var tx = Connection.BeginTransaction())
         {
-            OverridesGroupItems.AddFile(tx, Refresh(loadout), LoadoutOverridesGroupId.From(overrides.Id), ModsettingsPath, hash, Size.FromLong(bytes.Length));
+            OverridesGroupItems.AddFile(tx, Refresh(loadout), LoadoutOverridesGroupId.From(overrides.Id), ModsettingsPath, FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length));
             await tx.Commit();
         }
         OverridesPaths(loadout).Should().Contain("modsettings.lsx");

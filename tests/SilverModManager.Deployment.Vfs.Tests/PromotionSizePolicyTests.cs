@@ -209,10 +209,10 @@ public class PromotionSizePolicyTests : IDisposable
     {
         public int Calls { get; private set; }
 
-        public ValueTask<Hash> Hash(GameInstallMetadataId installation, AbsolutePath file, CancellationToken token = default)
+        public ValueTask<FileIdentity> Hash(GameInstallMetadataId installation, AbsolutePath file, CancellationToken token = default)
         {
             Calls++;
-            return ValueTask.FromResult(NexusMods.Hashing.xxHash3.Hash.From((ulong)new FileInfo(file.ToString()).Length));
+            return ValueTask.FromResult(FileIdentity.XxHash3(NexusMods.Hashing.xxHash3.Hash.From((ulong)new FileInfo(file.ToString()).Length)));
         }
     }
 

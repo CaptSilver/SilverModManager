@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts;
@@ -16,7 +17,7 @@ namespace SilverModManager.Games.FromSoft.Installers;
 /// <summary>What the installers share: reading an archive's files and turning one into a loadout file in the mods folder.</summary>
 internal static class Me3InstallerFiles
 {
-    internal readonly record struct ArchiveFile(string Path, Hash Hash, Size Size);
+    internal readonly record struct ArchiveFile(string Path, FileIdentity Identity, Size Size);
 
     private static readonly string[] MultiPartExtensions = [".tar.gz", ".tar.xz", ".tar.zst", ".tar.bz2"];
 
@@ -87,7 +88,7 @@ internal static class Me3InstallerFiles
     {
         var tree = LibraryArchiveTreeExtensions.GetTree(archive);
         return tree.Item.GetFiles<LibraryArchiveTree, RelativePath>()
-            .Select(f => new ArchiveFile(f.Item.Path.Path, f.Item.LibraryFile.Value.Hash, f.Item.LibraryFile.Value.Size))
+            .Select(f => new ArchiveFile(f.Item.Path.Path, f.Item.LibraryFile.Value.Identity, f.Item.LibraryFile.Value.Size))
             .ToArray();
     }
 
@@ -110,7 +111,7 @@ internal static class Me3InstallerFiles
                     ParentId = group.Id,
                 },
             },
-            Hash = file.Hash,
+            Hash = file.Identity.XxHash3(),
             Size = file.Size,
         };
     }

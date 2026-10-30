@@ -1,7 +1,7 @@
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
-using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Backend.Games;
 
@@ -23,10 +23,10 @@ internal enum StoredHashMiss
     StoresDisagree,
 }
 
-internal readonly record struct StoredHashLookup(Optional<Hash> Hash, StoredHashMiss Miss)
+internal readonly record struct StoredHashLookup(Optional<FileIdentity> Identity, StoredHashMiss Miss)
 {
-    public static StoredHashLookup Found(Hash hash) => new(hash, default);
-    public static StoredHashLookup Missed(StoredHashMiss miss) => new(Optional<Hash>.None, miss);
+    public static StoredHashLookup Found(FileIdentity identity) => new(identity, default);
+    public static StoredHashLookup Missed(StoredHashMiss miss) => new(Optional<FileIdentity>.None, miss);
 }
 
 /// <summary>

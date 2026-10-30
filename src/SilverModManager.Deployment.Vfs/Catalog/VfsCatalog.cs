@@ -1,18 +1,18 @@
-using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Deployment.Vfs;
 
 public sealed class VfsCatalog(IConnection connection) : IVfsCatalog
 {
-    public bool TryGetHash(GameInstallMetadataId installation, AbsolutePath path, FileFingerprint fingerprint, out Hash hash)
+    public bool TryGetHash(GameInstallMetadataId installation, AbsolutePath path, FileFingerprint fingerprint, out FileIdentity hash)
     {
         var entry = Find(connection.Db, installation, path);
         if (entry.IsValid() && FingerprintOf(entry) == fingerprint)
         {
-            hash = entry.Hash;
+            hash = entry.Identity;
             return true;
         }
 
@@ -22,7 +22,7 @@ public sealed class VfsCatalog(IConnection connection) : IVfsCatalog
 
     // Reads the committed db for the existing row, as the deployment plan store does: the Record
     // signature carries no db. A path is recorded once per transaction.
-    public void Record(ITransaction tx, GameInstallMetadataId installation, AbsolutePath path, FileFingerprint fingerprint, Hash hash)
+    public void Record(ITransaction tx, GameInstallMetadataId installation, AbsolutePath path, FileFingerprint fingerprint, FileIdentity hash)
     {
         var existing = Find(connection.Db, installation, path);
         if (existing.IsValid())
@@ -32,7 +32,7 @@ public sealed class VfsCatalog(IConnection connection) : IVfsCatalog
             tx.Add(existing.Id, VfsCatalogEntry.Size, fingerprint.Size);
             tx.Add(existing.Id, VfsCatalogEntry.MTime, fingerprint.MTime);
             tx.Add(existing.Id, VfsCatalogEntry.CTime, fingerprint.CTime);
-            tx.Add(existing.Id, VfsCatalogEntry.Hash, hash);
+            tx.Add(existing.Id, VfsCatalogEntry.Hash, hash.XxHash3());
             return;
         }
 
@@ -45,7 +45,7 @@ public sealed class VfsCatalog(IConnection connection) : IVfsCatalog
             Size = fingerprint.Size,
             MTime = fingerprint.MTime,
             CTime = fingerprint.CTime,
-            Hash = hash,
+            Hash = hash.XxHash3(),
         };
     }
 

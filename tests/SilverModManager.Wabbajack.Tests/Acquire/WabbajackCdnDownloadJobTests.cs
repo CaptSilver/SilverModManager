@@ -40,7 +40,7 @@ public class WabbajackCdnDownloadJobTests(IServiceProvider provider, TemporaryFi
         destination.Path.FileExists.Should().BeTrue();
         (await destination.Path.ReadAllBytesAsync()).Should().Equal(fixture.Content);
         file.XxHash64.HasValue.Should().BeTrue();
-        file.XxHash64.Value.Should().Be(fixture.FileHash);
+        file.XxHash64Identity().Should().Be(fixture.FileHash);
         file.FileName.Should().Be(RelativePath.FromUnsanitizedInput(fixture.OriginalFileName));
         file.AsLibraryItem().TryGetAsDownloadedFile(out var downloaded).Should().BeTrue();
         downloaded.DownloadPageUri.Should().Be(CdnUrl);

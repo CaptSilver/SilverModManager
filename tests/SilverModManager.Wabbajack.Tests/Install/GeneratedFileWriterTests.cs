@@ -16,7 +16,7 @@ public class GeneratedFileWriterTests(ITestOutputHelper helper) : InstallTestBas
 
         await using var file = await Writer.Generate(async output => await output.WriteAsync(bytes), CancellationToken.None);
 
-        file.XxHash3.Should().Be(bytes.xxHash3());
+        file.XxHash3.Should().Be(FileIdentity.XxHash3(bytes.xxHash3()));
         file.XxHash64.Should().Be(Hash64(bytes));
         file.Size.Value.Should().Be((ulong)bytes.Length);
     }
@@ -36,7 +36,7 @@ public class GeneratedFileWriterTests(ITestOutputHelper helper) : InstallTestBas
         await Writer.Store(generated, CancellationToken.None);
 
         foreach (var file in generated)
-            (await FileStore.HaveFile(FileIdentity.XxHash3(file.XxHash3))).Should().BeTrue();
+            (await FileStore.HaveFile(file.XxHash3)).Should().BeTrue();
         paths.Should().OnlyContain(p => !p.FileExists);
     }
 

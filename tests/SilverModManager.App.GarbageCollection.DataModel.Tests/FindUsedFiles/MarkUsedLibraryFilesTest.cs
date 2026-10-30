@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.GC;
@@ -27,7 +28,7 @@ public class MarkUsedLibraryFilesTest(IServiceProvider serviceProvider, ILibrary
             "file-3", "file-4", "file-5",
         };
         
-        List<Hash> hashes;
+        List<FileIdentity> hashes;
 
         // Add files to the loadout
         AbsolutePath archiveLocation;
@@ -47,7 +48,7 @@ public class MarkUsedLibraryFilesTest(IServiceProvider serviceProvider, ILibrary
 
         // All files should be marked as used, and loadout items in use.
         for (var x = 0; x < modFiles.Count; x++)
-            IsFileReferenced(gc, hashes[x]).Should().BeTrue($"File with hash {hashes[x]} should be marked as used");
+            IsFileReferenced(gc, hashes[x].XxHash3()).Should().BeTrue($"File with hash {hashes[x]} should be marked as used");
 
         AssertAllLoadoutItemsAre(used: true, reason: "LoadoutFile with hash {0} should be marked as used", gc, loadout);
 

@@ -91,7 +91,7 @@ public class LibraryFileDigestsTests(IConnection connection, IServiceProvider se
 
         var first = await digests.EnsureXxHash64(old, TestContext.Current.CancellationToken);
 
-        first.Should().Be(Xx64Hasher.Hash(Content));
+        first.Should().Be(FileIdentity.XxHash64(Xx64Hasher.Hash(Content)));
         store.Reads.Should().Be(1);
         LibraryFile.Load(connection.Db, old.Id).XxHash64.Value.Should().Be(Xx64Hasher.Hash(Content), "the value is written back");
 

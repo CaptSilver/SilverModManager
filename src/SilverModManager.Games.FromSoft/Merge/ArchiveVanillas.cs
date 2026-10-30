@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Games.FromSoft.Formats;
-using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Library;
@@ -11,8 +10,8 @@ namespace SilverModManager.Games.FromSoft.Merge;
 /// <summary>A regulation inside a library archive that carries the build stamp being looked for.</summary>
 /// <param name="ArchiveName">The name of the archive's library item, for display.</param>
 /// <param name="Member">The file's path inside the archive.</param>
-/// <param name="Hash">Its hash in the file store.</param>
-public sealed record ArchiveRegulation(string ArchiveName, string Member, Hash Hash)
+/// <param name="Identity">Its identity in the file store.</param>
+public sealed record ArchiveRegulation(string ArchiveName, string Member, FileIdentity Identity)
 {
     /// <summary>The file sits in a folder called Vanilla. Only used to put likelier candidates first; a name proves nothing.</summary>
     public bool InVanillaFolder => Member.Split('/')[..^1].Any(p => p.Equals("Vanilla", StringComparison.OrdinalIgnoreCase));
@@ -31,24 +30,24 @@ public sealed class ArchiveVanillas(IFileStore fileStore)
     // Reading a stamp decrypts the whole regulation, so it is remembered: the same file turns up in every plan. The
     // game's key is part of the key here, since two games share the file name and a miss under one key says nothing
     // about the other.
-    private readonly ConcurrentDictionary<(Hash Hash, string Key), string?> _versions = new();
+    private readonly ConcurrentDictionary<(FileIdentity Identity, string Key), string?> _versions = new();
 
     /// <summary>
     /// Every regulation held by a library archive whose stamp is <paramref name="version"/>, one per distinct file,
     /// likeliest first, apart from <paramref name="except"/> (the contributors' own files, which are what the mods
     /// changed and so never their vanilla).
     /// </summary>
-    public IReadOnlyList<ArchiveRegulation> Find(IDb db, FromSoftFormatTraits traits, string version, ISet<Hash> except)
+    public IReadOnlyList<ArchiveRegulation> Find(IDb db, FromSoftFormatTraits traits, string version, ISet<FileIdentity> except)
     {
         if (traits.RegulationFileName is not { } regulationName) return [];
 
-        var found = new Dictionary<Hash, ArchiveRegulation>();
+        var found = new Dictionary<FileIdentity, ArchiveRegulation>();
         foreach (var entry in LibraryArchiveFileEntry.All(db).OrderBy(e => e.Id.Value))
         {
             var path = entry.Path.ToString();
             if (!VanillaDump.FileName(path).Equals(regulationName, StringComparison.OrdinalIgnoreCase)) continue;
 
-            var hash = entry.AsLibraryFile().Hash;
+            var hash = entry.AsLibraryFile().Identity;
             if (except.Contains(hash) || found.ContainsKey(hash)) continue;
             if (!VersionOf(hash, traits).Equals(version, StringComparison.Ordinal)) continue;
 
@@ -59,21 +58,21 @@ public sealed class ArchiveVanillas(IFileStore fileStore)
     }
 
     /// <summary>The bytes of a file the library holds.</summary>
-    public byte[] Read(Hash hash)
+    public byte[] Read(FileIdentity identity)
     {
-        using var stream = fileStore.GetFileStream(FileIdentity.XxHash3(hash)).GetAwaiter().GetResult();
+        using var stream = fileStore.GetFileStream(identity).GetAwaiter().GetResult();
         using var buffer = new MemoryStream();
         stream.CopyTo(buffer);
         return buffer.ToArray();
     }
 
     // The empty string stands for a file that is not a regulation this game's key opens; it matches no stamp.
-    private string VersionOf(Hash hash, FromSoftFormatTraits traits)
+    private string VersionOf(FileIdentity hash, FromSoftFormatTraits traits)
         => _versions.GetOrAdd((hash, Convert.ToHexString(traits.RegulationKey.AsSpan())), k =>
         {
             try
             {
-                return Regulation.Version(Regulation.Unpack(Read(k.Hash), traits));
+                return Regulation.Version(Regulation.Unpack(Read(k.Identity), traits));
             }
             catch (Exception exception) when (exception is RegulationException or AesException or DcxException or KrakenException)
             {

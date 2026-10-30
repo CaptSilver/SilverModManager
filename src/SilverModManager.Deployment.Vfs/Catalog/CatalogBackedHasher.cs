@@ -2,6 +2,7 @@ using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Deployment.Vfs;
 
@@ -30,7 +31,7 @@ public sealed class CatalogBackedHasher : IFileHasher
     }
 
     /// <exception cref="FileNotFoundException">The file is not there to take a fingerprint of.</exception>
-    public async ValueTask<Hash> Hash(GameInstallMetadataId installation, AbsolutePath file, CancellationToken token = default)
+    public async ValueTask<FileIdentity> Hash(GameInstallMetadataId installation, AbsolutePath file, CancellationToken token = default)
     {
         var entry = _scanner.Stat(file) ?? throw new FileNotFoundException($"Cannot fingerprint `{file}`: it does not exist", file.ToString());
         var fingerprint = FileFingerprint.From(entry);

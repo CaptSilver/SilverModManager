@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Loadouts;
@@ -20,7 +21,7 @@ public class WinnerPinTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameTe
     private static readonly GamePath Sole = new(LocationId.Game, "archive/pc/mod/sole.archive");
     private static readonly GamePath Unpinned = new(LocationId.Game, "archive/pc/mod/unpinned.archive");
 
-    private record Mods(LoadoutItemGroupId Low, LoadoutItemGroupId High, Hash LowHash, Hash HighHash);
+    private record Mods(LoadoutItemGroupId Low, LoadoutItemGroupId High, FileIdentity LowHash, FileIdentity HighHash);
 
     /// <summary>Low (priority 1) and High (priority 2) both provide Conflict and Unpinned; Low alone provides Sole.</summary>
     private async Task<Mods> AddLowAndHigh(LoadoutId loadoutId)
@@ -39,10 +40,10 @@ public class WinnerPinTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameTe
         return new Mods(LoadoutItemGroupId.From(result[low].Value), LoadoutItemGroupId.From(result[high].Value), lowHash, highHash);
     }
 
-    private async Task<Hash> WinnerHash(Loadout.ReadOnly loadout, GamePath path)
+    private async Task<FileIdentity> WinnerHash(Loadout.ReadOnly loadout, GamePath path)
     {
         var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
-        return tree[path].Loadout.Identity.XxHash3();
+        return tree[path].Loadout.Identity;
     }
 
     [Fact]
@@ -62,7 +63,7 @@ public class WinnerPinTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameTe
         await LoadoutManager.PinFileWinner(loadout.LoadoutId, Conflict, mods.Low);
 
         (await WinnerHash(loadout, Conflict)).Should().Be(mods.LowHash);
-        (await WinnerHash(loadout, Unpinned)).Should().Be("unpinned from high".xxHash3AsUtf8(), "other paths still follow priority");
+        (await WinnerHash(loadout, Unpinned)).Should().Be(FileIdentity.XxHash3("unpinned from high".xxHash3AsUtf8()), "other paths still follow priority");
     }
 
     [Fact]
@@ -72,7 +73,7 @@ public class WinnerPinTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameTe
         var mods = await AddLowAndHigh(loadout.LoadoutId);
         await LoadoutManager.PinFileWinner(loadout.LoadoutId, Sole, mods.High);
 
-        (await WinnerHash(loadout, Sole)).Should().Be("sole from low".xxHash3AsUtf8(), "the pinned group has no file at the path");
+        (await WinnerHash(loadout, Sole)).Should().Be(FileIdentity.XxHash3("sole from low".xxHash3AsUtf8()), "the pinned group has no file at the path");
     }
 
     [Fact]

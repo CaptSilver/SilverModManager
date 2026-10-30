@@ -67,11 +67,11 @@ public sealed class LoadoutPromotionSink : IPromotionSink
             if (existing.HasValue && existing.Value.TryGetAsDeletedFile(out _))
             {
                 tx.Delete(existing.Value, recursive: false);
-                OverridesGroupItems.AddFile(tx, loadout, overrides, path, file.Identity.XxHash3(), file.Size);
+                OverridesGroupItems.AddFile(tx, loadout, overrides, path, file.Identity, file.Size);
                 continue;
             }
 
-            OverridesGroupItems.UpsertFile(tx, loadout, overrides, path, file.Identity.XxHash3(), file.Size);
+            OverridesGroupItems.UpsertFile(tx, loadout, overrides, path, file.Identity, file.Size);
         }
         foreach (var path in deleted)
             OverridesGroupItems.AddReifiedDelete(tx, loadout, overrides, new GamePath(LocationId.Game, path));

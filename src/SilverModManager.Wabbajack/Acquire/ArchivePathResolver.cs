@@ -12,7 +12,7 @@ using SilverModManager.Wabbajack.Library;
 namespace SilverModManager.Wabbajack.Acquire;
 
 /// <summary>A file a directive reads, found in the file store. <see cref="Open"/> can be called any number of times.</summary>
-public sealed record ResolvedMember(Hash StoreHash, Hash? XxHash64, Size Size, Func<Task<Stream>> Open);
+public sealed record ResolvedMember(FileIdentity StoreIdentity, FileIdentity? XxHash64, Size Size, Func<Task<Stream>> Open);
 
 /// <summary>Thrown when an <see cref="ArchiveHashPath"/> names something the library cannot supply.</summary>
 public sealed class MemberNotFoundException(string what) : Exception(what);
@@ -61,7 +61,7 @@ public sealed class ArchivePathResolver(
         {
             var source = await ResolveGameFile(gameFile, cancellationToken);
             if (path.Parts.Count == 0) return source;
-            return await ThroughOpener(gameFile.GameFile.ToString(), source.StoreHash, path.Parts, cancellationToken);
+            return await ThroughOpener(gameFile.GameFile.ToString(), source.StoreIdentity, path.Parts, cancellationToken);
         }
 
         var library = _locator.FindByXxHash64(db, path.ArchiveXxHash64)
@@ -77,7 +77,7 @@ public sealed class ArchivePathResolver(
             {
                 if (!await store.HaveFile(current.Identity))
                     throw new MemberNotFoundException($"'{current.FileName}' is not kept in the file store");
-                return await ThroughOpener(current.FileName.ToString(), current.Hash, path.Parts.Skip(i).ToArray(), cancellationToken);
+                return await ThroughOpener(current.FileName.ToString(), current.Identity, path.Parts.Skip(i).ToArray(), cancellationToken);
             }
 
             if (!Entries(archive).TryGetValue(Fold(part), out var entry))
@@ -112,15 +112,14 @@ public sealed class ArchivePathResolver(
             throw new MemberNotFoundException($"'{name}' is an archive the library expanded, so its own bytes are not kept");
 
         var xxHash64 = await _digests.EnsureXxHash64(file, cancellationToken);
-        var hash = file.Hash;
-        return new ResolvedMember(hash, xxHash64, file.Size, async () => await store.GetFileStream(file.Identity, cancellationToken));
+        return new ResolvedMember(file.Identity, xxHash64, file.Size, async () => await store.GetFileStream(file.Identity, cancellationToken));
     }
 
     /// <summary>
     /// The last stop for a path that goes into something the library has not expanded (a member, or a game file): ask
     /// whichever opener knows the kind, and keep what it produces in the store so later reads are plain store reads.
     /// </summary>
-    private Task<ResolvedMember> ThroughOpener(string containerName, Hash containerHash, IReadOnlyList<RelativePath> remaining, CancellationToken cancellationToken)
+    private Task<ResolvedMember> ThroughOpener(string containerName, FileIdentity containerHash, IReadOnlyList<RelativePath> remaining, CancellationToken cancellationToken)
     {
         var name = RelativePath.FromUnsanitizedInput(containerName);
         var opener = _openers.FirstOrDefault(o => o.CanOpen(name))
@@ -131,7 +130,7 @@ public sealed class ArchivePathResolver(
         var member = remaining[0];
         async Task<Stream> OpenMember()
         {
-            await using var archive = await store.GetFileStream(FileIdentity.XxHash3(containerHash), cancellationToken);
+            await using var archive = await store.GetFileStream(containerHash, cancellationToken);
             return await opener.Open(archive, member, cancellationToken)
                 ?? throw new MemberNotFoundException($"'{member}' is not in '{containerName}'");
         }
@@ -172,7 +171,7 @@ public sealed class ArchivePathResolver(
         {
             if (_stored.TryGetValue(key, out var known)) return known;
 
-            Hash xxHash3, xxHash64;
+            FileIdentity xxHash3, xxHash64;
             Size size;
             await using (var stream = await open())
             {
@@ -183,9 +182,9 @@ public sealed class ArchivePathResolver(
             // BackupFiles checks for them under the store's read lock, after any collection already running (which
             // marked before the pin and may drop bytes the store still lists) has finished.
             Pin(xxHash3);
-            await store.BackupFiles([new ArchivedFileEntry(new OpenerStreamFactory(open), FileIdentity.XxHash3(xxHash3), size)], deduplicate: true, cancellationToken);
+            await store.BackupFiles([new ArchivedFileEntry(new OpenerStreamFactory(open), xxHash3, size)], deduplicate: true, cancellationToken);
 
-            var resolved = new ResolvedMember(xxHash3, xxHash64, size, async () => await store.GetFileStream(FileIdentity.XxHash3(xxHash3), cancellationToken));
+            var resolved = new ResolvedMember(xxHash3, xxHash64, size, async () => await store.GetFileStream(xxHash3, cancellationToken));
             _stored[key] = resolved;
             return resolved;
         }
@@ -195,9 +194,9 @@ public sealed class ArchivePathResolver(
         }
     }
 
-    private void Pin(Hash hash)
+    private void Pin(FileIdentity identity)
     {
-        var pin = FileStorePins.Pin(FileIdentity.XxHash3(hash));
+        var pin = FileStorePins.Pin(identity);
         lock (_pins)
         {
             if (!_disposed)

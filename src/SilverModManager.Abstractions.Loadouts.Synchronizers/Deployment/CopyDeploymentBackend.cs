@@ -150,7 +150,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             if (!node.Actions.HasFlag(Actions.IngestFromDisk))
                 continue;
 
-            OverridesGroupItems.UpsertFile(tx, loadout, overridesGroupId, path, node.Disk.Identity.XxHash3(), node.Disk.Size);
+            OverridesGroupItems.UpsertFile(tx, loadout, overridesGroupId, path, node.Disk.Identity, node.Disk.Size);
             tx.Add(node.Disk.EntityId, DiskStateEntry.LastModified, new DateTimeOffset(node.Disk.LastModifiedTicks, TimeSpan.Zero));
         }
     }

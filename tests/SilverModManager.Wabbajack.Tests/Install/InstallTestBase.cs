@@ -55,7 +55,7 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
 
     /// <summary>A texture directive over a real DDS that asks for BC6H, which the re-encoder cannot write, so it always becomes a Transform skip row.</summary>
     protected static TransformedTexture UnwritableTexture(string to, ArchiveEntry archive, string member)
-        => new(P(to), Hash.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P(member)]), new ImageState(4, 4, 1, "BC6H_UF16"));
+        => new(P(to), Xx64.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P(member)]), new ImageState(4, 4, 1, "BC6H_UF16"));
 
     protected static RelativePath P(string path) => RelativePath.FromUnsanitizedInput(path);
 
@@ -65,7 +65,7 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
         await using var zip = await CreateTestArchive(files.ToDictionary(f => P(f.Key), f => f.Value));
         var library = await RegisterLocalArchive(zip.Path);
         var file = library.AsLibraryFile();
-        return new ArchiveEntry(file.XxHash64.Value, (long)file.Size.Value, name, "", new HttpState(new Uri($"https://example.invalid/{name}"), []));
+        return new ArchiveEntry(file.XxHash64Identity()!.Value, (long)file.Size.Value, name, "", new HttpState(new Uri($"https://example.invalid/{name}"), []));
     }
 
     /// <summary>The entry for the stub game's own executable, as a list made for this game version would carry it.</summary>
@@ -184,7 +184,7 @@ public sealed class ListBuilder
     /// checked against it.
     /// </summary>
     public CreateBsa Bsa(string to, string tempId, params string[] paths)
-        => new(P(to), NexusMods.Hashing.xxHash3.Hash.From(1), 1, P(tempId), Tes5State(), paths.Select((path, i) => Tes5File(i, path)).ToArray());
+        => new(P(to), Xx64.From(1), 1, P(tempId), Tes5State(), paths.Select((path, i) => Tes5File(i, path)).ToArray());
 
     public InlineFile Inline(string to, string text) => Inline(to, System.Text.Encoding.UTF8.GetBytes(text));
 
@@ -209,5 +209,5 @@ public sealed class ListBuilder
         Directives = Directives.ToArray(),
     };
 
-    private static NexusMods.Hashing.xxHash3.Hash Xx(byte[] bytes) => SilverModManager.Sdk.Hashes.Xx64Hasher.Hash(bytes);
+    private static FileIdentity Xx(byte[] bytes) => Xx64.Of(bytes);
 }

@@ -28,7 +28,7 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         new FakeMappingCache(),
         Connection,
         FileStore,
-        ServiceProvider.GetRequiredService<IFileHashesService>(), ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileIdentityResolver>());
+        ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileIdentityResolver>());
 
     private async Task<ArchivePlanRow> RowFor(ArchiveEntry archive, bool premium = false)
     {
@@ -40,7 +40,7 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
     private static readonly NexusState SkyrimSeFile = new("SkyrimSpecialEdition", ModId: 77, FileId: 4242, null, null, null, false);
 
     /// <summary>A library file the way a download from Nexus Mods leaves it, with the digests and size the test chooses.</summary>
-    private async Task<LibraryFile.ReadOnly> AddNexusItem(NexusModsGameId game, uint fileId, Hash? xxHash64, Size? recordedSize)
+    private async Task<LibraryFile.ReadOnly> AddNexusItem(NexusModsGameId game, uint fileId, FileIdentity? xxHash64, Size? recordedSize)
     {
         using var tx = Connection.BeginTransaction();
         var bytes = System.Text.Encoding.UTF8.GetBytes($"nexus-{game}-{fileId}");
@@ -51,7 +51,7 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
             Size = Size.FromLong(bytes.Length),
             LibraryItem = new LibraryItem.New(tx, id) { Name = "nexus.7z" },
         };
-        if (xxHash64 is { } digest) tx.Add(id, LibraryFile.XxHash64, digest);
+        if (xxHash64 is { } digest) tx.Add(id, LibraryFile.XxHash64, digest.XxHash64Value());
 
         var page = new NexusModsModPageMetadata.New(tx)
         {
@@ -87,7 +87,7 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
     {
         await using var zip = await CreateTestArchive(new Dictionary<RelativePath, byte[]> { [RelativePath.FromUnsanitizedInput("a.txt")] = "hello"u8.ToArray() });
         var library = await RegisterLocalArchive(zip.Path);
-        var hash = library.AsLibraryFile().XxHash64.Value;
+        var hash = library.AsLibraryFile().XxHash64Identity()!.Value;
 
         var row = await RowFor(Entry(new HttpState(new Uri("https://example.invalid/a.zip"), []), hash));
 
@@ -142,9 +142,9 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
     [Fact]
     public async Task ANexusFileWhoseRecordedXxHash64DiffersIsNotHave()
     {
-        await AddNexusItem(FakeMappingCache.SkyrimSe, 4242, xxHash64: Hash.From(0x1111), recordedSize: Size.FromLong(1000));
+        await AddNexusItem(FakeMappingCache.SkyrimSe, 4242, xxHash64: Xx64.From(0x1111), recordedSize: Size.FromLong(1000));
 
-        var row = await RowFor(Entry(SkyrimSeFile, hash: Hash.From(0x2222), size: 1000));
+        var row = await RowFor(Entry(SkyrimSeFile, hash: Xx64.From(0x2222), size: 1000));
 
         row.State.Should().Be(ArchiveState.Browser);
     }
@@ -152,9 +152,9 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
     [Fact]
     public async Task ANexusFileWhoseRecordedXxHash64MatchesIsHave()
     {
-        await AddNexusItem(FakeMappingCache.SkyrimSe, 4242, xxHash64: Hash.From(0x2222), recordedSize: null);
+        await AddNexusItem(FakeMappingCache.SkyrimSe, 4242, xxHash64: Xx64.From(0x2222), recordedSize: null);
 
-        var row = await RowFor(Entry(SkyrimSeFile, hash: Hash.From(0x2222), size: 1000));
+        var row = await RowFor(Entry(SkyrimSeFile, hash: Xx64.From(0x2222), size: 1000));
 
         row.State.Should().Be(ArchiveState.Have);
     }
@@ -306,9 +306,9 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
     [Fact]
     public async Task AGameFileMissingFromTheGameFolderIsGameFileVersion()
     {
-        var state = new GameFileSourceState("SkyrimSpecialEdition", RelativePath.FromUnsanitizedInput("Data/Absent.bsa"), Hash.From(1), GameVersion);
+        var state = new GameFileSourceState("SkyrimSpecialEdition", RelativePath.FromUnsanitizedInput("Data/Absent.bsa"), Xx64.From(1), GameVersion);
 
-        var row = await RowFor(Entry(state, Hash.From(1)));
+        var row = await RowFor(Entry(state, Xx64.From(1)));
 
         row.State.Should().Be(ArchiveState.GameFileVersion);
         row.Reason.Should().Contain("Absent.bsa");

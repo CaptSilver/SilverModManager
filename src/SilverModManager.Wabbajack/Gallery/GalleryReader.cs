@@ -1,5 +1,6 @@
 using System.Text.Json;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Wabbajack.Format;
 
 namespace SilverModManager.Wabbajack.Gallery;
@@ -149,7 +150,7 @@ public static class GalleryReader
     private static Uri? HttpsUri(string? text)
         => Uri.TryCreate(text, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps ? uri : null;
 
-    private static Hash? ParseHash(string? base64)
+    private static FileIdentity? ParseHash(string? base64)
     {
         if (base64 is null) return null;
         try { return WabbajackHash.Parse(base64); }

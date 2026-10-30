@@ -47,12 +47,12 @@ public abstract class AcquireTestBase<TTest>(ITestOutputHelper helper)
             .AddUniversalGameLocator<SkyrimSe>(new Version(GameVersion), StubGameFiles, locationsFileSystem: IsolatedPrefixFileSystem.Create);
     }
 
-    protected static Hash Hash64(byte[] bytes) => Xx64Hasher.Hash(bytes);
+    protected static FileIdentity Hash64(byte[] bytes) => Xx64.Of(bytes);
 
     protected static ModList ListWith(params ArchiveEntry[] archives) => WabbajackFixture.EmptyList() with { Archives = archives };
 
-    protected static ArchiveEntry Entry(DownloadState state, Hash? hash = null, long size = 1000, string name = "archive.7z")
-        => new(hash ?? Hash.From(0x1234_5678_9ABC_DEF0), size, name, "", state);
+    protected static ArchiveEntry Entry(DownloadState state, FileIdentity? hash = null, long size = 1000, string name = "archive.7z")
+        => new(hash ?? Xx64.From(0x1234_5678_9ABC_DEF0), size, name, "", state);
 }
 
 /// <summary>Domain-to-game-id table for tests; Skyrim LE and SSE have different ids.</summary>

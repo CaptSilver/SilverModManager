@@ -10,8 +10,8 @@ namespace SilverModManager.Sdk.Hashes;
 /// </summary>
 public interface IFullFileHasher
 {
-    /// <summary>The file's xxHash3.</summary>
-    ValueTask<Hash> Hash(AbsolutePath file, CancellationToken cancellationToken);
+    /// <summary>The file's identity, an xxHash3.</summary>
+    ValueTask<FileIdentity> Hash(AbsolutePath file, CancellationToken cancellationToken);
 
     /// <summary>Every digest of the file in one read.</summary>
     ValueTask<MultiHash> HashAll(AbsolutePath file, CancellationToken cancellationToken);
@@ -26,8 +26,8 @@ public sealed class MultiHashFileHasher : IFullFileHasher
     public static readonly MultiHashFileHasher Instance = new();
 
     /// <inheritdoc />
-    public async ValueTask<Hash> Hash(AbsolutePath file, CancellationToken cancellationToken)
-        => (await HashAll(file, cancellationToken)).XxHash3;
+    public async ValueTask<FileIdentity> Hash(AbsolutePath file, CancellationToken cancellationToken)
+        => FileIdentity.XxHash3((await HashAll(file, cancellationToken)).XxHash3);
 
     /// <inheritdoc />
     public async ValueTask<MultiHash> HashAll(AbsolutePath file, CancellationToken cancellationToken)

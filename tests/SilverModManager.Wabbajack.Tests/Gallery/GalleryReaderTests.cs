@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Wabbajack.Gallery;
@@ -41,7 +42,7 @@ public class GalleryReaderTests
         entry.ArchivesSize.Should().Be(52428800UL);
         entry.InstalledFileCount.Should().Be(900);
         entry.InstalledSize.Should().Be(104857600UL);
-        entry.DownloadHash!.Value.Value.Should().Be(0x0807060504030201UL);
+        entry.DownloadHash.Should().Be(Xx64.From(0x0807060504030201UL));
         entry.IsDownloadable.Should().BeTrue();
     }
 

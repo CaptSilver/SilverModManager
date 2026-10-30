@@ -265,7 +265,7 @@ public sealed class LookupsReadBothStoresTests : IDisposable
         });
         await HashRows.AddSteamManifest(service.Local.Connection, 1002, ("b.esm", "local file"));
         await HashRows.AddSteamVersionDefinition(service.Local.Connection, "1234567", 1002);
-        var onDisk = new[] { (new GamePath(LocationId.Game, "b.esm"), await HashOf("local file")) };
+        var onDisk = new[] { (new GamePath(LocationId.Game, "b.esm"), FileIdentity.XxHash3(await HashOf("local file"))) };
 
         var suggestion = service.SuggestVersionData(Installation(GameStore.Steam), onDisk);
 
@@ -282,7 +282,7 @@ public sealed class LookupsReadBothStoresTests : IDisposable
             await HashRows.AddSteamManifest(c, 1001, ("a.esm", "central file"));
             await HashRows.AddSteamVersionDefinition(c, "1.6.1170", 1001);
         });
-        var onDisk = new[] { (new GamePath(LocationId.Game, "a.esm"), await HashOf("central file")) };
+        var onDisk = new[] { (new GamePath(LocationId.Game, "a.esm"), FileIdentity.XxHash3(await HashOf("central file"))) };
 
         var suggestion = service.SuggestVersionData(Installation(GameStore.Steam, withNexusId: false), onDisk);
 

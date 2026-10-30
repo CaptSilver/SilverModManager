@@ -1,5 +1,5 @@
 using SilverModManager.Games.FromSoft.Formats;
-using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Abstractions.Loadouts;
 
 namespace SilverModManager.Games.FromSoft.Merge;
@@ -7,12 +7,12 @@ namespace SilverModManager.Games.FromSoft.Merge;
 /// <summary>One enabled file under a package folder of the mods location.</summary>
 /// <param name="PackageId">The package folder.</param>
 /// <param name="RelPath">The path below the package folder, as the package spells it.</param>
-/// <param name="Hash">The file's content hash.</param>
+/// <param name="Identity">The file's content identity.</param>
 /// <param name="Priority">The loadout priority of the mod that provides it; higher wins.</param>
 /// <param name="ModName">The mod's name for display.</param>
 /// <param name="ModId">The loadout item of the mod, so an action on the mod can name it; null when the caller has none.</param>
 /// <param name="HasPriority">False when the mod has no priority row, so <paramref name="Priority"/> is only a placeholder.</param>
-public readonly record struct ProviderFile(string PackageId, string RelPath, Hash Hash, ulong Priority, string ModName, LoadoutItemId? ModId = null, bool HasPriority = true);
+public readonly record struct ProviderFile(string PackageId, string RelPath, FileIdentity Identity, ulong Priority, string ModName, LoadoutItemId? ModId = null, bool HasPriority = true);
 
 /// <summary>Whether the app will merge a path, and if not, why.</summary>
 public readonly record struct MergeOutcome(bool Merges, string? Reason)

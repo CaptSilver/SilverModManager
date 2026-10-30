@@ -127,7 +127,7 @@ public sealed partial class IniFileEditor : ReactiveObject
         var tweakText = "";
         foreach (var source in sources)
         {
-            var document = await TryLoadDocument(FileIdentity.XxHash3(source.Hash));
+            var document = await TryLoadDocument(source.Identity);
             var text = document?.ToText() ?? "";
             layers.Add(new IniLayerEntry(source.Name, source.SourceName, source.FileId, source.IsLoadoutTweak, source.IsSwitchedOn, source.IsEnabled, text));
             if (!source.IsLoadoutTweak) continue;

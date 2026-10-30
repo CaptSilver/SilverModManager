@@ -32,10 +32,10 @@ public class FullSystemTest(IServiceProvider serviceProvider, ISettingsManager s
         var loadout1Files = new List<RelativePath> { "loadout1_1.txt", "loadout1_2.txt" };
         var loadout2Files = new List<RelativePath> { "loadout2_1.txt", "loadout2_2.txt" };
 
-        List<Hash> loadout1SharedModHashes;
-        List<Hash> loadout2SharedModHashes;
-        List<Hash> loadout1ModHashes;
-        List<Hash> loadout2ModHashes;
+        List<FileIdentity> loadout1SharedModHashes;
+        List<FileIdentity> loadout2SharedModHashes;
+        List<FileIdentity> loadout1ModHashes;
+        List<FileIdentity> loadout2ModHashes;
 
         using (var tx = Connection.BeginTransaction())
         {
@@ -60,7 +60,7 @@ public class FullSystemTest(IServiceProvider serviceProvider, ISettingsManager s
                      .Concat(loadout1SharedModHashes)
                      .Concat(loadout2SharedModHashes))
         {
-            (await _fileStore.HaveFile(FileIdentity.XxHash3(hash))).Should().BeTrue();
+            (await _fileStore.HaveFile(hash)).Should().BeTrue();
         }
 
         // Act: All files are referenced.
@@ -70,13 +70,13 @@ public class FullSystemTest(IServiceProvider serviceProvider, ISettingsManager s
         foreach (var hash in loadout1ModHashes.Concat(loadout1SharedModHashes)
                      .Concat(loadout2SharedModHashes))
         {
-            (await _fileStore.HaveFile(FileIdentity.XxHash3(hash))).Should().BeTrue();
+            (await _fileStore.HaveFile(hash)).Should().BeTrue();
         }
         
         // And assert loadout2ModHashes were removed.
         foreach (var hash in loadout2ModHashes)
         {
-            (await _fileStore.HaveFile(FileIdentity.XxHash3(hash))).Should().BeFalse();
+            (await _fileStore.HaveFile(hash)).Should().BeFalse();
         }
     }
     public class Startup

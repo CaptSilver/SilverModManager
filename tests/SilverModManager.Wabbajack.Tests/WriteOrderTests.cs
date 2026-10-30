@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -8,7 +9,7 @@ namespace SilverModManager.Wabbajack.Tests;
 public class WriteOrderTests
 {
     private static readonly RelativePath To = RelativePath.FromUnsanitizedInput("x");
-    private static readonly Hash H = Hash.From(1);
+    private static readonly FileIdentity H = Xx64.From(1);
     private static readonly ArchiveHashPath Source = new(H, []);
 
     [Fact]

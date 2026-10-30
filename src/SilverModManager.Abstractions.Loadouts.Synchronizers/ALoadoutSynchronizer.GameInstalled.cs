@@ -110,7 +110,7 @@ public partial class ALoadoutSynchronizer
                 var disk = diskState[file.Path];
                 // Overrides rows are store-keyed, and the store is keyed by xxHash3. A demoted file was claimed
                 // before, so ResolveParts has already replaced a manifest SHA-1 with the xxHash3 of its bytes.
-                OverridesGroupItems.UpsertFile(tx, loadout, overrides, file.Path, disk.Identity.XxHash3(), disk.Size);
+                OverridesGroupItems.UpsertFile(tx, loadout, overrides, file.Path, disk.Identity, disk.Size);
             }
         }
 

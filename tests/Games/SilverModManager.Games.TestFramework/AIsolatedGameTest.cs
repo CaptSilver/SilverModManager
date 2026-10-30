@@ -246,12 +246,13 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
     /// The file will be named with the given path, the hash will be the hash
     /// of the name, and the size will be the length of the name. 
     /// </summary>
-    public LoadoutFileId AddFile(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path, string? content, out Hash hash, out Size size)
+    public LoadoutFileId AddFile(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path, string? content, out FileIdentity identity, out Size size)
     {
         content ??= path.Path.ToString();
         var contentArray = Encoding.UTF8.GetBytes(content);
 
-        hash = contentArray.xxHash3();
+        var hash = contentArray.xxHash3();
+        identity = FileIdentity.XxHash3(hash);
         size = Size.FromLong(contentArray.Length);
         return AddFileInternal(tx, loadoutId, groupId, path, hash, size).Id;
     }
@@ -308,7 +309,7 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
     ///     Specifying this parameter will add DB entries to simulate this being the original archive which
     ///     the files have come from.
     /// </param>
-    public async Task<(AbsolutePath archivePath, List<Hash> hashes)> AddModAsync(
+    public async Task<(AbsolutePath archivePath, List<FileIdentity> identities)> AddModAsync(
         ITransaction tx,
         IEnumerable<RelativePath> paths, 
         LoadoutId loadoutId,
@@ -317,7 +318,7 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
         LoadoutItemGroupId? parentGroup = null)
     {
         var records = new List<ArchivedFileEntry>();
-        var hashes = new List<Hash>();
+        var identities = new List<FileIdentity>();
         var modGroup = AddEmptyGroup(tx, loadoutId, modName, parentGroup);
         foreach (var path in paths)
         {
@@ -329,7 +330,7 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
             AddFileInternal(tx, loadoutId, modGroup, new GamePath(LocationId.Game, path), hash, size);
             
             // Create the file to backup.
-            hashes.Add(hash);
+            identities.Add(FileIdentity.XxHash3(hash));
             if (!await FileStore.HaveFile(FileIdentity.XxHash3(hash)))
             {
                 records.Add(new ArchivedFileEntry(
@@ -354,7 +355,7 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
         if (records.Count > 0)
             await FileStore.BackupFiles(records);
 
-        return (GetArchivePath(hashes.First()), hashes);
+        return (GetArchivePath(identities.First()), identities);
     }
 
     private static LibraryFile.New CreateLibraryFile(string fileName, ITransaction tx, out EntityId entityId) => new(tx, out entityId)
@@ -491,12 +492,12 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
     protected Task<TemporaryPath> CreateTestFile(string contents, Extension? extension, Encoding? encoding = null)
         => CreateTestFile((encoding ?? Encoding.UTF8).GetBytes(contents), extension);
     
-    private AbsolutePath GetArchivePath(Hash hash)
+    private AbsolutePath GetArchivePath(FileIdentity identity)
     {
         if (FileStore is not NxFileStore store)
             throw new NotSupportedException("GetArchivePath is not currently supported in stubbed file stores.");
 
-        store.TryGetLocation(FileIdentity.XxHash3(hash), out var archivePath, out _).Should().BeTrue("Archive should exist");
+        store.TryGetLocation(identity, out var archivePath, out _).Should().BeTrue("Archive should exist");
         return archivePath;
     }
     

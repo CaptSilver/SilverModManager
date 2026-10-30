@@ -232,7 +232,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
     public async Task APakRow_CarriesTheIdentityOfItsFile()
     {
         var (loadout, _, _) = await Reconciled();
-        Hash hash;
+        FileIdentity hash;
         using (var tx = Connection.BeginTransaction())
         {
             var group = AddEmptyGroup(tx, loadout.LoadoutId, "Mod");
@@ -244,7 +244,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         var rows = Connection.Query<(string Name, string Identity)>($"SELECT Name, Identity FROM bg3.LoadoutPaks({Connection.Db}, {loadout.LoadoutId}, {Bg3Constants.ModsLocationId})")
             .ToDictionary(r => r.Name, r => r.Identity);
 
-        rows["Mine.pak"].Should().Be(FileIdentity.XxHash3(hash).ToHex());
+        rows["Mine.pak"].Should().Be(hash.ToHex());
         rows["FromGame.pak"].Should().Be(FileIdentity.XxHash3(Hash.From(0xAB)).ToHex());
     }
 
@@ -252,7 +252,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
     public async Task APakRowsLoadoutData_CarriesTheIdentityOfItsFile()
     {
         var (loadout, variety, id) = await Reconciled();
-        Hash hash;
+        FileIdentity hash;
         using (var tx = Connection.BeginTransaction())
         {
             var group = AddEmptyGroup(tx, loadout.LoadoutId, "Mod");
@@ -264,7 +264,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
 
         var rows = variety.GetSortOrderItems(id, Db).ToDictionary(r => r.DisplayName, r => ((Bg3PakLoadoutData)r.LoadoutData!).Identity);
 
-        rows["Mine.pak"].Should().Be(FileIdentity.XxHash3(hash));
+        rows["Mine.pak"].Should().Be(hash);
         rows["FromGame.pak"].Should().Be(FileIdentity.XxHash3(Hash.From(0xAB)));
     }
 
@@ -272,7 +272,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
     public async Task ALiveRowsLoadoutData_CarriesTheIdentityOfItsFile()
     {
         var (loadout, variety, id) = await Reconciled();
-        Hash hash;
+        FileIdentity hash;
         using (var tx = Connection.BeginTransaction())
         {
             var group = AddEmptyGroup(tx, loadout.LoadoutId, "Mod");
@@ -284,7 +284,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         var changes = await variety.GetSortOrderItemsChangeSet(id).FirstAsync();
 
         var item = changes.Select(c => c.Current).Single();
-        ((Bg3PakLoadoutData)item.LoadoutData!).Identity.Should().Be(FileIdentity.XxHash3(hash));
+        ((Bg3PakLoadoutData)item.LoadoutData!).Identity.Should().Be(hash);
     }
 
     private EntityId StoredRowId(SortOrderId id, string name) =>

@@ -61,7 +61,7 @@ public class ArchiveInboxTests(ITestOutputHelper helper) : AcquireTestBase<Archi
         await Inbox.Scan(CancellationToken.None);
         await Inbox.Scan(CancellationToken.None);
 
-        var held = Connection.Db.Datoms(LibraryFile.XxHash64, Hash64(Stray));
+        var held = Connection.Db.Datoms(LibraryFile.XxHash64, Hash64(Stray).XxHash64Value());
         held.Count.Should().Be(1);
     }
 

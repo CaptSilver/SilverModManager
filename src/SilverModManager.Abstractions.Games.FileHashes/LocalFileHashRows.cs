@@ -1,4 +1,3 @@
-using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -34,9 +33,9 @@ public static class LocalFileHashRows
     /// A caller that already made relations in <paramref name="tx"/> passes them as <paramref name="relations"/>, so the
     /// same bytes do not get a second row.
     /// </summary>
-    public static void Record(ITransaction tx, IDb db, string gamePath, IEnumerable<IndexedFileHash> files, Dictionary<Hash, HashRelationId>? relations = null)
+    public static void Record(ITransaction tx, IDb db, string gamePath, IEnumerable<IndexedFileHash> files, Dictionary<FileIdentity, HashRelationId>? relations = null)
     {
-        relations ??= new Dictionary<Hash, HashRelationId>();
+        relations ??= new Dictionary<FileIdentity, HashRelationId>();
         foreach (var file in files)
         {
             if (file.Hashes is { } hashes) _ = EnsureHashRelation(tx, db, relations, hashes);
@@ -48,24 +47,24 @@ public static class LocalFileHashRows
                 Path = file.Path.Path,
                 Size = file.Size,
                 ModifiedUtc = file.ModifiedUtc,
-                XxHash3 = file.XxHash3,
+                XxHash3 = file.Identity.XxHash3(),
             };
         }
     }
 
     /// <summary>
-    /// The stored hash when a row has this exact size and modified instant.
+    /// The stored identity (always an xxHash3) when a row has this exact size and modified instant.
     /// </summary>
-    public static bool TryGet(IDb db, string gamePath, GamePath path, Size size, DateTimeOffset modifiedUtc, out Hash xxHash3)
+    public static bool TryGet(IDb db, string gamePath, GamePath path, Size size, DateTimeOffset modifiedUtc, out FileIdentity identity)
     {
         foreach (var row in Find(db, gamePath, path))
         {
             if (row.Size != size || row.ModifiedUtc.UtcTicks != modifiedUtc.UtcTicks) continue;
-            xxHash3 = row.XxHash3;
+            identity = FileIdentity.XxHash3(row.XxHash3);
             return true;
         }
 
-        xxHash3 = default;
+        identity = default;
         return false;
     }
 
@@ -73,12 +72,13 @@ public static class LocalFileHashRows
     /// The relation for these bytes: the existing one, one made earlier in the same transaction (<paramref name="created"/>),
     /// or a new one added to <paramref name="tx"/>.
     /// </summary>
-    public static HashRelationId EnsureHashRelation(ITransaction tx, IDb db, Dictionary<Hash, HashRelationId> created, MultiHash hash)
+    public static HashRelationId EnsureHashRelation(ITransaction tx, IDb db, Dictionary<FileIdentity, HashRelationId> created, MultiHash hash)
     {
-        if (created.TryGetValue(hash.XxHash3, out var known)) return known;
+        var key = FileIdentity.XxHash3(hash.XxHash3);
+        if (created.TryGetValue(key, out var known)) return known;
 
         var existing = HashRelation.FindByXxHash3(db, hash.XxHash3).FirstOrDefault();
-        if (existing.IsValid()) return created[hash.XxHash3] = existing.HashRelationId;
+        if (existing.IsValid()) return created[key] = existing.HashRelationId;
 
         var relation = new HashRelation.New(tx)
         {
@@ -90,6 +90,6 @@ public static class LocalFileHashRows
             Size = hash.Size,
             Crc32 = hash.Crc32,
         };
-        return created[hash.XxHash3] = relation.Id;
+        return created[key] = relation.Id;
     }
 }

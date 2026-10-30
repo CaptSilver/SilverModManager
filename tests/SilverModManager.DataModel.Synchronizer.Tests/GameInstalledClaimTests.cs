@@ -241,7 +241,7 @@ public class GameInstalledClaimTests : AIsolatedGameTest<GameInstalledClaimTests
         restored.SourceId.Should().Be("alpha");
         restored.Confidence.Should().Be(nameof(GameInstalledConfidence.GameRecord));
         restored.CanBeClaimed.Should().BeTrue();
-        GameInstalledPaths.For(Connection.Db, loadout.LoadoutId)[CreationA].Hash.Should().Be(HashOf("alpha 1"));
+        GameInstalledPaths.For(Connection.Db, loadout.LoadoutId)[CreationA].Identity.Should().Be(FileIdentity.XxHash3(HashOf("alpha 1")));
         (await TreeOf(loadout))[CreationA].Actions.Should().Be(Actions.DoNothing);
     }
 
@@ -305,7 +305,7 @@ public class GameInstalledClaimTests : AIsolatedGameTest<GameInstalledClaimTests
 
         (await Service.Unclaim(claim.GameInstalledClaimId)).Restored.Should().BeTrue();
 
-        GameInstalledPaths.For(Connection.Db, loadout.LoadoutId)[CreationA].Hash.Should().Be(HashOf("alpha 1"));
+        GameInstalledPaths.For(Connection.Db, loadout.LoadoutId)[CreationA].Identity.Should().Be(FileIdentity.XxHash3(HashOf("alpha 1")));
     }
 
     [Fact]

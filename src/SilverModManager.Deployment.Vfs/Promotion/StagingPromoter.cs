@@ -64,7 +64,7 @@ public sealed class StagingPromoter
         var entries = new List<JournalEntry>(files.Count + whiteouts.Count);
         foreach (var file in files)
         {
-            var identity = FileIdentity.XxHash3(await _hasher.Hash(_staging.Installation, file.RealPath, token));
+            var identity = await _hasher.Hash(_staging.Installation, file.RealPath, token);
             var mode = (uint)File.GetUnixFileMode(file.RealPath.ToString());
             entries.Add(new JournalEntry(file.Path, JournalEntryKind.File, file.Size, identity, mode));
         }
@@ -158,7 +158,7 @@ public sealed class StagingPromoter
         {
             var path = _staging.PathFor(file.Path);
             // Both sides are xxHash3 identities, so Equals answers "same bytes".
-            if (!path.FileExists || !FileIdentity.XxHash3(await _hasher.Hash(_staging.Installation, path, token)).Equals(file.Identity))
+            if (!path.FileExists || !(await _hasher.Hash(_staging.Installation, path, token)).Equals(file.Identity))
                 changed.Add(file.Path);
         }
         return changed;
