@@ -362,6 +362,39 @@ public class SteamLaunchOptionVerbTests(IConnection connection) : IDisposable
     }
 
     [Fact]
+    public async Task WriteThatSucceedsWithoutACompatibilityDataFolderIsReportedAsAFailure()
+    {
+        await Install(withProvider: false);
+        WriteShim();
+        var writer = Substitute.For<ISteamLaunchOptionWriter>();
+        writer.Write(Arg.Any<GameInstallation>(), Arg.Any<Loadout.ReadOnly>())
+            .Returns(new LocalConfigVdfWriter.Result(Span, null, Absolute(ConfigFile + ".silvermod-bak")));
+        var renderer = new LoggingRenderer();
+
+        var exitCode = await Command(writer).RunAsync(renderer, LoadoutName, null, write: true);
+
+        exitCode.Should().Be(LaunchSession.FailureExitCode);
+        Output(renderer).Should().Contain($"Steam did not report a compatibility data folder for Alpha {_unique}.");
+    }
+
+    [Fact]
+    public async Task ReplaceThatSucceedsWithoutACompatibilityDataFolderIsReportedAsAFailure()
+    {
+        await Install(withProvider: false);
+        WriteShim();
+        var writer = Substitute.For<ISteamLaunchOptionWriter>();
+        writer.Replace(Arg.Any<GameInstallation>(), Arg.Any<Loadout.ReadOnly>(), Arg.Any<string>())
+            .Returns(new LocalConfigVdfWriter.Result(Span, null, Absolute(ConfigFile + ".silvermod-bak"),
+                new LocalConfigVdfWriter.Replacement("Fluorine", FluorineLine, Span), Absolute(RecordFile)));
+        var renderer = new LoggingRenderer();
+
+        var exitCode = await Command(writer).RunAsync(renderer, LoadoutName, null, write: true, replaceOtherManager: FluorineLine);
+
+        exitCode.Should().Be(LaunchSession.FailureExitCode);
+        Output(renderer).Should().Contain($"Steam did not report a compatibility data folder for Alpha {_unique}.");
+    }
+
+    [Fact]
     public async Task ReplaceOtherManagerWithAStaleLineIsRefused()
     {
         await Install();
