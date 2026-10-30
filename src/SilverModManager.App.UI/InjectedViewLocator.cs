@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Sdk.Reflection;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
@@ -17,7 +18,7 @@ public class InjectedViewLocator : IViewLocator
     {
         _logger = logger;
         _provider = provider;
-        _resolveViewInnerMethod = GetType().GetMethod(nameof(ResolveViewInner), BindingFlags.NonPublic | BindingFlags.Instance)!;
+        _resolveViewInnerMethod = GetType().GetRequiredMethod(nameof(ResolveViewInner), BindingFlags.NonPublic | BindingFlags.Instance);
     }
 
     [SuppressMessage("ReSharper", "HeapView.PossibleBoxingAllocation", Justification = "Our ViewModels are always reference types.")]

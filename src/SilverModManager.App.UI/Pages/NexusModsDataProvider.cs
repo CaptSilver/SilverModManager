@@ -59,9 +59,7 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
         var files = NexusModsFileMetadata
             .All(db)
             .Where(modPage => modPage.Uid.GameId == nexusModsGameId)
-            .Select(fileMetadata => libraryItems.GetValueOrDefault(fileMetadata))
-            .Where(static arr => arr is not null)
-            .SelectMany(static x => x!)
+            .SelectMany(fileMetadata => libraryItems.GetValueOrDefault(fileMetadata) ?? [])
             .Select(libraryItem => new LibraryFile.ReadOnly(db, libraryItem))
             .ToArray();
 

@@ -23,7 +23,8 @@ public class CustomTemplateColumn<TModel> : TemplateColumn<TModel>
             isRoot = indent == 0;
         }
 
-        var inner = (base.CreateCell(row) as TemplateCell)!;
+        var inner = base.CreateCell(row) as TemplateCell
+                    ?? throw new InvalidOperationException($"{nameof(CustomTemplateColumn<TModel>)} expected a {nameof(TemplateCell)} from its base column");
         return new CustomTemplateCell(inner.Value, inner.GetCellTemplate, inner.GetCellEditingTemplate, Options)
         {
             IsRoot = isRoot,

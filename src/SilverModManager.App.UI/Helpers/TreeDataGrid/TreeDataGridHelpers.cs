@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Templates;
@@ -60,10 +59,13 @@ public static class TreeDataGridHelpers
                                     return new Control();
                                     
                                 // Very sus but it works, t r u s t.
-                                var view = locator!.ResolveView(node.Item);
-                                var ctrl = view as Control;
-                                Debug.Assert(ctrl != null, $"You need to add a view for {typeof(TItem)} into DI.");
-                                ctrl!.DataContext = node.Item;
+                                if (locator is null)
+                                    throw new InvalidOperationException($"No IViewLocator is registered, so no view can be created for {typeof(TItem)}");
+
+                                if (locator.ResolveView(node.Item) is not Control ctrl)
+                                    throw new InvalidOperationException($"You need to add a view for {typeof(TItem)} into DI.");
+
+                                ctrl.DataContext = node.Item;
                                 return ctrl;
                             }
                         ),

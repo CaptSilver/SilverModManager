@@ -66,9 +66,7 @@ public static class DynamicDataTreeItemExtensions
             .Subscribe();
 
         self.Children = children;
-        // guaranteed not null due to generic constraint:
-        // where TItem : class, IDynamicDataTreeItem<TItem, TKey>
-        return (self as TItem)!;
+        return AsItem<TItem, TKey>(self);
     }
 
     /// <summary>
@@ -84,9 +82,7 @@ public static class DynamicDataTreeItemExtensions
         if (self.Children?.Count == 0)
             return results;
 
-        // guaranteed not null due to generic constraint:
-        // where TItem : class, IDynamicDataTreeItem<TItem, TKey>
-        GetAllDescendentKeysRecursive((self as TItem)!, results);
+        GetAllDescendentKeysRecursive(AsItem<TItem, TKey>(self), results);
         return results;
     }
 
@@ -94,7 +90,7 @@ public static class DynamicDataTreeItemExtensions
         where TItem : class, IDynamicDataTreeItem<TItem, TKey>
         where TKey : notnull
     {
-        foreach (var child in node.Children!)
+        foreach (var child in RequiredChildren<TItem, TKey>(node))
         {
             results.Add(child.Key);
             GetAllDescendentKeysRecursive(child, results);
@@ -114,9 +110,7 @@ public static class DynamicDataTreeItemExtensions
         if (self.Children?.Count == 0)
             return results;
 
-        // guaranteed not null due to generic constraint:
-        // where TItem : class, IDynamicDataTreeItem<TItem, TKey>
-        GetAllDescendentNodesRecursive<TItem, TKey>((self as TItem)!, results);
+        GetAllDescendentNodesRecursive<TItem, TKey>(AsItem<TItem, TKey>(self), results);
         return results;
     }
 
@@ -124,10 +118,29 @@ public static class DynamicDataTreeItemExtensions
         where TItem : class, IDynamicDataTreeItem<TItem, TKey>
         where TKey : notnull
     {
-        foreach (var child in node.Children!)
+        foreach (var child in RequiredChildren<TItem, TKey>(node))
         {
             results.Add(child);
             GetAllDescendentNodesRecursive<TItem, TKey>(child, results);
         }
+    }
+
+    /// <summary>
+    ///     The item an implementation passes as itself. A plain cast, so a type that names a different
+    ///     <typeparamref name="TItem" /> fails with the two type names.
+    /// </summary>
+    private static TItem AsItem<TItem, TKey>(IDynamicDataTreeItem<TItem, TKey> self)
+        where TItem : class, IDynamicDataTreeItem<TItem, TKey>
+        where TKey : notnull
+    {
+        return (TItem)self;
+    }
+
+    private static ReadOnlyObservableCollection<TItem> RequiredChildren<TItem, TKey>(TItem node)
+        where TItem : class, IDynamicDataTreeItem<TItem, TKey>
+        where TKey : notnull
+    {
+        return node.Children
+            ?? throw new InvalidOperationException($"{typeof(TItem).Name} '{node.Key}' has no Children; call Initialize on it first");
     }
 }

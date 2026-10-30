@@ -9,6 +9,7 @@ using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.App.UI.Extensions;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.App.UI.Windows;
@@ -82,24 +83,27 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
             this.OneWayBind(ViewModel, vm => vm.WorkspaceController.ActiveWorkspace, view => view.WorkspaceView.ViewModel)
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.LeftMenu)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.LeftMenu))
                 .BindTo(this, view => view.LeftMenuViewModelHost.ViewModel)
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.CurrentOverlay)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.CurrentOverlay))
                 .BindTo(this, view => view.OverlayViewHost.ViewModel)
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.CurrentOverlay)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.CurrentOverlay))
                 .Select(content => content != null)
                 .BindTo(this, view => view.OverlayBorder.IsVisible)
                 .DisposeWith(disposables);
 
             this.WhenAnyValue(view => view.IsActive)
-                .BindTo(this, view => view.ViewModel!.IsActive)
+                .Subscribe(isActive =>
+                {
+                    if (ViewModel is { } viewModel) viewModel.IsActive = isActive;
+                })
                 .DisposeWith(disposables);
 
-            this.WhenAnyObservable(view => view.ViewModel!.BringWindowToFront)
+            this.WhenViewModel(vm => vm.WhenAnyObservable(x => x.BringWindowToFront))
                 .OnUI()
                 .Where(static shouldBringToFront => shouldBringToFront)
                 .Subscribe(_ => {

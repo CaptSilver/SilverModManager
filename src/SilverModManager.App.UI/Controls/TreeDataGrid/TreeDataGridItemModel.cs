@@ -60,7 +60,7 @@ public class TreeDataGridItemModel<TModel, TKey> : TreeDataGridItemModel, ITreeD
 
     public IObservable<IChangeSet<TModel, TKey>> ChildrenObservable { get; init; }
 
-    private ObservableList<TModel> _children = [];
+    private readonly ObservableList<TModel> _children = [];
     private readonly INotifyCollectionChangedSynchronizedViewList<TModel> _childrenView;
 
     private readonly BehaviorSubject<bool> _childrenCollectionInitialization = new(initialValue: false);
@@ -185,8 +185,6 @@ public class TreeDataGridItemModel<TModel, TKey> : TreeDataGridItemModel, ITreeD
                     IsSelected
                 );
             }
-
-            _children = null!;
         }
 
         base.Dispose(disposing);

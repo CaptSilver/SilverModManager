@@ -122,5 +122,33 @@ public static class ReactiveExtensions
     {
         return item.InvokeCommand(target, commandProperty);
     }
+
+    /// <summary>
+    /// Pipes <paramref name="item"/> into the latest command of <paramref name="command"/>, for a command that
+    /// belongs to something that comes and goes (a view's view model). A value is dropped while there is no command
+    /// yet or the latest command cannot execute; when the command changes, later values go to the new one.
+    /// Same semantics as ReactiveUI's <c>InvokeCommand</c> over a single command, which has no overload over a stream of commands.
+    /// </summary>
+    /// <param name="item">The source observable to pipe into the command.</param>
+    /// <param name="command">The commands to invoke, newest last.</param>
+    public static IDisposable InvokeReactiveCommand<T, TResult>(
+        this IObservable<T> item,
+        IObservable<ReactiveCommandBase<T, TResult>?> command)
+    {
+        var latestCommand = command
+            .Select(static current => current is null
+                ? Observable.Return<(ReactiveCommandBase<T, TResult>? Command, bool CanExecute)>((null, false))
+                : current.CanExecute.Select(canExecute => (Command: (ReactiveCommandBase<T, TResult>?)current, CanExecute: canExecute)))
+            .Switch();
+
+        return item
+            .WithLatestFrom(latestCommand, static (value, latest) => (Value: value, latest.Command, latest.CanExecute))
+            .Where(static invocation => invocation.CanExecute)
+            .Subscribe(static invocation =>
+            {
+                if (invocation.Command is { } current)
+                    current.Execute(invocation.Value).Catch(Observable.Empty<TResult>()).Subscribe();
+            });
+    }
         
 }

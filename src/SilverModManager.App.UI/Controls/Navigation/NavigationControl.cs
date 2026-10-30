@@ -39,7 +39,6 @@ public class NavigationControl : StandardButton
 
     private NavigationInformation NavigationInformation
     {
-        get => (NavigationInformation)CommandParameter!;
         set => CommandParameter = value;
     }
 

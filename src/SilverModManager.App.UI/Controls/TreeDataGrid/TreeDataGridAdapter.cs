@@ -37,10 +37,10 @@ public abstract class TreeDataGridAdapter<TModel, TKey> : ReactiveR3Object, ISea
     public BindableReactiveProperty<bool> IsSourceEmpty { get; } = new(value: true);
     public BindableReactiveProperty<int> SourceCount { get; } = new(value: 0);
     public BindableReactiveProperty<IComparer<TModel>?> CustomSortComparer { get; } = new(value: null);
-    public ObservableHashSet<TModel> SelectedModels { get; private set; } = [];
+    public ObservableHashSet<TModel> SelectedModels { get; } = [];
     public ReactiveProperty<Filter> Filter { get; } = new(value: NoFilter.Instance);
     public TreeDataGridSortingOptions SortingOptions { get; }
-    protected ObservableList<TModel> Roots { get; private set; } = [];
+    protected ObservableList<TModel> Roots { get; } = [];
     protected ISettingsManager SettingsManager { get; }
     private ISynchronizedView<TModel, TModel> RootsView { get; }
     private INotifyCollectionChangedSynchronizedViewList<TModel> RootsCollectionChangedView { get; }
@@ -466,8 +466,6 @@ public abstract class TreeDataGridAdapter<TModel, TKey> : ReactiveR3Object, ISea
                 Disposable.Dispose(_activationDisposable, RootsView, RootsCollectionChangedView, _selectionModelsSerialDisposable, ModelActivationSubject);
             }
 
-            Roots = null!;
-            SelectedModels = null!;
             _isDisposed = true;
         }
 

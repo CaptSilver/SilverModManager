@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Humanizer;
 using Humanizer.Bytes;
 using NexusMods.Paths;
@@ -22,7 +23,7 @@ public class SizeToStringTypeConverter : IBindingTypeConverter
     }
 
     /// <inheritdoc/>
-    public bool TryConvert(object? from, Type toType, object? conversionHint, out object result)
+    public bool TryConvert(object? from, Type toType, object? conversionHint, [MaybeNullWhen(false)] out object result)
     {
         if (toType == typeof(string) && from is Size fromSize)
         {
@@ -32,7 +33,7 @@ public class SizeToStringTypeConverter : IBindingTypeConverter
             return true;
         }
         
-        result = null!;
+        result = null;
         return false;
     }
 }

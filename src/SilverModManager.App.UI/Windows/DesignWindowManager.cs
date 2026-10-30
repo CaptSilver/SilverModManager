@@ -9,7 +9,13 @@ namespace SilverModManager.App.UI.Windows;
 public class DesignWindowManager : IWindowManager
 {
     public ReadOnlyObservableCollection<WindowId> AllWindowIds { get; } = ReadOnlyObservableCollection<WindowId>.Empty;
-    public IWorkspaceWindow ActiveWindow { get; set; } = null!;
+    private IWorkspaceWindow? _activeWindow;
+
+    public IWorkspaceWindow ActiveWindow
+    {
+        get => _activeWindow ?? throw new InvalidOperationException("DesignWindowManager has no active window; assign ActiveWindow first");
+        set => _activeWindow = value;
+    }
 
     public bool TryGetWindow(WindowId windowId, [NotNullWhen(true)] out IWorkspaceWindow? window)
     {

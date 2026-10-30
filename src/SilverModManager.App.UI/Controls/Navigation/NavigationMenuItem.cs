@@ -26,7 +26,6 @@ public class NavigationMenuItem : MenuItem
 
     private NavigationInformation NavigationInformation
     {
-        get => (NavigationInformation)CommandParameter!;
         set => CommandParameter = value;
     }
 

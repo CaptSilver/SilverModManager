@@ -41,9 +41,12 @@ public static class TreeDataGridViewHelper
             ).Select(static tuple => (tuple.e.Row.Model, false));
 
             deactivate.Merge(activate)
-                .Where(static tuple => tuple.Model is TItemModel)
-                .Select(static tuple => ((tuple.Model as TItemModel)!, tuple.Item2))
-                .Subscribe((view, getAdapter), static (tuple, state) => state.getAdapter(state.view.ViewModel!).ModelActivationSubject.OnNext(tuple))
+                .Subscribe((view, getAdapter), static (tuple, state) =>
+                {
+                    // Rows are recycled, so the view can be attached with no view model; read it as the event fires.
+                    if (tuple.Model is not TItemModel model || state.view.ViewModel is not { } viewModel) return;
+                    state.getAdapter(viewModel).ModelActivationSubject.OnNext((model, tuple.Item2));
+                })
                 .AddTo(disposables);
             
             // Drag & Drop support
@@ -53,21 +56,30 @@ public static class TreeDataGridViewHelper
                         addHandler: handler => treeDataGrid.RowDragStarted += handler,
                         removeHandler: handler => treeDataGrid.RowDragStarted -= handler)
                     .Subscribe((view, getAdapter), static (eventArgs, state) =>
-                            state.getAdapter(state.view.ViewModel!).OnRowDragStarted(eventArgs.sender, eventArgs.e))
+                    {
+                        if (state.view.ViewModel is not { } viewModel) return;
+                        state.getAdapter(viewModel).OnRowDragStarted(eventArgs.sender, eventArgs.e);
+                    })
                     .AddTo(disposables);
                 
                 Observable.FromEventHandler<TreeDataGridRowDragEventArgs>(
                         addHandler: handler => treeDataGrid.RowDragOver += handler,
                         removeHandler: handler => treeDataGrid.RowDragOver -= handler)
                     .Subscribe((view, getAdapter), static (eventArgs, state) =>
-                        state.getAdapter(state.view.ViewModel!).OnRowDragOver(eventArgs.sender, eventArgs.e))
+                    {
+                        if (state.view.ViewModel is not { } viewModel) return;
+                        state.getAdapter(viewModel).OnRowDragOver(eventArgs.sender, eventArgs.e);
+                    })
                     .AddTo(disposables);
 
                 Observable.FromEventHandler<TreeDataGridRowDragEventArgs>(
                         addHandler: handler => treeDataGrid.RowDrop += handler,
                         removeHandler: handler => treeDataGrid.RowDrop -= handler)
                     .Subscribe((view, getAdapter), static (eventArgs, state) =>
-                            state.getAdapter(state.view.ViewModel!).OnRowDrop(eventArgs.sender, eventArgs.e))
+                    {
+                        if (state.view.ViewModel is not { } viewModel) return;
+                        state.getAdapter(viewModel).OnRowDrop(eventArgs.sender, eventArgs.e);
+                    })
                     .AddTo(disposables);
             }
             
@@ -81,7 +93,9 @@ public static class TreeDataGridViewHelper
                     )
                 .Subscribe((view, getAdapter), static (eventArgs, state) =>
                 {
-                    var adapter = state.getAdapter(state.view.ViewModel!);
+                    if (state.view.ViewModel is not { } viewModel) return;
+
+                    var adapter = state.getAdapter(viewModel);
                     // Select all items
                     adapter.SelectAll();
                     
@@ -93,8 +107,9 @@ public static class TreeDataGridViewHelper
             Disposable.Create((view, treeDataGrid, getAdapter),
                 static input =>
                 {
-                    
-                    var adapter = input.getAdapter(input.view.ViewModel!);
+                    if (input.view.ViewModel is not { } viewModel) return;
+
+                    var adapter = input.getAdapter(viewModel);
                     if (!adapter.SortingOptions.UseSortingStatePersistence)
                         return;
                     var sortingState = GetSortingState(input.treeDataGrid);
