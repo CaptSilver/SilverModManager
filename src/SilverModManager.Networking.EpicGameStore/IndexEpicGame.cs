@@ -64,15 +64,16 @@ public static class IndexEpicGame
                     var relPath = file.RelativeTo(location);
 
                     await using var progressTask = await renderer.StartProgressTask(relPath.ToString(), maxValue: file.FileInfo.Size.Value);
-                    await using var stream = file.Read();
-                    await using var progressWrapper = new StreamProgressWrapper<ProgressTask>(stream, state: progressTask, notifyWritten: static (progressTask, values) =>
+                    hashes[relPath] = await FileHashing.Read(file, async (stream, readToken) =>
                     {
-                        var (current, _) = values;
-                        var task = progressTask.Increment(current.Value);
-                    });
+                        await using var progressWrapper = new StreamProgressWrapper<ProgressTask>(stream, state: progressTask, notifyWritten: static (progressTask, values) =>
+                        {
+                            var (current, _) = values;
+                            var task = progressTask.Increment(current.Value);
+                        });
 
-                    var result = await MultiHasher.HashStream(stream, cancellationToken: token);
-                    hashes[relPath] = result;
+                        return await MultiHasher.HashStream(stream, cancellationToken: readToken);
+                    }, token);
                 }
             );
         }

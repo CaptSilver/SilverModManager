@@ -15,7 +15,6 @@ using SilverModManager.Sdk.Settings;
 using SilverModManager.Abstractions.Steam.Values;
 using SilverModManager.Games.FileHashes.DTOs;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Hashing.xxHash3.Paths;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.MnemonicDB.Storage;
@@ -462,7 +461,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         if (actualSize != expected.Size)
             throw new InvalidDataException($"Downloaded archive is {actualSize} but the release manifest lists {expected.Size}");
 
-        var actualHash = await archivePath.XxHash3Async(token: cancellationToken);
+        var actualHash = await FileHashing.XxHash3(archivePath, cancellationToken);
         if (actualHash != expected.Hash)
             throw new InvalidDataException($"Downloaded archive hash {actualHash} does not match the release manifest hash {expected.Hash}");
     }

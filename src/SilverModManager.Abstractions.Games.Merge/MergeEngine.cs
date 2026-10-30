@@ -190,9 +190,9 @@ public sealed class MergeEngine : IMergeEngine
             else
             {
                 // Read synchronously: planning is a pure function over byte sources and runs where nothing awaits.
-                using var stream = file.Read();
+                using var stream = SequentialFileRead.Open(file);
                 using var buffer = new MemoryStream();
-                stream.CopyTo(buffer);
+                stream.CopyTo(buffer, HashingLimits.ReadBlockSize);
                 bytes = buffer.ToArray();
                 // Every digest, because the baseline may have recorded the file under any of them.
                 hashes = MultiHasher.HashStream(new MemoryStream(bytes)).GetAwaiter().GetResult();

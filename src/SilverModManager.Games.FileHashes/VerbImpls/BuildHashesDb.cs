@@ -12,7 +12,6 @@ using SilverModManager.Abstractions.Steam.DTOs;
 using SilverModManager.Abstractions.Steam.Values;
 using SilverModManager.Games.FileHashes.DTOs;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Hashing.xxHash3.Paths;
 using SilverModManager.MnemonicDB;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Storage;
@@ -102,7 +101,7 @@ public class BuildHashesDb : IAsyncDisposable
         var manifestPath = output / "manifest.json";
         ZipFile.CreateFromDirectory(_tempFolder.Path.ToString(), hashesDbPath.ToString(), CompressionLevel.SmallestSize, false);
 
-        var zipHash = await hashesDbPath.XxHash3Async();
+        var zipHash = await FileHashing.XxHash3(hashesDbPath);
 
         var manifest = new DTOs.Manifest()
         {

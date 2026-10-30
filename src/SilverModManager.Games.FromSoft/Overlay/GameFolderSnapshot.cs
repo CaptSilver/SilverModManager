@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
-using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.FromSoft.Overlay;
@@ -46,7 +46,7 @@ public sealed record GameFolderSnapshot(IReadOnlyList<GameFolderSnapshot.Entry> 
                 continue;
             }
 
-            var hash = await gameFolder.FileSystem.FromUnsanitizedFullPath(file).XxHash3Async(token: cancellationToken);
+            var hash = await FileHashing.XxHash3(gameFolder.FileSystem.FromUnsanitizedFullPath(file), cancellationToken);
             entries.Add(new Entry(relative, info.Length, info.LastWriteTimeUtc.Ticks, hash.Value.ToString("x16")));
         }
 

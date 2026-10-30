@@ -110,11 +110,7 @@ public class ThunderstoreDownloadJob : IJobDefinitionWithStart<ThunderstoreDownl
                 await downloading;
             }
 
-            Sha256Value actual;
-            await using (var stream = SequentialFileRead.Open(downloaded))
-            {
-                actual = await Sha256Hasher.HashAsync(stream, cancellationToken: context.CancellationToken);
-            }
+            var actual = await FileHashing.Sha256(downloaded, context.CancellationToken);
 
             if (ExpectedSha256 is { } expected && !expected.Equals(actual))
             {

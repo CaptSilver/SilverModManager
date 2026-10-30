@@ -1,5 +1,3 @@
-using NexusMods.Hashing.xxHash3;
-using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Hashes;
 
@@ -14,7 +12,7 @@ internal sealed class XxHash3FullFileHasher : IFullFileHasher
     public static readonly XxHash3FullFileHasher Instance = new();
 
     public async ValueTask<FileIdentity> Hash(AbsolutePath file, CancellationToken cancellationToken)
-        => FileIdentity.XxHash3(await file.XxHash3Async(token: cancellationToken));
+        => FileIdentity.XxHash3(await FileHashing.XxHash3(file, cancellationToken));
 
     public ValueTask<MultiHash> HashAll(AbsolutePath file, CancellationToken cancellationToken)
         => MultiHashFileHasher.Instance.HashAll(file, cancellationToken);

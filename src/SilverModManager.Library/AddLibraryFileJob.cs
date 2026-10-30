@@ -76,16 +76,17 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
 
     private static async ValueTask<(Hash, Optional<Md5Value>, Optional<Sha256Value>, Hash)> HashAsync(AbsolutePath filePath, bool isNestedFile, CancellationToken cancellationToken)
     {
-        await using var stream = SequentialFileRead.Open(filePath);
-
-        if (isNestedFile)
+        return await FileHashing.Read(filePath, async (stream, token) =>
         {
-            var nested = await NestedHasher.HashAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-            return (nested.Hash1, Optional<Md5Value>.None, Optional<Sha256Value>.None, nested.Hash2);
-        }
+            if (isNestedFile)
+            {
+                var nested = await NestedHasher.HashAsync(stream, cancellationToken: token).ConfigureAwait(false);
+                return (nested.Hash1, Optional<Md5Value>.None, Optional<Sha256Value>.None, nested.Hash2);
+            }
 
-        var multiHash = await Hasher.HashAsync(stream, cancellationToken: cancellationToken);
-        return (multiHash.Hash1, multiHash.Hash2, multiHash.Hash3, multiHash.Hash4);
+            var multiHash = await Hasher.HashAsync(stream, cancellationToken: token);
+            return (multiHash.Hash1, multiHash.Hash2, multiHash.Hash3, multiHash.Hash4);
+        }, cancellationToken);
     }
 
     private async Task<LibraryFile.New> AnalyzeFile(IJobContext<AddLibraryFileJob> context, AbsolutePath filePath, bool isNestedFile = false)

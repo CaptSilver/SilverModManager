@@ -1,7 +1,7 @@
 using System.Text.Json;
 using SilverModManager.Games.FromSoft.Saves;
-using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.FromSoft.Launch;
@@ -101,7 +101,7 @@ public sealed class SaveLedger(AbsolutePath root)
     }
 
     internal static async Task<string> HashOf(IFileSystem fileSystem, string file, CancellationToken cancellationToken = default)
-        => (await fileSystem.FromUnsanitizedFullPath(file).XxHash3Async(token: cancellationToken)).Value.ToString("x16");
+        => (await FileHashing.XxHash3(fileSystem.FromUnsanitizedFullPath(file), cancellationToken)).Value.ToString("x16");
 
     private static IReadOnlyList<T> Read<T>(AbsolutePath file)
         => file.FileExists ? JsonSerializer.Deserialize<List<T>>(System.IO.File.ReadAllText(file.GetFullPath()), Json) ?? [] : [];

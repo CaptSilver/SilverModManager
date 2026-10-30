@@ -6,6 +6,7 @@ using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Platform.Proton.PrefixSetup;
 
@@ -318,8 +319,7 @@ public sealed class PrefixSetupRunner : IPrefixSetupRunner
 
     private static async Task<string> Sha256Of(AbsolutePath path, CancellationToken cancellationToken)
     {
-        await using var stream = path.Read();
-        return Convert.ToHexString(await SHA256.HashDataAsync(stream, cancellationToken)).ToLowerInvariant();
+        return (await FileHashing.Sha256(path, cancellationToken)).ToString();
     }
 
     private async Task<string?> RunInstaller(GameInstallation installation, PrefixSetupStep step, PrefixInstallStep action, AbsolutePath file, CancellationToken cancellationToken)

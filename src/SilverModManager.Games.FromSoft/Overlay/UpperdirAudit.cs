@@ -1,7 +1,7 @@
 using System.IO.Enumeration;
 using System.Text.Json;
-using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Games.FromSoft.Overlay;
 
@@ -113,7 +113,7 @@ public static class UpperdirAudit
     }
 
     internal static async Task<string> HashOf(OverlayLayout layout, string file, CancellationToken cancellationToken)
-        => (await layout.Root.FileSystem.FromUnsanitizedFullPath(file).XxHash3Async(token: cancellationToken)).Value.ToString("x16");
+        => (await FileHashing.XxHash3(layout.Root.FileSystem.FromUnsanitizedFullPath(file), cancellationToken)).Value.ToString("x16");
 
     private static void Save(OverlayLayout layout, IReadOnlyList<AuditFinding> findings)
     {

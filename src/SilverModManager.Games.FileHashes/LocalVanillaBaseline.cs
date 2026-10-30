@@ -433,8 +433,7 @@ internal sealed class LocalVanillaBaseline
         {
             try
             {
-                await using var stream = _openRead(_fileSystem.FromUnsanitizedFullPath(candidate.DiskPath));
-                var hash = await MultiHasher.HashStream(stream, token);
+                var hash = await FileHashing.Read(_fileSystem.FromUnsanitizedFullPath(candidate.DiskPath), _openRead, async (stream, readToken) => await MultiHasher.HashStream(stream, readToken), token);
                 stats.AddRead(hash.Size);
                 results.Add(new Hashed(candidate, hash));
             }

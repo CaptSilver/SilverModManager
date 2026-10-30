@@ -72,9 +72,7 @@ public sealed class WabbajackGalleryDownloader(
             throw new GalleryDownloadException($"'{entry.Title}' is {size} bytes but the gallery says its size is {expectedSize}; the file was deleted");
         }
 
-        FileIdentity actual;
-        await using (var stream = SequentialFileRead.Open(file))
-            actual = FileIdentity.XxHash64(await Xx64Hasher.HashAsync(stream, cancellationToken: cancellationToken));
+        var actual = FileIdentity.XxHash64(await FileHashing.XxHash64(file, cancellationToken));
         if (!actual.Equals(expectedHash))
         {
             file.Delete();

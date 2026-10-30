@@ -137,11 +137,7 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
                 await downloading;
             }
 
-            Sha256Value actual;
-            await using (var stream = SequentialFileRead.Open(downloaded))
-            {
-                actual = await Sha256Hasher.HashAsync(stream, cancellationToken: context.CancellationToken);
-            }
+            var actual = await FileHashing.Sha256(downloaded, context.CancellationToken);
 
             Verify(asset, release.TagName, ExpectedSha256, actual, "the pinned digest");
             Verify(asset, release.TagName, advertised, actual, "the digest GitHub reports for the asset");

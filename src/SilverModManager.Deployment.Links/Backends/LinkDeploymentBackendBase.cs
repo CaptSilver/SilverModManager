@@ -6,7 +6,6 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.Deployment.Links.Probe;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Hashing.xxHash3.Paths;
 using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
@@ -333,7 +332,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
         // A file Ensure just extracted is trusted. Only one that was already there can have been written through.
         await Parallel.ForEachAsync(reused, new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders }, async (identity, token) =>
         {
-            var actual = FileIdentity.XxHash3(await storeFiles[identity].XxHash3Async(token: token));
+            var actual = FileIdentity.XxHash3(await FileHashing.XxHash3(storeFiles[identity], token));
             if (actual.Equals(identity)) return;
 
             logger.LogWarning(

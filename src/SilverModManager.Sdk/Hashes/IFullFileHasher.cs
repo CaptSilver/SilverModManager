@@ -32,7 +32,6 @@ public sealed class MultiHashFileHasher : IFullFileHasher
     /// <inheritdoc />
     public async ValueTask<MultiHash> HashAll(AbsolutePath file, CancellationToken cancellationToken)
     {
-        await using var stream = SequentialFileRead.Open(file);
-        return await MultiHasher.HashStream(stream, cancellationToken);
+        return await FileHashing.HashAll(file, cancellationToken);
     }
 }

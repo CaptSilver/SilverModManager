@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -61,14 +60,9 @@ public record ExternalDownloadJob : HttpDownloadJob
     /// <inheritdoc />
     public override async ValueTask AddMetadata(ITransaction tx, LibraryFile.New libraryFile)
     {
-        await using (var fileStream = Destination.Read())
-        {
-            var algo = MD5.Create();
-            var hash = await algo.ComputeHashAsync(fileStream);
-            var md5Actual = Md5Value.From(hash);
-            if (md5Actual != ExpectedMd5)
-                throw new InvalidOperationException($"MD5 hash mismatch. Expected: {ExpectedMd5}, Actual: {md5Actual}");
-        }
+        var md5Actual = await FileHashing.Md5(Destination);
+        if (md5Actual != ExpectedMd5)
+            throw new InvalidOperationException($"MD5 hash mismatch. Expected: {ExpectedMd5}, Actual: {md5Actual}");
 
         _ = new DirectDownloadLibraryFile.New(tx, libraryFile.Id)
         {

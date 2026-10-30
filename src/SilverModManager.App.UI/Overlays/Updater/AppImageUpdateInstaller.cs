@@ -1,3 +1,4 @@
+using NexusMods.Paths;
 using SilverModManager.Sdk.Errors;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Networking.GitHub;
@@ -54,11 +55,7 @@ internal sealed class AppImageUpdateInstaller(ILogger logger, UpdateDownload dow
             await download(new Uri(asset.BrowserDownloadUrl), temporary, progress, cancellationToken).ConfigureAwait(false);
 
             logger.LogInformation("Verifying download of `{Asset}`", asset.Name);
-            Sha256Value actual;
-            await using (var stream = File.OpenRead(temporary))
-            {
-                actual = await Sha256Hasher.HashAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
+            var actual = await FileHashing.Sha256(FileSystem.Shared.FromUnsanitizedFullPath(temporary), cancellationToken).ConfigureAwait(false);
 
             if (!actual.Equals(expected))
             {

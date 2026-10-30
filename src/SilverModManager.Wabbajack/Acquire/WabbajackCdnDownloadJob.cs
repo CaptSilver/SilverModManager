@@ -164,15 +164,13 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
             await file.FlushAsync(token);
         }
 
-        await using (var check = Destination.Read())
-        {
-            if (check.Length != definition.Size)
-                throw new InvalidDataException($"{definition.OriginalFileName} came to {check.Length} bytes, the CDN says {definition.Size}");
+        var onDisk = Destination.FileInfo.Size.Value;
+        if (onDisk != (ulong)definition.Size)
+            throw new InvalidDataException($"{definition.OriginalFileName} came to {onDisk} bytes, the CDN says {definition.Size}");
 
-            var hash = FileIdentity.XxHash64(await Xx64Hasher.HashAsync(check, cancellationToken: token));
-            if (!hash.Equals(definition.Hash))
-                throw new InvalidDataException($"{definition.OriginalFileName} does not match the hash the CDN gives for it");
-        }
+        var hash = FileIdentity.XxHash64(await FileHashing.XxHash64(Destination, token));
+        if (!hash.Equals(definition.Hash))
+            throw new InvalidDataException($"{definition.OriginalFileName} does not match the hash the CDN gives for it");
 
         return Destination;
     }

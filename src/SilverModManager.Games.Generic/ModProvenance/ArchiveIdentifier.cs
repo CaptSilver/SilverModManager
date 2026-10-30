@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
-using System.Security.Cryptography;
+using NexusMods.Paths;
+using SilverModManager.Sdk.Hashes;
 using System.Text.RegularExpressions;
 
 namespace SilverModManager.Games.Generic.ModProvenance;
@@ -151,8 +152,7 @@ public static partial class ArchiveIdentifier
     {
         try
         {
-            await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16, useAsync: true);
-            return Convert.ToHexStringLower(await MD5.HashDataAsync(stream, cancellationToken));
+            return (await FileHashing.Md5(FileSystem.Shared.FromUnsanitizedFullPath(path), cancellationToken)).ToString().ToLowerInvariant();
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
