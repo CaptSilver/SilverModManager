@@ -53,7 +53,7 @@ public class AbstractClassConverterGenerator<T> : JsonConverter<T>
         {
             var nameAttr = type.CustomAttributes.Where(t => t.AttributeType == typeof(JsonNameAttribute))
                 .Select(t => t.ConstructorArguments.First().Value as string
-                    ?? throw new JsonException($"The JsonNameAttribute of {type} does not have a string name"))
+                    ?? throw new InvalidOperationException($"The JsonNameAttribute of {type} does not have a string name"))
                 .FirstOrDefault();
 
             if (nameAttr == default)
@@ -64,7 +64,7 @@ public class AbstractClassConverterGenerator<T> : JsonConverter<T>
                 .Select(t => t.ConstructorArguments.First());
 
             foreach (var alias in aliases)
-                _registry[alias.Value as string ?? throw new JsonException($"A JsonAliasAttribute of {type} does not have a string alias")] = type;
+                _registry[alias.Value as string ?? throw new InvalidOperationException($"A JsonAliasAttribute of {type} does not have a string alias")] = type;
         }
     }
 

@@ -193,9 +193,6 @@ public class CommandLineConfigurator
     {
         ParseArgument<T?> parser = result =>
         {
-            // A flag given without a value, such as --write, is true. Only an explicit --write false is parsed.
-            if (typeof(T) == typeof(bool) && result.Tokens.Count == 0) return (T)(object)true;
-
             return TryParseValue<T>(optionDefinition, result, out var value) ? value : default;
         };
 
@@ -210,8 +207,6 @@ public class CommandLineConfigurator
     {
         ParseArgument<T?> parser = result =>
         {
-            if (typeof(T) == typeof(bool) && result.Tokens.Count == 0) return (T)(object)true;
-
             return TryParseValue<T>(optionDefinition, result, out var value) ? value : null;
         };
 
@@ -221,6 +216,13 @@ public class CommandLineConfigurator
     private bool TryParseValue<T>(OptionDefinition optionDefinition, ArgumentResult result, [NotNullWhen(true)] out T? value) where T : notnull
     {
         value = default;
+
+        // A flag given without a value, such as --write, is true. Only an explicit --write false is parsed.
+        if (typeof(T) == typeof(bool) && result.Tokens.Count == 0)
+        {
+            value = (T)(object)true;
+            return true;
+        }
 
         // A verb option whose type has no registered parser can never be filled; failing the command says so
         // instead of running the verb with nothing.

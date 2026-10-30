@@ -282,4 +282,31 @@ public class LoadoutLaunchVerbTests(IServiceProvider provider)
         exitCode.Should().NotBe(0);
         Output(renderer).Should().Contain("Invalid integer `soon`");
     }
+
+    [Fact]
+    public async Task AParsedWaitReachesTheVerb()
+    {
+        // The verb refuses a wait this long; it can only do so if the value on the command line got through
+        // the option parser. A parser that dropped it would leave the 30 s default and the launch would start.
+        var setup = await Arrange(loadout => loadout);
+        var services = new ServiceCollection()
+            .AddLogging()
+            .AddDefaultParsers()
+            .AddSingleton(provider.GetRequiredService<IConnection>())
+            .AddSingleton<CommandLineConfigurator>()
+            .AddCLI()
+            .AddModule("loadout", "Commands for managing a specific loadout")
+            .AddSingleton<WindowHost>()
+            .AddSingleton(setup.Command)
+            .AddLaunchVerbs()
+            .BuildServiceProvider();
+
+        var renderer = new LoggingRenderer();
+        var exitCode = await services.GetRequiredService<CommandLineConfigurator>()
+            .RunAsync(["loadout", "launch", "--loadout", setup.Loadout.LoadoutId.Value.ToString(), "--wait", int.MaxValue.ToString()], renderer, CancellationToken.None);
+
+        exitCode.Should().Be(1);
+        Output(renderer).Should().Contain("--wait");
+        await setup.Tools.DidNotReceive().RunTool(Arg.Any<ITool>(), Arg.Any<Loadout.ReadOnly>(), Arg.Any<IJobMonitor>(), Arg.Any<CancellationToken>());
+    }
 }

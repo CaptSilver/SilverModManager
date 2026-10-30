@@ -42,7 +42,7 @@ public abstract class AExpressionConverterGenerator<T> : JsonConverter<T>
     private static string FirstStringArgument(CustomAttributeData attribute)
     {
         return attribute.ConstructorArguments.FirstOrDefault().Value as string
-            ?? throw new JsonException($"{attribute.AttributeType.Name} does not have a string as its first argument");
+            ?? throw new InvalidOperationException($"{attribute.AttributeType.Name} does not have a string as its first argument");
     }
 
     public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

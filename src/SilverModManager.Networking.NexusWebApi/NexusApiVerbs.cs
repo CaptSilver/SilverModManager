@@ -11,6 +11,8 @@ internal static class NexusApiVerbs
 {
     internal static IServiceCollection AddNexusApiVerbs(this IServiceCollection collection) =>
         collection
+            .AddOptionParser<ModId>(s => uint.TryParse(s, out var id) ? (ModId.From(id), null) : (default, $"Invalid ModId `{s}`"))
+            .AddOptionParser<FileId>(s => uint.TryParse(s, out var id) ? (FileId.From(id), null) : (default, $"Invalid FileId `{s}`"))
             .AddModule("nexus", "Commands for interacting with the Nexus Mods API")
             .AddVerb(() => NexusApiVerify)
             .AddVerb(() => NexusDownloadLinks);
