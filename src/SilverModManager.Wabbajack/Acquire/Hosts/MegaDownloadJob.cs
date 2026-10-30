@@ -1,3 +1,4 @@
+using SilverModManager.Networking.HttpDownloader;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;

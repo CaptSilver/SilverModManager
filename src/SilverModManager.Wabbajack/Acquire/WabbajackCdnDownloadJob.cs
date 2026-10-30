@@ -1,4 +1,5 @@
 // Follows Wabbajack.Downloaders.WabbajackCDN/WabbajackCDNDownloader.cs.
+using SilverModManager.Networking.HttpDownloader;
 using System.IO.Compression;
 using System.Net;
 using System.Runtime.ExceptionServices;

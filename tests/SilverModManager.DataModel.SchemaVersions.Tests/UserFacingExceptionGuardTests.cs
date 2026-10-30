@@ -81,7 +81,7 @@ public class UserFacingExceptionGuardTests
         ["SilverModManager.SingleProcess.Exceptions.HeadlessMainRunning"] = "Startup catches it to decide whether to start a main process; it never reaches a dialog.",
         ["SilverModManager.SingleProcess.Exceptions.NoMainProcessStarted"] = "Startup catches it to decide whether to start a main process; it never reaches a dialog.",
         ["SilverModManager.Wabbajack.Acquire.MemberNotFoundException"] = "A directive names a file the library cannot supply; the install job records a skip row naming it.",
-        ["SilverModManager.Wabbajack.Acquire.PermanentFailureException"] = "Carries an error that retrying cannot fix out of the retry loop; unwrapped before anyone sees it.",
+        ["SilverModManager.Networking.HttpDownloader.PermanentFailureException"] = "Carries an error that retrying cannot fix out of the retry loop; unwrapped before anyone sees it.",
         ["SilverModManager.Wabbajack.Install.ArchiveMismatchException"] = "A built archive does not hold the bytes its inputs were written with; the message becomes a skip row.",
         ["SilverModManager.Wabbajack.Install.InstallModlistJob+DirectiveSkipped"] = "Control flow that turns one directive into a skip row.",
         ["SilverModManager.Wabbajack.Transforms.PatchException"] = "A delta that does not apply; the install turns it into a skip row.",

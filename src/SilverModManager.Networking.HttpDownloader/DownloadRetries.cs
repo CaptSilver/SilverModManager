@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace SilverModManager.Wabbajack.Acquire;
+namespace SilverModManager.Networking.HttpDownloader;
 
 /// <summary>A failure that asking again cannot fix, so <see cref="DownloadRetries"/> rethrows <see cref="Error"/> at once.</summary>
 public sealed class PermanentFailureException(Exception error) : Exception(error.Message, error)
