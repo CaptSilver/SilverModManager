@@ -6,6 +6,8 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using ReactiveUI;
 using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Controls.Cards;
@@ -17,6 +19,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Networking.NexusWebApi;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.UI.Sdk.Icons;
@@ -38,6 +41,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
     private readonly INexusModsBrowser _browser;
     private readonly ILoginManager _loginManager;
     private readonly ILibraryService _libraryService;
+    private readonly ILoadoutManager _loadoutManager;
     private readonly TemporaryFileManager _temporaryFiles;
     private readonly IOSInterop _osInterop;
     private readonly IGameDomainToGameIdMappingCache _domains;
@@ -71,6 +75,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         INexusModsBrowser browser,
         ILoginManager loginManager,
         ILibraryService libraryService,
+        ILoadoutManager loadoutManager,
         TemporaryFileManager temporaryFiles,
         IOSInterop osInterop,
         IGameDomainToGameIdMappingCache domains,
@@ -85,6 +90,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         _browser = browser;
         _loginManager = loginManager;
         _libraryService = libraryService;
+        _loadoutManager = loadoutManager;
         _temporaryFiles = temporaryFiles;
         _osInterop = osInterop;
         _games = games;
@@ -238,8 +244,13 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         if (GameOfLoadout() is { } game) _osInterop.OpenUri(ModUri(game, row));
     }
 
+    // Mods being installed right now, so a second click on the same card waits for the first instead of downloading again.
+    private readonly HashSet<(LoadoutId Loadout, ModId Mod)> _installing = [];
+
     public async Task InstallAsync(NexusModsModRow row, CancellationToken cancellationToken)
     {
+        var key = (LoadoutId, row.Hit.ModId);
+        if (!_installing.Add(key)) return;
         ErrorText = "";
         try
         {
@@ -252,15 +263,41 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
                 return;
             }
 
-            // The temporary file has to outlive AddDownload, which moves the finished file into the library's store.
-            await using var destination = _temporaryFiles.CreateFile();
-            var job = await _browser.CreateDownloadJob(game, row.Hit.ModId, fileId, destination, cancellationToken);
-            await _libraryService.AddDownload(job);
+            var item = FindInLibrary(game, row.Hit.ModId, fileId) ?? await DownloadAsync(game, row, fileId, cancellationToken);
+            var outcome = await ThunderstoreLoadoutPackages.InstallOrEnable(_connection, item, LoadoutId, async () => await _loadoutManager.InstallItem(item, LoadoutId));
+            if (outcome == LoadoutPackageOutcome.AlreadyEnabled) ErrorText = $"{row.Name} is already in this loadout.";
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            _logger.LogWarning(e, "Could not download {Mod} from Nexus Mods", row.Name);
-            ErrorText = $"Could not download {row.Name}: {e.Message}";
+            _logger.LogWarning(e, "Could not install {Mod} from Nexus Mods", row.Name);
+            ErrorText = $"Could not install {row.Name}: {e.Message}";
         }
+        finally
+        {
+            _installing.Remove(key);
+        }
+    }
+
+    // A file the library already holds is installed from there. Older downloads of the same file can sit in the library
+    // more than once; any of them installs the same files.
+    private LibraryItem.ReadOnly? FindInLibrary(NexusModsGameId game, ModId modId, FileId fileId)
+    {
+        foreach (var file in NexusModsFileMetadata.FindByUid(_connection.Db, new FileUid(fileId, game)))
+        {
+            if (file.ModPage.Uid.ModId != modId) continue;
+            foreach (var found in NexusModsLibraryItem.FindByFileMetadata(_connection.Db, file))
+                return found.AsLibraryItem();
+        }
+
+        return null;
+    }
+
+    private async Task<LibraryItem.ReadOnly> DownloadAsync(NexusModsGameId game, NexusModsModRow row, FileId fileId, CancellationToken cancellationToken)
+    {
+        // The temporary file has to outlive AddDownload, which moves the finished file into the library's store.
+        await using var destination = _temporaryFiles.CreateFile();
+        var job = await _browser.CreateDownloadJob(game, row.Hit.ModId, fileId, destination, cancellationToken);
+        var file = await _libraryService.AddDownload(job);
+        return file.AsLibraryItem();
     }
 }

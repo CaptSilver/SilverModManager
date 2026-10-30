@@ -1,4 +1,6 @@
+using DynamicData.Kernel;
 using FluentAssertions;
+using NexusMods.Hashing.xxHash3;
 using SilverModManager.App.UI.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -7,6 +9,11 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Library.Jobs;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Pages.NexusCatalog;
@@ -31,6 +38,10 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
         public ILoginManager Login = null!;
         public IOSInterop OsInterop = null!;
         public ILibraryService Library = null!;
+        public ILoadoutManager Manager = null!;
+        public LibraryFile.ReadOnly Downloaded;
+        public LoadoutId LoadoutId;
+        public Exception? InstallFailure;
         public NexusModsGameId Game;
         public R3.BehaviorSubject<UserInfo?> UserInfo = null!;
         public Exception? SearchFailure;
@@ -86,7 +97,17 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
         fixture.Library.AddDownload(default!).ReturnsForAnyArgs(_ =>
         {
             var task = Substitute.For<IJobTask<IAddDownloadJob, LibraryFile.ReadOnly>>();
-            task.GetAwaiter().Returns(Task.FromResult(default(LibraryFile.ReadOnly)).GetAwaiter());
+            task.GetAwaiter().Returns(_ => Task.FromResult(fixture.Downloaded).GetAwaiter());
+            return task;
+        });
+
+        fixture.LoadoutId = row.LoadoutId;
+        fixture.Manager = Substitute.For<ILoadoutManager>();
+        fixture.Manager.InstallItem(default, default, default, default, default).ReturnsForAnyArgs(_ =>
+        {
+            if (fixture.InstallFailure is not null) throw fixture.InstallFailure;
+            var task = Substitute.For<IJobTask<IInstallLoadoutItemJob, InstallLoadoutItemJobResult>>();
+            task.GetAwaiter().Returns(Task.FromResult(default(InstallLoadoutItemJobResult)).GetAwaiter());
             return task;
         });
 
@@ -96,6 +117,7 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
             fixture.Browser,
             fixture.Login,
             fixture.Library,
+            fixture.Manager,
             Provider.GetRequiredService<TemporaryFileManager>(),
             fixture.OsInterop,
             domains,
@@ -109,6 +131,7 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
         {
             LoadoutId = row.LoadoutId,
         };
+        fixture.Downloaded = LibraryFile.Load(Connection.Db, (await SeedNexusLibraryFile(fixture, NextId(), NextId(), "Downloaded.zip")).Id);
         return fixture;
     }
 
@@ -334,6 +357,182 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
         await f.Vm.InstallAsync(RowOf(7), CancellationToken.None);
 
         f.Vm.ErrorText.Should().Contain("Some mod").And.Contain("no download links");
+    }
+
+    // A library file the way a finished Nexus download leaves it: the item carries the file's metadata.
+    private async Task<LibraryItem.ReadOnly> SeedNexusLibraryFile(Fixture f, uint modId, uint fileId, string name = "Some mod.zip")
+    {
+        using var tx = Connection.BeginTransaction();
+        var game = f.Game;
+        var existingPage = NexusModsModPageMetadata.FindByUid(Connection.Db, new ModUid(ModId.From(modId), game)).FirstOrDefault();
+        var page = existingPage.IsValid()
+            ? null
+            : new NexusModsModPageMetadata.New(tx)
+            {
+                Uid = new ModUid(ModId.From(modId), game),
+                Name = "Some mod",
+                GameDomain = GameDomain.From("cyberpunk2077"),
+                UpdatedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+                DataUpdatedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+            };
+        var existingFile = NexusModsFileMetadata.FindByUid(Connection.Db, new FileUid(FileId.From(fileId), game)).FirstOrDefault();
+        EntityId pageId = existingPage.IsValid() ? existingPage.Id : page!.Id;
+        EntityId fileMetadataId;
+        if (existingFile.IsValid()) fileMetadataId = existingFile.Id;
+        else
+        {
+            var file = new NexusModsFileMetadata.New(tx)
+            {
+                Uid = new FileUid(FileId.From(fileId), game),
+                Name = name,
+                Version = "1",
+                UploadedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+                ModPageId = pageId,
+            };
+            fileMetadataId = file.Id;
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes($"{name}-{Guid.NewGuid()}");
+        var item = new NexusModsLibraryItem.New(tx, out var id)
+        {
+            LibraryItem = new LibraryItem.New(tx, id) { Name = name },
+            FileMetadataId = fileMetadataId,
+            ModPageMetadataId = pageId,
+        };
+        _ = new LibraryFile.New(tx, id)
+        {
+            FileName = name,
+            Hash = bytes.xxHash3(),
+            Size = Size.FromLong(bytes.Length),
+            LibraryItem = new LibraryItem.New(tx, id) { Name = name },
+        };
+        var result = await tx.Commit();
+        return result.Remap(item).AsLibraryItem();
+    }
+
+    // Tests share one database, so each one that seeds the library works with ids no other test uses.
+    private static uint _lastId = 1000;
+    private static uint NextId() => Interlocked.Increment(ref _lastId);
+
+    private static (uint Mod, uint File) NewIds() => (NextId(), NextId());
+
+    private void Premium(Fixture f, (uint Mod, uint File) ids)
+        => f.Browser.FindMainFile(f.Game, ModId.From(ids.Mod), Arg.Any<CancellationToken>()).Returns(FileId.From(ids.File));
+
+    private static (EntityId Item, LoadoutId Loadout)[] Installed(Fixture f)
+        => f.Manager.ReceivedCalls()
+            .Where(call => call.GetMethodInfo().Name == nameof(ILoadoutManager.InstallItem))
+            .Select(call => (((LibraryItem.ReadOnly)call.GetArguments()[0]!).Id, (LoadoutId)call.GetArguments()[1]!))
+            .ToArray();
+
+    private static int DownloadsStarted(Fixture f)
+        => f.Browser.ReceivedCalls().Count(call => call.GetMethodInfo().Name == nameof(INexusModsBrowser.CreateDownloadJob));
+
+    [Fact]
+    public async Task Install_ForPremium_InstallsTheDownloadedFileIntoTheCurrentLoadout()
+    {
+        var f = await Open(premium: true);
+        var ids = NewIds();
+        Premium(f, ids);
+        f.Browser.CreateDownloadJob(f.Game, ModId.From(ids.Mod), FileId.From(ids.File), Arg.Any<AbsolutePath>(), Arg.Any<CancellationToken>())
+            .Returns(Substitute.For<IJobTask<NexusModsDownloadJob, AbsolutePath>>());
+
+        await f.Vm.InstallAsync(RowOf(ids.Mod), CancellationToken.None);
+
+        f.Vm.ErrorText.Should().BeEmpty();
+        Installed(f).Should().Equal((f.Downloaded.Id, f.LoadoutId));
+    }
+
+    [Fact]
+    public async Task Install_WhenTheLibraryAlreadyHoldsTheFile_InstallsItWithoutDownloadingAgain()
+    {
+        var f = await Open(premium: true);
+        var ids = NewIds();
+        Premium(f, ids);
+        var item = await SeedNexusLibraryFile(f, ids.Mod, ids.File);
+
+        await f.Vm.InstallAsync(RowOf(ids.Mod), CancellationToken.None);
+
+        f.Vm.ErrorText.Should().BeEmpty();
+        DownloadsStarted(f).Should().Be(0);
+        _ = f.Library.DidNotReceiveWithAnyArgs().AddDownload(default!);
+        Installed(f).Should().Equal((item.Id, f.LoadoutId));
+    }
+
+    [Fact]
+    public async Task Install_WhenTheLibraryHoldsTheFileSeveralTimes_InstallsOneOfThem()
+    {
+        var f = await Open(premium: true);
+        var ids = NewIds();
+        Premium(f, ids);
+        await SeedNexusLibraryFile(f, ids.Mod, ids.File);
+        await SeedNexusLibraryFile(f, ids.Mod, ids.File);
+        await SeedNexusLibraryFile(f, ids.Mod, ids.File);
+
+        await f.Vm.InstallAsync(RowOf(ids.Mod), CancellationToken.None);
+
+        DownloadsStarted(f).Should().Be(0);
+        Installed(f).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Install_WhenTheFileIsAlreadyInTheLoadout_SaysSoAndInstallsNothing()
+    {
+        var f = await Open(premium: true);
+        var ids = NewIds();
+        Premium(f, ids);
+        var item = await SeedNexusLibraryFile(f, ids.Mod, ids.File);
+        using (var tx = Connection.BeginTransaction())
+        {
+            var parent = DefaultCollection.Create(tx, f.LoadoutId);
+            var group = new LoadoutItemGroup.New(tx, out var groupId)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, groupId) { LoadoutId = f.LoadoutId, Name = "Some mod", ParentId = LoadoutItemGroupId.From(parent.Id) },
+            };
+            _ = new LibraryLinkedLoadoutItem.New(tx, groupId) { LibraryItemId = item.Id, LoadoutItemGroup = group };
+            await tx.Commit();
+        }
+
+        await f.Vm.InstallAsync(RowOf(ids.Mod), CancellationToken.None);
+
+        Installed(f).Should().BeEmpty();
+        DownloadsStarted(f).Should().Be(0);
+        f.Vm.ErrorText.Should().Contain("Some mod").And.Contain("already");
+    }
+
+    [Fact]
+    public async Task Install_WhileTheSameModIsAlreadyInstalling_DoesNotStartASecondDownload()
+    {
+        var f = await Open(premium: true);
+        var ids = NewIds();
+        Premium(f, ids);
+        var release = new TaskCompletionSource<IJobTask<NexusModsDownloadJob, AbsolutePath>>();
+        f.Browser.CreateDownloadJob(default, default, default, default, default).ReturnsForAnyArgs(_ => release.Task);
+
+        var first = f.Vm.InstallAsync(RowOf(ids.Mod), CancellationToken.None);
+        var second = f.Vm.InstallAsync(RowOf(ids.Mod), CancellationToken.None);
+        // A second click that waits on the first would never finish, so the wait is bounded.
+        await Task.WhenAny(second, Task.Delay(TimeSpan.FromSeconds(3)));
+        release.SetResult(Substitute.For<IJobTask<NexusModsDownloadJob, AbsolutePath>>());
+        await Task.WhenAll(first, second);
+
+        DownloadsStarted(f).Should().Be(1);
+        Installed(f).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Install_WhenTheLoadoutRefusesTheFile_ShowsWhy()
+    {
+        var f = await Open(premium: true);
+        var ids = NewIds();
+        Premium(f, ids);
+        await SeedNexusLibraryFile(f, ids.Mod, ids.File);
+        f.InstallFailure = new InvalidOperationException("Found no installer that supports it");
+
+        await f.Vm.InstallAsync(RowOf(ids.Mod), CancellationToken.None);
+
+        f.Vm.ErrorText.Should().Contain("Some mod").And.Contain("Found no installer");
     }
 
     [Fact]
