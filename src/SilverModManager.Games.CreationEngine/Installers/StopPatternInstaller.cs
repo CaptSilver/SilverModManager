@@ -106,14 +106,19 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
 
 #endregion
 
-    private bool _isBuilt = false;
-    
-    // The /Data folder for the current game
-    private RelativePath _dataPrefix = null!;
-    private RelativePath[] _gameFolders = null!;
-    private Regex _stopPatterns = null!;
-    private Regex _engineFiles = null!;
-    private RelativePath[] _topLevelPaths = null!;
+    /// <summary>
+    /// What <see cref="Build"/> derives from the settings. Held as one value so an unbuilt installer has
+    /// nothing half-filled to read.
+    /// </summary>
+    /// <param name="DataPrefix">The /Data folder for the current game.</param>
+    private sealed record BuiltState(
+        RelativePath DataPrefix,
+        RelativePath[] GameFolders,
+        Regex StopPatterns,
+        Regex EngineFiles,
+        RelativePath[] TopLevelPaths);
+
+    private BuiltState? _built;
 
 
     /// <summary>
@@ -121,12 +126,6 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
     /// </summary>
     public StopPatternInstaller Build()
     {
-        _dataPrefix = RelativePath.FromUnsanitizedInput(DataFolderName);
-        _gameFolders = GameAliases.Select(g => RelativePath.FromUnsanitizedInput(g)).ToArray();
-        _engineFiles = CombineRegexes(EngineFiles);
-        _topLevelPaths = TopLevelDirs.Select(t => RelativePath.FromUnsanitizedInput(t)).ToArray();
-        _isBuilt = true;
-
         // Now combine all the sources of stop patterns
         
         List<string> patterns = new();
@@ -143,8 +142,13 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
         foreach (var pattern in StopPatterns)
             patterns.Add(pattern);
         
-        _stopPatterns = CombineRegexes(patterns.ToArray());
-        
+        _built = new BuiltState(
+            DataPrefix: RelativePath.FromUnsanitizedInput(DataFolderName),
+            GameFolders: GameAliases.Select(g => RelativePath.FromUnsanitizedInput(g)).ToArray(),
+            StopPatterns: CombineRegexes(patterns.ToArray()),
+            EngineFiles: CombineRegexes(EngineFiles),
+            TopLevelPaths: TopLevelDirs.Select(t => RelativePath.FromUnsanitizedInput(t)).ToArray());
+
         return this;
     }
 
@@ -168,8 +172,7 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
 
     public override ValueTask<InstallerResult> ExecuteAsync(LibraryArchive.ReadOnly libraryArchive, LoadoutItemGroup.New loadoutGroup, ITransaction transaction, Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
-        if (!_isBuilt)
-            throw new InvalidOperationException("The installer has not been built yet.");
+        var built = _built ?? throw new InvalidOperationException("The installer has not been built yet.");
             
         // Flatten all files
         var allFiles = libraryArchive.Children.ToArray();
@@ -178,16 +181,16 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
             return ValueTask.FromResult(FailWithReason("The provided library archive has no files"));
 
         // Compute the root prefix
-        var rootPrefix = ComputeEffectiveRootPrefix(allFiles);
+        var rootPrefix = ComputeEffectiveRootPrefix(built, allFiles);
 
         foreach (var file in allFiles)
         {
             if (!file.Path.InFolder(rootPrefix))
                 continue;
             
-            var rel = StripLeadingData(file.Path.RelativeTo(rootPrefix));
+            var rel = StripLeadingData(built, file.Path.RelativeTo(rootPrefix));
 
-            var targetBase = _engineFiles.IsMatch(rel.ToString()) ? EnginePath : DataPath;
+            var targetBase = built.EngineFiles.IsMatch(rel.ToString()) ? EnginePath : DataPath;
 
             var target = new GamePath(targetBase.LocationId, targetBase.Path / rel);
             
@@ -212,7 +215,7 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
         return ValueTask.FromResult<InstallerResult>(new Success());
     }
 
-    private RelativePath ComputeEffectiveRootPrefix(LibraryArchiveFileEntry.ReadOnly[] files)
+    private RelativePath ComputeEffectiveRootPrefix(BuiltState built, LibraryArchiveFileEntry.ReadOnly[] files)
     {
         var firstSegments = files
             .Select(file => file.Path.TopParent)
@@ -225,20 +228,20 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
             var top = firstSegments[0];
             
             // Case A: The first segment is the game's root folder, step into it
-            if (top == _dataPrefix)
+            if (top == built.DataPrefix)
                 return top;
             
             // Case B: The first segment is a game folder, step into it
-            if (_gameFolders.Contains(top))
+            if (built.GameFolders.Contains(top))
                 return top;
             
-            if (_topLevelPaths.Contains(top))
+            if (built.TopLevelPaths.Contains(top))
                 return RelativePath.Empty;
             
             // Case C: single top folder that's a generic wrapper (e.g. the mod's name)
             // If its children show any stop patterns: (esl/esp, fomod, common dirs), 
             // then step into the pointless wrapper
-            if (FolderLikelyWrapper(files, top))
+            if (FolderLikelyWrapper(built, files, top))
                 return top;
             
             return RelativePath.Empty;
@@ -247,15 +250,15 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
         // Multiple Top Folders
         
         // Stop patterns at root
-        if (HasStopPatternAtOrBelow(files, _dataPrefix))
+        if (HasStopPatternAtOrBelow(built, files, built.DataPrefix))
             return RelativePath.Empty;
         
         // Data folder at the top level
-        if (firstSegments.Any(p => p == _dataPrefix))
-            return _dataPrefix;
+        if (firstSegments.Any(p => p == built.DataPrefix))
+            return built.DataPrefix;
             
         // Game folder at the top level
-        if (firstSegments.Where(p => _gameFolders.Contains(p)).TryGetFirst(out var gameTop))
+        if (firstSegments.Where(p => built.GameFolders.Contains(p)).TryGetFirst(out var gameTop))
             return gameTop;
         
         return RelativePath.Empty;
@@ -264,11 +267,11 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
     /// <summary>
     /// Returns true if the folder is likely to be a wrapper for a mod.
     /// </summary>
-    private bool FolderLikelyWrapper(LibraryArchiveFileEntry.ReadOnly[] files, RelativePath prefix)
+    private bool FolderLikelyWrapper(BuiltState built, LibraryArchiveFileEntry.ReadOnly[] files, RelativePath prefix)
     {
         foreach (var file in files)
         {
-            if (TryToRelativePathBelow(file.Path, prefix, out var below) && StopMatched(below))
+            if (TryToRelativePathBelow(file.Path, prefix, out var below) && StopMatched(built, below))
             {
                 return true;
             }
@@ -276,13 +279,13 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
         return false;
     }
 
-    private bool HasStopPatternAtOrBelow(LibraryArchiveFileEntry.ReadOnly[] files, RelativePath prefix)
+    private bool HasStopPatternAtOrBelow(BuiltState built, LibraryArchiveFileEntry.ReadOnly[] files, RelativePath prefix)
     {
         foreach (var file in files)
         {
             if (file.Path == default(RelativePath) || file.Path.InFolder(prefix))
             {
-                if (StopMatched(file.Path))
+                if (StopMatched(built, file.Path))
                     return true;
                 
             }
@@ -290,10 +293,10 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
         return false;
     }
     
-    private RelativePath StripLeadingData(RelativePath path)
+    private RelativePath StripLeadingData(BuiltState built, RelativePath path)
     {
-        if (path.InFolder(_dataPrefix))
-            return path.RelativeTo(_dataPrefix);
+        if (path.InFolder(built.DataPrefix))
+            return path.RelativeTo(built.DataPrefix);
         return path;
     }
 
@@ -311,8 +314,8 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
         return true;
     }
 
-    private bool StopMatched(RelativePath path)
+    private bool StopMatched(BuiltState built, RelativePath path)
     {
-        return _stopPatterns.IsMatch(path.ToString());
+        return built.StopPatterns.IsMatch(path.ToString());
     }
 }

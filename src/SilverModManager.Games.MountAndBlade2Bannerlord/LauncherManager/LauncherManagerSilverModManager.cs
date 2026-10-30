@@ -72,8 +72,12 @@ public sealed partial class LauncherManagerSilverModManager : LauncherManagerHan
     /// acts as a filter of which mods to show. We can use the preference here (in the future)
     /// to boot directly into SP/MP mode, skipping the standard mod manager/launcher
     /// if desired by the user.
+    ///
+    /// The library reads the state only while ordering a load order (TryOrderByLoadOrder and the import
+    /// that calls it), which the app does not do, so there is no state to give yet.
     /// </summary>
-    LauncherState ILauncherStateProvider.GetState() => null!;
+    LauncherState ILauncherStateProvider.GetState() => throw new NotSupportedException(
+        $"{nameof(ILauncherStateProvider.GetState)} is not supported: the app does not order load orders through the LauncherManager library, the only caller of the launcher state.");
     
     /// <summary>
     /// Returns all available ViewModels (all mods in loadout)

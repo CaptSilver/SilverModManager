@@ -74,14 +74,15 @@ public class RedModInstaller : ALibraryArchiveInstaller
 
         foreach (var (file, infoJson) in infosList.OrderBy(x => x.InfoJson.Name))
         {
-            var modFolder = file.Parent();
-            var parentName = modFolder!.Segment();
+            // Only the archive root has no parent, and a file is never the root.
+            var modFolder = file.Parent() ?? throw new InvalidOperationException($"`{InfoJson}` at `{file.Item.Path}` has no folder to install the mod from");
+            var parentName = modFolder.Segment();
 
             var foundManifest = false;
             
-            foreach (var childNode in modFolder!.GetFiles().OrderBy(f => f.Item.Path))
+            foreach (var childNode in modFolder.GetFiles().OrderBy(f => f.Item.Path))
             {
-                var relativePath = childNode.Item.Path.RelativeTo(modFolder!.Item.Path);
+                var relativePath = childNode.Item.Path.RelativeTo(modFolder.Item.Path);
                 var joinedPath = Mods.Join(parentName).Join(relativePath);
                 
                 var newFile = childNode.ToLoadoutFile(loadout.Id, loadoutGroup.Id, tx, new GamePath(LocationId.Game, joinedPath));

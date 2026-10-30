@@ -131,24 +131,19 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
     {
         var tree = LibraryArchiveTreeExtensions.GetTree(libraryArchive);
 
-        bool isFound = false;
-        LibraryArchiveTree found = default!;
+        LibraryArchiveTree found;
         if (Root(new Node(new KeyValuePair<RelativePath, KeyedBox<RelativePath, LibraryArchiveTree>>("", tree))))
         {
-            isFound = true;
             found = tree;
         }
-        else
+        else if (!tree
+                     .EnumerateChildrenBfs()
+                     .Where(x => Root(new Node(x)))
+                     .Select(x => x.Value.Item)
+                     .TryGetFirst(out found))
         {
-            isFound = tree
-                .EnumerateChildrenBfs()
-                .Where(x => Root(new Node(x)))
-                .Select(x => x.Value.Item)
-                .TryGetFirst(out found);
-        }
-
-        if (!isFound)
             return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "Found no matching root"));
+        }
 
         var rootDestination = Destination;
         int handled = 0;

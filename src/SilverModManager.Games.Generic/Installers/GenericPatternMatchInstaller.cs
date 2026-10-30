@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Library.Installers;
@@ -64,7 +63,8 @@ public class GenericPatternMatchInstaller : ALibraryArchiveInstaller
         return false;
     }
 
-    private static bool TryGetMatch(KeyedBox<RelativePath, LibraryArchiveTree> node, InstallFolderTarget target, [NotNullWhen(true)] out KeyedBox<RelativePath, LibraryArchiveTree>? match)
+    // A null match with a true result means the node has no parent: the caller installs from the tree root.
+    private static bool TryGetMatch(KeyedBox<RelativePath, LibraryArchiveTree> node, InstallFolderTarget target, out KeyedBox<RelativePath, LibraryArchiveTree>? match)
     {
         match = null;
 
@@ -73,7 +73,7 @@ public class GenericPatternMatchInstaller : ALibraryArchiveInstaller
             // Check if file has a known child file extension
             if (target.KnownValidFileExtensions.Contains(node.Key().Extension))
             {
-                match = node.Parent()!;
+                match = node.Parent();
                 return true;
             }
         }
@@ -89,7 +89,7 @@ public class GenericPatternMatchInstaller : ALibraryArchiveInstaller
             // Check if the directory name is a known subfolder
             if (target.Names.Contains(node.Key().Name))
             {
-                match = node.Parent()!;
+                match = node.Parent();
                 return true;
             }
         }

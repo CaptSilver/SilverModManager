@@ -74,13 +74,14 @@ public class ContextDelegates : IContextDelegates
 
     public Task<byte[]> GetExistingDataFile(string dataFile)
     {
-        _logger.LogWarning($"NotImplemented: {nameof(GetExistingDataFile)} with dataFile='{{DataFile}}'. Using default value: null", dataFile);
-        return Task.FromResult((byte[])null!);
+        // The interface returns a non-null array, so there is no honest "not found" value to hand back.
+        return Task.FromException<byte[]>(new NotSupportedException(
+            $"{nameof(GetExistingDataFile)} is not supported: the installer has no view of the game's Data folder (asked for '{dataFile}')."));
     }
 
     public Task<string[]> GetExistingDataFileList(string folderPath, string searchFilter, bool isRecursive)
     {
-        _logger.LogWarning($"NotImplemented: {nameof(GetExistingDataFileList)} with folderPath='{{FolderPath}}', searchFilter='{{SearchFilter}}', isRecursive={{IsRecursive}}. Using default value: null", folderPath, searchFilter, isRecursive);
-        return Task.FromResult((string[])null!);
+        return Task.FromException<string[]>(new NotSupportedException(
+            $"{nameof(GetExistingDataFileList)} is not supported: the installer has no view of the game's Data folder (asked for '{folderPath}' matching '{searchFilter}')."));
     }
 }
