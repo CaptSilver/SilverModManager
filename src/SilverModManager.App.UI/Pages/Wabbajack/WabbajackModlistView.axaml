@@ -112,19 +112,32 @@
                     <TextBlock Text="Archives" Theme="{StaticResource HeadingSMSemiTheme}" />
                     <TextBlock Text="Drop downloaded archives anywhere on this page to add them to the inbox." Opacity="0.7" />
                     <TextBlock x:Name="InboxText" TextWrapping="Wrap" />
-                    <StackPanel x:Name="ArchiveRows" Spacing="2" />
+                    <!-- Lists can hold well over a thousand archives; only the lines in view are built. -->
+                    <ItemsControl x:Name="ArchiveRows">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
                 </StackPanel>
 
                 <StackPanel x:Name="GameFilesPanel" Spacing="2">
                     <TextBlock Text="Game files this list replaces" Theme="{StaticResource HeadingSMSemiTheme}" />
                     <TextBlock Text="Tick a file to keep the copy in the game folder." Opacity="0.7" />
-                    <StackPanel x:Name="GameFileRows" />
+                    <ItemsControl x:Name="GameFileRows">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
                 </StackPanel>
 
                 <StackPanel x:Name="SkippedPanel" Spacing="2">
                     <TextBlock Text="Files that were skipped" Theme="{StaticResource HeadingSMSemiTheme}" />
                     <controls:StandardButton x:Name="HealthCheckButton" Type="Secondary" Size="Toolbar" Text="Open Health Check" HorizontalAlignment="Left" />
-                    <StackPanel x:Name="SkippedRows" />
+                    <ItemsControl x:Name="SkippedRows">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

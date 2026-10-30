@@ -1,6 +1,7 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -22,6 +23,17 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
 
         // The header and toolbar sit outside the scrolled part, and the page says "anywhere on this page".
         DragDrop.SetAllowDrop(Body, true);
+
+        GameFileRows.ItemTemplate = new FuncDataTemplate<WabbajackGameFileChoice>((file, _) =>
+        {
+            if (file is null) return null;
+            // The box is recycled with its row, so the choice it writes to is the one it currently shows.
+            var box = new CheckBox { Content = file.Path.ToString(), IsChecked = file.Keep };
+            box.IsCheckedChanged += (_, _) => file.Keep = box.IsChecked == true;
+            return box;
+        });
+        SkippedRows.ItemTemplate = new FuncDataTemplate<WabbajackSkippedRow>((row, _) =>
+            row is null ? null : new TextBlock { Text = $"{row.To}: {row.Reason}", TextWrapping = TextWrapping.Wrap });
 
         this.WhenActivated(disposables =>
         {
@@ -110,23 +122,15 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
                 InboxText.IsVisible = text != "";
             }).DisposeWith(disposables);
 
-            // Rows are rebuilt as a whole on every change; a list's archives are a few hundred lines at most.
-            OnUi(vm => vm.WhenAnyValue(x => x.Archives)).Subscribe(rows =>
-            {
-                ArchiveRows.Children.Clear();
-                foreach (var row in rows) ArchiveRows.Children.Add(ArchiveLine(viewModel, row));
-            }).DisposeWith(disposables);
+            // The lines are built for the rows in view only, and a row that changes tells its own line; the list
+            // itself is replaced only when the page shows other archives.
+            ArchiveRows.ItemTemplate = new FuncDataTemplate<WabbajackArchiveRow>((row, _) => row is null ? null : new WabbajackArchiveLine(viewModel, row));
+            OnUi(vm => vm.WhenAnyValue(x => x.Archives)).Subscribe(rows => ArchiveRows.ItemsSource = rows).DisposeWith(disposables);
 
             OnUi(vm => vm.WhenAnyValue(x => x.GameFilesReplaced)).Subscribe(files =>
             {
                 GameFilesPanel.IsVisible = files.Count > 0;
-                GameFileRows.Children.Clear();
-                foreach (var file in files)
-                {
-                    var box = new CheckBox { Content = file.Path.ToString(), IsChecked = file.Keep };
-                    box.IsCheckedChanged += (_, _) => file.Keep = box.IsChecked == true;
-                    GameFileRows.Children.Add(box);
-                }
+                GameFileRows.ItemsSource = files;
             }).DisposeWith(disposables);
 
             OnUi(vm => vm.WhenAnyValue(x => x.CanResume, x => x.IsInstalled, x => x.IsInstalling)).Subscribe(state =>
@@ -139,9 +143,7 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
             OnUi(vm => vm.WhenAnyValue(x => x.SkippedFiles)).Subscribe(skipped =>
             {
                 SkippedPanel.IsVisible = skipped.Count > 0;
-                SkippedRows.Children.Clear();
-                foreach (var row in skipped)
-                    SkippedRows.Children.Add(new TextBlock { Text = $"{row.To}: {row.Reason}", TextWrapping = TextWrapping.Wrap });
+                SkippedRows.ItemsSource = skipped;
             }).DisposeWith(disposables);
 
             AddHandler(DragDrop.DragEnterEvent, OnDragOver);
@@ -206,28 +208,5 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
         var paths = e.Data.GetFiles()?.Select(item => item.TryGetLocalPath()).OfType<string>().ToArray() ?? [];
         if (paths.Length == 0) return;
         _ = viewModel.AddDroppedFilesAsync(paths, CancellationToken.None);
-    }
-
-    private static Control ArchiveLine(IWabbajackModlistViewModel viewModel, WabbajackArchiveRow row)
-    {
-        var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Margin = new Avalonia.Thickness(0, 2) };
-        line.Children.Add(new TextBlock { Text = row.Name, Width = 320, TextTrimming = TextTrimming.CharacterEllipsis });
-        line.Children.Add(new TextBlock { Text = row.SizeText, Width = 80 });
-        line.Children.Add(new TextBlock { Text = row.Source, Width = 120 });
-        line.Children.Add(new TextBlock { Text = row.StateText, Width = 200 });
-        line.Children.Add(new TextBlock { Text = row.Reason, TextTrimming = TextTrimming.CharacterEllipsis, Opacity = 0.7 });
-        if (row.CanInstall)
-        {
-            var install = new Button { Content = "Install" };
-            install.Click += (_, _) => viewModel.InstallArchiveCommand.Execute(row).Subscribe();
-            line.Children.Add(install);
-        }
-        if (row.CanOpenPage)
-        {
-            var open = new Button { Content = "Open page" };
-            open.Click += (_, _) => viewModel.OpenPageCommand.Execute(row).Subscribe();
-            line.Children.Add(open);
-        }
-        return line;
     }
 }

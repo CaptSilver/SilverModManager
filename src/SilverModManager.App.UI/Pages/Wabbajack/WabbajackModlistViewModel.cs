@@ -42,6 +42,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     private readonly ILogger<WabbajackModlistViewModel>? _logger;
 
     private static readonly TimeSpan RevisionThrottle = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan PlanThrottle = TimeSpan.FromMilliseconds(250);
+    private readonly object _rowsLock = new();
 
     private WabbajackModlistDetails? _details;
     private ArchivePlan _plan = new([]);
@@ -182,8 +184,12 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             // list's plan is left alone: its page or its downloads still need it.
             if (_planReady && _plan.Rows.Count > 0 && _acquirer.Plan.Rows.Count == 0) _acquirer.Show(_plan);
 
+            // Every archive that finishes announces the whole plan, and a big list has hundreds finishing a second apart
+            // at most. The first announcement shows at once; a burst after it is shown as the plan as it stands then.
             Observable.FromEvent<Action<ArchivePlan>, ArchivePlan>(h => h, h => _acquirer.PlanChanged += h, h => _acquirer.PlanChanged -= h)
                 .Where(IsThisList)
+                .ThrottleAfterFirst(PlanThrottle, TaskPoolScheduler.Default)
+                .Select(announced => _acquirer.Plan.Rows.Count > 0 && IsThisList(_acquirer.Plan) ? _acquirer.Plan : announced)
                 .Subscribe(ApplyPlan)
                 .DisposeWith(d);
             // Rows that changed while the page was away.
@@ -462,7 +468,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     private void ApplyPlan(ArchivePlan plan)
     {
         _plan = plan;
-        Archives = plan.Rows.Select(row => new WabbajackArchiveRow(row)).ToArray();
+        ShowArchives(plan);
 
         var (estimate, isLowerBound) = WabbajackModlistText.ExtractedSize(plan);
         ExtractedSizeText = estimate.ToString();
@@ -472,6 +478,22 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
         AcquireText = WabbajackModlistText.PlanSummary(plan);
         Recompute();
+    }
+
+    // The same archives in the same order keep their row objects and each takes its new plan row, so the table updates
+    // the lines that changed. Other archives are another list or another pick, and get new rows.
+    private void ShowArchives(ArchivePlan plan)
+    {
+        lock (_rowsLock)
+        {
+            var current = Archives;
+            if (current.Count == plan.Rows.Count && !current.Where((row, i) => !Equals(row.Plan.Archive, plan.Rows[i].Archive)).Any())
+            {
+                for (var i = 0; i < current.Count; i++) current[i].Update(plan.Rows[i]);
+                return;
+            }
+            Archives = plan.Rows.Select(row => new WabbajackArchiveRow(row)).ToArray();
+        }
     }
 
     private void Recompute()
