@@ -23,7 +23,18 @@ internal class ManagedZipExtractor : IExtractor
         _logger = logger;
     }
 
-    private static readonly StringCodec _stringCodec = StringCodec.Default;
+    // The zip spec stores a name as code page 437 unless general purpose bit 11 says UTF-8. SharpZipLib's
+    // default decodes an unflagged name with the host's encoding, which on Linux is UTF-8, so every byte above
+    // 0x7F came out as U+FFFD and the path layer rejected the entry.
+    private static readonly Encoding _codePage437 = GetCodePage437();
+    private static readonly StringCodec _stringCodec = StringCodec.FromEncoding(_codePage437);
+
+    private static Encoding GetCodePage437()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        return Encoding.GetEncoding(437);
+    }
+
     public async Task ExtractAllAsync(IStreamFactory source, AbsolutePath destination, CancellationToken cancellationToken = default)
     {
         await using var stream = await source.GetStreamAsync().ConfigureAwait(false);
@@ -31,11 +42,12 @@ internal class ManagedZipExtractor : IExtractor
         using var zipFile = new ZipFile(stream, leaveOpen: false, stringCodec: _stringCodec);
         var rewrites = new ArchiveEntryPath.Rewrites();
         var written = new Dictionary<string, string>(StringComparer.Ordinal);
+        var replacedNames = new List<string>();
         for (var i = 0; i < zipFile.Count; i++)
         {
             var zipEntry = zipFile[i];
 
-            var originalName = GetName(zipEntry);
+            var originalName = ReplaceUnusableCharacters(GetName(zipEntry), replacedNames);
             var cleaned = ArchiveEntryPath.Clean(originalName);
             if (ArchiveEntryPath.IsRewritten(originalName, cleaned)) rewrites.Add(originalName, cleaned);
             if (cleaned.Length == 0) continue;
@@ -69,6 +81,47 @@ internal class ManagedZipExtractor : IExtractor
         }
 
         rewrites.Log(_logger, source.FileName.ToString());
+        if (replacedNames.Count > 0)
+        {
+            _logger.LogWarning("Replaced control or undecodable characters with `_` in {Count} entry name(s) of archive `{Archive}`: {Entries}",
+                replacedNames.Count, source.FileName.ToString(), string.Join("; ", replacedNames));
+        }
+    }
+
+    /// <summary>
+    /// Swaps characters that can't be part of a file name (control characters, U+FFFD, lone surrogates) for
+    /// <c>_</c>, so a name that can't be decoded cleanly still extracts under the same name every time.
+    /// NUL is left for <see cref="ArchiveEntryPath.Clean"/>, which drops the segment.
+    /// </summary>
+    private static string ReplaceUnusableCharacters(string name, List<string> replaced)
+    {
+        var result = name.Length == 0 ? name : string.Create(name.Length, name, static (span, source) =>
+        {
+            for (var i = 0; i < source.Length; i++)
+            {
+                var c = source[i];
+                var unusable = c != '\0' && (char.IsControl(c) || c == '\uFFFD' || IsLoneSurrogate(source, i));
+                span[i] = unusable ? '_' : c;
+            }
+        });
+
+        if (!string.Equals(result, name, StringComparison.Ordinal)) replaced.Add($"`{Printable(name)}` -> `{result}`");
+        return result;
+    }
+
+    private static bool IsLoneSurrogate(string s, int i)
+    {
+        var c = s[i];
+        if (char.IsHighSurrogate(c)) return !(i + 1 < s.Length && char.IsLowSurrogate(s[i + 1]));
+        if (char.IsLowSurrogate(c)) return !(i > 0 && char.IsHighSurrogate(s[i - 1]));
+        return false;
+    }
+
+    private static string Printable(string name)
+    {
+        var builder = new StringBuilder(name.Length);
+        foreach (var c in name) builder.Append(char.IsControl(c) || c == '\uFFFD' ? $"\\u{(int)c:X4}" : c);
+        return builder.ToString();
     }
 
     private string GetName(ZipEntry zipEntry)
@@ -153,9 +206,9 @@ internal class ManagedZipExtractor : IExtractor
 
     private static uint GetCrcHash(ReadOnlySpan<char> originalName)
     {
-        var byteCount = _stringCodec.LegacyEncoding.GetByteCount(originalName);
+        var byteCount = _codePage437.GetByteCount(originalName);
         var bytes = byteCount < 1024 ? stackalloc byte[byteCount] : GC.AllocateUninitializedArray<byte>(byteCount);
-        var actualCount = _stringCodec.LegacyEncoding.GetBytes(originalName, bytes);
+        var actualCount = _codePage437.GetBytes(originalName, bytes);
         Debug.Assert(actualCount == byteCount);
 
         Span<byte> hashBytes = stackalloc byte[sizeof(uint)];
