@@ -10,27 +10,30 @@
 
     <!--
     NuGet packages ship native libraries for every platform under runtimes/<rid>/, and a
-    framework-dependent build or publish copies all of them next to the app. Only Linux is a
-    supported host, so drop the assets for the other operating systems (and Android's bionic).
+    framework-dependent build or publish copies all of them next to the app. The app ships as a
+    Linux x64 AppImage, so keep only runtimes/linux-x64 (and the RID-neutral folders such as
+    unix/ or any/) and drop every other operating system and CPU: win-*, osx-*, linux-arm*,
+    linux-musl-*, linux-x86, linux-mips64 and so on. Left in, every test project carries its own
+    copy of each (libduckdb.so alone is 60 MB per RID) and a full suite run exhausts a 20 GB tmpfs.
+    Pruning the items keeps output paths as they are; a RuntimeIdentifier would append the RID to them.
     This runs on the NuGet item lists themselves rather than on the copy-local list built
     from them, because build output, publish and deps.json each read a different one of them.
-    The Linux RIDs stay in so arm64 packages keep working. Games run under Proton/Wine in a
-    separate process and need none of these.
+    Games run under Proton/Wine in a separate process and need none of these.
     -->
     <PropertyGroup>
-        <_NonLinuxRuntimePattern>^runtimes/(win|osx|browser|android|ios|maccatalyst|tvos|tizen|linux-bionic)</_NonLinuxRuntimePattern>
+        <_ForeignRuntimePattern>^runtimes/(win|osx|browser|android|ios|maccatalyst|tvos|tizen|linux-bionic|linux-(?!x64/))</_ForeignRuntimePattern>
     </PropertyGroup>
 
-    <Target Name="PruneNonLinuxRuntimeAssets" AfterTargets="ResolveLockFileCopyLocalFiles">
+    <Target Name="PruneForeignRuntimeAssets" AfterTargets="ResolveLockFileCopyLocalFiles">
         <ItemGroup>
             <NativeCopyLocalItems Remove="@(NativeCopyLocalItems)"
-                                  Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(NativeCopyLocalItems.DestinationSubDirectory)', '$(_NonLinuxRuntimePattern)'))" />
+                                  Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(NativeCopyLocalItems.DestinationSubDirectory)', '$(_ForeignRuntimePattern)'))" />
             <RuntimeTargetsCopyLocalItems Remove="@(RuntimeTargetsCopyLocalItems)"
-                                          Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(RuntimeTargetsCopyLocalItems.DestinationSubDirectory)', '$(_NonLinuxRuntimePattern)'))" />
+                                          Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(RuntimeTargetsCopyLocalItems.DestinationSubDirectory)', '$(_ForeignRuntimePattern)'))" />
             <_ResolvedCopyLocalBuildAssets Remove="@(_ResolvedCopyLocalBuildAssets)"
-                                           Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(_ResolvedCopyLocalBuildAssets.DestinationSubDirectory)', '$(_NonLinuxRuntimePattern)'))" />
+                                           Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(_ResolvedCopyLocalBuildAssets.DestinationSubDirectory)', '$(_ForeignRuntimePattern)'))" />
             <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)"
-                                     Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(ReferenceCopyLocalPaths.DestinationSubDirectory)', '$(_NonLinuxRuntimePattern)'))" />
+                                     Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(ReferenceCopyLocalPaths.DestinationSubDirectory)', '$(_ForeignRuntimePattern)'))" />
         </ItemGroup>
     </Target>
 </Project>
