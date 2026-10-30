@@ -286,7 +286,8 @@ public sealed class RecordedDigestResolverTests : IDisposable
     private static IFileStore StoreHolding(params Hash[] held)
     {
         var store = Substitute.For<IFileStore>();
-        store.HaveFile(default).ReturnsForAnyArgs(call => ValueTask.FromResult(held.Contains(call.Arg<Hash>())));
+        var heldKeys = held.Select(FileIdentity.XxHash3).ToHashSet();
+        store.HaveFile(default).ReturnsForAnyArgs(call => ValueTask.FromResult(heldKeys.Contains(call.Arg<FileIdentity>())));
         return store;
     }
 

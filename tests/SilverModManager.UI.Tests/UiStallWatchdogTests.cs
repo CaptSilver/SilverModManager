@@ -48,9 +48,42 @@ public class UiStallWatchdogTests
         var stalls = new List<StallFingerprint>();
         using var watchdog = Create(() => new TaskCompletionSource().Task, stalls);
         watchdog.Start();
-        await Task.Delay(200);
+        await WaitForStalls(stalls, 1);
 
         lock (stalls) stalls.Should().ContainSingle().Which.StillPending.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ProbeThatNeverReturns_IsStillLogged_WhenTheLoopThreadWasStarvedBeforePosting()
+    {
+        // A loop thread that gets no CPU for a while (a loaded machine) posts its probe late; the report
+        // follows the post by the threshold, however late the post was.
+        var stalls = new List<StallFingerprint>();
+        var first = true;
+        using var watchdog = Create(() =>
+        {
+            if (first)
+            {
+                first = false;
+                Thread.Sleep(400);
+            }
+            return new TaskCompletionSource().Task;
+        }, stalls);
+        watchdog.Start();
+        await WaitForStalls(stalls, 1);
+
+        lock (stalls) stalls.Should().ContainSingle().Which.StillPending.Should().BeTrue();
+    }
+
+    /// <summary>Waits for the watchdog thread to report, not for a guessed time: how soon it runs depends on machine load.</summary>
+    private static async Task WaitForStalls(List<StallFingerprint> stalls, int count)
+    {
+        var deadline = System.Diagnostics.Stopwatch.StartNew();
+        while (deadline.Elapsed < TimeSpan.FromSeconds(30))
+        {
+            lock (stalls) if (stalls.Count >= count) return;
+            await Task.Delay(10);
+        }
     }
 
     [Fact]
