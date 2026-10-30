@@ -403,6 +403,63 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
         (await StatusNow(loadout)).Should().Be(LoadoutSynchronizerState.NeedsSync);
     }
 
+    // A rename changes the loadout without changing a byte of the generated mods.settings or the menu file list, and
+    // both can be rendered from the loadout alone, so the status can see that nothing needs writing.
+    [Fact]
+    public async Task RenamingAModAfterAnApplyLeavesNothingToApply()
+    {
+        var loadout = await CreateLoadout();
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, [(RelativePath)"Mods/modRenamed/r.ws"], loadout.LoadoutId, "mod before");
+            await tx.Commit();
+        }
+        var group = LoadoutItem.FindByLoadout(Connection.Db, loadout.LoadoutId).OfTypeLoadoutItemGroup()
+            .Single(g => g.AsLoadoutItem().Name == "mod before").LoadoutItemGroupId;
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(group, LoadoutItem.Name, "mod after");
+            await tx.Commit();
+        }
+
+        (await StatusNow(loadout)).Should().Be(LoadoutSynchronizerState.Current);
+    }
+
+    [Fact]
+    public async Task TheGeneratedWitcherFilesRenderFromTheLoadoutAlone()
+    {
+        var loadout = await CreateLoadout();
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, [(RelativePath)"Mods/modA/a.ws", (RelativePath)"Mods/modA/content/menu/modA.xml"], loadout.LoadoutId, "mod");
+            await tx.Commit();
+        }
+        await Synchronizer.Synchronize(Refresh(loadout));
+        loadout = Refresh(loadout);
+        var tree = await Synchronizer.BuildSyncTree(loadout);
+        var files = ((ALoadoutSynchronizer)Synchronizer).IntrinsicFiles(loadout).Values.OfType<IIntrinsicFileRenderedFromLoadout>().ToArray();
+        files.Should().NotBeEmpty();
+
+        async Task<byte[][]> Render()
+        {
+            var bytes = new List<byte[]>();
+            foreach (var file in files)
+            {
+                using var stream = new MemoryStream();
+                await file.Write(stream, loadout, tree);
+                bytes.Add(stream.ToArray());
+            }
+            return bytes.ToArray();
+        }
+
+        var withTheGameFolder = await Render();
+        GameFolder.DeleteDirectory(recursive: true);
+
+        (await Render()).Should().BeEquivalentTo(withTheGameFolder, options => options.WithStrictOrdering());
+    }
+
     private async Task CommitAnUnrelatedLoadout()
     {
         using var tx = Connection.BeginTransaction();

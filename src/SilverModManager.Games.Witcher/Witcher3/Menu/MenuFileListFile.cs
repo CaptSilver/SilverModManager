@@ -11,7 +11,7 @@ namespace SilverModManager.Games.Witcher.Witcher3.Menu;
 /// that renderer. Built from the XMLs the sync tree holds there, so a mod's menu file is loaded without the user
 /// editing the list. The two lists differ only in the graphics menu, which has a file of its own for DX11.
 /// </summary>
-public sealed class MenuFileListFile(bool dx12) : IIntrinsicFile
+public sealed class MenuFileListFile(bool dx12) : IIntrinsicFileRenderedFromLoadout
 {
     private const string Dx11Graphics = "graphicsdx11";
     private const string Graphics = "graphics";

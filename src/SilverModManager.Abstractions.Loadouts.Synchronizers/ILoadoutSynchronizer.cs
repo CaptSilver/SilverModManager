@@ -134,7 +134,12 @@ public interface ILoadoutSynchronizer
     /// </summary>
     public List<PathPartPair> GetDiskStateForGame(Sdk.Games.GameInstallMetadata.ReadOnly metadata);
 
-    public bool ShouldSynchronize(Loadout.ReadOnly loadout, IEnumerable<PathPartPair> previousState, IEnumerable<PathPartPair> lastScannedState);
+    /// <summary>
+    /// Whether an apply would change anything. Generated files count as work unless they declare, through
+    /// <see cref="IIntrinsicFileRenderedFromLoadout"/>, that they can be rendered from the loadout alone and render
+    /// to what the last apply wrote.
+    /// </summary>
+    public ValueTask<bool> ShouldSynchronize(Loadout.ReadOnly loadout, IEnumerable<PathPartPair> previousState, IEnumerable<PathPartPair> lastScannedState);
     
     /// <summary>
     /// Computes the difference between a loadout and a disk state, assuming the loadout to be the newer state.

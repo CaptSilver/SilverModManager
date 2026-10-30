@@ -88,7 +88,7 @@ public class SynchronizerService : ISynchronizerService
                 var lastScannedDiskState = synchronizer.GetDiskStateForGame(metaData);
                 var previousDiskState = hasPreviousLoadout ? synchronizer.GetLastScannedDiskState(metaData) : lastScannedDiskState;
         
-                return ValueTask.FromResult(synchronizer.ShouldSynchronize(loadout, previousDiskState, lastScannedDiskState));
+                return synchronizer.ShouldSynchronize(loadout, previousDiskState, lastScannedDiskState);
             });
     }
     

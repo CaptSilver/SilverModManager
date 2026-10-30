@@ -14,7 +14,7 @@ namespace SilverModManager.Games.Witcher.Witcher3;
 /// <c>mods.settings</c> in Documents/The Witcher 3, rendered from the Load Order on every Apply. This only renders and
 /// compares: a copy the game or Vortex wrote is recorded as a notice and the same Apply writes the app's over it.
 /// </summary>
-public sealed class ModsSettingsFile(IGame game, ILogger<ModsSettingsFile> logger) : IIntrinsicFileWithReset
+public sealed class ModsSettingsFile(IGame game, ILogger<ModsSettingsFile> logger) : IIntrinsicFileWithReset, IIntrinsicFileRenderedFromLoadout
 {
     private const string UnreadableSummary = "the file on disk could not be read as mods.settings";
 

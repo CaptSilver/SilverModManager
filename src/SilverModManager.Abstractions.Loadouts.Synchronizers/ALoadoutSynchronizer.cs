@@ -1643,15 +1643,57 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private static FileIdentity ParseIdentity(string? hex) => string.IsNullOrEmpty(hex) ? FileIdentity.None : FileIdentity.ParseHex(hex);
 
     /// <summary>
-    /// Returns true if the loadout state doesn't match the last scanned disk state.
+    /// Returns true if the loadout state doesn't match the last scanned disk state. A generated file with nothing
+    /// else pending is rendered when it declares <see cref="IIntrinsicFileRenderedFromLoadout"/>, and is work only if
+    /// the bytes differ from what the last apply recorded for it; any other generated file is always work.
     /// </summary>
-    public bool ShouldSynchronize(Loadout.ReadOnly loadout, IEnumerable<PathPartPair> previousDiskState, IEnumerable<PathPartPair> lastScannedDiskState)
+    public async ValueTask<bool> ShouldSynchronize(Loadout.ReadOnly loadout, IEnumerable<PathPartPair> previousDiskState, IEnumerable<PathPartPair> lastScannedDiskState)
     {
         var syncTree = BuildSyncTree(lastScannedDiskState, previousDiskState, loadout);
         // Process the sync tree to get the actions populated in the nodes
         ProcessSyncTree(syncTree);
-        
-        return syncTree.Any(n => n.Value.Actions != Actions.DoNothing);
+
+        var pending = syncTree.Where(n => n.Value.Actions != Actions.DoNothing).ToList();
+        if (pending.Count == 0) return false;
+        if (!pending.All(n => IsIntrinsicWriteOfAnUntouchedFile(n.Value))) return true;
+
+        var files = IntrinsicFiles(loadout);
+        foreach (var (path, node) in pending)
+        {
+            if (!files.TryGetValue(path, out var file) || file is not IIntrinsicFileRenderedFromLoadout) return true;
+            if (!await RendersAsRecorded(file, loadout, syncTree, node)) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// A generated file that is on disk as the app left it, with the recorded identity of what the app wrote: the
+    /// only kind of node whose write can be skipped by comparing a render with that identity.
+    /// </summary>
+    private static bool IsIntrinsicWriteOfAnUntouchedFile(SyncNode node) =>
+        node.Actions == Actions.WriteIntrinsic
+        && node.SourceItemType == LoadoutSourceItemType.Intrinsic
+        && node is { HaveDisk: true, HavePrevious: true }
+        && node.Previous.Identity.Kind == HashKind.XxHash3
+        && node.Disk.Identity.MatchSameKind(node.Previous.Identity) == IdentityMatch.Same;
+
+    private async ValueTask<bool> RendersAsRecorded(IIntrinsicFile file, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, SyncNode node)
+    {
+        try
+        {
+            using var rendered = new MemoryStream();
+            await file.Write(rendered, loadout, syncTree);
+            rendered.Position = 0;
+            var hash = await Xx3Hasher.HashAsync(rendered);
+            return FileIdentity.XxHash3(hash).MatchSameKind(node.Previous.Identity) == IdentityMatch.Same;
+        }
+        catch (Exception e)
+        {
+            // The apply will hit the same failure and report it properly; the status only needs to say there is work.
+            Logger.LogDebug(e, "{Path} could not be rendered to compare it with what was written, so it counts as pending", file.Path);
+            return false;
+        }
     }
     
     /// <inheritdoc />

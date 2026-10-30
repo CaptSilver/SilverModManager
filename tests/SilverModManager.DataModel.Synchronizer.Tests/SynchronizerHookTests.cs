@@ -95,7 +95,7 @@ public class SynchronizerHookTests : AIsolatedGameTest<SynchronizerHookTests, Ho
     public async Task AdjustedActionsAreWhatShouldSynchronizeSees()
     {
         var loadout = await LoadoutWith("plain.txt");
-        Base.ShouldSynchronize(loadout, [], []).Should().BeTrue("the loadout file is not on disk yet");
+        (await Base.ShouldSynchronize(loadout, [], [])).Should().BeTrue("the loadout file is not on disk yet");
 
         HookStubbedGame.Hooks.Adjust = tree =>
         {
@@ -107,7 +107,7 @@ public class SynchronizerHookTests : AIsolatedGameTest<SynchronizerHookTests, Ho
             }
         };
 
-        Base.ShouldSynchronize(loadout, [], []).Should().BeFalse();
+        (await Base.ShouldSynchronize(loadout, [], [])).Should().BeFalse();
     }
 
     [Fact]
@@ -311,7 +311,7 @@ public class SynchronizerHookTests : AIsolatedGameTest<SynchronizerHookTests, Ho
 
         // This game has no intrinsic file; one would always leave a WriteIntrinsic node and keep this true.
         var metadata = Refresh(loadout).Installation;
-        Base.ShouldSynchronize(Refresh(loadout), Synchronizer.GetLastScannedDiskState(metadata), Synchronizer.GetDiskStateForGame(metadata))
+        (await Base.ShouldSynchronize(Refresh(loadout), Synchronizer.GetLastScannedDiskState(metadata), Synchronizer.GetDiskStateForGame(metadata)))
             .Should().BeFalse();
     }
 }
