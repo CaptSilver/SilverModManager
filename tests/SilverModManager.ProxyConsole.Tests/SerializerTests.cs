@@ -1,10 +1,12 @@
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Nerdbank.Streams;
 using SilverModManager.ProxyConsole.Messages;
+using SilverModManager.Sdk.ProxyConsole;
 
 namespace SilverModManager.ProxyConsole.Tests;
 
-public class SerializerTests
+public class SerializerTests(IServiceProvider provider)
 {
     private const int TimeoutMs = 60_000;
 
@@ -25,6 +27,24 @@ public class SerializerTests
 
         await new Serializer(far, []).SendAsync(new ProgramArgumentsRequest());
         (await pending.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken)).Should().BeOfType<ProgramArgumentsRequest>();
+    }
+
+    /// <summary>
+    /// The renderable union is registered once for the whole process, by whichever serializer is built first. One
+    /// built with no definitions (for messages that carry no renderable) must not use up that registration.
+    /// Alone in a fresh test host this fails without the guard; in a shared one it passes whenever another test
+    /// registered first.
+    /// </summary>
+    [Fact(Timeout = TimeoutMs)]
+    public async Task ASerializerWithNoDefinitionsDoesNotKeepALaterOneFromRegisteringTheRenderables()
+    {
+        var (near, far) = FullDuplexStream.CreatePair();
+        _ = new Serializer(near, []);
+
+        await new Serializer(near, provider.GetRequiredService<IEnumerable<IRenderableDefinition>>()).SendAsync(new Render { Renderable = new Text { Template = "hello" } });
+        var received = await new Serializer(far, []).ReceiveAsync();
+
+        received.Should().BeOfType<Render>().Which.Renderable.Should().BeOfType<Text>().Which.Template.Should().Be("hello");
     }
 
     [Fact(Timeout = TimeoutMs)]

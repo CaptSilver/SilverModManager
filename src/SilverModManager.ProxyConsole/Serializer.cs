@@ -18,6 +18,8 @@ public class Serializer
 {
     private const int HeaderSize = sizeof(int);
 
+    private static readonly object RegistrationLock = new();
+
     private readonly Stream _stream;
     private readonly MemoryPool<byte> _memoryPool;
 
@@ -31,15 +33,20 @@ public class Serializer
         _stream = duplexStream;
         _memoryPool = MemoryPool<byte>.Shared;
 
-        if (!MemoryPackFormatterProvider.IsRegistered<IRenderable>())
+        // The union is process-wide and registered once, so a serializer with nothing to register (one that only
+        // carries messages without renderables) must not take the registration from the first one that has some.
+        var listDefs = renderableDefinitions
+            .OrderBy(l => l.Id)
+            .Select((def, idx) => ((ushort)idx, def.RenderableType))
+            .ToArray();
+        if (listDefs.Length == 0) return;
+
+        lock (RegistrationLock)
         {
             // In the future we *could* redo this to use the guid as a tag, but since all this data is
             // ephemeral, it doesn't matter for now.
-            var listDefs = renderableDefinitions
-                .OrderBy(l => l.Id)
-                .Select((def, idx) => ((ushort)idx, def.RenderableType));
-
-            MemoryPackFormatterProvider.Register(new DynamicUnionFormatter<IRenderable>(listDefs.ToArray()));
+            if (!MemoryPackFormatterProvider.IsRegistered<IRenderable>())
+                MemoryPackFormatterProvider.Register(new DynamicUnionFormatter<IRenderable>(listDefs));
         }
     }
 
