@@ -134,6 +134,50 @@ public class AddLibraryFileJobTests(IServiceProvider serviceProvider, IConnectio
         }
     }
 
+    // The inner zip stores "filename_with_" + 0x8B + "o" + 0x94 + ".txt" as raw code page 437 bytes (no UTF-8 flag).
+    [Fact]
+    public async Task AnArchiveHoldingAZipWithLegacyEncodedNamesCanBeAdded()
+    {
+        var archive = FileSystem.Shared.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources/7z-with-cp437-zip.7z");
+
+        using var tx = connection.BeginTransaction();
+        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, archive);
+        var result = await tx.Commit();
+
+        result.Remap(libraryFile).TryGetAsLibraryArchive(out var outer).Should().BeTrue();
+        var inner = outer.Children.Should().ContainSingle().Which;
+        inner.Path.ToString().Should().Be("legacy-names.zip");
+        inner.AsLibraryFile().TryGetAsLibraryArchive(out var innerArchive).Should().BeTrue();
+        innerArchive.Children.Select(c => c.Path.ToString()).Should().Equal("filename_with_\u00EFo\u00F6.txt");
+    }
+
+    [Fact]
+    public async Task ANestedArchiveThatCannotBeOpenedIsKeptAsAPlainFile()
+    {
+        await using var folder = temporaryFileManager.CreateFolder();
+        var outerPath = folder.Path.Combine("outer.zip");
+        // Starts like a zip so the signature check accepts it, but is cut off after the first bytes.
+        byte[] broken = [0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00, 0x08, 0x00, 0xDE, 0xAD, 0xBE, 0xEF];
+        using (var zip = new ZipArchive(File.Create(outerPath.ToString()), ZipArchiveMode.Create))
+        {
+            using (var entry = zip.CreateEntry("broken.zip").Open()) entry.Write(broken);
+            using (var entry = zip.CreateEntry("fine.txt").Open()) entry.Write("fine"u8);
+        }
+
+        using var tx = connection.BeginTransaction();
+        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, outerPath);
+        var result = await tx.Commit();
+
+        var stored = result.Remap(libraryFile);
+        stored.Sha256.Value.ToString().Should().Be(Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(outerPath.ToString(), TestContext.Current.CancellationToken))).ToLowerInvariant());
+        stored.TryGetAsLibraryArchive(out var outer).Should().BeTrue();
+        outer.Children.Select(c => c.Path.ToString()).Should().BeEquivalentTo("broken.zip", "fine.txt");
+
+        var brokenEntry = outer.Children.Single(c => c.Path.ToString() == "broken.zip").AsLibraryFile();
+        brokenEntry.TryGetAsLibraryArchive(out _).Should().BeFalse("an archive that can't be opened is recorded as the file it is");
+        brokenEntry.Size.Value.Should().Be((ulong)broken.Length);
+    }
+
     public class Startup
     {
         public void ConfigureServices(IServiceCollection services)

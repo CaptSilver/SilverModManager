@@ -3,6 +3,7 @@ using System.IO.Hashing;
 using System.Security.Cryptography;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Library;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -43,10 +44,12 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
             TemporaryFileManager = provider.GetRequiredService<TemporaryFileManager>(),
             FileStore = provider.GetRequiredService<IFileStore>(),
             Recognisers = provider.GetServices<ILibraryFileRecogniser>().ToArray(),
+            Logger = provider.GetRequiredService<ILogger<AddLibraryFileJob>>(),
         };
         return monitor.Begin<AddLibraryFileJob, LibraryFile.New>(job);
     }
 
+    internal required ILogger<AddLibraryFileJob> Logger { get; init; }
     internal required IFileStore FileStore { get; set; }
     internal required ILibraryFileRecogniser[] Recognisers { get; init; }
     internal required TemporaryFileManager TemporaryFileManager { get; init; }
@@ -96,7 +99,26 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
         var (hash, md5, sha256, xxHash64) = await HashAsync(filePath, isNestedFile: isNestedFile, cancellationToken: context.CancellationToken);
         var libraryFile = CreateLibraryFile(Transaction, filePath, hash, md5, sha256, xxHash64);
 
+        AbsolutePath? extractedFolder = null;
         if (isArchive)
+        {
+            var extractionFolder = TemporaryFileManager.CreateFolder();
+            // Add the temp folder for later
+            ExtractionDirectories.Add(extractionFolder);
+            try
+            {
+                await FileExtractor.ExtractAllAsync(filePath, extractionFolder, token: context.CancellationToken);
+                extractedFolder = extractionFolder.Path;
+            }
+            catch (Exception e) when (isNestedFile && !context.CancellationToken.IsCancellationRequested)
+            {
+                // A nested archive is only a bonus listing of what is inside the download. Failing to open one
+                // must not fail the download, so it is kept as the plain file it is.
+                Logger.LogWarning(e, "Could not extract nested archive `{File}` from `{Outer}`, adding it as a plain file", filePath.FileName, FilePath.FileName);
+            }
+        }
+
+        if (extractedFolder is { } folder)
         {
             var libraryArchive = new LibraryArchive.New(Transaction, libraryFile.Id)
             {
@@ -104,17 +126,10 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
                 LibraryFile = libraryFile,
             };
 
-            var extractionFolder = TemporaryFileManager.CreateFolder();
-            // Add the temp folder for later
-            ExtractionDirectories.Add(extractionFolder);
-            await FileExtractor.ExtractAllAsync(filePath, extractionFolder, token: context.CancellationToken);
-
-            var extractedFiles = extractionFolder.Path.EnumerateFiles();
-
-            foreach (var extracted in extractedFiles)
+            foreach (var extracted in folder.EnumerateFiles())
             {
                 var subFile = await AnalyzeFile(context, extracted, isNestedFile: true);
-                var path = extracted.RelativeTo(extractionFolder.Path);
+                var path = extracted.RelativeTo(folder);
                 _ = new LibraryArchiveFileEntry.New(Transaction, subFile.Id)
                 {
                     Path = path,
@@ -124,7 +139,7 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
             }
 
             // The extraction folder is only around until the job is disposed, so recognisers see it now.
-            if (!isNestedFile) await RecogniseAsync(libraryFile, extractionFolder.Path, context.CancellationToken);
+            if (!isNestedFile) await RecogniseAsync(libraryFile, folder, context.CancellationToken);
         }
         else
         {
