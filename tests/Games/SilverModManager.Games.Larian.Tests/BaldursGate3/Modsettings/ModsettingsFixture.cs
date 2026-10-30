@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Games;
@@ -105,7 +106,7 @@ public abstract class ModsettingsFixture(ITestOutputHelper helper)
     {
         var hash = bytes.xxHash3();
         var size = Size.FromLong(bytes.Length);
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(pakName, new MemoryStream(bytes)), hash, size)]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(pakName, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), size)]);
 
         using var tx = Connection.BeginTransaction();
         var group = AddEmptyGroup(tx, loadout.LoadoutId, modName);

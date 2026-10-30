@@ -279,7 +279,7 @@ public class SynchronizerHookTests : AIsolatedGameTest<SynchronizerHookTests, Ho
         await Synchronizer.Synchronize(loadout);
 
         path.FileExists.Should().BeFalse();
-        (await FileStore.HaveFile(HashOf("hand edited"))).Should().BeTrue("the edit is kept in the file store");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("hand edited")))).Should().BeTrue("the edit is kept in the file store");
 
         var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
         tree[KeptOffDisk].Loadout.Identity.XxHash3().Should().Be(HashOf("kept-off-disk.txt"), "the edit was not ingested");

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Sdk.Hashes;
 using GameFinder.Wine;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
@@ -49,7 +50,7 @@ public class BannerlordSaveProtectionTests(ITestOutputHelper helper) : AIsolated
         var loadoutA = await CreateLoadout();
         Synchronizer.GetDiskStateForGame(GameRegistry.ForceGetMetadata(GameInstallation))
             .Should().NotContain(p => p.Path.LocationId == LocationId.Saves);
-        (await FileStore.HaveFile(SaveBytes.xxHash3())).Should().BeFalse();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(SaveBytes.xxHash3()))).Should().BeFalse();
         LoadoutItem.FindByLoadout(loadoutA.Db, loadoutA).OfTypeLoadoutItemWithTargetPath()
             .Select(i => ((GamePath)i.TargetPath).LocationId).Should().NotContain(LocationId.Saves);
 

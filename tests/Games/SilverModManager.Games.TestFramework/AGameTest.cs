@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using JetBrains.Annotations;
@@ -199,11 +200,11 @@ public abstract class AGameTest<TGame> where TGame : IGame
             
             // Create the file to backup.
             hashes.Add(hash);
-            if (!await FileStore.HaveFile(hash))
+            if (!await FileStore.HaveFile(FileIdentity.XxHash3(hash)))
             {
                 records.Add(new ArchivedFileEntry(
                     new MemoryStreamFactory(path, new MemoryStream(data)),
-                    hash,
+                    FileIdentity.XxHash3(hash),
                     size
                 ));
             }
@@ -333,7 +334,7 @@ public abstract class AGameTest<TGame> where TGame : IGame
         if (FileStore is not NxFileStore store)
             throw new NotSupportedException("GetArchivePath is not currently supported in stubbed file stores.");
 
-        store.TryGetLocation(hash, out var archivePath, out _).Should().BeTrue("Archive should exist");
+        store.TryGetLocation(FileIdentity.XxHash3(hash), out var archivePath, out _).Should().BeTrue("Archive should exist");
         return archivePath;
     }
 }

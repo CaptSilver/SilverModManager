@@ -129,7 +129,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
         tree[CreationA].SourceItemType.Should().Be(LoadoutSourceItemType.Game);
         Installed(loadout).Should().ContainKey(CreationA).WhoseValue.Hash.Should().Be(HashOf("alpha 1"));
         OverridesPaths(Refresh(loadout)).Should().BeEmpty("the game owns the file, it is not an external change");
-        (await FileStore.HaveFile(HashOf("alpha 1"))).Should().BeFalse("nothing of the game's content is backed up");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("alpha 1")))).Should().BeFalse("nothing of the game's content is backed up");
         OnDisk(CreationA).FileExists.Should().BeTrue();
     }
 
@@ -148,7 +148,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
         tree[CreationA].Actions.Should().Be(Actions.DoNothing);
         Installed(loadout)[CreationA].Hash.Should().Be(HashOf("alpha 2, updated by the game"), "the row follows the disk");
         OverridesPaths(Refresh(loadout)).Should().BeEmpty();
-        (await FileStore.HaveFile(HashOf("alpha 2, updated by the game"))).Should().BeFalse();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("alpha 2, updated by the game")))).Should().BeFalse();
         (await OnDisk(CreationA).ReadAllTextAsync()).Should().Be("alpha 2, updated by the game");
     }
 
@@ -184,7 +184,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
         OnDisk(CreationA).FileExists.Should().BeTrue("leaving the group never deletes a file");
         Installed(loadout).Should().BeEmpty();
         OverridesPaths(Refresh(loadout)).Should().Contain(CreationA.Path.ToString());
-        (await FileStore.HaveFile(HashOf("alpha 1"))).Should().BeTrue("the overrides row has an archive like any ingested file");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("alpha 1")))).Should().BeTrue("the overrides row has an archive like any ingested file");
         (await TreeOf(loadout))[CreationA].Actions.Should().Be(Actions.DoNothing);
     }
 
@@ -202,7 +202,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
 
         OnDisk(CreationA).FileExists.Should().BeTrue();
         OverridesPaths(Refresh(loadout)).Should().Contain(CreationA.Path.ToString());
-        (await FileStore.HaveFile(HashOf("alpha 1"))).Should().BeFalse("the game excludes this path from backups");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("alpha 1")))).Should().BeFalse("the game excludes this path from backups");
     }
 
     [Fact]

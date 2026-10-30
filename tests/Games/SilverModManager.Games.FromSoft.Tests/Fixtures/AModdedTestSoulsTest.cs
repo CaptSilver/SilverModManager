@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Library.Installers;
@@ -57,7 +58,7 @@ public abstract class AModdedTestSoulsTest<TTest>(ITestOutputHelper helper) : AS
         {
             var bytes = Encoding.UTF8.GetBytes($"{name}:{path.Path}");
             AddFile(tx, loadout.LoadoutId, group, path, $"{name}:{path.Path}");
-            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), bytes.xxHash3(), Size.FromLong(bytes.Length))]);
+            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length))]);
         }
 
         await tx.Commit();

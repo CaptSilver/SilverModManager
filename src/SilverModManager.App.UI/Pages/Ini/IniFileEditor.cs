@@ -1,4 +1,5 @@
 using System.Reactive;
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
@@ -126,7 +127,7 @@ public sealed partial class IniFileEditor : ReactiveObject
         var tweakText = "";
         foreach (var source in sources)
         {
-            var document = await TryLoadDocument(source.Hash);
+            var document = await TryLoadDocument(FileIdentity.XxHash3(source.Hash));
             var text = document?.ToText() ?? "";
             layers.Add(new IniLayerEntry(source.Name, source.SourceName, source.FileId, source.IsLoadoutTweak, source.IsSwitchedOn, source.IsEnabled, text));
             if (!source.IsLoadoutTweak) continue;
@@ -157,8 +158,8 @@ public sealed partial class IniFileEditor : ReactiveObject
         }
     }
 
-    private async Task<IniDocument?> TryLoadDocument(Hash hash) =>
-        await _fileStore.HaveFile(hash) ? IniDocument.Parse(await _fileStore.Load(hash)) : null;
+    private async Task<IniDocument?> TryLoadDocument(FileIdentity identity) =>
+        await _fileStore.HaveFile(identity) ? IniDocument.Parse(await _fileStore.Load(identity)) : null;
 
     private IReadOnlyList<IniSettingEntry> BuildSettings(Loadout.ReadOnly loadout, string resultText)
     {

@@ -100,7 +100,7 @@ public class StubbedFileHasherService : IFileHashesService
                 var hashResult = await MultiHasher.HashStream(memoryStream);
 
                 memoryStream.Position = 0;
-                archiveFiles.Add(new ArchivedFileEntry(new MemoryStreamFactory(RelativePath.FromUnsanitizedInput(entry.FullName), memoryStream), hashResult.XxHash3, hashResult.Size));
+                archiveFiles.Add(new ArchivedFileEntry(new MemoryStreamFactory(RelativePath.FromUnsanitizedInput(entry.FullName), memoryStream), FileIdentity.XxHash3(hashResult.XxHash3), hashResult.Size));
 
                 var relation = new HashRelation.New(tx)
                 {

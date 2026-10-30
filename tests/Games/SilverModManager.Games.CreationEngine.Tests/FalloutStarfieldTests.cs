@@ -73,7 +73,7 @@ public class FalloutStarfieldTests(IServiceProvider serviceProvider)
         var bytes = BethesdaPluginBytes.Bytes(GameRelease.Fallout4VR, "A.esp", "Fallout4.esm");
         var stored = bytes.xxHash3();
         var source = Substitute.For<IStreamSourceDispatcher>();
-        source.OpenAsync(stored).Returns(_ => ValueTask.FromResult<Stream?>(new MemoryStream(bytes)));
+        source.OpenAsync(FileIdentity.XxHash3(stored)).Returns(_ => ValueTask.FromResult<Stream?>(new MemoryStream(bytes)));
         var game = (ICreationEngineGame)System.Activator.CreateInstance(typeof(CreationEngine.Fallout4VR.Fallout4VR), new WithStreamSource(serviceProvider, source))!;
 
         var header = await game.ParsePlugin(FileIdentity.XxHash3(stored), RelativePath.FromUnsanitizedInput("A.esp"));
@@ -89,7 +89,7 @@ public class FalloutStarfieldTests(IServiceProvider serviceProvider)
         var bytes = BethesdaPluginBytes.Bytes(GameRelease.Fallout4VR, "A.esp", "Fallout4.esm");
         var stored = bytes.xxHash3();
         var source = Substitute.For<IStreamSourceDispatcher>();
-        source.OpenAsync(stored).Returns(_ => ValueTask.FromResult<Stream?>(new MemoryStream(bytes)));
+        source.OpenAsync(FileIdentity.XxHash3(stored)).Returns(_ => ValueTask.FromResult<Stream?>(new MemoryStream(bytes)));
         var game = (ICreationEngineGame)System.Activator.CreateInstance(typeof(CreationEngine.Fallout4VR.Fallout4VR), new WithStreamSource(serviceProvider, source))!;
         var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, game, new AsteriskMechanism());
         var tree = new Dictionary<GamePath, SyncNode>

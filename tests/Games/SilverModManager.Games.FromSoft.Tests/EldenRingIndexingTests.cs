@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.FromSoft.Tests.Fixtures;
@@ -64,7 +65,7 @@ public class EldenRingIndexingTests(ITestOutputHelper helper) : AEldenRingTest<E
 
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        (await FileStore.HaveFile(modified.xxHash3())).Should().BeFalse("nothing under the game folder is backed up");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(modified.xxHash3()))).Should().BeFalse("nothing under the game folder is backed up");
         OverridesChildren(Refresh(loadout)).Should().BeEmpty();
         (await (RealGameFolder / "regulation.bin").ReadAllBytesAsync()).Should().Equal(modified);
     }

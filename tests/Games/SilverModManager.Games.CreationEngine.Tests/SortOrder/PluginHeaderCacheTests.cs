@@ -27,7 +27,7 @@ public class PluginHeaderCacheTests(ITestOutputHelper helper)
     private async Task<FileIdentity> Store(byte[] bytes)
     {
         var hash = bytes.xxHash3();
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("plugin", new MemoryStream(bytes)), hash, Size.FromLong(bytes.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("plugin", new MemoryStream(bytes)), FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length))]);
         return FileIdentity.XxHash3(hash);
     }
 

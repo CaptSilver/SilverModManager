@@ -1,4 +1,5 @@
 using System.Reactive;
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Sdk.Resources;
@@ -43,9 +44,9 @@ internal static class Pipelines
 
                 return ValueTask.FromResult(resource.WithData(manifest));
             })
-            .StoreInMemory<SMAPIManifestLoadoutFile.ReadOnly, Hash, SMAPIManifest>(
-                selector: static manifest => manifest.AsLoadoutFile().Hash,
-                keyComparer: EqualityComparer<Hash>.Default,
+            .StoreInMemory<SMAPIManifestLoadoutFile.ReadOnly, FileIdentity, SMAPIManifest>(
+                selector: static manifest => manifest.AsLoadoutFile().Identity,
+                keyComparer: EqualityComparer<FileIdentity>.Default,
                 shouldDeleteKey: (tuple, _) => ValueTask.FromResult(!SMAPIManifestLoadoutFile.Load(connection.Db, tuple.Item2.Id).IsValid())
             );
 

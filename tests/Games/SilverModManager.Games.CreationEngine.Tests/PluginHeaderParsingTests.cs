@@ -33,7 +33,7 @@ public class PluginHeaderParsingTests(IServiceProvider serviceProvider)
     private ICreationEngineGame Reading(Type type, Stream? stream, Hash hash)
     {
         var source = Substitute.For<IStreamSourceDispatcher>();
-        source.OpenAsync(hash).Returns(_ => ValueTask.FromResult(stream));
+        source.OpenAsync(FileIdentity.XxHash3(hash)).Returns(_ => ValueTask.FromResult(stream));
         return (ICreationEngineGame)System.Activator.CreateInstance(type, new WithStreamSource(serviceProvider, source))!;
     }
 

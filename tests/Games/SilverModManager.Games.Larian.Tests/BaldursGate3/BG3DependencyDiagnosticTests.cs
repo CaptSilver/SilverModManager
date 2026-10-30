@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
@@ -187,7 +188,7 @@ public abstract class ADependencyDiagnosticTests(ITestOutputHelper outputHelper)
     protected async Task AddPak(Loadout.ReadOnly loadout, string groupName, string fileName, byte[] pak, bool inOverrides = false)
     {
         var hash = pak.xxHash3();
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(fileName, new MemoryStream(pak)), hash, Size.FromLong(pak.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(fileName, new MemoryStream(pak)), FileIdentity.XxHash3(hash), Size.FromLong(pak.Length))]);
 
         using var tx = Connection.BeginTransaction();
         EntityId groupId;

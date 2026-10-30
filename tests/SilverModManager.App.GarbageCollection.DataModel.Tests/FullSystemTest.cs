@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.GC;
@@ -59,7 +60,7 @@ public class FullSystemTest(IServiceProvider serviceProvider, ISettingsManager s
                      .Concat(loadout1SharedModHashes)
                      .Concat(loadout2SharedModHashes))
         {
-            (await _fileStore.HaveFile(hash)).Should().BeTrue();
+            (await _fileStore.HaveFile(FileIdentity.XxHash3(hash))).Should().BeTrue();
         }
 
         // Act: All files are referenced.
@@ -69,13 +70,13 @@ public class FullSystemTest(IServiceProvider serviceProvider, ISettingsManager s
         foreach (var hash in loadout1ModHashes.Concat(loadout1SharedModHashes)
                      .Concat(loadout2SharedModHashes))
         {
-            (await _fileStore.HaveFile(hash)).Should().BeTrue();
+            (await _fileStore.HaveFile(FileIdentity.XxHash3(hash))).Should().BeTrue();
         }
         
         // And assert loadout2ModHashes were removed.
         foreach (var hash in loadout2ModHashes)
         {
-            (await _fileStore.HaveFile(hash)).Should().BeFalse();
+            (await _fileStore.HaveFile(FileIdentity.XxHash3(hash))).Should().BeFalse();
         }
     }
     public class Startup

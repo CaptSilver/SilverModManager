@@ -160,9 +160,7 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
 
     public virtual async ValueTask<PluginHeader?> ParsePlugin(FileIdentity identity, RelativePath? name = null)
     {
-        await using var stream = identity.TryXxHash3(out var hash)
-            ? await _streamSource.OpenAsync(hash)
-            : await _streamSource.OpenAsync(identity);
+        await using var stream = await _streamSource.OpenAsync(identity);
         if (stream is null) return null;
 
         return PluginHeaderReader.Read(stream, HeaderFormat, name?.FileName.ToString() ?? "unknown.esm");

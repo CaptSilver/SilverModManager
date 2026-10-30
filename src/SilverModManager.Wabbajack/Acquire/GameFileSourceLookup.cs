@@ -53,7 +53,7 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
     public async Task<(Stream Stream, Hash XxHash3)> Open(RelativePath gameFile, CancellationToken cancellationToken = default)
     {
         if (await FindBackup(gameFile) is { } backup)
-            return (await fileStore.GetFileStream(backup, cancellationToken), backup);
+            return (await fileStore.GetFileStream(FileIdentity.XxHash3(backup), cancellationToken), backup);
 
         // Hashed once and remembered, so opening a file a second time costs no extra pass over it.
         var described = await Describe(gameFile, cancellationToken)
@@ -78,7 +78,7 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
     {
         if (await FindBackup(gameFile) is { } backup)
         {
-            await using var stored = await fileStore.GetFileStream(backup, cancellationToken);
+            await using var stored = await fileStore.GetFileStream(FileIdentity.XxHash3(backup), cancellationToken);
             var size = Size.FromLong(stored.Length);
             if (await KnownXxHash64(backup) is { } known) return (backup, known, size);
 

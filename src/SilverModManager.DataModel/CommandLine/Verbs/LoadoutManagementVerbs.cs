@@ -149,11 +149,11 @@ public static class LoadoutManagementVerbs
         await tx.Commit();
 
         var toBackup = wanted
-            .Select(f => (Path: gameInstallation.Locations.ToAbsolutePath(f.Key), f.Value.Disk.Size, Hash: f.Value.Disk.Identity.XxHash3()))
+            .Select(f => (Path: gameInstallation.Locations.ToAbsolutePath(f.Key), f.Value.Disk.Size, Identity: f.Value.Disk.Identity))
             .ToArray();
         await renderer.TextLine("Backing up {0} files for a total of {1}", toBackup.Length, toBackup.Aggregate(Size.Zero, (a, b) => a + b.Size));
         
-        var entries = toBackup.Select(f => new ArchivedFileEntry(new NativeFileStreamFactory(f.Path), f.Hash, f.Size)).ToArray();
+        var entries = toBackup.Select(f => new ArchivedFileEntry(new NativeFileStreamFactory(f.Path), f.Identity, f.Size)).ToArray();
         await fileStore.BackupFiles(entries);
         return 0;
     }

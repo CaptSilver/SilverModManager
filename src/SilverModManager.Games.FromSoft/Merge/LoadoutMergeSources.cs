@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Loadouts;
@@ -162,7 +163,7 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
     /// </summary>
     public virtual byte[] ContributorBytes(ProviderFile file)
     {
-        using var stream = fileStore.GetFileStream(file.Hash).GetAwaiter().GetResult();
+        using var stream = fileStore.GetFileStream(FileIdentity.XxHash3(file.Hash)).GetAwaiter().GetResult();
         using var buffer = new MemoryStream();
         stream.CopyTo(buffer);
         return buffer.ToArray();

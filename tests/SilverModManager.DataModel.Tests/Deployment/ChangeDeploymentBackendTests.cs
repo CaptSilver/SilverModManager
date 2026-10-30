@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
@@ -39,7 +40,7 @@ public class ChangeDeploymentBackendTests(ITestOutputHelper helper) : AStubbedGa
         using var tx = Connection.BeginTransaction();
         var group = AddEmptyGroup(tx, loadout.LoadoutId, "Mod");
         AddFile(tx, loadout.LoadoutId, group, FileA, "a content", out var hash, out var size);
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(FileA.FileName, new MemoryStream(Encoding.UTF8.GetBytes("a content"))), hash, size)]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(FileA.FileName, new MemoryStream(Encoding.UTF8.GetBytes("a content"))), FileIdentity.XxHash3(hash), size)]);
         await tx.Commit();
 
         await Synchronizer.Synchronize(loadout);

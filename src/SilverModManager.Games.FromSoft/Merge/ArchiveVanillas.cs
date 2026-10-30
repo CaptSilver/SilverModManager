@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Games.FromSoft.Formats;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -60,7 +61,7 @@ public sealed class ArchiveVanillas(IFileStore fileStore)
     /// <summary>The bytes of a file the library holds.</summary>
     public byte[] Read(Hash hash)
     {
-        using var stream = fileStore.GetFileStream(hash).GetAwaiter().GetResult();
+        using var stream = fileStore.GetFileStream(FileIdentity.XxHash3(hash)).GetAwaiter().GetResult();
         using var buffer = new MemoryStream();
         stream.CopyTo(buffer);
         return buffer.ToArray();

@@ -387,7 +387,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
         var path = new GamePath(LocationId.Game, $"Mods/{package}/{rel}");
         var bytes = System.Text.Encoding.UTF8.GetBytes(text);
         AddFile(tx, loadout.LoadoutId, group, path, bytes, out var hash, out var size);
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), hash, size)]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), size)]);
         _ = new LoadoutItemGroupPriority.New(tx) { LoadoutId = loadout.LoadoutId, TargetId = group, Priority = ConflictPriority.From(priority) };
         await tx.Commit();
     }

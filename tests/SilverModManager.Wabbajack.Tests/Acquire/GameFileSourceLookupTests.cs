@@ -27,7 +27,7 @@ public class GameFileSourceLookupTests(ITestOutputHelper helper) : AcquireTestBa
 
     private async Task BackUpOriginal(Loadout.ReadOnly loadout)
     {
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(GameBsa, new MemoryStream(GameBsaBytes)), GameBsaBytes.xxHash3(), Size.FromLong(GameBsaBytes.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(GameBsa, new MemoryStream(GameBsaBytes)), FileIdentity.XxHash3(GameBsaBytes.xxHash3()), Size.FromLong(GameBsaBytes.Length))]);
         using var tx = Connection.BeginTransaction();
         _ = new GameBackedUpFile.New(tx) { Hash = GameBsaBytes.xxHash3(), GameInstallId = loadout.InstallationId };
         await tx.Commit();

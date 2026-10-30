@@ -1,4 +1,5 @@
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.IO;
@@ -88,7 +89,7 @@ public sealed class GeneratedFileWriter(IFileStore store, TemporaryFileManager t
         {
             foreach (var batch in files.Chunk(StoreBatchSize))
             {
-                var entries = batch.Select(f => new ArchivedFileEntry(new NativeFileStreamFactory(f.Path), f.XxHash3, f.Size));
+                var entries = batch.Select(f => new ArchivedFileEntry(new NativeFileStreamFactory(f.Path), FileIdentity.XxHash3(f.XxHash3), f.Size));
                 await store.BackupFiles(entries, deduplicate: true, cancellationToken);
                 foreach (var file in batch) await file.DisposeAsync();
                 stored += batch.Length;

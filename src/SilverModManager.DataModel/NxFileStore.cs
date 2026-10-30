@@ -19,6 +19,7 @@ using NexusMods.Paths.Utilities;
 using SilverModManager.Sdk.Threading;
 using System.Diagnostics;
 using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
 
 namespace SilverModManager.DataModel;
@@ -194,7 +195,11 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
     }
 
     /// <inheritdoc />
-    public ValueTask<bool> HaveFile(Hash hash) => ValueTask.FromResult(_archivesByEntry.ContainsKey(hash));
+    public ValueTask<bool> HaveFile(FileIdentity identity)
+    {
+        var key = identity.XxHash3();
+        return ValueTask.FromResult(_archivesByEntry.ContainsKey(key));
+    }
 
     /// <inheritdoc />
     public async Task BackupFiles(IEnumerable<ArchivedFileEntry> enumerable, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null)
@@ -210,17 +215,17 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
             .WithSolidCompressionLevel(BackupCompressionLevel);
         Dictionary<Hash, (ArchivedFileEntry, Stream)> filesToBackup;
 
-        enumerable = enumerable.DistinctBy(x => x.Hash);
+        enumerable = enumerable.DistinctBy(x => x.Identity.XxHash3());
         if (deduplicate)
         {
             filesToBackup = await enumerable
                 .ToAsyncEnumerable()
-                .WhereAwait(async x => !(await HaveFile(x.Hash)))
-                .ToDictionaryAsync(fileToBackUp => fileToBackUp.Hash, fileToBackUp => (fileToBackUp, Stream.Null), cancellationToken: token);
+                .WhereAwait(async x => !(await HaveFile(x.Identity)))
+                .ToDictionaryAsync(fileToBackUp => fileToBackUp.Identity.XxHash3(), fileToBackUp => (fileToBackUp, Stream.Null), cancellationToken: token);
         }
         else
         {
-            filesToBackup = enumerable.ToDictionary(fileToBackUp => fileToBackUp.Hash, fileToBackUp => (fileToBackUp, Stream.Null));
+            filesToBackup = enumerable.ToDictionary(fileToBackUp => fileToBackUp.Identity.XxHash3(), fileToBackUp => (fileToBackUp, Stream.Null));
         }
 
         if (filesToBackup.Count == 0)
@@ -238,7 +243,7 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
 
             builder.AddFile(stream, new AddFileParams
             {
-                RelativePath = fileToBackup.Hash.ToHex(),
+                RelativePath = fileToBackup.Identity.XxHash3().ToHex(),
             });
         }
 
@@ -267,7 +272,7 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
     }
 
     /// <inheritdoc />
-    public async Task ExtractFiles(IEnumerable<(Hash Hash, AbsolutePath Dest)> files, CancellationToken token = default, Action<(int Current, int Max)>? progressUpdater = null)
+    public async Task ExtractFiles(IEnumerable<(FileIdentity Identity, AbsolutePath Dest)> files, CancellationToken token = default, Action<(int Current, int Max)>? progressUpdater = null)
     {
         using var lck = _lock.ReadLock();
 
@@ -297,7 +302,8 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
 #endif
             
             // Create empty files as empty
-            if (file.Hash == EmptyFile)
+            var key = file.Identity.XxHash3();
+            if (key == EmptyFile)
             {
                 var parent = file.Dest.Parent;
                 if (!parent.DirectoryExists())
@@ -307,17 +313,17 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
                 return;
             }
 
-            if (TryGetLocation(file.Hash, out var archivePath, out var fileEntry))
+            if (TryGetLocation(file.Identity, out var archivePath, out var fileEntry))
             {
                 var group = groupedFiles.GetOrAdd(archivePath, _ => new List<(Hash, FileEntry, AbsolutePath)>());
                 lock (group)
                 {
-                    group.Add((file.Hash, fileEntry, file.Dest));
+                    group.Add((key, fileEntry, file.Dest));
                 }
             }
             else
             {
-                throw new MissingArchiveException(file.Hash, file.Dest);
+                throw new MissingArchiveException(file.Identity, file.Dest);
             }
         });
 
@@ -357,7 +363,7 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
     }
 
     /// <inheritdoc />
-    public Task<Dictionary<Hash, byte[]>> ExtractFiles(IEnumerable<Hash> files, CancellationToken token = default)
+    public Task<Dictionary<FileIdentity, byte[]>> ExtractFiles(IEnumerable<FileIdentity> files, CancellationToken token = default)
     {
         using var lck = _lock.ReadLock();
 
@@ -365,37 +371,37 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
         // In almost all cases, everything will go in one archive, except for cases
         // of duplicate files between different mods.
         var filesArr = files.ToArray();
-        var results = new ConcurrentDictionary<Hash, byte[]>(Environment.ProcessorCount, filesArr.Length);
-        var groupedFiles = new ConcurrentDictionary<AbsolutePath, List<(Hash Hash, FileEntry FileEntry)>>(Environment.ProcessorCount, 1);
+        var results = new ConcurrentDictionary<FileIdentity, byte[]>(Environment.ProcessorCount, filesArr.Length);
+        var groupedFiles = new ConcurrentDictionary<AbsolutePath, List<(FileIdentity Identity, FileEntry FileEntry)>>(Environment.ProcessorCount, 1);
 
 #if DEBUG
-        var processedHashes = new ConcurrentDictionary<Hash, byte>();
+        var processedHashes = new ConcurrentDictionary<FileIdentity, byte>();
 #endif
         
-        Parallel.ForEach(filesArr, hash =>
+        Parallel.ForEach(filesArr, identity =>
         {
-            if (hash == EmptyFile)
+            if (identity.XxHash3() == EmptyFile)
             {
-                results.TryAdd(hash, []);
+                results.TryAdd(identity, []);
                 return;
             }
 #if DEBUG
-            if (!processedHashes.TryAdd(hash, 0))
-                throw new Exception($"Duplicate hash found: {hash.ToHex()}");
+            if (!processedHashes.TryAdd(identity, 0))
+                throw new Exception($"Duplicate hash found: {identity.ToHex()}");
 #endif
 
-            if (TryGetLocation(hash,
+            if (TryGetLocation(identity,
                     out var archivePath, out var fileEntry))
             {
-                var group = groupedFiles.GetOrAdd(archivePath, _ => new List<(Hash, FileEntry)>());
+                var group = groupedFiles.GetOrAdd(archivePath, _ => new List<(FileIdentity, FileEntry)>());
                 lock (group)
                 {
-                    group.Add((hash, fileEntry));
+                    group.Add((identity, fileEntry));
                 }
             }
             else
             {
-                throw new MissingArchiveException(hash);
+                throw new MissingArchiveException(identity);
             }
         });
 
@@ -416,27 +422,27 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
             unpacker.ExtractFiles(toExtract, new UnpackerSettings());
             for (var i = 0; i < group.Value.Count; i++)
             {
-                var hash = group.Value[i].Hash;
+                var identity = group.Value[i].Identity;
                 var output = (OutputArrayProvider)toExtract[i];
-                results.TryAdd(hash, output.Data);
+                results.TryAdd(identity, output.Data);
             }
         });
 
-        return Task.FromResult(new Dictionary<Hash, byte[]>(results));
+        return Task.FromResult(new Dictionary<FileIdentity, byte[]>(results));
     }
 
     /// <inheritdoc />
-    public Task<Stream> GetFileStream(Hash hash, CancellationToken token = default)
+    public Task<Stream> GetFileStream(FileIdentity identity, CancellationToken token = default)
     {
-        if (hash == Hash.Zero)
+        if (identity.XxHash3() == Hash.Zero)
         {
             return Task.FromResult(Stream.Null);
         }
 
         using var lck = _lock.ReadLock();
-        if (!TryGetLocation(hash,
+        if (!TryGetLocation(identity,
                 out var archivePath, out var entry))
-            throw new MissingArchiveException(hash);
+            throw new MissingArchiveException(identity);
 
         var file = archivePath.Read();
 
@@ -447,13 +453,13 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
             new ChunkedStream<ChunkedArchiveStream>(new ChunkedArchiveStream(entry, header, file)));
     }
 
-    public Task<byte[]> Load(Hash hash, CancellationToken token = default)
+    public Task<byte[]> Load(FileIdentity identity, CancellationToken token = default)
     {
-        if (hash == Hash.Zero) throw new ArgumentNullException(nameof(hash));
+        if (identity.XxHash3() == Hash.Zero) throw new ArgumentNullException(nameof(identity));
 
         using var lck = _lock.ReadLock();
-        if (!TryGetLocation(hash, out var archivePath, out var entry))
-            throw new MissingArchiveException(hash);
+        if (!TryGetLocation(identity, out var archivePath, out var entry))
+            throw new MissingArchiveException(identity);
 
         using var file = archivePath.Read();
 
@@ -661,8 +667,9 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
         public required int DecompressSize { get; set; }
     }
 
-    internal bool TryGetLocation(Hash hash, out AbsolutePath archivePath, out FileEntry fileEntry)
+    internal bool TryGetLocation(FileIdentity identity, out AbsolutePath archivePath, out FileEntry fileEntry)
     {
+        var hash = identity.XxHash3();
         archivePath = default(AbsolutePath);
         fileEntry = default(FileEntry);
         
@@ -675,17 +682,18 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
     }
 
 #region IReadOnlyStreamSource
-    public async ValueTask<Stream?> OpenAsync(Hash hash, CancellationToken cancellationToken = default)
+    public async ValueTask<Stream?> OpenAsync(FileIdentity identity, CancellationToken cancellationToken = default)
     {
-        if (!(await HaveFile(hash)))
+        // The store is keyed by xxHash3; a SHA-1 or other name for the bytes is not one of its entries.
+        if (!identity.TryXxHash3(out _) || !(await HaveFile(identity)))
             return null;
-        
-        return await GetFileStream(hash, cancellationToken);
+
+        return await GetFileStream(identity, cancellationToken);
     }
 
-    public bool Exists(Hash hash)
+    public bool Exists(FileIdentity identity)
     {
-        return _archivesByEntry.ContainsKey(hash);
+        return identity.TryXxHash3(out var hash) && _archivesByEntry.ContainsKey(hash);
     }
 
     public SourcePriority Priority => SourcePriority.Backup;

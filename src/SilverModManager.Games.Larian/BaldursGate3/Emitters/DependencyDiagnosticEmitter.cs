@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using SilverModManager.Sdk.Hashes;
 using System.Xml;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
@@ -28,7 +29,7 @@ namespace SilverModManager.Games.Larian.BaldursGate3.Emitters;
 public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
 {
     private readonly ILogger _logger;
-    private readonly IResourceLoader<Hash, Outcome<LspkPackageFormat.PakMetaData>> _metadataPipeline;
+    private readonly IResourceLoader<FileIdentity, Outcome<LspkPackageFormat.PakMetaData>> _metadataPipeline;
     private readonly GameDomain _gameDomain;
     private readonly GameModuleCatalog _gameModules;
     private int _loggedUnreadableGame;
@@ -274,7 +275,7 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
     private static async IAsyncEnumerable<ValueTuple<PakEntry, Outcome<LspkPackageFormat.PakMetaData>>> GetAllPakMetadata(
         PakEntry[] paks,
         Loadout.ReadOnly loadout,
-        IResourceLoader<Hash, Outcome<LspkPackageFormat.PakMetaData>> metadataPipeline,
+        IResourceLoader<FileIdentity, Outcome<LspkPackageFormat.PakMetaData>> metadataPipeline,
         ILogger logger,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -299,7 +300,7 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
                 Resource<Outcome<LspkPackageFormat.PakMetaData>> resource;
                 try
                 {
-                    resource = await metadataPipeline.LoadResourceAsync(pak.Hash, cancellationToken);
+                    resource = await metadataPipeline.LoadResourceAsync(FileIdentity.XxHash3(pak.Hash), cancellationToken);
                 }
                 catch (Exception e)
                 {

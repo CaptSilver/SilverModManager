@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using SilverModManager.Abstractions.Library;
@@ -26,13 +27,13 @@ public class MarkPlainLibraryFilesTest(IServiceProvider serviceProvider) : AGame
     {
         var bytes = Encoding.UTF8.GetBytes(text);
         var hash = bytes.xxHash3();
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(text, new MemoryStream(bytes)), hash, Size.FromLong(bytes.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(text, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length))]);
         return hash;
     }
 
     private ArchiveGarbageCollector<NxParsedHeaderState, FileEntryWrapper> MarkedCollector(Hash storedHash)
     {
-        ((NxFileStore)FileStore).TryGetLocation(storedHash, out var archive, out _).Should().BeTrue();
+        ((NxFileStore)FileStore).TryGetLocation(FileIdentity.XxHash3(storedHash), out var archive, out _).Should().BeTrue();
         var gc = new ArchiveGarbageCollector<NxParsedHeaderState, FileEntryWrapper>();
         gc.AddArchive(archive, GetParsedNxHeader(archive));
         DataStoreReferenceMarker.MarkUsedFiles(Connection, gc);
@@ -70,7 +71,7 @@ public class MarkPlainLibraryFilesTest(IServiceProvider serviceProvider) : AGame
     {
         var hash = await StoreBytes($"pinned bytes {Guid.NewGuid()}");
 
-        var pin = FileStorePins.Pin(hash);
+        var pin = FileStorePins.Pin(FileIdentity.XxHash3(hash));
         IsFileReferenced(MarkedCollector(hash), hash).Should().BeTrue("a job has pinned it");
 
         pin.Dispose();

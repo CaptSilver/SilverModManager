@@ -60,8 +60,8 @@ public class Witcher3SynchronizerTests(ITestOutputHelper helper)
     {
         var bytes = Encoding.UTF8.GetBytes(content);
         var hash = bytes.xxHash3();
-        if (!await FileStore.HaveFile(hash))
-            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path, new MemoryStream(bytes)), hash, Size.FromLong(bytes.Length))]);
+        if (!await FileStore.HaveFile(FileIdentity.XxHash3(hash)))
+            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length))]);
 
         using var tx = Connection.BeginTransaction();
         var group = AddEmptyGroup(tx, loadout.LoadoutId, "mod " + path);
@@ -252,7 +252,7 @@ public class Witcher3SynchronizerTests(ITestOutputHelper helper)
         var game = GameInstallation.Locations[LocationId.Game].Path;
         (await game.Combine("Mods/modOld/content/old.ws").ReadAllTextAsync()).Should().Be("new");
         game.Combine("mods").DirectoryExists().Should().BeFalse();
-        (await FileStore.HaveFile(Encoding.UTF8.GetBytes("old").xxHash3())).Should().BeTrue();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(Encoding.UTF8.GetBytes("old").xxHash3()))).Should().BeTrue();
     }
 
     // The files stay on the host's file system; only the located game becomes a Windows build with a prefix.

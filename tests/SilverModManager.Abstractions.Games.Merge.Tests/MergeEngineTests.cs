@@ -49,7 +49,7 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
     private async Task<Hash> AddModFile(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path, byte[] bytes)
     {
         AddFile(tx, loadoutId, groupId, path, bytes, out var hash, out var size);
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), hash, size)]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), size)]);
         return hash;
     }
 

@@ -180,7 +180,7 @@ public class MergedFileTests(ITestOutputHelper helper) : AVanillaDumpTest<Merged
         await Apply(loadout);
 
         copy.FileExists.Should().BeFalse();
-        (await FileStore.HaveFile(edited.xxHash3())).Should().BeTrue("the edit is kept before it is removed");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(edited.xxHash3()))).Should().BeTrue("the edit is kept before it is removed");
         Sources.Providers(Refresh(loadout)).ToDictionary(p => $"{p.PackageId}/{p.RelPath}", p => p.Hash).Should().BeEquivalentTo(before);
     }
 

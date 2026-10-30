@@ -24,10 +24,10 @@ public sealed class LibraryFileDigests(IFileStore fileStore, IConnection connect
         var current = LibraryFile.Load(connection.Db, file.Id);
         if (current.IsValid() && current.Sha256.HasValue) return current.Sha256.Value;
 
-        if (!await fileStore.HaveFile(file.Hash)) return null;
+        if (!await fileStore.HaveFile(file.Identity)) return null;
 
         Sha256Value digest;
-        await using (var stream = await fileStore.GetFileStream(file.Hash, cancellationToken))
+        await using (var stream = await fileStore.GetFileStream(file.Identity, cancellationToken))
         {
             digest = await Sha256Hasher.HashAsync(stream, cancellationToken: cancellationToken);
         }
@@ -51,10 +51,10 @@ public sealed class LibraryFileDigests(IFileStore fileStore, IConnection connect
         if (current.IsValid() && current.XxHash64.HasValue) return current.XxHash64.Value;
 
         if (file.TryGetAsLibraryArchive(out _)) return null;
-        if (!await fileStore.HaveFile(file.Hash)) return null;
+        if (!await fileStore.HaveFile(file.Identity)) return null;
 
         Hash digest;
-        await using (var stream = await fileStore.GetFileStream(file.Hash, cancellationToken))
+        await using (var stream = await fileStore.GetFileStream(file.Identity, cancellationToken))
         {
             digest = await Xx64Hasher.HashAsync(stream, cancellationToken: cancellationToken);
         }

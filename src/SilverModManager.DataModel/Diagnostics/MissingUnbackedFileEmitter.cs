@@ -37,7 +37,7 @@ public class MissingUnbackedFileEmitter(IFileStore fileStore) : ILoadoutDiagnost
             GamePath path = file.AsLoadoutItemWithTargetPath().TargetPath;
             // A file that is there but different is changed, not gone.
             if (onDisk.Contains(path)) continue;
-            if (await fileStore.HaveFile(file.Hash)) continue;
+            if (await fileStore.HaveFile(file.Identity)) continue;
 
             // Titles take no message data, so the path goes into the title by hand to tell the entries apart.
             var name = path.Path.ToString();

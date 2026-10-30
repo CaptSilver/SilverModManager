@@ -31,7 +31,7 @@ public class HaveArchiveTests(ITestOutputHelper helper) : AStubbedGameIsolatedTe
     {
         var bytes = Encoding.UTF8.GetBytes(content);
         var hashes = await MultiHasher.HashStream(new MemoryStream(bytes));
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("file", new MemoryStream(bytes)), hashes.XxHash3, hashes.Size)]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("file", new MemoryStream(bytes)), FileIdentity.XxHash3(hashes.XxHash3), hashes.Size)]);
         return hashes;
     }
 

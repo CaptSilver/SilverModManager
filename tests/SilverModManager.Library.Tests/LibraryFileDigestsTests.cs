@@ -153,18 +153,18 @@ public class LibraryFileDigestsTests(IConnection connection, IServiceProvider se
     {
         public int Reads { get; private set; }
 
-        public ValueTask<bool> HaveFile(Hash hash) => ValueTask.FromResult(content.Length > 0 && hash == known);
+        public ValueTask<bool> HaveFile(FileIdentity identity) => ValueTask.FromResult(content.Length > 0 && identity.Equals(FileIdentity.XxHash3(known)));
 
-        public Task<Stream> GetFileStream(Hash hash, CancellationToken token = default)
+        public Task<Stream> GetFileStream(FileIdentity identity, CancellationToken token = default)
         {
             Reads++;
             return Task.FromResult<Stream>(new MemoryStream(content, writable: false));
         }
 
         public Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null) => throw new NotSupportedException();
-        public Task ExtractFiles(IEnumerable<(Hash Hash, AbsolutePath Dest)> files, CancellationToken token = default, Action<(int Current, int Max)>? progress = null) => throw new NotSupportedException();
-        public Task<Dictionary<Hash, byte[]>> ExtractFiles(IEnumerable<Hash> files, CancellationToken token = default) => throw new NotSupportedException();
-        public Task<byte[]> Load(Hash hash, CancellationToken token = default) => throw new NotSupportedException();
+        public Task ExtractFiles(IEnumerable<(FileIdentity Identity, AbsolutePath Dest)> files, CancellationToken token = default, Action<(int Current, int Max)>? progress = null) => throw new NotSupportedException();
+        public Task<Dictionary<FileIdentity, byte[]>> ExtractFiles(IEnumerable<FileIdentity> files, CancellationToken token = default) => throw new NotSupportedException();
+        public Task<byte[]> Load(FileIdentity identity, CancellationToken token = default) => throw new NotSupportedException();
         public AsyncFriendlyReaderWriterLock.WriteLockDisposable WriteLock() => throw new NotSupportedException();
         public void ReloadCaches() => throw new NotSupportedException();
     }

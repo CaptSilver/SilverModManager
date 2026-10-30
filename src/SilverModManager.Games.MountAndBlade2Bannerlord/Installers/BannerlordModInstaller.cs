@@ -170,7 +170,7 @@ public sealed class BannerlordModInstaller : ALibraryArchiveInstaller
 
             try
             {
-                await using var stream = await _fileStore.GetFileStream(fileEntry.AsLibraryFile().Hash, token: cancellationToken);
+                await using var stream = await _fileStore.GetFileStream(fileEntry.AsLibraryFile().Identity, token: cancellationToken);
                 var doc = new XmlDocument();
                 doc.Load(stream);
                 var data = ModuleInfoExtended.FromXml(doc);

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -171,12 +172,12 @@ public class UnmanageUserFilesTests(ITestOutputHelper helper) : AStubbedGameTest
     /// </summary>
     private class HidingFileStore(IFileStore inner, HashSet<Hash> hidden) : IFileStore
     {
-        public ValueTask<bool> HaveFile(Hash hash) => hidden.Contains(hash) ? ValueTask.FromResult(false) : inner.HaveFile(hash);
+        public ValueTask<bool> HaveFile(FileIdentity identity) => hidden.Contains(identity.XxHash3()) ? ValueTask.FromResult(false) : inner.HaveFile(identity);
         public Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null) => inner.BackupFiles(backups, deduplicate, token, progress);
-        public Task ExtractFiles(IEnumerable<(Hash Hash, AbsolutePath Dest)> files, CancellationToken token = default, Action<(int Current, int Max)>? progress = null) => inner.ExtractFiles(files, token, progress);
-        public Task<Dictionary<Hash, byte[]>> ExtractFiles(IEnumerable<Hash> files, CancellationToken token = default) => inner.ExtractFiles(files, token);
-        public Task<Stream> GetFileStream(Hash hash, CancellationToken token = default) => inner.GetFileStream(hash, token);
-        public Task<byte[]> Load(Hash hash, CancellationToken token = default) => inner.Load(hash, token);
+        public Task ExtractFiles(IEnumerable<(FileIdentity Identity, AbsolutePath Dest)> files, CancellationToken token = default, Action<(int Current, int Max)>? progress = null) => inner.ExtractFiles(files, token, progress);
+        public Task<Dictionary<FileIdentity, byte[]>> ExtractFiles(IEnumerable<FileIdentity> files, CancellationToken token = default) => inner.ExtractFiles(files, token);
+        public Task<Stream> GetFileStream(FileIdentity identity, CancellationToken token = default) => inner.GetFileStream(identity, token);
+        public Task<byte[]> Load(FileIdentity identity, CancellationToken token = default) => inner.Load(identity, token);
         public AsyncFriendlyReaderWriterLock.WriteLockDisposable WriteLock() => inner.WriteLock();
         public void ReloadCaches() => inner.ReloadCaches();
     }

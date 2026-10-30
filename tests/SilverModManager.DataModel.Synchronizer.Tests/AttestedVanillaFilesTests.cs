@@ -177,7 +177,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
 
         FullyHashed.Should().ContainSingle().Which.Should().Be(Vanilla);
         var vanillaBytes = System.Text.Encoding.UTF8.GetBytes("game executable");
-        (await FileStore.HaveFile(vanillaBytes.xxHash3())).Should().BeTrue("the vanilla bytes were archived before the mod replaced them");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(vanillaBytes.xxHash3()))).Should().BeTrue("the vanilla bytes were archived before the mod replaced them");
         var baseline = LocalBaseline.All(Hashes.Local).Single();
         AttestedFile.FindByBaseline(Hashes.Local, baseline.Id).Select(r => r.Path.ToString()).Should().NotContain(Vanilla);
         baseline.Files.Select(f => f.Path.ToString()).Should().Contain(Vanilla, "the read promoted the row");
@@ -238,7 +238,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
 
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        (await FileStore.HaveFile(Encoding.UTF8.GetBytes(replacement).xxHash3())).Should().BeTrue("the real bytes are archived before anything overwrites them");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(Encoding.UTF8.GetBytes(replacement).xxHash3()))).Should().BeTrue("the real bytes are archived before anything overwrites them");
         AttestedFile.FindByBaseline(Hashes.Local, LocalBaseline.All(Hashes.Local).Single().Id).Select(r => r.Path.ToString())
             .Should().Contain(Vanilla, "the store's description of the path stands");
         Overrides(loadout).Should().NotContain(Vanilla, "the path is a game file, so the ingested override is dropped");
@@ -286,7 +286,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         await Synchronizer.Synchronize(Refresh(loadout));
 
         (await ReadGameFile(Vanilla)).Should().Be("edited by hand", "an edit is never deleted");
-        (await FileStore.HaveFile(Encoding.UTF8.GetBytes("edited by hand").xxHash3())).Should().BeTrue();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(Encoding.UTF8.GetBytes("edited by hand").xxHash3()))).Should().BeTrue();
         GameBackedUpFile.All(Connection.Db).Select(f => f.Hash).Should().Contain(Encoding.UTF8.GetBytes("edited by hand").xxHash3());
         Overrides(loadout).Should().NotContain(Vanilla);
         AttestedFile.FindByBaseline(Hashes.Local, LocalBaseline.All(Hashes.Local).Single().Id).Select(r => r.Path.ToString()).Should().Contain(Vanilla);
@@ -420,7 +420,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         await Synchronizer.Synchronize(Refresh(loadout));
 
         (await ReadGameFile(Vanilla)).Should().Be(Vanilla, "the mod's file is linked over the vanilla one");
-        (await FileStore.HaveFile(Encoding.UTF8.GetBytes(VanillaText).xxHash3())).Should().BeTrue("the vanilla bytes were archived first");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(Encoding.UTF8.GetBytes(VanillaText).xxHash3()))).Should().BeTrue("the vanilla bytes were archived first");
 
         await Synchronizer.ResetToOriginalGameState(GameInstallation, Refresh(loadout).LocatorIds.ToArray());
 
@@ -507,7 +507,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
 
         await apply.Should().ThrowAsync<InvalidOperationException>().WithMessage("*settle*");
         (await ReadGameFile(Vanilla)).Should().Be(VanillaText, "nothing was deleted or extracted");
-        (await FileStore.HaveFile(Encoding.UTF8.GetBytes(VanillaText).xxHash3())).Should().BeFalse("nothing was backed up");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(Encoding.UTF8.GetBytes(VanillaText).xxHash3()))).Should().BeFalse("nothing was backed up");
         DiskEntry(Vanilla).IdentityOf().Kind.Should().Be(HashKind.Sha1, "the disk state still names the file by the store's SHA-1");
         AttestedFile.FindByBaseline(Hashes.Local, LocalBaseline.All(Hashes.Local).Single().Id).Select(r => r.Path.ToString()).Should().Contain(Vanilla);
 
@@ -997,7 +997,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         await Synchronizer.Synchronize(Refresh(loadout));
 
         FullyHashed.Should().ContainSingle().Which.Should().Be(Vanilla);
-        (await FileStore.HaveFile(System.Text.Encoding.UTF8.GetBytes(VanillaText).xxHash3())).Should().BeTrue("the vanilla bytes were archived before the mod replaced them");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(System.Text.Encoding.UTF8.GetBytes(VanillaText).xxHash3()))).Should().BeTrue("the vanilla bytes were archived before the mod replaced them");
         var baseline = LocalBaseline.All(Hashes.Local).Single(b => b.LocatorIds.Contains(NewGameManifestId.ToString()));
         AttestedFile.FindByBaseline(Hashes.Local, baseline.Id).Select(r => r.Path.ToString()).Should().NotContain(Vanilla, "the read settled the row");
         baseline.Files.Select(f => f.Path.ToString()).Should().Contain(Vanilla, "the read promoted the row on the new build's baseline");
@@ -1184,7 +1184,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
     private async Task NoVanillaFileWasBackedUp()
     {
         foreach (var file in CyberpunkSteamInstall.GameFiles.Concat(CyberpunkSteamInstall.ExpansionFiles))
-            (await FileStore.HaveFile(file.Content.xxHash3())).Should().BeFalse($"`{file.Path}` is the game's own and unchanged");
+            (await FileStore.HaveFile(FileIdentity.XxHash3(file.Content.xxHash3()))).Should().BeFalse($"`{file.Path}` is the game's own and unchanged");
     }
 
     // The baseline's rows are for the build before an update, and the store now lists the installed build's files with

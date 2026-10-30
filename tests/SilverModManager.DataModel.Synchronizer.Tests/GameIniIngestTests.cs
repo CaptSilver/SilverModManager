@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -55,7 +56,7 @@ public class GameIniIngestTests(ITestOutputHelper helper) : AIsolatedGameTest<Ga
         loadout = await Synchronizer.Synchronize(Refresh(loadout));
 
         var state = State(Refresh(loadout));
-        var baseline = IniDocument.Parse(await FileStore.Load(state.Baseline));
+        var baseline = IniDocument.Parse(await FileStore.Load(FileIdentity.XxHash3(state.Baseline)));
         baseline.Get("Display", "iSize W").Should().Be("1920");
         baseline.Get("Archive", "bInvalidateOlderFiles").Should().BeNull("the app's own key is not part of the player's copy");
 
@@ -77,7 +78,7 @@ public class GameIniIngestTests(ITestOutputHelper helper) : AIsolatedGameTest<Ga
         await Synchronizer.Synchronize(Refresh(loadout));
 
         (await Live.ReadAllBytesAsync()).Should().Equal(afterFirst);
-        IniDocument.Parse(await FileStore.Load(State(Refresh(loadout)).Baseline)).Get("Display", "iSize W").Should().Be("1920");
+        IniDocument.Parse(await FileStore.Load(FileIdentity.XxHash3(State(Refresh(loadout)).Baseline))).Get("Display", "iSize W").Should().Be("1920");
     }
 
     [Fact]

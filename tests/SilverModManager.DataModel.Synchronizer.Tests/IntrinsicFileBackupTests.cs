@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using SilverModManager.Sdk.Hashes;
 using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -57,7 +58,7 @@ public class IntrinsicFileBackupTests(ITestOutputHelper helper) : AIsolatedGameT
         await Apply(loadout);
 
         (await Generated.ReadAllBytesAsync()).Should().NotEqual(UserBytes, "the app now owns the file");
-        (await FileStore.HaveFile(UserBytes.xxHash3())).Should().BeTrue("the user's copy has to be kept before it is overwritten");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(UserBytes.xxHash3()))).Should().BeTrue("the user's copy has to be kept before it is overwritten");
         GameBackedUpFile.All(Connection.Db).Select(f => f.Hash).Should().Contain(UserBytes.xxHash3(), "the backup is pinned against garbage collection");
     }
 
@@ -72,8 +73,8 @@ public class IntrinsicFileBackupTests(ITestOutputHelper helper) : AIsolatedGameT
 
         await CreateLoadout();
 
-        (await FileStore.HaveFile(UserBytes.xxHash3())).Should().BeTrue("adopting skips the added files only, not the file the app is about to rewrite");
-        (await FileStore.HaveFile(Enumerable.Repeat((byte)1, 4096).ToArray().xxHash3())).Should().BeFalse();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(UserBytes.xxHash3()))).Should().BeTrue("adopting skips the added files only, not the file the app is about to rewrite");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(Enumerable.Repeat((byte)1, 4096).ToArray().xxHash3()))).Should().BeFalse();
     }
 
     [Fact]
@@ -112,7 +113,7 @@ public class IntrinsicFileBackupTests(ITestOutputHelper helper) : AIsolatedGameT
 
         await Apply(loadout);
 
-        (await FileStore.HaveFile(generated.xxHash3())).Should().BeFalse("what the app wrote is regenerated, never kept");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(generated.xxHash3()))).Should().BeFalse("what the app wrote is regenerated, never kept");
         GameBackedUpFile.All(Connection.Db).Select(f => f.Hash).Should().BeEquivalentTo(backedUp);
     }
 

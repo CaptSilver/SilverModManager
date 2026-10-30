@@ -120,7 +120,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         asked.MustBackUpCount.Should().Be(0);
         asked.CanAdopt.Should().BeTrue();
         asked.Operation.Should().Be(BackupOverflowOperation.Manage);
-        (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeTrue();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("ext0.bin")))).Should().BeTrue();
     }
 
     [Fact]
@@ -132,7 +132,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         var loadout = await CreateLoadout();
 
         ExternalChanges(loadout).Should().HaveCount(4);
-        (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeFalse();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("ext0.bin")))).Should().BeFalse();
         OnDisk("ext0.bin").Should().BeTrue();
     }
 
@@ -146,7 +146,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         await CreateLoadout();
 
         prompt.Asked.Should().BeEmpty();
-        (await FileStore.HaveFile(HashOf("ext0.bin", 1024))).Should().BeTrue();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("ext0.bin", 1024)))).Should().BeTrue();
     }
 
     [Fact]
@@ -159,7 +159,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
 
         prompt.Asked.Should().BeEmpty();
         ExternalChanges(loadout).Should().HaveCount(4);
-        (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeFalse();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("ext0.bin")))).Should().BeFalse();
     }
 
     [Fact]
@@ -176,7 +176,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         refusal.Message.Should().Contain("16 KB").And.Contain("not your mods").And.NotContain("`");
         prompt.Asked.Should().BeEmpty();
         VisibleLoadouts.Should().Be(0);
-        (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeFalse();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("ext0.bin")))).Should().BeFalse();
     }
 
     [Fact]
@@ -258,7 +258,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         refusal.CommandLineHint.Should().Contain("--large-files adopt");
         refusal.Message.Should().Contain("16 KB");
         VisibleLoadouts.Should().Be(0);
-        (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeFalse();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("ext0.bin")))).Should().BeFalse();
     }
 
     [Fact]
@@ -339,7 +339,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         var loadout = await CreateLoadout();
 
         ExternalChanges(loadout).Should().Contain("late.bin");
-        (await FileStore.HaveFile(HashOf("late.bin", 100))).Should().BeTrue();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("late.bin", 100)))).Should().BeTrue();
     }
 
     [Fact]
@@ -376,7 +376,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         await SynchronizerService.UnManage(GameInstallation, runGc: false, cleanGameFolder: true);
 
         prompt.Asked.Should().BeEmpty("unmanaging lets go of every copy, so none is worth asking about");
-        (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeFalse();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("ext0.bin")))).Should().BeFalse();
         OnDisk("ext0.bin").Should().BeFalse();
     }
 
@@ -423,7 +423,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         (await act.Should().ThrowAsync<BackupOverflowException>()).Which.Declined.Should().BeTrue();
         ExternalChanges(Refresh(loadout)).Should().HaveCount(4);
         for (var i = 0; i < 4; i++) OnDisk($"ext{i}.bin").Should().BeTrue();
-        (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeFalse();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("ext0.bin")))).Should().BeFalse();
     }
 
     [Fact]
@@ -471,7 +471,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         prompt.Asked.Should().ContainSingle().Which.Operation.Should().Be(BackupOverflowOperation.Reset);
         ExternalChanges(Refresh(loadout)).Should().BeEmpty();
         OnDisk("ext0.bin").Should().BeFalse();
-        (await FileStore.HaveFile(HashOf("ext0.bin"))).Should().BeTrue();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("ext0.bin")))).Should().BeTrue();
     }
 
     [Fact]

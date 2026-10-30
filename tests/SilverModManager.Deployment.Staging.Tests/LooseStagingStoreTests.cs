@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts.Deployment;
@@ -345,7 +346,7 @@ public class LooseStagingStoreTests
         var secondStarted = new TaskCompletionSource();
         var secondMayFinish = new TaskCompletionSource();
         var fileStore = Substitute.For<IFileStore>();
-        fileStore.ExtractFiles(Arg.Any<IEnumerable<(Hash, AbsolutePath)>>(), Arg.Any<CancellationToken>(), Arg.Any<Action<(int, int)>?>())
+        fileStore.ExtractFiles(Arg.Any<IEnumerable<(FileIdentity, AbsolutePath)>>(), Arg.Any<CancellationToken>(), Arg.Any<Action<(int, int)>?>())
             .Returns(async call =>
             {
                 var n = Interlocked.Increment(ref calls);
@@ -354,7 +355,7 @@ public class LooseStagingStoreTests
                     await firstFails.Task;
                     throw new IOException("extraction failed");
                 }
-                var (_, dest) = call.Arg<IEnumerable<(Hash, AbsolutePath)>>().Single();
+                var (_, dest) = call.Arg<IEnumerable<(FileIdentity, AbsolutePath)>>().Single();
                 secondStarted.TrySetResult();
                 await secondMayFinish.Task;
                 dest.Parent.CreateDirectory();

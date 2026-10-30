@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
-using NexusMods.Hashing.xxHash3;
 using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Sdk.Resources;
 
@@ -8,7 +8,7 @@ namespace SilverModManager.Sdk.Resources;
 /// Resource loader that returns a stream of a file in the file store.
 /// </summary>
 [PublicAPI]
-public sealed class FileStoreStreamLoader : IResourceLoader<Hash, Stream>
+public sealed class FileStoreStreamLoader : IResourceLoader<FileIdentity, Stream>
 {
     private readonly IFileStore _fileStore;
     
@@ -21,7 +21,7 @@ public sealed class FileStoreStreamLoader : IResourceLoader<Hash, Stream>
     }
     
     /// <inheritdoc/>
-    public async ValueTask<Resource<Stream>> LoadResourceAsync(Hash resourceIdentifier, CancellationToken cancellationToken)
+    public async ValueTask<Resource<Stream>> LoadResourceAsync(FileIdentity resourceIdentifier, CancellationToken cancellationToken)
     {
         var stream = await _fileStore.GetFileStream(resourceIdentifier, cancellationToken);
         return new Resource<Stream>

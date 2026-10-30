@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -61,8 +62,9 @@ internal sealed class GameInstalledContentService : IGameInstalledContentService
                 continue;
             }
 
-            if (await _fileStore.HaveFile(hash)) continue;
-            backups.Add(new ArchivedFileEntry(new NativeFileStreamFactory(onDisk), hash, size));
+            var identity = FileIdentity.XxHash3(hash);
+            if (await _fileStore.HaveFile(identity)) continue;
+            backups.Add(new ArchivedFileEntry(new NativeFileStreamFactory(onDisk), identity, size));
         }
 
         if (backups.Count > 0) await _fileStore.BackupFiles(backups, deduplicate: false, token);

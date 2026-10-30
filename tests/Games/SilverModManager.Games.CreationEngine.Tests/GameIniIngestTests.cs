@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
@@ -74,7 +75,7 @@ public class GameIniIngestTests(ITestOutputHelper helper) : AIsolatedGameTest<Ga
     private async Task<EntityId> AddTweakMod(Loadout.ReadOnly loadout, string modName, string content)
     {
         var bytes = Encoding.UTF8.GetBytes(content);
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("tweak.ini", new MemoryStream(bytes)), bytes.xxHash3(), Size.FromLong(bytes.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("tweak.ini", new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length))]);
 
         using var tx = Connection.BeginTransaction();
         var group = AddEmptyGroup(tx, loadout.LoadoutId, modName);
@@ -98,7 +99,7 @@ public class GameIniIngestTests(ITestOutputHelper helper) : AIsolatedGameTest<Ga
         await Ingest(loadout, live);
 
         var state = State(Refresh(loadout));
-        var baseline = IniDocument.Parse(await FileStore.Load(state.Baseline));
+        var baseline = IniDocument.Parse(await FileStore.Load(FileIdentity.XxHash3(state.Baseline)));
         baseline.Get("Display", "iSize W").Should().Be("1920");
         baseline.ToText().Should().Contain("iSize W=1920 ; wide", "the line keeps its inline comment");
         baseline.Get("Display", "iSize H").Should().Be("1440");
@@ -113,7 +114,7 @@ public class GameIniIngestTests(ITestOutputHelper helper) : AIsolatedGameTest<Ga
 
         await Ingest(loadout, live);
 
-        IniDocument.Parse(await FileStore.Load(State(Refresh(loadout)).Baseline)).Get("Display", "bFull Screen").Should().Be("0");
+        IniDocument.Parse(await FileStore.Load(FileIdentity.XxHash3(State(Refresh(loadout)).Baseline))).Get("Display", "bFull Screen").Should().Be("0");
     }
 
     [Fact]
@@ -123,7 +124,7 @@ public class GameIniIngestTests(ITestOutputHelper helper) : AIsolatedGameTest<Ga
         await Ingest(loadout, await GameEdits(ini => ini.Set("Display", "iSize W", "1920")));
 
         var state = State(Refresh(loadout));
-        var baked = await FileStore.Load(LoadoutIniState.LastBakedHash.Get(state));
+        var baked = await FileStore.Load(FileIdentity.XxHash3(LoadoutIniState.LastBakedHash.Get(state)));
         IniDocument.Parse(baked).Get("Display", "iSize W").Should().Be("1920");
         baked.Should().Equal((await Rendered(loadout)).ToBytes());
     }
@@ -139,7 +140,7 @@ public class GameIniIngestTests(ITestOutputHelper helper) : AIsolatedGameTest<Ga
 
         var after = State(Refresh(loadout));
         after.Baseline.Should().Be(before.Baseline);
-        IniDocument.Parse(await FileStore.Load(after.Baseline)).Get("Archive", "bInvalidateOlderFiles").Should().BeNull();
+        IniDocument.Parse(await FileStore.Load(FileIdentity.XxHash3(after.Baseline))).Get("Archive", "bInvalidateOlderFiles").Should().BeNull();
         (await Rendered(loadout)).Get("Archive", "bInvalidateOlderFiles").Should().Be("1");
     }
 
@@ -178,7 +179,7 @@ public class GameIniIngestTests(ITestOutputHelper helper) : AIsolatedGameTest<Ga
         await DisableItem(tweak);
         loadout = await Synchronizer.Synchronize(Refresh(loadout));
 
-        var baseline = IniDocument.Parse(await FileStore.Load(State(Refresh(loadout)).Baseline));
+        var baseline = IniDocument.Parse(await FileStore.Load(FileIdentity.XxHash3(State(Refresh(loadout)).Baseline)));
         baseline.Get("Display", "iSize H").Should().Be("1080");
         baseline.Get("Display", "iSize W").Should().Be("2560", "the tweak's value is not the game's");
         var live = IniDocument.Parse(await Live.ReadAllBytesAsync());

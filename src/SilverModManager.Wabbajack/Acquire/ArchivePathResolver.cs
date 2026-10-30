@@ -75,7 +75,7 @@ public sealed class ArchivePathResolver(
             var part = path.Parts[i];
             if (!current.TryGetAsLibraryArchive(out var archive))
             {
-                if (!await store.HaveFile(current.Hash))
+                if (!await store.HaveFile(current.Identity))
                     throw new MemberNotFoundException($"'{current.FileName}' is not kept in the file store");
                 return await ThroughOpener(current.FileName.ToString(), current.Hash, path.Parts.Skip(i).ToArray(), cancellationToken);
             }
@@ -108,12 +108,12 @@ public sealed class ArchivePathResolver(
     private async Task<ResolvedMember> FromLibraryFile(LibraryFile.ReadOnly file, string name, CancellationToken cancellationToken)
     {
         // The store keeps no bytes for an archive the library expanded; only its members are there.
-        if (!await store.HaveFile(file.Hash))
+        if (!await store.HaveFile(file.Identity))
             throw new MemberNotFoundException($"'{name}' is an archive the library expanded, so its own bytes are not kept");
 
         var xxHash64 = await _digests.EnsureXxHash64(file, cancellationToken);
         var hash = file.Hash;
-        return new ResolvedMember(hash, xxHash64, file.Size, async () => await store.GetFileStream(hash, cancellationToken));
+        return new ResolvedMember(hash, xxHash64, file.Size, async () => await store.GetFileStream(file.Identity, cancellationToken));
     }
 
     /// <summary>
@@ -131,7 +131,7 @@ public sealed class ArchivePathResolver(
         var member = remaining[0];
         async Task<Stream> OpenMember()
         {
-            await using var archive = await store.GetFileStream(containerHash, cancellationToken);
+            await using var archive = await store.GetFileStream(FileIdentity.XxHash3(containerHash), cancellationToken);
             return await opener.Open(archive, member, cancellationToken)
                 ?? throw new MemberNotFoundException($"'{member}' is not in '{containerName}'");
         }
@@ -183,9 +183,9 @@ public sealed class ArchivePathResolver(
             // BackupFiles checks for them under the store's read lock, after any collection already running (which
             // marked before the pin and may drop bytes the store still lists) has finished.
             Pin(xxHash3);
-            await store.BackupFiles([new ArchivedFileEntry(new OpenerStreamFactory(open), xxHash3, size)], deduplicate: true, cancellationToken);
+            await store.BackupFiles([new ArchivedFileEntry(new OpenerStreamFactory(open), FileIdentity.XxHash3(xxHash3), size)], deduplicate: true, cancellationToken);
 
-            var resolved = new ResolvedMember(xxHash3, xxHash64, size, async () => await store.GetFileStream(xxHash3, cancellationToken));
+            var resolved = new ResolvedMember(xxHash3, xxHash64, size, async () => await store.GetFileStream(FileIdentity.XxHash3(xxHash3), cancellationToken));
             _stored[key] = resolved;
             return resolved;
         }
@@ -197,7 +197,7 @@ public sealed class ArchivePathResolver(
 
     private void Pin(Hash hash)
     {
-        var pin = FileStorePins.Pin(hash);
+        var pin = FileStorePins.Pin(FileIdentity.XxHash3(hash));
         lock (_pins)
         {
             if (!_disposed)

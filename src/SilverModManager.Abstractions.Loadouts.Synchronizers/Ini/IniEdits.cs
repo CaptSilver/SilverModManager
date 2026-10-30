@@ -4,6 +4,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Loadouts;
@@ -117,11 +118,11 @@ public static class IniEdits
     private static async Task<IDisposable> Store(IFileStore fileStore, GamePath path, byte[] bytes)
     {
         var hash = bytes.xxHash3();
-        var pin = FileStorePins.Pin(hash);
+        var pin = FileStorePins.Pin(FileIdentity.XxHash3(hash));
         try
         {
-            if (!await fileStore.HaveFile(hash))
-                await fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(bytes)), hash, Size.FromLong(bytes.Length))]);
+            if (!await fileStore.HaveFile(FileIdentity.XxHash3(hash)))
+                await fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length))]);
             return pin;
         }
         catch

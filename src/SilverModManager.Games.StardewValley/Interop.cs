@@ -43,7 +43,7 @@ internal static class Interop
         if (!modDatabase.IsValid()) return null;
 
         // https://github.com/Pathoschild/SMAPI/blob/e8a86a0b98061d322c2af89af845ed9f5fd15468/src/SMAPI.Toolkit/ModToolkit.cs#L66-L71
-        await using var stream = await fileStore.GetFileStream(modDatabase.AsLoadoutFile().Hash, cancellationToken);
+        await using var stream = await fileStore.GetFileStream(modDatabase.AsLoadoutFile().Identity, cancellationToken);
         var metadata = await DeserializeWithDefaults<MetadataModel>(stream);
         if (metadata is null) return null;
 

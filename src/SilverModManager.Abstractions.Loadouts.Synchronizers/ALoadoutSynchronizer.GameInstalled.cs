@@ -417,7 +417,7 @@ public partial class ALoadoutSynchronizer
 
             var hash = bytes.xxHash3();
             var size = Size.FromLong(bytes.Length);
-            await _fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(bytes)), hash, size)]);
+            await _fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), size)]);
 
             desiredState[path] = new SyncNode
             {
@@ -435,12 +435,12 @@ public partial class ALoadoutSynchronizer
             if (IsIgnoredBackupPath(file.Path)) continue;
 
             var disk = diskState[file.Path];
-            // The file store is keyed by xxHash3, and a demoted file's identity was resolved to one when it was claimed.
-            var diskHash = disk.Identity.XxHash3();
-            if (await _fileStore.HaveFile(diskHash)) continue;
+            // The file store is keyed by xxHash3 and throws on any other kind; a demoted file's identity was resolved to one when it was claimed.
+            var diskIdentity = disk.Identity;
+            if (await _fileStore.HaveFile(diskIdentity)) continue;
 
             var onDisk = loadout.InstallationInstance.Locations.ToAbsolutePath(file.Path);
-            entries.Add(new ArchivedFileEntry(new NativeFileStreamFactory(onDisk), diskHash, disk.Size));
+            entries.Add(new ArchivedFileEntry(new NativeFileStreamFactory(onDisk), diskIdentity, disk.Size));
         }
 
         if (entries.Count > 0) await _fileStore.BackupFiles(entries, deduplicate: false);

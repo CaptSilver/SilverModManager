@@ -1,5 +1,5 @@
-using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Sdk.FileStore;
 
@@ -11,12 +11,12 @@ public class MissingArchiveException : Exception
     /// <summary>
     /// Constructor.
     /// </summary>
-    public MissingArchiveException(Hash hash) : base($"Missing archive for {hash.ToHex()}") { }
+    public MissingArchiveException(FileIdentity identity) : base($"Missing archive for {identity.ToHex()}") { }
     
     /// <summary>
     /// Constructor with an absolute path that specifies where the file would be extracted to
     /// </summary>
-    public MissingArchiveException(Hash hash, AbsolutePath path) : base($"Missing archive for {hash.ToHex()} intended for output path {path}") { }
+    public MissingArchiveException(FileIdentity identity, AbsolutePath path) : base($"Missing archive for {identity.ToHex()} intended for output path {path}") { }
 }
 
 

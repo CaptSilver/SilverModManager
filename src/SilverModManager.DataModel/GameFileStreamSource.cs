@@ -28,9 +28,6 @@ public class GameFileStreamSource : IIdentityStreamSource
         _gameRegistry = provider.GetRequiredService<IGameRegistry>();
     }
 
-    public ValueTask<Stream?> OpenAsync(Hash hash, CancellationToken cancellationToken = default)
-        => OpenAsync(FileIdentity.XxHash3(hash), cancellationToken);
-
     /// <summary>
     /// Opens the game file whose disk state row carries this identity, of whatever kind.
     /// </summary>
@@ -41,12 +38,10 @@ public class GameFileStreamSource : IIdentityStreamSource
         return ValueTask.FromResult<Stream?>(path.Open(mode: FileMode.Open, access: FileAccess.Read, share: FileShare.Read));
     }
 
-    public bool Exists(Hash hash)
+    public bool Exists(FileIdentity identity)
     {
-        return Resolve(hash) != null;
+        return Resolve(identity) != null;
     }
-
-    public AbsolutePath? Resolve(Hash hash) => Resolve(FileIdentity.XxHash3(hash));
 
     /// <summary>
     /// The file on disk whose disk state row carries this identity and still has the size and modified time the row recorded.

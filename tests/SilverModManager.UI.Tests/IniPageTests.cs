@@ -1,4 +1,5 @@
 using System.Reactive.Linq;
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,8 +62,8 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
     {
         var bytes = Encoding.UTF8.GetBytes(content);
         var hash = bytes.xxHash3();
-        if (!await FileStore.HaveFile(hash))
-            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("x.ini", new MemoryStream(bytes)), hash, Size.FromLong(bytes.Length))]);
+        if (!await FileStore.HaveFile(FileIdentity.XxHash3(hash)))
+            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("x.ini", new MemoryStream(bytes)), FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length))]);
         return hash;
     }
 
@@ -185,7 +186,7 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
         await editor.SaveBaselineCommand.Execute().FirstAsync();
 
         var state = LoadoutIniState.FindByLoadout(Connection.Db, loadout.LoadoutId).Single(s => (GamePath)s.Path == PrefsPath);
-        Encoding.UTF8.GetString(await FileStore.Load(state.Baseline)).Should().Be(edited);
+        Encoding.UTF8.GetString(await FileStore.Load(state.BaselineIdentity)).Should().Be(edited);
         editor.ResultText.Should().Contain("iSize W=1920");
     }
 
@@ -194,7 +195,7 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
     {
         var loadout = await SeedLoadout("Bom");
         var original = new byte[] { 0xEF, 0xBB, 0xBF }.Concat(Encoding.UTF8.GetBytes(PrefsText)).ToArray();
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("x.ini", new MemoryStream(original)), original.xxHash3(), Size.FromLong(original.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("x.ini", new MemoryStream(original)), FileIdentity.XxHash3(original.xxHash3()), Size.FromLong(original.Length))]);
         using (var tx = Connection.BeginTransaction())
         {
             _ = new LoadoutIniState.New(tx)
@@ -211,7 +212,7 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
         await editor.SaveBaselineCommand.Execute().FirstAsync();
 
         var state = LoadoutIniState.FindByLoadout(Connection.Db, loadout.LoadoutId).Single();
-        (await FileStore.Load(state.Baseline)).Take(3).Should().Equal(0xEF, 0xBB, 0xBF);
+        (await FileStore.Load(state.BaselineIdentity)).Take(3).Should().Equal(0xEF, 0xBB, 0xBF);
     }
 
     [Fact]
@@ -296,7 +297,7 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
 
         var tweaks = IniTweakLayers.All(Fresh(loadout), PrefsPath).Where(l => l.IsLoadoutTweak).ToList();
         tweaks.Should().ContainSingle("saving twice updates the file instead of adding another");
-        Encoding.UTF8.GetString(await FileStore.Load(tweaks[0].Hash)).Should().Be("[Display]\r\nbFull Screen=1\r\niSize H=1000\r\n");
+        Encoding.UTF8.GetString(await FileStore.Load(FileIdentity.XxHash3(tweaks[0].Hash))).Should().Be("[Display]\r\nbFull Screen=1\r\niSize H=1000\r\n");
         editor.ResultText.Should().Contain("bFull Screen=1").And.Contain("iSize H=1000");
         LoadoutItem.FindByLoadout(Connection.Db, loadout.LoadoutId).OfTypeLoadoutItemGroup()
             .Count(g => g.IsGameSettingsGroup).Should().Be(1);
@@ -359,7 +360,7 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
         editor.LoadoutTweakText.Should().Contain("[Display]").And.Contain("iSize W=1920");
         editor.ResultText.Should().Contain("iSize W=1920");
         (await RenderedText(loadout, PrefsPath)).Should().Be(editor.ResultText);
-        IniDocument.Parse(await FileStore.Load(LoadoutIniState.FindByLoadout(Connection.Db, loadout.LoadoutId).Single(s => (GamePath)s.Path == PrefsPath).Baseline))
+        IniDocument.Parse(await FileStore.Load(LoadoutIniState.FindByLoadout(Connection.Db, loadout.LoadoutId).Single(s => (GamePath)s.Path == PrefsPath).BaselineIdentity))
             .Get("Display", "iSize W").Should().Be("2560", "the baseline is the player's copy and a setting never edits it");
     }
 
@@ -447,7 +448,7 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
     private static AbsolutePath LiveFile(Loadout.ReadOnly loadout, GamePath path) => loadout.InstallationInstance.Locations.ToAbsolutePath(path);
 
     private async Task<byte[]> BaselineBytes(Loadout.ReadOnly loadout, GamePath path) =>
-        await FileStore.Load(LoadoutIniState.FindByLoadout(Connection.Db, loadout.LoadoutId).Single(s => (GamePath)s.Path == path).Baseline);
+        await FileStore.Load(LoadoutIniState.FindByLoadout(Connection.Db, loadout.LoadoutId).Single(s => (GamePath)s.Path == path).BaselineIdentity);
 
     [Fact]
     public async Task ResetBaselineFromDiskAsksFirstAndKeepsTheBaselineOnNo()

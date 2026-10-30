@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Hashes;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -70,7 +71,7 @@ public sealed class BepInExPluginInstaller(IServiceProvider serviceProvider, Bep
     // A manifest that does not parse is treated as absent: the file name still gives the package a folder.
     private async ValueTask<BepInExPackageFolder.Manifest?> ReadManifest(NexusMods.Hashing.xxHash3.Hash hash, CancellationToken cancellationToken)
     {
-        var bytes = await _fileStore.Load(hash, cancellationToken);
+        var bytes = await _fileStore.Load(FileIdentity.XxHash3(hash), cancellationToken);
         try
         {
             // Thunderstore's packaging tools often write a UTF-8 byte order mark, which JsonDocument rejects.

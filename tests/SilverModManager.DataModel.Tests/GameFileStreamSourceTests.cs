@@ -32,9 +32,9 @@ public class GameFileStreamSourceTests(ITestOutputHelper helper) : AStubbedGameI
         var source = new GameFileStreamSource(Connection, ServiceProvider);
         var hash = Encoding.UTF8.GetBytes(Content).xxHash3();
 
-        source.Resolve(hash).Should().Be(GameInstallation.Locations.ToAbsolutePath(FilePath));
+        source.Resolve(FileIdentity.XxHash3(hash)).Should().Be(GameInstallation.Locations.ToAbsolutePath(FilePath));
 
-        await using var stream = await source.OpenAsync(hash);
+        await using var stream = await source.OpenAsync(FileIdentity.XxHash3(hash));
         stream.Should().NotBeNull();
         using var reader = new StreamReader(stream!);
         (await reader.ReadToEndAsync()).Should().Be(Content);
@@ -58,7 +58,7 @@ public class GameFileStreamSourceTests(ITestOutputHelper helper) : AStubbedGameI
         var source = new GameFileStreamSource(Connection, ServiceProvider);
 
         source.Resolve(sha1).Should().Be(GameInstallation.Locations.ToAbsolutePath(FilePath));
-        source.Resolve(bytes.xxHash3()).Should().BeNull("the row no longer holds an xxHash3 for these bytes");
+        source.Resolve(FileIdentity.XxHash3(bytes.xxHash3())).Should().BeNull("the row no longer holds an xxHash3 for these bytes");
         source.Resolve(FileIdentity.Sha1(Sha1Hasher.Hash("other bytes"u8))).Should().BeNull();
 
         await using var stream = await source.OpenAsync(sha1);
@@ -78,7 +78,7 @@ public class GameFileStreamSourceTests(ITestOutputHelper helper) : AStubbedGameI
         var source = new GameFileStreamSource(Connection, ServiceProvider);
         var hash = Encoding.UTF8.GetBytes(Content).xxHash3();
 
-        source.Resolve(hash).Should().Be(GameInstallation.Locations.ToAbsolutePath(FilePath));
+        source.Resolve(FileIdentity.XxHash3(hash)).Should().Be(GameInstallation.Locations.ToAbsolutePath(FilePath));
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public class GameFileStreamSourceTests(ITestOutputHelper helper) : AStubbedGameI
 
         var source = new GameFileStreamSource(Connection, ServiceProvider);
 
-        source.Resolve(Encoding.UTF8.GetBytes(Content).xxHash3()).Should().Be(GameInstallation.Locations.ToAbsolutePath(FilePath));
+        source.Resolve(FileIdentity.XxHash3(Encoding.UTF8.GetBytes(Content).xxHash3())).Should().Be(GameInstallation.Locations.ToAbsolutePath(FilePath));
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public class GameFileStreamSourceTests(ITestOutputHelper helper) : AStubbedGameI
         await Synchronizer.ReindexState(GameInstallation);
 
         var source = new GameFileStreamSource(Connection, ServiceProvider);
-        source.Resolve(Encoding.UTF8.GetBytes(Content).xxHash3()).Should().BeNull();
-        source.Resolve(Encoding.UTF8.GetBytes(patched).xxHash3()).Should().Be(file);
+        source.Resolve(FileIdentity.XxHash3(Encoding.UTF8.GetBytes(Content).xxHash3())).Should().BeNull();
+        source.Resolve(FileIdentity.XxHash3(Encoding.UTF8.GetBytes(patched).xxHash3())).Should().Be(file);
     }
 }

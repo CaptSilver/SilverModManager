@@ -46,7 +46,7 @@ public class CopyDeploymentBackendTests(ITestOutputHelper helper) : AStubbedGame
             {
                 var content = $"content of {path}";
                 AddFile(tx, loadout.LoadoutId, group, path, content, out var hash, out var size);
-                archived.Add(new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(Encoding.UTF8.GetBytes(content))), hash, size));
+                archived.Add(new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(Encoding.UTF8.GetBytes(content))), FileIdentity.XxHash3(hash), size));
             }
             await FileStore.BackupFiles(archived);
             await tx.Commit();
@@ -138,6 +138,6 @@ public class CopyDeploymentBackendTests(ITestOutputHelper helper) : AStubbedGame
 
         // No Debug.Assert in front of it: the throw is the guard, so nothing is archived under a key that is not its xxHash3.
         (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("Sha1");
-        (await FileStore.HaveFile(Encoding.UTF8.GetBytes("vanilla").xxHash3())).Should().BeFalse();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(Encoding.UTF8.GetBytes("vanilla").xxHash3()))).Should().BeFalse();
     }
 }

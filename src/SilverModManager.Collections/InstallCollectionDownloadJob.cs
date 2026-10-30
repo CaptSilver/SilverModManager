@@ -313,7 +313,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
         await Parallel.ForEachAsync(libraryArchive.Children, new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders }, async (child, token) =>
         {
-            await using var stream = await FileStore.GetFileStream(child.AsLibraryFile().Hash, token);
+            await using var stream = await FileStore.GetFileStream(child.AsLibraryFile().Identity, token);
             var md5 = await Md5Hasher.HashAsync(stream, cancellationToken: token);
 
             var file = child.AsLibraryFile();
@@ -411,9 +411,9 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         });
 
         var archivedFileEntries = results.Select(static tuple => new ArchivedFileEntry(
-            StreamFactory: new MemoryStreamFactory(name: tuple.Item1.FileName, stream: tuple.Item2),
-            Hash: tuple.Item1.PatchedFileHashes.XxHash3,
-            Size: tuple.Item1.PatchedFileHashes.Size
+            streamFactory: new MemoryStreamFactory(name: tuple.Item1.FileName, stream: tuple.Item2),
+            identity: FileIdentity.XxHash3(tuple.Item1.PatchedFileHashes.XxHash3),
+            size: tuple.Item1.PatchedFileHashes.Size
         )).ToArray();
 
         await FileStore.BackupFiles(archivedFileEntries, deduplicate: true, token: cancellationToken);
@@ -423,8 +423,8 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             foreach (var result in results)
             {
                 var (patchedFile, _) = result;
-                var hash = patchedFile.PatchedFileHashes.XxHash3;
-                var hasFile = await FileStore.HaveFile(hash);
+                var identity = FileIdentity.XxHash3(patchedFile.PatchedFileHashes.XxHash3);
+                var hasFile = await FileStore.HaveFile(identity);
                 Debug.Assert(hasFile, "expected the file store to have the file it just backed up...");
             }
         }
@@ -464,14 +464,14 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
     private async ValueTask<(MultiHash OriginalFileHashes, MultiHash PatchedFileHashes)> PatchFile(LibraryFile.ReadOnly fileToPatch, LibraryFile.ReadOnly patchDataFile, Crc32Value expectedHash, Stream outputStream, CancellationToken cancellationToken)
     {
-        await using var inputStream = await FileStore.GetFileStream(fileToPatch.Hash, token: cancellationToken);
+        await using var inputStream = await FileStore.GetFileStream(fileToPatch.Identity, token: cancellationToken);
 
         var originalFileHashes = await MultiHasher.HashStream(inputStream, cancellationToken: cancellationToken);
         if (originalFileHashes.Crc32 != expectedHash.Value) throw new InvalidOperationException("The source file's CRC32 hash does not match the expected hash.");
 
         inputStream.Position = 0;
 
-        var patchData = await FileStore.Load(patchDataFile.Hash, token: cancellationToken);
+        var patchData = await FileStore.Load(patchDataFile.Identity, token: cancellationToken);
         PatchFile(inputStream, patchData, outputStream);
 
         outputStream.Position = 0;

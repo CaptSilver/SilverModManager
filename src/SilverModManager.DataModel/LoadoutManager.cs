@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using SilverModManager.Sdk.Hashes;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -503,7 +504,7 @@ internal partial class LoadoutManager : ILoadoutManager
         foreach (var (hash, size) in sizeByHash)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (await _fileStore.HaveFile(hash)) continue;
+            if (await _fileStore.HaveFile(FileIdentity.XxHash3(hash))) continue;
             count++;
             total += size;
         }

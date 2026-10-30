@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
@@ -1128,7 +1129,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             {
                 foreach (var hash in hashes)
                 {
-                    await using var part = await FileStore.GetFileStream(hash, cancellationToken);
+                    await using var part = await FileStore.GetFileStream(FileIdentity.XxHash3(hash), cancellationToken);
                     await part.CopyToAsync(whole, cancellationToken);
                 }
             });

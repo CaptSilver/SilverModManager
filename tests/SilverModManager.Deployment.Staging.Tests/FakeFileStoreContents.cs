@@ -1,6 +1,7 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
 using NSubstitute;
 
 namespace SilverModManager.Deployment.Staging.Tests;
@@ -20,14 +21,14 @@ public class FakeFileStoreContents
     public static IFileStore CreateFileStore(FakeFileStoreContents contents)
     {
         var store = Substitute.For<IFileStore>();
-        store.ExtractFiles(Arg.Any<IEnumerable<(Hash, AbsolutePath)>>(), Arg.Any<CancellationToken>(), Arg.Any<Action<(int, int)>?>())
+        store.ExtractFiles(Arg.Any<IEnumerable<(FileIdentity, AbsolutePath)>>(), Arg.Any<CancellationToken>(), Arg.Any<Action<(int, int)>?>())
             .Returns(call =>
             {
-                foreach (var (hash, dest) in call.Arg<IEnumerable<(Hash, AbsolutePath)>>())
+                foreach (var (hash, dest) in call.Arg<IEnumerable<(FileIdentity, AbsolutePath)>>())
                 {
                     contents.ExtractedTo.Add(dest);
                     dest.Parent.CreateDirectory();
-                    File.WriteAllBytes(dest.ToString(), contents.Files[hash]);
+                    File.WriteAllBytes(dest.ToString(), contents.Files[hash.XxHash3()]);
                 }
                 return Task.CompletedTask;
             });

@@ -1,4 +1,3 @@
-using NexusMods.Hashing.xxHash3;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Hashes;
 
@@ -13,21 +12,9 @@ public class StreamSourceDispatcher : IStreamSourceDispatcher
         _sources = sources.OrderBy(x => x.Priority).ToArray();
     }
 
-    public async ValueTask<Stream?> OpenAsync(Hash hash, CancellationToken cancellationToken = default)
-    {
-        foreach (var source in _sources)
-        {
-            var result = await source.OpenAsync(hash, cancellationToken);
-            if (result != null) return result;
-        }
-        return null;
-    }
-
     public async ValueTask<Stream?> OpenAsync(FileIdentity identity, CancellationToken cancellationToken = default)
     {
-        if (identity.TryXxHash3(out var hash)) return await OpenAsync(hash, cancellationToken);
-
-        foreach (var source in _sources.OfType<IIdentityStreamSource>())
+        foreach (var source in SourcesFor(identity))
         {
             var result = await source.OpenAsync(identity, cancellationToken);
             if (result != null) return result;
@@ -35,10 +22,14 @@ public class StreamSourceDispatcher : IStreamSourceDispatcher
         return null;
     }
 
-    public bool Exists(Hash hash)
+    public bool Exists(FileIdentity identity)
     {
-        foreach (var source in _sources)
-            if (source.Exists(hash)) return true;
+        foreach (var source in SourcesFor(identity))
+            if (source.Exists(identity)) return true;
         return false;
     }
+
+    // Every source is keyed by xxHash3; only the ones that also know files by another name can answer anything else.
+    private IEnumerable<IReadOnlyStreamSource> SourcesFor(FileIdentity identity) =>
+        identity.Kind == HashKind.XxHash3 ? _sources : _sources.OfType<IIdentityStreamSource>();
 }

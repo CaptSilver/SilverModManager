@@ -104,7 +104,7 @@ public class GenericInstaller : ALibraryArchiveInstaller
             SMAPIManifest? manifest = null;
             try
             {
-                await using var stream = await _fileStore.GetFileStream(fileEntry.AsLibraryFile().Hash, token: cancellationToken);
+                await using var stream = await _fileStore.GetFileStream(fileEntry.AsLibraryFile().Identity, token: cancellationToken);
                 manifest = await Interop.DeserializeManifest(stream, cancellationToken: cancellationToken);
             }
             catch (Exception e)

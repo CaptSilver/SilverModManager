@@ -758,7 +758,7 @@ public partial class NexusModsLibrary
         LibraryArchiveFileEntry.ReadOnly jsonFileEntity,
         CancellationToken cancellationToken)
     {
-        await using var data = await _fileStore.GetFileStream(jsonFileEntity.AsLibraryFile().Hash, token: cancellationToken);
+        await using var data = await _fileStore.GetFileStream(jsonFileEntity.AsLibraryFile().Identity, token: cancellationToken);
         var root = await JsonSerializer.DeserializeAsync<CollectionRoot>(data, _jsonSerializerOptions, cancellationToken: cancellationToken);
 
         if (root is null) throw new InvalidOperationException("Unable to deserialize collection JSON file");

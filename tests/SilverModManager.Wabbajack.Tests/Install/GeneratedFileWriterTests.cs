@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Wabbajack.Install;
 
@@ -35,7 +36,7 @@ public class GeneratedFileWriterTests(ITestOutputHelper helper) : InstallTestBas
         await Writer.Store(generated, CancellationToken.None);
 
         foreach (var file in generated)
-            (await FileStore.HaveFile(file.XxHash3)).Should().BeTrue();
+            (await FileStore.HaveFile(FileIdentity.XxHash3(file.XxHash3))).Should().BeTrue();
         paths.Should().OnlyContain(p => !p.FileExists);
     }
 
@@ -49,7 +50,7 @@ public class GeneratedFileWriterTests(ITestOutputHelper helper) : InstallTestBas
 
         await Writer.Store([second], CancellationToken.None);
 
-        (await FileStore.HaveFile(bytes.xxHash3())).Should().BeTrue();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(bytes.xxHash3()))).Should().BeTrue();
     }
 
     [Fact]

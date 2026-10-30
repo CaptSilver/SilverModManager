@@ -6,6 +6,7 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Ini;
 using SilverModManager.Sdk.IO;
@@ -103,7 +104,7 @@ public static class GameInis
         var ini = IniDocument.Parse(baseline ?? await LoadBaseline(fileStore, loadout, path));
 
         foreach (var layer in IniTweakLayers.For(loadout, path))
-            ini.Merge(IniDocument.Parse(await fileStore.Load(layer.Hash)));
+            ini.Merge(IniDocument.Parse(await fileStore.Load(FileIdentity.XxHash3(layer.Hash))));
 
         if (game.ManagedKeysFile == path)
             foreach (var key in game.ManagedKeys(loadout))
@@ -117,9 +118,9 @@ public static class GameInis
     /// <exception cref="IniBaselineMissingException">The loadout has no baseline for the path, or the store lost it.</exception>
     public static async Task<byte[]> LoadBaseline(IFileStore fileStore, Loadout.ReadOnly loadout, GamePath path)
     {
-        if (!StatesByPath(loadout).TryGetValue(path, out var state) || !await fileStore.HaveFile(state.Baseline))
+        if (!StatesByPath(loadout).TryGetValue(path, out var state) || !await fileStore.HaveFile(state.BaselineIdentity))
             throw new IniBaselineMissingException(path);
-        return await fileStore.Load(state.Baseline);
+        return await fileStore.Load(state.BaselineIdentity);
     }
 
     /// <summary>The loadout's state row for <paramref name="path"/>, or null when it has no copy of that INI.</summary>
@@ -138,8 +139,9 @@ public static class GameInis
     /// </remarks>
     public static async Task<byte[]?> LastWrittenBytes(IFileStore fileStore, LoadoutIniState.ReadOnly state, Hash? deployed)
     {
-        if (deployed is { } hash && await fileStore.HaveFile(hash)) return await fileStore.Load(hash);
-        return LoadoutIniState.LastBakedHash.TryGetValue(state, out var baked) && await fileStore.HaveFile(baked)
+        if (deployed is { } hash && FileIdentity.XxHash3(hash) is var deployedIdentity && await fileStore.HaveFile(deployedIdentity))
+            return await fileStore.Load(deployedIdentity);
+        return state.LastBakedIdentity() is { } baked && await fileStore.HaveFile(baked)
             ? await fileStore.Load(baked)
             : null;
     }
@@ -158,7 +160,7 @@ public static class GameInis
         var managed = game.ManagedKeysFile == path ? game.ManagedKeys(loadout) : [];
         var tweaks = new List<(string Name, IniDocument Document)>();
         foreach (var layer in IniTweakLayers.For(loadout, path))
-            tweaks.Add((layer.Name, IniDocument.Parse(await fileStore.Load(layer.Hash))));
+            tweaks.Add((layer.Name, IniDocument.Parse(await fileStore.Load(FileIdentity.XxHash3(layer.Hash)))));
 
         var changes = new List<GameIniChange>();
         foreach (var section in left.Sections)
@@ -220,9 +222,9 @@ public static class GameInis
 
                 var bytes = await file.ReadAllBytesAsync();
                 var hash = bytes.xxHash3();
-                pins.Add(FileStorePins.Pin(hash));
-                if (!await fileStore.HaveFile(hash))
-                    await fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(bytes)), hash, Size.FromLong(bytes.Length))]);
+                pins.Add(FileStorePins.Pin(FileIdentity.XxHash3(hash)));
+                if (!await fileStore.HaveFile(FileIdentity.XxHash3(hash)))
+                    await fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length))]);
                 taken.Add((path, hash));
             }
 
@@ -262,9 +264,9 @@ public static class GameInis
                 var hash = bytes.xxHash3();
                 if (LoadoutIniState.LastBakedHash.TryGetValue(state, out var last) && last == hash) continue;
 
-                pins.Add(FileStorePins.Pin(hash));
-                if (!await fileStore.HaveFile(hash))
-                    await fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(bytes)), hash, Size.FromLong(bytes.Length))]);
+                pins.Add(FileStorePins.Pin(FileIdentity.XxHash3(hash)));
+                if (!await fileStore.HaveFile(FileIdentity.XxHash3(hash)))
+                    await fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length))]);
                 recorded.Add((state.Id, hash));
             }
 

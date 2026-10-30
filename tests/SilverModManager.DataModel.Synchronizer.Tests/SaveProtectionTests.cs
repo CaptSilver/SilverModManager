@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
@@ -52,12 +53,12 @@ public class SaveProtectionTests(ITestOutputHelper helper) : AStubbedGameTest<Sa
         await CreateLoadout();
 
         IndexedPaths().Should().NotContain(p => p.LocationId == LocationId.Saves, "saves are not indexed");
-        (await FileStore.HaveFile(Save1Bytes.xxHash3())).Should().BeFalse("saves are not backed up");
-        (await FileStore.HaveFile(Save2Bytes.xxHash3())).Should().BeFalse("saves are not backed up");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(Save1Bytes.xxHash3()))).Should().BeFalse("saves are not backed up");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(Save2Bytes.xxHash3()))).Should().BeFalse("saves are not backed up");
 
         // Guards against the assertions above passing only because nothing was indexed at all.
         IndexedPaths().Should().Contain(new GamePath(LocationId.Preferences, "settings.ini"));
-        (await FileStore.HaveFile(SettingsBytes.xxHash3())).Should().BeTrue();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(SettingsBytes.xxHash3()))).Should().BeTrue();
     }
 
     [Fact]
@@ -139,7 +140,7 @@ public class SaveProtectionTests(ITestOutputHelper helper) : AStubbedGameTest<Sa
             .Select(i => ((GamePath)i.TargetPath).Path.FileName.ToString())
             .Should().NotContain(n => n.StartsWith("vkd3d-proton.cache"), "a cache is not an external change");
         IndexedPaths().Should().NotContain(p => p.Path.FileName.ToString().StartsWith("vkd3d-proton.cache"));
-        (await FileStore.HaveFile(cacheBytes.xxHash3())).Should().BeFalse();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(cacheBytes.xxHash3()))).Should().BeFalse();
         cache.FileExists.Should().BeTrue();
 
         // Guards against the assertions passing only because nothing was indexed at all.

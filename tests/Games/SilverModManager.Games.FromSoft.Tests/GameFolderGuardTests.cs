@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Hashing.xxHash3;
@@ -28,7 +29,7 @@ public abstract class AGameFolderGuardTests<TTest>(ITestOutputHelper helper, boo
         {
             var bytes = Encoding.UTF8.GetBytes($"{name}:{path.Path}");
             AddFile(tx, loadout.LoadoutId, group, path, $"{name}:{path.Path}");
-            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), bytes.xxHash3(), Size.FromLong(bytes.Length))]);
+            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length))]);
         }
 
         await tx.Commit();

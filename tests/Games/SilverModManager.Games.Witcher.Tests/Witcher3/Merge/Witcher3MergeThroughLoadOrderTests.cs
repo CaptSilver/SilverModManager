@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
@@ -100,7 +101,7 @@ public class Witcher3MergeThroughLoadOrderTests(ITestOutputHelper helper)
             var hash = bytes.xxHash3();
             var size = Size.FromLong(bytes.Length);
             AddFileOfBytes(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, path), hash, size);
-            backups.Add(new ArchivedFileEntry(new MemoryStreamFactory(path, new MemoryStream(bytes)), hash, size));
+            backups.Add(new ArchivedFileEntry(new MemoryStreamFactory(path, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), size));
         }
 
         _ = new LoadoutItemGroupPriority.New(tx) { LoadoutId = loadout.LoadoutId, TargetId = group, Priority = ConflictPriority.From(priority) };
@@ -278,7 +279,7 @@ public class Witcher3MergeThroughLoadOrderTests(ITestOutputHelper helper)
         var bytes = Bytes(text);
         AddFileOfBytes(tx, loadout.LoadoutId, overrides.AsLoadoutItemGroup().LoadoutItemGroupId, new GamePath(LocationId.Game, path), bytes.xxHash3(), Size.FromLong(bytes.Length));
         await tx.Commit();
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path, new MemoryStream(bytes)), bytes.xxHash3(), Size.FromLong(bytes.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path, new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length))]);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using DynamicData.Kernel;
 using FluentAssertions;
@@ -174,7 +175,7 @@ public class GameInstalledResetTests : AIsolatedGameTest<GameInstalledResetTests
         await Reset();
 
         (await OnDisk(GameInstalledResetStubbedGame.IntrinsicPath).ReadAllTextAsync()).Should().Be("rendered for reset");
-        (await FileStore.HaveFile(GameInstalledResetStubbedGame.Rendered.xxHash3())).Should().BeTrue();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(GameInstalledResetStubbedGame.Rendered.xxHash3()))).Should().BeTrue();
     }
 
     [Fact]

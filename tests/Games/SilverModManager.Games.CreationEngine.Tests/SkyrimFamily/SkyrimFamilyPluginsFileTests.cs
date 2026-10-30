@@ -48,7 +48,7 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
     {
         var stored = bytes.xxHash3();
         var source = Substitute.For<IStreamSourceDispatcher>();
-        source.OpenAsync(stored).Returns(_ => ValueTask.FromResult<Stream?>(new MemoryStream(bytes)));
+        source.OpenAsync(FileIdentity.XxHash3(stored)).Returns(_ => ValueTask.FromResult<Stream?>(new MemoryStream(bytes)));
         hash = stored;
         return (ICreationEngineGame)System.Activator.CreateInstance(type, new WithStreamSource(serviceProvider, source))!;
     }

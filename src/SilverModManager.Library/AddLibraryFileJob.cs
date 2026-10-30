@@ -128,8 +128,9 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
         else
         {
             var size = filePath.FileInfo.Size;
-            if (!await FileStore.HaveFile(hash))
-                ToArchive.Add(new ArchivedFileEntry(new NativeFileStreamFactory(filePath), hash, size));
+            var identity = FileIdentity.XxHash3(hash);
+            if (!await FileStore.HaveFile(identity))
+                ToArchive.Add(new ArchivedFileEntry(new NativeFileStreamFactory(filePath), identity, size));
 
             if (!isNestedFile) await RecogniseAsync(libraryFile, extractedFolder: null, context.CancellationToken);
         }

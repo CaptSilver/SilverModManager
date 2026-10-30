@@ -67,7 +67,7 @@ public class PluginSortOrderVarietyTests(ITestOutputHelper helper)
         {
             var bytes = SkyrimPluginFile.Bytes(file, file == "Skyrim.esm" ? [] : ["Skyrim.esm"]);
             var hashes = await MultiHasher.HashStream(new MemoryStream(bytes));
-            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(file, new MemoryStream(bytes)), hashes.XxHash3, Size.FromLong(bytes.Length))]);
+            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(file, new MemoryStream(bytes)), FileIdentity.XxHash3(hashes.XxHash3), Size.FromLong(bytes.Length))]);
 
             var relation = new HashRelation.New(tx)
             {
@@ -402,7 +402,7 @@ public class PluginSortOrderVarietyTests(ITestOutputHelper helper)
         var loadout = await CreateLoadout();
         await SeedGameFiles(loadout);
         var garbage = Encoding.UTF8.GetBytes("not a plugin");
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("Broken.esp", new MemoryStream(garbage)), garbage.xxHash3(), Size.FromLong(garbage.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("Broken.esp", new MemoryStream(garbage)), FileIdentity.XxHash3(garbage.xxHash3()), Size.FromLong(garbage.Length))]);
         using (var tx = Connection.BeginTransaction())
         {
             var group = AddEmptyGroup(tx, loadout.LoadoutId, "Broken");

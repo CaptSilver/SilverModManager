@@ -46,7 +46,7 @@ public class IniTweaksNotDeployedTests(ITestOutputHelper helper) : AIsolatedGame
     private async Task AddTweak(Loadout.ReadOnly loadout, string group, string folder, string file, bool settingsGroup = false)
     {
         var bytes = Encoding.UTF8.GetBytes(TweakText);
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(file, new MemoryStream(bytes)), bytes.xxHash3(), Size.FromLong(bytes.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(file, new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length))]);
 
         using var tx = Connection.BeginTransaction();
         var id = AddEmptyGroup(tx, loadout.LoadoutId, group);
@@ -178,7 +178,7 @@ public class IniTweaksNotDeployedTests(ITestOutputHelper helper) : AIsolatedGame
 
         await ApplyTwiceAndExpectNoTweakOnDisk(loadout);
 
-        (await FileStore.HaveFile(edited.xxHash3())).Should().BeTrue("the player's edit is backed up before the file is removed");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(edited.xxHash3()))).Should().BeTrue("the player's edit is backed up before the file is removed");
     }
 
     [Fact]
@@ -192,6 +192,6 @@ public class IniTweaksNotDeployedTests(ITestOutputHelper helper) : AIsolatedGame
 
         await ApplyTwiceAndExpectNoTweakOnDisk(loadout);
 
-        (await FileStore.HaveFile(other.xxHash3())).Should().BeTrue("bytes the store never had are backed up before the file is removed");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(other.xxHash3()))).Should().BeTrue("bytes the store never had are backed up before the file is removed");
     }
 }

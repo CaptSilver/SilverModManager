@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.GC;
@@ -97,10 +98,10 @@ public class DanglingReferenceRestorePointTests(ITestOutputHelper helper) : ANex
         var entries = files.Select(file =>
         {
             var bytes = Encoding.UTF8.GetBytes(file.Content);
-            return new ArchivedFileEntry(new MemoryStreamFactory(file.Path, new MemoryStream(bytes)), bytes.xxHash3(), Size.FromLong(bytes.Length));
+            return new ArchivedFileEntry(new MemoryStreamFactory(file.Path, new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length));
         }).ToArray();
         await FileStore.BackupFiles(entries);
-        return entries.Select(entry => entry.Hash).ToArray();
+        return entries.Select(entry => entry.Identity.XxHash3()).ToArray();
     }
 
     /// <summary>
@@ -108,7 +109,7 @@ public class DanglingReferenceRestorePointTests(ITestOutputHelper helper) : ANex
     /// </summary>
     private bool IsReferenced(Hash hash)
     {
-        ((NxFileStore)FileStore).TryGetLocation(hash, out var archivePath, out _).Should().BeTrue();
+        ((NxFileStore)FileStore).TryGetLocation(FileIdentity.XxHash3(hash), out var archivePath, out _).Should().BeTrue();
         var gc = new ArchiveGarbageCollector<NxParsedHeaderState, FileEntryWrapper>();
         gc.AddArchive(archivePath, new NxParsedHeaderState(HeaderParser.ParseHeader(new FromAbsolutePathProvider { FilePath = archivePath })));
         DataStoreReferenceMarker.MarkUsedFiles(Connection, gc);

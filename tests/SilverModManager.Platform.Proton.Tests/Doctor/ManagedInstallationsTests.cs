@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
@@ -35,7 +36,7 @@ public class ManagedInstallationsTests(ITestOutputHelper helper) : AStubbedGameI
             {
                 var group = AddEmptyGroup(tx, loadout.LoadoutId, "Mod");
                 AddFile(tx, loadout.LoadoutId, group, path, "content", out var hash, out var size);
-                await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(Encoding.UTF8.GetBytes("content"))), hash, size)]);
+                await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(Encoding.UTF8.GetBytes("content"))), FileIdentity.XxHash3(hash), size)]);
                 await tx.Commit();
             }
             await Synchronizer.Synchronize(loadout);

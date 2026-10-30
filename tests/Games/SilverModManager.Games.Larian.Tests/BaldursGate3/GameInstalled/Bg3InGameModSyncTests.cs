@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
@@ -204,8 +205,8 @@ public class Bg3InGameModSyncTests(ITestOutputHelper helper)
         var overrides = OverridesPaths(Refresh(loadout));
         overrides.Should().NotContain(Pak(RecordedPak).Path.ToString());
         overrides.Should().NotContain(Pak(PatternPak).Path.ToString());
-        (await FileStore.HaveFile(await DiskHash(RecordedPak))).Should().BeFalse();
-        (await FileStore.HaveFile(await DiskHash(PatternPak))).Should().BeFalse();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(await DiskHash(RecordedPak)))).Should().BeFalse();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(await DiskHash(PatternPak)))).Should().BeFalse();
     }
 
     [Fact]

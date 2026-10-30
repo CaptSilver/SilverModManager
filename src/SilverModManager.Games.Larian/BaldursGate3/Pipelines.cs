@@ -1,4 +1,5 @@
 using System.Reactive;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.Larian.BaldursGate3.Utils.PakParsing;
@@ -16,7 +17,7 @@ public static class Pipelines
 
     public static IServiceCollection AddPipelines(this IServiceCollection serviceCollection)
     {
-        return serviceCollection.AddKeyedSingleton<IResourceLoader<Hash, Outcome<LspkPackageFormat.PakMetaData>>>(
+        return serviceCollection.AddKeyedSingleton<IResourceLoader<FileIdentity, Outcome<LspkPackageFormat.PakMetaData>>>(
             serviceKey: MetadataPipelineKey,
             implementationFactory: static (serviceProvider, _) => CreateMetadataPipeline(
                 fileStore: serviceProvider.GetRequiredService<IFileStore>(),
@@ -25,13 +26,13 @@ public static class Pipelines
         );
     }
 
-    public static IResourceLoader<Hash, Outcome<LspkPackageFormat.PakMetaData>> GetMetadataPipeline(IServiceProvider serviceProvider)
+    public static IResourceLoader<FileIdentity, Outcome<LspkPackageFormat.PakMetaData>> GetMetadataPipeline(IServiceProvider serviceProvider)
     {
-        return serviceProvider.GetRequiredKeyedService<IResourceLoader<Hash, 
+        return serviceProvider.GetRequiredKeyedService<IResourceLoader<FileIdentity, 
             Outcome<LspkPackageFormat.PakMetaData>>>(serviceKey: MetadataPipelineKey);
     }
     
-    private static IResourceLoader<Hash, Outcome<LspkPackageFormat.PakMetaData>> CreateMetadataPipeline(IFileStore fileStore, IConnection connection)
+    private static IResourceLoader<FileIdentity, Outcome<LspkPackageFormat.PakMetaData>> CreateMetadataPipeline(IFileStore fileStore, IConnection connection)
     {
         // TODO: change pipeline to return C# 9 type unions instead of OneOf
         var pipeline = new FileStoreStreamLoader(fileStore)
@@ -50,9 +51,9 @@ public static class Pipelines
                 }
             )
             .StoreInMemory(
-                keySelector: static hash => hash,
-                keyComparer: EqualityComparer<Hash>.Default,
-                shouldDeleteKey: (tuple, _) => ValueTask.FromResult(connection.Db.Datoms(LoadoutFile.Hash, tuple.Item1).Count == 0)
+                keySelector: static identity => identity,
+                keyComparer: EqualityComparer<FileIdentity>.Default,
+                shouldDeleteKey: (tuple, _) => ValueTask.FromResult(connection.Db.Datoms(LoadoutFile.Hash, tuple.Item1.XxHash3()).Count == 0)
             );
 
         return pipeline;

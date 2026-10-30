@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.GC;
 using NexusMods.Hashing.xxHash3;
@@ -39,15 +40,15 @@ public class MarkGameIniCopiesTest(ITestOutputHelper testOutputHelper) : AGCStub
 
         await ServiceProvider.GetRequiredService<IGarbageCollectorRunner>().RunAsync();
 
-        (await FileStore.HaveFile(unreferenced)).Should().BeFalse("the collection ran and removed what nothing refers to");
-        (await FileStore.HaveFile(baseline)).Should().BeTrue("the baseline is the player's own copy");
-        (await FileStore.HaveFile(baked)).Should().BeTrue("an ingest diffs the live file against it");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(unreferenced))).Should().BeFalse("the collection ran and removed what nothing refers to");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(baseline))).Should().BeTrue("the baseline is the player's own copy");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(baked))).Should().BeTrue("an ingest diffs the live file against it");
     }
 
     private async Task<Hash> Store(byte[] bytes)
     {
         var hash = bytes.xxHash3();
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("ini", new MemoryStream(bytes)), hash, Size.FromLong(bytes.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("ini", new MemoryStream(bytes)), FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length))]);
         return hash;
     }
 }

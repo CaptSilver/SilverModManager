@@ -1,13 +1,14 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Threading;
 
 namespace SilverModManager.Benchmarks.Benchmarks.Loadouts.Harness;
 
 public class DummyFileStore : IFileStore
 {
-    public ValueTask<bool> HaveFile(Hash hash)
+    public ValueTask<bool> HaveFile(FileIdentity identity)
     {
         return ValueTask.FromResult(false);
     }
@@ -18,22 +19,22 @@ public class DummyFileStore : IFileStore
         return Task.CompletedTask;
     }
 
-    public Task ExtractFiles(IEnumerable<(Hash Hash, AbsolutePath Dest)> files, CancellationToken token = default, Action<(int Current, int Max)>? progress = null)
+    public Task ExtractFiles(IEnumerable<(FileIdentity Identity, AbsolutePath Dest)> files, CancellationToken token = default, Action<(int Current, int Max)>? progress = null)
     {
         return Task.CompletedTask;
     }
 
-    public Task<Dictionary<Hash, byte[]>> ExtractFiles(IEnumerable<Hash> files, CancellationToken token = default)
+    public Task<Dictionary<FileIdentity, byte[]>> ExtractFiles(IEnumerable<FileIdentity> files, CancellationToken token = default)
     {
-        return Task.FromResult(new Dictionary<Hash, byte[]>());
+        return Task.FromResult(new Dictionary<FileIdentity, byte[]>());
     }
 
-    public Task<Stream> GetFileStream(Hash hash, CancellationToken token = default)
+    public Task<Stream> GetFileStream(FileIdentity identity, CancellationToken token = default)
     {
         return null!;
     }
 
-    public Task<byte[]> Load(Hash hash, CancellationToken token = default)
+    public Task<byte[]> Load(FileIdentity identity, CancellationToken token = default)
     {
         return Task.FromResult(Array.Empty<byte>());
     }

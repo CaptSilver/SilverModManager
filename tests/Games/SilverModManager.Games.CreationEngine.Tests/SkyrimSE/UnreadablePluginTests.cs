@@ -65,7 +65,7 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
         var bytes = await PluginBytes(fileName, masters);
         var hash = bytes.xxHash3();
         var size = Size.FromLong(bytes.Length);
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(fileName, new MemoryStream(bytes)), hash, size)]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(fileName, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), size)]);
         return (DataPath(fileName), LoadoutNode(hash, size));
     }
 

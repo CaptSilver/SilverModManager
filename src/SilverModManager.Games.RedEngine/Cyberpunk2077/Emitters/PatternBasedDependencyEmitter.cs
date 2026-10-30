@@ -206,7 +206,7 @@ public class PatternBasedDependencyEmitter : ILoadoutDiagnosticEmitter
     {
         try
         {
-            await using var stream = await _fileStore.GetFileStream(file.Hash);
+            await using var stream = await _fileStore.GetFileStream(file.Identity);
             using var reader = new StreamReader(stream, leaveOpen: true);
             var content = await reader.ReadToEndAsync();
         

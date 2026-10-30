@@ -1,4 +1,5 @@
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
@@ -39,8 +40,9 @@ public sealed class LoadoutPromotionSink : IPromotionSink
         foreach (var (hash, size, stream) in files)
         {
             if (!seen.Add(hash)) continue;
-            if (await _fileStore.HaveFile(hash)) continue;
-            missing.Add(new ArchivedFileEntry(stream, hash, size));
+            var identity = FileIdentity.XxHash3(hash);
+            if (await _fileStore.HaveFile(identity)) continue;
+            missing.Add(new ArchivedFileEntry(stream, identity, size));
         }
 
         // The haves were filtered above and the caller verified the hashes, so the store has nothing to re-check.

@@ -1593,7 +1593,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
     private async ValueTask<bool> HaveArchiveAsync(FileIdentity identity, Size size)
     {
-        if (identity.TryXxHash3(out var hash)) return await _fileStore.HaveFile(hash);
+        if (identity.Kind == HashKind.XxHash3) return await _fileStore.HaveFile(identity);
         return identity.Kind == HashKind.Sha1 && await _identityResolver.StoreKeyAsync(_fileStore, identity, size) is not null;
     }
 

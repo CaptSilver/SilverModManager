@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -74,8 +75,8 @@ public class LoadoutPromotionSinkTests(ITestOutputHelper helper) : AStubbedGameI
         loadoutFile.Hash.Should().Be(HashOf("new bytes"));
         loadoutFile.Size.Value.Should().Be((ulong)"new bytes".Length);
         children.Single(c => c.TargetPath == Vanilla).TryGetAsDeletedFile(out _).Should().BeTrue();
-        (await FileStore.HaveFile(HashOf("new bytes"))).Should().BeTrue();
-        (await FileStore.Load(HashOf("new bytes"))).Should().Equal(Encoding.UTF8.GetBytes("new bytes"));
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("new bytes")))).Should().BeTrue();
+        (await FileStore.Load(FileIdentity.XxHash3(HashOf("new bytes")))).Should().Equal(Encoding.UTF8.GetBytes("new bytes"));
     }
 
     [Fact]

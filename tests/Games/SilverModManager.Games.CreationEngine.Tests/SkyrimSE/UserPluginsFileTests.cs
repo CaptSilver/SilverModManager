@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Sdk.Hashes;
 using GameFinder.Wine;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
@@ -50,7 +51,7 @@ public class UserPluginsFileTests(ITestOutputHelper helper) : AIsolatedGameTest<
         await Synchronizer.Synchronize(Refresh(loadout));
 
         (await PluginsTxt.ReadAllBytesAsync()).Should().NotEqual(UserBytes);
-        (await FileStore.HaveFile(UserBytes.xxHash3())).Should().BeTrue();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(UserBytes.xxHash3()))).Should().BeTrue();
     }
 
     [Fact]

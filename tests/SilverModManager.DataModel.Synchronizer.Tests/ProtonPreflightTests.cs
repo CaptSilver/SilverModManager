@@ -80,8 +80,8 @@ public class ProtonPreflightTests(ITestOutputHelper helper) : AStubbedGameTest<P
     {
         var bytes = Encoding.UTF8.GetBytes(content);
         var hash = bytes.xxHash3();
-        if (!await FileStore.HaveFile(hash))
-            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), hash, Size.FromLong(bytes.Length))]);
+        if (!await FileStore.HaveFile(FileIdentity.XxHash3(hash)))
+            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length))]);
 
         using var tx = Connection.BeginTransaction();
         var group = AddEmptyGroup(tx, loadout.LoadoutId, "mod " + path.Path);
@@ -458,7 +458,7 @@ public class ProtonPreflightTests(ITestOutputHelper helper) : AStubbedGameTest<P
 
         var metadata = GameRegistry.ForceGetMetadata(GameInstallation);
         Synchronizer.GetDiskStateForGame(metadata).Should().NotContain(p => p.Path.FileName.ToString() == ProtonMessages.ProbeFileName);
-        (await FileStore.HaveFile(Encoding.UTF8.GetBytes("leftover from a crash").xxHash3())).Should().BeFalse();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(Encoding.UTF8.GetBytes("leftover from a crash").xxHash3()))).Should().BeFalse();
         probe.FileExists.Should().BeFalse("the next probe of that folder replaces and removes the leftover");
     }
 }

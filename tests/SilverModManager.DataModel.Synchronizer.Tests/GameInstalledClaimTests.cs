@@ -98,7 +98,7 @@ public class GameInstalledClaimTests : AIsolatedGameTest<GameInstalledClaimTests
         ((GamePath)row.TargetPath).Should().Be(CreationA);
         row.TryGetAsLoadoutFile(out var file).Should().BeTrue();
         file.Hash.Should().Be(HashOf("alpha 1"));
-        (await FileStore.HaveFile(HashOf("alpha 1"))).Should().BeTrue("the overrides row needs an archive like any ingested file");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("alpha 1")))).Should().BeTrue("the overrides row needs an archive like any ingested file");
         Items(Refresh(loadout)).Should().BeEmpty("an item with no file left is deleted");
         GameInstalledPaths.For(Connection.Db, loadout.LoadoutId).Should().BeEmpty();
         GameInstalledClaim.FindByLoadout(Connection.Db, loadout.Id).Should().ContainSingle()
@@ -158,7 +158,7 @@ public class GameInstalledClaimTests : AIsolatedGameTest<GameInstalledClaimTests
 
         await Service.Claim(item.GameInstalledItemId);
 
-        (await FileStore.HaveFile(HashOf("alpha 1"))).Should().BeFalse();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("alpha 1")))).Should().BeFalse();
         OverridesRows(Refresh(loadout)).Should().ContainSingle();
     }
 
@@ -204,8 +204,8 @@ public class GameInstalledClaimTests : AIsolatedGameTest<GameInstalledClaimTests
         var moved = LoadoutItemWithTargetPath.FindByTargetPath(Connection.Db, CreationA.ToGamePathParentTuple(loadout.Id)).Single();
         moved.AsLoadoutItem().Parent.AsLoadoutItem().Name.Should().Be("My mod");
         moved.TryGetAsLoadoutFile(out var file).Should().BeTrue();
-        var extracted = await FileStore.ExtractFiles([file.Hash]);
-        Encoding.UTF8.GetString(extracted[file.Hash]).Should().Be("alpha 1");
+        var extracted = await FileStore.ExtractFiles([file.Identity]);
+        Encoding.UTF8.GetString(extracted[file.Identity]).Should().Be("alpha 1");
         (await TreeOf(loadout))[CreationA].Actions.Should().NotHaveFlag(Actions.DeleteFromDisk);
     }
 
@@ -292,8 +292,8 @@ public class GameInstalledClaimTests : AIsolatedGameTest<GameInstalledClaimTests
         row.TryGetAsLoadoutFile(out var file).Should().BeTrue();
         file.Hash.Should().Be(HashOf("alpha rewritten by the game"));
         file.Size.Should().Be(Size.FromLong(Encoding.UTF8.GetByteCount("alpha rewritten by the game")));
-        var extracted = await FileStore.ExtractFiles([file.Hash]);
-        Encoding.UTF8.GetString(extracted[file.Hash]).Should().Be("alpha rewritten by the game");
+        var extracted = await FileStore.ExtractFiles([file.Identity]);
+        Encoding.UTF8.GetString(extracted[file.Identity]).Should().Be("alpha rewritten by the game");
     }
 
     [Fact]

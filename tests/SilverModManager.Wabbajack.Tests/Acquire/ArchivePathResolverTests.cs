@@ -102,7 +102,7 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
         await using var plugin = await CreateTestFile("Plugin.esp", bytes);
         var loadout = await CreateLoadout();
         var added = await LibraryService.AddLocalFile(plugin.Path);
-        (await FileStore.HaveFile(added.AsLibraryFile().Hash)).Should().BeTrue("the library keeps a plain file's bytes");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(added.AsLibraryFile().Hash))).Should().BeTrue("the library keeps a plain file's bytes");
         var resolver = Resolver(new ArchivePlan([]), loadout);
 
         var member = await resolver.Resolve(new ArchiveHashPath(Hash64(bytes), []), CancellationToken.None);
@@ -125,7 +125,7 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
 
         member.StoreHash.Should().Be(GameBsaBytes.xxHash3());
         member.XxHash64.Should().Be(gameHash);
-        (await FileStore.HaveFile(GameBsaBytes.xxHash3())).Should().BeTrue("the game file is kept so later reads come from the store");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(GameBsaBytes.xxHash3()))).Should().BeTrue("the game file is kept so later reads come from the store");
         (await ReadAll(member)).Should().Equal(GameBsaBytes);
     }
 
@@ -139,11 +139,11 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
 
         await resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P("a.dds")]), CancellationToken.None);
 
-        FileStorePins.Pinned().Should().Contain(inner.xxHash3(), "no loadout file references the backup yet");
+        FileStorePins.Pinned().Should().Contain(FileIdentity.XxHash3(inner.xxHash3()), "no loadout file references the backup yet");
 
         resolver.Dispose();
 
-        FileStorePins.Pinned().Should().NotContain(inner.xxHash3());
+        FileStorePins.Pinned().Should().NotContain(FileIdentity.XxHash3(inner.xxHash3()));
     }
 
     [Fact]
@@ -152,7 +152,7 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
         // A collection that marked before the pin existed may still drop bytes the store has right now, so the
         // resolver must not decide "already stored" while one holds the store.
         var loadout = await CreateLoadout();
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(GameBsa, new MemoryStream(GameBsaBytes)), GameBsaBytes.xxHash3(), Size.FromLong(GameBsaBytes.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(GameBsa, new MemoryStream(GameBsaBytes)), FileIdentity.XxHash3(GameBsaBytes.xxHash3()), Size.FromLong(GameBsaBytes.Length))]);
         var gameHash = Hash64(GameBsaBytes);
         var state = new GameFileSourceState("SkyrimSpecialEdition", GameBsa, gameHash, GameVersion);
         var plan = new ArchivePlan([new ArchivePlanRow(Entry(state, gameHash, GameBsaBytes.Length), ArchiveState.GameFile, null, null, null)]);
@@ -242,7 +242,7 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
         member.StoreHash.Should().Be(inner.xxHash3());
         member.XxHash64.Should().Be(Hash64(inner));
         (await ReadAll(member)).Should().Equal(inner);
-        (await FileStore.HaveFile(inner.xxHash3())).Should().BeTrue();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(inner.xxHash3()))).Should().BeTrue();
     }
 
     [Fact]

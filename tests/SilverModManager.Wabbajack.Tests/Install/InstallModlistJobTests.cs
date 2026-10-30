@@ -1,4 +1,5 @@
 using SilverModManager.Sdk.Errors;
+using SilverModManager.Sdk.Hashes;
 using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
@@ -212,7 +213,7 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
 
         var hash = TreeOf(group)["A"]["Game/Data/SKSE/Plugins/x.ini"];
-        await using var stream = await ServiceProvider.GetRequiredService<IFileStore>().GetFileStream(hash);
+        await using var stream = await ServiceProvider.GetRequiredService<IFileStore>().GetFileStream(FileIdentity.XxHash3(hash));
         var text = Encoding.UTF8.GetString(await ReadAll(stream));
 
         var gameRoot = loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty)).ToString();

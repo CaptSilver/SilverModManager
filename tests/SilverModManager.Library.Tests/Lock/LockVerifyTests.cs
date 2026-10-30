@@ -37,14 +37,14 @@ public class LockVerifyTests(IConnection connection)
         var content = "old row repolib " + Guid.NewGuid();
         var file = await _fixtures.AddThunderstoreFile("Zehs", "REPOLib", "4.2.1", content, LockFixtures.DigestOf(content), storeDigest: false);
         var store = Substitute.For<IFileStore>();
-        store.HaveFile(file.Hash).Returns(ValueTask.FromResult(true));
-        store.GetFileStream(file.Hash, Arg.Any<CancellationToken>()).Returns(_ => Task.FromResult<Stream>(new MemoryStream(Encoding.UTF8.GetBytes(content))));
+        store.HaveFile(file.Identity).Returns(ValueTask.FromResult(true));
+        store.GetFileStream(file.Identity, Arg.Any<CancellationToken>()).Returns(_ => Task.FromResult<Stream>(new MemoryStream(Encoding.UTF8.GetBytes(content))));
         var verify = new LockVerify(connection, new LibraryFileDigests(store, connection));
 
         var report = await verify.Verify(new LockFile([Thunderstore("4.2.1", LockFixtures.DigestOf(content).ToString())]), TestContext.Current.CancellationToken);
 
         report.Items.Should().ContainSingle().Which.Level.Should().Be(LockLevel.Ok);
-        await store.Received(1).GetFileStream(file.Hash, Arg.Any<CancellationToken>());
+        await store.Received(1).GetFileStream(file.Identity, Arg.Any<CancellationToken>());
     }
 
     public class Startup

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using Octodiff.Core;
 using Octodiff.Diagnostics;
@@ -118,7 +119,7 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
     protected async Task<byte[]> InstalledBytes(WabbajackModlistLoadoutGroup.ReadOnly group, string mod, string path)
     {
         var hash = TreeOf(group)[mod][path];
-        await using var stream = await FileStore.GetFileStream(hash);
+        await using var stream = await FileStore.GetFileStream(FileIdentity.XxHash3(hash));
         return await ReadAll(stream);
     }
 

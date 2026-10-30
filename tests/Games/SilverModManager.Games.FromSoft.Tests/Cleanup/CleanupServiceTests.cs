@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Hashes;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -148,7 +149,7 @@ public class CleanupServiceTests(ITestOutputHelper helper) : AEldenRingTest<Clea
         var item = LoadoutItem.FindByLoadout(refreshed.Db, refreshed).OfTypeLoadoutItemWithTargetPath().Single(i => i.TargetPath == path);
         item.TryGetAsLoadoutFile(out var file).Should().BeTrue();
         file.Hash.Should().Be(Encoding.UTF8.GetBytes(content).xxHash3());
-        (await FileStore.HaveFile(file.Hash)).Should().BeTrue();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(file.Hash))).Should().BeTrue();
 
         await Synchronizer.Synchronize(Refresh(loadout));
 

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Loadouts;
@@ -291,7 +292,7 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
     private async Task BackUpGameBsaAndChangeTheLiveFile(Loadout.ReadOnly loadout)
     {
         var original = GameBsaBytes.xxHash3();
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(GameBsa, new MemoryStream(GameBsaBytes)), original, Size.FromLong(GameBsaBytes.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(GameBsa, new MemoryStream(GameBsaBytes)), FileIdentity.XxHash3(original), Size.FromLong(GameBsaBytes.Length))]);
         using (var tx = Connection.BeginTransaction())
         {
             _ = new GameBackedUpFile.New(tx) { Hash = original, GameInstallId = loadout.InstallationId };

@@ -15,7 +15,7 @@ public static class FileIdentityResolverExtensions
     {
         foreach (var candidate in resolver.StoreKeyCandidates(identity, size))
         {
-            if (await store.HaveFile(candidate.XxHash3())) return candidate;
+            if (await store.HaveFile(candidate)) return candidate;
         }
         return null;
     }

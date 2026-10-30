@@ -83,7 +83,7 @@ public class LootSortTests(ITestOutputHelper helper)
 
         var bytes = SkyrimPluginFile.Bytes("Skyrim.esm");
         var hashes = await MultiHasher.HashStream(new MemoryStream(bytes));
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("Skyrim.esm", new MemoryStream(bytes)), hashes.XxHash3, Size.FromLong(bytes.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("Skyrim.esm", new MemoryStream(bytes)), FileIdentity.XxHash3(hashes.XxHash3), Size.FromLong(bytes.Length))]);
 
         using var tx = local.BeginTransaction();
         var relation = new HashRelation.New(tx)

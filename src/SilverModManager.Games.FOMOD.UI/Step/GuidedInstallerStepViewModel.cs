@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using SilverModManager.Sdk.Hashes;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Media;
@@ -103,7 +104,7 @@ public partial class GuidedInstallerStepViewModel : AViewModel<IGuidedInstallerS
                     {
                         var resource = await optionImage.Match(
                             f0: uri => remoteImagePipeline.LoadResourceAsync(uri, CancellationToken.None),
-                            f1: imageHash => fileImagePipeline.LoadResourceAsync(imageHash.FileHash, CancellationToken.None)
+                            f1: imageHash => fileImagePipeline.LoadResourceAsync(FileIdentity.XxHash3(imageHash.FileHash), CancellationToken.None)
                         );
 
                         var didLoad = resource.Data.Size.Width <= 0 || resource.Data.Size.Height <= 0;

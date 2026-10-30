@@ -221,7 +221,7 @@ public sealed class MergeEngine : IMergeEngine
         {
             // IFileStore.Load is async, but the planner is synchronous (the synchronizer's preflight and its file
             // writers call it where nothing awaits), the same blocking read LoadoutMergeSources.ContributorBytes makes.
-            var inputs = path.Contributors.Select(c => new MergeInput(_fileStore.Load(c.Hash).GetAwaiter().GetResult(), c.ModName)).ToArray();
+            var inputs = path.Contributors.Select(c => new MergeInput(_fileStore.Load(FileIdentity.XxHash3(c.Hash)).GetAwaiter().GetResult(), c.ModName)).ToArray();
             var notes = new List<IMergeNote>();
             if (vanilla.Note is { } source) notes.Add(source);
 

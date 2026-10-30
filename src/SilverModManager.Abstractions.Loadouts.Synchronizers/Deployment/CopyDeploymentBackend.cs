@@ -72,7 +72,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
         // TODO: This may be slow for very large games when other games/mods already exist.
         // Backup the files that are new or changed
         var archivedFiles = new ConcurrentBag<ArchivedFileEntry>();
-        var pinnedFileHashes = new ConcurrentBag<Hash>();
+        var pinnedFileHashes = new ConcurrentBag<FileIdentity>();
 
         var backupNodes = nodes.Where(static item => item.Value.Actions.HasFlag(Actions.BackupFile)).ToList();
         long filesChecked = 0;
@@ -91,26 +91,21 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
 
                 // The store is keyed by xxHash3, so a disk part of another kind throws here instead of being archived
                 // under a key that does not describe its bytes. A node the plan marks for backup has been read by then.
-                var diskHash = node.Disk.Identity.XxHash3();
-                if (await _fileStore.HaveFile(diskHash))
+                var diskIdentity = node.Disk.Identity;
+                if (await _fileStore.HaveFile(diskIdentity))
                 {
                     context.Job?.ReportProgress(SyncPhases.BackingUp, Interlocked.Increment(ref filesChecked), totalFiles, Interlocked.Add(ref bytesAccountedFor, (long)node.Disk.Size.Value), totalBytes);
                     return;
                 }
                 
-                var archivedFile = new ArchivedFileEntry
-                {
-                    Size = node.Disk.Size,
-                    Hash = diskHash,
-                    StreamFactory = new NativeFileStreamFactory(path),
-                };
+                var archivedFile = new ArchivedFileEntry(new NativeFileStreamFactory(path), diskIdentity, node.Disk.Size);
 
                 archivedFiles.Add(archivedFile);
                 
                 // TODO: We should only pin game files, not override files as well.
                 // This check does not work as intended because the winning files is going to be a Loadout one, not a game one.
                 // if (node.SourceItemType == LoadoutSourceItemType.Game)
-                pinnedFileHashes.Add(archivedFile.Hash);
+                pinnedFileHashes.Add(archivedFile.Identity);
                 context.Job?.ReportProgress(SyncPhases.BackingUp, Interlocked.Increment(ref filesChecked), totalFiles, Interlocked.Read(ref bytesAccountedFor), totalBytes);
             }
         );
@@ -135,7 +130,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             _ = new GameBackedUpFile.New(tx)
             {
                 GameInstallId = installMetadataId,
-                Hash = hash,
+                Hash = hash.XxHash3(),
             };
         }
         await tx.Commit();
@@ -215,7 +210,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
     public async Task Extract(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes)
     {
         var tx = context.Transaction;
-        List<(Hash Hash, AbsolutePath Path)> toExtract = [];
+        List<(FileIdentity Identity, AbsolutePath Path)> toExtract = [];
         
         foreach (var (path, node) in nodes)
         {
@@ -226,7 +221,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
 
             var resolvedPath = context.Locations.ToAbsolutePath(path);
             // Everything the app writes into a loadout is an xxHash3.
-            toExtract.Add((node.Loadout.Identity.XxHash3(), resolvedPath));
+            toExtract.Add((node.Loadout.Identity, resolvedPath));
         }
 
         // Extract files to disk

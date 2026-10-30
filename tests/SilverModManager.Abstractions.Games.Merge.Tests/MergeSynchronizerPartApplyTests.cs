@@ -40,7 +40,7 @@ public class MergeSynchronizerPartApplyTests(IServiceProvider provider) : AGameT
         {
             var path = new GamePath(LocationId.Game, $"Mods/{package}/{rel}");
             AddFile(tx, loadout.LoadoutId, group, path, bytes, out var hash, out var size);
-            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), hash, size)]);
+            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), size)]);
         }
         _ = new LoadoutItemGroupPriority.New(tx)
         {

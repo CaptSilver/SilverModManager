@@ -102,7 +102,7 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
                 try
                 {
                     await using var tempFile = _temporaryFileManager.CreateFile();
-                    await using (var stream = await _fileStore.GetFileStream(fileEntry.AsLibraryFile().Hash, token: cancellationToken))
+                    await using (var stream = await _fileStore.GetFileStream(fileEntry.AsLibraryFile().Identity, token: cancellationToken))
                     {
                         await using var fs = tempFile.Path.Open(FileMode.Create, FileAccess.ReadWrite, FileShare.None);
                         await stream.CopyToAsync(fs, cancellationToken);
@@ -187,14 +187,15 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
                 },
             };
 
-            if (!await _fileStore.HaveFile(fileHash))
+            var fileIdentity = FileIdentity.XxHash3(fileHash);
+            if (!await _fileStore.HaveFile(fileIdentity))
             {
                 // A file read from disk is archived from disk: the stream sources find a game file by the xxHash3 of
                 // a disk state row, which a file the store vouched for does not have until something reads it.
                 IStreamFactory streamFactory = onDisk is { } file
                     ? new NativeFileStreamFactory(file)
-                    : new SourceDispatcherStreamFactory(to.FileName, fileHash, _streamSource);
-                await _fileStore.BackupFiles([new ArchivedFileEntry(streamFactory, fileHash, fileSize)], deduplicate: false, token: cancellationToken);
+                    : new SourceDispatcherStreamFactory(to.FileName, fileIdentity, _streamSource);
+                await _fileStore.BackupFiles([new ArchivedFileEntry(streamFactory, fileIdentity, fileSize)], deduplicate: false, token: cancellationToken);
             }
         }
 

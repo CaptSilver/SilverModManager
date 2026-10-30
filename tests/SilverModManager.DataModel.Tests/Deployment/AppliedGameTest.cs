@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Deployment;
@@ -48,7 +49,7 @@ public abstract class AppliedGameTest<TTest>(ITestOutputHelper helper) : AStubbe
         {
             var content = $"content of {path}";
             AddFile(tx, loadout.LoadoutId, group, path, content, out var hash, out var size);
-            archived.Add(new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(Encoding.UTF8.GetBytes(content))), hash, size));
+            archived.Add(new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(Encoding.UTF8.GetBytes(content))), FileIdentity.XxHash3(hash), size));
         }
         await FileStore.BackupFiles(archived);
         await tx.Commit();

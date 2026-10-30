@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -63,28 +64,28 @@ public class ArchiveManagerTests
         // Create the tuples for compression
         var records = Enumerable.Range(0, fileCount).Select(idx => (
             new ArchivedFileEntry(new MemoryStreamFactory(RelativePath.FromUnsanitizedInput($"{idx}.txt"), new MemoryStream(datas[idx])),
-            hashes[idx], Size.FromLong(datas[idx].Length))));
+            FileIdentity.XxHash3(hashes[idx]), Size.FromLong(datas[idx].Length))));
 
         // Backup the files
         await _manager.BackupFiles(records);
 
         // Verify the files exist in the file store
         foreach (var hash in hashes)
-            (await _manager.HaveFile(hash)).Should().BeTrue();
+            (await _manager.HaveFile(FileIdentity.XxHash3(hash))).Should().BeTrue();
 
         // Extract some of the files
         var extractionCount = Random.Shared.Next(fileCount);
         var extractionIdxs = Enumerable.Range(1, extractionCount).Select(_ => Random.Shared.Next(fileCount)).Distinct().ToArray();
 
         // Extract the files via the in-memory method
-        var extracted = await _manager.ExtractFiles(extractionIdxs.Select(idx => hashes[idx]));
+        var extracted = await _manager.ExtractFiles(extractionIdxs.Select(idx => FileIdentity.XxHash3(hashes[idx])));
 
         // Verify the extracted files are correct
         foreach (var idx in extractionIdxs)
         {
-            extracted[hashes[idx]].Length.Should().Be(datas[idx].Length,
+            extracted[FileIdentity.XxHash3(hashes[idx])].Length.Should().Be(datas[idx].Length,
                 "the extracted file should have the same length as the original file");
-            extracted[hashes[idx]].Should().BeEquivalentTo(datas[idx],
+            extracted[FileIdentity.XxHash3(hashes[idx])].Should().BeEquivalentTo(datas[idx],
                 "the extracted file should be the same as the original file");
         }
 
@@ -94,7 +95,7 @@ public class ArchiveManagerTests
 
         var fullPaths = extractionIdxs.Distinct().ToDictionary(idx => idx, idx => tempFolder.Path.Combine($"{idx}.dat"));
 
-        var files = extractionIdxs.Select(idx => (hashes[idx], fullPaths[idx])).ToArray();
+        var files = extractionIdxs.Select(idx => (FileIdentity.XxHash3(hashes[idx]), fullPaths[idx])).ToArray();
         await _manager.ExtractFiles(files);
 
         // Verify the extracted files are correct
@@ -107,7 +108,7 @@ public class ArchiveManagerTests
 
         foreach (var idx in extractionIdxs)
         {
-            await using var stream = await _manager.GetFileStream(hashes[idx]);
+            await using var stream = await _manager.GetFileStream(FileIdentity.XxHash3(hashes[idx]));
             var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
 

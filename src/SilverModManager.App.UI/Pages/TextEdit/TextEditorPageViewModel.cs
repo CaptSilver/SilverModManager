@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using SilverModManager.Sdk.Hashes;
 using System.IO.Hashing;
 using System.Reactive;
 using System.Reactive.Disposables;
@@ -63,12 +64,12 @@ public partial class TextEditorPageViewModel : APageViewModel<ITextEditorPageVie
 
         _loadFileCommand = ReactiveCommand.CreateFromTask<TextEditorPageContext, ValueTuple<TextEditorPageContext, string>>(async context =>
         {
-            var hash = context.FileId.Match(
-                f0: loadoutFileId => LoadoutFile.Load(connection.Db, loadoutFileId).Hash,
-                f1: libraryFileId => LibraryFile.Load(connection.Db, libraryFileId).Hash
+            var identity = context.FileId.Match(
+                f0: loadoutFileId => LoadoutFile.Load(connection.Db, loadoutFileId).Identity,
+                f1: libraryFileId => LibraryFile.Load(connection.Db, libraryFileId).Identity
             );
 
-            await using var stream = await fileStore.GetFileStream(hash);
+            await using var stream = await fileStore.GetFileStream(identity);
             using var reader = new StreamReader(stream, Encoding.UTF8);
             var contents = await reader.ReadToEndAsync();
 
@@ -96,8 +97,8 @@ public partial class TextEditorPageViewModel : APageViewModel<ITextEditorPageVie
 
             using (var streamFactory = new MemoryStreamFactory(Context.FilePath, new MemoryStream(bytes, writable: false)))
             {
-                if (!await fileStore.HaveFile(hash))
-                    await fileStore.BackupFiles([new ArchivedFileEntry(streamFactory, hash, size)], deduplicate: false);
+                if (!await fileStore.HaveFile(FileIdentity.XxHash3(hash)))
+                    await fileStore.BackupFiles([new ArchivedFileEntry(streamFactory, FileIdentity.XxHash3(hash), size)], deduplicate: false);
             }
 
             // update the file

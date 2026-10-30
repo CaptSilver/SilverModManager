@@ -17,7 +17,7 @@ public static class ModlistArchive
         if (!entry.IsValid())
             throw new UnsupportedModlistException("The file has no 'modlist' entry, so it is not a Wabbajack modlist");
 
-        await using var stream = await store.GetFileStream(entry.AsLibraryFile().Hash, cancellationToken);
+        await using var stream = await store.GetFileStream(entry.AsLibraryFile().Identity, cancellationToken);
         return ModListReader.Read(stream);
     }
 
@@ -28,6 +28,6 @@ public static class ModlistArchive
         if (!entry.IsValid())
             throw new UnsupportedModlistException($"The modlist refers to '{id}', which is not in the file");
 
-        return await store.GetFileStream(entry.AsLibraryFile().Hash, cancellationToken);
+        return await store.GetFileStream(entry.AsLibraryFile().Identity, cancellationToken);
     }
 }

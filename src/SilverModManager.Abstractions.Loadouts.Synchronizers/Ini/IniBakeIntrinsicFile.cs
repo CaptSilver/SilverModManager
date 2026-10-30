@@ -3,6 +3,7 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Ini;
 using SilverModManager.Sdk.IO;
@@ -80,9 +81,9 @@ public sealed class IniBakeIntrinsicFile(GamePath path, IGameIniFiles game, IFil
     private async Task<Hash> Store(byte[] bytes, List<IDisposable> pins)
     {
         var hash = bytes.xxHash3();
-        pins.Add(FileStorePins.Pin(hash));
-        if (!await fileStore.HaveFile(hash))
-            await fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(Path.FileName, new MemoryStream(bytes)), hash, Size.FromLong(bytes.Length))]);
+        pins.Add(FileStorePins.Pin(FileIdentity.XxHash3(hash)));
+        if (!await fileStore.HaveFile(FileIdentity.XxHash3(hash)))
+            await fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(Path.FileName, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length))]);
         return hash;
     }
 

@@ -1,5 +1,5 @@
-using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Threading;
 
 namespace SilverModManager.Sdk.FileStore;
@@ -13,9 +13,9 @@ public interface IFileStore
     /// <summary>
     /// Returns true if there is an archive that has the specified file.
     /// </summary>
-    /// <param name="hash"></param>
+    /// <param name="identity">An xxHash3 identity; the store is keyed by it. Any other kind throws <see cref="InvalidOperationException"/>.</param>
     /// <returns></returns>
-    public ValueTask<bool> HaveFile(Hash hash);
+    public ValueTask<bool> HaveFile(FileIdentity identity);
 
     /// <summary>
     /// Backup the given set of files.
@@ -57,7 +57,7 @@ public interface IFileStore
     /// <param name="token"></param>
     /// <returns></returns>
     /// <exception cref="MissingArchiveException">The store has no archive for a requested hash.</exception>
-    Task ExtractFiles(IEnumerable<(Hash Hash, AbsolutePath Dest)> files, CancellationToken token = default, Action<(int Current, int Max)>? progress = null);
+    Task ExtractFiles(IEnumerable<(FileIdentity Identity, AbsolutePath Dest)> files, CancellationToken token = default, Action<(int Current, int Max)>? progress = null);
 
     /// <summary>
     /// Extract the given files from archives.
@@ -66,22 +66,22 @@ public interface IFileStore
     /// <param name="token"></param>
     /// <returns></returns>
     /// <exception cref="MissingArchiveException">The store has no archive for a requested hash.</exception>
-    Task<Dictionary<Hash, byte[]>> ExtractFiles(IEnumerable<Hash> files, CancellationToken token = default);
+    Task<Dictionary<FileIdentity, byte[]>> ExtractFiles(IEnumerable<FileIdentity> files, CancellationToken token = default);
 
     /// <summary>
     /// Gets a read-only seekable stream for the given file.
     /// </summary>
-    /// <param name="hash"></param>
+    /// <param name="identity"></param>
     /// <param name="token"></param>
     /// <returns></returns>
     /// <exception cref="MissingArchiveException">The store has no archive for a requested hash.</exception>
-    Task<Stream> GetFileStream(Hash hash, CancellationToken token = default);
+    Task<Stream> GetFileStream(FileIdentity identity, CancellationToken token = default);
 
     /// <summary>
     /// Load the given file into memory.
     /// </summary>
     /// <exception cref="MissingArchiveException">The store has no archive for a requested hash.</exception>
-    Task<byte[]> Load(Hash hash, CancellationToken token = default);
+    Task<byte[]> Load(FileIdentity identity, CancellationToken token = default);
 
     /// <summary>
     /// Locks the file store, preventing it from being used until the returned

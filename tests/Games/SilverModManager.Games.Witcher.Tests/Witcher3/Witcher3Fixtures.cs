@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -65,7 +66,7 @@ internal static class Witcher3Fixtures
     {
         var contents = files.Select(f => Encoding.UTF8.GetBytes(f.Content)).ToArray();
         await fileStore.BackupFiles(contents.Select(bytes =>
-            new ArchivedFileEntry(new MemoryStreamFactory("file", new MemoryStream(bytes)), bytes.xxHash3(), Size.FromLong(bytes.Length))).ToArray());
+            new ArchivedFileEntry(new MemoryStreamFactory("file", new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length))).ToArray());
 
         using var tx = connection.BeginTransaction();
         var group = new LoadoutItemGroup.New(tx, out var groupId)

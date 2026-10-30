@@ -1,4 +1,5 @@
 using System.Globalization;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -262,7 +263,7 @@ public sealed class LooseStagingStore : ILooseStagingStore
             if (temp.FileExists) temp.Delete();
 
             _logger.LogDebug("Staging {Hash} for {Installation} at {Path}", hash, installation, path);
-            await _fileStore.ExtractFiles([(hash, temp)], token);
+            await _fileStore.ExtractFiles([(FileIdentity.XxHash3(hash), temp)], token);
             await temp.MoveToAsync(path, overwrite: true, token);
             return path;
         }

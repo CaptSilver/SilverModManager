@@ -9,6 +9,7 @@ using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Library;
 using Xunit;
@@ -41,7 +42,7 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
     {
         bytes = new byte[length];
         new Random(seed).NextBytes(bytes);
-        return new ArchivedFileEntry(new MemoryStreamFactory($"random{seed}.bin", new MemoryStream(bytes)), bytes.xxHash3(), Size.FromLong(length));
+        return new ArchivedFileEntry(new MemoryStreamFactory($"random{seed}.bin", new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(length));
     }
 
     [Fact]
@@ -63,21 +64,21 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
     {
         // One file past the chunk size and several below it, so both the chunked and the solid path are used.
         var big = RandomEntry(100, 6 * 1024 * 1024 + 123, out var bigBytes);
-        var smallBytes = new Dictionary<Hash, byte[]>();
+        var smallBytes = new Dictionary<FileIdentity, byte[]>();
         var small = Enumerable.Range(1, 5).Select(i =>
         {
             var entry = RandomEntry(i, 40 * 1024 + i, out var bytes);
-            smallBytes[entry.Hash] = bytes;
+            smallBytes[entry.Identity] = bytes;
             return entry;
         }).ToList();
         var compressible = new ArchivedFileEntry(new MemoryStreamFactory("text.txt", new MemoryStream(Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("silver ", 100_000))))),
-            Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("silver ", 100_000))).xxHash3(), Size.FromLong("silver ".Length * 100_000));
+            FileIdentity.XxHash3(Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("silver ", 100_000))).xxHash3()), Size.FromLong("silver ".Length * 100_000));
 
         await _fileStore.BackupFiles([big, compressible, .. small], deduplicate: false, token: TestContext.Current.CancellationToken);
 
-        (await _fileStore.Load(big.Hash, TestContext.Current.CancellationToken)).Should().Equal(bigBytes);
-        (await _fileStore.Load(compressible.Hash, TestContext.Current.CancellationToken)).Should().Equal(Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("silver ", 100_000))));
-        foreach (var entry in small) (await _fileStore.Load(entry.Hash, TestContext.Current.CancellationToken)).Should().Equal(smallBytes[entry.Hash]);
+        (await _fileStore.Load(big.Identity, TestContext.Current.CancellationToken)).Should().Equal(bigBytes);
+        (await _fileStore.Load(compressible.Identity, TestContext.Current.CancellationToken)).Should().Equal(Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("silver ", 100_000))));
+        foreach (var entry in small) (await _fileStore.Load(entry.Identity, TestContext.Current.CancellationToken)).Should().Equal(smallBytes[entry.Identity]);
     }
 
     [Fact]
@@ -109,13 +110,13 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
         var hashed = "bytes the caller hashed"u8.ToArray();
         var packed = "bytes that replaced them"u8.ToArray();
         var hash = hashed.xxHash3();
-        var entry = new ArchivedFileEntry(new MemoryStreamFactory("changed.bin", new MemoryStream(packed)), hash, Size.FromLong(packed.Length));
+        var entry = new ArchivedFileEntry(new MemoryStreamFactory("changed.bin", new MemoryStream(packed)), FileIdentity.XxHash3(hash), Size.FromLong(packed.Length));
 
         var act = async () => await _fileStore.BackupFiles([entry]);
 
         await act.Should().ThrowAsync<KeyNotFoundException>();
-        (await _fileStore.HaveFile(hash)).Should().BeFalse();
-        (await _fileStore.HaveFile(packed.xxHash3())).Should().BeFalse();
+        (await _fileStore.HaveFile(FileIdentity.XxHash3(hash))).Should().BeFalse();
+        (await _fileStore.HaveFile(FileIdentity.XxHash3(packed.xxHash3()))).Should().BeFalse();
     }
 
     [Fact]
@@ -152,7 +153,7 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
         dataFileBAfter.Value.Hash.Should().Be(dataFileBHashBefore, "Hash should be the same after changing A");
 
         {
-            await using var dataFileBStreamAfter = await _fileStore.GetFileStream(dataFileBAfter.Value.Hash);
+            await using var dataFileBStreamAfter = await _fileStore.GetFileStream(FileIdentity.XxHash3(dataFileBAfter.Value.Hash));
             var dataFileBCheckedHashAfter = await dataFileBStreamAfter.xxHash3Async();
             dataFileBCheckedHashAfter.Should().Be(dataFileBHashBefore, "Hash should be the same after changing A");
         }
@@ -163,9 +164,29 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
     {
         var bytes = "Hello World"u8.ToArray();
         var ms = new MemoryStream(buffer: bytes);
-        var entry = new ArchivedFileEntry(new MemoryStreamFactory("", ms), Hash: Hash.Zero, Size.FromLong(ms.Length));
+        var entry = new ArchivedFileEntry(new MemoryStreamFactory("", ms), FileIdentity.XxHash3(Hash.Zero), Size.FromLong(ms.Length));
 
         var act = async () => await _fileStore.BackupFiles([entry], deduplicate: false);
         await act.Should().ThrowAsync<KeyNotFoundException>(because: "file requested to be backed up doesn't exist in the archive due to bad hash");
+    }
+
+    [Fact]
+    public async Task HaveFile_Sha1Identity_Throws()
+    {
+        var sha1 = FileIdentity.Sha1(Sha1Value.FromHex(new string('A', 40)));
+
+        var act = async () => await _fileStore.HaveFile(sha1);
+
+        await act.Should().ThrowAsync<InvalidOperationException>("the store is keyed by xxHash3 and a SHA-1 is not one of its keys");
+    }
+
+    [Fact]
+    public void ArchivedFileEntry_RejectsANonXxHash3Identity()
+    {
+        var sha1 = FileIdentity.Sha1(Sha1Value.FromHex(new string('A', 40)));
+
+        var act = () => new ArchivedFileEntry(new MemoryStreamFactory("a.bin", new MemoryStream([1])), sha1, Size.FromLong(1));
+
+        act.Should().Throw<InvalidOperationException>();
     }
 }

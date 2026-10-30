@@ -99,7 +99,7 @@ public partial class ThunderstoreDownloadJobTests(IServiceProvider serviceProvid
         libraryFile.FileName.Should().Be(ArchiveName);
         libraryFile.AsLibraryItem().Name.Should().Be(ArchiveName);
         libraryFile.Sha256.Value.Should().Be(PayloadDigest);
-        (await serviceProvider.GetRequiredService<IFileStore>().HaveFile(libraryFile.Hash)).Should().BeTrue();
+        (await serviceProvider.GetRequiredService<IFileStore>().HaveFile(libraryFile.Identity)).Should().BeTrue();
     }
 
     [Fact]

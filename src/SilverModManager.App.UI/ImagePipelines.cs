@@ -1,4 +1,5 @@
 using Avalonia.Media;
+using SilverModManager.Sdk.Hashes;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Microsoft.Extensions.DependencyInjection;
@@ -77,7 +78,7 @@ public static class ImagePipelines
                     httpClient: serviceProvider.GetRequiredService<HttpClient>()
                 )
             )
-            .AddKeyedSingleton<IResourceLoader<Hash, Bitmap>>(
+            .AddKeyedSingleton<IResourceLoader<FileIdentity, Bitmap>>(
                 serviceKey: GuidedInstallerFileImagePipelineKey,
                 implementationFactory: static (serviceProvider, _) => CreateGuidedInstallerFileImagePipeline(
                     fileStore: serviceProvider.GetRequiredService<IFileStore>()
@@ -126,9 +127,9 @@ public static class ImagePipelines
         return serviceProvider.GetRequiredKeyedService<IResourceLoader<Uri, Bitmap>>(serviceKey: GuidedInstallerRemoteImagePipelineKey);
     }
 
-    public static IResourceLoader<Hash, Bitmap> GetGuidedInstallerFileImagePipeline(IServiceProvider serviceProvider)
+    public static IResourceLoader<FileIdentity, Bitmap> GetGuidedInstallerFileImagePipeline(IServiceProvider serviceProvider)
     {
-        return serviceProvider.GetRequiredKeyedService<IResourceLoader<Hash, Bitmap>>(serviceKey: GuidedInstallerFileImagePipelineKey);
+        return serviceProvider.GetRequiredKeyedService<IResourceLoader<FileIdentity, Bitmap>>(serviceKey: GuidedInstallerFileImagePipelineKey);
     }
 
     /// <summary>
@@ -270,7 +271,7 @@ public static class ImagePipelines
         return pipeline;
     }
 
-    private static IResourceLoader<Hash, Bitmap> CreateGuidedInstallerFileImagePipeline(IFileStore fileStore)
+    private static IResourceLoader<FileIdentity, Bitmap> CreateGuidedInstallerFileImagePipeline(IFileStore fileStore)
     {
         var pipeline = new FileStoreLoader(fileStore)
             .Decode(decoderType: DecoderType.Skia)

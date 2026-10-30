@@ -1,4 +1,4 @@
-using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Sdk.FileStore;
 
@@ -11,25 +11,25 @@ namespace SilverModManager.Sdk.FileStore;
 public static class FileStorePins
 {
     private static readonly object Gate = new();
-    private static readonly Dictionary<Hash, int> Counts = new();
+    private static readonly Dictionary<FileIdentity, int> Counts = new();
 
-    /// <summary>Pins <paramref name="hash"/> until the returned scope is disposed. Pins nest: each call counts once.</summary>
-    public static IDisposable Pin(Hash hash)
+    /// <summary>Pins <paramref name="identity"/> until the returned scope is disposed. Pins nest: each call counts once.</summary>
+    public static IDisposable Pin(FileIdentity identity)
     {
         lock (Gate)
         {
-            Counts[hash] = Counts.GetValueOrDefault(hash) + 1;
+            Counts[identity] = Counts.GetValueOrDefault(identity) + 1;
         }
-        return new Release(hash);
+        return new Release(identity);
     }
 
     /// <summary>The hashes pinned right now.</summary>
-    public static IReadOnlyCollection<Hash> Pinned()
+    public static IReadOnlyCollection<FileIdentity> Pinned()
     {
         lock (Gate) return Counts.Keys.ToArray();
     }
 
-    private sealed class Release(Hash hash) : IDisposable
+    private sealed class Release(FileIdentity identity) : IDisposable
     {
         private int _released;
 
@@ -38,7 +38,7 @@ public static class FileStorePins
             if (Interlocked.Exchange(ref _released, 1) != 0) return;
             lock (Gate)
             {
-                if (--Counts[hash] == 0) Counts.Remove(hash);
+                if (--Counts[identity] == 0) Counts.Remove(identity);
             }
         }
     }

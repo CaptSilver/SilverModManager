@@ -17,6 +17,7 @@ using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using IFileSystem = NexusMods.Paths.IFileSystem;
@@ -222,7 +223,7 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         IList<Instruction> instructions;
         using (presetUiDelegates)
         {
-            var rawScript = await LoadScript(xmlFile.AsLibraryFile().Hash, cancellationToken);
+            var rawScript = await LoadScript(xmlFile.AsLibraryFile().Identity, cancellationToken);
 
             var executor = _scriptType.CreateExecutor(mod, delegates);
             var installScript = _scriptType.LoadScript(rawScript, true);
@@ -258,9 +259,9 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         return new Success();
     }
 
-    private async ValueTask<string> LoadScript(Hash hash, CancellationToken cancellationToken = default)
+    private async ValueTask<string> LoadScript(FileIdentity identity, CancellationToken cancellationToken = default)
     {
-        await using var stream = await _fileStore.GetFileStream(hash, cancellationToken);
+        await using var stream = await _fileStore.GetFileStream(identity, cancellationToken);
         using var streamReader = new StreamReader(stream);
         return await streamReader.ReadToEndAsync(cancellationToken);
     }

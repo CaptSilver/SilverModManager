@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using DynamicData.Kernel;
 using FluentAssertions;
@@ -72,7 +73,7 @@ public class GameIniBakeTests(ITestOutputHelper helper) : AIsolatedGameTest<Game
     private async Task<LoadoutItemGroupId> AddTweakMod(Loadout.ReadOnly loadout, string modName, string tweakFile, string content, ulong priority, bool disabled = false)
     {
         var bytes = Encoding.UTF8.GetBytes(content);
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(tweakFile, new MemoryStream(bytes)), bytes.xxHash3(), Size.FromLong(bytes.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(tweakFile, new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length))]);
 
         using var tx = Connection.BeginTransaction();
         var group = AddEmptyGroup(tx, loadout.LoadoutId, modName);
@@ -99,7 +100,7 @@ public class GameIniBakeTests(ITestOutputHelper helper) : AIsolatedGameTest<Game
         var state = States(loadout).Should().ContainSingle().Subject;
         ((GamePath)state.Path).Should().Be(IniStubbedGame.MainIni);
         state.Baseline.Should().Be(UserIni.xxHash3());
-        (await FileStore.Load(state.Baseline)).Should().Equal(UserIni);
+        (await FileStore.Load(FileIdentity.XxHash3(state.Baseline))).Should().Equal(UserIni);
         (await Live(IniStubbedGame.MainIni).ReadAllBytesAsync()).Should().Equal(UserIni, "nothing is written before the sync writes");
         Live(IniStubbedGame.MainIni).Parent.EnumerateFiles().Select(f => f.FileName.ToString()).Should().HaveCount(1, "no .bak is left beside the INI, the next ingest would pick it up");
     }
@@ -154,7 +155,7 @@ public class GameIniBakeTests(ITestOutputHelper helper) : AIsolatedGameTest<Game
         var state = States(Refresh(loadout)).Should().ContainSingle().Subject;
         var baked = LoadoutIniState.LastBakedHash.Get(state);
         baked.Should().Be(written.xxHash3());
-        (await FileStore.Load(baked)).Should().Equal(written, "an ingest diffs the live file against these bytes");
+        (await FileStore.Load(FileIdentity.XxHash3(baked))).Should().Equal(written, "an ingest diffs the live file against these bytes");
         state.Baseline.Should().Be(UserIni.xxHash3(), "the baseline stays the player's copy");
     }
 

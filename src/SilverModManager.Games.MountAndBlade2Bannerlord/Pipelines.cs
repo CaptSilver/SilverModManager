@@ -1,4 +1,5 @@
 using System.Reactive;
+using SilverModManager.Sdk.Hashes;
 using System.Xml;
 using Bannerlord.ModuleManager;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,9 +41,9 @@ internal static class Pipelines
                 var data = ModuleInfoExtended.FromXml(doc);
                 return ValueTask.FromResult(resource.WithData(data));
             })
-            .StoreInMemory<BannerlordModuleLoadoutItem.ReadOnly, Hash, ModuleInfoExtended>(
-                selector: static mod => mod.ModuleInfo.AsLoadoutFile().Hash,
-                keyComparer: EqualityComparer<Hash>.Default,
+            .StoreInMemory<BannerlordModuleLoadoutItem.ReadOnly, FileIdentity, ModuleInfoExtended>(
+                selector: static mod => mod.ModuleInfo.AsLoadoutFile().Identity,
+                keyComparer: EqualityComparer<FileIdentity>.Default,
                 shouldDeleteKey: (tuple, _) => ValueTask.FromResult(!BannerlordModuleLoadoutItem.Load(connection.Db, tuple.Item2.Id).IsValid())
             );
 

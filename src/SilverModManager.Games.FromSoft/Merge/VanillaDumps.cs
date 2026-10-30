@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Games.FromSoft.Formats;
 using SilverModManager.Games.FromSoft.Heal;
@@ -226,7 +227,7 @@ public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouch
 
     private byte[] ReadBytes(Hash hash)
     {
-        using var stream = fileStore.GetFileStream(hash).GetAwaiter().GetResult();
+        using var stream = fileStore.GetFileStream(FileIdentity.XxHash3(hash)).GetAwaiter().GetResult();
         using var buffer = new MemoryStream();
         stream.CopyTo(buffer);
         return buffer.ToArray();

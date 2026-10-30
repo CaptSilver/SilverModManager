@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Library.Installers;
@@ -114,7 +115,7 @@ public class PreferencesUserFilesSwitchTests(ITestOutputHelper helper) : AStubbe
         await LoadoutManager.ActivateLoadout(loadoutB.LoadoutId);
 
         (await UserIni.ReadAllBytesAsync()).Should().Equal(ModIniBytes);
-        (await FileStore.HaveFile(UserIniBytes.xxHash3())).Should().BeTrue("the user's copy is backed up before it is overwritten");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(UserIniBytes.xxHash3()))).Should().BeTrue("the user's copy is backed up before it is overwritten");
     }
 
     [Fact]

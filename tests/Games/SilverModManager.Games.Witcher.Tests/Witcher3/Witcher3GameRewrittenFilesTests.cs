@@ -327,7 +327,7 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
         await Synchronizer.Synchronize(Refresh(loadout));
         // The vanilla store is in the file store, as it is once an earlier apply backed it up.
         var vanilla = Encoding.UTF8.GetBytes("vanilla metadata store");
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(MetadataStore, new MemoryStream(vanilla)), vanilla.xxHash3(), Size.FromLong(vanilla.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(MetadataStore, new MemoryStream(vanilla)), FileIdentity.XxHash3(vanilla.xxHash3()), Size.FromLong(vanilla.Length))]);
         await TheGameRunsOnce();
 
         await Synchronizer.ResetToOriginalGameState(GameInstallation, GameInstallation.LocatorResult.LocatorIds.ToArray());

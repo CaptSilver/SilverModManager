@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Hashes;
 using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -103,7 +104,7 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
         nestedLibraryFile.TryGetAsLibraryArchive(out _).Should().BeFalse();
         
         // File should be available in the file store
-        var isStored = await _fileStore.HaveFile(nestedLibraryFile.Hash);
+        var isStored = await _fileStore.HaveFile(FileIdentity.XxHash3(nestedLibraryFile.Hash));
         isStored.Should().BeTrue();
         
         // print the contents of the parent archive
@@ -116,7 +117,7 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
         var result = new StringBuilder();
         foreach (var entry in archive.Children.OrderBy(x => x.Path))
         {
-            result.AppendLine($"{entry.Path} - {entry.AsLibraryFile().Size} -  {entry.AsLibraryFile().Hash} - Stored : {await _fileStore.HaveFile(entry.AsLibraryFile().Hash)}");
+            result.AppendLine($"{entry.Path} - {entry.AsLibraryFile().Size} -  {entry.AsLibraryFile().Hash} - Stored : {await _fileStore.HaveFile(FileIdentity.XxHash3(entry.AsLibraryFile().Hash))}");
         }
 
         return result.ToString();

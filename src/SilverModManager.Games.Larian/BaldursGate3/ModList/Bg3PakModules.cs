@@ -27,7 +27,7 @@ namespace SilverModManager.Games.Larian.BaldursGate3.ModList;
 /// </summary>
 public sealed class Bg3PakModules
 {
-    private readonly IResourceLoader<Hash, Outcome<LspkPackageFormat.PakMetaData>> _metadataPipeline;
+    private readonly IResourceLoader<FileIdentity, Outcome<LspkPackageFormat.PakMetaData>> _metadataPipeline;
     private readonly ILogger<Bg3PakModules> _logger;
 
     // The result is null for a pak that cannot be read, so it is not opened again until its content changes.
@@ -91,7 +91,7 @@ public sealed class Bg3PakModules
     {
         try
         {
-            var resource = await _metadataPipeline.LoadResourceAsync(data.Identity.XxHash3(), token);
+            var resource = await _metadataPipeline.LoadResourceAsync(data.Identity, token);
             if (resource.Data.Exception is { } error)
             {
                 _logger.LogWarning(error, "Unable to read the module of `{Name}`, it is left out of the mod list", data.Name);

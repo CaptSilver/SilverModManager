@@ -44,8 +44,8 @@ public static class DataStoreReferenceMarker
         MarkItemsMarkedAsBackups(archiveGc, db);
 
         // Bytes a running job stored but has not yet recorded in any of the above.
-        foreach (var hash in FileStorePins.Pinned())
-            archiveGc.AddReferencedFile(FileIdentity.XxHash3(hash));
+        foreach (var identity in FileStorePins.Pinned())
+            archiveGc.AddReferencedFile(identity);
     }
 
     private static void MarkGameIniCopies<TParsedHeaderState, TFileEntryWrapper>(ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWrapper> archiveGc, IDb db, Dictionary<LoadoutId, bool> isLoadoutValidDict)

@@ -1,11 +1,11 @@
 using JetBrains.Annotations;
-using NexusMods.Hashing.xxHash3;
 using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Sdk.Resources;
 
 [PublicAPI]
-public sealed class FileStoreLoader : IResourceLoader<Hash, byte[]>
+public sealed class FileStoreLoader : IResourceLoader<FileIdentity, byte[]>
 {
     private readonly IFileStore _fileStore;
 
@@ -18,7 +18,7 @@ public sealed class FileStoreLoader : IResourceLoader<Hash, byte[]>
     }
 
     /// <inheritdoc/>
-    public async ValueTask<Resource<byte[]>> LoadResourceAsync(Hash resourceIdentifier, CancellationToken cancellationToken)
+    public async ValueTask<Resource<byte[]>> LoadResourceAsync(FileIdentity resourceIdentifier, CancellationToken cancellationToken)
     {
         await using var stream = await _fileStore.GetFileStream(resourceIdentifier, cancellationToken);
 

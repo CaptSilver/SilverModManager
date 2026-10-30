@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using SilverModManager.Sdk.Hashes;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
@@ -245,7 +246,7 @@ public sealed class CleanupService(
         var missing = new List<ArchivedFileEntry>();
         foreach (var file in files.DistinctBy(f => f.Hash))
         {
-            if (!await fileStore.HaveFile(file.Hash)) missing.Add(new ArchivedFileEntry(new NativeFileStreamFactory(file.Source), file.Hash, file.Size));
+            if (!await fileStore.HaveFile(FileIdentity.XxHash3(file.Hash))) missing.Add(new ArchivedFileEntry(new NativeFileStreamFactory(file.Source), FileIdentity.XxHash3(file.Hash), file.Size));
         }
 
         await fileStore.BackupFiles(missing, deduplicate: false, cancellationToken);

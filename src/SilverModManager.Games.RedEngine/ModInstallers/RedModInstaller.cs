@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SilverModManager.Sdk.Hashes;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -33,7 +34,7 @@ public class RedModInstaller : ALibraryArchiveInstaller
     {
         try
         {
-            await using var stream = await _fileStore.GetFileStream(hash);
+            await using var stream = await _fileStore.GetFileStream(FileIdentity.XxHash3(hash));
             return await JsonSerializer.DeserializeAsync<RedModInfo>(stream);
         }
         catch (Exception ex)

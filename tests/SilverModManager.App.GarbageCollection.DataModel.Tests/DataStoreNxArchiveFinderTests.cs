@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,7 +43,7 @@ public class DataStoreNxArchiveFinderTests(NxFileStore fileStore, IConnection co
         {
             var records = CreateArchivedFileEntries(files);
             await fileStore.BackupFiles(records);
-            createdArchives.Add(GetArchivePath(records[0].Hash));
+            createdArchives.Add(GetArchivePath(records[0].Identity.XxHash3()));
         }
 
         // Act
@@ -64,7 +65,7 @@ public class DataStoreNxArchiveFinderTests(NxFileStore fileStore, IConnection co
 
             var entry = new ArchivedFileEntry(
                 new MemoryStreamFactory(RelativePath.FromUnsanitizedInput(fileName), new MemoryStream(data)),
-                hash,
+                FileIdentity.XxHash3(hash),
                 Size.FromLong(data.Length)
             );
 
@@ -76,7 +77,7 @@ public class DataStoreNxArchiveFinderTests(NxFileStore fileStore, IConnection co
 
     private AbsolutePath GetArchivePath(Hash hash)
     {
-        fileStore.TryGetLocation(hash, out var archivePath, out _).Should().BeTrue("Archive should exist");
+        fileStore.TryGetLocation(FileIdentity.XxHash3(hash), out var archivePath, out _).Should().BeTrue("Archive should exist");
         return archivePath;
     }
     

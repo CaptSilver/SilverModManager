@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using SilverModManager.Abstractions.Diagnostics;
 
@@ -78,7 +79,7 @@ public class Cyberpunk2077DiagnosticTests(ITestOutputHelper outputHelper) : ACyb
                 var contentArray = Encoding.UTF8.GetBytes(content);
                 AddFile(tx, loadout, pluginMod, gamePath, content);
                 filesToBackup.Add(new ArchivedFileEntry(new MemoryStreamFactory(gamePath.FileName, new MemoryStream(contentArray)),
-                    contentArray.xxHash3(),
+                    FileIdentity.XxHash3(contentArray.xxHash3()),
                     Size.FromLong(contentArray.Length)));
                     
                 AddFile(tx, loadout, pluginMod, gamePath);

@@ -2,6 +2,7 @@ using System.Reactive.Linq;
 using System.Text;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.IO;
 using FluentAssertions;
@@ -81,7 +82,7 @@ public class Witcher3NonVanillaNoticeTests(ITestOutputHelper helper)
         };
         _ = new LoadoutItemGroupPriority.New(tx) { LoadoutId = loadout.LoadoutId, TargetId = group, Priority = ConflictPriority.From(priority) };
         var result = await tx.Commit();
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), hash, size)]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), size)]);
         return LoadoutItemGroupId.From(result[group.Value]);
     }
 

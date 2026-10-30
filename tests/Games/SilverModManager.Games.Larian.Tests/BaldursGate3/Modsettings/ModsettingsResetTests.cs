@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Games.Larian.BaldursGate3.Models;
@@ -77,7 +78,7 @@ public class ModsettingsResetTests(ITestOutputHelper helper) : ModsettingsFixtur
         // What an earlier version left behind: the file ingested as an ordinary overrides row.
         var bytes = await OnDisk(ModsettingsPath).ReadAllBytesAsync();
         var hash = bytes.xxHash3();
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("modsettings.lsx", new MemoryStream(bytes)), hash, Size.FromLong(bytes.Length))]);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("modsettings.lsx", new MemoryStream(bytes)), FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length))]);
         var overrides = LoadoutOverridesGroup.FindByOverridesFor(Connection.Db, loadout.Id).Single();
         using (var tx = Connection.BeginTransaction())
         {
