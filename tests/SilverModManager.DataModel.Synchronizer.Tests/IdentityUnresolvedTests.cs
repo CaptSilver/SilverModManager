@@ -1,7 +1,10 @@
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
+using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.FileHashes;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
@@ -54,5 +57,27 @@ public class IdentityUnresolvedTests(ITestOutputHelper testOutputHelper) : ACybe
     {
         Unresolved(new SyncNode { Disk = Part(Sha1) }).Should().BeFalse();
         Unresolved(new SyncNode { Disk = Part(Sha1), Previous = Part(Sha1) }).Should().BeFalse();
+    }
+
+    [Fact]
+    public void ATreeOfUnrecordedMixedNodes_AsksTheIndexPerKindNotPerNode()
+    {
+        const int nodes = 400;
+        var tree = new Dictionary<GamePath, SyncNode>();
+        for (var i = 0; i < nodes; i++)
+        {
+            var sha1 = FileIdentity.Sha1(Sha1Value.FromHex(i.ToString("x8").PadLeft(40, 'A')));
+            var xxHash3 = FileIdentity.XxHash3(Hash.From(0xBEEF0000UL + (ulong)i));
+            tree[new GamePath(LocationId.Game, $"bin/x64/unrecorded{i}.dat")] = new SyncNode { Disk = Part(sha1), Previous = Part(sha1), Loadout = Part(xxHash3) };
+        }
+
+        var resolver = (RecordedDigestResolver)ServiceProvider.GetRequiredService<IFileIdentityResolver>();
+        var before = resolver.QueriesIssued;
+
+        Synchronizer.ProcessSyncTree(tree);
+
+        tree.Values.Should().OnlyContain(n => n.IdentityUnresolved);
+        // Two kinds (SHA-1 and xxHash3) in each of the two hash databases the service lists.
+        (resolver.QueriesIssued - before).Should().BeLessThanOrEqualTo(4);
     }
 }

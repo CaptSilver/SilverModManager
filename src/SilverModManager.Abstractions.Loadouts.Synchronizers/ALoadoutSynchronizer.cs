@@ -234,7 +234,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         MergeStates(latestDiskState, previousDiskState, syncTree);
-        NameTheSameBytesByOneKind(syncTree, _identityResolver.Scoped());
+        NameTheSameBytesByOneKind(syncTree, _identityResolver.Scoped(IdentitiesToResolve(syncTree)));
         AdoptGameInstalledFiles(syncTree, loadout);
         LeaveUserProtectedFilesAlone(syncTree, loadout);
         return syncTree;
@@ -271,6 +271,26 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
     }
 
+    /// <summary>
+    /// The identities a pass over <paramref name="tree"/> may ask the recorded digests about: every part of a node whose
+    /// parts are named by different kinds, and any SHA-1 (whose archive key is a recorded digest). Handing them to the
+    /// resolver up front lets it answer for all of them with one query per hash kind.
+    /// </summary>
+    private static IEnumerable<FileIdentity> IdentitiesToResolve(Dictionary<GamePath, SyncNode> tree)
+    {
+        foreach (var node in tree.Values)
+        {
+            var mixed = HasMixedKinds(node);
+            if (Asked(node.Disk.Identity, mixed)) yield return node.Disk.Identity;
+            // Most nodes carry the same identity on disk and in the previous state; the resolver sorts and dedupes, but
+            // handing it the repeat only to throw it away costs a list slot per node.
+            if (Asked(node.Previous.Identity, mixed) && !node.Previous.Identity.Equals(node.Disk.Identity)) yield return node.Previous.Identity;
+            if (Asked(node.Loadout.Identity, mixed)) yield return node.Loadout.Identity;
+        }
+
+        static bool Asked(FileIdentity identity, bool mixed) => !identity.IsNone && (mixed || identity.Kind == HashKind.Sha1);
+    }
+
     private static bool HasMixedKinds(SyncNode node)
     {
         var kind = HashKind.None;
@@ -287,29 +307,30 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private void RenameBySharedRelation(IFileIdentityResolver resolver, GamePath path, ref SyncNodePart part, SyncNodePart first, SyncNodePart second)
     {
         if (part.Identity.Kind != HashKind.Sha1) return;
-        foreach (var other in new[] { first, second })
-        {
-            if (other.Identity.Kind != HashKind.XxHash3 || resolver.Resolve(part.Identity, other.Identity, part.Size) != IdentityMatch.Same) continue;
-
-            part = part with { Identity = other.Identity };
-            return;
-        }
+        if (JoinsByRelation(resolver, part, first)) { part = part with { Identity = first.Identity }; return; }
+        if (JoinsByRelation(resolver, part, second)) { part = part with { Identity = second.Identity }; return; }
 
         // Left as a SHA-1 beside an xxHash3 part: the pair stays mixed and reads as changed.
         if (!Logger.IsEnabled(LogLevel.Trace)) return;
-        foreach (var other in new[] { first, second })
+        TraceUnjoined(resolver, path, part, first);
+        TraceUnjoined(resolver, path, part, second);
+    }
+
+    private static bool JoinsByRelation(IFileIdentityResolver resolver, SyncNodePart sha1Part, SyncNodePart other)
+        => other.Identity.Kind == HashKind.XxHash3 && resolver.Resolve(sha1Part.Identity, other.Identity, sha1Part.Size) == IdentityMatch.Same;
+
+    private void TraceUnjoined(IFileIdentityResolver resolver, GamePath path, SyncNodePart part, SyncNodePart other)
+    {
+        if (other.Identity.IsNone || other.Identity.Kind == HashKind.Sha1) return;
+        if (resolver.Resolve(part.Identity, other.Identity, part.Size) == IdentityMatch.Different)
         {
-            if (other.Identity.IsNone || other.Identity.Kind == HashKind.Sha1) continue;
-            if (resolver.Resolve(part.Identity, other.Identity, part.Size) == IdentityMatch.Different)
-            {
-                Logger.LogTrace("The relations of {Size} bytes name other bytes than {Identity} for the {OtherKind} part {OtherIdentity} of `{Path}`",
-                    part.Size, part.Identity, other.Identity.Kind, other.Identity, path);
-            }
-            else
-            {
-                Logger.LogTrace("No relation of {Size} bytes joins the {OtherKind} part {OtherIdentity} of `{Path}` to {Identity}; searched {Databases} hash database(s)",
-                    part.Size, other.Identity.Kind, other.Identity, path, part.Identity, _fileHashService.Databases.Count);
-            }
+            Logger.LogTrace("The relations of {Size} bytes name other bytes than {Identity} for the {OtherKind} part {OtherIdentity} of `{Path}`",
+                part.Size, part.Identity, other.Identity.Kind, other.Identity, path);
+        }
+        else
+        {
+            Logger.LogTrace("No relation of {Size} bytes joins the {OtherKind} part {OtherIdentity} of `{Path}` to {Identity}; searched {Databases} hash database(s)",
+                part.Size, other.Identity.Kind, other.Identity, path, part.Identity, _fileHashService.Databases.Count);
         }
     }
 
@@ -599,7 +620,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <inheritdoc />
     public void ProcessSyncTree(Dictionary<GamePath, SyncNode> tree)
     {
-        var resolver = _identityResolver.Scoped();
+        var resolver = _identityResolver.Scoped(IdentitiesToResolve(tree));
         foreach (var path in tree.Keys)
         {
             // TODO: sucks that we have to do a lookup here, but we have no way to get the ref to the value otherwise
@@ -642,9 +663,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             diskPrev: diskPrev,
             prevLoadout: prevLoadout,
             diskLoadout: diskLoadout,
-            diskArchived: item.HaveDisk && HaveArchive(item.Disk.Identity, item.Disk.Size),
-            prevArchived: item.HavePrevious && HaveArchive(item.Previous.Identity, item.Previous.Size),
-            loadoutArchived: item.HaveLoadout && HaveArchive(item.Loadout.Identity, item.Loadout.Size),
+            diskArchived: item.HaveDisk && HaveArchive(resolver, item.Disk.Identity, item.Disk.Size),
+            prevArchived: item.HavePrevious && HaveArchive(resolver, item.Previous.Identity, item.Previous.Size),
+            loadoutArchived: item.HaveLoadout && HaveArchive(resolver, item.Loadout.Identity, item.Loadout.Size),
             pathIsIgnored: IsIgnoredBackupPath(path),
             item.SourceItemType);
 
@@ -1600,15 +1621,23 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// kinds may be joined, because it holds digests of the same bytes.
     /// </summary>
     /// <param name="size">A relation of another size is not the same file.</param>
-    protected bool HaveArchive(FileIdentity identity, Size size)
+    protected bool HaveArchive(FileIdentity identity, Size size) => HaveArchive(_identityResolver, identity, size);
+
+    /// <summary>
+    /// <see cref="HaveArchive(FileIdentity, Size)"/> through <paramref name="resolver"/>, so a pass that holds a scoped
+    /// resolver puts its questions to the memo instead of the recorded digests.
+    /// </summary>
+    private bool HaveArchive(IFileIdentityResolver resolver, FileIdentity identity, Size size)
     {
-        return HaveArchiveAsync(identity, size).AsTask().Result;
+        return HaveArchiveAsync(resolver, identity, size).AsTask().Result;
     }
 
-    private async ValueTask<bool> HaveArchiveAsync(FileIdentity identity, Size size)
+    private ValueTask<bool> HaveArchiveAsync(FileIdentity identity, Size size) => HaveArchiveAsync(_identityResolver, identity, size);
+
+    private async ValueTask<bool> HaveArchiveAsync(IFileIdentityResolver resolver, FileIdentity identity, Size size)
     {
         if (identity.Kind == HashKind.XxHash3) return await _fileStore.HaveFile(identity);
-        return identity.Kind == HashKind.Sha1 && await _identityResolver.StoreKeyAsync(_fileStore, identity, size) is not null;
+        return identity.Kind == HashKind.Sha1 && await resolver.StoreKeyAsync(_fileStore, identity, size) is not null;
     }
 
     private static FileIdentity ParseIdentity(string? hex) => string.IsNullOrEmpty(hex) ? FileIdentity.None : FileIdentity.ParseHex(hex);
