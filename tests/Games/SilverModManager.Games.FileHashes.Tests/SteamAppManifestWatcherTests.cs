@@ -9,7 +9,7 @@ using SilverModManager.Sdk.Games;
 namespace SilverModManager.Games.FileHashes.Tests;
 
 /// <summary>
-/// A changed appmanifest under a watched library leads to one look at each Steam game, after the debounce. A real
+/// A changed appmanifest under a watched library leads to one look at the game it belongs to, after the debounce. A real
 /// temp folder and a short debounce; the reaction runs for real over a locator stand-in that counts the looks.
 /// </summary>
 public sealed class SteamAppManifestWatcherTests : IDisposable
@@ -24,6 +24,7 @@ public sealed class SteamAppManifestWatcherTests : IDisposable
     public SteamAppManifestWatcherTests()
     {
         _steamapps = Path.Combine(_root, "steamapps");
+        _registry.TryGetMetadata(Arg.Any<GameInstallation>(), out Arg.Any<GameInstallMetadata.ReadOnly>()).Returns(true);
         Directory.CreateDirectory(Path.Combine(_steamapps, "common", "Game"));
     }
 
@@ -122,7 +123,7 @@ public sealed class SteamAppManifestWatcherTests : IDisposable
         var second = Path.Combine(_root, "second", "steamapps");
         Directory.CreateDirectory(Path.Combine(second, "common", "Other"));
         var first = Installation(GameStore.Steam, Path.Combine(_steamapps, "common", "Game"));
-        var added = Installation(GameStore.Steam, Path.Combine(second, "common", "Other"));
+        var added = Installation(GameStore.Steam, Path.Combine(second, "common", "Other"), storeIdentifier: "2");
         var installations = new[] { first };
         _registry.LocateGameInstallations().Returns(_ => [.. installations]);
         var lookedAt = new System.Collections.Concurrent.ConcurrentBag<string>();
@@ -219,7 +220,7 @@ public sealed class SteamAppManifestWatcherTests : IDisposable
         while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(20);
     }
 
-    private GameInstallation Installation(GameStore store, string gamePath)
+    private GameInstallation Installation(GameStore store, string gamePath, string storeIdentifier = "1")
     {
         var path = FileSystem.Shared.FromUnsanitizedFullPath(gamePath);
         var result = new GameLocatorResult
@@ -227,7 +228,7 @@ public sealed class SteamAppManifestWatcherTests : IDisposable
             Game = Substitute.For<SubstitutableGame>(),
             Path = path,
             Store = store,
-            StoreIdentifier = "1",
+            StoreIdentifier = storeIdentifier,
             LocatorIds = [LocatorId.From("1")],
             Locator = _locator,
             StoreBuildId = "b",
