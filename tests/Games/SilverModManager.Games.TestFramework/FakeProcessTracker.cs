@@ -36,15 +36,6 @@ public class FakeProcessTracker : IProcessTracker
     public bool SteamRunning { get; set; }
 
     /// <summary>
-    /// How many times <see cref="IsSteamRunning"/> was asked. A test that drives a fake clock waits for the
-    /// first one: until then the code under test is still setting up in real time, and fake time passing
-    /// during that setup would count against the timeout being measured.
-    /// </summary>
-    public int SteamQueries => Volatile.Read(ref _steamQueries);
-
-    private int _steamQueries;
-
-    /// <summary>
     /// What <see cref="FindReaperForApp"/> returns.
     /// </summary>
     public Func<uint, TrackedProcess?> ReaperForApp { get; set; } = _ => null;
@@ -68,11 +59,7 @@ public class FakeProcessTracker : IProcessTracker
     public IReadOnlyList<TrackedProcess> FindByPrefix(AbsolutePath prefix) => ByPrefix(prefix);
 
     /// <inheritdoc />
-    public bool IsSteamRunning()
-    {
-        Interlocked.Increment(ref _steamQueries);
-        return SteamRunning;
-    }
+    public bool IsSteamRunning() => SteamRunning;
 
     /// <inheritdoc />
     public TrackedProcess? FindReaperForApp(uint appId) => ReaperForApp(appId);

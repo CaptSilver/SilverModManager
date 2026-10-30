@@ -374,34 +374,52 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
         public TimeSpan DefaultSteamStartTimeout => SteamStartTimeout;
     }
 
+    // A fake clock that counts the timers the code under test creates. Every wait in the tool is one Task.Delay, which
+    // is one timer, so the count says how many waits have begun without the test guessing at real-time scheduling.
+    private sealed class SteppedClock : FakeTimeProvider
+    {
+        private int _timers;
+        public int TimersCreated => Volatile.Read(ref _timers);
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = base.CreateTimer(callback, state, dueTime, period);
+            Interlocked.Increment(ref _timers);
+            return timer;
+        }
+    }
+
     // Runs the tool while stepping the fake clock until it finishes, and returns how much fake time that took.
-    private Task<TimeSpan> RunOnFakeClock(Loadout.ReadOnly loadout, FakeTimeProvider clock, Action<TimeSpan>? atEachStep = null)
+    private Task<TimeSpan> RunOnFakeClock(Loadout.ReadOnly loadout, SteppedClock clock, Action<TimeSpan>? atEachStep = null)
         => RunOnFakeClock(loadout, new ClockedTool(ServiceProvider, Game, clock), atEachStep);
 
+    // One step of fake time per poll of the tool: the clock only moves once the tool has gone to sleep on it, so the
+    // time measured is the number of polls times the poll interval and no thread-pool delay can add to it. The tool
+    // synchronizes the loadout in real time before its first wait, and the clock stays still until that wait begins.
     private async Task<TimeSpan> RunOnFakeClock(Loadout.ReadOnly loadout, ClockedTool tool, Action<TimeSpan>? atEachStep = null)
     {
-        var clock = (FakeTimeProvider)tool.ClockForTest;
+        var clock = (SteppedClock)tool.ClockForTest;
         var run = Task.Run(() => tool.Execute(loadout, CancellationToken.None, []));
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(20);
-
-        // The tool synchronizes the loadout before it starts waiting, which takes as long as the disk and the
-        // machine's load make it. Fake time must not pass meanwhile, or the wait starts partway through its own
-        // timeout and the measured time depends on how slow the setup was. The first question to the process
-        // tracker is the start of the wait.
-        while (!run.IsCompleted && Tracker.SteamQueries == 0)
-        {
-            if (DateTime.UtcNow > deadline) throw new TimeoutException("the launch never started waiting");
-            await Task.Delay(1);
-        }
-
+        // Nothing moves the clock until the first wait has begun, so this is the start of the measured time.
         var begin = clock.GetUtcNow();
-        deadline = DateTime.UtcNow + TimeSpan.FromSeconds(20);
-        while (!run.IsCompleted)
+        var slept = 0;
+
+        while (true)
         {
-            if (DateTime.UtcNow > deadline) throw new TimeoutException("the launch never ended");
-            clock.Advance(TimeSpan.FromMilliseconds(300));
-            atEachStep?.Invoke(clock.GetUtcNow() - begin);
-            await Task.Delay(1);
+            while (!run.IsCompleted && clock.TimersCreated == slept)
+            {
+                if (DateTime.UtcNow > deadline) throw new TimeoutException("the launch neither waited nor ended");
+                await Task.Delay(1);
+            }
+            if (run.IsCompleted) break;
+
+            slept = clock.TimersCreated;
+            deadline = DateTime.UtcNow + TimeSpan.FromSeconds(20);
+            var step = TimeSpan.FromMilliseconds(300);
+            // Told before the clock moves: the poll the advance wakes reads what the callback set.
+            atEachStep?.Invoke(clock.GetUtcNow() + step - begin);
+            clock.Advance(step);
         }
         await run;
         return clock.GetUtcNow() - begin;
@@ -423,7 +441,7 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
         Tracker.SteamRunning = false;
         var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
 
-        var took = await RunOnFakeClock(loadout, new FakeTimeProvider());
+        var took = await RunOnFakeClock(loadout, new SteppedClock());
 
         took.Should().BeGreaterThanOrEqualTo(TimeSpan.FromMinutes(2)).And.BeLessThan(TimeSpan.FromMinutes(2.1));
         Notifier.Notifications.Should().ContainSingle().Which.Body.Should().Contain("within 2 minutes");
@@ -436,7 +454,7 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
         Tracker.SteamRunning = true;
         var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
 
-        var took = await RunOnFakeClock(loadout, new FakeTimeProvider());
+        var took = await RunOnFakeClock(loadout, new SteppedClock());
 
         took.Should().BeGreaterThanOrEqualTo(TimeSpan.FromSeconds(60)).And.BeLessThan(TimeSpan.FromSeconds(62));
         Notifier.Notifications.Should().ContainSingle().Which.Body.Should().Contain("within 1 minute");
@@ -453,7 +471,7 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
         Session.WrapperActive = () => reaperReturned == 0;
         var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
 
-        await RunOnFakeClock(loadout, new FakeTimeProvider(), at => elapsed = at);
+        await RunOnFakeClock(loadout, new SteppedClock(), at => elapsed = at);
 
         Notifier.Notifications.Should().BeEmpty();
         reaperReturned.Should().BeGreaterThan(0);
@@ -469,7 +487,7 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
         // Steam's install step runs for 3 minutes, three times the wait for a game; only then does the game start.
         Tracker.InstallStepForApp = id => id == AppId && elapsed < TimeSpan.FromMinutes(3);
         Tracker.ReaperForApp = id => id == AppId && elapsed >= TimeSpan.FromMinutes(3) && reaperReturned++ < 4 ? new TrackedProcess(77, "reaper") : null;
-        var tool = new ClockedTool(ServiceProvider, Game, new FakeTimeProvider());
+        var tool = new ClockedTool(ServiceProvider, Game, new SteppedClock());
         var seen = new List<bool>();
         using var subscription = tool.RunningInstallStep.Subscribe(v => { lock (seen) seen.Add(v); });
         var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
@@ -490,9 +508,10 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
         Tracker.InstallStepForApp = _ => elapsed < TimeSpan.FromSeconds(100);
         var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
 
-        var took = await RunOnFakeClock(loadout, new ClockedTool(ServiceProvider, Game, new FakeTimeProvider()), at => elapsed = at);
+        var took = await RunOnFakeClock(loadout, new ClockedTool(ServiceProvider, Game, new SteppedClock()), at => elapsed = at);
 
-        took.Should().BeGreaterThanOrEqualTo(TimeSpan.FromSeconds(160)).And.BeLessThan(TimeSpan.FromSeconds(162));
+        // The clock restarts at the last poll that saw the install step, which is one poll before it ended.
+        took.Should().BeGreaterThanOrEqualTo(TimeSpan.FromSeconds(160) - TimeSpan.FromMilliseconds(300)).And.BeLessThan(TimeSpan.FromSeconds(161));
         Notifier.Notifications.Should().ContainSingle().Which.Body.Should().Contain("within 1 minute");
     }
 
