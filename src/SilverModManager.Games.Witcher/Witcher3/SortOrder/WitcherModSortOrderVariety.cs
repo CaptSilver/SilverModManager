@@ -339,7 +339,7 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
         catch (InvalidOperationException ex) when (ex.Message.StartsWith(ChangedMessage, StringComparison.Ordinal))
         {
             _logger.LogWarning(ex, "The Witcher 3 load order {SortOrderId} changed during a move", sortOrderId);
-            throw new InvalidOperationException("The load order changed while you were moving it; try again.");
+            throw new SortOrderChangedException("The load order changed while you were moving it; try again.");
         }
 
         return true;

@@ -446,6 +446,36 @@ public class PluginSortOrderVarietyTests(ITestOutputHelper helper)
         Names(variety.GetSortOrderItems(id, Db)).Should().Equal([.. VanillaMasters, "B.esp", "A.esp"]);
     }
 
+    [Fact]
+    public async Task AMoveReadBeforeASwitchWasCommitted_IsAppliedToTheLatestOrder()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        await AddMod(loadout, "Mods", "A.esp", "B.esp", "C.esp");
+        await variety.ReconcileSortOrder(id);
+        var before = Db;
+        await variety.SetEnabled(id, Key("A.esp"), false);
+
+        await variety.MoveItems(id, [Key("C.esp")], Key("A.esp"), TargetRelativePosition.BeforeTarget, before);
+
+        Names(variety.GetSortOrderItems(id, Db)).Should().Equal([.. VanillaMasters, "C.esp", "A.esp", "B.esp"]);
+        StoredRows(id).Single(r => r.PluginName == "A.esp").IsEnabled.Should().BeFalse("the switch committed meanwhile is kept");
+    }
+
+    [Fact]
+    public async Task AMoveDeltaReadBeforeASwitchWasCommitted_IsAppliedToTheLatestOrder()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        await AddMod(loadout, "Mods", "A.esp", "B.esp");
+        await variety.ReconcileSortOrder(id);
+        var before = Db;
+        await variety.SetEnabled(id, Key("B.esp"), false);
+
+        await variety.MoveItemDelta(id, Key("A.esp"), 1, before);
+
+        Names(variety.GetSortOrderItems(id, Db)).Should().Equal([.. VanillaMasters, "B.esp", "A.esp"]);
+        StoredRows(id).Single(r => r.PluginName == "B.esp").IsEnabled.Should().BeFalse();
+    }
+
     private static TxId SortOrderTx(SortOrderId id, IDb db) =>
         new[] { db.Get(id).Max(d => d.T) }.Concat(db.Datoms(SortOrderItem.ParentSortOrder, id).Select(d => db.Get(d.E).Max(x => x.T))).Max();
 

@@ -10,6 +10,7 @@ using SilverModManager.Games.Witcher.Witcher3;
 using SilverModManager.Games.Witcher.Witcher3.Models;
 using SilverModManager.Games.Witcher.Witcher3.SortOrder;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -485,6 +486,47 @@ public class WitcherModSortOrderVarietyTests(ITestOutputHelper helper)
         Shown().Should().Equal(Merged, "modA", "modB");
     }
 
+    [Fact]
+    public async Task AMoveReadFromAnOlderRevisionThanACommittedSwitch_StillMakesTheMove()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        var a = await AddMod(loadout, "A", 1, "Mods/modA/a.ws");
+        var b = await AddMod(loadout, "B", 2, "Mods/modB/b.ws");
+        await AddMod(loadout, "C", 3, "Mods/modC/c.ws");
+        await variety.ReconcileSortOrder(id);
+        var staleDb = Db;
+
+        // The app (a background reconcile, a switch) commits to the order after the drag read it.
+        await variety.SetEnabled(id, Key("modC"), false);
+
+        await variety.MoveItems(id, [Key("modA")], Key("modB"), TargetRelativePosition.BeforeTarget, staleDb);
+
+        Folders(variety.GetSortOrderItems(id, Db)).Should().Equal(Merged, "modC", "modA", "modB");
+        PriorityOf(a).Should().BeGreaterThan(PriorityOf(b), "A was moved before B");
+        variety.StoredOrder(Fresh(loadout)).Should().Contain(("modC", false), "the switch committed meanwhile is kept");
+    }
+
+    [Fact]
+    public async Task AMoveWhoseDropTargetVanishedMeanwhile_IsDroppedWithoutChangingTheOrder()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        await AddMod(loadout, "A", 1, "Mods/modA/a.ws");
+        var b = await AddMod(loadout, "B", 2, "Mods/modB/b.ws");
+        await variety.ReconcileSortOrder(id);
+        var staleDb = Db;
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Delete(b, recursive: true);
+            await tx.Commit();
+        }
+        await variety.ReconcileSortOrder(id);
+
+        await variety.MoveItems(id, [Key("modA")], Key("modB"), TargetRelativePosition.BeforeTarget, staleDb);
+
+        Folders(variety.GetSortOrderItems(id, Db)).Should().Equal(Merged, "modA");
+    }
+
     private async Task<(WitcherModSortOrderVariety Variety, SortOrderId Id, LoadoutItemGroupId Shared, LoadoutItemGroupId Other)> SharedModSetup()
     {
         var (loadout, variety, id) = await Reconciled();
@@ -577,7 +619,7 @@ public class WitcherModSortOrderVarietyTests(ITestOutputHelper helper)
     }
 
     [Fact]
-    public async Task ADragBuiltOnAnOutdatedRevision_IsRefusedWithAReadableMessage()
+    public async Task ADragBuiltOnAnOutdatedRevision_IsAppliedToTheLatestOrderAndKeepsTheSwitchMadeMeanwhile()
     {
         var (loadout, variety, id) = await Reconciled();
         var a = await AddMod(loadout, "A", 1, "Mods/modA/a.ws");
@@ -586,10 +628,9 @@ public class WitcherModSortOrderVarietyTests(ITestOutputHelper helper)
         var outdated = Db;
         await variety.SetEnabled(id, Key("modB"), false);
 
-        var act = async () => await variety.MoveItems(id, [Key("modA")], Key("modB"), TargetRelativePosition.BeforeTarget, outdated);
+        await variety.MoveItems(id, [Key("modA")], Key("modB"), TargetRelativePosition.BeforeTarget, outdated);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage("The load order changed while you were moving it; try again.");
-        PriorityOf(a).Should().BeLessThan(PriorityOf(b));
-        variety.StoredOrder(Fresh(loadout)).Should().Equal((Merged, true), ("modB", false), ("modA", true));
+        PriorityOf(a).Should().BeGreaterThan(PriorityOf(b));
+        variety.StoredOrder(Fresh(loadout)).Should().Equal((Merged, true), ("modA", true), ("modB", false));
     }
 }

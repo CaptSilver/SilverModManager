@@ -117,122 +117,131 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
     public abstract IReadOnlyList<TReactiveSortItem> GetSortOrderItems(SortOrderId sortOrderId, IDb? db);
 
     /// <inheritdoc />
-    public async Task MoveItems(
+    public Task MoveItems(
         SortOrderId sortOrderId,
         TKey[] itemsToMove,
         TKey dropTargetItem,
         TargetRelativePosition relativePosition,
         IDb? db = null,
-        CancellationToken token = default)
-    {
-        var dbToUse = db ?? Connection.Db;
-        // retrieve the sorting from the db
-        var startingOrder = RetrieveSortOrder(sortOrderId, dbToUse);
-        
-        // prepare the data for moving
-        var sortedSourceItems = itemsToMove
-            .Select(key => startingOrder.FirstOrOptional(item => item.Key.Equals(key)))
-            .Where(item => {
-                if (!item.HasValue)
-                    _logger.LogWarning("Unable to move Item: {ItemKey} not found in sort order {SortOrderId}", item.Value.Key, sortOrderId);
-                return item.HasValue;
-            })
-            .Select(item => item.Value)
-            .OrderBy(item => item.SortIndex)
-            .ToArray();
-        
-        var stagingList = startingOrder.ToList();
-        
-        // Determine the index of the drop target item
-        var dropTargetIndex = stagingList.FindIndex(item => item.Key.Equals(dropTargetItem));
-        if (dropTargetIndex == -1)
+        CancellationToken token = default) =>
+        MoveWithRetry(sortOrderId, db, token, startingOrder =>
         {
-            _logger.LogWarning("Drop target item {DropTargetItem} not found in sort order {SortOrderId}", dropTargetItem, sortOrderId);
-            return;
-        }
-        
-        var targetIndex = relativePosition == TargetRelativePosition.BeforeTarget ? dropTargetIndex : dropTargetIndex + 1;
-        
-        var insertPositionIndex = targetIndex;
-        
-        // Adjust the insert position index to account for any items before the target index that are also being moved
-        foreach (var item in sortedSourceItems)
-        {
-            if (!(item.SortIndex < targetIndex))
-                break;
-            insertPositionIndex--;
-        }
-        
-        // Remove items from the staging list and insert them at the new adjusted position
-        stagingList.Remove(sortedSourceItems);
-        stagingList.InsertRange(insertPositionIndex, sortedSourceItems);
-        
-        // Update the sort index of all items
-        for (var i = 0; i < stagingList.Count; i++)
-        {
-            var item = stagingList[i];
-            item.SortIndex = i;
-        }
-        
-        if (token.IsCancellationRequested) return;
-        
-        if (!CanApplyOrder(stagingList))
-        {
-            _logger.LogDebug("Move in sort order {SortOrderId} rejected by the variety", sortOrderId);
-            return;
-        }
+            // prepare the data for moving
+            var sortedSourceItems = new List<TItemSortData>();
+            foreach (var key in itemsToMove)
+            {
+                var found = startingOrder.FirstOrOptional(item => item.Key.Equals(key));
+                if (found.HasValue)
+                    sortedSourceItems.Add(found.Value);
+                else
+                    _logger.LogWarning("Unable to move Item: {ItemKey} not found in sort order {SortOrderId}", key, sortOrderId);
+            }
+            sortedSourceItems = sortedSourceItems.OrderBy(item => item.SortIndex).ToList();
 
-        // TODO: Should we retry if the transaction fails due to a data race?
-        await TryPersistSortOrder(sortOrderId, stagingList, dbToUse, token);
-    }
+            var stagingList = startingOrder.ToList();
+
+            // Determine the index of the drop target item
+            var dropTargetIndex = stagingList.FindIndex(item => item.Key.Equals(dropTargetItem));
+            if (dropTargetIndex == -1)
+            {
+                _logger.LogWarning("Drop target item {DropTargetItem} not found in sort order {SortOrderId}", dropTargetItem, sortOrderId);
+                return null;
+            }
+
+            var targetIndex = relativePosition == TargetRelativePosition.BeforeTarget ? dropTargetIndex : dropTargetIndex + 1;
+
+            var insertPositionIndex = targetIndex;
+
+            // Adjust the insert position index to account for any items before the target index that are also being moved
+            foreach (var item in sortedSourceItems)
+            {
+                if (!(item.SortIndex < targetIndex))
+                    break;
+                insertPositionIndex--;
+            }
+
+            // Remove items from the staging list and insert them at the new adjusted position
+            stagingList.Remove(sortedSourceItems);
+            stagingList.InsertRange(insertPositionIndex, sortedSourceItems);
+            return stagingList;
+        });
 
     /// <inheritdoc />
-    public async Task MoveItemDelta(SortOrderId sortOrderId, TKey sourceItem, int delta, IDb? db = null, CancellationToken token = default)
-    {
-        var dbToUse = db ?? Connection.Db;
-        
-        // retrieve the sorting from the db
-        var startingOrder = RetrieveSortOrder(sortOrderId, dbToUse);
-        var stagingList = startingOrder.ToList();
-        
-        // get the index of the source item
-        var foundItem = stagingList.FirstOrOptional(item => item.Key.Equals(sourceItem));
-        if (!foundItem.HasValue)
+    public Task MoveItemDelta(SortOrderId sortOrderId, TKey sourceItem, int delta, IDb? db = null, CancellationToken token = default) =>
+        MoveWithRetry(sortOrderId, db, token, startingOrder =>
         {
-            _logger.LogWarning("Source item {SourceItem} not found in sort order {SortOrderId}", sourceItem, sortOrderId);
-            return;
-        }
-        var sortOrderItem = foundItem.Value;
-        var currentIndex = sortOrderItem.SortIndex;
-        
-        var newIndex = currentIndex + delta;
-        
-        // Ensure the new index is within bounds
-        newIndex = Math.Clamp(newIndex, 0, stagingList.Count - 1);
-        if (newIndex == currentIndex) return;
-        
-        
-        // Move the item in the list
-        stagingList.RemoveAt(currentIndex);
-        stagingList.Insert(newIndex, sortOrderItem);
-            
-        // Update the sort index of all items
-        for (var i = 0; i < stagingList.Count; i++)
-        {
-            var item = stagingList[i];
-            item.SortIndex = i;
-        }
-            
-        if (token.IsCancellationRequested) return;
-        
-        if (!CanApplyOrder(stagingList))
-        {
-            _logger.LogDebug("Move in sort order {SortOrderId} rejected by the variety", sortOrderId);
-            return;
-        }
+            var stagingList = startingOrder.ToList();
 
-        // TODO: Should we retry if the transaction fails due to a data race?
-        await TryPersistSortOrder(sortOrderId, stagingList, dbToUse, token);
+            // get the index of the source item
+            var foundItem = stagingList.FirstOrOptional(item => item.Key.Equals(sourceItem));
+            if (!foundItem.HasValue)
+            {
+                _logger.LogWarning("Source item {SourceItem} not found in sort order {SortOrderId}", sourceItem, sortOrderId);
+                return null;
+            }
+            var sortOrderItem = foundItem.Value;
+            var currentIndex = sortOrderItem.SortIndex;
+
+            // Ensure the new index is within bounds
+            var newIndex = Math.Clamp(currentIndex + delta, 0, stagingList.Count - 1);
+            if (newIndex == currentIndex) return null;
+
+            stagingList.RemoveAt(currentIndex);
+            stagingList.Insert(newIndex, sortOrderItem);
+            return stagingList;
+        });
+
+    private const int MoveAttempts = 4;
+
+    /// <summary>
+    /// Applies a move to the stored order. The first attempt reads from <paramref name="db"/>; when something
+    /// committed to the sort order since (a background reconcile, a switch), the persist is rejected rather than
+    /// overwriting it, and the move is worked out again from the latest order. What the user asked for is a position
+    /// relative to other items, so it is re-applied to whatever the order is now; it is dropped only when the items
+    /// it names are gone.
+    /// </summary>
+    /// <param name="plan">Gives the complete new order for the given current one, or null when there is nothing to do.</param>
+    private async Task MoveWithRetry(
+        SortOrderId sortOrderId,
+        IDb? db,
+        CancellationToken token,
+        Func<IReadOnlyList<TItemSortData>, List<TItemSortData>?> plan)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            var last = attempt == MoveAttempts;
+            var dbToUse = attempt == 1 ? db ?? Connection.Db : Connection.Db;
+
+            var staging = plan(RetrieveSortOrder(sortOrderId, dbToUse));
+            if (staging is null) return;
+
+            // Update the sort index of all items
+            for (var i = 0; i < staging.Count; i++)
+                staging[i].SortIndex = i;
+
+            if (token.IsCancellationRequested) return;
+
+            if (!CanApplyOrder(staging))
+            {
+                _logger.LogDebug("Move in sort order {SortOrderId} rejected by the variety", sortOrderId);
+                return;
+            }
+
+            try
+            {
+                if (await TryPersistSortOrder(sortOrderId, staging, dbToUse, token)) return;
+            }
+            catch (SortOrderChangedException) when (!last)
+            {
+            }
+
+            if (last)
+            {
+                _logger.LogWarning("Move in sort order {SortOrderId} was not stored: the order kept changing", sortOrderId);
+                return;
+            }
+            _logger.LogDebug("Sort order {SortOrderId} changed during a move, applying it to the latest order ({Attempt}/{Attempts})", sortOrderId, attempt, MoveAttempts);
+        }
     }
 
     /// <inheritdoc />
