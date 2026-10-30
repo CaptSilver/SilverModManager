@@ -3,6 +3,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.Games.AdvancedInstaller.UI.SelectLocation;
 
@@ -49,7 +50,7 @@ public partial class SelectableTreeEntryView : ReactiveUserControl<ISelectableTr
 
 
             // When state changes from Create to Editing or vice versa, update the view.
-            this.WhenAnyValue(x => x.ViewModel!.Status)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Status))
                 .Subscribe(UpdateView)
                 .DisposeWith(disposable);
         });

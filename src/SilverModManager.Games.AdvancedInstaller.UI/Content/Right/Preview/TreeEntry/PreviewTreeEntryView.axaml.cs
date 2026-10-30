@@ -2,6 +2,7 @@
 using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Controls.Trees.Common;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.Games.AdvancedInstaller.UI.Preview;
@@ -17,7 +18,7 @@ public partial class PreviewTreeEntryView : ReactiveUserControl<IPreviewTreeEntr
             // Initialize the view if the view model is not null
             this.WhenAnyValue(view => view.ViewModel)
                 .WhereNotNull()
-                .Subscribe(_ => { InitView(); })
+                .Subscribe(InitView)
                 .DisposeWith(disposable);
 
             this.BindCommand(ViewModel, vm => vm.RemoveMappingCommand,
@@ -29,28 +30,28 @@ public partial class PreviewTreeEntryView : ReactiveUserControl<IPreviewTreeEntr
                 .DisposeWith(disposable);
 
             // FolderMerged pill, only show if it is a folder and it is merged.
-            this.WhenAnyValue(view => view.ViewModel!.IsFolderMerged)
-                .Subscribe(isMerged => FolderMergedPill.IsVisible = isMerged && ViewModel!.IsDirectory)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsFolderMerged))
+                .Subscribe(isMerged => FolderMergedPill.IsVisible = isMerged && ViewModel is { IsDirectory: true })
                 .DisposeWith(disposable);
         });
     }
 
-    private void InitView()
+    private void InitView(IPreviewTreeEntryViewModel vm)
     {
-        FileNameTextBlock.Text = ViewModel!.DisplayName;
-        NewPill.IsVisible = ViewModel.IsNew;
-        DupeFolderPill.IsVisible = ViewModel.IsFolderDupe;
-        FolderMergedPill.IsVisible = ViewModel.IsFolderMerged && ViewModel.IsDirectory;
+        FileNameTextBlock.Text = vm.DisplayName;
+        NewPill.IsVisible = vm.IsNew;
+        DupeFolderPill.IsVisible = vm.IsFolderDupe;
+        FolderMergedPill.IsVisible = vm.IsFolderMerged && vm.IsDirectory;
 
         // Always show unlink button, it means unlink child nodes if it is a folder.
-        if (ViewModel.IsDirectory)
+        if (vm.IsDirectory)
         {
             EntryIcon.Classes.Add("FolderOutline");
 
         }
         else
         {
-            EntryIcon.Classes.Add(ViewModel.GamePath.Extension.GetIconClass());
+            EntryIcon.Classes.Add(vm.GamePath.Extension.GetIconClass());
         }
     }
 }

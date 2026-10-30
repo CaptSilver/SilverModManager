@@ -16,7 +16,7 @@ public partial class PreviewView : ReactiveUserControl<IPreviewViewModel>
         {
             // Bind the tree to the data source.
             this.OneWayBind(ViewModel, vm => vm.Tree,
-                    view => view.LocationPreviewTreeDataGrid.Source!)
+                    view => view.LocationPreviewTreeDataGrid.Source)
                 .DisposeWith(disposables);
 
             // A hack around https://github.com/AvaloniaUI/Avalonia.Controls.TreeDataGrid/issues/221

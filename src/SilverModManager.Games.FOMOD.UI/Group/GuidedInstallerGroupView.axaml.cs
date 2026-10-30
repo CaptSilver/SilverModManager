@@ -3,6 +3,7 @@ using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.Games.FOMOD.UI;
@@ -22,7 +23,7 @@ public partial class GuidedInstallerGroupView : ReactiveUserControl<IGuidedInsta
                 .Subscribe()
                 .DisposeWith(disposables);
 
-            this.WhenAnyObservable(view => view.ViewModel!.HasValidSelectionObservable)
+            this.WhenViewModel(vm => vm.WhenAnyObservable(x => x.HasValidSelectionObservable))
                 .Subscribe(isValid =>
                 {
                     if (isValid)

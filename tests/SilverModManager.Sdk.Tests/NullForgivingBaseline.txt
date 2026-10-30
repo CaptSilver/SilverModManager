@@ -1,9 +1,5 @@
 # Null-forgiving operators (x!) per file under src. Counts may only go down.
 # Regenerate with UPDATE_NULL_FORGIVING_BASELINE=1, see NullForgivingGuardTests.
-src/Examples/TreeDataGrid/Basic/FileTreeView.axaml.cs	1
-src/Examples/TreeDataGrid/SingleColumn/FileColumn/FileColumnView.axaml.cs	2
-src/Examples/TreeDataGrid/SingleColumn/FileTreeDesignViewModel.cs	2
-src/Examples/TreeDataGrid/SingleColumn/FileTreeView.axaml.cs	1
 src/SilverModManager.Abstractions.NexusWebApi/DTOs/DownloadLink.cs	3
 src/SilverModManager.App.UI/Controls/Alerts/Alert.axaml.cs	1
 src/SilverModManager.App.UI/Controls/CollectionMenuItem/CollectionMenuItem.axaml.cs	2
@@ -88,19 +84,3 @@ src/SilverModManager.App.UI/WorkspaceSystem/Panel/PanelViewModel.cs	1
 src/SilverModManager.App.UI/WorkspaceSystem/PanelResizer/PanelResizerView.axaml.cs	4
 src/SilverModManager.App.UI/WorkspaceSystem/PanelTabHeader/PanelTabHeaderView.axaml.cs	5
 src/SilverModManager.App.UI/WorkspaceSystem/Workspace/WorkspaceViewModel.cs	2
-src/SilverModManager.Games.AdvancedInstaller.UI/Content/Left/ModContent/ModContentView.axaml.cs	1
-src/SilverModManager.Games.AdvancedInstaller.UI/Content/Left/ModContent/TreeEntry/ModContentTreeEntryView.axaml.cs	2
-src/SilverModManager.Games.AdvancedInstaller.UI/Content/Right/Preview/PreviewView.axaml.cs	1
-src/SilverModManager.Games.AdvancedInstaller.UI/Content/Right/Preview/TreeEntry/PreviewTreeEntryView.axaml.cs	3
-src/SilverModManager.Games.AdvancedInstaller.UI/Content/Right/SelectLocation/TreeEntry/SelectableTreeEntryView.axaml.cs	1
-src/SilverModManager.Games.AdvancedInstaller.UI/Window/AdvancedInstallerWindowView.axaml.cs	4
-src/SilverModManager.Games.FOMOD.UI/FooterStepper/FooterStepperView.axaml.cs	1
-src/SilverModManager.Games.FOMOD.UI/Group/GuidedInstallerGroupView.axaml.cs	1
-src/SilverModManager.Games.FOMOD.UI/GuidedInstallerUi.cs	1
-src/SilverModManager.Games.FOMOD.UI/Options/GuidedInstallerOptionView.axaml.cs	3
-src/SilverModManager.Games.FOMOD.UI/Step/GuidedInstallerStepDesignViewModel.cs	1
-src/SilverModManager.Games.FOMOD.UI/Step/GuidedInstallerStepView.axaml.cs	4
-src/SilverModManager.Games.FOMOD.UI/Step/GuidedInstallerStepViewModel.cs	1
-src/SilverModManager.Games.FOMOD.UI/Window/GuidedInstallerWindow.axaml.cs	1
-src/SilverModManager.UI.Sdk/Icons/SimpleVectorIcon.cs	1
-src/SilverModManager.UI.Sdk/Icons/SimpleVectorIconImage.cs	1

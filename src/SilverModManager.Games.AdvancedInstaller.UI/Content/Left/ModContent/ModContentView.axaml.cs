@@ -17,7 +17,7 @@ public partial class ModContentView : ReactiveUserControl<IModContentViewModel>
         this.WhenActivated(disposables =>
         {
             // Populate the tree
-            this.OneWayBind(ViewModel, vm => vm.Tree, view => view.ModContentTreeDataGrid.Source!)
+            this.OneWayBind(ViewModel, vm => vm.Tree, view => view.ModContentTreeDataGrid.Source)
                 .DisposeWith(disposables);
 
             // Disable the view when user is Create a new folder

@@ -4,6 +4,7 @@ using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Controls.Trees.Common;
 using SilverModManager.Games.AdvancedInstaller.UI.Resources;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.Games.AdvancedInstaller.UI.ModContent;
@@ -26,8 +27,11 @@ public partial class
                 .DisposeWith(d);
 
             // Update the view when the status changes
-            this.WhenAnyValue(view => view.ViewModel!.Status)
-                .Subscribe(_ => { UpdateView(ViewModel!); })
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Status))
+                .Subscribe(_ =>
+                {
+                    if (ViewModel is { } current) UpdateView(current);
+                })
                 .DisposeWith(d);
 
             // Command bindings:

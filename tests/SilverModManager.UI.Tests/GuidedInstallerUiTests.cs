@@ -27,4 +27,24 @@ public class GuidedInstallerUiTests
         window.Notice.Should().Be("Saved choices don't match");
         changed.Should().Contain(nameof(IGuidedInstallerWindowViewModel.Notice));
     }
+
+    [Fact]
+    public async Task RequestUserChoice_BeforeTheWindowIsSetUp_NamesTheMissingSetup()
+    {
+        using var installer = new GuidedInstallerUi(new ServiceCollection().BuildServiceProvider());
+
+        var act = async () => await installer.RequestUserChoice(
+            new SilverModManager.Abstractions.GuidedInstallers.GuidedInstallationStep
+            {
+                Id = SilverModManager.Abstractions.GuidedInstallers.ValueObjects.StepId.From(Guid.NewGuid()),
+                Name = "Step",
+                HasNextStep = false,
+                HasPreviousStep = false,
+                Groups = [],
+            },
+            SilverModManager.Sdk.Jobs.Percent.Zero,
+            CancellationToken.None);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage("*SetupInstaller*");
+    }
 }

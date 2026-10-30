@@ -12,8 +12,11 @@ public partial class FileColumnView : ReactiveUserControl<IFileColumnViewModel>
         // Subscribe here if you need mutating.
         this.WhenActivated(_ =>
             {
-                EntryIcon.Classes.Add(ViewModel!.IsFile ? "File" : "FolderOutline");
-                FileNameTextBlock.Text = ViewModel!.Name;
+                if (ViewModel is not { } vm)
+                    return;
+
+                EntryIcon.Classes.Add(vm.IsFile ? "File" : "FolderOutline");
+                FileNameTextBlock.Text = vm.Name;
             }
         );
     }

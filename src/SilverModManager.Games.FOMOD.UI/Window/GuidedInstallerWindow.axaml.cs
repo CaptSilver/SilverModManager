@@ -8,6 +8,7 @@ using Avalonia.Platform;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI;
 using SilverModManager.App.UI.Windows;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.Games.FOMOD.UI;
@@ -47,7 +48,7 @@ public partial class GuidedInstallerWindow : ReactiveWindow<IGuidedInstallerWind
             this.OneWayBind(ViewModel, vm => vm.ActiveStepViewModel, view => view.StepViewHost.ViewModel)
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.CloseCommand.IsExecuting)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.CloseCommand.IsExecuting))
                 .SelectMany(e => e)
                 .Where(e => e)
                 .SubscribeWithErrorLogging(logger: default, _ => Close())

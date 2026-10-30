@@ -2,6 +2,7 @@ using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using SilverModManager.App.UI;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.Games.FOMOD.UI;
@@ -15,8 +16,11 @@ public partial class GuidedInstallerOptionView : ReactiveUserControl<IGuidedInst
 
         this.WhenActivated(disposables =>
         {
-            var useRadioButton = ViewModel!.Group.Type.UsesRadioButtons();
-            PopulateFromViewModel(ViewModel!, useRadioButton);
+            if (ViewModel is not { } viewModel)
+                return;
+
+            var useRadioButton = viewModel.Group.Type.UsesRadioButtons();
+            PopulateFromViewModel(viewModel, useRadioButton);
 
             if (useRadioButton)
             {
@@ -35,7 +39,7 @@ public partial class GuidedInstallerOptionView : ReactiveUserControl<IGuidedInst
                     .DisposeWith(disposables);
             }
 
-            this.WhenAnyValue(x => x.ViewModel!.IsValid)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsValid))
                 .SubscribeWithErrorLogging(isValid =>
                 {
                     if (isValid)

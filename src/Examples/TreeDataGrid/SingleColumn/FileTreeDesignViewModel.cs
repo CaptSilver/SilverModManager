@@ -13,25 +13,20 @@ namespace Examples.TreeDataGrid.SingleColumn;
 
 public class FileTreeDesignViewModel : AViewModel<IFileTreeViewModel>, IFileTreeViewModel
 {
-    private ReadOnlyObservableCollection<IFileColumnViewModel> _items;
-    
     public ITreeDataGridSource<IFileColumnViewModel> TreeSource { get; }
     
     public FileTreeDesignViewModel()
     {
-        _items = null!; // initialized in refresh
-        RefreshData();
-        TreeSource = CreateTreeSource(_items);
+        TreeSource = CreateTreeSource(RefreshData());
         TreeSource.SortBy(TreeSource.Columns[0], ListSortDirection.Ascending);
     }
     
-    private void RefreshData()
+    private static ReadOnlyObservableCollection<IFileColumnViewModel> RefreshData()
     {
         var cache = new SourceCache<IFileColumnViewModel, GamePath>(x => x.Key);
         var locations = new Dictionary<LocationId, string>();
 
-        // ReSharper disable once RedundantSuppressNullableWarningExpression
-        void SaveFile(string filePath) => CreateModFileNode(filePath, LocationId.Saves, cache!);
+        void SaveFile(string filePath) => CreateModFileNode(filePath, LocationId.Saves, cache);
         void GameFile(string filePath) => CreateModFileNode(filePath, LocationId.Game, cache);
 
         // Root Files
@@ -106,8 +101,10 @@ public class FileTreeDesignViewModel : AViewModel<IFileTreeViewModel>, IFileTree
                 ? model.Key.Parent 
                 : new GamePath(LocationId.Unknown, ""))
             .Transform(node => node.Item.Initialize(node))
-            .Bind(out _items)
+            .Bind(out var items)
             .Subscribe(); // force evaluation
+
+        return items;
     }
 
     private static void CreateModFileNode(

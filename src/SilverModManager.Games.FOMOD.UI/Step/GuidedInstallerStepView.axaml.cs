@@ -3,6 +3,7 @@ using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI;
 using SilverModManager.Games.FOMOD.UI.Resources;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.Games.FOMOD.UI;
@@ -15,7 +16,8 @@ public partial class GuidedInstallerStepView : ReactiveUserControl<IGuidedInstal
 
         this.WhenActivated(disposables =>
         {
-            this.OneWayBind(ViewModel, vm => vm.InstallationStep!.Name, view => view.StepName.Text)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.InstallationStep).Select(step => step?.Name))
+                .Subscribe(name => StepName.Text = name)
                 .DisposeWith(disposables);
 
             this.WhenAnyValue(view => view.ViewModel)
@@ -31,7 +33,7 @@ public partial class GuidedInstallerStepView : ReactiveUserControl<IGuidedInstal
             this.OneWayBind(ViewModel, vm => vm.Groups, view => view.GroupItemsControl.ItemsSource)
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.HighlightedOptionImage)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.HighlightedOptionImage))
                 .SubscribeWithErrorLogging(image =>
                 {
                     var tmp = HighlightedOptionImage.Source;
@@ -42,7 +44,7 @@ public partial class GuidedInstallerStepView : ReactiveUserControl<IGuidedInstal
                 })
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.HighlightedOptionViewModel)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.HighlightedOptionViewModel))
                 .SubscribeWithErrorLogging(optionVM =>
                 {
                     HighlightedOptionDescription.Text = optionVM?.Option.Description ?? Language.GuidedInstallerStepView_GuidedInstallerStepView_No_additional_details_available;
@@ -54,7 +56,7 @@ public partial class GuidedInstallerStepView : ReactiveUserControl<IGuidedInstal
                 })
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.ShowInstallationCompleteScreen)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.ShowInstallationCompleteScreen))
                 .SubscribeWithErrorLogging(showInstallationCompleteScreen =>
                 {
                     if (showInstallationCompleteScreen)

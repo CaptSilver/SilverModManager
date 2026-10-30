@@ -12,6 +12,7 @@ public class SimpleVectorIconImage : DrawingImage, IImage
 {
     private readonly Rect _viewBox;
     private readonly GeometryDrawing _drawing;
+    private readonly StreamGeometry _geometry;
 
     /// <summary>
     /// Defines the <see cref="Brush"/> property.
@@ -49,9 +50,10 @@ public class SimpleVectorIconImage : DrawingImage, IImage
             directly via source generator. However that just bloats the code, as
             .NET is unable to compile time generate the resulting StreamGeometry.
         */
+        _geometry = StreamGeometry.Parse(pathData);
         _drawing = new GeometryDrawing
         {
-            Geometry = StreamGeometry.Parse(pathData),
+            Geometry = _geometry,
             Brush = brush,
             Pen = pen,
         };
@@ -72,9 +74,10 @@ public class SimpleVectorIconImage : DrawingImage, IImage
     {
         _viewBox = viewBox;
 
+        _geometry = geometry;
         _drawing = new GeometryDrawing
         {
-            Geometry = geometry,
+            Geometry = _geometry,
             Brush = brush,
             Pen = pen,
         };
@@ -180,7 +183,7 @@ public class SimpleVectorIconImage : DrawingImage, IImage
     public SimpleVectorIconImage Clone()
     {
         return new SimpleVectorIconImage(
-            (_drawing.Geometry as StreamGeometry)!,
+            _geometry,
             _viewBox,
             Brush,
             Pen

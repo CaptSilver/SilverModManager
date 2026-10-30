@@ -16,8 +16,8 @@ public partial class FileTreeView : ReactiveUserControl<IFileTreeViewModel>
         
         this.WhenActivated(disposables =>
             {
-                this.OneWayBind<IFileTreeViewModel, FileTreeView, ITreeDataGridSource<IFileViewModel>, ITreeDataGridSource>
-                    (ViewModel, vm => vm.TreeSource, v => v.ModFilesTreeDataGrid.Source!)
+                this.OneWayBind<IFileTreeViewModel, FileTreeView, ITreeDataGridSource<IFileViewModel>, ITreeDataGridSource?>
+                    (ViewModel, vm => vm.TreeSource, v => v.ModFilesTreeDataGrid.Source)
                     .DisposeWith(disposables);
                 
                 // This is a workaround for TreeDataGrid collapsing Star sized columns.

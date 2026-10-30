@@ -3,6 +3,7 @@ using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.Games.AdvancedInstaller.UI.Resources;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.Games.AdvancedInstaller.UI;
@@ -18,16 +19,17 @@ public partial class AdvancedInstallerWindowView : ReactiveWindow<IAdvancedInsta
         {
             Title = Language.OverlayHeaderText_Advanced_Installer;
             
-            this.WhenAnyObservable(view => view.ViewModel!.UnsupportedModVM.DeclineCommand,
-                    view => view.ViewModel!.AdvancedInstallerVM.FooterViewModel.CancelCommand)
+            this.WhenViewModel(vm => vm.WhenAnyObservable(
+                    x => x.UnsupportedModVM.DeclineCommand,
+                    x => x.AdvancedInstallerVM.FooterViewModel.CancelCommand))
                 .Do(_ => Close())
                 .Subscribe()
                 .DisposeWith(disposables);
 
-            this.WhenAnyObservable(view => view.ViewModel!.AdvancedInstallerVM.FooterViewModel.InstallCommand)
-                .Do(_ =>
+            this.WhenViewModel(vm => vm.WhenAnyObservable(x => x.AdvancedInstallerVM.FooterViewModel.InstallCommand).Select(_ => vm))
+                .Do(vm =>
                 {
-                    ViewModel!.AdvancedInstallerVM.ShouldInstall = true;
+                    vm.AdvancedInstallerVM.ShouldInstall = true;
                     Close();
                 })
                 .Subscribe()

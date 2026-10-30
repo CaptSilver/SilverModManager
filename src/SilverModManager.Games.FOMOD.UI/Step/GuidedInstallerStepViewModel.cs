@@ -3,6 +3,7 @@ using SilverModManager.Sdk.Hashes;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using DynamicData;
 using JetBrains.Annotations;
@@ -13,6 +14,7 @@ using SilverModManager.Abstractions.GuidedInstallers.ValueObjects;
 using SilverModManager.App.UI;
 using SilverModManager.App.UI.Extensions;
 using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Resources;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -46,13 +48,21 @@ public partial class GuidedInstallerStepViewModel : AViewModel<IGuidedInstallerS
 
     private Percent _previousProgress = Percent.Zero;
 
-    public GuidedInstallerStepViewModel(IServiceProvider serviceProvider)
+    public GuidedInstallerStepViewModel(IServiceProvider serviceProvider) : this(
+        serviceProvider.GetRequiredService<ILogger<GuidedInstallerStepViewModel>>(),
+        ImagePipelines.GetGuidedInstallerRemoteImagePipeline(serviceProvider),
+        ImagePipelines.GetGuidedInstallerFileImagePipeline(serviceProvider))
     {
-        var logger = serviceProvider.GetRequiredService<ILogger<GuidedInstallerStepViewModel>>();
+    }
 
-        var remoteImagePipeline = ImagePipelines.GetGuidedInstallerRemoteImagePipeline(serviceProvider);
-        var fileImagePipeline = ImagePipelines.GetGuidedInstallerFileImagePipeline(serviceProvider);
-
+    /// <summary>
+    /// Takes the collaborators directly so the design-time view model can supply stubs.
+    /// </summary>
+    internal GuidedInstallerStepViewModel(
+        ILogger<GuidedInstallerStepViewModel> logger,
+        IResourceLoader<Uri, Bitmap> remoteImagePipeline,
+        IResourceLoader<FileIdentity, Bitmap> fileImagePipeline)
+    {
         _groupsSource
             .Connect()
             .Bind(out _groups)
@@ -63,7 +73,11 @@ public partial class GuidedInstallerStepViewModel : AViewModel<IGuidedInstallerS
             CleanupImage();
 
             // NOTE(erri120): On the last step, we don't set the result but instead show a "installation complete"-screen.
-            if (InstallationStep!.HasNextStep || ShowInstallationCompleteScreen)
+            // The footer gates this command on a step being set, so there is nothing to advance without one.
+            if (InstallationStep is not { } step)
+                return;
+
+            if (step.HasNextStep || ShowInstallationCompleteScreen)
             {
                 var selectedOptions = GatherSelectedOptions();
                 TaskCompletionSource?.TrySetResult(new UserChoice(new UserChoice.GoToNextStep(selectedOptions)));

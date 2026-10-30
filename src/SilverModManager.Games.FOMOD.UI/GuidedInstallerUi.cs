@@ -19,6 +19,7 @@ public sealed class GuidedInstallerUi : IGuidedInstaller
 
     private IServiceScope? _currentScope;
     private ReactiveWindow<IGuidedInstallerWindowViewModel>? _window;
+    private IGuidedInstallerWindowViewModel? _windowViewModel;
 
     private readonly EventWaitHandle _waitHandle = new ManualResetEvent(initialState: false);
 
@@ -41,6 +42,7 @@ public sealed class GuidedInstallerUi : IGuidedInstaller
         var windowViewModel = _currentScope.ServiceProvider.GetRequiredService<IGuidedInstallerWindowViewModel>();
         windowViewModel.WindowName = windowName;
         windowViewModel.Notice = notice;
+        _windowViewModel = windowViewModel;
 
         OnUi((windowViewModel, this), tuple =>
         {
@@ -96,6 +98,7 @@ public sealed class GuidedInstallerUi : IGuidedInstaller
 
         _currentScope?.Dispose();
         _currentScope = null;
+        _windowViewModel = null;
     }
 
     public async Task<UserChoice> RequestUserChoice(
@@ -103,14 +106,16 @@ public sealed class GuidedInstallerUi : IGuidedInstaller
         Percent progress,
         CancellationToken cancellationToken)
     {
-        Debug.Assert(_currentScope is not null);
-        Debug.Assert(_window is not null);
+        var windowViewModel = _windowViewModel
+            ?? throw new InvalidOperationException("RequestUserChoice needs SetupInstaller to have created the window first.");
+        var currentScope = _currentScope
+            ?? throw new InvalidOperationException("RequestUserChoice needs SetupInstaller to have created the scope first.");
 
         var tcs = new TaskCompletionSource<UserChoice>();
 
-        OnUi((_currentScope, _window, tcs, installationStep, progress), tuple =>
+        OnUi((currentScope, windowViewModel, tcs, installationStep, progress), tuple =>
         {
-            SetupStep(tuple._currentScope, tuple._window, tuple.tcs, tuple.installationStep, tuple.progress);
+            SetupStep(tuple.currentScope, tuple.windowViewModel, tuple.tcs, tuple.installationStep, tuple.progress);
         });
 
         await tcs.Task;
@@ -119,12 +124,11 @@ public sealed class GuidedInstallerUi : IGuidedInstaller
 
     private static void SetupStep(
         IServiceScope currentScope,
-        IViewFor<IGuidedInstallerWindowViewModel> window,
+        IGuidedInstallerWindowViewModel viewModel,
         TaskCompletionSource<UserChoice> tcs,
         GuidedInstallationStep installationStep,
         Percent progress)
     {
-        var viewModel = window.ViewModel!;
         viewModel.ActiveStepViewModel ??= new GuidedInstallerStepViewModel(currentScope.ServiceProvider);
 
         var activeStepViewModel = viewModel.ActiveStepViewModel;

@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using SilverModManager.App.UI;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.Games.FOMOD.UI.Resources;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
 namespace SilverModManager.Games.FOMOD.UI;
@@ -26,7 +27,7 @@ public partial class FooterStepperView : ReactiveUserControl<IFooterStepperViewM
             this.BindCommand(ViewModel, vm => vm.GoToNextCommand, view => view.GoToNextButton)
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.IsLastStep)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsLastStep))
                 .SubscribeWithErrorLogging(isLastStep =>
                 {
                     GoToNextButton.Text = isLastStep ? Language.FooterStepperView_FooterStepperView_Finish : Language.FooterStepperView_FooterStepperView_Next;

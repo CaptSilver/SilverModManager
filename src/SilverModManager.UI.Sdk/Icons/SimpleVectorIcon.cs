@@ -31,9 +31,9 @@ public class SimpleVectorIconControl : Avalonia.Controls.Image
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == ForegroundProperty)
+        if (change.Property == ForegroundProperty && Source is SimpleVectorIconImage image)
         {
-            ((SimpleVectorIconImage)Source!).Brush = Foreground;
+            image.Brush = Foreground;
         }
     }
 }
