@@ -28,6 +28,10 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public IReadOnlyList<WabbajackGameFileChoice> GameFilesReplaced => [];
     public bool SkipMissingArchives { get; set; }
     public bool CanInstall => false;
+    public string InstallBlockedReason => "3 of 312 archives are not in your library yet.";
+    public string DownloadBlockedReason => "";
+    public string OpenNextFiveBlockedReason => "Press Download first.";
+    public bool IsPlanning => false;
     public bool CanDownload => true;
     public bool IsInstalling => false;
     public string ProgressText => "";

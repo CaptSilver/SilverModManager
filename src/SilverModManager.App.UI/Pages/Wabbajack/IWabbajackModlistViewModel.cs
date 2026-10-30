@@ -48,6 +48,18 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
 
     bool CanInstall { get; }
 
+    /// <summary>Why Install is off, in a sentence for the page; empty while it is allowed.</summary>
+    string InstallBlockedReason { get; }
+
+    /// <summary>Why Download is off, in a sentence for the page; empty while it is allowed.</summary>
+    string DownloadBlockedReason { get; }
+
+    /// <summary>Why "Open next five" is off, in a sentence for the page; empty while it is allowed.</summary>
+    string OpenNextFiveBlockedReason { get; }
+
+    /// <summary>The list is being read or planned against the library and the game folder, which can take a while for a big list.</summary>
+    bool IsPlanning { get; }
+
     /// <summary>At least one archive can be fetched by the app or through the browser, and no download is running.</summary>
     bool CanDownload { get; }
     bool IsInstalling { get; }

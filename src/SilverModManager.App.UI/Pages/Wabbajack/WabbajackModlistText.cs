@@ -83,6 +83,56 @@ public static class WabbajackModlistText
     public static bool CanInstall(ArchivePlan plan, bool skipMissingArchives)
         => skipMissingArchives || plan.Rows.All(IsAvailable);
 
+    private const string CheckingTheList = "Checking the list against your library and game files. This can take a while for a big list.";
+    private const string CheckFailed = "The list could not be checked, see the message above.";
+
+    /// <summary>Why Install is off, as a sentence for the page, or "" while it is allowed.</summary>
+    public static string InstallBlockedReason(bool hasLoadout, bool isPlanning, bool planReady, bool isInstalling, ArchivePlan plan, bool skipMissingArchives)
+    {
+        if (isInstalling) return "An install is running. Its progress is shown below.";
+        if (isPlanning) return CheckingTheList;
+        if (!planReady) return CheckFailed;
+        if (!hasLoadout) return "Choose a loadout to install into.";
+        if (CanInstall(plan, skipMissingArchives)) return "";
+
+        var differing = plan.Rows.Count(row => row.State == ArchiveState.GameFileVersion);
+        var missing = plan.Rows.Count(row => !IsAvailable(row)) - differing;
+        var parts = new List<string>();
+        if (missing > 0) parts.Add($"{missing} of {plan.Rows.Count} {(missing == 1 ? "archives is" : "archives are")} not in your library yet.");
+        if (differing > 0) parts.Add($"{GameFilesDiffer(differing)} from the version the list was made for.");
+        parts.Add("Get what is missing, or tick \"Skip files from missing archives\".");
+        return string.Join(" ", parts);
+    }
+
+    private static string GameFilesDiffer(int count) => count == 1 ? "1 game file differs" : $"{count} game files differ";
+
+    /// <summary>Why Download is off, as a sentence for the page, or "" while it is allowed.</summary>
+    public static string DownloadBlockedReason(bool isPlanning, bool planReady, bool isDownloading, ArchivePlan plan)
+    {
+        if (isDownloading) return "Downloads are running. Their progress is shown above.";
+        if (isPlanning) return CheckingTheList;
+        if (!planReady) return CheckFailed;
+        if (plan.Rows.Any(row => row.State is ArchiveState.Automatic or ArchiveState.Browser)) return "";
+        if (plan.Rows.Count == 0) return "The list names no archives.";
+
+        var byHand = plan.Rows.Count(row => row.State is ArchiveState.Manual or ArchiveState.Unsupported);
+        var differing = plan.Rows.Count(row => row.State == ArchiveState.GameFileVersion);
+        if (byHand == 0 && differing == 0) return "Every archive is already in your library or is a file of your game.";
+
+        var parts = new List<string>();
+        if (byHand > 0)
+        {
+            parts.Add(byHand == 1 ? "The missing archive cannot be fetched by the app." : $"None of the {byHand} missing archives can be fetched by the app.");
+            parts.Add("Each needs a manual download: use Open page on its row, or drop the file on this page.");
+        }
+        if (differing > 0) parts.Add($"{GameFilesDiffer(differing)} from the version the list was made for, and downloading cannot change that.");
+        return string.Join(" ", parts);
+    }
+
+    /// <summary>Why "Open next five" is off, as a sentence for the page, or "" while it is allowed.</summary>
+    public static string OpenNextFiveBlockedReason(bool hasStartedDownloads)
+        => hasStartedDownloads ? "" : "Press Download first. The app only expects your browser downloads once it has started them.";
+
     /// <summary>The loadouts among <paramref name="loadouts"/> whose game is <paramref name="game"/>, in the order given.</summary>
     public static IReadOnlyList<LoadoutId> LoadoutsFor(IEnumerable<(LoadoutId Id, GameId Game)> loadouts, GameId game)
         => loadouts.Where(loadout => loadout.Game == game).Select(loadout => loadout.Id).ToArray();

@@ -32,6 +32,8 @@
                 <controls:StandardButton x:Name="CheckInboxButton" Type="Secondary" Size="Toolbar" Text="Check inbox" />
                 <controls:StandardButton x:Name="OpenInboxButton" Type="Secondary" Size="Toolbar" Text="Open inbox folder" />
             </StackPanel>
+            <TextBlock x:Name="DownloadReasonText" TextWrapping="Wrap" Opacity="0.8" IsVisible="False" />
+            <TextBlock x:Name="OpenNextFiveReasonText" TextWrapping="Wrap" Opacity="0.8" IsVisible="False" />
             <TextBlock x:Name="InboxText" TextWrapping="Wrap" />
             <TextBlock Text="Drop downloaded archives anywhere on this page to add them to the inbox." Opacity="0.7" />
             <StackPanel x:Name="ArchiveRows" Spacing="2" />
@@ -49,6 +51,7 @@
                 <controls:StandardButton x:Name="ResumeButton" Type="Secondary" Size="Toolbar" Text="Resume" />
                 <controls:StandardButton x:Name="RemoveButton" Type="Secondary" Size="Toolbar" Text="Remove modlist" />
             </StackPanel>
+            <TextBlock x:Name="InstallReasonText" TextWrapping="Wrap" Opacity="0.8" IsVisible="False" />
             <TextBlock x:Name="ProgressText" />
             <ProgressBar x:Name="ProgressBar" Minimum="0" Maximum="1" />
 

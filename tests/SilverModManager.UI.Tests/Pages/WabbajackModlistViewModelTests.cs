@@ -19,7 +19,7 @@ using ReactiveUI;
 
 namespace SilverModManager.UI.Tests.Pages;
 
-public class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest(provider)
+public partial class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest(provider)
 {
     private static readonly LibraryFileId SomeFile = LibraryFileId.From(EntityId.From(0xCAFE));
 
@@ -32,6 +32,9 @@ public class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest
         public int Runs { get; private set; }
         public List<ArchivePlan> Shown { get; } = [];
         public ArchivePlan? LastRunPlan { get; private set; }
+
+        /// <summary>When set, the next run stays unfinished until it is completed, like a download that is under way.</summary>
+        public TaskCompletionSource? RunGate { get; set; }
         public CancellationToken LastRunToken { get; private set; }
 
         public void Show(ArchivePlan plan)
@@ -46,7 +49,7 @@ public class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest
             LastRunPlan = plan;
             Runs++;
             LastRunToken = cancellationToken;
-            return Task.CompletedTask;
+            return RunGate?.Task ?? Task.CompletedTask;
         }
 
         public int OpenNext(int count)
@@ -92,9 +95,13 @@ public class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest
         /// <summary>When set, the next plan waits for it, like a list whose game files take a while to hash.</summary>
         public TaskCompletionSource? PlanGate { get; set; }
 
+        /// <summary>When set, planning fails with it, like a list whose game is not installed.</summary>
+        public Exception? PlanFailure { get; set; }
+
         public async Task<ArchivePlan> BuildPlan(LibraryFileId file, SilverModManager.Sdk.Loadouts.LoadoutId? target, CancellationToken cancellationToken)
         {
             PlannedFor.Add(target);
+            if (PlanFailure is { } failure) throw failure;
             var plan = Plan;
             if (PlanGate is { } gate)
             {
@@ -131,13 +138,13 @@ public class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest
 
     private GameId TestGame => Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First().Game.GameId;
 
-    private async Task<(WabbajackModlistViewModel Vm, FakeService Service, FakeAcquirer Acquirer)> Open(ArchivePlan plan, GameId? game = null, Size? free = null, bool createsLoadouts = false)
+    private async Task<(WabbajackModlistViewModel Vm, FakeService Service, FakeAcquirer Acquirer)> Open(ArchivePlan plan, GameId? game = null, Size? free = null, bool createsLoadouts = false, bool load = true)
     {
         await SeedLoadoutRow(GameStore.Steam, "Wabbajack target");
         var service = new FakeService(game ?? TestGame, createsLoadouts ? async () => (await SeedLoadoutRow(GameStore.Steam, "Created by install")).LoadoutId : null) { Plan = plan, Free = free };
         var acquirer = new FakeAcquirer();
         var vm = new WabbajackModlistViewModel(Provider.GetRequiredService<IWindowManager>(), Connection, service, acquirer, Provider) { FileId = SomeFile };
-        await vm.LoadAsync(CancellationToken.None);
+        if (load) await vm.LoadAsync(CancellationToken.None);
         return (vm, service, acquirer);
     }
 
@@ -213,8 +220,18 @@ public class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest
         var (vm, _, _) = await Open(Plan(), game: GameId.From("CreationEngine.NoSuchGame"));
 
         vm.LoadoutChoices.Should().ContainSingle().Which.Id.Should().BeNull();
-        vm.SelectedLoadout.Should().BeNull();
-        vm.CanInstall.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task OpeningAListWithoutLoadouts_SelectsCreateNewSoInstallIsNotWaitingForAPick()
+    {
+        var (vm, service, _) = await Open(Plan(Row(ArchiveState.Have)), game: GameId.From("CreationEngine.NoSuchGame"));
+
+        vm.SelectedLoadout.Should().Be(WabbajackLoadoutChoice.CreateNew);
+        service.PlannedFor.Should().ContainSingle().Which.Should().BeNull("the plan is made against the game while the loadout does not exist");
+        vm.CanInstall.Should().BeTrue();
+        vm.InstallBlockedReason.Should().BeEmpty();
+        service.LoadoutsCreated.Should().Be(0);
     }
 
     [Fact]
@@ -418,5 +435,130 @@ public class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest
 
         vm.CanInstall.Should().BeFalse();
         service.LoadoutsCreated.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task WhileTheListIsBeingChecked_BothButtonsAreOffAndSayTheListIsBeingChecked()
+    {
+        var (vm, service, _) = await Open(Plan(Row(ArchiveState.Have)), load: false);
+        var gate = new TaskCompletionSource();
+        service.PlanGate = gate;
+
+        var loading = vm.LoadAsync(CancellationToken.None);
+        await WaitUntil(() => vm.IsPlanning);
+
+        vm.CanInstall.Should().BeFalse();
+        vm.CanDownload.Should().BeFalse();
+        vm.InstallBlockedReason.Should().Contain("Checking the list");
+        vm.DownloadBlockedReason.Should().Contain("Checking the list");
+
+        gate.SetResult();
+        await loading;
+
+        vm.IsPlanning.Should().BeFalse();
+        vm.CanInstall.Should().BeTrue();
+        vm.InstallBlockedReason.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task WhenTheListCannotBeChecked_InstallIsOffAndPointsAtTheError()
+    {
+        var (vm, service, _) = await Open(Plan(Row(ArchiveState.Have)), load: false);
+        service.PlanFailure = new InvalidOperationException("The game is not installed, so there is nothing to create a loadout for");
+
+        await vm.LoadAsync(CancellationToken.None);
+
+        vm.ErrorText.Should().Contain("The game is not installed");
+        vm.CanInstall.Should().BeFalse("an empty plan only means the check failed");
+        vm.InstallBlockedReason.Should().Contain("could not be checked").And.Contain("message above");
+        vm.DownloadBlockedReason.Should().Contain("could not be checked");
+    }
+
+    [Fact]
+    public async Task Install_NamesHowManyArchivesAreMissingAndWhatToDoAboutIt()
+    {
+        var (vm, _, _) = await Open(Plan(Row(ArchiveState.Manual, "a.7z"), Row(ArchiveState.Browser, "b.7z"), Row(ArchiveState.Have, "c.7z")));
+
+        vm.CanInstall.Should().BeFalse();
+        vm.InstallBlockedReason.Should().Contain("2 of 3 archives are not in your library yet")
+            .And.Contain("Skip files from missing archives");
+
+        vm.SkipMissingArchives = true;
+
+        vm.InstallBlockedReason.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Install_SaysWhenGameFilesDifferFromTheListsVersion()
+    {
+        var (vm, _, _) = await Open(Plan(Row(ArchiveState.GameFileVersion, "Skyrim.exe"), Row(ArchiveState.Have, "c.7z")));
+
+        vm.InstallBlockedReason.Should().Contain("1 game file differs from the version the list was made for");
+    }
+
+    [Fact]
+    public async Task Download_SaysWhenEveryArchiveIsAlreadyThere()
+    {
+        var (vm, _, _) = await Open(Plan(Row(ArchiveState.Have, "a.7z"), Row(ArchiveState.GameFile, "Skyrim.exe")));
+
+        vm.CanDownload.Should().BeFalse();
+        vm.DownloadBlockedReason.Should().Contain("Every archive is already in your library");
+    }
+
+    [Fact]
+    public async Task Download_SaysWhenTheMissingArchivesNeedYouAndNotTheApp()
+    {
+        var (vm, _, _) = await Open(Plan(Row(ArchiveState.Manual, "a.7z"), Row(ArchiveState.Unsupported, "b.7z"), Row(ArchiveState.Have, "c.7z")));
+
+        vm.CanDownload.Should().BeFalse();
+        vm.DownloadBlockedReason.Should().Contain("None of the 2 missing archives can be fetched by the app")
+            .And.Contain("Open page");
+    }
+
+    [Fact]
+    public async Task Download_WhileRunning_SaysDownloadsAreRunning_AndTheReasonGoesWhenTheyFinish()
+    {
+        var (vm, _, acquirer) = await Open(Plan(Row(ArchiveState.Automatic)));
+        acquirer.RunGate = new TaskCompletionSource();
+
+        await vm.DownloadCommand.Execute();
+
+        vm.CanDownload.Should().BeFalse();
+        vm.DownloadBlockedReason.Should().Contain("Downloads are running");
+
+        acquirer.RunGate.SetResult();
+        await WaitUntil(() => vm.CanDownload);
+
+        vm.DownloadBlockedReason.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task OpenNextFive_ExplainsItNeedsDownloadFirst()
+    {
+        var (vm, _, _) = await Open(Plan(Row(ArchiveState.Browser)));
+
+        vm.OpenNextFiveBlockedReason.Should().Contain("Press Download first");
+
+        await vm.DownloadCommand.Execute();
+
+        vm.OpenNextFiveBlockedReason.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ClickingInstallAgainWhileItRuns_StartsNoSecondInstall_AndSaysWhy()
+    {
+        var (vm, service, _) = await Open(Plan(Row(ArchiveState.Have)));
+        System.Windows.Input.ICommand button = vm.InstallCommand;
+
+        // A button runs its command only while the command says it can; this is that check, twice in a row.
+        for (var click = 0; click < 3; click++)
+            if (button.CanExecute(null)) button.Execute(null);
+        await WaitUntil(() => service.Installs.Count > 0);
+
+        service.Installs.Should().ContainSingle("the second and third click came while the first install was running");
+        vm.IsInstalling.Should().BeTrue();
+        vm.ProgressText.Should().NotBeEmpty("the user sees that something is happening");
+        vm.InstallBlockedReason.Should().Contain("An install is running");
+        service.Run.Done.SetResult();
     }
 }

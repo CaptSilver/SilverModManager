@@ -73,6 +73,9 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
                 FreeSpaceText.Text = state.Item1;
                 FreeSpaceText.Foreground = state.Item2 ? Brushes.OrangeRed : null;
             }).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.InstallBlockedReason)).Subscribe(text => ShowReason(InstallReasonText, text, InstallButton, ResumeButton)).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.DownloadBlockedReason)).Subscribe(text => ShowReason(DownloadReasonText, text, DownloadButton)).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.OpenNextFiveBlockedReason)).Subscribe(text => ShowReason(OpenNextFiveReasonText, text, OpenNextFiveButton)).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.AcquireText)).Subscribe(text => AcquireText.Text = text).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.InboxText)).Subscribe(text =>
             {
@@ -132,6 +135,18 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
                 RemoveHandler(DragDrop.DropEvent, OnDrop);
             }).DisposeWith(disposables);
         });
+    }
+
+    // A disabled button says why, in a line under it and in its tooltip (which a disabled control only shows when asked to).
+    private static void ShowReason(TextBlock line, string reason, params Control[] buttons)
+    {
+        line.Text = reason;
+        line.IsVisible = reason != "";
+        foreach (var button in buttons)
+        {
+            ToolTip.SetShowOnDisabled(button, true);
+            ToolTip.SetTip(button, reason == "" ? null : reason);
+        }
     }
 
     // Handled, so the main window's own drop target (which adds to the library) leaves these to the page's inbox.

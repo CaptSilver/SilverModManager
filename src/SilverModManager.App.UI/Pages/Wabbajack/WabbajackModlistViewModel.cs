@@ -49,6 +49,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     private WabbajackModlistLoadoutGroupId? _groupId;
     private bool _loadStarted;
 
+    // False from the moment a pick starts planning until its plan arrives, and after a plan that failed.
+    private bool _planReady;
+
     [Reactive] public partial LibraryFileId FileId { get; set; }
 
     [Reactive] public partial string Name { get; private set; } = "";
@@ -72,6 +75,10 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     [Reactive] public partial bool SkipMissingArchives { get; set; }
     [Reactive] public partial bool CanInstall { get; private set; }
     [Reactive] public partial bool CanDownload { get; private set; }
+    [Reactive] public partial string InstallBlockedReason { get; private set; } = "";
+    [Reactive] public partial string DownloadBlockedReason { get; private set; } = "";
+    [Reactive] public partial string OpenNextFiveBlockedReason { get; private set; } = "";
+    [Reactive] public partial bool IsPlanning { get; private set; }
     [Reactive] public partial bool IsDownloading { get; private set; }
     [Reactive] public partial bool HasStartedDownloads { get; private set; }
     [Reactive] public partial bool IsInstalling { get; private set; }
@@ -109,7 +116,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         TabTitle = "Modlist";
 
         // Any of these can change whether Install is allowed.
-        this.WhenAnyValue(vm => vm.SkipMissingArchives).Subscribe(_ => Recompute());
+        this.WhenAnyValue(vm => vm.SkipMissingArchives, vm => vm.IsPlanning, vm => vm.IsDownloading, vm => vm.HasStartedDownloads)
+            .Subscribe(_ => Recompute());
 
         SelectLoadoutCommand = ReactiveCommand.CreateFromTask<WabbajackLoadoutChoice>(async choice => await Guarded(token => SelectLoadoutAsync(choice, token)));
         InstallCommand = ReactiveCommand.CreateFromTask(InstallAsync, this.WhenAnyValue(vm => vm.CanInstall));
@@ -165,21 +173,30 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     public async Task LoadAsync(CancellationToken cancellationToken)
     {
         _loadStarted = true;
-        await Guarded(async token =>
+        IsPlanning = true;
+        try
         {
-            _details = await _service.Open(FileId, token);
-            Name = _details.Name;
-            Author = _details.Author;
-            Version = _details.Version;
-            GameName = _details.GameType;
-            ArchiveSummary = $"{_details.ArchiveCount} archives, {_details.ArchiveSize}";
-            Banner = _details.Banner;
-            TabTitle = _details.Name;
+            await Guarded(async token =>
+            {
+                _details = await _service.Open(FileId, token);
+                Name = _details.Name;
+                Author = _details.Author;
+                Version = _details.Version;
+                GameName = _details.GameType;
+                ArchiveSummary = $"{_details.ArchiveCount} archives, {_details.ArchiveSize}";
+                Banner = _details.Banner;
+                TabTitle = _details.Name;
 
-            RefreshLoadoutChoices();
-            if (LoadoutChoices.FirstOrDefault(choice => choice.Id is not null) is { } first)
+                RefreshLoadoutChoices();
+                // Without a loadout of the game, "Create new loadout" is the only way forward, so it starts out picked.
+                var first = LoadoutChoices.FirstOrDefault(choice => choice.Id is not null) ?? WabbajackLoadoutChoice.CreateNew;
                 await SelectLoadoutAsync(first, token);
-        }, cancellationToken);
+            }, cancellationToken);
+        }
+        finally
+        {
+            IsPlanning = false;
+        }
     }
 
     /// <summary>
@@ -191,6 +208,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         if (_details is null) throw new InvalidOperationException("The list was not opened yet");
 
         SelectedLoadout = choice;
+        _planReady = false;
+        IsPlanning = true;
 
         // Downloads for the previous pick are not wanted any more.
         _acquireCancellation?.Cancel();
@@ -198,17 +217,25 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         HasStartedDownloads = false;
         IsDownloading = false;
 
-        var plan = await _service.BuildPlan(FileId, choice.Id, cancellationToken);
-        GameFilesReplaced = (await _service.GameFilesReplaced(FileId, choice.Id, cancellationToken))
-            .Select(path => new WabbajackGameFileChoice(path))
-            .ToArray();
+        try
+        {
+            var plan = await _service.BuildPlan(FileId, choice.Id, cancellationToken);
+            GameFilesReplaced = (await _service.GameFilesReplaced(FileId, choice.Id, cancellationToken))
+                .Select(path => new WabbajackGameFileChoice(path))
+                .ToArray();
 
-        // Show is what makes the plan the acquirer's current one: from here on it matches the rows to whatever
-        // reaches the library, without fetching anything.
-        _downloads = null;
-        _acquirer.Show(plan);
-        ApplyPlan(_acquirer.Plan);
-        RefreshInstalledState();
+            // Show is what makes the plan the acquirer's current one: from here on it matches the rows to whatever
+            // reaches the library, without fetching anything.
+            _downloads = null;
+            _acquirer.Show(plan);
+            ApplyPlan(_acquirer.Plan);
+            RefreshInstalledState();
+        }
+        finally
+        {
+            IsPlanning = false;
+            Recompute();
+        }
     }
 
     /// <summary>
@@ -276,6 +303,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     private void ApplyPlan(ArchivePlan plan)
     {
         _plan = plan;
+        _planReady = true;
         Archives = plan.Rows.Select(row => new WabbajackArchiveRow(row)).ToArray();
 
         var (estimate, isLowerBound) = WabbajackModlistText.ExtractedSize(plan);
@@ -299,8 +327,14 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
     private void Recompute()
     {
-        CanInstall = SelectedLoadout is not null && !IsInstalling && WabbajackModlistText.CanInstall(_plan, SkipMissingArchives);
-        CanDownload = !IsDownloading && _plan.Rows.Any(row => row.State is ArchiveState.Automatic or ArchiveState.Browser);
+        var hasLoadout = SelectedLoadout is not null;
+        InstallBlockedReason = WabbajackModlistText.InstallBlockedReason(hasLoadout, IsPlanning, _planReady, IsInstalling, _plan, SkipMissingArchives);
+        DownloadBlockedReason = WabbajackModlistText.DownloadBlockedReason(IsPlanning, _planReady, IsDownloading, _plan);
+        OpenNextFiveBlockedReason = WabbajackModlistText.OpenNextFiveBlockedReason(HasStartedDownloads);
+
+        // The reasons are the single source: a button is on exactly when it has none to give.
+        CanInstall = InstallBlockedReason == "";
+        CanDownload = DownloadBlockedReason == "";
     }
 
     private void RefreshLoadoutChoices()
