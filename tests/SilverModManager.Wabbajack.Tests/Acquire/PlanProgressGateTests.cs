@@ -43,4 +43,32 @@ public class PlanProgressGateTests
 
         gate.Invoking(g => g.Report(new PlanProgress(PlanPhase.ReadingList))).Should().NotThrow();
     }
+
+    [Fact]
+    public void AReportThatArrivesLateWithLessDoneThanOneAlreadySentIsDropped()
+    {
+        var sink = new Reports();
+        var gate = new PlanProgressGate(sink);
+
+        gate.Report(new PlanProgress(PlanPhase.HashingGameFiles, 0, 100));
+        gate.Report(new PlanProgress(PlanPhase.HashingGameFiles, 100, 100));
+        gate.Report(new PlanProgress(PlanPhase.HashingGameFiles, 40, 100));
+
+        sink.All.Select(report => report.Done).Should().Equal(0, 100);
+    }
+
+    [Fact]
+    public async Task ReportsFromManyThreadsNeverReachTheSinkOutOfOrder()
+    {
+        var sink = new Reports();
+        var gate = new PlanProgressGate(sink);
+        var done = 0L;
+
+        await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(() =>
+        {
+            for (var i = 0; i < 5_000; i++) gate.Report(new PlanProgress(PlanPhase.HashingGameFiles, Interlocked.Increment(ref done), 40_000));
+        })));
+
+        sink.All.Select(report => report.Done).Should().BeInAscendingOrder();
+    }
 }

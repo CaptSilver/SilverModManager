@@ -28,24 +28,35 @@ public sealed record PlanProgress(PlanPhase Phase, long Done = 0, long Total = 0
 /// <summary>
 /// Passes progress on at most every <see cref="Interval"/>, so a loop over thousands of archives, or a read in
 /// megabyte blocks, does not drown the page. A phase change and the last report of a phase always go through.
+/// Reports may come from several threads at once; one that arrives with less done than a report already sent in the
+/// same phase is dropped, so the page never sees a bar step back.
 /// </summary>
 public sealed class PlanProgressGate(IProgress<PlanProgress>? target)
 {
     public static readonly TimeSpan Interval = TimeSpan.FromMilliseconds(100);
 
+    private readonly object _gate = new();
     private long _lastReport;
+    private long _lastDone;
     private PlanPhase? _lastPhase;
 
     public void Report(PlanProgress progress)
     {
         if (target is null) return;
 
-        var now = Stopwatch.GetTimestamp();
-        var finished = progress.Total > 0 && progress.Done >= progress.Total;
-        if (_lastPhase == progress.Phase && !finished && Stopwatch.GetElapsedTime(_lastReport, now) < Interval) return;
+        lock (_gate)
+        {
+            var now = Stopwatch.GetTimestamp();
+            var samePhase = _lastPhase == progress.Phase;
+            if (samePhase && progress.Done < _lastDone) return;
 
-        _lastPhase = progress.Phase;
-        _lastReport = now;
-        target.Report(progress);
+            var finished = progress.Total > 0 && progress.Done >= progress.Total;
+            if (samePhase && !finished && Stopwatch.GetElapsedTime(_lastReport, now) < Interval) return;
+
+            _lastPhase = progress.Phase;
+            _lastReport = now;
+            _lastDone = progress.Done;
+            target.Report(progress);
+        }
     }
 }

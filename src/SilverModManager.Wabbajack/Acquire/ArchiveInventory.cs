@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Loadouts;
@@ -9,6 +10,7 @@ using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Wabbajack.Format;
@@ -67,23 +69,61 @@ public sealed class ArchiveInventory(
 
         var reads = Enumerable.Range(0, rows.Length).Where(i => list.Archives[i].State is GameFileSourceState).ToArray();
         var totalBytes = reads.Sum(i => list.Archives[i].Size);
-        long bytesBefore = 0;
-        foreach (var index in reads)
+        long bytesDone = 0;
+        if (reads.Length > 0) gate.Report(new PlanProgress(PlanPhase.HashingGameFiles, 0, totalBytes));
+
+        // Files are hashed together, but only as many as the disk can serve without starving the rest of the app.
+        using var readers = new SemaphoreSlim(HashingLimits.FileReaders);
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var hashing = reads.Select(index => Task.Run(async () =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var archive = list.Archives[index];
-            var name = ((GameFileSourceState)archive.State).GameFile.ToString();
-            long thisFile = 0;
-            var before = bytesBefore;
-            gate.Report(new PlanProgress(PlanPhase.HashingGameFiles, before, totalBytes, name));
-            rows[index] = await ClassifyGameFile(archive, (GameFileSourceState)archive.State, gameFiles,
-                read => gate.Report(new PlanProgress(PlanPhase.HashingGameFiles, before + Math.Min(thisFile += read, archive.Size), totalBytes, name)),
-                cancellationToken);
-            // A file read from the store's recorded hashes was not read at all; it still counts as done.
-            bytesBefore += archive.Size;
-            gate.Report(new PlanProgress(PlanPhase.HashingGameFiles, bytesBefore, totalBytes, name));
-        }
+            await readers.WaitAsync(stop.Token);
+            try
+            {
+                var archive = list.Archives[index];
+                var name = ((GameFileSourceState)archive.State).GameFile.ToString();
+                long credited = 0;
+                // A read is credited up to the archive's size, so a file longer than the list says never pushes the bar past its share.
+                void Credit(long bytes)
+                {
+                    var step = Math.Min(bytes, archive.Size - credited);
+                    if (step <= 0) return;
+                    credited += step;
+                    gate.Report(new PlanProgress(PlanPhase.HashingGameFiles, Interlocked.Add(ref bytesDone, step), totalBytes, name));
+                }
+
+                rows[index] = await ClassifyGameFile(archive, (GameFileSourceState)archive.State, gameFiles, read => Credit(read), stop.Token);
+                // A file that needed no read still counts as done.
+                Credit(archive.Size - credited);
+            }
+            catch
+            {
+                await stop.CancelAsync();
+                throw;
+            }
+            finally
+            {
+                readers.Release();
+            }
+        }, stop.Token)).ToArray();
+        await AwaitAll(hashing, cancellationToken);
         return new ArchivePlan(rows);
+    }
+
+    /// <summary>
+    /// Waits for every task. The first failure cancels the others, so the error to report is the real one, not the
+    /// cancellation it caused in a task that happened to come earlier in the list.
+    /// </summary>
+    private static async Task AwaitAll(Task[] tasks, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        catch when (!cancellationToken.IsCancellationRequested && tasks.Select(t => t.Exception?.InnerException).FirstOrDefault(e => e is not null and not OperationCanceledException) is { } real)
+        {
+            ExceptionDispatchInfo.Capture(real).Throw();
+        }
     }
 
     private async Task<ArchivePlanRow> Classify(ArchiveEntry archive, IDb db, GameFileSourceLookup gameFiles, CancellationToken cancellationToken)
