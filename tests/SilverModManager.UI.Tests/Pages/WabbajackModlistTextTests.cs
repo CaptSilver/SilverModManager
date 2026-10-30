@@ -273,14 +273,6 @@ public class WabbajackModlistTextTests
         => Status(plan: "3 of 9 archives still to get").Should().Be(new WabbajackStatus("3 of 9 archives still to get", null, false, false));
 
     [Fact]
-    public void IsLongDescription_IsTrueForLongTextAndForSeveralLines()
-    {
-        WabbajackModlistText.IsLongDescription("A short line.").Should().BeFalse();
-        WabbajackModlistText.IsLongDescription(new string('a', 241)).Should().BeTrue();
-        WabbajackModlistText.IsLongDescription("One\nTwo").Should().BeTrue();
-    }
-
-    [Fact]
     public void Blurb_TrimsTheDescription_AndKeepsOnlyAnHttpsReadme()
     {
         WabbajackModlistText.Blurb("  A list.\n", "https://example.com/readme").Should()

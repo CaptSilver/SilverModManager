@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.TextFormatting;
 using Avalonia.Platform.Storage;
 using Avalonia.ReactiveUI;
 using Avalonia.Threading;
@@ -49,14 +50,19 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
             OnUi(vm => vm.WhenAnyValue(x => x.Banner)).Subscribe(bitmap =>
             {
                 CollectionImage.Source = bitmap;
+                // A list's image is optional; without one the title should start at the gutter, not after a blank slot.
+                CollectionImageBorder.IsVisible = bitmap is not null;
                 HeaderImageBorder.Background = bitmap is null ? null : new ImageBrush { Source = bitmap, Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Top };
             }).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.Description)).Subscribe(text =>
             {
                 DescriptionText.Text = text;
                 DescriptionPanel.IsVisible = text != "";
-                DescriptionToggle.IsVisible = WabbajackModlistText.IsLongDescription(text);
+                UpdateDescriptionToggle();
             }).DisposeWith(disposables);
+            // Whether the text gets cut off depends on the width it wraps at, so it is decided from the laid-out text.
+            DescriptionText.LayoutUpdated += OnDescriptionLayoutUpdated;
+            Disposable.Create(() => DescriptionText.LayoutUpdated -= OnDescriptionLayoutUpdated).DisposeWith(disposables);
             DescriptionToggle.Click += (_, _) =>
             {
                 var expand = DescriptionText.MaxLines != 0;
@@ -151,6 +157,28 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
     }
 
     private const int CollapsedLines = 3;
+
+    private void OnDescriptionLayoutUpdated(object? sender, EventArgs e) => UpdateDescriptionToggle();
+
+    // The lines the text takes at the width it is laid out in, however many the TextBlock is currently allowed to show.
+    private int WrappedLineCount()
+    {
+        var width = DescriptionText.Bounds.Width;
+        if (width <= 0 || string.IsNullOrEmpty(DescriptionText.Text)) return 0;
+        var typeface = new Typeface(DescriptionText.FontFamily, DescriptionText.FontStyle, DescriptionText.FontWeight, DescriptionText.FontStretch);
+        var layout = new TextLayout(DescriptionText.Text, typeface, DescriptionText.FontSize, DescriptionText.Foreground,
+            textWrapping: TextWrapping.Wrap, maxWidth: width, maxHeight: double.PositiveInfinity);
+        return layout.TextLines.Count;
+    }
+
+    // "Show more" is only worth offering when the collapsed text is actually cut off; once expanded it stays so the
+    // text can be collapsed again.
+    private void UpdateDescriptionToggle()
+    {
+        var expanded = DescriptionText.MaxLines == 0;
+        var cutOff = WrappedLineCount() > CollapsedLines;
+        DescriptionToggle.IsVisible = DescriptionPanel.IsVisible && (expanded || cutOff);
+    }
 
     // A disabled button says why in its tooltip (which a disabled control only shows when asked to). The page's
     // status line carries the one reason that matters, so the buttons don't each print their own.

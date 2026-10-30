@@ -1,4 +1,5 @@
 using System.Reactive;
+using System.Reactive.Linq;
 using Avalonia.Media.Imaging;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
@@ -53,11 +54,14 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public bool CanResume { get; init; } = false;
     public bool IsInstalled { get; init; } = false;
     public IReadOnlyList<WabbajackSkippedRow> SkippedFiles => [];
-    public ReactiveCommand<Unit, Unit> DownloadCommand { get; } = ReactiveCommand.Create(() => { });
-    public ReactiveCommand<Unit, Unit> InstallCommand { get; } = ReactiveCommand.Create(() => { });
+    // Gated like the real view model's commands, so a fixture shows a button greyed out when the page would.
+    // Built on first use: the state is set by initializers that run after the constructor.
+    public ReactiveCommand<Unit, Unit> DownloadCommand => _download ??= ReactiveCommand.Create(() => { }, Observable.Return(CanDownload));
+    public ReactiveCommand<Unit, Unit> InstallCommand => _install ??= ReactiveCommand.Create(() => { }, Observable.Return(CanInstall));
+    private ReactiveCommand<Unit, Unit>? _download, _install, _openNextFive;
     public ReactiveCommand<WabbajackArchiveRow, Unit> OpenPageCommand { get; } = ReactiveCommand.Create<WabbajackArchiveRow>(_ => { });
     public ReactiveCommand<WabbajackArchiveRow, Unit> InstallArchiveCommand { get; } = ReactiveCommand.Create<WabbajackArchiveRow>(_ => { });
-    public ReactiveCommand<Unit, Unit> OpenNextFiveCommand { get; } = ReactiveCommand.Create(() => { });
+    public ReactiveCommand<Unit, Unit> OpenNextFiveCommand => _openNextFive ??= ReactiveCommand.Create(() => { }, Observable.Return(OpenNextFiveBlockedReason == ""));
     public ReactiveCommand<Unit, Unit> CheckInboxCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> OpenInboxFolderCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> OpenHealthCheckCommand { get; } = ReactiveCommand.Create(() => { });

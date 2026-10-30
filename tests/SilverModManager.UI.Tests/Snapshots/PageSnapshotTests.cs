@@ -168,6 +168,7 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
             DataContext = new WabbajackModlistDesignViewModel
             {
                 IsPlanning = true,
+                CanDownload = false,
                 CheckText = "Hashing game files: 3.2 of 15.1 GB (Data/Skyrim - Textures1.bsa)",
                 CheckFraction = 0.21,
                 InstallBlockedReason = Checking,

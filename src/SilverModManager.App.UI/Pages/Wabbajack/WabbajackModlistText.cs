@@ -154,9 +154,6 @@ public static class WabbajackModlistText
         return missing == 0 ? "Every archive is available" : $"{missing} of {plan.Rows.Count} archives still to get";
     }
 
-    /// <summary>Whether a description needs "Show more": several lines, or one that would wrap past three.</summary>
-    public static bool IsLongDescription(string text) => text.Contains('\n') || text.Length > 240;
-
     /// <summary>The description trimmed, and the readme only if it is an https link (Wabbajack lists put a URL there).</summary>
     public static WabbajackModlistBlurb Blurb(string description, string readme)
         => new(description.Trim(), Uri.TryCreate(readme, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps ? uri : null);

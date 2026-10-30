@@ -14,14 +14,15 @@ public class WabbajackModlistViewTests(IServiceProvider provider) : AUiTest(prov
 
     private static readonly string[] TableRows = ["ArchiveRows", "GameFileRows", "SkippedRows"];
 
-    private const string TwoParagraphs = "A big Skyrim VR overhaul.\n\nRead the readme before installing; it needs a lot of room.";
+    // Long enough to wrap past three lines at the test window's width, so the page has to collapse it.
+    private static readonly string TwoParagraphs = string.Join("\n\n", Enumerable.Repeat("A big Skyrim VR overhaul. Read the readme before installing; it needs a lot of room and a fast machine, and the first install takes an afternoon.", 5));
 
-    private async Task<(Window Window, WabbajackModlistView View)> Show(WabbajackModlistDesignViewModel viewModel)
+    private async Task<(Window Window, WabbajackModlistView View)> Show(WabbajackModlistDesignViewModel viewModel, double width = 1200)
     {
         var (window, view) = await Dispatcher.UIThread.InvokeAsync(() =>
         {
             var view = new WabbajackModlistView { DataContext = viewModel };
-            var window = Track(new Window { Width = 1200, Height = 900, Content = view });
+            var window = Track(new Window { Width = width, Height = 900, Content = view });
             ShowRendered(window);
             return (window, view);
         });
@@ -47,6 +48,7 @@ public class WabbajackModlistViewTests(IServiceProvider provider) : AUiTest(prov
     private static WabbajackModlistDesignViewModel Colliding() => new()
     {
         IsPlanning = true,
+        CanDownload = false,
         CheckText = "Hashing game files: 3.2 of 15.1 GB (Data/Skyrim - Textures1.bsa)",
         CheckFraction = 0.2,
         InstallBlockedReason = Checking,
@@ -75,13 +77,15 @@ public class WabbajackModlistViewTests(IServiceProvider provider) : AUiTest(prov
     {
         var (window, view) = await Show(Colliding());
 
-        await OnUi(() =>
+        // A command's can-execute reaches the button on a later dispatcher turn.
+        await EventuallyOnUi(() =>
         {
             foreach (var name in new[] { "DownloadButton", "InstallButton", "OpenNextFiveButton" })
             {
                 var button = Named<StandardButton>(view, name);
                 button.FindAncestorOfType<Statusbar>().Should().NotBeNull($"{name} belongs in the toolbar");
                 ToolTip.GetTip(button).Should().Be(Checking);
+                button.IsEffectivelyEnabled.Should().BeFalse($"{name} cannot run while the list is being checked");
             }
             Named<ComboBox>(view, "LoadoutBox").FindAncestorOfType<Statusbar>().Should().NotBeNull("the loadout picker sits beside Install");
             Named<CheckBox>(view, "SkipBox").FindAncestorOfType<Statusbar>().Should().NotBeNull("the skip toggle sits beside Install");
@@ -94,7 +98,8 @@ public class WabbajackModlistViewTests(IServiceProvider provider) : AUiTest(prov
     {
         var (window, view) = await Show(Colliding());
 
-        await OnUi(() =>
+        // The toggle is decided from the laid-out text, which exists a turn after the page binds.
+        await EventuallyOnUi(() =>
         {
             Named<TextBlock>(view, "DescriptionText").MaxLines.Should().Be(3);
             ShownTexts(view).Should().Contain("Show more");
@@ -138,6 +143,36 @@ public class WabbajackModlistViewTests(IServiceProvider provider) : AUiTest(prov
             texts.Should().ContainSingle(t => t.StartsWith("Drop downloaded archives"));
             texts.Should().OnlyHaveUniqueItems();
         });
+        await OnUi(window.Close);
+    }
+
+    [Fact]
+    public async Task ALongSingleParagraph_ThatWrapsPastThreeLinesInANarrowWindow_GetsShowMore()
+    {
+        var text = "A big Skyrim VR overhaul with new textures, combat, quests and a lot of extra scripts that need room and a fast machine to run. " +
+                   "Read the readme first, then give the first install an afternoon, and keep the game files on a fast drive.";
+        text.Length.Should().BeLessThan(240, "a character count alone would call this short");
+        var (window, view) = await Show(new WabbajackModlistDesignViewModel { Description = text }, width: 420);
+
+        await EventuallyOnUi(() => ShownTexts(view).Should().Contain("Show more"));
+        await OnUi(window.Close);
+    }
+
+    [Fact]
+    public async Task ADescriptionThatFitsInThreeLines_HasNoToggle_EvenWithABlankLine()
+    {
+        var (window, view) = await Show(new WabbajackModlistDesignViewModel { Description = "One short line.\n\nAnother short line." });
+
+        await OnUi(() => Named<StandardButton>(view, "DescriptionToggle").IsEffectivelyVisible.Should().BeFalse());
+        await OnUi(window.Close);
+    }
+
+    [Fact]
+    public async Task WithoutABanner_TheImageSlotIsGone_SoTheTitleAlignsWithTheRest()
+    {
+        var (window, view) = await Show(new WabbajackModlistDesignViewModel());
+
+        await OnUi(() => Named<Border>(view, "CollectionImageBorder").IsEffectivelyVisible.Should().BeFalse());
         await OnUi(window.Close);
     }
 }
