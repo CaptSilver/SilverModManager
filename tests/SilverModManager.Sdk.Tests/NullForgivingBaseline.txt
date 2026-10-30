@@ -111,10 +111,6 @@ src/SilverModManager.DataModel/Extensions/ObservableExtensions.cs	1
 src/SilverModManager.DataModel/JsonConverters/OptionalConverter.cs	1
 src/SilverModManager.DataModel/LoadoutManager.cs	1
 src/SilverModManager.DataModel/Sorting/Sorter.cs	3
-src/SilverModManager.Deployment.Fuse/Kernel/LibFuseLowLevelMount.cs	17
-src/SilverModManager.Deployment.Vfs/Operations/VfsPathWalker.cs	2
-src/SilverModManager.Deployment.Vfs/Promotion/PromotionJournal.cs	5
-src/SilverModManager.Deployment.Vfs/Testing/FakeFuseKernel.cs	10
 src/SilverModManager.Deployment.Vfs/Tree/VfsTree.cs	35
 src/SilverModManager.Games.AdvancedInstaller.UI/Content/Left/ModContent/ModContentView.axaml.cs	1
 src/SilverModManager.Games.AdvancedInstaller.UI/Content/Left/ModContent/TreeEntry/ModContentTreeEntryView.axaml.cs	2

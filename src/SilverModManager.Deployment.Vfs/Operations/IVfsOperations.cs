@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Win32.SafeHandles;
 using NexusMods.Paths;
 
@@ -108,6 +109,7 @@ public enum Errno
 
 public readonly record struct VfsResult(Errno? Error)
 {
+    [MemberNotNullWhen(false, nameof(Error))]
     public bool Ok => Error is null;
 
     public static VfsResult Success => new(null);
@@ -116,6 +118,8 @@ public readonly record struct VfsResult(Errno? Error)
 
 public readonly record struct VfsResult<T>(T? Value, Errno? Error)
 {
+    [MemberNotNullWhen(true, nameof(Value))]
+    [MemberNotNullWhen(false, nameof(Error))]
     public bool Ok => Error is null;
 
     public static VfsResult<T> Success(T value) => new(value, null);

@@ -48,7 +48,7 @@ public sealed class VfsPathWalker
         var parent = Walk(string.Join('/', segments[..^1]));
         return parent.Ok
             ? VfsResult<(ulong, string)>.Success((parent.Value.Ino, segments[^1]))
-            : VfsResult<(ulong, string)>.Failure(parent.Error!.Value);
+            : VfsResult<(ulong, string)>.Failure(parent.Error.Value);
     }
 
     private VfsResult<VfsEntry> RootEntry()
@@ -56,7 +56,7 @@ public sealed class VfsPathWalker
         var attr = _operations.GetAttr(IVfsOperations.RootInode);
         return attr.Ok
             ? VfsResult<VfsEntry>.Success(new VfsEntry(IVfsOperations.RootInode, attr.Value, TimeSpan.Zero, TimeSpan.Zero))
-            : VfsResult<VfsEntry>.Failure(attr.Error!.Value);
+            : VfsResult<VfsEntry>.Failure(attr.Error.Value);
     }
 
     private static string[] Segments(string path) => path.Split('/', StringSplitOptions.RemoveEmptyEntries);

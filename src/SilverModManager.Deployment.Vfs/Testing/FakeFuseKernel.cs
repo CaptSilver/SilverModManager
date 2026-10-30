@@ -51,14 +51,14 @@ public sealed class FakeFuseKernel : IFuseKernel
     public VfsResult<IReadOnlyList<VfsDirEntry>> List(string path)
     {
         var directory = Resolve(path);
-        if (!directory.Ok) return VfsResult<IReadOnlyList<VfsDirEntry>>.Failure(directory.Error!.Value);
+        if (!directory.Ok) return VfsResult<IReadOnlyList<VfsDirEntry>>.Failure(directory.Error.Value);
 
         var all = new List<VfsDirEntry>();
         ulong offset = 0;
         while (true)
         {
             var page = Operations.ReadDirPlus(directory.Value.Ino, offset, 64);
-            if (!page.Ok) return VfsResult<IReadOnlyList<VfsDirEntry>>.Failure(page.Error!.Value);
+            if (!page.Ok) return VfsResult<IReadOnlyList<VfsDirEntry>>.Failure(page.Error.Value);
             if (page.Value.Entries.Count == 0) break;
             all.AddRange(page.Value.Entries);
             offset = page.Value.Entries[^1].NextOffset;
@@ -69,13 +69,13 @@ public sealed class FakeFuseKernel : IFuseKernel
     public VfsResult<VfsOpenFile> Open(string path, VfsOpenFlags flags)
     {
         var entry = Resolve(path);
-        return entry.Ok ? Operations.Open(entry.Value.Ino, flags) : VfsResult<VfsOpenFile>.Failure(entry.Error!.Value);
+        return entry.Ok ? Operations.Open(entry.Value.Ino, flags) : VfsResult<VfsOpenFile>.Failure(entry.Error.Value);
     }
 
     public VfsResult<byte[]> Read(VfsOpenFile file, ulong offset, int size)
     {
         var reply = Operations.Read(file, offset, size);
-        if (!reply.Ok) return VfsResult<byte[]>.Failure(reply.Error!.Value);
+        if (!reply.Ok) return VfsResult<byte[]>.Failure(reply.Error.Value);
 
         var buffer = new byte[reply.Value.Length];
         var read = 0;
@@ -97,7 +97,7 @@ public sealed class FakeFuseKernel : IFuseKernel
         var parent = Walker.WalkParent(path);
         return parent.Ok
             ? Operations.Create(parent.Value.Parent, parent.Value.Name, mode, flags)
-            : VfsResult<(VfsEntry, VfsOpenFile)>.Failure(parent.Error!.Value);
+            : VfsResult<(VfsEntry, VfsOpenFile)>.Failure(parent.Error.Value);
     }
 
     public VfsResult<VfsEntry> MkDir(string path, uint mode)
@@ -105,7 +105,7 @@ public sealed class FakeFuseKernel : IFuseKernel
         var parent = Walker.WalkParent(path);
         return parent.Ok
             ? Operations.MkDir(parent.Value.Parent, parent.Value.Name, mode)
-            : VfsResult<VfsEntry>.Failure(parent.Error!.Value);
+            : VfsResult<VfsEntry>.Failure(parent.Error.Value);
     }
 
     /// <summary>
@@ -114,9 +114,9 @@ public sealed class FakeFuseKernel : IFuseKernel
     public VfsResult Delete(string path)
     {
         var entry = Resolve(path);
-        if (!entry.Ok) return VfsResult.Failure(entry.Error!.Value);
+        if (!entry.Ok) return VfsResult.Failure(entry.Error.Value);
         var parent = Walker.WalkParent(path);
-        if (!parent.Ok) return VfsResult.Failure(parent.Error!.Value);
+        if (!parent.Ok) return VfsResult.Failure(parent.Error.Value);
 
         var isDirectory = (entry.Value.Attr.Mode & 0xF000) == 0x4000;
         return isDirectory
@@ -127,9 +127,9 @@ public sealed class FakeFuseKernel : IFuseKernel
     public VfsResult Rename(string from, string to)
     {
         var source = Walker.WalkParent(from);
-        if (!source.Ok) return VfsResult.Failure(source.Error!.Value);
+        if (!source.Ok) return VfsResult.Failure(source.Error.Value);
         var destination = Walker.WalkParent(to);
-        if (!destination.Ok) return VfsResult.Failure(destination.Error!.Value);
+        if (!destination.Ok) return VfsResult.Failure(destination.Error.Value);
 
         return Operations.Rename(source.Value.Parent, source.Value.Name, destination.Value.Parent, destination.Value.Name);
     }

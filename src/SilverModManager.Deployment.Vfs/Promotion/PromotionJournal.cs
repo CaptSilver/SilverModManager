@@ -87,16 +87,24 @@ public sealed record PromotionJournal(GameInstallMetadataId Installation, Loadou
             if (installation != expectedInstallation)
                 throw new InvalidDataException($"Promotion journal {file} belongs to installation {dto.Installation}, not {expectedInstallation.Value.Value:x}");
 
-            var entries = (dto.Entries ?? throw new InvalidDataException($"Promotion journal {file} has no entry list")).Select(e => e.Kind switch
+            var entries = (dto.Entries ?? throw new InvalidDataException($"Promotion journal {file} has no entry list")).Select((e, index) =>
             {
-                "file" => new JournalEntry(
-                    RelativePath.FromUnsanitizedInput(e.Path!),
-                    JournalEntryKind.File,
-                    Size.From(e.Size!.Value),
-                    FileIdentity.XxHash3(Hash.From(ulong.Parse(e.XxHash3!, NumberStyles.HexNumber, CultureInfo.InvariantCulture))),
-                    e.Mode!.Value),
-                "whiteout" => new JournalEntry(RelativePath.FromUnsanitizedInput(e.Path!), JournalEntryKind.Whiteout, Size.Zero, FileIdentity.None, 0),
-                _ => throw new InvalidDataException($"Promotion journal {file} has an entry of unknown kind '{e.Kind}'"),
+                T Need<T>(T? value, string field) where T : class =>
+                    value ?? throw new InvalidDataException($"Promotion journal {file} entry {index} ({e.Kind}) is missing '{field}'");
+                T NeedValue<T>(T? value, string field) where T : struct =>
+                    value ?? throw new InvalidDataException($"Promotion journal {file} entry {index} ({e.Kind}) is missing '{field}'");
+
+                return e.Kind switch
+                {
+                    "file" => new JournalEntry(
+                        RelativePath.FromUnsanitizedInput(Need(e.Path, "path")),
+                        JournalEntryKind.File,
+                        Size.From(NeedValue(e.Size, "size")),
+                        FileIdentity.XxHash3(Hash.From(ulong.Parse(Need(e.XxHash3, "xxHash3"), NumberStyles.HexNumber, CultureInfo.InvariantCulture))),
+                        NeedValue(e.Mode, "mode")),
+                    "whiteout" => new JournalEntry(RelativePath.FromUnsanitizedInput(Need(e.Path, "path")), JournalEntryKind.Whiteout, Size.Zero, FileIdentity.None, 0),
+                    _ => throw new InvalidDataException($"Promotion journal {file} has an entry of unknown kind '{e.Kind}'"),
+                };
             }).ToArray();
 
             return new PromotionJournal(
@@ -105,7 +113,7 @@ public sealed record PromotionJournal(GameInstallMetadataId Installation, Loadou
                 entries,
                 dto.Recorded);
         }
-        catch (Exception e) when (e is FormatException or OverflowException or NullReferenceException or InvalidOperationException)
+        catch (Exception e) when (e is FormatException or OverflowException)
         {
             throw new InvalidDataException($"Promotion journal {file} has a malformed entry", e);
         }

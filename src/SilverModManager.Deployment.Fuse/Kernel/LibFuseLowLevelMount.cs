@@ -372,10 +372,32 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
 
     // ---- request plumbing --------------------------------------------------------------------------------
 
-    private static LibFuseLowLevelMount Of(IntPtr req) =>
-        (LibFuseLowLevelMount)GCHandle.FromIntPtr(LibFuse3LowLevel.fuse_req_userdata(req)).Target!;
+    private static LibFuseLowLevelMount Of(IntPtr req) => MountFromUserdata(LibFuse3LowLevel.fuse_req_userdata(req));
 
-    private static unsafe string Name(byte* name) => Marshal.PtrToStringUTF8((IntPtr)name)!;
+    internal static LibFuseLowLevelMount MountFromUserdata(IntPtr userdata) =>
+        GCHandle.FromIntPtr(userdata).Target as LibFuseLowLevelMount
+        ?? throw new InvalidOperationException("FUSE request userdata is not a mount");
+
+    private static unsafe string Name(byte* name) => NameOf((IntPtr)name);
+
+    internal static string NameOf(IntPtr name) =>
+        Marshal.PtrToStringUTF8(name) ?? throw new InvalidOperationException("FUSE passed a null name pointer");
+
+    // The lookup that found no mount has no logger either; the kernel still needs an answer.
+    // init and destroy have no request to answer. With no mount there is no logger and nobody left to
+    // serve the filesystem, so stop the process with the reason; the unhandled exception did that already,
+    // just without saying why.
+    private static void LogCallbackFailure(LibFuseLowLevelMount? mount, Exception e, string callback)
+    {
+        if (mount is null) Environment.FailFast($"FUSE {callback} received userdata that is not a LibFuseLowLevelMount", e);
+        else mount._logger.LogError(e, "FUSE {Callback} threw", callback);
+    }
+
+    private static void FailRequest(LibFuseLowLevelMount? mount, IntPtr req, Exception e)
+    {
+        if (mount is null) LibFuse3LowLevel.fuse_reply_err(req, EIO);
+        else mount.Fail(req, e);
+    }
 
     private static byte[] Utf8Z(string text)
     {
@@ -475,7 +497,7 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     private unsafe void DoLookup(IntPtr req, ulong parent, string name)
     {
         var result = _operations.Lookup(parent, name);
-        if (!result.Ok) { ReplyError(req, result.Error!.Value); return; }
+        if (!result.Ok) { ReplyError(req, result.Error.Value); return; }
         var entry = EntryOf(result.Value);
         LibFuse3LowLevel.fuse_reply_entry(req, &entry);
     }
@@ -483,7 +505,7 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     private void DoGetAttr(IntPtr req, ulong ino)
     {
         var result = _operations.GetAttr(ino);
-        if (!result.Ok) { ReplyError(req, result.Error!.Value); return; }
+        if (!result.Ok) { ReplyError(req, result.Error.Value); return; }
         ReplyAttr(req, result.Value);
     }
 
@@ -502,7 +524,7 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
         DateTimeOffset? mtime = (toSet & SetAttrMTimeNow) != 0 ? DateTimeOffset.UtcNow : (toSet & SetAttrMTime) != 0 ? attr->MTime : null;
 
         var result = _operations.SetAttr(ino, new VfsSetAttr(size, mtime, mode));
-        if (!result.Ok) { ReplyError(req, result.Error!.Value); return; }
+        if (!result.Ok) { ReplyError(req, result.Error.Value); return; }
         ReplyAttr(req, result.Value);
     }
 
@@ -526,7 +548,7 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
                 {
                     var treeOffset = offset >= 2 ? (ulong)(offset - 2) : 0;
                     var page = _operations.ReadDirPlus(ino, treeOffset, Math.Max(1, (capacity - used) / MinDirEntryPlusSize));
-                    if (!page.Ok) { ReplyError(req, page.Error!.Value); return; }
+                    if (!page.Ok) { ReplyError(req, page.Error.Value); return; }
 
                     foreach (var item in page.Value.Entries)
                     {
@@ -568,10 +590,10 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     private unsafe void DoOpen(IntPtr req, ulong ino, FuseFileInfo* fi)
     {
         var result = _operations.Open(ino, OpenFlagsOf(fi->Flags));
-        if (!result.Ok) { ReplyError(req, result.Error!.Value); return; }
+        if (!result.Ok) { ReplyError(req, result.Error.Value); return; }
 
         var info = *fi;
-        var file = result.Value!;
+        var file = result.Value;
         var handle = Register(file, &info);
         _passthrough.TryAttach(req, handle, file, ref info);
         // A non-zero return means the request was interrupted and the kernel never saw the open. The reply has
@@ -582,9 +604,9 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     private unsafe void DoCreate(IntPtr req, ulong parent, string name, uint mode, FuseFileInfo* fi)
     {
         var result = _operations.Create(parent, name, mode, OpenFlagsOf(fi->Flags));
-        if (!result.Ok) { ReplyError(req, result.Error!.Value); return; }
+        if (!result.Ok) { ReplyError(req, result.Error.Value); return; }
 
-        var (created, file) = result.Value!;
+        var (created, file) = result.Value;
         var info = *fi;
         var handle = Register(file, &info);
         _passthrough.TryAttach(req, handle, file, ref info);
@@ -596,7 +618,7 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     {
         if (!_files.TryGetValue(fi->Fh, out var file)) { ReplyError(req, Errno.EBADF); return; }
         var result = _operations.Read(file, (ulong)offset, (int)size);
-        if (!result.Ok) { ReplyError(req, result.Error!.Value); return; }
+        if (!result.Ok) { ReplyError(req, result.Error.Value); return; }
 
         var reply = result.Value;
         if (reply.Length == 0) { LibFuse3LowLevel.fuse_reply_buf(req, null, 0); return; }
@@ -623,7 +645,7 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     {
         if (!_files.TryGetValue(fi->Fh, out var file)) { ReplyError(req, Errno.EBADF); return; }
         var result = _operations.Write(file, (ulong)offset, new ReadOnlySpan<byte>(data, (int)size));
-        if (!result.Ok) { ReplyError(req, result.Error!.Value); return; }
+        if (!result.Ok) { ReplyError(req, result.Error.Value); return; }
         LibFuse3LowLevel.fuse_reply_write(req, (nuint)result.Value);
     }
 
@@ -636,7 +658,7 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     private unsafe void DoMkDir(IntPtr req, ulong parent, string name, uint mode)
     {
         var result = _operations.MkDir(parent, name, mode);
-        if (!result.Ok) { ReplyError(req, result.Error!.Value); return; }
+        if (!result.Ok) { ReplyError(req, result.Error.Value); return; }
         var entry = EntryOf(result.Value);
         LibFuse3LowLevel.fuse_reply_entry(req, &entry);
     }
@@ -644,7 +666,7 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     private static void ReplyResult(IntPtr req, VfsResult result)
     {
         if (result.Ok) LibFuse3LowLevel.fuse_reply_err(req, 0);
-        else ReplyError(req, result.Error!.Value);
+        else ReplyError(req, result.Error.Value);
     }
 
     private void DoRename(IntPtr req, ulong parent, string name, ulong newParent, string newName, uint flags)
@@ -657,7 +679,7 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     private unsafe void DoStatFs(IntPtr req)
     {
         var result = _operations.StatFs();
-        if (!result.Ok) { ReplyError(req, result.Error!.Value); return; }
+        if (!result.Ok) { ReplyError(req, result.Error.Value); return; }
 
         var fs = result.Value;
         var stat = new StatVfs
@@ -741,85 +763,88 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     [UnmanagedCallersOnly]
     private static unsafe void InitCallback(IntPtr userdata, FuseConnInfo* conn)
     {
-        var mount = (LibFuseLowLevelMount)GCHandle.FromIntPtr(userdata).Target!;
-        try { mount.DoInit(conn); }
-        catch (Exception e) { mount._logger.LogError(e, "FUSE init threw"); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = MountFromUserdata(userdata); mount.DoInit(conn); }
+        catch (Exception e) { LogCallbackFailure(mount, e, "init"); }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void DestroyCallback(IntPtr userdata)
     {
-        var mount = (LibFuseLowLevelMount)GCHandle.FromIntPtr(userdata).Target!;
-        try { mount.DoDestroy(); }
-        catch (Exception e) { mount._logger.LogError(e, "FUSE destroy threw"); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = MountFromUserdata(userdata); mount.DoDestroy(); }
+        catch (Exception e) { LogCallbackFailure(mount, e, "destroy"); }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void LookupCallback(IntPtr req, ulong parent, byte* name)
     {
-        var mount = Of(req);
-        try { mount.DoLookup(req, parent, Name(name)); }
-        catch (Exception e) { mount.Fail(req, e); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = Of(req); mount.DoLookup(req, parent, Name(name)); }
+        catch (Exception e) { FailRequest(mount, req, e); }
     }
 
-    // forget and forget_multi are never answered with an error: the kernel waits for no reply.
+    // forget and forget_multi are never answered with an error: the kernel waits for no reply. With no
+    // mount there is no logger, so the failure is dropped and the request still completes.
     [UnmanagedCallersOnly]
     private static unsafe void ForgetCallback(IntPtr req, ulong ino, ulong lookups)
     {
-        var mount = Of(req);
-        try { mount._operations.Forget(ino, lookups); }
-        catch (Exception e) { mount._logger.LogError(e, "FUSE forget threw"); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = Of(req); mount._operations.Forget(ino, lookups); }
+        catch (Exception e) { mount?._logger.LogError(e, "FUSE forget threw"); }
         finally { LibFuse3LowLevel.fuse_reply_none(req); }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void ForgetMultiCallback(IntPtr req, nuint count, FuseForgetData* forgets)
     {
-        var mount = Of(req);
+        LibFuseLowLevelMount? mount = null;
         try
         {
+            mount = Of(req);
             for (nuint i = 0; i < count; i++) mount._operations.Forget(forgets[i].Ino, forgets[i].NLookup);
         }
-        catch (Exception e) { mount._logger.LogError(e, "FUSE forget_multi threw"); }
+        catch (Exception e) { mount?._logger.LogError(e, "FUSE forget_multi threw"); }
         finally { LibFuse3LowLevel.fuse_reply_none(req); }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void GetAttrCallback(IntPtr req, ulong ino, FuseFileInfo* fi)
     {
-        var mount = Of(req);
-        try { mount.DoGetAttr(req, ino); }
-        catch (Exception e) { mount.Fail(req, e); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = Of(req); mount.DoGetAttr(req, ino); }
+        catch (Exception e) { FailRequest(mount, req, e); }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void SetAttrCallback(IntPtr req, ulong ino, LibcStat.Buffer* attr, int toSet, FuseFileInfo* fi)
     {
-        var mount = Of(req);
-        try { mount.DoSetAttr(req, ino, attr, toSet); }
-        catch (Exception e) { mount.Fail(req, e); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = Of(req); mount.DoSetAttr(req, ino, attr, toSet); }
+        catch (Exception e) { FailRequest(mount, req, e); }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void ReadDirPlusCallback(IntPtr req, ulong ino, nuint size, long offset, FuseFileInfo* fi)
     {
-        var mount = Of(req);
-        try { mount.DoReadDirPlus(req, ino, size, offset); }
-        catch (Exception e) { mount.Fail(req, e); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = Of(req); mount.DoReadDirPlus(req, ino, size, offset); }
+        catch (Exception e) { FailRequest(mount, req, e); }
     }
 
     // Directories keep no per-open state, so the handle is 0.
     [UnmanagedCallersOnly]
     private static unsafe void OpenDirCallback(IntPtr req, ulong ino, FuseFileInfo* fi)
     {
-        var mount = Of(req);
+        LibFuseLowLevelMount? mount = null;
         try
         {
+            mount = Of(req);
             var info = *fi;
             info.Fh = 0;
             LibFuse3LowLevel.fuse_reply_open(req, &info);
         }
-        catch (Exception e) { mount.Fail(req, e); }
+        catch (Exception e) { FailRequest(mount, req, e); }
     }
 
     // releasedir and flush: nothing to do, and success is the right answer.
@@ -832,80 +857,80 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     [UnmanagedCallersOnly]
     private static unsafe void OpenCallback(IntPtr req, ulong ino, FuseFileInfo* fi)
     {
-        var mount = Of(req);
-        try { mount.DoOpen(req, ino, fi); }
-        catch (Exception e) { mount.Fail(req, e); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = Of(req); mount.DoOpen(req, ino, fi); }
+        catch (Exception e) { FailRequest(mount, req, e); }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void CreateCallback(IntPtr req, ulong parent, byte* name, uint mode, FuseFileInfo* fi)
     {
-        var mount = Of(req);
-        try { mount.DoCreate(req, parent, Name(name), mode, fi); }
-        catch (Exception e) { mount.Fail(req, e); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = Of(req); mount.DoCreate(req, parent, Name(name), mode, fi); }
+        catch (Exception e) { FailRequest(mount, req, e); }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void ReadCallback(IntPtr req, ulong ino, nuint size, long offset, FuseFileInfo* fi)
     {
-        var mount = Of(req);
-        try { mount.DoRead(req, size, offset, fi); }
-        catch (Exception e) { mount.Fail(req, e); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = Of(req); mount.DoRead(req, size, offset, fi); }
+        catch (Exception e) { FailRequest(mount, req, e); }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void WriteCallback(IntPtr req, ulong ino, byte* data, nuint size, long offset, FuseFileInfo* fi)
     {
-        var mount = Of(req);
-        try { mount.DoWrite(req, data, size, offset, fi); }
-        catch (Exception e) { mount.Fail(req, e); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = Of(req); mount.DoWrite(req, data, size, offset, fi); }
+        catch (Exception e) { FailRequest(mount, req, e); }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void ReleaseCallback(IntPtr req, ulong ino, FuseFileInfo* fi)
     {
-        var mount = Of(req);
-        try { mount.DoRelease(req, fi); }
-        catch (Exception e) { mount.Fail(req, e); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = Of(req); mount.DoRelease(req, fi); }
+        catch (Exception e) { FailRequest(mount, req, e); }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void MkDirCallback(IntPtr req, ulong parent, byte* name, uint mode)
     {
-        var mount = Of(req);
-        try { mount.DoMkDir(req, parent, Name(name), mode); }
-        catch (Exception e) { mount.Fail(req, e); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = Of(req); mount.DoMkDir(req, parent, Name(name), mode); }
+        catch (Exception e) { FailRequest(mount, req, e); }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void UnlinkCallback(IntPtr req, ulong parent, byte* name)
     {
-        var mount = Of(req);
-        try { ReplyResult(req, mount._operations.Unlink(parent, Name(name))); }
-        catch (Exception e) { mount.Fail(req, e); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = Of(req); ReplyResult(req, mount._operations.Unlink(parent, Name(name))); }
+        catch (Exception e) { FailRequest(mount, req, e); }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void RmDirCallback(IntPtr req, ulong parent, byte* name)
     {
-        var mount = Of(req);
-        try { ReplyResult(req, mount._operations.RmDir(parent, Name(name))); }
-        catch (Exception e) { mount.Fail(req, e); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = Of(req); ReplyResult(req, mount._operations.RmDir(parent, Name(name))); }
+        catch (Exception e) { FailRequest(mount, req, e); }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void RenameCallback(IntPtr req, ulong parent, byte* name, ulong newParent, byte* newName, uint flags)
     {
-        var mount = Of(req);
-        try { mount.DoRename(req, parent, Name(name), newParent, Name(newName), flags); }
-        catch (Exception e) { mount.Fail(req, e); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = Of(req); mount.DoRename(req, parent, Name(name), newParent, Name(newName), flags); }
+        catch (Exception e) { FailRequest(mount, req, e); }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void StatFsCallback(IntPtr req, ulong ino)
     {
-        var mount = Of(req);
-        try { mount.DoStatFs(req); }
-        catch (Exception e) { mount.Fail(req, e); }
+        LibFuseLowLevelMount? mount = null;
+        try { mount = Of(req); mount.DoStatFs(req); }
+        catch (Exception e) { FailRequest(mount, req, e); }
     }
 }
