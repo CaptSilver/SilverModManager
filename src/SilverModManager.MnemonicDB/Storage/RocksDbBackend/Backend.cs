@@ -82,7 +82,7 @@ public class Backend : IStoreBackend
     /// <inheritdoc />
     public IWriteBatch CreateBatch()
     {
-        return new Batch(Db!);
+        return new Batch(this);
     }
 
     /// <inheritdoc />
@@ -165,6 +165,7 @@ public class Backend : IStoreBackend
     /// </summary>
     public void FlushAndCompact(bool verify)
     {
+        using var _ = BeginUse();
         if (verify)
             VerifyOrdering();
         Db?.Flush(new FlushOptions().SetWaitForFlush(true));

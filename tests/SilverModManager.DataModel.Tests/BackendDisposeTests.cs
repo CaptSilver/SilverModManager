@@ -41,6 +41,62 @@ public class BackendDisposeTests
         await dispose.WaitAsync(TimeSpan.FromSeconds(30));
     }
 
+    // Holds a lease so Dispose parks in its wait, then polls until the backend has started closing.
+    private static async Task<(RocksDbBackend.UseLease Lease, Task Dispose)> CloseWhileALeaseIsHeld(RocksDbBackend backend)
+    {
+        var lease = backend.BeginUse();
+        var dispose = Task.Run(backend.Dispose);
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (DateTime.UtcNow < deadline)
+        {
+            try { backend.BeginUse().Dispose(); }
+            catch (ObjectDisposedException) { return (lease, dispose); }
+            await Task.Delay(10);
+        }
+        throw new TimeoutException("Dispose never started closing the backend");
+    }
+
+    [Fact]
+    public async Task ABatchCommittedWhileTheBackendIsClosingIsRefused()
+    {
+        await using var provider = BuildProvider();
+        provider.GetRequiredService<IConnection>(); // opens the database
+        var backend = (RocksDbBackend)provider.GetRequiredService<IStoreBackend>();
+        using var batch = backend.CreateBatch();
+
+        var (lease, dispose) = await CloseWhileALeaseIsHeld(backend);
+        try
+        {
+            var commit = () => batch.Commit();
+            commit.Should().Throw<ObjectDisposedException>("a write must not start on a database that is being closed");
+        }
+        finally
+        {
+            lease.Dispose();
+            await dispose.WaitAsync(TimeSpan.FromSeconds(30));
+        }
+    }
+
+    [Fact]
+    public async Task AFlushAndCompactWhileTheBackendIsClosingIsRefused()
+    {
+        await using var provider = BuildProvider();
+        provider.GetRequiredService<IConnection>(); // opens the database
+        var backend = (RocksDbBackend)provider.GetRequiredService<IStoreBackend>();
+
+        var (lease, dispose) = await CloseWhileALeaseIsHeld(backend);
+        try
+        {
+            var flush = () => backend.FlushAndCompact(verify: true);
+            flush.Should().Throw<ObjectDisposedException>("a compaction must not start on a database that is being closed");
+        }
+        finally
+        {
+            lease.Dispose();
+            await dispose.WaitAsync(TimeSpan.FromSeconds(30));
+        }
+    }
+
     [Fact]
     public async Task ANativeCallAfterDisposeIsRefused()
     {

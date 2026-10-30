@@ -10,7 +10,7 @@ using IWriteBatch = SilverModManager.MnemonicDB.Storage.Abstractions.IWriteBatch
 
 namespace SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 
-internal class Batch(RocksDb db) : IWriteBatch
+internal class Batch(Backend backend) : IWriteBatch
 {
     private readonly WriteBatch _batch = new();
 
@@ -88,6 +88,7 @@ internal class Batch(RocksDb db) : IWriteBatch
     /// <inheritdoc />
     public void Commit()
     {
-        db.Write(_batch);
+        using var _ = backend.BeginUse();
+        backend.Db!.Write(_batch);
     }
 }
