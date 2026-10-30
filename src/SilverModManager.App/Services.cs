@@ -63,6 +63,13 @@ public enum HostProfile
 
 public static class Services
 {
+    /// <summary>Logs the reason of every stop; resolved by the window too, which tells it about the desktop lifetime.</summary>
+    private static void AddShutdownExplainer(this IServiceCollection services)
+    {
+        services.TryAddSingleton<ShutdownExplainer>();
+        services.AddHostedService(provider => provider.GetRequiredService<ShutdownExplainer>());
+    }
+
     public static IServiceCollection AddApp(
         this IServiceCollection services,
         bool addStandardGameLocators = true,
@@ -115,6 +122,7 @@ public static class Services
                 services.LeaveSignalsToHost();
                 // The host's console lifetime swallows SIGTERM/SIGINT; the window has to be told to close.
                 services.TryAddSingleton<DesktopShutdownOnHostStop>();
+                services.AddShutdownExplainer();
                 // Steam updates games while the app is closed, so managed games are checked once at startup.
                 services.AddLocalBaselineStartupPass();
                 services.AddSteamUpdateWatcher();
@@ -126,6 +134,7 @@ public static class Services
                 break;
             case HostProfile.Headless:
                 services.AddHeadlessServices(startupMode);
+                services.AddShutdownExplainer();
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(profile), profile, null);

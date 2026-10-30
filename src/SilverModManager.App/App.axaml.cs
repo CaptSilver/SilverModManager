@@ -60,6 +60,11 @@ public class App : Application
             reactiveWindow.ViewModel = _provider.GetRequiredService<MainWindowViewModel>();
             desktop.MainWindow = reactiveWindow;
             _provider.GetService<DesktopShutdownOnHostStop>()?.Attach(desktop);
+            if (_provider.GetService<ShutdownExplainer>() is { } explainer)
+            {
+                explainer.Attach(desktop);
+                explainer.Watch(reactiveWindow);
+            }
 
             var watchdog = _provider.GetRequiredService<UiStallWatchdog>();
             watchdog.Start();
