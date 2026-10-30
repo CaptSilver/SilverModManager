@@ -117,7 +117,9 @@ public class SortOrderManagerTests(ITestOutputHelper helper) : AStubbedGameIsola
         var manager = new SortOrderManager(ServiceProvider);
         manager.RegisterSortOrderVarieties([variety], GameInstallation.GetGame());
 
-        var update = manager.UpdateLoadOrders(LoadoutId.From(1)).AsTask();
+        // An update for a loadout that does not exist returns before it reaches a variety.
+        var loadout = await SeedLoadout(StubbedGame.GameId);
+        var update = manager.UpdateLoadOrders(loadout).AsTask();
         await variety.Started.Task.WaitAsync(TimeSpan.FromSeconds(20));
         var dispose = Task.Run(manager.Dispose);
 
