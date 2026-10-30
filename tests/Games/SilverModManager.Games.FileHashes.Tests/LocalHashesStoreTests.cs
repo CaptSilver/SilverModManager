@@ -132,6 +132,54 @@ public sealed class LocalHashesStoreTests : IDisposable
         LocalFileHash.All(service.Local).Should().ContainSingle().Which.XxHash3.Should().Be(Hash.From(9));
     }
 
+    private static MultiHash HashesOf(ulong seed) => new()
+    {
+        XxHash3 = Hash.From(seed),
+        XxHash64 = Hash.From(seed + 1),
+        MinimalHash = Hash.From(seed + 2),
+        Sha1 = default,
+        Md5 = default,
+        Crc32 = default,
+        Size = Size.From(10),
+    };
+
+    [Fact]
+    public async Task RecordHashRelations_JoinsTheXxHash3OfBytesToTheirOtherDigests()
+    {
+        var service = CreateService();
+
+        await service.RecordHashRelations([HashesOf(40)]);
+
+        var relation = HashRelation.All(service.Local).Should().ContainSingle().Subject;
+        relation.XxHash3.Should().Be(Hash.From(40));
+        relation.XxHash64.Should().Be(Hash.From(41));
+        relation.Size.Should().Be(Size.From(10));
+    }
+
+    [Fact]
+    public async Task RecordHashRelations_KeepsTheRelationBytesAlreadyHave()
+    {
+        var service = CreateService();
+        await service.RecordHashRelations([HashesOf(40)]);
+
+        await service.RecordHashRelations([HashesOf(40), HashesOf(40), HashesOf(50)]);
+
+        HashRelation.All(service.Local).Select(r => r.XxHash3).Should().BeEquivalentTo([Hash.From(40), Hash.From(50)]);
+    }
+
+    [Fact]
+    public async Task RecordHashRelations_WithACancelledToken_WritesNothing()
+    {
+        var service = CreateService();
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        var act = () => service.RecordHashRelations([HashesOf(40)], cancelled.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        HashRelation.All(service.Local).Should().BeEmpty();
+    }
+
     [Fact]
     public void Databases_ListsTheLocalStoreFirst()
     {

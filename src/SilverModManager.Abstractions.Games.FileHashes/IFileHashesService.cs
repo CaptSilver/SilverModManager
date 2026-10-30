@@ -132,6 +132,13 @@ public interface IFileHashesService
     public Task RecordIndexedFiles(GameInstallation installation, IReadOnlyList<IndexedFileHash> files, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Remembers the digests of bytes that were read in full but live at no path of a game folder, such as a backed-up
+    /// original unpacked from the file store. Bytes whose xxHash3 already has a <see cref="HashRelation"/> keep it.
+    /// One transaction on <see cref="Local"/>. Observes the token before it writes.
+    /// </summary>
+    public Task RecordHashRelations(IReadOnlyList<MultiHash> hashes, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gives the xxHash3 identity recorded by <see cref="RecordIndexedFiles"/> for this exact location, path, size and modified time.
     /// Accepts a row only for a file the app itself read and re-stat'ed unchanged, found by location and by the
     /// ordinal spelling of the path. It still accepts a same-size rewrite that restored the modified time, and on

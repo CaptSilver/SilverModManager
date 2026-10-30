@@ -273,6 +273,17 @@ public class StubbedFileHasherService : IFileHashesService, IDisposable
         await tx.Commit();
     }
 
+    public async Task RecordHashRelations(IReadOnlyList<MultiHash> hashes, CancellationToken cancellationToken = default)
+    {
+        if (hashes.Count == 0) return;
+        EnsureLocal();
+        var connection = _localConnection!;
+        using var tx = connection.BeginTransaction();
+        var created = new Dictionary<FileIdentity, SilverModManager.Abstractions.Games.FileHashes.Models.HashRelationId>();
+        foreach (var hash in hashes) _ = LocalFileHashRows.EnsureHashRelation(tx, connection.Db, created, hash);
+        await tx.Commit();
+    }
+
     public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out FileIdentity identity)
         => LocalFileHashRows.TryGet(EnsureLocal(), GameKey(installation), path, size, modifiedUtc, out identity);
 

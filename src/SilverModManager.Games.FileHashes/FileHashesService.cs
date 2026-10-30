@@ -762,6 +762,18 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     }
 
     /// <inheritdoc />
+    public async Task RecordHashRelations(IReadOnlyList<MultiHash> hashes, CancellationToken cancellationToken = default)
+    {
+        if (hashes.Count == 0) return;
+        cancellationToken.ThrowIfCancellationRequested();
+        var connection = _local.Connection;
+        using var tx = connection.BeginTransaction();
+        var created = new Dictionary<FileIdentity, HashRelationId>();
+        foreach (var hash in hashes) _ = LocalFileHashRows.EnsureHashRelation(tx, connection.Db, created, hash);
+        await tx.Commit();
+    }
+
+    /// <inheritdoc />
     public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out FileIdentity identity)
         => LocalFileHashRows.TryGet(Local, LocalBaselineCoordinator.GamePathOf(installation), path, size, modifiedUtc, out identity);
 

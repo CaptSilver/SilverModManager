@@ -25,10 +25,11 @@ public sealed class ArchiveInventory(
     IGameDomainToGameIdMappingCache mappingCache,
     IConnection connection,
     IFileStore fileStore,
-    IFileIdentityResolver identityResolver)
+    IFileIdentityResolver identityResolver,
+    IFileHashesService fileHashes)
 {
     /// <summary>The reader of the loadout's game files that <see cref="Build"/> checked the list against.</summary>
-    public GameFileSourceLookup GameFilesFor(Loadout.ReadOnly loadout) => new(loadout, connection, fileStore, identityResolver);
+    public GameFileSourceLookup GameFilesFor(Loadout.ReadOnly loadout) => new(loadout, connection, fileStore, identityResolver, fileHashes);
 
     /// <summary>
     /// The reader of an installation's game files when there is no loadout to go through, such as one the user picked
@@ -39,7 +40,7 @@ public sealed class ArchiveInventory(
         // An installation the app has never managed has no metadata row, and so no backups: the game folder is all there is.
         var registry = connection.ServiceProvider.GetRequiredService<IGameRegistry>();
         EntityId? installationId = registry.TryGetMetadata(installation, out var metadata) ? metadata.Id : null;
-        return new GameFileSourceLookup(installation, installationId, connection, fileStore, identityResolver);
+        return new GameFileSourceLookup(installation, installationId, connection, fileStore, identityResolver, fileHashes);
     }
 
     public Task<ArchivePlan> Build(ModList list, IDb db, Loadout.ReadOnly loadout, CancellationToken cancellationToken = default)
