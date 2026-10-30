@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.NexusWebApi.Types;
@@ -24,7 +25,8 @@ public sealed class ArchiveAcquirer(
     ExpectedNexusDownloads expectedDownloads,
     TimeProvider time,
     ISettingsManager settings,
-    ILogger<ArchiveAcquirer> logger) : IArchiveAcquirer, IDisposable
+    ILogger<ArchiveAcquirer> logger,
+    IHostApplicationLifetime? lifetime = null) : IArchiveAcquirer, IDisposable
 {
     public static readonly TimeSpan RecheckInterval = TimeSpan.FromSeconds(1);
 
@@ -37,10 +39,71 @@ public sealed class ArchiveAcquirer(
     private bool _expecting;
     private int _pages;
     private ArchivePlanRow[]? _running;
+    private RunState? _state;
+    private CancellationTokenSource? _runCancellation;
+
+    /// <summary>What <see cref="Status"/> reads from; each run has its own, so a run that was replaced cannot write into its successor's.</summary>
+    private sealed class RunState(LibraryFileId? modlist, int total, long started)
+    {
+        public readonly LibraryFileId? Modlist = modlist;
+        public readonly int Total = total;
+        public readonly long Started = started;
+        public int Finished;
+        public long Bytes;
+        public bool IsRunning = true;
+        public long? Ended;
+        public readonly List<DownloadFailure> Failures = [];
+    }
 
     public event Action<ArchivePlan>? PlanChanged;
 
     public event Action? PlanForgotten;
+
+    public event Action<AcquireStatus>? StatusChanged;
+
+    public AcquireStatus? Status
+    {
+        get { lock (_lock) return _state is { } state ? Snapshot(state) : null; }
+    }
+
+    // Caller holds the lock.
+    private AcquireStatus Snapshot(RunState state) => new(
+        state.Modlist, state.IsRunning, state.Finished, state.Total, state.Bytes,
+        time.GetElapsedTime(state.Started, state.Ended ?? time.GetTimestamp()),
+        state.Failures.TakeLast(AcquireStatus.FailuresKept).ToArray());
+
+    /// <summary>Changes the run's numbers and tells listeners, unless a later run has taken over the status.</summary>
+    private void Record(RunState state, Action<RunState> change)
+    {
+        AcquireStatus snapshot;
+        lock (_lock)
+        {
+            change(state);
+            if (!ReferenceEquals(_state, state)) return;
+            snapshot = Snapshot(state);
+        }
+        StatusChanged?.Invoke(snapshot);
+    }
+
+    /// <summary>
+    /// The app is closing: downloads cut short now are not finished, so the restart flag has to stay for the next
+    /// start to find.
+    /// </summary>
+    private bool IsStopping => lifetime?.ApplicationStopping.IsCancellationRequested == true;
+
+    public void Cancel()
+    {
+        CancellationTokenSource? current;
+        lock (_lock) current = _runCancellation;
+        try
+        {
+            current?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // The run ended in the same moment.
+        }
+    }
 
     public ArchivePlan Plan
     {
@@ -54,12 +117,26 @@ public sealed class ArchiveAcquirer(
     {
         Release();
         var rows = plan.Rows.ToArray();
+        RunState? abandoned = null;
         lock (_lock)
         {
+            if (_running is not null && _state is { IsRunning: true } running)
+            {
+                running.IsRunning = false;
+                running.Ended = time.GetTimestamp();
+                abandoned = running;
+            }
             _rows = rows;
             _modlist = plan.Modlist;
             _expecting = expecting;
             _running = expecting ? rows : null;
+        }
+        // A plan shown over a run drops the run's rows, so nothing is left to finish: a restart must not revive it.
+        // A run that replaces a run sets its own flag right after this.
+        if (abandoned is not null)
+        {
+            if (!expecting) PendingDownload.Set(settings, null);
+            Record(abandoned, _ => { });
         }
         UpdateExpected();
         UpdateWatching();
@@ -72,10 +149,20 @@ public sealed class ArchiveAcquirer(
 
     public async Task Run(ArchivePlan plan, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken)
     {
+        // Cancel() reaches the run through this, whoever started it.
+        using var runCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cancellationToken = runCancellation.Token;
         var rows = Adopt(plan, expecting: true);
 
         var automatic = Enumerable.Range(0, plan.Rows.Count).Where(i => plan.Rows[i].State == ArchiveState.Automatic).ToArray();
-        var finished = 0;
+        var state = new RunState(plan.Modlist, automatic.Length, time.GetTimestamp());
+        lock (_lock)
+        {
+            _state = state;
+            _runCancellation = runCancellation;
+        }
+        if (plan.Modlist is { } listed) PendingDownload.Set(settings, listed);
+        Record(state, _ => { });
         progress?.Report(new AcquireProgress(0, automatic.Length));
 
         try
@@ -87,26 +174,37 @@ public sealed class ArchiveAcquirer(
                 await gate.WaitAsync(cancellationToken);
                 try
                 {
-                    await Download(rows, plan.Modlist, index, cancellationToken);
+                    await Download(rows, plan.Modlist, state, index, cancellationToken);
                 }
                 finally
                 {
                     gate.Release();
-                    progress?.Report(new AcquireProgress(Interlocked.Increment(ref finished), automatic.Length));
+                    var finished = 0;
+                    Record(state, s => finished = ++s.Finished);
+                    progress?.Report(new AcquireProgress(finished, automatic.Length));
                 }
             }));
         }
         finally
         {
+            bool current;
             lock (_lock)
             {
-                if (ReferenceEquals(_running, rows)) _running = null;
+                current = ReferenceEquals(_running, rows);
+                if (current) _running = null;
+                if (ReferenceEquals(_runCancellation, runCancellation)) _runCancellation = null;
             }
+            if (current && plan.Modlist is not null && !IsStopping) PendingDownload.Set(settings, null);
+            Record(state, s =>
+            {
+                s.IsRunning = false;
+                s.Ended ??= time.GetTimestamp();
+            });
             if (IsCurrent(rows) && UpdateWatching()) PlanForgotten?.Invoke();
         }
     }
 
-    private async Task Download(ArchivePlanRow[] rows, LibraryFileId? modlist, int index, CancellationToken cancellationToken)
+    private async Task Download(ArchivePlanRow[] rows, LibraryFileId? modlist, RunState state, int index, CancellationToken cancellationToken)
     {
         // Still queued when a later run replaced the plan: nobody wants this archive any more.
         if (!IsCurrent(rows)) return;
@@ -115,16 +213,22 @@ public sealed class ArchiveAcquirer(
         {
             await using var destination = temporaryFileManager.CreateFile();
             var job = await downloadJobs.Create(row, destination.Path, cancellationToken);
+            // The job runs on the job monitor, not on this token, so stopping the run has to stop the transfer itself.
+            await using var stopTransfer = cancellationToken.Register(() => job.Job.AsContext().Cancel());
             var file = await library.AddDownload(job);
 
             if (file.XxHash64Identity() is { } downloaded && downloaded.Equals(row.Archive.XxHash64))
             {
                 Update(rows, index, r => r with { State = ArchiveState.Have, Reason = null, Library = file });
+                Record(state, s => s.Bytes += row.Archive.Size);
                 // The download was started for this list, so it was fetched for it even if the plan has since been replaced.
                 if (modlist is not null) await FetchedArchives.Mark(connection, row.Archive.XxHash64, file);
             }
             else
+            {
                 Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = "hash mismatch", Page = OriginalUrl(r) });
+                Record(state, s => s.Failures.Add(new DownloadFailure(row.Archive.Name, "hash mismatch")));
+            }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -134,6 +238,7 @@ public sealed class ArchiveAcquirer(
         {
             logger.LogWarning(e, "Downloading '{Name}' failed; it is left for the user to fetch", row.Archive.Name);
             Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = e.Message, Page = OriginalUrl(r) });
+            Record(state, s => s.Failures.Add(new DownloadFailure(row.Archive.Name, e.Message)));
         }
     }
 

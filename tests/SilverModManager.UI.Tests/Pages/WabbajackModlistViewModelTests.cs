@@ -28,6 +28,15 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         public ArchivePlan Plan { get; private set; } = new([]);
         public event Action<ArchivePlan>? PlanChanged;
         public event Action? PlanForgotten { add { } remove { } }
+        public AcquireStatus? Status { get; set; }
+        public event Action<AcquireStatus>? StatusChanged;
+        public int Cancels { get; private set; }
+        public void Cancel() => Cancels++;
+        public void ChangeStatus(AcquireStatus status)
+        {
+            Status = status;
+            StatusChanged?.Invoke(status);
+        }
         public List<int> OpenNextCalls { get; } = [];
         public int Releases { get; private set; }
         public int Runs { get; private set; }
@@ -198,11 +207,11 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
 
     private GameId TestGame => Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First().Game.GameId;
 
-    private async Task<(WabbajackModlistViewModel Vm, FakeService Service, FakeAcquirer Acquirer)> Open(ArchivePlan plan, GameId? game = null, Size? free = null, bool createsLoadouts = false, bool load = true, bool acquirerKeepsNothingShown = false, bool pickUp = false, IServiceProvider? services = null)
+    private async Task<(WabbajackModlistViewModel Vm, FakeService Service, FakeAcquirer Acquirer)> Open(ArchivePlan plan, GameId? game = null, Size? free = null, bool createsLoadouts = false, bool load = true, bool acquirerKeepsNothingShown = false, bool pickUp = false, IServiceProvider? services = null, AcquireStatus? runUnderWay = null)
     {
         await SeedLoadoutRow(GameStore.Steam, "Wabbajack target");
         var service = new FakeService(game ?? TestGame, createsLoadouts ? async () => (await SeedLoadoutRow(GameStore.Steam, "Created by install")).LoadoutId : null) { Plan = plan, Free = free, PickUpFromDownloads = pickUp };
-        var acquirer = new FakeAcquirer { KeepsNothingShown = acquirerKeepsNothingShown };
+        var acquirer = new FakeAcquirer { KeepsNothingShown = acquirerKeepsNothingShown, Status = runUnderWay };
         var vm = new WabbajackModlistViewModel(Provider.GetRequiredService<IWindowManager>(), Connection, service, acquirer, services ?? Provider) { FileId = SomeFile };
         if (load) await vm.LoadAsync(CancellationToken.None);
         return (vm, service, acquirer);

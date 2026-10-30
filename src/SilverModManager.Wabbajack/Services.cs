@@ -29,6 +29,7 @@ public static class Services
     {
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, WabbajackSkippedFilesEmitter>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WabbajackModlistRemovalWatcher>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ModlistDownloadResumer>());
         return services
             .AddWabbajackModlistLibraryFileModel()
             .AddWabbajackModlistArchiveModel()
@@ -59,7 +60,9 @@ public static class Services
                 provider.GetRequiredService<ExpectedNexusDownloads>(),
                 provider.GetService<TimeProvider>() ?? TimeProvider.System,
                 provider.GetRequiredService<ISettingsManager>(),
-                provider.GetRequiredService<ILogger<ArchiveAcquirer>>()))
+                provider.GetRequiredService<ILogger<ArchiveAcquirer>>(),
+                provider.GetService<IHostApplicationLifetime>()))
+            .AddSingleton<ModlistDownloads>()
             .AddSingleton<ArchiveInbox>()
             .AddSingleton<DownloadsPickup>()
             .AddSingleton<IModlistDownloadJobs, ModlistDownloadJobs>()

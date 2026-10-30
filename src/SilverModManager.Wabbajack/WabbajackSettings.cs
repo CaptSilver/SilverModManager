@@ -33,6 +33,12 @@ public record WabbajackSettings : ISettings
     /// </summary>
     public ConfigurablePath GalleryCachePath { get; init; }
 
+    /// <summary>
+    /// The modlist, as a hex library id, whose archive downloads were under way when the app last closed. Empty when
+    /// none were. The app starts them again at launch; see <see cref="Acquire.PendingDownload"/>.
+    /// </summary>
+    public string PendingDownload { get; init; } = "";
+
     /// <inheritdoc/>
     public static string SettingsId => "SilverModManager.Wabbajack.WabbajackSettings";
 

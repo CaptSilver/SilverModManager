@@ -64,6 +64,10 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     // Download plans the list again before it starts, and the button is off for that time.
     private bool _isPreparingDownloads;
 
+    // True while a run this page started is under way. A run from anywhere else (the command line, the restart after
+    // a close) is the acquirer's to finish, and showing a plan over it would abandon it.
+    private bool _ownsRun;
+
     [Reactive] public partial LibraryFileId FileId { get; set; }
 
     public LoadoutId? PreferredLoadout { get; set; }
@@ -251,6 +255,12 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             // Rows that changed while the page was away.
             if (_loadStarted && IsThisList(_acquirer.Plan)) ApplyPlan(_acquirer.Plan);
 
+            // A batch started elsewhere shows here as it runs and ends.
+            Observable.FromEvent<Action<AcquireStatus>, AcquireStatus>(h => h, h => _acquirer.StatusChanged += h, h => _acquirer.StatusChanged -= h)
+                .Subscribe(ShowRunStatus)
+                .DisposeWith(d);
+            if (_loadStarted && _acquirer.Status is { } current) ShowRunStatus(current);
+
             // The group, its enabled state and its skip rows change underneath the page while an install runs.
             _connection.Revisions
                 .ThrottleAfterFirst(RevisionThrottle, TaskPoolScheduler.Default)
@@ -292,6 +302,18 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
                                    || row.Archive.State is VectorPlexusState && sites.Contains(ForumSite.VectorPlexus))) return;
 
         await Guarded(token => SelectLoadoutAsync(choice, token));
+    }
+
+    /// <summary>Shows a run this page did not start: whether it is going and how far it has got.</summary>
+    private void ShowRunStatus(AcquireStatus status)
+    {
+        if (_ownsRun || status.Modlist != FileId) return;
+        // A finished run's last status stays on the acquirer; it is only worth showing while the run is going.
+        if (!status.IsRunning && !IsDownloading) return;
+        Downloads = new AcquireProgress(status.Finished, status.Total);
+        HasStartedDownloads = true;
+        IsDownloading = status.IsRunning;
+        Recompute();
     }
 
     // The acquirer is one singleton for every modlist page; a plan of another list's archives is not this page's.
@@ -381,11 +403,16 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         _planReady = false;
         IsPlanning = true;
 
-        // Downloads for the previous pick are not wanted any more, and neither is its check.
+        // Downloads for the previous pick are not wanted any more, and neither is its check. A run this page did not
+        // start is not the previous pick's.
         _acquireCancellation?.Cancel();
         var pick = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _acquireCancellation = pick;
         var token = pick.Token;
+        // The pick above cancelled this page's own run, if it had one; that run is gone as far as the page cares, even
+        // while the acquirer is still winding it down.
+        var cancelledOwnRun = _ownsRun;
+        _ownsRun = false;
         HasStartedDownloads = false;
         IsDownloading = false;
 
@@ -409,13 +436,24 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
             // Show is what makes the plan the acquirer's current one: from here on it matches the rows to whatever
             // reaches the library, without fetching anything.
-            Downloads = null;
-            _acquirer.Show(plan);
-            _planReady = true;
-            // The acquirer keeps no rows when no page is active (the user left while planning); the page then
-            // shows the plan as built, and the next activation gives it back and looks the rows up.
-            var shown = _acquirer.Plan;
-            ApplyPlan(shown.Rows.Count > 0 ? shown : plan);
+            var otherRun = !cancelledOwnRun && !_ownsRun && _acquirer.Status is { IsRunning: true };
+            if (otherRun)
+            {
+                // Showing a plan would abandon the batch that is running, so this one is only drawn.
+                _planReady = true;
+                ApplyPlan(IsThisList(_acquirer.Plan) && _acquirer.Plan.Rows.Count > 0 ? _acquirer.Plan : plan);
+                if (_acquirer.Status is { } running) ShowRunStatus(running);
+            }
+            else
+            {
+                Downloads = null;
+                _acquirer.Show(plan);
+                _planReady = true;
+                // The acquirer keeps no rows when no page is active (the user left while planning); the page then
+                // shows the plan as built, and the next activation gives it back and looks the rows up.
+                var shown = _acquirer.Plan;
+                ApplyPlan(shown.Rows.Count > 0 ? shown : plan);
+            }
             RefreshInstalledState();
 
             var counts = WabbajackModlistText.Counts(plan);
@@ -512,6 +550,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             Downloads = null;
             HasStartedDownloads = true;
             IsDownloading = true;
+            _ownsRun = true;
             var run = _acquirer.Run(plan, new Progress<AcquireProgress>(OnDownloadProgress), token);
             ApplyPlan(_acquirer.Plan);
             _ = ObserveDownloads(run, token);
@@ -543,6 +582,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             // A run that a newer pick cancelled must not clear the flag of the run that replaced it.
             if (!token.IsCancellationRequested)
             {
+                _ownsRun = false;
                 IsDownloading = false;
                 Recompute();
             }

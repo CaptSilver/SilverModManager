@@ -23,6 +23,12 @@ public interface IArchiveAcquirer
     /// </summary>
     event Action? PlanForgotten;
 
+    /// <summary>How the latest run is going, or null before the first one. It stays after the run ends, until the next run begins.</summary>
+    AcquireStatus? Status { get; }
+
+    /// <summary>Raised when <see cref="Status"/> changes: a run begins, an archive finishes or fails, a run ends.</summary>
+    event Action<AcquireStatus>? StatusChanged;
+
     /// <summary>
     /// Makes <paramref name="plan"/> current and keeps its rows matched against the library, but starts no download,
     /// opens no page and expects no Nexus Mods file. Replaces the current plan.
@@ -36,6 +42,9 @@ public interface IArchiveAcquirer
     /// <see cref="Release"/> or the next run.
     /// </summary>
     Task Run(ArchivePlan plan, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken);
+
+    /// <summary>Stops the run that is under way, if any, whoever started it. <see cref="Run"/> then ends with a cancellation.</summary>
+    void Cancel();
 
     /// <summary>Opens the pages of up to <paramref name="count"/> Browser rows that have not been opened yet, and returns how many it opened.</summary>
     int OpenNext(int count);
