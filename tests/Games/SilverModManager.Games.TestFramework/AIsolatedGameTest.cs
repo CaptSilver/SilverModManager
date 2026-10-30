@@ -592,12 +592,11 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
     }
 
     /// <summary>
-    /// The host's shutdown, which <see cref="DisposeAsync"/> starts without waiting for. A test that deletes
-    /// folders the host writes to waits for it first.
+    /// The host's shutdown, which <see cref="DisposeAsync"/> waits for (bounded, see below) before it returns.
     /// </summary>
     protected Task HostShutdown { get; private set; } = Task.CompletedTask;
 
-    public virtual ValueTask DisposeAsync()
+    public virtual async ValueTask DisposeAsync()
     {
         HostShutdown = Task.Run(async () =>
         {
@@ -610,7 +609,10 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
             }
         });
 
-        return ValueTask.CompletedTask;
+        // The next test, or the end of the run, must not start while the databases are still closing: a query
+        // still running against RocksDB when it closes takes the test host down with a native fault. The inner
+        // timeouts bound the wait, and a shutdown that failed or timed out has nothing more to release.
+        await Task.WhenAny(HostShutdown);
     }
     
     /// <summary>
