@@ -3,7 +3,10 @@ using System.Reactive.Linq;
 using System.Text;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.DataModel;
 using SilverModManager.Sdk.FileStore;
+using Microsoft.Extensions.Logging;
+using SilverModManager.Sdk.Settings;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,7 +49,43 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
 
     protected override bool StoreVouchesForTheFiles => true;
 
-    protected override IServiceCollection AddServices(IServiceCollection services) => base.AddServices(services).AddWitcherGames();
+    private readonly ArchiveLookupGate _lookupGate = new();
+
+    protected override IServiceCollection AddServices(IServiceCollection services)
+    {
+        var gate = _lookupGate;
+        return base.AddServices(services).AddWitcherGames()
+            .AddSingleton<NxFileStore>(sp => ActivatorUtilities.CreateInstance<PausingFileStore>(sp, gate));
+    }
+
+    /// <summary>Holds the first lookup that finds no archive, once armed, so a test can bring the archive in meanwhile.</summary>
+    private sealed class ArchiveLookupGate
+    {
+        private readonly ManualResetEventSlim _release = new(true);
+        private int _armed;
+        public readonly ManualResetEventSlim Reached = new();
+
+        public void Arm() { _release.Reset(); Reached.Reset(); Volatile.Write(ref _armed, 1); }
+        public void Release() => _release.Set();
+
+        public async Task PassAfterAMissAsync()
+        {
+            if (Interlocked.Exchange(ref _armed, 0) == 0) return;
+            Reached.Set();
+            await Task.Run(() => _release.Wait(TimeSpan.FromSeconds(30)));
+        }
+    }
+
+    private sealed class PausingFileStore(ILogger<NxFileStore> logger, IConnection conn, ISettingsManager settings, IFileSystem fileSystem, ArchiveLookupGate gate)
+        : NxFileStore(logger, conn, settings, fileSystem)
+    {
+        public override async ValueTask<bool> HaveFile(FileIdentity identity)
+        {
+            var have = await base.HaveFile(identity);
+            if (!have) await gate.PassAfterAMissAsync();
+            return have;
+        }
+    }
 
     protected override SteamInstall InstallGame(SteamLibraryFixture library)
     {
@@ -370,6 +409,11 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
         (await StatusNow(loadout)).Should().Be(LoadoutSynchronizerState.Current);
     }
 
+    private static async Task StatusQuiet(List<LoadoutSynchronizerState> states, int atLeast)
+        => await Observable.Interval(TimeSpan.FromMilliseconds(250)).Select(_ => states.Count)
+            .Scan((Previous: -1, Now: 0), (last, now) => (last.Now, now))
+            .Where(count => count.Now >= atLeast && count.Now == count.Previous).Timeout(TimeSpan.FromSeconds(60)).FirstAsync();
+
     private async Task AddLateFileOutsideMods(Loadout.ReadOnly loadout)
     {
         using var tx = Connection.BeginTransaction();
@@ -392,15 +436,52 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
 
         // Every evaluation emits, so the status has caught up with the late file once it has emitted again and
         // then stays quiet. Only then is the file known to wait for its archive.
-        await Observable.Interval(TimeSpan.FromMilliseconds(250)).Select(_ => states.Count)
-            .Scan((Previous: -1, Now: 0), (last, now) => (last.Now, now))
-            .Where(count => count.Now >= 2 && count.Now == count.Previous).Timeout(TimeSpan.FromSeconds(60)).FirstAsync();
+        await StatusQuiet(states, atLeast: 2);
         states.ToArray().Should().OnlyContain(state => state == LoadoutSynchronizerState.Current, "an apply could not extract it yet");
 
         await TheArchiveOfTheLateModIsBack();
 
         await Observable.Interval(TimeSpan.FromMilliseconds(50)).Select(_ => states.ToArray())
             .Where(seen => seen.Contains(LoadoutSynchronizerState.NeedsSync)).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+    }
+
+    // The evaluation that finds the file without its archive is still running when the archive lands, so the store's
+    // change arrives before the status knows anything waits for one. Nothing may drop it, or the status settles on
+    // Current while an apply would extract the file.
+    [Fact]
+    public async Task AnArchiveThatComesBackWhileTheEvaluationThatMissedItIsStillRunningIsNotLost()
+    {
+        var loadout = await CreateLoadout();
+        await Synchronizer.Synchronize(Refresh(loadout));
+        var states = new List<LoadoutSynchronizerState>();
+        using var watch = (await SynchronizerService.StatusForLoadout(loadout.LoadoutId)).Subscribe(s => { lock (states) states.Add(s); });
+        await StatusQuiet(states, atLeast: 1);
+
+        _lookupGate.Arm();
+        await AddLateFileOutsideMods(loadout);
+        _lookupGate.Reached.Wait(TimeSpan.FromSeconds(30)).Should().BeTrue("the evaluation looks for the archive and finds none");
+        await TheArchiveOfTheLateModIsBack();
+        _lookupGate.Release();
+
+        await Observable.Interval(TimeSpan.FromMilliseconds(50)).Select(_ => { lock (states) return states.ToArray(); })
+            .Where(seen => seen.Contains(LoadoutSynchronizerState.NeedsSync)).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+    }
+
+    [Fact]
+    public async Task AFileStoreSubscriberThatThrowsDoesNotFailTheBackupOfAStoredFile()
+    {
+        Action thrower = () => throw new InvalidOperationException("subscriber failed");
+        FileStore.ArchivesChanged += thrower;
+        try
+        {
+            var act = async () => await TheArchiveOfTheLateModIsBack();
+            await act.Should().NotThrowAsync();
+            (await FileStore.HaveFile(FileIdentity.XxHash3(Encoding.UTF8.GetBytes("late").xxHash3()))).Should().BeTrue();
+        }
+        finally
+        {
+            FileStore.ArchivesChanged -= thrower;
+        }
     }
 
     [Fact]

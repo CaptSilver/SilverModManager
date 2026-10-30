@@ -577,18 +577,15 @@ public class SynchronizerService : ISynchronizerService, IDisposable
             .ToObservable()
             .Select(rev => (Basis: rev.Db.BasisTxId, Epoch: Volatile.Read(ref archiveEpoch)));
 
-        // An archive that comes back is no input of the loadout, so while a file is known to wait for one (the last
-        // apply left it out, or the last comparison found one) a change to the file store is a reason to look again.
-        // The comparison is the only thing that can see a waiting file that no apply has recorded.
-        var waitsForArchive = 0;
+        // An archive that comes back is no input of the loadout, so a change to the file store is a reason to look
+        // again. Every change is passed on, whether or not a file is known to wait for an archive: a comparison that
+        // is still running when the archive lands has not recorded yet that it saw a file missing, and a trigger
+        // dropped now would never come again. A look that finds nothing waiting is answered from the recorded inputs
+        // without building a tree.
         var fileStore = _serviceProvider.GetRequiredService<IFileStore>();
         var archiveChanges = R3.Observable.Create<(TxId Basis, long Epoch)>(observer =>
         {
-            void Changed()
-            {
-                if (Volatile.Read(ref waitsForArchive) == 1 || AppliedStateOf(GameInstallMetadata.Load(_conn.Db, metadataId)).LeftUnextracted)
-                    observer.OnNext((_conn.Db.BasisTxId, Interlocked.Increment(ref archiveEpoch)));
-            }
+            void Changed() => observer.OnNext((_conn.Db.BasisTxId, Interlocked.Increment(ref archiveEpoch)));
 
             fileStore.ArchivesChanged += Changed;
             return R3.Disposable.Create(() => fileStore.ArchivesChanged -= Changed);
@@ -597,6 +594,7 @@ public class SynchronizerService : ISynchronizerService, IDisposable
         // Only here to make each emission different from the last, so DistinctUntilChanged lets it through.
         var revisions = inputRevisions.Merge(archiveChanges);
 
+        var waitsForArchive = 0;
         var statusFailureLogged = 0;
         var statusObservable = isBusy.CombineLatest(appliedState,
                 revisions,

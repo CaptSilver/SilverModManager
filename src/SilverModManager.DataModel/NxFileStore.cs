@@ -131,7 +131,22 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
         }
         _archivesByEntry = index.ToFrozenDictionary();
         _archives = archives.ToFrozenDictionary();
-        ArchivesChanged?.Invoke();
+        RaiseArchivesChanged();
+    }
+
+    /// <summary>
+    /// Tells the subscribers one by one. The archive is already written and indexed by now, so a subscriber that fails
+    /// (the app can be shutting down under it) must not turn a stored backup into a failed one.
+    /// </summary>
+    private void RaiseArchivesChanged()
+    {
+        var handlers = ArchivesChanged;
+        if (handlers is null) return;
+        foreach (var handler in handlers.GetInvocationList().Cast<Action>())
+        {
+            try { handler(); }
+            catch (Exception e) { _logger.LogWarning(e, "A subscriber to archive changes failed"); }
+        }
     }
 
     /// <summary>
@@ -180,7 +195,7 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
             }
         }
 
-        ArchivesChanged?.Invoke();
+        RaiseArchivesChanged();
     }
 
     private static void ArchiveValidation(FrozenDictionary<Hash, FileEntry> actualFiles, Dictionary<Hash, (ArchivedFileEntry, Stream)> expectedFiles)
@@ -201,7 +216,7 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
     }
 
     /// <inheritdoc />
-    public ValueTask<bool> HaveFile(FileIdentity identity)
+    public virtual ValueTask<bool> HaveFile(FileIdentity identity)
     {
         var key = identity.XxHash3();
         return ValueTask.FromResult(_archivesByEntry.ContainsKey(key));
