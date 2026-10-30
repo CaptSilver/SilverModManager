@@ -52,7 +52,7 @@ public class ShutdownExplainerTests
             return job;
         }).ToList();
         var monitor = Substitute.For<IJobMonitor>();
-        monitor.Jobs.Returns(new ReadOnlyObservableCollection<IJob>(new ObservableCollection<IJob>(list)));
+        monitor.Snapshot().Returns(list);
         return monitor;
     }
 
@@ -164,9 +164,34 @@ public class ShutdownExplainerTests
     [InlineData(WindowCloseReason.OSShutdown, false, "operating system")]
     [InlineData(WindowCloseReason.ApplicationShutdown, false, "application shutdown")]
     [InlineData(WindowCloseReason.Undefined, true, "by the application")]
+    [InlineData(WindowCloseReason.ApplicationShutdown, true, "application shutdown")]
+    [InlineData(WindowCloseReason.OSShutdown, true, "operating system")]
     public void Test_WindowCloseReasonsReadInPlainWords(WindowCloseReason reason, bool programmatic, string expected)
     {
         ShutdownExplainer.DescribeWindowClose(reason, programmatic).Should().Contain(expected);
+    }
+
+    [Fact]
+    public void Test_AClosePressedInTheAppItselfIsTheUsersEvenThoughAvaloniaCallsItProgrammatic()
+    {
+        ShutdownExplainer.DescribeWindowClose(WindowCloseReason.Undefined, programmatic: true, requestedByUser: true)
+            .Should().Contain("closed by the user").And.Contain("top bar");
+        ShutdownExplainer.DescribeWindowClose(WindowCloseReason.ApplicationShutdown, programmatic: true, requestedByUser: true)
+            .Should().Contain("application shutdown", "an earlier click does not rename a later shutdown");
+    }
+
+    [Fact]
+    public void Test_AJobListThatCannotBeReadIsReportedNotSwallowed()
+    {
+        var monitor = Substitute.For<IJobMonitor>();
+        monitor.Snapshot().Returns(_ => throw new InvalidOperationException("Collection was modified"));
+        var (explainer, log, host) = Create(monitor);
+        explainer.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+        host.StopApplication();
+
+        log.Entries.Should().Contain(e => e.Level == LogLevel.Warning && e.Message.Contains("jobs that were running"));
+        log.Info().Should().Contain(m => m.StartsWith("Stopping:"));
     }
 
     [Fact]

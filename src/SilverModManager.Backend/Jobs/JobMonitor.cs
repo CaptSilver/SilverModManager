@@ -16,6 +16,8 @@ public sealed class JobMonitor : IJobMonitor, IDisposable
     private readonly ReadOnlyObservableCollection<IJob> _jobs;
     public ReadOnlyObservableCollection<IJob> Jobs => _jobs;
 
+    public IReadOnlyList<IJob> Snapshot() => _allJobs.Items.ToArray();
+
     private readonly CompositeDisposable _compositeDisposable = new();
     private readonly ILogger<JobMonitor> _logger;
 

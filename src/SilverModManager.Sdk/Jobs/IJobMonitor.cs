@@ -31,6 +31,13 @@ public interface IJobMonitor
     /// All the jobs the monitor knows about
     /// </summary>
     ReadOnlyObservableCollection<IJob> Jobs { get; }
+
+    /// <summary>
+    /// A copy of all the jobs the monitor knows about that is safe to enumerate from any thread. <see cref="Jobs"/>
+    /// changes under its enumerator whenever a job starts or finishes, so only code on the thread that owns it can
+    /// walk it.
+    /// </summary>
+    IReadOnlyList<IJob> Snapshot();
     
     /// <summary>
     /// Cancels a specific job by its ID

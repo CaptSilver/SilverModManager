@@ -75,4 +75,25 @@ public class JobMonitorTrackingTests : AJobsTest
         var hasAddOperation = changeSets.Any(cs => cs.Any(change => change.Reason == ChangeReason.Add));
         hasAddOperation.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Snapshot_ListsJobsWhileOtherThreadsStartAndFinishThem()
+    {
+        var starting = Task.Run(async () =>
+        {
+            for (var i = 0; i < 300; i++)
+                await JobMonitor.Begin<SimpleTestJob, string>(new SimpleTestJob()).Job.WaitAsync(TestContext.Current.CancellationToken);
+        }, TestContext.Current.CancellationToken);
+
+        var seen = 0;
+        while (!starting.IsCompleted)
+        {
+            // Enumerating Jobs here would throw "Collection was modified" from time to time.
+            seen += JobMonitor.Snapshot().Count(job => job.Status.IsActive() || job.Status == JobStatus.Completed);
+            Thread.Yield();
+        }
+
+        await starting;
+        seen.Should().BeGreaterThan(0, "the snapshot has to see the jobs the other thread ran");
+    }
 }

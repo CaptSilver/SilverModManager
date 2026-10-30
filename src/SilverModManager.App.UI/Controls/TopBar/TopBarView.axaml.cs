@@ -6,6 +6,7 @@ using Avalonia.Controls.Metadata;
 using Microsoft.Extensions.Logging;
 using Avalonia.ReactiveUI;
 using DynamicData.Binding;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.UI.Sdk;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.UI.Sdk.Icons;
@@ -127,7 +128,7 @@ public partial class TopBarView : ReactiveUserControl<ITopBarViewModel>
     private void CloseWindow(object sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (!TryGetHostWindow(out var hostWindow)) return;
-        hostWindow.Close();
+        UserWindowClose.Request(hostWindow);
     }
 
     private void MaximizeWindow(object sender, Avalonia.Interactivity.RoutedEventArgs e)

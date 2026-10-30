@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.Sdk.Jobs;
 
 namespace SilverModManager.App;
@@ -59,17 +60,23 @@ public sealed class ShutdownExplainer(IHostApplicationLifetime hostLifetime, IJo
     public void Watch(Window window) =>
         window.Closing += (_, e) =>
         {
-            var description = DescribeWindowClose(e.CloseReason, e.IsProgrammatic);
+            var description = DescribeWindowClose(e.CloseReason, e.IsProgrammatic, UserWindowClose.WasRequested(window));
             Note(description);
             logger.LogInformation("The {Window} is closing: {Description}", window.GetType().Name, description);
         };
 
-    public static string DescribeWindowClose(WindowCloseReason reason, bool programmatic) => reason switch
+    /// <summary>
+    /// The close reason wins over the programmatic flag: the desktop lifetime and the operating system close windows
+    /// from code too, and their reason is the more useful one. What is left is the window's own close button, which
+    /// is programmatic as far as Avalonia can tell, and a close from the compositor, which is not.
+    /// </summary>
+    public static string DescribeWindowClose(WindowCloseReason reason, bool programmatic, bool requestedByUser = false) => reason switch
     {
-        _ when programmatic => "closed by the application",
         WindowCloseReason.OSShutdown => "the operating system is shutting down or logging out",
         WindowCloseReason.ApplicationShutdown => "application shutdown",
         WindowCloseReason.OwnerWindowClosing => "its owner window is closing",
+        _ when requestedByUser => "closed by the user from the top bar",
+        _ when programmatic => "closed by the application",
         _ => "closed by the user",
     };
 
@@ -88,7 +95,17 @@ public sealed class ShutdownExplainer(IHostApplicationLifetime hostLifetime, IJo
     {
         logger.LogInformation("Stopping: {Reason}", _reason ?? DescribeCaller(new StackTrace(skipFrames: 1)));
 
-        var active = jobs.Jobs.Where(j => j.Status.IsActive()).ToArray();
+        IJob[] active;
+        try
+        {
+            active = jobs.Snapshot().Where(j => j.Status.IsActive()).ToArray();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not list the jobs that were running when the stop began");
+            return;
+        }
+
         if (active.Length == 0) return;
 
         var described = string.Join(", ", active.Select(j => $"{j.Definition.GetType().Name} ({j.Status}{ProgressOf(j)})"));
