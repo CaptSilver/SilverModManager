@@ -72,7 +72,7 @@ public static class IndexEpicGame
                             var task = progressTask.Increment(current.Value);
                         });
 
-                        return await MultiHasher.HashStream(stream, cancellationToken: readToken);
+                        return await MultiHasher.HashStream(progressWrapper, cancellationToken: readToken);
                     }, token);
                 }
             );

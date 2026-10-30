@@ -47,9 +47,10 @@ public static class FileHashing
 
     /// <summary>
     /// <see cref="Read{T}(AbsolutePath, Func{Stream, CancellationToken, ValueTask{T}}, CancellationToken)"/> with the
-    /// stream supplied by <paramref name="open"/>, so a test can count or fault the reads.
+    /// stream supplied by <paramref name="open"/>, so a test can count or fault the reads. Internal so a caller cannot
+    /// swap the sequential opener for a slower one.
     /// </summary>
-    public static async ValueTask<T> Read<T>(AbsolutePath file, Func<AbsolutePath, Stream> open, Func<Stream, CancellationToken, ValueTask<T>> hash, CancellationToken cancellationToken = default)
+    internal static async ValueTask<T> Read<T>(AbsolutePath file, Func<AbsolutePath, Stream> open, Func<Stream, CancellationToken, ValueTask<T>> hash, CancellationToken cancellationToken = default)
     {
         await using var stream = open(file);
         return await hash(stream, cancellationToken).ConfigureAwait(false);

@@ -19,6 +19,11 @@
         <PackageReference Include="TransparentValueObjects.Abstractions" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="SilverModManager.Games.FileHashes" />
+        <InternalsVisibleTo Include="SilverModManager.Sdk.Tests" />
+    </ItemGroup>
+
     <PropertyGroup>
         <BuildDateOutput>$(BaseIntermediateOutputPath)buildDate.txt</BuildDateOutput>
     </PropertyGroup>
