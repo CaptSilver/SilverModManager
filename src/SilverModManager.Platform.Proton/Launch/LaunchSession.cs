@@ -300,6 +300,12 @@ public sealed class LaunchSession
             LogCause(declined, "{Game} was not started: the backup question for {Loadout} was declined", game, context.LoadoutName);
             return new LaunchFailure($"{game} was not started; nothing was changed.", Refused: true, Cause: declined);
         }
+        catch (MassRemovalException refused)
+        {
+            // The apply would have removed most of the loadout's files and the player said no (or nobody could be asked); nothing was written.
+            _logger.Log(LogLevel.Warning, refused, "{Game} was not started: the removal question for {Loadout} was refused", game, context.LoadoutName);
+            return new LaunchFailure(refused.Declined ? $"{game} was not started; nothing was changed." : refused.Message, Refused: true, Cause: refused);
+        }
         catch (Exception e)
         {
             LogCause(e, "Preparing {Loadout} for {Game} failed", context.LoadoutName, game);

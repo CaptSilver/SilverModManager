@@ -864,6 +864,39 @@ public class LaunchSessionTests : IDisposable
         _processes.Started.Should().BeFalse();
     }
 
+    private MassRemovalException RemovalQuestion(bool declined) => new(_installation, new MassRemoval(1235, 3153, [], 1235)) { Declined = declined };
+
+    [Fact]
+    public async Task ADeclinedRemovalQuestion_BeforeTheGame_IsARefusalNotACrash()
+    {
+        var declined = RemovalQuestion(declined: true);
+        _synchronizer.FailOn = 1;
+        _synchronizer.FailWith = declined;
+
+        var result = await Run(NewSession());
+
+        result.Message.Should().Be("Test Game was not started; nothing was changed.");
+        result.Refused.Should().BeTrue();
+        result.Cause.Should().BeSameAs(declined);
+        _processes.Started.Should().BeFalse();
+        _log.Records.Should().NotContain(r => r.Level >= LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task ARemovalRefusedWithoutAnyoneToAsk_BeforeTheGame_KeepsItsOwnMessageAndIsARefusal()
+    {
+        var refused = RemovalQuestion(declined: false);
+        _synchronizer.FailOn = 1;
+        _synchronizer.FailWith = refused;
+
+        var result = await Run(NewSession());
+
+        result.Message.Should().Be(refused.Message);
+        result.Refused.Should().BeTrue();
+        _processes.Started.Should().BeFalse();
+        _log.Records.Should().NotContain(r => r.Level >= LogLevel.Error);
+    }
+
     [Fact]
     public async Task ADeclinedBackupQuestion_AfterThePlay_SaysTheLoadoutIsStillApplied_WithoutSoundingLikeACrash()
     {
