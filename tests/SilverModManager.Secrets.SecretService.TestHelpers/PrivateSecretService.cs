@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Tmds.DBus.Protocol;
 using Xunit;
 
-namespace SilverModManager.Secrets.SecretService.Tests.Integration;
+namespace SilverModManager.Secrets.SecretService.TestHelpers;
 
 /// <summary>
 /// A gnome-keyring-daemon on a session bus of its own, with a throwaway HOME and runtime dir, so the tests
@@ -154,7 +154,7 @@ public sealed class PrivateSecretService : IAsyncDisposable
         kill.WaitForExit();
     }
 
-    internal static string? FindOnPath(string binary) =>
+    public static string? FindOnPath(string binary) =>
         (Environment.GetEnvironmentVariable("PATH") ?? "").Split(':', StringSplitOptions.RemoveEmptyEntries)
             .Select(dir => Path.Combine(dir, binary)).FirstOrDefault(File.Exists);
 }

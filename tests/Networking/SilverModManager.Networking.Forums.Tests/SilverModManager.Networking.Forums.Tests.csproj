@@ -8,6 +8,8 @@
         <ProjectReference Include="..\..\..\src\SilverModManager.Backend\SilverModManager.Backend.csproj" />
         <ProjectReference Include="..\..\..\src\SilverModManager.Secrets\SilverModManager.Secrets.csproj" />
         <ProjectReference Include="..\..\..\src\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
+        <ProjectReference Include="..\..\..\src\SilverModManager.Secrets.SecretService\SilverModManager.Secrets.SecretService.csproj" />
+        <ProjectReference Include="..\..\SilverModManager.Secrets.SecretService.TestHelpers\SilverModManager.Secrets.SecretService.TestHelpers.csproj" />
     </ItemGroup>
 
     <ItemGroup>

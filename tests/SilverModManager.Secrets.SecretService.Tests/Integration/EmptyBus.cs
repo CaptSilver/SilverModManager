@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using SilverModManager.Secrets.SecretService.TestHelpers;
 
 namespace SilverModManager.Secrets.SecretService.Tests.Integration;
 

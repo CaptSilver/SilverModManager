@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using SilverModManager.Secrets.SecretService.TestHelpers;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.Abstractions.Secrets;
