@@ -2,7 +2,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.HyperDuck;
@@ -112,8 +114,50 @@ public class QueryEngine : IQueryEngine, IAsyncDisposable
     public int AttrEnumWidth => _attrsByShortName.Count > 255 ? 2 : 1;
 
 
+    /// <summary>
+    /// How long <see cref="DisposeAsync"/> waits for running queries before it gives up on closing DuckDB.
+    /// </summary>
+    internal TimeSpan QueryDrainWait { get; set; } = TimeSpan.FromSeconds(10);
+
+    // HyperDuck pools its connections: a query checks one out for as long as it runs and returns it afterwards, and
+    // DuckDB keeps every connection it ever made in one bag and the idle ones in another. It offers no public way to
+    // ask how many are checked out, and its DisposeAsync destroys all of them without waiting.
+    private static readonly FieldInfo AllConnectionsField = PoolField("_allConnections");
+    private static readonly FieldInfo IdleConnectionsField = PoolField("_connections");
+
+    private static FieldInfo PoolField(string name) =>
+        typeof(NexusMods.HyperDuck.DuckDB).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)
+        ?? throw new InvalidOperationException($"NexusMods.HyperDuck.DuckDB no longer has a field named {name}; the query drain cannot count running queries");
+
+    private static int CountOf(object pool, FieldInfo field) =>
+        ((System.Collections.ICollection)field.GetValue(pool)!).Count;
+
+    /// <summary>
+    /// The number of DuckDB connections that running queries have checked out.
+    /// </summary>
+    internal int ConnectionsInUse()
+    {
+        // Total first: a connection that returns to the pool between the two reads can only make the result too high,
+        // never zero while a query is still running.
+        var all = CountOf(_db, AllConnectionsField);
+        var idle = CountOf(_db, IdleConnectionsField);
+        return Math.Max(0, all - idle);
+    }
+
+    private int _closed;
+
     public async ValueTask DisposeAsync()
     {
+        var deadline = DateTime.UtcNow + QueryDrainWait;
+        while (ConnectionsInUse() > 0)
+        {
+            // A query that never finishes is a hang elsewhere. Closing DuckDB under it destroys the connection it is
+            // running on and crashes the process, so DuckDB stays open until the process exits.
+            if (DateTime.UtcNow >= deadline) return;
+            await Task.Delay(10).ConfigureAwait(false);
+        }
+
+        if (Interlocked.Exchange(ref _closed, 1) == 1) return;
         _attrEnumLogicalType.Dispose();
         await _db.DisposeAsync().ConfigureAwait(false);
     }
