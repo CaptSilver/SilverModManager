@@ -29,6 +29,12 @@ public class RecordingFileSystem : DispatchProxy
         }
     }
 
+    /// <summary>Writes down a touch that does not go through the file system, such as a link check made by the component itself.</summary>
+    public void Note(string method, AbsolutePath path)
+    {
+        lock (_calls) _calls.Add((method, path.ToString()));
+    }
+
     /// <summary>The distinct paths touched by any call.</summary>
     public IReadOnlySet<string> Paths => Calls.Select(c => c.Path).ToHashSet();
 

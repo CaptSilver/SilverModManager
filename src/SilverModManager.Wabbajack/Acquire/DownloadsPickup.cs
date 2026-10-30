@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Native;
 using SilverModManager.Sdk.Settings;
@@ -31,6 +32,13 @@ public sealed class DownloadsPickup(
 
     /// <summary>How a file is linked into the inbox; tests swap it to reach the copy fallback.</summary>
     internal Func<string, string, int> Link { get; set; } = LibcLinks.TryLink;
+
+    /// <summary>The plain-file check (a link or an in-progress name is not one); tests wrap it to see which paths it is asked about.</summary>
+    internal Func<AbsolutePath, bool> IsPlainFile { get; set; } = ArchiveInbox.IsPlainFile;
+
+    /// <summary>How a matched file reaches the inbox; tests swap it to make staging fail.</summary>
+    internal Func<AbsolutePath, AbsolutePath, Func<string, string, int>, CancellationToken, Task> Stage { get; set; }
+        = (source, inbox, link, token) => ArchiveInbox.Stage(source, inbox, link, token);
 
     /// <summary>The folder a scan reads: the configured one, or the XDG download folder when none is set.</summary>
     public AbsolutePath Folder
@@ -77,23 +85,37 @@ public sealed class DownloadsPickup(
                 var file = entry.WithFileSystem(fileSystem);
                 if (!expected.TryGetValue(file.FileName, out var candidates)) continue;
 
+                Verdict verdict;
                 try
                 {
-                    switch (await Check(file, candidates, cancellationToken))
-                    {
-                        case Outcome.Match:
-                            await ArchiveInbox.Stage(file, inboxFolder, Link, cancellationToken);
-                            staged = true;
-                            break;
-                        case Outcome.Unsettled:
-                            waiting = true;
-                            break;
-                    }
+                    verdict = await Check(file, candidates, cancellationToken);
                 }
                 catch (IOException e)
                 {
+                    // Still being written or briefly locked: look again shortly.
                     logger.LogDebug(e, "Could not read '{File}' in the Downloads folder, it is probably still being written", file.FileName);
                     waiting = true;
+                    continue;
+                }
+
+                switch (verdict.Outcome)
+                {
+                    case Outcome.Match:
+                        try
+                        {
+                            await Stage(file, inboxFolder, Link, cancellationToken);
+                            staged = true;
+                        }
+                        catch (Exception e) when (e is IOException or UnauthorizedAccessException or UserFacingException)
+                        {
+                            // Retrying would hash and copy the same bytes again; wait for the file, or the plan, to change.
+                            logger.LogWarning(e, "Could not copy '{File}' from the Downloads folder into the inbox. It will be tried again if the file changes", file.FileName);
+                            Remember(file.FileName, verdict.Size, verdict.Modified);
+                        }
+                        break;
+                    case Outcome.Unsettled:
+                        waiting = true;
+                        break;
                 }
             }
 
@@ -106,7 +128,7 @@ public sealed class DownloadsPickup(
         }
     }
 
-    /// <summary>Forgets which files were already hashed and found wrong, so the next scan reads them afresh.</summary>
+    /// <summary>Forgets which files were already set aside (wrong bytes, unreadable, or not copyable), so the next scan reads them afresh.</summary>
     internal void ForgetMismatches()
     {
         lock (_mismatches) _mismatches.Clear();
@@ -114,29 +136,48 @@ public sealed class DownloadsPickup(
 
     private enum Outcome { Skip, Unsettled, Match }
 
-    private async Task<Outcome> Check(AbsolutePath file, List<(long Size, FileIdentity Hash)> candidates, CancellationToken cancellationToken)
+    private readonly record struct Verdict(Outcome Outcome, long Size = 0, DateTime Modified = default);
+
+    private void Remember(string name, long size, DateTime modified)
     {
-        if (!ArchiveInbox.IsPlainFile(file)) return Outcome.Skip;
+        lock (_mismatches) _mismatches[name] = (size, modified);
+    }
+
+    private async Task<Verdict> Check(AbsolutePath file, List<(long Size, FileIdentity Hash)> candidates, CancellationToken cancellationToken)
+    {
+        if (!IsPlainFile(file)) return new Verdict(Outcome.Skip);
 
         var info = file.FileSystem.GetFileEntry(file);
         var size = (long)info.Size.Value;
         var sized = candidates.Where(c => c.Size == size).ToArray();
-        if (sized.Length == 0) return Outcome.Skip;
+        if (sized.Length == 0) return new Verdict(Outcome.Skip);
 
         var modified = info.LastWriteTimeUtc;
-        if (DateTime.UtcNow - modified < DebounceInterval) return Outcome.Unsettled;
+        if (DateTime.UtcNow - modified < DebounceInterval) return new Verdict(Outcome.Unsettled);
 
         lock (_mismatches)
         {
-            if (_mismatches.TryGetValue(file.FileName, out var seen) && seen == (size, modified)) return Outcome.Skip;
+            if (_mismatches.TryGetValue(file.FileName, out var seen) && seen == (size, modified)) return new Verdict(Outcome.Skip);
         }
 
-        var hash = FileIdentity.XxHash64(await FileHashing.XxHash64(file, cancellationToken));
-        if (sized.Any(c => c.Hash.Equals(hash))) return Outcome.Match;
+        FileIdentity hash;
+        try
+        {
+            hash = FileIdentity.XxHash64(await FileHashing.XxHash64(file, cancellationToken));
+        }
+        catch (UnauthorizedAccessException e)
+        {
+            // Not something waiting will fix, and it must not stop the other candidates.
+            logger.LogWarning(e, "'{File}' in the Downloads folder cannot be read, so it is skipped until it changes", file.FileName);
+            Remember(file.FileName, size, modified);
+            return new Verdict(Outcome.Skip);
+        }
+
+        if (sized.Any(c => c.Hash.Equals(hash))) return new Verdict(Outcome.Match, size, modified);
 
         logger.LogDebug("'{File}' in the Downloads folder has the expected name and size but other contents", file.FileName);
-        lock (_mismatches) _mismatches[file.FileName] = (size, modified);
-        return Outcome.Skip;
+        Remember(file.FileName, size, modified);
+        return new Verdict(Outcome.Skip);
     }
 
     private Dictionary<string, List<(long Size, FileIdentity Hash)>> ExpectedFiles()

@@ -43,6 +43,11 @@ public class DownloadsPickupTests(ITestOutputHelper helper) : AcquireTestBase<Do
         {
             DebounceInterval = debounce ?? TimeSpan.FromMinutes(1),
         };
+        pickup.IsPlainFile = file =>
+        {
+            log.Note("IsPlainFile", file);
+            return ArchiveInbox.IsPlainFile(file);
+        };
         return (pickup, log);
     }
 
@@ -300,5 +305,133 @@ public class DownloadsPickupTests(ITestOutputHelper helper) : AcquireTestBase<Do
         await pickup.Scan(CancellationToken.None);
 
         TouchedOutside(log, DownloadsFolder).Should().BeEmpty("a row that is already held expects nothing");
+    }
+
+    [Fact]
+    public async Task AFolderOfUnrelatedFiles_NeverGetsALinkCheck()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        await RunWithManualRows(("wanted.txt", Wanted));
+        for (var i = 0; i < 50; i++) await Drop(DownloadsFolder, $"other-{i}.bin", Wanted);
+        var (pickup, log) = NewPickup();
+
+        await pickup.Scan(CancellationToken.None);
+
+        log.Calls.Where(c => c.Method == "IsPlainFile").Select(c => c.Path).Should().BeEmpty("no file in the folder has the expected name");
+    }
+
+    [Fact]
+    public async Task AStagingFailure_IsReportedOnceAndTheSameBytesAreNotHashedAgain()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        await RunWithManualRows(("wanted.txt", Wanted));
+        await Drop(DownloadsFolder, "wanted.txt", Wanted);
+        var (pickup, log) = NewPickup();
+        var attempts = 0;
+        pickup.Link = (_, _) => LibcLinks.EXDEV;
+        pickup.Stage = (_, _, _, _) =>
+        {
+            attempts++;
+            throw new IOException("No space left on device");
+        };
+
+        await pickup.Scan(CancellationToken.None);
+        await pickup.Scan(CancellationToken.None);
+
+        attempts.Should().Be(1, "a copy that failed is not retried until the file changes");
+        log.Calls.Count(c => c.Method is "ReadFile" or "OpenFile" or "Open" && c.Path.EndsWith("/wanted.txt")).Should().Be(1);
+        Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Manual);
+    }
+
+    [Fact]
+    public async Task AStagingFailure_DoesNotScheduleARescan()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        await RunWithManualRows(("wanted.txt", Wanted));
+        await Drop(DownloadsFolder, "wanted.txt", Wanted);
+        var (pickup, log) = NewPickup(TimeSpan.FromMilliseconds(100));
+        var attempts = 0;
+        pickup.Stage = (_, _, _, _) =>
+        {
+            attempts++;
+            throw new IOException("No space left on device");
+        };
+
+        await pickup.Scan(CancellationToken.None);
+        await Task.Delay(1000, TestContext.Current.CancellationToken);
+
+        attempts.Should().Be(1);
+        pickup.Dispose();
+    }
+
+    [Fact]
+    public async Task AStagingFailure_IsRetriedOnceTheMismatchMemoryIsForgotten()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        await RunWithManualRows(("wanted.txt", Wanted));
+        await Drop(DownloadsFolder, "wanted.txt", Wanted);
+        var (pickup, _) = NewPickup();
+        var fail = true;
+        pickup.Stage = (source, inbox, link, token) => fail ? throw new IOException("No space left on device") : ArchiveInbox.Stage(source, inbox, link, token);
+        await pickup.Scan(CancellationToken.None);
+
+        fail = false;
+        pickup.ForgetMismatches();
+        await pickup.Scan(CancellationToken.None);
+
+        Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Have);
+    }
+
+    [Fact]
+    public async Task AnUnreadableExpectedFile_DoesNotStopTheOthersFromBeingCredited()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        await RunWithManualRows(("locked.txt", Wanted), ("fine.txt", SameLength));
+        await Drop(DownloadsFolder, "locked.txt", Wanted);
+        await Drop(DownloadsFolder, "fine.txt", SameLength);
+        var locked = DownloadsFolder.Combine("locked.txt").ToString();
+        File.SetUnixFileMode(locked, UnixFileMode.None);
+        try
+        {
+            var (pickup, _) = NewPickup();
+
+            await pickup.Scan(CancellationToken.None);
+
+            Acquirer.Plan.Rows.Single(r => r.Archive.Name == "fine.txt").State.Should().Be(ArchiveState.Have);
+            Acquirer.Plan.Rows.Single(r => r.Archive.Name == "locked.txt").State.Should().Be(ArchiveState.Manual);
+        }
+        finally
+        {
+            File.SetUnixFileMode(locked, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+    }
+
+    [Fact]
+    public async Task AnUnreadableExpectedFile_IsNotOpenedAgainUntilItChanges()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        await RunWithManualRows(("locked.txt", Wanted));
+        await Drop(DownloadsFolder, "locked.txt", Wanted);
+        var locked = DownloadsFolder.Combine("locked.txt").ToString();
+        File.SetUnixFileMode(locked, UnixFileMode.None);
+        try
+        {
+            var (pickup, log) = NewPickup();
+
+            await pickup.Scan(CancellationToken.None);
+            await pickup.Scan(CancellationToken.None);
+
+            log.Calls.Count(c => c.Method is "ReadFile" or "OpenFile" or "Open" && c.Path.EndsWith("/locked.txt")).Should().Be(1);
+        }
+        finally
+        {
+            File.SetUnixFileMode(locked, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
     }
 }
