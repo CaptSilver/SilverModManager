@@ -60,6 +60,15 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
     /// <summary>The list is being read or planned against the library and the game folder, which can take a while for a big list.</summary>
     bool IsPlanning { get; }
 
+    /// <summary>What the check of the list is doing right now with its count, or empty while no check runs.</summary>
+    string CheckText { get; }
+
+    /// <summary>How far through its own phase the check is, 0 to 1.</summary>
+    double CheckFraction { get; }
+
+    /// <summary>The phase has no count, so the bar only shows that work is going on.</summary>
+    bool IsCheckIndeterminate { get; }
+
     /// <summary>At least one archive can be fetched by the app or through the browser, and no download is running.</summary>
     bool CanDownload { get; }
     bool IsInstalling { get; }

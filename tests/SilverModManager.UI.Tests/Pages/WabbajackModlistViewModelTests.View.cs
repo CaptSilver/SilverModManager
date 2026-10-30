@@ -103,4 +103,70 @@ public partial class WabbajackModlistViewModelTests
             view.FindControl<TextBlock>("InstallReasonText")!.IsVisible.Should().BeFalse();
         });
     }
+
+    [Fact]
+    public async Task WhileTheListIsChecked_TheViewShowsTheReasonAndAProgressLineWithABar()
+    {
+        var (vm, service, _) = await Open(Plan(Row(ArchiveState.Have)), load: false);
+        var gate = new TaskCompletionSource();
+        service.PlanGate = gate;
+        // Showing the page is what starts loading the list.
+        var view = await ShowView(vm);
+        await UntilPlanning(service);
+
+        // No Render tick while the bar is indeterminate: its endless animation never lets the headless tick finish.
+        await EventuallyOnUi(() =>
+        {
+            var line = view.FindControl<TextBlock>("CheckText")!;
+            var bar = view.FindControl<ProgressBar>("CheckBar")!;
+            line.IsVisible.Should().BeTrue();
+            line.Text.Should().NotBeEmpty();
+            bar.IsVisible.Should().BeTrue();
+            bar.IsIndeterminate.Should().BeTrue("nothing has been counted yet");
+            view.FindControl<TextBlock>("DownloadReasonText")!.IsVisible.Should().BeTrue();
+            view.FindControl<TextBlock>("DownloadReasonText")!.Text.Should().Contain("Checking the list");
+            view.FindControl<TextBlock>("InstallReasonText")!.IsVisible.Should().BeTrue();
+        });
+
+        service.LastProgress!.Report(new SilverModManager.Wabbajack.Acquire.PlanProgress(SilverModManager.Wabbajack.Acquire.PlanPhase.CheckingLibrary, 412, 1294));
+        await EventuallyOnUi(() =>
+        {
+            view.FindControl<TextBlock>("CheckText")!.Text.Should().Be("Checking archives against your library: 412 of 1294");
+            var bar = view.FindControl<ProgressBar>("CheckBar")!;
+            bar.IsIndeterminate.Should().BeFalse();
+            bar.Value.Should().BeApproximately(412d / 1294, 1e-6);
+        });
+
+        gate.SetResult();
+        await EventuallyOnUi(() =>
+        {
+            Render((Window)view.GetVisualRoot()!);
+            vm.IsPlanning.Should().BeFalse();
+            view.FindControl<TextBlock>("CheckText")!.IsVisible.Should().BeFalse();
+            view.FindControl<ProgressBar>("CheckBar")!.IsVisible.Should().BeFalse();
+        });
+    }
+
+    [Fact]
+    public async Task WhileTheListIsChecked_TheLoadoutPickerShowsTheChoiceNameInItsSelectionBox()
+    {
+        var (vm, service, _) = await Open(Plan(Row(ArchiveState.Have)), game: GameId.From("CreationEngine.NoSuchGame"), load: false);
+        var gate = new TaskCompletionSource();
+        service.PlanGate = gate;
+        var view = await ShowView(vm);
+        await UntilPlanning(service);
+
+        await EventuallyOnUi(() =>
+        {
+            var box = view.FindControl<ComboBox>("LoadoutBox")!;
+            ((Window)view.GetVisualRoot()!).UpdateLayout();
+            box.SelectedItem.Should().Be(WabbajackLoadoutChoice.CreateNew);
+            var shown = box.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Text ?? "").ToArray();
+            shown.Should().Contain("Create new loadout");
+            shown.Should().NotContain(text => text.Contains("WabbajackLoadoutChoice") || text.Contains("Id ="));
+        });
+
+        gate.SetResult();
+        await EventuallyOnUi(() => vm.IsPlanning.Should().BeFalse());
+    }
 }

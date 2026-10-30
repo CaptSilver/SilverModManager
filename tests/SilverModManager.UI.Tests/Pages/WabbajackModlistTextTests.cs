@@ -179,4 +179,46 @@ public class WabbajackModlistTextTests
     [Fact]
     public void OpenNextFiveBlockedReason_SaysWhenNoArchiveNeedsTheBrowser()
         => WabbajackModlistText.OpenNextFiveBlockedReason(false, "", Plan(Row(ArchiveState.Automatic))).Should().Be("No archive needs your browser.");
+
+    [Fact]
+    public void Checking_NamesEachPhaseAndItsCount()
+    {
+        WabbajackModlistText.Checking(new PlanProgress(PlanPhase.ReadingList)).Should().Be("Reading the list");
+        WabbajackModlistText.Checking(new PlanProgress(PlanPhase.CheckingLibrary, 412, 1294)).Should().Be("Checking archives against your library: 412 of 1294");
+        WabbajackModlistText.Checking(new PlanProgress(PlanPhase.CheckingGameFolder, 7, 90)).Should().Be("Looking for the list's files in your game folder: 7 of 90");
+    }
+
+    [Fact]
+    public void Checking_CountsGameFileBytesInGigabytesOnceTheyAreBig_AndNamesTheFile()
+    {
+        WabbajackModlistText.Checking(new PlanProgress(PlanPhase.HashingGameFiles, 2_100_000_000, 8_400_000_000, "Textures0.bsa"))
+            .Should().Be("Hashing game files: 2.1 of 8.4 GB (Textures0.bsa)");
+        WabbajackModlistText.Checking(new PlanProgress(PlanPhase.HashingGameFiles, 12_000_000, 480_000_000))
+            .Should().Be("Hashing game files: 12.0 of 480.0 MB");
+    }
+
+    [Fact]
+    public void Checking_WithNothingToCountDropsTheCount()
+        => WabbajackModlistText.Checking(new PlanProgress(PlanPhase.CheckingLibrary, 0, 0)).Should().Be("Checking archives against your library");
+
+    [Fact]
+    public void CheckFraction_IsTheShareDone_AndAPhaseWithoutATotalIsIndeterminate()
+    {
+        WabbajackModlistText.CheckFraction(new PlanProgress(PlanPhase.CheckingLibrary, 250, 1000)).Should().BeApproximately(0.25, 1e-9);
+        WabbajackModlistText.CheckFraction(new PlanProgress(PlanPhase.ReadingList)).Should().Be(0);
+        WabbajackModlistText.IsIndeterminate(new PlanProgress(PlanPhase.ReadingList)).Should().BeTrue();
+        WabbajackModlistText.IsIndeterminate(new PlanProgress(PlanPhase.CheckingLibrary, 1, 1000)).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Counts_SortEveryStateIntoReadyToGetByHandOrDiffering()
+    {
+        var counts = WabbajackModlistText.Counts(Plan(
+            Row(ArchiveState.Have), Row(ArchiveState.GameFile),
+            Row(ArchiveState.Automatic), Row(ArchiveState.Browser), Row(ArchiveState.Browser),
+            Row(ArchiveState.Manual), Row(ArchiveState.Unsupported),
+            Row(ArchiveState.GameFileVersion)));
+
+        counts.Should().Be(new WabbajackPlanCounts(Ready: 2, ToGet: 3, ByHand: 2, GameFilesDiffer: 1));
+    }
 }

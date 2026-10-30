@@ -101,8 +101,9 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
         return banner;
     }
 
-    public async Task<ArchivePlan> BuildPlan(LibraryFileId file, LoadoutId? target, CancellationToken cancellationToken)
+    public async Task<ArchivePlan> BuildPlan(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)
     {
+        progress?.Report(new PlanProgress(PlanPhase.ReadingList));
         var list = await ReadList(file, cancellationToken);
         var db = _connection.Db;
         var inventory = provider.GetRequiredService<ArchiveInventory>();
@@ -110,7 +111,7 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
             ? inventory.GameFilesFor(Loadout.Load(db, loadoutId))
             // The loadout does not exist yet; it will be created on this installation.
             : inventory.GameFilesFor(InstallationFor(file));
-        return await inventory.Build(list, db, gameFiles, cancellationToken);
+        return await inventory.Build(list, db, gameFiles, cancellationToken, progress);
     }
 
     private GameInstallation InstallationFor(LibraryFileId file)
@@ -124,7 +125,7 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
         => provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().FirstOrDefault(i => i.Game.GameId == game)
             ?? throw new InvalidOperationException("The game is not installed, so there is nothing to create a loadout for");
 
-    public async Task<IReadOnlyList<RelativePath>> GameFilesReplaced(LibraryFileId file, LoadoutId? target, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<RelativePath>> GameFilesReplaced(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)
     {
         var list = await ReadList(file, cancellationToken);
         var installation = target is { } loadoutId ? Loadout.Load(_connection.Db, loadoutId).InstallationInstance : InstallationFor(file);
@@ -137,12 +138,17 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
         var context = new Mo2Context("", roots, mo2.ProfileSettingsFiles(installation), relative => mo2.ModFilePath(installation, relative));
 
         var replaced = new Dictionary<string, RelativePath>(StringComparer.OrdinalIgnoreCase);
+        var gate = new PlanProgressGate(progress);
+        var checkedFiles = 0;
         foreach (var directive in list.Directives)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            gate.Report(new PlanProgress(PlanPhase.CheckingGameFolder, checkedFiles++, list.Directives.Count));
             if (Mo2Layout.Classify(tos[directive.To], context) is not Mo2Target.GameRootFile root) continue;
             if (!gameFolder.Combine(root.Path).FileExists) continue;
             replaced.TryAdd(root.Path.ToString(), root.Path);
         }
+        gate.Report(new PlanProgress(PlanPhase.CheckingGameFolder, list.Directives.Count, list.Directives.Count));
         return replaced.Values.OrderBy(path => path.ToString(), StringComparer.OrdinalIgnoreCase).ToArray();
     }
 

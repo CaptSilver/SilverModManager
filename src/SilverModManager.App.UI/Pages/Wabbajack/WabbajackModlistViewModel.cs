@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
@@ -49,6 +50,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     private WabbajackModlistLoadoutGroupId? _groupId;
     private bool _loadStarted;
 
+    // The phase the log last named, so it says each once rather than at every count.
+    private PlanPhase? _loggedPhase;
+
     // False from the moment a pick starts planning until its plan arrives, and after a plan that failed.
     // Only a pick that planned successfully sets it; the acquirer re-announcing a plan must not.
     private bool _planReady;
@@ -83,6 +87,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     [Reactive] public partial string DownloadBlockedReason { get; private set; } = "";
     [Reactive] public partial string OpenNextFiveBlockedReason { get; private set; } = "";
     [Reactive] public partial bool IsPlanning { get; private set; }
+    [Reactive] public partial string CheckText { get; private set; } = "";
+    [Reactive] public partial double CheckFraction { get; private set; }
+    [Reactive] public partial bool IsCheckIndeterminate { get; private set; }
     [Reactive] public partial bool IsDownloading { get; private set; }
     [Reactive] public partial bool HasStartedDownloads { get; private set; }
     [Reactive] public partial bool IsInstalling { get; private set; }
@@ -184,6 +191,10 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     {
         _loadStarted = true;
         IsPlanning = true;
+        // The list's name is not known yet, so this first line stays out of the log.
+        ShowCheck(new PlanProgress(PlanPhase.ReadingList), log: false);
+        // From the pick on, the pick itself ends the planning; ending it here too would end a newer pick's.
+        var handedOver = false;
         try
         {
             await Guarded(async token =>
@@ -200,18 +211,24 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
                 RefreshLoadoutChoices();
                 // Without a loadout of the game, "Create new loadout" is the only way forward, so it starts out picked.
                 var first = LoadoutChoices.FirstOrDefault(choice => choice.Id is not null) ?? WabbajackLoadoutChoice.CreateNew;
+                handedOver = true;
                 await SelectLoadoutAsync(first, token);
             }, cancellationToken);
         }
         finally
         {
-            IsPlanning = false;
+            if (!handedOver)
+            {
+                IsPlanning = false;
+                ClearCheck();
+            }
         }
     }
 
     /// <summary>
     /// Picks the loadout to install into and builds the archive table against it. Nothing is downloaded and, for
-    /// "Create new loadout", nothing is created: that waits for Download and Install.
+    /// "Create new loadout", nothing is created: that waits for Download and Install. A pick made while an earlier
+    /// one is still being checked replaces it: the earlier check is cancelled and its result is dropped.
     /// </summary>
     public async Task SelectLoadoutAsync(WabbajackLoadoutChoice choice, CancellationToken cancellationToken)
     {
@@ -221,18 +238,29 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         _planReady = false;
         IsPlanning = true;
 
-        // Downloads for the previous pick are not wanted any more.
+        // Downloads for the previous pick are not wanted any more, and neither is its check.
         _acquireCancellation?.Cancel();
-        _acquireCancellation = new CancellationTokenSource();
+        var pick = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _acquireCancellation = pick;
+        var token = pick.Token;
         HasStartedDownloads = false;
         IsDownloading = false;
 
+        var started = Stopwatch.GetTimestamp();
+        _loggedPhase = null;
+        _logger?.LogInformation("Checking modlist '{List}' ({Archives} archives) against {Loadout}", Name, _details.ArchiveCount, choice.Name);
+        ShowCheck(new PlanProgress(PlanPhase.ReadingList));
         try
         {
-            var plan = await _service.BuildPlan(FileId, choice.Id, cancellationToken);
-            GameFilesReplaced = (await _service.GameFilesReplaced(FileId, choice.Id, cancellationToken))
-                .Select(path => new WabbajackGameFileChoice(path))
-                .ToArray();
+            var plan = await OffUi(progress => _service.BuildPlan(FileId, choice.Id, progress, token), token);
+            var replaced = await OffUi(progress => _service.GameFilesReplaced(FileId, choice.Id, progress, token), token);
+            if (token.IsCancellationRequested)
+            {
+                _logger?.LogInformation("Check of modlist '{List}' dropped: another loadout was picked", Name);
+                return;
+            }
+
+            GameFilesReplaced = replaced.Select(path => new WabbajackGameFileChoice(path)).ToArray();
 
             // Show is what makes the plan the acquirer's current one: from here on it matches the rows to whatever
             // reaches the library, without fetching anything.
@@ -244,12 +272,67 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             var shown = _acquirer.Plan;
             ApplyPlan(shown.Rows.Count > 0 ? shown : plan);
             RefreshInstalledState();
+
+            var counts = WabbajackModlistText.Counts(plan);
+            _logger?.LogInformation(
+                "Checked modlist '{List}' in {Seconds:0.0} s: {Ready} ready, {ToGet} to get, {ByHand} by hand, {Differing} game files differ",
+                Name, Stopwatch.GetElapsedTime(started).TotalSeconds, counts.Ready, counts.ToGet, counts.ByHand, counts.GameFilesDiffer);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            _logger?.LogInformation("Check of modlist '{List}' cancelled: another loadout was picked", Name);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _logger?.LogWarning(e, "Checking modlist '{List}' failed after {Seconds:0.0} s: {Reason}", Name, Stopwatch.GetElapsedTime(started).TotalSeconds, e.Message);
+            throw;
         }
         finally
         {
-            IsPlanning = false;
-            Recompute();
+            // Only the newest pick owns the page's state; a replaced one finishing late must leave it alone.
+            if (ReferenceEquals(_acquireCancellation, pick))
+            {
+                IsPlanning = false;
+                ClearCheck();
+                Recompute();
+            }
         }
+    }
+
+    // Hashing and lookups over a big list take long enough to freeze the window when they run on the UI thread.
+    private Task<T> OffUi<T>(Func<IProgress<PlanProgress>, Task<T>> work, CancellationToken token)
+    {
+        var progress = new InlineProgress<PlanProgress>(report =>
+        {
+            if (!token.IsCancellationRequested) ShowCheck(report);
+        });
+        return Task.Run(() => work(progress), token);
+    }
+
+    private void ShowCheck(PlanProgress progress, bool log = true)
+    {
+        CheckText = WabbajackModlistText.Checking(progress);
+        CheckFraction = WabbajackModlistText.CheckFraction(progress);
+        IsCheckIndeterminate = WabbajackModlistText.IsIndeterminate(progress);
+
+        // Each phase is logged once, when it begins.
+        if (!log || _loggedPhase == progress.Phase) return;
+        _loggedPhase = progress.Phase;
+        _logger?.LogInformation("Checking modlist '{List}': {Phase}", Name, CheckText);
+    }
+
+    private void ClearCheck()
+    {
+        CheckText = "";
+        CheckFraction = 0;
+        IsCheckIndeterminate = false;
+    }
+
+    // Reports go straight to the callback on the reporting thread. Progress<T> would post each to the captured
+    // context, which is the UI thread this check is being kept off.
+    private sealed class InlineProgress<T>(Action<T> onReport) : IProgress<T>
+    {
+        public void Report(T value) => onReport(value);
     }
 
     /// <summary>
@@ -270,7 +353,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             ArchivePlan plan;
             try
             {
-                plan = await _service.BuildPlan(FileId, SelectedLoadout?.Id, token);
+                _loggedPhase = null;
+                ShowCheck(new PlanProgress(PlanPhase.ReadingList));
+                plan = await OffUi(progress => _service.BuildPlan(FileId, SelectedLoadout?.Id, progress, token), token);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested)
             {
@@ -289,6 +374,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         finally
         {
             _isPreparingDownloads = false;
+            if (!IsPlanning) ClearCheck();
             Recompute();
         }
     }

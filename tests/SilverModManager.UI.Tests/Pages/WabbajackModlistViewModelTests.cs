@@ -112,9 +112,17 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         /// <summary>When set, planning fails with it, like a list whose game is not installed.</summary>
         public Exception? PlanFailure { get; set; }
 
-        public async Task<ArchivePlan> BuildPlan(LibraryFileId file, SilverModManager.Sdk.Loadouts.LoadoutId? target, CancellationToken cancellationToken)
+        /// <summary>What the page handed the last plan to report its progress through.</summary>
+        public IProgress<PlanProgress>? LastProgress { get; private set; }
+
+        /// <summary>Whether the last plan was made on the UI thread, where a long one would freeze the page.</summary>
+        public bool? PlannedOnUiThread { get; private set; }
+
+        public async Task<ArchivePlan> BuildPlan(LibraryFileId file, SilverModManager.Sdk.Loadouts.LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)
         {
             PlannedFor.Add(target);
+            LastProgress = progress;
+            PlannedOnUiThread = Avalonia.Threading.Dispatcher.UIThread.CheckAccess();
             var plan = Plan;
             if (PlanGate is { } gate)
             {
@@ -125,7 +133,7 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
             return plan;
         }
 
-        public Task<IReadOnlyList<RelativePath>> GameFilesReplaced(LibraryFileId file, SilverModManager.Sdk.Loadouts.LoadoutId? target, CancellationToken cancellationToken) => Task.FromResult(GameFiles);
+        public Task<IReadOnlyList<RelativePath>> GameFilesReplaced(LibraryFileId file, SilverModManager.Sdk.Loadouts.LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken) => Task.FromResult(GameFiles);
         public async Task<SilverModManager.Sdk.Loadouts.LoadoutId> CreateLoadout(GameId gameId, CancellationToken cancellationToken)
         {
             LoadoutsCreated++;

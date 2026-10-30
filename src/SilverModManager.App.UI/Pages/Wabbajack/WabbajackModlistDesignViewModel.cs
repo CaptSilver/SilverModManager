@@ -32,6 +32,9 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public string DownloadBlockedReason => "";
     public string OpenNextFiveBlockedReason => "Press Download first.";
     public bool IsPlanning => false;
+    public string CheckText => "";
+    public double CheckFraction => 0;
+    public bool IsCheckIndeterminate => false;
     public bool CanDownload => true;
     public bool IsInstalling => false;
     public string ProgressText => "";

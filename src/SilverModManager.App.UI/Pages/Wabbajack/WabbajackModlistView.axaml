@@ -25,6 +25,9 @@
 
             <TextBlock x:Name="FreeSpaceText" TextWrapping="Wrap" />
 
+            <TextBlock x:Name="CheckText" IsVisible="False" />
+            <ProgressBar x:Name="CheckBar" Minimum="0" Maximum="1" IsVisible="False" HorizontalAlignment="Left" MinWidth="280" />
+
             <TextBlock x:Name="AcquireText" />
             <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
                 <controls:StandardButton x:Name="DownloadButton" Type="Primary" Size="Toolbar" Text="Download" />

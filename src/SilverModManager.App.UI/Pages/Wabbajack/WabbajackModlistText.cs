@@ -10,6 +10,9 @@ namespace SilverModManager.App.UI.Pages.Wabbajack;
 /// <summary>A line of text for the page and whether it should be shown as a warning.</summary>
 public readonly record struct WabbajackNote(string Text, bool IsWarning);
 
+/// <summary>What a finished check found, for the log: archives by what is left to do about them.</summary>
+public readonly record struct WabbajackPlanCounts(int Ready, int ToGet, int ByHand, int GameFilesDiffer);
+
 /// <summary>The decisions and wording of the modlist page that don't need a view model around them.</summary>
 public static class WabbajackModlistText
 {
@@ -26,6 +29,37 @@ public static class WabbajackModlistText
     /// <summary>How far through its own phase the run is, 0 to 1. Phases with no items count as not started.</summary>
     public static double Fraction(ModlistInstallProgress.Snapshot snapshot)
         => snapshot.TotalItems <= 0 ? 0 : Math.Clamp((double)snapshot.DoneItems / snapshot.TotalItems, 0, 1);
+
+    /// <summary>The line for the phase of the check the page is waiting on.</summary>
+    public static string Checking(PlanProgress progress) => progress.Phase switch
+    {
+        PlanPhase.ReadingList => "Reading the list",
+        PlanPhase.CheckingLibrary => progress.Total == 0 ? "Checking archives against your library" : $"Checking archives against your library: {progress.Done} of {progress.Total}",
+        PlanPhase.HashingGameFiles => $"Hashing game files: {Bytes(progress.Done, progress.Total)}{(progress.Item is { Length: > 0 } item ? $" ({item})" : "")}",
+        PlanPhase.CheckingGameFolder => progress.Total == 0 ? "Looking for the list's files in your game folder" : $"Looking for the list's files in your game folder: {progress.Done} of {progress.Total}",
+        _ => throw new ArgumentOutOfRangeException(nameof(progress), progress.Phase, "Unknown check phase"),
+    };
+
+    // Both numbers in the unit of the total, so "2.1 of 8.4 GB" reads as one measure.
+    private static string Bytes(long done, long total)
+    {
+        var (divisor, unit) = total >= 1_000_000_000 ? (1e9, "GB") : (1e6, "MB");
+        return string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{done / divisor:0.0} of {total / divisor:0.0} {unit}");
+    }
+
+    /// <summary>How far through its own phase the check is, 0 to 1. A phase with no total reads 0.</summary>
+    public static double CheckFraction(PlanProgress progress)
+        => progress.Total <= 0 ? 0 : Math.Clamp((double)progress.Done / progress.Total, 0, 1);
+
+    /// <summary>The phase has no count to draw a bar from, so the bar should only show that work is going on.</summary>
+    public static bool IsIndeterminate(PlanProgress progress) => progress.Total <= 0;
+
+    /// <summary>Sorts the rows of a plan into the groups the log reports.</summary>
+    public static WabbajackPlanCounts Counts(ArchivePlan plan) => new(
+        plan.Rows.Count(row => row.State is ArchiveState.Have or ArchiveState.GameFile),
+        plan.Rows.Count(row => row.State is ArchiveState.Automatic or ArchiveState.Browser),
+        plan.Rows.Count(row => row.State is ArchiveState.Manual or ArchiveState.Unsupported),
+        plan.Rows.Count(row => row.State == ArchiveState.GameFileVersion));
 
     /// <summary>The line for the archive downloads the acquirer is running.</summary>
     public static string Downloads(AcquireProgress progress)

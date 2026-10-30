@@ -76,6 +76,14 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
             OnUi(vm => vm.WhenAnyValue(x => x.InstallBlockedReason)).Subscribe(text => ShowReason(InstallReasonText, text, InstallButton, ResumeButton)).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.DownloadBlockedReason)).Subscribe(text => ShowReason(DownloadReasonText, text, DownloadButton)).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.OpenNextFiveBlockedReason)).Subscribe(text => ShowReason(OpenNextFiveReasonText, text, OpenNextFiveButton)).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.CheckText)).Subscribe(text =>
+            {
+                CheckText.Text = text;
+                CheckText.IsVisible = text != "";
+                CheckBar.IsVisible = text != "";
+            }).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.IsCheckIndeterminate)).Subscribe(indeterminate => CheckBar.IsIndeterminate = indeterminate).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.CheckFraction)).Subscribe(fraction => CheckBar.Value = fraction).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.AcquireText)).Subscribe(text => AcquireText.Text = text).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.InboxText)).Subscribe(text =>
             {
