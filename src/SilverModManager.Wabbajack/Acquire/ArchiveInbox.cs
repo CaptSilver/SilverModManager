@@ -3,7 +3,9 @@ using SilverModManager.Abstractions.Library;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Native;
 using SilverModManager.Wabbajack.Library;
 
 namespace SilverModManager.Wabbajack.Acquire;
@@ -141,11 +143,52 @@ public sealed class ArchiveInbox(
         _scanning.Dispose();
     }
 
-    /// <summary>A link could point anywhere, so only real files that are not mid-download count.</summary>
-    private static bool IsPlainFile(AbsolutePath file)
+    /// <summary>
+    /// Puts <paramref name="source"/> into <paramref name="inbox"/> under its own name and leaves the source where it
+    /// is. With a <paramref name="link"/> function (<see cref="LibcLinks.TryLink"/>'s shape) it hard-links first and
+    /// copies when the link fails for any reason (across filesystems, a protected hardlink, a filesystem without
+    /// links); without one it copies. Either way the file goes to a <c>.part</c> name first, which the inbox scan
+    /// skips, so the watcher never hashes half a file; and a file dropped from the inbox itself is read in full
+    /// before anything replaces it, rather than truncated by opening its own path for writing.
+    /// </summary>
+    public static async Task Stage(AbsolutePath source, AbsolutePath inbox, Func<string, string, int>? link = null, CancellationToken cancellationToken = default)
     {
-        if (InProgressExtensions.Contains(file.Extension.ToString())) return false;
-        var info = new FileInfo(file.ToString());
-        return info.LinkTarget is null && !info.Attributes.HasFlag(FileAttributes.ReparsePoint);
+        // A link could point anywhere, so a dropped one is refused rather than followed or copied.
+        if (IsLink(source)) throw new InboxSourceRefusedException($"'{source.FileName}' is a link, not a file. Drop the file itself.");
+
+        var destination = inbox.Combine(source.FileName);
+        var partial = inbox.Combine(source.FileName + ".part");
+        try
+        {
+            if (partial.FileExists) partial.Delete();
+            if (link is null || link(source.ToString(), partial.ToString()) != 0)
+            {
+                await using var input = source.Read();
+                await using var output = partial.Create();
+                await input.CopyToAsync(output, cancellationToken);
+            }
+            partial.FileSystem.MoveFile(partial, destination, overwrite: true);
+        }
+        finally
+        {
+            // Renaming a link onto another name of the same inode does nothing, so the partial can still be there.
+            if (partial.FileExists) partial.Delete();
+        }
     }
+
+    /// <summary>A link could point anywhere, so only real files that are not mid-download count.</summary>
+    internal static bool IsPlainFile(AbsolutePath file)
+        => !InProgressExtensions.Contains(file.Extension.ToString()) && !IsLink(file);
+
+    private static bool IsLink(AbsolutePath file)
+    {
+        var info = new FileInfo(file.ToString());
+        return info.LinkTarget is not null || info.Attributes.HasFlag(FileAttributes.ReparsePoint);
+    }
+}
+
+/// <summary>A file the user handed to the inbox that the app will not take, with the reason in plain words.</summary>
+public sealed class InboxSourceRefusedException(string message) : UserFacingException(message)
+{
+    public override string Title => "File not added";
 }

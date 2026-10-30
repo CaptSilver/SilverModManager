@@ -234,32 +234,8 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
         foreach (var source in files)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await CopyIntoInbox(source, inbox, cancellationToken);
+            await ArchiveInbox.Stage(source, inbox, cancellationToken: cancellationToken);
         }
         return await CheckInbox(cancellationToken);
-    }
-
-    /// <summary>
-    /// Copies <paramref name="source"/> into the inbox under its own name. The copy goes to a <c>.part</c> file first,
-    /// which the inbox scan skips, so its watcher never hashes half a file; and a file dropped from the inbox itself
-    /// is read in full before anything replaces it, rather than truncated by opening its own path for writing.
-    /// </summary>
-    public static async Task CopyIntoInbox(AbsolutePath source, AbsolutePath inbox, CancellationToken cancellationToken)
-    {
-        var destination = inbox.Combine(source.FileName);
-        var partial = inbox.Combine(source.FileName + ".part");
-        try
-        {
-            await using (var input = source.Read())
-            await using (var output = partial.Create())
-            {
-                await input.CopyToAsync(output, cancellationToken);
-            }
-            partial.FileSystem.MoveFile(partial, destination, overwrite: true);
-        }
-        finally
-        {
-            if (partial.FileExists) partial.Delete();
-        }
     }
 }

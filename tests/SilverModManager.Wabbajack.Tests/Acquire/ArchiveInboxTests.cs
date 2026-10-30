@@ -2,7 +2,9 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Library;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Native;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Library;
@@ -113,5 +115,106 @@ public class ArchiveInboxTests(ITestOutputHelper helper) : AcquireTestBase<Archi
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
         while (Acquirer.Plan.Rows[0].State != ArchiveState.Have && DateTime.UtcNow < deadline) await Task.Delay(50);
         Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Have);
+    }
+
+    private AbsolutePath NewFolder(string name)
+    {
+        var folder = TemporaryFileManager.CreateFolder().Path.Combine(name);
+        folder.CreateDirectory();
+        return folder;
+    }
+
+    private static (ulong Device, ulong Inode) Identity(AbsolutePath file)
+    {
+        LibcStat.TryStat(file.ToString(), out var stat).Should().Be(0);
+        return (stat.Device, stat.Inode);
+    }
+
+    [Fact]
+    public async Task StageWithARealLink_PutsTheSameFileInTheInboxAndLeavesTheSource()
+    {
+        var source = NewFolder("downloads").Combine("mod.7z");
+        await source.WriteAllTextAsync("archive bytes");
+        var inbox = NewFolder("inbox");
+
+        await ArchiveInbox.Stage(source, inbox, LibcLinks.TryLink);
+
+        source.FileExists.Should().BeTrue("the user's file stays where it was");
+        Identity(inbox.Combine("mod.7z")).Should().Be(Identity(source));
+        inbox.EnumerateFiles().Should().ContainSingle("no partial file is left behind");
+    }
+
+    [Fact]
+    public async Task StageWhenTheLinkFails_CopiesUnderTheFinalNameAndLeavesTheSource()
+    {
+        var source = NewFolder("downloads").Combine("mod.7z");
+        await source.WriteAllTextAsync("archive bytes");
+        var inbox = NewFolder("inbox");
+        var attempts = 0;
+
+        await ArchiveInbox.Stage(source, inbox, (_, _) => { attempts++; return LibcLinks.EXDEV; });
+
+        attempts.Should().Be(1);
+        (await inbox.Combine("mod.7z").ReadAllTextAsync()).Should().Be("archive bytes");
+        Identity(inbox.Combine("mod.7z")).Should().NotBe(Identity(source), "it is a copy, not a link");
+        source.FileExists.Should().BeTrue();
+        inbox.EnumerateFiles().Should().ContainSingle("no partial file is left behind");
+    }
+
+    [Fact]
+    public async Task StageWithoutALinkFunction_Copies()
+    {
+        var source = NewFolder("downloads").Combine("mod.7z");
+        await source.WriteAllTextAsync("archive bytes");
+        var inbox = NewFolder("inbox");
+
+        await ArchiveInbox.Stage(source, inbox);
+
+        (await inbox.Combine("mod.7z").ReadAllTextAsync()).Should().Be("archive bytes");
+        Identity(inbox.Combine("mod.7z")).Should().NotBe(Identity(source));
+    }
+
+    [Fact]
+    public async Task StageRefusesASymlinkSource()
+    {
+        var real = NewFolder("downloads").Combine("real.7z");
+        await real.WriteAllTextAsync("archive bytes");
+        var link = real.Parent.Combine("mod.7z");
+        File.CreateSymbolicLink(link.ToString(), real.ToString());
+        var inbox = NewFolder("inbox");
+
+        var act = () => ArchiveInbox.Stage(link, inbox, LibcLinks.TryLink);
+
+        await act.Should().ThrowAsync<UserFacingException>();
+        inbox.EnumerateFiles().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AFileAlreadyInTheInbox_KeepsItsBytes()
+    {
+        // Dropping a file from the opened inbox folder back onto the page names the same file as source and target.
+        var inbox = NewFolder("inbox");
+        var file = inbox.Combine("mod.7z");
+        await file.WriteAllTextAsync("archive bytes");
+
+        await ArchiveInbox.Stage(file, inbox);
+        await ArchiveInbox.Stage(file, inbox, LibcLinks.TryLink);
+
+        (await file.ReadAllTextAsync()).Should().Be("archive bytes");
+        inbox.EnumerateFiles().Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task ACopiedFile_LandsInTheInboxUnderItsOwnName()
+    {
+        var source = NewFolder("downloads").Combine("mod.7z");
+        await source.WriteAllTextAsync("archive bytes");
+        var inbox = NewFolder("inbox");
+
+        await ArchiveInbox.Stage(source, inbox);
+
+        (await inbox.Combine("mod.7z").ReadAllTextAsync()).Should().Be("archive bytes");
+        source.FileExists.Should().BeTrue("the user's own copy stays where it was");
+        inbox.EnumerateFiles().Should().ContainSingle("no partial file is left behind");
     }
 }
