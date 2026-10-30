@@ -378,12 +378,24 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
     private Task<TimeSpan> RunOnFakeClock(Loadout.ReadOnly loadout, FakeTimeProvider clock, Action<TimeSpan>? atEachStep = null)
         => RunOnFakeClock(loadout, new ClockedTool(ServiceProvider, Game, clock), atEachStep);
 
-    private static async Task<TimeSpan> RunOnFakeClock(Loadout.ReadOnly loadout, ClockedTool tool, Action<TimeSpan>? atEachStep = null)
+    private async Task<TimeSpan> RunOnFakeClock(Loadout.ReadOnly loadout, ClockedTool tool, Action<TimeSpan>? atEachStep = null)
     {
         var clock = (FakeTimeProvider)tool.ClockForTest;
-        var begin = clock.GetUtcNow();
         var run = Task.Run(() => tool.Execute(loadout, CancellationToken.None, []));
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(20);
+
+        // The tool synchronizes the loadout before it starts waiting, which takes as long as the disk and the
+        // machine's load make it. Fake time must not pass meanwhile, or the wait starts partway through its own
+        // timeout and the measured time depends on how slow the setup was. The first question to the process
+        // tracker is the start of the wait.
+        while (!run.IsCompleted && Tracker.SteamQueries == 0)
+        {
+            if (DateTime.UtcNow > deadline) throw new TimeoutException("the launch never started waiting");
+            await Task.Delay(1);
+        }
+
+        var begin = clock.GetUtcNow();
+        deadline = DateTime.UtcNow + TimeSpan.FromSeconds(20);
         while (!run.IsCompleted)
         {
             if (DateTime.UtcNow > deadline) throw new TimeoutException("the launch never ended");
