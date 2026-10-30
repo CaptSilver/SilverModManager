@@ -49,7 +49,7 @@ public class PromotionJournalTests : IDisposable
     }
 
     [Fact]
-    public void Read_rejects_a_null_entry()
+    public void ANullEntryNamesTheJournalAndTheEntry()
     {
         var file = _directory.Combine("journal.json");
         new PromotionJournal(Installation, Target, [FileEntry()]).Write(file);
@@ -59,7 +59,7 @@ public class PromotionJournalTests : IDisposable
 
         var act = () => PromotionJournal.Read(file, Installation);
 
-        act.Should().Throw<InvalidDataException>().WithMessage("*entry 0*");
+        act.Should().Throw<InvalidDataException>().WithMessage($"*{file}*entry 0*null*");
     }
 
     [Fact]

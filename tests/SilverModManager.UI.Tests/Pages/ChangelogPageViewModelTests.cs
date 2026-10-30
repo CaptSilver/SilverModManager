@@ -32,6 +32,15 @@ public class ChangelogPageViewModelTests(IServiceProvider provider) : AUiTest(pr
         await Eventually(() => viewModel.ParsedChangelog.Should().NotBeNull());
         var full = viewModel.MarkdownRendererViewModel.Contents;
 
+        // The bundled changelog has no version headings yet, so the page is given one that does.
+        var parsed = ParsedChangelog.Parse("# v1.0.0 - first\nFirst notes\n# v2.0.0 - second\nSecond notes\n");
+        var known = parsed.Versions[0].Key;
+        var section = parsed.GetVersionSection(known)!;
+
+        await OnUi(() => { viewModel.ParsedChangelog = parsed; viewModel.TargetVersion = known; });
+        await Eventually(() => viewModel.SelectedIndex.Should().Be(1));
+        viewModel.MarkdownRendererViewModel.Contents.Should().Be(section).And.NotBe(full);
+
         await OnUi(() => { viewModel.TargetVersion = new Version(999, 0, 0); });
 
         await Eventually(() => viewModel.SelectedIndex.Should().Be(0));
