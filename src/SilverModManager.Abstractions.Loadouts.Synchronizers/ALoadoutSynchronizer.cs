@@ -76,6 +76,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     protected readonly IFileIdentityResolver _identityResolver;
     private readonly IBackupOverflowPrompt _backupOverflowPrompt;
     private readonly BackupLimit _backupLimit;
+    private readonly IMassRemovalPrompt _massRemovalPrompt;
+    private readonly MassRemovalThreshold _massRemovalThreshold;
     private readonly IFullFileHasher _fullHasher;
 
     /// <summary>
@@ -104,6 +106,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         _stagingStore = serviceProvider.GetRequiredService<ILooseStagingStore>();
         _backupOverflowPrompt = serviceProvider.GetRequiredService<IBackupOverflowPrompt>();
         _backupLimit = serviceProvider.GetRequiredService<BackupLimit>();
+        _massRemovalPrompt = serviceProvider.GetRequiredService<IMassRemovalPrompt>();
+        _massRemovalThreshold = serviceProvider.GetRequiredService<MassRemovalThreshold>();
         _fullHasher = serviceProvider.GetService<IFullFileHasher>() ?? MultiHashFileHasher.Instance;
 
         _fileHashService = fileHashService;
@@ -1567,6 +1571,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             ProcessSyncTree(tree);
             (choice, _) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, choice, cancellationToken, presetIsAnAnswer: true, job: job);
         }
+
+        await ConfirmMassRemoval(tree, loadout, cancellationToken);
 
         loadout = await RunActions(tree, loadout, job, choice);
 

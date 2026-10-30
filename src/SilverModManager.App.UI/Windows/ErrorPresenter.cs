@@ -103,7 +103,7 @@ public sealed class ErrorPresenter(IServiceProvider serviceProvider, ILogger<Err
             var refusal = UserFacingErrors.Find(exception);
 
             // The player answered the backup question a moment ago and nothing was changed; the log has the line.
-            if (refusal is BackupOverflowException { Declined: true }) return;
+            if (refusal is BackupOverflowException { Declined: true } or MassRemovalException { Declined: true }) return;
 
             await DispatcherHelper.EnsureOnUIThreadAsync(() => refusal is null ? ShowCrash(exception, headline) : ShowRefusal(refusal));
         }

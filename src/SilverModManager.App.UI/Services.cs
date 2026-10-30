@@ -106,6 +106,7 @@ public static class Services
             .AddSingleton<ITypeFinder, TypeFinder>()
             // Replaces the refusing default the data model registers; AddUI runs after AddDataModel.
             .AddSingleton<IBackupOverflowPrompt, DialogBackupOverflowPrompt>()
+            .AddSingleton<IMassRemovalPrompt, DialogMassRemovalPrompt>()
             .AddSingleton<GameRunningTracker>()
             .AddSingleton<UiStallWatchdog>()
             .AddTransient<MainWindow>()

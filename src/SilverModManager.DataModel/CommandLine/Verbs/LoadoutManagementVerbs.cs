@@ -25,6 +25,7 @@ namespace SilverModManager.DataModel.CommandLine.Verbs;
 /// </summary>
 public static class LoadoutManagementVerbs
 {
+    private const string ConfirmRemovalHelp = "Go ahead when the apply removes most of the mod files the loadout deployed, for example because a collection is switched off. Without it the command refuses and says why.";
     private const string LargeFilesHelp = "What to do when the added files exceed the backup cap: adopt or backup. Without it the command refuses and says so.";
 
     /// <summary>
@@ -97,9 +98,11 @@ public static class LoadoutManagementVerbs
     private static async Task<int> Synchronize([Injected] IRenderer renderer,
         [Option("l", "loadout", "Loadout to apply")] Loadout.ReadOnly loadout,
         [Injected] ISynchronizerService syncService,
-        [Option("large-files", "large-files", LargeFilesHelp, true)] string? largeFiles)
+        [Option("large-files", "large-files", LargeFilesHelp, true)] string? largeFiles,
+        [Option("confirm-removal", "confirm-removal", ConfirmRemovalHelp, true)] bool confirmRemoval)
     {
         using var origin = SyncOrigin.Begin(SyncTrigger.CommandLine);
+        using var removal = confirmRemoval ? MassRemovalConsent.Confirmed() : MassRemovalConsent.Refused();
         await syncService.Synchronize(loadout.LoadoutId, BackupOverflowChoices.Parse(largeFiles));
         return 0;
     }

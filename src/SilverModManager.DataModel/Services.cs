@@ -113,6 +113,8 @@ public static class Services
         coll.TryAddSingleton<IDiagnosticWriter, PlainDiagnosticWriter>();
         coll.TryAddSingleton<IBackupOverflowPrompt, RefusingBackupOverflowPrompt>();
         coll.TryAddSingleton(BackupLimit.Default);
+        coll.TryAddSingleton<IMassRemovalPrompt, RefusingMassRemovalPrompt>();
+        coll.TryAddSingleton(MassRemovalThreshold.Default);
         
         // GC
         coll.AddAllSingleton<IGarbageCollectorRunner, GarbageCollectorRunner>();
