@@ -48,7 +48,7 @@ public struct GamePathNode<TValue> :
     public TValue? Value { get; init; } // ?? (variable, potentially not 8 aligned)
 
     /// <inheritdoc />
-    TValue IHaveValue<TValue>.Value => Value ?? throw new InvalidOperationException($"`{GamePath}` is a directory and has no value");
+    TValue IHaveValue<TValue>.Value => Value ?? throw new InvalidOperationException($"`{GamePath}` is a tree root and has no value");
 
     /// <summary>
     ///    The location ID of this node.

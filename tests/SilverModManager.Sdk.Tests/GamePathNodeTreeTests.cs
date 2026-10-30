@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NexusMods.Paths;
+using NexusMods.Paths.Trees.Traits;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Trees;
 
@@ -28,5 +29,15 @@ public class GamePathNodeTreeTests
         var act = () => tree[missing];
 
         act.Should().Throw<KeyNotFoundException>().WithMessage("*missing.dll*");
+    }
+
+    [Fact]
+    public void Test_RootNode_ValueThroughInterface_ThrowsNamingTheRoot()
+    {
+        var root = GamePathNode<string>.Create([KeyValuePair.Create(Present, "x")]);
+
+        var act = () => ((IHaveValue<string>)root.Item).Value;
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*tree root*");
     }
 }
