@@ -148,7 +148,7 @@ public class QueryEngine : IQueryEngine, IAsyncDisposable
         ?? throw new InvalidOperationException($"NexusMods.HyperDuck.DuckDB no longer has a field named {name}; the query drain cannot count running queries");
 
     private static int CountOf(object pool, FieldInfo field) =>
-        ((System.Collections.ICollection)field.GetValue(pool)!).Count;
+        ((System.Collections.ICollection?)field.GetValue(pool))?.Count ?? 0;
 
     /// <summary>
     /// The number of DuckDB connections that running queries have checked out.
@@ -167,8 +167,8 @@ public class QueryEngine : IQueryEngine, IAsyncDisposable
     /// </summary>
     internal LiveQueryUpdater? LiveQueryUpdaterIfStarted()
     {
-        var lazy = (Lazy<LiveQueryUpdater>)LiveQueryUpdaterField.GetValue(_db)!;
-        return lazy.IsValueCreated ? lazy.Value : null;
+        var lazy = (Lazy<LiveQueryUpdater>?)LiveQueryUpdaterField.GetValue(_db);
+        return lazy is { IsValueCreated: true } ? lazy.Value : null;
     }
 
     private async ValueTask StopLiveQueryUpdater()
