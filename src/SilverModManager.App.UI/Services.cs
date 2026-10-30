@@ -153,6 +153,7 @@ public static class Services
 
             // Views
             .AddView<CollectionCardView, ICollectionCardViewModel>()
+            .AddView<WabbajackModlistCardView, IWabbajackModlistCardViewModel>()
             .AddView<DevelopmentBuildBannerView, IDevelopmentBuildBannerViewModel>()
             .AddView<SecretStoreNoticeView, ISecretStoreNoticeViewModel>()
             .AddView<GameWidget, IGameWidgetViewModel>()

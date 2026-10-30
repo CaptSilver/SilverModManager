@@ -182,6 +182,12 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
         line.Children.Add(new TextBlock { Text = row.Source, Width = 120 });
         line.Children.Add(new TextBlock { Text = row.StateText, Width = 200 });
         line.Children.Add(new TextBlock { Text = row.Reason, TextTrimming = TextTrimming.CharacterEllipsis, Opacity = 0.7 });
+        if (row.CanInstall)
+        {
+            var install = new Button { Content = "Install" };
+            install.Click += (_, _) => viewModel.InstallArchiveCommand.Execute(row).Subscribe();
+            line.Children.Add(install);
+        }
         if (row.CanOpenPage)
         {
             var open = new Button { Content = "Open page" };

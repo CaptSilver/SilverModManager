@@ -72,11 +72,17 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
             .ObserveAll(_connection)
             // only show mod pages for the currently selected game
             .FilterImmutable(modPage => libraryFilter.Game.NexusModsGameId.IsNexusGame(modPage.Uid.GameId))
-            // only show mod pages that have library files
-            .FilterOnObservable(modPage => _connection
-                .ObserveDatoms(NexusModsLibraryItem.ModPageMetadata, modPage)
-                .IsNotEmpty()
-            );
+            // only show mod pages that have library files the Mods tab lists
+            .FilterOnObservable(modPage => ShownLibraryItems(modPage.Id).IsNotEmpty());
+    }
+
+    /// <summary>The page's library files, without the ones the app fetched for a Wabbajack modlist.</summary>
+    private IObservable<IChangeSet<Datom, EntityId>> ShownLibraryItems(EntityId modPage)
+    {
+        return _connection
+            .ObserveDatoms(NexusModsLibraryItem.ModPageMetadata, modPage)
+            .AsEntityIds()
+            .FilterOnObservable((_, id) => LibraryDataProviderHelper.IsShownInMods(_connection, id));
     }
 
     public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
@@ -91,9 +97,7 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
 
     private CompositeItemModel<EntityId> ToLibraryItemModel(NexusModsModPageMetadata.ReadOnly modPage, LibraryFilter libraryFilter)
     {
-        var libraryItems = _connection
-            .ObserveDatoms(NexusModsLibraryItem.ModPageMetadata, modPage)
-            .AsEntityIds()
+        var libraryItems = ShownLibraryItems(modPage.Id)
             .Transform(datom => NexusModsLibraryItem.Load(_connection.Db, datom.E))
             .RefCount();
 

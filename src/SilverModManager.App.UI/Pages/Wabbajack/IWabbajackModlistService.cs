@@ -56,6 +56,12 @@ public interface IWabbajackModlistService
 
     IWabbajackInstallRun StartInstall(LibraryFileId file, LoadoutId target, InstallOptions options);
 
+    /// <summary>
+    /// Installs a library file the list holds into <paramref name="target"/> as an ordinary mod. That makes it the
+    /// user's own: the Mods tab lists it even though the app fetched it for the modlist.
+    /// </summary>
+    Task InstallArchive(LibraryFileId archive, LoadoutId target, CancellationToken cancellationToken);
+
     /// <summary>What is left on the filesystem the library keeps its files on, or null if it cannot be read.</summary>
     Size? FreeSpace();
 

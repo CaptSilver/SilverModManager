@@ -2,6 +2,7 @@ using System.Reactive;
 using Avalonia.Media.Imaging;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 using ReactiveUI;
 
 namespace SilverModManager.App.UI.Pages.Wabbajack;
@@ -12,6 +13,9 @@ namespace SilverModManager.App.UI.Pages.Wabbajack;
 public interface IWabbajackModlistViewModel : IPageViewModelInterface
 {
     LibraryFileId FileId { get; set; }
+
+    /// <summary>The loadout to pick once the list is read, if it is one of the list's game; otherwise the first one is.</summary>
+    LoadoutId? PreferredLoadout { get; set; }
 
     string Name { get; }
     string Author { get; }
@@ -92,6 +96,9 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
     ReactiveCommand<Unit, Unit> DownloadCommand { get; }
 
     ReactiveCommand<WabbajackArchiveRow, Unit> OpenPageCommand { get; }
+
+    /// <summary>Installs a held archive into the selected loadout as a mod of its own.</summary>
+    ReactiveCommand<WabbajackArchiveRow, Unit> InstallArchiveCommand { get; }
 
     /// <summary>Opens the pages of the next five Nexus Mods files that still need a download in the browser.</summary>
     ReactiveCommand<Unit, Unit> OpenNextFiveCommand { get; }

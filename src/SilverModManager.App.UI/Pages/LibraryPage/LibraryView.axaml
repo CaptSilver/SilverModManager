@@ -239,7 +239,7 @@
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type collections:ICollectionCardViewModel}">
+                                <DataTemplate DataType="{x:Type collections:ILibraryCollectionCardViewModel}">
                                     <reactive:ViewModelViewHost
                                         ViewModel="{CompiledBinding .}"
                                         ClipToBounds="False" />

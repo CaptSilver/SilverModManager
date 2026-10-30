@@ -9,12 +9,14 @@ using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Extensions;
 using SilverModManager.App.UI.Pages.LibraryPage;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
 using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.Networking.NexusWebApi;
 using SilverModManager.Networking.NexusWebApi.UpdateFilters;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Wabbajack.Models;
 using R3;
 using Observable = R3.Observable;
 
@@ -51,6 +53,19 @@ public static class LibraryDataProviderHelper
         return libraryDataProviders
             .Select(provider => provider.CountLibraryItems(libraryFilter))
             .CombineLatest(static counts => counts.Sum());
+    }
+
+    /// <summary>
+    /// Whether the Mods tab lists the library file. One the app fetched for a Wabbajack modlist is that list's own
+    /// download and stays out of the way until the user installs it into a loadout, which makes it theirs.
+    /// </summary>
+    public static IObservable<bool> IsShownInMods(IConnection connection, EntityId libraryFile)
+    {
+        // FetchedFiles is a collection, so it has no reference-attribute overload; the back-reference slice works for any reference.
+        var fetchedFiles = connection.AttributeCache.GetAttributeId(WabbajackModlistArchive.FetchedFiles.Id);
+        var fetched = connection.ObserveDatoms(SliceDescriptor.Create(fetchedFiles, libraryFile)).IsNotEmpty();
+        var installed = connection.ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItem, libraryFile).IsNotEmpty();
+        return fetched.CombineLatest(installed, static (isFetched, isInstalled) => !isFetched || isInstalled).DistinctUntilChanged();
     }
 
     public static IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> GetLinkedLoadoutItems(

@@ -28,7 +28,7 @@ internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvide
         _connection = serviceProvider.GetRequiredService<IConnection>();
     }
 
-    // A Wabbajack modlist is added as a local file too; WabbajackModlistDataProvider shows it.
+    // A Wabbajack modlist is added as a local file too; the Collections tab shows it.
     private static bool IsModlist(LocalFile.ReadOnly localFile) => localFile.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out _);
 
     // TODO: update once we have game information on Local Files
@@ -39,6 +39,7 @@ internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvide
         return LocalFile
             .ObserveAll(_connection)
             .FilterImmutable(static localFile => !IsModlist(localFile))
+            .FilterOnObservable((_, id) => LibraryDataProviderHelper.IsShownInMods(_connection, id))
             .Transform(localFile => ToLibraryItemModel(libraryFilter, localFile));
     }
 
@@ -47,6 +48,7 @@ internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvide
         return LocalFile
             .ObserveAll(_connection)
             .FilterImmutable(static localFile => !IsModlist(localFile))
+            .FilterOnObservable((_, id) => LibraryDataProviderHelper.IsShownInMods(_connection, id))
             .QueryWhenChanged(query => query.Count)
             .Prepend(0);
     }

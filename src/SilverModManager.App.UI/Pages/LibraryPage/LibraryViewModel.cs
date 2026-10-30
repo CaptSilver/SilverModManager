@@ -100,8 +100,8 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
     private readonly ILoadoutManager _loadoutManager;
 
     public LibraryTreeDataGridAdapter Adapter { get; }
-    private ReadOnlyObservableCollection<ICollectionCardViewModel> _collections = new([]);
-    public ReadOnlyObservableCollection<ICollectionCardViewModel> Collections => _collections;
+    private ReadOnlyObservableCollection<ILibraryCollectionCardViewModel> _collections = new([]);
+    public ReadOnlyObservableCollection<ILibraryCollectionCardViewModel> Collections => _collections;
 
     private ReadOnlyObservableCollection<InstallationTarget> _installationTargets = new([]);
     public ReadOnlyObservableCollection<InstallationTarget> InstallationTargets => _installationTargets;
@@ -274,12 +274,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
                         async viewChangelogMessage => await HandleViewChangelogMessage(viewChangelogMessage, cancellationToken),
                         async viewModPageMessage => await HandleViewModPageMessage(viewModPageMessage, cancellationToken),
                         async hideUpdatesMessage => await HandleHideUpdatesMessage(hideUpdatesMessage, cancellationToken),
-                        async deleteItemMessage => await HandleDeleteItemMessage(deleteItemMessage, cancellationToken),
-                        async openModlistMessage =>
-                        {
-                            OpenModlistPage(openModlistMessage);
-                            await Task.CompletedTask;
-                        }
+                        async deleteItemMessage => await HandleDeleteItemMessage(deleteItemMessage, cancellationToken)
                     );
                 },
                 awaitOperation: AwaitOperation.Parallel,
@@ -296,10 +291,10 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
                 .Subscribe()
                 .AddTo(disposables);
 
-            CollectionRevisionMetadata.ObserveAll(_connection)
+            var nexusCards = CollectionRevisionMetadata.ObserveAll(_connection)
                 .FilterImmutable(revision => game.NexusModsGameId.IsNexusGame(revision.Collection.GameId))
                 .OnUI()
-                .Transform(ICollectionCardViewModel (revision) => new CollectionCardViewModel(
+                .Transform(ILibraryCollectionCardViewModel (revision) => new CollectionCardViewModel(
                     collectionDownloader: collectionDownloader,
                     tileImagePipeline: tileImagePipeline,
                     userAvatarPipeline: userAvatarPipeline,
@@ -307,11 +302,25 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
                     workspaceId: WorkspaceId,
                     revision: revision,
                     targetLoadout: _loadout)
-                )
+                );
+
+            // A modlist is a collection too; the card says it is a Wabbajack modlist.
+            var modlistCards = WabbajackModlistLibraryFile.ObserveAll(_connection)
+                .FilterImmutable(file => WabbajackModlistCardViewModel.IsForGame(file, game.GameId))
+                .OnUI()
+                .Transform(ILibraryCollectionCardViewModel (file) => new WabbajackModlistCardViewModel(
+                    provider: _serviceProvider,
+                    windowManager: WindowManager,
+                    workspaceId: WorkspaceId,
+                    file: file,
+                    loadout: _loadout.LoadoutId)
+                );
+
+            nexusCards.Or(modlistCards)
                 .Bind(out _collections)
                 .Subscribe()
                 .AddTo(disposables);
-            
+
             // Update the selection count based on the selected models
             Adapter.SelectedModels
                 .ObserveChanged()
@@ -713,17 +722,6 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
         }
     }
 
-    private void OpenModlistPage(OpenModlistMessage message)
-    {
-        var page = new PageData
-        {
-            FactoryId = WabbajackModlistPageFactory.StaticId,
-            Context = new WabbajackModlistPageContext { LibraryFileId = message.File },
-        };
-        var workspaceController = WindowManager.ActiveWorkspaceController;
-        workspaceController.OpenPage(WorkspaceId, page, workspaceController.GetOpenPageBehavior(page, new NavigationInformation(NavigationInput.Default, Optional<OpenPageBehaviorType>.None)));
-    }
-
     private ValueTask HandleViewChangelogMessage(ViewChangelogMessage viewChangelogMessage, CancellationToken cancellationToken)
     {
 /*
@@ -1096,17 +1094,16 @@ public readonly record struct ViewChangelogMessage(OneOf<NexusModsModPageMetadat
 public readonly record struct ViewModPageMessage(OneOf<NexusModsModPageMetadataId, NexusModsLibraryItemId> Id);
 public readonly record struct HideUpdatesMessage(OneOf<NexusModsModPageMetadataId, NexusModsLibraryItemId> Id);
 public readonly record struct DeleteItemMessage(LibraryItemId[] Ids);
-public readonly record struct OpenModlistMessage(LibraryFileId File);
 
 public class LibraryTreeDataGridAdapter :
     TreeDataGridAdapter<CompositeItemModel<EntityId>, EntityId>,
-    ITreeDataGirdMessageAdapter<OneOf<InstallMessage, UpdateAndReplaceMessage, UpdateAndKeepOldMessage, ViewChangelogMessage, ViewModPageMessage, HideUpdatesMessage, DeleteItemMessage, OpenModlistMessage>>
+    ITreeDataGirdMessageAdapter<OneOf<InstallMessage, UpdateAndReplaceMessage, UpdateAndKeepOldMessage, ViewChangelogMessage, ViewModPageMessage, HideUpdatesMessage, DeleteItemMessage>>
 {
     private readonly ILibraryDataProvider[] _libraryDataProviders;
     private readonly LibraryFilter _libraryFilter;
     private readonly IConnection _connection;
 
-    public Subject<OneOf<InstallMessage, UpdateAndReplaceMessage, UpdateAndKeepOldMessage, ViewChangelogMessage, ViewModPageMessage, HideUpdatesMessage, DeleteItemMessage, OpenModlistMessage>> MessageSubject { get; } = new();
+    public Subject<OneOf<InstallMessage, UpdateAndReplaceMessage, UpdateAndKeepOldMessage, ViewChangelogMessage, ViewModPageMessage, HideUpdatesMessage, DeleteItemMessage>> MessageSubject { get; } = new();
 
     public LibraryTreeDataGridAdapter(IServiceProvider serviceProvider, LibraryFilter libraryFilter) : base(serviceProvider)
     {
@@ -1200,16 +1197,6 @@ public class LibraryTreeDataGridAdapter :
             })
         );
         
-        model.SubscribeToComponentAndTrack<LibraryComponents.OpenModlistAction, LibraryTreeDataGridAdapter>(
-            key: LibraryColumns.Actions.OpenModlistComponentKey,
-            state: this,
-            factory: static (self, itemModel, component) => component.CommandOpenModlist.Subscribe((self, itemModel), static (_, state) =>
-            {
-                var (self, model) = state;
-                self.MessageSubject.OnNext(new OpenModlistMessage(LibraryFileId.From(model.Key)));
-            })
-        );
-
         model.SubscribeToComponentAndTrack<LibraryComponents.DeleteItemAction, LibraryTreeDataGridAdapter>(
             key: LibraryColumns.Actions.DeleteItemComponentKey,
             state: this,

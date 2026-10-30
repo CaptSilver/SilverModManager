@@ -10,6 +10,7 @@ namespace SilverModManager.App.UI.Pages.Wabbajack;
 public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistViewModel>, IWabbajackModlistViewModel
 {
     public LibraryFileId FileId { get; set; }
+    public SilverModManager.Sdk.Loadouts.LoadoutId? PreferredLoadout { get; set; }
     public string Name => "Example list";
     public string Author => "Someone";
     public string Version => "1.0.0";
@@ -46,6 +47,7 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public ReactiveCommand<Unit, Unit> DownloadCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> InstallCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<WabbajackArchiveRow, Unit> OpenPageCommand { get; } = ReactiveCommand.Create<WabbajackArchiveRow>(_ => { });
+    public ReactiveCommand<WabbajackArchiveRow, Unit> InstallArchiveCommand { get; } = ReactiveCommand.Create<WabbajackArchiveRow>(_ => { });
     public ReactiveCommand<Unit, Unit> OpenNextFiveCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> CheckInboxCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> OpenInboxFolderCommand { get; } = ReactiveCommand.Create(() => { });

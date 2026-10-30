@@ -62,6 +62,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
     [Reactive] public partial LibraryFileId FileId { get; set; }
 
+    public LoadoutId? PreferredLoadout { get; set; }
+
     [Reactive] public partial string Name { get; private set; } = "";
     [Reactive] public partial string Author { get; private set; } = "";
     [Reactive] public partial string Version { get; private set; } = "";
@@ -104,6 +106,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     public ReactiveCommand<Unit, Unit> InstallCommand { get; }
     public ReactiveCommand<Unit, Unit> DownloadCommand { get; }
     public ReactiveCommand<WabbajackArchiveRow, Unit> OpenPageCommand { get; }
+    public ReactiveCommand<WabbajackArchiveRow, Unit> InstallArchiveCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenNextFiveCommand { get; }
     public ReactiveCommand<Unit, Unit> CheckInboxCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenInboxFolderCommand { get; }
@@ -135,6 +138,11 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         OpenPageCommand = ReactiveCommand.Create<WabbajackArchiveRow>(row =>
         {
             if (row.Plan.Page is { } page) _provider.GetRequiredService<IOSInterop>().OpenUri(page);
+        });
+        InstallArchiveCommand = ReactiveCommand.CreateFromTask<WabbajackArchiveRow>(async row =>
+        {
+            if (row.Plan.Library is not { } library || SelectedLoadout?.Id is not { } loadout) return;
+            await Guarded(token => _service.InstallArchive(LibraryFileId.From(library.Id), loadout, token));
         });
         // Not while a pick is still planning: its plan would replace the one Download starts on.
         DownloadCommand = ReactiveCommand.CreateFromTask(
@@ -177,7 +185,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
     // The acquirer is one singleton for every modlist page; a plan of another list's archives is not this page's.
     private bool IsThisList(ArchivePlan plan)
-        => plan.Rows.Select(row => row.Archive).SequenceEqual(_plan.Rows.Select(row => row.Archive));
+        => plan.Modlist is { } modlist
+            ? modlist == FileId
+            : plan.Rows.Select(row => row.Archive).SequenceEqual(_plan.Rows.Select(row => row.Archive));
 
     private void ShowUnmatched(IReadOnlyList<UnmatchedInbox> unmatched)
     {
@@ -211,7 +221,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
                 RefreshLoadoutChoices();
                 // Without a loadout of the game, "Create new loadout" is the only way forward, so it starts out picked.
-                var first = LoadoutChoices.FirstOrDefault(choice => choice.Id is not null) ?? WabbajackLoadoutChoice.CreateNew;
+                var first = LoadoutChoices.FirstOrDefault(choice => choice.Id is not null && choice.Id == PreferredLoadout)
+                    ?? LoadoutChoices.FirstOrDefault(choice => choice.Id is not null)
+                    ?? WabbajackLoadoutChoice.CreateNew;
                 handedOver = true;
                 await SelectLoadoutAsync(first, token);
             }, cancellationToken);

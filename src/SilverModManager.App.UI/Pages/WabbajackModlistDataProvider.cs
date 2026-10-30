@@ -14,9 +14,8 @@ using SilverModManager.Wabbajack.Models;
 namespace SilverModManager.App.UI.Pages;
 
 /// <summary>
-/// Lists the Wabbajack modlists in the library, one row each, named after the list. A modlist is also a local file
-/// (the user added it from disk, or the gallery download did), so <see cref="LocalFileDataProvider"/> leaves these out. The row opens the
-/// modlist's page instead of installing the file as a mod.
+/// Finds the Wabbajack modlists in the library for game removal. They have no Mods tab row: they are cards on the
+/// Collections tab, and <see cref="LocalFileDataProvider"/> leaves them out too.
 /// </summary>
 [UsedImplicitly]
 internal class WabbajackModlistDataProvider : ILibraryDataProvider
@@ -40,49 +39,10 @@ internal class WabbajackModlistDataProvider : ILibraryDataProvider
             .ToArray();
     }
 
-    // A list for a game this app has no title for stays visible in every library: hiding it would make the file
-    // impossible to find and remove.
-    private static bool IsForGame(WabbajackModlistLibraryFile.ReadOnly file, GameId gameId)
-        => WabbajackGames.GameIdFor(file.GameType) is not { } listGame || listGame == gameId;
-
+    // Modlists are on the Collections tab, so the Mods tab has no row for them. The provider stays registered because
+    // removing a game still asks it for the lists to delete.
     public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
-    {
-        return WabbajackModlistLibraryFile
-            .ObserveAll(_connection)
-            .FilterImmutable(file => IsForGame(file, libraryFilter.Game.GameId))
-            .Transform(ToLibraryItemModel);
-    }
+        => Observable.Never<IChangeSet<CompositeItemModel<EntityId>, EntityId>>().StartWith(ChangeSet<CompositeItemModel<EntityId>, EntityId>.Empty);
 
-    public IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
-    {
-        return WabbajackModlistLibraryFile
-            .ObserveAll(_connection)
-            .FilterImmutable(file => IsForGame(file, libraryFilter.Game.GameId))
-            .QueryWhenChanged(static query => query.Count)
-            .Prepend(0);
-    }
-
-    private CompositeItemModel<EntityId> ToLibraryItemModel(WabbajackModlistLibraryFile.ReadOnly file)
-    {
-        var libraryFile = file.AsLibraryFile();
-        var itemModel = new CompositeItemModel<EntityId>(file.Id);
-
-        itemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: file.Name));
-        // Only a list fetched from the gallery came from Wabbajack; one the user added from disk is a local file.
-        SharedColumns.Source.Add(itemModel, file.Contains(WabbajackModlistLibraryFile.GalleryDownloadUrl) ? ModSources.Wabbajack : ModSources.LocalFile);
-        itemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
-        itemModel.Add(LibraryColumns.DownloadedDate.ComponentKey, new DateComponent(value: file.GetCreatedAt()));
-        itemModel.Add(LibraryColumns.ItemVersion.CurrentVersionComponentKey, new VersionComponent(value: file.Version));
-        itemModel.Add(SharedColumns.ItemSize.ComponentKey, new SizeComponent(value: libraryFile.Size));
-        itemModel.Add(LibraryColumns.Actions.LibraryItemIdsComponentKey, new LibraryComponents.LibraryItemIds(libraryFile.AsLibraryItem()));
-
-        // No install button: adding the zip as a mod would be wrong. The row opens the modlist's page.
-        itemModel.Add(LibraryColumns.Actions.OpenModlistComponentKey, new LibraryComponents.OpenModlistAction());
-        LibraryDataProviderHelper.AddViewChangelogActionComponent(itemModel, isEnabled: false);
-        LibraryDataProviderHelper.AddViewModPageActionComponent(itemModel, isEnabled: false);
-        LibraryDataProviderHelper.AddHideUpdatesActionComponent(itemModel, isEnabled: false, isVisible: false);
-        LibraryDataProviderHelper.AddDeleteItemActionComponent(itemModel);
-
-        return itemModel;
-    }
+    public IObservable<int> CountLibraryItems(LibraryFilter libraryFilter) => Observable.Never<int>().StartWith(0);
 }

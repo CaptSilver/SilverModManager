@@ -11,7 +11,7 @@ namespace SilverModManager.App.UI.Pages.LibraryPage.Collections;
 /// <summary>
 /// Collection card view model.
 /// </summary>
-public interface ICollectionCardViewModel : IViewModelInterface
+public interface ICollectionCardViewModel : ILibraryCollectionCardViewModel
 {
     /// <inheritdoc cref="CollectionMetadata.Name"/>
     string Name { get; }

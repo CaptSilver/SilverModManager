@@ -1,0 +1,47 @@
+<reactiveUi:ReactiveUserControl
+    x:TypeArguments="collections:IWabbajackModlistCardViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactiveUi="http://reactiveui.net"
+    xmlns:collections="clr-namespace:SilverModManager.App.UI.Pages.LibraryPage.Collections"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    mc:Ignorable="d"
+    x:Class="SilverModManager.App.UI.Pages.LibraryPage.Collections.WabbajackModlistCardView">
+
+    <Border x:Name="CardBorder" Width="372" Padding="16" CornerRadius="4"
+            Background="{DynamicResource SurfaceTranslucentLowBrush}">
+        <StackPanel Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock x:Name="KindText" Theme="{DynamicResource BodySMNormalTheme}"
+                           Foreground="{DynamicResource NeutralModerateBrush}" />
+                <TextBlock Text="·" Foreground="{DynamicResource NeutralWeakBrush}" />
+                <TextBlock x:Name="SourceText" Theme="{DynamicResource BodySMNormalTheme}"
+                           Foreground="{DynamicResource NeutralModerateBrush}" />
+                <TextBlock x:Name="StateText" Theme="{DynamicResource BodySMNormalTheme}"
+                           Foreground="{DynamicResource InfoStrongBrush}" />
+            </StackPanel>
+
+            <TextBlock x:Name="TitleText" Theme="{DynamicResource BodyLGBoldTheme}"
+                       Foreground="{DynamicResource NeutralModerateBrush}"
+                       TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="48" />
+
+            <TextBlock x:Name="AuthorText" Theme="{DynamicResource BodySMNormalTheme}"
+                       Foreground="{DynamicResource NeutralSubduedBrush}"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="GameText" Theme="{DynamicResource BodySMNormalTheme}"
+                       Foreground="{DynamicResource NeutralSubduedBrush}" />
+            <TextBlock x:Name="SizeText" Theme="{DynamicResource BodySMNormalTheme}"
+                       Foreground="{DynamicResource NeutralSubduedBrush}" />
+            <TextBlock x:Name="ArchivesText" Theme="{DynamicResource BodySMNormalTheme}"
+                       Foreground="{DynamicResource NeutralSubduedBrush}" />
+
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                <controls:StandardButton x:Name="InstallButton" Type="Secondary" Fill="Strong" Size="Small" Text="Install" />
+                <controls:StandardButton x:Name="OpenButton" Type="Secondary" Fill="Weak" Size="Small" Text="Open modlist" />
+                <controls:StandardButton x:Name="RemoveButton" Type="Tertiary" Fill="Weak" Size="Small" Text="Remove" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</reactiveUi:ReactiveUserControl>

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Serialization.Attributes;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.App.UI.Pages.Wabbajack;
 
@@ -10,6 +11,9 @@ namespace SilverModManager.App.UI.Pages.Wabbajack;
 public record WabbajackModlistPageContext : IPageFactoryContext
 {
     public required LibraryFileId LibraryFileId { get; init; }
+
+    /// <summary>The loadout the page starts on instead of the first one of the list's game.</summary>
+    public LoadoutId? TargetLoadout { get; init; }
 }
 
 [UsedImplicitly]
@@ -24,6 +28,7 @@ public class WabbajackModlistPageFactory : APageFactory<IWabbajackModlistViewMod
     {
         var vm = ServiceProvider.GetRequiredService<IWabbajackModlistViewModel>();
         vm.FileId = context.LibraryFileId;
+        vm.PreferredLoadout = context.TargetLoadout;
         return vm;
     }
 

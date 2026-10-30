@@ -12,7 +12,7 @@ public record InstallationTarget(CollectionGroupId Id, string Name);
 public interface ILibraryViewModel : IPageViewModelInterface
 {
     LibraryTreeDataGridAdapter Adapter { get; }
-    ReadOnlyObservableCollection<ICollectionCardViewModel> Collections { get; }
+    ReadOnlyObservableCollection<ILibraryCollectionCardViewModel> Collections { get; }
 
     ReadOnlyObservableCollection<InstallationTarget> InstallationTargets { get; }
     InstallationTarget? SelectedInstallationTarget { get; set; }

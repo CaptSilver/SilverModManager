@@ -111,7 +111,7 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
             ? inventory.GameFilesFor(Loadout.Load(db, loadoutId))
             // The loadout does not exist yet; it will be created on this installation.
             : inventory.GameFilesFor(InstallationFor(file));
-        return await inventory.Build(list, db, gameFiles, cancellationToken, progress);
+        return (await inventory.Build(list, db, gameFiles, cancellationToken, progress)) with { Modlist = file };
     }
 
     private GameInstallation InstallationFor(LibraryFileId file)
@@ -190,6 +190,12 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
     {
         public IObservable<ModlistInstallProgress.Snapshot> Progress => progress;
         public Task Completion => completion;
+    }
+
+    public async Task InstallArchive(LibraryFileId archive, LoadoutId target, CancellationToken cancellationToken)
+    {
+        var item = LibraryItem.Load(_connection.Db, archive.Value);
+        _ = await provider.GetRequiredService<ILoadoutManager>().InstallItem(item, target);
     }
 
     public Size? FreeSpace()

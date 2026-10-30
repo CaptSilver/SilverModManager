@@ -7,6 +7,10 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Pages;
 using SilverModManager.App.UI.Pages.LibraryPage;
+using SilverModManager.App.UI.Pages.LibraryPage.Collections;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using NSubstitute;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -75,7 +79,7 @@ public class DataProviderSourceTests(IServiceProvider provider) : AUiTest(provid
         await ShouldBeFrom(new ManuallyCreatedArchiveDataProvider(Provider).ObserveLibraryItems(Filter()), result.Remap(file).Id, ModSources.LocalFile);
     }
 
-    private async Task<(IObservableCache<CompositeItemModel<EntityId>, EntityId> Rows, EntityId Id)> AddModlist(string fileName, string? galleryUrl)
+    private async Task<WabbajackModlistCardViewModel> ModlistCard(string fileName, string? galleryUrl)
     {
         using var tx = Connection.BeginTransaction();
         var file = NewLibraryFile(tx, out var id, fileName);
@@ -95,27 +99,26 @@ public class DataProviderSourceTests(IServiceProvider provider) : AUiTest(provid
         if (galleryUrl is not null) tx.Add(modlist.Id, WabbajackModlistLibraryFile.GalleryDownloadUrl, galleryUrl);
         var result = await tx.Commit();
 
-        var rows = new WabbajackModlistDataProvider(Provider).ObserveLibraryItems(Filter()).AsObservableCache();
-        var remapped = result.Remap(file).Id;
-        await Eventually(() => rows.Lookup(remapped).HasValue.Should().BeTrue());
-        return (rows, remapped);
+        var loadout = Filter().LoadoutId;
+        return new WabbajackModlistCardViewModel(Provider, Substitute.For<IWindowManager>(), WorkspaceId.From(Guid.NewGuid()),
+            WabbajackModlistLibraryFile.Load(Connection.Db, result.Remap(file).Id), loadout);
     }
 
     [Fact]
     public async Task AWabbajackModlistFromTheGallery_IsFromWabbajack()
     {
-        var (rows, id) = await AddModlist("gallery list.wabbajack", "https://authored-files.wabbajack.org/A_list.wabbajack_ff");
-        using var _ = rows;
+        var card = await ModlistCard("gallery list.wabbajack", "https://authored-files.wabbajack.org/A_list.wabbajack_ff");
 
-        SourceOf(rows.Lookup(id).Value).Should().Be(ModSources.Wabbajack);
+        card.Source.Should().Be(ModSources.Wabbajack);
+        card.Kind.Should().Be("Wabbajack modlist");
     }
 
     [Fact]
     public async Task AWabbajackModlistAddedFromDisk_IsFromALocalFile()
     {
-        var (rows, id) = await AddModlist("disk list.wabbajack", galleryUrl: null);
-        using var _ = rows;
+        var card = await ModlistCard("disk list.wabbajack", galleryUrl: null);
 
-        SourceOf(rows.Lookup(id).Value).Should().Be(ModSources.LocalFile);
+        card.Source.Should().Be(ModSources.LocalFile);
+        card.Kind.Should().Be("Wabbajack modlist", "a list added from disk is still recognisably a modlist");
     }
 }

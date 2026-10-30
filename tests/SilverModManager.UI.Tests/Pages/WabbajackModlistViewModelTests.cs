@@ -153,6 +153,14 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
             return Run;
         }
 
+        public List<(LibraryFileId Archive, SilverModManager.Sdk.Loadouts.LoadoutId Target)> InstalledArchives { get; } = [];
+
+        public Task InstallArchive(LibraryFileId archive, SilverModManager.Sdk.Loadouts.LoadoutId target, CancellationToken cancellationToken)
+        {
+            InstalledArchives.Add((archive, target));
+            return Task.CompletedTask;
+        }
+
         public Size? FreeSpace() => Free;
         public Task<IReadOnlyList<UnmatchedInbox>> CheckInbox(CancellationToken cancellationToken) => Task.FromResult(Unmatched);
         public void OpenInboxFolder() { }
@@ -707,5 +715,65 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
 
         vm.InstallBlockedReason.Should().NotContain("Get what is missing");
         vm.InstallBlockedReason.Should().Contain("Skip files from missing archives");
+    }
+
+    private static ArchivePlanRow Held(string name, LibraryFile.ReadOnly file) => Row(ArchiveState.Have, name) with { Library = file };
+
+    private async Task<LibraryFile.ReadOnly> SeedHeldFile(string name)
+    {
+        using var tx = Connection.BeginTransaction();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(name + Guid.NewGuid());
+        var file = new LibraryFile.New(tx, out var id)
+        {
+            FileName = name,
+            Hash = bytes.xxHash3(),
+            Size = Size.From((ulong)bytes.Length),
+            LibraryItem = new LibraryItem.New(tx, id) { Name = name },
+        };
+        var result = await tx.Commit();
+        return LibraryFile.Load(Connection.Db, result.Remap(file).Id);
+    }
+
+    [Fact]
+    public async Task AHeldArchiveCanBeInstalledOnItsOwnIntoTheSelectedLoadout()
+    {
+        var file = await SeedHeldFile("held-install.7z");
+        var (vm, service, _) = await Open(Plan(Held("held-install.7z", file), Row(ArchiveState.Manual, "manual.7z"), Row(ArchiveState.Browser, "browser.7z")));
+
+        vm.Archives.Select(row => row.CanInstall).Should().Equal(true, false, false);
+
+        await vm.InstallArchiveCommand.Execute(vm.Archives[0]).FirstAsync();
+
+        service.InstalledArchives.Should().ContainSingle().Which.Should().Be((LibraryFileId.From(file.Id), vm.SelectedLoadout!.Id!.Value));
+    }
+
+    [Fact]
+    public async Task APageOpenedForALoadoutStartsOnThatLoadout()
+    {
+        await SeedLoadoutRow(GameStore.Steam, "First loadout of the game");
+        var wanted = await SeedLoadoutRow(GameStore.Steam, "The loadout the card was on");
+        var service = new FakeService(TestGame) { Plan = Plan() };
+        var vm = new WabbajackModlistViewModel(Provider.GetRequiredService<IWindowManager>(), Connection, service, new FakeAcquirer(), Provider)
+        {
+            FileId = SomeFile,
+            PreferredLoadout = wanted.LoadoutId,
+        };
+
+        await vm.LoadAsync(CancellationToken.None);
+
+        vm.SelectedLoadout!.Id.Should().Be(wanted.LoadoutId);
+        service.PlannedFor.Should().Equal(wanted.LoadoutId);
+    }
+
+    [Fact]
+    public async Task APlanOfAnotherListIsNotThisPagesEvenWithTheSameArchives()
+    {
+        var (vm, _, acquirer) = await Open(Plan(Row(ArchiveState.Manual, "same.7z")));
+        using var activation = vm.Activator.Activate();
+        var held = await SeedHeldFile("same.7z");
+
+        acquirer.Change(new ArchivePlan([Held("same.7z", held)], LibraryFileId.From(EntityId.From(0xBEEFBEEF))));
+
+        vm.Archives.Should().ContainSingle().Which.Plan.State.Should().Be(ArchiveState.Manual);
     }
 }
