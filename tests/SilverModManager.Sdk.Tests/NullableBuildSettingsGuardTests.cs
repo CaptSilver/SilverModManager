@@ -6,7 +6,8 @@ namespace SilverModManager.Sdk.Tests;
 /// <summary>
 /// Keeps nullable warnings fatal in every project under <c>src</c>. The promotion lives in one place,
 /// <c>src/Directory.Build.props</c> (<c>WarningsAsErrors=Nullable</c>); this guard fails if that line goes
-/// or if anything else can quietly undo it: a project that sets its own <c>WarningsAsErrors</c>,
+/// or if anything else can quietly undo it: a project, or the root <c>Directory.Build.props</c>,
+/// <c>Directory.Build.targets</c> or <c>Directory.Packages.props</c> every src project imports, that sets its own <c>WarningsAsErrors</c>,
 /// <c>TreatWarningsAsErrors</c> or <c>WarningsNotAsErrors</c>, turns <c>Nullable</c> off, lists a CS86xx or
 /// CS87xx code in <c>NoWarn</c>, or an <c>.editorconfig</c> / <c>.globalconfig</c> that lowers such a code
 /// below warning (<c>none</c>, <c>silent</c>, <c>suggestion</c> and <c>default</c> all bypass the promotion
@@ -22,6 +23,10 @@ public class NullableBuildSettingsGuardTests
     private const string PromotionFile = "src/Directory.Build.props";
 
     private static readonly string[] ProjectPatterns = ["*.csproj", "*.props", "*.targets"];
+
+    // Imported by every src project (src/Directory.Build.props pulls the root props in), so a loosening here
+    // reaches all of them without touching a csproj.
+    private static readonly string[] RootBuildFiles = ["Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props"];
 
     private static readonly Regex Property = new(@"<(?<name>WarningsAsErrors|WarningsNotAsErrors|TreatWarningsAsErrors|Nullable|NoWarn)\b[^>]*>(?<value>[^<]*)</\k<name>>", RegexOptions.IgnoreCase);
     private static readonly Regex NullableCode = new(@"^(CS)?8[67]\d\d$|^nullable$", RegexOptions.IgnoreCase);
@@ -126,13 +131,15 @@ public class NullableBuildSettingsGuardTests
         PromotesNullable(File.ReadAllText(Path.Combine(root, PromotionFile)))
             .Should().BeTrue($"{PromotionFile} must keep <WarningsAsErrors>Nullable</WarningsAsErrors>");
 
-        var violations = RepoScanGuard.EnumerateFiles(root, "src", includeVendored: true, ProjectPatterns)
+        var rootFiles = RootBuildFiles.Where(name => File.Exists(Path.Combine(root, name)));
+
+        var violations = rootFiles.Concat(RepoScanGuard.EnumerateFiles(root, "src", includeVendored: true, ProjectPatterns))
             .SelectMany(file => ProjectFileViolations(File.ReadAllText(Path.Combine(root, file)), allowWarningsAsErrors: file == PromotionFile)
                 .Select(violation => $"{file}: {violation}"))
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        string.Join(Environment.NewLine, violations).Should().BeEmpty("nullable warnings are errors in src, set once in " + PromotionFile);
+        string.Join(Environment.NewLine, violations).Should().BeEmpty("nullable warnings are errors in src and in the root build files every src project imports, set once in " + PromotionFile);
     }
 
     [Fact]
