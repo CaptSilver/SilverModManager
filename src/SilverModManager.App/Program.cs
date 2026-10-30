@@ -41,7 +41,9 @@ namespace SilverModManager.App;
 
 public class Program
 {
-    private static ILogger<Program> _logger = default!;
+    private static ILogger<Program>? _logger;
+
+    internal static ILogger<Program> Logger => _logger ?? throw new InvalidOperationException($"{nameof(Program)} has no logger until the host is built");
 
     [STAThread]
     public static int Main(string[] args)
@@ -95,7 +97,7 @@ public class Program
             // The slim client profile has no downloader, so the setting isn't registered there.
             var settingsManager = host.Services.GetRequiredService<ISettingsManager>();
             if (settingsManager.Configs.ContainsKey(typeof(HttpProxySettings)))
-                HttpProxy.Apply(settingsManager.Get<HttpProxySettings>(), _logger);
+                HttpProxy.Apply(settingsManager.Get<HttpProxySettings>(), Logger);
             return host;
         },
         ReadSyncInfo = services => services.GetRequiredService<SyncFile>().GetSyncInfo(),
@@ -161,7 +163,7 @@ public class Program
         // loadout left applied by upstream gets recorded as the game's original state.
         if (UpstreamData.Exists(fileSystem))
         {
-            _logger.LogWarning("Upstream Nexus Mods App data found at {Path}; unmanage shared games there first", UpstreamData.DataModelPath(fileSystem));
+            Logger.LogWarning("Upstream Nexus Mods App data found at {Path}; unmanage shared games there first", UpstreamData.DataModelPath(fileSystem));
         }
 
         _ = Task.Run(async () =>
@@ -170,12 +172,12 @@ public class Program
             {
                 var archiveLocation = dataModelSettings.ArchiveLocations[0].ToPath(fileSystem);
                 var mount = await osInterop.GetFileSystemMount(archiveLocation);
-                if (mount is not null) _logger.LogInformation("Archives are stored at {Path} on mount {Mount}", archiveLocation, mount);
-                else _logger.LogWarning("Failed to find file system mount for {Path}", archiveLocation);
+                if (mount is not null) Logger.LogInformation("Archives are stored at {Path} on mount {Mount}", archiveLocation, mount);
+                else Logger.LogWarning("Failed to find file system mount for {Path}", archiveLocation);
             }
             catch (Exception e)
             {
-                _logger.LogWarning(e, "Failed to get file system mounts");
+                Logger.LogWarning(e, "Failed to get file system mounts");
             }
         });
 
@@ -238,7 +240,7 @@ public class Program
             // (no arguments) would open the UI and leave the process running.
             var interop = services.GetRequiredService<IOSInterop>();
             var ownExe = interop.GetRunningExecutablePath(out var _);
-            _logger.LogInformation("No main process started, running verb in headless main {OwnExe}", ownExe);
+            Logger.LogInformation("No main process started, running verb in headless main {OwnExe}", ownExe);
             var processInfo = new ProcessStartInfo
             {
                 FileName = ownExe.ToString(),
@@ -250,7 +252,7 @@ public class Program
             using var process = Process.Start(processInfo);
             if (process is null)
             {
-                _logger.LogError("Failed to start headless main {OwnExe}", ownExe);
+                Logger.LogError("Failed to start headless main {OwnExe}", ownExe);
                 return 1;
             }
 
@@ -261,7 +263,7 @@ public class Program
         {
             var interop = services.GetRequiredService<IOSInterop>();
             var ownExe = interop.GetRunningExecutablePath(out var _);
-            _logger.LogInformation("No main process started, starting {OwnExe}", ownExe);
+            Logger.LogInformation("No main process started, starting {OwnExe}", ownExe);
             var processInfo = new ProcessStartInfo
             {
                 FileName = ownExe.ToString(),
@@ -271,12 +273,12 @@ public class Program
             var process = Process.Start(processInfo);
             if (process is null)
             {
-                _logger.LogError("Failed to start main process {OwnExe}", ownExe);
+                Logger.LogError("Failed to start main process {OwnExe}", ownExe);
                 return 1;
             }
             else
             {
-                _logger.LogInformation("Started main process {OwnExe} with id {ProcessId}", ownExe, process.Id);
+                Logger.LogInformation("Started main process {OwnExe} with id {ProcessId}", ownExe, process.Id);
             }
 
             var st = Stopwatch.StartNew();
@@ -285,7 +287,7 @@ public class Program
                 await Task.Delay(100);
                 if (st.Elapsed > TimeSpan.FromSeconds(60))
                 {
-                    _logger.LogError("Main process {OwnExe} did not start", ownExe);
+                    Logger.LogError("Main process {OwnExe} did not start", ownExe);
                     return 1;
                 }
             }
@@ -302,7 +304,7 @@ public class Program
         if (!startupMode.ExecuteCli)
             return Task.FromResult(0);
         var configurator = provider.GetRequiredService<CommandLineConfigurator>();
-        _logger.LogInformation("Starting with Spectre.Cli");
+        Logger.LogInformation("Starting with Spectre.Cli");
         return configurator.RunAsync(startupMode.Args, new SpectreRenderer(AnsiConsole.Console), CancellationToken.None);
     }
 

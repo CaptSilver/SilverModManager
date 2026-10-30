@@ -364,15 +364,18 @@ public class RunGameTool<T> : IRunGameTool
         if (await PollUntil(() => (reaper = _processTracker.FindReaperForApp(appId)) is not null, StartTimeout, launch, cancellationToken, appId) is { } reaperFailure)
             return reaperFailure;
 
+        // PollUntil only reports success once the lambda above has found the reaper.
+        var startedReaper = reaper ?? throw new InvalidOperationException($"Steam reaper for app {appId} was reported found but is missing");
+
         SetRunningInstallStep(false);
         gameStarted();
-        _logger.LogDebug("Waiting for reaper {Pid} of app {AppId} to exit", reaper!.Pid, appId);
+        _logger.LogDebug("Waiting for reaper {Pid} of app {AppId} to exit", startedReaper.Pid, appId);
         var misses = 0;
         while (!cancellationToken.IsCancellationRequested)
         {
             // A /proc entry that can't be read for a moment drops out of one scan. Taking that for the exit would
             // shut the game down while it runs, so the reaper has to be missing from several scans in a row.
-            misses = _processTracker.FindReaperForApp(appId)?.Pid == reaper.Pid ? 0 : misses + 1;
+            misses = _processTracker.FindReaperForApp(appId)?.Pid == startedReaper.Pid ? 0 : misses + 1;
             if (misses >= ReaperGoneAfterMisses) return new SteamWait(SteamRunOutcome.Exited);
             try
             {

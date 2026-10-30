@@ -126,8 +126,8 @@ public class SynchronizerHookTests : AIsolatedGameTest<SynchronizerHookTests, Ho
         ChangeOf(Base.LoadoutToDiskDiff(loadout, [], [])).Should().Be(FileChangeType.None);
     }
 
-    private static FileChangeType ChangeOf(FileDiffTree diff) =>
-        diff.GetAllDescendentFiles().Single(f => f.GamePath() == Plain).Item.Value.ChangeType;
+    private static FileChangeType? ChangeOf(FileDiffTree diff) =>
+        diff.GetAllDescendentFiles().Single(f => f.GamePath() == Plain).Item.Value?.ChangeType;
 
     [Fact]
     public async Task APreflightActionsRefusalOnTheLoadoutOverloadLeavesDiskAndDiskStateAsTheyWere()

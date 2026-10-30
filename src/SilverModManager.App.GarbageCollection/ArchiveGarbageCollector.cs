@@ -99,7 +99,7 @@ public readonly struct ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWra
             return;
         }
 
-        lock (archiveRef!.Entries)
+        lock (archiveRef.Entries)
         {
             ref var entry = ref CollectionsMarshal.GetValueRefOrNullRef(archiveRef.Entries, hash);
             if (!Unsafe.IsNullRef(ref entry))

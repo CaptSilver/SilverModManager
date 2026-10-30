@@ -27,6 +27,10 @@ public class DiffTreeViewModel : AViewModel<IFileTreeViewModel>, IFileTreeViewMo
     private readonly ReadOnlyObservableCollection<string> _statusBarStrings;
     private readonly SourceList<string> _statusBarSourceList;
 
+    // Every node below the root carries the entry it was built from, so this only fails for a root.
+    private static DiskDiffEntry EntryOf(NexusMods.Paths.Trees.KeyedBox<NexusMods.Paths.RelativePath, GamePathNode<DiskDiffEntry>> node) =>
+        node.Item.Value ?? throw new InvalidOperationException($"`{node.GamePath()}` has no diff entry");
+
     public ITreeDataGridSource<IFileTreeNodeViewModel> TreeSource { get; }
     public ReadOnlyObservableCollection<string> StatusBarStrings => _statusBarStrings;
 
@@ -100,16 +104,17 @@ public class DiffTreeViewModel : AViewModel<IFileTreeViewModel>, IFileTreeViewMo
         // Add all the sub directories recursively
         foreach (var diffEntry in diffTree.GetAllDescendentDirectories())
         {
+            var entry = EntryOf(diffEntry);
             var model = new FileTreeNodeViewModel(
                 diffEntry.GamePath(),
                 diffEntry.Parent()?.GamePath() ?? IFileTreeViewModel.RootParentGamePath,
                 diffEntry.IsFile(),
-                diffEntry.Item.Value.Size.Value,
+                entry.Size.Value,
                 0u,
-                diffEntry.Item.Value.ChangeType
+                entry.ChangeType
             )
             {
-                IsExpanded = diffEntry.Item.Value.ChangeType != FileChangeType.None,
+                IsExpanded = entry.ChangeType != FileChangeType.None,
             };
             fileViewModelNodes.Add(diffEntry.GamePath(), model);
         }
@@ -119,8 +124,9 @@ public class DiffTreeViewModel : AViewModel<IFileTreeViewModel>, IFileTreeViewMo
         {
             var gamePath = diffEntry.GamePath();
             var parentPath = diffEntry.Parent()?.GamePath() ?? IFileTreeViewModel.RootParentGamePath;
-            var fileSize = diffEntry.Item.Value.Size.Value;
-            var changeType = diffEntry.Item.Value.ChangeType;
+            var entry = EntryOf(diffEntry);
+            var fileSize = entry.Size.Value;
+            var changeType = entry.ChangeType;
             var model = new FileTreeNodeViewModel(gamePath,
                 parentPath,
                 diffEntry.IsFile(),

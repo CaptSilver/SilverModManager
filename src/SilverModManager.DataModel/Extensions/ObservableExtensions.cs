@@ -15,7 +15,12 @@ public static class ObservableExtensions
     /// <param name="observable">The observable that can contain nulls.</param>
     /// <returns>A non nullable version of the observable that only emits valid values.</returns>
     public static IObservable<T> NotNull<T>(this IObservable<T?> observable) =>
-        observable
-            .Where(x => x is not null)
-            .Select(x => x!);
+        Observable.Create<T>(observer => observable.Subscribe(
+            value =>
+            {
+                if (value is not null) observer.OnNext(value);
+            },
+            observer.OnError,
+            observer.OnCompleted
+        ));
 }

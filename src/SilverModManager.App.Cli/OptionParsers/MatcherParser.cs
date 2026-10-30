@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.FileSystemGlobbing;
 using SilverModManager.Sdk.ProxyConsole;
 
@@ -6,18 +7,19 @@ namespace SilverModManager.CLI.OptionParsers;
 internal class MatcherParser : IOptionParser<Matcher>
 {
     /// <inheritdoc />
-    public bool TryParse(string toParse, out Matcher value, out string error)
+    public bool TryParse(string toParse, [MaybeNullWhen(false)] out Matcher value, out string error)
     {
         try
         {
-            value = new Matcher();
-            value.AddInclude(toParse);
+            var matcher = new Matcher();
+            matcher.AddInclude(toParse);
+            value = matcher;
             error = string.Empty;
             return true;
         }
         catch (Exception exception)
         {
-            value = null!;
+            value = default;
             error = exception.Message;
             return false;
         }

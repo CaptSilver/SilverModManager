@@ -151,7 +151,7 @@ public class IniTweaksNotDeployedTests(ITestOutputHelper helper) : AIsolatedGame
 
         var metadata = Refresh(loadout).Installation;
         var diff = Synchronizer.LoadoutToDiskDiff(Refresh(loadout), Synchronizer.GetDiskStateForGame(metadata), Synchronizer.GetLastScannedDiskState(metadata));
-        diff.GetAllDescendentFiles().Single(f => f.GamePath() == ModTweak).Item.Value.ChangeType
+        diff.GetAllDescendentFiles().Single(f => f.GamePath() == ModTweak).Item.Value?.ChangeType
             .Should().Be(FileChangeType.None, "the tweak file is not a pending deploy");
     }
 

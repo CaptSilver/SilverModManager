@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using NexusMods.Paths;
 using NexusMods.Paths.Trees;
 using NexusMods.Paths.Trees.Traits;
@@ -24,6 +25,7 @@ public struct GamePathNode<TValue> :
     public Box<GamePathNode<TValue>>? Parent { get; init; } // 16
 
     /// <inheritdoc />
+    [MemberNotNullWhen(true, nameof(Value))]
     public bool IsFile { get; init; } // 24 (size 1-8, depending on padding)
 
     /// <summary>
@@ -39,8 +41,14 @@ public struct GamePathNode<TValue> :
     /// </remarks>
     public GamePath GamePath { get; private set; } // 32
 
+    /// <summary>
+    ///     The value a node was built from: a file's own, and for a directory the first entry that passed through it.
+    ///     Only a root node has none.
+    /// </summary>
+    public TValue? Value { get; init; } // ?? (variable, potentially not 8 aligned)
+
     /// <inheritdoc />
-    public TValue Value { get; init; } // ?? (variable, potentially not 8 aligned)
+    TValue IHaveValue<TValue>.Value => Value ?? throw new InvalidOperationException($"`{GamePath}` is a directory and has no value");
 
     /// <summary>
     ///    The location ID of this node.
@@ -53,7 +61,7 @@ public struct GamePathNode<TValue> :
     public static KeyedBox<RelativePath, GamePathNode<TValue>> Create(IEnumerable<KeyValuePair<GamePath, TValue>> items)
     {
         // Unboxed root node.
-        var rootLocationId = items.FirstOrDefault().Key.LocationId!;
+        var rootLocationId = items.FirstOrDefault().Key.LocationId;
         var root = new KeyedBox<RelativePath, GamePathNode<TValue>>()
         {
             Item = new GamePathNode<TValue>
@@ -63,7 +71,6 @@ public struct GamePathNode<TValue> :
                 Parent = null,
                 IsFile = false,
                 Id = rootLocationId,
-                Value = default(TValue)!,
                 GamePath = new GamePath(rootLocationId, ""),
                 _hashCode = 0,
             }

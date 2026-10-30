@@ -17,7 +17,7 @@ public static class MainThreadData
 #endif
     
 
-    private static Thread? _mainThread = null!;
+    private static Thread? _mainThread;
     
     private static readonly CancellationTokenSource CancellationTokenSource = new();
     

@@ -639,8 +639,19 @@ internal partial class LoadoutManager : ILoadoutManager
         ILibraryItemInstaller? installer = null,
         ILibraryItemInstaller? fallbackInstaller = null)
     {
-        var mainTransaction = inputTx is null ? _connection.BeginTransaction() : null;
-        var tx = inputTx ?? mainTransaction!;
+        // Only a transaction opened here is committed and disposed here.
+        ITransaction tx;
+        IMainTransaction? mainTransaction;
+        if (inputTx is null)
+        {
+            mainTransaction = _connection.BeginTransaction();
+            tx = mainTransaction;
+        }
+        else
+        {
+            mainTransaction = null;
+            tx = inputTx;
+        }
 
         var job = InstallLoadoutItemJob.Create(_serviceProvider, libraryItem, targetLoadout, tx, groupId: parent, installer: installer, fallbackInstaller: fallbackInstaller);
         return _jobMonitor.Begin(job, async context =>

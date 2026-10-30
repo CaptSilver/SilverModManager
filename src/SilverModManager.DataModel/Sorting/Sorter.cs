@@ -77,9 +77,12 @@ public class Sorter : ISorter
         var values = GC.AllocateUninitializedArray<(TId[] After, TItem Item)>(dict.Count);
         const int multiThreadCutoff = 2000; // Based on benching with 5900X.
         const int minOperationsPerThread = 666;
-        ParallelOptions parallelOptions = default!;
-        ParallelIsSuperset<TId, TItem> parallelState = default!;
-        Action<Tuple<int, int>> doWork = default!;
+
+        // Only built when the first pass is big enough to parallelise. The dictionary only shrinks, so a later
+        // pass that is big enough implies this was built.
+        ParallelOptions? parallelOptions = null;
+        ParallelIsSuperset<TId, TItem>? parallelState = null;
+        Action<Tuple<int, int>>? doWork = null;
 
         if (dict.Count > multiThreadCutoff)
         {
@@ -98,7 +101,7 @@ public class Sorter : ISorter
             dict.Values.CopyTo(values, 0); // <= Bottleneck.
             var superSetSize = 0;
             var valuesSlice = values.AsSpan(0, dict.Count);
-            if (dict.Count > multiThreadCutoff)
+            if (parallelOptions is not null && parallelState is not null && doWork is not null && dict.Count > multiThreadCutoff)
             {
                 parallelOptions.MaxDegreeOfParallelism = Math.Max(dict.Count / minOperationsPerThread, 1);
                 parallelState.SuperSetSize = -1;

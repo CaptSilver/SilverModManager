@@ -25,13 +25,13 @@ public class OptionalConverterFactory : JsonConverterFactory
         var typeArguments = typeToConvert.GetGenericArguments();
         var valueType = typeArguments[0];
 
-        var converter = (JsonConverter)Activator.CreateInstance(
+        var converter = Activator.CreateInstance(
             type: typeof(OptionalConverter<>).MakeGenericType(valueType),
             bindingAttr: BindingFlags.Instance | BindingFlags.Public,
             binder: null,
             args: [options],
             culture: null
-        )!;
+        ) as JsonConverter ?? throw new InvalidOperationException($"Could not create an optional converter for `{valueType}`");
 
         return converter;
     }

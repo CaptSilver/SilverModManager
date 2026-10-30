@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using NexusMods.Paths;
 using SilverModManager.Sdk.ProxyConsole;
 
@@ -20,7 +21,7 @@ internal class AbsolutePathParser : IOptionParser<AbsolutePath>
     }
 
 
-    public bool TryParse(string toParse, out AbsolutePath value, out string error)
+    public bool TryParse(string toParse, [MaybeNullWhen(false)] out AbsolutePath value, out string error)
     {
         try
         {
@@ -30,7 +31,7 @@ internal class AbsolutePathParser : IOptionParser<AbsolutePath>
         }
         catch (Exception e)
         {
-            value = default!;
+            value = default;
             error = e.Message;
             return false;
         }

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Sdk.Games;
@@ -10,7 +11,7 @@ namespace SilverModManager.CLI.OptionParsers;
 /// </summary>
 internal class GameParser(IServiceProvider serviceProvider) : IOptionParser<IGame>
 {
-    public bool TryParse(string toParse, out IGame value, out string error)
+    public bool TryParse(string toParse, [MaybeNullWhen(false)] out IGame value, out string error)
     {
         var games = serviceProvider.GetServices<IGameData>().ToArray();
         var game = games.FirstOrDefault(x => x.DisplayName.Equals(toParse, StringComparison.OrdinalIgnoreCase));
@@ -21,7 +22,7 @@ internal class GameParser(IServiceProvider serviceProvider) : IOptionParser<IGam
 
         if (game is null)
         {
-            value = null!;
+            value = default;
             error = $"Unknown game: `{toParse}`";
             return false;
         }

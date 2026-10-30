@@ -40,9 +40,9 @@ public readonly struct ConfigurablePath : IEquatable<ConfigurablePath>
         if (BaseDirectory == default(KnownPath) && File == default(RelativePath))
             throw new InvalidOperationException($"This {nameof(ConfigurablePath)} contains only default values!");
 
-        if (BaseDirectory == null)
+        if (BaseDirectory is not { } baseDirectory)
             return fileSystem.FromUnsanitizedFullPath(File);
-        return fileSystem.GetKnownPath(BaseDirectory!.Value).Combine(File);
+        return fileSystem.GetKnownPath(baseDirectory).Combine(File);
     }
 
     /// <inheritdoc/>

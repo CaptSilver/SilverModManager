@@ -29,7 +29,7 @@ public struct ObjectPoolDisposable<T> : IDisposable where T : class
     private bool _isDisposed;
 
     private readonly ObjectPool<T> _pool;
-    private T _value;
+    private T? _value;
 
     /// <summary>
     /// The value wrapped by this disposable.
@@ -39,7 +39,8 @@ public struct ObjectPoolDisposable<T> : IDisposable where T : class
     {
         get
         {
-            if (_isDisposed)
+            // A default instance never rented anything, so it reads like a disposed one.
+            if (_isDisposed || _value is null)
                 throw new ObjectDisposedException(typeof(ObjectPoolDisposable<>).Name);
             return _value;
         }
@@ -59,9 +60,9 @@ public struct ObjectPoolDisposable<T> : IDisposable where T : class
     /// <inheritdoc/>
     public void Dispose()
     {
-        if (_isDisposed) return;
-        _pool.Return(Value);
-        _value = null!;
+        if (_isDisposed || _value is null) return;
+        _pool.Return(_value);
+        _value = null;
         _isDisposed = true;
     }
 }

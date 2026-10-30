@@ -22,9 +22,12 @@ namespace SilverModManager.App;
 public class Startup
 {
     private static bool _hasBeenSetup = false;
-    private static IServiceProvider _provider = null!;
-    private static ILogger<Startup> _logger = null!;
+    private static IServiceProvider? _provider;
+    private static ILogger<Startup>? _logger;
     private static ulong _windowCount;
+
+    internal static IServiceProvider Provider => _provider ?? throw new InvalidOperationException($"{nameof(Startup)}.{nameof(Main)} has not run yet, so there is no service provider");
+    internal static ILogger<Startup> Logger => _logger ?? throw new InvalidOperationException($"{nameof(Startup)}.{nameof(Main)} has not run yet, so there is no logger");
 
 #pragma warning disable CS0028 // Disables warning about not being a valid entry point
     
@@ -59,13 +62,13 @@ public class Startup
 
     private static void AppMain(Application app, string[] args)
     {
-        _logger.LogInformation("Starting UI application");
+        Logger.LogInformation("Starting UI application");
         ShowMainWindow();
 
         // Start the app, linking to the global shutdown token
-        _logger.LogInformation("Starting application loop");
+        Logger.LogInformation("Starting application loop");
         app.Run(MainThreadData.GlobalShutdownToken);
-        _logger.LogInformation("Application loop ended");
+        Logger.LogInformation("Application loop ended");
     }
 
     private static void ShowMainWindow()
@@ -74,12 +77,12 @@ public class Startup
         // https://github.com/Nexus-Mods/NexusMods.App/issues/1267
         if (Interlocked.Read(ref _windowCount) > 0)
         {
-            _logger.LogError("We currently only allow 1 MainWindow. See https://github.com/Nexus-Mods/NexusMods.App/issues/1267 for details");
+            Logger.LogError("We currently only allow 1 MainWindow. See https://github.com/Nexus-Mods/NexusMods.App/issues/1267 for details");
             return;
         }
 
-        var reactiveWindow = _provider.GetRequiredService<MainWindow>();
-        reactiveWindow.ViewModel = _provider.GetRequiredService<MainWindowViewModel>();
+        var reactiveWindow = Provider.GetRequiredService<MainWindow>();
+        reactiveWindow.ViewModel = Provider.GetRequiredService<MainWindowViewModel>();
         reactiveWindow.Show();
     }
 

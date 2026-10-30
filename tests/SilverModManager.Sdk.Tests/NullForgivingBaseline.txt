@@ -4,12 +4,7 @@ src/Examples/TreeDataGrid/Basic/FileTreeView.axaml.cs	1
 src/Examples/TreeDataGrid/SingleColumn/FileColumn/FileColumnView.axaml.cs	2
 src/Examples/TreeDataGrid/SingleColumn/FileTreeDesignViewModel.cs	2
 src/Examples/TreeDataGrid/SingleColumn/FileTreeView.axaml.cs	1
-src/SilverModManager.Abstractions.Games/RunGameTool.cs	1
 src/SilverModManager.Abstractions.NexusWebApi/DTOs/DownloadLink.cs	3
-src/SilverModManager.App.Cli/OptionParsers/AbsolutePathParser.cs	1
-src/SilverModManager.App.Cli/OptionParsers/GameParser.cs	1
-src/SilverModManager.App.Cli/OptionParsers/MatcherParser.cs	1
-src/SilverModManager.App.GarbageCollection/ArchiveGarbageCollector.cs	1
 src/SilverModManager.App.UI/Controls/Alerts/Alert.axaml.cs	1
 src/SilverModManager.App.UI/Controls/CollectionMenuItem/CollectionMenuItem.axaml.cs	2
 src/SilverModManager.App.UI/Controls/GameWidget/GameWidget.axaml.cs	3
@@ -93,15 +88,6 @@ src/SilverModManager.App.UI/WorkspaceSystem/Panel/PanelViewModel.cs	1
 src/SilverModManager.App.UI/WorkspaceSystem/PanelResizer/PanelResizerView.axaml.cs	4
 src/SilverModManager.App.UI/WorkspaceSystem/PanelTabHeader/PanelTabHeaderView.axaml.cs	5
 src/SilverModManager.App.UI/WorkspaceSystem/Workspace/WorkspaceViewModel.cs	2
-src/SilverModManager.App/MainThreadData.cs	1
-src/SilverModManager.App/Program.cs	1
-src/SilverModManager.App/Startup.cs	2
-src/SilverModManager.Backend/Settings/SettingsManager.cs	4
-src/SilverModManager.DataModel/Extensions/ObjectPoolExtensions.cs	1
-src/SilverModManager.DataModel/Extensions/ObservableExtensions.cs	1
-src/SilverModManager.DataModel/JsonConverters/OptionalConverter.cs	1
-src/SilverModManager.DataModel/LoadoutManager.cs	1
-src/SilverModManager.DataModel/Sorting/Sorter.cs	3
 src/SilverModManager.Deployment.Vfs/Tree/VfsTree.cs	35
 src/SilverModManager.Games.AdvancedInstaller.UI/Content/Left/ModContent/ModContentView.axaml.cs	1
 src/SilverModManager.Games.AdvancedInstaller.UI/Content/Left/ModContent/TreeEntry/ModContentTreeEntryView.axaml.cs	2
@@ -124,8 +110,5 @@ src/SilverModManager.Games.Generic/Installers/GenericPatternMatchInstaller.cs	2
 src/SilverModManager.Games.Generic/Installers/PredicateBasedInstaller.cs	1
 src/SilverModManager.Games.MountAndBlade2Bannerlord/LauncherManager/LauncherManagerSilverModManager.cs	1
 src/SilverModManager.Games.RedEngine/ModInstallers/RedModInstaller.cs	3
-src/SilverModManager.Sdk/ConfigurablePath.cs	1
-src/SilverModManager.Sdk/IO/ChunkedStream.cs	2
-src/SilverModManager.Sdk/Trees/GamePathNode.cs	2
 src/SilverModManager.UI.Sdk/Icons/SimpleVectorIcon.cs	1
 src/SilverModManager.UI.Sdk/Icons/SimpleVectorIconImage.cs	1

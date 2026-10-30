@@ -119,7 +119,7 @@ public class ChunkedStream<T> : Stream where T : IChunkedStreamSource
         // If the chunk is cached, use it
         if (_cache.TryGet(index, out var memory))
         {
-            return memory!.Memory;
+            return memory.Memory;
         }
         
         // If the chunk is being preloaded (could have been in a previous run of this method) use that
@@ -149,7 +149,7 @@ public class ChunkedStream<T> : Stream where T : IChunkedStreamSource
     {
         if (_cache.TryGet(index, out var memory))
         {
-            return memory!.Memory;
+            return memory.Memory;
         }
 
         var chunkSize = _source.GetChunkSize(index);

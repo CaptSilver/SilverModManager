@@ -1,4 +1,5 @@
-﻿using Reloaded.Memory.Extensions;
+﻿using System.Diagnostics.CodeAnalysis;
+using Reloaded.Memory.Extensions;
 
 namespace SilverModManager.Sdk;
 
@@ -37,7 +38,7 @@ public struct LightweightLRUCache<TK, TV> : IDisposable
     /// <param name="key"></param>
     /// <param name="value"></param>
     /// <returns></returns>
-    public bool TryGet(TK key, out TV? value)
+    public bool TryGet(TK key, [MaybeNullWhen(false)] out TV value)
     {
         if (Find(key) is var index && index != -1)
         {

@@ -100,14 +100,23 @@ internal class SettingsManager : ISettingsManager
  
     public void Set<T>(T value, string? key) where T : class, ISettings, new() => CoreSet(value, new SettingKey(typeof(T), key), notify: true);
 
+    /// <summary>
+    /// Narrows a stored settings object to the type its key was registered for.
+    /// </summary>
+    internal static T Expect<T>(SettingKey key, object value) where T : class, ISettings, new()
+    {
+        return value as T ?? throw new InvalidOperationException(
+            $"Setting `{key.SettingType}` (key `{key.Key ?? "<default>"}`) holds a `{value.GetType()}` but `{typeof(T)}` was expected"
+        );
+    }
+
     public T Get<T>(string? key) where T : class, ISettings, new()
     {
         var settingKey = new SettingKey(typeof(T), key);
         
         if (_values.TryGetValue(settingKey, out var obj))
         {
-            Debug.Assert(obj is T);
-            return (obj as T)!;
+            return Expect<T>(settingKey, obj);
         }
 
         var savedValue = Load<T>(key);
@@ -132,8 +141,7 @@ internal class SettingsManager : ISettingsManager
         
         if (_values.TryGetValue(settingKey, out var obj))
         {
-            Debug.Assert(obj is T);
-            value = (obj as T)!;
+            value = Expect<T>(settingKey, obj);
             return true;
         }
         
@@ -170,11 +178,7 @@ internal class SettingsManager : ISettingsManager
 
     public T GetDefault<T>() where T : class, ISettings, new()
     {
-        var value = GetDefault(typeof(T));
-        Debug.Assert(value is T);
-
-        var res = (value as T)!;
-        return res;
+        return Expect<T>(new SettingKey(typeof(T), null), GetDefault(typeof(T)));
     }
 
     private object GetDefault(Type settingsType)
@@ -203,7 +207,8 @@ internal class SettingsManager : ISettingsManager
         
         var result = _subject
             .Where(settingKey, static (tuple, state) => tuple.Item1 == state)
-            .Select(tuple => (tuple.Item2 as T)!);
+            .Select(static tuple => tuple.Item2)
+            .OfType<object, T>();
 
         return prependCurrent ? result.Prepend(Get<T>(key)) : result;
     }
