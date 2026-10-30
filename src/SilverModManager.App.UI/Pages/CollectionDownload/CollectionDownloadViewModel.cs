@@ -691,7 +691,7 @@ public class CollectionDownloadTreeDataGridAdapter :
 {
     private readonly CollectionRevisionMetadata.ReadOnly _revisionMetadata;
     private readonly LoadoutId _targetLoadout;
-    private readonly CollectionDataProvider _collectionDataProvider;
+    private readonly IServiceProvider _serviceProvider;
 
     public R3.ReactiveProperty<CollectionDownloadsFilter> Filter { get; } = new(value: CollectionDownloadsFilter.OnlyRequired);
 
@@ -704,12 +704,13 @@ public class CollectionDownloadTreeDataGridAdapter :
     {
         _revisionMetadata = revisionMetadata;
         _targetLoadout = targetLoadout;
-        _collectionDataProvider = serviceProvider.GetRequiredService<CollectionDataProvider>();
+        _serviceProvider = serviceProvider;
     }
 
     protected override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> GetRootsObservable(bool viewHierarchical)
     {
-        return _collectionDataProvider.ObserveCollectionItems(_revisionMetadata, Filter.AsSystemObservable(), _targetLoadout);
+        // Resolved here, not in the constructor, so a design-time adapter that never lists rows needs no data provider.
+        return _serviceProvider.GetRequiredService<CollectionDataProvider>().ObserveCollectionItems(_revisionMetadata, Filter.AsSystemObservable(), _targetLoadout);
     }
 
     protected override void BeforeModelActivationHook(CompositeItemModel<EntityId> model)

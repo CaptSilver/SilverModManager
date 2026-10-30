@@ -7,6 +7,7 @@ using SilverModManager.App.UI.Controls;
 using SilverModManager.Sdk.Games;
 using R3;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Pages.Tools;
 
@@ -35,19 +36,19 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
             this.BindCommand(ViewModel, vm => vm.RunWindowsProgramCommand, view => view.RunWindowsProgramButton)
                 .AddTo(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.UserTools)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.UserTools))
                 .Subscribe(RebuildUserToolRows)
                 .AddTo(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.Tools)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Tools))
                 .Subscribe(RebuildToolRows)
                 .AddTo(disposables);
 
-            this.WhenAnyValue(
-                    view => view.ViewModel!.CanRunWindowsProgram,
-                    view => view.ViewModel!.Diagnostic,
-                    view => view.ViewModel!.PrefixPath,
-                    view => view.ViewModel!.Strategy)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(
+                    x => x.CanRunWindowsProgram,
+                    x => x.Diagnostic,
+                    x => x.PrefixPath,
+                    x => x.Strategy))
                 .Subscribe(state =>
                 {
                     var (canRun, diagnostic, prefixPath, strategy) = state;
@@ -57,7 +58,7 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
                 })
                 .AddTo(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.LastRunMessage)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.LastRunMessage))
                 .Subscribe(message => Show(LastRunText, message))
                 .AddTo(disposables);
         });
@@ -94,7 +95,9 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
             var remove = new StandardButton { Text = "Remove", Type = StandardButton.Types.Secondary };
             remove.Click += async (_, _) => await Guarded(async () =>
             {
-                await ViewModel!.RemoveUserTool(tool);
+                // Read when the button is pressed: the row outlives the view model it was built from.
+                if (ViewModel is not { } viewModel) return;
+                await viewModel.RemoveUserTool(tool);
                 // Otherwise the form stays on a program that no longer exists and every save is refused.
                 if (_editing?.Id == tool.Id) ResetForm();
             });
@@ -161,8 +164,9 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
         var editing = _editing;
         await Guarded(async () =>
         {
-            if (editing is { } tool) await ViewModel!.UpdateUserTool(tool, draft);
-            else await ViewModel!.AddUserTool(draft);
+            if (ViewModel is not { } viewModel) return;
+            if (editing is { } tool) await viewModel.UpdateUserTool(tool, draft);
+            else await viewModel.AddUserTool(draft);
             ResetForm();
         });
     }

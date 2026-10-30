@@ -10,20 +10,38 @@ using SilverModManager.Collections;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Jobs;
 using R3;
+using DynamicData;
+using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.App.UI.Pages.CollectionDownload;
 
 public class CollectionDownloadDesignViewModel : APageViewModel<ICollectionDownloadViewModel>, ICollectionDownloadViewModel
 {
-    public CollectionDownloadTreeDataGridAdapter TreeDataGridAdapter { get; } = null!;
+    public CollectionDownloadTreeDataGridAdapter TreeDataGridAdapter { get; }
 
     public CollectionDownloadDesignViewModel() : this(isEmbedded: false, adapter: null) { }
 
-    /// <param name="adapter">The tree the view binds to; the view cannot be activated without one.</param>
+    /// <param name="adapter">The tree the view binds to; an empty one when none is given.</param>
     public CollectionDownloadDesignViewModel(bool isEmbedded, CollectionDownloadTreeDataGridAdapter? adapter) : base(new DesignWindowManager())
     {
         IsEmbedded = isEmbedded;
-        if (adapter is not null) TreeDataGridAdapter = adapter;
+        TreeDataGridAdapter = adapter ?? new EmptyAdapter();
+    }
+
+    /// <summary>
+    /// A downloads tree with no rows, so the page can be designed without a collection in the database.
+    /// </summary>
+    private sealed class EmptyAdapter() : CollectionDownloadTreeDataGridAdapter(DesignServices, default, default)
+    {
+        private static readonly IServiceProvider DesignServices = new ServiceCollection()
+            .AddSingleton<ISettingsManager, DesignSettingsManager>()
+            .BuildServiceProvider();
+
+        protected override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> GetRootsObservable(bool viewHierarchical) =>
+            System.Reactive.Linq.Observable.Empty<IChangeSet<CompositeItemModel<EntityId>, EntityId>>();
     }
 
     public string Name => "Vanilla+ [Quality of Life]";

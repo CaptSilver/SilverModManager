@@ -6,6 +6,7 @@ using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.Collections;
+using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
 using SilverModManager.MnemonicDB.Abstractions;
 using R3;
@@ -61,21 +62,21 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                 this.OneWayBind(ViewModel, vm => vm.TreeDataGridAdapter.Source.Value, view => view.DownloadsTree.Source)
                     .DisposeWith(d);
 
-                this.WhenAnyValue(view => view.ViewModel!.BackgroundImage)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.BackgroundImage))
                     .WhereNotNull()
                     .SubscribeWithErrorLogging(image => HeaderImageBorder.Background = new ImageBrush { Source = image, Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Top })
                     .DisposeWith(d);
 
-                this.WhenAnyValue(view => view.ViewModel!.TileImage)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.TileImage))
                     .WhereNotNull()
                     .SubscribeWithErrorLogging(image => CollectionImage.Source = image)
                     .DisposeWith(d);
 
-                this.WhenAnyValue(
-                        view => view.ViewModel!.IsDownloading.Value,
-                        view => view.ViewModel!.IsInstalling.Value,
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(
+                        x => x.IsDownloading.Value,
+                        x => x.IsInstalling.Value,
                         static (isDownloading, isInstalling) => isDownloading || isInstalling
-                    )
+                    ))
                     .Subscribe(isActive => Spinner.IsVisible = isActive);
                 
                 this.WhenAnyValue(view => view.ViewModel)
@@ -130,10 +131,10 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                     )
                     .DisposeWith(d);
 
-                this.WhenAnyValue(
-                        view => view.ViewModel!.IsUpdateAvailable.Value,
-                        view => view.ViewModel!.NewestRevisionNumber.Value
-                    )
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(
+                        x => x.IsUpdateAvailable.Value,
+                        x => x.NewestRevisionNumber.Value
+                    ))
                     .Subscribe(tuple =>
                         {
                             var (isUpdateAvailable, optional) = tuple;
@@ -184,21 +185,24 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                             return;
                         }
                 
-                        ViewModel!.TreeDataGridAdapter.Filter.Value = filter;
+                        // Read when the tab changes, not when the page was activated.
+                        if (ViewModel is not { } current) return;
+                        current.TreeDataGridAdapter.Filter.Value = filter;
                     }).DisposeWith(d);
                 
-                this.WhenAnyValue(
-                    view => view.ViewModel!.CountDownloadedRequiredItems,
-                    view => view.ViewModel!.CountDownloadedOptionalItems,
-                    view => view.ViewModel!.IsInstalled.Value,
-                    view => view.ViewModel!.HasInstalledAllOptionalItems.Value
-                    )
-                    .CombineLatest(ViewModel!.TreeDataGridAdapter.Filter.AsSystemObservable(), (a, b) => (a.Item1, a.Item2, a.Item3, a.Item4, b))
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(
+                        x => x.CountDownloadedRequiredItems,
+                        x => x.CountDownloadedOptionalItems,
+                        x => x.IsInstalled.Value,
+                        x => x.HasInstalledAllOptionalItems.Value
+                        )
+                        .CombineLatest(vm.TreeDataGridAdapter.Filter.AsSystemObservable(), (a, b) => (a.Item1, a.Item2, a.Item3, a.Item4, b)))
                     .Subscribe(tuple =>
                     {
+                        if (ViewModel is not { } current) return;
                         var (countDownloadedRequiredItems, countDownloadedOptionalItems, isInstalled, hasInstalledAllOptionals, filter) = tuple;
-                        var hasDownloadedAllRequiredItems = countDownloadedRequiredItems == ViewModel!.RequiredDownloadsCount;
-                        var hasDownloadedAllOptionalItems = countDownloadedOptionalItems == ViewModel!.OptionalDownloadsCount;
+                        var hasDownloadedAllRequiredItems = countDownloadedRequiredItems == current.RequiredDownloadsCount;
+                        var hasDownloadedAllOptionalItems = countDownloadedOptionalItems == current.OptionalDownloadsCount;
                 
                         ButtonViewCollection.IsVisible = isInstalled && !isEmbedded;
                 
@@ -209,9 +213,9 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                         ButtonInstallOptionalItems.IsVisible = filter == CollectionDownloadsFilter.OnlyOptional && hasDownloadedAllOptionalItems && !hasInstalledAllOptionals;
                     }).DisposeWith(d);
                 
-                this.WhenAnyValue(
-                        view => view.ViewModel!.OptionalDownloadsCount,
-                        view => view.ViewModel!.InstructionsRenderer)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(
+                        x => x.OptionalDownloadsCount,
+                        x => x.InstructionsRenderer))
                     .Subscribe(tuple =>
                     {
                         var (optionalDownloadsCount, renderer) = tuple;
@@ -225,26 +229,28 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                         OptionalTab.IsVisible = optionalDownloadsCount != 0;
                     }).DisposeWith(d);
                 
-                this.WhenAnyValue(view => view.ViewModel!.OverallRating)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.OverallRating))
                     .Select(rating =>
                     {
-                        return rating.Value switch
+                        var className = rating.Value switch
                         {
                             >= 0.75 => "HighRating",
                             >= 0.5 => "MidRating",
                             >= 0.01 => "LowRating",
                             _ => "NoRating",
                         };
+                        return (className, rating);
                     })
-                    .Subscribe(className =>
+                    .Subscribe(tuple =>
                         {
+                            var (className, rating) = tuple;
                             OverallRatingPanel.Classes.Add(className);
-                            OverallRating.Text = className == "NoRating" ? "--" : ViewModel!.OverallRating.Value.ToString("P0");
+                            OverallRating.Text = className == "NoRating" ? "--" : rating.Value.ToString("P0");
                         }
                     )
                     .DisposeWith(d);
                 
-                this.WhenAnyValue(view => view.ViewModel!.CanDownloadAutomatically)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.CanDownloadAutomatically))
                     .Subscribe(canDownloadAutomatically =>
                     {
                         ButtonDownloadRequiredItems.RequiresPremium = !canDownloadAutomatically;
@@ -253,10 +259,10 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                     }).DisposeWith(d);
                 
                 
-                this.WhenAnyValue(
-                        view => view.ViewModel!.InstructionsRenderer,
-                        view => view.ViewModel!.RequiredModsInstructions,
-                        view => view.ViewModel!.OptionalModsInstructions)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(
+                        x => x.InstructionsRenderer,
+                        x => x.RequiredModsInstructions,
+                        x => x.OptionalModsInstructions))
                     .Subscribe(tuple =>
                     {
                         var (instructionsRenderer, requiredModsInstructions, optionalModsInstructions) = tuple;
@@ -266,9 +272,9 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                         InstructionsContent.Instructions = instructions;
                     }).DisposeWith(d);
 
-                this.WhenAnyValue(
-                    view => view.ViewModel!.RequiredDownloadsCount,
-                    view => view.ViewModel!.OptionalDownloadsCount)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(
+                    x => x.RequiredDownloadsCount,
+                    x => x.OptionalDownloadsCount))
                     .Subscribe(tuple =>
                     {
                         var (requiredDownloadsCount, optionalDownloadsCount) = tuple;

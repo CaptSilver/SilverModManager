@@ -2,6 +2,7 @@ using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Resources;
 using R3;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Pages.CollectionDownload;
 
@@ -28,8 +29,9 @@ public partial class ManualDownloadRequiredOverlayView : ReactiveUserControl<IMa
             this.BindCommand(ViewModel, vm => vm.CommandReportBug, view => view.ButtonReportBug)
                 .AddTo(disposables);
             
-            this.WhenAnyValue(view => view.ViewModel!.DownloadName,
-                view => view.ViewModel!.ExpectedSize)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(
+                    x => x.DownloadName,
+                    x => x.ExpectedSize))
                 .SubscribeWithErrorLogging(tuple =>
                 {
                     var (downloadName, expectedSize) = tuple;
@@ -49,9 +51,9 @@ public partial class ManualDownloadRequiredOverlayView : ReactiveUserControl<IMa
             this.OneWayBind(ViewModel, vm => vm.HasInstructions, view => view.InstructionsStack.IsVisible)
                 .AddTo(disposables);
 
-            this.WhenAnyValue(
-                view => view.ViewModel!.IsCheckingFile,
-                view => view.ViewModel!.IsIncorrectFile)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(
+                    x => x.IsCheckingFile,
+                    x => x.IsIncorrectFile))
                 .SubscribeWithErrorLogging(tuple =>
                 {
                     var (isCheckingFile, isIncorrectFile) = tuple;
