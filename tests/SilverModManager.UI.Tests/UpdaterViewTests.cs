@@ -37,7 +37,7 @@ public class UpdaterViewTests(IServiceProvider provider) : AUiTest(provider)
             DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, "https://example.com/SilverModManager.AppImage", digest);
         var installer = new AppImageUpdateInstaller(NullLogger.Instance, (_, destination, _, token) => File.WriteAllBytesAsync(destination, NewBytes, token));
 
-        return new UpdaterViewModel(Substitute.For<IOSInterop>(), null!, InstallationMethod.AppImage, new Version("1.0.0"), new Version("2.0.0"),
+        return new UpdaterViewModel(Substitute.For<IOSInterop>(), InstallationMethod.AppImage, new Version("1.0.0"), new Version("2.0.0"),
             new Uri("https://example.com"), new Uri("https://example.com/SilverModManager.AppImage"),
             new InAppUpdate(installer, asset, target, new NoRestart(), NullLogger.Instance));
     }

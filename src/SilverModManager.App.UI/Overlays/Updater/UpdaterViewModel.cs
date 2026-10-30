@@ -46,7 +46,6 @@ public partial class UpdaterViewModel : AOverlayViewModel<IUpdaterViewModel>, IU
 
     internal UpdaterViewModel(
         IOSInterop osInterop,
-        ISettingsManager settingsManager,
         InstallationMethod installationMethod,
         Version currentVersion,
         Version latestVersion,
@@ -62,17 +61,14 @@ public partial class UpdaterViewModel : AOverlayViewModel<IUpdaterViewModel>, IU
             // A download that is still running is abandoned, which also removes its temporary file.
             CancelUpdate();
 
-            // NOTE(erri120): something for later if we want to skip
-            // settingsManager.Set(new UpdaterSettings
-            // {
-            //     VersionToSkip = latestVersion,
-            // });
-
             base.Close();
         });
 
         CommandOpenReleaseInBrowser = new ReactiveCommand(_ => osInterop.OpenUri(releaseWebUri));
-        CommandDownloadReleaseAssetInBrowser = Observable.Return(assetDownloadUri is not null).ToReactiveCommand(_ => osInterop.OpenUri(assetDownloadUri!));
+        CommandDownloadReleaseAssetInBrowser = Observable.Return(assetDownloadUri is not null).ToReactiveCommand(_ =>
+        {
+            if (assetDownloadUri is { } uri) osInterop.OpenUri(uri);
+        });
 
         CommandUpdateNow = new ReactiveCommand(_ => UpdateNowAsync().FireAndForget(Logger));
         CommandRestartNow = new ReactiveCommand(_ => RestartNow());
@@ -166,7 +162,6 @@ public partial class UpdaterViewModel : AOverlayViewModel<IUpdaterViewModel>, IU
 
         return new UpdaterViewModel(
             osInterop: serviceProvider.GetRequiredService<IOSInterop>(),
-            settingsManager: settingsManager,
             installationMethod: installationMethod,
             currentVersion: currentVersion,
             latestVersion: latestVersion,

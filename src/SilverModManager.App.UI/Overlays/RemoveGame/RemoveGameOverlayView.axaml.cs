@@ -5,6 +5,7 @@ using SilverModManager.App.UI.Pages.MyGames;
 using SilverModManager.App.UI.Resources;
 using R3;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Overlays;
 
@@ -28,9 +29,7 @@ public partial class RemoveGameOverlayView : ReactiveUserControl<IRemoveGameOver
                     UnbackedText.Text = viewModel.Unbacked.Count > 0 ? CleanFolderPrompt.RemoveGameNote(viewModel.Unbacked) : "";
                 }).AddTo(disposables);
 
-            this.WhenAnyValue(
-                    view => view.ViewModel!.ShouldDeleteDownloads.Value,
-                    view => view.ViewModel!.SumDownloadsSize)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.ShouldDeleteDownloads.Value, x => x.SumDownloadsSize))
                 .Subscribe(tuple =>
                 {
                     var (shouldDeleteDownloads, _) = tuple;

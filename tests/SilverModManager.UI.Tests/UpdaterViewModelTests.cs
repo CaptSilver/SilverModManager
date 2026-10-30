@@ -38,7 +38,6 @@ public class UpdaterViewModelTests : IDisposable
 
         return new UpdaterViewModel(
             osInterop: Substitute.For<IOSInterop>(),
-            settingsManager: null!,
             installationMethod: method,
             currentVersion: new Version("1.0.0"),
             latestVersion: new Version("2.0.0"),
@@ -116,9 +115,26 @@ public class UpdaterViewModelTests : IDisposable
     [Fact]
     public void Test_NoInAppUpdate_WhenNotAnAppImage()
     {
-        var vm = new UpdaterViewModel(Substitute.For<IOSInterop>(), null!, InstallationMethod.Archive, new Version("1.0.0"), new Version("2.0.0"),
+        var vm = new UpdaterViewModel(Substitute.For<IOSInterop>(), InstallationMethod.Archive, new Version("1.0.0"), new Version("2.0.0"),
             new Uri("https://example.com"), new Uri("https://example.com/a.zip"), inAppUpdate: null);
         vm.CanUpdateInApp.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Test_BrowserDownloadCommand_IsOffWithoutAnAssetAndOpensTheAssetWithOne()
+    {
+        var osInterop = Substitute.For<IOSInterop>();
+        var withoutAsset = new UpdaterViewModel(osInterop, InstallationMethod.Flatpak, new Version("1.0.0"), new Version("2.0.0"),
+            new Uri("https://example.com"), assetDownloadUri: null);
+        var asset = new Uri("https://example.com/a.zip");
+        var withAsset = new UpdaterViewModel(osInterop, InstallationMethod.Archive, new Version("1.0.0"), new Version("2.0.0"),
+            new Uri("https://example.com"), asset);
+
+        withoutAsset.CommandDownloadReleaseAssetInBrowser.CanExecute().Should().BeFalse();
+        withAsset.CommandDownloadReleaseAssetInBrowser.Execute(R3.Unit.Default);
+
+        osInterop.Received(1).OpenUri(asset);
+        osInterop.ReceivedCalls().Should().HaveCount(1);
     }
 
     [Fact]

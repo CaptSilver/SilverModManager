@@ -2,6 +2,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.LeftMenu.Items;
 
@@ -13,13 +14,13 @@ public partial class LaunchButtonView : ReactiveUserControl<ILaunchButtonViewMod
         
         this.WhenActivated(d =>
         {
-            var isRunning = ViewModel!.IsRunningObservable;
-            var isNotRunning = ViewModel!.IsRunningObservable.Select(running => !running);
+            var isRunning = this.WhenViewModel(vm => vm.IsRunningObservable);
+            var isNotRunning = isRunning.Select(running => !running);
 
             // Only the launch button is gated. Cancel lives in this control too and must stay usable while the
             // game is starting, which is exactly when launching is switched off.
             isNotRunning
-                .CombineLatest(ViewModel.WhenAnyValue(vm => vm.CanLaunch), (notRunning, canLaunch) => notRunning && canLaunch)
+                .CombineLatest(this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.CanLaunch)), (notRunning, canLaunch) => notRunning && canLaunch)
                 .BindToUi(this, view => view.LaunchButton.IsEnabled)
                 .DisposeWith(d);
             
@@ -32,7 +33,7 @@ public partial class LaunchButtonView : ReactiveUserControl<ILaunchButtonViewMod
                 .DisposeWith(d);
             
             // Bind the 'launch' button.
-            this.WhenAnyValue(view => view.ViewModel!.Command)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Command))
                 .BindToUi(this, view => view.LaunchButton.Command)
                 .DisposeWith(d);
             
@@ -51,7 +52,7 @@ public partial class LaunchButtonView : ReactiveUserControl<ILaunchButtonViewMod
                 .DisposeWith(d);
 
             // Set the 'play' / 'running' text.
-            this.WhenAnyValue(view => view.ViewModel!.Label)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Label))
                 .BindToUi(this, view => view.LaunchText.Text)
                 .DisposeWith(d);
         });

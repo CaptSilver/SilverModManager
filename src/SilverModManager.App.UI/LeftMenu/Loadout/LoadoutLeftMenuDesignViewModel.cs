@@ -40,7 +40,11 @@ public class LoadoutLeftMenuDesignViewModel : AViewModel<ILoadoutLeftMenuViewMod
         },
     ]);
 
-    public ILeftMenuItemViewModel LeftMenuItemNewCollection { get; } = null!;
+    public ILeftMenuItemViewModel LeftMenuItemNewCollection { get; } = new LeftMenuItemDesignViewModel
+    {
+        Text = new StringComponent("New Collection"),
+        Icon = IconValues.Add,
+    };
 
     public ILeftMenuItemViewModel LeftMenuItemHealthCheck { get; } = new LeftMenuItemDesignViewModel
     {

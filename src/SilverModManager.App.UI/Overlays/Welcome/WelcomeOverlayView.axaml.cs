@@ -1,6 +1,7 @@
 using Avalonia.ReactiveUI;
 using R3;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Overlays;
 
@@ -24,7 +25,7 @@ public partial class WelcomeOverlayView : ReactiveUserControl<IWelcomeOverlayVie
             this.BindCommand(ViewModel, vm => vm.CommandClose, view => view.ButtonClose)
                 .AddTo(disposables);
 
-            this.WhenAnyValue(view => view.ViewModel!.IsLoggedIn.Value)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsLoggedIn.Value))
                 .Subscribe(isLoggedIn =>
                 {
                     ButtonLogIn.IsVisible = !isLoggedIn;

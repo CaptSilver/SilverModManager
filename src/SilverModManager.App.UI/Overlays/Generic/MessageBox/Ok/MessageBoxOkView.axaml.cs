@@ -6,6 +6,7 @@ using Avalonia.ReactiveUI;
 using R3;
 using ReactiveUI;
 using ReactiveCommand = ReactiveUI.ReactiveCommand;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 
@@ -28,25 +29,29 @@ public partial class MessageBoxOkView : ReactiveUserControl<IMessageBoxOkViewMod
             this.OneWayBind(ViewModel, vm => vm.MarkdownRenderer, v => v.MarkdownRendererViewModelViewHost.ViewModel)
                 .DisposeWith(disposables);
             
-            this.WhenAnyValue(view => view.ViewModel!.MarkdownRenderer)
-                .Select(vm => vm != null)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.MarkdownRenderer))
+                .Select(renderer => renderer != null)
                 .BindTo(this, v => v.DetailsSection.IsVisible)
                 .DisposeWith(disposables);
             
             // Bind commands
+            // The view model is read when the button is pressed, since it can be swapped while the view stays up.
             OkButton.Command = ReactiveCommand.Create(() =>
             {
-                ViewModel!.Complete(Unit.Default);
+                ViewModel?.Complete(Unit.Default);
             });
 
             CloseButton.Command = ReactiveCommand.Create(() =>
             {
-                ViewModel!.Complete(Unit.Default);
+                ViewModel?.Complete(Unit.Default);
             });
             
             CopyDetailsButton.Command = ReactiveCommand.CreateFromTask(async () =>
             {
-                await TopLevel.GetTopLevel(this)!.Clipboard!.SetTextAsync(ViewModel?.MarkdownRenderer?.Contents);
+                var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+                if (clipboard is null) return;
+
+                await clipboard.SetTextAsync(ViewModel?.MarkdownRenderer?.Contents);
             });
         });
     }

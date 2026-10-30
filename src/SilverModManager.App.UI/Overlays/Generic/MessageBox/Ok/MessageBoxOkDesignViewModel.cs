@@ -8,10 +8,10 @@ namespace SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 public class MessageBoxOkDesignViewModel: IMessageBoxOkViewModel
 {
     public event PropertyChangedEventHandler? PropertyChanged;
-    public ViewModelActivator Activator { get; } = null!;
-    public IOverlayController Controller { get; set; } = null!;
+    public ViewModelActivator Activator { get; } = new();
+    public IOverlayController Controller { get; set; } = new DesignOverlayController();
     public Status Status { get; set; }
-    public Task CompletionTask { get; } = null!;
+    public Task CompletionTask => Task.CompletedTask;
 
     public void Close()
     {

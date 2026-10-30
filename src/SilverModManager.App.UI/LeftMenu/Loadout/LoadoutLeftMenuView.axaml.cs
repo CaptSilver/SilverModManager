@@ -6,6 +6,7 @@ using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.Collections;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.LeftMenu.Loadout;
 
@@ -54,12 +55,12 @@ public partial class LoadoutLeftMenuView : ReactiveUserControl<ILoadoutLeftMenuV
             this.OneWayBind(ViewModel, vm => vm.LeftMenuItemExternalChanges, view => view.ExternalChangesItem.ViewModel)
                 .DisposeWith(disposables);
             
-            this.WhenAnyValue(view => view.ViewModel!.LeftMenuItemExternalChanges)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.LeftMenuItemExternalChanges))
                 .Select(item => item != null)
                 .BindTo(this, view => view.ExternalChangesItem.IsVisible)
                 .DisposeWith(disposables);
 
-            this.WhenAnyValue(x => x.ViewModel!.LeftMenuCollectionItems)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.LeftMenuCollectionItems))
                 .BindTo(this, x => x.CollectionItems.ItemsSource)
                 .DisposeWith(disposables);
             

@@ -42,10 +42,12 @@ public partial class LaunchButtonDesignViewModel : AViewModel<ILaunchButtonViewM
         {
             Label = "PREPARING...";
             Progress = Percent.Zero;
+            var fraction = 0d;
             await Task.Delay(100);
             for (var x = 0; x < 10; x++)
             {
-                Progress = Percent.CreateClamped(0.1d + Progress!.Value.Value);
+                fraction += 0.1d;
+                Progress = Percent.CreateClamped(fraction);
                 await Task.Delay(200);
             }
             

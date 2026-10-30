@@ -15,7 +15,10 @@ public partial class NexusLoginOverlayView : ReactiveUserControl<INexusLoginOver
         {
             CopyButton.Command = ReactiveCommand.CreateFromTask(async () =>
             {
-                await TopLevel.GetTopLevel(this)!.Clipboard!.SetTextAsync(ViewModel?.Uri?.ToString());
+                var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+                if (clipboard is null) return;
+
+                await clipboard.SetTextAsync(ViewModel?.Uri?.ToString());
             });
 
             this.BindCommand<NexusLoginOverlayView, INexusLoginOverlayViewModel, ICommand, Button>(ViewModel, vm => vm.Cancel, v => v.CancelButton)

@@ -2,6 +2,7 @@ using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Resources;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Overlays.LibraryDeleteConfirmation;
 
@@ -22,7 +23,7 @@ public partial class LibraryItemDeleteConfirmationView : ReactiveUserControl<ILi
                 .DisposeWith(d);
             
             // Show/hide the loadouts section.
-            this.WhenAnyValue(view => view.ViewModel!.LoadoutsUsed)
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.LoadoutsUsed))
                 .Subscribe(loadoutsUsed =>
                     {
                         var visible = loadoutsUsed.Count > 0;
@@ -38,9 +39,9 @@ public partial class LibraryItemDeleteConfirmationView : ReactiveUserControl<ILi
                 .DisposeWith(d);
 
             // Bind button commands
-            DeleteButton.Command = ReactiveCommand.Create(() => ViewModel!.Complete(true));
-            NoButton.Command = ReactiveCommand.Create(() => ViewModel!.Complete(false));
-            CloseButton.Command = ReactiveCommand.Create(() => ViewModel!.Complete(false));
+            DeleteButton.Command = ReactiveCommand.Create(() => ViewModel?.Complete(true));
+            NoButton.Command = ReactiveCommand.Create(() => ViewModel?.Complete(false));
+            CloseButton.Command = ReactiveCommand.Create(() => ViewModel?.Complete(false));
         });
     }
 }

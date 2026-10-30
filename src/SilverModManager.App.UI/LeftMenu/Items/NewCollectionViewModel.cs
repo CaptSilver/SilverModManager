@@ -23,7 +23,7 @@ public class NewCollectionViewModel : LeftMenuItemViewModel
         IServiceProvider serviceProvider,
         LoadoutId loadoutId,
         IWorkspaceController workspaceController,
-        WorkspaceId workspaceId) : base(workspaceController, workspaceId, null!)
+        WorkspaceId workspaceId) : base(workspaceController, workspaceId, null)
     {
         Text = new StringComponent(value: "New Collection");
         Icon = IconValues.Add;

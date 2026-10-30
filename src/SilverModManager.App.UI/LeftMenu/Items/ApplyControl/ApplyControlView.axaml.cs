@@ -1,6 +1,7 @@
 ﻿using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.LeftMenu.Items;
 
@@ -27,7 +28,7 @@ public partial class ApplyControlView : ReactiveUserControl<IApplyControlViewMod
                 this.OneWayBind(ViewModel, vm => vm.IsApplying, v => v.ProgressBarControl.IsVisible)
                     .DisposeWith(disposables);
 
-                this.WhenAnyObservable(view => view.ViewModel!.ApplyCommand.CanExecute)
+                this.WhenViewModel(vm => vm.ApplyCommand.CanExecute)
                     .OnUI()
                     .Subscribe(canApply =>
                         {

@@ -2,6 +2,7 @@ using System.Reactive.Disposables;
 using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
+using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.LeftMenu.Items;
 
@@ -16,7 +17,7 @@ public partial class LeftMenuItemView : ReactiveUserControl<ILeftMenuItemViewMod
                 this.OneWayBind(ViewModel, vm => vm.Text.Value.Value, view => view.LabelTextBlock.Text)
                     .DisposeWith(d);
 
-                this.WhenAnyValue(view => view.ViewModel!.ToolTipText)
+                this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.ToolTipText))
                     .Subscribe(text => ToolTip.SetTip(this, text))
                     .DisposeWith(d);
 

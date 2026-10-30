@@ -1,19 +1,3 @@
 # Null-forgiving operators (x!) per file under src. Counts may only go down.
 # Regenerate with UPDATE_NULL_FORGIVING_BASELINE=1, see NullForgivingGuardTests.
 src/SilverModManager.Abstractions.NexusWebApi/DTOs/DownloadLink.cs	3
-src/SilverModManager.App.UI/LeftMenu/Items/ApplyControl/ApplyControlView.axaml.cs	1
-src/SilverModManager.App.UI/LeftMenu/Items/ApplyControl/LaunchButtonDesignViewModel.cs	1
-src/SilverModManager.App.UI/LeftMenu/Items/ApplyControl/LaunchButtonView.axaml.cs	4
-src/SilverModManager.App.UI/LeftMenu/Items/LeftMenuItemView.axaml.cs	1
-src/SilverModManager.App.UI/LeftMenu/Items/NewCollectionViewModel.cs	1
-src/SilverModManager.App.UI/LeftMenu/Loadout/LoadoutLeftMenuDesignViewModel.cs	1
-src/SilverModManager.App.UI/LeftMenu/Loadout/LoadoutLeftMenuView.axaml.cs	2
-src/SilverModManager.App.UI/Overlays/Generic/MessageBox/Ok/MessageBoxOkDesignViewModel.cs	3
-src/SilverModManager.App.UI/Overlays/Generic/MessageBox/Ok/MessageBoxOkView.axaml.cs	5
-src/SilverModManager.App.UI/Overlays/Generic/MessageBox/OkCancel/MessageBoxOkCancelView.axaml.cs	3
-src/SilverModManager.App.UI/Overlays/LibraryDeleteConfirmation/LibraryItemDeleteConfirmationView.axaml.cs	4
-src/SilverModManager.App.UI/Overlays/Login/NexusLoginOverlayView.axaml.cs	2
-src/SilverModManager.App.UI/Overlays/RemoveGame/RemoveGameOverlayView.axaml.cs	2
-src/SilverModManager.App.UI/Overlays/Updater/UpdaterDesignView.axaml.cs	2
-src/SilverModManager.App.UI/Overlays/Updater/UpdaterViewModel.cs	1
-src/SilverModManager.App.UI/Overlays/Welcome/WelcomeOverlayView.axaml.cs	1
