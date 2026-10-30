@@ -604,6 +604,10 @@ public class SynchronizerService : ISynchronizerService, IDisposable
             .SelectAwait(
                 async (tuple, observerToken) =>
                 {
+                    // The trigger reaches this worker from inside CombineLatest's lock, and an evaluation that needs
+                    // no real wait would finish, and tell every subscriber, before that lock is let go. A subscriber
+                    // that then puts a file in the file store raises a trigger that needs the same lock.
+                    await Task.Yield();
                     if (!TryBeginEvaluation()) return LoadoutSynchronizerState.Unavailable;
                     try
                     {
