@@ -83,20 +83,20 @@ public class BackendDisposeTests
     }
 
     [Fact]
-    public async Task AQueryRunningAgainstTheConnectionWhileTheProviderIsDisposedEndsWithAnErrorNotACrash()
+    public async Task QueriesRunningWhileTheBackendIsDisposedEndWithAnErrorNotACrash()
     {
-        var provider = BuildProvider();
+        await using var provider = BuildProvider();
         var connection = provider.GetRequiredService<IConnection>();
+        var backend = provider.GetRequiredService<IStoreBackend>();
         await connection.BeginTransaction().Commit();
 
         using var started = new ManualResetEventSlim();
-        var stop = false;
         var failure = default(Exception);
         var worker = Task.Run(() =>
         {
             try
             {
-                while (!Volatile.Read(ref stop))
+                while (true)
                 {
                     connection.Query<long>($"SELECT count(*) FROM mdb_Datoms()").ToList();
                     started.Set();
@@ -106,11 +106,12 @@ public class BackendDisposeTests
         });
 
         started.Wait(TimeSpan.FromSeconds(30)).Should().BeTrue();
-        await provider.DisposeAsync();
-        Volatile.Write(ref stop, true);
+        backend.Dispose();
+
+        // Reaching the end is the assertion: a scan on freed native memory kills the process, and the loop only
+        // ends once a query fails.
         await worker.WaitAsync(TimeSpan.FromSeconds(30));
-        // Reaching this line is the assertion: a query on freed native memory never returns.
-        failure?.Should().BeAssignableTo<Exception>();
+        failure.Should().NotBeNull("the loop runs until a query fails, which it does once the database is closed");
     }
 
     [Theory]
