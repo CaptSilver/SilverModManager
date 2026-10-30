@@ -181,6 +181,26 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
     }
 
     [Fact]
+    public async Task OpenAsync_Sha1Identity_AnswersNullInsteadOfThrowing()
+    {
+        var sha1 = FileIdentity.Sha1(Sha1Value.FromHex(new string('A', 40)));
+        var source = (IReadOnlyStreamSource)_fileStore;
+
+        var stream = await source.OpenAsync(sha1, TestContext.Current.CancellationToken);
+
+        stream.Should().BeNull("a SHA-1 is not one of the store's xxHash3 keys, so it has nothing to open");
+    }
+
+    [Fact]
+    public void Exists_Sha1Identity_AnswersFalseInsteadOfThrowing()
+    {
+        var sha1 = FileIdentity.Sha1(Sha1Value.FromHex(new string('A', 40)));
+        var source = (IReadOnlyStreamSource)_fileStore;
+
+        source.Exists(sha1).Should().BeFalse("a SHA-1 is not one of the store's xxHash3 keys");
+    }
+
+    [Fact]
     public void ArchivedFileEntry_RejectsANonXxHash3Identity()
     {
         var sha1 = FileIdentity.Sha1(Sha1Value.FromHex(new string('A', 40)));

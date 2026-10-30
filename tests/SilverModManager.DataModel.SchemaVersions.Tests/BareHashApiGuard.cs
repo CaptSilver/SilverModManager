@@ -120,8 +120,10 @@ public class BareHashApiGuard
         ["SilverModManager.Sdk.Library.LibraryFile"] = "permanent",
         ["SilverModManager.Sdk.Library.LibraryFile+New"] = "permanent",
         ["SilverModManager.Sdk.Library.LibraryFile+ReadOnly"] = "permanent",
-        ["SilverModManager.Sdk.Resources.Extensions"] = "hashers and game code",
-        ["SilverModManager.Sdk.Resources.PersistedDbResourceLoader`1+IdentifierToHash"] = "hashers and game code",
+        // These two hash a resource identifier (PersistedDbResource.ResourceIdentifierHash is a HashAttribute), not
+        // file content, so there is no FileIdentity to convert them to.
+        ["SilverModManager.Sdk.Resources.Extensions"] = "permanent",
+        ["SilverModManager.Sdk.Resources.PersistedDbResourceLoader`1+IdentifierToHash"] = "permanent",
         ["SilverModManager.Sdk.Resources.PersistedDbResource+New"] = "permanent",
         ["SilverModManager.Sdk.Resources.PersistedDbResource+ReadOnly"] = "permanent",
         ["SilverModManager.StandardGameLocators.TestHelpers.StubbedFileHasherService"] = "hashers and game code",
