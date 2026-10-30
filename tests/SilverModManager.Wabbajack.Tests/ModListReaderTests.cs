@@ -74,8 +74,8 @@ public class ModListReaderTests
         states[6].Should().Be(new GoogleDriveState("drive-id"));
         states[7].Should().Be(new MediaFireState(new Uri("https://mediafire.com/x")));
         states[8].Should().Be(new ModDbState(new Uri("https://moddb.com/x")));
-        states[9].Should().Be(new LoversLabState(new Uri("https://www.loverslab.com/files/file/1-x/?do=download"), "x.7z"));
-        states[10].Should().Be(new VectorPlexusState(null, null));
+        states[9].Should().Be(new LoversLabState(new Uri("https://www.loverslab.com/files/file/1-x/?do=download"), "x.7z", 1, false));
+        states[10].Should().Be(new VectorPlexusState(null, null, 2, false));
         ((UnsupportedState)states[11]).TypeName.Should().Be("Bethesda");
         ((UnsupportedState)states[12]).TypeName.Should().Be("TESAllianceDownloader, Wabbajack.Lib");
         ((UnsupportedState)states[13]).TypeName.Should().Be("LoversLabDownloader, Wabbajack.Lib");
@@ -285,5 +285,41 @@ public class ModListReaderTests
         foreach (var (token, longName, shortName) in names)
             json = json.Replace($"@{token}@", longNames ? longName : shortName);
         return json;
+    }
+}
+
+public class JsonObjectOptionalTests
+{
+    private static JsonObject Parse(string json) => new(System.Text.Json.JsonDocument.Parse(json).RootElement.Clone(), "test");
+
+    [Fact]
+    public void OptionalLongIsNullWhenAbsentAndTheValueWhenPresent()
+    {
+        Parse("{}").OptionalLong("A").Should().BeNull();
+        Parse("""{"A": null}""").OptionalLong("A").Should().BeNull();
+        Parse("""{"a": 42}""").OptionalLong("A").Should().Be(42);
+    }
+
+    [Fact]
+    public void OptionalLongRejectsAWrongTypeLikeLong()
+    {
+        var act = () => Parse("""{"A": "x"}""").OptionalLong("A");
+        act.Should().Throw<UnsupportedModlistException>().WithMessage("*is not an integer*");
+    }
+
+    [Fact]
+    public void OptionalBoolIsNullWhenAbsentAndTheValueWhenPresent()
+    {
+        Parse("{}").OptionalBool("A").Should().BeNull();
+        Parse("""{"A": null}""").OptionalBool("A").Should().BeNull();
+        Parse("""{"A": true}""").OptionalBool("A").Should().BeTrue();
+        Parse("""{"A": false}""").OptionalBool("A").Should().BeFalse();
+    }
+
+    [Fact]
+    public void OptionalBoolRejectsAWrongTypeLikeBool()
+    {
+        var act = () => Parse("""{"A": 1}""").OptionalBool("A");
+        act.Should().Throw<UnsupportedModlistException>().WithMessage("*is not a boolean*");
     }
 }

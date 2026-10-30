@@ -313,8 +313,8 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         var cases = new (DownloadState State, string? Reason)[]
         {
             (new ManualState(url, "Click the big button"), "Click the big button"),
-            (new LoversLabState(url, "a.7z"), "needs your LoversLab login; download it in your browser"),
-            (new VectorPlexusState(url, "a.7z"), "needs your VectorPlexus login; download it in your browser"),
+            (new LoversLabState(url, "a.7z", 1, false), "needs your LoversLab login; download it in your browser"),
+            (new VectorPlexusState(url, "a.7z", 1, false), "needs your VectorPlexus login; download it in your browser"),
         };
 
         foreach (var (state, reason) in cases)

@@ -52,6 +52,8 @@ internal readonly struct JsonObject
             : throw Malformed(name, "is not an integer");
     }
 
+    public long? OptionalLong(string name) => Find(name) is null ? null : Long(name);
+
     public int Int(string name) => checked((int)Long(name));
 
     public bool Bool(string name)
@@ -65,6 +67,8 @@ internal readonly struct JsonObject
             _ => throw Malformed(name, "is not a boolean"),
         };
     }
+
+    public bool? OptionalBool(string name) => Find(name) is null ? null : Bool(name);
 
     public FileIdentity Hash(string name) => ParseHash(name, String(name));
 

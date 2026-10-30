@@ -90,8 +90,8 @@ public static class ModListReader
             "GoogleDriveDownloader" or "GoogleDrive" => new GoogleDriveState(state.String("Id")),
             "MediaFireDownloader+State" or "MediaFireDownloader" or "MediaFire" => WithUrl(state, typeName, url => new MediaFireState(url)),
             "ModDBDownloader" or "ModDB" => WithUrl(state, typeName, url => new ModDbState(url)),
-            "LoversLabOAuthDownloader" or "LoversLab" => new LoversLabState(IpsUrl(state), state.OptionalString("IPS4File")),
-            "VectorPlexusOAuthDownloader+State" or "VectorPlexus" => new VectorPlexusState(IpsUrl(state), state.OptionalString("IPS4File")),
+            "LoversLabOAuthDownloader" or "LoversLab" => new LoversLabState(IpsUrl(state), state.OptionalString("IPS4File"), state.OptionalLong("IPS4Mod"), state.Bool("IsAttachment")),
+            "VectorPlexusOAuthDownloader+State" or "VectorPlexus" => new VectorPlexusState(IpsUrl(state), state.OptionalString("IPS4File"), state.OptionalLong("IPS4Mod"), state.Bool("IsAttachment")),
             _ => new UnsupportedState(typeName, state.OptionalString("Url")),
         };
     }

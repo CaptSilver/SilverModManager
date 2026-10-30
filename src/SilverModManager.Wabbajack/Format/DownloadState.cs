@@ -24,10 +24,14 @@ public sealed record MediaFireState(Uri Url) : DownloadState;
 
 public sealed record ModDbState(Uri Url) : DownloadState;
 
-/// <summary>Url comes from the state's <c>IPS4Url</c>, FileName from its <c>IPS4File</c>; either may be absent.</summary>
-public sealed record LoversLabState(Uri? Url, string? FileName) : DownloadState;
+/// <summary>
+/// Url comes from the state's <c>IPS4Url</c>, FileName from its <c>IPS4File</c>, FileId from <c>IPS4Mod</c> (the
+/// forum's file id); Url, FileName and FileId may be absent. IsAttachment is <c>IPS4</c>'s flag for a file attached
+/// to a post rather than one in the downloads section.
+/// </summary>
+public sealed record LoversLabState(Uri? Url, string? FileName, long? FileId, bool IsAttachment) : DownloadState;
 
-public sealed record VectorPlexusState(Uri? Url, string? FileName) : DownloadState;
+public sealed record VectorPlexusState(Uri? Url, string? FileName, long? FileId, bool IsAttachment) : DownloadState;
 
 /// <summary>
 /// A source the app cannot fetch from: Bethesda, TESAlliance, the old LoversLab, or a type this reader does not
