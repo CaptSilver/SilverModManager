@@ -911,6 +911,20 @@ public class LaunchSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task ARefusedRemovalQuestion_AfterThePlay_SaysNothingWasRemoved_WithoutSoundingLikeACrash()
+    {
+        _synchronizer.FailOn = 2;
+        _synchronizer.FailWith = RemovalQuestion(declined: true);
+
+        var result = await Run(NewSession());
+
+        result.LoadoutStillApplied.Should().BeTrue();
+        result.Message.Should().Be("Test Game has exited. Nothing was removed from the game folder; apply 'My Loadout' when you want the files it no longer holds taken out.");
+        result.Message.Should().NotContain("failed");
+        _log.Records.Should().NotContain(r => r.Level >= LogLevel.Error);
+    }
+
+    [Fact]
     public async Task TheIngestAfterThePlay_RunsAsTheAfterPlayLegThatKeepsFilesByDefault()
     {
         var seen = new List<(BackupOverflowOperation Operation, BackupOverflowChoice? Remembered)?>();
