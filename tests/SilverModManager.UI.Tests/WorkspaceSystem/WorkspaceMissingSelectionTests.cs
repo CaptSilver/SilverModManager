@@ -4,7 +4,17 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using System.Reactive.Linq;
 using ReactiveUI;
+using Microsoft.Extensions.Logging;
+using NexusMods.Paths;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.App.UI.Controls.TopBar;
 using SilverModManager.App.UI.Dialog;
+using SilverModManager.App.UI.Overlays;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.UI.Sdk;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.UI.Sdk.Dialog.Enums;
@@ -95,6 +105,30 @@ public class WorkspaceMissingSelectionTests(IServiceProvider provider) : AUiTest
             var act = async () => await command.Execute().FirstOrDefaultAsync();
 
             await act.Should().NotThrowAsync();
+        });
+    }
+
+    [Fact]
+    public async Task NewTabCommand_WithoutASelectedPanel_NamesTheMissingPanel()
+    {
+        await OnUi(async () =>
+        {
+            var workspace = Substitute.For<IWorkspaceViewModel>();
+            workspace.SelectedPanel.Returns((IPanelViewModel?)null);
+            var controller = Substitute.For<IWorkspaceController>();
+            controller.ActiveWorkspace.Returns(workspace);
+            var windowManager = Substitute.For<IWindowManager>();
+            windowManager.ActiveWorkspaceController.Returns(controller);
+            var topBar = new TopBarViewModel(Substitute.For<IServiceProvider>(), NullLogger<TopBarViewModel>.Instance,
+                Substitute.For<ILoginManager>(), windowManager, Substitute.For<IOverlayController>(),
+                Substitute.For<IOSInterop>(), Substitute.For<ISettingsManager>(), Substitute.For<IFileSystem>(),
+                Substitute.For<IWindowNotificationService>(), Substitute.For<INexusCredentialSummary>());
+
+            var act = async () => await topBar.NewTabCommand.Execute().FirstOrDefaultAsync();
+
+            // ReactiveCommand wraps a throwing execute body in UnhandledErrorException.
+            (await act.Should().ThrowAsync<ReactiveUI.UnhandledErrorException>())
+                .WithInnerException<InvalidOperationException>().WithMessage("*no selected panel*");
         });
     }
 }
