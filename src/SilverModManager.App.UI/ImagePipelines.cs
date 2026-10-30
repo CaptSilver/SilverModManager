@@ -1,5 +1,7 @@
 using Avalonia.Media;
+using SilverModManager.Sdk;
 using SilverModManager.Sdk.Hashes;
+using SilverModManager.App.UI.Controls.Cards;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Microsoft.Extensions.DependencyInjection;
@@ -86,8 +88,8 @@ public static class ImagePipelines
             )
             .AddKeyedSingleton<IResourceLoader<Uri, Bitmap>>(
                 serviceKey: ThumbnailPipelineKey,
-                implementationFactory: static (serviceProvider, _) => CreateThumbnailPipeline(
-                    httpClient: serviceProvider.GetRequiredService<HttpClient>()
+                implementationFactory: static (_, _) => CreateThumbnailPipeline(
+                    httpClient: CreateThumbnailHttpClient()
                 )
             )
             .AddKeyedSingleton<IResourceLoader<Uri, IImage>>(
@@ -256,6 +258,16 @@ public static class ImagePipelines
             .ToAvaloniaBitmap();
 
         return pipeline;
+    }
+
+    // Not the shared client: its retry policy treats a 429 as transient and tries three more times, which is the
+    // opposite of what an image host that is rate limiting us needs.
+    internal static HttpClient CreateThumbnailHttpClient()
+    {
+        var handler = new ThumbnailThrottleHandler(new SocketsHttpHandler { ConnectTimeout = TimeSpan.FromSeconds(30) });
+        var client = new HttpClient(handler);
+        client.DefaultRequestHeaders.UserAgent.Add(ApplicationConstants.UserAgent);
+        return client;
     }
 
     // Card thumbnails: Thunderstore serves 256x256 icons and Nexus Mods wide ones, shown about 214px across. The box
