@@ -1139,6 +1139,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             tx.Retract(metadata, Sdk.Games.GameInstallMetadata.LastSyncedLoadoutTransaction, (EntityId)metadata.LastSyncedLoadoutTransaction);
         }
 
+        // With no last apply there is nothing for the flag to describe.
+        tx.RetractCurrent(metadata.Id, Sdk.Games.GameInstallMetadata.LastApplyLeftFilesUnextracted);
+
         tx.Add(metadata, Sdk.Games.GameInstallMetadata.LastScannedDiskStateTransaction, EntityId.From(tx.ThisTxId.Value));
 
         var result = await tx.Commit();

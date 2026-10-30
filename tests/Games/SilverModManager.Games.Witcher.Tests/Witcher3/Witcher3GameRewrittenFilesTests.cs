@@ -371,6 +371,22 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task ResettingTheGameFolderForgetsThatTheLastApplyLeftFilesOut()
+    {
+        var loadout = await CreateLoadout();
+        await AddLateMod(loadout);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        var metadata = GameRegistry.ForceGetMetadata(GameInstallation);
+        GameInstallMetadata.LastApplyLeftFilesUnextracted.TryGetValue(GameInstallMetadata.Load(Connection.Db, metadata.GameInstallMetadataId), out var set).Should().BeTrue();
+        set.Should().BeTrue("the late mod had no archive");
+
+        await Synchronizer.ResetToOriginalGameState(GameInstallation, GameInstallation.LocatorResult.LocatorIds.ToArray());
+
+        GameInstallMetadata.Load(Connection.Db, metadata.GameInstallMetadataId).Contains(GameInstallMetadata.LastApplyLeftFilesUnextracted)
+            .Should().BeFalse("there is no last apply any more for the flag to describe");
+    }
+
+    [Fact]
     public async Task AnApplyThatExtractedEverythingIsCurrentAgainAfterTheEarlierOneLeftAFileOut()
     {
         var loadout = await CreateLoadout();
