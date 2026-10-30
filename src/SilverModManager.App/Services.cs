@@ -26,6 +26,7 @@ using SilverModManager.Games.FOMOD.UI;
 using SilverModManager.Games.Generic;
 using SilverModManager.Library;
 using SilverModManager.Networking.EpicGameStore;
+using SilverModManager.Networking.Forums;
 using SilverModManager.Networking.GitHub;
 using SilverModManager.Networking.GOG;
 using SilverModManager.Networking.HttpDownloader;
@@ -204,6 +205,7 @@ public static class Services
             })
             .AddSecretServiceBackend()
             .AddNexusWebApi(registerNxmHandler)
+            .AddForums()
             .AddHttpDownloader()
             // .AddAdvancedHttpDownloader()
             .AddFileSystem()

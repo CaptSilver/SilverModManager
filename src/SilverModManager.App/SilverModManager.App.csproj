@@ -24,6 +24,7 @@
         <ProjectReference Include="..\SilverModManager.Games.Larian\SilverModManager.Games.Larian.csproj" />
         <ProjectReference Include="..\SilverModManager.Games.MountAndBlade2Bannerlord\SilverModManager.Games.MountAndBlade2Bannerlord.csproj" />
         <ProjectReference Include="..\SilverModManager.Networking.EpicGameStore\SilverModManager.Networking.EpicGameStore.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.Forums\SilverModManager.Networking.Forums.csproj" />
         <ProjectReference Include="..\\SilverModManager.Networking.GOG\SilverModManager.Networking.GOG.csproj" />
         <ProjectReference Include="..\\SilverModManager.Networking.HttpDownloader\SilverModManager.Networking.HttpDownloader.csproj" />
         <ProjectReference Include="..\\SilverModManager.Networking.NexusWebApi\SilverModManager.Networking.NexusWebApi.csproj" />
