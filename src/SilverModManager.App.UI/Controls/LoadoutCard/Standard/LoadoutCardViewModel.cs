@@ -104,7 +104,9 @@ public partial class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, I
 
             // Any synchronize on this loadout's installation, not only this loadout's, since they all rewrite the same game folder.
             jobMonitor.HasActiveJob<SynchronizeLoadoutJob>(job => IsOnSameInstallation(conn, loadout, job.LoadoutId))
-                .Prepend(jobMonitor.Jobs.Any(job => job.Definition is SynchronizeLoadoutJob sJob && IsOnSameInstallation(conn, loadout, sJob.LoadoutId)))
+                // Nothing running until the stream says so: it reports the jobs already running when subscribed. The
+                // monitor's job list is not read, since it changes on other threads and throws when enumerated then.
+                .Prepend(false)
                 .OnUI()
                 .BindToVM(this, x => x.IsSynchronizingInstallation)
                 .DisposeWith(d);

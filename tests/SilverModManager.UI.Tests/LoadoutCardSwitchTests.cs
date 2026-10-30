@@ -29,7 +29,7 @@ public class LoadoutCardSwitchTests(IServiceProvider provider) : AUiTest(provide
         public int Visits;
     }
 
-    private async Task<Fixture> CardFor()
+    private async Task<Fixture> CardFor(IJobMonitor? jobs = null)
     {
         var loadout = await SeedLoadoutRow(GameStore.Unknown, "Switch " + Guid.NewGuid());
         var synchronizer = Substitute.For<ISynchronizerService>();
@@ -38,11 +38,26 @@ public class LoadoutCardSwitchTests(IServiceProvider provider) : AUiTest(provide
         synchronizer.Synchronize(Arg.Any<LoadoutId>()).Returns(Task.CompletedTask);
 
         var fixture = new Fixture { Synchronizer = synchronizer, LastApplied = lastApplied, Loadout = loadout };
-        fixture.Card = new LoadoutCardViewModel(loadout, Connection, new SynchronizerProvider(Provider, synchronizer))
+        fixture.Card = new LoadoutCardViewModel(loadout, Connection, new SynchronizerProvider(Provider, synchronizer, jobs))
         {
             VisitLoadoutCommand = ReactiveCommand.Create(() => { Interlocked.Increment(ref fixture.Visits); }),
         };
         return fixture;
+    }
+
+    // The monitor's job list is bound from changes that arrive on other threads, so reading it from the card's
+    // thread throws "Collection was modified" whenever a job starts at the same moment. The card has to learn about
+    // jobs from the monitor's change stream alone.
+    [Fact]
+    public async Task ActivatingACard_DoesNotReadTheMonitorsJobList()
+    {
+        var jobs = Substitute.For<IJobMonitor>();
+        jobs.Jobs.Returns(_ => throw new InvalidOperationException("Collection was modified; enumeration operation may not execute."));
+        var f = await CardFor(jobs);
+
+        using var _ = await OnUi(() => Task.FromResult(f.Card.Activator.Activate()));
+
+        f.Card.IsSynchronizingInstallation.Should().BeFalse();
     }
 
     [Fact]
@@ -175,13 +190,14 @@ public class LoadoutCardSwitchTests(IServiceProvider provider) : AUiTest(provide
     /// <summary>
     /// The real services, except that nothing is synchronized and overlays go to a recorder instead of the (absent) window.
     /// </summary>
-    private sealed class SynchronizerProvider(IServiceProvider inner, ISynchronizerService synchronizer) : IServiceProvider
+    private sealed class SynchronizerProvider(IServiceProvider inner, ISynchronizerService synchronizer, IJobMonitor? jobs = null) : IServiceProvider
     {
         private readonly IOverlayController _overlays = Substitute.For<IOverlayController>();
 
         public object? GetService(Type serviceType) =>
             serviceType == typeof(ISynchronizerService) ? synchronizer
             : serviceType == typeof(IOverlayController) ? _overlays
+            : serviceType == typeof(IJobMonitor) && jobs is not null ? jobs
             : inner.GetService(serviceType);
     }
 }
