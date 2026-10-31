@@ -168,7 +168,7 @@ public static class WabbajackModlistText
         if (isInstalling) return "An install is running.";
         if (isPlanning) return CheckingTheList;
         if (!planReady) return CheckFailed;
-        if (!hasLoadout) return "Choose a loadout to install into.";
+        if (!hasLoadout) return "Pick a loadout to install the collection into.";
         if (CanInstall(plan, skipMissingArchives)) return "";
 
         var differing = plan.Rows.Count(row => row.State == ArchiveState.GameFileVersion);

@@ -95,9 +95,10 @@
                                      ShowIcon="Left"
                                      Size="Toolbar" />
             <controls:StandardButton x:Name="DownloadButton" Type="Secondary" Fill="Strong" Size="Toolbar" Text="Download" />
-            <controls:StandardButton x:Name="InstallButton" Type="Primary" Fill="Strong" Size="Toolbar" Text="Install" />
+            <controls:StandardButton x:Name="InstallButton" Type="Primary" Fill="Strong" Size="Toolbar" Text="Install collection" />
             <controls:StandardButton x:Name="ResumeButton" Type="Primary" Fill="Strong" Size="Toolbar" Text="Resume" />
-            <ComboBox x:Name="LoadoutBox" MaxHeight="24" MinWidth="220" PlaceholderText="Install into…" ToolTip.Tip="Loadout the list is installed into" />
+            <TextBlock Text="into" VerticalAlignment="Center" />
+            <ComboBox x:Name="LoadoutBox" MaxHeight="24" MinWidth="220" PlaceholderText="Pick a loadout…" ToolTip.Tip="The modlist is added to this loadout as a collection, like a Nexus collection. Pick &quot;Create new loadout&quot; to keep it apart from your other mods." />
             <CheckBox x:Name="SkipBox" Content="Skip files from missing archives" VerticalAlignment="Center" />
             <CheckBox x:Name="PickUpBox" Content="Pick up finished downloads from your Downloads folder" VerticalAlignment="Center" IsVisible="False" />
             <Separator />

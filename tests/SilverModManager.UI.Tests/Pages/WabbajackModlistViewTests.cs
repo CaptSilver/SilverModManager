@@ -29,7 +29,7 @@ public class WabbajackModlistViewTests(IServiceProvider provider) : AUiTest(prov
         await EventuallyOnUi(() =>
         {
             Render(window);
-            ShownTexts(view).Should().Contain("Install", "the page has to bind before it is read");
+            ShownTexts(view).Should().Contain("Install collection", "the page has to bind before it is read");
         });
         return (window, view);
     }

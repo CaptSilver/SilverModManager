@@ -110,7 +110,7 @@ public class WabbajackModlistTextTests
     [Fact]
     public void InstallBlockedReason_AsksForALoadoutWhenNoneIsPicked()
         => WabbajackModlistText.InstallBlockedReason(false, false, true, false, Plan(Row(ArchiveState.Have)), false)
-            .Should().Be("Choose a loadout to install into.");
+            .Should().Be("Pick a loadout to install the collection into.");
 
     [Fact]
     public void InstallBlockedReason_CountsMissingArchivesAndGameFilesOfAnotherVersion()
