@@ -43,7 +43,7 @@ public class ProcessStartupTests
         public Func<MainKind, int, string>? Describe { get; set; }
         public bool CanConnect { get; set; } = true;
         public int CliExitCode { get; set; }
-        public bool KillThrows { get; set; }
+        public bool IsOurs { get; set; } = true;
         public bool OpenDatabaseThrows { get; set; }
         public List<string> Errors { get; } = [];
         public List<string> Notifications { get; } = [];
@@ -80,7 +80,8 @@ public class ProcessStartupTests
                 return _syncReads++ == 0 ? SyncInfo : LateSyncInfo ?? SyncInfo;
             },
             CanConnect = (_, _) => { Calls.Add("can-connect"); return Task.FromResult(CanConnect); },
-            Kill = _ => { Calls.Add("kill"); if (KillThrows) throw new InvalidOperationException("gone"); },
+            IsOurProcess = _ => IsOurs,
+            ClearStaleMain = (_, pid) => Calls.Add($"clear-stale:{pid}"),
             OpenDatabase = _ =>
             {
                 Calls.Add("open-database");
@@ -218,7 +219,7 @@ public class ProcessStartupTests
 
         Run(recorder, "mcp", "--read-only").Should().Be(0);
 
-        recorder.Calls.Should().NotContain("can-connect").And.NotContain("kill")
+        recorder.Calls.Should().NotContain("can-connect")
             .And.NotContain("cli-remote").And.NotContain("claim").And.NotContain("open-database").And.NotContain("ui");
         recorder.Calls.Should().Contain("run-mcp");
         recorder.McpModes.Single().McpReadOnly.Should().BeTrue();
@@ -231,7 +232,7 @@ public class ProcessStartupTests
 
         Run(recorder, "mcp").Should().Be(0);
 
-        recorder.Calls.Should().Contain("run-mcp").And.NotContain("kill").And.NotContain("claim");
+        recorder.Calls.Should().Contain("run-mcp").And.NotContain("claim");
         recorder.Notifications.Should().BeEmpty();
         recorder.Errors.Should().BeEmpty();
     }
@@ -258,8 +259,10 @@ public class ProcessStartupTests
         recorder.Calls.Should().EndWith("host-stop");
     }
 
+    private const string BusyMessage = "SilverModManager is running but isn't answering right now (it may be busy). Try again in a moment.";
+
     [Fact]
-    public void KillerRunsForGuiStartAgainstUnresponsiveMain()
+    public void ALiveMainThatMissesTheHeartbeat_IsLeftRunning_AndTheVerbFailsWithThePlainMessage()
     {
         var recorder = new Recorder
         {
@@ -267,34 +270,122 @@ public class ProcessStartupTests
             CanConnect = false,
         };
 
-        Run(recorder);
+        Run(recorder, "some-verb").Should().NotBe(0);
 
-        recorder.Calls.Should().ContainInOrder("build-host", "read-sync", "can-connect", "kill", "open-database");
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(BusyMessage);
+        recorder.Calls.Should().Contain("can-connect")
+            .And.NotContain("cli-remote").And.NotContain("open-database").And.NotContain("host-start")
+            .And.NotContain(c => c.StartsWith("clear-stale"));
     }
 
     [Fact]
-    public void KillerDoesNotRunWhenMainResponds()
-    {
-        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234) };
-
-        Run(recorder);
-
-        recorder.Calls.Should().Contain("can-connect").And.NotContain("kill");
-    }
-
-    [Fact]
-    public void KillFailureIsSwallowedAndStartupContinues()
+    public void ASecondLaunchAgainstALiveMainThatMissesTheHeartbeat_ShowsTheMessageAndStartsNothing()
     {
         var recorder = new Recorder
         {
             SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
             CanConnect = false,
-            KillThrows = true,
         };
 
         Run(recorder).Should().Be(0);
 
-        recorder.Calls.Should().Contain("open-database");
+        recorder.Notifications.Should().ContainSingle().Which.Should().Be(BusyMessage);
+        recorder.Calls.Should().Contain("can-connect")
+            .And.NotContain("host-start").And.NotContain("open-database").And.NotContain("cli-as-main").And.NotContain("ui")
+            .And.NotContain("claim").And.NotContain(c => c.StartsWith("clear-stale"));
+    }
+
+    [Fact]
+    public void ALinkAgainstALiveMainThatMissesTheHeartbeat_IsToldInANotificationToo()
+    {
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
+            CanConnect = false,
+        };
+
+        Run(recorder, "protocol-invoke", "--url", "nxm://x").Should().NotBe(0);
+
+        recorder.Notifications.Should().ContainSingle().Which.Should().Be(BusyMessage);
+        recorder.Calls.Should().NotContain("cli-remote");
+    }
+
+    [Fact]
+    public void ADeadPidInTheSyncFile_StartsNormallyWithoutAskingAnyone()
+    {
+        var recorder = new Recorder { SyncInfo = (null, MainKind.Gui, 1234) };
+
+        Run(recorder).Should().Be(0);
+
+        recorder.Calls.Should().Contain("open-database").And.Contain("ui")
+            .And.NotContain("can-connect").And.NotContain(c => c.StartsWith("clear-stale"));
+    }
+
+    [Fact]
+    public void APidReusedByAnotherProgram_IsClearedNotAskedAndNotRefused_ForAWindow()
+    {
+        var holder = Process.GetCurrentProcess();
+        var recorder = new Recorder
+        {
+            SyncInfo = (holder, MainKind.Gui, 1234),
+            LateSyncInfo = (null, MainKind.Gui, 0),
+            IsOurs = false,
+            CanConnect = false,
+        };
+
+        Run(recorder).Should().Be(0);
+
+        recorder.Calls.Should().Contain($"clear-stale:{holder.Id}").And.Contain("open-database").And.Contain("ui")
+            .And.NotContain("can-connect");
+        recorder.Notifications.Should().BeEmpty();
+        recorder.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void APidReusedByAnotherProgram_IsClearedNotAskedAndNotRefused_ForAVerb()
+    {
+        var holder = Process.GetCurrentProcess();
+        var recorder = new Recorder
+        {
+            SyncInfo = (holder, MainKind.Gui, 1234),
+            LateSyncInfo = (null, MainKind.Gui, 0),
+            IsOurs = false,
+            CanConnect = false,
+        };
+
+        Run(recorder, "some-verb").Should().Be(0);
+
+        recorder.Calls.Should().Contain($"clear-stale:{holder.Id}").And.Contain("cli-remote").And.NotContain("can-connect");
+        recorder.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void APidReusedByAnotherProgram_DoesNotKeepAHeadlessMainOutEither()
+    {
+        var holder = Process.GetCurrentProcess();
+        var recorder = new Recorder
+        {
+            SyncInfo = (holder, MainKind.HeadlessCli, 0),
+            LateSyncInfo = (null, MainKind.HeadlessCli, 0),
+            IsOurs = false,
+        };
+
+        Run(recorder).Should().Be(0);
+
+        recorder.Calls.Should().Contain($"clear-stale:{holder.Id}").And.Contain("open-database");
+        recorder.Notifications.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AResponsiveMainIsAskedOnceAndLeftAlone()
+    {
+        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234) };
+
+        Run(recorder, "some-verb");
+
+        recorder.Calls.Where(c => c == "can-connect").Should().ContainSingle();
+        recorder.Calls.Should().Contain("cli-remote").And.NotContain(c => c.StartsWith("clear-stale"));
+        recorder.Errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -432,7 +523,7 @@ public class ProcessStartupTests
     [Theory]
     [InlineData(MainKind.HeadlessRun)]
     [InlineData(MainKind.HeadlessCli)]
-    public void KillerLeavesHeadlessMainAlone(MainKind kind)
+    public void HeadlessMainIsNotAskedForAHeartbeat(MainKind kind)
     {
         // A headless main has no server to answer the heartbeat, so it must not look unresponsive.
         var recorder = new Recorder
@@ -443,7 +534,7 @@ public class ProcessStartupTests
 
         Run(recorder, "some-verb");
 
-        recorder.Calls.Should().NotContain("can-connect").And.NotContain("kill");
+        recorder.Calls.Should().NotContain("can-connect");
     }
 
     [Theory]
@@ -479,7 +570,7 @@ public class ProcessStartupTests
 
         recorder.Notifications.Should().ContainSingle().Which.Should().Contain(expected);
         recorder.Calls.Should()
-            .NotContain("open-database").And.NotContain("can-connect").And.NotContain("kill")
+            .NotContain("open-database").And.NotContain("can-connect")
             .And.NotContain("host-start").And.NotContain("cli-as-main").And.NotContain("ui")
             .And.NotContain("close-database").And.NotContain("release-main");
     }
@@ -499,7 +590,7 @@ public class ProcessStartupTests
     [Theory]
     [InlineData("as-main", "some-verb")]
     [InlineData("run", "a loadout", "--", "a-game")]
-    public void KillerNeverRunsForHeadlessMains(params string[] args)
+    public void HeadlessStartsDoNotAskTheWindowForAHeartbeat(params string[] args)
     {
         var recorder = new Recorder
         {
@@ -509,7 +600,7 @@ public class ProcessStartupTests
 
         Run(recorder, args);
 
-        recorder.Calls.Should().NotContain("can-connect").And.NotContain("kill");
+        recorder.Calls.Should().NotContain("can-connect");
     }
 
     [Theory]
@@ -786,7 +877,7 @@ public class ProcessStartupTests
         recorder.Errors.Should().BeEmpty();
     }
 
-    private static readonly string[] NothingStarted = ["claim", "host-start", "open-database", "run-launch", "can-connect", "kill", "release-main"];
+    private static readonly string[] NothingStarted = ["claim", "host-start", "open-database", "run-launch", "can-connect", "release-main"];
 
     [Fact]
     public void RunAgainstALiveWindowHandsTheLaunchToItAndExitsWithTheGamesExitCode()
@@ -957,7 +1048,7 @@ public class ProcessStartupTests
         recorder.Notifications.Should().BeEmpty();
         recorder.Calls.Should()
             .NotContain("claim").And.NotContain("host-start").And.NotContain("open-database").And.NotContain("run-launch")
-            .And.NotContain("can-connect").And.NotContain("kill").And.NotContain("release-main");
+            .And.NotContain("can-connect").And.NotContain("release-main");
     }
 
     [Fact]
@@ -1150,7 +1241,7 @@ public class ProcessStartupTests
 
         recorder.Errors.Should().ContainSingle().Which.Should().Be(ProcessStartup.SecretsFileNeedsHeadlessMessage);
         ProcessStartup.SecretsFileNeedsHeadlessMessage.Should().Be("a secrets file applies to a headless process; close the window first");
-        recorder.Calls.Should().NotContain("cli-remote").And.NotContain("kill").And.NotContain("can-connect");
+        recorder.Calls.Should().NotContain("cli-remote").And.NotContain("can-connect");
     }
 
     [Fact]

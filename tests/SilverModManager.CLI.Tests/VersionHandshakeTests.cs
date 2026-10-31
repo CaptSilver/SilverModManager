@@ -159,7 +159,7 @@ public sealed class VersionHandshakeTests : IAsyncLifetime
         var act = () => client.ExecuteCommand(["anything"], new TestConsole());
 
         var refusal = (await act.Should().ThrowAsync<MainProcessSilent>()).Which;
-        refusal.Message.Should().Be("The running SilverModManager did not say which version it is. It may be a different version or stuck. Close the app and run the command again, or run the same version.");
+        refusal.Message.Should().Be("The running SilverModManager did not say which version it is. It may be busy. Try again in a moment.");
         CliErrors.ExitCode(refusal).Should().Be(CliErrors.RefusalExitCode);
     }
 
@@ -173,8 +173,8 @@ public sealed class VersionHandshakeTests : IAsyncLifetime
         outcome.Should().BeOfType<ForwardedLaunchOutcome.Unavailable>().Which.Reason.Should().Contain("The running SilverModManager is 0.2.0 but this command is 0.1.2.");
     }
 
-    // Startup kills a main whose heartbeat fails, so a main that answers as another build must count as alive: the
-    // command is then refused in words instead of the user's window being closed.
+    // A main that answers as another build is alive: the command is then refused in words, and the window is not
+    // reported as unresponsive.
     [Fact(Timeout = TimeoutMs)]
     public async Task TheHeartbeatProbe_CountsAMainOfAnotherBuild_AsReachable()
     {
@@ -200,5 +200,5 @@ public sealed class VersionHandshakeTests : IAsyncLifetime
     }
 
     private static Task<bool> Probe(CliClient client) => SilverModManager.App.Program.CanConnectToProcess(
-        NullLogger.Instance, port: 0, timeout: TimeSpan.FromSeconds(30), new ServiceCollection().AddSingleton(client).BuildServiceProvider());
+        NullLogger.Instance, port: 0, new ServiceCollection().AddSingleton(client).BuildServiceProvider());
 }

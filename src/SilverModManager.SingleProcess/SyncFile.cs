@@ -99,6 +99,17 @@ public class SyncFile
     }
 
     /// <summary>
+    /// Clears the main entry if it still names <paramref name="processId"/>. For an entry whose process is alive but is
+    /// no longer a SilverModManager, which would otherwise hold the slot for as long as that program runs.
+    /// </summary>
+    public bool ReleaseStale(int processId)
+    {
+        var currentRawValue = _sharedArray.Get(0);
+        if ((int)(currentRawValue >> 32) != processId) return false;
+        return _sharedArray.CompareAndSwap(0, currentRawValue, 0);
+    }
+
+    /// <summary>
     /// Returns the process with the given id, or null if it doesn't exist
     /// </summary>
     private static Process? GetProcessById(int pid)

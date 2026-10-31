@@ -20,7 +20,7 @@ public class CliClient(
     AppBuild? build = null,
     TimeSpan? greetingTimeout = null)
 {
-    private static readonly TimeSpan DefaultGreetingTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan DefaultGreetingTimeout = TimeSpan.FromSeconds(15);
 
     private readonly AppBuild _build = build ?? AppBuild.Current;
     private readonly TimeSpan _greetingTimeout = greetingTimeout ?? DefaultGreetingTimeout;
@@ -84,6 +84,33 @@ public class CliClient(
             logger.LogWarning("Failed to connect to main process {ProcessId} on port {Port}", process.Id, port);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Connects to the main process and reads its greeting, which is all it takes to know that it is alive. No command is
+    /// sent, so the main does no work for it.
+    /// </summary>
+    /// <exception cref="VersionMismatch">The main process answered, but as another build.</exception>
+    /// <exception cref="MainProcessSilent">The main process did not answer within the greeting timeout.</exception>
+    public async Task ProbeAsync()
+    {
+        var (process, kind, port) = syncFile.GetSyncInfo();
+        if (process is null) throw new NoMainProcessStarted();
+        if (kind != MainKind.Gui) throw new HeadlessMainRunning(kind, process.Id);
+
+        using var connectTimeout = new CancellationTokenSource(_greetingTimeout);
+        using var client = new TcpClient();
+        try
+        {
+            await client.ConnectAsync(IPAddress.Loopback, port, connectTimeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            throw new MainProcessSilent(MainProcessSilentMessage);
+        }
+
+        await using var stream = client.GetStream();
+        await CheckGreetingAsync(new Serializer(stream, provider.GetRequiredService<IEnumerable<IRenderableDefinition>>()), CancellationToken.None);
     }
 
     /// <summary>
@@ -171,6 +198,8 @@ public class CliClient(
 
     private const int LaunchFailureExitCode = 125;
 
+    private const string MainProcessSilentMessage = "The running SilverModManager did not say which version it is. It may be busy. Try again in a moment.";
+
     private const string Remedy = "Close the app and run the command again, or run the same version.";
 
     /// <summary>
@@ -191,7 +220,7 @@ public class CliClient(
         {
             // The abandoned read ends with the connection; nobody is left to look at its failure.
             _ = receive.ContinueWith(static t => _ = t.Exception, TaskScheduler.Default);
-            throw new MainProcessSilent($"The running SilverModManager did not say which version it is. It may be a different version or stuck. {Remedy}");
+            throw new MainProcessSilent(MainProcessSilentMessage);
         }
 
         switch (greeting)

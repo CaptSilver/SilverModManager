@@ -111,6 +111,31 @@ public sealed class SyncFileKindTests : IDisposable
     }
 
     [Fact]
+    public void ReleaseStaleClearsAnEntryThatNamesThatPidAndFreesTheSlot()
+    {
+        var syncFile = Create();
+        // pid 1 is alive and never this process, like a pid some other program was given
+        PlantWord((1UL << 32) | (1UL << 16) | 7UL);
+
+        syncFile.ReleaseStale(1).Should().BeTrue();
+
+        syncFile.RawMainWord.Should().Be(0);
+        syncFile.TrySetMain(MainKind.Gui, 5000).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ReleaseStaleLeavesAnEntryThatNamesAnotherPid()
+    {
+        var syncFile = Create();
+        var word = (1UL << 32) | (1UL << 16) | 7UL;
+        PlantWord(word);
+
+        syncFile.ReleaseStale(2).Should().BeFalse();
+
+        syncFile.RawMainWord.Should().Be(word);
+    }
+
+    [Fact]
     public void ReleaseMainClearsOwnEntry()
     {
         var syncFile = Create();

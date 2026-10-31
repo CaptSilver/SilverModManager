@@ -101,10 +101,9 @@ public class Program
             return host;
         },
         ReadSyncInfo = services => services.GetRequiredService<SyncFile>().GetSyncInfo(),
-        CanConnect = (services, port) => CanConnectToProcess(
-            services.GetRequiredService<ILogger<Program>>(), port, timeout: TimeSpan.FromSeconds(6), services: services
-        ),
-        Kill = process => process.Kill(entireProcessTree: true),
+        CanConnect = (services, port) => CanConnectToProcess(services.GetRequiredService<ILogger<Program>>(), port, services),
+        IsOurProcess = IsOurProcess,
+        ClearStaleMain = (services, pid) => services.GetRequiredService<SyncFile>().ReleaseStale(pid),
         OpenDatabase = OpenDatabase,
         TryClaimMain = (services, kind, port) => services.GetRequiredService<SyncFile>().TrySetMain(kind, port),
         ReleaseMain = services => services.GetRequiredService<SyncFile>().ReleaseMain(),
@@ -197,32 +196,53 @@ public class Program
         SecretStartup.PrimeAsync(services, CancellationToken.None).Wait();
     }
 
-    internal static async Task<bool> CanConnectToProcess(ILogger logger, int port, TimeSpan timeout, IServiceProvider services)
+    private static bool IsOurProcess(Process process)
     {
-        var client = services.GetRequiredService<CliClient>();
-        var cts = new CancellationTokenSource(delay: timeout);
-
         try
         {
-            // Run the heartbeat command to check if the process is responsive
-            var commandTask = client.ExecuteCommand([StatusVerbs.HeartbeatCommand], AnsiConsole.Console);
-            
-            // Wait for the command to complete or the timeout to expire
-            await commandTask.WaitAsync(cts.Token);
+            // The window and the command line client are the same binary, so a main of ours has this process's name.
+            using var current = Process.GetCurrentProcess();
+            return string.Equals(process.ProcessName, current.ProcessName, StringComparison.Ordinal);
+        }
+        catch (Exception)
+        {
+            // Unreadable (the process just exited, or belongs to another user): not proof that it is someone else's.
             return true;
         }
-        catch (VersionMismatch e)
+    }
+
+    private const int HeartbeatAttempts = 2;
+
+    /// <summary>
+    /// Whether the main process on <paramref name="port"/> says who it is. Only the greeting is asked for, so nothing
+    /// the main is busy with can delay the answer. One miss is retried: the first connection may just have landed
+    /// while the main was catching up.
+    /// </summary>
+    internal static async Task<bool> CanConnectToProcess(ILogger logger, int port, IServiceProvider services)
+    {
+        var client = services.GetRequiredService<CliClient>();
+
+        for (var attempt = 1; attempt <= HeartbeatAttempts; attempt++)
         {
-            // It answered, so it is alive: another build is no reason to close the user's window. The command that
-            // follows is refused in words.
-            logger.LogInformation("The process on `{Port}` is another build: {Reason}", port, e.Message);
-            return true;
+            try
+            {
+                await client.ProbeAsync();
+                return true;
+            }
+            catch (VersionMismatch e)
+            {
+                // It answered, so it is alive: another build is no reason to close the user's window. The command that
+                // follows is refused in words.
+                logger.LogInformation("The process on `{Port}` is another build: {Reason}", port, e.Message);
+                return true;
+            }
+            catch (Exception e)
+            {
+                logger.LogWarning(e, "Exception connecting to process on `{Port}` (attempt {Attempt} of {Attempts})", port, attempt, HeartbeatAttempts);
+            }
         }
-        catch (Exception e)
-        {
-            logger.LogWarning(e, "Exception connecting to process on `{Port}`", port);
-            return false;
-        }
+
+        return false;
     }
 
     private static async Task<int> RunCliTaskRemotely(IServiceProvider services, StartupMode startupMode)

@@ -22,7 +22,17 @@ public sealed record ProcessStartupSteps
     public required Func<StartupMode, IHost> BuildHost { get; init; }
     public required Func<IServiceProvider, (Process? Process, MainKind Kind, int Port)> ReadSyncInfo { get; init; }
     public required Func<IServiceProvider, int, Task<bool>> CanConnect { get; init; }
-    public required Action<Process> Kill { get; init; }
+
+    /// <summary>
+    /// Whether the process is a SilverModManager. A process id in the sync file can be reused by another program once
+    /// the main that wrote it has died.
+    /// </summary>
+    public required Func<Process, bool> IsOurProcess { get; init; }
+
+    /// <summary>
+    /// Empties the main slot, which names a process that is no longer a SilverModManager, if it still names that pid.
+    /// </summary>
+    public required Action<IServiceProvider, int> ClearStaleMain { get; init; }
     public required Action<IServiceProvider> OpenDatabase { get; init; }
 
     /// <summary>
@@ -173,7 +183,7 @@ public static class ProcessStartup
         var logger = services.GetRequiredService<ILogger<Program>>();
 
         var headlessMain = startupMode.RunAsMain && !startupMode.ShowUI;
-        var syncInfo = steps.ReadSyncInfo(services);
+        var syncInfo = ClearStaleMain(services, logger, steps, steps.ReadSyncInfo(services));
 
         // A verb handed to a live main runs against that process's store, which never saw this file.
         if (!startupMode.RunAsMain && startupMode.UsesOwnCredentials && syncInfo.Process is not null && HasSecretsFileOverride(startupMode, services))
@@ -201,12 +211,11 @@ public static class ProcessStartup
             // The window closed while this process was deciding what to do with it: nothing holds the database any more.
         }
 
-        // NOTE(erri120): has to come before host startup
-        // A headless main must not kill the process it is queueing behind, and a hung window
-        // is not its to judge: it only needs the slot to be free.
-        // The MCP server also stays out of it: stdout is the protocol, and it must not kill a window the user is working in.
-        if (!headlessMain && !startupMode.IsMcp)
-            CleanupUnresponsiveProcesses(services, logger, steps, syncInfo).Wait(timeout: TimeSpan.FromSeconds(10));
+        // A headless main only needs the slot to be free, and the MCP server keeps stdout for the protocol, so neither asks
+        // the window anything. For everyone else a window that does not answer is told to the person and left running:
+        // it is most likely busy, and closing it would lose whatever it is in the middle of.
+        if (!headlessMain && !startupMode.IsMcp && syncInfo is { Process: not null, Kind: MainKind.Gui } && !steps.CanConnect(services, syncInfo.Port).GetAwaiter().GetResult())
+            return RefuseBusyMain(services, logger, steps, startupMode, syncInfo.Process.Id, syncInfo.Port);
 
         var slotClaimed = false;
         if (headlessMain)
@@ -459,28 +468,35 @@ public static class ProcessStartup
         }
     }
 
-    private static async Task CleanupUnresponsiveProcesses(IServiceProvider services, ILogger logger, ProcessStartupSteps steps, (Process? Process, MainKind Kind, int Port) syncInfo)
+    /// <summary>
+    /// Forgets a main whose process id now belongs to another program. The sync file holds only a pid, and once the main
+    /// that wrote it has died anything may be given the same number; the slot would stay taken for as long as that program
+    /// runs. Nothing is closed: the process is not ours to touch.
+    /// </summary>
+    private static (Process? Process, MainKind Kind, int Port) ClearStaleMain(IServiceProvider services, ILogger logger, ProcessStartupSteps steps, (Process? Process, MainKind Kind, int Port) syncInfo)
     {
-        // NOTE(erri120): this is a hack, see https://github.com/Nexus-Mods/NexusMods.App/issues/3633
-        var (process, kind, port) = syncInfo;
-        if (process is null) return;
+        if (syncInfo.Process is not { } holder || steps.IsOurProcess(holder)) return syncInfo;
 
-        // A headless main runs no CLI server, so a failed heartbeat says nothing about it.
-        if (kind != MainKind.Gui) return;
+        logger.LogWarning("The sync file names process {PID}, which is not a SilverModManager; clearing the entry", holder.Id);
+        steps.ClearStaleMain(services, holder.Id);
+        return steps.ReadSyncInfo(services);
+    }
 
-        var pid = process.Id;
-        var canConnect = await steps.CanConnect(services, port);
-        if (canConnect) return;
+    /// <summary>
+    /// Turns a start away because the open window did not answer, and says so the way the start can be told it: on stderr
+    /// for a command, and on the desktop for anything that was not typed in a terminal.
+    /// </summary>
+    private static int RefuseBusyMain(IServiceProvider services, ILogger logger, ProcessStartupSteps steps, StartupMode startupMode, int pid, int port)
+    {
+        var busy = new MainProcessBusy();
+        logger.LogWarning("The main process {PID} on port {Port} did not answer; leaving it running and not starting", pid, port);
 
-        logger.LogWarning("Unable to connect to old process with PID `{PID}` on port `{Port}`, force closing process", pid, port);
+        var message = CliErrors.Describe(busy);
+        steps.WriteError(message);
+        var asksFromDesktop = startupMode.ShowUI || startupMode.StartsUiWhenNoMainRunning;
+        if (asksFromDesktop) steps.Notify(services, message);
 
-        try
-        {
-            steps.Kill(process);
-        }
-        catch (Exception e)
-        {
-            logger.LogWarning(e, "Exception killing old process `{PID}`", pid);
-        }
+        // Opening the window again is not a failure of the person's command; a verb that could not run is.
+        return startupMode.ShowUI ? 0 : CliErrors.ExitCode(busy);
     }
 }
