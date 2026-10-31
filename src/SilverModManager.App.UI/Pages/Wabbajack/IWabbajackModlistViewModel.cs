@@ -49,6 +49,32 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
 
     IReadOnlyList<WabbajackArchiveRow> Archives { get; }
 
+    /// <summary>The archives the user has to deal with (see <see cref="WabbajackNeedsYou.Needs"/>), by source then name. The rows are the table's own.</summary>
+    IReadOnlyList<WabbajackArchiveRow> NeedsYou { get; }
+
+    /// <summary>"3 archives need you"; empty while none do.</summary>
+    string NeedsYouHeading { get; }
+
+    bool HasNeedsYou { get; }
+
+    /// <summary>Which of the archives the table lists.</summary>
+    WabbajackArchiveFilter ArchiveFilter { get; set; }
+
+    /// <summary>The rows <see cref="ArchiveFilter"/> lets through, in the list's order. For <see cref="WabbajackArchiveFilter.All"/> it is <see cref="Archives"/> itself.</summary>
+    IReadOnlyList<WabbajackArchiveRow> VisibleArchives { get; }
+
+    /// <summary>Copies one line per entry of <see cref="NeedsYou"/> to the clipboard.</summary>
+    ReactiveCommand<Unit, Unit> CopyNeedsYouCommand { get; }
+
+    /// <summary>Some archive is not in the library yet and nothing is running that would say so by itself.</summary>
+    bool CanShowMissing { get; }
+
+    /// <summary>Brings the needs-you section into view, or filters the table to what is missing when nothing needs the user.</summary>
+    ReactiveCommand<Unit, Unit> ShowMissingCommand { get; }
+
+    /// <summary>Raised when <see cref="ShowMissingCommand"/> wants the page to scroll to the needs-you section.</summary>
+    IObservable<Unit> NeedsYouRevealRequested { get; }
+
     /// <summary>What is still to get, or that every archive is available.</summary>
     string AcquireText { get; }
 

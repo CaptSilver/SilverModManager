@@ -107,13 +107,40 @@
 
         <StackPanel x:Name="StatusPanel" Grid.Row="2" Margin="24,8" Spacing="4">
             <TextBlock x:Name="StatusText" TextWrapping="Wrap" />
+            <controls:StandardButton x:Name="ShowThemButton" Type="Tertiary" ShowIcon="None" Size="Toolbar" Text="Show them" HorizontalAlignment="Left" IsVisible="False"
+                                     ToolTip.Tip="Jump to the archives you have to get yourself, or list what is missing" />
             <ProgressBar x:Name="StatusBar" Minimum="0" Maximum="1" HorizontalAlignment="Left" MinWidth="280" IsVisible="False" />
         </StackPanel>
 
         <ScrollViewer Grid.Row="3">
             <StackPanel x:Name="Content" Margin="24,0,24,24" Spacing="{StaticResource Spacing-4}">
+                <!-- The few archives the user has to fetch, so they are not hunted for in a table of over a thousand. -->
+                <StackPanel x:Name="NeedsYouPanel" Spacing="2" IsVisible="False">
+                    <DockPanel>
+                        <controls:StandardButton x:Name="CopyListButton" DockPanel.Dock="Right" Type="Secondary" Fill="Weak" Size="Toolbar" Text="Copy list"
+                                                 ToolTip.Tip="Copy the file names and pages of these archives to the clipboard" />
+                        <TextBlock x:Name="NeedsYouHeading" Theme="{StaticResource HeadingSMSemiTheme}" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <TextBlock Text="Get these yourself, then drop the files anywhere on this page." Opacity="0.7" />
+                    <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="NeedsYouRows">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+
                 <StackPanel x:Name="ArchivesPanel" Spacing="2">
-                    <TextBlock Text="Archives" Theme="{StaticResource HeadingSMSemiTheme}" />
+                    <DockPanel>
+                        <ComboBox x:Name="ArchiveFilterBox" DockPanel.Dock="Right" MinWidth="140" SelectedIndex="0" ToolTip.Tip="Which archives the list shows">
+                            <ComboBoxItem Content="All" />
+                            <ComboBoxItem Content="Needs you" />
+                            <ComboBoxItem Content="Missing" />
+                            <ComboBoxItem Content="In library" />
+                        </ComboBox>
+                        <TextBlock Text="Archives" Theme="{StaticResource HeadingSMSemiTheme}" VerticalAlignment="Center" />
+                    </DockPanel>
                     <TextBlock Text="Drop downloaded archives anywhere on this page to add them to the inbox." Opacity="0.7" />
                     <TextBlock x:Name="InboxText" TextWrapping="Wrap" />
                     <!-- Lists can hold well over a thousand archives; only the lines in view are built. -->

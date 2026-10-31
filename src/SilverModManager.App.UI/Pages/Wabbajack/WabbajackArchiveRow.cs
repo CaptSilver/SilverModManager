@@ -75,6 +75,9 @@ public sealed class WabbajackArchiveRow(ArchivePlanRow plan) : ReactiveObject
 
     private static bool CanOpenPageOf(ArchivePlanRow plan) => plan.Page is not null && plan.State is ArchiveState.Browser or ArchiveState.SignIn or ArchiveState.Manual or ArchiveState.Unsupported;
 
+    /// <summary>The user has to do something for this archive; see <see cref="WabbajackNeedsYou.Needs"/>.</summary>
+    public bool NeedsYou => WabbajackNeedsYou.Needs(Plan);
+
     /// <summary>A forum file the app can fetch once the user signs in to its site.</summary>
     public bool CanSignIn => CanSignInOf(Plan);
 
@@ -100,5 +103,6 @@ public sealed class WabbajackArchiveRow(ArchivePlanRow plan) : ReactiveObject
         if (CanInstallOf(old) != CanInstall) this.RaisePropertyChanged(nameof(CanInstall));
         if (CanOpenPageOf(old) != CanOpenPage) this.RaisePropertyChanged(nameof(CanOpenPage));
         if (CanSignInOf(old) != CanSignIn) this.RaisePropertyChanged(nameof(CanSignIn));
+        if (WabbajackNeedsYou.Needs(old) != NeedsYou) this.RaisePropertyChanged(nameof(NeedsYou));
     }
 }

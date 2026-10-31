@@ -181,6 +181,41 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
         await VerifyPng(png);
     }
 
+    /// <summary>
+    /// A big list with four archives to fetch by hand: the needs-you section above the table, with its heading and
+    /// Copy list, the "Show them" action under the status sentence, and the filter over the table.
+    /// </summary>
+    [Fact]
+    public async Task Test_WabbajackModlistNeedsYou()
+    {
+        static WabbajackArchiveRow Archive(ArchiveState state, string name, long size, string host, string? reason = null, string? page = null)
+            => new(new ArchivePlanRow(new ArchiveEntry(FileIdentity.XxHash64(Hash.From((ulong)name.GetHashCode())), size, name, "", new ManualState(new Uri($"https://{host}/a"), "get it")),
+                state, reason, page is null ? null : new Uri(page), null));
+
+        var png = await Capture(() => new WabbajackModlistView
+        {
+            DataContext = new WabbajackModlistDesignViewModel
+            {
+                CanShowMissing = true,
+                ArchiveCountText = "1294 archives",
+                InstallBlockedReason = "4 of 1294 archives are not in your library yet. Get what is missing, or tick \"Skip files from missing archives\".",
+                DownloadBlockedReason = "",
+                Description = "A heavily reworked Skyrim VR with new textures, combat and a lot of quests.",
+                Archives =
+                [
+                    Archive(ArchiveState.Have, "SKSEVR.7z", 3_000_000, "www.nexusmods.com"),
+                    Archive(ArchiveState.Browser, "Textures Pack.7z", 4_200_000_000, "www.nexusmods.com", page: "https://www.nexusmods.com/skyrimspecialedition/mods/1?tab=files&file_id=2"),
+                    Archive(ArchiveState.Manual, "Hand Made.zip", 90_000_000, "example.com", "hash mismatch", "https://example.com/files/1"),
+                    Archive(ArchiveState.SignIn, "Quest Overhaul.7z", 320_000_000, "www.loverslab.com", "Sign in to LoversLab to download this", "https://www.loverslab.com/files/file/1-x/"),
+                    Archive(ArchiveState.Manual, "Body Meshes.7z", 55_000_000, "www.loverslab.com", "Needs a manual download", "https://www.loverslab.com/files/file/2-y/"),
+                    Archive(ArchiveState.Automatic, "Skyrim Patch.7z", 12_000_000, "cdn.wabbajack.example"),
+                    Archive(ArchiveState.Have, "Weather.7z", 41_000_000, "www.nexusmods.com"),
+                ],
+            },
+        });
+        await VerifyPng(png);
+    }
+
     /// <summary>A mod added from a local archive, which is the simplest kind of row the loadout page lists.</summary>
     private async Task SeedLocalMod(Loadout.ReadOnly loadout, string name, EntityId? parent = null)
     {

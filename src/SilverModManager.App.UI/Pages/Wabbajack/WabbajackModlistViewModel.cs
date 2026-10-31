@@ -1,8 +1,10 @@
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using Avalonia.Media.Imaging;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,6 +49,12 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     private static readonly TimeSpan PlanThrottle = TimeSpan.FromMilliseconds(250);
     private readonly object _rowsLock = new();
 
+    // The lists the page shows are edited in place when a row changes, so the lines of the other rows stay as they are.
+    // Both are touched on the UI thread only, like the plan that feeds them.
+    private ObservableCollection<WabbajackArchiveRow> _needsYou = [];
+    private ObservableCollection<WabbajackArchiveRow>? _filtered;
+    private readonly Subject<Unit> _revealNeedsYou = new();
+
     private WabbajackModlistDetails? _details;
     private ArchivePlan _plan = new([]);
     private CancellationTokenSource? _acquireCancellation;
@@ -88,6 +96,15 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     [Reactive] public partial WabbajackLoadoutChoice? SelectedLoadout { get; private set; }
 
     [Reactive] public partial IReadOnlyList<WabbajackArchiveRow> Archives { get; private set; } = [];
+    [Reactive] public partial IReadOnlyList<WabbajackArchiveRow> NeedsYou { get; private set; } = [];
+    [Reactive] public partial string NeedsYouHeading { get; private set; } = "";
+    [Reactive] public partial bool HasNeedsYou { get; private set; }
+    [Reactive] public partial WabbajackArchiveFilter ArchiveFilter { get; set; }
+    [Reactive] public partial IReadOnlyList<WabbajackArchiveRow> VisibleArchives { get; private set; } = [];
+    [Reactive] public partial bool CanShowMissing { get; private set; }
+    public ReactiveCommand<Unit, Unit> CopyNeedsYouCommand { get; }
+    public ReactiveCommand<Unit, Unit> ShowMissingCommand { get; }
+    public IObservable<Unit> NeedsYouRevealRequested => _revealNeedsYou;
     [Reactive] public partial string AcquireText { get; private set; } = "";
     [Reactive] public partial string InboxText { get; private set; } = "";
     [Reactive] public partial string ExtractedSizeText { get; private set; } = "";
@@ -186,6 +203,15 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             async () => await Guarded(DownloadAsync),
             this.WhenAnyValue(vm => vm.CanDownload).CombineLatest(SelectLoadoutCommand.IsExecuting, (can, picking) => can && !picking));
         // The nxm handler only expects the files once Download has run, so opening their pages before that would be refused.
+        CopyNeedsYouCommand = ReactiveCommand.CreateFromTask(
+            async () => await Guarded(_ => _provider.GetRequiredService<IAvaloniaInterop>().SetClipboardTextAsync(WabbajackNeedsYou.CopyText(_needsYou))),
+            this.WhenAnyValue(vm => vm.HasNeedsYou));
+        ShowMissingCommand = ReactiveCommand.Create(() =>
+        {
+            if (HasNeedsYou) _revealNeedsYou.OnNext(Unit.Default);
+            else ArchiveFilter = WabbajackArchiveFilter.Missing;
+        }, this.WhenAnyValue(vm => vm.CanShowMissing));
+        this.WhenAnyValue(vm => vm.ArchiveFilter).Skip(1).Subscribe(_ => ShowFiltered(rebuild: true));
         OpenNextFiveCommand = ReactiveCommand.Create(() => { _acquirer.OpenNext(5); }, this.WhenAnyValue(vm => vm.HasStartedDownloads));
         CheckInboxCommand = ReactiveCommand.CreateFromTask(async () => await Guarded(async token => ShowUnmatched(await _service.CheckInbox(token))));
         OpenInboxFolderCommand = ReactiveCommand.Create(() => _service.OpenInboxFolder());
@@ -631,15 +657,61 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     // the lines that changed. Other archives are another list or another pick, and get new rows.
     private void ShowArchives(ArchivePlan plan)
     {
+        bool replaced;
         lock (_rowsLock)
         {
             var current = Archives;
-            if (current.Count == plan.Rows.Count && !current.Where((row, i) => !Equals(row.Plan.Archive, plan.Rows[i].Archive)).Any())
-            {
+            replaced = current.Count != plan.Rows.Count || current.Where((row, i) => !Equals(row.Plan.Archive, plan.Rows[i].Archive)).Any();
+            if (replaced) Archives = plan.Rows.Select(row => new WabbajackArchiveRow(row) { PickUpHint = PickUpFromDownloads }).ToArray();
+            else
                 for (var i = 0; i < current.Count; i++) current[i].Update(plan.Rows[i]);
-                return;
-            }
-            Archives = plan.Rows.Select(row => new WabbajackArchiveRow(row) { PickUpHint = PickUpFromDownloads }).ToArray();
+        }
+        ShowNeedsYou(replaced);
+        ShowFiltered(replaced);
+    }
+
+    // A row that changed is added to or removed from the section where it belongs; the entries around it are not touched.
+    private void ShowNeedsYou(bool rebuild)
+    {
+        var wanted = Archives.Where(row => row.NeedsYou).OrderBy(row => row, WabbajackNeedsYou.Order).ToList();
+        if (rebuild)
+        {
+            _needsYou = new ObservableCollection<WabbajackArchiveRow>(wanted);
+            NeedsYou = _needsYou;
+        }
+        else Reconcile(_needsYou, wanted);
+        HasNeedsYou = wanted.Count > 0;
+        NeedsYouHeading = wanted.Count == 0 ? "" : WabbajackNeedsYou.Heading(wanted.Count);
+    }
+
+    private void ShowFiltered(bool rebuild)
+    {
+        if (ArchiveFilter == WabbajackArchiveFilter.All)
+        {
+            _filtered = null;
+            VisibleArchives = Archives;
+            return;
+        }
+        var wanted = Archives.Where(row => WabbajackNeedsYou.Matches(ArchiveFilter, row.Plan)).ToList();
+        if (rebuild || _filtered is null)
+        {
+            _filtered = new ObservableCollection<WabbajackArchiveRow>(wanted);
+            VisibleArchives = _filtered;
+        }
+        else Reconcile(_filtered, wanted);
+    }
+
+    // Both lists keep the rows in one order, so what differs is rows to drop and rows to put in between the ones that stay.
+    private static void Reconcile(ObservableCollection<WabbajackArchiveRow> shown, IReadOnlyList<WabbajackArchiveRow> wanted)
+    {
+        var keep = new HashSet<WabbajackArchiveRow>(wanted, ReferenceEqualityComparer.Instance);
+        for (var i = shown.Count - 1; i >= 0; i--)
+        {
+            if (!keep.Contains(shown[i])) shown.RemoveAt(i);
+        }
+        for (var i = 0; i < wanted.Count; i++)
+        {
+            if (i >= shown.Count || !ReferenceEquals(shown[i], wanted[i])) shown.Insert(i, wanted[i]);
         }
     }
 
@@ -652,6 +724,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
     private void Recompute()
     {
+        CanShowMissing = _planReady && !IsPlanning && _plan.Rows.Any(row => !WabbajackModlistText.IsAvailable(row) && row.State != ArchiveState.GameFileVersion);
         var hasLoadout = SelectedLoadout is not null;
         InstallBlockedReason = WabbajackModlistText.InstallBlockedReason(hasLoadout, IsPlanning, _planReady, IsInstalling, _plan, SkipMissingArchives);
         DownloadBlockedReason = WabbajackModlistText.DownloadBlockedReason(IsPlanning, _isPreparingDownloads, _planReady, IsDownloading, _plan);

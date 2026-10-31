@@ -120,7 +120,8 @@ public partial class WabbajackModlistViewModelTests
         summaries.Should().BeLessThan(10, "a burst of downloads finishing is one update of the page, not twenty");
     }
 
-    private static IEnumerable<Control> Lines(WabbajackModlistView view) => view.GetVisualDescendants().OfType<WabbajackArchiveLine>();
+    // The lines of the archive table; the needs-you section above it builds lines of its own for the same rows.
+    private static IEnumerable<Control> Lines(WabbajackModlistView view) => view.FindControl<ItemsControl>("ArchiveRows")!.GetVisualDescendants().OfType<WabbajackArchiveLine>();
 
     [Fact]
     public async Task AThousandArchives_RealizeOnlyTheRowsInView()

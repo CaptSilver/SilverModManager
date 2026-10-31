@@ -31,6 +31,15 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public WabbajackLoadoutChoice? SelectedLoadout => null;
     public ReactiveCommand<WabbajackLoadoutChoice, Unit> SelectLoadoutCommand { get; } = ReactiveCommand.Create<WabbajackLoadoutChoice>(_ => { });
     public IReadOnlyList<WabbajackArchiveRow> Archives { get; init; } = [];
+    public IReadOnlyList<WabbajackArchiveRow> NeedsYou => Archives.Where(row => row.NeedsYou).OrderBy(row => row, WabbajackNeedsYou.Order).ToArray();
+    public string NeedsYouHeading => NeedsYou.Count == 0 ? "" : WabbajackNeedsYou.Heading(NeedsYou.Count);
+    public bool HasNeedsYou => NeedsYou.Count > 0;
+    public WabbajackArchiveFilter ArchiveFilter { get; set; }
+    public IReadOnlyList<WabbajackArchiveRow> VisibleArchives => ArchiveFilter == WabbajackArchiveFilter.All ? Archives : Archives.Where(row => WabbajackNeedsYou.Matches(ArchiveFilter, row.Plan)).ToArray();
+    public ReactiveCommand<Unit, Unit> CopyNeedsYouCommand { get; } = ReactiveCommand.Create(() => { });
+    public bool CanShowMissing { get; init; }
+    public ReactiveCommand<Unit, Unit> ShowMissingCommand { get; } = ReactiveCommand.Create(() => { });
+    public IObservable<Unit> NeedsYouRevealRequested => Observable.Never<Unit>();
     public string AcquireText { get; init; } = "3 of 312 archives still to get";
     public bool PickUpFromDownloads { get; set; } = true;
     public bool HasWaitingArchives { get; init; } = true;

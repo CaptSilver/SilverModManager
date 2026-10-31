@@ -130,7 +130,27 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
             // The lines are built for the rows in view only, and a row that changes tells its own line; the list
             // itself is replaced only when the page shows other archives.
             ArchiveRows.ItemTemplate = new FuncDataTemplate<WabbajackArchiveRow>((row, _) => row is null ? null : new WabbajackArchiveLine(viewModel, row));
-            OnUi(vm => vm.WhenAnyValue(x => x.Archives)).Subscribe(rows => ArchiveRows.ItemsSource = rows).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.VisibleArchives)).Subscribe(rows => ArchiveRows.ItemsSource = rows).DisposeWith(disposables);
+
+            // The section holds the table's own rows, so its lines follow them the same way.
+            NeedsYouRows.ItemTemplate = new FuncDataTemplate<WabbajackArchiveRow>((row, _) => row is null ? null : new WabbajackArchiveLine(viewModel, row));
+            OnUi(vm => vm.WhenAnyValue(x => x.NeedsYou)).Subscribe(rows => NeedsYouRows.ItemsSource = rows).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.HasNeedsYou)).Subscribe(has => NeedsYouPanel.IsVisible = has).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.NeedsYouHeading)).Subscribe(text => NeedsYouHeading.Text = text).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.CopyNeedsYouCommand, view => view.CopyListButton).DisposeWith(disposables);
+            OnUi(vm => vm.NeedsYouRevealRequested).Subscribe(_ => NeedsYouPanel.BringIntoView()).DisposeWith(disposables);
+
+            // The combo box lists the filters in the order of the enum.
+            OnUi(vm => vm.WhenAnyValue(x => x.ArchiveFilter)).Subscribe(filter => ArchiveFilterBox.SelectedIndex = (int)filter).DisposeWith(disposables);
+            ArchiveFilterBox.SelectionChanged += (_, _) =>
+            {
+                if (ArchiveFilterBox.SelectedIndex >= 0) viewModel.ArchiveFilter = (WabbajackArchiveFilter)ArchiveFilterBox.SelectedIndex;
+            };
+
+            // Only beside a plain sentence about what is missing; a running check, download or error has its own line.
+            this.BindCommand(ViewModel, vm => vm.ShowMissingCommand, view => view.ShowThemButton).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.CanShowMissing, x => x.Status)).Subscribe(state =>
+                ShowThemButton.IsVisible = state.Item1 && state.Item2 is { Text: not "", IsWarning: false, IsIndeterminate: false, Fraction: null }).DisposeWith(disposables);
 
             OnUi(vm => vm.WhenAnyValue(x => x.GameFilesReplaced)).Subscribe(files =>
             {
