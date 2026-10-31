@@ -59,18 +59,26 @@ public class FileStorePinsTests
     {
         var identity = FileIdentity.XxHash3((Hash)0x5150_0030UL);
         var collection = FileStorePins.BeginCollection();
-        collection.Seal();
-
         IDisposable? pin = null;
-        var pinner = new Thread(() => pin = FileStorePins.Pin(identity));
-        pinner.Start();
+        Thread? pinner = null;
+        try
+        {
+            collection.Seal();
+            pinner = new Thread(() => pin = FileStorePins.Pin(identity));
+            pinner.Start();
 
-        // Waiting on the gate is a thread state, not a timing guess.
-        SpinWait.SpinUntil(() => pinner.ThreadState.HasFlag(ThreadState.WaitSleepJoin));
-        FileStorePins.Pinned().Should().NotContain(identity);
-
-        collection.Dispose();
-        pinner.Join();
+            // Waiting on the gate is a thread state, not a timing guess. A pin that returns at once ends the thread
+            // instead, and the bound turns that into a failure rather than a hung test host.
+            SpinWait.SpinUntil(() => pinner.ThreadState.HasFlag(ThreadState.WaitSleepJoin), TimeSpan.FromSeconds(30))
+                .Should().BeTrue("the pin waits while the collection is sealed");
+            FileStorePins.Pinned().Should().NotContain(identity);
+        }
+        finally
+        {
+            // A static collection left open would make every later BeginCollection throw.
+            collection.Dispose();
+        }
+        pinner?.Join();
 
         FileStorePins.Pinned().Should().Contain(identity);
         pin!.Dispose();
