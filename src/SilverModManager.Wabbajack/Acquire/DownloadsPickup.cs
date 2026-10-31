@@ -25,6 +25,7 @@ public sealed class DownloadsPickup(
 {
     private readonly SemaphoreSlim _scanning = new(1);
     private readonly Dictionary<string, (long Size, DateTime Modified)> _mismatches = new(StringComparer.Ordinal);
+    private long _mismatchEpoch;
     private readonly Lock _watchLock = new();
     private Timer? _rescan;
     private bool _missingFolderLogged;
@@ -96,6 +97,7 @@ public sealed class DownloadsPickup(
             var folder = Folder;
             if (!FolderExists(folder)) return;
 
+            var epoch = MismatchEpoch();
             var inboxFolder = paths.Inbox;
             var staged = false;
             var waiting = false;
@@ -108,7 +110,7 @@ public sealed class DownloadsPickup(
                 Verdict verdict;
                 try
                 {
-                    verdict = await Check(file, candidates, cancellationToken);
+                    verdict = await Check(file, candidates, epoch, cancellationToken);
                 }
                 catch (IOException e)
                 {
@@ -130,7 +132,7 @@ public sealed class DownloadsPickup(
                         {
                             // Retrying would hash and copy the same bytes again; wait for the file, or the plan, to change.
                             logger.LogWarning(e, "Could not copy '{File}' from the Downloads folder into the inbox. It will be tried again if the file changes", file.FileName);
-                            Remember(file.FileName, verdict.Size, verdict.Modified);
+                            Remember(file.FileName, verdict.Size, verdict.Modified, epoch);
                         }
                         break;
                     case Outcome.Unsettled:
@@ -267,19 +269,33 @@ public sealed class DownloadsPickup(
     /// <summary>Forgets which files were already set aside (wrong bytes, unreadable, or not copyable), so the next scan reads them afresh.</summary>
     internal void ForgetMismatches()
     {
-        lock (_mismatches) _mismatches.Clear();
+        lock (_mismatches)
+        {
+            _mismatches.Clear();
+            _mismatchEpoch++;
+        }
     }
 
     private enum Outcome { Skip, Unsettled, Match }
 
     private readonly record struct Verdict(Outcome Outcome, long Size = 0, DateTime Modified = default);
 
-    private void Remember(string name, long size, DateTime modified)
+    private long MismatchEpoch()
     {
-        lock (_mismatches) _mismatches[name] = (size, modified);
+        lock (_mismatches) return _mismatchEpoch;
     }
 
-    private async Task<Verdict> Check(AbsolutePath file, List<(long Size, FileIdentity Hash)> candidates, CancellationToken cancellationToken)
+    // A scan that began before the memory was cleared (the watch ended while it was still reading) must not write its
+    // verdict into the next watch's memory: that scan's view of the folder is from the old watch.
+    private void Remember(string name, long size, DateTime modified, long epoch)
+    {
+        lock (_mismatches)
+        {
+            if (epoch == _mismatchEpoch) _mismatches[name] = (size, modified);
+        }
+    }
+
+    private async Task<Verdict> Check(AbsolutePath file, List<(long Size, FileIdentity Hash)> candidates, long epoch, CancellationToken cancellationToken)
     {
         if (!IsPlainFile(file)) return new Verdict(Outcome.Skip);
 
@@ -305,14 +321,14 @@ public sealed class DownloadsPickup(
         {
             // Not something waiting will fix, and it must not stop the other candidates.
             logger.LogWarning(e, "'{File}' in the Downloads folder cannot be read, so it is skipped until it changes", file.FileName);
-            Remember(file.FileName, size, modified);
+            Remember(file.FileName, size, modified, epoch);
             return new Verdict(Outcome.Skip);
         }
 
         if (sized.Any(c => c.Hash.Equals(hash))) return new Verdict(Outcome.Match, size, modified);
 
         logger.LogDebug("'{File}' in the Downloads folder has the expected name and size but other contents", file.FileName);
-        Remember(file.FileName, size, modified);
+        Remember(file.FileName, size, modified, epoch);
         return new Verdict(Outcome.Skip);
     }
 

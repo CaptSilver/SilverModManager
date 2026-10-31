@@ -710,4 +710,41 @@ public class DownloadsPickupTests(ITestOutputHelper helper) : AcquireTestBase<Do
         Reads().Should().Be(2);
         pickup.Dispose();
     }
+
+    [Fact]
+    public async Task AScanStillReadingWhenTheWatchEnds_DoesNotLeaveItsMismatchBehindForTheNextWatch()
+    {
+        using var page = Acquirer.Attach();
+        PickupIs(true);
+        _ = DownloadsFolder;
+        await RunWithManualRows(("wanted.txt", Wanted));
+        await Drop(DownloadsFolder, "wanted.txt", SameLength);
+        var (pickup, log) = NewPickup();
+        int Reads() => log.Calls.Count(c => c.Method is "ReadFile" or "OpenFile" or "Open" && c.Path.EndsWith("/wanted.txt"));
+
+        // Hold the first scan at the moment it opens the file, so the watch can end while it is still reading.
+        var opened = new ManualResetEventSlim();
+        var release = new ManualResetEventSlim();
+        var held = 0;
+        log.BeforeCall = (method, path) =>
+        {
+            if (method is not ("ReadFile" or "OpenFile" or "Open") || !path.EndsWith("/wanted.txt")) return;
+            if (Interlocked.Increment(ref held) != 1) return;
+            opened.Set();
+            release.Wait(TimeSpan.FromSeconds(30));
+        };
+        // The scan runs on the caller's thread until its first real await, so Follow goes on a pool thread the hook can hold.
+        var following = Task.Run(pickup.Follow, TestContext.Current.CancellationToken);
+        opened.Wait(TimeSpan.FromSeconds(30)).Should().BeTrue("the first scan reads the file");
+
+        PickupIs(false);
+        pickup.IsWatching.Should().BeFalse();
+        PickupIs(true);
+        release.Set();
+        await following;
+
+        await Until(() => Reads() == 2);
+        Reads().Should().Be(2, "the new watch's first scan reads the file again, not trusting what the old watch concluded");
+        pickup.Dispose();
+    }
 }

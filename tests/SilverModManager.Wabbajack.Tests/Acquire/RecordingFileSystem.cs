@@ -29,6 +29,9 @@ public class RecordingFileSystem : DispatchProxy
         }
     }
 
+    /// <summary>Runs on the calling thread after a call is written down and before it is forwarded; a test blocks in it to hold the caller at that call.</summary>
+    public Action<string, string>? BeforeCall { get; set; }
+
     /// <summary>Writes down a touch that does not go through the file system, such as a link check made by the component itself.</summary>
     public void Note(string method, AbsolutePath path)
     {
@@ -46,6 +49,11 @@ public class RecordingFileSystem : DispatchProxy
             foreach (var arg in args ?? [])
                 if (arg is AbsolutePath path) _calls.Add((targetMethod.Name, path.ToString()));
         }
+
+        var hook = BeforeCall;
+        if (hook is not null)
+            foreach (var arg in args ?? [])
+                if (arg is AbsolutePath path) hook(targetMethod.Name, path.ToString());
 
         try
         {
