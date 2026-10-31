@@ -51,6 +51,11 @@ public class ProxiedRenderer : IRenderer
     }
 
     /// <summary>
+    /// A renderer over a connection whose greeting and question have already gone out, for a caller that sent them itself.
+    /// </summary>
+    public static IRenderer Over(Serializer serializer) => new ProxiedRenderer(serializer);
+
+    /// <summary>
     /// Renders the given renderable.
     /// </summary>
     /// <param name="renderable"></param>

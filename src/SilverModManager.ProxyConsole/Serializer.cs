@@ -85,14 +85,25 @@ public class Serializer
     /// <typeparam name="TMessage"></typeparam>
     public async Task SendAsync<TMessage>(TMessage msg) where TMessage : IMessage
     {
-        var serialized = MemoryPackSerializer.Serialize<IMessage>(msg);
-
         // Length and body go out in one asynchronous write: the old BinaryWriter wrote the length synchronously on the
         // caller's thread, and with Nagle off that length left as a packet of its own.
+        await _stream.WriteAsync(Frame(msg));
+    }
+
+    /// <summary>
+    /// Sends the given message and blocks the calling thread until it is written. For a caller that must not depend on
+    /// the thread pool (the server's greeting): an asynchronous write may finish on a pool thread, and a pool whose
+    /// workers are all busy runs nothing else.
+    /// </summary>
+    public void Send<TMessage>(TMessage msg) where TMessage : IMessage => _stream.Write(Frame(msg));
+
+    private static byte[] Frame<TMessage>(TMessage msg) where TMessage : IMessage
+    {
+        var serialized = MemoryPackSerializer.Serialize<IMessage>(msg);
         var frame = new byte[HeaderSize + serialized.Length];
         BinaryPrimitives.WriteInt32LittleEndian(frame, serialized.Length);
         serialized.CopyTo(frame, HeaderSize);
-        await _stream.WriteAsync(frame);
+        return frame;
     }
 
     /// <summary>

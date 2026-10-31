@@ -10,6 +10,7 @@ using MemoryPack;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.ProxyConsole;
 using SilverModManager.ProxyConsole.Messages;
+using SilverModManager.Sdk.ProxyConsole;
 using SilverModManager.SingleProcess.Exceptions;
 
 namespace SilverModManager.SingleProcess;
@@ -27,6 +28,7 @@ public sealed class CliServer : IHostedService, IDisposable
 
     private TcpListener? _tcpListener;
     private string? _launchToken;
+    private IRenderableDefinition[] _renderableDefinitions = [];
     private readonly ConcurrentDictionary<Guid, Task> _runningClients = [];
 
     private readonly IServiceProvider _serviceProvider;
@@ -76,7 +78,12 @@ public sealed class CliServer : IHostedService, IDisposable
         var listener = new TcpListener(IPAddress.Loopback, 0);
         _tcpListener = listener;
         listener.Start();
-        Task.Run(async () => await StartListeningAsync(listener), _cancellationTokenSource.Token);
+
+        // The accept loop and the greeting run on a thread of their own and use blocking calls. Async socket work
+        // finishes on the thread pool, and while a download batch holds every worker a greeting that waits for one
+        // looks like a hung main to the process asking.
+        _renderableDefinitions = _serviceProvider.GetRequiredService<IEnumerable<IRenderableDefinition>>().ToArray();
+        new Thread(() => AcceptLoop(listener)) { IsBackground = true, Name = "CliServer accept" }.Start();
         var port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
         if (!_syncFile.TrySetMain(MainKind.Gui, port))
@@ -89,43 +96,62 @@ public sealed class CliServer : IHostedService, IDisposable
         return Task.CompletedTask;
     }
 
-    private async Task StartListeningAsync(TcpListener listener)
+    private void AcceptLoop(TcpListener listener)
     {
         while (_started && !_cancellationTokenSource.IsCancellationRequested)
         {
+            TcpClient found;
             try
             {
-                var found = await listener.AcceptTcpClientAsync(Token);
-                found.NoDelay = true; // Disable Nagle's algorithm to reduce delay.
-
-                var id = Guid.NewGuid();
-                var task = Task.Run(() => HandleClientAsync(id, found), Token);
-                _ = _runningClients.GetOrAdd(id, task);
-
-                _logger.LogInformation("Accepted TCP connection from {RemoteEndPoint}", (found.Client.RemoteEndPoint as IPEndPoint)?.Port);
+                found = listener.AcceptTcpClient();
             }
-            catch (OperationCanceledException)
+            catch (Exception ex) when (_cancellationTokenSource.IsCancellationRequested || ex is ObjectDisposedException)
             {
-                _logger.LogInformation("TCP listener was cancelled, stopping");
+                _logger.LogInformation("TCP listener was stopped, stopping");
                 return;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Got an exception while accepting a client connection");
+                Thread.Sleep(100);
+                continue;
             }
+
+            Serializer serializer;
+            try
+            {
+                found.NoDelay = true; // Disable Nagle's algorithm to reduce delay.
+                found.SendTimeout = 5000;
+                serializer = new Serializer(found.GetStream(), _renderableDefinitions);
+
+                // Written here, not by the handler: the client decides whether the main is alive from these two frames.
+                serializer.Send(_build.ToHello());
+                serializer.Send(new ProgramArgumentsRequest());
+            }
+            catch (Exception e) when (e is IOException or SocketException or ObjectDisposedException)
+            {
+                _logger.LogInformation(e, "A client went away before it was greeted");
+                found.Dispose();
+                continue;
+            }
+
+            var id = Guid.NewGuid();
+            var task = Task.Run(() => HandleClientAsync(id, found, serializer), CancellationToken.None);
+            _ = _runningClients.GetOrAdd(id, task);
+
+            _logger.LogInformation("Accepted TCP connection from {RemoteEndPoint}", (found.Client.RemoteEndPoint as IPEndPoint)?.Port);
         }
     }
 
     /// <summary>
-    /// Handle a client connection
+    /// Handle a client connection that has been greeted and asked what it wants
     /// </summary>
-    private async Task HandleClientAsync(Guid id, TcpClient client)
+    private async Task HandleClientAsync(Guid id, TcpClient client, Serializer serializer)
     {
         try
         {
-            var stream = client.GetStream();
-
-            var (reply, renderer, serializer) = await ProxiedRenderer.Accept(_serviceProvider, stream, _build.ToHello());
+            var reply = await serializer.ReceiveAsync();
+            var renderer = ProxiedRenderer.Over(serializer);
             switch (reply)
             {
                 case ProgramArgumentsResponse arguments:
