@@ -79,6 +79,7 @@ public partial class WabbajackModlistCardViewModel : AViewModel<IWabbajackModlis
             // Files arrive and installs finish while the tab is open; one scan per burst of revisions.
             _connection.Revisions
                 .ThrottleAfterFirst(RevisionThrottle, TaskPoolScheduler.Default)
+                .OnUI()
                 .Subscribe(_ => Refresh())
                 .DisposeWith(d);
         });

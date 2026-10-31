@@ -233,6 +233,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
                 .Where(IsThisList)
                 .ThrottleAfterFirst(PlanThrottle, TaskPoolScheduler.Default)
                 .Select(announced => _acquirer.Plan.Rows.Count > 0 && IsThisList(_acquirer.Plan) ? _acquirer.Plan : announced)
+                // The throttle's trailing plan arrives on a pool thread; the rows and commands it updates are bound.
+                .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(ApplyPlan)
                 .DisposeWith(d);
             // Rows of a forum wait for a sign-in or were fetched with one; either way the account decides how they
@@ -266,6 +268,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             // The group, its enabled state and its skip rows change underneath the page while an install runs.
             _connection.Revisions
                 .ThrottleAfterFirst(RevisionThrottle, TaskPoolScheduler.Default)
+                .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(_ => RefreshInstalledState())
                 .DisposeWith(d);
 
@@ -723,7 +726,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         {
             var target = picked.Id ?? await CreatePickedLoadout();
             var run = _service.StartInstall(FileId, target, new InstallOptions(SkipMissingArchives, keep));
-            using var _ = run.Progress.Subscribe(snapshot =>
+            // Progress comes from the install job's thread.
+            using var _ = run.Progress.ObserveOn(RxApp.MainThreadScheduler).Subscribe(snapshot =>
             {
                 ProgressText = WabbajackModlistText.Progress(snapshot);
                 ProgressFraction = WabbajackModlistText.Fraction(snapshot);
