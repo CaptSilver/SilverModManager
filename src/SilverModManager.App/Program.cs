@@ -196,7 +196,7 @@ public class Program
         SecretStartup.PrimeAsync(services, CancellationToken.None).Wait();
     }
 
-    private static bool IsOurProcess(Process process)
+    internal static bool IsOurProcess(Process process)
     {
         try
         {
@@ -234,6 +234,14 @@ public class Program
                 // It answered, so it is alive: another build is no reason to close the user's window. The command that
                 // follows is refused in words.
                 logger.LogInformation("The process on `{Port}` is another build: {Reason}", port, e.Message);
+                return true;
+            }
+            catch (Exception e) when (e is NoMainProcessStarted or HeadlessMainRunning)
+            {
+                // The slot emptied (or changed hands) between the read that sent us here and the probe, so there is no
+                // window to be unreachable. Startup reads the slot again and decides; counting it busy would refuse a
+                // start that has nothing in its way.
+                logger.LogInformation("The main process on `{Port}` is gone: {Reason}", port, e.Message);
                 return true;
             }
             catch (Exception e)

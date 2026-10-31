@@ -199,6 +199,53 @@ public sealed class VersionHandshakeTests : IAsyncLifetime
         (await Probe(client)).Should().BeFalse();
     }
 
+    [Fact(Timeout = TimeoutMs)]
+    public async Task TheHeartbeatProbe_CountsAMainThatDropsTheFirstConnectionButGreetsTheSecond_AsReachable()
+    {
+        var services = Services();
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        _listeners.Add(listener);
+        SyncFile("retry.sync").TrySetMain(MainKind.Gui, ((IPEndPoint)listener.LocalEndpoint).Port).Should().BeTrue();
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                // The first connection is dropped without a word, the second is greeted.
+                using (await listener.AcceptTcpClientAsync()) { }
+                using var second = await listener.AcceptTcpClientAsync();
+                await new Serializer(second.GetStream(), services.GetRequiredService<IEnumerable<IRenderableDefinition>>()).SendAsync(new ProgramArgumentsRequest());
+                await Task.Delay(Timeout.Infinite, _fakeMain.Token);
+            }
+            catch (Exception e) when (e is IOException or ObjectDisposedException or SocketException or OperationCanceledException)
+            {
+                // The test ended and tore the listener down.
+            }
+        });
+        var client = new CliClient(NullLogger<CliClient>.Instance, SyncFile("retry.sync"), services, Running, TimeSpan.FromSeconds(30));
+
+        (await Probe(client)).Should().BeTrue();
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task TheHeartbeatProbe_CountsAMainThatIsGoneBeforeItIsAsked_AsReachableSoStartupDecidesWhatToDo()
+    {
+        // The sync file names no main at all: the window closed between the read that sent us here and the probe.
+        var client = new CliClient(NullLogger<CliClient>.Instance, SyncFile("empty.sync"), Services(), Running, TimeSpan.FromMilliseconds(300));
+
+        (await Probe(client)).Should().BeTrue();
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task TheHeartbeatProbe_CountsAHeadlessMainAsReachable_BecauseItIsNotTheWindowWeWereAskedAbout()
+    {
+        SyncFile("headless.sync").TrySetMain(MainKind.HeadlessRun, 0).Should().BeTrue();
+        var client = new CliClient(NullLogger<CliClient>.Instance, SyncFile("headless.sync"), Services(), Running, TimeSpan.FromMilliseconds(300));
+
+        (await Probe(client)).Should().BeTrue();
+    }
+
     private static Task<bool> Probe(CliClient client) => SilverModManager.App.Program.CanConnectToProcess(
         NullLogger.Instance, port: 0, new ServiceCollection().AddSingleton(client).BuildServiceProvider());
 }
