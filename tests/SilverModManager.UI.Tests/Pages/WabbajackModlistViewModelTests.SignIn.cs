@@ -156,6 +156,7 @@ public partial class WabbajackModlistViewModelTests
         service.PlanGate = gate;
         vm.SelectLoadoutCommand.Execute(vm.SelectedLoadout!).Subscribe();
         await WaitUntil(() => vm.IsPlanning);
+        await service.PlanReachedGate.Task.WaitAsync(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken);
         var checks = service.PlannedFor.Count;
 
         rig.Changed.OnNext(ForumSite.LoversLab);

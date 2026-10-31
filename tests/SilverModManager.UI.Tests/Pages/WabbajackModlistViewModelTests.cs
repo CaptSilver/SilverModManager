@@ -125,6 +125,9 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         /// <summary>When set, the next plan waits for it, like a list whose game files take a while to hash.</summary>
         public TaskCompletionSource? PlanGate { get; set; }
 
+        /// <summary>Completes once a plan has been recorded and is waiting at the gate. The page starts a check on the UI thread but the fake records it on the task pool, so "the page is planning" does not yet mean "the plan was recorded".</summary>
+        public TaskCompletionSource PlanReachedGate { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         /// <summary>When set, planning fails with it, like a list whose game is not installed.</summary>
         public Exception? PlanFailure { get; set; }
 
@@ -147,6 +150,7 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
             if (PlanGate is { } gate)
             {
                 PlanGate = null;
+                PlanReachedGate.TrySetResult();
                 await gate.Task;
             }
             if (PlanFailure is { } failure) throw failure;
