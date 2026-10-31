@@ -41,13 +41,22 @@ public sealed class ServerUnderLoadTests : IDisposable
 
         using var gate = new ManualResetEventSlim();
         ThreadPool.GetMinThreads(out var minWorkers, out _);
+        // Every blocker signals when it is done, so the gate outlives the ones still queued when the test ends.
+        using var blockersDone = new CountdownEvent(minWorkers * 2);
         ThreadPool.GetMaxThreads(out var oldMaxWorkers, out var oldMaxIo);
         try
         {
             ThreadPool.SetMaxThreads(minWorkers, oldMaxIo).Should().BeTrue();
 
             // More than the pool can ever run: the surplus stays queued, and queued work is all a new request gets.
-            for (var i = 0; i < minWorkers * 2; i++) ThreadPool.QueueUserWorkItem(_ => gate.Wait());
+            for (var i = 0; i < minWorkers * 2; i++)
+            {
+                ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    gate.Wait();
+                    blockersDone.Signal();
+                });
+            }
             SpinWait.SpinUntil(() => ThreadPool.PendingWorkItemCount > 0, TimeSpan.FromSeconds(10)).Should().BeTrue("the pool has to be full");
 
             // A thread of its own, so that the client does not need the pool it is checking on.
@@ -80,6 +89,7 @@ public sealed class ServerUnderLoadTests : IDisposable
         {
             gate.Set();
             ThreadPool.SetMaxThreads(oldMaxWorkers, oldMaxIo);
+            blockersDone.Wait(TimeSpan.FromSeconds(30)).Should().BeTrue("every blocker has to finish before the gate is disposed");
             server.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
             server.Dispose();
         }
