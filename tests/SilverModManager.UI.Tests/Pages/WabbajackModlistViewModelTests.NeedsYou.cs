@@ -114,7 +114,7 @@ public partial class WabbajackModlistViewModelTests
     [Theory]
     [InlineData(WabbajackArchiveFilter.All, new[] { "held.7z", "auto.7z", "failed.7z", "manual-b.7z", "browser-a.7z", "aaa-signin.7z", "Skyrim.exe" })]
     [InlineData(WabbajackArchiveFilter.NeedsYou, new[] { "failed.7z", "manual-b.7z", "browser-a.7z", "aaa-signin.7z" })]
-    [InlineData(WabbajackArchiveFilter.Missing, new[] { "auto.7z", "failed.7z", "manual-b.7z", "browser-a.7z", "aaa-signin.7z", "Skyrim.exe" })]
+    [InlineData(WabbajackArchiveFilter.Missing, new[] { "auto.7z", "failed.7z", "manual-b.7z", "browser-a.7z", "aaa-signin.7z" })]
     [InlineData(WabbajackArchiveFilter.InLibrary, new[] { "held.7z" })]
     public async Task EachFilter_ShowsItsRows_InTheListsOrder_AsTheSameRowObjects(WabbajackArchiveFilter filter, string[] expected)
     {
@@ -150,7 +150,7 @@ public partial class WabbajackModlistViewModelTests
         acquirer.Change(WithState(plan, plan.Rows.ToList().FindIndex(row => row.Archive.Name == "auto.7z"), ArchiveState.Have));
 
         vm.VisibleArchives.Should().BeSameAs(shown);
-        Names(vm.VisibleArchives).Should().Equal("failed.7z", "manual-b.7z", "browser-a.7z", "aaa-signin.7z", "Skyrim.exe");
+        Names(vm.VisibleArchives).Should().Equal("failed.7z", "manual-b.7z", "browser-a.7z", "aaa-signin.7z");
         vm.Archives.Should().Equal(archives);
     }
 

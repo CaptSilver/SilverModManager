@@ -39,7 +39,7 @@ public class WabbajackNeedsYouTextTests
     [Theory]
     [InlineData(WabbajackArchiveFilter.All, new[] { true, true, true, true, true })]
     [InlineData(WabbajackArchiveFilter.NeedsYou, new[] { false, false, true, false, false })]
-    [InlineData(WabbajackArchiveFilter.Missing, new[] { false, true, true, true, true })]
+    [InlineData(WabbajackArchiveFilter.Missing, new[] { false, true, true, false, true })]
     [InlineData(WabbajackArchiveFilter.InLibrary, new[] { true, false, false, false, false })]
     public void Matches_EachFilterKeepsItsOwnRows(WabbajackArchiveFilter filter, bool[] expected)
     {

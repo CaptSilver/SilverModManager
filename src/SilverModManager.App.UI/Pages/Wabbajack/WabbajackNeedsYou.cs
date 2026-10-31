@@ -33,7 +33,8 @@ public static class WabbajackNeedsYou
     {
         WabbajackArchiveFilter.All => true,
         WabbajackArchiveFilter.NeedsYou => Needs(row),
-        WabbajackArchiveFilter.Missing => row.State != ArchiveState.Have,
+        // The same test as the status line's "still to get" count, so the filter and the sentence agree.
+        WabbajackArchiveFilter.Missing => !WabbajackModlistText.IsAvailable(row),
         WabbajackArchiveFilter.InLibrary => row.State == ArchiveState.Have,
         _ => throw new ArgumentOutOfRangeException(nameof(filter), filter, "Unknown archive filter"),
     };
