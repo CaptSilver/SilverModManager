@@ -27,14 +27,20 @@ where TInner : class, IViewModelInterface
     private readonly TaskCompletionSource _taskCompletionSource = new();
     public Task CompletionTask => _taskCompletionSource.Task;
 
+    private int _closing;
+
     public virtual void Close()
     {
         Debug.Assert(Controller != null, "Controller != null");
-        if (Status == Status.Closed)
+
+        // Close can arrive from two places at once (a replacing sign-in on the UI thread,
+        // the host stopping on another). A Status check alone lets both through before
+        // either sets Closed, so the first caller claims the close atomically.
+        if (Interlocked.Exchange(ref _closing, 1) != 0)
         {
             return;
         }
-        
+
         Controller.Remove(this);
         Status = Status.Closed;
         _taskCompletionSource.SetResult();

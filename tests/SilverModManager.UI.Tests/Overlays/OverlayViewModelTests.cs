@@ -1,4 +1,5 @@
 ﻿using FluentAssertions;
+using NSubstitute;
 using SilverModManager.App.UI.Overlays;
 
 namespace SilverModManager.UI.Tests.Overlays;
@@ -115,6 +116,30 @@ public class OverlayViewModelTests
         await sub;
     }
     
+    [Fact]
+    public void ClosingAgainWhileTheFirstCloseIsStillRemovingTheOverlay_IsHarmless()
+    {
+        // A second Close can arrive on another thread between the controller removal
+        // and the status change; re-entering from inside Remove is that interleaving.
+        var overlay = new MockOverlayViewModel();
+        var controller = Substitute.For<IOverlayController>();
+        var reentered = false;
+        controller.When(c => c.Remove(overlay)).Do(_ =>
+        {
+            if (reentered) return;
+            reentered = true;
+            overlay.Close();
+        });
+        overlay.Controller = controller;
+
+        var close = overlay.Close;
+
+        close.Should().NotThrow();
+        controller.Received(1).Remove(overlay);
+        overlay.CompletionTask.IsCompletedSuccessfully.Should().BeTrue();
+        overlay.Status.Should().Be(Status.Closed);
+    }
+
     public class MockOverlayViewModel : AOverlayViewModel<IOverlayViewModel>
     {
     }
