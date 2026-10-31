@@ -168,6 +168,33 @@ public partial class WabbajackModlistViewModelTests
     }
 
     [Fact]
+    public async Task AnAccountChangedWhileDownloadPlansTheList_LeavesDownloadRunningAndChecksOnceItEnds()
+    {
+        var rig = new SignInRig(Provider);
+        var (vm, service, acquirer) = await Open(Plan(ForumRow(ArchiveState.SignIn, "waits.7z"), ForumRow(ArchiveState.Automatic, "auto.7z")), services: rig.Services);
+        using var activation = vm.Activator.Activate();
+        acquirer.RunGate = new TaskCompletionSource();
+        var gate = new TaskCompletionSource();
+        service.PlanGate = gate;
+        vm.DownloadCommand.Execute().Subscribe();
+        await service.PlanReachedGate.Task.WaitAsync(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken);
+        var checks = service.PlannedFor.Count;
+
+        rig.Changed.OnNext(ForumSite.LoversLab);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+        service.PlannedFor.Count.Should().Be(checks, "Download's own plan is the one in flight");
+
+        gate.SetResult();
+        await EventuallyOnUi(() => acquirer.Runs.Should().Be(1, "the Download that was pressed still starts"));
+        acquirer.LastRunToken.IsCancellationRequested.Should().BeFalse("a sign-in must not cancel the Download that is under way");
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+        service.PlannedFor.Count.Should().Be(checks, "the run owns the plan until it ends");
+
+        acquirer.RunGate.SetResult();
+        await EventuallyOnUi(() => service.PlannedFor.Count.Should().Be(checks + 1, "one more check, for the sign-in"));
+    }
+
+    [Fact]
     public async Task AnAccountChangeOfASiteTheListDoesNotUse_LeavesThePlanAlone()
     {
         var rig = new SignInRig(Provider);

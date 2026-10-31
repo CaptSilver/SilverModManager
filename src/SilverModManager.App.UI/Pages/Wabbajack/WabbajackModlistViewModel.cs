@@ -294,7 +294,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         _ = RecheckForSites(sites);
     }
 
-    private bool IsBusyWithPlan => !_planReady || IsPlanning || IsDownloading || IsInstalling;
+    // Download's own plan counts: it is not IsPlanning, but a second check started under it would cancel the run
+    // the person just pressed.
+    private bool IsBusyWithPlan => !_planReady || IsPlanning || _isPreparingDownloads || IsDownloading || IsInstalling;
 
     // One check covers every site, so several sites that changed together start it once.
     private async Task RecheckForSites(IReadOnlyCollection<ForumSite> sites)
@@ -568,6 +570,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             _isPreparingDownloads = false;
             if (!IsPlanning) ClearCheck();
             Recompute();
+            // Preparing is a plain field, so the busy-to-idle subscription cannot see it end. A sign-in that came
+            // meanwhile is checked now unless a run or another check took over.
+            RecheckPendingAccountChanges();
         }
     }
 
