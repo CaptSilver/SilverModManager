@@ -48,6 +48,17 @@ public static class CliMessages
     /// A package was installed into a loadout from a link.
     /// </summary>
     public record ModInstalled(LibraryItem.ReadOnly Item, string LoadoutName) : IEventBusMessage;
+
+    /// <summary>
+    /// The app took <paramref name="Scheme"/> from <paramref name="PreviousHandler"/>, the desktop file that held it.
+    /// </summary>
+    public record ProtocolHandlerTaken(string Scheme, string PreviousHandler) : IEventBusMessage;
+
+    /// <summary>
+    /// The user wants the app to open <paramref name="Scheme"/> links but <paramref name="Holder"/>, a desktop file,
+    /// still holds them, and the app left them there.
+    /// </summary>
+    public record ProtocolHandlerHeldElsewhere(string Scheme, string Holder) : IEventBusMessage;
 }
 
 public interface IFailureReason { }

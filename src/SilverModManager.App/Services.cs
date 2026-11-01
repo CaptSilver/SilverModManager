@@ -108,7 +108,7 @@ public static class Services
         if (profile is HostProfile.Gui or HostProfile.Designer)
             services.AddInteractiveServices();
 
-        services.AddMainServices(registerNxmHandler: profile != HostProfile.Headless, profile, startupMode);
+        services.AddMainServices(registerProtocols: profile != HostProfile.Headless, profile, startupMode);
 
         switch (profile)
         {
@@ -162,9 +162,9 @@ public static class Services
     /// <summary>
     /// Everything a main process needs, with or without a window.
     /// </summary>
-    private static IServiceCollection AddMainServices(this IServiceCollection services, bool registerNxmHandler, HostProfile profile, StartupMode startupMode)
+    private static IServiceCollection AddMainServices(this IServiceCollection services, bool registerProtocols, HostProfile profile, StartupMode startupMode)
     {
-        return services
+        services
             .AddEpicGameStore()
             .AddSingleton<TimeProvider>(_ => TimeProvider.System)
             .AddDataModel()
@@ -206,7 +206,7 @@ public static class Services
                 CompactAfterMove = !startupMode.IsHeadlessRun,
             })
             .AddSecretServiceBackend()
-            .AddNexusWebApi(registerNxmHandler)
+            .AddNexusWebApi()
             .AddForums()
             .AddHttpDownloader()
             // .AddAdvancedHttpDownloader()
@@ -221,6 +221,10 @@ public static class Services
             .AddGitHubApi()
             .AddThunderstore()
             .AddWabbajack();
+
+        // A process that only runs a verb or a game launch must not touch the desktop's link handlers.
+        if (registerProtocols) services.AddProtocolRegistration();
+        return services;
     }
 
     /// <summary>

@@ -16,6 +16,8 @@ using SilverModManager.Sdk;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Settings;
+using R3;
 
 namespace SilverModManager.CLI.Types.IpcHandlers;
 
@@ -27,6 +29,13 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
 {
     /// <inheritdoc/>
     public string Protocol => "nxm";
+
+    /// <inheritdoc/>
+    public bool IsRegistrationWanted(ISettingsManager settings) => settings.Get<NxmHandlerSettings>().RegisterAsDefaultHandler;
+
+    /// <inheritdoc/>
+    public Observable<Unit> RegistrationTurnedOn(ISettingsManager settings)
+        => settings.GetChanges<NxmHandlerSettings>().Where(static changed => changed.RegisterAsDefaultHandler).Select(static _ => Unit.Default);
 
     private readonly ILogger<NxmIpcProtocolHandler> _logger;
     private readonly ILoginManager _loginManager;

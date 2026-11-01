@@ -9,6 +9,7 @@ using NexusMods.Paths;
 using SilverModManager.Sdk.EventBus;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.CLI;
 
@@ -42,9 +43,18 @@ public static class Services
         services.AddSingleton<ManagedGames>();
         services.AddSingleton<IIpcProtocolHandler, NxmIpcProtocolHandler>();
         services.AddSingleton<IIpcProtocolHandler, Ror2mmIpcProtocolHandler>();
+        services.AddSettings<Ror2mmHandlerSettings>();
+        services.AddSettings<ProtocolNoticeSettings>();
 
         services.AddProtocolVerbs();
         return services;
     }
+
+    /// <summary>
+    /// Claims the schemes the user turned on. Only the process that owns the desktop session adds it: a process
+    /// that runs a verb or launches a game must not touch the desktop's link handlers.
+    /// </summary>
+    public static IServiceCollection AddProtocolRegistration(this IServiceCollection services)
+        => services.AddHostedService<ProtocolRegistration>();
 
 }

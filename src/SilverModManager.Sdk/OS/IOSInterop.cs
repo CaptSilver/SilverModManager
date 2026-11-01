@@ -51,8 +51,33 @@ public interface IOSInterop
     /// </summary>
     ValueTask<FileSystemMount?> GetFileSystemMount(AbsolutePath path, CancellationToken cancellationToken = default);
 
-    ValueTask RegisterUriSchemeHandler(string scheme, bool setAsDefaultHandler = true, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Makes this app the handler for <c>scheme://</c> links.
+    /// </summary>
+    /// <param name="scheme">The scheme without the colon, e.g. <c>nxm</c>.</param>
+    /// <param name="claim">Whether to take the scheme from another app that holds it.</param>
+    /// <param name="setAsDefaultHandler">Whether to also make this app the default handler, not just a candidate.</param>
+    ValueTask<UriSchemeRegistration> RegisterUriSchemeHandler(string scheme, UriSchemeClaim claim = UriSchemeClaim.Take, bool setAsDefaultHandler = true, CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// How <see cref="IOSInterop.RegisterUriSchemeHandler"/> treats a scheme another app already holds.
+/// </summary>
+public enum UriSchemeClaim
+{
+    /// <summary>Register this app as the handler, whoever has the scheme.</summary>
+    Take,
+
+    /// <summary>Register this app only when the scheme is unset or already ours.</summary>
+    IfUnclaimed,
+}
+
+/// <summary>
+/// What a call to <see cref="IOSInterop.RegisterUriSchemeHandler"/> found and did.
+/// </summary>
+/// <param name="Registered">False only for <see cref="UriSchemeClaim.IfUnclaimed"/> when <paramref name="OtherHandler"/> holds the scheme.</param>
+/// <param name="OtherHandler">The desktop file that held the default before the call, null when it was unset or ours.</param>
+public readonly record struct UriSchemeRegistration(bool Registered, string? OtherHandler);
 
 /// <summary>
 /// Represents a file system mount.

@@ -194,7 +194,7 @@ public class HeadlessHostProfileTests
         var services = Describe(Mode("as-main"));
 
         services.Should().NotContain(d => d.ServiceType == typeof(CliServer) || d.ImplementationType == typeof(CliServer));
-        services.Should().NotContain(d => d.ImplementationType != null && d.ImplementationType.Name == "HandlerRegistration");
+        services.Should().NotContain(d => d.ImplementationType == typeof(ProtocolRegistration));
         services.Should().NotContain(d => d.ServiceType == typeof(IAdvancedInstallerHandler));
 
         using var host = BuildHost(Mode("as-main"));
@@ -256,7 +256,7 @@ public class HeadlessHostProfileTests
         var services = Describe(Mode("as-main-ui"));
 
         services.Should().Contain(d => d.ImplementationType == typeof(CliServer));
-        services.Should().Contain(d => d.ImplementationType != null && d.ImplementationType.Name == "HandlerRegistration");
+        services.Should().Contain(d => d.ImplementationType == typeof(ProtocolRegistration));
     }
 
     [Theory]

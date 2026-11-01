@@ -3,6 +3,8 @@ using SilverModManager.Abstractions.Library;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.EventBus;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
+using R3;
 using SilverModManager.Sdk.Thunderstore;
 
 namespace SilverModManager.CLI.Types.IpcHandlers;
@@ -19,6 +21,13 @@ public class Ror2mmIpcProtocolHandler(
 {
     /// <inheritdoc/>
     public string Protocol => Ror2mmUrl.Scheme;
+
+    /// <inheritdoc/>
+    public bool IsRegistrationWanted(ISettingsManager settings) => settings.Get<Ror2mmHandlerSettings>().RegisterAsDefaultHandler;
+
+    /// <inheritdoc/>
+    public Observable<Unit> RegistrationTurnedOn(ISettingsManager settings)
+        => settings.GetChanges<Ror2mmHandlerSettings>().Where(static changed => changed.RegisterAsDefaultHandler).Select(static _ => Unit.Default);
 
     /// <inheritdoc/>
     public async Task Handle(string url, CancellationToken token)

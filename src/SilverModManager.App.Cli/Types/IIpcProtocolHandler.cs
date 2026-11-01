@@ -1,3 +1,6 @@
+using R3;
+using SilverModManager.Sdk.Settings;
+
 namespace SilverModManager.CLI.Types;
 
 /// <summary>
@@ -16,4 +19,14 @@ public interface IIpcProtocolHandler
     /// <param name="url">The URL.</param>
     /// <param name="token">Allows to cancel the operation.</param>
     public Task Handle(string url, CancellationToken token);
+
+    /// <summary>
+    /// Whether the user asked this app to own the scheme. Each handler reads its own settings record.
+    /// </summary>
+    public bool IsRegistrationWanted(ISettingsManager settings);
+
+    /// <summary>
+    /// Emits each time the user turns the handler's setting on.
+    /// </summary>
+    public Observable<Unit> RegistrationTurnedOn(ISettingsManager settings);
 }

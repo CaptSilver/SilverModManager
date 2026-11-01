@@ -17,14 +17,16 @@ internal partial class LinuxInterop
     // Set by AppImage managers (appimaged, AppImageLauncher, Gear Lever) to say they already made the menu entry.
     private const string DesktopIntegrationVariable = "DESKTOPINTEGRATION";
 
-    public ValueTask RegisterUriSchemeHandler(string scheme, bool setAsDefaultHandler, CancellationToken cancellationToken)
+    // Telling another app's default handler from ours needs an xdg-settings lookup this method does not do yet, so
+    // every claim registers like Take and OtherHandler stays null.
+    public ValueTask<UriSchemeRegistration> RegisterUriSchemeHandler(string scheme, UriSchemeClaim claim, bool setAsDefaultHandler, CancellationToken cancellationToken)
     {
         var desktopIntegration = Environment.GetEnvironmentVariable(DesktopIntegrationVariable, EnvironmentVariableTarget.Process);
         GetRunningExecutablePath(out var runningExecutable);
         return RegisterUriSchemeHandler(scheme, setAsDefaultHandler, ApplicationConstants.InstallationMethod, desktopIntegration, runningExecutable, cancellationToken);
     }
 
-    internal async ValueTask RegisterUriSchemeHandler(
+    internal async ValueTask<UriSchemeRegistration> RegisterUriSchemeHandler(
         string scheme,
         bool setAsDefaultHandler,
         InstallationMethod installationMethod,
@@ -65,7 +67,7 @@ internal partial class LinuxInterop
             catch (Exception e)
             {
                 _logger.LogError(e, "Exception while creating desktop file, the handler for `{Scheme}` might not work", scheme);
-                return;
+                return new UriSchemeRegistration(true, null);
             }
 
             try
@@ -75,7 +77,7 @@ internal partial class LinuxInterop
             catch (Exception e)
             {
                 _logger.LogError(e, "Exception while updating MIME cache database, see process logs for more details");
-                return;
+                return new UriSchemeRegistration(true, null);
             }
         }
 
@@ -90,6 +92,8 @@ internal partial class LinuxInterop
                 _logger.LogError(e, "Exception while setting the default handler for `{Scheme}`, see the process logs for more details", scheme);
             }
         }
+
+        return new UriSchemeRegistration(true, null);
     }
 
     private async ValueTask<string?> FindLauncherEntry(AbsolutePath applicationsDirectory, string appImagePath, string scheme, CancellationToken cancellationToken)

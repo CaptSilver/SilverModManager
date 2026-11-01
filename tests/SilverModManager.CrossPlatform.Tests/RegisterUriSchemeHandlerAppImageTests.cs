@@ -68,7 +68,7 @@ public class RegisterUriSchemeHandlerAppImageTests : IDisposable
             """);
     }
 
-    private ValueTask Register(string? desktopIntegration, InstallationMethod method = InstallationMethod.AppImage)
+    private ValueTask<UriSchemeRegistration> Register(string? desktopIntegration, InstallationMethod method = InstallationMethod.AppImage)
         => _interop.RegisterUriSchemeHandler("nxm", setAsDefaultHandler: true, method, desktopIntegration, _appImage, CancellationToken.None);
 
     [Fact]

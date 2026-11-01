@@ -54,6 +54,6 @@ public partial class UpdaterDesignView : UserControl
         public void OpenFileInDirectory(AbsolutePath filePath) => throw new NotSupportedException(DesignTimeOnly);
         public ValueTask<FileSystemMount[]> GetFileSystemMounts(CancellationToken cancellationToken = default) => throw new NotSupportedException(DesignTimeOnly);
         public ValueTask<FileSystemMount?> GetFileSystemMount(AbsolutePath path, CancellationToken cancellationToken = default) => throw new NotSupportedException(DesignTimeOnly);
-        public ValueTask RegisterUriSchemeHandler(string scheme, bool setAsDefaultHandler = true, CancellationToken cancellationToken = default) => throw new NotSupportedException(DesignTimeOnly);
+        public ValueTask<UriSchemeRegistration> RegisterUriSchemeHandler(string scheme, UriSchemeClaim claim = UriSchemeClaim.Take, bool setAsDefaultHandler = true, CancellationToken cancellationToken = default) => throw new NotSupportedException(DesignTimeOnly);
     }
 }
