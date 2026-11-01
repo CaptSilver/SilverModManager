@@ -11,6 +11,7 @@ using SilverModManager.Networking.NexusWebApi.Migration;
 using SilverModManager.Networking.NexusWebApi.UpdateFilters;
 using SilverModManager.Networking.NexusWebApi.V1Interop;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Sdk.Settings;
 
@@ -75,6 +76,7 @@ public static class Services
             return new LocalMappingCache(logger, gameIdToDomain ?? FrozenDictionary<NexusModsGameId, GameDomain>.Empty, gameDomainToId ?? FrozenDictionary<GameDomain, NexusModsGameId>.Empty, fallbackCache);
         });
 
+        collection.TryAddEnumerable(ServiceDescriptor.Singleton<IDestinationInference, NexusDomainInference>());
         collection
             .AddNexusModsLibraryModels()
             .AddSingleton<IGraphQlClient, GraphQlClient>()

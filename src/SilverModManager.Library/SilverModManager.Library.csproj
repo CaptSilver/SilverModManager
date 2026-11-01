@@ -5,6 +5,7 @@
         <ProjectReference Include="..\SilverModManager.Abstractions.Library\SilverModManager.Abstractions.Library.csproj" />
         <ProjectReference Include="..\SilverModManager.Abstractions.Loadouts.Synchronizers\SilverModManager.Abstractions.Loadouts.Synchronizers.csproj" />
         <ProjectReference Include="..\SilverModManager.Abstractions.NexusWebApi\SilverModManager.Abstractions.NexusWebApi.csproj" />
+        <ProjectReference Include="..\SilverModManager.DataModel.SchemaVersions\SilverModManager.DataModel.SchemaVersions.csproj" />
         <ProjectReference Include="..\SilverModManager.Games.AdvancedInstaller\SilverModManager.Games.AdvancedInstaller.csproj" />
         <ProjectReference Include="..\SilverModManager.Networking.GitHub\SilverModManager.Networking.GitHub.csproj" />
         <ProjectReference Include="..\SilverModManager.Networking.HttpDownloader\SilverModManager.Networking.HttpDownloader.csproj" />
