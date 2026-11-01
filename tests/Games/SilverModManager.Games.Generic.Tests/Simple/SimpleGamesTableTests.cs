@@ -65,6 +65,35 @@ public class SimpleGamesTableTests(IServiceProvider serviceProvider, IFileSystem
         }
     }
 
+    // What the Steam launch entry for Linux names, from the app info of each Steam app. Every game here has a Linux
+    // build on Steam; the ones left out have no Linux launch entry, or keep their mods outside the game folder.
+    public static readonly (string GameId, string Executable)[] NativeExecutables =
+    [
+        ("Simple.DarkestDungeon", "_linux/darkest.bin.x86_64"),
+        ("Simple.KerbalSpaceProgram", "KSP.x86_64"),
+        ("Simple.Starbound", "linux/run-client.sh"),
+        ("Simple.TeamFortress2", "tf.sh"),
+        ("Simple.X4Foundations", "testandlaunch"),
+    ];
+
+    [Fact]
+    public void NativeLinuxExecutables_AreExactlyTheOnesSteamNamesForLinux()
+    {
+        Rows.Where(row => row.NativeLinuxExecutable is not null)
+            .Select(row => (row.GameId.ToString(), row.NativeLinuxExecutable!.Value.ToString()))
+            .Should().BeEquivalentTo(NativeExecutables.Select(native => (native.GameId, native.Executable)));
+    }
+
+    [Fact]
+    public void ARootOutsideTheGameFolder_HasNoNativeExecutable()
+    {
+        // A native build keeps its Documents and AppData data in the user's Linux folders, not the Windows paths a
+        // row names, so the mod folder would be wrong for it.
+        Rows.Where(row => row.ModRoot.Root != ModLocationRoot.GameFolder)
+            .Where(row => row.NativeLinuxExecutable is not null)
+            .Select(row => row.GameId.ToString()).Should().BeEmpty();
+    }
+
     [Fact]
     public void ARootOutsideTheGameFolder_NamesItsLocationForThePlayer()
     {

@@ -11,7 +11,9 @@ namespace SilverModManager.Games.Generic.Simple;
 /// from the Mod Organizer 2 basic_games plugins (and Fluorine Manager's, which adds some) and the Vortex game
 /// extensions (each row says which); each row installs the way its plugin or extension does; Nexus ids come
 /// from the Nexus games list, https://data.nexusmods.com/file/nexus-data/games.json, by the domain or name the plugin or
-/// extension names. Epic ids are left out, and so are native Linux builds, until each is checked.
+/// extension names. Epic ids are left out. A native Linux executable is the one Steam's launch entry for Linux names
+/// (read from each app's Steam app info), set only for a game that has one and whose mod folder is the same in a native
+/// install.
 /// </summary>
 public static class GameFolderSimpleGames
 {
@@ -89,6 +91,7 @@ public static class GameFolderSimpleGames
         NexusModsGameId = NexusModsGameId.From(804),
         Stores = new StoreIdentifiers(GameId.From("Simple.DarkestDungeon")) { SteamAppIds = [262060], GOGProductIds = [1450711444] },
         Executable = "_windows/win64/Darkest.exe",
+        NativeLinuxExecutable = (RelativePath)"_linux/darkest.bin.x86_64",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, RelativePath.Empty),
         Install = FolderNamed(DarkestDungeonFolders),
     };
@@ -185,6 +188,7 @@ public static class GameFolderSimpleGames
         NexusModsGameId = NexusModsGameId.From(2659),
         Stores = new StoreIdentifiers(GameId.From("Simple.X4Foundations")) { SteamAppIds = [392160] },
         Executable = "x4.exe",
+        NativeLinuxExecutable = (RelativePath)"testandlaunch",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, "extensions"),
         Install = AsIs,
     };
@@ -197,6 +201,7 @@ public static class GameFolderSimpleGames
         NexusModsGameId = NexusModsGameId.From(272),
         Stores = new StoreIdentifiers(GameId.From("Simple.KerbalSpaceProgram")) { SteamAppIds = [220200, 283740, 982970] },
         Executable = "KSP_x64.exe",
+        NativeLinuxExecutable = (RelativePath)"KSP.x86_64",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, "GameData"),
         Install = AsIs,
     };
@@ -471,6 +476,7 @@ public static class GameFolderSimpleGames
         NexusModsGameId = NexusModsGameId.From(322),
         Stores = new StoreIdentifiers(GameId.From("Simple.TeamFortress2")) { SteamAppIds = [440] },
         Executable = "tf_win64.exe",
+        NativeLinuxExecutable = (RelativePath)"tf.sh",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, "tf/custom"),
         Install = FolderOfFirstFile(".vpk"),
     };
@@ -483,6 +489,7 @@ public static class GameFolderSimpleGames
         NexusModsGameId = NexusModsGameId.From(242),
         Stores = new StoreIdentifiers(GameId.From("Simple.Starbound")) { SteamAppIds = [211820] },
         Executable = "win64/starbound.exe",
+        NativeLinuxExecutable = (RelativePath)"linux/run-client.sh",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, "mods"),
         Install = AsIs,
     };
