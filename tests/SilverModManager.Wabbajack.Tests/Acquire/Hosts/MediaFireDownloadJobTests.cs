@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -84,6 +85,33 @@ public class MediaFireDownloadJobTests(IServiceProvider provider, TemporaryFileM
         var act = async () => await Begin(JobFor(host, destination));
 
         (await act.Should().ThrowAsync<Exception>()).Which.Message.Should().Contain("removed").And.Contain("MediaFire");
+    }
+
+    [Fact]
+    public async Task ADeletedFilesErrorPageAnsweredWith404IsReportedAsRemoved()
+    {
+        // The shape of https://www.mediafire.com/error.php?errno=320, which a deleted file's address redirects to.
+        const string errorPage = "<body class=\"errorPage errorFileMissing\"><main><div id=\"ErrorMessageOuterDiv\" class=\"errorPageWrap\">"
+                                 + "<h2 class=\"error_msg_title notranslate\">Invalid or Deleted File.</h2>"
+                                 + "<h2 class=\"errorFileMissing-title\">Something appears to be missing&hellip;</h2></div></main></body>";
+        var host = new FakeHost((_, _) => FakeHost.Html(errorPage, HttpStatusCode.NotFound));
+        await using var destination = Files.CreateFile();
+
+        var act = async () => await Begin(JobFor(host, destination));
+
+        var thrown = (await act.Should().ThrowAsync<Exception>()).Which;
+        thrown.Message.Should().Contain("removed").And.Contain("MediaFire").And.NotContain("404");
+    }
+
+    [Fact]
+    public async Task AnErrorStatusWithAnUnrelatedPageStillAsksForTheBrowser()
+    {
+        var host = new FakeHost((_, _) => FakeHost.Html("<html><body>maintenance</body></html>", HttpStatusCode.ServiceUnavailable));
+        await using var destination = Files.CreateFile();
+
+        var act = async () => await Begin(JobFor(host, destination));
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Message.Should().Contain("503").And.Contain("browser");
     }
 
     [Fact]

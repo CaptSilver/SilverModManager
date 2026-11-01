@@ -33,6 +33,9 @@ public sealed record MediaFireDownloadJob : HostedDownloadJob, IJobDefinitionWit
     protected override async Task Fetch(HostTransfer transfer, CancellationToken token)
     {
         using var page = await transfer.Send(HostLinks.Get(Url), token);
+        // A deleted file's error page comes with a 404, so its text has to be read before the status is refused.
+        if (!page.IsSuccessStatusCode && HostTransfer.IsWebPage(page) && IsRemoved(await transfer.ReadText(page, token)))
+            throw Removed();
         transfer.EnsureSuccess(page);
         // An address that already points at the file needs no button.
         if (!HostTransfer.IsWebPage(page))
@@ -70,8 +73,13 @@ public sealed record MediaFireDownloadJob : HostedDownloadJob, IJobDefinitionWit
         return Convert.TryFromBase64String(text, buffer, out var written) ? Encoding.UTF8.GetString(buffer, 0, written) : null;
     }
 
+    private static bool IsRemoved(string html)
+        => html.Contains("Invalid or Deleted File", StringComparison.OrdinalIgnoreCase) || html.Contains("has been removed", StringComparison.OrdinalIgnoreCase);
+
+    private static HostRefusedException Removed() => new("MediaFire says this file was removed; there is nothing to download");
+
     private static HostRefusedException Explain(string html)
-        => html.Contains("Invalid or Deleted File", StringComparison.OrdinalIgnoreCase) || html.Contains("has been removed", StringComparison.OrdinalIgnoreCase)
-            ? new HostRefusedException("MediaFire says this file was removed; there is nothing to download")
+        => IsRemoved(html)
+            ? Removed()
             : new HostRefusedException("Could not find MediaFire's download link on the page; download it in your browser");
 }
