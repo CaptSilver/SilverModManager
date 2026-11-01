@@ -5,6 +5,7 @@ using NSubstitute;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Bethesda.LoadOrder;
 using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.DataModel;
 using SilverModManager.Games.CreationEngine.PluginLists;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -158,6 +159,30 @@ public class PluginSortOrderVarietyTests(ITestOutputHelper helper)
 
         Names(variety.GetSortOrderItems(id, Db)).Should().Equal([.. VanillaMasters, "Alpha.esp", "Beta.esp"]);
         StoredRows(id).Select(r => r.SortIndex).Should().Equal(Enumerable.Range(0, VanillaMasters.Length + 2));
+    }
+
+    [Fact]
+    public async Task APluginCapturedFromAToolRun_LandsLastInTheOrderAfterTheSync()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        var capture = ServiceProvider.GetRequiredService<ToolOutputCapture>();
+        var data = new GamePath(LocationId.Game, DataFolder);
+
+        // Both plugins have readable headers, which the sync needs to write the plugin list. The earlier one
+        // stands for a mod installed before the tool ran.
+        var earlier = TemporaryFileManager.CreateFolder().Path;
+        await (earlier / "Zeta.esp").WriteAllBytesAsync(SkyrimPluginFile.Bytes("Zeta.esp", "Skyrim.esm"));
+        await capture.CaptureFolder(loadout, earlier, data, "Earlier mod", []);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        await variety.ReconcileSortOrder(id);
+
+        var output = TemporaryFileManager.CreateFolder().Path;
+        await (output / "DynDOLOD.esp").WriteAllBytesAsync(SkyrimPluginFile.Bytes("DynDOLOD.esp", "Skyrim.esm"));
+        await capture.CaptureFolder(Refresh(loadout), output, data, "DynDOLOD Output", []);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        await variety.ReconcileSortOrder(id);
+
+        Names(variety.GetSortOrderItems(id, Db)).Should().Equal([.. VanillaMasters, "Zeta.esp", "DynDOLOD.esp"]);
     }
 
     [Fact]
