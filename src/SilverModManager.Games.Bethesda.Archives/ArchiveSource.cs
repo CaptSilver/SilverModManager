@@ -38,9 +38,34 @@ internal sealed class ArchiveSource : IAsyncDisposable
             throw BethesdaArchiveException.Truncated(Kind, offset, checked((long)Math.Min(count, long.MaxValue)));
     }
 
+    private byte[]? _window;
+    private long _windowStart;
+
+    /// <summary>
+    /// Reads a stretch of the stream once, so the many small reads a header and index parse makes are served from memory.
+    /// A stream over a compressed store pays for every read; the estimate only has to be near, since a read outside the
+    /// window goes to the stream as before. Reads what is there when the stream is shorter than asked.
+    /// </summary>
+    public void Prefetch(long offset, long count)
+    {
+        const long MaxWindow = 256L * 1024 * 1024;
+        var available = Math.Max(0, Length - offset);
+        var size = (int)Math.Min(Math.Min(count, available), MaxWindow);
+        if (size <= 0) return;
+
+        Stream.Position = offset;
+        var buffer = new byte[size];
+        Stream.ReadExactly(buffer);
+        _window = buffer;
+        _windowStart = offset;
+    }
+
     public byte[] ReadBytes(long offset, int count)
     {
         RequireAvailable(offset, (ulong)count);
+        if (_window is { } window && offset >= _windowStart && offset - _windowStart + count <= window.Length)
+            return window.AsSpan((int)(offset - _windowStart), count).ToArray();
+
         Stream.Position = offset;
         var buffer = new byte[count];
         Stream.ReadExactly(buffer);

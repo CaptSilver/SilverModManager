@@ -38,12 +38,12 @@ internal sealed class Tes5ArchiveReader : IBethesdaArchiveReader
     public static Tes5ArchiveReader Load(ArchiveSource source)
     {
         // Field by field, so a short stream reports the offset of the field it lacks.
+        source.Prefetch(0, HeaderLength);
         var version = source.ReadUInt32(4);
         var folderRecordOffset = source.ReadUInt32(8);
         var archiveFlags = source.ReadUInt32(12);
         var folderCount = source.ReadUInt32(16);
         var fileCount = source.ReadUInt32(20);
-        source.ReadUInt32(24); // total folder name length: the names carry their own lengths
         var totalFileNameLength = source.ReadUInt32(28);
         var fileFlags = source.ReadUInt32(32);
 
@@ -59,6 +59,12 @@ internal sealed class Tes5ArchiveReader : IBethesdaArchiveReader
             throw BethesdaArchiveException.Invalid(ArchiveKind.Tes5, 12, "archive has no file names");
 
         source.RequireAvailable(folderRecordOffset, (ulong)folderCount * (ulong)folderRecordLength);
+
+        // Folder records, then per folder its name and file records, then the file names: one stretch. The header's
+        // folder name total leaves out the length byte each name carries, and a wrong total only costs extra reads.
+        var folderNameTotal = source.ReadUInt32(24);
+        source.Prefetch(0, folderRecordOffset + (long)folderCount * folderRecordLength
+                           + folderNameTotal + folderCount + (long)fileCount * FileRecordLength + totalFileNameLength);
         var folderRecords = source.ReadBytes(folderRecordOffset, checked((int)folderCount * folderRecordLength));
 
         // The file record blocks follow the folder records back to back, whatever the folder offsets say.
