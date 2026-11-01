@@ -30,6 +30,18 @@ public sealed record SimpleInstallRules
     public IReadOnlyList<SimpleInstallTarget> Targets { get; init; } = [];
 
     /// <summary>
+    /// Files sent to a folder by their extension, tried after the folder targets: for games whose mods are loose files
+    /// of several kinds that each belong somewhere else, whatever folder the archive keeps them in.
+    /// </summary>
+    public IReadOnlyList<SimpleExtensionRoute> ExtensionRoutes { get; init; } = [];
+
+    /// <summary>
+    /// With <see cref="ExtensionRoutes"/>: files whose extension no route names are dropped instead of making the
+    /// archive unsupported. For games whose plugin installs only the kinds it knows and ignores the rest.
+    /// </summary>
+    public bool LeaveOutUnroutedFiles { get; init; }
+
+    /// <summary>
     /// The archive is laid out like the mod folder and goes in unchanged, whatever it holds. For games that take any
     /// file in their folder and publish no layout to match against. Tried last, because it accepts every archive.
     /// </summary>
@@ -114,4 +126,18 @@ public sealed record SimpleDescriptorRule
 
     /// <summary>Extensions that are neither installed nor a reason to decline, so a readme outside the mod's folder does not make the archive look like a different layout.</summary>
     public IReadOnlyList<Extension> IgnoredExtensions { get; init; } = [];
+}
+
+/// <summary>
+/// Files with one of <see cref="Extensions"/> go to <see cref="Destination"/>, below the definition's mod root. They keep
+/// at most the last <see cref="KeepFolders"/> folders of their path in the archive, so a game that only reads a few
+/// levels deep gets files it can find, and a game that wants them flat gets that with zero.
+/// </summary>
+public sealed record SimpleExtensionRoute
+{
+    public required IReadOnlyList<Extension> Extensions { get; init; }
+
+    public required RelativePath Destination { get; init; }
+
+    public int KeepFolders { get; init; }
 }

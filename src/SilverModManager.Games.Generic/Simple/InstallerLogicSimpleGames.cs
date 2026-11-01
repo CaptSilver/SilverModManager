@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
 using SilverModManager.Sdk.Games;
@@ -22,6 +23,40 @@ public static class InstallerLogicSimpleGames
     ];
 
     // Vortex installs only what lies at or below one of those folders, so a readme beside them stays out.
+    // Folders a Neverwinter Nights archive may already be laid out in, from Vortex's list of moddable directories.
+    private static readonly string[] NeverwinterFolders =
+    [
+        "ambient", "database", "development", "dmvault", "hak", "localvault", "logs", "modules", "movies", "music", "nwsync", "override", "portraits",
+        "servervault", "tempclient", "tlk",
+    ];
+
+    private static SimpleExtensionRoute Flat(string folder, params string[] extensions) =>
+        new() { Destination = folder, Extensions = extensions.Select(extension => new Extension(extension)).ToArray() };
+
+    // Vortex's extension table: loose files go to the folder of their kind.
+    private static readonly SimpleExtensionRoute[] NeverwinterRoutes =
+    [
+        Flat("modules", ".mod"),
+        Flat("portraits", ".tga"),
+        Flat("erf", ".erf"),
+        Flat("hak", ".hak", ".exe", ".hif"),
+        Flat("tlk", ".tlk"),
+        Flat("music", ".bmu"),
+        Flat("ambient", ".wav"),
+        Flat("database", ".cdx", ".dbf", ".fpt"),
+        Flat("movies", ".nbm", ".bik"),
+        Flat("override", ".2da", ".uti", ".txi", ".mdl", ".ncs", ".dlg", ".utp"),
+    ];
+
+    // Mod Organizer 2 allows a package five folders deep and a script one, and moves deeper ones up. Vortex sends the
+    // files of a lot, household or room to Tray; the table of those kinds is its.
+    private static readonly SimpleExtensionRoute[] Sims4Routes =
+    [
+        new() { Destination = "Mods", Extensions = [new Extension(".package")], KeepFolders = 5 },
+        new() { Destination = "Mods", Extensions = [new Extension(".ts4script")], KeepFolders = 1 },
+        Flat("Tray", ".bpi", ".blueprint", ".trayitem", ".sfx", ".ion", ".householdbinary", ".sgi", ".hhi", ".room", ".midi", ".rmi"),
+    ];
+
     private static SimpleInstallRules Kotor => new()
     {
         Targets =
@@ -74,5 +109,47 @@ public static class InstallerLogicSimpleGames
         Install = Kotor,
     };
 
-    public static readonly IReadOnlyList<SimpleGameDefinition> All = [KnightsOfTheOldRepublic, KnightsOfTheOldRepublic2];
+    /// <remarks>
+    /// From Vortex's game-neverwinter-nights. Steam launch entry 0 of app 704450 is bin/win32/nwmain.exe. Nexus lists
+    /// two games under the domain "neverwinter": id 180 is Neverwinter Nights, 8703 is the online game.
+    /// </remarks>
+    public static readonly SimpleGameDefinition NeverwinterNightsEnhancedEdition = new()
+    {
+        GameId = GameId.From("Simple.NeverwinterNightsEnhancedEdition"),
+        DisplayName = "Neverwinter Nights: Enhanced Edition",
+        NexusModsGameId = NexusModsGameId.From(180),
+        Stores = new StoreIdentifiers(GameId.From("Simple.NeverwinterNightsEnhancedEdition")) { SteamAppIds = [704450] },
+        Executable = "bin/win32/nwmain.exe",
+        ModRoot = new ModLocation(ModLocationRoot.Documents, "Neverwinter Nights"),
+        LocationNames = Named(ModLocationRoot.Documents, "Neverwinter Nights folder"),
+        LocationSentenceNames = Named(ModLocationRoot.Documents, "the Neverwinter Nights folder in Documents"),
+        Install = FolderNamed(NeverwinterFolders) with
+        {
+            ExtensionRoutes = NeverwinterRoutes,
+            LeaveOutUnroutedFiles = true,
+        },
+    };
+
+    /// <remarks>
+    /// From Mod Organizer 2's thesims4 plugin (executable, Steam id, Mods folder, the depth limits) and Vortex's game-sims4
+    /// (the Tray file kinds). The folder is the English one; Vortex also knows the German, Spanish, French and Dutch names.
+    /// </remarks>
+    public static readonly SimpleGameDefinition TheSims4 = new()
+    {
+        GameId = GameId.From("Simple.TheSims4"),
+        DisplayName = "The Sims 4",
+        NexusModsGameId = NexusModsGameId.From(641),
+        Stores = new StoreIdentifiers(GameId.From("Simple.TheSims4")) { SteamAppIds = [1222670] },
+        Executable = "Game/Bin/TS4_x64.exe",
+        ModRoot = new ModLocation(ModLocationRoot.Documents, "Electronic Arts/The Sims 4"),
+        LocationNames = Named(ModLocationRoot.Documents, "The Sims 4 folder"),
+        LocationSentenceNames = Named(ModLocationRoot.Documents, "the Sims 4 folder in Documents"),
+        Install = new SimpleInstallRules { ExtensionRoutes = Sims4Routes },
+    };
+
+    // The location ends at the folder the row names, so the player's name for it is the folder's own.
+    private static IReadOnlyDictionary<string, string> Named(ModLocationRoot root, string name) =>
+        ImmutableDictionary.CreateRange([KeyValuePair.Create(SimpleLocations.For(root).ToString(), name)]);
+
+    public static readonly IReadOnlyList<SimpleGameDefinition> All = [KnightsOfTheOldRepublic, KnightsOfTheOldRepublic2, NeverwinterNightsEnhancedEdition, TheSims4];
 }

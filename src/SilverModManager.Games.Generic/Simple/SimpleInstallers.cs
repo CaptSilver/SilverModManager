@@ -62,6 +62,9 @@ public static class SimpleInstallers
             });
         }
 
+        if (rules.ExtensionRoutes.Count > 0)
+            installers.Add(new ExtensionRoutedInstaller(provider, modRoot, rules.ExtensionRoutes, rules.LeaveOutUnroutedFiles));
+
         if (rules.InstallAsIs)
         {
             installers.Add(new PredicateBasedInstaller(provider)

@@ -100,6 +100,25 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
         ("Simple.KnightsOfTheOldRepublic2", ["Wrap/StreamMusic/x.wav", "Wrap/modules/m.rim"], ["{Game}/StreamMusic/x.wav", "{Game}/modules/m.rim"]),
         ("Simple.KnightsOfTheOldRepublic2", ["a.tga", "b.2da"], ["{Game}/override/a.tga", "{Game}/override/b.2da"]),
         ("Simple.KnightsOfTheOldRepublic2", ["Mod/a.tga"], ["{Game}/override/Mod/a.tga"]),
+        // A layout with the game's own folders goes in as it is; loose files go to the folder their kind belongs in, whatever
+        // folder the archive keeps them in, and files of no known kind are left out.
+        ("Simple.NeverwinterNightsEnhancedEdition", ["Mod/hak/a.hak", "Mod/modules/m.mod"], ["{Simple.Documents}/hak/a.hak", "{Simple.Documents}/modules/m.mod"]),
+        ("Simple.NeverwinterNightsEnhancedEdition", ["portraits/p.tga", "readme.txt"], ["{Simple.Documents}/portraits/p.tga", "{Simple.Documents}/readme.txt"]),
+        ("Simple.NeverwinterNightsEnhancedEdition", ["Wrap/x.mod"], ["{Simple.Documents}/modules/x.mod"]),
+        ("Simple.NeverwinterNightsEnhancedEdition", ["a.hak", "b.tlk", "c.2da", "d.tga"],
+            ["{Simple.Documents}/hak/a.hak", "{Simple.Documents}/override/c.2da", "{Simple.Documents}/portraits/d.tga", "{Simple.Documents}/tlk/b.tlk"]),
+        ("Simple.NeverwinterNightsEnhancedEdition", ["x.mod", "readme.txt", "scripts/s.nss"], ["{Simple.Documents}/modules/x.mod"]),
+        ("Simple.NeverwinterNightsEnhancedEdition", ["Pack/cut.bik", "Pack/loop.WAV"], ["{Simple.Documents}/ambient/loop.WAV", "{Simple.Documents}/movies/cut.bik"]),
+        // Packages keep up to five folders and scripts one; deeper folders lose the outer ones. Tray files go to Tray, flat.
+        ("Simple.TheSims4", ["a.package"], ["{Simple.Documents}/Mods/a.package"]),
+        ("Simple.TheSims4", ["Mod/a.package", "Mod/b.ts4script", "readme.txt"], ["{Simple.Documents}/Mods/Mod/a.package", "{Simple.Documents}/Mods/Mod/b.ts4script"]),
+        ("Simple.TheSims4", ["A/B/C/D/E/F/G/a.package"], ["{Simple.Documents}/Mods/C/D/E/F/G/a.package"]),
+        ("Simple.TheSims4", ["A/B/C/D/E/a.package"], ["{Simple.Documents}/Mods/A/B/C/D/E/a.package"]),
+        ("Simple.TheSims4", ["A/B/c.ts4script"], ["{Simple.Documents}/Mods/B/c.ts4script"]),
+        ("Simple.TheSims4", ["Lot.trayitem", "Lot.blueprint", "a.package"],
+            ["{Simple.Documents}/Mods/a.package", "{Simple.Documents}/Tray/Lot.blueprint", "{Simple.Documents}/Tray/Lot.trayitem"]),
+        ("Simple.TheSims4", ["Saves/Family.householdbinary", "Saves/Family.hhi", "Saves/Family.sgi"],
+            ["{Simple.Documents}/Tray/Family.hhi", "{Simple.Documents}/Tray/Family.householdbinary", "{Simple.Documents}/Tray/Family.sgi"]),
     ];
 
     /// <summary>
@@ -136,6 +155,12 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
         ("Simple.TeamFortress2", ["Mod/data.bin", "readme.txt"]),
         // Surviving Mars loads a folder holding a modcontent.hpk.
         ("Simple.SurvivingMars", ["Mod/data.bin", "readme.txt"]),
+        // Only the kinds of file the game has a place for are taken; a mod with nothing routable is not for this game.
+        ("Simple.NeverwinterNightsEnhancedEdition", ["readme.txt"]),
+        ("Simple.NeverwinterNightsEnhancedEdition", ["scripts/s.nss"]),
+        ("Simple.TheSims4", ["readme.txt"]),
+        ("Simple.TheSims4", ["Mod/data.bin", "a.package"]),
+        ("Simple.TheSims4", ["Mod/a.py"]),
     ];
 
     /// <summary>Archives whose mod goes in a folder named after the folder holding the marker file, or after the archive.</summary>

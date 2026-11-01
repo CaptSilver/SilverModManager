@@ -27,6 +27,12 @@ public abstract class ARoutedArchiveInstaller(IServiceProvider serviceProvider, 
     /// <summary>What the game's mods are made of, for the refusal text: "paks, LogicMods or UE4SS mods".</summary>
     protected abstract string ExpectedFiles { get; }
 
+    /// <summary>
+    /// A file the game has no rule for that does not make the archive unsupported. Readmes and pictures by default; a
+    /// game that takes only the kinds it knows and ignores the rest widens this.
+    /// </summary>
+    protected virtual bool IsLeftOut(RelativePath path) => DocumentExtensions.Contains(path.Extension);
+
     /// <summary>Where <paramref name="path"/>, as laid out in the archive, belongs; false when the game has no rule for it.</summary>
     protected abstract bool TryRoute(IReadOnlyList<RelativePath> archive, RelativePath path, out GamePath target);
 
@@ -46,7 +52,7 @@ public abstract class ARoutedArchiveInstaller(IServiceProvider serviceProvider, 
             var path = file.Item.Path;
             if (TryRoute(archive, path, out var target))
                 routed.Add((file, target));
-            else if (DocumentExtensions.Contains(path.Extension) is false)
+            else if (IsLeftOut(path) is false)
                 return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: $"{path} has no place in this game: expected {ExpectedFiles}."));
         }
 
