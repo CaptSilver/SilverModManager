@@ -27,6 +27,7 @@ public interface IToolRunner
     /// Runs the plan from <see cref="Plan"/> and waits for the program to exit.
     /// </summary>
     /// <exception cref="InvalidOperationException">No strategy can run the program; the message is the plan's diagnostic.</exception>
+    /// <exception cref="OperationCanceledException">The token was cancelled; the process is interrupted, then killed.</exception>
     Task<ToolRunResult> RunWindowsTool(
         GameInstallation installation,
         AbsolutePath exe,
