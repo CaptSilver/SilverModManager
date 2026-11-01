@@ -269,6 +269,7 @@ public static class Services
         Games.CreationEngine.Services.AddCreationEngine(services);
         Games.MountAndBlade2Bannerlord.Services.AddMountAndBlade2Bannerlord(services);
         Games.FromSoft.Services.AddFromSoftGames(services);
+        Games.REEngine.Services.AddReEngineGames(services);
         Games.Unity.Services.AddUnityGames(services);
         Games.Unreal.Services.AddUnrealGames(services);
         Games.Witcher.Services.AddWitcherGames(services);

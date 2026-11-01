@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <XunitStartupAssembly>SilverModManager.Games.REEngine.Tests</XunitStartupAssembly>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\SilverModManager.Games.REEngine\SilverModManager.Games.REEngine.csproj" />
+        <ProjectReference Include="..\..\SilverModManager.StandardGameLocators.TestHelpers\SilverModManager.StandardGameLocators.TestHelpers.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />
+    </ItemGroup>
+</Project>
