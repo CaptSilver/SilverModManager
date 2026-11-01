@@ -26,6 +26,7 @@ using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Collections;
+using SilverModManager.App.UI.Pages.Collections;
 using SilverModManager.UI.Sdk.Icons;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
@@ -539,7 +540,8 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
                             {
                                 HandleOpenItemCollectionPage(openCollectionMessage.Ids, 
                                     openCollectionMessage.NavigationInformation, 
-                                    loadoutId, GetWorkspaceController(), _connection);
+                                    loadoutId, GetWorkspaceController(), _connection,
+                                    _serviceProvider.GetRequiredService<CollectionProviders>());
                                 return Task.CompletedTask;
                             },
                             viewModPageMessage =>
@@ -741,7 +743,8 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         NavigationInformation navInfo,
         LoadoutId loadoutId,
         IWorkspaceController workspaceController,
-        IConnection connection)
+        IConnection connection,
+        CollectionProviders providers)
     {
         if (ids.Length == 0) return;
 
@@ -751,33 +754,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         var parentGroup = LoadoutItem.Load(connection.Db, firstItemId).Parent;
         if (!parentGroup.TryGetAsCollectionGroup(out var collectionGroup)) return;
 
-        if (collectionGroup.TryGetAsNexusCollectionLoadoutGroup(out var nexusCollectionGroup))
-        {
-            var nexusCollPageData = new PageData
-            {
-                FactoryId = CollectionLoadoutPageFactory.StaticId,
-                Context = new CollectionLoadoutPageContext
-                {
-                    LoadoutId = loadoutId,
-                    GroupId = nexusCollectionGroup.Id,
-                },
-            };
-            var nexusPageBehavior = workspaceController.GetOpenPageBehavior(nexusCollPageData, navInfo);
-            workspaceController.OpenPage(workspaceController.ActiveWorkspaceId, nexusCollPageData, nexusPageBehavior);
-
-            return;
-        }
-
-        var pageData = new PageData
-        {
-            FactoryId = LoadoutPageFactory.StaticId,
-            Context = new LoadoutPageContext
-            {
-                LoadoutId = loadoutId,
-                GroupScope = collectionGroup.CollectionGroupId,
-            },
-        };
-
+        var pageData = providers.For(collectionGroup, loadoutId).InstalledPage(collectionGroup.CollectionGroupId);
         var behavior = workspaceController.GetOpenPageBehavior(pageData, navInfo);
         workspaceController.OpenPage(workspaceController.ActiveWorkspaceId, pageData, behavior);
     }

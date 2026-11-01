@@ -16,6 +16,7 @@ using Markdown.Avalonia;
 using SilverModManager.Abstractions.Collections.Json;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Pages.Collections;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Pages.LoadoutPage;
 using SilverModManager.App.UI.Pages.MyGames;
@@ -149,6 +150,47 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
         var png = await Capture(
             () => new CollectionInstructionsView { Instructions = CollectionInstructions.From(root, Provider) },
             isReady: window => window.GetVisualDescendants().OfType<MarkdownScrollViewer>().Any());
+        await VerifyPng(png);
+    }
+
+    /// <summary>
+    /// An installed Nexus collection's page: the header with its four numbers, the Nexus link and badge, the more
+    /// menu, and the Installed tab.
+    /// </summary>
+    [Fact]
+    public async Task Test_CollectionPage()
+    {
+        var png = await Capture(
+            () => new CollectionLoadoutView { DataContext = new CollectionLoadoutDesignViewModel() },
+            isReady: window => window.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Name == "BadgeText" && text.Text == "Nexus Mods"));
+        await VerifyPng(png);
+    }
+
+    /// <summary>
+    /// The same page for a Wabbajack modlist: version and archive count instead of revision and ratings, a description
+    /// under the header, the Wabbajack badge and readme link, and no Installed tab content yet.
+    /// </summary>
+    [Fact]
+    public async Task Test_CollectionPageForAModlist()
+    {
+        var png = await Capture(
+            () => new CollectionLoadoutView
+            {
+                DataContext = new CollectionLoadoutDesignViewModel
+                {
+                    Name = "Skyrim VR Overhaul",
+                    StateLine = "Not installed yet",
+                    VersionText = "Version 3.2.1",
+                    Description = "A heavily reworked Skyrim VR with new textures, combat and a lot of quests. Needs a fast machine and a patient afternoon.",
+                    Stats = new CollectionStats(null, null, null, NexusMods.Paths.Size.From(48_000_000_000), 1294),
+                    Badge = new CollectionBadge(SilverModManager.UI.Sdk.Icons.IconValues.Download, "Wabbajack"),
+                    Link = new CollectionLink("Open readme", SilverModManager.UI.Sdk.Icons.IconValues.OpenInNew, ReactiveUI.ReactiveCommand.Create(() => { }), System.Reactive.Linq.Observable.Return(true)),
+                    IsToggleVisible = false,
+                    IsReadOnly = false,
+                    SelectedTab = CollectionPageTab.Installed,
+                },
+            },
+            isReady: window => window.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Name == "BadgeText" && text.Text == "Wabbajack"));
         await VerifyPng(png);
     }
 

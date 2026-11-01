@@ -25,61 +25,34 @@
             <controls:Statusbar Classes="Primary" DockPanel.Dock="Top">
 
                 <!-- Dots menu button -->
-                <controls:StandardButton LeftIcon="{x:Static icons:IconValues.MoreVertical}"
+                <controls:StandardButton x:Name="MoreButton"
+                                         LeftIcon="{x:Static icons:IconValues.MoreVertical}"
                                          ShowLabel="False"
                                          ShowIcon="Left"
                                          Size="Toolbar"
                                          ToolTip.Tip="{x:Static resources:Language.CollectionLoadoutView_More_ToolTip}">
 
                     <controls:StandardButton.Flyout>
-                        <MenuFlyout>
-                            <navigation:NavigationMenuItem Header="{x:Static resources:Language.CollectionLoadoutView_MakeEditableLocalCopy}"
-                                                           x:Name="MakeEditableLocalCopy">
-                                <MenuItem.Icon>
-                                    <icons:UnifiedIcon Size="16"
-                                                       Value="{x:Static icons:IconValues.Copy}" />
-                                </MenuItem.Icon>
-                            </navigation:NavigationMenuItem>
-                            <MenuItem Header="{x:Static resources:Language.CollectionLoadoutView_ViewCollectionDownloadMenuItem}"
-                                      x:Name="ViewCollectionDownloadMenuItem">
-                                <MenuItem.Icon>
-                                    <icons:UnifiedIcon Size="16"
-                                                       Value="{x:Static icons:IconValues.Downloading}" />
-                                </MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Header="{x:Static resources:Language.CollectionLoadoutView_ReinstallCollection}"
-                                      x:Name="ReinstallCollectionMenuItem"
-                                      ToolTip.Tip="{x:Static resources:Language.CollectionLoadoutView_ReinstallCollection_ToolTip}">
-                                <MenuItem.Icon>
-                                    <icons:UnifiedIcon Size="16"
-                                                       Value="{x:Static icons:IconValues.Refresh}" />
-                                </MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Header="{x:Static resources:Language.CollectionLoadoutView_UninstallCollection}"
-                                      x:Name="RemoveCollectionMenuItem"
-                                      ToolTip.Tip="{x:Static resources:Language.CollectionLoadoutView_UninstallCollection_ToolTip}">
-                                <MenuItem.Icon>
-                                    <icons:UnifiedIcon Size="16"
-                                                       Value="{x:Static icons:IconValues.PlaylistRemove}" />
-                                </MenuItem.Icon>
-                            </MenuItem>
-                        </MenuFlyout>
+                        <!-- filled from the page's MenuItems -->
+                        <MenuFlyout />
                     </controls:StandardButton.Flyout>
                 </controls:StandardButton>
-                <!-- opens the collection's page on Nexus Mods -->
-                <controls:StandardButton x:Name="OpenOnNexusModsButton"
-                                         Text="{x:Static resources:Language.CollectionLoadoutView_OpenOnNexusMods}"
-                                         LeftIcon="{x:Static icons:IconValues.NexusColor}"
+                <!-- "Open on Nexus Mods", "Open readme" -->
+                <!-- text, icon and command are bound rather than set in code, so the button's first layout already has them -->
+                <controls:StandardButton x:Name="LinkButton"
+                                         Text="{ReflectionBinding Link.Text}"
+                                         LeftIcon="{ReflectionBinding Link.Icon}"
+                                         Command="{ReflectionBinding Link.Command}"
                                          ShowIcon="Left"
                                          Size="Toolbar"
                                          Type="Tertiary" />
-                <!-- nexus mods logo -->
-                <StackPanel x:Name="NexusModsLogo"
+                <!-- where the collection comes from -->
+                <StackPanel x:Name="BadgeStack"
                             Orientation="Horizontal"
                             Spacing="4">
-                    <icons:UnifiedIcon Size="16"
-                                       Value="{x:Static icons:IconValues.NexusColor}" />
-                    <TextBlock Text="{x:Static resources:Language.CollectionLoadoutView_NexusMods}"
+                    <icons:UnifiedIcon x:Name="BadgeIcon" Size="16" Value="{ReflectionBinding Badge.Icon}" />
+                    <TextBlock x:Name="BadgeText"
+                               Text="{ReflectionBinding Badge.Text}"
                                Theme="{StaticResource BodySMNormalTheme}"
                                Foreground="{StaticResource PrimaryStrongBrush}"
                                VerticalAlignment="Center" />
@@ -148,7 +121,7 @@
                                     <Image x:Name="CollectionImage" />
                                 </Border>
                                 <StackPanel>
-                                    <TextBlock x:Name="Title" Text="{x:Static resources:Language.CollectionLoadoutView_CollectionInstalled}" />
+                                    <TextBlock x:Name="Title" />
                                     <TextBlock x:Name="CollectionName" />
                                 </StackPanel>
                             </DockPanel>
@@ -166,9 +139,9 @@
                                         <TextBlock x:Name="AuthorName" />
                                     </StackPanel>
 
-                                    <Ellipse Fill="{StaticResource NeutralTranslucentWeakBrush}" Width="4" Height="4" />
+                                    <Ellipse x:Name="VersionSeparator" Fill="{StaticResource NeutralTranslucentWeakBrush}" Width="4" Height="4" />
 
-                                    <!-- revision -->
+                                    <!-- revision or version -->
                                     <StackPanel x:Name="RevisionsPanel">
                                         <TextBlock x:Name="Revision" />
                                         <!-- <icons:UnifiedIcon x:Name="ArrowRight" -->
@@ -202,6 +175,11 @@
                                         <icons:UnifiedIcon Value="{x:Static icons:IconValues.HardDrive}" />
                                         <TextBlock x:Name="TotalSize" />
                                     </StackPanel>
+                                    <StackPanel x:Name="ArchivesPanel"
+                                                ToolTip.Tip="Archives the list downloads">
+                                        <icons:UnifiedIcon Value="{x:Static icons:IconValues.Download}" />
+                                        <TextBlock x:Name="ArchiveCountText" />
+                                    </StackPanel>
                                     <StackPanel x:Name="ModsPanel"
                                                 ToolTip.Tip="{x:Static resources:Language.CollectionDownloadViewModel_StatsMods_ToolTip}">
                                         <icons:UnifiedIcon Value="{x:Static icons:IconValues.ModsOutline}" />
@@ -214,6 +192,12 @@
 
                         </Grid>
                     </Border>
+
+                    <!-- the collection's description, cut to a few lines until expanded -->
+                    <StackPanel x:Name="DescriptionPanel" Margin="0,12,0,0" Spacing="4" IsVisible="False">
+                        <TextBlock x:Name="DescriptionText" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
+                        <controls:StandardButton x:Name="DescriptionToggle" Type="Tertiary" ShowIcon="None" Size="Toolbar" Text="Show more" HorizontalAlignment="Left" IsVisible="False" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

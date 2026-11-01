@@ -42,6 +42,47 @@ public class CollectionPageTabsTests
     }
 
     [Fact]
+    public void WithoutAnInstalledGroupThePageOffersNoInstalledTab()
+    {
+        CollectionPageTabs.For(hasDownloadPage: true, hasInstalled: false)
+            .Should().Equal(CollectionPageTab.Downloads);
+    }
+
+    [Fact]
+    public void AnInstalledCollectionOpensOnTheInstalledTab()
+    {
+        var tabs = CollectionPageTabs.For(hasDownloadPage: true, hasInstructions: true);
+
+        CollectionPageTabs.Initial(tabs, isInstalled: true).Should().Be(CollectionPageTab.Installed);
+    }
+
+    [Fact]
+    public void AnUnfinishedInstallOpensOnDownloadsEvenThoughInstalledIsOffered()
+    {
+        var tabs = CollectionPageTabs.For(hasDownloadPage: true);
+
+        CollectionPageTabs.Initial(tabs, isInstalled: false).Should().Be(CollectionPageTab.Downloads);
+    }
+
+    [Fact]
+    public void WithNoDownloadsTabThePageOpensOnTheFirstTab()
+    {
+        var tabs = CollectionPageTabs.For(hasDownloadPage: false, hasInstructions: true);
+
+        CollectionPageTabs.Initial(tabs, isInstalled: false).Should().Be(CollectionPageTab.Installed);
+        CollectionPageTabs.Initial(CollectionPageTabs.For(hasDownloadPage: false, hasInstructions: true, hasInstalled: false), isInstalled: true)
+            .Should().Be(CollectionPageTab.Instructions);
+    }
+
+    [Fact]
+    public void WithNoTabsAtAllThePageFallsBackToInstalled()
+    {
+        var tabs = CollectionPageTabs.For(hasDownloadPage: false, hasInstalled: false);
+
+        CollectionPageTabs.Initial(tabs, isInstalled: false).Should().Be(CollectionPageTab.Installed);
+    }
+
+    [Fact]
     public void NexusModsUriPointsAtTheStoredRevision()
     {
         var uri = CollectionPageTabs.NexusModsUri(GameDomain.From("stardewvalley"), CollectionSlug.From("tckf0m"), RevisionNumber.From(80));

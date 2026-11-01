@@ -17,6 +17,9 @@ using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Settings;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Pages.Collections;
+using SilverModManager.UI.Sdk.Icons;
 
 namespace SilverModManager.App.UI.Pages.LoadoutPage;
 
@@ -24,7 +27,7 @@ public class CollectionLoadoutDesignViewModel : APageViewModel<ICollectionLoadou
 {
     public CollectionLoadoutDesignViewModel() : base(new DesignWindowManager()) { }
 
-    public LoadoutTreeDataGridAdapter Adapter { get; } = new EmptyAdapter();
+    public LoadoutTreeDataGridAdapter? Adapter { get; } = new EmptyAdapter();
     
     /// <summary>
     /// A load order tree with no rows, so the page can be designed without a loadout in the database.
@@ -43,32 +46,32 @@ public class CollectionLoadoutDesignViewModel : APageViewModel<ICollectionLoadou
             System.Reactive.Linq.Observable.Empty<IChangeSet<CompositeItemModel<EntityId>, EntityId>>();
     }
 
+    public bool HasInstalledTab { get; init; } = true;
+    public bool IsToggleVisible { get; init; } = true;
     public bool IsCollectionEnabled => true;
     public int InstalledModsCount { get; } = 10;
-    public string Name => "Vanilla+ [Quality of Life]";
-    
-    public ulong EndorsementCount => 123456;
-    public ulong TotalDownloads => 123456789;
-    public Size TotalSize => Size.From(1234567890);
-    public Percent OverallRating => Percent.CreateClamped(0.75);
-    public RevisionNumber RevisionNumber { get; } = RevisionNumber.From(6);
+    public string Name { get; init; } = "Vanilla+ [Quality of Life]";
+    public string StateLine { get; init; } = "Collection Installed";
+    public string VersionText { get; init; } = "Revision 6";
+    public string Description { get; init; } = "";
+    public CollectionStats Stats { get; init; } = new(Percent.CreateClamped(0.75), 123456, 123456789, Size.From(1234567890), null);
     public string AuthorName => "Lowtonotolerance";
     public Bitmap? AuthorAvatar => new(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/DesignTime/avatar.webp")));
-    public Bitmap TileImage { get; } = new(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/DesignTime/collection_tile_image.png")));
-    public Bitmap BackgroundImage { get; } = new(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/DesignTime/header-background.webp")));
+    public Bitmap? TileImage { get; init; } = new(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/DesignTime/collection_tile_image.png")));
+    public Bitmap? BackgroundImage { get; } = new(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/DesignTime/header-background.webp")));
+    public CollectionBadge? Badge { get; init; } = new(IconValues.NexusColor, "Nexus Mods");
+    public CollectionLink? Link { get; init; } = new("Open on Nexus Mods", IconValues.NexusColor, ReactiveUI.ReactiveCommand.Create(() => { }), System.Reactive.Linq.Observable.Return(true));
+    public IReadOnlyList<IContextMenuItem> MenuItems { get; init; } =
+    [
+        new ContextMenuItem { Header = "Make editable copy", Icon = IconValues.Copy, Command = ReactiveUI.ReactiveCommand.Create(() => { }) },
+        new ContextMenuItem { Header = "Uninstall collection", Icon = IconValues.PlaylistRemove, Command = ReactiveUI.ReactiveCommand.Create(() => { }) },
+    ];
     public ReactiveCommand<Unit> CommandToggle { get; } = new ReactiveCommand();
-    public ReactiveCommand<Unit> CommandDeleteCollection { get; } = new ReactiveCommand();
-    public ReactiveCommand<Unit> CommandMakeLocalEditableCopy { get; } = new ReactiveCommand();
-    public ReactiveCommand<Unit> CommandReinstallCollection { get; } = new ReactiveCommand();
-
-    public ReactiveCommand<Unit> CommandOpenOnNexusMods { get; } = new ReactiveCommand();
-    public ReactiveCommand<Unit> CommandShowDownloads { get; } = new ReactiveCommand();
     public CollectionPageTab SelectedTab { get; set; } = CollectionPageTab.Installed;
-    public ICollectionDownloadViewModel? Downloads { get; } = new CollectionDownloadDesignViewModel();
+    public IPageViewModelInterface? Downloads { get; } = new CollectionDownloadDesignViewModel();
     public CollectionInstructions Instructions { get; } = new(
         new MarkdownRendererViewModel { Contents = "Install the script extender before anything else." },
         [new ModInstructions("Core mod", "Apply the patch after installing.", CollectionDownloader.ItemType.Required)],
         []);
-    public bool IsLocalCollection { get; } = false;
-    public bool IsReadOnly { get; } = true;
+    public bool IsReadOnly { get; init; } = true;
 }

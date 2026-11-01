@@ -1,398 +1,270 @@
 using System.Reactive.Linq;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using DynamicData;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Loadouts;
-using SilverModManager.Abstractions.Loadouts.Synchronizers;
-using SilverModManager.Abstractions.NexusModsLibrary;
-using SilverModManager.Abstractions.NexusModsLibrary.Models;
-using SilverModManager.Abstractions.NexusWebApi;
-using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Controls.Navigation;
-using SilverModManager.App.UI.Dialog;
-using SilverModManager.App.UI.Dialog.Enums;
-using SilverModManager.App.UI.Extensions;
-using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Pages.Collections;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
-using SilverModManager.Collections;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using SilverModManager.MnemonicDB.Abstractions.Query;
-using SilverModManager.Networking.NexusWebApi;
-using NexusMods.Paths;
 using SilverModManager.Sdk;
-using SilverModManager.Sdk.Jobs;
-using SilverModManager.UI.Sdk;
-using SilverModManager.UI.Sdk.Dialog;
-using SilverModManager.UI.Sdk.Dialog.Enums;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk.Icons;
 using R3;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using CompositeDisposable = System.Reactive.Disposables.CompositeDisposable;
+using Disposable = System.Reactive.Disposables.Disposable;
 using ReactiveCommand = R3.ReactiveCommand;
+using SerialDisposable = System.Reactive.Disposables.SerialDisposable;
 
 namespace SilverModManager.App.UI.Pages.LoadoutPage;
 
-public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewModel>, ICollectionLoadoutViewModel
+/// <summary>
+/// The page of one collection, whatever it came from: the header, the toolbar and the tabs all read a
+/// <see cref="CollectionSource"/>. Everything the source exposes may emit off the UI thread, so every subscription
+/// goes through <c>OnUI</c> before it touches bound state.
+/// </summary>
+public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewModel>, ICollectionLoadoutViewModel, ICollectionPageHost
 {
-    public LoadoutTreeDataGridAdapter Adapter { get; }
+    private readonly CollectionSource _source;
+    private readonly IServiceProvider _services;
+    private readonly IConnection _connection;
+    private readonly IReadOnlyList<IContextMenuItem> _sourceMenuItems;
 
-    public CollectionLoadoutViewModel(
-        IWindowManager windowManager,
-        IServiceProvider serviceProvider,
-        CollectionLoadoutPageContext pageContext) : base(windowManager)
+    // Only read and written on the UI thread.
+    private Optional<CollectionGroupId> _group = Optional<CollectionGroupId>.None;
+
+    public CollectionLoadoutViewModel(IWindowManager windowManager, IServiceProvider services, CollectionSource source) : base(windowManager)
     {
-        var connection = serviceProvider.GetRequiredService<IConnection>();
-        var toastNotificationService = serviceProvider.GetRequiredService<IWindowNotificationService>();
+        _source = source;
+        _services = services;
+        _connection = services.GetRequiredService<IConnection>();
 
-        var tilePipeline = ImagePipelines.GetCollectionTileImagePipeline(serviceProvider);
-        var backgroundPipeline = ImagePipelines.GetCollectionBackgroundImagePipeline(serviceProvider);
-        var userAvatarPipeline = ImagePipelines.GetUserAvatarPipeline(serviceProvider);
-        
-        var nexusCollectionGroup = NexusCollectionLoadoutGroup.Load(connection.Db, pageContext.GroupId);
-        var group = nexusCollectionGroup.AsCollectionGroup();
         TabIcon = IconValues.CollectionsOutline;
-        TabTitle = group.AsLoadoutItemGroup().AsLoadoutItem().Name;
+        TabTitle = source.InitialName;
+        Name = source.InitialName;
+        VersionText = source.VersionText;
+        AuthorName = source.AuthorName;
+        Stats = source.Stats;
+        Badge = source.Badge;
+        Link = source.Link;
+        IsReadOnly = source.IsReadOnly;
 
-        IsCollectionEnabled = !group.AsLoadoutItemGroup().AsLoadoutItem().IsDisabled;
-        IsReadOnly = group.IsReadOnly;
-
-        var revisionMetadata = pageContext.RevisionId.HasValue
-            ? CollectionRevisionMetadata.Load(connection.Db, pageContext.RevisionId.Value)
-            : Optional<CollectionRevisionMetadata.ReadOnly>.None;
-
-        if (revisionMetadata.HasValue)
-        {
-            Name = revisionMetadata.Value.Collection.Name;
-            RevisionNumber = revisionMetadata.Value.RevisionNumber;
-            AuthorName = revisionMetadata.Value.Collection.Author.Name;
-            IsLocalCollection = false;
-            
-            EndorsementCount = revisionMetadata.Value.Collection.Endorsements.ValueOr(0ul);
-            TotalDownloads = revisionMetadata.Value.Collection.TotalDownloads.ValueOr(0ul);
-            TotalSize = revisionMetadata.Value.TotalSize.ValueOr(Size.Zero);
-            OverallRating = Percent.CreateClamped(revisionMetadata.Value.OverallRating.ValueOr(0));
-        }
-        else
-        {
-            Name = TabTitle;
-            RevisionNumber = RevisionNumber.From(1);
-            AuthorName = string.Empty;
-            IsLocalCollection = true;
-        }
-
-        var loadoutFilter = new LoadoutFilter
-        {
-            LoadoutId = pageContext.LoadoutId,
-            CollectionGroupId = LoadoutItemGroupId.From(pageContext.GroupId),
-        };
-
-        Adapter = new LoadoutTreeDataGridAdapter(serviceProvider, loadoutFilter);
+        // The embedded page is built now and activated by its tab when it is first shown.
+        Downloads = source.CreateDownloads();
 
         CommandToggle = new ReactiveCommand(
             executeAsync: async (_, _) =>
             {
-                using var tx = connection.BeginTransaction();
+                if (_group.HasValue is false) return;
+                var group = _group.Value;
 
-                var shouldEnable = !IsCollectionEnabled;
-                if (shouldEnable)
-                {
-                    tx.RetractCurrent(pageContext.GroupId, LoadoutItem.Disabled);
-                } else
-                {
-                    tx.Add(pageContext.GroupId, LoadoutItem.Disabled, Null.Instance);
-                }
-
+                using var tx = _connection.BeginTransaction();
+                if (IsCollectionEnabled)
+                    tx.Add(group, LoadoutItem.Disabled, Null.Instance);
+                else
+                    tx.RetractCurrent(group, LoadoutItem.Disabled);
                 await tx.Commit();
             },
             awaitOperation: AwaitOperation.Drop,
             configureAwait: false
         );
-        
-        CommandDeleteCollection = new ReactiveCommand(
-            executeAsync: async (_, _) =>
+
+        var viewDownloads = Downloads is null
+            ? null
+            : new ContextMenuItem
             {
-                var workspaceController = GetWorkspaceController();
-                await CollectionDeleteHelpers.DeleteCollectionAsync(nexusCollectionGroup.AsCollectionGroup(), serviceProvider.GetRequiredService<ILoadoutManager>(), workspaceController, connection, toastNotificationService);
-            },
-            awaitOperation: AwaitOperation.Drop,
-            configureAwait: false
-        );
+                Header = Language.CollectionLoadoutView_ViewCollectionDownloadMenuItem,
+                Icon = IconValues.Downloading,
+                Command = ReactiveUI.ReactiveCommand.Create(() => { SelectedTab = CollectionPageTab.Downloads; }),
+            };
+        _sourceMenuItems = source.MenuItems(this, viewDownloads);
+        MenuItems = _sourceMenuItems;
 
-        var canReinstall = !IsLocalCollection && IsReadOnly;
-        CommandReinstallCollection = _isInstalling.Select(isInstalling => canReinstall && !isInstalling).ToReactiveCommand<Unit>(
-            executeAsync: async (_, _) =>
+        // The first values decide the starting tab. Sources whose values are already known (Nexus, local) answer
+        // while the page is constructed; the rest answer once, from wherever they emit.
+        source.Group
+            .CombineLatest(source.IsInstalled, static (group, isInstalled) => (Group: group, IsInstalled: isInstalled))
+            .Take(1)
+            .Subscribe(first => RunOnUi(() =>
             {
-                var dialog = DialogFactory.CreateStandardDialog(
-                    Language.CollectionLoadoutView_ReinstallCollection_Confirmation_Title,
-                    new StandardDialogParameters()
-                    {
-                        Text = string.Format(Language.CollectionLoadoutView_ReinstallCollection_Confirmation_Message, TabTitle),
-                    },
-                    [
-                        DialogStandardButtons.Cancel,
-                        new DialogButtonDefinition(
-                            Language.CollectionLoadoutView_ReinstallCollection_Confirmation_Button,
-                            ButtonDefinitionId.Accept,
-                            ButtonAction.Accept,
-                            ButtonStyling.Primary
-                        ),
-                    ]
-                );
-                var result = await WindowManager.ShowDialog(dialog, DialogWindowType.Modal);
-                if (result.ButtonId != ButtonDefinitionId.Accept) return;
-
-                // This page closes partway through, so every outcome is reported as a toast rather than left to the command.
-                try
-                {
-                    var job = await CollectionReinstaller.Reinstall(
-                        serviceProvider,
-                        nexusCollectionGroup,
-                        // The download page shows the install progress, so the open tabs move there before the group goes away.
-                        beforeRemove: async () => await CollectionDeleteHelpers.ReplaceInstalledPagesWithDownloadPageAsync(nexusCollectionGroup, GetWorkspaceController())
-                    );
-
-                    var newGroup = await job;
-                    if (CollectionDownloader.IsFullyInstalled(job.JobDefinition.Items, newGroup.AsCollectionGroup(), connection.Db))
-                        toastNotificationService.ShowToast(Language.ToastNotification_Collection_installed, ToastNotificationVariant.Success);
-                }
-                catch (OperationCanceledException)
-                {
-                    // Cancelled from the download page, which shows it.
-                }
-                catch (Exception e)
-                {
-                    toastNotificationService.ShowToast(
-                        string.Format(Language.CollectionLoadoutView_ReinstallCollection_Failed, e.Message),
-                        ToastNotificationVariant.Failure
-                    );
-                }
-            },
-            awaitOperation: AwaitOperation.Drop,
-            configureAwait: false
-        );
-
-        CommandShowDownloads = new ReactiveCommand(execute: _ => SelectedTab = CollectionPageTab.Downloads);
-
-        CommandOpenOnNexusMods = new ReactiveCommand(execute: _ =>
-        {
-            if (!revisionMetadata.HasValue) throw new InvalidOperationException("A local collection has no page on Nexus Mods");
-
-            var collection = revisionMetadata.Value.Collection;
-            var gameDomain = serviceProvider.GetRequiredService<IGameDomainToGameIdMappingCache>()[collection.GameId];
-            serviceProvider.GetRequiredService<IOSInterop>().OpenUri(CollectionPageTabs.NexusModsUri(gameDomain, collection.Slug, revisionMetadata.Value.RevisionNumber));
-        });
-
-        // The download page reads the collection's archive from the library, which can be removed while the collection stays installed.
-        NexusModsCollectionLibraryFile.ReadOnly? collectionLibraryFile = null;
-        if (revisionMetadata.HasValue && HasCollectionLibraryFile(connection.Db, revisionMetadata.Value))
-        {
-            collectionLibraryFile = serviceProvider.GetRequiredService<CollectionDownloader>().GetLibraryFile(revisionMetadata.Value);
-            Downloads = new CollectionDownloadViewModel(
-                windowManager: windowManager,
-                serviceProvider: serviceProvider,
-                revisionMetadata: revisionMetadata.Value,
-                targetLoadout: pageContext.LoadoutId,
-                isEmbedded: true
-            );
-        }
-
-        CommandMakeLocalEditableCopy = new ReactiveCommand(
-            executeAsync: async (_, _) =>
-            {
-                var dialog = DialogFactory.CreateStandardDialog(
-                    "Collection Name",
-                    new StandardDialogParameters()
-                    {
-                        Text = "This is the name of the new cloned collection.",
-                        InputLabel = "Collection name",
-                        InputWatermark = "(Local) " + group.AsLoadoutItemGroup().AsLoadoutItem().Name,
-                        InputText = "(Local) " + group.AsLoadoutItemGroup().AsLoadoutItem().Name,
-                    },
-                    [
-                        DialogStandardButtons.Cancel,
-                        new DialogButtonDefinition(
-                            "Create",
-                            ButtonDefinitionId.Accept,
-                            ButtonAction.Accept,
-                            ButtonStyling.Primary
-                        ),
-                    ]
-                );
-                var result = await WindowManager.ShowDialog(dialog, DialogWindowType.Modal);
-                if (result.ButtonId != ButtonDefinitionId.Accept || string.IsNullOrWhiteSpace(result.InputText))
-                    return;
-                
-                var cloneId = await CollectionCreator.MakeEditableLocalCollection(serviceProvider.GetRequiredService<ILoadoutManager>(), group.Db.Connection, group.Id, result.InputText);
-
-                var pageData = new PageData
-                {
-                    FactoryId = LoadoutPageFactory.StaticId,
-                    Context = new LoadoutPageContext()
-                    {
-                        LoadoutId = group.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId, 
-                        GroupScope = CollectionGroupId.From(cloneId),
-                    },
-                };
-
-                var workspaceController = GetWorkspaceController();
-                var behavior = workspaceController.GetOpenPageBehavior(pageData, NavigationInformation.From(OpenPageBehaviorType.ReplaceTab));
-                workspaceController.OpenPage(WorkspaceId, pageData, behavior);
-            }
-        );
-
+                var tabs = CollectionPageTabs.For(hasDownloadPage: Downloads is not null, hasInstalled: first.Group.HasValue);
+                SelectedTab = CollectionPageTabs.Initial(tabs, first.IsInstalled && first.Group.HasValue);
+            }));
 
         this.WhenActivated(disposables =>
         {
-            Adapter.Activate().AddTo(disposables);
+            var treeActivation = new SerialDisposable().AddTo(disposables);
 
-            // The embedded download page navigates and retitles through the tab it sits in.
-            if (Downloads is CollectionDownloadViewModel downloads)
+            // The embedded page navigates and retitles through the tab it sits in.
+            if (Downloads is { } downloads)
             {
                 downloads.WindowId = WindowId;
                 downloads.WorkspaceId = WorkspaceId;
                 downloads.PanelId = PanelId;
                 downloads.TabId = TabId;
             }
-            
-            // Read here rather than from the embedded download page: that page's view model only activates once its tab is shown,
-            // so the instructions tab would stay hidden until someone opened Downloads.
-            if (collectionLibraryFile is { } libraryFile)
-            {
-                var nexusModsLibrary = serviceProvider.GetRequiredService<NexusModsLibrary>();
-                R3.Observable.Return(libraryFile)
-                    .ObserveOnThreadPool()
-                    .SelectAwait((file, cancellationToken) => nexusModsLibrary.ParseCollectionJsonFile(file, cancellationToken))
-                    .ObserveOnUIThreadDispatcher()
-                    .Subscribe(collectionRoot => Instructions = CollectionInstructions.From(collectionRoot, serviceProvider))
-                    .AddTo(disposables);
-            }
 
-            connection.ObserveDatoms(LoadoutItem.ParentId, pageContext.GroupId)
-                .QueryWhenChanged(datoms => datoms.Count)
+            source.Activate().AddTo(disposables);
+
+            source.Group
+                .DistinctUntilChanged()
                 .OnUI()
-                .Subscribe(count => InstalledModsCount = count)
-                .AddTo(disposables);
-            
-            LoadoutItem
-                .Observe(connection, pageContext.GroupId)
-                .Select(static item => !item.IsDisabled)
-                .OnUI()
-                .Subscribe(isEnabled => IsCollectionEnabled = isEnabled)
+                .Subscribe(group => ApplyGroup(group, treeActivation))
                 .AddTo(disposables);
 
-            if (revisionMetadata.HasValue)
+            source.Name.OnUI().Subscribe(name =>
             {
-                var revisionId = revisionMetadata.Value.Id;
-                serviceProvider.GetRequiredService<IJobMonitor>()
-                    .HasActiveJob<InstallCollectionJob>(job => job.RevisionMetadata.Id == revisionId && job.TargetLoadout == pageContext.LoadoutId)
-                    .OnUI()
-                    .Subscribe(isInstalling => _isInstalling.Value = isInstalling)
-                    .AddTo(disposables);
-
-                ImagePipelines
-                    .CreateObservable(revisionMetadata.Value.CollectionId, tilePipeline)
-                    .ObserveOnUIThreadDispatcher()
-                    .Subscribe(this, static (image, self) => self.TileImage = image)
-                    .AddTo(disposables);
-
-                ImagePipelines
-                    .CreateObservable(revisionMetadata.Value.CollectionId, backgroundPipeline)
-                    .ObserveOnUIThreadDispatcher()
-                    .Subscribe(this, static (image, self) => self.BackgroundImage = image)
-                    .AddTo(disposables);
-
-                ImagePipelines
-                    .CreateObservable(revisionMetadata.Value.Collection.AuthorId, userAvatarPipeline)
-                    .ObserveOnUIThreadDispatcher()
-                    .Subscribe(this, static (image, self) => self.AuthorAvatar = image)
-                    .AddTo(disposables);
-            }
-
-            Adapter.MessageSubject.SubscribeAwait(async (message, cancellationToken) =>
-            {
-                await message.Match<Task>(
-                    toggleEnableStateMessage => 
-                        LoadoutViewModel.HandleToggleItemEnabledState(toggleEnableStateMessage.Ids, connection),
-                    openCollectionMessage =>
-                    {
-                        LoadoutViewModel.HandleOpenItemCollectionPage(openCollectionMessage.Ids, 
-                            openCollectionMessage.NavigationInformation, 
-                            pageContext.LoadoutId, GetWorkspaceController(), connection);
-                        return Task.CompletedTask;
-                    },
-                    viewModPageMessage =>
-                    {
-                        LoadoutViewModel.HandleOpenModPageFor(viewModPageMessage.Ids, connection,  
-                            serviceProvider.GetRequiredService<IOSInterop>(),
-                            cancellationToken);
-                        return Task.CompletedTask;
-                    },
-                    viewModFilesMessage =>
-                    {
-                        LoadoutViewModel.HandleViewModFiles(viewModFilesMessage.Ids, 
-                            viewModFilesMessage.NavigationInformation, 
-                            connection, GetWorkspaceController());
-                        return Task.CompletedTask;
-                    },
-                    uninstallItemMessage => LoadoutViewModel.HandleUninstallItem(uninstallItemMessage.Ids, windowManager, connection),
-                    toggleProtectedPathsMessage => LoadoutViewModel.HandleToggleProtectedPathsAllowed(toggleProtectedPathsMessage.Ids, connection)
-                );
-            }, awaitOperation: AwaitOperation.Parallel, configureAwait: false).AddTo(disposables);
+                Name = name;
+                TabTitle = name;
+            }).AddTo(disposables);
+            source.StateLine.OnUI().Subscribe(line => StateLine = line).AddTo(disposables);
+            source.Description.OnUI().Subscribe(description => Description = description).AddTo(disposables);
+            source.CanToggle.OnUI().Subscribe(canToggle => IsToggleVisible = canToggle).AddTo(disposables);
+            source.Instructions.OnUI().Subscribe(instructions => Instructions = instructions).AddTo(disposables);
+            source.TileImage.OnUI().Subscribe(image => TileImage = image).AddTo(disposables);
+            source.BackgroundImage.OnUI().Subscribe(image => BackgroundImage = image).AddTo(disposables);
+            source.AuthorAvatar.OnUI().Subscribe(image => AuthorAvatar = image).AddTo(disposables);
         });
     }
 
-    public bool IsLocalCollection { get; }
+    private static void RunOnUi(Action action)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+            action();
+        else
+            Dispatcher.UIThread.Post(action);
+    }
+
+    // Builds the tree, the counters and the removal item for the group the source reports, or takes them away.
+    private void ApplyGroup(Optional<CollectionGroupId> group, SerialDisposable treeActivation)
+    {
+        _group = group;
+        treeActivation.Disposable = Disposable.Empty;
+        HasInstalledTab = group.HasValue;
+
+        if (group.HasValue is false)
+        {
+            Adapter = null;
+            InstalledModsCount = 0;
+            MenuItems = _sourceMenuItems;
+
+            // No tab stays selected once it is hidden.
+            if (SelectedTab == CollectionPageTab.Installed)
+                SelectedTab = CollectionPageTabs.Initial(Tabs(hasInstalled: false), isInstalled: false);
+            return;
+        }
+
+        var groupId = group.Value;
+        var loadoutId = LoadoutItem.Load(_connection.Db, groupId).LoadoutId;
+        var adapter = new LoadoutTreeDataGridAdapter(_services, new LoadoutFilter
+        {
+            LoadoutId = loadoutId,
+            CollectionGroupId = LoadoutItemGroupId.From(groupId),
+        });
+        Adapter = adapter;
+        MenuItems = [.._sourceMenuItems, RemovalItem(_source.InstalledRemoval(groupId))];
+
+        treeActivation.Disposable = new CompositeDisposable(
+            adapter.Activate(),
+            _connection.ObserveDatoms(LoadoutItem.ParentId, groupId)
+                .QueryWhenChanged(datoms => datoms.Count)
+                .OnUI()
+                .Subscribe(count => InstalledModsCount = count),
+            LoadoutItem.Observe(_connection, groupId)
+                .Select(static item => item.IsDisabled is false)
+                .OnUI()
+                .Subscribe(isEnabled => IsCollectionEnabled = isEnabled),
+            HandleMessages(adapter, loadoutId)
+        );
+    }
+
+    private IReadOnlyList<CollectionPageTab> Tabs(bool hasInstalled) =>
+        CollectionPageTabs.For(hasDownloadPage: Downloads is not null, hasInstructions: Instructions.HasAny, hasInstalled: hasInstalled);
+
+    // The page's own removal asks nothing; the left menu entry is the one that confirms.
+    private ContextMenuItem RemovalItem(CollectionRemoval removal) => new()
+    {
+        Header = removal.Header,
+        Icon = removal.Icon,
+        Styling = removal.Styling,
+        ToolTip = removal.ToolTip,
+        Command = ReactiveUI.ReactiveCommand.CreateFromTask(
+            () => removal.Remove(GetWorkspaceController()),
+            removal.CanExecute.ObserveOn(RxApp.MainThreadScheduler)),
+    };
+
+    private IDisposable HandleMessages(LoadoutTreeDataGridAdapter adapter, LoadoutId loadoutId)
+    {
+        var windowManager = WindowManager;
+        return adapter.MessageSubject.SubscribeAwait(async (message, cancellationToken) =>
+        {
+            await message.Match<Task>(
+                toggleEnableStateMessage =>
+                    LoadoutViewModel.HandleToggleItemEnabledState(toggleEnableStateMessage.Ids, _connection),
+                openCollectionMessage =>
+                {
+                    LoadoutViewModel.HandleOpenItemCollectionPage(openCollectionMessage.Ids,
+                        openCollectionMessage.NavigationInformation,
+                        loadoutId, GetWorkspaceController(), _connection, _services.GetRequiredService<CollectionProviders>());
+                    return Task.CompletedTask;
+                },
+                viewModPageMessage =>
+                {
+                    LoadoutViewModel.HandleOpenModPageFor(viewModPageMessage.Ids, _connection,
+                        _services.GetRequiredService<IOSInterop>(),
+                        cancellationToken);
+                    return Task.CompletedTask;
+                },
+                viewModFilesMessage =>
+                {
+                    LoadoutViewModel.HandleViewModFiles(viewModFilesMessage.Ids,
+                        viewModFilesMessage.NavigationInformation,
+                        _connection, GetWorkspaceController());
+                    return Task.CompletedTask;
+                },
+                uninstallItemMessage => LoadoutViewModel.HandleUninstallItem(uninstallItemMessage.Ids, windowManager, _connection),
+                toggleProtectedPathsMessage => LoadoutViewModel.HandleToggleProtectedPathsAllowed(toggleProtectedPathsMessage.Ids, _connection)
+            );
+        }, awaitOperation: AwaitOperation.Parallel, configureAwait: false);
+    }
+
+    IWindowManager ICollectionPageHost.WindowManager => WindowManager;
+    IWorkspaceController ICollectionPageHost.WorkspaceController => GetWorkspaceController();
+
     public bool IsReadOnly { get; }
-
-    // Reinstalling while an install of this collection runs would remove the group under it.
-    private readonly R3.ReactiveProperty<bool> _isInstalling = new(false);
-
-    public string Name { get; }
-    public ulong EndorsementCount { get; }
-    public ulong TotalDownloads { get; }
-    public Size TotalSize { get; }
-    public Percent OverallRating { get; }
-
-    public RevisionNumber RevisionNumber { get; }
-
     public string AuthorName { get; }
+    public string VersionText { get; }
+    public CollectionStats Stats { get; }
+    public CollectionBadge? Badge { get; }
+    public CollectionLink? Link { get; }
+    public IPageViewModelInterface? Downloads { get; }
 
+    [Reactive] public partial LoadoutTreeDataGridAdapter? Adapter { get; private set; }
+    [Reactive] public partial bool HasInstalledTab { get; private set; }
+    [Reactive] public partial bool IsToggleVisible { get; private set; }
+    [Reactive] public partial string Name { get; private set; }
+    [Reactive] public partial string StateLine { get; private set; } = string.Empty;
+    [Reactive] public partial string Description { get; private set; } = string.Empty;
+    [Reactive] public partial IReadOnlyList<IContextMenuItem> MenuItems { get; private set; }
     [Reactive] public partial Bitmap? AuthorAvatar { get; private set; }
-
     [Reactive] public partial Bitmap? BackgroundImage { get; private set; }
-
     [Reactive] public partial Bitmap? TileImage { get; private set; }
-
     [Reactive] public partial bool IsCollectionEnabled { get; private set; }
-    
     [Reactive] public partial int InstalledModsCount { get; private set; }
-    
-    public ReactiveCommand<Unit> CommandToggle { get; }
-    public ReactiveCommand<Unit> CommandDeleteCollection { get; }
-    
-    public ReactiveCommand<Unit> CommandMakeLocalEditableCopy { get; }
-    public ReactiveCommand<Unit> CommandReinstallCollection { get; }
-    public ReactiveCommand<Unit> CommandOpenOnNexusMods { get; }
-    public ReactiveCommand<Unit> CommandShowDownloads { get; }
-    public ICollectionDownloadViewModel? Downloads { get; }
-
     [Reactive] public partial CollectionInstructions Instructions { get; private set; } = CollectionInstructions.None;
-
     [Reactive] public partial CollectionPageTab SelectedTab { get; set; }
 
-    private static bool HasCollectionLibraryFile(IDb db, CollectionRevisionMetadata.ReadOnly revisionMetadata)
-    {
-        return db.Datoms(
-            (NexusModsCollectionLibraryFile.CollectionSlug, revisionMetadata.Collection.Slug),
-            (NexusModsCollectionLibraryFile.CollectionRevisionNumber, revisionMetadata.RevisionNumber)
-        ).Count > 0;
-    }
+    public ReactiveCommand<Unit> CommandToggle { get; }
 }

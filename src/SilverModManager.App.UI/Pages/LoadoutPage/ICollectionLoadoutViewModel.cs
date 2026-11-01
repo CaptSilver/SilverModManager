@@ -1,21 +1,27 @@
 using Avalonia.Media.Imaging;
-using SilverModManager.Abstractions.NexusModsLibrary.Models;
-using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Pages.Collections;
 using SilverModManager.App.UI.WorkspaceSystem;
-using NexusMods.Paths;
-using SilverModManager.Sdk.Jobs;
 
 namespace SilverModManager.App.UI.Pages.LoadoutPage;
 
+/// <summary>
+/// What the collection page shows, whatever kind of collection it is. The values come from the page's
+/// <see cref="CollectionSource"/>; the view binds to this alone.
+/// </summary>
 public interface ICollectionLoadoutViewModel : IPageViewModelInterface
 {
-    LoadoutTreeDataGridAdapter Adapter { get; }
-
     /// <summary>
-    /// Gets whether the collection is local or remote.
+    /// The load order tree of the installed group. Null while there is no group, and then there is no Installed tab.
     /// </summary>
-    bool IsLocalCollection { get; }
+    LoadoutTreeDataGridAdapter? Adapter { get; }
+
+    /// <summary>Whether the Installed tab is offered: a group exists, even a half-written one.</summary>
+    bool HasInstalledTab { get; }
+
+    /// <summary>Whether the header's enable toggle is shown.</summary>
+    bool IsToggleVisible { get; }
 
     /// <summary>
     /// Gets whether the collection is read-only.
@@ -26,29 +32,25 @@ public interface ICollectionLoadoutViewModel : IPageViewModelInterface
     /// Gets whether the collection is enabled.
     /// </summary>
     bool IsCollectionEnabled { get; }
-    
+
     /// <summary>
     /// Gets the number of mods installed in the collection, both required and optional.
     /// </summary>
     int InstalledModsCount { get; }
 
     string Name { get; }
-    
-    /// <inheritdoc cref="CollectionMetadata.Endorsements"/>
-    ulong EndorsementCount { get; }
 
-    /// <inheritdoc cref="CollectionMetadata.TotalDownloads"/>
-    ulong TotalDownloads { get; }
+    /// <summary>The header's first line: whether the collection is installed.</summary>
+    string StateLine { get; }
 
-    /// <inheritdoc cref="CollectionRevisionMetadata.TotalSize"/>
-    Size TotalSize { get; }
+    /// <summary>"Revision 193", "Version 3.2.1" or empty.</summary>
+    string VersionText { get; }
 
-    /// <inheritdoc cref="CollectionRevisionMetadata.OverallRating"/>
-    Percent OverallRating { get; }
-    
-    
+    /// <summary>The collapsible description block under the header; empty hides it.</summary>
+    string Description { get; }
 
-    RevisionNumber RevisionNumber { get; }
+    /// <summary>The header's numbers. A null field hides its panel.</summary>
+    CollectionStats Stats { get; }
 
     string AuthorName { get; }
 
@@ -58,26 +60,16 @@ public interface ICollectionLoadoutViewModel : IPageViewModelInterface
 
     Bitmap? BackgroundImage { get; }
 
+    /// <summary>Where the collection comes from, shown in the toolbar. Null for a local collection.</summary>
+    CollectionBadge? Badge { get; }
+
+    /// <summary>The toolbar's "Open on Nexus Mods" or "Open readme" button, when there is one.</summary>
+    CollectionLink? Link { get; }
+
+    /// <summary>The "more" menu: the source's items, then the removal item while the collection is installed.</summary>
+    IReadOnlyList<IContextMenuItem> MenuItems { get; }
+
     R3.ReactiveCommand<R3.Unit> CommandToggle { get; }
-    
-    R3.ReactiveCommand<R3.Unit> CommandDeleteCollection { get; }
-    
-    R3.ReactiveCommand<R3.Unit> CommandMakeLocalEditableCopy { get; }
-
-    /// <summary>
-    /// Removes the collection's mods and installs them again from the library. Only runs for Nexus collections.
-    /// </summary>
-    R3.ReactiveCommand<R3.Unit> CommandReinstallCollection { get; }
-    
-    /// <summary>
-    /// Opens the collection's page on Nexus Mods. Only runs for Nexus collections.
-    /// </summary>
-    R3.ReactiveCommand<R3.Unit> CommandOpenOnNexusMods { get; }
-
-    /// <summary>
-    /// Switches to the download tabs.
-    /// </summary>
-    R3.ReactiveCommand<R3.Unit> CommandShowDownloads { get; }
 
     /// <summary>
     /// The tab being shown.
@@ -85,12 +77,12 @@ public interface ICollectionLoadoutViewModel : IPageViewModelInterface
     CollectionPageTab SelectedTab { get; set; }
 
     /// <summary>
-    /// The collection's download page, shown as the Downloads tab. Null for a local collection, or when the collection's archive is no longer in the library.
+    /// The collection's download page, shown as the Downloads tab. Null when there is nothing to download from.
     /// </summary>
-    ICollectionDownloadViewModel? Downloads { get; }
+    IPageViewModelInterface? Downloads { get; }
 
     /// <summary>
-    /// The collection author's instructions, read from the collection's archive. Empty when there are none or the archive is no longer in the library.
+    /// The collection author's instructions. Empty when there are none or they could not be read.
     /// </summary>
     CollectionInstructions Instructions { get; }
 }

@@ -23,12 +23,24 @@ public static class CollectionPageTabs
     /// and a Nexus one whose archive left the library has nothing to list.
     /// The instructions tab appears only when the author wrote some.
     /// </summary>
-    public static IReadOnlyList<CollectionPageTab> For(bool hasDownloadPage, bool hasInstructions = false)
+    public static IReadOnlyList<CollectionPageTab> For(bool hasDownloadPage, bool hasInstructions = false, bool hasInstalled = true)
     {
-        var tabs = new List<CollectionPageTab> { CollectionPageTab.Installed };
+        var tabs = new List<CollectionPageTab>();
+        if (hasInstalled) tabs.Add(CollectionPageTab.Installed);
         if (hasInstructions) tabs.Add(CollectionPageTab.Instructions);
         if (hasDownloadPage) tabs.Add(CollectionPageTab.Downloads);
         return tabs;
+    }
+
+    /// <summary>
+    /// The tab a page opens on: Installed when the collection is installed and the tab is offered, otherwise Downloads
+    /// (where an unfinished install is resumed), otherwise the first tab.
+    /// </summary>
+    public static CollectionPageTab Initial(IReadOnlyList<CollectionPageTab> tabs, bool isInstalled)
+    {
+        if (isInstalled && tabs.Contains(CollectionPageTab.Installed)) return CollectionPageTab.Installed;
+        if (tabs.Contains(CollectionPageTab.Downloads)) return CollectionPageTab.Downloads;
+        return tabs.Count > 0 ? tabs[0] : CollectionPageTab.Installed;
     }
 
     /// <summary>
