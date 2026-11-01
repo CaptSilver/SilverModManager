@@ -130,10 +130,11 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
 
     /// <summary>
     /// Follows the install running into the selected (or pinned) loadout, if there is one, so a page opened after the
-    /// install started shows it instead of offering to start another. The page does it when it activates and when the
-    /// loadout changes; a collection page calls it for a Downloads tab that has not been shown yet.
+    /// install started shows it instead of offering to start another. The page holds it while it is active and
+    /// re-checks whenever the loadout changes; a collection page holds it while it is open, so the header follows the
+    /// install on every tab. The page stops following when the last hold is disposed.
     /// </summary>
-    void AttachToRunningInstall();
+    IDisposable FollowRunningInstall();
     string ErrorText { get; }
 
     /// <summary>The list is in the selected loadout but disabled, because an earlier install did not finish or skipped files.</summary>

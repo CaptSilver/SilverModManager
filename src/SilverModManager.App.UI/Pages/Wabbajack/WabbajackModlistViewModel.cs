@@ -82,6 +82,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     private IWabbajackInstallRun? _followed;
     private Task _followedCompletion = Task.CompletedTask;
     private IDisposable _followedProgress = Disposable.Empty;
+    private int _followHolds;
     private bool _hasUnfinishedInstall;
     private readonly TimeProvider _time;
 
@@ -332,7 +333,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
                 .DisposeWith(d);
 
             // An install started before this page existed (the user navigated away and back) is still going.
-            AttachToRunningInstall();
+            FollowRunningInstall().DisposeWith(d);
 
             if (!_loadStarted) _ = LoadAsync(CancellationToken.None);
         });
@@ -433,7 +434,11 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
                 RefreshLoadoutChoices();
                 // Without a loadout of the game, "Create new loadout" is the only way forward, so it starts out picked.
-                var first = LoadoutChoices.FirstOrDefault(choice => choice.Id is not null)
+                // An install of this list that is already going decides the pick, so the page shows it instead of
+                // offering Install for another loadout.
+                var running = PinnedLoadout is null ? _service.RunningInstall(FileId)?.Loadout : null;
+                var first = LoadoutChoices.FirstOrDefault(choice => choice.Id is not null && choice.Id == running)
+                    ?? LoadoutChoices.FirstOrDefault(choice => choice.Id is not null)
                     ?? WabbajackLoadoutChoice.CreateNew;
                 handedOver = true;
                 await SelectLoadoutAsync(first, token);
@@ -474,7 +479,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         if (_details is null) throw new InvalidOperationException("The list was not opened yet");
 
         SelectedLoadout = choice;
-        AttachToRunningInstall();
+        if (_followHolds > 0) AttachToRunningInstall();
         _planReady = false;
         IsPlanning = true;
 
@@ -903,10 +908,28 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         }
     }
 
+    public IDisposable FollowRunningInstall()
+    {
+        _followHolds++;
+        AttachToRunningInstall();
+        return Disposable.Create(() =>
+        {
+            // The last one to let go ends the page's view of the run: a page nobody shows has no use for every snapshot
+            // of an install that writes hundreds of thousands of files. The next hold finds the run again.
+            if (--_followHolds == 0 && _followed is not null) StopFollowing();
+        });
+    }
+
+    /// <summary>
+    /// Follows the run into the selected or pinned loadout. With no loadout yet, the run of this list wherever it
+    /// writes: an unpinned page does not know the loadout until it has picked one, and the run may be into any.
+    /// </summary>
     public void AttachToRunningInstall()
     {
         var loadout = SelectedLoadout?.Id ?? PinnedLoadout;
-        var run = loadout is { } id ? _service.RunningInstall(FileId, id) : null;
+        var run = loadout is { } id ? _service.RunningInstall(FileId, id)
+            : SelectedLoadout is null ? _service.RunningInstall(FileId)
+            : null;
         if (run is not null)
         {
             _ = Follow(run);

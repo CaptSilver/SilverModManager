@@ -216,4 +216,96 @@ public partial class WabbajackModlistViewModelTests
         run.Done.SetResult();
         await EventuallyOnUi(() => page.InstallProgress.Should().BeNull("the header clears when the install ends"));
     }
+
+    private async Task<(CollectionLoadoutViewModel Page, WabbajackModlistViewModel Model)> OpenCollectionPage(SilverModManager.Sdk.Loadouts.LoadoutId? pinned, FakeService service)
+    {
+        var file = await CollectionSeed.AddModlistFile(Connection, $"Header list {Guid.NewGuid():N}", version: "1", author: "A", archiveCount: 1, archiveSize: NexusMods.Paths.Size.GB);
+        var model = new WabbajackModlistViewModel(Provider.GetRequiredService<IWindowManager>(), Connection, service, new FakeAcquirer(), Provider);
+        var source = new WabbajackModlistSource(new OverridingServices(Provider, typeof(IWabbajackModlistViewModel), model), pinned, file, service);
+        var page = await Dispatcher.UIThread.InvokeAsync(() => new CollectionLoadoutViewModel(Substitute.For<IWindowManager>(), Provider, source));
+        return (page, model);
+    }
+
+    [Fact]
+    public async Task APageThatIsDeactivatedStopsFollowingTheRunAndAReactivatedOneFollowsItAgain()
+    {
+        var (vm, _, run) = await OpenWhileInstalling();
+        var activation = vm.Activator.Activate();
+        run.Snapshots.OnNext(Writing(1, 4));
+        await EventuallyOnUi(() => vm.ProgressText.Should().Be("Writing files: 1 of 4"));
+
+        activation.Dispose();
+        await EventuallyOnUi(() => vm.IsInstalling.Should().BeFalse("a page nobody shows does not claim the install"));
+        run.Snapshots.HasObservers.Should().BeFalse("a closed page that kept listening would handle every file the install writes, for hours");
+        run.Snapshots.OnNext(Writing(2, 4));
+        await Dispatcher.UIThread.InvokeAsync(() => { });
+        vm.ProgressText.Should().BeEmpty();
+
+        using var again = vm.Activator.Activate();
+        await EventuallyOnUi(() =>
+        {
+            vm.IsInstalling.Should().BeTrue();
+            vm.ProgressText.Should().Be("Writing files: 2 of 4");
+        });
+    }
+
+    [Fact]
+    public async Task TheCollectionPageFollowsTheRunUntilThePageIsClosedEvenWhenTheDownloadsTabIsNotActive()
+    {
+        var run = new FakeRun();
+        var service = new FakeService(TestGame) { Plan = Plan(Row(ArchiveState.Have)), Running = run };
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Closing");
+        var (page, model) = await OpenCollectionPage(loadout.LoadoutId, service);
+        var pageActivation = await Dispatcher.UIThread.InvokeAsync(() => page.Activator.Activate());
+        var tabActivation = model.Activator.Activate();
+
+        tabActivation.Dispose();
+        run.Snapshots.OnNext(Writing(7, 14));
+        await EventuallyOnUi(() =>
+        {
+            page.InstallProgress.Should().NotBeNull("the header still shows the install after the user leaves the Downloads tab");
+            page.InstallProgress!.Text.Should().Be("Writing files: 7 of 14");
+        });
+
+        pageActivation.Dispose();
+        run.Snapshots.HasObservers.Should().BeFalse("closing the page ends the listening");
+    }
+
+    [Fact]
+    public async Task AnUnpinnedCollectionPageShowsTheRunOfItsListInTheHeaderWhateverLoadoutItWritesInto()
+    {
+        var run = new FakeRun();
+        var service = new FakeService(TestGame) { Plan = Plan(Row(ArchiveState.Have)), Running = run };
+        run.Loadout = (await SeedLoadoutRow(GameStore.Steam, "Elsewhere")).LoadoutId;
+        var (page, _) = await OpenCollectionPage(null, service);
+        using var activation = await Dispatcher.UIThread.InvokeAsync(() => page.Activator.Activate());
+
+        run.Snapshots.OnNext(Writing(3, 12));
+
+        await Dispatcher.UIThread.InvokeAsync(() => page.SelectedTab = CollectionPageTab.Installed);
+        await EventuallyOnUi(() =>
+        {
+            page.InstallProgress.Should().NotBeNull("no loadout is picked yet, so the page follows the run of its list");
+            page.InstallProgress!.Text.Should().Be("Writing files: 3 of 12");
+        });
+    }
+
+    [Fact]
+    public async Task AnUnpinnedPageStartsOnTheLoadoutTheRunningInstallWritesInto()
+    {
+        await SeedLoadoutRow(GameStore.Steam, "Another loadout of the game");
+        var (probe, service, _) = await Open(Plan(Row(ArchiveState.Have)));
+        var other = probe.LoadoutChoices.Select(choice => choice.Id).First(id => id is not null && id != probe.SelectedLoadout!.Id)!.Value;
+        service.Running = new FakeRun { Loadout = other };
+        var vm = new WabbajackModlistViewModel(Provider.GetRequiredService<IWindowManager>(), Connection, service, new FakeAcquirer(), Provider) { FileId = SomeFile };
+
+        using var activation = vm.Activator.Activate();
+
+        await EventuallyOnUi(() =>
+        {
+            vm.SelectedLoadout?.Id.Should().Be(other, "Install for the loadout being installed into would be a second install");
+            vm.IsInstalling.Should().BeTrue();
+            vm.CanInstall.Should().BeFalse();
+        });
+    }
 }

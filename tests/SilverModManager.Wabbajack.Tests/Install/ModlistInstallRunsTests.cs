@@ -132,6 +132,25 @@ public class ModlistInstallRunsTests(ITestOutputHelper helper) : InstallTestBase
     }
 
     [Fact]
+    public async Task TheRunningInstallOfAFileIsFoundWhicheverLoadoutItWritesInto()
+    {
+        var loadout = await CreateLoadout();
+        var modlist = await AddList();
+        var (running, gate) = BeginHeld(NewJob(loadout, modlist, Options));
+        var other = await AddList();
+
+        var found = Runs.FindOfFile(LibraryFileId.From(modlist.Id));
+
+        found.Should().NotBeNull();
+        found!.Loadout.Should().Be(loadout.LoadoutId);
+        found.Should().BeSameAs(Runs.Find(LibraryFileId.From(modlist.Id), loadout.LoadoutId));
+        Runs.FindOfFile(LibraryFileId.From(other.Id)).Should().BeNull("another list's page is not shown this run");
+        gate.SetResult();
+        await running;
+        Runs.FindOfFile(LibraryFileId.From(modlist.Id)).Should().BeNull("a finished run is not running");
+    }
+
+    [Fact]
     public async Task OnlyTheRunOfThatFileIsFoundForThatFile()
     {
         var loadout = await CreateLoadout();

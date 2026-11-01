@@ -203,6 +203,8 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
             return running;
         }
 
+        public IWabbajackInstallRun? RunningInstall(LibraryFileId file) => Running is { } running && !running.Done.Task.IsCompleted ? running : null;
+
         public List<(LibraryFileId Archive, SilverModManager.Sdk.Loadouts.LoadoutId Target)> InstalledArchives { get; } = [];
 
         public Task InstallArchive(LibraryFileId archive, SilverModManager.Sdk.Loadouts.LoadoutId target, CancellationToken cancellationToken)

@@ -168,6 +168,9 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
     public IWabbajackInstallRun? RunningInstall(LibraryFileId file, LoadoutId loadout)
         => Runs.Find(file, loadout) is { } run ? Wrap(run) : null;
 
+    public IWabbajackInstallRun? RunningInstall(LibraryFileId file)
+        => Runs.FindOfFile(file) is { } run ? Wrap(run) : null;
+
     // One wrapper per run, so whoever follows it can tell it is the run it already follows.
     private IWabbajackInstallRun Wrap(RunningModlistInstall run)
     {

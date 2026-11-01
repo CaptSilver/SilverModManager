@@ -69,6 +69,9 @@ public interface IWabbajackModlistService
     /// <summary>The install of <paramref name="file"/> into <paramref name="loadout"/> that has not finished, or null. The same install is always the same object.</summary>
     IWabbajackInstallRun? RunningInstall(LibraryFileId file, LoadoutId loadout);
 
+    /// <summary>The install of <paramref name="file"/> that has not finished, into whichever loadout it writes, or null.</summary>
+    IWabbajackInstallRun? RunningInstall(LibraryFileId file);
+
     /// <summary>
     /// Installs a library file the list holds into <paramref name="target"/> as an ordinary mod. That makes it the
     /// user's own: the Mods tab lists it even though the app fetched it for the modlist.

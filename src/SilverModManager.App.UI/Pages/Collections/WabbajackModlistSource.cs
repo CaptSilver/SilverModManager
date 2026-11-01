@@ -194,13 +194,18 @@ public sealed class WabbajackModlistSource : CollectionSource
 
         // The Downloads tab may not be shown yet, and an install that was started before this page opened is going on
         // whichever tab is open.
-        _downloads?.AttachToRunningInstall();
+        // The hold lasts as long as the page is open, not as long as the Downloads tab is shown: the header follows the
+        // run on every tab.
+        var disposables = new CompositeDisposable();
+        if (_downloads is not null) disposables.Add(_downloads.FollowRunningInstall());
 
         // Open parses the list for its banner and ReadBlurb reuses that parse, so the header costs one parse.
-        return Observable
+        Observable
             .FromAsync(cancellationToken => ReadHeader(service, logger, cancellationToken))
             .SubscribeOn(TaskPoolScheduler.Default)
-            .Subscribe(_ => { }, error => logger.LogError(error, "Could not read the header of modlist {Modlist}", _file));
+            .Subscribe(_ => { }, error => logger.LogError(error, "Could not read the header of modlist {Modlist}", _file))
+            .DisposeWith(disposables);
+        return disposables;
     }
 
     private async Task ReadHeader(IWabbajackModlistService service, ILogger logger, CancellationToken cancellationToken)

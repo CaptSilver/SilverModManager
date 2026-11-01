@@ -47,6 +47,9 @@ public sealed class ModlistInstallRuns(IJobMonitor monitor)
     public RunningModlistInstall? Find(LibraryFileId file, LoadoutId loadout)
         => Running().FirstOrDefault(run => run.Loadout == loadout && run.File == file);
 
+    /// <summary>The unfinished install of <paramref name="file"/>, whichever loadout it writes into, or null.</summary>
+    public RunningModlistInstall? FindOfFile(LibraryFileId file) => Running().FirstOrDefault(run => run.File == file);
+
     /// <summary>The unfinished install into <paramref name="loadout"/>, whichever modlist it installs, or null.</summary>
     public RunningModlistInstall? FindInto(LoadoutId loadout) => Running().FirstOrDefault(run => run.Loadout == loadout);
 
