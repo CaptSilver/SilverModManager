@@ -34,3 +34,16 @@ public class GameIdAttribute(string ns, string name) : ScalarAttribute<GameId, u
     /// <inheritdoc />
     protected override GameId FromLowLevel(ulong value, AttributeResolver resolver) => GameId.From(value);
 }
+
+/// <summary>
+/// Attribute for a set of <see cref="GameId"/>s.
+/// </summary>
+[PublicAPI]
+public class GameIdsAttribute(string ns, string name) : CollectionAttribute<GameId, ulong, UInt64Serializer>(ns, name)
+{
+    /// <inheritdoc />
+    protected override ulong ToLowLevel(GameId value) => value.Value;
+
+    /// <inheritdoc />
+    protected override GameId FromLowLevel(ulong value, AttributeResolver resolver) => GameId.From(value);
+}

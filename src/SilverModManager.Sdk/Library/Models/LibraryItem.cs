@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using SilverModManager.Sdk.Games;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.Attributes;
 using SilverModManager.MnemonicDB.Abstractions.Models;
@@ -17,6 +18,21 @@ public partial class LibraryItem : IModelDefinition
     /// Name of the library item.
     /// </summary>
     public static readonly StringAttribute Name = new(Namespace, nameof(Name));
+
+    /// <summary>The games this item is for. Several when one file serves more than one game.</summary>
+    public static readonly GameIdsAttribute DestinationGames = new(Namespace, nameof(DestinationGames)) { IsIndexed = true };
+
+    /// <summary>
+    /// Set when the games were assigned because Nexus Mods does not tell them apart (Skyrim SE and Skyrim VR
+    /// share one Nexus id), not because the item was acquired or installed for each of them.
+    /// </summary>
+    public static readonly MarkerAttribute DestinationsShared = new(Namespace, nameof(DestinationsShared)) { IsIndexed = true };
+
+    /// <summary>
+    /// Set when no source, loadout or modlist says what game the item is for. Cleared when a game is added.
+    /// Indexed so the unassigned items are a slice too, not a scan for absence.
+    /// </summary>
+    public static readonly MarkerAttribute DestinationUnknown = new(Namespace, nameof(DestinationUnknown)) { IsIndexed = true };
 }
 
 public partial class LibraryItem
