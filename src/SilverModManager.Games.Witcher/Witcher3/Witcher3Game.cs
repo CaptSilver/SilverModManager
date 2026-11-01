@@ -24,8 +24,10 @@ public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witch
 {
     private AMergeGame? _mergeGame;
 
-    public bool HasOnlinePlay => false;
     private Witcher3VortexOrderFormat? _vortexOrder;
+
+    // Single-player only, so its merged files may sit in the real game folder.
+    public bool HasOnlinePlay => false;
 
     // Steam's only launch entry for the game is REDprelauncher.exe, which asks for a renderer before starting.
     public IReadOnlyList<string> LauncherSkipArguments { get; } = ["--launcher-skip"];
