@@ -38,6 +38,8 @@ public sealed class ModdingTool(
 
     public bool DisableOwnOutputDuringRun => definition.DisableOwnOutputDuringRun;
 
+    public IReadOnlyList<string> IgnoredOutput => definition.IgnoredOutput;
+
     public IJobTask<ITool, Unit> StartJob(Loadout.ReadOnly loadout, IJobMonitor monitor, CancellationToken cancellationToken)
     {
         return monitor.Begin<ITool, Unit>(this, async _ =>

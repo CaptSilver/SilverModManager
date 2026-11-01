@@ -305,6 +305,14 @@ public class ModdingToolTests(ITestOutputHelper helper)
         IgnoredOutput = ["*.log"],
     };
 
+    [Fact]
+    public void TheToolReportsItsDefinitionsIgnoredOutputToTheToolManager()
+    {
+        var tool = Tool(DynDolod());
+
+        ((IToolWithOutput)tool).IgnoredOutput.Should().Equal("*.log");
+    }
+
     // Stands for the tool: finds the folder it was given in the -O: word and writes a plugin and a log into it.
     private AbsolutePath UsePrefix()
     {

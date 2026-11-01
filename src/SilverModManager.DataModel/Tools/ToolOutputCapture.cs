@@ -18,6 +18,10 @@ namespace SilverModManager.DataModel;
 /// <param name="FileCount">How many files it holds now.</param>
 public readonly record struct ToolOutputCaptureResult(LoadoutItemGroupId Group, int FileCount);
 
+/// <summary>The file rows of a loadout's Overrides group at one moment, by path.</summary>
+/// <param name="Files">Each file's row and content hash.</param>
+public sealed record OverridesSnapshot(IReadOnlyDictionary<GamePath, (EntityId Row, Hash Hash)> Files);
+
 /// <summary>
 /// Turns what a tool wrote into a group of the loadout. A tool's output exists to replace files the mods ship
 /// (LOD meshes, cleaned plugins), so a group made here ranks above every mod installed before it. A group
@@ -91,6 +95,78 @@ public class ToolOutputCapture(IConnection connection, IFileStore fileStore)
         return new ToolOutputCaptureResult(result[group], identities.Count);
     }
 
+    /// <summary>The file rows of the loadout's Overrides group as of the connection's latest database.</summary>
+    public OverridesSnapshot SnapshotOverrides(Loadout.ReadOnly loadout)
+    {
+        var files = new Dictionary<GamePath, (EntityId, Hash)>();
+        foreach (var overrides in LoadoutOverridesGroup.FindByOverridesFor(connection.Db, loadout.Id))
+        {
+            foreach (var file in overrides.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile())
+                files[file.AsLoadoutItemWithTargetPath().TargetPath] = (file.Id, file.Hash);
+        }
+
+        return new OverridesSnapshot(files);
+    }
+
+    /// <summary>
+    /// Moves the files that are new or changed between <paramref name="before"/> and <paramref name="after"/> from
+    /// the Overrides group into the top-level group called <paramref name="groupName"/>, and returns how many moved.
+    /// A tool that writes into the game folder shows up in Overrides after the sync that ingests it, and that
+    /// delta is its output. Nothing moves when the delta is empty, so no empty group is made.
+    /// </summary>
+    /// <remarks>
+    /// Output of this kind is partial (the outfits ticked this time, the one plugin cleaned), so the move merges:
+    /// a moved file replaces the group's row at the same path and the group's other rows stay. A new group gets
+    /// a priority row above the existing ones, as in <see cref="CaptureFolder"/>, so a cleaned plugin beats the
+    /// mod's original. Deleted files are not moved.
+    /// </remarks>
+    /// <param name="ignored">
+    /// Globs matched against each path inside its location (<c>Data/**/*.log</c>), ignoring case. Matching files stay in
+    /// Overrides.
+    /// </param>
+    public async Task<int> MoveOverridesDelta(
+        Loadout.ReadOnly loadout,
+        OverridesSnapshot before,
+        OverridesSnapshot after,
+        string groupName,
+        IReadOnlyList<string> ignored)
+    {
+        var matcher = IncludeAllExcept(ignored);
+        var delta = after.Files
+            .Where(f => before.Files.TryGetValue(f.Key, out var old) is false || old.Hash != f.Value.Hash)
+            .Where(f => matcher.Match(f.Key.Path.ToString()).HasMatches)
+            .ToList();
+        if (delta.Count == 0) return 0;
+
+        var db = connection.Db;
+        var overridesGroup = LoadoutOverridesGroup.FindByOverridesFor(db, loadout.Id).First().AsLoadoutItemGroup().Id;
+        using var tx = connection.BeginTransaction();
+        var existing = FindGroup(db, loadout.LoadoutId, groupName);
+        LoadoutItemGroupId group;
+        var held = new Dictionary<GamePath, EntityId>();
+        if (existing is { } found)
+        {
+            group = LoadoutItemGroupId.From(found.Id);
+            foreach (var child in found.Children.OfTypeLoadoutItemWithTargetPath())
+                held[child.TargetPath] = child.Id;
+            if (found.AsLoadoutItem().IsDisabled) tx.Retract(found.Id, LoadoutItem.Disabled, Null.Instance);
+        }
+        else
+        {
+            group = LoadoutManager.AddEmptyGroup(tx, loadout.LoadoutId, groupName);
+        }
+
+        foreach (var (path, file) in delta)
+        {
+            if (held.TryGetValue(path, out var replaced)) tx.Delete(replaced, recursive: false);
+            tx.Retract(file.Row, LoadoutItem.Parent, overridesGroup);
+            tx.Add(file.Row, LoadoutItem.Parent, group);
+        }
+
+        await tx.Commit();
+        return delta.Count;
+    }
+
     /// <summary>
     /// Switches the group called <paramref name="groupName"/> off or on. A group that does not exist, or is already
     /// in the wanted state, is left alone. Returns whether anything changed.
@@ -137,12 +213,17 @@ public class ToolOutputCapture(IConnection connection, IFileStore fileStore)
         return true;
     }
 
-    private static List<(RelativePath Relative, AbsolutePath Source)> ReadFolder(AbsolutePath folder, IReadOnlyList<string> ignored)
+    private static Matcher IncludeAllExcept(IReadOnlyList<string> ignored)
     {
         var matcher = new Matcher();
         matcher.AddInclude("**/*");
         foreach (var glob in ignored) matcher.AddExclude(glob);
+        return matcher;
+    }
 
+    private static List<(RelativePath Relative, AbsolutePath Source)> ReadFolder(AbsolutePath folder, IReadOnlyList<string> ignored)
+    {
+        var matcher = IncludeAllExcept(ignored);
         var files = new List<(RelativePath, AbsolutePath)>();
         foreach (var file in folder.EnumerateFiles())
         {

@@ -148,6 +148,7 @@ public class ToolRunOutputTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
         public string Name => "Output tool";
         public ToolOutput Output => new ToolOutput.DeclaredFolder(GroupName, Data);
         public bool DisableOwnOutputDuringRun => disableOwn;
+        public IReadOnlyList<string> IgnoredOutput => [];
 
         public IJobTask<ITool, Unit> StartJob(Loadout.ReadOnly loadout, IJobMonitor monitor, CancellationToken cancellationToken)
             => monitor.Begin<ITool, Unit>(this, async _ =>

@@ -39,6 +39,10 @@ public class ToolManager : IToolManager
         return _tools[loadout.Game.GameId].Concat(_providers.SelectMany(p => p.GetTools(loadout)));
     }
 
+    private static string? GameFolderGroup(ITool tool) => tool is IToolWithOutput { Output: ToolOutput.GameFolder output }
+        ? output.GroupName
+        : null;
+
     private static string? OwnGroupToDisable(ITool tool) => tool is IToolWithOutput { DisableOwnOutputDuringRun: true, Output: ToolOutput.DeclaredFolder output }
         ? output.GroupName
         : null;
@@ -64,6 +68,7 @@ public class ToolManager : IToolManager
             disabledGroup = ownGroup;
 
         Loadout.ReadOnly appliedLoadout;
+        OverridesSnapshot? overridesBefore = null;
         try
         {
             _logger.LogInformation("Applying loadout {LoadoutId} on {GameName} {GameVersion}", 
@@ -71,6 +76,10 @@ public class ToolManager : IToolManager
             using (SyncOrigin.Begin(isGame ? SyncTrigger.Launch : SyncTrigger.ToolRun))
                 await _syncService.Synchronize(loadout);
             appliedLoadout = loadout.Rebase();
+
+            // Taken after the apply: the apply ingests what the user changed before pressing Run into Overrides, and
+            // that is not the tool's doing.
+            if (GameFolderGroup(tool) is not null) overridesBefore = _outputCapture.SnapshotOverrides(appliedLoadout);
 
             _logger.LogInformation("Running tool {ToolName} for loadout {LoadoutId} on {GameName} {GameVersion}", 
                 tool.Name, appliedLoadout.Id, appliedLoadout.InstallationInstance.Game.DisplayName, appliedLoadout.GameVersion);
@@ -86,6 +95,14 @@ public class ToolManager : IToolManager
             appliedLoadout.Id, appliedLoadout.InstallationInstance.Game.DisplayName, appliedLoadout.GameVersion);
         using (SyncOrigin.Begin(isGame ? SyncTrigger.AfterGameRun : SyncTrigger.ToolRun))
             await _syncService.Synchronize(appliedLoadout);
+
+        // What reached Overrides during the run is the tool's output. It belongs in the tool's group, which ranks
+        // above the mods; left in Overrides it would be mixed with everything else the user changed by hand.
+        if (overridesBefore is not null && GameFolderGroup(tool) is { } groupName && tool is IToolWithOutput withOutput)
+        {
+            var ingested = appliedLoadout.Rebase();
+            await _outputCapture.MoveOverridesDelta(ingested, overridesBefore, _outputCapture.SnapshotOverrides(ingested), groupName, withOutput.IgnoredOutput);
+        }
 
         return appliedLoadout.Rebase();
     }

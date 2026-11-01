@@ -14,4 +14,11 @@ public interface IToolWithOutput
     /// would otherwise read its own old output as input.
     /// </summary>
     bool DisableOwnOutputDuringRun { get; }
+
+    /// <summary>
+    /// Globs for output that is never kept: logs, caches and the tool's own settings. For a
+    /// <see cref="ToolOutput.GameFolder"/> they match the path inside the game folder's location (<c>Data/**/*.log</c>);
+    /// for a <see cref="ToolOutput.DeclaredFolder"/> the path inside the output folder. Ignoring case.
+    /// </summary>
+    IReadOnlyList<string> IgnoredOutput { get; }
 }
