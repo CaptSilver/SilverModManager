@@ -43,6 +43,11 @@ public static class CliMessages
     /// A protocol registration test was initialized.
     /// </summary>
     public record TestProtocolRegistration(Guid Id) : IEventBusMessage;
+
+    /// <summary>
+    /// A package was installed into a loadout from a link.
+    /// </summary>
+    public record ModInstalled(LibraryItem.ReadOnly Item, string LoadoutName) : IEventBusMessage;
 }
 
 public interface IFailureReason { }
@@ -56,4 +61,14 @@ public static class FailureReason
     public record AlreadyExists(string Name) : IFailureReason;
     
     public record GameNotManaged(string Game) : IFailureReason;
+
+    /// <summary>
+    /// The app declined the request on purpose; <paramref name="Message"/> is what to tell the user.
+    /// </summary>
+    public record Refused(string Message) : IFailureReason;
+
+    /// <summary>
+    /// The link fits more than one managed game and nothing says which is meant.
+    /// </summary>
+    public record Ambiguous(string Package, IReadOnlyList<string> Games) : IFailureReason;
 }

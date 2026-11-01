@@ -39,7 +39,9 @@ public static class Services
                 .AddOptionParser<ITool, ToolParser>();
 
         // Protocol Handlers
+        services.AddSingleton<ManagedGames>();
         services.AddSingleton<IIpcProtocolHandler, NxmIpcProtocolHandler>();
+        services.AddSingleton<IIpcProtocolHandler, Ror2mmIpcProtocolHandler>();
 
         services.AddProtocolVerbs();
         return services;

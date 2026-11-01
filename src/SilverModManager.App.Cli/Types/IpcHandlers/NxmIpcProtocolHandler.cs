@@ -228,22 +228,13 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
     
     private GameInstallation? GetManagedGameFor(GameDomain domain)
     {
-        var gameRegistry = _serviceProvider.GetRequiredService<IGameRegistry>();
-        var connection = _serviceProvider.GetRequiredService<IConnection>();
-        var syncService = _serviceProvider.GetRequiredService<ISynchronizerService>();
-
         var gameId = _cache[domain];
-        foreach (var installedGame in gameRegistry.LocateGameInstallations())
-        {
-            if (installedGame.Game.NexusModsGameId != gameId) continue;
-            if (syncService.TryGetLastAppliedLoadout(installedGame, out _)) return installedGame;
-
-            var activeLoadouts = Loadout.All(connection.Db).Where(ld => ld.Game.NexusModsGameId == installedGame.Game.NexusModsGameId);
-            if (!activeLoadouts.Any()) continue;
-            return installedGame;
-        }
-
-        return null;
+        var managedGames = new ManagedGames(
+            _serviceProvider.GetRequiredService<IGameRegistry>(),
+            _serviceProvider.GetRequiredService<IConnection>(),
+            _serviceProvider.GetRequiredService<ISynchronizerService>());
+        return managedGames
+            .Candidates(game => game.NexusModsGameId == gameId)
+            .FirstOrDefault()?.Installation;
     }
 }
-
