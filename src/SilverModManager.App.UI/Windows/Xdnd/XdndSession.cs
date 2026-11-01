@@ -68,12 +68,14 @@ public sealed class XdndSession
     /// The window is closing: tells the sink the drag left if it was entered, tells a source that already dropped that
     /// the drop failed, and forgets the source and every pending request and timer. Events handled afterwards are
     /// ignored, because the tap posts to the dispatcher and events queued before the close still arrive after this.
+    /// A source that is still owed a Status gets a refused one, since it sends nothing more until it has it.
     /// </summary>
     public void Cancel()
     {
         if (_cancelled) return;
         _cancelled = true;
         if (Phase == XdndPhase.Dropped) _replies.Finished(_source, DragDropEffects.None);
+        else if (Phase == XdndPhase.FetchingData) _replies.Status(_source, DragDropEffects.None);
         Forget();
     }
 
@@ -134,7 +136,11 @@ public sealed class XdndSession
         }
     }
 
-    /// <summary>The phase is Dropped while the sink works, so ending the drag afterwards does not also tell it the drag left.</summary>
+    /// <summary>
+    /// The phase is Dropped while the sink works, so ending the drag afterwards does not also tell it the drag left. A
+    /// sink that closes the window from inside Drop has already had the source told the drop failed by Cancel, so
+    /// nothing more is sent.
+    /// </summary>
     private void DropOnSink(DataObject data)
     {
         Phase = XdndPhase.Dropped;
@@ -147,6 +153,7 @@ public sealed class XdndSession
         {
             _logger.LogWarning(ex, "The window failed to take the dropped files; refusing the drop");
         }
+        if (_cancelled) return;
         Finish(effect);
     }
 
@@ -387,6 +394,7 @@ public sealed class XdndSession
             LogLeftOut(parse, drop);
             _data = drop.Data;
             var effect = _sink.Enter(_at, _data, _allowed);
+            if (_cancelled) return;
             if (Phase == XdndPhase.Dropped)
             {
                 DropOnSink(_data);

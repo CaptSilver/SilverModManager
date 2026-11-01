@@ -17,9 +17,16 @@ public sealed class RecordingSink : IXdndSink
     /// <summary>Runs inside Drop, before it answers, so a test can see what had happened by then.</summary>
     public Action? OnDrop { get; set; }
 
+    /// <summary>Runs inside Enter, before it answers.</summary>
+    public Action? OnEnter { get; set; }
+
     public IEnumerable<string> Kinds => Calls.Select(c => c.Kind);
 
-    public DragDropEffects Enter(PixelPoint at, IDataObject data, DragDropEffects allowed) => Record("Enter", at, data, allowed);
+    public DragDropEffects Enter(PixelPoint at, IDataObject data, DragDropEffects allowed)
+    {
+        OnEnter?.Invoke();
+        return Record("Enter", at, data, allowed);
+    }
 
     public DragDropEffects Over(PixelPoint at, IDataObject data, DragDropEffects allowed) => Record("Over", at, data, allowed);
 

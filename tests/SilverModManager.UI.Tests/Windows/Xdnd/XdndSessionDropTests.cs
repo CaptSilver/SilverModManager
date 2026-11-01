@@ -347,6 +347,33 @@ public class XdndSessionDropTests : XdndSessionTestBase
         _timer.Live.Should().BeEmpty();
         _sink.Calls.Should().BeEmpty();
         _session.Phase.Should().Be(XdndPhase.Idle);
+        var status = OnlyStatus();
+        (status.Destination, status.L1 & 1, status.L4).Should().Be((Source, 0, 0));
+    }
+
+    [Fact]
+    public void CancelInsideTheSinksDropSendsExactlyOneFinishedToTheSource()
+    {
+        FetchFiles();
+        _sink.OnDrop = _session.Cancel;
+
+        _session.Handle(Drop(Source));
+
+        OnlyFinished().Destination.Should().Be(Source);
+        _session.Phase.Should().Be(XdndPhase.Idle);
+    }
+
+    [Fact]
+    public void CancelInsideTheSinksEnterSendsNoStatusToWindowZeroAndStaysIdle()
+    {
+        _files.Hold();
+        FetchFiles();
+        _sink.OnEnter = _session.Cancel;
+
+        _files.Release();
+
+        _x.SentMessages.Should().OnlyContain(m => m.Destination == Source);
+        _session.Phase.Should().Be(XdndPhase.Idle);
     }
 
     [Fact]
