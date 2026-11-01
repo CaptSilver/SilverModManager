@@ -23,7 +23,7 @@ namespace SilverModManager.Library.Tests.ModSources;
 /// </summary>
 public class CheckUpdatesTests(IConnection connection)
 {
-    private sealed class FakeCatalogSource(bool stale, ThunderstoreCatalog catalog) : IThunderstoreCatalogSource
+    private sealed class FakeCatalogSource(bool stale, ThunderstoreCatalog catalog, Exception? refreshFailure = null) : IThunderstoreCatalogSource
     {
         public List<string> Refreshed { get; } = [];
         public List<string> Loaded { get; } = [];
@@ -33,7 +33,7 @@ public class CheckUpdatesTests(IConnection connection)
         public Task Refresh(string community, CancellationToken cancellationToken)
         {
             Refreshed.Add(community);
-            return Task.CompletedTask;
+            return refreshFailure is null ? Task.CompletedTask : Task.FromException(refreshFailure);
         }
 
         public Task<ThunderstoreCatalog> Load(string community, CancellationToken cancellationToken)
@@ -67,12 +67,12 @@ public class CheckUpdatesTests(IConnection connection)
         return new ThunderstoreCatalog(community, [new PackageListing { Name = name, FullName = $"{team}-{name}", Owner = team, Versions = records }]);
     }
 
-    private async Task<(ThunderstoreModSource Source, FakeCatalogSource Catalogs, ThunderstoreUpdateChecker Checker, IGameData Game, ThunderstoreLibraryFile.ReadOnly File)> Arrange(bool stale)
+    private async Task<(ThunderstoreModSource Source, FakeCatalogSource Catalogs, ThunderstoreUpdateChecker Checker, IGameData Game, ThunderstoreLibraryFile.ReadOnly File)> Arrange(bool stale, Exception? refreshFailure = null)
     {
         var community = UniqueCommunity();
         var team = "Team" + Guid.NewGuid().ToString("N");
         var file = await new LockFixtures(connection).AddThunderstoreFile(team, "Pkg", "1.0.0", "ts " + Guid.NewGuid(), null, community: community);
-        var catalogs = new FakeCatalogSource(stale, CatalogWith(community, team, "Pkg", "1.0.0", "1.1.0"));
+        var catalogs = new FakeCatalogSource(stale, CatalogWith(community, team, "Pkg", "1.0.0", "1.1.0"), refreshFailure);
         var checker = new ThunderstoreUpdateChecker(connection);
         file.AsLibraryItem().TryGetAsLibraryFile(out var libraryFile).Should().BeTrue();
         libraryFile.TryGetAsThunderstoreLibraryFile(out var thunderstoreFile).Should().BeTrue();
@@ -117,6 +117,29 @@ public class CheckUpdatesTests(IConnection connection)
 
         catalogs.Refreshed.Should().BeEmpty();
         catalogs.Loaded.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task ThunderstoreCheckUpdates_UsesTheCachedCatalogWhenRefreshingItFails()
+    {
+        var (source, catalogs, checker, game, file) = await Arrange(stale: true, new HttpRequestException("offline"));
+
+        await source.CheckUpdates(game, force: false, CancellationToken.None);
+
+        catalogs.Refreshed.Should().HaveCount(1);
+        NewestVersionSeenBy(checker, file).Should().Be("1.1.0");
+    }
+
+    [Fact]
+    public async Task ThunderstoreCheckUpdates_StillStopsWhenCancelledDuringRefresh()
+    {
+        var (source, _, _, game, _) = await Arrange(stale: true, new OperationCanceledException());
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var act = () => source.CheckUpdates(game, force: false, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [Fact]

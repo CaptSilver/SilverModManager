@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Networking.Thunderstore;
 using SilverModManager.Sdk.Games;
@@ -10,7 +11,7 @@ namespace SilverModManager.Library;
 /// <summary>
 /// Items downloaded as a package from Thunderstore.
 /// </summary>
-internal sealed class ThunderstoreModSource(IThunderstoreCatalogSource catalogs, ThunderstoreUpdateChecker checker) : IModSource
+internal sealed class ThunderstoreModSource(IThunderstoreCatalogSource catalogs, ThunderstoreUpdateChecker checker, ILogger<ThunderstoreModSource>? logger = null) : IModSource
 {
     public string DisplayName => "Thunderstore";
 
@@ -27,7 +28,19 @@ internal sealed class ThunderstoreModSource(IThunderstoreCatalogSource catalogs,
         if (ThunderstoreGame.For(game) is not { } thunderstoreGame) return;
 
         var community = thunderstoreGame.ThunderstoreCommunity;
-        if (force || catalogs.IsStale(community)) await catalogs.Refresh(community, cancellationToken);
+        if (force || catalogs.IsStale(community))
+        {
+            // A failed refresh leaves the previous listing loadable, so offline still compares against it.
+            // A timeout surfaces as an OperationCanceledException, so only the caller's token means "stop".
+            try
+            {
+                await catalogs.Refresh(community, cancellationToken);
+            }
+            catch (Exception e) when (cancellationToken.IsCancellationRequested is false)
+            {
+                logger?.LogWarning(e, "Refreshing the Thunderstore catalog for {Community} failed; using the cached one", community);
+            }
+        }
 
         // The catalog is loaded even when it was not refreshed: the checker starts empty each run, and the
         // cached listing is what it compares the library against.

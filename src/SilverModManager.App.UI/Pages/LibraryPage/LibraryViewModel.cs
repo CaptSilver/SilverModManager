@@ -929,7 +929,8 @@ After asking design, we're choosing to simply open the mod page for now.
             {
                 await source.CheckUpdates(game, force, token);
             }
-            catch (Exception e) when (e is not OperationCanceledException)
+            // A timeout is an OperationCanceledException too; only the command's own token means stop.
+            catch (Exception e) when (token.IsCancellationRequested is false)
             {
                 logger.LogWarning(e, "Checking {Source} for updates failed", source.DisplayName);
             }

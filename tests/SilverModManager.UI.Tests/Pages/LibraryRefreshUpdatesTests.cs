@@ -1,9 +1,12 @@
 using System.Collections.Concurrent;
+using Avalonia.Controls;
+using Avalonia.Threading;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Pages.LibraryPage;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.Sdk.Games;
@@ -72,16 +75,27 @@ public class LibraryRefreshUpdatesTests(IServiceProvider provider) : AUiTest(pro
         });
     }
 
-    // The Refresh button reaches the command as an ICommand with a boxed parameter.
+    // Drives the real button: whatever LibraryView bound to it is what the click would send.
     [Fact]
-    public async Task TheRefreshButtonsRoute_PassesForceThroughTheICommandInterface()
+    public async Task TheRefreshButton_ForcesTheCheck()
     {
         var source = new RecordingSource("source");
         var (vm, game) = await CreateViewModel(source);
 
-        ((System.Windows.Input.ICommand)vm.RefreshUpdatesCommand).Execute(true);
+        await OnUi(() =>
+        {
+            var view = new LibraryView { ViewModel = vm };
+            var window = Track(new Window { Width = 1200, Height = 800, Content = view });
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
 
-        await Eventually(() => source.Checks.Should().Equal((game, true)));
+            var button = view.FindControl<StandardButton>("Refresh")!;
+            button.Command.Should().NotBeNull();
+            button.Command!.Execute(button.CommandParameter);
+            return Task.FromResult(0);
+        });
+
+        await Eventually(() => source.Checks.Should().Contain((game, true)));
     }
 
     [Fact]
@@ -101,6 +115,19 @@ public class LibraryRefreshUpdatesTests(IServiceProvider provider) : AUiTest(pro
         var broken = new RecordingSource("broken", new HttpRequestException("offline"));
         var healthy = new RecordingSource("healthy");
         var (vm, game) = await CreateViewModel(broken, healthy);
+
+        vm.RefreshUpdatesCommand.Execute(true);
+
+        await Eventually(() => healthy.Checks.Should().Equal((game, true)));
+    }
+
+    // An HttpClient timeout is a TaskCanceledException although nobody cancelled the command.
+    [Fact]
+    public async Task ASourceThatTimesOut_DoesNotStopTheOthersChecking()
+    {
+        var timedOut = new RecordingSource("timed out", new TaskCanceledException("The request timed out"));
+        var healthy = new RecordingSource("healthy");
+        var (vm, game) = await CreateViewModel(timedOut, healthy);
 
         vm.RefreshUpdatesCommand.Execute(true);
 
