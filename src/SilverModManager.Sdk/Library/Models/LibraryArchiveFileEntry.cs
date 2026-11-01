@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.Attributes;
 using SilverModManager.MnemonicDB.Abstractions.Models;
 
@@ -26,4 +27,9 @@ public partial class LibraryArchiveFileEntry : IModelDefinition
     /// Reference to the parent archive that contains this file.
     /// </summary>
     public static readonly ReferenceAttribute<LibraryArchive> Parent = new(Namespace, nameof(Parent));
+
+    /// <summary>
+    /// Whether the file is a member extracted from a library archive rather than a file the library holds itself.
+    /// </summary>
+    public static bool IsMember(IDb db, EntityId file) => Load(db, file).IsValid();
 }

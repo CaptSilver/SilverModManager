@@ -54,6 +54,26 @@ public class LibraryArchiveLocatorTests(ILibraryService libraryService, IConnect
         locator.FindByXxHash64(connection.Db, Xx64.From(0xDEADBEEF12345678)).Should().BeNull();
     }
 
+    [Fact]
+    public async Task LibraryArchiveFileEntry_IsMember_MatchesTheOldLocatorCheck()
+    {
+        await using var folder = temporaryFileManager.CreateFolder();
+        var path = folder.Path.Combine("holder.zip");
+        using (var zip = new ZipArchive(File.Create(path.ToString()), ZipArchiveMode.Create))
+        {
+            using var entry = zip.CreateEntry("inside.txt").Open();
+            entry.Write("a member of the archive"u8);
+        }
+
+        var archive = (await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance)).AsLibraryFile();
+        var member = LibraryArchiveFileEntry.All(connection.Db).Single(entry => entry.ParentId.Value == archive.Id);
+
+        LibraryArchiveFileEntry.IsMember(connection.Db, archive.Id).Should().BeFalse("the archive is held by the library itself");
+        LibraryArchiveFileEntry.IsMember(connection.Db, member.Id).Should().BeTrue();
+        LibraryArchiveLocator.IsArchiveMember(connection.Db, archive.Id).Should().Be(LibraryArchiveFileEntry.IsMember(connection.Db, archive.Id));
+        LibraryArchiveLocator.IsArchiveMember(connection.Db, member.Id).Should().Be(LibraryArchiveFileEntry.IsMember(connection.Db, member.Id));
+    }
+
     private static async Task<FileIdentity> Hash64(AbsolutePath path)
     {
         await using var stream = path.Read();

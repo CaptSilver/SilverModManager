@@ -31,7 +31,7 @@ public sealed class LibraryArchiveLocator : ILibraryArchiveLocator
     public LibraryFile.ReadOnly? FindTopLevelByXxHash64(IDb db, FileIdentity identity) => Find(db, identity, topLevelOnly: true);
 
     /// <summary>Whether the file is a member extracted from another library archive rather than a file the library holds itself.</summary>
-    public static bool IsArchiveMember(IDb db, EntityId file) => LibraryArchiveFileEntry.Load(db, file).IsValid();
+    public static bool IsArchiveMember(IDb db, EntityId file) => LibraryArchiveFileEntry.IsMember(db, file);
 
     private static LibraryFile.ReadOnly? Find(IDb db, FileIdentity identity, bool topLevelOnly)
     {

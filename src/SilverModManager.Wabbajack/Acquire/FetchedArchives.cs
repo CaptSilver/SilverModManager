@@ -22,7 +22,7 @@ internal static class FetchedArchives
     /// </summary>
     public static async Task Mark(IConnection connection, FileIdentity archive, LibraryFile.ReadOnly file)
     {
-        if (LibraryArchiveLocator.IsArchiveMember(connection.Db, file.Id)) return;
+        if (LibraryArchiveFileEntry.IsMember(connection.Db, file.Id)) return;
         using var tx = connection.BeginTransaction();
         var any = false;
         foreach (var row in WabbajackModlistArchive.FindByIdentity(connection.Db, archive))
