@@ -114,8 +114,18 @@ public class SimpleGamesTableTests(IServiceProvider serviceProvider, IFileSystem
             using var locator = LocatorFor(row, files);
             var result = locator.Locate().Single();
 
-            result.Path.Combine(row.Executable).FileExists.Should().BeTrue(because: row.GameId.ToString());
-            if (row.NativeLinuxExecutable is { } nativeExe) result.Path.Combine(nativeExe).FileExists.Should().BeTrue(because: row.GameId.ToString());
+            // What the game itself looks for, resolved through the locations it declares.
+            var installation = new GameInstallation(result, GameLocations.Create(result.Game.GetLocations(result.Path.FileSystem, result)));
+            var primary = installation.Locations.ToAbsolutePath(result.Game.GetPrimaryFile(installation));
+            primary.FileExists.Should().BeTrue(because: row.GameId.ToString());
+
+            result.Game.NativeLinuxPrimaryFile.Should().Be(row.NativeLinuxExecutable, because: row.GameId.ToString());
+            if (result.Game.NativeLinuxPrimaryFile is { } nativePrimary)
+            {
+                var nativePath = installation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, nativePrimary));
+                nativePath.FileExists.Should().BeTrue(because: row.GameId.ToString());
+                nativePath.Should().NotBe(primary);
+            }
         }
     }
 
