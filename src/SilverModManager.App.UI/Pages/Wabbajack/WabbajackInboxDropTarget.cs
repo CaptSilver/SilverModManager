@@ -18,6 +18,8 @@ public sealed class WabbajackInboxDropTarget(IWabbajackModlistViewModel page) : 
             : new DropVerdict.Refuse("These files don't exist any more");
     }
 
+    // The zone's token dies with the view's activation (tab closed, workspace switched). A copy that stopped there would
+    // leave the inbox partly filled with nobody told, so the copy runs to completion whatever happens to the view.
     public Task DropAsync(DragPayload payload, CancellationToken cancellationToken)
-        => payload is DragPayload.DroppedFiles dropped ? page.AddDroppedFilesAsync(dropped.Paths, cancellationToken) : Task.CompletedTask;
+        => payload is DragPayload.DroppedFiles dropped ? page.AddDroppedFilesAsync(dropped.Paths, CancellationToken.None) : Task.CompletedTask;
 }

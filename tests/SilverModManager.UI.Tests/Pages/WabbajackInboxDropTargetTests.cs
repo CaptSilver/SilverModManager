@@ -75,11 +75,27 @@ public class WabbajackInboxDropTargetTests : IDisposable
     public async Task Dropping_HandsTheSamePathsToThePage()
     {
         var paths = new[] { File("a.zip"), File("b.zip") };
-        using var cancellation = new CancellationTokenSource();
 
-        await _target.DropAsync(Dropped(paths), cancellation.Token);
+        await _target.DropAsync(Dropped(paths), CancellationToken.None);
 
-        await _page.Received(1).AddDroppedFilesAsync(Arg.Is<IReadOnlyList<string>>(p => p.SequenceEqual(paths)), cancellation.Token);
+        await _page.Received(1).AddDroppedFilesAsync(Arg.Is<IReadOnlyList<string>>(p => p.SequenceEqual(paths)), Arg.Any<CancellationToken>());
+    }
+
+    // The zone cancels its token when the page deactivates (tab closed, workspace switched). A copy of gigabytes of
+    // archives must not stop halfway because of that, and nobody is left to be told.
+    [Fact]
+    public async Task Dropping_CopiesToCompletionEvenWhenTheZoneIsCancelled()
+    {
+        var path = File("a.zip");
+        using var zoneLifetime = new CancellationTokenSource();
+        CancellationToken seen = default;
+        _page.AddDroppedFilesAsync(Arg.Any<IReadOnlyList<string>>(), Arg.Do<CancellationToken>(token => seen = token)).Returns(Task.CompletedTask);
+
+        await _target.DropAsync(Dropped(path), zoneLifetime.Token);
+        zoneLifetime.Cancel();
+
+        seen.IsCancellationRequested.Should().BeFalse();
+        seen.CanBeCanceled.Should().BeFalse();
     }
 
     [Fact]
