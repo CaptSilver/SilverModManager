@@ -97,6 +97,7 @@ public static class Services
         coll.AddSingleton<IStreamSourceDispatcher, StreamSourceDispatcher>();
         
         coll.AddAllSingleton<IToolManager, ToolManager>();
+        coll.AddSingleton<ToolOutputCapture>();
 
         // Disk State and Synchronizer
         coll.AddDiskStateEntryModel();
