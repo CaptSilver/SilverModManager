@@ -1,5 +1,6 @@
 using System.Reactive;
 using Avalonia.Media.Imaging;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -169,4 +170,7 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
 
     /// <summary>Copies files the user dropped on the page into the inbox and checks it.</summary>
     Task AddDroppedFilesAsync(IReadOnlyList<string> paths, CancellationToken cancellationToken);
+
+    /// <summary>Shows a drop that failed; the page's drop zone reports to it.</summary>
+    IErrorPresenter ErrorPresenter { get; }
 }

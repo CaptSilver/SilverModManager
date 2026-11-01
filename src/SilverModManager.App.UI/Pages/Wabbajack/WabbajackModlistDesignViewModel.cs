@@ -81,7 +81,16 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public ReactiveCommand<Unit, Unit> CheckInboxCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> OpenInboxFolderCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> OpenHealthCheckCommand { get; } = ReactiveCommand.Create(() => { });
-    public Task AddDroppedFilesAsync(IReadOnlyList<string> paths, CancellationToken cancellationToken) => Task.CompletedTask;
+    /// <summary>The path lists dropped on the page, one entry per drop.</summary>
+    public List<IReadOnlyList<string>> DroppedFiles { get; } = [];
+
+    public IErrorPresenter ErrorPresenter { get; init; } = new DesignErrorPresenter();
+
+    public Task AddDroppedFilesAsync(IReadOnlyList<string> paths, CancellationToken cancellationToken)
+    {
+        DroppedFiles.Add(paths);
+        return Task.CompletedTask;
+    }
 
     public WabbajackModlistDesignViewModel() : base(new DesignWindowManager()) { }
 }

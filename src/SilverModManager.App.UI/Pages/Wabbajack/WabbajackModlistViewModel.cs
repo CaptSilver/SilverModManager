@@ -866,6 +866,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         GetWorkspaceController().OpenPage(WorkspaceId, pageData, new OpenPageBehavior.NewTab(PanelId));
     }
 
+    public IErrorPresenter ErrorPresenter => _provider.GetRequiredService<IErrorPresenter>();
+
     public async Task AddDroppedFilesAsync(IReadOnlyList<string> paths, CancellationToken cancellationToken)
     {
         var files = paths.Select(path => FileSystem.Shared.FromUnsanitizedFullPath(path)).Where(path => path.FileExists).ToArray();

@@ -19,9 +19,6 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
     {
         InitializeComponent();
 
-        // The toolbar sits outside the scrolled part, and the page says "anywhere on this page".
-        DragDrop.SetAllowDrop(Body, true);
-
         GameFileRows.ItemTemplate = new FuncDataTemplate<WabbajackGameFileChoice>((file, _) =>
         {
             if (file is null) return null;
@@ -137,15 +134,9 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
                 SkippedRows.ItemsSource = skipped;
             }).DisposeWith(disposables);
 
-            AddHandler(DragDrop.DragEnterEvent, OnDragOver);
-            AddHandler(DragDrop.DragOverEvent, OnDragOver);
-            AddHandler(DragDrop.DropEvent, OnDrop);
-            Disposable.Create(() =>
-            {
-                RemoveHandler(DragDrop.DragEnterEvent, OnDragOver);
-                RemoveHandler(DragDrop.DragOverEvent, OnDragOver);
-                RemoveHandler(DragDrop.DropEvent, OnDrop);
-            }).DisposeWith(disposables);
+            // Body holds the toolbar too, so "anywhere on this page" is true. Only files are the inbox's; a dragged mod
+            // or library row is ignored here and falls through to the window.
+            new DropZone(Body, new WabbajackInboxDropTarget(viewModel), viewModel.ErrorPresenter).DisposeWith(disposables);
         });
     }
 
@@ -158,21 +149,5 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
             ToolTip.SetShowOnDisabled(button, true);
             ToolTip.SetTip(button, reason == "" ? null : reason);
         }
-    }
-
-    // Handled, so the main window's own drop target (which adds to the library) leaves these to the page's inbox.
-    // Enter too: moving onto the page raises DragEnter, not DragOver, and the window would show its overlay for it.
-    private static void OnDragOver(object? sender, DragEventArgs e)
-    {
-        e.DragEffects = e.Data.Contains(DataFormats.Files) ? DragDropEffects.Copy : DragDropEffects.None;
-        e.Handled = true;
-    }
-
-    private void OnDrop(object? sender, DragEventArgs e)
-    {
-        e.Handled = true;
-        if (ViewModel is not { } viewModel) return;
-        if (DragPayloads.From(e.Data) is not DragPayload.DroppedFiles { Paths.Count: > 0 } files) return;
-        _ = viewModel.AddDroppedFilesAsync(files.Paths, CancellationToken.None);
     }
 }
