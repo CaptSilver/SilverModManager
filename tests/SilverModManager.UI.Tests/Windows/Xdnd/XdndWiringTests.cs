@@ -41,17 +41,29 @@ public class XdndWiringTests(IServiceProvider provider) : AUiTest(provider)
     {
         var receiver = new RecordingReceiver();
 
-        var window = await Dispatcher.UIThread.InvokeAsync(() => new MainWindow(receiver));
+        var window = await Dispatcher.UIThread.InvokeAsync(() => Track(new MainWindow(receiver)));
 
         receiver.Attached.Should().ContainSingle().Which.Should().BeSameAs(window);
     }
 
-    [Fact]
-    public async Task TheMainWindowFromTheContainerAttachesToTheContainersReceiver()
+    /// <summary>The app's container with the receiver swapped for a recording one, so the shared singleton never holds a test window.</summary>
+    private sealed class ProviderWithReceiver(IServiceProvider inner, IXdndReceiver receiver) : IServiceProvider
     {
-        var window = await Dispatcher.UIThread.InvokeAsync(() => Provider.GetRequiredService<MainWindow>());
+        public object? GetService(Type serviceType) =>
+            serviceType == typeof(IXdndReceiver) ? receiver
+            : serviceType == typeof(MainWindow) ? null
+            : inner.GetService(serviceType);
+    }
 
-        window.Should().NotBeNull();
+    [Fact]
+    public async Task TheMainWindowTheContainerBuildsAttachesToTheContainersReceiver()
+    {
+        var receiver = new RecordingReceiver();
+        var provider = new ProviderWithReceiver(Provider, receiver);
+
+        var window = await Dispatcher.UIThread.InvokeAsync(() => Track(ActivatorUtilities.CreateInstance<MainWindow>(provider)));
+
+        receiver.Attached.Should().ContainSingle().Which.Should().BeSameAs(window);
     }
 
     [Fact]
