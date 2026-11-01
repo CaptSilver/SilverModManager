@@ -72,11 +72,13 @@ public sealed class SteamFolderCheck(ILogger<SteamFolderCheck> logger)
     private async Task<List<string>> ChangedByHash(FromSoftGameDefinition definition, AbsolutePath gameFolder, IReadOnlyList<ManifestFile> manifest, CancellationToken cancellationToken)
     {
         var listed = manifest.Select(f => f.Hash).ToHashSet();
+        var listsEmptyFile = manifest.Any(f => f.Size == 0);
         var changed = new List<string>();
         string?[] names = [definition.Formats.RegulationFileName, definition.Layout.GameExecutable, definition.Layout.Launcher];
         foreach (var name in names.OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase))
         {
             var file = gameFolder / name;
+            if (listsEmptyFile && file.FileExists && new FileInfo(file.GetFullPath()).Length == 0) continue;
             if (await HashOf(file, cancellationToken) is { } hash && !listed.Contains(hash)) changed.Add(name);
         }
         return changed;
@@ -91,7 +93,9 @@ public sealed class SteamFolderCheck(ILogger<SteamFolderCheck> logger)
         var info = new FileInfo(path.GetFullPath());
         if (!info.Exists) return false;
         if ((ulong)info.Length != expected.Size) return true;
-        if (sizeOnly) return false;
+
+        // Steam lists an empty file with an all-zero hash, which no content hashes to; the size already matched.
+        if (info.Length == 0 || sizeOnly) return false;
         if (pinned) return await HashOf(path, cancellationToken) is { } hash && hash != expected.Hash;
 
         var key = path.GetFullPath();

@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Steam;
 using SilverModManager.Games.FromSoft.Doctor;
 using SilverModManager.Games.FromSoft.EldenRing;
 using SilverModManager.Games.FromSoft.Tests.Heal;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Games.FromSoft.Tests;
 
@@ -204,6 +205,34 @@ public sealed class SteamFolderCheckTests : IDisposable
         Replace("Game/regulation.bin", Same(Regulation));
 
         (await Run(Manifest(encrypted: true))).Changed.Should().Equal("regulation.bin");
+    }
+
+    // Steam gives an empty file an all-zero hash in the depot manifest, which no content ever hashes to.
+    private static ManifestFile EmptyEntry(string path) => new(path, 0, Sha1Value.From(new byte[20]));
+
+    [Theory]
+    [InlineData("Game/empty.dat")]
+    [InlineData("Game/regulation.bin")]
+    [InlineData("Game/empty.exe")]
+    public async Task AnEmptyFileSteamListsWithAZeroHashIsNotChanged(string path)
+    {
+        Install();
+        File.WriteAllBytes(Disk(path), []);
+        var manifest = Manifest().Where(f => f.Path != path).Append(EmptyEntry(path)).ToArray();
+
+        var found = await Run(manifest);
+
+        found.Changed.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AnEmptyFileWithoutFileNamesIsNotChangedWhenTheManifestListsAnEmptyOne()
+    {
+        Install();
+        File.WriteAllBytes(Disk("Game/regulation.bin"), []);
+        var manifest = Manifest(encrypted: true).Append(EmptyEntry("hidden")).ToArray();
+
+        (await Run(manifest)).Changed.Should().BeEmpty();
     }
 
     [Fact]
