@@ -41,7 +41,7 @@ internal static class Verbs
         await using var destination = temporaryFileManager.CreateFile();
         var downloadJob = nexusModsLibrary.CreateCollectionDownloadJob(destination, CollectionSlug.From(slug), RevisionNumber.From((ulong)revision), token);
         
-        var libraryFile = await libraryService.AddDownload(downloadJob, UnassignedAcquisition.Instance);
+        var libraryFile = await libraryService.AddDownload(downloadJob, new CollectionAcquisition(loadout.LoadoutId));
 
         if (!libraryFile.TryGetAsNexusModsCollectionLibraryFile(out var collectionFile))
             throw new InvalidOperationException("The library file is not a NexusModsCollectionLibraryFile");
@@ -50,7 +50,7 @@ internal static class Verbs
 
         if (loginManager.IsPremium)
         {
-            await collectionDownloader.DownloadItems(revisionMetadata, itemType: CollectionDownloader.ItemType.Required, db: connection.Db,
+            await collectionDownloader.DownloadItems(revisionMetadata, itemType: CollectionDownloader.ItemType.Required, db: connection.Db, target: loadout.LoadoutId,
                 cancellationToken: token
             );
         }

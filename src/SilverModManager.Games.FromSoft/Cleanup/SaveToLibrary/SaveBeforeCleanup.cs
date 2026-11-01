@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
 
@@ -12,7 +13,7 @@ public sealed record SaveOutcome(bool Proceed, SaveReport Report);
 /// </summary>
 public static class SaveBeforeCleanup
 {
-    public static async Task<SaveOutcome> RunAsync(SavePlan plan, IModDownloader downloader, ISavePrompts prompts, CancellationToken cancellationToken)
+    public static async Task<SaveOutcome> RunAsync(SavePlan plan, LoadoutId loadout, IModDownloader downloader, ISavePrompts prompts, CancellationToken cancellationToken)
     {
         if (plan.IsEmpty) return new SaveOutcome(true, SaveReport.None);
 
@@ -29,7 +30,7 @@ public static class SaveBeforeCleanup
         foreach (var mod in wanted)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var result = await DownloadAsync(downloader, game, mod, cancellationToken);
+            var result = await DownloadAsync(downloader, game, loadout, mod, cancellationToken);
             switch (result.Kind)
             {
                 case ModDownloadKind.Added: added.Add(mod); break;
@@ -45,11 +46,11 @@ public static class SaveBeforeCleanup
         return new SaveOutcome(proceed, report);
     }
 
-    private static async Task<ModDownloadResult> DownloadAsync(IModDownloader downloader, Sdk.NexusModsApi.NexusModsGameId game, ModToSave mod, CancellationToken cancellationToken)
+    private static async Task<ModDownloadResult> DownloadAsync(IModDownloader downloader, Sdk.NexusModsApi.NexusModsGameId game, LoadoutId loadout, ModToSave mod, CancellationToken cancellationToken)
     {
         try
         {
-            return await downloader.DownloadAsync(game, mod, cancellationToken);
+            return await downloader.DownloadAsync(game, loadout, mod, cancellationToken);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {

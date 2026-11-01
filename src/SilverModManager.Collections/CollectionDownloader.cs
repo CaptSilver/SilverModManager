@@ -68,9 +68,9 @@ public class CollectionDownloader
     }
 
     /// <summary>
-    /// Gets or adds a revision.
+    /// Gets or adds a revision. The collection file, when it has to be downloaded, is for the game of <paramref name="target"/>.
     /// </summary>
-    public async ValueTask<CollectionRevisionMetadata.ReadOnly> GetOrAddRevision(CollectionSlug slug, RevisionNumber revisionNumber, CancellationToken cancellationToken)
+    public async ValueTask<CollectionRevisionMetadata.ReadOnly> GetOrAddRevision(CollectionSlug slug, RevisionNumber revisionNumber, LoadoutId target, CancellationToken cancellationToken)
     {
         var revisions = CollectionRevisionMetadata
             .FindByRevisionNumber(_connection.Db, revisionNumber)
@@ -82,7 +82,7 @@ public class CollectionDownloader
         var downloadJob = _nexusModsLibrary.CreateCollectionDownloadJob(destination, slug, revisionNumber, CancellationToken.None);
         _logger.LogDebug("Downloading revision {Revision} of collection `{Slug}` to add it to the library", revisionNumber, slug);
 
-        var libraryFile = await _libraryService.AddDownload(downloadJob, UnassignedAcquisition.Instance);
+        var libraryFile = await _libraryService.AddDownload(downloadJob, new CollectionAcquisition(target));
         _logger.LogDebug("Added revision {Revision} of collection `{Slug}` to the library as {File}", revisionNumber, slug, libraryFile.Id);
 
         if (!libraryFile.TryGetAsNexusModsCollectionLibraryFile(out var collectionFile))
@@ -142,9 +142,9 @@ public class CollectionDownloader
     }
 
     /// <summary>
-    /// Downloads an external file.
+    /// Downloads an external file for the game of <paramref name="target"/>.
     /// </summary>
-    public async ValueTask Download(CollectionDownloadExternal.ReadOnly download, CancellationToken cancellationToken)
+    public async ValueTask Download(CollectionDownloadExternal.ReadOnly download, LoadoutId target, CancellationToken cancellationToken)
     {
         var result = await CanDirectDownload(download, cancellationToken);
         if (result.CanDownload)
@@ -166,7 +166,7 @@ public class CollectionDownloader
                 fileName: result.FileName
             );
 
-            await _libraryService.AddDownload(job, UnassignedAcquisition.Instance);
+            await _libraryService.AddDownload(job, new CollectionAcquisition(target));
         }
         else
         {
@@ -180,9 +180,10 @@ public class CollectionDownloader
     }
 
     /// <summary>
-    /// Downloads a file from nexus mods for premium users or opens the download page in the browser.
+    /// Downloads a file from nexus mods for premium users or opens the download page in the browser. A download is for
+    /// the game of <paramref name="target"/>.
     /// </summary>
-    public async ValueTask Download(CollectionDownloadNexusMods.ReadOnly download, CancellationToken cancellationToken)
+    public async ValueTask Download(CollectionDownloadNexusMods.ReadOnly download, LoadoutId target, CancellationToken cancellationToken)
     {
         var userInfo = await _loginManager.GetUserInfoAsync(cancellationToken);
         if (userInfo is null) return;
@@ -191,7 +192,7 @@ public class CollectionDownloader
         {
             await using var tempPath = _temporaryFileManager.CreateFile();
             var job = await _nexusModsLibrary.CreateDownloadJob(tempPath, download.FileMetadata, cancellationToken: cancellationToken);
-            await _libraryService.AddDownload(job, UnassignedAcquisition.Instance);
+            await _libraryService.AddDownload(job, new CollectionAcquisition(target));
         }
         else
         {
@@ -257,12 +258,13 @@ public class CollectionDownloader
     };
 
     /// <summary>
-    /// Downloads everything in the revision.
+    /// Downloads everything in the revision, for the game of <paramref name="target"/>.
     /// </summary>
     public async ValueTask DownloadItems(
         CollectionRevisionMetadata.ReadOnly revisionMetadata,
         ItemType itemType,
         IDb db,
+        LoadoutId target,
         CancellationToken cancellationToken = default)
     {
         var job = new DownloadCollectionJob
@@ -271,6 +273,7 @@ public class CollectionDownloader
             Logger = _serviceProvider.GetRequiredService<ILogger<DownloadCollectionJob>>(),
             RevisionMetadata = revisionMetadata,
             Db = db,
+            Target = target,
             ItemType = itemType,
             MaxDegreeOfParallelism = _serviceProvider.GetRequiredService<ISettingsManager>().Get<DownloadSettings>().MaxParallelDownloads,
         };

@@ -3,6 +3,7 @@ using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Collections;
 
@@ -13,6 +14,7 @@ public class DownloadCollectionJob : IJobDefinitionWithStart<DownloadCollectionJ
     public required CollectionDownloader.ItemType ItemType { get; init; }
     public required CollectionDownloader Downloader { get; init; }
     public required IDb Db { get; init; }
+    public required LoadoutId Target { get; init; }
     public required int MaxDegreeOfParallelism { get; init; }
 
     public async ValueTask<R3.Unit> StartAsync(IJobContext<DownloadCollectionJob> context)
@@ -33,11 +35,11 @@ public class DownloadCollectionJob : IJobDefinitionWithStart<DownloadCollectionJ
             {
                 if (download.TryGetAsCollectionDownloadNexusMods(out var nexusModsDownload))
                 {
-                    await Downloader.Download(nexusModsDownload, token);
+                    await Downloader.Download(nexusModsDownload, Target, token);
                 }
                 else if (download.TryGetAsCollectionDownloadExternal(out var externalDownload))
                 {
-                    await Downloader.Download(externalDownload, token);
+                    await Downloader.Download(externalDownload, Target, token);
                 }
             }
             catch (OperationCanceledException)

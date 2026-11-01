@@ -114,7 +114,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
             var start = await CollectionUpdateFlow.DownloadThenUpdate(
                 isDownloaded: () => CollectionDownloader.IsFullyDownloaded(items, connection.Db),
                 ensureCanDownload: EnsureCanDownloadCollections,
-                download: token => collectionDownloader.DownloadItems(revision, CollectionDownloader.ItemType.Required, connection.Db, token).AsTask(),
+                download: token => collectionDownloader.DownloadItems(revision, CollectionDownloader.ItemType.Required, connection.Db, targetLoadout, token).AsTask(),
                 update: token => CollectionUpdateFlow.Run(serviceProvider, windowManager, _notificationService, installed, revision, token),
                 cancellationToken);
             logger.LogDebug("Update of collection `{Slug}` to revision {To}: {Start}", revision.Collection.Slug, revision.RevisionNumber, start);
@@ -135,7 +135,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     }
 
                     if (!await EnsureCanDownloadCollections(cancellationToken)) return;
-                    await collectionDownloader.DownloadItems(_revision, itemType: CollectionDownloader.ItemType.Required, db: connection.Db,
+                    await collectionDownloader.DownloadItems(_revision, itemType: CollectionDownloader.ItemType.Required, db: connection.Db, target: targetLoadout,
                         cancellationToken: cancellationToken
                     );
                 },
@@ -157,7 +157,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                         return;
                     }
 
-                    await collectionDownloader.DownloadItems(_revision, itemType: CollectionDownloader.ItemType.Optional, db: connection.Db,
+                    await collectionDownloader.DownloadItems(_revision, itemType: CollectionDownloader.ItemType.Optional, db: connection.Db, target: targetLoadout,
                         cancellationToken: cancellationToken
                     );
                 },
@@ -311,7 +311,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                 try
                 {
                     logger.LogDebug("Updating collection `{Slug}` from revision {From} to {To}", _collection.Slug, _revision.RevisionNumber, newestRevisionNumber);
-                    var revision = await collectionDownloader.GetOrAddRevision(_collection.Slug, newestRevisionNumber, cancellationToken);
+                    var revision = await collectionDownloader.GetOrAddRevision(_collection.Slug, newestRevisionNumber, targetLoadout, cancellationToken);
                     logger.LogDebug("Got revision {To} of collection `{Slug}` as {Id}; opening its page", newestRevisionNumber, _collection.Slug, revision.Id);
 
                     var pageData = new PageData
@@ -519,8 +519,8 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     {
                         return message.Match(
                             f0: installMessage => InstallItem(installMessage.DownloadEntity, cancellationToken),
-                            f1: downloadNexusMods => collectionDownloader.Download(downloadNexusMods.DownloadEntity, cancellationToken),
-                            f2: downloadExternal => collectionDownloader.Download(downloadExternal.DownloadEntity, cancellationToken),
+                            f1: downloadNexusMods => collectionDownloader.Download(downloadNexusMods.DownloadEntity, _targetLoadout, cancellationToken),
+                            f2: downloadExternal => collectionDownloader.Download(downloadExternal.DownloadEntity, _targetLoadout, cancellationToken),
                             f3: manualDownloadOpenModal => OpenManualDownloadModal(manualDownloadOpenModal.DownloadEntity)
                         );
                     },
@@ -574,7 +574,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
 
     private ValueTask OpenManualDownloadModal(CollectionDownloadExternal.ReadOnly downloadEntity)
     {
-        _overlayController.Enqueue(new ManualDownloadRequiredOverlayViewModel(_serviceProvider, downloadEntity, IsEmbedded));
+        _overlayController.Enqueue(new ManualDownloadRequiredOverlayViewModel(_serviceProvider, downloadEntity, _targetLoadout, IsEmbedded));
         return ValueTask.CompletedTask;
     }
 

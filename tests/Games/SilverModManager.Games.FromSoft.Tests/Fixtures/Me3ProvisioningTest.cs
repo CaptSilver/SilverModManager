@@ -86,11 +86,13 @@ public abstract class Me3ProvisioningTest<TTest>(ITestOutputHelper helper)
     {
         private int _calls;
         public int Calls => Volatile.Read(ref _calls);
+        public List<IAcquisitionContext> Acquisitions { get; } = [];
         public Func<Task<LibraryArchive.ReadOnly>> Result { get; set; } = () => throw new InvalidOperationException("No release was expected to be fetched.");
 
-        public async ValueTask<LibraryFile.ReadOnly> AddLatestAssetAsync(ulong repositoryId, string suffix, string? nameHint, CancellationToken cancellationToken)
+        public async ValueTask<LibraryFile.ReadOnly> AddLatestAssetAsync(ulong repositoryId, string suffix, string? nameHint, IAcquisitionContext acquisition, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref _calls);
+            lock (Acquisitions) Acquisitions.Add(acquisition);
             repositoryId.Should().Be(540883721UL);
             suffix.Should().Be("linux-amd64.tar.gz");
             return (await Result()).AsLibraryFile();

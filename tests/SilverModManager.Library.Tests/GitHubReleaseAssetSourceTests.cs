@@ -2,6 +2,7 @@ using FluentAssertions;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Networking.GitHub.DTOs;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using Xunit;
@@ -28,6 +29,19 @@ public partial class AddGitHubReleaseAssetJobTests
     private int LibraryCopies(string name) => LibraryFile.All(connection.Db).Count(file => file.FileName == name);
 
     [Fact]
+    public async Task AddLatestAsset_RecordsTheCallersGame()
+    {
+        var release = Me3Release(Me3Asset("destined-linux-amd64.tar.gz", Digest(PayloadDigest)));
+        var game = GameId.From("GitHubCallerGame");
+
+        var file = await SourceFor(release).AddLatestAssetAsync(540883721, "linux-amd64.tar.gz", null, new GameAcquisition(game), CancellationToken.None);
+
+        var item = LibraryItem.Load(connection.Db, file.Id);
+        LibraryDestinations.GamesOf(item).Should().BeEquivalentTo([game]);
+        item.Contains(LibraryItem.DestinationUnknown).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task TheLinuxTarballIsPickedOverTheWindowsZipAndTheDebugBuilds()
     {
         var release = Me3Release(
@@ -37,7 +51,7 @@ public partial class AddGitHubReleaseAssetJobTests
             Me3Asset(LinuxName, Digest(PayloadDigest))
         );
 
-        var file = await SourceFor(release).AddLatestAssetAsync(540883721, "linux-amd64.tar.gz", "me3-linux-amd64", CancellationToken.None);
+        var file = await SourceFor(release).AddLatestAssetAsync(540883721, "linux-amd64.tar.gz", "me3-linux-amd64", UnassignedAcquisition.Instance, CancellationToken.None);
 
         file.FileName.Should().Be(LinuxName);
         file.Sha256.Value.Should().Be(PayloadDigest);
@@ -49,7 +63,7 @@ public partial class AddGitHubReleaseAssetJobTests
         var release = Me3Release(Me3Asset("me3-windows-amd64.zip", Digest(PayloadDigest)), Me3Asset("me3-linux-amd64-debug.tar.gz", Digest(PayloadDigest)));
         var before = LibraryCopies("me3-windows-amd64.zip") + LibraryCopies("me3-linux-amd64-debug.tar.gz");
 
-        var act = async () => await SourceFor(release).AddLatestAssetAsync(540883721, "linux-amd64.tar.gz", "me3-linux-amd64", CancellationToken.None);
+        var act = async () => await SourceFor(release).AddLatestAssetAsync(540883721, "linux-amd64.tar.gz", "me3-linux-amd64", UnassignedAcquisition.Instance, CancellationToken.None);
 
         await act.Should().ThrowAsync<ReleaseAssetIntegrityException>();
         (LibraryCopies("me3-windows-amd64.zip") + LibraryCopies("me3-linux-amd64-debug.tar.gz")).Should().Be(before);
@@ -60,7 +74,7 @@ public partial class AddGitHubReleaseAssetJobTests
     {
         var release = Me3Release(Me3Asset("mismatch-linux-amd64.tar.gz", Digest(OtherDigest)));
 
-        var act = async () => await SourceFor(release).AddLatestAssetAsync(540883721, "linux-amd64.tar.gz", null, CancellationToken.None);
+        var act = async () => await SourceFor(release).AddLatestAssetAsync(540883721, "linux-amd64.tar.gz", null, UnassignedAcquisition.Instance, CancellationToken.None);
 
         await act.Should().ThrowAsync<ReleaseAssetIntegrityException>().WithMessage("*mismatch-linux-amd64.tar.gz*");
         LibraryCopies("mismatch-linux-amd64.tar.gz").Should().Be(0);
@@ -71,7 +85,7 @@ public partial class AddGitHubReleaseAssetJobTests
     {
         var release = Me3Release(Me3Asset("undigested-linux-amd64.tar.gz", digest: null));
 
-        var act = async () => await SourceFor(release).AddLatestAssetAsync(540883721, "linux-amd64.tar.gz", null, CancellationToken.None);
+        var act = async () => await SourceFor(release).AddLatestAssetAsync(540883721, "linux-amd64.tar.gz", null, UnassignedAcquisition.Instance, CancellationToken.None);
 
         await act.Should().ThrowAsync<ReleaseAssetIntegrityException>().WithMessage("*no SHA-256*");
         LibraryCopies("undigested-linux-amd64.tar.gz").Should().Be(0);
@@ -84,7 +98,7 @@ public partial class AddGitHubReleaseAssetJobTests
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 
-        var act = async () => await SourceFor(release).AddLatestAssetAsync(540883721, "linux-amd64.tar.gz", null, cancelled.Token);
+        var act = async () => await SourceFor(release).AddLatestAssetAsync(540883721, "linux-amd64.tar.gz", null, UnassignedAcquisition.Instance, cancelled.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
         LibraryCopies("cancelled-linux-amd64.tar.gz").Should().Be(0);

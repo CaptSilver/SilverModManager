@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using SilverModManager.Games.Generic.ModProvenance;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
@@ -59,7 +60,9 @@ public sealed record ModDownloadResult(ModDownloadKind Kind, string? Message = n
 /// <summary>Puts a Nexus Mods file in the library the way an <c>nxm</c> link does.</summary>
 public interface IModDownloader
 {
-    Task<ModDownloadResult> DownloadAsync(NexusModsGameId game, ModToSave mod, CancellationToken cancellationToken);
+    /// <param name="game">The game's Nexus Mods id, which Skyrim Special Edition and Skyrim VR share.</param>
+    /// <param name="loadout">The loadout the cleanup runs on; the file is recorded for that loadout's game.</param>
+    Task<ModDownloadResult> DownloadAsync(NexusModsGameId game, LoadoutId loadout, ModToSave mod, CancellationToken cancellationToken);
 }
 
 /// <summary>A Nexus Mods file the cleanup is about to lose the only copy of.</summary>

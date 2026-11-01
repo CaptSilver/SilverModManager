@@ -336,6 +336,20 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
     }
 
     [Fact]
+    public async Task Install_ForPremium_RecordsTheCurrentLoadoutsGame()
+    {
+        var f = await Open(premium: true);
+        var job = Substitute.For<IJobTask<NexusModsDownloadJob, AbsolutePath>>();
+        f.Browser.FindMainFile(f.Game, ModId.From(7), Arg.Any<CancellationToken>()).Returns(FileId.From(55));
+        f.Browser.CreateDownloadJob(f.Game, ModId.From(7), FileId.From(55), Arg.Any<AbsolutePath>(), Arg.Any<CancellationToken>()).Returns(job);
+        var loadoutsGame = Loadout.Load(Connection.Db, f.LoadoutId).InstallationInstance.Game.GameId;
+
+        await f.Vm.InstallAsync(RowOf(7), CancellationToken.None);
+
+        _ = f.Library.Received(1).AddDownload(job, Arg.Is<IAcquisitionContext>(acquisition => acquisition.Destination(Connection.Db).Equals(Destination.Of(loadoutsGame))));
+    }
+
+    [Fact]
     public async Task Install_ForPremium_WithoutASingleMainFile_OpensTheFilesTab()
     {
         var f = await Open(premium: true);

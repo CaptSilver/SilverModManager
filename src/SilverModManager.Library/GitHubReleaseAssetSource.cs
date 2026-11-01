@@ -13,24 +13,24 @@ namespace SilverModManager.Library;
 internal sealed class GitHubReleaseAssetSource : IGitHubReleaseAssetSource
 {
     private readonly IServiceProvider _provider;
-    private readonly Func<GitHubRepositoryRef, string, string?, IJobTask<AddGitHubReleaseAssetJob, GitHubReleaseLibraryFile.ReadOnly>> _start;
+    private readonly Func<GitHubRepositoryRef, string, string?, IAcquisitionContext, IJobTask<AddGitHubReleaseAssetJob, GitHubReleaseLibraryFile.ReadOnly>> _start;
 
     public GitHubReleaseAssetSource(IServiceProvider provider)
     {
         _provider = provider;
-        _start = (repository, suffix, nameHint) => AddGitHubReleaseAssetJob.Create(provider, repository, tag: null, suffix, UnassignedAcquisition.Instance, nameHint, requireAdvertisedDigest: true);
+        _start = (repository, suffix, nameHint, acquisition) => AddGitHubReleaseAssetJob.Create(provider, repository, tag: null, suffix, acquisition, nameHint, requireAdvertisedDigest: true);
     }
 
     internal GitHubReleaseAssetSource(IServiceProvider provider, IGitHubApi api, HttpClient client)
     {
         _provider = provider;
-        _start = (repository, suffix, nameHint) => AddGitHubReleaseAssetJob.Create(provider, api, client, repository, tag: null, suffix, UnassignedAcquisition.Instance, nameHint, expectedSha256: null, requireAdvertisedDigest: true);
+        _start = (repository, suffix, nameHint, acquisition) => AddGitHubReleaseAssetJob.Create(provider, api, client, repository, tag: null, suffix, acquisition, nameHint, expectedSha256: null, requireAdvertisedDigest: true);
     }
 
-    public async ValueTask<LibraryFile.ReadOnly> AddLatestAssetAsync(ulong repositoryId, string suffix, string? nameHint, CancellationToken cancellationToken)
+    public async ValueTask<LibraryFile.ReadOnly> AddLatestAssetAsync(ulong repositoryId, string suffix, string? nameHint, IAcquisitionContext acquisition, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var job = _start(GitHubRepositoryRef.FromId(repositoryId), suffix, nameHint);
+        var job = _start(GitHubRepositoryRef.FromId(repositoryId), suffix, nameHint, acquisition);
 
         // The job runs on the monitor's own token, so the caller's is forwarded as a cancel of the job.
         var monitor = _provider.GetRequiredService<IJobMonitor>();

@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
 using SilverModManager.Games.Generic.ModProvenance;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.Games.FromSoft.Tests.Cleanup.SaveToLibrary;
@@ -64,10 +65,12 @@ internal sealed class FakeLibrary : ILibraryProbe
 internal sealed class FakeDownloader(Func<ModToSave, ModDownloadResult>? answer = null) : IModDownloader
 {
     public List<string> Log { get; } = [];
+    public List<LoadoutId> Loadouts { get; } = [];
 
-    public Task<ModDownloadResult> DownloadAsync(NexusModsGameId game, ModToSave mod, CancellationToken cancellationToken)
+    public Task<ModDownloadResult> DownloadAsync(NexusModsGameId game, LoadoutId loadout, ModToSave mod, CancellationToken cancellationToken)
     {
         Log.Add($"download {mod.Id}");
+        Loadouts.Add(loadout);
         return Task.FromResult(answer?.Invoke(mod) ?? ModDownloadResult.Added);
     }
 }

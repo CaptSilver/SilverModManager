@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Backend;
 using SilverModManager.Library.Tests.DownloadsService;
+using SilverModManager.Library.Tests.Lock;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Networking.Thunderstore;
 using SilverModManager.Networking.Thunderstore.Tests.Fixtures;
@@ -253,6 +254,38 @@ public class AddThunderstorePackageJobTests(IServiceProvider serviceProvider)
         }
     }
 
+    [Fact]
+    public async Task AddThunderstorePackageJob_RecordsTheRequestsGame()
+    {
+        const string team = "Destined";
+        Publish(team, "Mod", "1.0.0", []);
+        var game = new ThunderstoreStubbedGame(serviceProvider);
+
+        var files = await Source.AddAsync(Request(Ref(team, "Mod", "1.0.0"), game, withDependencies: false), CancellationToken.None);
+
+        var item = LibraryItem.Load(Connection.Db, files.Single().Id);
+        LibraryDestinations.GamesOf(item).Should().BeEquivalentTo([ThunderstoreStubbedGame.GameId]);
+        item.Contains(LibraryItem.DestinationUnknown).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AddThunderstorePackageJob_AlreadyInLibrary_AdoptsItForTheRequestsGame()
+    {
+        const string team = "Adopted";
+        Publish(team, "Mod", "1.0.0", []);
+        var otherGame = GameId.From("SomeOtherThunderstoreGame");
+        var held = await new LockFixtures(Connection).AddThunderstoreFile(team, "Mod", "1.0.0", "held bytes", Digest(team, "Mod", "1.0.0"),
+            extend: (tx, file) => LibraryDestinations.Write(tx, file.Id, Destination.Of(otherGame)));
+        Routes.Requests.Clear();
+
+        var files = await Source.AddAsync(Request(Ref(team, "Mod", "1.0.0"), new ThunderstoreStubbedGame(serviceProvider), withDependencies: false), CancellationToken.None);
+
+        files.Single().Id.Should().Be(held.Id, "the library's copy is reused");
+        DownloadsOf(team).Should().BeEmpty();
+        LibraryDestinations.GamesOf(LibraryItem.Load(Connection.Db, held.Id))
+            .Should().BeEquivalentTo([otherGame, ThunderstoreStubbedGame.GameId]);
+    }
+
     public class Startup
     {
         public void ConfigureServices(IServiceCollection services)
@@ -264,6 +297,7 @@ public class AddThunderstorePackageJobTests(IServiceProvider serviceProvider)
                 .AddFileExtractors()
                 .AddThunderstore()
                 .AddSingleton<IThunderstoreSource, ThunderstoreSource>()
+                .AddLibraryServiceForTests()
                 .AddSingleton(new HttpClient(Hook));
         }
     }

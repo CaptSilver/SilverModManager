@@ -41,6 +41,19 @@ public class Me3HostProvisionerTests(ITestOutputHelper helper) : Me3Provisioning
     }
 
     [Fact]
+    public async Task TheFetchedReleaseIsRequestedForTheLoadoutsGame()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout);
+        Source.Result = () => AddReleaseTarball();
+
+        await Provisioner.EnsureInstalled(loadout, CancellationToken.None);
+
+        var acquisition = Source.Acquisitions.Should().ContainSingle().Subject;
+        acquisition.Destination(Connection.Db).Should().Be(Destination.Of(EldenRingGame.GameId));
+    }
+
+    [Fact]
     public async Task AReleaseAlreadyInTheLibraryIsInstalledWithoutADownload()
     {
         var loadout = await CreateLoadout();

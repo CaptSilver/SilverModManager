@@ -42,7 +42,7 @@ public sealed class Me3HostProvisioner(IServiceProvider provider, ILogger<Me3Hos
                 throw new InvalidOperationException($"Loadout '{loadout.Name}' is for {game.DisplayName}, which does not load mods with me3, so it has no use for it.");
             if (HasHostFile(loadout)) return;
 
-            var archive = FindInLibrary(connection.Db) ?? await Fetch(connection.Db, cancellationToken);
+            var archive = FindInLibrary(connection.Db) ?? await Fetch(game, cancellationToken);
             logger.LogInformation("Installing me3 ({Archive}) into loadout '{Loadout}'", archive.AsLibraryFile().FileName, loadout.Name);
 
             var installer = game.LibraryItemInstallers.OfType<Me3HostInstaller>().Single();
@@ -74,11 +74,11 @@ public sealed class Me3HostProvisioner(IServiceProvider provider, ILogger<Me3Hos
         return null;
     }
 
-    private async Task<LibraryArchive.ReadOnly> Fetch(IDb db, CancellationToken cancellationToken)
+    private async Task<LibraryArchive.ReadOnly> Fetch(IGameData game, CancellationToken cancellationToken)
     {
         logger.LogInformation("Downloading the latest me3 Linux release");
         var file = await provider.GetRequiredService<IGitHubReleaseAssetSource>()
-            .AddLatestAssetAsync(Me3HostFiles.RepositoryId, Me3HostFiles.ReleaseAssetSuffix, Me3HostFiles.ReleaseAssetHint, cancellationToken);
+            .AddLatestAssetAsync(Me3HostFiles.RepositoryId, Me3HostFiles.ReleaseAssetSuffix, Me3HostFiles.ReleaseAssetHint, new GameAcquisition(game.GameId), cancellationToken);
 
         // The installer would fall back to the manual one for an archive it refuses; say what was wrong instead.
         var archive = LibraryArchive.Load(file.Db, file.Id);

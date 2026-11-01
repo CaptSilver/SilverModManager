@@ -117,7 +117,7 @@ internal sealed class LockFixtures(IConnection connection)
         });
     }
 
-    public Task<LibraryFile.ReadOnly> AddThunderstoreFile(string team, string name, string version, string content, Sha256Value? pinned, string community = "repo", bool storeDigest = true)
+    public Task<LibraryFile.ReadOnly> AddThunderstoreFile(string team, string name, string version, string content, Sha256Value? pinned, string community = "repo", bool storeDigest = true, Action<ITransaction, LibraryFile.New>? extend = null)
     {
         var fileName = $"{team}-{name}-{version}.zip";
         // A row from before the library file digest was recorded has the package pin but not the digest.
@@ -133,6 +133,7 @@ internal sealed class LockFixtures(IConnection connection)
                 Community = community,
                 PinnedSha256 = pinned ?? LockFixtures.DigestOf(content),
             };
+            extend?.Invoke(tx, file);
         });
     }
 

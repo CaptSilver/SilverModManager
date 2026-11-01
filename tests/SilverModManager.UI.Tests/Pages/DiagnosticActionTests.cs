@@ -411,7 +411,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         var fixer = FixerPlanning(PlanOf("mods/a"));
         fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>()).Returns(Applied("mods/a"));
         var downloader = Substitute.For<IModDownloader>();
-        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Added);
+        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<LoadoutId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Added);
         var handler = FixHandler(Answering(ButtonDefinitionId.Accept), Substitute.For<IDiagnosticManager>(), fixer, SaverOffering(OldMod), downloader);
         var seen = new List<string?>();
         using var subscription = handler.StatusOf(seeded.LoadoutId).Subscribe(seen.Add);
@@ -434,7 +434,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
         var fixer = FixerPlanning(PlanOf("mods/a"));
         var downloader = Substitute.For<IModDownloader>();
-        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Failed("404"));
+        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<LoadoutId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Failed("404"));
         var windows = AnsweringInOrder(ButtonDefinitionId.Accept, ButtonDefinitionId.Accept, ButtonDefinitionId.Cancel);
         var handler = FixHandler(windows, Substitute.For<IDiagnosticManager>(), fixer, SaverOffering(OldMod), downloader);
         string? current = null;
@@ -529,7 +529,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
         var log = new List<string>();
         var downloader = Substitute.For<IModDownloader>();
-        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>())
+        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<LoadoutId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
                 log.Add("download");
@@ -560,7 +560,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
 
         await FixHandler(windows, manager, fixer, SaverOffering(OldMod), downloader).ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
 
-        await downloader.DidNotReceive().DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>());
+        await downloader.DidNotReceive().DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<LoadoutId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>());
         await fixer.DidNotReceive().FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>());
     }
 
@@ -570,12 +570,12 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
         var fixer = FixerPlanning(PlanOf("mods/a"));
         var downloader = Substitute.For<IModDownloader>();
-        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Failed("404"));
+        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<LoadoutId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Failed("404"));
         var windows = AnsweringInOrder(ButtonDefinitionId.Accept, ButtonDefinitionId.Accept, ButtonDefinitionId.Cancel);
 
         await FixHandler(windows, Substitute.For<IDiagnosticManager>(), fixer, SaverOffering(OldMod), downloader).ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
 
-        await downloader.Received(1).DownloadAsync(Arg.Any<NexusModsGameId>(), OldMod, Arg.Any<CancellationToken>());
+        await downloader.Received(1).DownloadAsync(Arg.Any<NexusModsGameId>(), seeded.LoadoutId, OldMod, Arg.Any<CancellationToken>());
         await fixer.DidNotReceive().FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>());
     }
 
@@ -586,7 +586,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         var fixer = FixerPlanning(PlanOf("mods/a"));
         fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>()).Returns(Applied("mods/a"));
         var downloader = Substitute.For<IModDownloader>();
-        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Failed("404"));
+        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<LoadoutId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Failed("404"));
 
         await FixHandler(Answering(ButtonDefinitionId.Accept), Substitute.For<IDiagnosticManager>(), fixer, SaverOffering(OldMod), downloader)
             .ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
@@ -605,7 +605,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
             .Returns(new CleanupFixOutcome(CleanupFixStatus.Applied, new CleanupResult([..replanned.Steps], null)));
         var saver = SaverOffering(OldMod);
         var downloader = Substitute.For<IModDownloader>();
-        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Added);
+        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<LoadoutId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Added);
 
         await FixHandler(Answering(ButtonDefinitionId.Accept), Substitute.For<IDiagnosticManager>(), fixer, saver, downloader)
             .ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));

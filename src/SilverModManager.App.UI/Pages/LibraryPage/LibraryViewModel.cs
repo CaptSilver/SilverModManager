@@ -36,6 +36,8 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Networking.NexusWebApi;
 using SilverModManager.Networking.NexusWebApi.UpdateFilters;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Downloads;
+using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
@@ -588,7 +590,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
                 // Try a download.
                 await using var tempPath = _temporaryFileManager.CreateFile();
                 var job = await _nexusModsLibrary.CreateDownloadJob(tempPath, newestFile, cancellationToken: cancellationToken);
-                var libraryFile = await _libraryService.AddDownload(job, UnassignedAcquisition.Instance);
+                var libraryFile = await AddUpdatedFile(job, currentFiles);
                 var newLibraryItem = libraryFile.AsLibraryItem();
 
                 // Map each current file to the new file
@@ -714,12 +716,26 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
         
         // Note(sewer): There's usually just 1 file in like 99% of the cases here
         //              so no need to optimize around file reuse and TemporaryFileManager.
-        foreach (var newestFile in newestToCurrentMapping.Keys)
+        foreach (var (newestFile, currentFiles) in newestToCurrentMapping)
         {
             await using var tempPath = _temporaryFileManager.CreateFile();
             var job = await _nexusModsLibrary.CreateDownloadJob(tempPath, newestFile, cancellationToken: cancellationToken);
-            await _libraryService.AddDownload(job, UnassignedAcquisition.Instance);
+            await AddUpdatedFile(job, currentFiles);
         }
+    }
+
+    /// <summary>
+    /// Adds the newer file of an update. It is for the games of the files it supersedes, not for the game of the page
+    /// that started the update: a Nexus Mods page serves every game that shares its id, so an update of a file that is
+    /// only for one of them must stay only for that one.
+    /// </summary>
+    internal async Task<LibraryFile.ReadOnly> AddUpdatedFile(IJobTask<IDownloadJob, AbsolutePath> job, IEnumerable<NexusModsFileMetadata.ReadOnly> replacedFiles)
+    {
+        var replaced = replacedFiles
+            .SelectMany(file => NexusModsLibraryItem.FindByFileMetadata(_connection.Db, file))
+            .Select(item => item.AsLibraryItem().LibraryItemId)
+            .ToArray();
+        return await _libraryService.AddDownload(job, new UpdateAcquisition(replaced));
     }
 
     private ValueTask HandleViewChangelogMessage(ViewChangelogMessage viewChangelogMessage, CancellationToken cancellationToken)

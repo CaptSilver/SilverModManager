@@ -54,7 +54,7 @@ public class CollectionTests(ITestOutputHelper outputHelper) : AIsolatedGameTest
         var revisionMetadata = await NexusModsLibrary.GetOrAddCollectionRevision(collectionFile, CollectionSlug.From(collectionStub), RevisionNumber.From((ulong)revisionNumber), CancellationToken.None);
 
         var collectionDownloader = new CollectionDownloader(ServiceProvider);
-        await collectionDownloader.DownloadItems(revisionMetadata, itemType: CollectionDownloader.ItemType.Required, db: Connection.Db);
+        await collectionDownloader.DownloadItems(revisionMetadata, itemType: CollectionDownloader.ItemType.Required, db: Connection.Db, target: loadout.LoadoutId);
 
         var items = CollectionDownloader.GetItems(revisionMetadata, CollectionDownloader.ItemType.Required);
         var installJob = await InstallCollectionJob.Create(ServiceProvider, loadout, collectionFile, revisionMetadata, items);

@@ -13,7 +13,9 @@ using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk;
 using R3;
 using ReactiveUI.SourceGenerators;
+using SilverModManager.Collections;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.App.UI.Pages.CollectionDownload;
 
@@ -72,7 +74,7 @@ public class ManualDownloadRequiredOverlayDesignViewModel : AOverlayViewModel<IM
 
 public partial class ManualDownloadRequiredOverlayViewModel : AOverlayViewModel<IManualDownloadRequiredOverlayViewModel>, IManualDownloadRequiredOverlayViewModel
 {
-    public ManualDownloadRequiredOverlayViewModel(IServiceProvider serviceProvider, CollectionDownloadExternal.ReadOnly downloadEntity, bool isEmbedded)
+    public ManualDownloadRequiredOverlayViewModel(IServiceProvider serviceProvider, CollectionDownloadExternal.ReadOnly downloadEntity, LoadoutId targetLoadout, bool isEmbedded)
     {
         IsEmbedded = isEmbedded;
 
@@ -110,7 +112,7 @@ public partial class ManualDownloadRequiredOverlayViewModel : AOverlayViewModel<
 
                 IsCheckingFile = true;
 
-                var localFile = await libraryService.AddLocalFile(file, UnassignedAcquisition.Instance);
+                var localFile = await libraryService.AddLocalFile(file, new CollectionAcquisition(targetLoadout));
                 var receivedHash = localFile.AsLibraryFile().Md5.Value;
                 ReceivedHash = receivedHash.ToString();
 

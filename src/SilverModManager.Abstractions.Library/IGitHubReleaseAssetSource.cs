@@ -14,5 +14,6 @@ public interface IGitHubReleaseAssetSource
     /// <paramref name="nameHint"/>), and its bytes must match the SHA-256 GitHub reports for it: an asset without a
     /// reported digest is refused. Throws when the release, the asset or the digest is not right; nothing is added then.
     /// </summary>
-    ValueTask<LibraryFile.ReadOnly> AddLatestAssetAsync(ulong repositoryId, string suffix, string? nameHint, CancellationToken cancellationToken);
+    /// <param name="acquisition">The game the asset is for. A release names no game, so the caller has to.</param>
+    ValueTask<LibraryFile.ReadOnly> AddLatestAssetAsync(ulong repositoryId, string suffix, string? nameHint, IAcquisitionContext acquisition, CancellationToken cancellationToken);
 }

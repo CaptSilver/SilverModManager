@@ -159,7 +159,7 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
         SetStatus(loadoutId, null);
 
         var downloader = new ReportingDownloader(serviceProvider.GetRequiredService<IModDownloader>(), text => SetStatus(loadoutId, text));
-        return await SaveBeforeCleanup.RunAsync(savePlan, downloader, new SaveToLibraryPrompts(serviceProvider, windowManager), CancellationToken.None);
+        return await SaveBeforeCleanup.RunAsync(savePlan, loadoutId, downloader, new SaveToLibraryPrompts(serviceProvider, windowManager), CancellationToken.None);
     }
 
     /// <summary>
@@ -168,12 +168,12 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
     /// </summary>
     private sealed class ReportingDownloader(IModDownloader inner, Action<string?> status) : IModDownloader
     {
-        public async Task<ModDownloadResult> DownloadAsync(SilverModManager.Sdk.NexusModsApi.NexusModsGameId game, ModToSave mod, CancellationToken cancellationToken)
+        public async Task<ModDownloadResult> DownloadAsync(SilverModManager.Sdk.NexusModsApi.NexusModsGameId game, LoadoutId loadout, ModToSave mod, CancellationToken cancellationToken)
         {
             status($"Downloading {mod.Name} {mod.Version}\u2026");
             try
             {
-                return await inner.DownloadAsync(game, mod, cancellationToken);
+                return await inner.DownloadAsync(game, loadout, mod, cancellationToken);
             }
             finally
             {

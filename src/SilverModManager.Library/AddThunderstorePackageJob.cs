@@ -41,6 +41,7 @@ public class AddThunderstorePackageJob : IJobDefinitionWithStart<AddThunderstore
         var monitor = ServiceProvider.GetRequiredService<IJobMonitor>();
         var connection = ServiceProvider.GetRequiredService<IConnection>();
         var community = Request.Game.ThunderstoreCommunity;
+        var acquisition = new ThunderstoreAcquisition(Request.Game);
         var files = new List<LibraryFile.ReadOnly>(versions.Count);
 
         foreach (var version in versions)
@@ -50,13 +51,15 @@ public class AddThunderstorePackageJob : IJobDefinitionWithStart<AddThunderstore
             // The library is the only dedupe: nothing else says a version was downloaded already.
             if (FindInLibrary(connection.Db, version) is { } existing)
             {
+                // Held for another game, it is now for this one too.
+                await ServiceProvider.GetRequiredService<ILibraryService>().Adopt(existing.AsLibraryFile().AsLibraryItem(), acquisition);
                 files.Add(existing.AsLibraryFile());
                 continue;
             }
 
             // Only the root has a pinned digest to check; a dependency is pinned by this first download.
             var expected = version == Request.Root ? Request.ExpectedSha256 : null;
-            var download = ThunderstoreDownloadJob.Create(ServiceProvider, version, community, UnassignedAcquisition.Instance, expected);
+            var download = ThunderstoreDownloadJob.Create(ServiceProvider, version, community, acquisition, expected);
             await using var registration = token.Register(() => monitor.Cancel(download));
             var added = await download;
             files.Add(added.AsLibraryFile());

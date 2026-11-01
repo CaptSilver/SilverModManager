@@ -243,6 +243,24 @@ public sealed class OfflineCollections(IServiceProvider serviceProvider, IConnec
         return (NexusModsCollectionLibraryFile.Load(db, fileId), revision, CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Required));
     }
 
+    /// <summary>The zip a collection download delivers: the <c>collection.json</c> for <paramref name="root"/> and any bundled files.</summary>
+    public async Task WriteCollectionArchive(
+        AbsolutePath collectionZip, CollectionRoot root, IReadOnlyDictionary<string, (string Path, string Content)[]>? bundledFiles = null)
+    {
+        var json = JsonSerializer.Serialize(root, serviceProvider.GetRequiredService<JsonSerializerOptions>());
+        await using var stream = collectionZip.Create();
+        using var zip = new ZipArchive(stream, ZipArchiveMode.Create);
+        using (var writer = new StreamWriter(zip.CreateEntry("collection.json").Open())) writer.Write(json);
+        foreach (var (expression, files) in bundledFiles ?? new Dictionary<string, (string Path, string Content)[]>())
+        {
+            foreach (var (path, content) in files)
+            {
+                using var writer = new StreamWriter(zip.CreateEntry($"bundled/{expression}/{path}").Open());
+                writer.Write(content);
+            }
+        }
+    }
+
     /// <summary>Writes the collection.json, its library file, the revision and one download per <c>mods[]</c> entry; <paramref name="addRules"/> runs in the same transaction.</summary>
     private async Task<(EntityId File, EntityId Revision)> Persist(
         AbsolutePath folder, CollectionRoot root, int[]? optionalIndexes,
@@ -254,22 +272,8 @@ public sealed class OfflineCollections(IServiceProvider serviceProvider, IConnec
         var slug = CollectionSlug.From(slugText);
         var revisionNumber = RevisionNumber.From((ulong)revisionNo);
 
-        var collectionJson = folder.Combine("collection.json");
         var collectionZip = folder.Combine("collection.zip");
-        await collectionJson.WriteAllTextAsync(JsonSerializer.Serialize(root, serviceProvider.GetRequiredService<JsonSerializerOptions>()));
-        await using (var stream = collectionZip.Create())
-        using (var zip = new ZipArchive(stream, ZipArchiveMode.Create))
-        {
-            zip.CreateEntryFromFile(collectionJson.ToString(), "collection.json");
-            foreach (var (expression, files) in bundledFiles ?? new Dictionary<string, (string Path, string Content)[]>())
-            {
-                foreach (var (path, content) in files)
-                {
-                    using var writer = new StreamWriter(zip.CreateEntry($"bundled/{expression}/{path}").Open());
-                    writer.Write(content);
-                }
-            }
-        }
+        await WriteCollectionArchive(collectionZip, root, bundledFiles);
 
         var collectionLibraryFile = await libraryService.AddLocalFile(collectionZip, UnassignedAcquisition.Instance);
 

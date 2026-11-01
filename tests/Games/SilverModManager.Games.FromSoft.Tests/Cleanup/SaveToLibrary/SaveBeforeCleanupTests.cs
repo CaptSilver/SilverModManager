@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
 using FluentAssertions;
 using SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.Games.FromSoft.Tests.Cleanup.SaveToLibrary;
@@ -8,6 +10,7 @@ namespace SilverModManager.Games.FromSoft.Tests.Cleanup.SaveToLibrary;
 public class SaveBeforeCleanupTests
 {
     private static readonly NexusModsGameId Game = NexusModsGameId.From(4333);
+    private static readonly LoadoutId Loadout = LoadoutId.From(EntityId.From(0x1234));
     private static readonly ModToSave A = new("a", "Mod A", "1.0", 1, 11);
     private static readonly ModToSave B = new("b", "Mod B", "2.0", 2, 22);
 
@@ -20,7 +23,7 @@ public class SaveBeforeCleanupTests
         var prompts = new FakePrompts(log: log);
         var downloader = new FakeDownloader();
 
-        var outcome = await SaveBeforeCleanup.RunAsync(PlanOf(A, B), downloader, prompts, default);
+        var outcome = await SaveBeforeCleanup.RunAsync(PlanOf(A, B), Loadout, downloader, prompts, default);
 
         outcome.Proceed.Should().BeTrue();
         outcome.Report.Added.Should().Equal(A, B);
@@ -29,11 +32,21 @@ public class SaveBeforeCleanupTests
     }
 
     [Fact]
+    public async Task EveryDownloadIsToldWhichLoadoutTheCleanupRunsOn()
+    {
+        var downloader = new FakeDownloader();
+
+        await SaveBeforeCleanup.RunAsync(PlanOf(A, B), Loadout, downloader, new FakePrompts(), default);
+
+        downloader.Loadouts.Should().Equal(Loadout, Loadout);
+    }
+
+    [Fact]
     public async Task CancellingTheListDownloadsNothingAndStopsTheCleanup()
     {
         var downloader = new FakeDownloader();
 
-        var outcome = await SaveBeforeCleanup.RunAsync(PlanOf(A), downloader, new FakePrompts(choose: _ => null), default);
+        var outcome = await SaveBeforeCleanup.RunAsync(PlanOf(A), Loadout, downloader, new FakePrompts(choose: _ => null), default);
 
         outcome.Proceed.Should().BeFalse();
         downloader.Log.Should().BeEmpty();
@@ -44,7 +57,7 @@ public class SaveBeforeCleanupTests
     {
         var downloader = new FakeDownloader();
 
-        var outcome = await SaveBeforeCleanup.RunAsync(PlanOf(A, B), downloader, new FakePrompts(choose: _ => ImmutableArray.Create(B)), default);
+        var outcome = await SaveBeforeCleanup.RunAsync(PlanOf(A, B), Loadout, downloader, new FakePrompts(choose: _ => ImmutableArray.Create(B)), default);
 
         outcome.Proceed.Should().BeTrue();
         downloader.Log.Should().Equal("download b");
@@ -56,7 +69,7 @@ public class SaveBeforeCleanupTests
         var downloader = new FakeDownloader();
         var stranger = new ModToSave("z", "Stranger", "1", 9, 99);
 
-        await SaveBeforeCleanup.RunAsync(PlanOf(A), downloader, new FakePrompts(choose: _ => ImmutableArray.Create(A, stranger)), default);
+        await SaveBeforeCleanup.RunAsync(PlanOf(A), Loadout, downloader, new FakePrompts(choose: _ => ImmutableArray.Create(A, stranger)), default);
 
         downloader.Log.Should().Equal("download a");
     }
@@ -72,7 +85,7 @@ public class SaveBeforeCleanupTests
             return true;
         });
 
-        var outcome = await SaveBeforeCleanup.RunAsync(PlanOf(A, B), downloader, prompts, default);
+        var outcome = await SaveBeforeCleanup.RunAsync(PlanOf(A, B), Loadout, downloader, prompts, default);
 
         outcome.Proceed.Should().BeTrue();
         shown!.Failed.Should().ContainSingle().Which.Should().Be(new FailedDownload(A, "404"));
@@ -85,7 +98,7 @@ public class SaveBeforeCleanupTests
     {
         var downloader = new FakeDownloader(_ => ModDownloadResult.Failed("boom"));
 
-        var outcome = await SaveBeforeCleanup.RunAsync(PlanOf(A), downloader, new FakePrompts(proceedAfterFailures: _ => false), default);
+        var outcome = await SaveBeforeCleanup.RunAsync(PlanOf(A), Loadout, downloader, new FakePrompts(proceedAfterFailures: _ => false), default);
 
         outcome.Proceed.Should().BeFalse();
     }
@@ -95,7 +108,7 @@ public class SaveBeforeCleanupTests
     {
         var downloader = new FakeDownloader(m => m == A ? throw new InvalidOperationException("no premium key") : ModDownloadResult.Added);
 
-        var outcome = await SaveBeforeCleanup.RunAsync(PlanOf(A, B), downloader, new FakePrompts(), default);
+        var outcome = await SaveBeforeCleanup.RunAsync(PlanOf(A, B), Loadout, downloader, new FakePrompts(), default);
 
         outcome.Report.Failed.Should().ContainSingle().Which.Message.Should().Contain("no premium key");
         outcome.Report.Added.Should().Equal(B);
@@ -107,7 +120,7 @@ public class SaveBeforeCleanupTests
         var downloader = new FakeDownloader(_ => ModDownloadResult.OpenedInBrowser);
         var prompts = new FakePrompts();
 
-        var outcome = await SaveBeforeCleanup.RunAsync(PlanOf(A, B), downloader, prompts, default);
+        var outcome = await SaveBeforeCleanup.RunAsync(PlanOf(A, B), Loadout, downloader, prompts, default);
 
         outcome.Proceed.Should().BeTrue();
         outcome.Report.OpenedInBrowser.Should().Equal(A, B);
@@ -121,7 +134,7 @@ public class SaveBeforeCleanupTests
         var downloader = new FakeDownloader();
         var prompts = new FakePrompts();
 
-        var outcome = await SaveBeforeCleanup.RunAsync(plan, downloader, prompts, default);
+        var outcome = await SaveBeforeCleanup.RunAsync(plan, Loadout, downloader, prompts, default);
 
         outcome.Proceed.Should().BeTrue();
         prompts.Log.Should().Equal("choose");
@@ -133,7 +146,7 @@ public class SaveBeforeCleanupTests
     {
         var prompts = new FakePrompts();
 
-        var outcome = await SaveBeforeCleanup.RunAsync(new SavePlan(Game, [], []), new FakeDownloader(), prompts, default);
+        var outcome = await SaveBeforeCleanup.RunAsync(new SavePlan(Game, [], []), Loadout, new FakeDownloader(), prompts, default);
 
         outcome.Proceed.Should().BeTrue();
         prompts.Log.Should().BeEmpty();

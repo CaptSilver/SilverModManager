@@ -53,8 +53,12 @@ internal sealed class ThunderstoreLibrarySource(IServiceProvider provider) : ILi
 
         // The download job reuses a version the library holds without looking at its bytes, and the importer removes
         // whatever file fails the lock's digest. Refuse here so that never takes a different copy with it.
-        if (FindOtherCopy(context.Connection, version, expected) is not null)
+        if (FindOtherCopy(context.Connection, version, expected) is { } otherCopy)
+        {
+            // The copy stays and the import still refuses it, but the game the lock is imported for now uses it.
+            await provider.GetRequiredService<ILibraryService>().Adopt(otherCopy.AsLibraryFile().AsLibraryItem(), new ThunderstoreAcquisition(game));
             throw new InvalidOperationException($"{entry.Id}: the library already holds a different {entry.Asset} than the one the lock pins; remove it from the library first.");
+        }
 
         var request = new ThunderstoreInstallRequest(version, game, WithDependencies: false, DependencyPolicy.Latest, expected, new Dictionary<ThunderstorePackageRef, ThunderstoreVersionNumber>());
         var files = await provider.GetRequiredService<IThunderstoreSource>().AddAsync(request, cancellationToken);

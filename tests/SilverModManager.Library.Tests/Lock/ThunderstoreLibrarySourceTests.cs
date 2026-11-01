@@ -9,6 +9,7 @@ using SilverModManager.Library.Tests.DownloadsService;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Networking.Thunderstore;
 using SilverModManager.Networking.Thunderstore.Tests.Fixtures;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
@@ -115,6 +116,23 @@ public class ThunderstoreLibrarySourceTests(IServiceProvider serviceProvider)
     }
 
     [Fact]
+    public async Task ThunderstoreLibrarySource_OtherCopyFound_AdoptsItForTheGame()
+    {
+        Publish("Adopts", "Mod", "1.0.0");
+        var otherGame = GameId.From("AnotherGameThatHoldsTheCopy");
+        var existing = await new LockFixtures(Connection).AddThunderstoreFile("Adopts", "Mod", "1.0.0", "other bytes", LockFixtures.DigestOf("other bytes"),
+            extend: (tx, file) => LibraryDestinations.Write(tx, file.Id, Destination.Of(otherGame)));
+        var digest = DigestOf("Adopts-Mod-1.0.0");
+
+        var act = async () => await Source.Download(Entry("Adopts-Mod-1.0.0.zip", digest), digest, Context, TestContext.Current.CancellationToken);
+
+        // The lock still refuses a copy that is not the pinned one; the game the user asked for is recorded on it anyway.
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        LibraryDestinations.GamesOf(LibraryItem.Load(Connection.Db, existing.Id))
+            .Should().BeEquivalentTo([otherGame, ThunderstoreStubbedGame.GameId]);
+    }
+
+    [Fact]
     public void AGameWithoutThunderstoreSupportRefusesBeforeAnyRequest()
     {
         var digest = DigestOf("Zehs-REPOLib-1.0.0");
@@ -135,6 +153,7 @@ public class ThunderstoreLibrarySourceTests(IServiceProvider serviceProvider)
                 .AddThunderstore()
                 .AddSingleton<IThunderstoreSource, ThunderstoreSource>()
                 .AddSingleton<ILibrarySource, ThunderstoreLibrarySource>()
+                .AddLibraryServiceForTests()
                 .AddSingleton(new HttpClient(Routes));
         }
     }
