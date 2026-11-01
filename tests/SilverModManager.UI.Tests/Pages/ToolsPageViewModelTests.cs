@@ -427,6 +427,8 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         var vm = CreateViewModel(manager, new FakeToolRunner(), new FakeFilePicker());
         vm.LoadoutId = loadout.LoadoutId;
         var run = vm.RunToolReportingAsync(tool, TestContext.Current.CancellationToken).AsTask();
+        // The run hops to the thread pool before it reaches the manager; a Cancel before then never starts it.
+        await manager.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
         vm.CancelRun();
         await run;
@@ -671,6 +673,9 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         /// <summary>Held by a run until the test completes it, so a test can look at the page mid-run.</summary>
         public Task? Gate { get; set; }
 
+        /// <summary>Completes once a run has reached the manager, so a test can act on a run that really started.</summary>
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public Func<ITool, (string? Group, int? ExitCode, int Captured)> Report { get; set; } = _ => (null, null, 0);
 
         public IEnumerable<ITool> GetTools(Loadout.ReadOnly loadout) => Tools;
@@ -682,6 +687,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         {
             Ran.Add(tool);
             Tokens.Add(token);
+            Entered.TrySetResult();
             if (Gate is { } gate) await gate.WaitAsync(token);
             await tool.StartJob(loadout, monitor, token);
             var (group, exit, captured) = Report(tool);
