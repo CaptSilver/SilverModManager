@@ -113,6 +113,39 @@ public class BuildStampTests(ITestOutputHelper helper) : AModdedEldenRingTest<Bu
     }
 
     [Fact]
+    public async Task AStampTakenOverAModdedRegulationIsTamperedOnceTheGamesOwnFileIsBack()
+    {
+        var loadout = await CreateLoadout();
+        var original = await (RealGameFolder / "regulation.bin").ReadAllBytesAsync();
+        var edited = RegulationFixture.BuildFromEntries(RegulationFixture.GoldenEntries, "11701001", EldenRingGame.Definition.Formats);
+        await (RealGameFolder / "regulation.bin").WriteAllBytesAsync(edited);
+        await Stamps.Record(InstallationOf(loadout), BuildIdentity.Identify(GameInstallation));
+
+        await (RealGameFolder / "regulation.bin").WriteAllBytesAsync(original);
+        var live = BuildIdentity.Identify(GameInstallation);
+        BuildIdentity.Classify(Stamps.Find(InstallationOf(loadout)), live).Should().Be(BuildChangeKind.Tampered);
+
+        await Stamps.AdoptRegulation(InstallationOf(loadout), live);
+
+        BuildIdentity.Classify(Stamps.Find(InstallationOf(loadout)), live).Should().Be(BuildChangeKind.Unchanged);
+        Stamps.Find(InstallationOf(loadout)).Should().Be(Original);
+        FromSoftBuildStamp.All(Connection.Db).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task AdoptingTheRegulationKeepsTheInstallFieldsAndWhenTheStampWasRecorded()
+    {
+        var loadout = await CreateLoadout();
+        await StampLikeAnOlderBuild(loadout);
+        var recorded = FromSoftBuildStamp.FindByInstallation(Connection.Db, InstallationOf(loadout)).Single().RecordedAt;
+
+        await Stamps.AdoptRegulation(InstallationOf(loadout), Original with { Exe = "9.9.9.9", SteamBuildId = "1" });
+
+        Stamps.Find(InstallationOf(loadout)).Should().Be(Original);
+        FromSoftBuildStamp.FindByInstallation(Connection.Db, InstallationOf(loadout)).Single().RecordedAt.Should().Be(recorded);
+    }
+
+    [Fact]
     public async Task AnOlderStampIsNotBackfilledWhenTheInstallHasMoved()
     {
         var loadout = await CreateLoadout();

@@ -13,7 +13,7 @@ namespace SilverModManager.App.UI.Pages.Diagnostics;
 
 /// <summary>
 /// Puts the game's own regulation back over a modified one in the real game folder, then says where the replaced file
-/// was kept. The diagnostic's note already says what the button does, so there is no extra question. A refusal is
+/// was kept and brings the build stamp's regulation fields to the restored file. The diagnostic's note already says what the button does, so there is no extra question. A refusal is
 /// thrown for the details page to show.
 /// </summary>
 [UsedImplicitly]
@@ -29,6 +29,9 @@ public sealed class RestoreRegulationActionHandler(IServiceProvider serviceProvi
         if (!loadout.IsValid()) throw new InvalidOperationException($"The loadout {loadoutId} no longer exists.");
 
         var restored = await Task.Run(() => restore.Restore(loadout.InstallationInstance, stamps.Find(loadout.InstallationId)));
+
+        // The stamp may describe the modded file that was just replaced, which would now read as tampered.
+        await stamps.AdoptRegulation(loadout.InstallationId, BuildIdentity.Identify(loadout.InstallationInstance));
         await diagnosticManager.RefreshAsync(loadoutId);
 
         await MessageBoxOkViewModel.Show(serviceProvider, "Regulation restored", Describe(restored));

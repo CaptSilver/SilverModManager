@@ -44,7 +44,7 @@ public class SteamFolderEmitter(IManifestVouching vouching, SteamFolderCheck che
         var regulation = game.Formats.RegulationFileName;
         var regulationDiffers = found.Changed.Any(f => f.Equals(regulation, StringComparison.OrdinalIgnoreCase));
         var otherFilesDiffer = found.ModFiles.Count > 0 || found.Changed.Any(f => !f.Equals(regulation, StringComparison.OrdinalIgnoreCase));
-        var actions = restore.Actions(installation, stamps.Find(loadout.InstallationId), regulationDiffers, otherFilesDiffer);
+        var actions = restore.Actions(installation, stamps.Find(loadout.InstallationId), regulationDiffers, otherFilesDiffer, manifest);
         yield return FromSoftDiagnostics.CreateFolderDiffersFromSteam(game.DisplayName, string.Join("\n", shown)) with { Actions = [..actions] };
     }
 }

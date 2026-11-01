@@ -52,19 +52,21 @@ public sealed class RegulationRestore(RegulationBaselines baselines, IManifestVo
             "The file that is there now is kept in the app's data folder first.");
 
     /// <summary>
-    /// The baseline <see cref="Restore"/> would write, or null when no kept file qualifies. A kept file that no
-    /// longer hashes the way it was recorded does not qualify.
+    /// The baseline <see cref="Restore"/> would write, or null when no kept file qualifies. It goes by the hashes
+    /// recorded when the file was kept and does not read it, so it is cheap enough to ask whenever a diagnostic is
+    /// built; <see cref="Restore"/> reads the file and refuses one that no longer hashes the way it was recorded.
     /// </summary>
     /// <param name="stamped">The build recorded for the installation, null when there is none.</param>
-    public AbsolutePath? Candidate(GameInstallation installation, BuildIdentity? stamped)
+    /// <param name="manifest">What Steam's manifest lists, when the caller has already read it; null reads it here.</param>
+    public AbsolutePath? Candidate(GameInstallation installation, BuildIdentity? stamped, IReadOnlyList<ManifestFile>? manifest = null)
     {
         try
         {
-            return Find(installation, stamped)?.File;
+            return Pick(installation, stamped, manifest ?? vouching.InstalledFiles(installation))?.File;
         }
         catch (HealException exception)
         {
-            _logger.LogDebug(exception, "The kept regulations could not be read, so none is offered for a restore");
+            _logger.LogDebug(exception, "The kept regulations could not be listed, so none is offered for a restore");
             return null;
         }
     }
@@ -84,8 +86,10 @@ public sealed class RegulationRestore(RegulationBaselines baselines, IManifestVo
         Vouched vouched;
         try
         {
-            vouched = Find(installation, stamped) ?? throw new RegulationRestoreRefusedException(
+            var picked = Pick(installation, stamped, vouching.InstalledFiles(installation)) ?? throw new RegulationRestoreRefusedException(
                 $"The app has no copy of {game.DisplayName}'s own regulation that Steam's manifest vouches for, so there is nothing to restore it from. Verify the game's files in Steam instead.");
+            vouched = Read(picked) ?? throw new RegulationRestoreRefusedException(
+                $"The app's kept copy of {game.DisplayName}'s own regulation no longer matches the hashes recorded for it, so it was not used. Verify the game's files in Steam instead.");
         }
         catch (HealException exception)
         {
@@ -115,10 +119,11 @@ public sealed class RegulationRestore(RegulationBaselines baselines, IManifestVo
     /// </summary>
     /// <param name="regulationDiffers">The regulation is not the one Steam shipped.</param>
     /// <param name="otherFilesDiffer">Other files differ from Steam's, or mods put files in the folder.</param>
-    public IReadOnlyList<DiagnosticAction> Actions(GameInstallation installation, BuildIdentity? stamped, bool regulationDiffers, bool otherFilesDiffer)
+    /// <param name="manifest">What Steam's manifest lists, when the caller has already read it; null reads it here.</param>
+    public IReadOnlyList<DiagnosticAction> Actions(GameInstallation installation, BuildIdentity? stamped, bool regulationDiffers, bool otherFilesDiffer, IReadOnlyList<ManifestFile>? manifest = null)
     {
         var actions = new List<DiagnosticAction>();
-        var restorable = regulationDiffers && Candidate(installation, stamped) is not null;
+        var restorable = regulationDiffers && Candidate(installation, stamped, manifest) is not null;
         if (restorable) actions.Add(RestoreAction());
 
         var locator = installation.LocatorResult;
@@ -130,22 +135,22 @@ public sealed class RegulationRestore(RegulationBaselines baselines, IManifestVo
 
     private sealed record Vouched(AbsolutePath File, byte[] Bytes);
 
-    private Vouched? Find(GameInstallation installation, BuildIdentity? stamped)
+    // Chooses by the hashes recorded for each kept file and reads none of them.
+    private KeptBaseline? Pick(GameInstallation installation, BuildIdentity? stamped, IReadOnlyList<ManifestFile>? listed)
     {
         var game = GameOf(installation);
-        var kept = baselines.List().Where(k => k.Provenance.Tier == BaselineTier.Vouched).Select(Read).OfType<Vouched>().ToList();
+        var kept = baselines.List().Where(k => k.Provenance.Tier == BaselineTier.Vouched).ToList();
 
-        if (vouching.InstalledFiles(installation) is { } listed)
+        if (listed is not null)
         {
-            var hashes = ListedRegulationHashes(game, listed);
-            return OnlyOne(kept.Where(k => hashes.Contains(Sha1Value.From(SHA1.HashData(k.Bytes)))));
+            var hashes = ListedRegulationHashes(game, listed).Select(h => h.ToString()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            return OnlyOne(kept.Where(k => hashes.Contains(k.Provenance.Sha1)));
         }
 
         if (stamped?.RegulationVersion is not { } version || !InstallUnchanged(installation, stamped)) return null;
-        var ofBuild = baselines.List().Where(k => k.Version == version).Select(k => k.File).ToHashSet();
-        var sameBuild = kept.Where(k => ofBuild.Contains(k.File)).ToList();
+        var sameBuild = kept.Where(k => k.Version == version).ToList();
         return OnlyOne(sameBuild.Count > 1 && stamped.RegulationHash is { } hash
-            ? sameBuild.Where(k => Regulation.Sha256Hex(k.Bytes).Equals(hash, StringComparison.OrdinalIgnoreCase))
+            ? sameBuild.Where(k => k.Provenance.Sha256.Equals(hash, StringComparison.OrdinalIgnoreCase))
             : sameBuild);
     }
 
@@ -173,10 +178,10 @@ public sealed class RegulationRestore(RegulationBaselines baselines, IManifestVo
     }
 
     // More than one different file would be a guess about which one the game shipped.
-    private static Vouched? OnlyOne(IEnumerable<Vouched> candidates)
+    private static KeptBaseline? OnlyOne(IEnumerable<KeptBaseline> candidates)
     {
         var found = candidates.ToList();
-        return found.Select(f => Convert.ToHexString(SHA256.HashData(f.Bytes))).Distinct().Count() == 1 ? found[0] : null;
+        return found.Select(f => f.Provenance.Sha256.ToLowerInvariant()).Distinct().Count() == 1 ? found[0] : null;
     }
 
     // Names Steam hides leave only the hash to go by, so every nameless entry counts.

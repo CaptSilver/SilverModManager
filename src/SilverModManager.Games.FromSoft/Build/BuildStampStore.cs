@@ -54,6 +54,27 @@ public sealed class BuildStampStore(IConnection connection, TimeProvider time, R
         return true;
     }
 
+    /// <summary>
+    /// Makes the stamp's regulation fields those of <paramref name="live"/>, for after the app itself put the game's own
+    /// regulation back: without it the stamp still describes the file that was replaced and reads as tampered. The
+    /// install fields and when the stamp was recorded are left as they were. Returns whether anything was written.
+    /// </summary>
+    public async Task<bool> AdoptRegulation(GameInstallMetadataId installation, BuildIdentity live)
+    {
+        var stamp = FromSoftBuildStamp.FindByInstallation(connection.Db, installation).FirstOrDefault();
+        if (!stamp.IsValid()) return false;
+
+        var current = Read(stamp);
+        if (current.RegulationVersion == live.RegulationVersion && current.RegulationHash == live.RegulationHash) return false;
+
+        using var tx = connection.BeginTransaction();
+        if (current.RegulationVersion is not null) tx.Retract(stamp.Id, FromSoftBuildStamp.RegulationVersion, current.RegulationVersion);
+        if (current.RegulationHash is not null) tx.Retract(stamp.Id, FromSoftBuildStamp.RegulationHash, current.RegulationHash);
+        AddRegulation(tx, stamp.Id, live.RegulationVersion, live.RegulationHash);
+        await tx.Commit();
+        return true;
+    }
+
     private static BuildIdentity Read(FromSoftBuildStamp.ReadOnly stamp)
         => new(stamp.Exe, stamp.SteamBuildId,
             stamp.RegulationVersion.HasValue ? stamp.RegulationVersion.Value : null,

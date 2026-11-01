@@ -139,13 +139,26 @@ public sealed class RegulationRestoreTests : IDisposable
         File.WriteAllBytes(Baselines().Find(Version)!.Value.GetFullPath(), "not the file that was kept"u8.ToArray());
         var restorer = Restorer(new ListedFiles(Vanilla));
 
-        restorer.Candidate(game, null).Should().BeNull();
         var act = () => restorer.Restore(game, null);
 
-        act.Should().Throw<RegulationRestoreRefusedException>();
+        act.Should().Throw<RegulationRestoreRefusedException>().WithMessage("*no longer matches*");
         File.ReadAllBytes(RegulationOnDisk).Should().Equal(Modded);
         Directory.Exists(SetAsideFolder).Should().BeFalse();
         LeftInGameFolder().Should().Equal("regulation.bin");
+    }
+
+    [Fact]
+    public void TheButtonsGoByTheRecordedHashesAndTheManifestTheCallerPassed()
+    {
+        var game = ModdedInstallWithBaseline();
+        // Only the restore itself reads the kept file; a changed one is refused there.
+        File.WriteAllBytes(Baselines().Find(Version)!.Value.GetFullPath(), "changed since it was kept"u8.ToArray());
+        var vouching = Substitute.For<IManifestVouching>();
+
+        var actions = Restorer(vouching).Actions(game, null, regulationDiffers: true, otherFilesDiffer: false, new ListedFiles(Vanilla).InstalledFiles(game));
+
+        actions.Should().ContainSingle().Which.Id.Should().Be(RegulationRestore.RestoreActionId);
+        vouching.DidNotReceiveWithAnyArgs().InstalledFiles(default!);
     }
 
     [Fact]
