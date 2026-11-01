@@ -336,6 +336,84 @@ public class DropZoneTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Fact]
+    public async Task AnOuterZone_LeavesAnInnerZonesSharedFeedbackAlone_WhenItNeverShowedAnything()
+    {
+        var shared = new RecordingFeedback();
+        var harness = await Show((window, inner) =>
+        {
+            _ = new DropZone(inner, new ScriptedTarget(_ => Accept), Errors(), shared);
+            _ = new DropZone(window, new ScriptedTarget(_ => Accept), Errors(), shared, outer: true);
+        });
+        var data = DragPayloads.ToDataObject(Files);
+
+        await OnUi(() =>
+        {
+            Raise(harness, harness.Inner, RawDragEventType.DragEnter, data);
+            Raise(harness, harness.Inner, RawDragEventType.DragOver, data);
+
+            shared.Hides.Should().Be(0);
+            shared.Shown.Should().HaveCount(2);
+        });
+    }
+
+    [Fact]
+    public async Task DropOnAccept_EndsWithTheAcceptedEffect_EvenWhenMoveWasOffered()
+    {
+        var target = new ScriptedTarget(_ => Accept);
+        var harness = await Show((_, inner) => new DropZone(inner, target, Errors(), new RecordingFeedback()));
+        var data = DragPayloads.ToDataObject(Files);
+
+        await OnUi(() =>
+        {
+            Raise(harness, harness.Inner, RawDragEventType.DragEnter, data);
+            Raise(harness, harness.Inner, RawDragEventType.Drop, data);
+
+            harness.Probe.Effects.Should().Be(DragDropEffects.Copy);
+        });
+    }
+
+    [Fact]
+    public async Task DropOnRefuse_EndsWithNoEffect()
+    {
+        var harness = await Show((_, inner) => new DropZone(inner, new ScriptedTarget(_ => new DropVerdict.Refuse("No")), Errors(), new RecordingFeedback()));
+        var data = DragPayloads.ToDataObject(Files);
+
+        await OnUi(() =>
+        {
+            Raise(harness, harness.Inner, RawDragEventType.Drop, data);
+
+            harness.Probe.Effects.Should().Be(DragDropEffects.None);
+        });
+    }
+
+    [Fact]
+    public async Task DropOnIgnore_EndsWithNoEffect()
+    {
+        var harness = await Show((_, inner) => new DropZone(inner, new ScriptedTarget(_ => new DropVerdict.Ignore()), Errors(), new RecordingFeedback()));
+        var data = DragPayloads.ToDataObject(Files);
+
+        await OnUi(() =>
+        {
+            Raise(harness, harness.Inner, RawDragEventType.Drop, data);
+
+            harness.Probe.Effects.Should().Be(DragDropEffects.None);
+        });
+    }
+
+    [Fact]
+    public async Task DropOfADataObjectWithNoPayload_EndsWithNoEffect()
+    {
+        var harness = await Show((_, inner) => new DropZone(inner, new ScriptedTarget(_ => Accept), Errors(), new RecordingFeedback()));
+
+        await OnUi(() =>
+        {
+            Raise(harness, harness.Inner, RawDragEventType.Drop, new DataObject());
+
+            harness.Probe.Effects.Should().Be(DragDropEffects.None);
+        });
+    }
+
+    [Fact]
     public async Task AnOuterZone_TakesTheDrag_WhenTheInnerZoneIgnoresIt()
     {
         var outerTarget = new ScriptedTarget(_ => Accept);

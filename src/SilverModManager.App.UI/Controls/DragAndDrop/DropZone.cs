@@ -122,11 +122,15 @@ public sealed class DropZone : IDisposable
         _cached = null;
         if (_outer && e.Handled) return;
 
+        // The drop's effects are what the drag source is told happened (XDND Finished, DoDragDrop's result), so they
+        // must say what this zone did rather than echo the effects the drag arrived with.
+        e.DragEffects = DragDropEffects.None;
         if (DragPayloads.From(e.Data) is not { } payload) return;
 
         switch (_target.Inspect(payload))
         {
-            case DropVerdict.Accept:
+            case DropVerdict.Accept accept:
+                e.DragEffects = accept.Effect;
                 e.Handled = true;
                 _ = DropAsync(payload);
                 break;
