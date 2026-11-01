@@ -8,7 +8,7 @@ namespace SilverModManager.Wabbajack.Acquire;
 
 /// <summary>
 /// Records that the library gained a file because a modlist's plan wanted it, by setting
-/// <see cref="WabbajackModlistArchive.FetchedFiles"/> of the row for that archive.
+/// <see cref="WabbajackModlistArchive.FetchedFiles"/> of the row for that archive, and adds the list's game to the file.
 /// </summary>
 /// <remarks>
 /// Every list that names the archive gets the mark, not just the one that fetched it. The file has to stay out of the
@@ -29,6 +29,8 @@ internal static class FetchedArchives
         {
             if (row.FetchedFiles.Any()) continue;
             tx.Add(row.Id, WabbajackModlistArchive.FetchedFiles, file.Id);
+            // The file is held for this list now, so it is for the list's game as well as whatever it was already for.
+            LibraryDestinations.Add(tx, file.Id, ModlistAcquisition.ForList(row.Modlist.Id, row.Modlist.GameType, null));
             any = true;
         }
         if (any) await tx.Commit();

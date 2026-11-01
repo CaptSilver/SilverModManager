@@ -53,6 +53,7 @@ public sealed class WabbajackModlistRecogniser(ILogger<WabbajackModlistRecognise
             IsNsfw = list.IsNsfw,
         };
 
+        var destination = ModlistAcquisition.ForList(file.Id, list.GameType, logger);
         foreach (var archive in list.Archives)
         {
             // An archive named by a hash this app does not use (the list format only has xxHash64) cannot be joined to the library.
@@ -70,9 +71,14 @@ public sealed class WabbajackModlistRecogniser(ILogger<WabbajackModlistRecognise
                 .SelectMany(other => other.FetchedFiles)
                 .Select(file => (EntityId?)file.Id)
                 .FirstOrDefault();
-            if (fetched is { } inherited) tx.Add(row.Id, WabbajackModlistArchive.FetchedFiles, inherited);
+            if (fetched is { } inherited)
+            {
+                tx.Add(row.Id, WabbajackModlistArchive.FetchedFiles, inherited);
+                // The held file is now this list's too, as when the acquirer marks it.
+                LibraryDestinations.Add(tx, inherited, destination);
+            }
         }
 
-        return null;
+        return destination.IsUnknown ? null : destination;
     }
 }

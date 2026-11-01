@@ -67,6 +67,8 @@ public sealed class ArchiveInbox(
                 }
             }
 
+            // Taken before any add: a file the plan lists comes for that plan's list, and anything else is nobody's yet.
+            var wanting = acquirer.Plan;
             var unreadable = new List<(AbsolutePath Path, FileIdentity Hash)>();
             var addedHere = new HashSet<FileIdentity>();
             foreach (var (file, hash) in found)
@@ -74,7 +76,7 @@ public sealed class ArchiveInbox(
                 if (locator.FindByXxHash64(connection.Db, hash) is not null) continue;
                 try
                 {
-                    await library.AddLocalFile(file, UnassignedAcquisition.Instance);
+                    await library.AddLocalFile(file, AcquisitionFor(wanting, hash));
                     addedHere.Add(hash);
                 }
                 catch (Exception e) when (e is not OperationCanceledException)
@@ -109,6 +111,11 @@ public sealed class ArchiveInbox(
             _scanning.Release();
         }
     }
+
+    private IAcquisitionContext AcquisitionFor(ArchivePlan plan, FileIdentity hash)
+        => plan.Modlist is not null && plan.FindArchive(hash) is not null
+            ? new ModlistAcquisition(plan.Modlist, logger)
+            : UnassignedAcquisition.Instance;
 
     /// <summary>Whether the inbox folder is being watched.</summary>
     public bool IsWatching

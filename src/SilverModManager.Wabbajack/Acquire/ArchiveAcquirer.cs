@@ -6,6 +6,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Settings;
@@ -239,7 +240,7 @@ public sealed class ArchiveAcquirer(
             var job = await downloadJobs.Create(row, destination.Path, cancellationToken);
             // The job runs on the job monitor, not on this token, so stopping the run has to stop the transfer itself.
             await using var stopTransfer = cancellationToken.Register(() => job.Job.AsContext().Cancel());
-            var file = await library.AddDownload(job, UnassignedAcquisition.Instance);
+            var file = await library.AddDownload(job, new ModlistAcquisition(modlist, logger));
 
             if (file.XxHash64Identity() is { } downloaded && downloaded.Equals(row.Archive.XxHash64))
             {
@@ -448,14 +449,19 @@ public sealed class ArchiveAcquirer(
     private void UpdateExpected()
     {
         ArchivePlanRow[] rows;
+        LibraryFileId? modlist;
         lock (_lock)
         {
             rows = _expecting ? _rows.ToArray() : [];
+            modlist = _modlist;
         }
 
+        // The nxm handler records a file the plan expects for the list's game, not for the first game of its domain.
+        var destination = new ModlistAcquisition(modlist, logger).Destination(connection.Db);
+        GameId? game = destination.IsUnknown ? null : destination.Games.Single();
         expectedDownloads.Set(this, rows
             .Where(r => r.State == ArchiveState.Browser)
-            .SelectMany(r => ExpectedFile(r.Archive.State)));
+            .SelectMany(r => ExpectedFile(r.Archive.State)), game);
     }
 
     private static IEnumerable<(GameDomain, ModId, FileId)> ExpectedFile(DownloadState state)

@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.Abstractions.NexusWebApi;
@@ -13,4 +14,7 @@ namespace SilverModManager.Abstractions.NexusWebApi;
 public interface IExpectedNexusDownloads
 {
     bool IsExpected(GameDomain domain, ModId modId, FileId fileId);
+
+    /// <summary>The game of the plan that expects the file. False when nobody expects it or the plan has no game.</summary>
+    bool TryGetExpectedGame(GameDomain domain, ModId modId, FileId fileId, out GameId game);
 }
