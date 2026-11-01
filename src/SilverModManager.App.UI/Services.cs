@@ -49,6 +49,7 @@ using SilverModManager.App.UI.Pages.Changelog;
 using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.App.UI.Pages.CollectionDownload.Dialogs.DroppedMods;
 using SilverModManager.App.UI.Pages.CollectionDownload.Dialogs.PremiumDownloads;
+using SilverModManager.App.UI.Pages.Collections;
 using SilverModManager.App.UI.Pages.DebugControls;
 using SilverModManager.App.UI.Pages.Diagnostics;
 using SilverModManager.App.UI.Pages.Diff.ApplyDiff;
@@ -360,6 +361,12 @@ public static class Services
             .AddSingleton<IPageFactory, LoadoutPageFactory>()
             .AddSingleton<IPageFactory, CollectionDownloadPageFactory>()
             .AddSingleton<IPageFactory, CollectionLoadoutPageFactory>()
+
+            // Collection sources: one provider per kind of collection, the local one as the fallback
+            .AddSingleton<ICollectionProvider, NexusCollectionProvider>()
+            .AddSingleton<LocalCollectionProvider>()
+            .AddSingleton<CollectionProviders>()
+
             .AddSingleton<IPageFactory, ObservableInfoPageFactory>()
             .AddSingleton<IPageFactory, DebugControlsPageFactory>()
             .AddSingleton<IPageFactory, ProtocolRegistrationTestPageFactory>()

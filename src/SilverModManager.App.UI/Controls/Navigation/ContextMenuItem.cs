@@ -24,4 +24,6 @@ public class ContextMenuItem : IContextMenuItem
     /// <inheritdoc/>
     public ContextMenuItemStyling Styling { get; init; } = ContextMenuItemStyling.Default;
 
+    /// <inheritdoc/>
+    public string? ToolTip { get; init; }
 }

@@ -38,4 +38,8 @@ public interface IContextMenuItem
     /// </summary>
     ContextMenuItemStyling Styling { get; }
 
+    /// <summary>
+    /// Optional tooltip shown over the menu item.
+    /// </summary>
+    string? ToolTip { get; }
 }
