@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using SilverModManager.App.UI.Pages.LibraryPage.Collections;
 using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Concurrency;
@@ -16,6 +15,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Extensions;
 using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.Pages.Diagnostics;
+using SilverModManager.App.UI.Pages.LibraryPage.Collections;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;

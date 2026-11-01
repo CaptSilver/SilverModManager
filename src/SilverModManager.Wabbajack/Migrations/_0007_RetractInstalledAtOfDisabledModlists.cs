@@ -31,7 +31,7 @@ public sealed class _0007_RetractInstalledAtOfDisabledModlists(ILogger<_0007_Ret
         foreach (var group in WabbajackModlistLoadoutGroup.All(db))
         {
             if (group.InstalledAt is not { HasValue: true } installedAt) continue;
-            if (!group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().IsDisabled) continue;
+            if (group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().IsDisabled is false) continue;
             _groups.Add((group.Id, installedAt.Value));
         }
         return Task.CompletedTask;
