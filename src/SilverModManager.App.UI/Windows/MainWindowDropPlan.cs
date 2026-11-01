@@ -1,3 +1,4 @@
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using System.IO.Compression;
 
 namespace SilverModManager.App.UI.Windows;
@@ -99,7 +100,7 @@ public sealed class MainWindowDropPlan
             var parts = new List<string>();
             if (modlists.Length == 1) parts.Add($"Open modlist {Path.GetFileNameWithoutExtension(modlists[0].Path)}");
             else if (modlists.Length > 1) parts.Add($"Open {modlists.Length} modlists");
-            if (mods > 0) parts.Add($"{(parts.Count == 0 ? "Add" : "add")} {ModCount(mods)} to the library");
+            if (mods > 0) parts.Add($"{(parts.Count == 0 ? "Add" : "add")} {ModCount.Text(mods)} to the library");
 
             if (parts.Count == 0)
                 return refused.Length == 1 ? $"Can't add {refused[0].FileName}" : $"Can't add {refused.Length} files";
@@ -108,6 +109,4 @@ public sealed class MainWindowDropPlan
             return refused.Length == 0 ? text : $"{text} (skipping {refused.Length} {(refused.Length == 1 ? "file" : "files")})";
         }
     }
-
-    internal static string ModCount(int count) => count == 1 ? "1 mod" : $"{count} mods";
 }

@@ -1,3 +1,4 @@
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
@@ -24,7 +25,7 @@ internal static class CollectionUpdateFlow
 
         var text = result.Failed.Count == 0
             ? Language.ToastNotification_Collection_updated
-            : string.Format(Language.ToastNotification_Collection_updated_with_failures, MainWindowDropPlan.ModCount(result.Failed.Count));
+            : string.Format(Language.ToastNotification_Collection_updated_with_failures, ModCount.Text(result.Failed.Count));
         if (result.Failed.Count == 0 && result.SkippedRules.Count > 0) text += ".";
         if (result.OldVersionsKept > 0) text += Language.ToastNotification_Collection_update_kept_old_versions;
         if (result.SkippedRules.Count > 0) text += string.Format(Language.ToastNotification_Collection_update_skipped_rules, result.SkippedRules.Count);

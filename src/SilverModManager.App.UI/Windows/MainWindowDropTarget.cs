@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Platform.Storage;
+using SilverModManager.App.UI.Controls.DragAndDrop;
 
 namespace SilverModManager.App.UI.Windows;
 
@@ -36,7 +36,7 @@ public sealed class MainWindowDropTarget
     }
 
     private static string[] DroppedPaths(DragEventArgs e)
-        => e.Data.GetFiles()?.Select(static item => item.TryGetLocalPath()).OfType<string>().ToArray() ?? [];
+        => DragPayloads.From(e.Data) is DragPayload.DroppedFiles files ? [.. files.Paths] : [];
 
     private void OnDragOver(object? sender, DragEventArgs e)
     {

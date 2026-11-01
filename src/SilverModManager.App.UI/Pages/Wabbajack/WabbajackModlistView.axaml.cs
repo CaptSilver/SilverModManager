@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.ReactiveUI;
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using JetBrains.Annotations;
 using ReactiveUI;
 
@@ -171,8 +172,7 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
     {
         e.Handled = true;
         if (ViewModel is not { } viewModel) return;
-        var paths = e.Data.GetFiles()?.Select(item => item.TryGetLocalPath()).OfType<string>().ToArray() ?? [];
-        if (paths.Length == 0) return;
-        _ = viewModel.AddDroppedFilesAsync(paths, CancellationToken.None);
+        if (DragPayloads.From(e.Data) is not DragPayload.DroppedFiles { Paths.Count: > 0 } files) return;
+        _ = viewModel.AddDroppedFilesAsync(files.Paths, CancellationToken.None);
     }
 }

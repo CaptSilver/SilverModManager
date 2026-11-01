@@ -1,3 +1,4 @@
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Library;
@@ -65,7 +66,7 @@ public sealed class MainWindowDropHandler(IMainWindowDropActions actions, IWindo
     // The toast service has no working action buttons, so the toast says where to install instead of offering a button.
     private string AddedText(int added)
     {
-        var text = $"Added {MainWindowDropPlan.ModCount(added)} to the library";
+        var text = $"Added {ModCount.Text(added)} to the library";
         return actions.CurrentLoadoutName is { } loadout ? $"{text}. Install them into {loadout} from its Library page." : text;
     }
 }
