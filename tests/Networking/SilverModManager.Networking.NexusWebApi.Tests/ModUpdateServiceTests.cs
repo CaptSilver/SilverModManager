@@ -786,12 +786,12 @@ public class ModUpdateServicePerGameTests(IConnection connection)
         Substitute.For<ILoginManager>());
 
     /// <summary>
-    /// A mod page with an old file in the library for <paramref name="destination"/> and a newer file that is not in
-    /// the library, which is an update.
+    /// A mod page holding, for each destination given, one old file in the library for that destination and a newer
+    /// file of the same name that is not in the library, which is an update. Returns the page and the old files.
     /// </summary>
-    private async Task<NexusModsModPageMetadataId> SeedPageWithUpdate(Destination destination)
+    private async Task<(NexusModsModPageMetadataId Page, EntityId[] Files)> SeedPage(params Destination[] destinations)
     {
-        var number = Interlocked.Add(ref _nextId, 2);
+        var number = Interlocked.Add(ref _nextId, 2 * (uint)destinations.Length + 2);
         using var tx = connection.BeginTransaction();
         var page = new NexusModsModPageMetadata.New(tx)
         {
@@ -801,38 +801,58 @@ public class ModUpdateServicePerGameTests(IConnection connection)
             UpdatedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
             DataUpdatedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
         };
-        var oldFile = new NexusModsFileMetadata.New(tx)
+        var oldFiles = new List<NexusModsFileMetadata.New>();
+        for (var i = 0; i < destinations.Length; i++)
         {
-            Uid = new FileUid(FileId.From(number), NexusModsGameId.From(1704)),
-            Name = "Shared Mod",
-            Version = "1.0",
-            UploadedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
-            ModPageId = page,
-        };
-        _ = new NexusModsFileMetadata.New(tx)
-        {
-            Uid = new FileUid(FileId.From(number + 1), NexusModsGameId.From(1704)),
-            Name = "Shared Mod",
-            Version = "2.0",
-            UploadedAt = DateTimeOffset.UnixEpoch.UtcDateTime.AddDays(1),
-            ModPageId = page,
-        };
-        var item = new NexusModsLibraryItem.New(tx, out var id)
-        {
-            FileMetadataId = oldFile.Id,
-            ModPageMetadataId = page.Id,
-            LibraryItem = new LibraryItem.New(tx, id) { Name = "Shared Mod" },
-        };
-        LibraryDestinations.Write(tx, id, destination);
+            var name = $"Shared Mod {i}";
+            var fileNumber = number + (uint)(2 * i);
+            var oldFile = new NexusModsFileMetadata.New(tx)
+            {
+                Uid = new FileUid(FileId.From(fileNumber), NexusModsGameId.From(1704)),
+                Name = name,
+                Version = "1.0",
+                UploadedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+                ModPageId = page,
+            };
+            _ = new NexusModsFileMetadata.New(tx)
+            {
+                Uid = new FileUid(FileId.From(fileNumber + 1), NexusModsGameId.From(1704)),
+                Name = name,
+                Version = "2.0",
+                UploadedAt = DateTimeOffset.UnixEpoch.UtcDateTime.AddDays(1),
+                ModPageId = page,
+            };
+            var item = new NexusModsLibraryItem.New(tx, out var id)
+            {
+                FileMetadataId = oldFile.Id,
+                ModPageMetadataId = page.Id,
+                LibraryItem = new LibraryItem.New(tx, id) { Name = name },
+            };
+            LibraryDestinations.Write(tx, id, destinations[i]);
+            oldFiles.Add(oldFile);
+        }
         var result = await tx.Commit();
-        return result[page.Id];
+        return (result[page.Id], oldFiles.Select(file => result[file.Id]).ToArray());
     }
+
+    private async Task<NexusModsModPageMetadataId> SeedPageWithUpdate(Destination destination)
+        => (await SeedPage(destination)).Page;
 
     private IReadOnlyList<NexusModsModPageMetadataId> PagesWithUpdates(GameId game)
     {
         using var service = CreateService();
         service.NotifyForUpdates();
         return service.GetAllModPagesWithUpdates(game, static updates => updates).Select(pair => pair.modPageId).ToArray();
+    }
+
+    private IReadOnlyList<EntityId> FilesWithUpdates(GameId game, NexusModsModPageMetadataId page)
+    {
+        using var service = CreateService();
+        service.NotifyForUpdates();
+        return service.GetAllModPagesWithUpdates(game, static updates => updates)
+            .Where(pair => pair.modPageId == page)
+            .SelectMany(pair => pair.updates.FileMappings.Select(mapping => mapping.File.Id))
+            .ToArray();
     }
 
     [Fact]
@@ -853,5 +873,22 @@ public class ModUpdateServicePerGameTests(IConnection connection)
 
         PagesWithUpdates(Game).Should().Contain(sharedPage);
         PagesWithUpdates(Sibling).Should().Contain(sharedPage);
+    }
+
+    [Fact]
+    public async Task GetAllModPagesWithUpdates_ForAGame_IncludesAnUnassignedItem()
+    {
+        var unassignedPage = await SeedPageWithUpdate(Destination.Unknown);
+
+        PagesWithUpdates(Game).Should().Contain(unassignedPage);
+    }
+
+    [Fact]
+    public async Task GetAllModPagesWithUpdates_ForAGame_ReportsOnlyTheFilesItsOwnItemsHold()
+    {
+        var (page, files) = await SeedPage(Destination.Of(Game), Destination.Of(Sibling));
+
+        FilesWithUpdates(Game, page).Should().Equal(files[0]);
+        FilesWithUpdates(Sibling, page).Should().Equal(files[1]);
     }
 }

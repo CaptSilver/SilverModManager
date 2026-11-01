@@ -88,7 +88,7 @@ public interface IModUpdateService
     /// Gets the mod pages that have updates available for the files destined for <paramref name="game"/>.
     /// A page that only the files of another game use is left out, and so is a file of another game on a shared page.
     /// </summary>
-    /// <param name="game">The game whose library items are read.</param>
+    /// <param name="game">The game whose Library page is read: its own items plus the unassigned ones.</param>
     /// <param name="select">
     ///     A selector that can be used to transform or discard mod page updates. Return null to discard updates.
     ///     If null is passed, default filters will be applied automatically.

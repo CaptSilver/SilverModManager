@@ -341,11 +341,12 @@ public class ModUpdateService : IModUpdateService, IDisposable
         // If no custom selector is provided, apply default filters
         select ??= _filterService.SelectModPage;
 
-        // The files the game uses, grouped by their mod page. One page serves every game that shares the Nexus id,
-        // so the page's own game says nothing about which of these a game's library holds.
+        // The files the game's Library page lists (its own items and the unassigned ones), grouped by mod page.
+        // One page serves every game that shares the Nexus id, so the page's own game says nothing about which
+        // of these a game's library holds.
         var db = _connection.Db;
         var filesOfGame = new Dictionary<NexusModsModPageMetadataId, HashSet<NexusModsFileMetadataId>>();
-        foreach (var item in LibraryDestinations.ItemsFor(db, game))
+        foreach (var item in LibraryDestinations.ShownFor(db, game))
         {
             var nexusItem = NexusModsLibraryItem.Load(db, item.Id);
             if (!nexusItem.IsValid()) continue;

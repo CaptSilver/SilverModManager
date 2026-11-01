@@ -41,6 +41,13 @@ public static class LibraryDestinations
     public static IEnumerable<LibraryItem.ReadOnly> Unassigned(IDb db)
         => db.Datoms(LibraryItem.DestinationUnknown, Null.Instance).Select(datom => LibraryItem.Load(db, datom.E));
 
+    /// <summary>
+    /// What a game's Library page lists, in a snapshot: the same set <see cref="ObserveShownFor"/> observes, so a
+    /// read that acts on the page (such as "Update all") covers every row the page shows.
+    /// </summary>
+    public static IEnumerable<LibraryItem.ReadOnly> ShownFor(IDb db, GameId game)
+        => ItemsFor(db, game).Concat(Unassigned(db)).DistinctBy(item => item.Id);
+
     /// <summary>The games the item is for.</summary>
     public static IReadOnlySet<GameId> GamesOf(LibraryItem.ReadOnly item)
         => item.DestinationGames.ToHashSet();
