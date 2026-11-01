@@ -3,6 +3,7 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.StandardGameLocators.TestHelpers;
 
@@ -37,8 +38,14 @@ public abstract class ALoadOrderFileGameTests<TTest>(ITestOutputHelper outputHel
     /// </summary>
     protected async Task<string[]?> InstallTargets(string[] archivePaths, string? archiveFileName = null)
     {
-        var loadout = await CreateLoadout();
         var archive = archiveFileName is null ? await AddFromPaths(archivePaths) : await AddArchiveNamed(archiveFileName, archivePaths);
+        return await InstallTargets(archive);
+    }
+
+    /// <summary>Like <see cref="InstallTargets(string[], string?)"/>, for an archive the test built.</summary>
+    protected async Task<string[]?> InstallTargets(LibraryArchive.ReadOnly archive)
+    {
+        var loadout = await CreateLoadout();
         var libraryItem = archive.AsLibraryFile().AsLibraryItem();
 
         foreach (var installer in Game.LibraryItemInstallers)

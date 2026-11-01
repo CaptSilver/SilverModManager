@@ -60,6 +60,26 @@ public abstract class ALibraryArchiveInstallerTests<TTest, TGame> : AIsolatedGam
         return await RegisterLocalArchive(archivePath);
     }
 
+    /// <summary>
+    /// Like <see cref="AddArchiveNamed"/>, but each file has the content given instead of its own path, for installers
+    /// that read a file of the archive.
+    /// </summary>
+    protected async Task<LibraryArchive.ReadOnly> AddArchiveWithContents(string archiveFileName, params (string Path, string Content)[] files)
+    {
+        var archivePath = TemporaryFileManager.CreateFolder().Path / archiveFileName;
+        await using (var archiveStream = archivePath.Create())
+        {
+            using var zip = new ZipArchive(archiveStream, ZipArchiveMode.Create);
+            foreach (var (path, content) in files)
+            {
+                await using var stream = zip.CreateEntry(path).Open();
+                await stream.WriteAsync(Encoding.UTF8.GetBytes(content));
+            }
+        }
+
+        return await RegisterLocalArchive(archivePath);
+    }
+
     private static async Task WriteZip(Stream archiveStream, string[] paths)
     {
         using var zip = new ZipArchive(archiveStream, ZipArchiveMode.Create);

@@ -21,6 +21,9 @@ public static class LoadOrderFileGames
 
     /// <summary>Vortex (game-kingdomcome-deliverance) and Mod Organizer 2 (game_kingdomcomedeliverance.py).</summary>
     public static readonly LoadOrderFileGameDefinition KingdomComeDeliverance = new()
+    // The second game lists a mod by the id in its manifest (Mod Organizer 2's plugin), which the folder carries.
+    private static readonly SimpleInstallRules KingdomComeDeliverance2Install = SimpleInstallPresets.InOwnFolderByMarker("mod.manifest", new ManifestModIdFolderName());
+
     {
         GameId = GameId.From("LoadOrderFile.KingdomComeDeliverance"),
         DisplayName = "Kingdom Come: Deliverance",
@@ -43,7 +46,7 @@ public static class LoadOrderFileGames
         SteamAppIds = [1771300],
         Executable = "Bin/Win64MasterMasterSteamPGO/KingdomCome.exe",
         ModFolder = "Mods",
-        Install = KingdomComeInstall,
+        Install = KingdomComeDeliverance2Install,
         OrderFile = "Mods/mod_order.txt",
         Format = new ModOrderTxtFormat(),
     };

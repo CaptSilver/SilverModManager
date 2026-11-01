@@ -8,7 +8,10 @@ using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Paths.Trees;
 using NexusMods.Paths.Trees.Traits;
+using SilverModManager.Games.Generic.Simple;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -17,9 +20,11 @@ namespace SilverModManager.Games.Generic.Installers;
 
 public class PredicateBasedInstaller : ALibraryArchiveInstaller
 {
+    private readonly IServiceProvider _serviceProvider;
+
     public PredicateBasedInstaller(IServiceProvider serviceProvider) : base(serviceProvider, serviceProvider.GetRequiredService<ILogger<PredicateBasedInstaller>>())
     {
-        
+        _serviceProvider = serviceProvider;
     }
     public required Func<Node, bool> Root { get; init; }
     public required GamePath Destination { get; init; }
@@ -36,6 +41,17 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
     /// <see cref="InFolderNamedAfterMod"/> when set.
     /// </summary>
     public Extension? InFolderNamedAfterFileWithExtension { get; init; }
+
+    /// <summary>
+    /// The file directly in the matched root that <see cref="FolderNameFromMarker"/> reads, compared ignoring case.
+    /// </summary>
+    public string? MarkerFile { get; init; }
+
+    /// <summary>
+    /// With <see cref="InFolderNamedAfterMod"/>: names the folder after what <see cref="MarkerFile"/> says when it
+    /// says a name, and after the archive or its folder otherwise.
+    /// </summary>
+    public IModFolderNameFromMarker? FolderNameFromMarker { get; init; }
 
     /// <summary>
     /// Files in this array will not be installed, and will not cause the installer to fail if they exist.
@@ -140,7 +156,7 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
         }
     }
 
-    public override ValueTask<InstallerResult> ExecuteAsync(LibraryArchive.ReadOnly libraryArchive, LoadoutItemGroup.New loadoutGroup, ITransaction transaction, Loadout.ReadOnly loadout, CancellationToken cancellationToken)
+    public override async ValueTask<InstallerResult> ExecuteAsync(LibraryArchive.ReadOnly libraryArchive, LoadoutItemGroup.New loadoutGroup, ITransaction transaction, Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
         var tree = LibraryArchiveTreeExtensions.GetTree(libraryArchive);
 
@@ -155,7 +171,7 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
                      .Select(x => x.Value.Item)
                      .TryGetFirst(out found))
         {
-            return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "Found no matching root"));
+            return new NotSupported(Reason: "Found no matching root");
         }
 
         var rootDestination = Destination;
@@ -163,14 +179,16 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
         if (InFolderNamedAfterFileWithExtension is { } descriptor)
         {
             if (TryGetDescriptorFolder(found, descriptor, out var descriptorFolder) is false)
-                return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "The mod's descriptor file does not make a valid folder name"));
+                return new NotSupported(Reason: "The mod's descriptor file does not make a valid folder name");
             destinationFolder = destinationFolder / descriptorFolder;
         }
         else if (InFolderNamedAfterMod)
         {
-            if (TryGetModFolder(libraryArchive, found, out var modFolder) is false)
-                return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "The mod's name does not make a valid folder name"));
-            destinationFolder = destinationFolder / modFolder;
+            var named = await FolderNamedByMarker(found, cancellationToken);
+            var modFolder = RelativePath.Empty;
+            if (named is null && TryGetModFolder(libraryArchive, found, out modFolder) is false)
+                return new NotSupported(Reason: "The mod's name does not make a valid folder name");
+            destinationFolder = destinationFolder / (named ?? modFolder);
         }
 
         int handled = 0;
@@ -210,9 +228,24 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
         }
         
         if (handled != total)
-            return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "Did not handle all files"));
+            return new NotSupported(Reason: "Did not handle all files");
 
-        return ValueTask.FromResult<InstallerResult>(new Success());
+        return new Success();
+    }
+
+    private async ValueTask<RelativePath?> FolderNamedByMarker(LibraryArchiveTree root, CancellationToken cancellationToken)
+    {
+        if (FolderNameFromMarker is null || MarkerFile is null) return null;
+
+        foreach (var (name, child) in root.Children)
+        {
+            if (!child.Item.IsFile || !name.ToString().Equals(MarkerFile, StringComparison.OrdinalIgnoreCase)) continue;
+
+            var content = await _serviceProvider.GetRequiredService<IFileStore>().Load(FileIdentity.XxHash3(child.Item.LibraryFile.Value.Hash), cancellationToken);
+            return FolderNameFromMarker.FolderName(content) is { } folderName ? RelativePath.FromUnsanitizedInput(folderName) : (RelativePath?)null;
+        }
+
+        return null;
     }
 
     private static bool TryGetDescriptorFolder(LibraryArchiveTree root, Extension descriptor, out RelativePath folder)

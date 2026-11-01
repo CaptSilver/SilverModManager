@@ -25,6 +25,8 @@ public static class SimpleInstallers
                 Root = node => node.HasDirectChild(marker),
                 Destination = modRoot.ToGamePath(rule.Destination),
                 InFolderNamedAfterMod = rule.InFolderNamedAfterMod,
+                MarkerFile = marker,
+                FolderNameFromMarker = rule.FolderNameFromMarker,
                 IgnoreFiles = rule.IgnoredExtensions.Cast<object>().ToArray(),
             });
         }

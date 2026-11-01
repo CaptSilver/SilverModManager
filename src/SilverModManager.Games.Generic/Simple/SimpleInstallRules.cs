@@ -67,6 +67,12 @@ public sealed record SimpleMarkerRule
     public bool InFolderNamedAfterMod { get; init; }
 
     /// <summary>
+    /// Names the folder from the marker file's content instead, when it gives a name. Only read with
+    /// <see cref="InFolderNamedAfterMod"/>.
+    /// </summary>
+    public IModFolderNameFromMarker? FolderNameFromMarker { get; init; }
+
+    /// <summary>
     /// Extensions that are neither installed nor a reason to decline, so a readme outside the marker's folder does
     /// not make the archive look like a different layout.
     /// </summary>
