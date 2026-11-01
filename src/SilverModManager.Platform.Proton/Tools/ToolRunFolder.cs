@@ -1,3 +1,4 @@
+using System.Globalization;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games.Tools;
 
@@ -21,7 +22,7 @@ public static class ToolRunFolder
     public static AbsolutePath Create(AbsolutePath prefixRoot, ToolId tool, DateTimeOffset now)
     {
         var parent = prefixRoot / Root / RelativePath.FromUnsanitizedInput(tool.Value);
-        var stamp = now.ToString("yyyyMMdd-HHmmss");
+        var stamp = now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
         var folder = parent / stamp;
         for (var attempt = 2; folder.DirectoryExists(); attempt++)
             folder = parent / $"{stamp}-{attempt}";

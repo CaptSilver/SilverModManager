@@ -1,3 +1,4 @@
+using System.Globalization;
 using FluentAssertions;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games.Tools;
@@ -28,6 +29,23 @@ public class ToolRunFolderTests : IDisposable
 
         folder.GetFullPath().Should().Be((_prefix / "drive_c/SilverModManager/tool-output/dyndolod/20261101-090507").GetFullPath());
         folder.DirectoryExists().Should().BeTrue();
+    }
+
+    [Fact]
+    public void TheStampIsGregorianWhateverTheCurrentCulture()
+    {
+        var before = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("th-TH");
+            var folder = ToolRunFolder.Create(_prefix, new ToolId("dyndolod"), Moment);
+
+            folder.FileName.Should().Be("20261101-090507");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = before;
+        }
     }
 
     [Fact]
