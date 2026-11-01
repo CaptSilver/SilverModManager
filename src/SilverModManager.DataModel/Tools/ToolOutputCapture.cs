@@ -57,8 +57,7 @@ public class ToolOutputCapture(IConnection connection, IFileStore fileStore)
         var identities = new List<(RelativePath Path, FileIdentity Identity, Size Size, AbsolutePath Source)>(kept.Count);
         foreach (var (relative, source) in kept)
         {
-            await using var stream = source.Read();
-            var hash = await Xx3Hasher.HashAsync(stream, cancellationToken: cancellationToken);
+            var hash = await FileHashing.XxHash3(source, cancellationToken);
             identities.Add((relative, FileIdentity.XxHash3(hash), source.FileInfo.Size, source));
         }
 
