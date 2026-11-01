@@ -7,6 +7,9 @@ namespace SilverModManager.App.UI.Windows.Xdnd;
 /// <summary>One target window's XDND conversation, over a transport, a sink and a timer. One instance per window, UI thread only.</summary>
 public sealed class XdndSession
 {
+    /// <summary>The XDND protocol version the window advertises in XdndAware.</summary>
+    public const int Version = 5;
+
     private const int TypeListBit = 1;
 
     /// <summary>How long an owed Status may wait for the data; per chunk during INCR.</summary>
