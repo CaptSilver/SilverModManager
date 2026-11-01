@@ -4,13 +4,18 @@ namespace SilverModManager.Backend.OS;
 
 internal partial class LinuxInterop
 {
+    /// <summary>A launcher entry for our AppImage; <see cref="AdvertisesScheme"/> is whether its `MimeType` lists the scheme.</summary>
+    internal readonly record struct LauncherEntryMatch(string FileName, bool AdvertisesScheme);
+
     /// <summary>
     /// Finds the menu entry an AppImage manager (appimaged, AppImageLauncher, Gear Lever) wrote for this AppImage:
-    /// a `[Desktop Entry]` whose `Exec` runs <paramref name="appImagePath"/> and whose `MimeType` lists the scheme.
+    /// a `[Desktop Entry]` whose `Exec` runs <paramref name="appImagePath"/>. The `MimeType` is not required to list
+    /// the scheme: an entry written by an older AppImage lists fewer, and `xdg-settings set` does not need the entry
+    /// to advertise the type. An entry that does list it wins over one that doesn't.
     /// </summary>
     /// <param name="resolvePath">Maps a path to its canonical spelling, so `/home/x` and `/var/home/x` compare equal.</param>
-    /// <returns>The file name of the first matching entry, or null.</returns>
-    internal static string? FindLauncherDesktopEntry(
+    /// <returns>The first matching entry, or null.</returns>
+    internal static LauncherEntryMatch? FindLauncherDesktopEntry(
         IEnumerable<(string FileName, string Contents)> entries,
         string appImagePath,
         string scheme,
@@ -19,20 +24,26 @@ internal partial class LinuxInterop
         var wanted = resolvePath(appImagePath);
         var wantedMimeType = $"x-scheme-handler/{scheme}";
 
+        LauncherEntryMatch? fallback = null;
+
         foreach (var (fileName, contents) in entries.OrderBy(e => e.FileName, StringComparer.Ordinal))
         {
             // Our own entry is what we are trying not to duplicate.
             if (fileName == DesktopFile) continue;
 
             var keys = ReadDesktopEntryGroup(contents);
-            if (!keys.TryGetValue("Exec", out var exec) || !keys.TryGetValue("MimeType", out var mimeTypes)) continue;
-            if (!mimeTypes.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Contains(wantedMimeType)) continue;
+            if (!keys.TryGetValue("Exec", out var exec)) continue;
 
             var executable = GetExecutable(exec);
-            if (executable is not null && resolvePath(executable) == wanted) return fileName;
+            if (executable is null || resolvePath(executable) != wanted) continue;
+
+            var advertises = keys.TryGetValue("MimeType", out var mimeTypes)
+                             && mimeTypes.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Contains(wantedMimeType);
+            if (advertises) return new LauncherEntryMatch(fileName, true);
+            fallback ??= new LauncherEntryMatch(fileName, false);
         }
 
-        return null;
+        return fallback;
     }
 
     /// <summary>

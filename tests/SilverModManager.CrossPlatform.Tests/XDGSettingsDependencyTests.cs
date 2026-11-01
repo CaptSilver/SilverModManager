@@ -1,4 +1,7 @@
+using CliWrap;
 using FluentAssertions;
+using NSubstitute;
+using SilverModManager.Sdk;
 using SilverModManager.Backend.RuntimeDependency;
 
 namespace SilverModManager.CrossPlatform.Tests;
@@ -13,5 +16,14 @@ public class XDGSettingsDependencyTests
     {
         _ = XdgSettingsDependency.TryParseVersion(input, out var rawVersion, out _);
         rawVersion.Should().Be(expectedRawVersion);
+    }
+
+    [Fact]
+    public void TheGetCommandAsksForTheDefaultHandlerOfTheScheme()
+    {
+        var command = new XdgSettingsDependency(Substitute.For<IProcessRunner>()).CreateGetDefaultUrlSchemeHandlerCommand("ror2mm");
+
+        command.TargetFilePath.Should().Be("xdg-settings");
+        command.Arguments.Should().Be("get default-url-scheme-handler ror2mm");
     }
 }

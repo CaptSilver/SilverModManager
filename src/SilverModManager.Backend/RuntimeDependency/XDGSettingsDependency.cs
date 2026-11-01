@@ -23,6 +23,17 @@ internal class XdgSettingsDependency : ExecutableRuntimeDependency
         return command;
     }
 
+    /// <summary>
+    /// Asks for the desktop file that opens the scheme. The answer is on stdout: a file name, or nothing when unset.
+    /// </summary>
+    public Command CreateGetDefaultUrlSchemeHandlerCommand(string uriScheme)
+    {
+        return Cli
+            .Wrap("xdg-settings")
+            .WithArguments($"get default-url-scheme-handler {uriScheme}")
+            .WithValidation(CommandResultValidation.None);
+    }
+
     protected override Command BuildQueryCommand(PipeTarget outpuPipeTarget)
     {
         var command = Cli.Wrap("xdg-settings").WithArguments("--version").WithStandardOutputPipe(outpuPipeTarget);

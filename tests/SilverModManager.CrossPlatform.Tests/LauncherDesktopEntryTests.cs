@@ -21,7 +21,10 @@ public class LauncherDesktopEntryTests : IDisposable
         """;
 
     private static string? Find(string appImage, string scheme, params (string, string)[] entries)
-        => LinuxInterop.FindLauncherDesktopEntry(entries, appImage, scheme, path => path);
+        => LinuxInterop.FindLauncherDesktopEntry(entries, appImage, scheme, path => path)?.FileName;
+
+    private static bool? Advertises(string appImage, string scheme, params (string, string)[] entries)
+        => LinuxInterop.FindLauncherDesktopEntry(entries, appImage, scheme, path => path)?.AdvertisesScheme;
 
     [Fact]
     public void AnEnvPrefixedExecLineMatches()
@@ -61,17 +64,39 @@ public class LauncherDesktopEntryTests : IDisposable
     }
 
     [Fact]
-    public void AnEntryWithoutTheSchemeIsNotMatched()
+    public void AnEntryWithoutTheSchemeIsChosenAndFlagged()
     {
-        Find(AppImage, "nxm", ("a.desktop", Entry($"{AppImage} %u", mimeType: "x-scheme-handler/http;")))
-            .Should().BeNull();
+        var entry = ("a.desktop", Entry($"{AppImage} %u", mimeType: "x-scheme-handler/http;"));
+
+        Find(AppImage, "nxm", entry).Should().Be("a.desktop");
+        Advertises(AppImage, "nxm", entry).Should().BeFalse();
     }
 
     [Fact]
-    public void ThePrimaryEntryNeedsTheRequestedScheme()
+    public void AnEntryWithoutAMimeTypeKeyIsChosenAndFlagged()
     {
-        Find(AppImage, "nxm", ("a.desktop", Entry($"{AppImage} %u", mimeType: "text/plain;x-scheme-handler/nxm;")))
-            .Should().Be("a.desktop");
+        var entry = ("a.desktop", $"[Desktop Entry]\nExec={AppImage} %u\n");
+
+        Find(AppImage, "ror2mm", entry).Should().Be("a.desktop");
+        Advertises(AppImage, "ror2mm", entry).Should().BeFalse();
+    }
+
+    [Fact]
+    public void AnEntryAdvertisingTheSchemeBeatsAnEarlierOneThatDoesNot()
+    {
+        Find(AppImage, "ror2mm",
+                ("a.desktop", Entry($"{AppImage} %u", mimeType: "x-scheme-handler/nxm;")),
+                ("b.desktop", Entry($"{AppImage} %u", mimeType: "x-scheme-handler/nxm;x-scheme-handler/ror2mm;")))
+            .Should().Be("b.desktop");
+    }
+
+    [Fact]
+    public void AnEntryListingTheSchemeAmongOtherTypesIsChosenAndNotFlagged()
+    {
+        var entry = ("a.desktop", Entry($"{AppImage} %u", mimeType: "text/plain;x-scheme-handler/nxm;"));
+
+        Find(AppImage, "nxm", entry).Should().Be("a.desktop");
+        Advertises(AppImage, "nxm", entry).Should().BeTrue();
     }
 
     [Fact]
@@ -107,8 +132,10 @@ public class LauncherDesktopEntryTests : IDisposable
         var viaLink = Path.Combine(link, "smm.appimage");
         var viaReal = Path.Combine(real, "smm.appimage");
 
-        LinuxInterop.FindLauncherDesktopEntry([("a.desktop", Entry($"env DESKTOPINTEGRATION=1 {viaLink} %u"))], viaReal, "nxm", LinuxInterop.ResolveRealPath)
-            .Should().Be("a.desktop");
+        var found = LinuxInterop.FindLauncherDesktopEntry([("a.desktop", Entry($"env DESKTOPINTEGRATION=1 {viaLink} %u"))], viaReal, "nxm", LinuxInterop.ResolveRealPath);
+
+        found?.FileName.Should().Be("a.desktop");
+        found.Should().NotBeNull();
     }
 
     [Fact]

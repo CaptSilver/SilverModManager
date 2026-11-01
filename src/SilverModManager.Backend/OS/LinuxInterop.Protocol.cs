@@ -1,4 +1,5 @@
 using System.Text;
+using CliWrap;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
@@ -17,13 +18,11 @@ internal partial class LinuxInterop
     // Set by AppImage managers (appimaged, AppImageLauncher, Gear Lever) to say they already made the menu entry.
     private const string DesktopIntegrationVariable = "DESKTOPINTEGRATION";
 
-    // Telling another app's default handler from ours needs an xdg-settings lookup this method does not do yet, so
-    // every claim registers like Take and OtherHandler stays null.
     public ValueTask<UriSchemeRegistration> RegisterUriSchemeHandler(string scheme, UriSchemeClaim claim, bool setAsDefaultHandler, CancellationToken cancellationToken)
     {
         var desktopIntegration = Environment.GetEnvironmentVariable(DesktopIntegrationVariable, EnvironmentVariableTarget.Process);
         GetRunningExecutablePath(out var runningExecutable);
-        return RegisterUriSchemeHandler(scheme, setAsDefaultHandler, ApplicationConstants.InstallationMethod, desktopIntegration, runningExecutable, cancellationToken);
+        return RegisterUriSchemeHandler(scheme, setAsDefaultHandler, ApplicationConstants.InstallationMethod, desktopIntegration, runningExecutable, cancellationToken, claim);
     }
 
     internal async ValueTask<UriSchemeRegistration> RegisterUriSchemeHandler(
@@ -32,24 +31,33 @@ internal partial class LinuxInterop
         InstallationMethod installationMethod,
         string? desktopIntegration,
         string runningExecutable,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        UriSchemeClaim claim = UriSchemeClaim.Take)
     {
         var canWriteDesktopFile = installationMethod is InstallationMethod.AppImage or InstallationMethod.Manually;
         var canRegisterAsDefault = installationMethod is not InstallationMethod.Flatpak and not InstallationMethod.PackageManager;
         var desktopFileName = DesktopFile;
 
+        var launcherEntry = canWriteDesktopFile
+            ? await FindLauncherEntryFor(scheme, installationMethod, desktopIntegration, runningExecutable, cancellationToken)
+            : null;
+        if (launcherEntry is not null) desktopFileName = launcherEntry;
+
+        // Asked before anything is written, so an IfUnclaimed call that backs off leaves the machine untouched.
+        string? otherHandler = null;
+        if (setAsDefaultHandler && canRegisterAsDefault)
+        {
+            otherHandler = await GetOtherDefaultHandler(scheme, desktopFileName, cancellationToken);
+            if (otherHandler is not null && claim is UriSchemeClaim.IfUnclaimed)
+            {
+                _logger.LogInformation("`{Handler}` holds the default for `{Scheme}`, leaving it alone", otherHandler, scheme);
+                return new UriSchemeRegistration(false, otherHandler);
+            }
+        }
+
         if (canWriteDesktopFile)
         {
-            var applicationsDirectory = _fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine("applications");
-            _logger.LogInformation("Using applications directory `{Path}`", applicationsDirectory);
-
-            string? launcherEntry = null;
-            if (installationMethod is InstallationMethod.AppImage && !string.IsNullOrEmpty(desktopIntegration))
-            {
-                launcherEntry = await FindLauncherEntry(applicationsDirectory, runningExecutable, scheme, cancellationToken);
-                if (launcherEntry is null)
-                    _logger.LogWarning("`{Variable}` is set but no launcher entry in `{Path}` runs `{AppImage}` for `{Scheme}`, writing our own desktop file", DesktopIntegrationVariable, applicationsDirectory, runningExecutable, scheme);
-            }
+            var applicationsDirectory = ApplicationsDirectory;
 
             try
             {
@@ -60,14 +68,13 @@ internal partial class LinuxInterop
                 else
                 {
                     _logger.LogInformation("Using launcher entry `{Entry}` as the handler for `{Scheme}`", launcherEntry, scheme);
-                    desktopFileName = launcherEntry;
                     RemoveOwnDesktopFiles(applicationsDirectory);
                 }
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "Exception while creating desktop file, the handler for `{Scheme}` might not work", scheme);
-                return new UriSchemeRegistration(true, null);
+                return new UriSchemeRegistration(true, otherHandler);
             }
 
             try
@@ -77,7 +84,7 @@ internal partial class LinuxInterop
             catch (Exception e)
             {
                 _logger.LogError(e, "Exception while updating MIME cache database, see process logs for more details");
-                return new UriSchemeRegistration(true, null);
+                return new UriSchemeRegistration(true, otherHandler);
             }
         }
 
@@ -93,7 +100,43 @@ internal partial class LinuxInterop
             }
         }
 
-        return new UriSchemeRegistration(true, null);
+        return new UriSchemeRegistration(true, otherHandler);
+    }
+
+    private AbsolutePath ApplicationsDirectory => _fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine("applications");
+
+    private async ValueTask<string?> FindLauncherEntryFor(string scheme, InstallationMethod installationMethod, string? desktopIntegration, string runningExecutable, CancellationToken cancellationToken)
+    {
+        var applicationsDirectory = ApplicationsDirectory;
+        _logger.LogInformation("Using applications directory `{Path}`", applicationsDirectory);
+
+        if (installationMethod is not InstallationMethod.AppImage || string.IsNullOrEmpty(desktopIntegration)) return null;
+
+        var launcherEntry = await FindLauncherEntry(applicationsDirectory, runningExecutable, scheme, cancellationToken);
+        if (launcherEntry is null)
+            _logger.LogWarning("`{Variable}` is set but no launcher entry in `{Path}` runs `{AppImage}` for `{Scheme}`, writing our own desktop file", DesktopIntegrationVariable, applicationsDirectory, runningExecutable, scheme);
+        return launcherEntry;
+    }
+
+    /// <summary>The desktop file that opens the scheme now, or null when none does or it is ours.</summary>
+    private async ValueTask<string?> GetOtherDefaultHandler(string scheme, string desktopFileName, CancellationToken cancellationToken)
+    {
+        var output = new StringBuilder();
+        try
+        {
+            var command = _xdgSettingsDependency.CreateGetDefaultUrlSchemeHandlerCommand(scheme)
+                .WithStandardOutputPipe(PipeTarget.ToStringBuilder(output));
+            await _processRunner.RunAsync(command, cancellationToken: cancellationToken);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _logger.LogWarning(e, "Unable to read the default handler for `{Scheme}`, treating it as unset", scheme);
+            return null;
+        }
+
+        var current = output.ToString().Trim();
+        if (current.Length == 0 || current == desktopFileName || current == DesktopFile) return null;
+        return current;
     }
 
     private async ValueTask<string?> FindLauncherEntry(AbsolutePath applicationsDirectory, string appImagePath, string scheme, CancellationToken cancellationToken)
@@ -113,7 +156,10 @@ internal partial class LinuxInterop
             }
         }
 
-        return FindLauncherDesktopEntry(entries, appImagePath, scheme, ResolveRealPath);
+        var match = FindLauncherDesktopEntry(entries, appImagePath, scheme, ResolveRealPath);
+        if (match is { AdvertisesScheme: false })
+            _logger.LogWarning("Launcher entry `{Entry}` does not list `x-scheme-handler/{Scheme}`, an older AppImage wrote it; using it anyway, re-integrate the AppImage to refresh it", match.Value.FileName, scheme);
+        return match?.FileName;
     }
 
     // Earlier runs wrote our own entry; with a launcher entry in place it would show up as a second menu item.
