@@ -28,11 +28,18 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
 
         this.WhenActivated(disposables =>
         {
-            // The adapter is null while there is no installed group; the binding follows it (and its source) from null to a tree.
-#pragma warning disable CS8602
-            this.OneWayBind(ViewModel, vm => vm.Adapter.Source.Value, view => view.TreeDataGrid.Source)
+            // The adapter is null while there is no installed group, so the tree follows it, and then its source, from null.
+            this.WhenAnyValue(view => view.ViewModel)
+                .Select(vm => vm is null
+                    ? System.Reactive.Linq.Observable.Return<LoadoutTreeDataGridAdapter?>(null)
+                    : vm.WhenAnyValue(model => model.Adapter))
+                .Switch()
+                .Select(adapter => adapter is null
+                    ? System.Reactive.Linq.Observable.Return<ITreeDataGridSource?>(null)
+                    : adapter.WhenAnyValue(a => a.Source.Value).Select(source => (ITreeDataGridSource?)source))
+                .Switch()
+                .Subscribe(source => TreeDataGrid.Source = source)
                 .AddTo(disposables);
-#pragma warning restore CS8602
             this.OneWayBind(ViewModel, vm => vm.Adapter, view => view.ModsPanel.IsVisible, static adapter => adapter is not null)
                 .AddTo(disposables);
             this.OneWayBind(ViewModel, vm => vm.HasInstalledTab, view => view.InstalledTab.IsVisible)
