@@ -15,8 +15,12 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Controls.DragAndDrop;
+using SilverModManager.App.UI.LeftMenu.Items;
 using SilverModManager.App.UI.Pages.LibraryPage;
+using SilverModManager.App.UI.Pages.LoadoutPage;
 using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Tests.Pages.Collections;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
@@ -43,6 +47,13 @@ public class LibraryPageDragTests(IServiceProvider provider) : AUiTest(provider)
         }
     }
 
+    /// <summary>The collection's real target decides what is acceptable; the drop is recorded rather than installed.</summary>
+    private sealed class RecordingCollectionTarget(RecordingTarget recorder, CollectionDropTarget real) : IDropTarget
+    {
+        public DropVerdict Inspect(DragPayload payload) => real.Inspect(payload);
+        public Task DropAsync(DragPayload payload, CancellationToken cancellationToken) => recorder.DropAsync(payload, cancellationToken);
+    }
+
     private async Task<LibraryItemId> SeedLocalFile(Loadout.ReadOnly loadout, string name)
     {
         using var tx = Connection.BeginTransaction();
@@ -59,9 +70,13 @@ public class LibraryPageDragTests(IServiceProvider provider) : AUiTest(provider)
         return LibraryItemId.From(result[id]);
     }
 
-    private sealed record Harness(Window Window, LibraryView View, Border Drop, RecordingTarget Target, Loadout.ReadOnly Loadout);
+    private sealed record Harness(Window Window, LibraryView View, Control Drop, RecordingTarget Target, Loadout.ReadOnly Loadout);
 
-    private async Task<Harness> Show(Loadout.ReadOnly loadout)
+    /// <summary>
+    /// Hosts the page next to what the row is dropped on: by default a bare zone, or whatever
+    /// <paramref name="dropSide"/> builds around the recording <paramref name="target"/>.
+    /// </summary>
+    private async Task<Harness> Show(Loadout.ReadOnly loadout, Func<RecordingTarget, Control>? dropSide = null)
     {
         var target = new RecordingTarget();
         return await OnUi(async () =>
@@ -72,11 +87,20 @@ public class LibraryPageDragTests(IServiceProvider provider) : AUiTest(provider)
                 Provider.GetRequiredService<IGameDomainToGameIdMappingCache>(),
                 loadout.LoadoutId);
             var view = new LibraryView { ViewModel = vm };
-            var drop = new Border { Width = 200, Background = Avalonia.Media.Brushes.Gray };
+            Control drop;
+            if (dropSide is null)
+            {
+                var zone = new Border { Width = 200, Background = Avalonia.Media.Brushes.Gray };
+                _ = new DropZone(zone, target, Substitute.For<IErrorPresenter>());
+                drop = zone;
+            }
+            else
+            {
+                drop = dropSide(target);
+            }
             Grid.SetColumn(drop, 1);
             var host = new Grid { ColumnDefinitions = { new ColumnDefinition(1, GridUnitType.Star), new ColumnDefinition(200, GridUnitType.Pixel) }, Children = { view, drop } };
             var window = Track(new Window { Width = 1200, Height = 800, Content = host });
-            _ = new DropZone(drop, target, Substitute.For<IErrorPresenter>());
             ShowRendered(window);
             await Task.Yield();
             Dispatcher.UIThread.RunJobs();
@@ -105,7 +129,7 @@ public class LibraryPageDragTests(IServiceProvider provider) : AUiTest(provider)
     {
         var window = harness.Window;
         var from = PointIn(row, window, row.Bounds.Width / 3, row.Bounds.Height / 2);
-        var to = PointIn(harness.Drop, window, 100, 50);
+        var to = PointIn(harness.Drop, window, harness.Drop.Bounds.Width / 2, harness.Drop.Bounds.Height / 2);
         window.MouseDown(from, MouseButton.Left);
         for (var step = 1; step <= 8; step++)
         {
@@ -147,6 +171,57 @@ public class LibraryPageDragTests(IServiceProvider provider) : AUiTest(provider)
             await SeedLocalFile(loadout, $"c-{suffix}.zip"),
         };
         var harness = await Show(loadout);
+        var rows = new List<Control>();
+        foreach (var item in items) rows.Add(await RowOf(harness, item));
+
+        await OnUi(() =>
+        {
+            for (var i = 0; i < rows.Count; i++)
+            {
+                var at = PointIn(rows[i], harness.Window, rows[i].Bounds.Width / 3, rows[i].Bounds.Height / 2);
+                var modifiers = i == 0 ? RawInputModifiers.None : RawInputModifiers.Control;
+                harness.Window.MouseDown(at, MouseButton.Left, modifiers);
+                harness.Window.MouseUp(at, MouseButton.Left, modifiers);
+                Dispatcher.UIThread.RunJobs();
+            }
+        });
+        await EventuallyOnUi(() => ((ILibraryViewModel)harness.View.ViewModel!).Adapter.SelectedModels.Should().HaveCount(3));
+
+        await OnUi(() => DragToTarget(harness, rows[1]));
+
+        harness.Target.Dropped.Should().ContainSingle().Which.Should().BeOfType<DragPayload.LibraryItems>()
+            .Which.Items.Should().BeEquivalentTo(items);
+        await OnUi(() => ((ILibraryViewModel)harness.View.ViewModel!).Adapter.SelectedModels.Should().HaveCount(3, "the drop is not a click, so it leaves the selection alone"));
+    }
+
+    /// <summary>
+    /// The whole path the feature exists for: three selected rows go through the grid's drag source, over a real menu
+    /// entry's drop zone, and reach the target of a user-owned collection as one payload.
+    /// </summary>
+    [Fact]
+    public async Task DraggingThreeSelectedRowsOntoACollectionMenuEntry_DropsThemOnceAndKeepsThemSelected()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Library menu drag " + Guid.NewGuid());
+        var group = await CollectionSeed.AddLocalGroup(Connection, loadout.LoadoutId, "Menu drop");
+        var suffix = Guid.NewGuid().ToString("N");
+        var items = new[]
+        {
+            await SeedLocalFile(loadout, $"a-{suffix}.zip"),
+            await SeedLocalFile(loadout, $"b-{suffix}.zip"),
+            await SeedLocalFile(loadout, $"c-{suffix}.zip"),
+        };
+        var harness = await Show(loadout, recorder => new LeftMenuItemView
+        {
+            Width = 200,
+            Height = 40,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+            ViewModel = new LeftMenuItemViewModel(Substitute.For<IWorkspaceController>(), WorkspaceId.From(Guid.NewGuid()), null)
+            {
+                Text = new StringComponent("Menu drop"),
+                DropTarget = new RecordingCollectionTarget(recorder, CollectionDropTarget.For(Provider, CollectionGroupId.From(group.Id))),
+                ErrorPresenter = Substitute.For<IErrorPresenter>(),
+            },
+        });
         var rows = new List<Control>();
         foreach (var item in items) rows.Add(await RowOf(harness, item));
 
