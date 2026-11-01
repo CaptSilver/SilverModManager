@@ -1,3 +1,5 @@
+using SilverModManager.Abstractions.Library;
+using SilverModManager.UI.Tests.Pages;
 using FluentAssertions;
 using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.App.UI.Controls;
@@ -639,14 +641,11 @@ public class FilterTests
 
     private static LibraryComponents.UpdateAction CreateUpdateAction()
     {
-        // Create minimal mock structures for testing
-        var mockFileMetadata = default(NexusModsFileMetadata.ReadOnly);
-        var mockModUpdate = new ModUpdateOnPage(mockFileMetadata, [mockFileMetadata]);
-        var mockModUpdates = new ModUpdatesOnModPage([mockModUpdate]);
-        
+        var update = new FakeModUpdate(Items: 1);
+
         return new LibraryComponents.UpdateAction(
-            initialValue: mockModUpdates,
-            valuesObservable: R3.Observable.Return(mockModUpdates)
+            initialValue: update,
+            valuesObservable: R3.Observable.Return<ModUpdate>(update)
         );
     }
 

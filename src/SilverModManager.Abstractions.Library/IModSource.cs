@@ -1,3 +1,4 @@
+using DynamicData.Kernel;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 
@@ -38,4 +39,27 @@ public interface IModSource
     /// and skips that test; entering a page passes false.
     /// </summary>
     Task CheckUpdates(IGameData game, bool force, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The update for one item, re-emitted after every <see cref="CheckUpdates"/>. None when the item is up to
+    /// date or its update is hidden.
+    /// </summary>
+    IObservable<Optional<ModUpdate>> ObserveUpdate(LibraryItem.ReadOnly item);
+
+    /// <summary>
+    /// The update for a parent row: the newest across <paramref name="items"/>, which belong to one page or
+    /// package, with <see cref="ModUpdate.CurrentItems"/> the items that have one.
+    /// </summary>
+    IObservable<Optional<ModUpdate>> ObserveUpdate(IReadOnlyList<LibraryItem.ReadOnly> items);
+
+    /// <summary>
+    /// Every update for the items shown for <paramref name="game"/>, which is what Update All applies.
+    /// </summary>
+    IReadOnlyList<ModUpdate> AllUpdates(IGameData game);
+
+    /// <summary>
+    /// Whether <paramref name="game"/> has any update to apply. Emits a value on subscribing, so a combination
+    /// of sources never waits on one that has nothing to say.
+    /// </summary>
+    IObservable<bool> ObserveHasAnyUpdates(IGameData game);
 }

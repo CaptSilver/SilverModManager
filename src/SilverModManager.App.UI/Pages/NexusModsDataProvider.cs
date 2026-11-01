@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Library;
 using SilverModManager.App.UI.Helpers;
 using System.Reactive.Linq;
 using Avalonia.Media.Imaging;
@@ -31,6 +32,7 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
     private readonly IConnection _connection;
     private readonly GameNames _gameNames;
     private readonly IModUpdateService _modUpdateService;
+    private readonly ModSourceResolver _sources;
     private readonly IModUpdateFilterService _modUpdateFilterService;
     private readonly Lazy<IResourceLoader<EntityId, Bitmap>> _thumbnailLoader;
 
@@ -42,6 +44,7 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
         _connection = connection;
         _gameNames = new GameNames(serviceProvider.GetServices<IGameData>());
         _modUpdateService = serviceProvider.GetRequiredService<IModUpdateService>();
+        _sources = serviceProvider.GetRequiredService<ModSourceResolver>();
         _modUpdateFilterService = serviceProvider.GetRequiredService<IModUpdateFilterService>();
 
         _thumbnailLoader = new Lazy<IResourceLoader<EntityId, Bitmap>>(() => ImagePipelines.GetModPageThumbnailPipeline(serviceProvider));
@@ -141,12 +144,13 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
         AddRelatedCollectionsComponentToParent(libraryItems, linkedLoadoutItemsObservable, parentItemModel);
         
         // Update available
-        var newestModPageObservable = _modUpdateService.GetNewestModPageVersionObservable(modPage);
-        var currentUpdateVersionObservable = newestModPageObservable
-            .Select(static optional => !optional.HasValue ? "" : optional.Value.MappingWithNewestFile().File.Version)
+        var pageItems = page.Cache.Items.Select(static item => item.AsLibraryItem()).ToArray();
+        var pageUpdate = ObserveUpdate(pageItems);
+        var currentUpdateVersionObservable = pageUpdate
+            .Select(static optional => optional.HasValue ? optional.Value.CurrentVersion : "")
             .OnUI();
-        var newestVersionObservable = newestModPageObservable
-            .Select(static optional => optional.Convert(static updatesOnPage => updatesOnPage.NewestFile().Version))
+        var newestVersionObservable = pageUpdate
+            .Select(static optional => optional.Convert(static update => update.NewestVersion))
             .OnUI();
 
         parentItemModel.AddObservable(
@@ -163,10 +167,9 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
         );
 
         // Update button
-        var updatesOnPage = _modUpdateService.GetNewestModPageVersionObservable(modPage);
         parentItemModel.AddObservable(
             key: LibraryColumns.Actions.UpdateComponentKey,
-            observable: updatesOnPage,
+            observable: pageUpdate,
             componentFactory: static (valueObservable, initialValue) => new LibraryComponents.UpdateAction(
                 initialValue,
                 valueObservable
@@ -214,6 +217,15 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
         return parentItemModel;
     }
 
+    private IObservable<Optional<ModUpdate>> ObserveUpdate(LibraryItem.ReadOnly item)
+        => _sources.For(item)?.ObserveUpdate(item) ?? System.Reactive.Linq.Observable.Return(Optional<ModUpdate>.None);
+
+    // The page's items only name the page; the update is the page's, whichever of its items change later.
+    private IObservable<Optional<ModUpdate>> ObserveUpdate(IReadOnlyList<LibraryItem.ReadOnly> pageItems)
+        => pageItems.Count > 0 && _sources.For(pageItems[0]) is { } source
+            ? source.ObserveUpdate(pageItems)
+            : System.Reactive.Linq.Observable.Return(Optional<ModUpdate>.None);
+
     private CompositeItemModel<EntityId> ToLibraryItemModel(NexusModsLibraryItem.ReadOnly libraryItem, LibraryFilter libraryFilter)
     {
         var linkedLoadoutItemsObservable = LibraryDataProviderHelper
@@ -242,9 +254,9 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
         AddRelatedCollectionsComponentToChild(libraryItem, linkedLoadoutItemsObservable, itemModel);
 
         // Update available
-        var newestVersionObservable = _modUpdateService
-            .GetNewestFileVersionObservable(fileMetadata)
-            .Select(static optional => optional.Convert(static updateOnPage => updateOnPage.NewestFile.Version))
+        var fileUpdate = ObserveUpdate(libraryItem.AsLibraryItem());
+        var newestVersionObservable = fileUpdate
+            .Select(static optional => optional.Convert(static update => update.NewestVersion))
             .OnUI();
 
         itemModel.AddObservable(
@@ -258,11 +270,9 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
         );
 
         // Update button
-        var newestFile = _modUpdateService.GetNewestFileVersionObservable(fileMetadata);
-
         itemModel.AddObservable(
             key: LibraryColumns.Actions.UpdateComponentKey,
-            observable: newestFile,
+            observable: fileUpdate,
             componentFactory: static (valueObservable, initialValue) => new LibraryComponents.UpdateAction(
                 initialValue,
                 valueObservable

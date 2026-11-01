@@ -345,8 +345,11 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
                 })
                 .AddTo(disposables);
 
-            // Subscribe to mod update service to automatically track "has any updates" state
-            _modUpdateService.HasAnyUpdatesObservable()
+            // Update All is offered while any source has an update to apply.
+            var sources = _serviceProvider.GetRequiredService<ModSourceResolver>().Sources;
+            System.Reactive.Linq.Observable
+                .CombineLatest(sources.Select(source => source.ObserveHasAnyUpdates(game)))
+                .Select(static hasAny => hasAny.Any(static has => has))
                 .OnUI()
                 .Subscribe(hasUpdates => HasAnyUpdatesAvailable = hasUpdates)
                 .AddTo(disposables);
@@ -362,14 +365,16 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
 
     private async ValueTask HandleUpdateAndReplaceMessage(UpdateAndReplaceMessage updateAndReplaceMessage, CancellationToken cancellationToken)
     {
+        if (NexusUpdatesOf(updateAndReplaceMessage.Update) is not { } updates) return;
+
         var isPremium = _loginManager.IsPremium;
         if (!isPremium)
         {
-            await UpdateAndReplaceForMultiModPagesFreeOnly(cancellationToken, [updateAndReplaceMessage.Updates]);
+            await UpdateAndReplaceForMultiModPagesFreeOnly(cancellationToken, [updates]);
         }
         else
         {
-            await UpdateAndReplaceForMultiModPagesPremiumOnly(cancellationToken, [updateAndReplaceMessage.Updates]);
+            await UpdateAndReplaceForMultiModPagesPremiumOnly(cancellationToken, [updates]);
         }
     }
 
@@ -664,7 +669,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
 
     private async ValueTask HandleUpdateAndKeepOldMessage(UpdateAndKeepOldMessage updateAndKeepOldMessage, CancellationToken cancellationToken)
     {
-        var updatesOnPage = updateAndKeepOldMessage.Updates;
+        if (NexusUpdatesOf(updateAndKeepOldMessage.Update) is not { } updatesOnPage) return;
         
         // Note(sewer)
         // If the user is a free user, they have to go to the website due to API restrictions.
@@ -984,8 +989,35 @@ After asking design, we're choosing to simply open the mod page for now.
             .Where(model =>
             {
                 var updateComponent = model.GetOptional<LibraryComponents.UpdateAction>(LibraryColumns.Actions.UpdateComponentKey);
-                return updateComponent.HasValue && updateComponent.Value.NewFiles.Value.HasAnyUpdates;
+                return updateComponent.HasValue;
             });
+    }
+
+    /// <summary>
+    /// The Nexus files an update would replace, in the form the Nexus apply paths take, or null when none of its
+    /// items came from Nexus. Rebuilt from the update's library items because the update's own type belongs to its
+    /// source; it carries the current state of the files, filtered the way the Update column filters them.
+    /// </summary>
+    private ModUpdatesOnModPage? NexusUpdatesOf(ModUpdate update)
+    {
+        var db = _connection.Db;
+        var files = new HashSet<NexusModsFileMetadataId>();
+        var pages = new Dictionary<NexusModsModPageMetadataId, NexusModsModPageMetadata.ReadOnly>();
+        foreach (var id in update.CurrentItems)
+        {
+            var item = LibraryItem.Load(db, id);
+            if (NexusModsLibraryItem.TryGet(db, item.Id, out var nexusItem) is false) continue;
+
+            files.Add(nexusItem.Value.FileMetadataId);
+            pages.TryAdd(nexusItem.Value.ModPageMetadataId, nexusItem.Value.ModPageMetadata);
+        }
+
+        var mappings = pages.Values
+            .Select(page => _modUpdateService.HasModPageUpdatesAvailable(page))
+            .Where(static onPage => onPage.HasValue)
+            .SelectMany(onPage => onPage.Value.FileMappings.Where(mapping => files.Contains(mapping.File.Id)))
+            .ToArray();
+        return mappings.Length > 0 ? new ModUpdatesOnModPage(mappings) : null;
     }
 
     private LoadoutItemGroupId GetInstallationTarget() => (SelectedInstallationTarget?.Id ?? _installationTargets[0].Id).Value;
@@ -1098,11 +1130,8 @@ After asking design, we're choosing to simply open the mod page for now.
             var updateComponent = model.GetOptional<LibraryComponents.UpdateAction>(LibraryColumns.Actions.UpdateComponentKey);
             if (!updateComponent.HasValue) continue;
 
-            var component = updateComponent.Value;
-            var updatesOnPage = component.NewFiles.Value;
-            
-            if (!updatesOnPage.HasAnyUpdates) continue;
-            withUpdatesOnPage.Add(updatesOnPage);
+            if (NexusUpdatesOf(updateComponent.Value.Update.Value) is { } updatesOnPage)
+                withUpdatesOnPage.Add(updatesOnPage);
         }
         
         // Note(sewer): This should (by definition) be always true, because the user had at least
@@ -1141,8 +1170,12 @@ After asking design, we're choosing to simply open the mod page for now.
             }
 
             // Only the pages with a file destined for the current game
-            var modPagesWithUpdates = _modUpdateService.GetAllModPagesWithUpdates(_loadout.InstallationInstance.Game.GameId);
-            var allUpdates = modPagesWithUpdates.Select(pair => pair.updates).ToArray();
+            var game = _loadout.InstallationInstance.Game;
+            var allUpdates = _serviceProvider.GetRequiredService<ModSourceResolver>().Sources
+                .SelectMany(source => source.AllUpdates(game))
+                .Select(NexusUpdatesOf)
+                .OfType<ModUpdatesOnModPage>()
+                .ToArray();
             
             if (allUpdates.Length > 0)
                 await UpdateAndReplaceForMultiModPagesPremiumOnly(cancellationToken, allUpdates);
@@ -1186,8 +1219,8 @@ After asking design, we're choosing to simply open the mod page for now.
 }
 
 public readonly record struct InstallMessage(LibraryItemId[] Ids);
-public readonly record struct UpdateAndReplaceMessage(ModUpdatesOnModPage Updates, CompositeItemModel<EntityId> TreeNode);
-public readonly record struct UpdateAndKeepOldMessage(ModUpdatesOnModPage Updates, CompositeItemModel<EntityId> TreeNode);
+public readonly record struct UpdateAndReplaceMessage(ModUpdate Update, CompositeItemModel<EntityId> TreeNode);
+public readonly record struct UpdateAndKeepOldMessage(ModUpdate Update, CompositeItemModel<EntityId> TreeNode);
 public readonly record struct ViewChangelogMessage(LibraryItemId[] Ids);
 public readonly record struct ViewModPageMessage(LibraryItemId[] Ids);
 public readonly record struct HideUpdatesMessage(OneOf<NexusModsModPageMetadataId, NexusModsLibraryItemId> Id);
@@ -1240,8 +1273,7 @@ public class LibraryTreeDataGridAdapter :
                 .Subscribe((self, itemModel, component), static (_, state) =>
             {
                 var (self, model, component) = state;
-                var newFile = component.NewFiles.Value;
-                self.MessageSubject.OnNext(new UpdateAndKeepOldMessage(newFile, model));
+                self.MessageSubject.OnNext(new UpdateAndKeepOldMessage(component.Update.Value, model));
             })
         );
 
@@ -1253,8 +1285,7 @@ public class LibraryTreeDataGridAdapter :
                 .Subscribe((self, itemModel, component), static (_, state) =>
             {
                 var (self, model, component) = state;
-                var newFile = component.NewFiles.Value;
-                self.MessageSubject.OnNext(new UpdateAndReplaceMessage(newFile, model));
+                self.MessageSubject.OnNext(new UpdateAndReplaceMessage(component.Update.Value, model));
             })
         );
 

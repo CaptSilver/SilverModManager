@@ -20,30 +20,15 @@ namespace SilverModManager.UI.Tests.Pages;
 /// </summary>
 public class LibraryRefreshUpdatesTests(IServiceProvider provider) : AUiTest(provider)
 {
-    private sealed class RecordingSource(string name, Exception? failure = null) : IModSource
+    private sealed class RecordingSource(string name, Exception? failure = null) : FakeModSource(name)
     {
         public ConcurrentQueue<(GameId Game, bool Force)> Checks { get; } = new();
 
-        public string DisplayName => name;
-        public bool Owns(LibraryItem.ReadOnly item) => false;
-        public Uri? PageUri(LibraryItem.ReadOnly item) => null;
-        public Uri? ChangelogUri(LibraryItem.ReadOnly item) => null;
-
-        public Task CheckUpdates(IGameData game, bool force, CancellationToken cancellationToken)
+        public override Task CheckUpdates(IGameData game, bool force, CancellationToken cancellationToken)
         {
             Checks.Enqueue((game.GameId, force));
             return failure is null ? Task.CompletedTask : Task.FromException(failure);
         }
-    }
-
-    /// <summary>The host's services with the mod source resolver swapped for one over the test's sources.</summary>
-    private sealed class WithSources(IServiceProvider inner, params IModSource[] sources) : IServiceProvider, IKeyedServiceProvider
-    {
-        private readonly ModSourceResolver _resolver = new(sources);
-
-        public object? GetService(Type serviceType) => serviceType == typeof(ModSourceResolver) ? _resolver : inner.GetService(serviceType);
-        public object? GetKeyedService(Type serviceType, object? serviceKey) => ((IKeyedServiceProvider)inner).GetKeyedService(serviceType, serviceKey);
-        public object GetRequiredKeyedService(Type serviceType, object? serviceKey) => ((IKeyedServiceProvider)inner).GetRequiredKeyedService(serviceType, serviceKey);
     }
 
     private async Task<(LibraryViewModel Vm, GameId Game)> CreateViewModel(params IModSource[] sources)
@@ -51,7 +36,7 @@ public class LibraryRefreshUpdatesTests(IServiceProvider provider) : AUiTest(pro
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Refresh updates");
         var vm = await OnUi(() => Task.FromResult(new LibraryViewModel(
             Substitute.For<IWindowManager>(),
-            new WithSources(Provider, sources),
+            new ServicesWithSources(Provider, sources),
             Provider.GetRequiredService<IGameDomainToGameIdMappingCache>(),
             loadout.LoadoutId)));
         return (vm, loadout.InstallationInstance.Game.GameId);

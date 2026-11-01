@@ -74,6 +74,20 @@ public class ThunderstoreModSourceTests(IConnection connection)
         new NexusModSource(Substitute.For<IModUpdateService>()).Owns(file.AsLibraryItem()).Should().BeFalse();
     }
 
+    // The Update All button combines every source's answer, so a source with nothing to report must still answer.
+    [Fact]
+    public void TheThunderstoreSourceAnswersImmediatelyThatItHasNoUpdatesToApply()
+    {
+        var source = new ThunderstoreModSource(Substitute.For<IThunderstoreCatalogSource>(), new ThunderstoreUpdateChecker(connection));
+        var game = Substitute.For<IGameData>();
+        bool? answer = null;
+
+        using var _ = source.ObserveHasAnyUpdates(game).Subscribe(has => answer = has);
+
+        answer.Should().BeFalse();
+        source.AllUpdates(game).Should().BeEmpty();
+    }
+
     public class Startup
     {
         public void ConfigureServices(IServiceCollection services)

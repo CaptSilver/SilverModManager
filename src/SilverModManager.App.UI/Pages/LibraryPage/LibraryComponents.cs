@@ -4,6 +4,7 @@ using DynamicData;
 using DynamicData.Aggregation;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
+using SilverModManager.Abstractions.Library;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Controls.Filters;
 using SilverModManager.App.UI.Controls.TreeDataGrid.Filters;
@@ -489,8 +490,8 @@ public static class LibraryComponents
         public ReactiveCommand<Unit> CommandUpdateAndKeepOld { get; } = new();
         public ReactiveCommand<Unit> CommandUpdateAndReplace { get; } = new();
 
-        private readonly BindableReactiveProperty<ModUpdatesOnModPage> _newFiles;
-        public IReadOnlyBindableReactiveProperty<ModUpdatesOnModPage> NewFiles => _newFiles;
+        private readonly BindableReactiveProperty<ModUpdate> _update;
+        public IReadOnlyBindableReactiveProperty<ModUpdate> Update => _update;
 
         private readonly BindableReactiveProperty<string> _buttonText;
         public IReadOnlyBindableReactiveProperty<string> ButtonText => _buttonText;
@@ -504,7 +505,11 @@ public static class LibraryComponents
         public int CompareTo(UpdateAction? other)
         {
             if (other is null) return 1;
-            return NewFiles.Value.NewestFile().UploadedAt.CompareTo(other.NewFiles.Value.NewestFile().UploadedAt);
+
+            // A missing date sorts first, the way DateTimeOffset? compares.
+            var byDate = Nullable.Compare(Update.Value.PublishedAt, other.Update.Value.PublishedAt);
+            if (byDate != 0) return byDate;
+            return CompareVersions(Update.Value.NewestVersion, other.Update.Value.NewestVersion);
         }
 
         public FilterResult MatchesFilter(Filter filter)
@@ -523,49 +528,31 @@ public static class LibraryComponents
 
         private readonly IDisposable _activationDisposable;
         
-        // Single mod (row)
-        public UpdateAction(
-            ModUpdateOnPage initialValue,
-            Observable<ModUpdateOnPage> valueObservable)
+        public UpdateAction(ModUpdate initialValue, Observable<ModUpdate> valuesObservable)
         {
-            var initialUpdates = (ModUpdatesOnModPage)initialValue;
-            _newFiles = new BindableReactiveProperty<ModUpdatesOnModPage>(value: initialUpdates);
-            _buttonText = new BindableReactiveProperty<string>("");
-            _updateButtonText = new BindableReactiveProperty<string>(value: GetUpdateButtonText(initialUpdates.NumberOfModFilesToUpdate));
-            _updateAndKeepOldModButtonText = new BindableReactiveProperty<string>(value: GetUpdateAndKeepOldModButtonText(initialUpdates.NumberOfModFilesToUpdate));
+            _update = new BindableReactiveProperty<ModUpdate>(value: initialValue);
+            _buttonText = new BindableReactiveProperty<string>(value: GetButtonText(initialValue.Count));
+            _updateButtonText = new BindableReactiveProperty<string>(value: GetUpdateButtonText(initialValue.Count));
+            _updateAndKeepOldModButtonText = new BindableReactiveProperty<string>(value: GetUpdateAndKeepOldModButtonText(initialValue.Count));
 
-            _activationDisposable = this.WhenActivated(valueObservable, static (self, observable, disposables) =>
+            _activationDisposable = this.WhenActivated(valuesObservable, static (self, observable, disposables) =>
             {
-                observable.Subscribe(self, static (value, self) => 
+                observable.Subscribe(self, static (value, self) =>
                 {
-                    var updates = (ModUpdatesOnModPage)value;
-                    self._newFiles.Value = updates;
-                    self._updateButtonText.Value = GetUpdateButtonText(updates.NumberOfModFilesToUpdate);
-                    self._updateAndKeepOldModButtonText.Value = GetUpdateAndKeepOldModButtonText(updates.NumberOfModFilesToUpdate);
+                    self._update.Value = value;
+                    self._buttonText.Value = GetButtonText(value.Count);
+                    self._updateButtonText.Value = GetUpdateButtonText(value.Count);
+                    self._updateAndKeepOldModButtonText.Value = GetUpdateAndKeepOldModButtonText(value.Count);
                 }).AddTo(disposables);
             });
         }
 
-        // Mod page (row)
-        public UpdateAction(
-            ModUpdatesOnModPage initialValue,
-            Observable<ModUpdatesOnModPage> valuesObservable)
+        private static int CompareVersions(string a, string b)
         {
-            _newFiles = new BindableReactiveProperty<ModUpdatesOnModPage>(value: initialValue);
-            _buttonText = new BindableReactiveProperty<string>(value: GetButtonText(initialValue.NumberOfModFilesToUpdate));
-            _updateButtonText = new BindableReactiveProperty<string>(value: GetUpdateButtonText(initialValue.NumberOfModFilesToUpdate));
-            _updateAndKeepOldModButtonText = new BindableReactiveProperty<string>(value: GetUpdateAndKeepOldModButtonText(initialValue.NumberOfModFilesToUpdate));
-
-            _activationDisposable = this.WhenActivated(valuesObservable, static (self, observable, disposables) =>
-            {
-                observable.Subscribe(self, static (values, self) =>
-                {
-                    self._newFiles.Value = values;
-                    self._buttonText.Value = GetButtonText(values.NumberOfModFilesToUpdate);
-                    self._updateButtonText.Value = GetUpdateButtonText(values.NumberOfModFilesToUpdate);
-                    self._updateAndKeepOldModButtonText.Value = GetUpdateAndKeepOldModButtonText(values.NumberOfModFilesToUpdate);
-                }).AddTo(disposables);
-            });
+            // Versions are whatever the source calls them; compare as versions when both parse, else as text.
+            return NuGet.Versioning.NuGetVersion.TryParse(a, out var left) && NuGet.Versioning.NuGetVersion.TryParse(b, out var right)
+                ? left.CompareTo(right)
+                : string.Compare(a, b, StringComparison.OrdinalIgnoreCase);
         }
 
         private static string GetButtonText(int numUpdatable)

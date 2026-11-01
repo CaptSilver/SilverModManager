@@ -1,3 +1,5 @@
+using System.Reactive.Linq;
+using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Networking.Thunderstore;
@@ -46,6 +48,17 @@ internal sealed class ThunderstoreModSource(IThunderstoreCatalogSource catalogs,
         // cached listing is what it compares the library against.
         checker.Refresh(await catalogs.Load(community, cancellationToken));
     }
+
+    // The Thunderstore library rows read their updates from the checker and offer no Update action, so as far as
+    // the shared Update column and Update All go there is nothing to apply. Each of these says so rather than
+    // reporting updates that no Update action could carry out.
+    public IObservable<Optional<ModUpdate>> ObserveUpdate(LibraryItem.ReadOnly item) => Observable.Return(Optional<ModUpdate>.None);
+
+    public IObservable<Optional<ModUpdate>> ObserveUpdate(IReadOnlyList<LibraryItem.ReadOnly> items) => Observable.Return(Optional<ModUpdate>.None);
+
+    public IReadOnlyList<ModUpdate> AllUpdates(IGameData game) => [];
+
+    public IObservable<bool> ObserveHasAnyUpdates(IGameData game) => Observable.Return(false);
 
     private static bool TryGetFile(LibraryItem.ReadOnly item, out ThunderstoreLibraryFile.ReadOnly file)
     {
