@@ -227,6 +227,8 @@ public class ArchiveAcquirerStatusTests(ITestOutputHelper helper) : AcquireTestB
         await run.Invoking(r => r).Should().ThrowAsync<OperationCanceledException>();
 
         PendingDownload.Read(Settings).Should().Be(ListA);
+        // The settings outlive the test, and a later test starts from "no flag".
+        PendingDownload.Set(Settings, null);
     }
 
     [Fact]
