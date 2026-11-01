@@ -1,6 +1,7 @@
 using System.Numerics;
 using FluentAssertions;
 using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 using SilverModManager.Games.FromSoft.Tests.Fixtures;
 
 namespace SilverModManager.Games.FromSoft.Tests;
@@ -57,5 +58,18 @@ public class FromSoftGameTableTests
             hex.Should().StartWith(expected.ModulusStart, expected.Name).And.EndWith(expected.ModulusEnd, expected.Name);
             actual.Exponent.Should().Be(new BigInteger(expected.Exponent), expected.Name);
         }
+    }
+
+    [Theory]
+    [MemberData(nameof(Games))]
+    public void TheRegulationRoundTripsThroughTheGamesKeyAndWrapper(FromSoftGameFacts facts)
+    {
+        var traits = facts.Definition().Formats;
+        var payload = RegulationFixture.Payload(RegulationFixture.GoldenEntries, RegulationFixture.GoldenVersion);
+
+        var packed = Regulation.Pack(payload, RegulationFixture.ZeroIv, traits);
+
+        Regulation.Unpack(packed, traits).Should().Equal(payload);
+        Regulation.Version(Regulation.Unpack(packed, traits)).Should().Be(RegulationFixture.GoldenVersion);
     }
 }

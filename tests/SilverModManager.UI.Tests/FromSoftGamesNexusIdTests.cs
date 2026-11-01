@@ -25,6 +25,7 @@ public class FromSoftGamesNexusIdTests(IServiceProvider provider)
     [Theory]
     [InlineData("FromSoft.EldenRing", 4333u)]
     [InlineData("FromSoft.ArmoredCore6", 5679u)]
+    [InlineData("FromSoft.EldenRingNightreign", 7800u)]
     public void NxmRoutingPicksEachGameByItsOwnNexusId(string gameId, uint nexusId)
     {
         NexusModsGameScope.ResolveNxmGame(FromSoftGames, NexusModsGameId.From(nexusId), _ => true, NullLogger.Instance)

@@ -13,6 +13,7 @@ using SilverModManager.Games.FromSoft.Cleanup;
 using SilverModManager.Games.FromSoft.Diagnostics;
 using SilverModManager.Games.FromSoft.Doctor;
 using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.EldenRingNightreign;
 using SilverModManager.Games.FromSoft.Heal;
 using SilverModManager.Games.FromSoft.Launch;
 using SilverModManager.Games.FromSoft.Me3;
@@ -32,7 +33,7 @@ public static class Services
 {
     /// <summary>Registers the FromSoft base and every FromSoft game.</summary>
     public static IServiceCollection AddFromSoftGames(this IServiceCollection services)
-        => services.AddFromSoftBase().AddEldenRing().AddArmoredCore6();
+        => services.AddFromSoftBase().AddEldenRing().AddArmoredCore6().AddEldenRingNightreign();
 
     /// <summary>Registers Elden Ring: the game, its tool and its cleanup verb.</summary>
     public static IServiceCollection AddEldenRing(this IServiceCollection services)
@@ -48,6 +49,11 @@ public static class Services
     public static IServiceCollection AddArmoredCore6(this IServiceCollection services)
         => services.AddGame<ArmoredCore6Game>()
             .AddSingleton<ITool, RunFromSoftGame<ArmoredCore6Game>>();
+
+    /// <summary>Registers Elden Ring Nightreign and its launch tool.</summary>
+    public static IServiceCollection AddEldenRingNightreign(this IServiceCollection services)
+        => services.AddGame<EldenRingNightreignGame>()
+            .AddSingleton<ITool, RunFromSoftGame<EldenRingNightreignGame>>();
 
     /// <summary>
     /// Registers everything the FromSoft games share. Each block takes the lines of one kind of registration, so two

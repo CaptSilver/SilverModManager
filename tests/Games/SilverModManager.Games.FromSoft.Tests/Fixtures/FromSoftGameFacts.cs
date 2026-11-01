@@ -1,4 +1,5 @@
 using SilverModManager.Games.FromSoft.ArmoredCore6;
+using SilverModManager.Games.FromSoft.EldenRingNightreign;
 using SilverModManager.Games.FromSoft.Formats;
 using SilverModManager.Games.FromSoft.Saves;
 
@@ -73,7 +74,45 @@ public sealed record FromSoftGameFacts(
         ArchiveLayout: Bhd5Layout.Salted40ByteEntries,
         Definition: () => ArmoredCore6Game.Definition);
 
-    public static IEnumerable<object[]> All => [[ArmoredCore6]];
+    /// <summary>
+    /// Elden Ring Nightreign. Steam 2622380 launches <c>Game/start_protected_game.exe</c> (api.steamcmd.net launch
+    /// entries); the game's own executable is <c>Game/nightreign.exe</c> (me3 <c>Game::executable</c>); the saves are
+    /// <c>%APPDATA%/Nightreign/&lt;account&gt;/NR0000.sl2</c> (me3 <c>savefile_dir</c>, Ludusavi manifest); the Nexus id
+    /// and domain <c>eldenringnightreign</c> come from Nexus's games.json. The archive keys are UXM's
+    /// <c>EldenRingNightreignKeys</c> and the regulation key is SoulsFormats' <c>RegulationKey.EldenRingNightreign</c>
+    /// (its encrypt path uses Elden Ring's key, its decrypt path this one). The regulation's wrapper (Zstandard,
+    /// header word 0x11000, level byte 22, a 2^27 window in the frame header) was read off the regulation.bin that
+    /// Smithbox ships for 1.03.5 after decrypting it with that key.
+    /// </summary>
+    public static readonly FromSoftGameFacts EldenRingNightreign = new(
+        GameId: "FromSoft.EldenRingNightreign",
+        DisplayName: "Elden Ring Nightreign",
+        SteamAppId: 2622380,
+        SteamInstallFolder: "ELDEN RING NIGHTREIGN",
+        NexusModsGameId: 7800,
+        Me3GameName: "nightreign",
+        Layout: new FromSoftGameLayout(2622380, "EldenRingNightreign", "Game", "nightreign.exe", "start_protected_game.exe", "Nightreign", SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal),
+        SaveNames: new FromSoftSaveNames("NR0000.sl2", "NR0000_silver.sl2", null),
+        Binder: BinderFormat.Bnd4,
+        ReadableCompressions: [DcxCompression.Kraken, DcxCompression.Dflt, DcxCompression.Zstd],
+        PackedWrite: new DcxWriteFormat(DcxCompression.Dflt, 0x11000, 9, 0),
+        RegulationFileName: "regulation.bin",
+        RegulationWrite: new DcxWriteFormat(DcxCompression.Zstd, 0x11000, 22, 27),
+        RegulationKeyHex: "9A8EE90C4C01A43168A17D9D75E4A7D02107EBCF43D5ACB0554F941601B57918",
+        ParamdefSet: "nightreign",
+        Archives:
+        [
+            new("Data0", "cfc17d53", "d7f296c9", 0xb103b007),
+            new("Data1", "d04e9db6", "1c416e51", 0xffffffff),
+            new("Data2", "aa991ff7", "bd2ac75f", 0xd3a0e915),
+            new("Data3", "c26d9173", "87d4dabf", 0x3aa28bb7),
+        ],
+        PathHashBits: 64,
+        PathHashPrime: 133,
+        ArchiveLayout: Bhd5Layout.Salted40ByteEntries,
+        Definition: () => EldenRingNightreignGame.Definition);
+
+    public static IEnumerable<object[]> All => [[ArmoredCore6], [EldenRingNightreign]];
 
     public override string ToString() => DisplayName;
 }
