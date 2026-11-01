@@ -32,6 +32,11 @@ internal class FakeModSource(string name = "fake") : IModSource
     public IReadOnlyList<ModUpdate> AllUpdates(IGameData game) => Updates;
     public IObservable<bool> ObserveHasAnyUpdates(IGameData game) => HasAnyUpdates;
 
+    /// <summary>False makes the source behave like a free Nexus account: it applies nothing into loadouts.</summary>
+    public bool Replaces { get; set; } = true;
+
+    public bool WillReplace(ModUpdateRequest request) => request.Replace && Replaces;
+
     public ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken)
     {
         lock (Requests) Requests.Add(request);

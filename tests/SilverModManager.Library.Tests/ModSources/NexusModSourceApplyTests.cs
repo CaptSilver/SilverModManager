@@ -129,6 +129,20 @@ public class NexusModSourceApplyTests(IConnection connection)
         outcome.AccountCannotDownload.Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, false)]
+    public async Task WillReplace_OnlyForAPremiumAccountThatWasAskedToReplace(bool premium, bool replace, bool expected)
+    {
+        var installed = await AddInstalled("Planned");
+        var update = UpdateOf((installed.Current, await AddNewer(installed.Current, "planned-newer.zip")));
+        var source = NexusModSources.Create(connection, login: Login(premium));
+
+        source.WillReplace(new ModUpdateRequest([update], replace, MayOpenBrowser: true)).Should().Be(expected);
+    }
+
     [Fact]
     public async Task Premium_WithoutReplace_DownloadsAndReplacesNothing()
     {

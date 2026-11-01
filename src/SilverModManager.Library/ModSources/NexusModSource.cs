@@ -84,6 +84,9 @@ internal sealed class NexusModSource(
     // The Nexus check is global, not per game.
     public IObservable<bool> ObserveHasAnyUpdates(IGameData game) => modUpdateService.HasAnyUpdatesObservable();
 
+    // A free account only gets links to the website's download page; nothing in a loadout is swapped.
+    public bool WillReplace(ModUpdateRequest request) => request.Replace && loginManager.IsPremium;
+
     public async ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken)
     {
         // Every newest file once, with all the current files it replaces, whichever page asked for it.

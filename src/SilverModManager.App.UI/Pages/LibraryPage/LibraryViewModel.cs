@@ -371,12 +371,20 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
     private async ValueTask ApplyUpdates(IReadOnlyList<ModUpdate> updates, bool replace, bool mayOpenBrowser, CancellationToken cancellationToken, bool confirmed = false)
     {
         if (updates.Count == 0) return;
-        if (replace && confirmed is false && await ConfirmReplacingInSeveralCollections(updates) is false) return;
 
         var resolver = _serviceProvider.GetRequiredService<ModSourceResolver>();
+        var batches = updates
+            .GroupBy(update => resolver.For(update) ?? throw new InvalidOperationException($"No mod source made the update to {update.NewestVersion}."))
+            .Select(batch => (Source: batch.Key, Request: new ModUpdateRequest(batch.ToArray(), replace, mayOpenBrowser)))
+            .ToArray();
+
+        // Only the updates a source will really swap in can change a collection, so only those are worth a question.
+        var replaced = batches.Where(batch => batch.Source.WillReplace(batch.Request)).SelectMany(batch => batch.Request.Updates).ToArray();
+        if (replaced.Length > 0 && confirmed is false && await ConfirmReplacingInSeveralCollections(replaced) is false) return;
+
         var outcomes = new List<ModUpdateOutcome>();
-        foreach (var batch in updates.GroupBy(update => resolver.For(update) ?? throw new InvalidOperationException($"No mod source made the update to {update.NewestVersion}.")))
-            outcomes.Add(await batch.Key.ApplyUpdates(new ModUpdateRequest(batch.ToArray(), replace, mayOpenBrowser), cancellationToken));
+        foreach (var (source, request) in batches)
+            outcomes.Add(await source.ApplyUpdates(request, cancellationToken));
 
         var replacements = outcomes.SelectMany(outcome => outcome.Replacements).ToArray();
         foreach (var replacement in replacements.Where(replacement => replacement.Result == LibraryItemReplacementResult.Success))

@@ -69,6 +69,13 @@ public interface IModSource
     IObservable<bool> ObserveHasAnyUpdates(IGameData game);
 
     /// <summary>
+    /// Whether <see cref="ApplyUpdates"/> would swap the new files in for the current ones in loadouts for this
+    /// request. A source that can only hand the user a download link (a free Nexus Mods account) swaps nothing, so
+    /// the caller has no reason to warn about the collections the swap would change.
+    /// </summary>
+    bool WillReplace(ModUpdateRequest request);
+
+    /// <summary>
     /// Downloads the newest files of a batch of this source's updates and, when
     /// <see cref="ModUpdateRequest.Replace"/> is set, swaps them in for the current files in every loadout. One
     /// batch per source so a source can share work across updates. Shows no dialogs and removes no old library

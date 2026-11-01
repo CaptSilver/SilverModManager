@@ -63,6 +63,8 @@ internal sealed class ThunderstoreModSource(IThunderstoreCatalogSource catalogs,
 
     public IObservable<bool> ObserveHasAnyUpdates(IGameData game) => Observable.Return(false);
 
+    public bool WillReplace(ModUpdateRequest request) => false;
+
     public ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken)
         => throw new NotSupportedException("Thunderstore does not report updates yet, so there is nothing for it to apply.");
 

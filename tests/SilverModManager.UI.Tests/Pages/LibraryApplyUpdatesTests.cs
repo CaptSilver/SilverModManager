@@ -187,6 +187,53 @@ public class LibraryApplyUpdatesTests(IServiceProvider provider) : AUiTest(provi
     }
 
     [Fact]
+    public async Task ASourceThatReplacesNothing_NeverTriggersTheSeveralCollectionsQuestion_AndStillApplies()
+    {
+        var free = new FakeModSource("a") { Replaces = false };
+        var harness = await CreateHarness(free);
+        var items = await SeedLibraryItems("held");
+        var collections = await SeedCollections(harness.Loadout, readOnly: false, "Collection one", "Collection two");
+        harness.Library.CollectionsWithLibraryItems(Arg.Any<IEnumerable<LibraryItem.ReadOnly>>(), true).Returns(Holding(collections));
+
+        Send(harness, new FakeModUpdate([items[0].LibraryItemId], Source: "a"), replace: true);
+
+        await Eventually(() => free.Requests.Should().ContainSingle());
+        harness.DialogTitles.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task TheSeveralCollectionsQuestion_OnlyCoversTheUpdatesThatWillBeReplaced()
+    {
+        var replacing = new FakeModSource("a");
+        var free = new FakeModSource("b") { Replaces = false };
+        var harness = await CreateHarness(replacing, free);
+        var items = await SeedLibraryItems("replaced", "linked only");
+        var collections = await SeedCollections(harness.Loadout, readOnly: false, "Collection one", "Collection two");
+        harness.Library.CollectionsWithLibraryItems(
+                Arg.Is<IEnumerable<LibraryItem.ReadOnly>>(asked => asked.Select(item => item.Id).SequenceEqual(new[] { items[0].Id })), true)
+            .Returns(Holding(collections));
+        harness.Answers[Language.Library_Update_InstalledInMultipleCollections_Title] = UpdateButton;
+        var updates = new ModUpdate[] { new FakeModUpdate([items[0].LibraryItemId], Source: "a"), new FakeModUpdate([items[1].LibraryItemId], Source: "b") };
+        harness.Vm.Adapter.SelectedModels.Clear();
+        foreach (var update in updates)
+        {
+            var row = RowWithIds(0xB20000 + (ulong)harness.Vm.Adapter.SelectedModels.Count);
+            row.Add(LibraryColumns.Actions.UpdateComponentKey, new LibraryComponents.UpdateAction(update, R3.Observable.Return(update)));
+            await OnUi(() => { harness.Vm.Adapter.SelectedModels.Add(row); return Task.CompletedTask; });
+        }
+        await Eventually(() => harness.Vm.UpdatableSelectionCount.Should().Be(2));
+
+        harness.Vm.UpdateSelectedItemsCommand.Execute(R3.Unit.Default);
+
+        await Eventually(() =>
+        {
+            replacing.Requests.Should().ContainSingle();
+            free.Requests.Should().ContainSingle();
+        });
+        harness.TitlesOf(Language.Library_Update_InstalledInMultipleCollections_Title).Should().HaveCount(1);
+    }
+
+    [Fact]
     public async Task KeepingTheOldFiles_NeverAsksAboutCollections()
     {
         var a = new FakeModSource("a");
@@ -307,6 +354,25 @@ public class LibraryApplyUpdatesTests(IServiceProvider provider) : AUiTest(provi
             nexus.Requests.Should().ContainSingle().Which.MayOpenBrowser.Should().BeFalse();
             harness.TitlesOf(Language.PremiumDialog_UpdateTitle).Should().HaveCount(1);
         });
+    }
+
+    [Fact]
+    public async Task UpdateAll_WithOnlyASourceThatCannotDownload_ShowsOnlyThePremiumDialog()
+    {
+        var free = new FakeModSource("a") { Replaces = false };
+        free.Updates.Add(new FakeModUpdate(1, Source: "a"));
+        free.Outcome = _ => ModUpdateOutcome.Nothing with { AccountCannotDownload = true };
+        var harness = await CreateHarness(free);
+        var items = await SeedLibraryItems("held");
+        var collections = await SeedCollections(harness.Loadout, readOnly: false, "Collection one", "Collection two");
+        harness.Library.CollectionsWithLibraryItems(Arg.Any<IEnumerable<LibraryItem.ReadOnly>>(), true).Returns(Holding(collections));
+        free.Updates[0] = new FakeModUpdate([items[0].LibraryItemId], Source: "a");
+        harness.Answers[Language.PremiumDialog_UpdateTitle] = ButtonDefinitionId.From("update-manually");
+
+        harness.Vm.UpdateAllCommand.Execute(R3.Unit.Default);
+
+        await Eventually(() => harness.TitlesOf(Language.PremiumDialog_UpdateTitle).Should().HaveCount(1));
+        harness.DialogTitles.Should().Equal(Language.PremiumDialog_UpdateTitle);
     }
 
     [Fact]
