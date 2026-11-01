@@ -53,6 +53,7 @@ public sealed record GoogleDriveDownloadJob : HostedDownloadJob, IJobDefinitionW
 
         var html = await transfer.ReadText(response, token);
         var form = ScanForm(first, html) ?? throw Explain(html);
+        transfer.Picked("virus-scan form target", form);
         using var confirmed = await transfer.Send(HostLinks.Get(form), token);
         transfer.EnsureSuccess(confirmed);
         if (HostTransfer.IsWebPage(confirmed)) throw Explain(await transfer.ReadText(confirmed, token));

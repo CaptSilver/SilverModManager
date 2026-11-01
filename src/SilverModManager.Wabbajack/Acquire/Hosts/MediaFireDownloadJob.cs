@@ -37,12 +37,14 @@ public sealed record MediaFireDownloadJob : HostedDownloadJob, IJobDefinitionWit
         // An address that already points at the file needs no button.
         if (!HostTransfer.IsWebPage(page))
         {
+            Logger.LogTrace("MediaFire: {Address} is the file itself, not a page", HostTransfer.Plain(Url));
             await transfer.Save(page, hostName: HostName);
             return;
         }
 
         var html = await transfer.ReadText(page, token);
         var link = FindLink(Url, html) ?? throw Explain(html);
+        transfer.Picked("download link", link);
         using var file = await transfer.Send(HostLinks.Get(link, Url), token);
         await transfer.Save(file, hostName: HostName);
     }

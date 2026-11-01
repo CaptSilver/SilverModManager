@@ -50,6 +50,7 @@ public sealed record MegaDownloadJob : HostedDownloadJob, IJobDefinitionWithStar
 
         var file = await DownloadRetries.Run(Logger, $"MEGA's answer for {link.FileId}", Attempts, RetryDelay, () => Ask(transfer, link.FileId, token), token);
         ReportedFileName = ReadName(file.Attributes, link.AesKey);
+        Logger.LogTrace("MEGA offered {Size} bytes as {File}", file.Size, ReportedFileName);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, file.DownloadUrl);
         using var response = await transfer.Send(request, token);

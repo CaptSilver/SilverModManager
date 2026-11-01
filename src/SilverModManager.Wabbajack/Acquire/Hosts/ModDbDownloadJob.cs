@@ -44,7 +44,9 @@ public sealed record ModDbDownloadJob : HostedDownloadJob, IJobDefinitionWithSta
             mirror = FindLink(page, html, MirrorPath);
             if (mirror is not null) break;
             page = FindLink(page, html, StartPath) ?? throw NoMirror();
+            transfer.Picked("download page", page);
         }
+        transfer.Picked("mirror", mirror);
 
         using var file = await transfer.Send(HostLinks.Get(mirror, page), token);
         await transfer.Save(file, hostName: HostName);

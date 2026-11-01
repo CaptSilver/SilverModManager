@@ -67,18 +67,35 @@ public abstract record HostedDownloadJob : IDownloadJob
     {
         await context.YieldAsync();
         var token = context.CancellationToken;
-        using var slot = await Throttle.Enter(HostName, token);
         try
         {
-            await Fetch(new HostTransfer(this, context, HostName), token);
+            using var slot = await Throttle.Enter(HostName, token);
+            Logger.LogTrace("Downloading {File} from {Host}, page {Page}", ArchiveName, HostName, PageAddress);
+            try
+            {
+                await Fetch(new HostTransfer(this, context, HostName), token);
+            }
+            catch
+            {
+                RemovePartialFile();
+                throw;
+            }
         }
-        catch
+        catch (Exception e) when (!(e is OperationCanceledException && token.IsCancellationRequested))
         {
-            RemovePartialFile();
+            // The one place a failed host download is reported, so every host's job says the same thing once.
+            Logger.LogWarning("Download of {File} from {Host} failed, page {Page}: {Reason}", ArchiveName, HostName, PageAddress, e.Message);
             throw;
         }
+        Logger.LogTrace("Downloaded {File} from {Host}", ArchiveName, HostName);
         return Destination;
     }
+
+    /// <summary>The archive's name for the log: the list's, else the one the host reported, else the file on disk.</summary>
+    private string ArchiveName => FileName ?? ReportedFileName ?? Destination.FileName;
+
+    /// <summary>The page address without its query, which can carry a key; the only form of an address the log gets.</summary>
+    private string PageAddress => HostTransfer.Plain(Url);
 
     private void RemovePartialFile()
     {
@@ -130,9 +147,21 @@ public sealed class HostTransfer
 
     public HttpClient Client => _job.Client;
 
+    /// <summary>An address as the log may show it: no query or fragment, which can carry a signing key.</summary>
+    internal static string Plain(Uri address) => address.GetLeftPart(UriPartial.Path);
+
     /// <summary>Sends the request and returns once the headers are in, so a large body is not buffered.</summary>
-    public Task<HttpResponseMessage> Send(HttpRequestMessage request, CancellationToken token)
-        => Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
+    public async Task<HttpResponseMessage> Send(HttpRequestMessage request, CancellationToken token)
+    {
+        var address = request.RequestUri is { } uri ? Plain(uri) : "(no address)";
+        _job.Logger.LogTrace("{Host}: {Method} {Address}", _hostName, request.Method, address);
+        var response = await Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
+        _job.Logger.LogTrace("{Host}: {Address} answered {Status} {ContentType}", _hostName, address, (int)response.StatusCode, response.Content.Headers.ContentType?.MediaType);
+        return response;
+    }
+
+    /// <summary>Records which link a landing page offered that the job is about to follow.</summary>
+    public void Picked(string what, Uri link) => _job.Logger.LogTrace("{Host}: picked {What} {Address}", _hostName, what, Plain(link));
 
     /// <summary>The page at the address as text; used to find the real link on a host's landing page.</summary>
     public async Task<string> GetPage(Uri url, CancellationToken token, IEnumerable<KeyValuePair<string, string>>? headers = null)
