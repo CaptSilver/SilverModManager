@@ -1,6 +1,8 @@
 using System.Reactive.Linq;
 using FluentAssertions;
 using SilverModManager.App.UI.Pages.Wabbajack;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Library;
 using SilverModManager.Wabbajack.Acquire;
 
 namespace SilverModManager.UI.Tests.Pages;
@@ -154,5 +156,36 @@ public partial class WabbajackModlistViewModelTests
         await WaitUntil(() => !vm.IsDownloading);
 
         vm.ErrorText.Should().Be("disk full");
+    }
+
+    private static readonly LibraryFileId OtherFile = LibraryFileId.From(EntityId.From(0xBEEF));
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TryAgain_AfterTheAcquirerShowedAnotherList_PutsThisListsRowsBackFirst(bool perRow)
+    {
+        var mine = new ArchivePlan([Failed("mine.7z")], SomeFile);
+        var (vm, _, acquirer) = await Open(mine);
+        // Another page took the singleton over while this one was away.
+        acquirer.Show(new ArchivePlan([Failed("theirs.7z")], OtherFile));
+
+        if (perRow) await vm.RetryArchiveCommand.Execute(vm.Archives.Single(row => row.Name == "mine.7z"));
+        else await vm.RetryFailedCommand.Execute();
+
+        acquirer.Shown.Last().Modlist.Should().Be(SomeFile, "the retry acts on this page's rows, not the other list's");
+        acquirer.Shown.Last().Rows.Select(row => row.Archive.Name.ToString()).Should().Equal("mine.7z");
+        acquirer.RetriedLists.Should().ContainSingle().Which.Should().Be(SomeFile);
+    }
+
+    [Fact]
+    public async Task TryAgain_WhileTheAcquirerStillHoldsThisList_DoesNotShowItAgain()
+    {
+        var (vm, _, acquirer) = await Open(new ArchivePlan([Failed("mine.7z")], SomeFile));
+        var shown = acquirer.Shown.Count;
+
+        await vm.RetryFailedCommand.Execute();
+
+        acquirer.Shown.Should().HaveCount(shown);
     }
 }

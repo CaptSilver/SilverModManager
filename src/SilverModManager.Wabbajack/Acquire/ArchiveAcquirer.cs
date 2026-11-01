@@ -179,17 +179,19 @@ public sealed class ArchiveAcquirer(
         await DownloadAll(rows, plan.Modlist, automatic, progress, cancellationToken);
     }
 
-    public async Task Retry(IReadOnlyCollection<FileIdentity>? archives, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken)
+    public async Task Retry(IReadOnlyCollection<FileIdentity>? archives, LibraryFileId? modlist, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken)
     {
         ArchivePlanRow[] rows;
-        LibraryFileId? modlist;
+        LibraryFileId? current;
         int[] failed;
         lock (_lock)
         {
             // A run in flight owns the status and the cancellation; a retry would take both from it.
             if (_running is not null || _state is { IsRunning: true }) return;
+            // The singleton shows one list at a time; another list's failed rows are not the caller's to retry.
+            if (modlist is not null && modlist != _modlist) return;
             rows = _rows;
-            modlist = _modlist;
+            current = _modlist;
             failed = Enumerable.Range(0, rows.Length)
                 .Where(i => rows[i].CanRetry && (archives is null || archives.Contains(rows[i].Archive.XxHash64)))
                 .ToArray();
@@ -199,7 +201,7 @@ public sealed class ArchiveAcquirer(
         }
         UpdateExpected();
         Notify(PlanChanged, Plan);
-        await DownloadAll(rows, modlist, failed, progress, cancellationToken);
+        await DownloadAll(rows, current, failed, progress, cancellationToken);
     }
 
     /// <summary>

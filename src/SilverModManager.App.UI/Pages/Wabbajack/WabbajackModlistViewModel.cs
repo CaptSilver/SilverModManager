@@ -638,8 +638,12 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         _acquireCancellation = new CancellationTokenSource();
         var token = _acquireCancellation.Token;
 
+        // Another page may have taken the shared acquirer over since this one last showed its rows; put them back, so
+        // the retry fetches this list's failures and not that list's.
+        if (!IsThisList(_acquirer.Plan) && _plan.Rows.Count > 0) _acquirer.Show(_plan);
+
         MarkDownloadsStarted();
-        var run = _acquirer.Retry(archives, new Progress<AcquireProgress>(OnDownloadProgress), token);
+        var run = _acquirer.Retry(archives, _plan.Modlist, new Progress<AcquireProgress>(OnDownloadProgress), token);
         // The retry has already put its rows back to waiting; a plan the acquirer forgot is not worth showing.
         if (IsThisList(_acquirer.Plan) && _acquirer.Plan.Rows.Count > 0) ApplyPlan(_acquirer.Plan);
         _ = ObserveDownloads(run, token);

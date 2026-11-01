@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Sdk;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
@@ -50,7 +52,7 @@ public class ArchiveAcquirerRetryTests(ITestOutputHelper helper) : AcquireTestBa
         Acquirer.Plan.Rows[1].CanRetry.Should().BeTrue();
         _jobs.Failures.Clear();
 
-        await Acquirer.Retry([Hash64(contents[1])], null, CancellationToken.None);
+        await Acquirer.Retry([Hash64(contents[1])], null, null, CancellationToken.None);
 
         var row = Acquirer.Plan.Rows[1];
         row.State.Should().Be(ArchiveState.Have);
@@ -67,7 +69,7 @@ public class ArchiveAcquirerRetryTests(ITestOutputHelper helper) : AcquireTestBa
         var contents = await RunWithFailures(2, 0);
         _jobs.Failures[Hash64(contents[0])] = new IOException("the mirror is gone");
 
-        await Acquirer.Retry([Hash64(contents[0])], null, CancellationToken.None);
+        await Acquirer.Retry([Hash64(contents[0])], null, null, CancellationToken.None);
 
         var row = Acquirer.Plan.Rows[0];
         row.State.Should().Be(ArchiveState.Manual);
@@ -89,7 +91,7 @@ public class ArchiveAcquirerRetryTests(ITestOutputHelper helper) : AcquireTestBa
         var before = _jobs.Requested.Count;
         var held = Acquirer.Plan.Rows[0];
 
-        await Acquirer.Retry(null, null, CancellationToken.None);
+        await Acquirer.Retry(null, null, null, CancellationToken.None);
 
         _jobs.Requested.Count.Should().Be(before + 2);
         Acquirer.Plan.Rows[1].State.Should().Be(ArchiveState.Have);
@@ -106,7 +108,7 @@ public class ArchiveAcquirerRetryTests(ITestOutputHelper helper) : AcquireTestBa
         var contents = await RunWithFailures(3, 0, 2);
         _jobs.Failures.Clear();
 
-        await Acquirer.Retry([Hash64(contents[2])], null, CancellationToken.None);
+        await Acquirer.Retry([Hash64(contents[2])], null, null, CancellationToken.None);
 
         Acquirer.Plan.Rows[2].State.Should().Be(ArchiveState.Have);
         Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Manual);
@@ -123,8 +125,8 @@ public class ArchiveAcquirerRetryTests(ITestOutputHelper helper) : AcquireTestBa
         var run = Acquirer.Run(plan, null, CancellationToken.None);
         await WaitFor(() => _jobs.Gauge.Current == 3);
 
-        await Acquirer.Retry(null, null, CancellationToken.None);
-        await Acquirer.Retry([Hash64(contents[0])], null, CancellationToken.None);
+        await Acquirer.Retry(null, null, null, CancellationToken.None);
+        await Acquirer.Retry([Hash64(contents[0])], null, null, CancellationToken.None);
 
         _jobs.Requested.Should().HaveCount(3);
         release.SetResult();
@@ -139,7 +141,7 @@ public class ArchiveAcquirerRetryTests(ITestOutputHelper helper) : AcquireTestBa
         var contents = await RunWithFailures(2, 0);
         var held = Acquirer.Plan.Rows[1];
 
-        await Acquirer.Retry([Hash64(contents[1])], null, CancellationToken.None);
+        await Acquirer.Retry([Hash64(contents[1])], null, null, CancellationToken.None);
 
         Acquirer.Plan.Rows[1].Should().Be(held);
         _jobs.Requested.Should().HaveCount(2);
@@ -152,7 +154,7 @@ public class ArchiveAcquirerRetryTests(ITestOutputHelper helper) : AcquireTestBa
         await RunWithFailures(2);
         var plan = Acquirer.Plan;
 
-        await Acquirer.Retry(null, null, CancellationToken.None);
+        await Acquirer.Retry(null, null, null, CancellationToken.None);
 
         Acquirer.Plan.Rows.Should().Equal(plan.Rows);
         _jobs.Requested.Should().HaveCount(2);
@@ -166,7 +168,7 @@ public class ArchiveAcquirerRetryTests(ITestOutputHelper helper) : AcquireTestBa
         _jobs.Failures.Clear();
         _jobs.Content[Hash64(contents[0])] = [9, 9, 9, 9];
 
-        await Acquirer.Retry(null, null, CancellationToken.None);
+        await Acquirer.Retry(null, null, null, CancellationToken.None);
 
         var row = Acquirer.Plan.Rows[0];
         row.State.Should().Be(ArchiveState.Manual);
@@ -185,7 +187,7 @@ public class ArchiveAcquirerRetryTests(ITestOutputHelper helper) : AcquireTestBa
         var release = new TaskCompletionSource();
         _jobs.Gate = release.Task;
 
-        var retry = Acquirer.Retry(null, null, CancellationToken.None);
+        var retry = Acquirer.Retry(null, null, null, CancellationToken.None);
         await WaitFor(() => _jobs.Gauge.Current == 2);
         release.SetResult();
         await retry;
@@ -202,7 +204,7 @@ public class ArchiveAcquirerRetryTests(ITestOutputHelper helper) : AcquireTestBa
         _jobs.Failures.Clear();
         var reports = new List<AcquireProgress>();
 
-        await Acquirer.Retry(null, new Progress<AcquireProgress>(reports.Add), CancellationToken.None);
+        await Acquirer.Retry(null, null, new Progress<AcquireProgress>(reports.Add), CancellationToken.None);
 
         await WaitFor(() => reports.Count > 0 && reports.Last().Equals(new AcquireProgress(2, 2)));
         Acquirer.Status.Should().Match<AcquireStatus>(s => !s.IsRunning && s.Total == 2 && s.Finished == 2);
@@ -216,7 +218,7 @@ public class ArchiveAcquirerRetryTests(ITestOutputHelper helper) : AcquireTestBa
         _jobs.Failures.Clear();
         _jobs.Gate = new TaskCompletionSource().Task;
 
-        var retry = Acquirer.Retry(null, null, CancellationToken.None);
+        var retry = Acquirer.Retry(null, null, null, CancellationToken.None);
         await WaitFor(() => _jobs.Gauge.Current == 2);
         Acquirer.Cancel();
 
@@ -234,7 +236,7 @@ public class ArchiveAcquirerRetryTests(ITestOutputHelper helper) : AcquireTestBa
         _jobs.Gate = new TaskCompletionSource().Task;
         using var closed = new CancellationTokenSource();
 
-        var retry = Acquirer.Retry(null, null, closed.Token);
+        var retry = Acquirer.Retry(null, null, null, closed.Token);
         await WaitFor(() => _jobs.Gauge.Current == 1);
         closed.Cancel();
 
@@ -254,10 +256,49 @@ public class ArchiveAcquirerRetryTests(ITestOutputHelper helper) : AcquireTestBa
         _jobs.Failures.Clear();
         _jobs.Partials.Clear();
 
-        await Acquirer.Retry(null, null, CancellationToken.None);
+        await Acquirer.Retry(null, null, null, CancellationToken.None);
 
         _jobs.Destinations.Should().HaveCount(2);
         _jobs.Destinations[1].Should().NotBe(firstTry);
         Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Have);
+    }
+
+    private static readonly LibraryFileId ListA = LibraryFileId.From(EntityId.From(0xA0A));
+    private static readonly LibraryFileId ListB = LibraryFileId.From(EntityId.From(0xB0B));
+
+    [Fact]
+    public async Task ARetryForAnotherListLeavesTheCurrentListsFailedRowsAlone()
+    {
+        using var page = Acquirer.Attach();
+        var (planA, contents) = HttpRows(1);
+        _jobs.Failures[Hash64(contents[0])] = new IOException("list A reset");
+        await Acquirer.Run(planA with { Modlist = ListA }, null, CancellationToken.None);
+        var (planB, _) = HttpRows(1);
+        await Acquirer.Run(planB with { Modlist = ListB }, null, CancellationToken.None);
+        _jobs.Failures.Clear();
+        var requested = _jobs.Requested.Count;
+
+        await Acquirer.Retry(null, ListA, null, CancellationToken.None);
+        await Acquirer.Retry([Hash64(contents[0])], ListA, null, CancellationToken.None);
+
+        _jobs.Requested.Should().HaveCount(requested, "the rows on show belong to list B");
+        var row = Acquirer.Plan.Rows.Single();
+        row.CanRetry.Should().BeTrue();
+        row.Reason.Should().Be("list A reset");
+        Acquirer.Plan.Modlist.Should().Be(ListB);
+    }
+
+    [Fact]
+    public async Task ARetryForTheCurrentListRunsItsFailedRows()
+    {
+        using var page = Acquirer.Attach();
+        var (plan, contents) = HttpRows(1);
+        _jobs.Failures[Hash64(contents[0])] = new IOException("reset");
+        await Acquirer.Run(plan with { Modlist = ListA }, null, CancellationToken.None);
+        _jobs.Failures.Clear();
+
+        await Acquirer.Retry(null, ListA, null, CancellationToken.None);
+
+        Acquirer.Plan.Rows.Single().State.Should().Be(ArchiveState.Have);
     }
 }

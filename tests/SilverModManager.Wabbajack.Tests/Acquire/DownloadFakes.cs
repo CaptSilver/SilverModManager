@@ -99,7 +99,7 @@ internal sealed class RecordingAcquirer : IArchiveAcquirer
         if (RunFailure is { } failure) throw failure;
     }
 
-    public Task Retry(IReadOnlyCollection<SilverModManager.Sdk.Hashes.FileIdentity>? archives, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken)
+    public Task Retry(IReadOnlyCollection<SilverModManager.Sdk.Hashes.FileIdentity>? archives, SilverModManager.Sdk.Library.LibraryFileId? modlist, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken)
         => Task.CompletedTask;
 
     public void Cancel() => Cancels++;
