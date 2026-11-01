@@ -9,6 +9,7 @@
     <ItemGroup>
         <PackageReference Include="Noggog.CSharpExt" />
         <PackageReference Include="Avalonia.Headless" />
+        <PackageReference Include="Avalonia.X11" />
         <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
         <PackageReference Include="Verify.XunitV3" />
         <PackageReference Include="Verify.ImageMagick"/>
