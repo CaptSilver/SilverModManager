@@ -22,13 +22,18 @@ public class TestUnityGame : IGame, IGameData<TestUnityGame>
     public static string DisplayName => "Test Unity Game";
     public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Optional<Sdk.NexusModsApi.NexusModsGameId>.None;
 
-    public static readonly UnityGameDefinition Definition = new(
-        Executable: "TestGame.exe",
-        DataFolder: "TestGame_Data",
-        SteamAppId: 424243,
-        ThunderstoreCommunity: "test-game",
-        ThunderstoreLoaderPackage: "Test-LoaderPack",
-        ThunderstoreLoaderAliases: ["Other-LoaderPack"]);
+    public static readonly UnityGameDefinition Definition = new()
+    {
+        GameId = GameId,
+        DisplayName = DisplayName,
+        NexusModsGameId = NexusModsGameId,
+        Executable = "TestGame.exe",
+        DataFolder = "TestGame_Data",
+        SteamAppId = 424243,
+        ThunderstoreCommunity = "test-game",
+        ThunderstoreLoaderPackage = "Test-LoaderPack",
+        ThunderstoreLoaderAliases = ["Other-LoaderPack"],
+    };
 
     public StoreIdentifiers StoreIdentifiers { get; } = new(GameId) { SteamAppIds = [Definition.SteamAppId] };
 

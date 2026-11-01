@@ -5,21 +5,21 @@ using SilverModManager.Games.TestFramework;
 using SilverModManager.Games.Unity.BepInEx;
 using SilverModManager.Games.Unity.Tests.Fixtures;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Sdk.Games;
 using SilverModManager.StandardGameLocators.TestHelpers;
 
 namespace SilverModManager.Games.Unity.Tests;
 
 /// <summary>The shared checks; each real game runs them with its own loader package.</summary>
-public abstract class ABepInExMissingEmitterTests<TTest, TGame>(ITestOutputHelper outputHelper, string expectedPackage)
-    : ALoadoutDiagnosticEmitterTest<TTest, TGame, BepInExMissingEmitter>(outputHelper)
-    where TGame : AUnityGame<TGame>, IGameData<TGame>
+public abstract class ABepInExMissingEmitterTests<TTest>(ITestOutputHelper outputHelper, UnityGameDefinition definition)
+    : ALoadoutDiagnosticEmitterTest<TTest, IGame, BepInExMissingEmitter>(outputHelper, definition.GameId)
 {
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         return base.AddServices(services)
             .AddUnityGames()
-            .AddUniversalGameLocator<TGame>(new Version("1.0"));
+            .AddUniversalGameLocator(definition.GameId, locationsFileSystem: IsolatedKnownFolders.Create);
     }
 
     private async Task<EntityId> AddFiles(Sdk.Loadouts.LoadoutId loadout, string group, params string[] paths)
@@ -40,7 +40,7 @@ public abstract class ABepInExMissingEmitterTests<TTest, TGame>(ITestOutputHelpe
 
         diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.Unity", number: 1));
         var details = diagnostic.FormatDetails(ServiceProvider.GetRequiredService<IDiagnosticWriter>());
-        details.Should().Contain($"`{expectedPackage}`");
+        details.Should().Contain($"`{definition.ThunderstoreLoaderPackage}`");
         details.Should().Contain("Thunderstore");
         diagnostic.Should().BeOfType<Diagnostic<Diagnostics.BepInExMissingMessageData>>()
             .Which.MessageData.Group.DataId.Value.Should().Be(plugin);
@@ -67,7 +67,7 @@ public abstract class ABepInExMissingEmitterTests<TTest, TGame>(ITestOutputHelpe
 }
 
 public class RepoBepInExMissingEmitterTests(ITestOutputHelper outputHelper)
-    : ABepInExMissingEmitterTests<RepoBepInExMissingEmitterTests, Unity.Repo.Repo>(outputHelper, "BepInEx-BepInExPack");
+    : ABepInExMissingEmitterTests<RepoBepInExMissingEmitterTests>(outputHelper, UnityGames.Repo);
 
 public class PeakBepInExMissingEmitterTests(ITestOutputHelper outputHelper)
-    : ABepInExMissingEmitterTests<PeakBepInExMissingEmitterTests, Unity.Peak.Peak>(outputHelper, "BepInEx-BepInExPack_PEAK");
+    : ABepInExMissingEmitterTests<PeakBepInExMissingEmitterTests>(outputHelper, UnityGames.Peak);

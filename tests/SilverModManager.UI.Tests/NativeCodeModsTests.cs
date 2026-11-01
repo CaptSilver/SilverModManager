@@ -9,7 +9,7 @@ using SilverModManager.Games.CreationEngine.OblivionRemastered;
 using SilverModManager.Games.CreationEngine.SkyrimSE;
 using SilverModManager.Games.CreationEngine.Starfield;
 using SilverModManager.Games.RedEngine.Cyberpunk2077;
-using SilverModManager.Games.Unity.Peak;
+using SilverModManager.Games.Unity;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.Sdk.Games;
@@ -100,7 +100,9 @@ public class NativeCodeModsTests(IServiceProvider provider) : AUiTest(provider)
     [InlineData("winhttp.dll", false)]
     [InlineData("BepInEx/core/BepInEx.dll", false)]
     public void UnityGamesNameBepInExPluginDlls(string path, bool hooks)
-        => Game<Peak>().HooksGameCode(InGame(path)).Should().Be(hooks);
+        => Provider.GetServices<IGame>().Single(game => game.GameId == UnityGames.Peak.GameId)
+            .Should().BeAssignableTo<IGameNativeCode>().Subject
+            .HooksGameCode(InGame(path)).Should().Be(hooks);
 
     [Fact]
     public async Task AModIsNamedWithItsHookingFilesAndNotItsDataFiles()

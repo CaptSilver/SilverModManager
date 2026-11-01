@@ -20,11 +20,20 @@ public class ServicesTests(ITestOutputHelper outputHelper) : AUnityInstallerTest
     }
 
     [Fact]
+    public void EveryRowOfTheTableIsRegisteredOnce()
+    {
+        var registered = ServiceProvider.GetServices<IGame>().OfType<UnityGame>().Select(game => game.Definition).ToArray();
+
+        registered.Should().BeEquivalentTo(UnityGames.All);
+        registered.Select(definition => definition.GameId).Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
     public void EachGameHasAToolToRunIt()
     {
         var tools = ServiceProvider.GetServices<ITool>().ToArray();
 
-        tools.OfType<RunGameTool<Unity.Repo.Repo>>().Should().ContainSingle();
-        tools.OfType<RunGameTool<Unity.Peak.Peak>>().Should().ContainSingle();
+        foreach (var definition in UnityGames.All)
+            tools.OfType<IRunGameTool>().Where(tool => tool.GameIds.Contains(definition.GameId)).Should().ContainSingle();
     }
 }

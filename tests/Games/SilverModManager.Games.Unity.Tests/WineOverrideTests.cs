@@ -22,7 +22,7 @@ namespace SilverModManager.Games.Unity.Tests;
 /// The proxy DLL's override reaches the Steam launch line and the shared Wine diagnostic through the game's
 /// declaration alone. The prefix is a substitute, so no real prefix or Steam directory is read.
 /// </summary>
-public class WineOverrideTests(ITestOutputHelper outputHelper) : AUnityGameTests<WineOverrideTests, Unity.Repo.Repo>(outputHelper)
+public class WineOverrideTests(ITestOutputHelper outputHelper) : AUnityGameTests<WineOverrideTests>(outputHelper, UnityGames.Repo)
 {
     private static readonly WineDllOverride Winhttp = new("winhttp", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]);
 
@@ -31,10 +31,11 @@ public class WineOverrideTests(ITestOutputHelper outputHelper) : AUnityGameTests
     protected override IServiceCollection AddGameLocator(IServiceCollection services)
     {
         return services
-            .AddSingleton<IGameLocator>(provider => new UniversalStubbedGameLocator<Unity.Repo.Repo>(
+            .AddSingleton<IGameLocator>(provider => new UniversalStubbedGameLocator(
                 provider,
                 provider.GetRequiredService<IFileSystem>(),
                 provider.GetRequiredService<TemporaryFileManager>(),
+                UnityGames.Repo.GameId,
                 stores: [GameStore.Steam]
             )
             {

@@ -7,8 +7,7 @@ using SilverModManager.Games.CreationEngine.OblivionRemastered;
 using SilverModManager.Games.CreationEngine.SkyrimSE;
 using SilverModManager.Games.CreationEngine.Starfield;
 using SilverModManager.Games.RedEngine.Cyberpunk2077;
-using SilverModManager.Games.Unity.Peak;
-using SilverModManager.Games.Unity.Repo;
+using SilverModManager.Games.Unity;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.UI.Tests;
@@ -28,7 +27,6 @@ public class GameUpdateSensitivityTests(IServiceProvider provider) : AUiTest(pro
     [InlineData(typeof(Fallout4), 30)]
     [InlineData(typeof(OblivionRemastered), 30)]
     [InlineData(typeof(Cyberpunk2077Game), 30)]
-    [InlineData(typeof(Repo), 14)]
     public void GamesWhoseModsBreakOnPatchesHaveADateWindow(Type game, int days)
     {
         var sensitivity = Get(game);
@@ -40,11 +38,28 @@ public class GameUpdateSensitivityTests(IServiceProvider provider) : AUiTest(pro
     [Theory]
     // Patches too often for a date to mean anything: only the change since the last apply is reported.
     [InlineData(typeof(Starfield))]
-    [InlineData(typeof(Peak))]
     [InlineData(typeof(SilverModManager.Games.MountAndBlade2Bannerlord.Bannerlord))]
     public void GamesThatPatchOftenHaveNoDateWindow(Type game)
     {
         var sensitivity = Get(game);
+
+        sensitivity.DateWindow.Should().BeNull();
+        sensitivity.WhatBreaks.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void RepoHasAFortnightDateWindow()
+    {
+        var sensitivity = Get(UnityGames.Repo.GameId);
+
+        sensitivity.DateWindow.Should().Be(TimeSpan.FromDays(14));
+        sensitivity.WhatBreaks.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void PeakHasNoDateWindow()
+    {
+        var sensitivity = Get(UnityGames.Peak.GameId);
 
         sensitivity.DateWindow.Should().BeNull();
         sensitivity.WhatBreaks.Should().NotBeNullOrWhiteSpace();
@@ -63,6 +78,12 @@ public class GameUpdateSensitivityTests(IServiceProvider provider) : AUiTest(pro
 
         fromSoft.Should().NotBeEmpty();
         fromSoft.Should().NotContain(g => g is IGameUpdateSensitivity);
+    }
+
+    private IGameUpdateSensitivity Get(GameId id)
+    {
+        var instance = Provider.GetServices<IGame>().Single(g => g.GameId == id);
+        return instance.Should().BeAssignableTo<IGameUpdateSensitivity>().Subject;
     }
 
     private IGameUpdateSensitivity Get(Type game)

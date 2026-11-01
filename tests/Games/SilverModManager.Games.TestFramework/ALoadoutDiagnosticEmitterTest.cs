@@ -6,6 +6,7 @@ using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.App.UI.DiagnosticSystem;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using Xunit;
 
@@ -18,6 +19,12 @@ public class ALoadoutDiagnosticEmitterTest<TTest, TGame, TEmitter> : AIsolatedGa
     protected readonly TEmitter Emitter;
 
     protected ALoadoutDiagnosticEmitterTest(ITestOutputHelper testOutputHelper) : base(testOutputHelper)
+    {
+        Emitter = ServiceProvider.FindImplementationInContainer<TEmitter, ILoadoutDiagnosticEmitter>();
+    }
+
+    /// <summary>Boots the game with this id, for a game built from a definition. Use <see cref="IGame"/> as <c>TGame</c>.</summary>
+    protected ALoadoutDiagnosticEmitterTest(ITestOutputHelper testOutputHelper, GameId gameId) : base(testOutputHelper, gameId)
     {
         Emitter = ServiceProvider.FindImplementationInContainer<TEmitter, ILoadoutDiagnosticEmitter>();
     }
