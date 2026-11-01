@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
-using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
@@ -42,20 +41,11 @@ public class Me3ProfileFile(ILogger<Me3ProfileFile> logger, Me3Loader loader) : 
         logger.LogInformation("The me3 profile {Path} differed from the one the loadout generates and is replaced. Changes made to it by hand are not kept; put settings in the loadout instead", target);
     }
 
-    /// <summary>
-    /// Whether the node has a file once this sync is done. The loadout side alone is not that: a contributor whose
-    /// only file is merged is deleted from disk, and a generated file enters the tree with no loadout side at all.
-    /// </summary>
-    private static bool WillBeOnDisk(SyncNode node)
-        => node.Actions.HasFlag(Actions.ExtractToDisk)
-           || node.Actions.HasFlag(Actions.WriteIntrinsic)
-           || (node.HaveDisk && !node.Actions.HasFlag(Actions.DeleteFromDisk));
-
     private string Render(Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree)
     {
         var installation = loadout.InstallationInstance;
         var files = syncTree
-            .Where(entry => entry.Key.LocationId == LocationId.Me3Mods && entry.Key != Path && WillBeOnDisk(entry.Value))
+            .Where(entry => entry.Key.LocationId == LocationId.Me3Mods && entry.Key != Path && entry.Value.WillBeOnDisk)
             .Select(entry => entry.Key.Path.Path);
 
         return Me3Profile.Render(loader.ProfileSpecFor(loadout), files, installation.Locations[LocationId.Me3Mods].Path, FromSoftPaths.GameFolder(((IFromSoftGame)installation.Game).Layout, installation), Me3PackagePriorities.Read(loadout));

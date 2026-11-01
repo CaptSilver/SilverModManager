@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
-using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -42,7 +41,7 @@ public sealed class GeneratedOrderFile(LoadOrderFileGameDefinition definition, I
     {
         var priorities = ModUnitPriorities.Read(loadout, ModOf);
         var mods = syncTree
-            .Where(entry => WillBeOnDisk(entry.Value))
+            .Where(entry => entry.Value.WillBeOnDisk)
             .Select(entry => ModOf(entry.Key))
             .OfType<string>()
             .Distinct(StringComparer.Ordinal)
@@ -60,13 +59,4 @@ public sealed class GeneratedOrderFile(LoadOrderFileGameDefinition definition, I
 
         return definition.Format.ModOf(file.Path.RelativeTo(ModFolder.Path));
     }
-
-    /// <summary>
-    /// Whether the node has a file once this sync is done. The loadout side alone is not that: a contributor whose
-    /// only file is merged is deleted from disk, and a generated file enters the tree with no loadout side at all.
-    /// </summary>
-    private static bool WillBeOnDisk(SyncNode node)
-        => node.Actions.HasFlag(Actions.ExtractToDisk)
-           || node.Actions.HasFlag(Actions.WriteIntrinsic)
-           || (node.HaveDisk && !node.Actions.HasFlag(Actions.DeleteFromDisk));
 }

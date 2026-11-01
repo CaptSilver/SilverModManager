@@ -109,6 +109,15 @@ public record struct SyncNode
     public bool HaveLoadout => !Loadout.Identity.IsNone;
     
     /// <summary>
+    /// Whether the node has a file once this sync is done. The loadout side alone is not that: a contributor whose
+    /// only file is merged is deleted from disk, and a generated file enters the tree with no loadout side at all.
+    /// </summary>
+    public bool WillBeOnDisk
+        => Actions.HasFlag(Actions.ExtractToDisk)
+           || Actions.HasFlag(Actions.WriteIntrinsic)
+           || (HaveDisk && !Actions.HasFlag(Actions.DeleteFromDisk));
+
+    /// <summary>
     /// The type of thing that the data from the loadout came from. Game state, deleted file, loadout file, etc.
     /// </summary>
     public LoadoutSourceItemType SourceItemType { get; set; }
