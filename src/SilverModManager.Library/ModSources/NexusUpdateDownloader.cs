@@ -15,7 +15,7 @@ namespace SilverModManager.Library;
 /// Fetches the newer file of a Nexus Mods update into the library. A seam of its own so the source's decisions
 /// (what to download, how many at once, what to replace) are testable without the Nexus Mods API.
 /// </summary>
-internal interface INexusUpdateDownloader
+public interface INexusUpdateDownloader
 {
     /// <summary>
     /// Downloads <paramref name="newest"/> and adds it to the library as the successor of the library items that
