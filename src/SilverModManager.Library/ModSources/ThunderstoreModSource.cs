@@ -2,6 +2,7 @@ using System.Reactive.Linq;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Library;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Networking.Thunderstore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
@@ -13,14 +14,20 @@ namespace SilverModManager.Library;
 /// <summary>
 /// Items downloaded as a package from Thunderstore.
 /// </summary>
-internal sealed class ThunderstoreModSource(IThunderstoreCatalogSource catalogs, ThunderstoreUpdateChecker checker, ILogger<ThunderstoreModSource>? logger = null) : IModSource
+internal sealed class ThunderstoreModSource(
+    IThunderstoreCatalogSource catalogs,
+    ThunderstoreUpdateChecker checker,
+    IConnection connection,
+    IThunderstoreInstaller installer,
+    IThunderstoreSource thunderstoreSource,
+    IEnumerable<IGameData> games,
+    ILogger<ThunderstoreModSource>? logger = null) : IModSource
 {
     public string DisplayName => "Thunderstore";
 
     public bool Owns(LibraryItem.ReadOnly item) => TryGetFile(item, out _);
 
-    // Thunderstore makes no ModUpdate yet, so there is none to own.
-    public bool Owns(ModUpdate update) => false;
+    public bool Owns(ModUpdate update) => update is ThunderstoreModUpdate;
 
     public Uri? PageUri(LibraryItem.ReadOnly item)
         => TryGetPackage(item, out var community, out var package) ? ThunderstoreUrls.PackagePage(community, package) : null;
@@ -52,21 +59,111 @@ internal sealed class ThunderstoreModSource(IThunderstoreCatalogSource catalogs,
         checker.Refresh(await catalogs.Load(community, cancellationToken));
     }
 
-    // The Thunderstore library rows read their updates from the checker and offer no Update action, so as far as
-    // the shared Update column and Update All go there is nothing to apply. Each of these says so rather than
-    // reporting updates that no Update action could carry out.
-    public IObservable<Optional<ModUpdate>> ObserveUpdate(LibraryItem.ReadOnly item) => Observable.Return(Optional<ModUpdate>.None);
+    public IObservable<Optional<ModUpdate>> ObserveUpdate(LibraryItem.ReadOnly item)
+    {
+        if (TryGetFile(item, out var file) is false) return Observable.Return(Optional<ModUpdate>.None);
 
-    public IObservable<Optional<ModUpdate>> ObserveUpdate(IReadOnlyList<LibraryItem.ReadOnly> items) => Observable.Return(Optional<ModUpdate>.None);
+        return checker.Observe(file).Select(static update => AsUpdate(update.HasValue ? [update.Value] : []));
+    }
 
-    public IReadOnlyList<ModUpdate> AllUpdates(IGameData game) => [];
+    // The package row's items are the versions downloaded when the row was built; the row asks again when it gains
+    // or loses one. A version in a community that has not been checked yet has no update, which must not hold up
+    // the ones in a community that has.
+    public IObservable<Optional<ModUpdate>> ObserveUpdate(IReadOnlyList<LibraryItem.ReadOnly> items)
+    {
+        var observed = new List<IObservable<Optional<ThunderstoreUpdate>>>();
+        foreach (var item in items)
+        {
+            if (TryGetFile(item, out var file)) observed.Add(checker.Observe(file).StartWith(Optional<ThunderstoreUpdate>.None));
+        }
+        if (observed.Count == 0) return Observable.Return(Optional<ModUpdate>.None);
 
-    public IObservable<bool> ObserveHasAnyUpdates(IGameData game) => Observable.Return(false);
+        return observed.CombineLatest().Select(static updates => AsUpdate([.. updates.Where(static update => update.HasValue).Select(static update => update.Value)]));
+    }
 
-    public bool WillReplace(ModUpdateRequest request) => false;
+    // One update per package, the way one Nexus mod page is one update.
+    public IReadOnlyList<ModUpdate> AllUpdates(IGameData game)
+    {
+        if (ThunderstoreGame.For(game) is not { } thunderstoreGame) return [];
 
-    public ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken)
-        => throw new NotSupportedException("Thunderstore does not report updates yet, so there is nothing for it to apply.");
+        return [.. checker.Current(thunderstoreGame.ThunderstoreCommunity)
+            .GroupBy(static update => update.Newest.Package)
+            .Select(static package => ThunderstoreModUpdate.From([.. package]))
+            .OfType<ModUpdate>()];
+    }
+
+    public IObservable<bool> ObserveHasAnyUpdates(IGameData game)
+        => ThunderstoreGame.For(game) is { } thunderstoreGame
+            ? checker.ObserveCommunity(thunderstoreGame.ThunderstoreCommunity).Select(static updates => updates.Count > 0)
+            : Observable.Return(false);
+
+    // Both a replace and a keep-old download; only a replace changes what a loadout links.
+    public bool WillReplace(ModUpdateRequest request) => request.Replace;
+
+    public async ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken)
+    {
+        var downloaded = new Dictionary<EntityId, LibraryItem.ReadOnly>();
+        var replacements = new List<ModUpdateReplacement>();
+        var failures = new List<ModUpdateFailure>();
+
+        async Task Apply(ThunderstoreModUpdate package, IReadOnlyList<ThunderstoreUpdate> updates, Func<Task> apply)
+        {
+            try
+            {
+                await apply();
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // The user cancelled; there is nothing to report.
+            }
+            catch (Exception e)
+            {
+                failures.Add(new ModUpdateFailure(ThunderstoreModUpdate.From(updates) ?? package, package.Newest.ToString(), e));
+            }
+        }
+
+        foreach (var package in request.Updates.OfType<ThunderstoreModUpdate>())
+        {
+            if (request.Replace)
+            {
+                foreach (var update in package.Updates)
+                {
+                    await Apply(package, [update], async () =>
+                    {
+                        var current = LibraryItem.Load(connection.Db, update.LibraryFileId);
+                        if (current.IsValid() is false) throw new InvalidOperationException($"{update.Current} is no longer in the library.");
+
+                        var outcome = await installer.UpdateAsync(update.Newest, current, cancellationToken);
+                        foreach (var item in outcome.Downloaded) downloaded[item.Id] = item;
+                        replacements.AddRange(outcome.Replacements);
+                    });
+                }
+            }
+            else
+            {
+                await Apply(package, package.Updates, async () =>
+                {
+                    foreach (var file in await AddToLibrary(package, cancellationToken))
+                        downloaded[file.Id] = file.AsLibraryItem();
+                });
+            }
+        }
+
+        return new ModUpdateOutcome([.. downloaded.Values], replacements, failures, [], false);
+    }
+
+    // Library only: nothing is linked, so the old version stays in the loadouts.
+    private async Task<IReadOnlyList<LibraryFile.ReadOnly>> AddToLibrary(ThunderstoreModUpdate package, CancellationToken cancellationToken)
+    {
+        var community = ThunderstoreLibraryFile.Load(connection.Db, package.Updates[0].LibraryFileId).Community;
+        var game = ThunderstoreGame.ForCommunity(games, community) ?? throw new InvalidOperationException(ThunderstoreGame.NoGameFor(community));
+
+        var request = new ThunderstoreInstallRequest(package.Newest, game, WithDependencies: true, DependencyPolicy.Latest, ExpectedSha256: null, new Dictionary<ThunderstorePackageRef, ThunderstoreVersionNumber>());
+        return await thunderstoreSource.AddAsync(request, cancellationToken);
+    }
+
+    private static Optional<ModUpdate> AsUpdate(IReadOnlyList<ThunderstoreUpdate> updates)
+        => ThunderstoreModUpdate.From(updates) is { } update ? Optional<ModUpdate>.Create(update) : Optional<ModUpdate>.None;
 
     private static bool TryGetFile(LibraryItem.ReadOnly item, out ThunderstoreLibraryFile.ReadOnly file)
     {

@@ -20,7 +20,7 @@ namespace SilverModManager.Library.Tests.ModSources;
 
 public class ThunderstoreModSourceTests(IConnection connection)
 {
-    private ModSourceResolver Resolver() => new([NexusModSources.Create(connection, Substitute.For<IModUpdateService>()), new ThunderstoreModSource(Substitute.For<IThunderstoreCatalogSource>(), new ThunderstoreUpdateChecker(connection))]);
+    private ModSourceResolver Resolver() => new([NexusModSources.Create(connection, Substitute.For<IModUpdateService>()), ThunderstoreModSources.Create(connection)]);
 
     [Fact]
     public async Task AThunderstoreItemResolvesToTheThunderstoreSource()
@@ -40,7 +40,7 @@ public class ThunderstoreModSourceTests(IConnection connection)
         var fixtures = new LockFixtures(connection);
         var file = await fixtures.AddThunderstoreFile("Zehs", "REPOLib", "4.2.0", "ts " + Guid.NewGuid(), null, community: "repo");
 
-        new ThunderstoreModSource(Substitute.For<IThunderstoreCatalogSource>(), new ThunderstoreUpdateChecker(connection)).PageUri(file.AsLibraryItem()).Should().Be(new Uri("https://thunderstore.io/c/repo/p/Zehs/REPOLib/"));
+        ThunderstoreModSources.Create(connection).PageUri(file.AsLibraryItem()).Should().Be(new Uri("https://thunderstore.io/c/repo/p/Zehs/REPOLib/"));
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class ThunderstoreModSourceTests(IConnection connection)
         var fixtures = new LockFixtures(connection);
         var file = await fixtures.AddThunderstoreFile("Zehs", "REPOLib", "4.2.0", "ts " + Guid.NewGuid(), null, community: "valheim");
 
-        new ThunderstoreModSource(Substitute.For<IThunderstoreCatalogSource>(), new ThunderstoreUpdateChecker(connection)).ChangelogUri(file.AsLibraryItem()).Should().Be(new Uri("https://thunderstore.io/c/valheim/p/Zehs/REPOLib/changelog/"));
+        ThunderstoreModSources.Create(connection).ChangelogUri(file.AsLibraryItem()).Should().Be(new Uri("https://thunderstore.io/c/valheim/p/Zehs/REPOLib/changelog/"));
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class ThunderstoreModSourceTests(IConnection connection)
     {
         var fixtures = new LockFixtures(connection);
         var file = await fixtures.AddLibraryFile("local.zip", "local " + Guid.NewGuid(), null);
-        var source = new ThunderstoreModSource(Substitute.For<IThunderstoreCatalogSource>(), new ThunderstoreUpdateChecker(connection));
+        var source = ThunderstoreModSources.Create(connection);
 
         source.Owns(file.AsLibraryItem()).Should().BeFalse();
         source.PageUri(file.AsLibraryItem()).Should().BeNull();
@@ -78,7 +78,7 @@ public class ThunderstoreModSourceTests(IConnection connection)
     [Fact]
     public void TheThunderstoreSourceAnswersImmediatelyThatItHasNoUpdatesToApply()
     {
-        var source = new ThunderstoreModSource(Substitute.For<IThunderstoreCatalogSource>(), new ThunderstoreUpdateChecker(connection));
+        var source = ThunderstoreModSources.Create(connection);
         var game = Substitute.For<IGameData>();
         bool? answer = null;
 

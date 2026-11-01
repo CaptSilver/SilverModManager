@@ -7,6 +7,7 @@ using DynamicData.Aggregation;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Extensions;
@@ -33,7 +34,7 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
 {
     private readonly IConnection _connection;
     private readonly GameNames _gameNames;
-    private readonly ThunderstoreUpdateChecker _updateChecker;
+    private readonly ModSourceResolver _sources;
     private readonly Lazy<IThumbnailLoader> _iconLoader;
 
     public ThunderstoreDataProvider(IServiceProvider serviceProvider) : this(serviceProvider, iconLoader: null) { }
@@ -45,7 +46,7 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
         _iconLoader = new Lazy<IThumbnailLoader>(() => iconLoader ?? serviceProvider.GetRequiredService<IThumbnailLoader>());
         _connection = serviceProvider.GetRequiredService<IConnection>();
         _gameNames = new GameNames(serviceProvider.GetServices<IGameData>());
-        _updateChecker = serviceProvider.GetRequiredService<ThunderstoreUpdateChecker>();
+        _sources = serviceProvider.GetRequiredService<ModSourceResolver>();
     }
 
     private static string PackageName(ThunderstoreLibraryFile.ReadOnly file) => $"{file.Namespace}-{file.Name}";
@@ -113,12 +114,19 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
         return highest.HasValue ? highest.Value.VersionNumber : string.Empty;
     }
 
-    private static IObservable<Optional<string>> ToNewVersion(IObservable<Optional<ThunderstoreUpdate>> update)
+    private IObservable<Optional<ModUpdate>> ObserveUpdate(LibraryItem.ReadOnly item)
+        => _sources.For(item)?.ObserveUpdate(item) ?? System.Reactive.Linq.Observable.Return(Optional<ModUpdate>.None);
+
+    // The update for the package as a whole. The source is asked again whenever the package gains or loses a
+    // downloaded version, because the versions are what it looks the update up for.
+    private IObservable<Optional<ModUpdate>> ObservePackageUpdate(IObservable<IChangeSet<ThunderstoreLibraryFile.ReadOnly, EntityId>> files)
     {
-        return update.Select(static optional => optional.HasValue
-            ? Optional.Some(optional.Value.Newest.Version.ToString())
-            : Optional<string>.None
-        );
+        return files
+            .QueryWhenChanged(static query => query.Items.Select(static file => file.AsLibraryFile().AsLibraryItem()).ToArray())
+            .Select(items => items.Length > 0 && _sources.For(items[0]) is { } source
+                ? source.ObserveUpdate(items)
+                : System.Reactive.Linq.Observable.Return(Optional<ModUpdate>.None))
+            .Switch();
     }
 
     public override IObservable<IChangeSet<EntityId, EntityId>> ObserveModsTabItems(GameId game)
@@ -165,17 +173,14 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
         parentItemModel.Add(LibraryColumns.ItemVersion.CurrentVersionComponentKey, new VersionComponent(initialVersion, highestVersionObservable));
 
         // The newest of the updates available for any of the package's versions.
-        var newestVersionObservable = files
-            .TransformOnObservable(file => _updateChecker.Observe(file))
-            .QueryWhenChanged(static query =>
-            {
-                var newest = query.Items
-                    .Where(static update => update.HasValue)
-                    .Select(static update => update.Value.Newest.Version)
-                    .OptionalMaxBy(static version => version);
-                return newest.HasValue ? Optional.Some(newest.Value.ToString()) : Optional<string>.None;
-            });
-        AddNewVersionComponent(parentItemModel, () => new VersionComponent(initialVersion, highestVersionObservable), newestVersionObservable);
+        var packageUpdate = ObservePackageUpdate(files);
+        var currentUpdateVersionObservable = packageUpdate
+            .Select(static optional => optional.HasValue ? optional.Value.CurrentVersion : "")
+            .OnUI();
+        AddNewVersionComponent(
+            parentItemModel,
+            () => new VersionComponent(initialValue: string.Empty, valueObservable: currentUpdateVersionObservable),
+            packageUpdate);
 
         LibraryDataProviderHelper.AddRelatedCollectionsComponent(parentItemModel, linkedLoadoutItemsObservable);
 
@@ -218,7 +223,7 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
         itemModel.Add(LibraryColumns.ItemVersion.CurrentVersionComponentKey, new VersionComponent(value: file.VersionNumber));
         itemModel.Add(SharedColumns.ItemSize.ComponentKey, new SizeComponent(value: libraryFile.Size));
 
-        AddNewVersionComponent(itemModel, () => new VersionComponent(value: file.VersionNumber), ToNewVersion(_updateChecker.Observe(file)));
+        AddNewVersionComponent(itemModel, () => new VersionComponent(value: file.VersionNumber), ObserveUpdate(libraryFile.AsLibraryItem()));
         LibraryDataProviderHelper.AddRelatedCollectionsComponent(itemModel, linkedLoadoutItemsObservable);
 
         LibraryDataProviderHelper.AddInstalledDateComponent(itemModel, linkedLoadoutItemsObservable);
@@ -230,8 +235,7 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
         return itemModel;
     }
 
-    // The page and changelog buttons open the package's pages on thunderstore.io; there is no update button
-    // or hide switch yet.
+    // The page and changelog buttons open the package's pages on thunderstore.io; there is no hide switch yet.
     private static void AddPageActions(CompositeItemModel<EntityId> itemModel)
     {
         LibraryDataProviderHelper.AddViewChangelogActionComponent(itemModel);
@@ -239,20 +243,32 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
         LibraryDataProviderHelper.AddHideUpdatesActionComponent(itemModel, isEnabled: false, isVisible: false);
     }
 
-    // Thunderstore has no per-file update feed, so the update shows as a version next to the installed one and
-    // there is no update button: the Nexus update action is built around mod pages and file uids.
+    // The new version shows next to the installed one, and the Update button applies it through the source.
     private static void AddNewVersionComponent(
         CompositeItemModel<EntityId> itemModel,
         Func<VersionComponent> currentVersion,
-        IObservable<Optional<string>> newestVersionObservable)
+        IObservable<Optional<ModUpdate>> update)
     {
+        // The checker refreshes on whichever thread asked for the check, and the components belong to the UI thread.
+        var updateOnUi = update.OnUI();
+        var newestVersionObservable = updateOnUi.Select(static optional => optional.Convert(static found => found.NewestVersion));
+
         itemModel.AddObservable(
             key: LibraryColumns.ItemVersion.NewVersionComponentKey,
-            observable: newestVersionObservable.OnUI(),
+            observable: newestVersionObservable,
             componentFactory: (valueObservable, initialValue) => new LibraryComponents.NewVersionAvailable(
                 currentVersion: currentVersion(),
                 newVersion: initialValue,
                 newVersionObservable: valueObservable
+            )
+        );
+
+        itemModel.AddObservable(
+            key: LibraryColumns.Actions.UpdateComponentKey,
+            observable: updateOnUi,
+            componentFactory: static (valueObservable, initialValue) => new LibraryComponents.UpdateAction(
+                initialValue,
+                valueObservable
             )
         );
     }

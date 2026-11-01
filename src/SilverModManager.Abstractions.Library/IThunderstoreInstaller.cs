@@ -37,6 +37,21 @@ public interface IThunderstoreInstaller
     /// chosen by the caller instead of the modpack rule.
     /// </summary>
     ValueTask<IReadOnlyList<ThunderstoreInstallOutcome>> InstallAsync(ThunderstoreVersionRef root, LoadoutId loadoutId, DependencyPolicy policy, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Moves every loadout that links <paramref name="current"/> to <paramref name="newest"/>. Downloads
+    /// <paramref name="newest"/> and, for each loadout the replace will touch (links outside read-only collections),
+    /// the dependencies that loadout lacks, which it installs or enables there before the root changes. Then it
+    /// swaps the root once for all of them, so the new version takes the old one's place instead of being linked
+    /// beside it, and is switched off again where the old one was switched off. Deletes nothing from the library: the
+    /// old version stays there, and removing it is the caller's call. An item no loadout links is only replaced in
+    /// the library.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No game serves the community of <paramref name="current"/>.</exception>
+    /// <exception cref="ThunderstorePackageInDisabledGroupException">
+    /// A dependency is only linked inside a disabled group. Nothing has been replaced by then.
+    /// </exception>
+    ValueTask<ModUpdateOutcome> UpdateAsync(ThunderstoreVersionRef newest, LibraryItem.ReadOnly current, CancellationToken cancellationToken);
 }
 
 /// <summary>

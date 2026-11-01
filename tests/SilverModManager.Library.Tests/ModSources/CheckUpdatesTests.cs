@@ -76,7 +76,7 @@ public class CheckUpdatesTests(IConnection connection)
         var checker = new ThunderstoreUpdateChecker(connection);
         file.AsLibraryItem().TryGetAsLibraryFile(out var libraryFile).Should().BeTrue();
         libraryFile.TryGetAsThunderstoreLibraryFile(out var thunderstoreFile).Should().BeTrue();
-        return (new ThunderstoreModSource(catalogs, checker), catalogs, checker, ThunderstoreGameOf(community), thunderstoreFile);
+        return (ThunderstoreModSources.Create(connection, catalogs, checker), catalogs, checker, ThunderstoreGameOf(community), thunderstoreFile);
     }
 
     private static string? NewestVersionSeenBy(ThunderstoreUpdateChecker checker, ThunderstoreLibraryFile.ReadOnly file)

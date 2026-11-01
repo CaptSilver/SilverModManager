@@ -198,4 +198,75 @@ public class UpdateCheckerTests(IConnection connection)
 
         seen.Should().BeEmpty();
     }
+    [Fact]
+    public async Task Current_IsEmptyBeforeARefresh_AndListsTheUpdatesAfterOne()
+    {
+        var team = UniqueTeam();
+        var community = "community-" + Guid.NewGuid().ToString("N");
+        var file = await AddFile(team, "Mod", "4.1.0", community);
+
+        _checker.Current(community).Should().BeEmpty();
+
+        _checker.Refresh(Catalog(community, team, "Mod", ("4.1.0", true), ("4.2.0", true)));
+
+        var update = _checker.Current(community).Should().ContainSingle().Which;
+        update.LibraryFileId.Should().Be(file.Id);
+        update.Newest.Version.Should().Be(V("4.2.0"));
+    }
+
+    [Fact]
+    public async Task Current_LeavesOutFilesFrozenAfterTheRefresh()
+    {
+        var team = UniqueTeam();
+        var community = "community-" + Guid.NewGuid().ToString("N");
+        var file = await AddFile(team, "Mod", "4.1.0", community);
+        _checker.Refresh(Catalog(community, team, "Mod", ("4.1.0", true), ("4.2.0", true)));
+        _checker.Current(community).Should().ContainSingle();
+
+        using (var tx = connection.BeginTransaction())
+        {
+            _ = new UpdatePin.New(tx, file.Id) { Frozen = true };
+            await tx.Commit();
+        }
+
+        _checker.Current(community).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Current_OnlyListsTheAskedCommunity()
+    {
+        var team = UniqueTeam();
+        var mine = "community-" + Guid.NewGuid().ToString("N");
+        var other = "community-" + Guid.NewGuid().ToString("N");
+        await AddFile(team, "Mod", "4.1.0", other);
+        _checker.Refresh(Catalog(mine, team, "Mod", ("4.1.0", true), ("4.2.0", true)));
+
+        _checker.Current(mine).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ObserveCommunity_EmitsNothingKnownOnSubscribing_ThenTheUpdatesOfEachRefresh()
+    {
+        var team = UniqueTeam();
+        var community = "community-" + Guid.NewGuid().ToString("N");
+        await AddFile(team, "Mod", "4.1.0", community);
+        var seen = new List<IReadOnlyList<ThunderstoreUpdate>>();
+        using var subscription = _checker.ObserveCommunity(community).Subscribe(seen.Add);
+
+        _checker.Refresh(Catalog(community, team, "Mod", ("4.1.0", true), ("4.2.0", true)));
+        _checker.Refresh(Catalog(community, team, "Mod", ("4.1.0", true)));
+
+        seen.Select(updates => updates.Count).Should().Equal(0, 1, 0);
+    }
+
+    [Fact]
+    public async Task AnUpdate_CarriesWhenTheNewestVersionWasPublished()
+    {
+        var team = UniqueTeam();
+        await AddFile(team, "Mod", "4.1.0");
+
+        var updates = _checker.Check("repo", Catalog("repo", team, "Mod", ("4.1.0", true), ("4.2.0", true)), connection.Db);
+
+        updates.Should().ContainSingle().Which.PublishedAt.Should().Be(new DateTimeOffset(2025, 9, 1, 10, 0, 0, TimeSpan.Zero));
+    }
 }

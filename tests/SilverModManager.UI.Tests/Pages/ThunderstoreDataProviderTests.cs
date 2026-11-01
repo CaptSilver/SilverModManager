@@ -79,7 +79,7 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
     {
         var services = new ServiceCollection()
             .AddSingleton(Connection)
-            .AddSingleton(Provider.GetRequiredService<ThunderstoreUpdateChecker>());
+            .AddSingleton(Provider.GetRequiredService<ModSourceResolver>());
         foreach (var game in games) services.AddSingleton(game);
         return new ThunderstoreDataProvider(services.BuildServiceProvider(), iconLoader);
     }
@@ -436,6 +436,77 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
         });
     }
 
+    [Fact]
+    public async Task ARowWithAnUpdate_OffersTheUpdateAction_AFrozenOneDoesNot()
+    {
+        var community = UniqueCommunity();
+        var team = "Team" + Guid.NewGuid().ToString("N");
+        await AddFile(community, team, "Updatable", "1.0.0");
+        await AddFile(community, team, "Frozen", "1.0.0", frozen: true);
+        var game = ThunderstoreGameOf(community);
+        using var rows = Rows(CreateProvider(game).ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
+        await Eventually(() => rows.Count.Should().Be(2));
+        var updatable = rows.Items.Single(row => NameOf(row).EndsWith("Updatable"));
+        var frozen = rows.Items.Single(row => NameOf(row).EndsWith("Frozen"));
+        using var updatableVersions = ChildrenOf(updatable);
+        using var frozenVersions = ChildrenOf(frozen);
+        await Eventually(() => (updatableVersions.Count, frozenVersions.Count).Should().Be((1, 1)));
+        var all = new[] { updatable, updatableVersions.Items.Single(), frozen, frozenVersions.Items.Single() };
+        await OnUi(() =>
+        {
+            foreach (var row in all) row.Activate();
+            return Task.CompletedTask;
+        });
+
+        var checker = Provider.GetRequiredService<ThunderstoreUpdateChecker>();
+        checker.Refresh(CatalogWith(community, team, "Updatable", "1.0.0", "1.1.0"));
+
+        await EventuallyOnUi(() =>
+        {
+            foreach (var row in new[] { updatable, updatableVersions.Items.Single() })
+            {
+                var action = row.GetOptional<LibraryComponents.UpdateAction>(LibraryColumns.Actions.UpdateComponentKey);
+                action.HasValue.Should().BeTrue();
+                action.Value.Update.Value.NewestVersion.Should().Be("1.1.0");
+                action.Value.Update.Value.Count.Should().Be(1);
+            }
+        });
+
+        // The catalog holds one community's packages at a time, so the frozen package gets its own refresh, after
+        // the sibling's update has arrived.
+        checker.Refresh(CatalogWith(community, team, "Frozen", "1.0.0", "1.1.0"));
+        await Task.Delay(500);
+        await OnUi(() =>
+        {
+            foreach (var row in new[] { frozen, frozenVersions.Items.Single() })
+                row.GetOptional<LibraryComponents.UpdateAction>(LibraryColumns.Actions.UpdateComponentKey).HasValue.Should().BeFalse();
+            return Task.CompletedTask;
+        });
+    }
+
+    [Fact]
+    public async Task APackageRow_KeepsItsUpdateAsVersionsAreDownloadedAndRemoved()
+    {
+        var community = UniqueCommunity();
+        var team = "Team" + Guid.NewGuid().ToString("N");
+        var older = await AddFile(community, team, "Package", "1.0.0");
+        var game = ThunderstoreGameOf(community);
+        using var rows = Rows(CreateProvider(game).ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
+        await Eventually(() => rows.Count.Should().Be(1));
+        var package = rows.Items.Single();
+        await OnUi(() =>
+        {
+            package.Activate();
+            return Task.CompletedTask;
+        });
+        Provider.GetRequiredService<ThunderstoreUpdateChecker>().Refresh(CatalogWith(community, team, "Package", "1.0.0", "1.0.5", "1.1.0"));
+        await EventuallyOnUi(() => package.GetOptional<LibraryComponents.UpdateAction>(LibraryColumns.Actions.UpdateComponentKey).Value.Update.Value.Count.Should().Be(1));
+
+        await AddFile(community, team, "Package", "1.0.5");
+
+        await EventuallyOnUi(() => package.GetOptional<LibraryComponents.UpdateAction>(LibraryColumns.Actions.UpdateComponentKey).Value.Update.Value.Count.Should().Be(2));
+    }
+
     private sealed class FixedCatalogSource(ThunderstoreCatalog catalog) : IThunderstoreCatalogSource
     {
         public bool IsStale(string community) => false;
@@ -465,7 +536,11 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
 
         var source = new ThunderstoreModSource(
             new FixedCatalogSource(CatalogWith(community, team, "Checked", "1.0.0", "1.1.0")),
-            Provider.GetRequiredService<ThunderstoreUpdateChecker>());
+            Provider.GetRequiredService<ThunderstoreUpdateChecker>(),
+            Connection,
+            Substitute.For<IThunderstoreInstaller>(),
+            Substitute.For<IThunderstoreSource>(),
+            [game]);
         await source.CheckUpdates(game, force: false, CancellationToken.None);
 
         await EventuallyOnUi(() =>

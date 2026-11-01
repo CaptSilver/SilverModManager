@@ -40,6 +40,22 @@ public sealed class ThunderstoreUpdateChecker(IConnection connection)
     /// </summary>
     public void Refresh(ThunderstoreCatalog catalog) => CatalogOf(catalog.Community).OnNext(Optional.Some(catalog));
 
+    /// <summary>
+    /// The updates <see cref="Check(string, ThunderstoreCatalog, IDb)"/> finds against the catalog last given to
+    /// <see cref="Refresh"/> for <paramref name="community"/>, evaluated against the library as it is now. Empty
+    /// before the first refresh.
+    /// </summary>
+    public IReadOnlyList<ThunderstoreUpdate> Current(string community) => UpdatesOf(community, CatalogOf(community).Value);
+
+    /// <summary>
+    /// <see cref="Current"/>, emitted on subscribing and again after every <see cref="Refresh"/> of the community.
+    /// </summary>
+    public IObservable<IReadOnlyList<ThunderstoreUpdate>> ObserveCommunity(string community)
+        => CatalogOf(community).Select(catalog => UpdatesOf(community, catalog));
+
+    private IReadOnlyList<ThunderstoreUpdate> UpdatesOf(string community, Optional<ThunderstoreCatalog> catalog)
+        => catalog.HasValue ? Check(community, catalog.Value, connection.Db) : [];
+
     private BehaviorSubject<Optional<ThunderstoreCatalog>> CatalogOf(string community)
     {
         lock (_gate)
@@ -77,13 +93,17 @@ public sealed class ThunderstoreUpdateChecker(IConnection connection)
 
         // The catalog lists versions newest first, but the order is not relied on.
         ThunderstoreVersionNumber? newest = null;
+        DateTimeOffset? publishedAt = null;
         foreach (var version in catalog.Versions(package))
         {
             if (!version.IsActive || !ThunderstoreVersionNumber.TryParse(version.VersionNumber, out var number)) continue;
-            if (newest is null || number > newest) newest = number;
+            if (newest is not null && number <= newest) continue;
+
+            newest = number;
+            publishedAt = version.DateCreated;
         }
 
         if (newest is not { } latest || latest <= installed) return null;
-        return new ThunderstoreUpdate(file.Id, new ThunderstoreVersionRef(package, installed), new ThunderstoreVersionRef(package, latest));
+        return new ThunderstoreUpdate(file.Id, new ThunderstoreVersionRef(package, installed), new ThunderstoreVersionRef(package, latest), publishedAt);
     }
 }

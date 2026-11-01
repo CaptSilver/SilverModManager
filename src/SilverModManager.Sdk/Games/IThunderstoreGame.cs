@@ -37,4 +37,15 @@ public static class ThunderstoreGame
     /// Returns the game's Thunderstore support, or null if its mods don't come from Thunderstore.
     /// </summary>
     public static IThunderstoreGame? For(IGameData game) => game as IThunderstoreGame;
+
+    /// <summary>
+    /// The game whose mods come from <paramref name="community"/>, or null when none of <paramref name="games"/> does.
+    /// </summary>
+    public static IThunderstoreGame? ForCommunity(IEnumerable<IGameData> games, string community)
+        => games.Select(For).FirstOrDefault(game => game?.ThunderstoreCommunity == community);
+
+    /// <summary>
+    /// The text for the failure when no game serves <paramref name="community"/>.
+    /// </summary>
+    public static string NoGameFor(string community) => $"No game installs mods from the Thunderstore community '{community}'.";
 }

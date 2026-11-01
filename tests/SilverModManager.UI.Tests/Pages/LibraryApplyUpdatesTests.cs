@@ -15,7 +15,10 @@ using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Library;
+using SilverModManager.Networking.Thunderstore;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Thunderstore;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Dialog;
@@ -315,6 +318,29 @@ public class LibraryApplyUpdatesTests(IServiceProvider provider) : AUiTest(provi
 
         await Eventually(() => harness.Library.Received(1).RemoveLibraryItems(Arg.Is<IEnumerable<LibraryItem.ReadOnly>>(removed => removed.Select(item => item.Id).SequenceEqual(new[] { items[0].Id })), Arg.Any<GarbageCollectorRunMode>()));
         harness.Toasts.Received(1).ShowToast(string.Format(Language.ToastNotification_Mod_updated____0_, "new"), ToastNotificationVariant.Success, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+    }
+
+    // The Thunderstore source is the real one; only the installer behind it is a substitute, so what is checked is
+    // that its outcome goes through the same toast and removal as any other source's.
+    [Fact]
+    public async Task AThunderstoreReplacement_ShowsAToast_AndRemovesTheOldVersion()
+    {
+        var installer = Substitute.For<IThunderstoreInstaller>();
+        var source = new ThunderstoreModSource(
+            Substitute.For<IThunderstoreCatalogSource>(), new ThunderstoreUpdateChecker(Connection), Connection, installer, Substitute.For<IThunderstoreSource>(), []);
+        var harness = await CreateHarness(source);
+        var items = await SeedLibraryItems("Zehs-REPOLib-1.0.0.zip", "Zehs-REPOLib-1.1.0.zip");
+        var package = new ThunderstorePackageRef("Zehs", "REPOLib");
+        var oldVersion = new ThunderstoreVersionRef(package, new ThunderstoreVersionNumber(1, 0, 0));
+        var newVersion = new ThunderstoreVersionRef(package, new ThunderstoreVersionNumber(1, 1, 0));
+        installer.UpdateAsync(newVersion, Arg.Is<LibraryItem.ReadOnly>(item => item.Id == items[0].Id), Arg.Any<CancellationToken>())
+            .Returns(ModUpdateOutcome.Nothing with { Replacements = [new ModUpdateReplacement(items[0], items[1], LibraryItemReplacementResult.Success)] });
+        var update = ThunderstoreModUpdate.From([new ThunderstoreUpdate(items[0].Id, oldVersion, newVersion)])!;
+
+        Send(harness, update, replace: true);
+
+        await Eventually(() => harness.Library.Received(1).RemoveLibraryItems(Arg.Is<IEnumerable<LibraryItem.ReadOnly>>(removed => removed.Select(item => item.Id).SequenceEqual(new[] { items[0].Id })), Arg.Any<GarbageCollectorRunMode>()));
+        harness.Toasts.Received(1).ShowToast(string.Format(Language.ToastNotification_Mod_updated____0_, "Zehs-REPOLib-1.1.0.zip"), ToastNotificationVariant.Success, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
     }
 
     [Fact]
