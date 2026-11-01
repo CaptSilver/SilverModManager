@@ -76,7 +76,7 @@ public static class LibraryDestinations
         => tx.Add(new AddDestinationTxFunc(item, destination));
 
     /// <summary>
-    /// Removes a game; when the set empties, sets DestinationUnknown and clears DestinationsShared. Queued as a tx function.
+    /// Removes a game; clears DestinationsShared once fewer than two games remain, and sets DestinationUnknown when the set empties. Queued as a tx function.
     /// </summary>
     public static void Remove(ITransaction tx, EntityId item, GameId game)
         => tx.Add(new RemoveDestinationTxFunc(item, game));
@@ -144,14 +144,12 @@ public static class LibraryDestinations
 
             tx.Retract(item, LibraryItem.DestinationGames, game);
 
-            if (had.Count != 1) return;
-
-            if (!current.Contains(LibraryItem.DestinationUnknown))
-                tx.Add(item, LibraryItem.DestinationUnknown, Null.Instance);
-
-            // Shared says the games were assigned because Nexus can't tell them apart; with none left it is stale.
-            if (current.Contains(LibraryItem.DestinationsShared))
+            // Shared says the games were assigned because Nexus can't tell them apart; with fewer than two left it is stale.
+            if (had.Count <= 2 && current.Contains(LibraryItem.DestinationsShared))
                 tx.Retract(item, LibraryItem.DestinationsShared, Null.Instance);
+
+            if (had.Count == 1 && !current.Contains(LibraryItem.DestinationUnknown))
+                tx.Add(item, LibraryItem.DestinationUnknown, Null.Instance);
         }
 
         public bool Equals(ITxFunction? other)

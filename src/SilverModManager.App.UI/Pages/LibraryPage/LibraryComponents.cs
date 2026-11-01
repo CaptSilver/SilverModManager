@@ -739,7 +739,8 @@ public static class LibraryComponents
         internal static string Describe(DestinationRowState state, GameNames names)
         {
             if (state.IsUnassigned) return Language.LibraryDestination_Unassigned;
-            if (!state.IsShared) return string.Empty;
+            // A shared marker with no other game left would render "Also under : ..."; show nothing instead.
+            if (!state.IsShared || state.OtherGames.Count == 0) return string.Empty;
 
             var others = string.Join(", ", state.OtherGames.Select(names.NameOf).Order(StringComparer.CurrentCulture));
             return string.Format(Language.LibraryDestination_Shared, others);

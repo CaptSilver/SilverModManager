@@ -174,11 +174,22 @@ public class LibraryDestinationsTests(ITestOutputHelper helper) : ACyberpunkIsol
         var id = await AddItem(new Destination(new HashSet<GameId> { GameA, GameB }, Shared: true));
 
         await Run(tx => LibraryDestinations.Remove(tx, id, GameA));
-        Item(id).Contains(LibraryItem.DestinationsShared).Should().BeTrue();
         await Run(tx => LibraryDestinations.Remove(tx, id, GameB));
 
         Item(id).Contains(LibraryItem.DestinationUnknown).Should().BeTrue();
         Item(id).Contains(LibraryItem.DestinationsShared).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Remove_OneOfTwoGames_OfASharedItem_ClearsShared_AndKeepsTheOther()
+    {
+        var id = await AddItem(new Destination(new HashSet<GameId> { GameA, GameB }, Shared: true));
+
+        await Run(tx => LibraryDestinations.Remove(tx, id, GameB));
+
+        LibraryDestinations.GamesOf(Item(id)).Should().BeEquivalentTo([GameA]);
+        Item(id).Contains(LibraryItem.DestinationsShared).Should().BeFalse();
+        Item(id).Contains(LibraryItem.DestinationUnknown).Should().BeFalse();
     }
 
     [Fact]

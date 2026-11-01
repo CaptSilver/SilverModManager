@@ -171,6 +171,34 @@ public class LibraryDestinationActionsTests(IServiceProvider provider) : AUiTest
     }
 
     [Fact]
+    public async Task RemoveFromThisGame_OnOneOfTwoSharedGames_LeavesTheOtherGamesRowUntagged()
+    {
+        var (game, sibling, loadout) = await Setup();
+        var item = await AddLocalFile("shared.7z", new Destination(ImmutableHashSet.Create(game.GameId, sibling.GameId), Shared: true));
+        var row = await RowFor(loadout, game, item);
+        await EventuallyOnUi(() => TagOf(row).Should().NotBeEmpty());
+
+        await ActionsFor(sibling.GameId).RemoveFromThisGame(Ids(item));
+
+        var after = LibraryItem.Load(Connection.Db, item);
+        after.DestinationGames.Should().BeEquivalentTo([game.GameId]);
+        after.Contains(LibraryItem.DestinationsShared).Should().BeFalse();
+        await EventuallyOnUi(() =>
+        {
+            TagOf(row).Should().BeEmpty();
+            ActionsOf(row).IsShared.Value.Should().BeFalse();
+        });
+    }
+
+    [Fact]
+    public void Describe_ASharedMarkerWithNoOtherGame_NeverRendersABlankName()
+    {
+        var state = new DestinationRowState(IsShared: true, IsUnassigned: false, new HashSet<GameId>(), InstalledHere: false);
+
+        LibraryComponents.DestinationTag.Describe(state, new GameNames([])).Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task RemoveFromThisGame_IsDisabled_WhileInstalledInThisGamesLoadout()
     {
         var (game, _, loadout) = await Setup();
