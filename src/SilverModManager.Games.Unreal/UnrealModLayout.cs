@@ -97,7 +97,7 @@ public sealed class UnrealModLayout(GamePath contentRoot, GamePath binariesRoot)
         {
             var isScript = parts[i].Equals("Scripts", StringComparison.OrdinalIgnoreCase) && extension.Equals(".lua", StringComparison.OrdinalIgnoreCase);
             var isDll = parts[i].Equals("dlls", StringComparison.OrdinalIgnoreCase) && extension.Equals(".dll", StringComparison.OrdinalIgnoreCase);
-            if (!isScript && !isDll) continue;
+            if (isScript is false && isDll is false) continue;
 
             modFolder = i - 1;
             return true;

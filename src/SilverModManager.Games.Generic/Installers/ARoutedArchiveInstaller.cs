@@ -46,7 +46,7 @@ public abstract class ARoutedArchiveInstaller(IServiceProvider serviceProvider, 
             var path = file.Item.Path;
             if (TryRoute(archive, path, out var target))
                 routed.Add((file, target));
-            else if (!DocumentExtensions.Contains(path.Extension))
+            else if (DocumentExtensions.Contains(path.Extension) is false)
                 return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: $"{path} has no place in this game: expected {ExpectedFiles}."));
         }
 
