@@ -38,4 +38,16 @@ public partial class UserTool : IModelDefinition
     /// How the program is started.
     /// </summary>
     public static readonly EnumByteAttribute<ToolRunVia> RunVia = new(Namespace, nameof(RunVia));
+
+    /// <summary>
+    /// The catalogue id of the tool this row installs (<c>dyndolod</c>). A row without one is a program the user
+    /// added by hand.
+    /// </summary>
+    public static readonly StringAttribute ToolId = new(Namespace, nameof(ToolId)) { IsOptional = true };
+
+    /// <summary>
+    /// The name of the group the tool's output is kept in, when the user renamed it. Without it the group
+    /// keeps the catalogue definition's name.
+    /// </summary>
+    public static readonly StringAttribute OutputGroupName = new(Namespace, nameof(OutputGroupName)) { IsOptional = true };
 }

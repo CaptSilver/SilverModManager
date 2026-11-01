@@ -12,6 +12,7 @@ using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Protontricks;
 using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Platform.Proton.ToolRunner;
+using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.Platform.Proton.UserTools;
 using SilverModManager.Platform.Proton.Verbs;
 using SilverModManager.Sdk;
@@ -58,7 +59,8 @@ public class ProtonServicesTests
         provider.GetRequiredService<DeploymentCommand>().Should().NotBeNull();
         provider.GetRequiredService<PrefixSetupRunner>().Should().NotBeNull();
         provider.GetRequiredService<IToolRunner>().Should().BeOfType<ToolRunner.ToolRunner>();
-        provider.GetServices<IToolProvider>().Should().ContainSingle().Which.Should().BeOfType<UserToolProvider>();
+        provider.GetServices<IToolProvider>().Select(p => p.GetType()).Should().BeEquivalentTo([typeof(UserToolProvider), typeof(CatalogueToolProvider)]);
+        provider.GetRequiredService<KnownToolDetector>().Should().NotBeNull();
         provider.GetServices<IToolRunStrategy>().Select(s => s.Kind).Should().BeEquivalentTo(
         [
             CompatibilityLayerKind.SteamProton,

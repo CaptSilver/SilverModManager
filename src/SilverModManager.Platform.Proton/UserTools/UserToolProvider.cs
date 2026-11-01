@@ -8,7 +8,7 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.Platform.Proton.UserTools;
 
 /// <summary>
-/// Lists the programs the user added for a loadout's installation as tools.
+/// Lists the programs the user added by hand for a loadout's installation as tools.
 /// </summary>
 public sealed class UserToolProvider(IConnection connection, ModdingToolFactory factory) : IToolProvider
 {
@@ -18,9 +18,11 @@ public sealed class UserToolProvider(IConnection connection, ModdingToolFactory 
         var gameId = loadout.Game.GameId;
         foreach (var tool in UserTool.FindByInstallation(connection.Db, loadout.InstallationId))
         {
+            if (tool.IsCatalogueTool()) continue;
+
             var exe = FileSystem.Shared.FromUnsanitizedFullPath(tool.Exe);
             var definition = ToolDefinition.AdHoc(gameId, tool.Name, exe.FileName, tool.RunVia);
-            yield return factory.Create(definition, new InstalledTool(exe, tool.Arguments, tool.RunVia), gameId);
+            yield return factory.Create(definition, tool.ToInstalledTool(exe), gameId);
         }
     }
 }

@@ -41,6 +41,8 @@ public static class Services
         services.AddSingleton<ToolPrefixSetup>();
         services.AddSingleton<ModdingToolFactory>();
         services.AddSingleton<IToolProvider, UserToolProvider>();
+        services.AddSingleton<IToolProvider, CatalogueToolProvider>();
+        services.AddSingleton<KnownToolDetector>();
         services.AddSingleton<IToolRunner, ToolRunner.ToolRunner>();
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);
         services.AddSingleton<IPrefixInspector, PrefixInspector>();

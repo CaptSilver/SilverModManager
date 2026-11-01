@@ -35,7 +35,7 @@ public sealed class ModdingTool(
 
     public string Name => definition.DisplayName;
 
-    public ToolOutput Output => definition.Output;
+    public ToolOutput Output => WithGroupName(definition.Output);
 
     public bool DisableOwnOutputDuringRun => definition.DisableOwnOutputDuringRun;
 
@@ -81,12 +81,20 @@ public sealed class ModdingTool(
         if (definition.ExitCodes is ExitCodePolicy.ZeroIsSuccess && exitCode != 0)
             throw new InvalidOperationException($"{Name} exited with code {exitCode}; see the process log.{kept}");
 
-        if (runFolder is not null && definition.Output is ToolOutput.DeclaredFolder output)
+        if (runFolder is not null && Output is ToolOutput.DeclaredFolder output)
         {
             await outputCapture.CaptureFolder(loadout, runFolder.Value, output.MapsTo, output.GroupName, definition.IgnoredOutput, cancellationToken);
             runFolder.Value.DeleteDirectory(recursive: true);
         }
     }
+
+    // The user may have renamed the group in the tools list; the definition's name is the default.
+    private ToolOutput WithGroupName(ToolOutput output) => installed.OutputGroupName is not { } name ? output : output switch
+    {
+        ToolOutput.DeclaredFolder declared => declared with { GroupName = name },
+        ToolOutput.GameFolder gameFolder => gameFolder with { GroupName = name },
+        _ => output,
+    };
 
     // The folder the tool writes to is in the prefix (see ToolRunFolder), so a tool that runs natively has none.
     // A definition without a catalogue id has no name to give the folder.
