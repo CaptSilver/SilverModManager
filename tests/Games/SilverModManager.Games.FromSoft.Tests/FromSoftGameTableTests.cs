@@ -28,6 +28,21 @@ public class FromSoftGameTableTests
 
     [Theory]
     [MemberData(nameof(Games))]
+    public void Me3IsToldTheGamesOwnNameAndNoOverlayNatives(FromSoftGameFacts facts)
+    {
+        var options = facts.Me3Options();
+
+        options.GameName.Should().Be(facts.Me3GameName);
+        options.OverlayNatives.Should().BeEmpty();
+    }
+
+    [Theory]
+    [MemberData(nameof(Games))]
+    public void TheNexusModsGameIsTheGamesOwn(FromSoftGameFacts facts)
+        => facts.NexusModsGame().Value.Value.Should().Be(facts.NexusModsGameId);
+
+    [Theory]
+    [MemberData(nameof(Games))]
     public void TheFormatTraitsAreTheGamesOwn(FromSoftGameFacts facts)
     {
         var traits = facts.Definition().Formats;

@@ -1,6 +1,8 @@
+using DynamicData.Kernel;
 using SilverModManager.Games.FromSoft.ArmoredCore6;
 using SilverModManager.Games.FromSoft.EldenRingNightreign;
 using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Me3;
 using SilverModManager.Games.FromSoft.Saves;
 
 namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
@@ -35,7 +37,9 @@ public sealed record FromSoftGameFacts(
     int PathHashBits,
     int PathHashPrime,
     Bhd5Layout ArchiveLayout,
-    Func<FromSoftGameDefinition> Definition)
+    Func<FromSoftGameDefinition> Definition,
+    Func<Me3LoaderOptions> Me3Options,
+    Func<Optional<Sdk.NexusModsApi.NexusModsGameId>> NexusModsGame)
 {
     /// <summary>
     /// Armored Core VI. Steam 1888160 launches <c>Game/start_protected_game.exe</c> (api.steamcmd.net launch entries);
@@ -72,7 +76,9 @@ public sealed record FromSoftGameFacts(
         PathHashBits: 64,
         PathHashPrime: 133,
         ArchiveLayout: Bhd5Layout.Salted40ByteEntries,
-        Definition: () => ArmoredCore6Game.Definition);
+        Definition: () => ArmoredCore6Game.Definition,
+        Me3Options: () => ArmoredCore6Game.Me3Options,
+        NexusModsGame: () => ArmoredCore6Game.NexusModsGameId);
 
     /// <summary>
     /// Elden Ring Nightreign. Steam 2622380 launches <c>Game/start_protected_game.exe</c> (api.steamcmd.net launch
@@ -110,7 +116,9 @@ public sealed record FromSoftGameFacts(
         PathHashBits: 64,
         PathHashPrime: 133,
         ArchiveLayout: Bhd5Layout.Salted40ByteEntries,
-        Definition: () => EldenRingNightreignGame.Definition);
+        Definition: () => EldenRingNightreignGame.Definition,
+        Me3Options: () => EldenRingNightreignGame.Me3Options,
+        NexusModsGame: () => EldenRingNightreignGame.NexusModsGameId);
 
     public static IEnumerable<object[]> All => [[ArmoredCore6], [EldenRingNightreign]];
 
