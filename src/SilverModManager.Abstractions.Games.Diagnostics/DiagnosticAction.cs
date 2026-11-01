@@ -107,4 +107,16 @@ public static class DiagnosticActions
     public static DiagnosticAction MoveHostFolderIntoGame(string hostPath, string prefixPath)
         => new(MoveHostFolderIntoGameId, "Move it into the game's folder", [hostPath, prefixPath],
             "The game's own copies are kept, anything only the host copy has is copied in, and the host folder goes to the trash so it can be restored.");
+
+    /// <summary>
+    /// Id of the action that asks Steam to verify a game's files.
+    /// </summary>
+    public const string VerifyGameFilesInSteamId = "verify-game-files-in-steam";
+
+    /// <summary>
+    /// Opens Steam's verification for the game with the Steam app id <paramref name="appId"/>. The one argument is the app id.
+    /// </summary>
+    public static DiagnosticAction VerifyGameFilesInSteam(string appId)
+        => new(VerifyGameFilesInSteamId, "Verify the game's files in Steam", [appId],
+            "Steam checks every file against its own and downloads the ones that differ.");
 }

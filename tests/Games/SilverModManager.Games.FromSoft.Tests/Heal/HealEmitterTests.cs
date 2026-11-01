@@ -79,6 +79,39 @@ public class HealEmitterTests(ITestOutputHelper helper) : AVanillaDumpTest<HealE
         HealPlan.Plan(stamped, Live, Formats).Single().Detail.Should().Be(data.Message);
     }
 
+    private void KeepTheInstalledRegulationAsBaseline() => ServiceProvider.GetRequiredService<RegulationBaselines>().Adopt(GameInstallation, Live);
+
+    private void ForgetEveryBaseline()
+    {
+        foreach (var kept in ServiceProvider.GetRequiredService<RegulationBaselines>().List()) File.Delete(kept.File.GetFullPath());
+    }
+
+    [Fact]
+    public async Task ATamperedInstallWithAVouchedBaselineOffersTheRestore()
+    {
+        var loadout = await LoadoutWithARegulation();
+        await Stamps.Record(loadout.InstallationId, Live with { RegulationVersion = OlderVersion, RegulationHash = new string('b', 64) });
+        KeepTheInstalledRegulationAsBaseline();
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Which;
+
+        diagnostic.Actions.Select(a => a.Id).Should().Equal(RegulationRestore.RestoreActionId);
+    }
+
+    [Fact]
+    public async Task ATamperedInstallWithNoBaselineOffersSteamsVerifyForTheApp()
+    {
+        var loadout = await LoadoutWithARegulation();
+        await Stamps.Record(loadout.InstallationId, Live with { RegulationVersion = OlderVersion, RegulationHash = new string('b', 64) });
+        ForgetEveryBaseline();
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Which;
+
+        var action = diagnostic.Actions.Should().ContainSingle().Which;
+        action.Id.Should().Be(DiagnosticActions.VerifyGameFilesInSteamId);
+        action.Arguments.Should().Equal(EldenRingInstall.AppId.ToString());
+    }
+
     [Fact]
     public async Task AnUnchangedInstallEmitsNothing()
     {

@@ -19,7 +19,12 @@ using SilverModManager.App.UI.Pages.SteamLaunchOption;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Games.FromSoft.Build;
 using SilverModManager.Games.FromSoft.Cleanup;
+using SilverModManager.Games.FromSoft.Heal;
+using SilverModManager.Abstractions.Steam;
+using NexusMods.Paths;
+using SilverModManager.Sdk;
 using SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Platform.Proton.Doctor;
@@ -388,6 +393,75 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         var act = () => HostCopyHandler(fixture, Substitute.For<IDiagnosticManager>()).ExecuteAsync(seeded.LoadoutId, [fixture.Host]);
 
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    #endregion
+
+    #region Restore the game's regulation and verify in Steam
+
+    private RestoreRegulationActionHandler RegulationHandler(IDiagnosticManager manager, IGameLaunchSession session, string scratch)
+    {
+        var baselines = new RegulationBaselines(() => FileSystem.Shared.FromUnsanitizedFullPath(Path.Combine(scratch, "baselines")));
+        var restore = new RegulationRestore(baselines, Substitute.For<IManifestVouching>(), session, () => FileSystem.Shared.FromUnsanitizedFullPath(Path.Combine(scratch, "set-aside")));
+        var stamps = new BuildStampStore(Provider.GetRequiredService<IConnection>(), TimeProvider.System, baselines);
+        return new RestoreRegulationActionHandler(new ServicesWith(Provider, (typeof(IOverlayController), Substitute.For<IOverlayController>())), restore, stamps, manager);
+    }
+
+    [Fact]
+    public void Test_TheRegulationAndVerifyActionsHaveHandlersInTheApp()
+    {
+        var ids = Provider.GetServices<IDiagnosticActionHandler>().Select(h => h.ActionId).ToArray();
+
+        ids.Should().Contain(RegulationRestore.RestoreActionId);
+        ids.Should().Contain(DiagnosticActions.VerifyGameFilesInSteamId);
+    }
+
+    [Fact]
+    public async Task Test_RestoringTheRegulationRefusesWhileTheGameRuns_AndChangesNothing()
+    {
+        var scratch = Directory.CreateTempSubdirectory("regulation-action").FullName;
+        try
+        {
+            var seeded = await SeedLoadoutRow(GameStore.Steam, "Regulation");
+            var manager = Substitute.For<IDiagnosticManager>();
+            var session = Substitute.For<IGameLaunchSession>();
+            session.IsRunning(Arg.Any<GameInstallation>()).Returns(true);
+
+            var act = () => RegulationHandler(manager, session, scratch).ExecuteAsync(seeded.LoadoutId, []);
+
+            (await act.Should().ThrowAsync<RegulationRestoreRefusedException>()).Which.Title.Should().NotBeNullOrWhiteSpace();
+            Directory.GetFileSystemEntries(scratch).Should().BeEmpty();
+            await manager.DidNotReceiveWithAnyArgs().RefreshAsync(default);
+        }
+        finally
+        {
+            Directory.Delete(scratch, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Test_VerifyingInSteamOpensTheValidateLinkOfTheApp()
+    {
+        var os = Substitute.For<IOSInterop>();
+        var handler = new VerifyGameFilesInSteamActionHandler(os);
+
+        await handler.ExecuteAsync(SomeLoadout, DiagnosticActions.VerifyGameFilesInSteam("1245620").Arguments);
+
+        os.Received(1).OpenUri(new Uri("steam://validate/1245620"));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("1245620/../run/1")]
+    [InlineData("-1")]
+    public async Task Test_VerifyingInSteamOpensNothingForAnArgumentThatIsNotAnAppId(string argument)
+    {
+        var os = Substitute.For<IOSInterop>();
+
+        var act = () => new VerifyGameFilesInSteamActionHandler(os).ExecuteAsync(SomeLoadout, [argument]);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        os.DidNotReceiveWithAnyArgs().OpenUri(default!);
     }
 
     #endregion

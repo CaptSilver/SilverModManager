@@ -4,6 +4,7 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Steam;
 using SilverModManager.Games.FromSoft.Diagnostics;
+using SilverModManager.Games.FromSoft.Build;
 using SilverModManager.Games.FromSoft.Doctor;
 using SilverModManager.Games.FromSoft.Heal;
 using SilverModManager.Games.FromSoft.Tests.Fixtures;
@@ -60,13 +61,76 @@ public class SteamFolderEmitterTests(ITestOutputHelper helper) : AModdedEldenRin
         diagnostic.FormatDetails(ServiceProvider.GetRequiredService<IDiagnosticWriter>()).Should().Contain("dinput8.dll");
     }
 
+    private void KeepTheInstalledRegulationAsBaseline()
+        => ServiceProvider.GetRequiredService<RegulationBaselines>().Adopt(GameInstallation, BuildIdentity.Identify(GameInstallation));
+
+    private void ModifyTheRegulation()
+    {
+        var regulation = RealGameFolder / "regulation.bin";
+        var bytes = File.ReadAllBytes(regulation.GetFullPath());
+        bytes[^1] ^= 1;
+        File.WriteAllBytes(regulation.GetFullPath(), bytes);
+    }
+
+    [Fact]
+    public async Task AModifiedRegulationWithAVouchedBaselineOffersTheRestoreAlone()
+    {
+        var loadout = await CreateLoadout();
+        KeepTheInstalledRegulationAsBaseline();
+        ModifyTheRegulation();
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        diagnostic.Actions.Select(a => a.Id).Should().Equal(RegulationRestore.RestoreActionId);
+    }
+
+    [Fact]
+    public async Task AModifiedRegulationWithNoBaselineOffersSteamsVerify()
+    {
+        var loadout = await CreateLoadout();
+        foreach (var kept in ServiceProvider.GetRequiredService<RegulationBaselines>().List()) File.Delete(kept.File.GetFullPath());
+        ModifyTheRegulation();
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        var action = diagnostic.Actions.Should().ContainSingle().Which;
+        action.Id.Should().Be(DiagnosticActions.VerifyGameFilesInSteamId);
+        action.Arguments.Should().Equal(EldenRingInstall.AppId.ToString());
+    }
+
+    [Fact]
+    public async Task AModLoaderFileAloneGetsOnlyTheVerifyButton()
+    {
+        var loadout = await CreateLoadout();
+        KeepTheInstalledRegulationAsBaseline();
+        File.WriteAllText((RealGameFolder / "dinput8.dll").GetFullPath(), "hook");
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        diagnostic.Actions.Select(a => a.Id).Should().Equal(DiagnosticActions.VerifyGameFilesInSteamId);
+    }
+
+    [Fact]
+    public async Task AModifiedRegulationAndAModLoaderFileGetBothButtons()
+    {
+        var loadout = await CreateLoadout();
+        KeepTheInstalledRegulationAsBaseline();
+        ModifyTheRegulation();
+        File.WriteAllText((RealGameFolder / "dinput8.dll").GetFullPath(), "hook");
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        diagnostic.Actions.Select(a => a.Id).Should().Equal(RegulationRestore.RestoreActionId, DiagnosticActions.VerifyGameFilesInSteamId);
+    }
+
     [Fact]
     public async Task AnUnreadableManifestSaysNothing()
     {
         var loadout = await CreateLoadout();
         File.WriteAllText((RealGameFolder / "dinput8.dll").GetFullPath(), "hook");
         var vouching = ServiceProvider.GetRequiredService<IManifestVouching>();
-        var emitter = new SteamFolderEmitter(new NoManifest(vouching), new SteamFolderCheck(Microsoft.Extensions.Logging.Abstractions.NullLogger<SteamFolderCheck>.Instance));
+        var emitter = new SteamFolderEmitter(new NoManifest(vouching), new SteamFolderCheck(Microsoft.Extensions.Logging.Abstractions.NullLogger<SteamFolderCheck>.Instance),
+            ServiceProvider.GetRequiredService<RegulationRestore>(), ServiceProvider.GetRequiredService<BuildStampStore>());
 
         var found = new List<Diagnostic>();
         await foreach (var diagnostic in emitter.Diagnose(loadout, CancellationToken.None)) found.Add(diagnostic);

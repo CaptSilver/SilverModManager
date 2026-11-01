@@ -106,6 +106,18 @@ public static class Services
         {
             var settings = provider.GetRequiredService<ISettingsManager>();
             var fileSystem = provider.GetRequiredService<IFileSystem>();
+            return new RegulationRestore(
+                provider.GetRequiredService<RegulationBaselines>(),
+                provider.GetRequiredService<IManifestVouching>(),
+                provider.GetRequiredService<IGameLaunchSession>(),
+                () => settings.Get<FromSoftSettings>().DataRoot.ToPath(fileSystem) / "set-aside",
+                provider.GetService<TimeProvider>(),
+                provider.GetRequiredService<ILogger<RegulationRestore>>());
+        });
+        services.AddSingleton(provider =>
+        {
+            var settings = provider.GetRequiredService<ISettingsManager>();
+            var fileSystem = provider.GetRequiredService<IFileSystem>();
             return new SavedManifestHashes(
                 () => settings.Get<FromSoftSettings>().DataRoot.ToPath(fileSystem) / "manifest-hashes",
                 provider.GetService<TimeProvider>(),

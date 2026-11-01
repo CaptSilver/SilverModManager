@@ -2,6 +2,7 @@ using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.FromSoft.Build;
 using SilverModManager.Games.FromSoft.Diagnostics;
 using SilverModManager.Games.FromSoft.Heal;
 using SilverModManager.Sdk.Games;
@@ -12,10 +13,10 @@ namespace SilverModManager.Games.FromSoft.Doctor;
 /// <summary>
 /// Warns about files in the real game folder that Steam's manifest for the installed build does not list or lists
 /// differently, and about files only mods put there. <see cref="HealEmitter"/> sees a changed regulation only against
-/// the build stamp, so a regulation that was already modded when the app first saw the game is found here. Says nothing
-/// when no manifest of the install can be read.
+/// the build stamp, so a regulation that was already modded when the app first saw the game is found here. Offers to
+/// restore the regulation and to have Steam verify the rest. Says nothing when no manifest of the install can be read.
 /// </summary>
-public class SteamFolderEmitter(IManifestVouching vouching, SteamFolderCheck check) : IFromSoftDiagnosticEmitter
+public class SteamFolderEmitter(IManifestVouching vouching, SteamFolderCheck check, RegulationRestore restore, BuildStampStore stamps) : IFromSoftDiagnosticEmitter
 {
     // A folder of the wrong build lists a file per line; the first ones say what is wrong.
     private const int MaxListed = 15;
@@ -40,6 +41,10 @@ public class SteamFolderEmitter(IManifestVouching vouching, SteamFolderCheck che
             .ToArray();
         var shown = lines.Take(MaxListed).ToList();
         if (lines.Length > MaxListed) shown.Add($"- and {lines.Length - MaxListed} more");
-        yield return FromSoftDiagnostics.CreateFolderDiffersFromSteam(game.DisplayName, string.Join("\n", shown));
+        var regulation = game.Formats.RegulationFileName;
+        var regulationDiffers = found.Changed.Any(f => f.Equals(regulation, StringComparison.OrdinalIgnoreCase));
+        var otherFilesDiffer = found.ModFiles.Count > 0 || found.Changed.Any(f => !f.Equals(regulation, StringComparison.OrdinalIgnoreCase));
+        var actions = restore.Actions(installation, stamps.Find(loadout.InstallationId), regulationDiffers, otherFilesDiffer);
+        yield return FromSoftDiagnostics.CreateFolderDiffersFromSteam(game.DisplayName, string.Join("\n", shown)) with { Actions = [..actions] };
     }
 }
