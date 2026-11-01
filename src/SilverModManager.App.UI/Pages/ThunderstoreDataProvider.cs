@@ -119,6 +119,9 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
         );
     }
 
+    public override IObservable<IChangeSet<EntityId, EntityId>> ObserveModsTabItems(GameId game)
+        => ObserveOwnItems(game).Transform(static (_, id) => id);
+
     public override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
     {
         return ByPackage(ObserveOwnItems(libraryFilter))

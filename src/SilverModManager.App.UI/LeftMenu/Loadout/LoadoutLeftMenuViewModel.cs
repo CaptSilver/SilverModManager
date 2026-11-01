@@ -286,6 +286,7 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
                         ? newItems.ObserveNewCount(loadoutContext.LoadoutId, game.GameId).Where(count => count > 0).StartWith(1)
                         : Observable.Never<int>())
                     .Switch()
+                    .OnUI()
                     .SubscribeWithErrorLogging(_ => newItems.MarkSeen(loadoutContext.LoadoutId))
                     .DisposeWith(disposable);
 

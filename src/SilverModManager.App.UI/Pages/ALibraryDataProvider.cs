@@ -22,7 +22,11 @@ public abstract class ALibraryDataProvider<TModel>(IConnection connection) : ILi
 {
     /// <summary>The game's items plus the unassigned ones, narrowed to this provider's model.</summary>
     protected IObservable<IChangeSet<TModel, EntityId>> ObserveOwnItems(LibraryFilter filter)
-        => Narrow(LibraryDestinations.ObserveShownFor(connection, filter.Game.GameId));
+        => ObserveOwnItems(filter.Game.GameId);
+
+    /// <inheritdoc cref="ObserveOwnItems(LibraryFilter)"/>
+    protected IObservable<IChangeSet<TModel, EntityId>> ObserveOwnItems(GameId game)
+        => Narrow(LibraryDestinations.ObserveShownFor(connection, game));
 
     /// <summary>
     /// The loadout's game's items, for the loadout page. Unassigned items are left out: an item linked into the
@@ -65,6 +69,9 @@ public abstract class ALibraryDataProvider<TModel>(IConnection connection) : ILi
     /// The model's file, or none for a row that has no file. The Nexus provider skips those, as it always has.
     /// </summary>
     protected abstract Optional<LibraryFile.ReadOnly> AsLibraryFile(TModel model);
+
+    /// <inheritdoc />
+    public abstract IObservable<IChangeSet<EntityId, EntityId>> ObserveModsTabItems(GameId game);
 
     /// <inheritdoc />
     public abstract IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter filter);

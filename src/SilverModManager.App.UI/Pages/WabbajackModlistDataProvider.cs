@@ -25,6 +25,9 @@ internal class WabbajackModlistDataProvider : ALibraryDataProvider<WabbajackModl
 
     protected override Optional<LibraryFile.ReadOnly> AsLibraryFile(WabbajackModlistLibraryFile.ReadOnly model) => model.AsLibraryFile();
 
+    public override IObservable<IChangeSet<EntityId, EntityId>> ObserveModsTabItems(GameId game)
+        => Observable.Never<IChangeSet<EntityId, EntityId>>().StartWith(ChangeSet<EntityId, EntityId>.Empty);
+
     // Modlists are on the Collections tab, so the Mods tab has no row for them. The provider stays registered because
     // removing a game still asks it for the lists to delete.
     public override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)

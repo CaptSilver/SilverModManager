@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using DynamicData;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
@@ -8,6 +9,8 @@ using NSubstitute;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.LeftMenu.Items;
 using SilverModManager.App.UI.LeftMenu.Loadout;
+using SilverModManager.App.UI.Pages;
+using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Pages.LibraryPage;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -96,7 +99,56 @@ public class LibraryNewItemsTests(IServiceProvider provider) : AUiTest(provider)
         return result.Remap(file).Id;
     }
 
-    private LibraryNewItems NewItems() => new(Connection);
+    private LibraryNewItems NewItems() => new(Connection, Provider.GetServices<ILibraryDataProvider>());
+
+    /// <summary>A library source the badge has never heard of: it lists whatever ids the test puts in <see cref="Listed"/>.</summary>
+    private sealed class FakeProvider : ILibraryDataProvider
+    {
+        public SourceCache<EntityId, EntityId> Listed { get; } = new(static id => id);
+
+        public IObservable<IChangeSet<EntityId, EntityId>> ObserveModsTabItems(GameId game) => Listed.Connect();
+
+        public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
+            => throw new NotSupportedException();
+
+        public LibraryFile.ReadOnly[] GetAllFiles(GameId gameId, IDb? db = null) => [];
+    }
+
+    [Fact]
+    public async Task ANewSourceCounts_ThroughItsOwnProvider_WithoutTheBadgeKnowingIt()
+    {
+        var game = NewGame("game");
+        var source = new FakeProvider();
+        var newItems = new LibraryNewItems(Connection, [source]);
+        using var counts = new Counts(newItems.ObserveNewCount(NewLoadout(), game));
+        await Task.Delay(Settle);
+
+        // Not a model any built-in provider lists, and carrying no destination: only the provider's say-so puts it on the tab.
+        EntityId item;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var created = new LibraryItem.New(tx) { Name = "from-a-new-source" };
+            var result = await tx.Commit();
+            item = result.Remap(created).Id;
+        }
+        source.Listed.AddOrUpdate(item);
+
+        await Eventually(() => counts.Last.Should().Be(1), delay: Poll);
+    }
+
+    [Fact]
+    public async Task AnItemTheProviderDoesNotList_DoesNotCount()
+    {
+        var game = NewGame("game");
+        var newItems = new LibraryNewItems(Connection, [new FakeProvider()]);
+        using var counts = new Counts(newItems.ObserveNewCount(NewLoadout(), game));
+        await Task.Delay(Settle);
+
+        await AddLocalFile("unlisted.7z", Destination.Of(game));
+
+        await Task.Delay(300);
+        counts.Highest.Should().Be(0);
+    }
 
     [Fact]
     public async Task AtMenuCreation_CountIsZero_WhateverTheLibraryHolds()

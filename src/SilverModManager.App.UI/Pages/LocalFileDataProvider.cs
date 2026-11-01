@@ -32,25 +32,27 @@ internal class LocalFileDataProvider : ALibraryDataProvider<LocalFile.ReadOnly>,
     }
 
     // A Wabbajack modlist is added as a local file too; the Collections tab shows it.
-    internal static bool IsModlist(LocalFile.ReadOnly localFile) => localFile.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out _);
+    private static bool IsModlist(LocalFile.ReadOnly localFile) => localFile.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out _);
 
     // The modlist file is a local file too, but game removal gets it from WabbajackModlistDataProvider; listing it here
     // as well would delete it twice.
     protected override Optional<LibraryFile.ReadOnly> AsLibraryFile(LocalFile.ReadOnly model)
         => IsModlist(model) ? Optional<LibraryFile.ReadOnly>.None : model.AsLibraryFile();
 
-    private IObservable<IChangeSet<LocalFile.ReadOnly, EntityId>> ObserveShown(LibraryFilter libraryFilter)
+    private IObservable<IChangeSet<LocalFile.ReadOnly, EntityId>> ObserveShown(GameId game)
     {
-        var game = libraryFilter.Game.GameId;
-        return ObserveOwnItems(libraryFilter)
+        return ObserveOwnItems(game)
             .FilterImmutable(static localFile => !IsModlist(localFile))
             .FilterOnObservable((_, id) => LibraryDataProviderHelper.IsShownInMods(_connection, id, game));
     }
 
     public override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
     {
-        return ObserveShown(libraryFilter).Transform(localFile => ToLibraryItemModel(libraryFilter, localFile));
+        return ObserveShown(libraryFilter.Game.GameId).Transform(localFile => ToLibraryItemModel(libraryFilter, localFile));
     }
+
+    public override IObservable<IChangeSet<EntityId, EntityId>> ObserveModsTabItems(GameId game)
+        => ObserveShown(game).Transform(static (_, id) => id);
 
     private CompositeItemModel<EntityId> ToLibraryItemModel(LibraryFilter libraryFilter, LocalFile.ReadOnly localFile)
     {

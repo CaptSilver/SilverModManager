@@ -56,12 +56,13 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
     /// game's items, not from the Nexus id: two games can share one id.
     /// </summary>
     private IObservable<IChangeSet<IGroup<NexusModsLibraryItem.ReadOnly, EntityId, EntityId>, EntityId>> ObserveShownPages(LibraryFilter libraryFilter)
-    {
-        var game = libraryFilter.Game.GameId;
-        return ObserveOwnItems(libraryFilter)
-            .FilterOnObservable((_, id) => LibraryDataProviderHelper.IsShownInMods(_connection, id, game))
-            .Group(PageOf);
-    }
+        => ObserveShownFiles(libraryFilter.Game.GameId).Group(PageOf);
+
+    private IObservable<IChangeSet<NexusModsLibraryItem.ReadOnly, EntityId>> ObserveShownFiles(GameId game)
+        => ObserveOwnItems(game).FilterOnObservable((_, id) => LibraryDataProviderHelper.IsShownInMods(_connection, id, game));
+
+    public override IObservable<IChangeSet<EntityId, EntityId>> ObserveModsTabItems(GameId game)
+        => ObserveShownFiles(game).Transform(static (_, id) => id);
 
     public override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
     {

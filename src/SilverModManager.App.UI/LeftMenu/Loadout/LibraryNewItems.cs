@@ -3,19 +3,15 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using DynamicData;
 using SilverModManager.Sdk.Loadouts;
-using SilverModManager.Abstractions.NexusModsLibrary;
-using SilverModManager.Abstractions.NexusModsLibrary.Models;
-using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
 using SilverModManager.App.UI.Pages;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
-using SilverModManager.Wabbajack.Models;
 
 namespace SilverModManager.App.UI.LeftMenu.Loadout;
 
 /// <inheritdoc />
-internal sealed class LibraryNewItems(IConnection connection) : ILibraryNewItems
+internal sealed class LibraryNewItems(IConnection connection, IEnumerable<ILibraryDataProvider> providers) : ILibraryNewItems
 {
     // Slice changesets arrive on the connection's event thread and MarkSeen on the UI thread. The subject's value is
     // the time of the last sighting; the count filter re-evaluates every item when it changes, so MarkSeen drops the
@@ -37,31 +33,17 @@ internal sealed class LibraryNewItems(IConnection connection) : ILibraryNewItems
     {
         // Created now, not on subscribe: the menu being built is what starts the clock.
         var lastSeen = LastSeen(loadout);
-        var newerThanSeen = lastSeen.Select(seen => (Func<Datom, bool>)(datom => CreatedAt(datom) > seen));
+        var newerThanSeen = lastSeen.Select(seen => (Func<EntityId, bool>)(item => CreatedAt(item) > seen));
 
-        return LibraryDestinations.ObserveShownFor(connection, game)
-            // Items already seen go first, so the back-reference slices below are only watched for items that could count.
+        // What counts is what the providers list on the Mods tab; each knows its own rules, so a new source needs no change here.
+        return providers
+            .Select(provider => provider.ObserveModsTabItems(game))
+            .MergeChangeSets()
             .Filter(newerThanSeen)
-            .FilterImmutable(datom => IsListedOnModsTab(connection.Db, datom.E))
-            .FilterOnObservable((_, id) => LibraryDataProviderHelper.IsShownInMods(connection, id, game))
             .QueryWhenChanged(static query => query.Count)
             .StartWith(0)
             .DistinctUntilChanged();
 
-        DateTimeOffset CreatedAt(Datom datom) => LibraryItem.Load(connection.Db, datom.E).GetCreatedAt();
+        DateTimeOffset CreatedAt(EntityId item) => LibraryItem.Load(connection.Db, item).GetCreatedAt();
     }
-
-    private static bool IsPlainLocalFile(IDb db, EntityId item)
-    {
-        var local = LocalFile.Load(db, item);
-        return local.IsValid() && !LocalFileDataProvider.IsModlist(local);
-    }
-
-    // The models some provider lists on the Mods tab. An archive member has no destination, so it is never in the slice;
-    // a modlist is on the Collections tab.
-    private static bool IsListedOnModsTab(IDb db, EntityId item)
-        => IsPlainLocalFile(db, item)
-           || ManuallyCreatedArchive.Load(db, item).IsValid()
-           || NexusModsLibraryItem.Load(db, item).IsValid()
-           || ThunderstoreLibraryFile.Load(db, item).IsValid();
 }

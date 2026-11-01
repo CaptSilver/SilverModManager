@@ -13,8 +13,8 @@ public interface ILibraryNewItems
     void MarkSeen(LoadoutId loadout);
 
     /// <summary>
-    /// Mods-tab rows for the game created after the loadout's Library page was last opened (or its menu built).
-    /// Emits on the connection's event thread; bind it with <c>OnUI</c>.
+    /// Library items listed on the Mods tab for the game, created after the loadout's Library page was last opened (or its menu built).
+    /// Counts items, so two versions of one package count twice. Emits on the connection's event thread; bind it with <c>OnUI</c>.
     /// </summary>
     IObservable<int> ObserveNewCount(LoadoutId loadout, GameId game);
 }

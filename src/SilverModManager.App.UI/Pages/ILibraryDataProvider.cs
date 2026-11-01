@@ -28,6 +28,13 @@ public interface ILibraryDataProvider
     IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter);
 
     /// <summary>
+    /// The ids of the library items this provider lists on the Mods tab for the game (its own items plus the
+    /// unassigned ones), whatever the row they end up in. The Library badge counts the union over every provider.
+    /// A provider with nothing on the Mods tab returns an empty set.
+    /// </summary>
+    IObservable<IChangeSet<EntityId, EntityId>> ObserveModsTabItems(GameId game);
+
+    /// <summary>
     /// Returns all library files for the given game.
     /// </summary>
     LibraryFile.ReadOnly[] GetAllFiles(GameId gameId, IDb? db = null);

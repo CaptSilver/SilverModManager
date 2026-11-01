@@ -30,6 +30,9 @@ internal class ManuallyCreatedArchiveDataProvider : ALibraryDataProvider<Manuall
     protected override Optional<LibraryFile.ReadOnly> AsLibraryFile(ManuallyCreatedArchive.ReadOnly model)
         => model.AsLibraryArchive().AsLibraryFile();
 
+    public override IObservable<IChangeSet<EntityId, EntityId>> ObserveModsTabItems(GameId game)
+        => ObserveOwnItems(game).Transform(static (_, id) => id);
+
     public override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
     {
         return ObserveOwnItems(libraryFilter)
