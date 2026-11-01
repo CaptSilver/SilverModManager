@@ -32,7 +32,7 @@ public class AddLibraryFileJobTests(IServiceProvider serviceProvider, IConnectio
             var archive = FileSystem.Shared.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources/7z-with-symlinks.7z");
 
             using var tx = connection.BeginTransaction();
-            var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, archive);
+            var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, archive, UnassignedAcquisition.Instance);
             var result = await tx.Commit();
 
             result.Remap(libraryFile).TryGetAsLibraryArchive(out var libraryArchive).Should().BeTrue();
@@ -56,7 +56,7 @@ public class AddLibraryFileJobTests(IServiceProvider serviceProvider, IConnectio
         await File.WriteAllBytesAsync(file.ToString(), bytes, TestContext.Current.CancellationToken);
 
         using var tx = connection.BeginTransaction();
-        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, file);
+        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, file, UnassignedAcquisition.Instance);
         var result = await tx.Commit();
 
         var stored = result.Remap(libraryFile);
@@ -70,7 +70,7 @@ public class AddLibraryFileJobTests(IServiceProvider serviceProvider, IConnectio
         var archive = FileSystem.Shared.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources/7z-with-symlinks.7z");
 
         using var tx = connection.BeginTransaction();
-        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, archive);
+        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, archive, UnassignedAcquisition.Instance);
         var result = await tx.Commit();
 
         var stored = result.Remap(libraryFile);
@@ -89,7 +89,7 @@ public class AddLibraryFileJobTests(IServiceProvider serviceProvider, IConnectio
         await File.WriteAllBytesAsync(file.ToString(), bytes, TestContext.Current.CancellationToken);
 
         using var tx = connection.BeginTransaction();
-        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, file);
+        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, file, UnassignedAcquisition.Instance);
         var result = await tx.Commit();
 
         var stored = result.Remap(libraryFile);
@@ -117,7 +117,7 @@ public class AddLibraryFileJobTests(IServiceProvider serviceProvider, IConnectio
         }
 
         using var tx = connection.BeginTransaction();
-        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, zipPath);
+        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, zipPath, UnassignedAcquisition.Instance);
         var result = await tx.Commit();
 
         var stored = result.Remap(libraryFile);
@@ -141,7 +141,7 @@ public class AddLibraryFileJobTests(IServiceProvider serviceProvider, IConnectio
         var archive = FileSystem.Shared.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources/7z-with-cp437-zip.7z");
 
         using var tx = connection.BeginTransaction();
-        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, archive);
+        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, archive, UnassignedAcquisition.Instance);
         var result = await tx.Commit();
 
         result.Remap(libraryFile).TryGetAsLibraryArchive(out var outer).Should().BeTrue();
@@ -165,7 +165,7 @@ public class AddLibraryFileJobTests(IServiceProvider serviceProvider, IConnectio
         }
 
         using var tx = connection.BeginTransaction();
-        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, outerPath);
+        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, outerPath, UnassignedAcquisition.Instance);
         var result = await tx.Commit();
 
         var stored = result.Remap(libraryFile);

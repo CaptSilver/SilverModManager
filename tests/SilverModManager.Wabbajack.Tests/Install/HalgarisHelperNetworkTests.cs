@@ -46,7 +46,7 @@ public class HalgarisHelperNetworkTests(ITestOutputHelper helper) : InstallTestB
         await using (var stream = File.OpenRead(downloaded.ToString()))
             WabbajackHash.ToBase64(FileIdentity.XxHash64(await Xx64Hasher.HashAsync(stream, cancellationToken: token))).Should().Be(ListHash);
 
-        var added = await LibraryService.AddLocalFile(downloaded);
+        var added = await LibraryService.AddLocalFile(downloaded, UnassignedAcquisition.Instance);
         added.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out var modlist).Should().BeTrue();
         modlist.GameType.Should().Be("SkyrimSpecialEdition");
         modlist.ArchiveCount.Should().Be(1);

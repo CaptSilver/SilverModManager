@@ -94,7 +94,7 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
 
         fixture.OsInterop = Substitute.For<IOSInterop>();
         fixture.Library = Substitute.For<ILibraryService>();
-        fixture.Library.AddDownload(default!).ReturnsForAnyArgs(_ =>
+        fixture.Library.AddDownload(default!, default!).ReturnsForAnyArgs(_ =>
         {
             var task = Substitute.For<IJobTask<IAddDownloadJob, LibraryFile.ReadOnly>>();
             task.GetAwaiter().Returns(_ => Task.FromResult(fixture.Downloaded).GetAwaiter());
@@ -317,7 +317,7 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
         f.OsInterop.Received(1).OpenUri(new Uri("https://www.nexusmods.com/cyberpunk2077/mods/7?tab=files"));
         await f.Browser.DidNotReceiveWithAnyArgs().FindMainFile(default, default, default);
         await f.Browser.DidNotReceiveWithAnyArgs().CreateDownloadJob(default, default, default, default, default);
-        _ = f.Library.DidNotReceiveWithAnyArgs().AddDownload(default!);
+        _ = f.Library.DidNotReceiveWithAnyArgs().AddDownload(default!, default!);
     }
 
     [Fact]
@@ -330,7 +330,7 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
 
         await f.Vm.InstallAsync(RowOf(7), CancellationToken.None);
 
-        _ = f.Library.Received(1).AddDownload(job);
+        _ = f.Library.Received(1).AddDownload(job, Arg.Any<IAcquisitionContext>());
         f.OsInterop.DidNotReceiveWithAnyArgs().OpenUri(default!);
         f.Vm.ErrorText.Should().BeEmpty();
     }
@@ -455,7 +455,7 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
 
         f.Vm.ErrorText.Should().BeEmpty();
         DownloadsStarted(f).Should().Be(0);
-        _ = f.Library.DidNotReceiveWithAnyArgs().AddDownload(default!);
+        _ = f.Library.DidNotReceiveWithAnyArgs().AddDownload(default!, default!);
         Installed(f).Should().Equal((item.Id, f.LoadoutId));
     }
 

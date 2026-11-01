@@ -133,7 +133,7 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
             if (!list.Select(id => NexusModsCollectionLibraryFile.Load(db, id)).TryGetFirst(x => x.IsValid(), out var collectionFile))
             {
                 var downloadJob = nexusModsLibrary.CreateCollectionDownloadJob(destination, collectionUrl.Collection.Slug, collectionUrl.Revision, CancellationToken.None);
-                var libraryFile = await library.AddDownload(downloadJob);
+                var libraryFile = await library.AddDownload(downloadJob, UnassignedAcquisition.Instance);
 
                 if (!libraryFile.TryGetAsNexusModsCollectionLibraryFile(out collectionFile))
                     throw new InvalidOperationException("The library file is not a NexusModsCollectionLibraryFile");
@@ -196,7 +196,7 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
             await using var destination = temporaryFileManager.CreateFile();
             var downloadJob = await nexusModsLibrary.CreateDownloadJob(destination, modUrl, cancellationToken: cancel);
 
-            libraryFile = await library.AddDownload(downloadJob);
+            libraryFile = await library.AddDownload(downloadJob, UnassignedAcquisition.Instance);
             
             _eventBus.Send(new CliMessages.ModDownloadSucceeded(libraryFile.Value.AsLibraryItem()));
         }

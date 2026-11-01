@@ -3,7 +3,9 @@ using SilverModManager.Sdk.Hashes;
 using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
+using SilverModManager.Abstractions.Downloads;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.TestFramework;
@@ -13,6 +15,7 @@ using NexusMods.Paths.Utilities;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
 using Xunit;
 using SilverModManager.Sdk.Library;
@@ -42,7 +45,7 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
 
         // The entry names are GBK bytes without the zip's UTF-8 flag. The zip spec says such names are CP437, so
         // they import under their CP437 spelling instead of failing the whole archive.
-        var localFile = await _libraryService.AddLocalFile(archivePath);
+        var localFile = await _libraryService.AddLocalFile(archivePath, new GameAcquisition(GameInstallation.Game.GameId));
         localFile.AsLibraryFile().TryGetAsLibraryArchive(out var libraryArchive).Should().BeTrue();
         libraryArchive.IsValid().Should().BeTrue();
 
@@ -59,7 +62,7 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
         var archivePath = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine(fileName);
         archivePath.FileExists.Should().BeTrue();
 
-        var localFile = await _libraryService.AddLocalFile(archivePath);
+        var localFile = await _libraryService.AddLocalFile(archivePath, new GameAcquisition(GameInstallation.Game.GameId));
         localFile.AsLibraryFile().TryGetAsLibraryArchive(out var libraryArchive).Should().BeTrue();
         libraryArchive.IsValid().Should().BeTrue();
 
@@ -72,7 +75,7 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
         // Archives with known extensions should be extracted and have their contents analyzed
         
         var nestedArchivePath = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine("nested_archive.zip");
-        var libraryItem = await _libraryService.AddLocalFile(nestedArchivePath);
+        var libraryItem = await _libraryService.AddLocalFile(nestedArchivePath, new GameAcquisition(GameInstallation.Game.GameId));
         libraryItem.AsLibraryFile().TryGetAsLibraryArchive(out var archive).Should().BeTrue();
         
         // find the nested archive
@@ -100,7 +103,7 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
         // Archives with unknown extensions (likely to be valid mod files) should not be extracted and analyzed
         
         var nestedArchivePath = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine("nested_game_archive.zip");
-        var libraryItem = await _libraryService.AddLocalFile(nestedArchivePath);
+        var libraryItem = await _libraryService.AddLocalFile(nestedArchivePath, new GameAcquisition(GameInstallation.Game.GameId));
         libraryItem.AsLibraryFile().TryGetAsLibraryArchive(out var archive).Should().BeTrue();
         
         // find the nested archive
@@ -144,7 +147,7 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
         var nestedArchivePath = FileSystem.GetKnownPath(KnownPath.CurrentDirectory)
             .Combine("Resources")
             .Combine("nested_archive.zip");
-        var libraryItem = (await _libraryService.AddLocalFile(nestedArchivePath)).AsLibraryFile().AsLibraryItem();
+        var libraryItem = (await _libraryService.AddLocalFile(nestedArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
 
         // Add it to our new loadout.
         await LoadoutManager.InstallItem(libraryItem, loadout.LoadoutId, parent: collection.AsLoadoutItemGroup().LoadoutItemGroupId);
@@ -174,8 +177,8 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
             .Combine("nested_game_archive.zip");
 
         // Add files to library
-        var oldItem1 = (await _libraryService.AddLocalFile(firstArchivePath)).AsLibraryFile().AsLibraryItem();
-        var oldItem2 = (await _libraryService.AddLocalFile(secondArchivePath)).AsLibraryFile().AsLibraryItem();
+        var oldItem1 = (await _libraryService.AddLocalFile(firstArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
+        var oldItem2 = (await _libraryService.AddLocalFile(secondArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
 
         // Install old items in both loadouts
         await LoadoutManager.InstallItem(oldItem1, loadout1.LoadoutId, parent: collection1.AsLoadoutItemGroup().LoadoutItemGroupId);
@@ -184,8 +187,8 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
 
         // Act
         // Replace both items across all loadouts
-        var newItem1 = (await _libraryService.AddLocalFile(firstArchivePath)).AsLibraryFile().AsLibraryItem(); // Same content but different LibraryItem instance
-        var newItem2 = (await _libraryService.AddLocalFile(secondArchivePath)).AsLibraryFile().AsLibraryItem();
+        var newItem1 = (await _libraryService.AddLocalFile(firstArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem(); // Same content but different LibraryItem instance
+        var newItem2 = (await _libraryService.AddLocalFile(secondArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
         var replacements = new List<(LibraryItem.ReadOnly oldItem, LibraryItem.ReadOnly newItem)>
         {
             (oldItem1, newItem1),
@@ -241,8 +244,8 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
             .Combine("nested_game_archive.zip");
 
         // Add files to library
-        var oldItem1 = (await _libraryService.AddLocalFile(firstArchivePath)).AsLibraryFile().AsLibraryItem();
-        var oldItem2 = (await _libraryService.AddLocalFile(secondArchivePath)).AsLibraryFile().AsLibraryItem();
+        var oldItem1 = (await _libraryService.AddLocalFile(firstArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
+        var oldItem2 = (await _libraryService.AddLocalFile(secondArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
 
         // Install old items in both loadouts - one in mutable collection, one in read-only collection
         await LoadoutManager.InstallItem(oldItem1, loadout1.LoadoutId, parent: mutableCollection.AsLoadoutItemGroup().LoadoutItemGroupId);
@@ -250,8 +253,8 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
 
         // Act
         // Create new items to replace the old ones
-        var newItem1 = (await _libraryService.AddLocalFile(firstArchivePath)).AsLibraryFile().AsLibraryItem(); // Same content but different LibraryItem instance
-        var newItem2 = (await _libraryService.AddLocalFile(secondArchivePath)).AsLibraryFile().AsLibraryItem();
+        var newItem1 = (await _libraryService.AddLocalFile(firstArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem(); // Same content but different LibraryItem instance
+        var newItem2 = (await _libraryService.AddLocalFile(secondArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
         var replacements = new List<(LibraryItem.ReadOnly oldItem, LibraryItem.ReadOnly newItem)>
         {
             (oldItem1, newItem1),
@@ -337,5 +340,123 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
 
         var result = await tx.Commit();
         return result.Remap(group);
+    }
+
+    private static readonly GameId DestinationGameA = GameId.From("library-service-destination-a");
+    private static readonly GameId DestinationGameB = GameId.From("library-service-destination-b");
+    private const string RecognisedFileName = "recognised-by-test.txt";
+
+    /// <summary>Claims one file name for a game, the way a modlist names its game.</summary>
+    private sealed class NamedGameRecogniser : ILibraryFileRecogniser
+    {
+        public ValueTask<Destination?> Recognise(ITransaction tx, LibraryFile.New file, AbsolutePath? extractedFolder, CancellationToken cancellationToken)
+            => ValueTask.FromResult<Destination?>(file.FileName.ToString() == RecognisedFileName ? Destination.Of(DestinationGameB) : null);
+    }
+
+    protected override IServiceCollection AddServices(IServiceCollection services)
+        => base.AddServices(services).AddSingleton<ILibraryFileRecogniser, NamedGameRecogniser>();
+
+    private async Task<AbsolutePath> WriteFile(string fileName)
+    {
+        var folder = TemporaryFileManager.CreateFolder();
+        var path = folder.Path.Combine(fileName);
+        await path.WriteAllTextAsync(Guid.NewGuid().ToString());
+        return path;
+    }
+
+    private LibraryItem.ReadOnly Reload(EntityId id) => LibraryItem.Load(_connection.Db, id);
+
+    [Fact]
+    public async Task AddLocalFile_WithGameAcquisition_RecordsThatGame()
+    {
+        var file = await _libraryService.AddLocalFile(await WriteFile("game.txt"), new GameAcquisition(DestinationGameA));
+
+        var item = Reload(file.Id);
+        LibraryDestinations.GamesOf(item).Should().BeEquivalentTo([DestinationGameA]);
+        item.Contains(LibraryItem.DestinationUnknown).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AddLocalFile_WithLoadoutAcquisition_RecordsTheLoadoutsGame()
+    {
+        var loadout = await CreateLoadout();
+
+        var file = await _libraryService.AddLocalFile(await WriteFile("loadout.txt"), new LoadoutAcquisition(loadout.LoadoutId));
+
+        LibraryDestinations.GamesOf(Reload(file.Id)).Should().BeEquivalentTo([GameInstallation.Game.GameId]);
+    }
+
+    [Fact]
+    public async Task AddLocalFile_Unassigned_MarksUnknown()
+    {
+        var file = await _libraryService.AddLocalFile(await WriteFile("unassigned.txt"), UnassignedAcquisition.Instance);
+
+        var item = Reload(file.Id);
+        LibraryDestinations.GamesOf(item).Should().BeEmpty();
+        item.Contains(LibraryItem.DestinationUnknown).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AddDownload_RecordsTheGame_InTheSameTransactionAsTheFile()
+    {
+        await using var destination = TemporaryFileManager.CreateFile();
+        await destination.Path.WriteAllTextAsync(Guid.NewGuid().ToString());
+        IJobTask<IDownloadJob, AbsolutePath> downloadJob = ServiceProvider.GetRequiredService<IJobMonitor>()
+            .Begin<CompletedDownloadJob, AbsolutePath>(new CompletedDownloadJob(destination.Path));
+
+        var file = await _libraryService.AddDownload(downloadJob, new GameAcquisition(DestinationGameA));
+
+        LibraryDestinations.GamesOf(Reload(file.Id)).Should().BeEquivalentTo([DestinationGameA]);
+        _connection.Db.Get(file.Id).Select(datom => datom.T).Distinct()
+            .Should().HaveCount(1, "the file and its destination are one transaction");
+    }
+
+    [Fact]
+    public async Task AddLocalFile_NestedArchiveMembers_GetNoDestination()
+    {
+        var archivePath = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine("nested_archive.zip");
+
+        var file = await _libraryService.AddLocalFile(archivePath, new GameAcquisition(DestinationGameA));
+
+        file.AsLibraryFile().TryGetAsLibraryArchive(out var archive).Should().BeTrue();
+        archive.Children.Should().NotBeEmpty();
+        foreach (var member in archive.Children)
+        {
+            var memberItem = member.AsLibraryFile().AsLibraryItem();
+            memberItem.DestinationGames.Should().BeEmpty();
+            memberItem.Contains(LibraryItem.DestinationUnknown).Should().BeFalse();
+        }
+        LibraryDestinations.ItemsFor(_connection.Db, DestinationGameA).Select(item => item.Id)
+            .Should().BeEquivalentTo([file.Id]);
+    }
+
+    [Fact]
+    public async Task AddLocalFile_ARecogniserThatNamesAGame_Wins_AndIsTheOnlyValue()
+    {
+        var file = await _libraryService.AddLocalFile(await WriteFile(RecognisedFileName), new GameAcquisition(DestinationGameA));
+
+        var item = Reload(file.Id);
+        LibraryDestinations.GamesOf(item).Should().BeEquivalentTo([DestinationGameB]);
+        item.Contains(LibraryItem.DestinationUnknown).Should().BeFalse();
+        _connection.Db.Datoms(file.Id).Count(datom => datom.A == _connection.AttributeCache.GetAttributeId(LibraryItem.DestinationGames.Id))
+            .Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Adopt_UnionsTheGames_IntoAnExistingItem()
+    {
+        var file = await _libraryService.AddLocalFile(await WriteFile("adopt.txt"), new GameAcquisition(DestinationGameA));
+
+        await _libraryService.Adopt(Reload(file.Id), new GameAcquisition(DestinationGameB));
+
+        LibraryDestinations.GamesOf(Reload(file.Id)).Should().BeEquivalentTo([DestinationGameA, DestinationGameB]);
+    }
+
+    /// <summary>A download that has already finished, so the library step can run without a network.</summary>
+    private sealed class CompletedDownloadJob(AbsolutePath path) : IDownloadJob, IJobDefinitionWithStart<CompletedDownloadJob, AbsolutePath>
+    {
+        public AbsolutePath Destination => path;
+        public ValueTask<AbsolutePath> StartAsync(IJobContext<CompletedDownloadJob> context) => ValueTask.FromResult(path);
+        public ValueTask AddMetadata(ITransaction tx, LibraryFile.New libraryFile) => ValueTask.CompletedTask;
     }
 }

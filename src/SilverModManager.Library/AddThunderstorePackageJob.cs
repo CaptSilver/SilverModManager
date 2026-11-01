@@ -56,7 +56,7 @@ public class AddThunderstorePackageJob : IJobDefinitionWithStart<AddThunderstore
 
             // Only the root has a pinned digest to check; a dependency is pinned by this first download.
             var expected = version == Request.Root ? Request.ExpectedSha256 : null;
-            var download = ThunderstoreDownloadJob.Create(ServiceProvider, version, community, expected);
+            var download = ThunderstoreDownloadJob.Create(ServiceProvider, version, community, UnassignedAcquisition.Instance, expected);
             await using var registration = token.Register(() => monitor.Cancel(download));
             var added = await download;
             files.Add(added.AsLibraryFile());

@@ -14,7 +14,7 @@ public class ModlistArchiveTests(ILibraryService libraryService, IFileStore file
 {
     private async Task<LibraryArchive.ReadOnly> Add(AbsolutePath file)
     {
-        var localFile = await libraryService.AddLocalFile(file);
+        var localFile = await libraryService.AddLocalFile(file, UnassignedAcquisition.Instance);
         localFile.AsLibraryFile().TryGetAsLibraryArchive(out var archive).Should().BeTrue();
         return archive;
     }

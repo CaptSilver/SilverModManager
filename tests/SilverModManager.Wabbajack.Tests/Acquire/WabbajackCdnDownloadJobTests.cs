@@ -35,7 +35,7 @@ public class WabbajackCdnDownloadJobTests(IServiceProvider provider, TemporaryFi
         await using var destination = temporaryFileManager.CreateFile();
 
         var library = provider.GetRequiredService<ILibraryService>();
-        var file = await library.AddDownload(Begin(JobFor(handler, destination)));
+        var file = await library.AddDownload(Begin(JobFor(handler, destination)), UnassignedAcquisition.Instance);
 
         destination.Path.FileExists.Should().BeTrue();
         (await destination.Path.ReadAllBytesAsync()).Should().Equal(fixture.Content);

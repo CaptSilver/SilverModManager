@@ -39,7 +39,7 @@ public class ModlistArchiveLinkMigrationTests
             using var entry = zip.CreateEntry("modlist").Open();
             entry.Write(Encoding.UTF8.GetBytes(ListJson(name, archives)));
         }
-        return LibraryFileId.From((await library.AddLocalFile(path)).AsLibraryFile().Id);
+        return LibraryFileId.From((await library.AddLocalFile(path, UnassignedAcquisition.Instance)).AsLibraryFile().Id);
     }
 
     private static async Task Forget(IConnection connection, LibraryFileId list)
@@ -54,7 +54,7 @@ public class ModlistArchiveLinkMigrationTests
         var path = folder.DatabaseFolder.Parent.Combine(name);
         path.Parent.CreateDirectory();
         await path.WriteAllBytesAsync(content);
-        await library.AddLocalFile(path);
+        await library.AddLocalFile(path, UnassignedAcquisition.Instance);
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public class ModlistArchiveLinkMigrationTests
         var plain = folder.DatabaseFolder.Parent.Combine("broken.wabbajack");
         plain.Parent.CreateDirectory();
         await plain.WriteAllBytesAsync("not a zip"u8.ToArray());
-        var broken = LibraryFileId.From((await library.AddLocalFile(plain)).AsLibraryFile().Id);
+        var broken = LibraryFileId.From((await library.AddLocalFile(plain, UnassignedAcquisition.Instance)).AsLibraryFile().Id);
         using (var tx = connection.BeginTransaction())
         {
             tx.Add(broken.Value, WabbajackModlistLibraryFile.Name, "broken");

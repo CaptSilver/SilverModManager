@@ -13,6 +13,7 @@ using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk;
 using R3;
 using ReactiveUI.SourceGenerators;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.App.UI.Pages.CollectionDownload;
 
@@ -109,7 +110,7 @@ public partial class ManualDownloadRequiredOverlayViewModel : AOverlayViewModel<
 
                 IsCheckingFile = true;
 
-                var localFile = await libraryService.AddLocalFile(file);
+                var localFile = await libraryService.AddLocalFile(file, UnassignedAcquisition.Instance);
                 var receivedHash = localFile.AsLibraryFile().Md5.Value;
                 ReceivedHash = receivedHash.ToString();
 

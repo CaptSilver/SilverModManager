@@ -125,7 +125,7 @@ public class LibraryFileDigestsTests(IConnection connection, IServiceProvider se
         LibraryFile.ReadOnly added;
         using (var addTx = connection.BeginTransaction())
         {
-            var newFile = await AddLibraryFileJob.Create(serviceProvider, addTx, zipPath);
+            var newFile = await AddLibraryFileJob.Create(serviceProvider, addTx, zipPath, UnassignedAcquisition.Instance);
             added = (await addTx.Commit()).Remap(newFile);
         }
         added.XxHash64.HasValue.Should().BeTrue();

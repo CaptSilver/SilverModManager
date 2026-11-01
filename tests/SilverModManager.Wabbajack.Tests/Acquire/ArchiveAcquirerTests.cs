@@ -12,6 +12,7 @@ using SilverModManager.Sdk.Settings;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Library;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.Wabbajack.Tests.Acquire;
 
@@ -144,7 +145,7 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
 
         await using var file = TemporaryFileManager.CreateFile(new Extension(".txt"));
         await file.Path.WriteAllBytesAsync(content);
-        await LibraryService.AddLocalFile(file.Path);
+        await LibraryService.AddLocalFile(file.Path, UnassignedAcquisition.Instance);
 
         await WaitFor(() => Acquirer.Plan.Rows[0].State == ArchiveState.Have);
         Acquirer.Plan.Rows[0].Library.Should().NotBeNull();
@@ -271,7 +272,7 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
 
         await using var file = TemporaryFileManager.CreateFile(new Extension(".txt"));
         await file.Path.WriteAllBytesAsync(content);
-        await LibraryService.AddLocalFile(file.Path);
+        await LibraryService.AddLocalFile(file.Path, UnassignedAcquisition.Instance);
 
         await WaitFor(() => Acquirer.Plan.Rows[0].State == ArchiveState.Have);
         Acquirer.Plan.Rows[0].Library.Should().NotBeNull();

@@ -34,7 +34,7 @@ internal sealed class GitHubLibrarySource(IServiceProvider provider) : ILibraryS
             ?? throw new InvalidOperationException($"{entry.Id}: no repository is known for {entry.Asset}.");
 
         // The whole name is the suffix, so only that exact asset can be picked.
-        var job = AddGitHubReleaseAssetJob.Create(provider, repository, entry.Version, suffix: entry.Asset, expectedSha256: expected);
+        var job = AddGitHubReleaseAssetJob.Create(provider, repository, entry.Version, suffix: entry.Asset, acquisition: UnassignedAcquisition.Instance, expectedSha256: expected);
         var release = await job;
         return release.AsLibraryFile();
     }

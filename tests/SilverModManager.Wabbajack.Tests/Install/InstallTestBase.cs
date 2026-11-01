@@ -76,7 +76,7 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
     {
         await using var folder = TemporaryFileManager.CreateFolder();
         var path = WabbajackFixture.Write(folder.Path, list, blobs, $"{Guid.NewGuid()}.wabbajack");
-        var added = await LibraryService.AddLocalFile(path);
+        var added = await LibraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
         if (!added.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out var modlist))
             throw new InvalidOperationException("The fixture was not recognised as a modlist.");
         return modlist;

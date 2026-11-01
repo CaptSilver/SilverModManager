@@ -49,6 +49,6 @@ internal sealed class NexusLibrarySource(IServiceProvider provider, LibraryFileD
         await using var destination = provider.GetRequiredService<TemporaryFileManager>().CreateFile();
 
         var job = await nexusModsLibrary.CreateDownloadJob(destination, game, FileId.From(fileNumber), cancellationToken: cancellationToken);
-        return await provider.GetRequiredService<ILibraryService>().AddDownload(job);
+        return await provider.GetRequiredService<ILibraryService>().AddDownload(job, UnassignedAcquisition.Instance);
     }
 }

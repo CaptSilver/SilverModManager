@@ -69,7 +69,7 @@ public class GroupRuleHooksTests(ITestOutputHelper helper) : ACyberpunkIsolatedG
         await AddRule(loadout.LoadoutId, g["A"], g["B"], GroupRuleKind.After);
         await AddRule(loadout.LoadoutId, g["Old"], g["A"], GroupRuleKind.Before);
         var archive = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine("nested_archive.zip");
-        var libraryItem = (await ServiceProvider.GetRequiredService<ILibraryService>().AddLocalFile(archive)).AsLibraryFile().AsLibraryItem();
+        var libraryItem = (await ServiceProvider.GetRequiredService<ILibraryService>().AddLocalFile(archive, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
 
         await LoadoutManager.ReplaceItems(loadout.LoadoutId, [g["Old"]], libraryItem);
 

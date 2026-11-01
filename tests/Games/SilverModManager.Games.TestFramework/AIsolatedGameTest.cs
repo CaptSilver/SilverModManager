@@ -118,7 +118,7 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
         await using var destination = TemporaryFileManager.CreateFile();
 
         var downloadJob = await NexusModsLibrary.CreateDownloadJob(destination.Path, Game.NexusModsGameId.Value, modId, fileId);
-        return await LibraryService.AddDownload(downloadJob);
+        return await LibraryService.AddDownload(downloadJob, new GameAcquisition(GameInstallation.Game.GameId));
     }
 
     public async Task<LibraryArchive.ReadOnly> DownloadArchiveFromNexusMods(ModId modId, FileId fileId)
@@ -140,7 +140,7 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
 
     public async Task<LibraryArchive.ReadOnly> RegisterLocalArchive(AbsolutePath file)
     {
-        var libraryFile = await LibraryService.AddLocalFile(file);
+        var libraryFile = await LibraryService.AddLocalFile(file, new GameAcquisition(GameInstallation.Game.GameId));
         if (!libraryFile.AsLibraryFile().TryGetAsLibraryArchive(out var archive))
             throw new InvalidOperationException("The library file should be an archive.");
         return archive;

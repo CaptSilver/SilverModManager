@@ -7,6 +7,7 @@ using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using Xunit;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.DataModel.Synchronizer.Tests;
 
@@ -28,7 +29,7 @@ public class RecreatedAfterDeleteTests(ITestOutputHelper helper) : ACyberpunkIso
     {
         var loadout = await CreateLoadout();
         var modFile = FileSystem.GetKnownPath(KnownPath.EntryDirectory) / "Resources" / "TestMod.zip";
-        var libraryFile = await LibraryService.AddLocalFile(modFile);
+        var libraryFile = await LibraryService.AddLocalFile(modFile, new GameAcquisition(GameInstallation.Game.GameId));
         await LoadoutManager.InstallItem(libraryFile.AsLibraryFile().AsLibraryItem(), loadout);
         loadout = await Synchronizer.Synchronize(loadout.Rebase());
 

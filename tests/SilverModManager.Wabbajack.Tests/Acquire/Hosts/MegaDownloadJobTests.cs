@@ -8,6 +8,7 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Acquire.Hosts;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.Wabbajack.Tests.Acquire.Hosts;
 
@@ -55,7 +56,7 @@ public class MegaDownloadJobTests(IServiceProvider provider, TemporaryFileManage
         var host = ServingFile(plain);
         await using var destination = Files.CreateFile();
 
-        var file = await Provider.GetRequiredService<ILibraryService>().AddDownload(Begin(JobFor(host, destination)));
+        var file = await Provider.GetRequiredService<ILibraryService>().AddDownload(Begin(JobFor(host, destination)), UnassignedAcquisition.Instance);
 
         (await destination.Path.ReadAllBytesAsync()).Should().Equal(plain);
         file.XxHash64Identity().Should().Be(Hash(plain));

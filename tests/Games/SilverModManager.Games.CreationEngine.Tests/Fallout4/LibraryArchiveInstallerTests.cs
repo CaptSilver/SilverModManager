@@ -7,6 +7,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.Games.CreationEngine.Tests.Fallout4;
 
@@ -49,7 +50,7 @@ public class LibraryArchiveInstallerTests(ITestOutputHelper outputHelper) : AIso
         var loadout = await CreateLoadout();
         await using var tempFile = TemporaryFileManager.CreateFile();
         var download = await NexusModsLibrary.CreateDownloadJob(tempFile.Path, CreationEngine.Fallout4.Fallout4.NexusModsGameId.Value, ModId.From(modId), FileId.From(fileId));
-        var libraryArchive = await LibraryService.AddDownload(download);
+        var libraryArchive = await LibraryService.AddDownload(download, new GameAcquisition(GameInstallation.Game.GameId));
 
         var installed = await LoadoutManager.InstallItem(libraryArchive.AsLibraryItem(), loadout);
 

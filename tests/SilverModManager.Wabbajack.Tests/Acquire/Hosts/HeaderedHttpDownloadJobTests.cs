@@ -6,6 +6,7 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Acquire.Hosts;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.Wabbajack.Tests.Acquire.Hosts;
 
@@ -30,7 +31,7 @@ public class HeaderedHttpDownloadJobTests(IServiceProvider provider, TemporaryFi
         var host = new FakeHost((_, _) => FakeHost.Bytes(plain));
         await using var destination = Files.CreateFile();
 
-        var file = await Provider.GetRequiredService<ILibraryService>().AddDownload(Begin(JobFor(host, destination, ["Referer: https://files.test/page", "User-Agent: Wabbajack", "Accept: */*"])));
+        var file = await Provider.GetRequiredService<ILibraryService>().AddDownload(Begin(JobFor(host, destination, ["Referer: https://files.test/page", "User-Agent: Wabbajack", "Accept: */*"])), UnassignedAcquisition.Instance);
 
         var sent = host.Seen.Should().ContainSingle().Subject;
         sent.Headers["Referer"].Should().Be("https://files.test/page");

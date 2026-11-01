@@ -18,13 +18,13 @@ internal sealed class GitHubReleaseAssetSource : IGitHubReleaseAssetSource
     public GitHubReleaseAssetSource(IServiceProvider provider)
     {
         _provider = provider;
-        _start = (repository, suffix, nameHint) => AddGitHubReleaseAssetJob.Create(provider, repository, tag: null, suffix, nameHint, requireAdvertisedDigest: true);
+        _start = (repository, suffix, nameHint) => AddGitHubReleaseAssetJob.Create(provider, repository, tag: null, suffix, UnassignedAcquisition.Instance, nameHint, requireAdvertisedDigest: true);
     }
 
     internal GitHubReleaseAssetSource(IServiceProvider provider, IGitHubApi api, HttpClient client)
     {
         _provider = provider;
-        _start = (repository, suffix, nameHint) => AddGitHubReleaseAssetJob.Create(provider, api, client, repository, tag: null, suffix, nameHint, expectedSha256: null, requireAdvertisedDigest: true);
+        _start = (repository, suffix, nameHint) => AddGitHubReleaseAssetJob.Create(provider, api, client, repository, tag: null, suffix, UnassignedAcquisition.Instance, nameHint, expectedSha256: null, requireAdvertisedDigest: true);
     }
 
     public async ValueTask<LibraryFile.ReadOnly> AddLatestAssetAsync(ulong repositoryId, string suffix, string? nameHint, CancellationToken cancellationToken)

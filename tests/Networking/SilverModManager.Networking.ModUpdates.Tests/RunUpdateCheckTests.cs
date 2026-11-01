@@ -8,6 +8,7 @@ using SilverModManager.Networking.ModUpdates.Tests.Helpers;
 using SilverModManager.Networking.NexusWebApi;
 using SilverModManager.Sdk.NexusModsApi;
 using Xunit;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.Networking.ModUpdates.Tests;
 
@@ -51,7 +52,7 @@ public class RunUpdateCheckTests : ACyberpunkIsolatedGameTest<RunUpdateCheckTest
         );
 
         // install to loadout
-        var libraryFile = await LibraryService.AddDownload(downloadJob);
+        var libraryFile = await LibraryService.AddDownload(downloadJob, new GameAcquisition(GameInstallation.Game.GameId));
         await LoadoutManager.InstallItem(libraryFile.AsLibraryItem(), loadout);
         
         // Ensure we're actually doing work

@@ -35,7 +35,7 @@ public class NexusModsLibraryTests
             CancellationToken.None
         );
         
-        var libraryFile = await _libraryService.AddDownload(downloadJob);
+        var libraryFile = await _libraryService.AddDownload(downloadJob, UnassignedAcquisition.Instance);
         
         // Make sure the metadata is linked correctly
         libraryFile.TryGetAsNexusModsCollectionLibraryFile(out var collectionFile).Should().BeTrue();

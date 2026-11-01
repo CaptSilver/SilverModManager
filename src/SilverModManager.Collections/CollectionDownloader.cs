@@ -82,7 +82,7 @@ public class CollectionDownloader
         var downloadJob = _nexusModsLibrary.CreateCollectionDownloadJob(destination, slug, revisionNumber, CancellationToken.None);
         _logger.LogDebug("Downloading revision {Revision} of collection `{Slug}` to add it to the library", revisionNumber, slug);
 
-        var libraryFile = await _libraryService.AddDownload(downloadJob);
+        var libraryFile = await _libraryService.AddDownload(downloadJob, UnassignedAcquisition.Instance);
         _logger.LogDebug("Added revision {Revision} of collection `{Slug}` to the library as {File}", revisionNumber, slug, libraryFile.Id);
 
         if (!libraryFile.TryGetAsNexusModsCollectionLibraryFile(out var collectionFile))
@@ -166,7 +166,7 @@ public class CollectionDownloader
                 fileName: result.FileName
             );
 
-            await _libraryService.AddDownload(job);
+            await _libraryService.AddDownload(job, UnassignedAcquisition.Instance);
         }
         else
         {
@@ -191,7 +191,7 @@ public class CollectionDownloader
         {
             await using var tempPath = _temporaryFileManager.CreateFile();
             var job = await _nexusModsLibrary.CreateDownloadJob(tempPath, download.FileMetadata, cancellationToken: cancellationToken);
-            await _libraryService.AddDownload(job);
+            await _libraryService.AddDownload(job, UnassignedAcquisition.Instance);
         }
         else
         {

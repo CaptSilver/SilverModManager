@@ -5,6 +5,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Models;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.Wabbajack.Gallery;
 
@@ -41,7 +42,7 @@ public sealed class WabbajackGalleryDownloader(
 
             await Verify(entry, file, expectedHash, expectedSize, cancellationToken);
 
-            var added = await libraryService.AddLocalFile(file);
+            var added = await libraryService.AddLocalFile(file, UnassignedAcquisition.Instance);
             var libraryFile = added.AsLibraryFile();
             if (!libraryFile.TryGetAsWabbajackModlistLibraryFile(out var modlist))
             {

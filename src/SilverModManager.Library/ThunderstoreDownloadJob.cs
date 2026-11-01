@@ -32,6 +32,11 @@ public class ThunderstoreDownloadJob : IJobDefinitionWithStart<ThunderstoreDownl
     public required string Community { get; init; }
 
     /// <summary>
+    /// Where the downloaded file goes: the games it is recorded for.
+    /// </summary>
+    public required IAcquisitionContext Acquisition { get; init; }
+
+    /// <summary>
     /// The digest the downloaded bytes must have, if one is already pinned.
     /// </summary>
     public Sha256Value? ExpectedSha256 { get; init; }
@@ -51,9 +56,10 @@ public class ThunderstoreDownloadJob : IJobDefinitionWithStart<ThunderstoreDownl
         IServiceProvider provider,
         ThunderstoreVersionRef version,
         string community,
+        IAcquisitionContext acquisition,
         Sha256Value? expected = null)
     {
-        return Create(provider, provider.GetRequiredService<IThunderstoreApi>(), provider.GetRequiredService<HttpClient>(), version, community, expected);
+        return Create(provider, provider.GetRequiredService<IThunderstoreApi>(), provider.GetRequiredService<HttpClient>(), version, community, acquisition, expected);
     }
 
     public static IJobTask<ThunderstoreDownloadJob, ThunderstoreLibraryFile.ReadOnly> Create(
@@ -62,6 +68,7 @@ public class ThunderstoreDownloadJob : IJobDefinitionWithStart<ThunderstoreDownl
         HttpClient client,
         ThunderstoreVersionRef version,
         string community,
+        IAcquisitionContext acquisition,
         Sha256Value? expected)
     {
         if (string.IsNullOrWhiteSpace(community))
@@ -71,6 +78,7 @@ public class ThunderstoreDownloadJob : IJobDefinitionWithStart<ThunderstoreDownl
         {
             Version = version,
             Community = community,
+            Acquisition = acquisition,
             ExpectedSha256 = expected,
         };
         return provider.GetRequiredService<IJobMonitor>().Begin<ThunderstoreDownloadJob, ThunderstoreLibraryFile.ReadOnly>(job);
@@ -121,7 +129,7 @@ public class ThunderstoreDownloadJob : IJobDefinitionWithStart<ThunderstoreDownl
 
             await context.YieldAsync();
             using var tx = ServiceProvider.GetRequiredService<IConnection>().BeginTransaction();
-            var libraryFile = await AddLibraryFileJob.Create(ServiceProvider, tx, downloaded);
+            var libraryFile = await AddLibraryFileJob.Create(ServiceProvider, tx, downloaded, Acquisition);
 
             var model = new ThunderstoreLibraryFile.New(tx, libraryFile.Id)
             {

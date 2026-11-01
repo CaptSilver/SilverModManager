@@ -127,8 +127,8 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
         var pathA = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine("Lookup Anything 1.48.1-541-1-48-1-1739333325.zip");
         var pathB = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine("Lookup Anything 1.49.0-541-1-49-0-1740624009.zip");
 
-        var libraryItemA = await _libraryService.AddLocalFile(pathA);
-        var libraryItemB = await _libraryService.AddLocalFile(pathB);
+        var libraryItemA = await _libraryService.AddLocalFile(pathA, new GameAcquisition(GameInstallation.Game.GameId));
+        var libraryItemB = await _libraryService.AddLocalFile(pathB, new GameAcquisition(GameInstallation.Game.GameId));
 
         // Get the hashes of the files in the library for item B
         var hashesBBefore = LibraryArchiveFileEntry.FindByParent(_connection.Db, libraryItemB)

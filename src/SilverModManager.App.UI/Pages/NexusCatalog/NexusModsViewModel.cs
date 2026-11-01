@@ -307,7 +307,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         // The temporary file has to outlive AddDownload, which moves the finished file into the library's store.
         await using var destination = _temporaryFiles.CreateFile();
         var job = await _browser.CreateDownloadJob(game, row.Hit.ModId, fileId, destination, cancellationToken);
-        var file = await _libraryService.AddDownload(job);
+        var file = await _libraryService.AddDownload(job, UnassignedAcquisition.Instance);
         return file.AsLibraryItem();
     }
 }

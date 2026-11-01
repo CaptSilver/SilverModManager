@@ -42,6 +42,11 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
     public string? NameHint { get; init; }
 
     /// <summary>
+    /// Where the downloaded file goes: the games it is recorded for.
+    /// </summary>
+    public required IAcquisitionContext Acquisition { get; init; }
+
+    /// <summary>
     /// The digest the downloaded bytes must have, if one is already pinned.
     /// </summary>
     public Sha256Value? ExpectedSha256 { get; init; }
@@ -67,11 +72,12 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
         GitHubRepositoryRef repository,
         string? tag,
         string suffix,
+        IAcquisitionContext acquisition,
         string? nameHint = null,
         Sha256Value? expectedSha256 = null,
         bool requireAdvertisedDigest = false)
     {
-        return Create(provider, provider.GetRequiredService<IGitHubApi>(), provider.GetRequiredService<HttpClient>(), repository, tag, suffix, nameHint, expectedSha256, requireAdvertisedDigest);
+        return Create(provider, provider.GetRequiredService<IGitHubApi>(), provider.GetRequiredService<HttpClient>(), repository, tag, suffix, acquisition, nameHint, expectedSha256, requireAdvertisedDigest);
     }
 
     internal static IJobTask<AddGitHubReleaseAssetJob, GitHubReleaseLibraryFile.ReadOnly> Create(
@@ -81,6 +87,7 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
         GitHubRepositoryRef repository,
         string? tag,
         string suffix,
+        IAcquisitionContext acquisition,
         string? nameHint,
         Sha256Value? expectedSha256,
         bool requireAdvertisedDigest = false)
@@ -93,6 +100,7 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
             Repository = repository,
             Tag = tag,
             Suffix = suffix,
+            Acquisition = acquisition,
             NameHint = nameHint,
             ExpectedSha256 = expectedSha256,
             RequireAdvertisedDigest = requireAdvertisedDigest,
@@ -144,7 +152,7 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
 
             await context.YieldAsync();
             using var tx = ServiceProvider.GetRequiredService<IConnection>().BeginTransaction();
-            var libraryFile = await AddLibraryFileJob.Create(ServiceProvider, tx, downloaded);
+            var libraryFile = await AddLibraryFileJob.Create(ServiceProvider, tx, downloaded, Acquisition);
 
             var model = new GitHubReleaseLibraryFile.New(tx, libraryFile.Id)
             {

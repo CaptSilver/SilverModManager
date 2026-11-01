@@ -57,7 +57,7 @@ public class ArchiveDownloadJobsTests(ITestOutputHelper helper) : AcquireTestBas
         await using var destination = TemporaryFileManager.CreateFile();
 
         var job = await Jobs.Create(AutomaticRow(new HttpState(PlainUrl, [])), destination.Path, CancellationToken.None);
-        var file = await LibraryService.AddDownload(job);
+        var file = await LibraryService.AddDownload(job, UnassignedAcquisition.Instance);
 
         file.XxHash64Identity().Should().Be(Hash64(PlainBytes));
         var http = job.JobDefinition.Should().BeOfType<HttpDownloadJob>().Subject;
@@ -71,7 +71,7 @@ public class ArchiveDownloadJobsTests(ITestOutputHelper helper) : AcquireTestBas
         await using var destination = TemporaryFileManager.CreateFile();
 
         var job = await Jobs.Create(AutomaticRow(new WabbajackCdnState(CdnUrl)), destination.Path, CancellationToken.None);
-        var file = await LibraryService.AddDownload(job);
+        var file = await LibraryService.AddDownload(job, UnassignedAcquisition.Instance);
 
         file.XxHash64Identity().Should().Be(_cdn.FileHash);
         file.FileName.Should().Be(RelativePath.FromUnsanitizedInput(_cdn.OriginalFileName));
@@ -107,7 +107,7 @@ public class ArchiveDownloadJobsTests(ITestOutputHelper helper) : AcquireTestBas
         var state = new LoversLabState(listHasPage ? ForumPage : null, "mod.7z", 42, false);
 
         var job = await Jobs.Create(ForumRow(state), destination.Path, CancellationToken.None);
-        var file = await LibraryService.AddDownload(job);
+        var file = await LibraryService.AddDownload(job, UnassignedAcquisition.Instance);
 
         file.XxHash64Identity().Should().Be(Hash64(ForumBytes));
         file.FileName.Should().Be(RelativePath.FromUnsanitizedInput("mod.7z"));
@@ -127,7 +127,7 @@ public class ArchiveDownloadJobsTests(ITestOutputHelper helper) : AcquireTestBas
         await using var destination = TemporaryFileManager.CreateFile();
 
         var job = await Jobs.Create(ForumRow(new VectorPlexusState(null, "mod.7z", 42, false)), destination.Path, CancellationToken.None);
-        var file = await LibraryService.AddDownload(job);
+        var file = await LibraryService.AddDownload(job, UnassignedAcquisition.Instance);
 
         file.XxHash64Identity().Should().Be(Hash64(ForumBytes));
         _forum.ListingRequests.Single().Host.Should().Be("vectorplexus.com");
@@ -139,7 +139,7 @@ public class ArchiveDownloadJobsTests(ITestOutputHelper helper) : AcquireTestBas
         await SignedIn();
         await using var destination = TemporaryFileManager.CreateFile();
 
-        await LibraryService.AddDownload(await Jobs.Create(ForumRow(new LoversLabState(null, "mod.7z", 42, false)), destination.Path, CancellationToken.None));
+        await LibraryService.AddDownload(await Jobs.Create(ForumRow(new LoversLabState(null, "mod.7z", 42, false)), destination.Path, CancellationToken.None), UnassignedAcquisition.Instance);
 
         _forum.FileRequests.Should().ContainSingle().Which.Authorization.Should().BeNull();
     }

@@ -90,7 +90,7 @@ public partial class AddGitHubReleaseAssetJobTests(IServiceProvider serviceProvi
     {
         return AddGitHubReleaseAssetJob.Create(
             serviceProvider, api, new HttpClient(new PayloadHandler(Payload)),
-            repository, tag, suffix: ".tar.gz", nameHint: "linux", expected
+            repository, tag, suffix: ".tar.gz", acquisition: UnassignedAcquisition.Instance, nameHint: "linux", expected
         );
     }
 
@@ -175,7 +175,7 @@ public partial class AddGitHubReleaseAssetJobTests(IServiceProvider serviceProvi
 
         var act = async () => await AddGitHubReleaseAssetJob.Create(
             serviceProvider, api, new HttpClient(new PayloadHandler(Payload)),
-            GitHubRepositoryRef.FromId(1), "v4", suffix: ".7z", nameHint: null, expectedSha256: null
+            GitHubRepositoryRef.FromId(1), "v4", suffix: ".7z", acquisition: UnassignedAcquisition.Instance, nameHint: null, expectedSha256: null
         );
 
         await act.Should().ThrowAsync<ReleaseAssetIntegrityException>().WithMessage("*.7z*");
@@ -197,7 +197,7 @@ public partial class AddGitHubReleaseAssetJobTests(IServiceProvider serviceProvi
 
         var task = AddGitHubReleaseAssetJob.Create(
             serviceProvider, new StubApi(ReleaseWith("v5", null)), new HttpClient(handler),
-            GitHubRepositoryRef.FromId(1), "v5", suffix: ".tar.gz", nameHint: "linux", expectedSha256: null
+            GitHubRepositoryRef.FromId(1), "v5", suffix: ".tar.gz", acquisition: UnassignedAcquisition.Instance, nameHint: "linux", expectedSha256: null
         );
         await handler.Started.Task.WaitAsync(TimeSpan.FromSeconds(30));
         serviceProvider.GetRequiredService<IJobMonitor>().Cancel(task);

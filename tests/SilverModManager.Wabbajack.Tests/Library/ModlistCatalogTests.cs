@@ -14,7 +14,7 @@ public class ModlistCatalogTests(ILibraryService libraryService, IModlistCatalog
         await using var folder = temporaryFileManager.CreateFolder();
         var list = WabbajackFixture.EmptyList(name) with { Version = version };
         var path = WabbajackFixture.Write(folder.Path, list, fileName: fileName);
-        var added = await libraryService.AddLocalFile(path);
+        var added = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
         return LibraryFileId.From(added.Id);
     }
 

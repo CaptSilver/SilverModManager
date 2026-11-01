@@ -22,6 +22,7 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
 {
     public required ITransaction Transaction { get; init; }
     public required AbsolutePath FilePath { get; init; }
+    public required IAcquisitionContext Acquisition { get; init; }
     private ConcurrentBag<TemporaryPath> ExtractionDirectories { get; } = [];
     private ConcurrentBag<ArchivedFileEntry> ToArchive { get; } = [];
 
@@ -32,13 +33,14 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
         new(".dat"),
     ];
 
-    public static IJobTask<AddLibraryFileJob, LibraryFile.New> Create(IServiceProvider provider, ITransaction transaction, AbsolutePath filePath)
+    public static IJobTask<AddLibraryFileJob, LibraryFile.New> Create(IServiceProvider provider, ITransaction transaction, AbsolutePath filePath, IAcquisitionContext acquisition)
     {
         var monitor = provider.GetRequiredService<IJobMonitor>();
         var job = new AddLibraryFileJob
         {
             Transaction = transaction,
             FilePath = filePath,
+            Acquisition = acquisition,
             FileExtractor = provider.GetRequiredService<IFileExtractor>(),
             Connection = provider.GetRequiredService<IConnection>(),
             TemporaryFileManager = provider.GetRequiredService<TemporaryFileManager>(),
@@ -62,6 +64,7 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
             throw new Exception($"File '{FilePath}' does not exist.");
 
         var topFile = await AnalyzeFile(context, FilePath);
+        WriteDestination(topFile);
         await FileStore.BackupFiles(ToArchive, deduplicate: false, context.CancellationToken);
         return topFile;
     }
@@ -154,13 +157,24 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
         return libraryFile;
     }
 
+    /// <summary>
+    /// The first destination a recogniser names for the top-level file, if any. The recognisers run inside the
+    /// transaction, and a second assert on the same entity would leave both values in the database, so the
+    /// destination is written once, after them, from this answer or the acquisition's.
+    /// </summary>
+    private Destination? _recognised;
+
     private async ValueTask RecogniseAsync(LibraryFile.New libraryFile, AbsolutePath? extractedFolder, CancellationToken cancellationToken)
     {
         foreach (var recogniser in Recognisers)
         {
-            await recogniser.Recognise(Transaction, libraryFile, extractedFolder, cancellationToken);
+            var named = await recogniser.Recognise(Transaction, libraryFile, extractedFolder, cancellationToken);
+            _recognised ??= named;
         }
     }
+
+    private void WriteDestination(LibraryFile.New topFile)
+        => LibraryDestinations.Write(Transaction, topFile.Id, _recognised ?? Acquisition.Destination(Connection.Db));
 
     /// <summary>
     /// Returns true if the file can be considered an archive and extracted.

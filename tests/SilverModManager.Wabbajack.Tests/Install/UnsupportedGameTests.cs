@@ -13,6 +13,7 @@ using SilverModManager.Wabbajack.Install;
 using SilverModManager.Wabbajack.Tests.Acquire;
 using SilverModManager.Wabbajack.Tests.Fixtures;
 using OblivionRemastered = SilverModManager.Games.CreationEngine.OblivionRemastered.OblivionRemastered;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.Wabbajack.Tests.Install;
 
@@ -36,7 +37,7 @@ public class UnsupportedGameTests(ITestOutputHelper helper) : AIsolatedGameTest<
         var loadout = await CreateLoadout();
         await using var folder = TemporaryFileManager.CreateFolder();
         var path = WabbajackFixture.Write(folder.Path, WabbajackFixture.EmptyList() with { GameType = "OblivionRemastered" });
-        var added = await LibraryService.AddLocalFile(path);
+        var added = await LibraryService.AddLocalFile(path, new GameAcquisition(GameInstallation.Game.GameId));
         added.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out var modlist).Should().BeTrue();
 
         var refused = await Record.ExceptionAsync(async () => await InstallModlistJob.Create(ServiceProvider, loadout.LoadoutId, modlist, new InstallOptions(false, new HashSet<RelativePath>())));

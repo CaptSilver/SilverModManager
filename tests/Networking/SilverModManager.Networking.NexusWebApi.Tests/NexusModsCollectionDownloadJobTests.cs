@@ -10,6 +10,7 @@ using SilverModManager.Abstractions.NexusWebApi.DTOs;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.Networking.HttpDownloader.Tests;
 using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.Networking.NexusWebApi.Tests;
 
@@ -71,7 +72,7 @@ public class NexusModsCollectionDownloadJobTests : IDisposable
         var provider = ProviderWithLinks(Link("dead", dead.UriWithSignature("A")), Link("alive", alive.Uri));
         await using var destination = _temporaryFileManager.CreateFile();
 
-        var libraryFile = await _libraryService.AddDownload(CreateJob(provider, destination.Path));
+        var libraryFile = await _libraryService.AddDownload(CreateJob(provider, destination.Path), UnassignedAcquisition.Instance);
 
         libraryFile.Size.Value.Should().Be((ulong)content.Length);
         File.ReadAllBytes(destination.Path.ToString()).Should().Equal(content);

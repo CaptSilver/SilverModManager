@@ -101,7 +101,7 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
         var bytes = Enumerable.Range(0, 2000).Select(i => (byte)(i * 13)).ToArray();
         await using var plugin = await CreateTestFile("Plugin.esp", bytes);
         var loadout = await CreateLoadout();
-        var added = await LibraryService.AddLocalFile(plugin.Path);
+        var added = await LibraryService.AddLocalFile(plugin.Path, UnassignedAcquisition.Instance);
         (await FileStore.HaveFile(FileIdentity.XxHash3(added.AsLibraryFile().Hash))).Should().BeTrue("the library keeps a plain file's bytes");
         var resolver = Resolver(new ArchivePlan([]), loadout);
 

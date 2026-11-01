@@ -17,7 +17,7 @@ public class ModlistPlannerTests(ITestOutputHelper helper) : AcquireTestBase<Mod
     {
         await using var folder = ServiceProvider.GetRequiredService<TemporaryFileManager>().CreateFolder();
         var path = WabbajackFixture.Write(folder.Path, list);
-        var added = await ServiceProvider.GetRequiredService<ILibraryService>().AddLocalFile(path);
+        var added = await ServiceProvider.GetRequiredService<ILibraryService>().AddLocalFile(path, UnassignedAcquisition.Instance);
         return LibraryFileId.From(added.Id);
     }
 

@@ -24,7 +24,7 @@ public class LibraryArchiveLocatorTests(ILibraryService libraryService, IConnect
         }
         var expected = await Hash64(path);
 
-        var added = await libraryService.AddLocalFile(path);
+        var added = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
 
         var found = locator.FindByXxHash64(connection.Db, expected);
         found.Should().NotBeNull();
@@ -40,7 +40,7 @@ public class LibraryArchiveLocatorTests(ILibraryService libraryService, IConnect
         await File.WriteAllBytesAsync(path.ToString(), Enumerable.Range(0, 2000).Select(i => (byte)(i * 13)).ToArray(), TestContext.Current.CancellationToken);
         var expected = await Hash64(path);
 
-        var added = await libraryService.AddLocalFile(path);
+        var added = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
 
         var found = locator.FindByXxHash64(connection.Db, expected);
         found.Should().NotBeNull();

@@ -13,6 +13,7 @@ using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.Games.CreationEngine.Tests.SkyrimSE;
 
@@ -45,7 +46,7 @@ public class CollectionTests(ITestOutputHelper outputHelper) : AIsolatedGameTest
         await using var destination = TemporaryFileManager.CreateFile();
         var downloadJob = NexusModsLibrary.CreateCollectionDownloadJob(destination, CollectionSlug.From(collectionStub), RevisionNumber.From((ulong)revisionNumber), CancellationToken.None);
 
-        var libraryFile = await LibraryService.AddDownload(downloadJob);
+        var libraryFile = await LibraryService.AddDownload(downloadJob, new GameAcquisition(GameInstallation.Game.GameId));
         
         if (!libraryFile.TryGetAsNexusModsCollectionLibraryFile(out var collectionFile))
             throw new InvalidOperationException("The library file is not a NexusModsCollectionLibraryFile");

@@ -69,7 +69,7 @@ public partial class ThunderstoreDownloadJobTests(IServiceProvider serviceProvid
         Sha256Value? expected = null,
         PayloadHandler? handler = null)
     {
-        return ThunderstoreDownloadJob.Create(serviceProvider, new StubApi(version), new HttpClient(handler ?? new PayloadHandler()), RepoLib, "repo", expected);
+        return ThunderstoreDownloadJob.Create(serviceProvider, new StubApi(version), new HttpClient(handler ?? new PayloadHandler()), RepoLib, "repo", UnassignedAcquisition.Instance, expected);
     }
 
     private int LibraryCopies() => LibraryFile.All(connection.Db).Count(file => file.FileName == ArchiveName);
@@ -165,7 +165,7 @@ public partial class ThunderstoreDownloadJobTests(IServiceProvider serviceProvid
         var handler = new BlockingHandler();
         var copiesBefore = LibraryCopies();
 
-        var task = ThunderstoreDownloadJob.Create(serviceProvider, new StubApi(Version()), new HttpClient(handler), RepoLib, "repo", expected: null);
+        var task = ThunderstoreDownloadJob.Create(serviceProvider, new StubApi(Version()), new HttpClient(handler), RepoLib, "repo", UnassignedAcquisition.Instance, expected: null);
         await handler.Started.Task.WaitAsync(TimeSpan.FromSeconds(30));
         serviceProvider.GetRequiredService<IJobMonitor>().Cancel(task);
 

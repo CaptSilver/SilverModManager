@@ -12,6 +12,7 @@ using SilverModManager.Games.TestFramework;
 using SilverModManager.Networking.NexusWebApi.UpdateFilters;
 using SilverModManager.Sdk.NexusModsApi;
 using Xunit;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.Networking.NexusWebApi.Tests;
 
@@ -169,7 +170,7 @@ public class ModUpdateServiceTests : ACyberpunkIsolatedGameTest<ModUpdateService
         using var subscription = observable.Subscribe(val => results.Add(val.Value));
     
         // Right into the library.
-        await _libraryService.AddDownload(downloadJob);
+        await _libraryService.AddDownload(downloadJob, new GameAcquisition(GameInstallation.Game.GameId));
 
         // Assert
         // At least this amount of updates
@@ -216,7 +217,7 @@ public class ModUpdateServiceTests : ACyberpunkIsolatedGameTest<ModUpdateService
     
         // Right into the library.
         // This fires the event.
-        var libraryFile = await _libraryService.AddDownload(downloadJob);
+        var libraryFile = await _libraryService.AddDownload(downloadJob, new GameAcquisition(GameInstallation.Game.GameId));
         receivedRemove.Should().BeFalse();
 
         // Now remove it from the library.
@@ -255,7 +256,7 @@ public class ModUpdateServiceTests : ACyberpunkIsolatedGameTest<ModUpdateService
         using var subscription = observable.Subscribe(val => results.Add(val.Value));
 
         // Right into the library.
-        await _libraryService.AddDownload(downloadJob);
+        await _libraryService.AddDownload(downloadJob, new GameAcquisition(GameInstallation.Game.GameId));
 
         // Assert
         // At least this amount of updates
@@ -309,7 +310,7 @@ public class ModUpdateServiceTests : ACyberpunkIsolatedGameTest<ModUpdateService
 
         // Right into the library.
         // This fires the event.
-        var libraryFile = await _libraryService.AddDownload(downloadJob);
+        var libraryFile = await _libraryService.AddDownload(downloadJob, new GameAcquisition(GameInstallation.Game.GameId));
         receivedRemove.Should().BeFalse();
 
         // Now remove it from the library.
@@ -354,8 +355,8 @@ public class ModUpdateServiceTests : ACyberpunkIsolatedGameTest<ModUpdateService
         var smapiObservable = _modUpdateService.GetNewestFileVersionObservable(smapiDownloadJob.JobDefinition.FileMetadata);
 
         // Add both mods to the library
-        _ = await _libraryService.AddDownload(spaceCoreDownloadJob);
-        _ = await _libraryService.AddDownload(smapiDownloadJob);
+        _ = await _libraryService.AddDownload(spaceCoreDownloadJob, new GameAcquisition(GameInstallation.Game.GameId));
+        _ = await _libraryService.AddDownload(smapiDownloadJob, new GameAcquisition(GameInstallation.Game.GameId));
         
         // Track if we receive a "remove" notification for SMAPI
         var receivedRemove = false;
@@ -377,7 +378,7 @@ public class ModUpdateServiceTests : ACyberpunkIsolatedGameTest<ModUpdateService
         );
         
         // Add the SpaceCore update to the library
-        await _libraryService.AddDownload(spaceCoreUpdateDownloadJob);
+        await _libraryService.AddDownload(spaceCoreUpdateDownloadJob, new GameAcquisition(GameInstallation.Game.GameId));
 
         // Assert that SMAPI was not affected by the SpaceCore update
         receivedRemove.Should().BeFalse("SMAPI updates should not be removed when SpaceCore is updated");
@@ -428,9 +429,9 @@ public class ModUpdateServiceTests : ACyberpunkIsolatedGameTest<ModUpdateService
         });
         
         // Add both versions to the library
-        await _libraryService.AddDownload(oldVersionDownloadJob);
+        await _libraryService.AddDownload(oldVersionDownloadJob, new GameAcquisition(GameInstallation.Game.GameId));
         updateResults.Should().NotBeEmpty("Adding the old version should add an update.");
-        var currentLibraryFile = await _libraryService.AddDownload(currentVersionDownloadJob);
+        var currentLibraryFile = await _libraryService.AddDownload(currentVersionDownloadJob, new GameAcquisition(GameInstallation.Game.GameId));
         updateResults.Should().BeEmpty("Installing latest version should remove the update.");
         
         // Now remove the current version from the library
@@ -475,7 +476,7 @@ public class ModUpdateServiceTests : ACyberpunkIsolatedGameTest<ModUpdateService
         });
         
         // Add the mod to the library - should initially see updates
-        _ = await _libraryService.AddDownload(downloadJob);
+        _ = await _libraryService.AddDownload(downloadJob, new GameAcquisition(GameInstallation.Game.GameId));
         updateOnPage.Should().NotBeNull("Before hiding files, updates should be visible");
         var initialUpdateCount = updateOnPage!.Value.NewerFiles.Length;
         
@@ -533,7 +534,7 @@ public class ModUpdateServiceTests : ACyberpunkIsolatedGameTest<ModUpdateService
         });
         
         // Add the mod to the library - should initially see updates
-        _ = await _libraryService.AddDownload(downloadJob);
+        _ = await _libraryService.AddDownload(downloadJob, new GameAcquisition(GameInstallation.Game.GameId));
         updateOnPage.Should().NotBeNull("Before hiding files, updates should be visible");
         var initialUpdateCount = updateOnPage!.Value.NewerFiles.Length;
         

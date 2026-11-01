@@ -81,7 +81,7 @@ public class GalleryDownloaderTests(IServiceProvider provider, ILibraryService l
         await using var folder = temporaryFileManager.CreateFolder();
         var path = WabbajackFixture.Write(folder.Path, WabbajackFixture.EmptyList("From disk"));
 
-        var added = await libraryService.AddLocalFile(path);
+        var added = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
 
         added.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out var model).Should().BeTrue();
         model.Contains(WabbajackModlistLibraryFile.GalleryDownloadUrl).Should().BeFalse();

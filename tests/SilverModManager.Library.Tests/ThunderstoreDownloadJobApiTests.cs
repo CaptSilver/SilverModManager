@@ -27,7 +27,7 @@ public class ThunderstoreDownloadJobApiTests(IServiceProvider serviceProvider)
     [Fact]
     public async Task TheRegisteredApiAndClientDownloadAndRecordTheVersion()
     {
-        var result = await ThunderstoreDownloadJob.Create(serviceProvider, Ref("REPOLib"), "repo");
+        var result = await ThunderstoreDownloadJob.Create(serviceProvider, Ref("REPOLib"), "repo", UnassignedAcquisition.Instance);
 
         result.Namespace.Should().Be("Zehs");
         result.Name.Should().Be("REPOLib");
@@ -40,7 +40,7 @@ public class ThunderstoreDownloadJobApiTests(IServiceProvider serviceProvider)
     [Fact]
     public async Task AVersionTheApiDoesNotKnowFailsNamingIt()
     {
-        var act = async () => await ThunderstoreDownloadJob.Create(serviceProvider, Ref("Missing"), "repo");
+        var act = async () => await ThunderstoreDownloadJob.Create(serviceProvider, Ref("Missing"), "repo", UnassignedAcquisition.Instance);
 
         await act.Should().ThrowAsync<ThunderstoreIntegrityException>().WithMessage("*Zehs-Missing-4.2.0*");
     }

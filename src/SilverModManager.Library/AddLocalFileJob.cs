@@ -10,15 +10,17 @@ namespace SilverModManager.Library;
 internal class AddLocalFileJob : IJobDefinitionWithStart<AddLocalFileJob, LocalFile.ReadOnly>, IAddLocalFile
 { 
     public required AbsolutePath FilePath { get; init; }
+    public required IAcquisitionContext Acquisition { get; init; }
     internal required IConnection Connection { get; init; }
     internal required IServiceProvider ServiceProvider { get; set; }
     
-    public static IJobTask<AddLocalFileJob, LocalFile.ReadOnly> Create(IServiceProvider provider, AbsolutePath filePath)
+    public static IJobTask<AddLocalFileJob, LocalFile.ReadOnly> Create(IServiceProvider provider, AbsolutePath filePath, IAcquisitionContext acquisition)
     {
         var monitor = provider.GetRequiredService<IJobMonitor>();
         var job = new AddLocalFileJob
         {
             FilePath = filePath,
+            Acquisition = acquisition,
             Connection = provider.GetRequiredService<IConnection>(),
             ServiceProvider = provider,
         };
@@ -28,7 +30,7 @@ internal class AddLocalFileJob : IJobDefinitionWithStart<AddLocalFileJob, LocalF
     public async ValueTask<LocalFile.ReadOnly> StartAsync(IJobContext<AddLocalFileJob> context)
     {
         using var tx = Connection.BeginTransaction();
-        var libraryFile = await AddLibraryFileJob.Create(ServiceProvider, tx, FilePath);
+        var libraryFile = await AddLibraryFileJob.Create(ServiceProvider, tx, FilePath, Acquisition);
 
         var localFile = new LocalFile.New(tx, libraryFile.LibraryFileId)
         {

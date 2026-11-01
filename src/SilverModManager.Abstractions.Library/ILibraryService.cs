@@ -19,14 +19,19 @@ namespace SilverModManager.Abstractions.Library;
 public interface ILibraryService
 {
     /// <summary>
-    /// Adds a download to the library.
+    /// Adds a download to the library for the games <paramref name="acquisition"/> names.
     /// </summary>
-    IJobTask<IAddDownloadJob, LibraryFile.ReadOnly> AddDownload(IJobTask<IDownloadJob, AbsolutePath> downloadJob);
+    IJobTask<IAddDownloadJob, LibraryFile.ReadOnly> AddDownload(IJobTask<IDownloadJob, AbsolutePath> downloadJob, IAcquisitionContext acquisition);
 
     /// <summary>
-    /// Adds a local file to the library.
+    /// Adds a local file to the library for the games <paramref name="acquisition"/> names.
     /// </summary>
-    IJobTask<IAddLocalFile, LocalFile.ReadOnly> AddLocalFile(AbsolutePath absolutePath);
+    IJobTask<IAddLocalFile, LocalFile.ReadOnly> AddLocalFile(AbsolutePath absolutePath, IAcquisitionContext acquisition);
+
+    /// <summary>
+    /// A file the library already held was asked for again: unions the acquisition's games into it.
+    /// </summary>
+    Task Adopt(LibraryItem.ReadOnly item, IAcquisitionContext acquisition);
 
     /// <summary>
     /// Returns all loadouts that contain the given library item.
@@ -67,11 +72,6 @@ public interface ILibraryService
     ///     tuples containing the library items found in that collection and their linked items.
     /// </remarks>
     IReadOnlyDictionary<CollectionGroup.ReadOnly, IReadOnlyList<(LibraryItem.ReadOnly libraryItem, LibraryLinkedLoadoutItem.ReadOnly linkedItem)>> CollectionsWithLibraryItems(IEnumerable<LibraryItem.ReadOnly> libraryItems, bool excludeReadOnlyCollections = false);
-
-    /// <summary>
-    /// Adds a library file.
-    /// </summary>
-    Task<LibraryFile.New> AddLibraryFile(ITransaction transaction, AbsolutePath source);
 
     /// <summary>
     /// Removes a number of items from the library.

@@ -33,7 +33,7 @@ public class ModlistLibraryFileTests(ILibraryService libraryService, IConnection
         };
         var path = WabbajackFixture.Write(folder.Path, list, new Dictionary<string, byte[]> { ["blob-1"] = [1, 2, 3] });
 
-        var added = await libraryService.AddLocalFile(path);
+        var added = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
 
         added.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out var model).Should().BeTrue();
         model.Name.Should().Be("Shiny list");
@@ -49,7 +49,7 @@ public class ModlistLibraryFileTests(ILibraryService libraryService, IConnection
     [Fact]
     public async Task AddingTheRealModlistRecordsItsCounts()
     {
-        var added = await libraryService.AddLocalFile(FileSystem.Shared.FromUnsanitizedFullPath(WabbajackFixture.RealModlistPath));
+        var added = await libraryService.AddLocalFile(FileSystem.Shared.FromUnsanitizedFullPath(WabbajackFixture.RealModlistPath), UnassignedAcquisition.Instance);
 
         added.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out var model).Should().BeTrue();
         model.Name.Should().Be("MO2AndSKSETest");
@@ -67,7 +67,7 @@ public class ModlistLibraryFileTests(ILibraryService libraryService, IConnection
             entry.Write("x"u8);
         }
 
-        var added = await libraryService.AddLocalFile(path);
+        var added = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
 
         added.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out _).Should().BeFalse();
     }
@@ -78,7 +78,7 @@ public class ModlistLibraryFileTests(ILibraryService libraryService, IConnection
         await using var folder = temporaryFileManager.CreateFolder();
         var path = WabbajackFixture.Write(folder.Path, WabbajackFixture.EmptyList(), fileName: "list.zip");
 
-        var added = await libraryService.AddLocalFile(path);
+        var added = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
 
         added.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out _).Should().BeFalse();
     }
@@ -94,7 +94,7 @@ public class ModlistLibraryFileTests(ILibraryService libraryService, IConnection
             entry.Write("{\"Name\": \"x\", \"Directives\": [{\"$type\": \"NoSuchDirective, Wabbajack.DTOs\"}]}"u8);
         }
 
-        var added = await libraryService.AddLocalFile(path);
+        var added = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
 
         added.AsLibraryFile().IsValid().Should().BeTrue();
         added.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out _).Should().BeFalse();
@@ -114,7 +114,7 @@ public class ModlistLibraryFileTests(ILibraryService libraryService, IConnection
         };
         var path = WabbajackFixture.Write(folder.Path, list);
 
-        var added = await libraryService.AddLocalFile(path);
+        var added = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
 
         var rows = WabbajackModlistArchive.FindByModlist(connection.Db, added.AsLibraryFile().Id).ToArray();
         rows.Select(r => (r.Name, r.Size.Value)).Should().BeEquivalentTo([("one.7z", 1000UL), ("two.7z", 2500UL)]);
@@ -125,7 +125,7 @@ public class ModlistLibraryFileTests(ILibraryService libraryService, IConnection
     [Fact]
     public async Task TheRealModlistGetsOneArchiveRowPerEntry()
     {
-        var added = await libraryService.AddLocalFile(FileSystem.Shared.FromUnsanitizedFullPath(WabbajackFixture.RealModlistPath));
+        var added = await libraryService.AddLocalFile(FileSystem.Shared.FromUnsanitizedFullPath(WabbajackFixture.RealModlistPath), UnassignedAcquisition.Instance);
 
         added.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out var model).Should().BeTrue();
         WabbajackModlistArchive.FindByModlist(connection.Db, model.Id).Count().Should().Be(model.ArchiveCount);

@@ -10,6 +10,7 @@ using SilverModManager.Games.TestFramework;
 using SilverModManager.Sdk.Games;
 using Xunit;
 using Xunit;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.Collections.Tests;
 
@@ -42,7 +43,7 @@ public class CollectionInstallTests(ITestOutputHelper helper) : ACyberpunkIsolat
         await using var destination = TemporaryFileManager.CreateFile();
         var downloadJob = NexusModsLibrary.CreateCollectionDownloadJob(destination, CollectionSlug.From(slug), RevisionNumber.From((ulong)revisionNumber), CancellationToken.None);
 
-        var libraryFile = await LibraryService.AddDownload(downloadJob);
+        var libraryFile = await LibraryService.AddDownload(downloadJob, new GameAcquisition(GameInstallation.Game.GameId));
         
         if (!libraryFile.TryGetAsNexusModsCollectionLibraryFile(out var collectionFile))
             throw new InvalidOperationException("The library file is not a NexusModsCollectionLibraryFile");

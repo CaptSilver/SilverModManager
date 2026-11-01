@@ -588,7 +588,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
                 // Try a download.
                 await using var tempPath = _temporaryFileManager.CreateFile();
                 var job = await _nexusModsLibrary.CreateDownloadJob(tempPath, newestFile, cancellationToken: cancellationToken);
-                var libraryFile = await _libraryService.AddDownload(job);
+                var libraryFile = await _libraryService.AddDownload(job, UnassignedAcquisition.Instance);
                 var newLibraryItem = libraryFile.AsLibraryItem();
 
                 // Map each current file to the new file
@@ -718,7 +718,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
         {
             await using var tempPath = _temporaryFileManager.CreateFile();
             var job = await _nexusModsLibrary.CreateDownloadJob(tempPath, newestFile, cancellationToken: cancellationToken);
-            await _libraryService.AddDownload(job);
+            await _libraryService.AddDownload(job, UnassignedAcquisition.Instance);
         }
     }
 
@@ -967,7 +967,7 @@ After asking design, we're choosing to simply open the mod page for now.
             body: async (i, innerCancellationToken) =>
             {
                 var path = paths[i];
-                await _libraryService.AddLocalFile(path);
+                await _libraryService.AddLocalFile(path, new LoadoutAcquisition(_loadout.LoadoutId));
             },
             parallelOptions: new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken }
         );

@@ -42,7 +42,7 @@ public class FetchedArchiveTests(ITestOutputHelper helper) : AcquireTestBase<Fet
     {
         await using var folder = TemporaryFileManager.CreateFolder();
         var path = WabbajackFixture.Write(folder.Path, ListWith(archives));
-        var added = await LibraryService.AddLocalFile(path);
+        var added = await LibraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
         return LibraryFileId.From(added.AsLibraryFile().Id);
     }
 
@@ -62,7 +62,7 @@ public class FetchedArchiveTests(ITestOutputHelper helper) : AcquireTestBase<Fet
     {
         await using var file = TemporaryFileManager.CreateFile(new Extension(".txt"));
         await file.Path.WriteAllBytesAsync(content);
-        await LibraryService.AddLocalFile(file.Path);
+        await LibraryService.AddLocalFile(file.Path, UnassignedAcquisition.Instance);
     }
 
     private static async Task WaitFor(Func<bool> condition)
@@ -222,7 +222,7 @@ public class FetchedArchiveTests(ITestOutputHelper helper) : AcquireTestBase<Fet
         var other = Named(new HttpState(new Uri(Mirror, "b.7z"), []), "another"u8.ToArray(), "b.7z");
         var removed = await AddModlist(one);
         await using var folder = TemporaryFileManager.CreateFolder();
-        var kept = LibraryFileId.From((await LibraryService.AddLocalFile(WabbajackFixture.Write(folder.Path, ListWith(other) with { Name = "Kept" }, fileName: "kept.wabbajack"))).AsLibraryFile().Id);
+        var kept = LibraryFileId.From((await LibraryService.AddLocalFile(WabbajackFixture.Write(folder.Path, ListWith(other) with { Name = "Kept" }, fileName: "kept.wabbajack"), UnassignedAcquisition.Instance)).AsLibraryFile().Id);
         WabbajackModlistArchive.FindByModlist(Connection.Db, removed.Value).Should().HaveCount(1);
 
         await LibraryService.RemoveLibraryItems([LibraryItem.Load(Connection.Db, removed.Value)]);
@@ -253,7 +253,7 @@ public class FetchedArchiveTests(ITestOutputHelper helper) : AcquireTestBase<Fet
     {
         await using var folder = TemporaryFileManager.CreateFolder();
         var path = WabbajackFixture.Write(folder.Path, ListWith(archives) with { Name = "Second" }, fileName: "second.wabbajack");
-        return LibraryFileId.From((await LibraryService.AddLocalFile(path)).AsLibraryFile().Id);
+        return LibraryFileId.From((await LibraryService.AddLocalFile(path, UnassignedAcquisition.Instance)).AsLibraryFile().Id);
     }
 
     [Fact]
@@ -330,7 +330,7 @@ public class FetchedArchiveTests(ITestOutputHelper helper) : AcquireTestBase<Fet
             using var member = zip.CreateEntry("inside.txt").Open();
             member.Write(Content);
         }
-        await LibraryService.AddLocalFile(zipPath);
+        await LibraryService.AddLocalFile(zipPath, UnassignedAcquisition.Instance);
 
         await WaitFor(() => Acquirer.Plan.Rows[0].State == ArchiveState.Have);
         RowFor(modlist, Content).FetchedFiles.Should().BeEmpty("a member belongs to the user's archive");

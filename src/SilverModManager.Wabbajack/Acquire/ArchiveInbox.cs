@@ -7,6 +7,7 @@ using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Native;
 using SilverModManager.Wabbajack.Library;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.Wabbajack.Acquire;
 
@@ -73,7 +74,7 @@ public sealed class ArchiveInbox(
                 if (locator.FindByXxHash64(connection.Db, hash) is not null) continue;
                 try
                 {
-                    await library.AddLocalFile(file);
+                    await library.AddLocalFile(file, UnassignedAcquisition.Instance);
                     addedHere.Add(hash);
                 }
                 catch (Exception e) when (e is not OperationCanceledException)

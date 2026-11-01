@@ -8,6 +8,7 @@ using SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
 using SilverModManager.Networking.NexusWebApi;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.App.UI.Pages.Diagnostics.SaveToLibrary;
 
@@ -34,7 +35,7 @@ public sealed class NexusModDownloader(IServiceProvider provider) : IModDownload
         // The temporary file has to outlive AddDownload, which moves the finished file into the library's store.
         await using var destination = provider.GetRequiredService<TemporaryFileManager>().CreateFile();
         var job = await provider.GetRequiredService<NexusModsLibrary>().CreateDownloadJob(destination, game, modId, fileId, cancellationToken: cancellationToken);
-        await provider.GetRequiredService<ILibraryService>().AddDownload(job);
+        await provider.GetRequiredService<ILibraryService>().AddDownload(job, UnassignedAcquisition.Instance);
         return ModDownloadResult.Added;
     }
 }

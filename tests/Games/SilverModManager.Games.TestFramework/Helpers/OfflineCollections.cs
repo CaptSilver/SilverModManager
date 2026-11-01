@@ -182,7 +182,7 @@ public sealed class OfflineCollections(IServiceProvider serviceProvider, IConnec
     /// <summary>Puts a zip in the library the way an external collection download lands there: with its md5 and a logical file name.</summary>
     public async Task AddDirectDownload(AbsolutePath path, Md5Value md5)
     {
-        var file = await libraryService.AddLocalFile(path);
+        var file = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
         using var fileTx = connection.BeginTransaction();
         fileTx.Add(file.Id, LibraryFile.Md5, md5);
         fileTx.Add(file.Id, DirectDownloadLibraryFile.LogicalFileName, path.FileName);
@@ -198,7 +198,7 @@ public sealed class OfflineCollections(IServiceProvider serviceProvider, IConnec
     /// </summary>
     public async Task AddNexusDownload(AbsolutePath path, uint modId, uint fileId)
     {
-        var file = await libraryService.AddLocalFile(path);
+        var file = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
         using var tx = connection.BeginTransaction();
         var (page, metadata) = NexusMetadata(tx, modId, fileId, path.FileName);
         tx.Add(file.Id, NexusModsLibraryItem.FileMetadata, metadata);
@@ -271,7 +271,7 @@ public sealed class OfflineCollections(IServiceProvider serviceProvider, IConnec
             }
         }
 
-        var collectionLibraryFile = await libraryService.AddLocalFile(collectionZip);
+        var collectionLibraryFile = await libraryService.AddLocalFile(collectionZip, UnassignedAcquisition.Instance);
 
         using var tx = connection.BeginTransaction();
 

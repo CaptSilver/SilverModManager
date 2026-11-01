@@ -11,6 +11,7 @@ using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using Xunit;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.DataModel.Synchronizer.Tests;
 
@@ -241,7 +242,7 @@ public class GeneralLoadoutManagementTests(ITestOutputHelper helper) : ACyberpun
             """, [loadoutA, loadoutB]);
         
         var modFile = FileSystem.GetKnownPath(KnownPath.EntryDirectory) / "Resources" / "TestMod.zip";
-        var libraryFile = await LibraryService.AddLocalFile(modFile);
+        var libraryFile = await LibraryService.AddLocalFile(modFile, new GameAcquisition(GameInstallation.Game.GameId));
         var mod = (await LoadoutManager.InstallItem(libraryFile.AsLibraryFile().AsLibraryItem(), loadoutA)).LoadoutItemGroup!.Value;
         loadoutA = loadoutA.Rebase();
         

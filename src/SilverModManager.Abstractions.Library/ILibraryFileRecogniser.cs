@@ -17,5 +17,6 @@ public interface ILibraryFileRecogniser
     /// call: the members' rows are in <paramref name="tx"/> and not in the file store yet, so read the files
     /// from the folder. It is null for a file that is not an archive.
     /// </summary>
-    ValueTask Recognise(ITransaction tx, LibraryFile.New file, AbsolutePath? extractedFolder, CancellationToken cancellationToken);
+    /// <returns>Where the file goes when the file itself says so (a modlist names its game); null otherwise.</returns>
+    ValueTask<Destination?> Recognise(ITransaction tx, LibraryFile.New file, AbsolutePath? extractedFolder, CancellationToken cancellationToken);
 }

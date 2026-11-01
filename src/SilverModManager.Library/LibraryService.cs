@@ -36,14 +36,21 @@ public sealed class LibraryService : ILibraryService
         _gcRunner = serviceProvider.GetRequiredService<IGarbageCollectorRunner>();
     }
 
-    public IJobTask<IAddDownloadJob, LibraryFile.ReadOnly> AddDownload(IJobTask<IDownloadJob, AbsolutePath> downloadJob)
+    public IJobTask<IAddDownloadJob, LibraryFile.ReadOnly> AddDownload(IJobTask<IDownloadJob, AbsolutePath> downloadJob, IAcquisitionContext acquisition)
     {
-        return AddDownloadJob.Create(_serviceProvider, downloadJob);
+        return AddDownloadJob.Create(_serviceProvider, downloadJob, acquisition);
     }
 
-    public IJobTask<IAddLocalFile, LocalFile.ReadOnly> AddLocalFile(AbsolutePath absolutePath)
+    public IJobTask<IAddLocalFile, LocalFile.ReadOnly> AddLocalFile(AbsolutePath absolutePath, IAcquisitionContext acquisition)
     {
-        return AddLocalFileJob.Create(_serviceProvider, absolutePath);
+        return AddLocalFileJob.Create(_serviceProvider, absolutePath, acquisition);
+    }
+
+    public async Task Adopt(LibraryItem.ReadOnly item, IAcquisitionContext acquisition)
+    {
+        using var tx = _connection.BeginTransaction();
+        LibraryDestinations.Add(tx, item.Id, acquisition.Destination(_connection.Db));
+        await tx.Commit();
     }
 
     public IEnumerable<(Loadout.ReadOnly loadout, LibraryLinkedLoadoutItem.ReadOnly linkedItem)> LoadoutsWithLibraryItem(LibraryItem.ReadOnly libraryItem)
@@ -153,11 +160,6 @@ public sealed class LibraryService : ILibraryService
             kvp => kvp.Key,
             kvp => (IReadOnlyList<(LibraryItem.ReadOnly libraryItem, LibraryLinkedLoadoutItem.ReadOnly linkedItem)>)kvp.Value.AsReadOnly()
         );
-    }
-
-    public async Task<LibraryFile.New> AddLibraryFile(ITransaction transaction, AbsolutePath source)
-    {
-        return await AddLibraryFileJob.Create(_serviceProvider, transaction, filePath: source);
     }
 
     public async Task RemoveLibraryItems(IEnumerable<LibraryItem.ReadOnly> libraryItems, GarbageCollectorRunMode gcRunMode = GarbageCollectorRunMode.RunAsynchronously)

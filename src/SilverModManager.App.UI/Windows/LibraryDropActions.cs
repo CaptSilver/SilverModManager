@@ -15,7 +15,7 @@ internal sealed class LibraryDropActions(ILibraryService libraryService, IConnec
 {
     public async Task<LibraryFileId> AddModlist(AbsolutePath file, CancellationToken cancellationToken)
     {
-        var localFile = await libraryService.AddLocalFile(file);
+        var localFile = await libraryService.AddLocalFile(file, UnassignedAcquisition.Instance);
         var id = LibraryFileId.From(localFile.Id);
 
         // The recogniser only marks a file that holds a readable modlist.
@@ -24,7 +24,14 @@ internal sealed class LibraryDropActions(ILibraryService libraryService, IConnec
         return id;
     }
 
-    public async Task AddMod(AbsolutePath file, CancellationToken cancellationToken) => await libraryService.AddLocalFile(file);
+    public async Task AddMod(AbsolutePath file, CancellationToken cancellationToken)
+        => await libraryService.AddLocalFile(file, AcquisitionForDrop());
+
+    /// <summary>A file dropped on a loadout's workspace is for that loadout's game; anywhere else it has no game.</summary>
+    private IAcquisitionContext AcquisitionForDrop()
+        => workspaceController.ActiveWorkspace.Context is LoadoutContext context
+            ? new LoadoutAcquisition(context.LoadoutId)
+            : UnassignedAcquisition.Instance;
 
     public void OpenModlist(LibraryFileId file)
     {

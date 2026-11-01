@@ -11,6 +11,7 @@ using SilverModManager.Networking.NexusWebApi;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.Collections;
 
@@ -40,7 +41,7 @@ internal static class Verbs
         await using var destination = temporaryFileManager.CreateFile();
         var downloadJob = nexusModsLibrary.CreateCollectionDownloadJob(destination, CollectionSlug.From(slug), RevisionNumber.From((ulong)revision), token);
         
-        var libraryFile = await libraryService.AddDownload(downloadJob);
+        var libraryFile = await libraryService.AddDownload(downloadJob, UnassignedAcquisition.Instance);
 
         if (!libraryFile.TryGetAsNexusModsCollectionLibraryFile(out var collectionFile))
             throw new InvalidOperationException("The library file is not a NexusModsCollectionLibraryFile");

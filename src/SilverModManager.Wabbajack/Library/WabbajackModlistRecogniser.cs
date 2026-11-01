@@ -17,15 +17,15 @@ public sealed class WabbajackModlistRecogniser(ILogger<WabbajackModlistRecognise
     private static readonly Extension WabbajackExtension = new(".wabbajack");
     private static readonly string[] ModlistFileNames = ["modlist", "modlist.json"];
 
-    public async ValueTask Recognise(ITransaction tx, LibraryFile.New file, AbsolutePath? extractedFolder, CancellationToken cancellationToken)
+    public async ValueTask<Destination?> Recognise(ITransaction tx, LibraryFile.New file, AbsolutePath? extractedFolder, CancellationToken cancellationToken)
     {
-        if (extractedFolder is not { } folder) return;
-        if (file.FileName.Extension != WabbajackExtension) return;
+        if (extractedFolder is not { } folder) return null;
+        if (file.FileName.Extension != WabbajackExtension) return null;
 
         var modlistFile = ModlistFileNames
             .Select(name => folder.Combine(name))
             .FirstOrDefault(path => path.FileExists);
-        if (modlistFile == default) return;
+        if (modlistFile == default) return null;
 
         ModList list;
         try
@@ -37,7 +37,7 @@ public sealed class WabbajackModlistRecogniser(ILogger<WabbajackModlistRecognise
         {
             // The file is still a library file; it just cannot be installed.
             logger.LogWarning(e, "'{File}' has a modlist entry this version cannot read, so it is not recognised as a modlist", file.FileName);
-            return;
+            return null;
         }
 
         var modlist = new WabbajackModlistLibraryFile.New(tx, file.Id)
@@ -72,5 +72,7 @@ public sealed class WabbajackModlistRecogniser(ILogger<WabbajackModlistRecognise
                 .FirstOrDefault();
             if (fetched is { } inherited) tx.Add(row.Id, WabbajackModlistArchive.FetchedFiles, inherited);
         }
+
+        return null;
     }
 }

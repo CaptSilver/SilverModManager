@@ -239,7 +239,7 @@ public sealed class ArchiveAcquirer(
             var job = await downloadJobs.Create(row, destination.Path, cancellationToken);
             // The job runs on the job monitor, not on this token, so stopping the run has to stop the transfer itself.
             await using var stopTransfer = cancellationToken.Register(() => job.Job.AsContext().Cancel());
-            var file = await library.AddDownload(job);
+            var file = await library.AddDownload(job, UnassignedAcquisition.Instance);
 
             if (file.XxHash64Identity() is { } downloaded && downloaded.Equals(row.Archive.XxHash64))
             {

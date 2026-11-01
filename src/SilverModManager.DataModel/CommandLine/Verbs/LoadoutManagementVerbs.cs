@@ -17,6 +17,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.DataModel.CommandLine.Verbs;
 
@@ -174,7 +175,7 @@ public static class LoadoutManagementVerbs
     {
         return await renderer.WithProgress(token, async () =>
         {
-            var localFile = await libraryService.AddLocalFile(file); 
+            var localFile = await libraryService.AddLocalFile(file, new LoadoutAcquisition(loadout.LoadoutId));
             await loadoutManager.InstallItem(localFile.AsLibraryFile().AsLibraryItem(), loadout);
             return 0;
         });
