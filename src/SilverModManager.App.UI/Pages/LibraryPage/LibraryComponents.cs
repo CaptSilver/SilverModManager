@@ -10,6 +10,7 @@ using SilverModManager.App.UI.Controls.TreeDataGrid.Filters;
 using SilverModManager.App.UI.Extensions;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Networking.NexusWebApi;
 using SilverModManager.Sdk.Library;
 using SilverModManager.UI.Sdk;
@@ -85,6 +86,23 @@ public static class LibraryColumns
         public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
     }
 
+    /// <summary>The tag on a row whose game is shared with a sibling or not assigned yet. Empty for any other row.</summary>
+    [UsedImplicitly]
+    public sealed class Destination : ICompositeColumnDefinition<Destination>
+    {
+        public static int Compare<TKey>(CompositeItemModel<TKey> a, CompositeItemModel<TKey> b) where TKey : notnull
+        {
+            var aValue = a.GetOptional<LibraryComponents.DestinationTag>(key: TagComponentKey);
+            var bValue = b.GetOptional<LibraryComponents.DestinationTag>(key: TagComponentKey);
+            return aValue.Compare(bValue);
+        }
+
+        public const string ColumnTemplateResourceKey = nameof(LibraryColumns) + "_" + nameof(Destination);
+        public static readonly ComponentKey TagComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(LibraryComponents.DestinationTag));
+        public static string GetColumnHeader() => "Game";
+        public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
+    }
+
     [UsedImplicitly]
     public sealed class Actions : ICompositeColumnDefinition<Actions>
     {
@@ -147,6 +165,7 @@ public static class LibraryColumns
         public static readonly ComponentKey ViewChangelogComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(Actions) + "_" + "ViewChangelog");
         public static readonly ComponentKey ViewModPageComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(Actions) + "_" + "ViewModPage");
         public static readonly ComponentKey DeleteItemComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(Actions) + "_" + "DeleteItem");
+        public static readonly ComponentKey DestinationActionsComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(Actions) + "_" + "Destination");
         public static readonly ComponentKey HideUpdatesComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(Actions) + "_" + "HideUpdates");
         public static string GetColumnHeader() => "Actions";
         public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
@@ -162,6 +181,7 @@ public static class LibraryComponents
 
         private readonly OneOf<ObservableHashSet<LibraryItemId>, LibraryItemId[]> _ids;
         private readonly IDisposable? _idsObservable;
+        private readonly IObservable<IChangeSet<LibraryItemId, EntityId>> _source;
 
         public IEnumerable<LibraryItemId> ItemIds => _ids.Match(
             f0: static x => x.AsEnumerable(),
@@ -171,13 +191,19 @@ public static class LibraryComponents
         public LibraryItemIds(LibraryItemId itemId)
         {
             _ids = new[] { itemId };
+            _source = System.Reactive.Linq.Observable.Return<IChangeSet<LibraryItemId, EntityId>>(
+                new ChangeSet<LibraryItemId, EntityId>([new Change<LibraryItemId, EntityId>(ChangeReason.Add, itemId.Value, itemId)]));
         }
 
         public LibraryItemIds(IObservable<IChangeSet<LibraryItemId, EntityId>> childrenItemIdsObservable)
         {
             _ids = new ObservableHashSet<LibraryItemId>();
+            _source = childrenItemIdsObservable;
             _idsObservable = childrenItemIdsObservable.SubscribeWithErrorLogging(changeSet => _ids.AsT0.ApplyChanges(changeSet));
         }
+
+        /// <summary>The ids as they change, for what a row derives from its items' own data.</summary>
+        public IObservable<IChangeSet<LibraryItemId, EntityId>> Observe() => _source;
 
         private bool _isDisposed;
         protected override void Dispose(bool disposing)
@@ -689,6 +715,130 @@ public static class LibraryComponents
             return string.Format(isHidden 
                 ? Resources.Language.Library_ShowUpdates 
                 : Resources.Language.Library_HideUpdates, itemCount);
+        }
+    }
+
+    /// <summary>
+    /// The text of the Game column: "No game assigned" for an item no source could place, "Also under X: ..." for one
+    /// Nexus Mods could not tell from a sibling's game, empty for the rest.
+    /// </summary>
+    public sealed class DestinationTag : ReactiveR3Object, IItemModelComponent<DestinationTag>, IComparable<DestinationTag>
+    {
+        private readonly ValueComponent<DestinationRowState> _state;
+
+        public IReadOnlyBindableReactiveProperty<string> Text { get; }
+
+        public DestinationTag(ValueComponent<DestinationRowState> state, GameNames names)
+        {
+            _state = state;
+            Text = state.Value
+                .Select(value => Describe(value, names))
+                .ToReadOnlyBindableReactiveProperty(initialValue: Describe(state.Value.Value, names));
+        }
+
+        internal static string Describe(DestinationRowState state, GameNames names)
+        {
+            if (state.IsUnassigned) return Language.LibraryDestination_Unassigned;
+            if (!state.IsShared) return string.Empty;
+
+            var others = string.Join(", ", state.OtherGames.Select(names.NameOf).Order(StringComparer.CurrentCulture));
+            return string.Format(Language.LibraryDestination_Shared, others);
+        }
+
+        public int CompareTo(DestinationTag? other)
+        {
+            if (other is null) return 1;
+            return string.Compare(Text.Value, other.Text.Value, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public FilterResult MatchesFilter(Filter filter)
+        {
+            return filter switch
+            {
+                Filter.TextFilter textFilter => Text.Value.Contains(
+                    textFilter.SearchText,
+                    textFilter.CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase)
+                    ? FilterResult.Pass : FilterResult.Fail,
+                _ => FilterResult.Indeterminate,
+            };
+        }
+
+        private bool _isDisposed;
+        protected override void Dispose(bool disposing)
+        {
+            if (!_isDisposed)
+            {
+                if (disposing) Disposable.Dispose(Text, _state);
+                _isDisposed = true;
+            }
+
+            base.Dispose(disposing);
+        }
+    }
+
+    /// <summary>
+    /// The context-menu entries that settle which game a row is for. Which ones show follows the row's state; the page
+    /// carries them out with <see cref="LibraryDestinationActions"/>.
+    /// </summary>
+    public sealed class DestinationActions : ReactiveR3Object, IItemModelComponent<DestinationActions>, IComparable<DestinationActions>
+    {
+        private readonly ValueComponent<DestinationRowState> _state;
+
+        public ReactiveCommand<Unit> CommandUseForThisGame { get; } = new();
+        public ReactiveCommand<Unit> CommandSuggestAGame { get; } = new();
+        public ReactiveCommand<Unit> CommandOnlyForThisGame { get; } = new();
+        public ReactiveCommand<Unit> CommandRemoveFromThisGame { get; } = new();
+
+        /// <summary>No source placed the item: offers "Use for this game" and "Suggest a game".</summary>
+        public IReadOnlyBindableReactiveProperty<bool> IsUnassigned { get; }
+
+        /// <summary>The item is for several games because Nexus Mods could not tell them apart: offers "Only for this game".</summary>
+        public IReadOnlyBindableReactiveProperty<bool> IsShared { get; }
+
+        /// <summary>The item is for this game, so "Remove from this game" has something to remove.</summary>
+        public IReadOnlyBindableReactiveProperty<bool> IsOnThisGame { get; }
+
+        /// <summary>False while a loadout of this game has the item installed: it has to be uninstalled first.</summary>
+        public IReadOnlyBindableReactiveProperty<bool> CanRemoveFromThisGame { get; }
+
+        /// <summary>The action the user picked, whichever menu entry it came from.</summary>
+        public Observable<DestinationActionKind> Requested { get; }
+
+        public DestinationActions(ValueComponent<DestinationRowState> state)
+        {
+            _state = state;
+            IsUnassigned = Project(state, static value => value.IsUnassigned);
+            IsShared = Project(state, static value => value.IsShared);
+            IsOnThisGame = Project(state, static value => !value.IsUnassigned);
+            CanRemoveFromThisGame = Project(state, static value => !value.InstalledHere);
+
+            Requested = R3.Observable.Merge(
+                CommandUseForThisGame.Select(static _ => DestinationActionKind.UseForThisGame),
+                CommandSuggestAGame.Select(static _ => DestinationActionKind.SuggestAGame),
+                CommandOnlyForThisGame.Select(static _ => DestinationActionKind.OnlyForThisGame),
+                CommandRemoveFromThisGame.Select(static _ => DestinationActionKind.RemoveFromThisGame));
+        }
+
+        private static IReadOnlyBindableReactiveProperty<bool> Project(ValueComponent<DestinationRowState> state, Func<DestinationRowState, bool> select)
+            => state.Value.Select(select).ToReadOnlyBindableReactiveProperty(initialValue: select(state.Value.Value));
+
+        public int CompareTo(DestinationActions? other) => other is null ? 1 : 0;
+
+        private bool _isDisposed;
+        protected override void Dispose(bool disposing)
+        {
+            if (!_isDisposed)
+            {
+                if (disposing)
+                {
+                    Disposable.Dispose(CommandUseForThisGame, CommandSuggestAGame, CommandOnlyForThisGame, CommandRemoveFromThisGame,
+                        IsUnassigned, IsShared, IsOnThisGame, CanRemoveFromThisGame, _state);
+                }
+
+                _isDisposed = true;
+            }
+
+            base.Dispose(disposing);
         }
     }
 }

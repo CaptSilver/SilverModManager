@@ -58,12 +58,24 @@ public static class LibraryDataProviderHelper
             .AsEntityIds()
             .FilterImmutable(row => IsRowOfListFor(connection.Db, row.E, game))
             .IsNotEmpty();
-        var installed = connection.ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItem, libraryFile)
+        var installed = ObserveInstalledForGame(connection, libraryFile, game);
+        return fetched.CombineLatest(installed, static (isFetched, isInstalled) => !isFetched || isInstalled).DistinctUntilChanged();
+    }
+
+    /// <summary>
+    /// Whether a loadout of <paramref name="game"/> has the library item installed. Any loadout of the game counts, not one
+    /// loadout: the destination invariant is per game.
+    /// </summary>
+    public static IObservable<bool> ObserveInstalledForGame(IConnection connection, EntityId libraryItem, GameId game)
+        => connection.ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItem, libraryItem)
             .AsEntityIds()
             .FilterImmutable(link => IsInLoadoutOf(connection.Db, link.E, game))
             .IsNotEmpty();
-        return fetched.CombineLatest(installed, static (isFetched, isInstalled) => !isFetched || isInstalled).DistinctUntilChanged();
-    }
+
+    /// <inheritdoc cref="ObserveInstalledForGame"/>
+    public static bool IsInstalledForGame(IDb db, EntityId libraryItem, GameId game)
+        => LibraryLinkedLoadoutItem.FindByLibraryItem(db, libraryItem)
+            .Any(link => new LoadoutAcquisition(link.AsLoadoutItem().LoadoutId).Destination(db).Games.Contains(game));
 
     // A list for a game the app has no title for belongs to no game in particular, so it counts for whichever game is
     // asked. So does a row whose list is gone: the file was fetched for a list, and hiding it is the old behaviour.
@@ -208,6 +220,28 @@ public static class LibraryDataProviderHelper
         itemModel.Add(LibraryColumns.Actions.ViewModPageComponentKey, new SharedComponents.ViewModPageAction(isEnabled));
     }
     
+    /// <summary>
+    /// Adds the Game column's tag and the context-menu entries that settle which game the row is for, from the items the
+    /// row's <see cref="LibraryComponents.LibraryItemIds"/> names. Called after that component is on the row.
+    /// </summary>
+    public static void AddDestinationComponents(
+        CompositeItemModel<EntityId> itemModel,
+        IConnection connection,
+        GameId game,
+        GameNames names)
+    {
+        var ids = itemModel.Get<LibraryComponents.LibraryItemIds>(LibraryColumns.Actions.LibraryItemIdsComponentKey);
+        var initial = DestinationRowState.Read(connection, ids.ItemIds, game);
+
+        // One stream feeds both components, so a row holds one database subscription for its destination state.
+        var changes = DestinationRowState.Observe(connection, ids.Observe(), game).Replay(1).RefCount();
+
+        itemModel.Add(LibraryColumns.Destination.TagComponentKey,
+            new LibraryComponents.DestinationTag(new ValueComponent<DestinationRowState>(initial, changes, subscribeWhenCreated: true), names));
+        itemModel.Add(LibraryColumns.Actions.DestinationActionsComponentKey,
+            new LibraryComponents.DestinationActions(new ValueComponent<DestinationRowState>(initial, changes, subscribeWhenCreated: true)));
+    }
+
     public static void AddDeleteItemActionComponent(
         CompositeItemModel<EntityId> itemModel,
         bool isEnabled = true)

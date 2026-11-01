@@ -35,28 +35,6 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
 {
     private static readonly LoadoutId NoLoadout = LoadoutId.From(EntityId.From(0xBEEF));
 
-    private static int _nextNexusId = 960_000;
-
-    /// <summary>Two games, a fresh pair per test, so a slice holds nothing another test wrote.</summary>
-    private sealed class TestGame(GameId gameId, NexusModsGameId nexusId) : IGameData
-    {
-        public GameId GameId { get; } = gameId;
-        public Optional<NexusModsGameId> NexusModsGameId => Optional.Some(nexusId);
-        public StoreIdentifiers StoreIdentifiers => new(GameId);
-        public string DisplayName => "Test game " + GameId;
-        public IStreamFactory IconImage => throw new NotSupportedException();
-        public IStreamFactory TileImage => throw new NotSupportedException();
-        public ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult) => throw new NotSupportedException();
-        public GamePath GetPrimaryFile(GameInstallation installation) => throw new NotSupportedException();
-    }
-
-    private static (TestGame Game, TestGame Sibling) NewPair()
-    {
-        var nexus = NexusModsGameId.From((uint)Interlocked.Increment(ref _nextNexusId));
-        return (new TestGame(GameId.From("game-" + Guid.NewGuid().ToString("N")), nexus),
-            new TestGame(GameId.From("sibling-" + Guid.NewGuid().ToString("N")), nexus));
-    }
-
     private static LibraryFilter Filter(IGameData game) => new(NoLoadout, game);
 
     private static Destination Both(IGameData a, IGameData b) => new(ImmutableHashSet.Create(a.GameId, b.GameId), Shared: false);
@@ -168,29 +146,6 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
         return (page is null ? existingPage!.Value : result.Remap(page).Id, result.Remap(item).Id);
     }
 
-    private async Task<LoadoutId> AddLoadout(IGameData game)
-    {
-        using var tx = Connection.BeginTransaction();
-        var metadata = new GameInstallMetadata.New(tx)
-        {
-            Path = "/nonexistent/" + Guid.NewGuid().ToString("N"),
-            Name = game.DisplayName,
-            Store = GameStore.Unknown,
-            Game = game.GameId,
-        };
-        var loadout = new Loadout.New(tx)
-        {
-            Name = "Destination loadout",
-            ShortName = "DST",
-            InstallationId = metadata,
-            LoadoutKind = LoadoutKind.Default,
-            Revision = 0,
-            GameVersion = VanityVersion.From("Unknown"),
-        };
-        var result = await tx.Commit();
-        return result.Remap(loadout).LoadoutId;
-    }
-
     /// <summary>What installing a library item into a loadout leaves: a linked group, and the loadout's game on the item.</summary>
     private async Task Install(LoadoutId loadout, EntityId libraryItem)
     {
@@ -235,7 +190,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     [Fact]
     public async Task LocalFile_ForTheSibling_IsNotListedUnderTheGame()
     {
-        var (game, sibling) = NewPair();
+        var (game, sibling) = TestGame.NewPair();
         var theirs = await AddLocalFile("theirs.7z", Destination.Of(sibling.GameId));
         var mine = await AddLocalFile("mine.7z", Destination.Of(game.GameId));
         var provider = new LocalFileDataProvider(Provider);
@@ -253,7 +208,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     [Fact]
     public async Task NexusItem_ForTheSiblingOnly_IsNotListedUnderTheGame_EvenThoughTheNexusIdMatches()
     {
-        var (game, sibling) = NewPair();
+        var (game, sibling) = TestGame.NewPair();
         var nexus = game.NexusModsGameId.Value;
         var (theirsPage, _) = await AddNexusFile(nexus, 1, 1, "theirs.zip", Destination.Of(sibling.GameId));
         var (minePage, _) = await AddNexusFile(nexus, 2, 2, "mine.zip", Destination.Of(game.GameId));
@@ -271,7 +226,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     [Fact]
     public async Task NexusItem_ForBoth_IsListedUnderBoth()
     {
-        var (game, sibling) = NewPair();
+        var (game, sibling) = TestGame.NewPair();
         var (page, _) = await AddNexusFile(game.NexusModsGameId.Value, 3, 3, "both.zip", Both(game, sibling));
         var provider = new NexusModsDataProvider(Provider);
 
@@ -286,7 +241,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     [Fact]
     public async Task Unassigned_IsListedUnderEveryGame()
     {
-        var (game, sibling) = NewPair();
+        var (game, sibling) = TestGame.NewPair();
         var local = await AddLocalFile("unassigned.7z", Destination.Unknown);
         var (page, _) = await AddNexusFile(game.NexusModsGameId.Value, 4, 4, "unassigned.zip", Destination.Unknown);
         var localProvider = new LocalFileDataProvider(Provider);
@@ -305,7 +260,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     [Fact]
     public async Task ObserveLibraryItems_NeverEmitsAnotherGamesItems()
     {
-        var (game, sibling) = NewPair();
+        var (game, sibling) = TestGame.NewPair();
         var nexus = game.NexusModsGameId.Value;
         var localProvider = new LocalFileDataProvider(Provider);
         var nexusProvider = new NexusModsDataProvider(Provider);
@@ -345,10 +300,10 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     [Fact]
     public async Task ObserveLoadoutItems_NeverSubscribesToTheSiblingsItems()
     {
-        var (game, sibling) = NewPair();
+        var (game, sibling) = TestGame.NewPair();
         var nexus = game.NexusModsGameId.Value;
-        var gameLoadout = await AddLoadout(game);
-        var siblingLoadout = await AddLoadout(sibling);
+        var gameLoadout = await TestGame.AddLoadout(Connection, game);
+        var siblingLoadout = await TestGame.AddLoadout(Connection, sibling);
         var localProvider = new LocalFileDataProvider(Provider);
         var nexusProvider = new NexusModsDataProvider(Provider);
         var siblingsFiles = new List<EntityId>();
@@ -378,8 +333,8 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     [Fact]
     public async Task ObserveLoadoutItems_ListsTheGamesInstalledItems()
     {
-        var (game, sibling) = NewPair();
-        var gameLoadout = await AddLoadout(game);
+        var (game, sibling) = TestGame.NewPair();
+        var gameLoadout = await TestGame.AddLoadout(Connection, game);
         var installed = await AddLocalFile("installed.7z", Destination.Of(game.GameId));
         var notInstalled = await AddLocalFile("downloaded.7z", Destination.Of(game.GameId));
         var (page, item) = await AddNexusFile(game.NexusModsGameId.Value, 5, 5, "installed.zip", Destination.Of(game.GameId));
@@ -433,7 +388,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     [Fact]
     public async Task GetAllFiles_LocalFiles_ReturnsTheGamesFiles()
     {
-        var (game, sibling) = NewPair();
+        var (game, sibling) = TestGame.NewPair();
         var mine = await AddLocalFile("mine.7z", Destination.Of(game.GameId));
         var theirs = await AddLocalFile("theirs.7z", Destination.Of(sibling.GameId));
         var both = await AddLocalFile("both.7z", Both(game, sibling));
@@ -454,7 +409,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     [Fact]
     public async Task GetAllFiles_AModlist_IsReturnedByTheModlistProviderOnly()
     {
-        var (game, _) = NewPair();
+        var (game, _) = TestGame.NewPair();
         var list = await AddModlist("A list " + Guid.NewGuid().ToString("N"), "NoSuchGame", Destination.Of(game.GameId));
 
         new WabbajackModlistDataProvider(Provider).GetAllFiles(game.GameId).Select(file => file.Id).Should().Equal(list);
@@ -464,7 +419,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     [Fact]
     public async Task GetAllFiles_NexusItemWithoutAFile_IsSkipped()
     {
-        var (game, _) = NewPair();
+        var (game, _) = TestGame.NewPair();
         var nexus = game.NexusModsGameId.Value;
         await AddNexusFile(nexus, 6, 6, "no file.zip", Destination.Of(game.GameId), withFile: false);
         var (_, withFile) = await AddNexusFile(nexus, 7, 7, "with file.zip", Destination.Of(game.GameId));
@@ -475,7 +430,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     [Fact]
     public async Task GameFileRemovalPlan_KeepsAFileAnotherGameStillUses_OutOfTheDeletion()
     {
-        var (game, sibling) = NewPair();
+        var (game, sibling) = TestGame.NewPair();
         var onlyMine = await AddLocalFile("only-mine.7z", Destination.Of(game.GameId));
         var shared = await AddLocalFile("shared.7z", Both(game, sibling));
         var sharedArchive = await AddArchive("shared-archive.7z", Both(game, sibling));

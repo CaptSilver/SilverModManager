@@ -29,6 +29,7 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IConnection _connection;
+    private readonly GameNames _gameNames;
     private readonly IModUpdateService _modUpdateService;
     private readonly IModUpdateFilterService _modUpdateFilterService;
     private readonly Lazy<IResourceLoader<EntityId, Bitmap>> _thumbnailLoader;
@@ -39,6 +40,7 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
     {
         _serviceProvider = serviceProvider;
         _connection = connection;
+        _gameNames = new GameNames(serviceProvider.GetServices<IGameData>());
         _modUpdateService = serviceProvider.GetRequiredService<IModUpdateService>();
         _modUpdateFilterService = serviceProvider.GetRequiredService<IModUpdateFilterService>();
 
@@ -207,6 +209,7 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
         LibraryDataProviderHelper.AddHideUpdatesActionComponent(parentItemModel, updatesOnPageUnfiltered, _modUpdateFilterService, isVisibleObservable);
         
         LibraryDataProviderHelper.AddDeleteItemActionComponent(parentItemModel);
+        LibraryDataProviderHelper.AddDestinationComponents(parentItemModel, _connection, libraryFilter.Game.GameId, _gameNames);
 
         return parentItemModel;
     }
@@ -281,6 +284,7 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
         LibraryDataProviderHelper.AddHideUpdatesActionComponent(itemModel, newestFileUnfiltered, _modUpdateFilterService, isVisibleObservable);
         
         LibraryDataProviderHelper.AddDeleteItemActionComponent(itemModel);
+        LibraryDataProviderHelper.AddDestinationComponents(itemModel, _connection, libraryFilter.Game.GameId, _gameNames);
 
         return itemModel;
     }

@@ -1235,6 +1235,41 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="Loadout_Dialog_ShareCollection_ChangeVisibilityMessage" xml:space="preserve">
         <value>You can change the visibility at any time in your collection settings.</value>
     </data>
+    <data name="LibraryDestination_Unassigned" xml:space="preserve">
+        <value>No game assigned</value>
+    </data>
+    <data name="LibraryDestination_Shared" xml:space="preserve">
+        <value>Also under {0}: Nexus Mods does not tell the two apart</value>
+    </data>
+    <data name="LibraryDestination_UseForThisGame" xml:space="preserve">
+        <value>Use for this game</value>
+    </data>
+    <data name="LibraryDestination_SuggestAGame" xml:space="preserve">
+        <value>Suggest a game</value>
+    </data>
+    <data name="LibraryDestination_OnlyForThisGame" xml:space="preserve">
+        <value>Only for this game</value>
+    </data>
+    <data name="LibraryDestination_RemoveFromThisGame" xml:space="preserve">
+        <value>Remove from this game</value>
+    </data>
+    <data name="LibraryDestination_SuggestTitle" xml:space="preserve">
+        <value>Suggested game</value>
+    </data>
+    <data name="LibraryDestination_SuggestOffer" xml:space="preserve">
+        <value>Where this was downloaded and where it is installed point to **{0}**.
+
+Use it for {0}?</value>
+    </data>
+    <data name="LibraryDestination_SuggestUse" xml:space="preserve">
+        <value>Use it</value>
+    </data>
+    <data name="LibraryDestination_SuggestNone" xml:space="preserve">
+        <value>Nothing in your Library says which game this is for. Use **Use for this game** to set it yourself.</value>
+    </data>
+    <data name="LibraryDestination_ChangeActivity" xml:space="preserve">
+        <value>changing which game an item is for</value>
+    </data>
     <data name="Library_DeleteItem_Text" xml:space="preserve">
         <value>Delete</value>
     </data>

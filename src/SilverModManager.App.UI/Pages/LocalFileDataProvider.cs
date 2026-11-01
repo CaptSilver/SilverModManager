@@ -23,12 +23,14 @@ namespace SilverModManager.App.UI.Pages;
 internal class LocalFileDataProvider : ALibraryDataProvider<LocalFile.ReadOnly>, ILoadoutDataProvider
 {
     private readonly IConnection _connection;
+    private readonly GameNames _gameNames;
 
-    public LocalFileDataProvider(IServiceProvider serviceProvider) : this(serviceProvider.GetRequiredService<IConnection>()) { }
+    public LocalFileDataProvider(IServiceProvider serviceProvider) : this(serviceProvider.GetRequiredService<IConnection>(), new GameNames(serviceProvider.GetServices<IGameData>())) { }
 
-    private LocalFileDataProvider(IConnection connection) : base(connection)
+    private LocalFileDataProvider(IConnection connection, GameNames gameNames) : base(connection)
     {
         _connection = connection;
+        _gameNames = gameNames;
     }
 
     // A Wabbajack modlist is added as a local file too; the Collections tab shows it.
@@ -63,7 +65,7 @@ internal class LocalFileDataProvider : ALibraryDataProvider<LocalFile.ReadOnly>,
         var childrenObservable = UIObservableExtensions.ReturnFactory(() =>
         {
             var itemModel = new CompositeItemModel<EntityId>(localFile.Id);
-            SetupLibraryItemModel(itemModel, localFile, linkedLoadoutItemsObservable);
+            SetupLibraryItemModel(itemModel, localFile, libraryFilter, linkedLoadoutItemsObservable);
 
             return new ChangeSet<CompositeItemModel<EntityId>, EntityId>([
                 new Change<CompositeItemModel<EntityId>, EntityId>(
@@ -82,15 +84,16 @@ internal class LocalFileDataProvider : ALibraryDataProvider<LocalFile.ReadOnly>,
             ChildrenObservable = childrenObservable,
         };
 
-        SetupLibraryItemModel(parentItemModel, localFile, linkedLoadoutItemsObservable);
+        SetupLibraryItemModel(parentItemModel, localFile, libraryFilter, linkedLoadoutItemsObservable);
 
         parentItemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
         return parentItemModel;
     }
 
-    private static void SetupLibraryItemModel(
+    private void SetupLibraryItemModel(
         CompositeItemModel<EntityId> itemModel,
         LocalFile.ReadOnly localFile,
+        LibraryFilter libraryFilter,
         IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedLoadoutItemsObservable)
     {
         itemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: localFile.AsLibraryFile().AsLibraryItem().Name));
@@ -104,6 +107,7 @@ internal class LocalFileDataProvider : ALibraryDataProvider<LocalFile.ReadOnly>,
         LibraryDataProviderHelper.AddViewChangelogActionComponent(itemModel, isEnabled: false);
         LibraryDataProviderHelper.AddViewModPageActionComponent(itemModel, isEnabled: false);
         LibraryDataProviderHelper.AddHideUpdatesActionComponent(itemModel, isEnabled: false, isVisible: false);
+        LibraryDataProviderHelper.AddDestinationComponents(itemModel, _connection, libraryFilter.Game.GameId, _gameNames);
         
         // Get related collections
         var md5 = localFile.AsLibraryFile().Md5;

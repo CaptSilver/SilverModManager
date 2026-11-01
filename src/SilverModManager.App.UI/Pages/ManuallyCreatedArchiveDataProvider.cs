@@ -19,12 +19,14 @@ namespace SilverModManager.App.UI.Pages;
 internal class ManuallyCreatedArchiveDataProvider : ALibraryDataProvider<ManuallyCreatedArchive.ReadOnly>, ILoadoutDataProvider
 {
     private readonly IConnection _connection;
+    private readonly GameNames _gameNames;
 
-    public ManuallyCreatedArchiveDataProvider(IServiceProvider serviceProvider) : this(serviceProvider.GetRequiredService<IConnection>()) { }
+    public ManuallyCreatedArchiveDataProvider(IServiceProvider serviceProvider) : this(serviceProvider.GetRequiredService<IConnection>(), new GameNames(serviceProvider.GetServices<IGameData>())) { }
 
-    private ManuallyCreatedArchiveDataProvider(IConnection connection) : base(connection)
+    private ManuallyCreatedArchiveDataProvider(IConnection connection, GameNames gameNames) : base(connection)
     {
         _connection = connection;
+        _gameNames = gameNames;
     }
 
     protected override Optional<LibraryFile.ReadOnly> AsLibraryFile(ManuallyCreatedArchive.ReadOnly model)
@@ -48,7 +50,7 @@ internal class ManuallyCreatedArchiveDataProvider : ALibraryDataProvider<Manuall
         var childrenObservable = UIObservableExtensions.ReturnFactory(() =>
         {
             var itemModel = new CompositeItemModel<EntityId>(archive.Id);
-            SetupLibraryItemModel(itemModel, archive, linkedLoadoutItemsObservable);
+            SetupLibraryItemModel(itemModel, archive, libraryFilter, linkedLoadoutItemsObservable);
 
             return new ChangeSet<CompositeItemModel<EntityId>, EntityId>([
                 new Change<CompositeItemModel<EntityId>, EntityId>(
@@ -67,15 +69,16 @@ internal class ManuallyCreatedArchiveDataProvider : ALibraryDataProvider<Manuall
             ChildrenObservable = childrenObservable,
         };
 
-        SetupLibraryItemModel(parentItemModel, archive, linkedLoadoutItemsObservable);
+        SetupLibraryItemModel(parentItemModel, archive, libraryFilter, linkedLoadoutItemsObservable);
 
         parentItemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
         return parentItemModel;
     }
 
-    private static void SetupLibraryItemModel(
+    private void SetupLibraryItemModel(
         CompositeItemModel<EntityId> itemModel,
         ManuallyCreatedArchive.ReadOnly archive,
+        LibraryFilter libraryFilter,
         IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedLoadoutItemsObservable)
     {
         itemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: archive.AsLibraryArchive().AsLibraryFile().AsLibraryItem().Name));
@@ -89,6 +92,7 @@ internal class ManuallyCreatedArchiveDataProvider : ALibraryDataProvider<Manuall
         LibraryDataProviderHelper.AddViewModPageActionComponent(itemModel, isEnabled: false);
         LibraryDataProviderHelper.AddHideUpdatesActionComponent(itemModel, isEnabled: false, isVisible: false);
         LibraryDataProviderHelper.AddRelatedCollectionsComponent(itemModel, linkedLoadoutItemsObservable);
+        LibraryDataProviderHelper.AddDestinationComponents(itemModel, _connection, libraryFilter.Game.GameId, _gameNames);
     }
 
     private IObservable<IChangeSet<ManuallyCreatedArchive.ReadOnly, EntityId>> FilterLoadoutItems(LoadoutFilter loadoutFilter)

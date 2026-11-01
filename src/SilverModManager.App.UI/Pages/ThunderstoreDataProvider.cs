@@ -32,6 +32,7 @@ namespace SilverModManager.App.UI.Pages;
 internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibraryFile.ReadOnly>, ILoadoutDataProvider
 {
     private readonly IConnection _connection;
+    private readonly GameNames _gameNames;
     private readonly ThunderstoreUpdateChecker _updateChecker;
     private readonly Lazy<IThumbnailLoader> _iconLoader;
 
@@ -43,6 +44,7 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
     {
         _iconLoader = new Lazy<IThumbnailLoader>(() => iconLoader ?? serviceProvider.GetRequiredService<IThumbnailLoader>());
         _connection = serviceProvider.GetRequiredService<IConnection>();
+        _gameNames = new GameNames(serviceProvider.GetServices<IGameData>());
         _updateChecker = serviceProvider.GetRequiredService<ThunderstoreUpdateChecker>();
     }
 
@@ -196,6 +198,7 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
         LibraryDataProviderHelper.AddInstallActionComponent(parentItemModel, matchesObservable);
         AddDisabledPageActions(parentItemModel);
         LibraryDataProviderHelper.AddDeleteItemActionComponent(parentItemModel);
+        LibraryDataProviderHelper.AddDestinationComponents(parentItemModel, _connection, libraryFilter.Game.GameId, _gameNames);
 
         return parentItemModel;
     }
@@ -222,6 +225,7 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
         LibraryDataProviderHelper.AddInstallActionComponent(itemModel, linkedLoadoutItemsObservable);
         AddDisabledPageActions(itemModel);
         LibraryDataProviderHelper.AddDeleteItemActionComponent(itemModel);
+        LibraryDataProviderHelper.AddDestinationComponents(itemModel, _connection, libraryFilter.Game.GameId, _gameNames);
 
         return itemModel;
     }

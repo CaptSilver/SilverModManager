@@ -2215,6 +2215,105 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to No game assigned.
+        /// </summary>
+        public static string LibraryDestination_Unassigned {
+            get {
+                return ResourceManager.GetString("LibraryDestination_Unassigned", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Also under {0}: Nexus Mods does not tell the two apart.
+        /// </summary>
+        public static string LibraryDestination_Shared {
+            get {
+                return ResourceManager.GetString("LibraryDestination_Shared", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Use for this game.
+        /// </summary>
+        public static string LibraryDestination_UseForThisGame {
+            get {
+                return ResourceManager.GetString("LibraryDestination_UseForThisGame", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Suggest a game.
+        /// </summary>
+        public static string LibraryDestination_SuggestAGame {
+            get {
+                return ResourceManager.GetString("LibraryDestination_SuggestAGame", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Only for this game.
+        /// </summary>
+        public static string LibraryDestination_OnlyForThisGame {
+            get {
+                return ResourceManager.GetString("LibraryDestination_OnlyForThisGame", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove from this game.
+        /// </summary>
+        public static string LibraryDestination_RemoveFromThisGame {
+            get {
+                return ResourceManager.GetString("LibraryDestination_RemoveFromThisGame", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Suggested game.
+        /// </summary>
+        public static string LibraryDestination_SuggestTitle {
+            get {
+                return ResourceManager.GetString("LibraryDestination_SuggestTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Where this was downloaded and where it is installed point to **{0}**.  Use it for {0}?.
+        /// </summary>
+        public static string LibraryDestination_SuggestOffer {
+            get {
+                return ResourceManager.GetString("LibraryDestination_SuggestOffer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Use it.
+        /// </summary>
+        public static string LibraryDestination_SuggestUse {
+            get {
+                return ResourceManager.GetString("LibraryDestination_SuggestUse", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing in your Library says which game this is for. Use **Use for this game** to set it yourself..
+        /// </summary>
+        public static string LibraryDestination_SuggestNone {
+            get {
+                return ResourceManager.GetString("LibraryDestination_SuggestNone", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to changing which game an item is for.
+        /// </summary>
+        public static string LibraryDestination_ChangeActivity {
+            get {
+                return ResourceManager.GetString("LibraryDestination_ChangeActivity", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Delete.
         /// </summary>
         public static string Library_DeleteItem_Text {

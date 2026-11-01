@@ -26,6 +26,9 @@ using SilverModManager.App.UI.Pages.Library;
 using SilverModManager.App.UI.Pages.LibraryPage.Collections;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Sdk.Games;
 using DynamicData.Kernel;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Pages.Wabbajack;
@@ -276,7 +279,8 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
                         async viewChangelogMessage => await HandleViewChangelogMessage(viewChangelogMessage, cancellationToken),
                         async viewModPageMessage => await HandleViewModPageMessage(viewModPageMessage, cancellationToken),
                         async hideUpdatesMessage => await HandleHideUpdatesMessage(hideUpdatesMessage, cancellationToken),
-                        async deleteItemMessage => await HandleDeleteItemMessage(deleteItemMessage, cancellationToken)
+                        async deleteItemMessage => await HandleDeleteItemMessage(deleteItemMessage, cancellationToken),
+                        async destinationMessage => await HandleDestinationMessage(destinationMessage, cancellationToken)
                     );
                 },
                 awaitOperation: AwaitOperation.Parallel,
@@ -785,6 +789,62 @@ After asking design, we're choosing to simply open the mod page for now.
         _notificationService.ShowToast(Language.ToastNotification_Items_deleted);
     }
     
+    private async ValueTask HandleDestinationMessage(DestinationMessage message, CancellationToken cancellationToken)
+    {
+        if (message.Ids.Length == 0) return;
+
+        var actions = new LibraryDestinationActions(_libraryService, _connection, _loadout.InstallationInstance.Game.GameId);
+        try
+        {
+            switch (message.Kind)
+            {
+                case DestinationActionKind.UseForThisGame:
+                    await actions.UseForThisGame(message.Ids);
+                    break;
+                case DestinationActionKind.OnlyForThisGame:
+                    await actions.OnlyForThisGame(message.Ids);
+                    break;
+                case DestinationActionKind.RemoveFromThisGame:
+                    await actions.RemoveFromThisGame(message.Ids);
+                    break;
+                case DestinationActionKind.SuggestAGame:
+                    await OfferSuggestedGame(actions, message.Ids);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(message), message.Kind, "Unhandled destination action");
+            }
+        }
+        catch (UserFacingException refusal)
+        {
+            await _serviceProvider.GetRequiredService<IErrorPresenter>().Report(refusal, Language.LibraryDestination_ChangeActivity);
+        }
+    }
+
+    /// <summary>Shows what the inferences found and applies it only when the user accepts.</summary>
+    private async Task OfferSuggestedGame(LibraryDestinationActions actions, LibraryItemId[] ids)
+    {
+        var suggestion = actions.Suggest(ids);
+        var markdown = _serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
+        var buttons = new List<DialogButtonDefinition>();
+        if (suggestion.IsUnknown)
+        {
+            markdown.Contents = Language.LibraryDestination_SuggestNone;
+            buttons.Add(new DialogButtonDefinition("OK", ButtonDefinitionId.Accept, ButtonAction.Accept, ButtonStyling.Primary));
+        }
+        else
+        {
+            var names = new GameNames(_serviceProvider.GetServices<IGameData>());
+            markdown.Contents = string.Format(Language.LibraryDestination_SuggestOffer, string.Join(", ", suggestion.Games.Select(names.NameOf).Order(StringComparer.CurrentCulture)));
+            buttons.Add(new DialogButtonDefinition(Language.LibraryDestination_SuggestUse, ButtonDefinitionId.Accept, ButtonAction.Accept, ButtonStyling.Primary));
+            buttons.Add(new DialogButtonDefinition("Cancel", ButtonDefinitionId.Cancel));
+        }
+
+        var dialog = DialogFactory.CreateStandardDialog(Language.LibraryDestination_SuggestTitle, new StandardDialogParameters { Markdown = markdown }, buttons.ToArray());
+        var result = await WindowManager.ShowDialog(dialog, DialogWindowType.Modal);
+        if (!suggestion.IsUnknown && result.ButtonId == ButtonDefinitionId.Accept)
+            await actions.Accept(ids, suggestion);
+    }
+
     private async ValueTask HandleHideUpdatesMessage(HideUpdatesMessage hideUpdatesMessage, CancellationToken cancellationToken)
     {
         var modUpdateFilterService = _serviceProvider.GetRequiredService<IModUpdateFilterService>();
@@ -1118,16 +1178,17 @@ public readonly record struct ViewChangelogMessage(OneOf<NexusModsModPageMetadat
 public readonly record struct ViewModPageMessage(OneOf<NexusModsModPageMetadataId, NexusModsLibraryItemId> Id);
 public readonly record struct HideUpdatesMessage(OneOf<NexusModsModPageMetadataId, NexusModsLibraryItemId> Id);
 public readonly record struct DeleteItemMessage(LibraryItemId[] Ids);
+public readonly record struct DestinationMessage(LibraryItemId[] Ids, DestinationActionKind Kind);
 
 public class LibraryTreeDataGridAdapter :
     TreeDataGridAdapter<CompositeItemModel<EntityId>, EntityId>,
-    ITreeDataGirdMessageAdapter<OneOf<InstallMessage, UpdateAndReplaceMessage, UpdateAndKeepOldMessage, ViewChangelogMessage, ViewModPageMessage, HideUpdatesMessage, DeleteItemMessage>>
+    ITreeDataGirdMessageAdapter<OneOf<InstallMessage, UpdateAndReplaceMessage, UpdateAndKeepOldMessage, ViewChangelogMessage, ViewModPageMessage, HideUpdatesMessage, DeleteItemMessage, DestinationMessage>>
 {
     private readonly ILibraryDataProvider[] _libraryDataProviders;
     private readonly LibraryFilter _libraryFilter;
     private readonly IConnection _connection;
 
-    public Subject<OneOf<InstallMessage, UpdateAndReplaceMessage, UpdateAndKeepOldMessage, ViewChangelogMessage, ViewModPageMessage, HideUpdatesMessage, DeleteItemMessage>> MessageSubject { get; } = new();
+    public Subject<OneOf<InstallMessage, UpdateAndReplaceMessage, UpdateAndKeepOldMessage, ViewChangelogMessage, ViewModPageMessage, HideUpdatesMessage, DeleteItemMessage, DestinationMessage>> MessageSubject { get; } = new();
 
     public LibraryTreeDataGridAdapter(IServiceProvider serviceProvider, LibraryFilter libraryFilter) : base(serviceProvider)
     {
@@ -1233,6 +1294,16 @@ public class LibraryTreeDataGridAdapter :
             })
         );
 
+        model.SubscribeToComponentAndTrack<LibraryComponents.DestinationActions, LibraryTreeDataGridAdapter>(
+            key: LibraryColumns.Actions.DestinationActionsComponentKey,
+            state: this,
+            factory: static (self, itemModel, component) => component.Requested.Subscribe((self, itemModel), static (kind, state) =>
+            {
+                var (self, model) = state;
+                self.MessageSubject.OnNext(new DestinationMessage(GetLibraryItemIds(model).ToArray(), kind));
+            })
+        );
+
         model.SubscribeToComponentAndTrack<LibraryComponents.HideUpdatesAction, LibraryTreeDataGridAdapter>(
             key: LibraryColumns.Actions.HideUpdatesComponentKey,
             state: this,
@@ -1264,6 +1335,7 @@ public class LibraryTreeDataGridAdapter :
             ColumnCreator.Create<EntityId, LibraryColumns.DownloadedDate>(sortDirection: ListSortDirection.Descending),
             ColumnCreator.Create<EntityId, SharedColumns.InstalledDate>(),
             ColumnCreator.Create<EntityId, LibraryColumns.Collections>(),
+            ColumnCreator.Create<EntityId, LibraryColumns.Destination>(),
             ColumnCreator.Create<EntityId, LibraryColumns.Actions>(),
         ];
     }
