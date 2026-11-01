@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.NexusWebApi;
@@ -33,6 +34,8 @@ public class ModlistDestinationTests(ITestOutputHelper helper) : AcquireTestBase
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         return base.AddServices(services)
+            .AddSingleton<CapturedWarnings>()
+            .AddSingleton<ILoggerProvider>(provider => provider.GetRequiredService<CapturedWarnings>())
             .AddSingleton<OpenedUris>()
             .AddSingleton<IOSInterop>(provider => provider.GetRequiredService<OpenedUris>().Interop)
             .AddSingleton<IArchiveDownloadJobs>(provider => new FakeDownloadJobs(provider));
@@ -65,6 +68,35 @@ public class ModlistDestinationTests(ITestOutputHelper helper) : AcquireTestBase
         await using var file = TemporaryFileManager.CreateFile(new Extension(".txt"));
         await file.Path.WriteAllBytesAsync(content);
         return (await LibraryService.AddLocalFile(file.Path, new GameAcquisition(game))).Id;
+    }
+
+    [Fact]
+    public async Task ModlistAcquisition_UntitledLists_EachWarnOnceUnderTheirOwnId()
+    {
+        var first = await AddModlistFor("Witcher3", "First untitled list", UnassignedAcquisition.Instance);
+        var second = await AddModlistFor("Witcher3", "Second untitled list", UnassignedAcquisition.Instance);
+        var warnings = new CapturedWarnings();
+        var logger = warnings.CreateLogger("test");
+
+        for (var i = 0; i < 3; i++)
+        {
+            new ModlistAcquisition(first, logger).Destination(Connection.Db);
+            new ModlistAcquisition(second, logger).Destination(Connection.Db);
+        }
+
+        warnings.Messages.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Recogniser_UntitledList_LeavesTheWarningToTheCommittedList()
+    {
+        // Inside the recogniser's transaction a list only has a temporary id, shared by every list, so it cannot key the once-only warning.
+        var captured = ServiceProvider.GetRequiredService<CapturedWarnings>();
+
+        await AddModlistFor("Witcher3", "First untitled list", UnassignedAcquisition.Instance);
+        await AddModlistFor("Witcher3", "Second untitled list", UnassignedAcquisition.Instance);
+
+        captured.Messages.Should().NotContain(message => message.Contains("no title for"));
     }
 
     [Fact]
@@ -248,5 +280,36 @@ public class ModlistDestinationTests(ITestOutputHelper helper) : AcquireTestBase
 
         expected.TryGetExpectedGame(GameDomain.From("skyrimspecialedition"), ModId.From(5), FileId.From(6), out var game).Should().BeTrue();
         game.Should().Be(SkyrimVr);
+    }
+}
+
+/// <summary>Collects the warnings logged through any logger it creates.</summary>
+internal sealed class CapturedWarnings : ILoggerProvider
+{
+    private readonly List<string> _messages = [];
+
+    public IReadOnlyList<string> Messages
+    {
+        get
+        {
+            lock (_messages) return [.. _messages];
+        }
+    }
+
+    public ILogger CreateLogger(string categoryName) => new Capture(this);
+
+    public void Dispose() { }
+
+    private sealed class Capture(CapturedWarnings owner) : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel != LogLevel.Warning) return;
+            lock (owner._messages) owner._messages.Add(formatter(state, exception));
+        }
     }
 }

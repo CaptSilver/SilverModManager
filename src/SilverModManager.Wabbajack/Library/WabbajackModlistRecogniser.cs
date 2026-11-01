@@ -53,7 +53,8 @@ public sealed class WabbajackModlistRecogniser(ILogger<WabbajackModlistRecognise
             IsNsfw = list.IsNsfw,
         };
 
-        var destination = ModlistAcquisition.ForList(file.Id, list.GameType, logger);
+        // No logger: the file only has a temporary id in this transaction, so the once-per-list warning waits for the committed list.
+        var destination = ModlistAcquisition.ForList(file.Id, list.GameType, null);
         foreach (var archive in list.Archives)
         {
             // An archive named by a hash this app does not use (the list format only has xxHash64) cannot be joined to the library.

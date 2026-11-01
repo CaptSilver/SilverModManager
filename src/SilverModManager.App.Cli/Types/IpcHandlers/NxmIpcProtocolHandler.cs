@@ -168,8 +168,8 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
         var expectedDownloads = _serviceProvider.GetService<IExpectedNexusDownloads>();
         var expected = expectedDownloads?.IsExpected(domain, modUrl.ModId, modUrl.FileId) ?? false;
 
-        // A modlist that expects the file says which of the domain's games it is for; otherwise the loadouts decide.
-        // The domain is only mapped on that second path, so an expected file never depends on the mapping.
+        // A modlist that expects the file says which of the domain's games it is for, and that wins over the loadouts:
+        // the domain alone cannot tell Skyrim SE from Skyrim VR.
         IAcquisitionContext AcquisitionFor() => expectedDownloads is not null && expectedDownloads.TryGetExpectedGame(domain, modUrl.ModId, modUrl.FileId, out var plannedGame)
             ? new GameAcquisition(plannedGame)
             : new NxmAcquisition(_cache[domain]);
