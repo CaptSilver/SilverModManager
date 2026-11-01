@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <Using Include="Xunit"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- For XdndSession.DataTimeout and RetryDelay, so the tests wait as long as the receiver does. -->
+    <ProjectReference Include="..\..\src\SilverModManager.App.UI\SilverModManager.App.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Launched as a child process on a private Xvfb display; only built, never referenced. -->
+    <ProjectReference Include="..\SilverModManager.App.UI.X11.TestHost\SilverModManager.App.UI.X11.TestHost.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>
