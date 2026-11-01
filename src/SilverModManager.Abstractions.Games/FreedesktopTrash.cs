@@ -43,8 +43,15 @@ public sealed class FreedesktopTrash : ITrash
 
         var files = Path.Combine(_trashRoot, "files");
         var info = Path.Combine(_trashRoot, "info");
-        Directory.CreateDirectory(files);
-        Directory.CreateDirectory(info);
+        try
+        {
+            Directory.CreateDirectory(files);
+            Directory.CreateDirectory(info);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            throw Refused(source, e);
+        }
 
         var (name, infoPath) = ClaimName(Path.GetFileName(source), files, info, source);
         try
@@ -54,10 +61,12 @@ public sealed class FreedesktopTrash : ITrash
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             File.Delete(infoPath);
-            throw new HostFolderMoveRefusedException(
-                $"'{source}' could not be moved to the trash ({e.Message}). It is on a different drive than your trash or cannot be moved, so it was left where it is.", e);
+            throw Refused(source, e);
         }
     }
+
+    private static HostFolderMoveRefusedException Refused(string source, Exception cause)
+        => new($"'{source}' could not be moved to the trash ({cause.Message}). It may be on a different drive than your trash, or the trash may not be writable, so it was left where it is.", cause);
 
     /// <summary>
     /// Writes the info file under the first free name. Creating it exclusively is the spec's way of reserving the name.
@@ -74,15 +83,30 @@ public sealed class FreedesktopTrash : ITrash
             var infoPath = Path.Combine(info, name + ".trashinfo");
             if (Path.Exists(Path.Combine(files, name))) continue;
 
+            FileStream stream;
             try
             {
-                using var stream = new FileStream(infoPath, FileMode.CreateNew, FileAccess.Write);
-                stream.Write(Encoding.UTF8.GetBytes(contents));
-                return (name, infoPath);
+                stream = new FileStream(infoPath, FileMode.CreateNew, FileAccess.Write);
             }
             catch (IOException) when (File.Exists(infoPath))
             {
-                // Another entry already holds this name.
+                continue; // Another entry already holds this name.
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                throw Refused(source, e);
+            }
+
+            // A write that fails leaves a half-written info file behind. That is not a taken name, so it must not loop.
+            try
+            {
+                using (stream) stream.Write(Encoding.UTF8.GetBytes(contents));
+                return (name, infoPath);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                File.Delete(infoPath);
+                throw Refused(source, e);
             }
         }
     }

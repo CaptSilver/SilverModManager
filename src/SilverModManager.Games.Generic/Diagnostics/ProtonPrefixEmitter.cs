@@ -71,11 +71,29 @@ public class ProtonPrefixEmitter(IFileSystem hostFileSystem) : ILoadoutDiagnosti
         {
             if (locationId == LocationId.Game) continue;
             if (!hostLocations.TryGetValue(locationId, out var hostPath)) continue;
-            if (hostPath.GetFullPath() == descriptor.Path.GetFullPath() || !hostPath.DirectoryExists()) continue;
+            if (!hostPath.DirectoryExists() || IsSameFolder(hostPath.GetFullPath(), descriptor.Path.GetFullPath())) continue;
 
             var (host, inPrefix) = (hostPath.GetFullPath(), descriptor.Path.GetFullPath());
             yield return Diagnostics.CreateHostCopyOfGameFolder(gameName, locationId.ToString(), host, inPrefix)
                 with { Actions = [DiagnosticActions.MoveHostFolderIntoGame(host, inPrefix)] };
+        }
+    }
+
+    /// <summary>
+    /// Whether two paths name the same folder once links are followed. A prefix that links its Documents to the host's
+    /// holds no second copy, however different the paths read.
+    /// </summary>
+    private static bool IsSameFolder(string host, string inPrefix)
+    {
+        if (host == inPrefix) return true;
+
+        try
+        {
+            return ResolvedPath.Of(host) == ResolvedPath.Of(inPrefix);
+        }
+        catch (IOException)
+        {
+            return false; // Links that loop are not a folder the game could be using.
         }
     }
 

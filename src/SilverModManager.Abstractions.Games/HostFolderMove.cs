@@ -44,12 +44,23 @@ public static class HostFolderMove
         if (SavedFolderRestore.LinkTargetOf(hostFolder) is not null)
             throw new HostFolderMoveRefusedException($"'{hostFolder}' is a link to another folder, so it was left alone.");
 
-        var host = Path.TrimEndingDirectorySeparator(Path.GetFullPath(hostFolder));
-        var prefix = Path.TrimEndingDirectorySeparator(Path.GetFullPath(prefixFolder));
+        // The prefix folder is often reached through a link (Documents shared with the host's, say). Compared as
+        // written, the two would look apart while being the same files, and trashing "the host copy" would take the game's.
+        string host, prefix;
+        try
+        {
+            host = Path.TrimEndingDirectorySeparator(ResolvedPath.Of(hostFolder));
+            prefix = Path.TrimEndingDirectorySeparator(ResolvedPath.Of(prefixFolder));
+        }
+        catch (IOException e)
+        {
+            throw new HostFolderMoveRefusedException($"The links on the way to '{prefixFolder}' could not be followed ({e.Message}), so nothing was moved.", e);
+        }
+
         if (IsSameOrInside(host, prefix) || IsSameOrInside(prefix, host))
             throw new HostFolderMoveRefusedException($"'{hostFolder}' and '{prefixFolder}' overlap, so nothing was moved.");
 
-        var parent = Path.GetDirectoryName(prefix);
+        var parent = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(Path.GetFullPath(prefixFolder)));
         if (string.IsNullOrEmpty(parent) || !Directory.Exists(parent))
             throw new HostFolderMoveRefusedException($"The folder '{parent}' does not exist, so '{hostFolder}' was left where it is. Start the game once to create it.");
     }

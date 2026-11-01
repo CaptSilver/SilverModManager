@@ -49,16 +49,28 @@ public class ProtonPrefixEmitterTests(ITestOutputHelper helper) : AStubbedGameTe
     /// </summary>
     private sealed class Fixture
     {
-        public InMemoryFileSystem Host { get; } = new(OSInformation.FakeUnix);
+        public IFileSystem Host { get; }
         public AbsolutePath Prefix { get; }
         public AbsolutePath HostCopy { get; }
         public AbsolutePath PrefixCopy { get; }
 
         public Fixture()
         {
+            Host = new InMemoryFileSystem(OSInformation.FakeUnix);
             Prefix = Host.FromUnsanitizedFullPath(PrefixPath);
             PrefixCopy = Host.FromUnsanitizedFullPath(PrefixLocalAppData);
             HostCopy = Host.GetKnownPath(KnownPath.LocalApplicationDataDirectory).Combine("Studio");
+        }
+
+        /// <summary>
+        /// The same layout on the real file system under <paramref name="root"/>, for the cases that need links.
+        /// </summary>
+        public Fixture(string root)
+        {
+            Host = NexusMods.Paths.FileSystem.Shared;
+            Prefix = Host.FromUnsanitizedFullPath(Path.Combine(root, "pfx"));
+            PrefixCopy = Host.FromUnsanitizedFullPath(Path.Combine(root, "pfx", "drive_c", "Studio"));
+            HostCopy = Host.FromUnsanitizedFullPath(Path.Combine(root, "host", "Studio"));
         }
 
         public void MakePrefixReady()
@@ -185,6 +197,26 @@ public class ProtonPrefixEmitterTests(ITestOutputHelper helper) : AStubbedGameTe
         action.Label.Should().Be("Move it into the game's folder");
         action.Arguments.Should().Equal(fixture.HostCopy.GetFullPath(), fixture.PrefixCopy.GetFullPath());
         action.Note.Should().Contain("trash").And.Contain("kept");
+    }
+
+    [Fact]
+    public void PrefixFolderThatIsALinkToTheHostFolder_YieldsNothing()
+    {
+        var root = Directory.CreateTempSubdirectory("prefix-emitter-link").FullName;
+        try
+        {
+            var fixture = new Fixture(root);
+            fixture.HostCopy.CreateDirectory();
+            fixture.Prefix.CreateDirectory();
+            File.WriteAllText(Path.Combine(root, "pfx", "system.reg"), "");
+            Directory.CreateSymbolicLink(Path.Combine(root, "pfx", "drive_c"), Path.Combine(root, "host"));
+
+            ProtonPrefixEmitter.DiagnoseInstallation(fixture.Installation(withProvider: true), fixture.Host).Should().BeEmpty();
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     [Fact]

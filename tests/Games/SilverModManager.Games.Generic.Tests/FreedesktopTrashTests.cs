@@ -121,4 +121,48 @@ public class FreedesktopTrashTests : IDisposable
         act.Should().Throw<HostFolderMoveRefusedException>();
         Directory.Exists(Path.Combine(DataHome, "Trash", "files")).Should().BeFalse();
     }
+
+    [Fact]
+    public void AnInfoFolderThatCannotBeWritten_IsRefusedAndTheFolderStays()
+    {
+        var folder = Folder("Skyrim");
+        var info = Path.Combine(DataHome, "Trash", "info");
+        Directory.CreateDirectory(Path.Combine(DataHome, "Trash", "files"));
+        Directory.CreateDirectory(info);
+        using var _ = ReadOnly(info);
+
+        var move = () => Trash().MoveToTrash(folder);
+
+        move.Should().Throw<HostFolderMoveRefusedException>();
+        File.Exists(Path.Combine(folder, "a.ini")).Should().BeTrue();
+        Directory.GetFiles(info).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ADataHomeThatCannotBeWritten_IsRefusedAndTheFolderStays()
+    {
+        var folder = Folder("Skyrim");
+        Directory.CreateDirectory(DataHome);
+        using var _ = ReadOnly(DataHome);
+
+        var move = () => Trash().MoveToTrash(folder);
+
+        move.Should().Throw<HostFolderMoveRefusedException>();
+        File.Exists(Path.Combine(folder, "a.ini")).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Takes write permission off a directory until disposed.
+    /// </summary>
+    private static IDisposable ReadOnly(string directory)
+    {
+        var original = File.GetUnixFileMode(directory);
+        File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        return new Restore(() => File.SetUnixFileMode(directory, original));
+    }
+
+    private sealed class Restore(Action undo) : IDisposable
+    {
+        public void Dispose() => undo();
+    }
 }

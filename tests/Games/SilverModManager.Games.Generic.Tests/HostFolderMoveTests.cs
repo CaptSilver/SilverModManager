@@ -178,4 +178,45 @@ public class HostFolderMoveTests : IDisposable
         act.Should().Throw<HostFolderMoveRefusedException>();
         File.Exists(Path.Combine(Host, "x.ini")).Should().BeTrue();
     }
+
+    [Fact]
+    public void APrefixFolderReachedThroughALinkIntoTheHostFolder_IsRefusedAndNothingIsTrashed()
+    {
+        Write(Host, "Saves/save1.ess", "the only copy");
+        Directory.CreateDirectory(Path.Combine(_root, "pfx"));
+        Directory.CreateSymbolicLink(Path.Combine(_root, "pfx", "My Games"), Path.Combine(_root, "host", "My Games"));
+
+        var run = Run;
+
+        run.Should().Throw<HostFolderMoveRefusedException>();
+        _trash.DidNotReceiveWithAnyArgs().MoveToTrash(default!);
+        File.ReadAllText(Path.Combine(Prefix, "Saves", "save1.ess")).Should().Be("the only copy");
+    }
+
+    [Fact]
+    public void ADistantAncestorOfThePrefixFolderLinkedToTheHost_IsRefusedAndNothingIsTrashed()
+    {
+        Write(Host, "Skyrim.ini", "host");
+        Directory.CreateSymbolicLink(Path.Combine(_root, "pfx"), Path.Combine(_root, "host"));
+
+        var run = Run;
+
+        run.Should().Throw<HostFolderMoveRefusedException>();
+        _trash.DidNotReceiveWithAnyArgs().MoveToTrash(default!);
+        File.Exists(Path.Combine(Host, "Skyrim.ini")).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ALinkThatLeadsElsewhere_DoesNotCountAsAnOverlap()
+    {
+        Write(Host, "Skyrim.ini", "host");
+        Write(_root, "elsewhere/keep.txt", "keep");
+        Directory.CreateDirectory(Path.Combine(_root, "pfx"));
+        Directory.CreateSymbolicLink(Path.Combine(_root, "pfx", "My Games"), Path.Combine(_root, "elsewhere"));
+
+        Run();
+
+        File.ReadAllText(Path.Combine(_root, "elsewhere", "Skyrim", "Skyrim.ini")).Should().Be("host");
+        _trash.Received(1).MoveToTrash(Host);
+    }
 }
