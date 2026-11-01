@@ -75,19 +75,28 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
     }
 
     /// <summary>
-    /// The plugins the enabled mods put straight into Data. The game's own masters are not loadout files and are
-    /// not offered: nobody cleans them.
+    /// The plugins the enabled mods put straight into Data, and the game's own masters and Creation Club plugins that
+    /// are installed there. The official masters (Update.esm, Dawnguard.esm and the like) are not loadout files, but
+    /// they are the plugins people clean most.
     /// </summary>
-    public IReadOnlyList<string> PluginNames(Loadout.ReadOnly loadout) => LoadoutItem.FindByLoadout(loadout.Db, loadout.LoadoutId)
+    public IReadOnlyList<string> PluginNames(Loadout.ReadOnly loadout) => LoadoutPluginNames(loadout)
+        .Concat(InstalledGamePluginNames(loadout.InstallationInstance))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .Order(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    private IEnumerable<string> LoadoutPluginNames(Loadout.ReadOnly loadout) => LoadoutItem.FindByLoadout(loadout.Db, loadout.LoadoutId)
         .OfTypeLoadoutItemWithTargetPath()
         .OfTypeLoadoutFile()
         .Where(file => file.AsLoadoutItemWithTargetPath().AsLoadoutItem().IsEnabled())
         .Select(file => (GamePath)file.AsLoadoutItemWithTargetPath().TargetPath)
         .Where(path => path.Parent == DataPath && PluginExtensions.Contains(path.Extension))
-        .Select(path => path.FileName.ToString())
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .Order(StringComparer.OrdinalIgnoreCase)
-        .ToList();
+        .Select(path => path.FileName.ToString());
+
+    // Read from disk: the game's files are not loadout items, and an uninstalled DLC must not be offered.
+    private IEnumerable<string> InstalledGamePluginNames(GameInstallation installation) => EarlyLoadingPlugins(installation)
+        .Where(name => PluginExtensions.Contains((DataPath / name).Extension)
+                       && installation.Locations.ToAbsolutePath(DataPath / name).FileExists);
 
     public abstract PluginFormat HeaderFormat { get; }
 

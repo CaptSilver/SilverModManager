@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games.Tools;
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.CreationEngine.Abstractions;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
@@ -14,7 +16,8 @@ namespace SilverModManager.Games.CreationEngine.Tests.Tools;
 
 /// <summary>
 /// The Quick Auto Clean picker lists the plugins the loadout puts in the game's Data folder: enabled mods only,
-/// plugin file types only, nothing from subfolders.
+/// plugin file types only, nothing from subfolders. The game's own masters that are installed are listed too: they
+/// are the plugins most often cleaned.
 /// </summary>
 public class CreationEngineToolPluginSourceTests(ITestOutputHelper helper)
     : AIsolatedGameTest<CreationEngineToolPluginSourceTests, CreationEngine.SkyrimSE.SkyrimSE>(helper)
@@ -59,5 +62,42 @@ public class CreationEngineToolPluginSourceTests(ITestOutputHelper helper)
         var loadout = await CreateLoadout();
 
         Source.PluginNames(loadout).Should().BeEmpty();
+    }
+
+    private void OnDisk(string name)
+    {
+        var file = GameInstallation.Locations.ToAbsolutePath(((ICreationEngineGame)Game).DataPath / name);
+        Directory.CreateDirectory(file.Parent.GetFullPath());
+        File.WriteAllText(file.GetFullPath(), "TES4");
+    }
+
+    [Fact]
+    public async Task ListsTheGameShippedMastersThatAreInstalled()
+    {
+        var loadout = await CreateLoadout();
+        OnDisk("Dawnguard.esm");
+        OnDisk("Update.esm");
+        await AddMod(loadout, "Mod", disabled: false, "Alpha.esp");
+
+        Source.PluginNames(Refresh(loadout)).Should().Equal("Alpha.esp", "Dawnguard.esm", "Update.esm");
+    }
+
+    [Fact]
+    public async Task LeavesOutAGameMasterThatIsNotInstalled()
+    {
+        var loadout = await CreateLoadout();
+        OnDisk("Dawnguard.esm");
+
+        Source.PluginNames(Refresh(loadout)).Should().Equal("Dawnguard.esm");
+    }
+
+    [Fact]
+    public async Task ListsAGameMasterOnceWhenAModAlsoPutsItInData()
+    {
+        var loadout = await CreateLoadout();
+        OnDisk("Update.esm");
+        await AddMod(loadout, "Patch", disabled: false, "update.esm");
+
+        Source.PluginNames(Refresh(loadout)).Should().ContainSingle();
     }
 }
