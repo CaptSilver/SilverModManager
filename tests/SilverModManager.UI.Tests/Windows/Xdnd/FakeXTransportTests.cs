@@ -78,7 +78,35 @@ public class FakeXTransportTests
         var set = x.AtomsSet.Should().ContainSingle().Subject;
         (set.Window, set.Property).Should().Be((5, 6));
         set.Atoms.Should().Equal(11, 12);
-        x.GetProperty(5, 6, delete: false)!.Longs().Should().Equal(11, 12);
+        var property = x.GetProperty(5, 6, delete: false)!;
+        property.Longs().Should().Equal(11, 12);
+        property.Type.Should().Be(4, "XA_ATOM is predefined, so the real call interns nothing");
+        x.InternCalls.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void CallsKeepsFromRootAndFlushInOrderWithMessages()
+    {
+        var x = new FakeXTransport();
+
+        x.FromRoot(9, 1, 2);
+        x.SendClientMessage(9, 20, 1, 2, 3, 4, 5);
+        x.Flush();
+
+        x.Calls.Should().HaveCount(3);
+        x.Calls[0].Should().Be(new FromRootCall(9, 1, 2));
+        x.Calls[1].Should().BeOfType<SentClientMessage>();
+        x.Calls[2].Should().Be(new FlushCall());
+    }
+
+    [Fact]
+    public void CallsRecordsDispose()
+    {
+        var x = new FakeXTransport();
+
+        x.Dispose();
+
+        x.Calls.Should().Equal(new DisposeCall());
     }
 
     [Fact]

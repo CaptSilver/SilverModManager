@@ -8,15 +8,19 @@ public sealed record SelectionConversion(nint Selection, nint Target, nint Prope
 public sealed record PropertyRead(nint Window, nint Property, bool Delete);
 public sealed record PropertyDeleted(nint Window, nint Property);
 public sealed record AtomsSet(nint Window, nint Property, nint[] Atoms);
+public sealed record FromRootCall(nint Window, int RootX, int RootY);
+public sealed record FlushCall;
+public sealed record DisposeCall;
 
 /// <summary>
-/// An IXTransport for session tests. Atoms are handed out in order; every request is recorded, both per kind and in
-/// one ordered <see cref="Calls"/> list; property values and FromRoot answers are scripted by the test.
+/// An IXTransport for session tests. Atoms are handed out in order; every request except InternAtom and AtomName is
+/// recorded, both per kind and in one ordered <see cref="Calls"/> list (InternCalls keeps the interned names); property values and FromRoot answers are scripted by the test.
 /// </summary>
 public sealed class FakeXTransport : IXTransport
 {
     private readonly Dictionary<string, nint> _atoms = [];
     private readonly Dictionary<(nint Window, nint Property), XProperty> _properties = [];
+    private const nint XaAtom = 4;
     private nint _next = 100;
 
     public List<string> InternCalls { get; } = [];
@@ -58,7 +62,7 @@ public sealed class FakeXTransport : IXTransport
         Calls.Add(call);
         var bytes = new byte[copy.Length * sizeof(long)];
         for (var i = 0; i < copy.Length; i++) BitConverter.GetBytes((long)copy[i]).CopyTo(bytes, i * sizeof(long));
-        _properties[(window, property)] = new XProperty(InternAtom("ATOM"), 32, bytes);
+        _properties[(window, property)] = new XProperty(XaAtom, 32, bytes);
     }
 
     public XProperty? GetProperty(nint window, nint property, bool delete)
@@ -95,10 +99,19 @@ public sealed class FakeXTransport : IXTransport
     public PixelPoint? FromRoot(nint window, int rootX, int rootY)
     {
         FromRootCalls.Add((window, rootX, rootY));
+        Calls.Add(new FromRootCall(window, rootX, rootY));
         return GoneWindows.Contains(window) ? null : RootToWindow(window, rootX, rootY);
     }
 
-    public void Flush() => Flushes++;
+    public void Flush()
+    {
+        Flushes++;
+        Calls.Add(new FlushCall());
+    }
 
-    public void Dispose() => Disposed = true;
+    public void Dispose()
+    {
+        Disposed = true;
+        Calls.Add(new DisposeCall());
+    }
 }
