@@ -25,7 +25,11 @@ public class LoadOrderFileGamesNexusIdTests(IServiceProvider provider)
     public void EveryLoadOrderFileGameIsRegisteredWithTheApp()
     {
         FamilyGames.Select(game => game.GameId).Should().BeEquivalentTo(
-            new[] { "LoadOrderFile.KingdomComeDeliverance", "LoadOrderFile.KingdomComeDeliverance2" }.Select(GameId.From));
+            new[]
+            {
+                "LoadOrderFile.KingdomComeDeliverance", "LoadOrderFile.KingdomComeDeliverance2",
+                "LoadOrderFile.XCom2", "LoadOrderFile.XCom2WarOfTheChosen",
+            }.Select(GameId.From));
     }
 
     [Fact]
@@ -45,6 +49,7 @@ public class LoadOrderFileGamesNexusIdTests(IServiceProvider provider)
     [Theory]
     [InlineData("LoadOrderFile.KingdomComeDeliverance", 2298u)]
     [InlineData("LoadOrderFile.KingdomComeDeliverance2", 7286u)]
+    [InlineData("LoadOrderFile.XCom2", 1271u)]
     public void NxmRoutingPicksEachGameByItsOwnNexusId(string gameId, uint nexusId)
     {
         NexusModsGameScope.ResolveNxmGame(FamilyGames, NexusModsGameId.From(nexusId), _ => true, NullLogger.Instance)
@@ -56,5 +61,16 @@ public class LoadOrderFileGamesNexusIdTests(IServiceProvider provider)
     {
         NexusModsGameScope.ResolveNxmGame(FamilyGames, UnrelatedNexusId, _ => true, NullLogger.Instance)
             .HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public void XCom2AndWarOfTheChosenShareOneNexusGameSoTheOneWithALoadoutTakesTheLink()
+    {
+        var shared = NexusModsGameId.From(1271);
+
+        NexusModsGameScope.ResolveNxmGame(FamilyGames, shared, id => id == GameId.From("LoadOrderFile.XCom2WarOfTheChosen"), NullLogger.Instance)
+            .Value.GameId.Should().Be(GameId.From("LoadOrderFile.XCom2WarOfTheChosen"));
+        NexusModsGameScope.ResolveNxmGame(FamilyGames, shared, id => id == GameId.From("LoadOrderFile.XCom2"), NullLogger.Instance)
+            .Value.GameId.Should().Be(GameId.From("LoadOrderFile.XCom2"));
     }
 }

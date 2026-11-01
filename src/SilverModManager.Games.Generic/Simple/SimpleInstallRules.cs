@@ -14,6 +14,12 @@ public sealed record SimpleInstallRules
     /// </summary>
     public IReadOnlyList<SimpleMarkerRule> MarkerRules { get; init; } = [];
 
+    /// <summary>
+    /// Archives with a descriptor file of a given extension, tried after the marker rules: the folder holding the
+    /// descriptor is the mod, installed in a folder named after the descriptor.
+    /// </summary>
+    public IReadOnlyList<SimpleDescriptorRule> DescriptorRules { get; init; } = [];
+
     /// <summary>Known folder names and file extensions, matched in the order given.</summary>
     public IReadOnlyList<SimpleInstallTarget> Targets { get; init; } = [];
 
@@ -64,5 +70,20 @@ public sealed record SimpleMarkerRule
     /// Extensions that are neither installed nor a reason to decline, so a readme outside the marker's folder does
     /// not make the archive look like a different layout.
     /// </summary>
+    public IReadOnlyList<Extension> IgnoredExtensions { get; init; } = [];
+}
+
+/// <summary>
+/// An archive with a file of <see cref="Extension"/> in its mod folder is installed to <see cref="Destination"/> in a
+/// folder named after that file, whatever the archive's own folder is called. For games that tie a mod folder to the
+/// name of its descriptor file.
+/// </summary>
+public sealed record SimpleDescriptorRule
+{
+    public required Extension Extension { get; init; }
+
+    public required RelativePath Destination { get; init; }
+
+    /// <summary>Extensions that are neither installed nor a reason to decline, so a readme outside the mod's folder does not make the archive look like a different layout.</summary>
     public IReadOnlyList<Extension> IgnoredExtensions { get; init; } = [];
 }

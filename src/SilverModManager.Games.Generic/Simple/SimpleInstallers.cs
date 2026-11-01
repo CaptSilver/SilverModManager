@@ -29,6 +29,18 @@ public static class SimpleInstallers
             });
         }
 
+        foreach (var rule in rules.DescriptorRules)
+        {
+            var extension = rule.Extension;
+            installers.Add(new PredicateBasedInstaller(provider)
+            {
+                Root = node => node.HasDirectChildEndingIn(extension.ToString()),
+                Destination = modRoot.ToGamePath(rule.Destination),
+                InFolderNamedAfterFileWithExtension = extension,
+                IgnoreFiles = rule.IgnoredExtensions.Cast<object>().ToArray(),
+            });
+        }
+
         if (rules.Targets.Count > 0)
         {
             installers.Add(new GenericPatternMatchInstaller(provider)

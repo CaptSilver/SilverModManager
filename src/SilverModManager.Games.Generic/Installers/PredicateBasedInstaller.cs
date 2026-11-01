@@ -31,6 +31,13 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
     public bool InFolderNamedAfterMod { get; init; }
 
     /// <summary>
+    /// Puts the files in a folder below <see cref="Destination"/>, named after the file with this extension that sits
+    /// directly in the matched root (its name without the extension). Takes the place of
+    /// <see cref="InFolderNamedAfterMod"/> when set.
+    /// </summary>
+    public Extension? InFolderNamedAfterFileWithExtension { get; init; }
+
+    /// <summary>
     /// Files in this array will not be installed, and will not cause the installer to fail if they exist.
     /// </summary>
     public object[] IgnoreFiles { get; init; } = [];
@@ -153,7 +160,13 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
 
         var rootDestination = Destination;
         var destinationFolder = Destination.Path;
-        if (InFolderNamedAfterMod)
+        if (InFolderNamedAfterFileWithExtension is { } descriptor)
+        {
+            if (TryGetDescriptorFolder(found, descriptor, out var descriptorFolder) is false)
+                return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "The mod's descriptor file does not make a valid folder name"));
+            destinationFolder = destinationFolder / descriptorFolder;
+        }
+        else if (InFolderNamedAfterMod)
         {
             if (TryGetModFolder(libraryArchive, found, out var modFolder) is false)
                 return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "The mod's name does not make a valid folder name"));
@@ -200,6 +213,20 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
             return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "Did not handle all files"));
 
         return ValueTask.FromResult<InstallerResult>(new Success());
+    }
+
+    private static bool TryGetDescriptorFolder(LibraryArchiveTree root, Extension descriptor, out RelativePath folder)
+    {
+        var file = root.Children
+            .Where(child => child.Value.Item.IsFile && child.Key.Extension == descriptor)
+            .Select(child => child.Key)
+            .OrderBy(name => name.ToString(), StringComparer.Ordinal)
+            .FirstOrDefault();
+
+        var name = Path.GetFileNameWithoutExtension(file.ToString());
+        var valid = name.Length > 0 && name is not "." and not ".." && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
+        folder = valid ? RelativePath.FromUnsanitizedInput(name) : RelativePath.Empty;
+        return valid;
     }
 
     private static bool TryGetModFolder(LibraryArchive.ReadOnly libraryArchive, LibraryArchiveTree root, out RelativePath folder)
