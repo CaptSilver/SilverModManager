@@ -9,6 +9,7 @@ using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Windows.Xdnd;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
@@ -16,8 +17,13 @@ namespace SilverModManager.App.UI.Windows;
 
 public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
 {
-    public MainWindow()
-    {        
+    /// <summary>For the XAML previewer and tests that don't need file drops from other apps: attaches no XDND receiver.</summary>
+    public MainWindow() : this(NullXdndReceiver.Instance)
+    {
+    }
+
+    public MainWindow(IXdndReceiver xdnd)
+    {
         // On X11/XWayland the extend-client-area hints do nothing, so the window manager keeps
         // drawing its own title bar above the app's top bar. Drop the decorations entirely and
         // supply move, maximize and resize ourselves (see WindowChrome).
@@ -34,6 +40,9 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
         TopBarBorder.PointerPressed += OnTopBarPointerPressed;
 
         _ = new MainWindowDropTarget(this, DropOverlay, DropOverlayText, paths => ViewModel?.HandleDroppedFilesAsync(paths) ?? Task.CompletedTask);
+
+        // Disposed by the receiver when this window closes.
+        xdnd.Attach(this);
 
         #if DEBUG
         this.AttachDevTools();

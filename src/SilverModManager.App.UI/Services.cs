@@ -78,6 +78,7 @@ using SilverModManager.App.UI.Pages.TextEdit;
 using SilverModManager.App.UI.Pages.Tools;
 using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.Windows.Xdnd;
 using SilverModManager.App.UI.WorkspaceAttachments;
 using SilverModManager.App.UI.WorkspaceSystem;
 using NexusMods.Paths;
@@ -113,6 +114,10 @@ public static class Services
             .AddSingleton<ILibraryNewItems, LibraryNewItems>()
             .AddSingleton<UiStallWatchdog>()
             .AddTransient<MainWindow>()
+            .AddSingleton<IUiTimer, DispatcherUiTimer>()
+            .AddSingleton<IXTransportFactory, LibX11TransportFactory>()
+            .AddSingleton<IX11WindowHandles, PlatformX11WindowHandles>()
+            .AddSingleton<IXdndReceiver, XdndReceiver>()
 
             // Services
             .AddSingleton<IOverlayController, OverlayController>()
