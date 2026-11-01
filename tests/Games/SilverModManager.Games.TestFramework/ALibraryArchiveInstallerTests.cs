@@ -112,6 +112,33 @@ public abstract class ALibraryArchiveInstallerTests<TTest, TGame> : AIsolatedGam
         return group;
     }
 
+    /// <summary>Runs <paramref name="installer"/> without committing when it refuses; the targets are "Location:path".</summary>
+    protected async Task<(InstallerResult Result, string[] Targets)> TryInstall(ALibraryArchiveInstaller installer, LibraryArchive.ReadOnly archive)
+    {
+        var loadout = await CreateLoadout();
+
+        using var tx = Connection.BeginTransaction();
+        var libraryItem = archive.AsLibraryFile().AsLibraryItem();
+        var group = new LoadoutItemGroup.New(tx, out var groupId)
+        {
+            IsGroup = true,
+            LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = libraryItem.Name, LoadoutId = loadout },
+        };
+
+        var result = await installer.ExecuteAsync(libraryItem, group, tx, loadout, CancellationToken.None);
+        if (!result.IsSuccess) return (result, []);
+
+        var committed = await tx.Commit();
+        var targets = committed.Remap(group).Children
+            .Select(child => child.TryGetAsLoadoutItemWithTargetPath(out var item) ? (GamePath)item.TargetPath : throw new InvalidOperationException("The child should have a target path."))
+            .Select(path => $"{path.LocationId}:{path.Path}")
+            .ToArray();
+        return (result, targets);
+    }
+
+    /// <summary>The "Location:path" spelling <see cref="TryInstall"/> reports a file under the game folder in.</summary>
+    protected static string OnGame(string path) => $"{LocationId.Game}:{path}";
+
     /// <summary>
     /// Gets the children of this loadout item as a tuple of from path, identity and game path.
     /// </summary>

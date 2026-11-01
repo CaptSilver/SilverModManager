@@ -61,30 +61,4 @@ public abstract class AUnityInstallerTests<TTest>(ITestOutputHelper outputHelper
     /// <summary>Runs the pack installer without committing when it refuses; the targets are "Location:path".</summary>
     protected Task<(InstallerResult Result, string[] Targets)> TryInstallPack(LibraryArchive.ReadOnly archive)
         => TryInstall(PackInstaller, archive);
-
-    /// <summary>Runs <paramref name="installer"/> without committing when it refuses; the targets are "Location:path".</summary>
-    protected async Task<(InstallerResult Result, string[] Targets)> TryInstall(ALibraryArchiveInstaller installer, LibraryArchive.ReadOnly archive)
-    {
-        var loadout = await CreateLoadout();
-
-        using var tx = Connection.BeginTransaction();
-        var libraryItem = archive.AsLibraryFile().AsLibraryItem();
-        var group = new LoadoutItemGroup.New(tx, out var groupId)
-        {
-            IsGroup = true,
-            LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = libraryItem.Name, LoadoutId = loadout },
-        };
-
-        var result = await installer.ExecuteAsync(libraryItem, group, tx, loadout, CancellationToken.None);
-        if (!result.IsSuccess) return (result, []);
-
-        var committed = await tx.Commit();
-        var targets = committed.Remap(group).Children
-            .Select(child => child.TryGetAsLoadoutItemWithTargetPath(out var item) ? (GamePath)item.TargetPath : throw new InvalidOperationException("The child should have a target path."))
-            .Select(path => $"{path.LocationId}:{path.Path}")
-            .ToArray();
-        return (result, targets);
-    }
-
-    protected static string OnGame(string path) => $"{LocationId.Game}:{path}";
 }

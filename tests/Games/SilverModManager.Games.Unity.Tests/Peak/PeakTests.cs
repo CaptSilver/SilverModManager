@@ -8,7 +8,7 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.Unity.Tests;
 
-public class PeakTests(ITestOutputHelper outputHelper) : AUnityGameTests<PeakTests>(outputHelper, UnityGames.Peak)
+public class PeakTests(ITestOutputHelper outputHelper) : AUnityRowTests<PeakTests>(outputHelper, UnityGames.Peak)
 {
     [Fact]
     public void TheGameIsIdentifiedByItsSteamAppIdAndItsNexusModsId()

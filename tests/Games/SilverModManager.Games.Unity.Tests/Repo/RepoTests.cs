@@ -8,7 +8,7 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.Unity.Tests;
 
-public class RepoTests(ITestOutputHelper outputHelper) : AUnityGameTests<RepoTests>(outputHelper, UnityGames.Repo)
+public class RepoTests(ITestOutputHelper outputHelper) : AUnityRowTests<RepoTests>(outputHelper, UnityGames.Repo)
 {
     [Fact]
     public void TheGameIsIdentifiedByItsSteamAppIdAndItsNexusModsId()

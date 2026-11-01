@@ -48,6 +48,26 @@ public class UnityGamesTableTests
     }
 
     [Fact]
+    public void EveryRowHasATestClassThatRunsTheSharedRowTests()
+    {
+        var testClasses = typeof(UnityGamesTableTests).Assembly.GetTypes()
+            .Where(type => type is { IsAbstract: false } && InheritsFromRowTests(type))
+            .ToArray();
+
+        testClasses.Should().HaveCount(UnityGames.All.Count);
+    }
+
+    private static bool InheritsFromRowTests(Type type)
+    {
+        for (var current = type.BaseType; current is not null; current = current.BaseType)
+        {
+            if (current.IsGenericType && current.GetGenericTypeDefinition() == typeof(Fixtures.AUnityRowTests<>)) return true;
+        }
+
+        return false;
+    }
+
+    [Fact]
     public void EveryDataFolderIsTheExecutableNameLessItsExtensionAndData()
     {
         // The Unity player names its data folder after the executable.
