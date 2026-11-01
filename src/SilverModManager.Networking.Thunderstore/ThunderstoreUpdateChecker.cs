@@ -49,9 +49,29 @@ public sealed class ThunderstoreUpdateChecker(IConnection connection)
 
     /// <summary>
     /// <see cref="Current"/>, emitted on subscribing and again after every <see cref="Refresh"/> of the community.
+    /// Between refreshes it is emitted again whenever a database change alters the answer, such as a file leaving
+    /// the library or being frozen, so a button that depends on it does not wait for the next check.
     /// </summary>
     public IObservable<IReadOnlyList<ThunderstoreUpdate>> ObserveCommunity(string community)
-        => CatalogOf(community).Select(catalog => UpdatesOf(community, catalog));
+        => CatalogOf(community)
+            .Select(catalog => catalog.HasValue
+                ? Observable.Defer(() => connection.Revisions
+                        .Select(db => Check(community, catalog.Value, db))
+                        .Prepend(Check(community, catalog.Value, connection.Db))
+                        .DistinctUntilChanged(SameUpdates.Instance))
+                : Observable.Return<IReadOnlyList<ThunderstoreUpdate>>([]))
+            .Switch();
+
+    private sealed class SameUpdates : IEqualityComparer<IReadOnlyList<ThunderstoreUpdate>>
+    {
+        public static readonly SameUpdates Instance = new();
+
+        public bool Equals(IReadOnlyList<ThunderstoreUpdate>? x, IReadOnlyList<ThunderstoreUpdate>? y)
+            => ReferenceEquals(x, y) || (x is not null && y is not null && x.SequenceEqual(y));
+
+        public int GetHashCode(IReadOnlyList<ThunderstoreUpdate> updates)
+            => updates.Aggregate(updates.Count, static (hash, update) => HashCode.Combine(hash, update));
+    }
 
     private IReadOnlyList<ThunderstoreUpdate> UpdatesOf(string community, Optional<ThunderstoreCatalog> catalog)
         => catalog.HasValue ? Check(community, catalog.Value, connection.Db) : [];

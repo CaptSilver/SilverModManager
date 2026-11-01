@@ -4,6 +4,7 @@ using DynamicData.Kernel;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Networking.Thunderstore.DTOs;
 using SilverModManager.Networking.Thunderstore.Tests.Fixtures;
 using NexusMods.Paths;
@@ -257,6 +258,73 @@ public class UpdateCheckerTests(IConnection connection)
         _checker.Refresh(Catalog(community, team, "Mod", ("4.1.0", true)));
 
         seen.Select(updates => updates.Count).Should().Equal(0, 1, 0);
+    }
+
+    [Fact]
+    public async Task ObserveCommunity_DropsAnUpdateWhenItsLastOutdatedFileLeavesTheLibrary()
+    {
+        var team = UniqueTeam();
+        var community = "community-" + Guid.NewGuid().ToString("N");
+        var file = await AddFile(team, "Mod", "4.1.0", community);
+        _checker.Refresh(Catalog(community, team, "Mod", ("4.1.0", true), ("4.2.0", true)));
+        var seen = new List<IReadOnlyList<ThunderstoreUpdate>>();
+        using var subscription = _checker.ObserveCommunity(community).Subscribe(seen.Add);
+
+        using (var tx = connection.BeginTransaction())
+        {
+            tx.Delete(file.Id, recursive: true);
+            await tx.Commit();
+        }
+
+        seen.Select(updates => updates.Count).Should().Equal(1, 0);
+    }
+
+    [Fact]
+    public async Task ObserveCommunity_PicksUpAFileAddedAfterTheRefresh()
+    {
+        var team = UniqueTeam();
+        var community = "community-" + Guid.NewGuid().ToString("N");
+        _checker.Refresh(Catalog(community, team, "Mod", ("4.1.0", true), ("4.2.0", true)));
+        var seen = new List<IReadOnlyList<ThunderstoreUpdate>>();
+        using var subscription = _checker.ObserveCommunity(community).Subscribe(seen.Add);
+
+        await AddFile(team, "Mod", "4.1.0", community);
+
+        seen.Select(updates => updates.Count).Should().Equal(0, 1);
+    }
+
+    [Fact]
+    public async Task ObserveCommunity_DropsAnUpdateWhenTheFileIsFrozen()
+    {
+        var team = UniqueTeam();
+        var community = "community-" + Guid.NewGuid().ToString("N");
+        var file = await AddFile(team, "Mod", "4.1.0", community);
+        _checker.Refresh(Catalog(community, team, "Mod", ("4.1.0", true), ("4.2.0", true)));
+        var seen = new List<IReadOnlyList<ThunderstoreUpdate>>();
+        using var subscription = _checker.ObserveCommunity(community).Subscribe(seen.Add);
+
+        using (var tx = connection.BeginTransaction())
+        {
+            _ = new UpdatePin.New(tx, file.Id) { Frozen = true };
+            await tx.Commit();
+        }
+
+        seen.Select(updates => updates.Count).Should().Equal(1, 0);
+    }
+
+    [Fact]
+    public async Task ObserveCommunity_StaysQuietForChangesThatLeaveTheUpdatesAsTheyWere()
+    {
+        var team = UniqueTeam();
+        var community = "community-" + Guid.NewGuid().ToString("N");
+        await AddFile(team, "Mod", "4.1.0", community);
+        _checker.Refresh(Catalog(community, team, "Mod", ("4.1.0", true), ("4.2.0", true)));
+        var seen = new List<IReadOnlyList<ThunderstoreUpdate>>();
+        using var subscription = _checker.ObserveCommunity(community).Subscribe(seen.Add);
+
+        await AddFile(UniqueTeam(), "Other", "1.0.0", "another-" + community);
+
+        seen.Should().ContainSingle();
     }
 
     [Fact]
