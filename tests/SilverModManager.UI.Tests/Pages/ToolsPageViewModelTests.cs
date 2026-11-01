@@ -8,7 +8,9 @@ using SilverModManager.Abstractions.Loadouts;
 using NSubstitute;
 using SilverModManager.App.UI;
 using SilverModManager.DataModel;
+using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.Platform.Proton.Tools;
+using SilverModManager.Platform.Proton.UserTools;
 using SilverModManager.App.UI.Pages.Tools;
 using SilverModManager.App.UI.Windows;
 using NexusMods.Paths;
@@ -57,7 +59,21 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         return result.Remap(loadout);
     }
 
-    private ToolsPageViewModel CreateViewModel(FakeToolManager toolManager, FakeToolRunner toolRunner, FakeFilePicker picker)
+    private IPrefixInspector _inspector = Substitute.For<IPrefixInspector>();
+
+    private ModdingToolFactory CreateToolFactory(FakeToolRunner toolRunner)
+        => new(toolRunner, Substitute.For<IProcessRunner>(), new ToolArgumentResolver(), new FakePrefixResolver(), new ToolOutputCapture(Connection, Substitute.For<IFileStore>()), new ToolPrefixSetup(toolRunner, new FakePrefixResolver(), _inspector));
+
+    private static ToolDefinition Catalogue(string id, string display, params string[] exeNames) => new()
+    {
+        Id = new ToolId(id),
+        DisplayName = display,
+        AppliesTo = _ => true,
+        ExecutableNames = _ => exeNames,
+        Arguments = ArgumentTemplate.Empty,
+    };
+
+    private ToolsPageViewModel CreateViewModel(FakeToolManager toolManager, FakeToolRunner toolRunner, FakeFilePicker picker, ToolPipeline[]? pipelines = null, ToolDefinition[]? definitions = null)
     {
         return new ToolsPageViewModel(
             Provider.GetRequiredService<IWindowManager>(),
@@ -65,10 +81,12 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
             Connection,
             toolManager,
             toolRunner,
-            new ModdingToolFactory(toolRunner, Substitute.For<IProcessRunner>(), new ToolArgumentResolver(), new FakePrefixResolver(), new ToolOutputCapture(Connection, Substitute.For<IFileStore>()), new ToolPrefixSetup(toolRunner, new FakePrefixResolver(), Substitute.For<IPrefixInspector>())),
+            CreateToolFactory(toolRunner),
             new FakePrefixResolver(),
             picker,
-            Provider.GetRequiredService<IJobMonitor>()
+            Provider.GetRequiredService<IJobMonitor>(),
+            new ToolInstaller(Connection, new KnownToolDetector(definitions ?? [])),
+            new ToolPipelineRunner(toolManager, pipelines ?? [])
         );
     }
 
@@ -290,6 +308,261 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         toolManager.GetTools(Loadout.Load(Connection.Db, other.LoadoutId)).Select(t => t.Name).Should().NotContain("xEdit");
     }
 
+    private ModdingTool CatalogueTool(FakeToolRunner runner, ToolDefinition definition, string exe = "/tools/tool.exe")
+        => CreateToolFactory(runner).Create(definition, new InstalledTool(FileSystem.Shared.FromUnsanitizedFullPath(exe)), GameId.From("any"));
+
+    [Fact]
+    public async Task CatalogueTools_ListsOnlyTheToolsAddedFromTheCatalogue()
+    {
+        var loadout = await CreateLoadout();
+        var runner = new FakeToolRunner();
+        var tools = new ITool[] { new StubTool("Launch", loadout.Game.GameId), CatalogueTool(runner, Catalogue("texgen", "TexGen", "TexGen.exe")), CreateToolFactory(runner).Create(ToolDefinition.AdHoc(loadout.Game.GameId, "Mine", "m.exe"), new InstalledTool(FileSystem.Shared.FromUnsanitizedFullPath("/tools/m.exe")), loadout.Game.GameId) };
+        var vm = CreateViewModel(new FakeToolManager { Tools = tools }, runner, new FakeFilePicker());
+
+        vm.LoadoutId = loadout.LoadoutId;
+
+        vm.CatalogueTools.Select(t => t.Name).Should().Equal("TexGen");
+    }
+
+    [Fact]
+    public async Task CatalogueTools_NameThePrefixComponentsTheToolIsMissing()
+    {
+        var loadout = await CreateLoadout();
+        var vc = SilverModManager.Sdk.Games.PrefixComponents.VisualCppRuntime;
+        _inspector.Inspect(Arg.Any<ResolvedPrefix>(), Arg.Any<IReadOnlyList<PrefixComponentId>>())
+            .Returns(call => call.ArgAt<IReadOnlyList<PrefixComponentId>>(1).Select(id => new PrefixComponentStatus(id, PrefixComponentState.Missing, "test")).ToArray());
+        var runner = new FakeToolRunner();
+        var needy = Catalogue("xedit", "xEdit", "xEdit.exe") with { Prefix = new ToolPrefixRequirements { Components = [vc.Id] } };
+        var vm = CreateViewModel(new FakeToolManager { Tools = [CatalogueTool(runner, needy)] }, runner, new FakeFilePicker());
+
+        vm.LoadoutId = loadout.LoadoutId;
+
+        var row = vm.CatalogueTools.Should().ContainSingle().Subject;
+        row.MissingPrerequisites.Should().Equal(vc.DisplayName);
+        row.PrerequisiteMessage.Should().Be($"Needs {vc.DisplayName} in the game's Wine prefix. Set it up in the prefix before running.");
+    }
+
+    [Fact]
+    public async Task CatalogueTools_WithNothingMissingHaveNoPrerequisiteMessage()
+    {
+        var loadout = await CreateLoadout();
+        var runner = new FakeToolRunner();
+        var vm = CreateViewModel(new FakeToolManager { Tools = [CatalogueTool(runner, Catalogue("texgen", "TexGen", "TexGen.exe"))] }, runner, new FakeFilePicker());
+
+        vm.LoadoutId = loadout.LoadoutId;
+
+        vm.CatalogueTools.Single().PrerequisiteMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ThePluginPickerIsEmptyForAGameThatOffersNoPlugins()
+    {
+        var loadout = await CreateLoadout();
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker());
+
+        vm.LoadoutId = loadout.LoadoutId;
+
+        vm.Plugins.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ARunStatesTheExitCodeAndWhatWasCapturedOnThePage()
+    {
+        var loadout = await CreateLoadout();
+        var tool = new StubTool("DynDOLOD", loadout.Game.GameId);
+        var manager = new FakeToolManager { Tools = [tool], Report = _ => ("DynDOLOD Output", 0, 1204) };
+        var vm = CreateViewModel(manager, new FakeToolRunner(), new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+
+        await vm.RunToolAsync(tool, TestContext.Current.CancellationToken);
+
+        vm.LastRunMessage.Should().Be("DynDOLOD finished (exit code 0). Captured 1,204 files into 'DynDOLOD Output'.");
+    }
+
+    [Fact]
+    public async Task AFailedRunShowsItsMessageOnThePageInsteadOfThrowing()
+    {
+        var loadout = await CreateLoadout();
+        var runner = new FakeToolRunner();
+        var vm = CreateViewModel(new FakeToolManager(), runner, new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+        var failing = new ThrowingTool("TexGen exited with code 3; see the process log.", loadout.Game.GameId);
+
+        await vm.RunToolReportingAsync(failing, TestContext.Current.CancellationToken);
+
+        vm.LastRunMessage.Should().Be("TexGen exited with code 3; see the process log.");
+        vm.IsRunning.Should().BeFalse();
+        vm.RunningMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task WhileAToolRunsThePageSaysSoAndAfterwardsItDoesNot()
+    {
+        var loadout = await CreateLoadout();
+        var tool = new StubTool("DynDOLOD", loadout.Game.GameId);
+        var gate = new TaskCompletionSource();
+        var manager = new FakeToolManager { Tools = [tool], Gate = gate.Task };
+        var vm = CreateViewModel(manager, new FakeToolRunner(), new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+
+        var run = vm.RunToolAsync(tool, TestContext.Current.CancellationToken);
+
+        vm.IsRunning.Should().BeTrue();
+        vm.RunningMessage.Should().Be("Running DynDOLOD for less than a minute");
+        gate.SetResult();
+        await run;
+        vm.IsRunning.Should().BeFalse();
+        vm.RunningMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CancelStopsTheRunByCancellingTheTokenTheToolManagerGot()
+    {
+        var loadout = await CreateLoadout();
+        var tool = new StubTool("DynDOLOD", loadout.Game.GameId);
+        var manager = new FakeToolManager { Tools = [tool], Gate = new TaskCompletionSource().Task };
+        var vm = CreateViewModel(manager, new FakeToolRunner(), new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+        var run = vm.RunToolReportingAsync(tool, TestContext.Current.CancellationToken).AsTask();
+
+        vm.CancelRun();
+        await run;
+
+        manager.Tokens.Single().IsCancellationRequested.Should().BeTrue();
+        vm.LastRunMessage.Should().Be("DynDOLOD was cancelled.");
+        vm.IsRunning.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CancelWithNothingRunningDoesNothing()
+    {
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker());
+        var act = () => vm.CancelRun();
+
+        act.Should().NotThrow();
+        await Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task QuickAutoCleanRunsTheToolsCleaningModeOnThePickedPlugin()
+    {
+        var loadout = await CreateLoadout();
+        var runner = new FakeToolRunner();
+        var xedit = Catalogue("xedit", "xEdit", "xEdit.exe") with
+        {
+            QuickAutoClean = new ToolVariant("Quick Auto Clean", ArgumentTemplate.Of("{Plugin}"), ExitCodePolicy.ZeroIsSuccess),
+        };
+        var tool = CatalogueTool(runner, xedit);
+        var manager = new FakeToolManager { Tools = [tool] };
+        var vm = CreateViewModel(manager, runner, new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+
+        await vm.RunQuickAutoCleanAsync(vm.CatalogueTools.Single(), "Update.esm", TestContext.Current.CancellationToken);
+
+        manager.Ran.Single().Name.Should().Be("xEdit: Quick Auto Clean");
+    }
+
+    [Fact]
+    public async Task QuickAutoCleanIsRefusedForAToolWithoutThatMode()
+    {
+        var loadout = await CreateLoadout();
+        var runner = new FakeToolRunner();
+        var vm = CreateViewModel(new FakeToolManager { Tools = [CatalogueTool(runner, Catalogue("texgen", "TexGen", "TexGen.exe"))] }, runner, new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+
+        var act = () => vm.RunQuickAutoCleanAsync(vm.CatalogueTools.Single(), "Update.esm", TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<SilverModManager.Sdk.Errors.UserFacingException>().WithMessage("*TexGen cannot clean a plugin*");
+    }
+
+    [Fact]
+    public async Task APipelineRunsItsToolsAndShowsEachFinishedLine()
+    {
+        var loadout = await CreateLoadout();
+        var runner = new FakeToolRunner();
+        var lod = new ToolPipeline("LOD generation", [new ToolId("texgen"), new ToolId("dyndolod")]);
+        var tools = new ITool[] { CatalogueTool(runner, Catalogue("texgen", "TexGen", "TexGen.exe")), CatalogueTool(runner, Catalogue("dyndolod", "DynDOLOD", "DynDOLOD.exe")) };
+        var manager = new FakeToolManager { Tools = tools, Report = _ => (null, 0, 0) };
+        var vm = CreateViewModel(manager, runner, new FakeFilePicker(), [lod]);
+        vm.LoadoutId = loadout.LoadoutId;
+
+        vm.Pipelines.Should().Equal(lod);
+        await vm.RunPipelineAsync(lod, TestContext.Current.CancellationToken);
+
+        manager.Ran.Select(t => t.Name).Should().Equal("TexGen", "DynDOLOD");
+        vm.LastRunMessage.Should().Be("TexGen finished (exit code 0).\nDynDOLOD finished (exit code 0).");
+    }
+
+    [Fact]
+    public async Task APipelineWithAMissingToolShowsTheRefusalAndRunsNothing()
+    {
+        var loadout = await CreateLoadout();
+        var lod = new ToolPipeline("LOD generation", [new ToolId("texgen")]);
+        var manager = new FakeToolManager();
+        var vm = CreateViewModel(manager, new FakeToolRunner(), new FakeFilePicker(), [lod]);
+        vm.LoadoutId = loadout.LoadoutId;
+
+        await vm.RunPipelineReportingAsync(lod, TestContext.Current.CancellationToken);
+
+        vm.LastRunMessage.Should().Contain("texgen").And.Contain("LOD generation");
+        manager.Ran.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AddingAToolFolderSavesTheCatalogueToolsInItAndListsThem()
+    {
+        var loadout = await CreateLoadout();
+        var folder = FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory).Combine($"{Guid.NewGuid()}");
+        folder.CreateDirectory();
+        File.WriteAllText((folder / "TexGenx64.exe").GetFullPath(), "exe");
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker { FolderResult = [folder] },
+            definitions: [Catalogue("texgen", "TexGen", "TexGenx64.exe")]);
+        vm.LoadoutId = loadout.LoadoutId;
+
+        await vm.AddToolFromPickerAsync(folder: true);
+
+        vm.LastRunMessage.Should().Be("Added TexGen.");
+        UserTool.FindByInstallation(Connection.Db, loadout.InstallationId).Select(t => t.Name).Should().Equal("TexGen");
+        vm.UserTools.Should().BeEmpty("a catalogue tool is listed with the catalogue tools, not with the hand-added programs");
+        folder.DeleteDirectory(recursive: true);
+    }
+
+    [Fact]
+    public async Task AddingAToolFolderThatHoldsNothingKnownShowsTheRefusal()
+    {
+        var loadout = await CreateLoadout();
+        var folder = FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory).Combine($"{Guid.NewGuid()}");
+        folder.CreateDirectory();
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker { FolderResult = [folder] });
+        vm.LoadoutId = loadout.LoadoutId;
+
+        await vm.AddToolFromPickerAsync(folder: true);
+
+        vm.LastRunMessage.Should().Contain("no known tool");
+        folder.DeleteDirectory(recursive: true);
+    }
+
+    [Fact]
+    public async Task AddingAToolDoesNothingWhenThePickerIsCancelled()
+    {
+        var loadout = await CreateLoadout();
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+
+        await vm.AddToolFromPickerAsync(folder: true);
+
+        vm.LastRunMessage.Should().BeNull();
+    }
+
+    private sealed class ThrowingTool(string message, GameId gameId) : ITool
+    {
+        public IEnumerable<GameId> GameIds => [gameId];
+        public string Name => "Throwing";
+
+        public IJobTask<ITool, Unit> StartJob(Loadout.ReadOnly loadout, IJobMonitor monitor, CancellationToken cancellationToken)
+            => throw new InvalidOperationException(message);
+    }
+
     private sealed class StubTool(string name, GameId gameId) : ITool
     {
         public IEnumerable<GameId> GameIds => [gameId];
@@ -306,14 +579,26 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
     {
         public IReadOnlyList<ITool> Tools { get; init; } = [];
         public List<ITool> Ran { get; } = [];
+        public List<CancellationToken> Tokens { get; } = [];
+
+        /// <summary>Held by a run until the test completes it, so a test can look at the page mid-run.</summary>
+        public Task? Gate { get; set; }
+
+        public Func<ITool, (string? Group, int? ExitCode, int Captured)> Report { get; set; } = _ => (null, null, 0);
 
         public IEnumerable<ITool> GetTools(Loadout.ReadOnly loadout) => Tools;
 
         public async Task<Loadout.ReadOnly> RunTool(ITool tool, Loadout.ReadOnly loadout, IJobMonitor monitor, CancellationToken token = default)
+            => (await RunToolWithOutcome(tool, loadout, monitor, token)).Loadout;
+
+        public async Task<ToolRunOutcome> RunToolWithOutcome(ITool tool, Loadout.ReadOnly loadout, IJobMonitor monitor, CancellationToken token = default)
         {
             Ran.Add(tool);
+            Tokens.Add(token);
+            if (Gate is { } gate) await gate.WaitAsync(token);
             await tool.StartJob(loadout, monitor, token);
-            return loadout;
+            var (group, exit, captured) = Report(tool);
+            return new ToolRunOutcome(loadout, group, exit, captured);
         }
     }
 
@@ -364,9 +649,10 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
     private sealed class FakeFilePicker : IAvaloniaInterop
     {
         public AbsolutePath[] Result { get; init; } = [];
+        public AbsolutePath[] FolderResult { get; init; } = [];
 
         public Task<AbsolutePath[]> OpenFilePickerAsync(FilePickerOpenOptions filePickerOpenOptions) => Task.FromResult(Result);
-        public Task<AbsolutePath[]> OpenFolderPickerAsync(FolderPickerOpenOptions folderPickerOpenOptions) => throw new NotSupportedException();
+        public Task<AbsolutePath[]> OpenFolderPickerAsync(FolderPickerOpenOptions folderPickerOpenOptions) => Task.FromResult(FolderResult);
         public void RegisterStorageProvider(IStorageProvider storageProvider) => throw new NotSupportedException();
         public void RegisterClipboard(IClipboard clipboardProvider) => throw new NotSupportedException();
         public Task SetClipboardTextAsync(string text) => throw new NotSupportedException();

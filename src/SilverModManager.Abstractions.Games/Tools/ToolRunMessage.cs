@@ -21,4 +21,11 @@ public static class ToolRunMessage
         };
         return $"{line} Captured {files} into '{outputGroup}'.";
     }
+
+    /// <summary>The progress line shown while a tool runs: "Running DynDOLOD for 12 min".</summary>
+    public static string Running(string toolName, TimeSpan elapsed)
+    {
+        var minutes = (int)elapsed.TotalMinutes;
+        return minutes < 1 ? $"Running {toolName} for less than a minute" : $"Running {toolName} for {minutes} min";
+    }
 }

@@ -39,4 +39,14 @@ public class ToolRunMessageTests
     {
         ToolRunMessage.Finished("LOOT", exitCode: null, outputGroup: null).Should().Be("LOOT finished.");
     }
+
+    [Theory]
+    [InlineData(0, "Running DynDOLOD for less than a minute")]
+    [InlineData(59, "Running DynDOLOD for less than a minute")]
+    [InlineData(60, "Running DynDOLOD for 1 min")]
+    [InlineData(750, "Running DynDOLOD for 12 min")]
+    public void TheProgressLineCountsWholeMinutes(int seconds, string expected)
+    {
+        ToolRunMessage.Running("DynDOLOD", TimeSpan.FromSeconds(seconds)).Should().Be(expected);
+    }
 }

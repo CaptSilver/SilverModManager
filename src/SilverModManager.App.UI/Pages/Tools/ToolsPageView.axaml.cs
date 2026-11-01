@@ -1,4 +1,7 @@
 using Avalonia.Controls;
+using Avalonia.Threading;
+using SilverModManager.Abstractions.Games.Tools;
+using SilverModManager.Platform.Proton.Tools;
 using Avalonia.Platform.Storage;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
@@ -24,12 +27,17 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
         UserToolRunViaBox.ItemsSource = Enum.GetValues<ToolRunVia>();
         UserToolRunViaBox.SelectedItem = ToolRunVia.Auto;
         CancelUserToolEditButton.IsVisible = false;
+        CancelRunButton.IsVisible = false;
+        RunningText.IsVisible = false;
 
         // Hooked once here: the page is activated again each time it is shown, and handlers added on activation
         // would stack up and save the same program more than once.
         BrowseUserToolButton.Click += async (_, _) => await BrowseForProgram();
         SaveUserToolButton.Click += async (_, _) => await SaveUserTool();
         CancelUserToolEditButton.Click += (_, _) => ResetForm();
+        AddToolFolderButton.Click += (_, _) => ViewModel?.AddToolCommand.Execute(true);
+        AddToolProgramButton.Click += (_, _) => ViewModel?.AddToolCommand.Execute(false);
+        CancelRunButton.Click += (_, _) => ViewModel?.CancelRunCommand.Execute(R3.Unit.Default);
 
         this.WhenActivated(disposables =>
         {
@@ -42,6 +50,23 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
 
             this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Tools))
                 .Subscribe(RebuildToolRows)
+                .AddTo(disposables);
+
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.CatalogueTools, x => x.Plugins))
+                .Subscribe(state => RebuildCatalogueRows(state.Item1, state.Item2))
+                .AddTo(disposables);
+
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.Pipelines))
+                .Subscribe(RebuildPipelineRows)
+                .AddTo(disposables);
+
+            // The running line is refreshed from a timer thread, so it is posted to the UI thread.
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsRunning, x => x.RunningMessage))
+                .Subscribe(state => Dispatcher.UIThread.Post(() =>
+                {
+                    Show(RunningText, state.Item2);
+                    CancelRunButton.IsVisible = state.Item1;
+                }))
                 .AddTo(disposables);
 
             this.WhenViewModelValue(vm => vm.WhenAnyValue(
@@ -74,7 +99,8 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
     private void RebuildToolRows(IReadOnlyList<Abstractions.Loadouts.ITool> tools)
     {
         ToolsPanel.Children.Clear();
-        foreach (var tool in tools)
+        // Catalogue tools have their own section, with their prerequisites and cleaning mode.
+        foreach (var tool in tools.Where(t => t is not ModdingTool { CatalogueId: not null }))
         {
             var button = new StandardButton { Text = "Run", Type = StandardButton.Types.Secondary };
             button.Click += (_, _) => ViewModel?.RunToolCommand.Execute(tool);
@@ -84,6 +110,77 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
             row.Children.Add(button);
             row.Children.Add(new TextBlock { Text = tool.Name, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
             ToolsPanel.Children.Add(row);
+        }
+    }
+
+    private void RebuildCatalogueRows(IReadOnlyList<CatalogueToolRow> tools, IReadOnlyList<string> plugins)
+    {
+        CatalogueToolsPanel.Children.Clear();
+        foreach (var row in tools)
+        {
+            var run = new StandardButton { Text = "Run", Type = StandardButton.Types.Secondary };
+            run.Click += (_, _) => ViewModel?.RunToolCommand.Execute(row.Tool);
+
+            var buttons = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 8 };
+            buttons.Children.Add(run);
+            if (row.Row is { } saved)
+            {
+                var remove = new StandardButton { Text = "Remove", Type = StandardButton.Types.Secondary };
+                remove.Click += async (_, _) => await Guarded(async () =>
+                {
+                    if (ViewModel is { } viewModel) await viewModel.RemoveUserTool(saved);
+                });
+                buttons.Children.Add(remove);
+            }
+
+            var header = new DockPanel();
+            DockPanel.SetDock(buttons, Dock.Right);
+            header.Children.Add(buttons);
+            header.Children.Add(new TextBlock { Text = row.Name, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+
+            var card = new StackPanel { Spacing = 4 };
+            card.Children.Add(header);
+            if (row.PrerequisiteMessage is { } needs)
+                card.Children.Add(new TextBlock { Text = needs, TextWrapping = Avalonia.Media.TextWrapping.Wrap });
+            if (row.CanQuickAutoClean && plugins.Count > 0) card.Children.Add(QuickAutoCleanPicker(row, plugins));
+            CatalogueToolsPanel.Children.Add(card);
+        }
+    }
+
+    private StackPanel QuickAutoCleanPicker(CatalogueToolRow row, IReadOnlyList<string> plugins)
+    {
+        var picker = new ComboBox { ItemsSource = plugins, SelectedIndex = 0, MinWidth = 240 };
+        var clean = new StandardButton { Text = "Quick Auto Clean", Type = StandardButton.Types.Secondary };
+        clean.Click += (_, _) =>
+        {
+            if (picker.SelectedItem is string plugin) ViewModel?.QuickAutoCleanCommand.Execute(new QuickAutoCleanRequest(row.Tool, plugin));
+        };
+
+        var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 8 };
+        panel.Children.Add(picker);
+        panel.Children.Add(clean);
+        return panel;
+    }
+
+    private void RebuildPipelineRows(IReadOnlyList<ToolPipeline> pipelines)
+    {
+        PipelinesPanel.Children.Clear();
+        PipelinesHeading.IsVisible = pipelines.Count > 0;
+        foreach (var pipeline in pipelines)
+        {
+            var run = new StandardButton { Text = "Run", Type = StandardButton.Types.Secondary };
+            run.Click += (_, _) => ViewModel?.RunPipelineCommand.Execute(pipeline);
+
+            var row = new DockPanel();
+            DockPanel.SetDock(run, Dock.Right);
+            row.Children.Add(run);
+            row.Children.Add(new TextBlock
+            {
+                Text = $"{pipeline.Name}: {string.Join(", ", pipeline.Steps.Select(step => step.Value))}",
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            });
+            PipelinesPanel.Children.Add(row);
         }
     }
 

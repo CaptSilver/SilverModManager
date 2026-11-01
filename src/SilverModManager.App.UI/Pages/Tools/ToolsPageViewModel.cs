@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using SilverModManager.Sdk.Errors;
 using Avalonia.Platform.Storage;
 using JetBrains.Annotations;
@@ -5,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Platform.Proton.Tools;
+using SilverModManager.Platform.Proton.UserTools;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
@@ -31,11 +33,20 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
     private readonly IPrefixResolver _prefixResolver;
     private readonly IAvaloniaInterop _avaloniaInterop;
     private readonly IJobMonitor _monitor;
+    private readonly ToolInstaller _installer;
+    private readonly ToolPipelineRunner _pipelineRunner;
+    private readonly object _runLock = new();
+    private CancellationTokenSource? _runCancellation;
     private readonly BehaviorSubject<bool> _canRunWindowsProgram = new(false);
 
     [Reactive] public partial LoadoutId LoadoutId { get; set; }
     [Reactive] public partial IReadOnlyList<ITool> Tools { get; private set; } = [];
     [Reactive] public partial IReadOnlyList<UserTool.ReadOnly> UserTools { get; private set; } = [];
+    [Reactive] public partial IReadOnlyList<CatalogueToolRow> CatalogueTools { get; private set; } = [];
+    [Reactive] public partial IReadOnlyList<string> Plugins { get; private set; } = [];
+    [Reactive] public partial IReadOnlyList<ToolPipeline> Pipelines { get; private set; } = [];
+    [Reactive] public partial bool IsRunning { get; private set; }
+    [Reactive] public partial string? RunningMessage { get; private set; }
     [Reactive] public partial bool CanRunWindowsProgram { get; private set; }
     [Reactive] public partial string? Diagnostic { get; private set; }
     [Reactive] public partial string? PrefixPath { get; private set; }
@@ -44,6 +55,10 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
 
     public R3.ReactiveCommand<ITool> RunToolCommand { get; }
     public R3.ReactiveCommand<Unit> RunWindowsProgramCommand { get; }
+    public R3.ReactiveCommand<QuickAutoCleanRequest> QuickAutoCleanCommand { get; }
+    public R3.ReactiveCommand<ToolPipeline> RunPipelineCommand { get; }
+    public R3.ReactiveCommand<bool> AddToolCommand { get; }
+    public R3.ReactiveCommand<Unit> CancelRunCommand { get; }
 
     public ToolsPageViewModel(
         IWindowManager windowManager,
@@ -54,7 +69,9 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         ModdingToolFactory toolFactory,
         IPrefixResolver prefixResolver,
         IAvaloniaInterop avaloniaInterop,
-        IJobMonitor monitor) : base(windowManager)
+        IJobMonitor monitor,
+        ToolInstaller installer,
+        ToolPipelineRunner pipelineRunner) : base(windowManager)
     {
         _logger = logger;
         _conn = conn;
@@ -64,13 +81,20 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         _prefixResolver = prefixResolver;
         _avaloniaInterop = avaloniaInterop;
         _monitor = monitor;
+        _installer = installer;
+        _pipelineRunner = pipelineRunner;
 
         TabIcon = IconValues.Wrench;
         TabTitle = "Tools";
 
-        RunToolCommand = new R3.ReactiveCommand<ITool>(executeAsync: async (tool, token) => await ReportFailure(() => RunToolAsync(tool, token)));
+        RunToolCommand = new R3.ReactiveCommand<ITool>(executeAsync: async (tool, token) => await RunToolReportingAsync(tool, token));
+        QuickAutoCleanCommand = new R3.ReactiveCommand<QuickAutoCleanRequest>(executeAsync: async (request, token) =>
+            await ReportFailure(request.Tool.Name, () => RunQuickAutoCleanAsync(request.Tool, request.Plugin, token)));
+        RunPipelineCommand = new R3.ReactiveCommand<ToolPipeline>(executeAsync: async (pipeline, token) => await RunPipelineReportingAsync(pipeline, token));
+        AddToolCommand = new R3.ReactiveCommand<bool>(executeAsync: async (folder, token) => await AddToolFromPickerAsync(folder));
+        CancelRunCommand = new R3.ReactiveCommand<Unit>(_ => CancelRun());
         RunWindowsProgramCommand = _canRunWindowsProgram.ToReactiveCommand<Unit>(
-            async (_, token) => await ReportFailure(() => RunWindowsProgramAsync(token)),
+            async (_, token) => await ReportFailure("The program", () => RunWindowsProgramAsync(token)),
             initialCanExecute: false
         );
 
@@ -85,6 +109,9 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         {
             Tools = [];
             UserTools = [];
+            CatalogueTools = [];
+            Plugins = [];
+            Pipelines = [];
             ApplyRunnability(canRun: false, diagnostic: null, prefixPath: null, strategy: null);
             return;
         }
@@ -92,7 +119,14 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         var loadout = LoadLoadout();
         var installation = loadout.InstallationInstance;
         Tools = _toolManager.GetTools(loadout).ToArray();
-        UserTools = UserTool.FindByInstallation(_conn.Db, loadout.InstallationId).OrderBy(t => t.Name).ToArray();
+        var rows = UserTool.FindByInstallation(_conn.Db, loadout.InstallationId).OrderBy(t => t.Name).ToArray();
+        UserTools = rows.Where(row => row.ToolId.HasValue is false).ToArray();
+        CatalogueTools = Tools.OfType<ModdingTool>()
+            .Where(tool => tool.CatalogueId is not null)
+            .Select(tool => CatalogueToolRow.For(tool, installation, rows))
+            .ToArray();
+        Plugins = installation.Game is IToolPluginSource source ? source.PluginNames(loadout) : [];
+        Pipelines = _pipelineRunner.Pipelines;
 
         var canRun = _toolRunner.CanRun(installation, out var diagnostic);
         var prefix = _prefixResolver.Resolve(installation);
@@ -117,17 +151,62 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
 
     // Commands run on a worker and a thrown exception would end up unobserved, so it is logged and
     // shown on the page instead. A refusal is only shown here; a crash also reaches the error dialog through
-    // the log.
-    private async ValueTask ReportFailure(Func<Task> action)
+    // the log. A message already on the page (the steps a pipeline finished) stays above the failure.
+    private async ValueTask ReportFailure(string what, Func<Task> action)
     {
         try
         {
             await action();
         }
+        catch (OperationCanceledException)
+        {
+            LastRunMessage = $"{what} was cancelled.";
+        }
         catch (Exception ex)
         {
             _logger.LogFailure(ex, "Running a tool from the Tools page failed");
-            LastRunMessage = ex.Message;
+            LastRunMessage = string.IsNullOrEmpty(LastRunMessage) ? ex.Message : $"{LastRunMessage}\n{ex.Message}";
+        }
+    }
+
+    internal ValueTask RunToolReportingAsync(ITool tool, CancellationToken token)
+        => ReportFailure(tool.Name, () => RunToolAsync(tool, token));
+
+    internal ValueTask RunPipelineReportingAsync(ToolPipeline pipeline, CancellationToken token)
+        => ReportFailure(pipeline.Name, () => RunPipelineAsync(pipeline, token));
+
+    /// <summary>Stops the run in progress, if there is one.</summary>
+    public void CancelRun()
+    {
+        lock (_runLock) _runCancellation?.Cancel();
+    }
+
+    // Holds the run's cancellation source for the Cancel button and keeps the "running for n min" line fresh.
+    private async Task Tracked(string name, Func<CancellationToken, Task> run, CancellationToken token)
+    {
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
+        lock (_runLock) _runCancellation = cancellation;
+        var started = Stopwatch.StartNew();
+        IsRunning = true;
+        RunningMessage = ToolRunMessage.Running(name, started.Elapsed);
+        using var ticker = new PeriodicTimer(TimeSpan.FromSeconds(15));
+        var ticking = Task.Run(async () =>
+        {
+            while (await ticker.WaitForNextTickAsync(cancellation.Token).ConfigureAwait(false))
+                RunningMessage = ToolRunMessage.Running(name, started.Elapsed);
+        }, CancellationToken.None);
+
+        try
+        {
+            await run(cancellation.Token);
+        }
+        finally
+        {
+            ticker.Dispose();
+            try { await ticking; } catch (OperationCanceledException) { }
+            lock (_runLock) _runCancellation = null;
+            IsRunning = false;
+            RunningMessage = null;
         }
     }
 
@@ -135,8 +214,53 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
     {
         LastRunMessage = null;
         var loadout = LoadLoadout();
-        await Task.Run(async () => await _toolManager.RunTool(tool, loadout, _monitor, token), token);
-        LastRunMessage = $"{tool.Name} finished.";
+        await Tracked(tool.Name, async runToken =>
+        {
+            var outcome = await Task.Run(async () => await _toolManager.RunToolWithOutcome(tool, loadout, _monitor, runToken), runToken);
+            LastRunMessage = ToolRunMessage.Finished(tool.Name, outcome.ExitCode, outcome.OutputGroup, outcome.CapturedFiles);
+        }, token);
+    }
+
+    internal Task RunQuickAutoCleanAsync(CatalogueToolRow row, string plugin, CancellationToken token)
+        => RunQuickAutoCleanAsync(row.Tool, plugin, token);
+
+    private Task RunQuickAutoCleanAsync(ModdingTool tool, string plugin, CancellationToken token)
+        => RunToolAsync(tool.ForQuickAutoClean(plugin) ?? throw new ToolRefusedException($"{tool.Name} cannot clean a plugin."), token);
+
+    internal async Task RunPipelineAsync(ToolPipeline pipeline, CancellationToken token)
+    {
+        LastRunMessage = null;
+        var loadout = LoadLoadout();
+        var lines = new List<string>();
+        await Tracked(pipeline.Name, async runToken =>
+        {
+            try
+            {
+                await Task.Run(async () => await _pipelineRunner.Run(pipeline, loadout, _monitor, lines.Add, runToken), runToken);
+            }
+            finally
+            {
+                if (lines.Count > 0) LastRunMessage = string.Join('\n', lines);
+            }
+        }, token);
+    }
+
+    /// <summary>Asks for a folder (or a program) and adds the tools in it to this game.</summary>
+    internal async Task AddToolFromPickerAsync(bool folder)
+    {
+        LastRunMessage = null;
+        await ReportFailure("Adding the tool", async () =>
+        {
+            var picked = folder
+                ? await _avaloniaInterop.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Choose the folder a modding tool is in", AllowMultiple = false })
+                : await _avaloniaInterop.OpenFilePickerAsync(new FilePickerOpenOptions { Title = "Choose a modding tool", AllowMultiple = false, FileTypeFilter = [new FilePickerFileType("Programs") { Patterns = ["*.exe"] }] });
+            if (picked.Length == 0) return;
+
+            var result = await _installer.Add(LoadLoadout(), picked[0]);
+            var lines = result.Added.Select(name => $"Added {name}.").Concat(result.AlreadyAdded.Select(name => $"{name} is already added."));
+            LastRunMessage = string.Join('\n', lines);
+            Refresh();
+        });
     }
 
     internal async Task RunWindowsProgramAsync(CancellationToken token)

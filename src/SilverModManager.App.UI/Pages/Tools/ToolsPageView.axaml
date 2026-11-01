@@ -18,6 +18,32 @@
 
             <Separator />
 
+            <TextBlock Text="Modding tools" Theme="{StaticResource HeadingSMSemiTheme}" />
+            <StackPanel x:Name="CatalogueToolsPanel" Spacing="{StaticResource Spacing-2}" />
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
+                <controls:StandardButton x:Name="AddToolFolderButton"
+                                         Type="Secondary"
+                                         Size="Toolbar"
+                                         Text="Add tools from a folder..." />
+                <controls:StandardButton x:Name="AddToolProgramButton"
+                                         Type="Secondary"
+                                         Size="Toolbar"
+                                         Text="Add a tool..." />
+            </StackPanel>
+
+            <TextBlock x:Name="PipelinesHeading" Text="Pipelines" Theme="{StaticResource HeadingSMSemiTheme}" />
+            <StackPanel x:Name="PipelinesPanel" Spacing="{StaticResource Spacing-2}" />
+
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
+                <TextBlock x:Name="RunningText" VerticalAlignment="Center" />
+                <controls:StandardButton x:Name="CancelRunButton"
+                                         Type="Secondary"
+                                         Size="Toolbar"
+                                         Text="Cancel" />
+            </StackPanel>
+
+            <Separator />
+
             <TextBlock Text="Your programs" Theme="{StaticResource HeadingSMSemiTheme}" />
             <StackPanel x:Name="UserToolsPanel" Spacing="{StaticResource Spacing-2}" />
             <TextBox x:Name="UserToolNameBox" Watermark="Name" />
