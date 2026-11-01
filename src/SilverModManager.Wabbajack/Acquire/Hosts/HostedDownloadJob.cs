@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Downloads;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.HttpDownloader;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
@@ -35,7 +36,7 @@ internal static class ReportedFailure
 /// removes a partly written file when anything goes wrong, and records the library file's name and download page. A
 /// host's job says only how to get from the list's address to bytes in <see cref="Destination"/>.
 /// </summary>
-public abstract record HostedDownloadJob : IDownloadJob
+public abstract record HostedDownloadJob : ITrackedDownloadJob
 {
     public required HttpClient Client { get; init; }
     public required ILogger Logger { get; init; }
@@ -60,6 +61,21 @@ public abstract record HostedDownloadJob : IDownloadJob
 
     /// <summary>The clock the idle limit runs on.</summary>
     public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
+
+    /// <summary>How many bytes of how many have been written, which is how the Downloads page shows the size.</summary>
+    public ReportedDownloadState State { get; } = new();
+
+    /// <inheritdoc/>
+    public IPublicJobStateData? GetJobStateData() => State;
+
+    /// <inheritdoc/>
+    public string DisplayName => ReportedFileName ?? FileName ?? "";
+
+    /// <inheritdoc/>
+    public string SourceName => HostName;
+
+    /// <inheritdoc/>
+    public Uri? PageUri => new(PageAddress);
 
     /// <summary>The host's name as the user knows it. Also the throttle's key, so every job for the host shares its slots.</summary>
     protected abstract string HostName { get; }
@@ -246,6 +262,7 @@ public sealed class HostTransfer
                 await _context.YieldAsync();
                 await file.WriteAsync(buffer.AsMemory(0, read), token);
                 written += read;
+                _job.State.Report(written, total);
                 if (total is > 0) _context.SetPercent(Size.FromLong(Math.Min(written, total.Value)), Size.FromLong(total.Value));
             }
             await file.FlushAsync(token);

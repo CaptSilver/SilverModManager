@@ -14,6 +14,7 @@ using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Acquire.Hosts;
 using SilverModManager.Wabbajack.Format;
 
 namespace SilverModManager.Wabbajack.Acquire;
@@ -23,7 +24,7 @@ namespace SilverModManager.Wabbajack.Acquire;
 /// checked on its own, and the assembled file is checked against the definition. A plain GET of the CDN address
 /// returns a small HTML page, not the file, so the generic HTTP job cannot do this.
 /// </summary>
-public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<WabbajackCdnDownloadJob, AbsolutePath>, IDownloadJob
+public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<WabbajackCdnDownloadJob, AbsolutePath>, ITrackedDownloadJob
 {
     private const int ParallelParts = 4;
 
@@ -46,6 +47,24 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
 
     public required AbsolutePath Destination { get; init; }
 
+    /// <summary>The archive's name in the list; the definition's own name is preferred once it is read.</summary>
+    public string? FileName { get; init; }
+
+    /// <summary>How many bytes of how many have been written, which is how the Downloads page shows the size.</summary>
+    public ReportedDownloadState State { get; } = new();
+
+    /// <inheritdoc/>
+    public IPublicJobStateData? GetJobStateData() => State;
+
+    /// <inheritdoc/>
+    public string DisplayName => _originalFileName ?? FileName ?? "";
+
+    /// <inheritdoc/>
+    public string SourceName => "Wabbajack CDN";
+
+    /// <inheritdoc/>
+    public Uri? PageUri => new(HostTransfer.Plain(Url));
+
     /// <summary>How many times a part or the definition is asked for before the download is given up.</summary>
     public int Attempts { get; init; } = 6;
 
@@ -60,13 +79,14 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
 
     private string? _originalFileName;
 
-    public static IJobTask<WabbajackCdnDownloadJob, AbsolutePath> Create(IServiceProvider provider, Uri cdnUrl, AbsolutePath destination)
+    public static IJobTask<WabbajackCdnDownloadJob, AbsolutePath> Create(IServiceProvider provider, Uri cdnUrl, AbsolutePath destination, string? fileName = null)
     {
         var job = new WabbajackCdnDownloadJob
         {
             Client = provider.GetRequiredService<HttpClient>(),
             Logger = provider.GetRequiredService<ILogger<WabbajackCdnDownloadJob>>(),
             Url = cdnUrl,
+            FileName = fileName,
             Destination = destination,
         };
         return provider.GetRequiredService<IJobMonitor>().Begin<WabbajackCdnDownloadJob, AbsolutePath>(job);
@@ -112,6 +132,7 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
 
         _originalFileName = definition.OriginalFileName;
 
+        State.Report(0, definition.Size);
         await using (var file = Destination.Open(FileMode.Create, FileAccess.ReadWrite, FileShare.None))
         {
             file.SetLength(definition.Size);
@@ -149,7 +170,9 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
                             {
                                 writeLock.Release();
                             }
-                            context.SetPercent(Size.FromLong(Interlocked.Add(ref written, bytes.Length)), Size.FromLong(Math.Max(1, definition.Size)));
+                            var total = Interlocked.Add(ref written, bytes.Length);
+                            State.Report(total, definition.Size);
+                            context.SetPercent(Size.FromLong(total), Size.FromLong(Math.Max(1, definition.Size)));
                         }
                         finally
                         {

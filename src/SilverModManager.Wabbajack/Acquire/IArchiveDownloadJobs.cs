@@ -36,7 +36,7 @@ public sealed class ArchiveDownloadJobs(IServiceProvider provider, NexusModsLibr
                 return HttpDownloadJob.Create(provider, http.Url, new Uri(http.Url.GetLeftPart(UriPartial.Path)), destination);
 
             case WabbajackCdnState cdn:
-                return WabbajackCdnDownloadJob.Create(provider, cdn.Url, destination);
+                return WabbajackCdnDownloadJob.Create(provider, cdn.Url, destination, row.Archive.Name);
 
             case MegaState mega:
                 return HostDownloaders.Mega.Create(provider, mega.Url, row.Archive.Name, destination);

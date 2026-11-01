@@ -8,6 +8,7 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
@@ -100,6 +101,29 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
         Acquirer.Plan.Rows.Select(r => r.State).Should().OnlyContain(s => s == ArchiveState.Manual);
         Acquirer.Plan.Rows.Select(r => r.Reason).Should().OnlyContain(r => r == "the host said no");
         Acquirer.Plan.Rows.Select(r => r.Page).Should().Equal(mega, new Uri("https://drive.google.com/uc?id=abc123&export=download"), other, other);
+    }
+
+    [Fact]
+    public async Task ADownloadCancelledOnTheDownloadsPageBecomesManualAsCancelledNotAsAFailure()
+    {
+        using var page = Acquirer.Attach();
+        var content = new byte[] { 1, 2, 3, 4 };
+        var row = AutomaticRow(new HttpState(new Uri(Mirror, "a.7z"), []), content, "a.7z");
+        _jobs.Content[row.Archive.XxHash64] = content;
+        var release = new TaskCompletionSource();
+        _jobs.Gate = release.Task;
+        var monitor = ServiceProvider.GetRequiredService<IJobMonitor>();
+
+        var run = Acquirer.Run(new ArchivePlan([row]), null, CancellationToken.None);
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+        while (_jobs.Gauge.Current < 1 && DateTime.UtcNow < deadline) await Task.Delay(5, TestContext.Current.CancellationToken);
+        // The Downloads page cancels the job through the monitor, not through the acquirer.
+        monitor.Cancel(monitor.Snapshot().Single(j => j.Definition is FakeDownloadJob).Id);
+        await run;
+
+        Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Manual);
+        Acquirer.Plan.Rows[0].Reason.Should().Be("cancelled");
+        Acquirer.Status?.Failures.Should().BeNullOrEmpty();
     }
 
     [Fact]

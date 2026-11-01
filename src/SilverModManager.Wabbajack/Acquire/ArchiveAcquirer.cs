@@ -3,7 +3,9 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Downloads;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -269,10 +271,11 @@ public sealed class ArchiveAcquirer(
         // Still queued when a later run replaced the plan: nobody wants this archive any more.
         if (!IsCurrent(rows)) return;
         var row = RowAt(rows, index);
+        IJobTask<IDownloadJob, AbsolutePath>? job = null;
         try
         {
             await using var destination = temporaryFileManager.CreateFile();
-            var job = await downloadJobs.Create(row, destination.Path, cancellationToken);
+            job = await downloadJobs.Create(row, destination.Path, cancellationToken);
             // The job runs on the job monitor, not on this token, so stopping the run has to stop the transfer itself.
             await using var stopTransfer = cancellationToken.Register(() => job.Job.AsContext().Cancel());
             var file = await library.AddDownload(job, new ModlistAcquisition(modlist, logger));
@@ -296,6 +299,11 @@ public sealed class ArchiveAcquirer(
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
+        }
+        catch (OperationCanceledException) when (job?.Job.Status == JobStatus.Cancelled)
+        {
+            // Cancelled from the Downloads page rather than by this run. The user did that on purpose, so it is not a failure to report.
+            Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = FailureReason(r, "cancelled"), Page = OriginalUrl(r), DownloadFailed = true });
         }
         catch (Exception e)
         {
