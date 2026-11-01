@@ -41,6 +41,7 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
 
     private readonly Lock _lock = new();
     private readonly Dictionary<LibraryFileId, Bitmap?> _banners = new();
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<RunningModlistInstall, IWabbajackInstallRun> _wrapped = new();
 
     private WabbajackModlistLibraryFile.ReadOnly Modlist(LibraryFileId file)
         => WabbajackModlistLibraryFile.Load(_connection.Db, file.Value);
@@ -159,18 +160,25 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
         return loadout.LoadoutId;
     }
 
+    private ModlistInstallRuns Runs => provider.GetRequiredService<ModlistInstallRuns>();
+
     public IWabbajackInstallRun StartInstall(LibraryFileId file, LoadoutId target, InstallOptions options)
+        => Wrap(Runs.Of(InstallModlistJob.Create(provider, target, Modlist(file), options)));
+
+    public IWabbajackInstallRun? RunningInstall(LibraryFileId file, LoadoutId loadout)
+        => Runs.Find(file, loadout) is { } run ? Wrap(run) : null;
+
+    // One wrapper per run, so whoever follows it can tell it is the run it already follows.
+    private IWabbajackInstallRun Wrap(RunningModlistInstall run)
     {
-        var task = InstallModlistJob.Create(provider, target, Modlist(file), options);
-        return new InstallRun(task.JobDefinition.Progress.Changes, Await(task));
+        lock (_lock) return _wrapped.GetValue(run, key => new InstallRun(key));
     }
 
-    private static async Task Await(IJobTask<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly> task) => _ = await task;
-
-    private sealed class InstallRun(IObservable<ModlistInstallProgress.Snapshot> progress, Task completion) : IWabbajackInstallRun
+    private sealed class InstallRun(RunningModlistInstall run) : IWabbajackInstallRun
     {
-        public IObservable<ModlistInstallProgress.Snapshot> Progress => progress;
-        public Task Completion => completion;
+        public LoadoutId Loadout => run.Loadout;
+        public IObservable<ModlistInstallProgress.Snapshot> Progress => run.Progress.Changes;
+        public Task Completion { get; } = run.Completion;
     }
 
     public async Task InstallArchive(LibraryFileId archive, LoadoutId target, CancellationToken cancellationToken)

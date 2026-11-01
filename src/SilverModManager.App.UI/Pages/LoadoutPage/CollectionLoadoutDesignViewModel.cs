@@ -74,4 +74,5 @@ public class CollectionLoadoutDesignViewModel : APageViewModel<ICollectionLoadou
         [new ModInstructions("Core mod", "Apply the patch after installing.", CollectionDownloader.ItemType.Required)],
         []);
     public bool IsReadOnly { get; init; } = true;
+    public CollectionInstallStatus? InstallProgress { get; init; }
 }

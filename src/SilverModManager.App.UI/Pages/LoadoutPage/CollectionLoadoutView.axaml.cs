@@ -126,6 +126,15 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
                 })
                 .DisposeWith(disposables);
 
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.InstallProgress))
+                .Subscribe(progress =>
+                {
+                    InstallProgressPanel.IsVisible = progress is not null;
+                    InstallProgressText.Text = progress is null ? "" : progress.EtaText == "" ? progress.Text : $"{progress.Text} - {progress.EtaText}";
+                    InstallProgressBar.Value = progress?.Fraction ?? 0;
+                })
+                .DisposeWith(disposables);
+
             // Whether the text gets cut off depends on the width it wraps at, so it is decided from the laid-out text.
             DescriptionText.LayoutUpdated += OnDescriptionLayoutUpdated;
             Disposable.Create(() => DescriptionText.LayoutUpdated -= OnDescriptionLayoutUpdated).DisposeWith(disposables);

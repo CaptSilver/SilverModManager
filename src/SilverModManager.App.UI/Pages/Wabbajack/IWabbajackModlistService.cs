@@ -26,6 +26,9 @@ public sealed record WabbajackModlistDetails(
 /// <summary>An install in flight.</summary>
 public interface IWabbajackInstallRun
 {
+    /// <summary>The loadout the install writes into.</summary>
+    LoadoutId Loadout { get; }
+
     /// <summary>Every snapshot of the job's progress, starting with the current one.</summary>
     IObservable<ModlistInstallProgress.Snapshot> Progress { get; }
 
@@ -57,7 +60,14 @@ public interface IWabbajackModlistService
     /// <summary>Adds a loadout for <paramref name="game"/> and returns its id. Nothing is created before this is called.</summary>
     Task<LoadoutId> CreateLoadout(GameId game, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Starts the install. The run is the same object <see cref="RunningInstall"/> gives for it from then on.
+    /// </summary>
+    /// <exception cref="SilverModManager.Sdk.Errors.UserFacingException">An install into <paramref name="target"/> is already running.</exception>
     IWabbajackInstallRun StartInstall(LibraryFileId file, LoadoutId target, InstallOptions options);
+
+    /// <summary>The install of <paramref name="file"/> into <paramref name="loadout"/> that has not finished, or null. The same install is always the same object.</summary>
+    IWabbajackInstallRun? RunningInstall(LibraryFileId file, LoadoutId loadout);
 
     /// <summary>
     /// Installs a library file the list holds into <paramref name="target"/> as an ordinary mod. That makes it the

@@ -198,6 +198,12 @@
                         <TextBlock x:Name="DescriptionText" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
                         <controls:StandardButton x:Name="DescriptionToggle" Type="Tertiary" ShowIcon="None" Size="Toolbar" Text="Show more" HorizontalAlignment="Left" IsVisible="False" />
                     </StackPanel>
+
+                    <!-- an install in flight, shown whichever tab is open -->
+                    <StackPanel x:Name="InstallProgressPanel" Margin="0,12,0,0" Spacing="4" IsVisible="False">
+                        <TextBlock x:Name="InstallProgressText" />
+                        <ProgressBar x:Name="InstallProgressBar" Minimum="0" Maximum="1" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

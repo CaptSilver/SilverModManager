@@ -85,4 +85,9 @@ public interface ICollectionLoadoutViewModel : IPageViewModelInterface
     /// The collection author's instructions. Empty when there are none or they could not be read.
     /// </summary>
     CollectionInstructions Instructions { get; }
+
+    /// <summary>
+    /// The install running into this collection, shown in the header whichever tab is open. Null while none is.
+    /// </summary>
+    CollectionInstallStatus? InstallProgress { get; }
 }

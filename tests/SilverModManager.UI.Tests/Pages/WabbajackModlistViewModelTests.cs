@@ -109,7 +109,8 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
 
     private sealed class FakeRun : IWabbajackInstallRun
     {
-        public Subject<ModlistInstallProgress.Snapshot> Snapshots { get; } = new();
+        public SilverModManager.Sdk.Loadouts.LoadoutId Loadout { get; set; }
+        public BehaviorSubject<ModlistInstallProgress.Snapshot> Snapshots { get; } = new(ModlistInstallProgress.Snapshot.Empty);
         public TaskCompletionSource Done { get; } = new();
         public IObservable<ModlistInstallProgress.Snapshot> Progress => Snapshots;
         public Task Completion => Done.Task;
@@ -179,11 +180,27 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
             return await (createLoadout ?? throw new NotSupportedException())();
         }
 
+        /// <summary>When set, <see cref="StartInstall"/> refuses with it before anything starts, like an install into a loadout another one writes into.</summary>
+        public Exception? StartRefusal { get; set; }
+
+        /// <summary>An install that is already going when the page asks, in the loadout the page picked. It stops counting once it ends.</summary>
+        public FakeRun? Running { get; set; }
+
         public IWabbajackInstallRun StartInstall(LibraryFileId file, SilverModManager.Sdk.Loadouts.LoadoutId target, InstallOptions options)
         {
+            if (StartRefusal is { } refusal) throw refusal;
             Installs.Add(options);
             InstalledInto.Add(target);
+            Run.Loadout = target;
+            Running = Run;
             return Run;
+        }
+
+        public IWabbajackInstallRun? RunningInstall(LibraryFileId file, SilverModManager.Sdk.Loadouts.LoadoutId loadout)
+        {
+            if (Running is not { } running || running.Done.Task.IsCompleted) return null;
+            running.Loadout = loadout;
+            return running;
         }
 
         public List<(LibraryFileId Archive, SilverModManager.Sdk.Loadouts.LoadoutId Target)> InstalledArchives { get; } = [];

@@ -78,6 +78,13 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     // a close) is the acquirer's to finish, and showing a plan over it would abandon it.
     private bool _ownsRun;
 
+    // The install run the page shows, whether it started it or found it already going; null when none is.
+    private IWabbajackInstallRun? _followed;
+    private Task _followedCompletion = Task.CompletedTask;
+    private IDisposable _followedProgress = Disposable.Empty;
+    private bool _hasUnfinishedInstall;
+    private readonly TimeProvider _time;
+
     [Reactive] public partial LibraryFileId FileId { get; set; }
 
     private LoadoutId? _pinnedLoadout;
@@ -148,6 +155,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     [Reactive] public partial bool IsInstalling { get; private set; }
     [Reactive] public partial string ProgressText { get; private set; } = "";
     [Reactive] public partial double ProgressFraction { get; private set; }
+    [Reactive] public partial string InstallEtaText { get; private set; } = "";
     [Reactive] public partial string ErrorText { get; private set; } = "";
     [Reactive] public partial bool CanResume { get; private set; }
     [Reactive] public partial bool IsInstalled { get; private set; }
@@ -181,6 +189,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         _acquirer = acquirer;
         _provider = provider;
         _logger = provider.GetService<ILogger<WabbajackModlistViewModel>>();
+        _time = provider.GetService<TimeProvider>() ?? TimeProvider.System;
 
         TabIcon = IconValues.Download;
         TabTitle = "Modlist";
@@ -322,6 +331,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
                 .Subscribe(_ => RefreshInstalledState())
                 .DisposeWith(d);
 
+            // An install started before this page existed (the user navigated away and back) is still going.
+            AttachToRunningInstall();
+
             if (!_loadStarted) _ = LoadAsync(CancellationToken.None);
         });
     }
@@ -462,6 +474,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         if (_details is null) throw new InvalidOperationException("The list was not opened yet");
 
         SelectedLoadout = choice;
+        AttachToRunningInstall();
         _planReady = false;
         IsPlanning = true;
 
@@ -782,7 +795,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         CanShowMissing = _planReady && !IsPlanning && _plan.Rows.Any(row => !WabbajackModlistText.IsAvailable(row) && row.State != ArchiveState.GameFileVersion);
         var hasLoadout = SelectedLoadout is not null;
         InstallBlockedReason = WabbajackModlistText.InstallBlockedReason(hasLoadout, IsPlanning, _planReady, IsInstalling, _plan, SkipMissingArchives);
-        DownloadBlockedReason = WabbajackModlistText.DownloadBlockedReason(IsPlanning, _isPreparingDownloads, _planReady, IsDownloading, _plan);
+        DownloadBlockedReason = WabbajackModlistText.DownloadBlockedReason(IsPlanning, _isPreparingDownloads, _planReady, IsDownloading, _plan, IsInstalling);
         // The acquirer works on one list at a time; starting here would abandon the other list's batch.
         var otherListRuns = _acquirer.Status is { IsRunning: true } running && running.Modlist != FileId;
         if (DownloadBlockedReason == "" && otherListRuns)
@@ -792,7 +805,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         // The reasons are the single source: a button is on exactly when it has none to give.
         CanInstall = InstallBlockedReason == "";
         CanDownload = DownloadBlockedReason == "";
-        CanRetryDownloads = _planReady && !IsPlanning && !_isPreparingDownloads && !IsDownloading && !otherListRuns;
+        CanRetryDownloads = _planReady && !IsPlanning && !_isPreparingDownloads && !IsDownloading && !IsInstalling && !otherListRuns;
+        // Resume would start a second install into the loadout the running one writes into.
+        CanResume = _hasUnfinishedInstall && !IsInstalling;
     }
 
     private void RefreshLoadoutChoices()
@@ -839,7 +854,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
             _groupId = found?.WabbajackModlistLoadoutGroupId;
             IsInstalled = found is not null;
-            CanResume = SelectedLoadout?.Id is { } resumable && WabbajackModlistInstallState.Read(db, FileId, resumable) == WabbajackModlistCardState.Incomplete;
+            _hasUnfinishedInstall = SelectedLoadout?.Id is { } resumable && WabbajackModlistInstallState.Read(db, FileId, resumable) == WabbajackModlistCardState.Incomplete;
+            CanResume = _hasUnfinishedInstall && !IsInstalling;
             SkippedFiles = found is { } owner
                 ? WabbajackSkippedFile.All(db).Where(skipped => skipped.GroupId == owner.WabbajackModlistLoadoutGroupId).Select(skipped => new WabbajackSkippedRow(skipped.To, skipped.Reason, skipped.Kind)).ToArray()
                 : [];
@@ -855,8 +871,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     {
         var picked = SelectedLoadout ?? throw new InvalidOperationException("No loadout is selected");
         ErrorText = "";
-        ProgressText = WabbajackModlistText.Progress(ModlistInstallProgress.Snapshot.Empty);
-        ProgressFraction = 0;
+        ShowInstallStatus(new WabbajackInstallStatus(WabbajackModlistText.Progress(ModlistInstallProgress.Snapshot.Empty), 0, ""));
         IsInstalling = true;
         Recompute();
 
@@ -864,32 +879,104 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         try
         {
             var target = picked.Id ?? await CreatePickedLoadout();
-            var run = _service.StartInstall(FileId, target, new InstallOptions(SkipMissingArchives, keep));
-            // Progress comes from the install job's thread.
-            using var _ = run.Progress.ObserveOn(RxApp.MainThreadScheduler).Subscribe(snapshot =>
-            {
-                ProgressText = WabbajackModlistText.Progress(snapshot);
-                ProgressFraction = WabbajackModlistText.Fraction(snapshot);
-            });
-            await run.Completion;
-            ProgressText = "";
+            await Follow(_service.StartInstall(FileId, target, new InstallOptions(SkipMissingArchives, keep)));
         }
         catch (OperationCanceledException)
         {
-            ProgressText = "";
+            ShowInstallStatus(default);
+        }
+        catch (Exception e)
+        {
+            // A refusal to start (another install is writing into the loadout) or a loadout that could not be created.
+            _logger?.LogWarning(e, "Installing '{List}' failed", Name);
+            ErrorText = e.Message;
+            ShowInstallStatus(default);
+        }
+        finally
+        {
+            if (_followed is null)
+            {
+                IsInstalling = false;
+                RefreshInstalledState();
+                Recompute();
+            }
+        }
+    }
+
+    public void AttachToRunningInstall()
+    {
+        var loadout = SelectedLoadout?.Id ?? PinnedLoadout;
+        var run = loadout is { } id ? _service.RunningInstall(FileId, id) : null;
+        if (run is not null)
+        {
+            _ = Follow(run);
+            return;
+        }
+
+        // The run being shown writes into a loadout that is not the one picked now.
+        if (_followed is { } other && other.Loadout != loadout) StopFollowing();
+    }
+
+    /// <summary>Shows <paramref name="run"/> until it ends. Following the run already shown changes nothing.</summary>
+    private Task Follow(IWabbajackInstallRun run)
+    {
+        if (ReferenceEquals(_followed, run)) return _followedCompletion;
+
+        StopFollowing();
+        _followed = run;
+        IsInstalling = true;
+        if (ProgressText == "") ShowInstallStatus(new WabbajackInstallStatus(WabbajackModlistText.Progress(ModlistInstallProgress.Snapshot.Empty), 0, ""));
+        Recompute();
+
+        // Progress comes from the install job's thread.
+        _followedProgress = WabbajackInstallStatusFeed.Follow(run.Progress, _time)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(status =>
+            {
+                if (ReferenceEquals(_followed, run)) ShowInstallStatus(status);
+            });
+        return _followedCompletion = AwaitRun(run);
+    }
+
+    private async Task AwaitRun(IWabbajackInstallRun run)
+    {
+        try
+        {
+            await run.Completion;
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelled from the Jobs list: nothing to report, the page just stops showing it.
         }
         catch (Exception e)
         {
             _logger?.LogWarning(e, "Installing '{List}' failed", Name);
-            ErrorText = e.Message;
-            ProgressText = "";
+            if (ReferenceEquals(_followed, run)) ErrorText = e.Message;
         }
         finally
         {
-            IsInstalling = false;
-            RefreshInstalledState();
-            Recompute();
+            // Another pick may have moved the page on to a different run, or none.
+            if (ReferenceEquals(_followed, run)) StopFollowing();
         }
+    }
+
+    // Ends the page's view of the run and brings the rest of the page up to date with what the run left.
+    private void StopFollowing()
+    {
+        _followedProgress.Dispose();
+        _followedProgress = Disposable.Empty;
+        _followed = null;
+        ShowInstallStatus(default);
+        IsInstalling = false;
+        RefreshInstalledState();
+        Recompute();
+    }
+
+    private void ShowInstallStatus(WabbajackInstallStatus status)
+    {
+        ProgressText = status.Text ?? "";
+        ProgressFraction = status.Fraction;
+        InstallEtaText = status.EtaText ?? "";
     }
 
     // "Create new loadout" is only a pick until Install; this is where the loadout comes into being.

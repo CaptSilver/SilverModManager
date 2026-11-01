@@ -106,6 +106,12 @@ public abstract class CollectionSource
     public abstract IObservable<CollectionInstructions> Instructions { get; }
 
     /// <summary>
+    /// How far an install of this collection has got, for the header to show on every tab, or null while none is running.
+    /// A source that has no install of its own to report leaves it at null.
+    /// </summary>
+    public virtual IObservable<CollectionInstallStatus?> InstallProgress => System.Reactive.Linq.Observable.Return<CollectionInstallStatus?>(null);
+
+    /// <summary>
     /// Builds the Downloads tab's view model, embedded (no header of its own). Null when there is nothing to
     /// download from. The page calls it once in its constructor; the view host activates it only when the tab is shown.
     /// Never called for a menu entry.
@@ -137,6 +143,9 @@ public sealed record CollectionStats(Percent? Rating, ulong? Endorsements, ulong
 {
     public static CollectionStats None { get; } = new(null, null, null, null, null);
 }
+
+/// <summary>An install in flight, as the header shows it. <paramref name="EtaText"/> is empty until there is enough to estimate from.</summary>
+public sealed record CollectionInstallStatus(string Text, double Fraction, string EtaText);
 
 public sealed record CollectionBadge(IconValue Icon, string Text);
 

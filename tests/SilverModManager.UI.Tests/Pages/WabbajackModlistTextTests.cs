@@ -17,6 +17,22 @@ public class WabbajackModlistTextTests
         => ModlistInstallProgress.Snapshot.Empty with { Phase = phase, DoneItems = done, TotalItems = total };
 
     [Fact]
+    public void DownloadBlockedReason_SaysAnInstallIsRunningBeforeAnythingElse()
+        => WabbajackModlistText.DownloadBlockedReason(false, false, true, false, Plan(Row(ArchiveState.Browser)), isInstalling: true).Should().Be("An install is running.");
+
+    [Theory]
+    [InlineData(-1, "")]
+    [InlineData(10, "less than a minute left")]
+    [InlineData(29, "less than a minute left")]
+    [InlineData(30, "about 1 min left")]
+    [InlineData(12 * 60, "about 12 min left")]
+    [InlineData(59 * 60 + 40, "about 1 h left")]
+    [InlineData(60 * 60, "about 1 h left")]
+    [InlineData(2 * 3600 + 5 * 60, "about 2 h 5 min left")]
+    public void Eta_RoundsToTheMinuteAndSaysNothingWithoutAnEstimate(int seconds, string expected)
+        => WabbajackModlistText.Eta(seconds < 0 ? null : TimeSpan.FromSeconds(seconds)).Should().Be(expected);
+
+    [Fact]
     public void Progress_NamesEachOfTheFourPhases()
     {
         WabbajackModlistText.Progress(Progress(InstallPhase.Check)).Should().Be("Checking the list");

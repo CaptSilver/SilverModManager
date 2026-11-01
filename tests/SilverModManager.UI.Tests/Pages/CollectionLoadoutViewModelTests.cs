@@ -125,6 +125,27 @@ public class CollectionLoadoutViewModelTests(IServiceProvider provider) : AUiTes
     }
 
     [Fact]
+    public async Task TheHeaderShowsTheSourcesInstallProgressOnEveryTabAndClearsItWhenTheInstallEnds()
+    {
+        var (_, group, source) = await TestSource();
+        source.GroupSubject.OnNext(Optional<CollectionGroupId>.Create(group.CollectionGroupId));
+        var (page, activation) = await ActivePage(source);
+        using var _ = activation;
+        await EventuallyOnUi(() => page.InstallProgress.Should().BeNull("no install is running"));
+
+        source.InstallProgressSubject.OnNext(new CollectionInstallStatus("Writing files: 4 of 8", 0.5, "about 3 min left"));
+
+        foreach (var tab in new[] { CollectionPageTab.Installed, CollectionPageTab.Instructions, CollectionPageTab.Downloads })
+        {
+            await Dispatcher.UIThread.InvokeAsync(() => page.SelectedTab = tab);
+            await EventuallyOnUi(() => page.InstallProgress.Should().Be(new CollectionInstallStatus("Writing files: 4 of 8", 0.5, "about 3 min left"), $"the {tab} tab shows it too"));
+        }
+
+        source.InstallProgressSubject.OnNext(null);
+        await EventuallyOnUi(() => page.InstallProgress.Should().BeNull());
+    }
+
+    [Fact]
     public async Task APageWhoseSourceHasNoDownloadsHasNoViewDownloadsItem()
     {
         var (_, group, source) = await TestSource();

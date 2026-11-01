@@ -120,6 +120,17 @@ public sealed class WabbajackModlistSource : CollectionSource
     public override IObservable<bool> CanToggle { get; }
     public override IObservable<CollectionInstructions> Instructions => _instructions.AsObservable();
 
+    // The Downloads tab's model follows the run, so the header shows what the tab shows. It reads the model on
+    // subscription because the model is built after the source.
+    public override IObservable<CollectionInstallStatus?> InstallProgress => Observable.Defer(() =>
+    {
+        var downloads = _downloads
+            ?? throw new InvalidOperationException("The install is followed by the Downloads tab's model, which CreateDownloads builds first");
+        return downloads.WhenAnyValue(
+            model => model.IsInstalling, model => model.ProgressText, model => model.ProgressFraction, model => model.InstallEtaText,
+            (installing, text, fraction, eta) => installing ? new CollectionInstallStatus(text, fraction, eta) : null);
+    });
+
     public override IPageViewModelInterface? CreateDownloads()
     {
         // Kept for the picker and the more menu. The model loads and plans when its tab is first shown, so opening an
@@ -180,6 +191,10 @@ public sealed class WabbajackModlistSource : CollectionSource
     {
         var logger = Services.GetRequiredService<ILogger<WabbajackModlistSource>>();
         var service = _service ?? Services.GetRequiredService<IWabbajackModlistService>();
+
+        // The Downloads tab may not be shown yet, and an install that was started before this page opened is going on
+        // whichever tab is open.
+        _downloads?.AttachToRunningInstall();
 
         // Open parses the list for its banner and ReadBlurb reuses that parse, so the header costs one parse.
         return Observable
