@@ -268,6 +268,43 @@ public class CollectionDestinationTests(ITestOutputHelper helper) : ACyberpunkIs
     }
 
     [Fact]
+    public async Task InstallCollection_ReplicatedMod_LinksAnItemForTheLoadoutsGame()
+    {
+        // A mod with Hashes is installed by mapping the archive's files to the listed paths, not through an installer.
+        var offline = new OfflineCollections(ServiceProvider, Connection, LibraryService, TemporaryFileManager);
+        var folder = TemporaryFileManager.CreateFolder();
+        var (path, archiveMd5) = await offline.CreateFomodMod(folder.Path, 0, plain: true);
+        await offline.AddDirectDownload(path, archiveMd5);
+        var innerMd5 = await Md5Hasher.HashAsync(new MemoryStream(System.Text.Encoding.UTF8.GetBytes("plain mod 0")));
+        var manifest = new CollectionRoot
+        {
+            Info = new CollectionInfo { Name = "Replicated", DomainName = GameDomain.From("cyberpunk2077") },
+            Mods =
+            [
+                new Mod
+                {
+                    Name = "Replicated mod", DomainName = GameDomain.From("cyberpunk2077"),
+                    Source = new ModSource
+                    {
+                        Type = ModSourceType.Direct, Md5 = archiveMd5, Url = new Uri("https://example.invalid/mod0.zip"),
+                        LogicalFilename = "mod0.zip", FileSize = Size.From((ulong)path.FileInfo.Size),
+                    },
+                    Hashes = [new PathAndHash { Path = "archive/pc/mod/replicated.archive", MD5 = innerMd5 }],
+                },
+            ],
+        };
+        var (file, revision, items) = await offline.Create(manifest);
+        var loadout = await CreateLoadout();
+
+        await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items));
+
+        NexusCollectionReplicatedLoadoutGroup.All(Connection.Db).Should().ContainSingle("the mod is installed by the replicated path");
+        var item = LibraryLinkedLoadoutItem.All(Connection.Db).Single().LibraryItem;
+        LibraryDestinations.GamesOf(item).Should().BeEquivalentTo([GameInstallation.Game.GameId]);
+        item.Contains(LibraryItem.DestinationUnknown).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task CollectionCreator_BundledArchive_IsForTheLoadoutsGame()
     {
         var offline = new OfflineCollections(ServiceProvider, Connection, LibraryService, TemporaryFileManager);
