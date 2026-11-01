@@ -4,6 +4,8 @@ using NexusMods.Paths.Utilities;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.NexusModsApi;
 
+using static SilverModManager.Games.Generic.Simple.SimpleInstallPresets;
+
 namespace SilverModManager.Games.Generic.Simple;
 
 /// <summary>
@@ -37,16 +39,6 @@ public static class GameFolderSimpleGames
         ],
     };
 
-    // Games whose plugin or extension checks no layout take any archive, laid out like the mod folder.
-    private static readonly SimpleInstallRules AsIs = new() { InstallAsIs = true };
-
-    // Mod Organizer 2 accepts an archive when one of its top-level folders is on the game's list, and offers to unwrap
-    // an archive that has the folder one level down. The folder holding a listed one is the root here.
-    private static SimpleInstallRules FolderNamed(string[] folders) => new()
-    {
-        Targets = [new SimpleInstallTarget { Destination = RelativePath.Empty, KnownSubfolderNames = folders.Select(folder => (RelativePath)folder).ToArray() }],
-    };
-
     private static readonly string[] DarkestDungeonFolders =
     [
         "activity_log", "audio", "campaign", "colours", "curios", "cursors", "dlc", "dungeons", "effects", "fe_flow", "fonts", "fx",
@@ -61,35 +53,8 @@ public static class GameFolderSimpleGames
 
     private static readonly string[] ArkhamCityFolders = ["config", "cookedpcconsole", "localization", "movies", "moviesstereo", "splash"];
 
-    // Vortex puts a mod with the marker file in a folder of its own and drops what lies outside the marker's folder, so
-    // a readme beside the mod folder does not make the archive unusable.
-    private static SimpleInstallRules InOwnFolderByMarker(string markerFile) => new()
-    {
-        MarkerRules =
-        [
-            new SimpleMarkerRule
-            {
-                MarkerFile = markerFile,
-                Destination = RelativePath.Empty,
-                InFolderNamedAfterMod = true,
-                IgnoredExtensions = [KnownExtensions.Txt, KnownExtensions.Md, KnownExtensions.Png, KnownExtensions.Jpg],
-            },
-        ],
-    };
-
-    // Vortex takes the folder holding the first file with the extension as the mod's root, and installs it unchanged.
-    private static SimpleInstallRules FolderOfFirstFile(string extension) => new()
-    {
-        Targets = [new SimpleInstallTarget { Destination = RelativePath.Empty, KnownValidFileExtensions = [new Extension(extension)] }],
-    };
-
     // Vortex's stop patterns: the folder holding one of these is the mod's root, and an archive with none goes in unchanged.
     private static readonly string[] WolcenFolders = ["levels", "Lib", "Loot", "Objects", "Umbra"];
-
-    private static SimpleInstallRules StopFolders(string[] folders) => FolderNamed(folders) with { InstallAsIs = true };
-
-    // A Unity Mod Manager mod has an Info.json and is one folder; anything else is laid out like the Mods folder.
-    private static readonly SimpleInstallRules UnityModManagerMod = InOwnFolderByMarker("Info.json") with { InstallAsIs = true };
 
     /// <summary>From Mod Organizer 2.</summary>
     public static readonly SimpleGameDefinition DarkestDungeon = new()

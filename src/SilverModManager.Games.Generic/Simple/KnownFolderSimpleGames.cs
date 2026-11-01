@@ -4,6 +4,8 @@ using NexusMods.Paths.Utilities;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.NexusModsApi;
 
+using static SilverModManager.Games.Generic.Simple.SimpleInstallPresets;
+
 namespace SilverModManager.Games.Generic.Simple;
 
 /// <summary>
@@ -28,7 +30,7 @@ public static class KnownFolderSimpleGames
         ModRoot = new ModLocation(ModLocationRoot.Documents, "Almost Human/Legend of Grimrock/Dungeons"),
         LocationNames = Named(ModLocationRoot.Documents, "Dungeons"),
         LocationSentenceNames = Named(ModLocationRoot.Documents, "the Dungeons folder"),
-        Install = new SimpleInstallRules { InstallAsIs = true },
+        Install = AsIs,
     };
 
     /// <summary>From Mod Organizer 2.</summary>
@@ -42,7 +44,7 @@ public static class KnownFolderSimpleGames
         ModRoot = new ModLocation(ModLocationRoot.Documents, "My Games/Binding of Isaac Afterbirth+ Mods"),
         LocationNames = Named(ModLocationRoot.Documents, "Binding of Isaac mods"),
         LocationSentenceNames = Named(ModLocationRoot.Documents, "the Binding of Isaac mods folder"),
-        Install = new SimpleInstallRules { InstallAsIs = true },
+        Install = AsIs,
     };
 
     /// <remarks>
@@ -59,19 +61,7 @@ public static class KnownFolderSimpleGames
         ModRoot = new ModLocation(ModLocationRoot.RoamingAppData, "Surviving Mars/mods"),
         LocationNames = Named(ModLocationRoot.RoamingAppData, "Surviving Mars mods"),
         LocationSentenceNames = Named(ModLocationRoot.RoamingAppData, "the Surviving Mars mods folder"),
-        Install = new SimpleInstallRules
-        {
-            MarkerRules =
-            [
-                new SimpleMarkerRule
-                {
-                    MarkerFile = "modcontent.hpk",
-                    Destination = RelativePath.Empty,
-                    InFolderNamedAfterMod = true,
-                    IgnoredExtensions = [KnownExtensions.Txt, KnownExtensions.Md, KnownExtensions.Png, KnownExtensions.Jpg],
-                },
-            ],
-        },
+        Install = InOwnFolderByMarker("modcontent.hpk"),
     };
 
     public static readonly IReadOnlyList<SimpleGameDefinition> All = [LegendOfGrimrock, BindingOfIsaacRebirth, SurvivingMars];
