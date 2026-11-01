@@ -36,7 +36,9 @@ public class ArmoredCore6Game : AMe3FromSoftGame<ArmoredCore6Game>, IGameData<Ar
         Cleanup = CleanupRules.ModEngine2 with { Launcher = AntiCheatLauncher },
         Formats = new FromSoftFormatTraits(
             BinderFormat.Bnd4,
-            [DcxCompression.Kraken, DcxCompression.Dflt],
+            // Kraken per SoulsFormats' note for the game, zlib from its regulation; Zstandard is what Elden Ring's engine
+            // reads too, and accepting a wrapper costs nothing where refusing one fails a merge.
+            [DcxCompression.Kraken, DcxCompression.Dflt, DcxCompression.Zstd],
             new DcxWriteFormat(DcxCompression.Dflt, Unk04: 0x11000, Level: 9, WindowLog: 0),
             "regulation.bin",
             new DcxWriteFormat(DcxCompression.Dflt, Unk04: 0x11000, Level: 9, WindowLog: 0),

@@ -56,7 +56,7 @@ public sealed record FromSoftGameFacts(
         Layout: new FromSoftGameLayout(1888160, "ArmoredCore6", "Game", "armoredcore6.exe", "start_protected_game.exe", "ArmoredCore6", SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal),
         SaveNames: new FromSoftSaveNames("AC60000.sl2", "AC60000_silver.sl2", null),
         Binder: BinderFormat.Bnd4,
-        ReadableCompressions: [DcxCompression.Kraken, DcxCompression.Dflt],
+        ReadableCompressions: [DcxCompression.Kraken, DcxCompression.Dflt, DcxCompression.Zstd],
         PackedWrite: new DcxWriteFormat(DcxCompression.Dflt, 0x11000, 9, 0),
         RegulationFileName: "regulation.bin",
         RegulationWrite: new DcxWriteFormat(DcxCompression.Dflt, 0x11000, 9, 0),
