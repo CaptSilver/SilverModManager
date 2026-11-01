@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using SilverModManager.Abstractions.Downloads;
 using SilverModManager.Sdk.Jobs;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.TreeDataGrid;
 using SilverModManager.App.UI.Pages.Downloads;
 using SilverModManager.App.UI.Windows;
 
@@ -43,6 +45,7 @@ public class DownloadsPageViewModelTests(IServiceProvider provider) : AUiTest(pr
     {
         var running = new DownloadInfo { Id = DownloadId.From(Guid.NewGuid()) };
         running.SetStatus(JobStatus.Running);
+        running.SetSupportsPausing(true);
         var downloads = new SourceCache<DownloadInfo, DownloadId>(x => x.Id);
         downloads.AddOrUpdate(running);
         var service = Substitute.For<IDownloadsService>();
@@ -54,5 +57,41 @@ public class DownloadsPageViewModelTests(IServiceProvider provider) : AUiTest(pr
 
         await OnUi(() => { activation.Dispose(); return Task.CompletedTask; });
         await EventuallyOnUi(() => viewModel.PauseAllCommand.CanExecute().Should().BeFalse());
+    }
+
+    [Fact]
+    public async Task PauseAllCommand_CannotRunWhenOnlyDownloadsThatCannotPauseAreRunning()
+    {
+        var running = new DownloadInfo { Id = DownloadId.From(Guid.NewGuid()) };
+        running.SetStatus(JobStatus.Running);
+        running.SetSupportsPausing(false);
+        var downloads = new SourceCache<DownloadInfo, DownloadId>(x => x.Id);
+        downloads.AddOrUpdate(running);
+        var service = Substitute.For<IDownloadsService>();
+        service.AllDownloads.Returns(downloads.Connect());
+        var viewModel = await CreateViewModel(service);
+
+        await OnUi(() => { viewModel.Activator.Activate(); return Task.CompletedTask; });
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+
+        await OnUi(() => { viewModel.PauseAllCommand.CanExecute().Should().BeFalse(); return Task.CompletedTask; });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task PauseSelectedCommand_CanRunOnlyWhenASelectedRunningDownloadCanPause(bool supportsPausing)
+    {
+        var viewModel = await CreateViewModel();
+        var model = new CompositeItemModel<DownloadId>(DownloadId.From(Guid.NewGuid()));
+        var status = new R3.BehaviorSubject<JobStatus>(JobStatus.Running);
+        model.Add(DownloadColumns.Status.ComponentKey, new DownloadComponents.StatusComponent(
+            new Percent(0), JobStatus.Running, R3.Observable.Never<Percent>(), status,
+            supportsPausing, null, R3.Observable.Never<string?>()));
+
+        await OnUi(() => { viewModel.Activator.Activate(); viewModel.Adapter.SelectedModels.Add(model); return Task.CompletedTask; });
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+
+        await OnUi(() => { viewModel.PauseSelectedCommand.CanExecute().Should().Be(supportsPausing); return Task.CompletedTask; });
     }
 }

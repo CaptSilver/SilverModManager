@@ -75,7 +75,7 @@ public partial class DownloadsPageViewModel : APageViewModel<IDownloadsPageViewM
             .Select(_ => Adapter.SelectedModels
                 .Select(model => model.GetOptional<DownloadComponents.StatusComponent>(DownloadColumns.Status.ComponentKey))
                 .Where(opt => opt.HasValue)
-                .Any(opt => opt.Value.Status.Value == JobStatus.Running))
+                .Any(opt => opt.Value.CanPause.Value))
             .ToObservable();
         
         SelectionHasPausedItems = selectionStatusReevaluationTrigger
@@ -95,11 +95,13 @@ public partial class DownloadsPageViewModel : APageViewModel<IDownloadsPageViewM
         // Create context-aware observables for running and paused items
         HasRunningItems = context.GameScope.HasValue
             ? downloadsService.GetRunningDownloadsForGame(context.GameScope.Value)
+                .Filter(static download => download.SupportsPausing.Value)
                 .QueryWhenChanged(items => items.Count > 0)
                 .OnUI()
                 .ToObservable()
                 .Prepend(false)
             : downloadsService.GetDownloadsByStatus(JobStatus.Running)
+                .Filter(static download => download.SupportsPausing.Value)
                 .QueryWhenChanged(items => items.Count > 0)
                 .OnUI()
                 .ToObservable()
@@ -135,8 +137,8 @@ public partial class DownloadsPageViewModel : APageViewModel<IDownloadsPageViewM
                     var downloadRef = model.GetOptional<DownloadRef>(DownloadColumns.DownloadRefComponentKey);
                     var statusComponent = model.GetOptional<DownloadComponents.StatusComponent>(DownloadColumns.Status.ComponentKey);
                     
-                    // Only pause downloads that are currently running
-                    if (downloadRef.HasValue && statusComponent is { HasValue: true, Value.Status.Value: JobStatus.Running })
+                    // Only pause downloads that are running and can pause
+                    if (downloadRef.HasValue && statusComponent is { HasValue: true, Value.CanPause.Value: true })
                         downloadsService.PauseDownload(downloadRef.Value.Download);
                 }
 
