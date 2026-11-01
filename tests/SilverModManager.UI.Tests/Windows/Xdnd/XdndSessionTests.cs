@@ -172,6 +172,18 @@ public class XdndSessionTests
     }
 
     [Fact]
+    public void ADragWithoutFilesAsksForNoTypeNamesWhenTraceIsOff()
+    {
+        _log.Minimum = LogLevel.Debug;
+        var plainText = _x.InternAtom("text/plain");
+
+        _session.Handle(Enter(Source, Version5, plainText));
+
+        _x.AtomNameCalls.Should().BeEmpty("naming a type is a round trip to the X server");
+        _log.Entries.Should().NotContain(e => e.Level == LogLevel.Trace);
+    }
+
+    [Fact]
     public void PositionFromAnotherWindowIsIgnoredAndLoggedAtDebug()
     {
         EnterWithFiles();
@@ -227,8 +239,24 @@ public class XdndSessionTests
 
         _session.Handle(Position(OtherSource, 12, 12));
 
-        _x.Conversions.Should().HaveCount(2);
+        _x.Conversions.Select(c => c.Property).Should().Equal(_atoms.DataProperties[0], _atoms.DataProperties[1]);
         _session.Phase.Should().Be(XdndPhase.FetchingData);
+    }
+
+    [Fact]
+    public void TheThirdRequestWrapsBackToTheFirstDataProperty()
+    {
+        const nint thirdSource = 602;
+        EnterWithFiles();
+        _session.Handle(Position(Source, 10, 10));
+        EnterWithFiles(OtherSource);
+        _session.Handle(Position(OtherSource, 10, 10));
+
+        EnterWithFiles(thirdSource);
+        _session.Handle(Position(thirdSource, 10, 10));
+
+        _x.Conversions.Select(c => c.Property).Should().Equal(
+            _atoms.DataProperties[0], _atoms.DataProperties[1], _atoms.DataProperties[0]);
     }
 
     [Fact]

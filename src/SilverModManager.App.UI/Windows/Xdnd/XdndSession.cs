@@ -53,7 +53,14 @@ public sealed class XdndSession
         _source = source;
         _hasFiles = types.Contains(_atoms.TextUriList);
         Phase = XdndPhase.Entered;
-        if (_hasFiles is false) _logger.LogTrace("Drag offers no text/uri-list; types: {Types}", string.Join(", ", types.Select(NameOf)));
+        if (_hasFiles is false) LogOfferedTypes(types);
+    }
+
+    /// <summary>Naming a type is an X round trip on the UI thread, so the names are only fetched when Trace is on.</summary>
+    private void LogOfferedTypes(nint[] types)
+    {
+        if (_logger.IsEnabled(LogLevel.Trace) is false) return;
+        _logger.LogTrace("Drag offers no text/uri-list; types: {Types}", string.Join(", ", types.Select(NameOf)));
     }
 
     /// <summary>The three inline types, or the source's XdndTypeList when bit 0 says there are more; null when that list is unreadable (the source vanished).</summary>

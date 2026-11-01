@@ -14,7 +14,7 @@ public sealed record DisposeCall;
 
 /// <summary>
 /// An IXTransport for session tests. Atoms are handed out in order; every request except InternAtom and AtomName is
-/// recorded, both per kind and in one ordered <see cref="Calls"/> list (InternCalls keeps the interned names); property values and FromRoot answers are scripted by the test.
+/// recorded, both per kind and in one ordered <see cref="Calls"/> list (InternCalls keeps the interned names, AtomNameCalls the atoms asked for a name); property values and FromRoot answers are scripted by the test.
 /// </summary>
 public sealed class FakeXTransport : IXTransport
 {
@@ -52,7 +52,13 @@ public sealed class FakeXTransport : IXTransport
         return _atoms[name] = _next++;
     }
 
-    public string? AtomName(nint atom) => _atoms.FirstOrDefault(pair => pair.Value == atom).Key;
+    public List<nint> AtomNameCalls { get; } = [];
+
+    public string? AtomName(nint atom)
+    {
+        AtomNameCalls.Add(atom);
+        return _atoms.FirstOrDefault(pair => pair.Value == atom).Key;
+    }
 
     public void SetAtoms(nint window, nint property, ReadOnlySpan<nint> atoms)
     {
