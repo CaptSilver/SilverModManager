@@ -53,4 +53,38 @@ public class XdndReplierTests
 
         _x.Calls.Last().Should().BeOfType<FlushCall>();
     }
+
+    [Fact]
+    public void AnAcceptedDropIsFinishedToTheSourceFromTheTargetWithTheAcceptBitAndThePerformedAction()
+    {
+        _replier.Finished(Source, DragDropEffects.Copy);
+
+        _x.SentMessages.Should().ContainSingle().Which.Should().Be(
+            new SentClientMessage(Source, _atoms.XdndFinished, Target, 1, _atoms.XdndActionCopy, 0, 0));
+    }
+
+    [Fact]
+    public void AFinishedMoveCarriesTheMoveAction()
+    {
+        _replier.Finished(Source, DragDropEffects.Move);
+
+        _x.SentMessages.Single().L2.Should().Be(_atoms.XdndActionMove);
+    }
+
+    [Fact]
+    public void ARefusedDropIsFinishedWithTheAcceptBitClearAndNoAction()
+    {
+        _replier.Finished(Source, DragDropEffects.None);
+
+        _x.SentMessages.Should().ContainSingle().Which.Should().Be(
+            new SentClientMessage(Source, _atoms.XdndFinished, Target, 0, 0, 0, 0));
+    }
+
+    [Fact]
+    public void FinishedIsFlushedSoTheSourceSeesItAtOnce()
+    {
+        _replier.Finished(Source, DragDropEffects.Copy);
+
+        _x.Calls.Last().Should().BeOfType<FlushCall>();
+    }
 }

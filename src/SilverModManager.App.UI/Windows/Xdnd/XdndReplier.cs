@@ -7,6 +7,7 @@ public sealed class XdndReplier(nint targetWindow, IXTransport x, XdndAtoms atom
 {
     private const int AcceptBit = 1;
     private const int ContinuousPositionsBit = 2;
+    private const int FinishedAcceptBit = 1;
 
     /// <summary>XdndStatus: accepted when <paramref name="effect"/> is anything but None, with that action. Bit 1 is always set (positions keep coming on every motion) and the rectangle is empty.</summary>
     public void Status(nint source, DragDropEffects effect)
@@ -14,6 +15,14 @@ public sealed class XdndReplier(nint targetWindow, IXTransport x, XdndAtoms atom
         var accepted = effect != DragDropEffects.None;
         var flags = ContinuousPositionsBit | (accepted ? AcceptBit : 0);
         x.SendClientMessage(source, atoms.XdndStatus, targetWindow, flags, 0, 0, accepted ? actions.ToAtom(effect) : 0);
+        x.Flush();
+    }
+
+    /// <summary>XdndFinished (v5): bit 0 says the drop was accepted, and l[2] is the action performed. A refusal carries neither.</summary>
+    public void Finished(nint source, DragDropEffects effect)
+    {
+        var accepted = effect != DragDropEffects.None;
+        x.SendClientMessage(source, atoms.XdndFinished, targetWindow, accepted ? FinishedAcceptBit : 0, accepted ? actions.ToAtom(effect) : 0, 0, 0);
         x.Flush();
     }
 }

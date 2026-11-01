@@ -39,6 +39,9 @@ public abstract class XdndSessionTestBase
     protected XIncomingEvent.ClientMessage Leave(nint source) =>
         new(Target, _atoms.XdndLeave, 32, source, 0, 0, 0, 0);
 
+    protected XIncomingEvent.ClientMessage Drop(nint source) =>
+        new(Target, _atoms.XdndDrop, 32, source, 0, 0, 0, 0);
+
     protected void EnterWithFiles(nint source = Source) => _session.Handle(Enter(source, Version5, _atoms.TextUriList));
 
     protected XIncomingEvent.SelectionNotify Notify(nint property) =>

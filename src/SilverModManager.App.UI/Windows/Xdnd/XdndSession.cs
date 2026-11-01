@@ -33,6 +33,7 @@ public sealed class XdndSession
     private PixelPoint _at;
     private DragDropEffects _allowed;
     private DataObject? _data;
+    private bool _cancelled;
 
     // The fetch. _pendingProperty is the property the live request asked the source to write; 0 when no answer is
     // awaited (also while the files are being opened). _generation changes whenever the fetch is abandoned, so a
@@ -43,6 +44,7 @@ public sealed class XdndSession
     private IDisposable? _fetchTimeout;
     private IDisposable? _retryTimer;
     private int _generation;
+    private nint _dataProperty;
     private bool _refusalLogged;
 
     public XdndSession(nint targetWindow, IXTransport x, XdndAtoms atoms, UriListParser uris, IFileDropFactory files,
@@ -62,8 +64,22 @@ public sealed class XdndSession
 
     public XdndPhase Phase { get; private set; }
 
+    /// <summary>
+    /// The window is closing: tells the sink the drag left if it was entered, tells a source that already dropped that
+    /// the drop failed, and forgets the source and every pending request and timer. Events handled afterwards are
+    /// ignored, because the tap posts to the dispatcher and events queued before the close still arrive after this.
+    /// </summary>
+    public void Cancel()
+    {
+        if (_cancelled) return;
+        _cancelled = true;
+        if (Phase == XdndPhase.Dropped) _replies.Finished(_source, DragDropEffects.None);
+        Forget();
+    }
+
     public void Handle(XIncomingEvent e)
     {
+        if (_cancelled) return;
         switch (e)
         {
             case XIncomingEvent.ClientMessage message:
@@ -83,6 +99,67 @@ public sealed class XdndSession
         if (message.MessageType == _atoms.XdndEnter) OnEnter(message);
         else if (message.MessageType == _atoms.XdndPosition) OnPosition(message);
         else if (message.MessageType == _atoms.XdndLeave) OnLeave(message);
+        else if (message.MessageType == _atoms.XdndDrop) OnDrop(message);
+    }
+
+    /// <summary>
+    /// A drop with the files in hand goes to the sink. One before they arrive waits for them. One with nothing to hand
+    /// over is refused at once: the last Status the source saw was a refusal, so there is no asking at drop time.
+    /// </summary>
+    private void OnDrop(XIncomingEvent.ClientMessage message)
+    {
+        if (Phase == XdndPhase.Idle)
+        {
+            _replies.Finished(message.L0, DragDropEffects.None);
+            return;
+        }
+        if (message.L0 != _source)
+        {
+            _logger.LogDebug("Ignoring XdndDrop from {Window}, the drag source is {Source}", message.L0, _source);
+            return;
+        }
+
+        switch (Phase)
+        {
+            case XdndPhase.Ready when _data is { } data:
+                DropOnSink(data);
+                break;
+            case XdndPhase.FetchingData:
+                _logger.LogTrace("Dropped before the file list arrived; holding the drop for it");
+                Phase = XdndPhase.Dropped;
+                break;
+            case XdndPhase.Entered:
+                Finish(DragDropEffects.None);
+                break;
+        }
+    }
+
+    /// <summary>The phase is Dropped while the sink works, so ending the drag afterwards does not also tell it the drag left.</summary>
+    private void DropOnSink(DataObject data)
+    {
+        Phase = XdndPhase.Dropped;
+        var effect = DragDropEffects.None;
+        try
+        {
+            effect = _sink.Drop(_at, data, _allowed);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "The window failed to take the dropped files; refusing the drop");
+        }
+        Finish(effect);
+    }
+
+    /// <summary>Answers the drop, removes the data property and ends the conversation.</summary>
+    private void Finish(DragDropEffects effect)
+    {
+        _replies.Finished(_source, effect);
+        if (_dataProperty != 0)
+        {
+            _x.DeleteProperty(_target, _dataProperty);
+            _x.Flush();
+        }
+        Forget();
     }
 
     private void OnLeave(XIncomingEvent.ClientMessage message)
@@ -180,11 +257,11 @@ public sealed class XdndSession
         if (notify.Requestor != _target || notify.Selection != _atoms.XdndSelection || notify.Target != _atoms.TextUriList) return;
         if (notify.Property == 0)
         {
-            if (Phase == XdndPhase.FetchingData && _pendingProperty != 0 && _incr is null) OnRefused();
+            if (Fetching && _pendingProperty != 0 && _incr is null) OnRefused();
             return;
         }
         if (_atoms.DataProperties.Contains(notify.Property) is false) return;
-        if (Phase != XdndPhase.FetchingData || notify.Property != _pendingProperty)
+        if (Fetching is false || notify.Property != _pendingProperty)
         {
             _logger.LogTrace("Dropping the data of an abandoned request in property {Property}", notify.Property);
             _x.DeleteProperty(_target, notify.Property);
@@ -230,13 +307,18 @@ public sealed class XdndSession
     /// <summary>The source refused this request. KWin does that while the window is not yet active, so ask again shortly while the Status is still owed.</summary>
     private void OnRefused()
     {
+        if (Phase == XdndPhase.Dropped)
+        {
+            Finish(DragDropEffects.None);
+            return;
+        }
         _retryTimer ??= _timer.After(RetryDelay, OnRetry);
     }
 
     private void OnRetry()
     {
         _retryTimer = null;
-        if (Phase == XdndPhase.FetchingData && _pendingProperty != 0 && _incr is null) SendConversion();
+        if (Fetching && _pendingProperty != 0 && _incr is null) SendConversion();
     }
 
     private void ArmDataTimeout()
@@ -248,15 +330,17 @@ public sealed class XdndSession
     private void OnDataTimeout()
     {
         _fetchTimeout = null;
-        if (Phase == XdndPhase.FetchingData) GiveUp();
+        if (Fetching) GiveUp();
     }
 
     /// <summary>
     /// Answers the Status the source is waiting for with a refusal and goes back to Entered, so the next Position
-    /// asks again. Without it the source would wait forever, and it sends nothing until it has the answer.
+    /// asks again. Without it the source would wait forever, and it sends nothing until it has the answer. After a
+    /// drop there is no Status to answer, and the source gets a refused Finished instead.
     /// </summary>
     private void GiveUp()
     {
+        var dropped = Phase == XdndPhase.Dropped;
         var property = _pendingProperty;
         var midTransfer = _incr is not null;
         CancelFetch();
@@ -270,6 +354,11 @@ public sealed class XdndSession
             _refusalLogged = true;
             _logger.LogDebug("Drag source {Source} did not give its text/uri-list in time or refused it; refusing until the next position", _source);
         }
+        if (dropped)
+        {
+            Finish(DragDropEffects.None);
+            return;
+        }
         _replies.Status(_source, DragDropEffects.None);
         Phase = XdndPhase.Entered;
     }
@@ -277,6 +366,7 @@ public sealed class XdndSession
     private void Complete(byte[] bytes)
     {
         _incr = null;
+        _dataProperty = _pendingProperty;
         _pendingProperty = 0;
         DisposeRetry();
         _ = EnterSinkAsync(_uris.Parse(bytes), _generation);
@@ -297,6 +387,11 @@ public sealed class XdndSession
             LogLeftOut(parse, drop);
             _data = drop.Data;
             var effect = _sink.Enter(_at, _data, _allowed);
+            if (Phase == XdndPhase.Dropped)
+            {
+                DropOnSink(_data);
+                return;
+            }
             Phase = XdndPhase.Ready;
             _replies.Status(_source, effect);
         }
@@ -340,10 +435,14 @@ public sealed class XdndSession
         _source = 0;
         _hasFiles = false;
         _data = null;
+        _dataProperty = 0;
         _refusalLogged = false;
         Phase = XdndPhase.Idle;
         if (wasEntered) _sink.Leave();
     }
+
+    /// <summary>Whether a file list is still being waited for, whether or not the source has already dropped.</summary>
+    private bool Fetching => Phase is XdndPhase.FetchingData or XdndPhase.Dropped;
 
     private string NameOf(nint atom) => _x.AtomName(atom) ?? atom.ToString();
 

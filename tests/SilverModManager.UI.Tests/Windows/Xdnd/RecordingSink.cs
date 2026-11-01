@@ -14,6 +14,9 @@ public sealed class RecordingSink : IXdndSink
     /// <summary>What Enter, Over and Drop return; Copy unless a test says otherwise.</summary>
     public DragDropEffects Answer { get; set; } = DragDropEffects.Copy;
 
+    /// <summary>Runs inside Drop, before it answers, so a test can see what had happened by then.</summary>
+    public Action? OnDrop { get; set; }
+
     public IEnumerable<string> Kinds => Calls.Select(c => c.Kind);
 
     public DragDropEffects Enter(PixelPoint at, IDataObject data, DragDropEffects allowed) => Record("Enter", at, data, allowed);
@@ -22,7 +25,11 @@ public sealed class RecordingSink : IXdndSink
 
     public void Leave() => Calls.Add(new SinkCall("Leave"));
 
-    public DragDropEffects Drop(PixelPoint at, IDataObject data, DragDropEffects allowed) => Record("Drop", at, data, allowed);
+    public DragDropEffects Drop(PixelPoint at, IDataObject data, DragDropEffects allowed)
+    {
+        OnDrop?.Invoke();
+        return Record("Drop", at, data, allowed);
+    }
 
     private DragDropEffects Record(string kind, PixelPoint at, IDataObject data, DragDropEffects allowed)
     {

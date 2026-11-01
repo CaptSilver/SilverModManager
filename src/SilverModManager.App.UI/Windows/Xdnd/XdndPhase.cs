@@ -14,4 +14,7 @@ public enum XdndPhase
 
     /// <summary>The window has the file list and has been told of the drag; positions go to it.</summary>
     Ready,
+
+    /// <summary>The source dropped before the file list arrived; the drop is carried out, and Finished sent, when it does.</summary>
+    Dropped,
 }
