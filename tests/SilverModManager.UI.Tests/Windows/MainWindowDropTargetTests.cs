@@ -7,9 +7,13 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using NexusMods.Paths;
 using FluentAssertions;
 using NSubstitute;
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.App.UI.Windows;
+using SilverModManager.Sdk.Library;
+using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Tests.Framework;
 
 namespace SilverModManager.UI.Tests.Windows;
@@ -26,18 +30,17 @@ public class MainWindowDropTargetTests(IServiceProvider provider) : AUiTest(prov
         Directory.Delete(_root, recursive: true);
     }
 
-    private sealed record Harness(Window Window, Border First, Border Second, Border Inbox, Border Overlay, TextBlock OverlayText, List<IReadOnlyList<string>> Drops);
+    private sealed record Harness(Window Window, Border First, Border Second, Border Inbox, Border Overlay, TextBlock OverlayText, Border Caption, TextBlock CaptionText, IMainWindowDropActions Actions);
 
     private static Border Area() => new() { Background = Brushes.Gray, Width = 100, Height = 100 };
 
     // The inbox takes its own drops, as the modlist page's drop zone does.
-    private static Border Inbox()
+    private sealed class InboxTarget : IDropTarget
     {
-        var inbox = Area();
-        inbox.AddHandler(DragDrop.DragEnterEvent, (_, e) => e.Handled = true);
-        inbox.AddHandler(DragDrop.DragOverEvent, (_, e) => e.Handled = true);
-        inbox.AddHandler(DragDrop.DropEvent, (_, e) => e.Handled = true);
-        return inbox;
+        public DropVerdict Inspect(DragPayload payload)
+            => payload is DragPayload.DroppedFiles ? new DropVerdict.Accept(DragDropEffects.Copy, "Add 1 file to the inbox") : new DropVerdict.Ignore();
+
+        public Task DropAsync(DragPayload payload, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private async Task<Harness> Show()
@@ -46,21 +49,24 @@ public class MainWindowDropTargetTests(IServiceProvider provider) : AUiTest(prov
         {
             var first = Area();
             var second = Area();
-            var inbox = Inbox();
+            var inbox = Area();
             var overlayText = new TextBlock();
             var overlay = new Border { Child = overlayText, IsHitTestVisible = false, IsVisible = false };
+            var captionText = new TextBlock();
+            var caption = new Border { Child = captionText, IsHitTestVisible = false, IsVisible = false };
             var row = new StackPanel { Orientation = Orientation.Horizontal, Children = { first, second, inbox } };
-            var window = Track(new Window { Width = 400, Height = 200, Content = new Grid { Children = { row, overlay } } });
+            var window = Track(new Window { Width = 400, Height = 200, Content = new Grid { Children = { row, overlay, caption } } });
 
-            var drops = new List<IReadOnlyList<string>>();
-            _ = new MainWindowDropTarget(window, overlay, overlayText, paths =>
-            {
-                drops.Add(paths);
-                return Task.CompletedTask;
-            });
+            var actions = Substitute.For<IMainWindowDropActions>();
+            actions.AddMod(Arg.Any<AbsolutePath>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+            var errors = Substitute.For<IErrorPresenter>();
+            var feedback = new WindowDropFeedback(overlay, overlayText, caption, captionText);
+            var target = new FilesDropTarget(actions, Substitute.For<IWindowNotificationService>(), logger: null);
+            _ = new DropZone(window, target, errors, feedback, outer: true);
+            _ = new DropZone(inbox, new InboxTarget(), errors, feedback);
 
             ShowRendered(window);
-            return Task.FromResult(new Harness(window, first, second, inbox, overlay, overlayText, drops));
+            return Task.FromResult(new Harness(window, first, second, inbox, overlay, overlayText, caption, captionText, actions));
         });
     }
 
@@ -136,6 +142,8 @@ public class MainWindowDropTargetTests(IServiceProvider provider) : AUiTest(prov
             Raise(harness, harness.Inbox, RawDragEventType.DragOver, data);
 
             harness.Overlay.IsVisible.Should().BeFalse();
+            harness.Caption.IsVisible.Should().BeTrue();
+            harness.CaptionText.Text.Should().Be("Add 1 file to the inbox");
         });
     }
 
@@ -150,7 +158,7 @@ public class MainWindowDropTargetTests(IServiceProvider provider) : AUiTest(prov
             Raise(harness, harness.Inbox, RawDragEventType.DragEnter, data);
             Raise(harness, harness.Inbox, RawDragEventType.Drop, data);
 
-            harness.Drops.Should().BeEmpty();
+            harness.Actions.ReceivedCalls().Should().BeEmpty();
             harness.Overlay.IsVisible.Should().BeFalse();
         });
     }
@@ -167,7 +175,7 @@ public class MainWindowDropTargetTests(IServiceProvider provider) : AUiTest(prov
             Raise(harness, harness.First, RawDragEventType.DragEnter, data);
             Raise(harness, harness.First, RawDragEventType.Drop, data);
 
-            harness.Drops.Should().ContainSingle().Which.Should().Equal(path);
+            harness.Actions.Received(1).AddMod(Arg.Is<AbsolutePath>(p => p.GetFullPath() == path), Arg.Any<CancellationToken>());
             harness.Overlay.IsVisible.Should().BeFalse();
         });
     }

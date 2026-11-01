@@ -18,6 +18,7 @@ using SilverModManager.Abstractions.Logging;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.App.UI.Controls.DevelopmentBuildBanner;
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.App.UI.Controls.SecretStoreNotice;
 using SilverModManager.App.UI.Controls.Spine;
 using SilverModManager.App.UI.Controls.TopBar;
@@ -53,8 +54,11 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
     private readonly IServiceProvider _serviceProvider;
     private readonly IWindowNotificationService _notificationService;
 
-    /// <summary>Runs the files dropped on the window.</summary>
-    public MainWindowDropHandler DropHandler { get; }
+    /// <summary>What the window does with files dropped on it; the view puts a drop zone on the window for it.</summary>
+    public IDropTarget FilesDropTarget { get; }
+
+    /// <summary>Shows a drop that fails.</summary>
+    public IErrorPresenter ErrorPresenter => _serviceProvider.GetRequiredService<IErrorPresenter>();
 
     /// <summary>The window's own Glass state; the view attaches to it to follow the compositor's blur.</summary>
     public GlassAppearance Glass { get; }
@@ -91,7 +95,7 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
             serviceProvider: serviceProvider
         );
 
-        DropHandler = new MainWindowDropHandler(
+        FilesDropTarget = new FilesDropTarget(
             new LibraryDropActions(serviceProvider.GetRequiredService<SilverModManager.Abstractions.Library.ILibraryService>(), _connection, WorkspaceController),
             notificationService,
             serviceProvider.GetService<ILogger<MainWindowViewModel>>());
@@ -296,19 +300,6 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
                 Spine.NavigateToHome();
             }
         });
-    }
-
-    /// <summary>Handles files dropped on the window. Per-file failures are reported by the handler; this catches the rest.</summary>
-    public async Task HandleDroppedFilesAsync(IReadOnlyList<string> paths)
-    {
-        try
-        {
-            await DropHandler.HandleAsync(paths, CancellationToken.None);
-        }
-        catch (Exception e)
-        {
-            await _serviceProvider.GetRequiredService<IErrorPresenter>().Report(e, "handling the dropped files");
-        }
     }
 
     private Optional<(LoadoutId, WorkspaceId)> GetWorkspaceIdForGame(IWorkspaceController workspaceController, NexusModsGameId nexusModsGameId)

@@ -1,32 +1,32 @@
-using SilverModManager.App.UI.Controls.DragAndDrop;
+using Avalonia.Input;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
-using SilverModManager.Sdk.Library;
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Windows;
 
-/// <summary>What dropped files do in the app. Everything goes through the library; nothing is copied into a game folder.</summary>
-public interface IMainWindowDropActions
+/// <summary>
+/// The window's drop target for files from other apps: says what they turn into while they are dragged, then runs the
+/// plan and reports the outcome with one toast for what was added and one for everything refused or failed.
+/// </summary>
+public sealed class FilesDropTarget(IMainWindowDropActions actions, IWindowNotificationService notifications, ILogger? logger) : IDropTarget
 {
-    /// <summary>Adds a <c>.wabbajack</c> file with the library's add-local-file job. Throws if the library did not recognise it as a modlist.</summary>
-    Task<LibraryFileId> AddModlist(AbsolutePath file, CancellationToken cancellationToken);
-
-    /// <summary>Adds a mod archive with the library's add-local-file job.</summary>
-    Task AddMod(AbsolutePath file, CancellationToken cancellationToken);
-
-    void OpenModlist(LibraryFileId file);
-
-    /// <summary>The loadout of the page that is open, or null when the window is not on a loadout.</summary>
-    string? CurrentLoadoutName { get; }
-}
-
-/// <summary>Runs a <see cref="MainWindowDropPlan"/> and reports the outcome: one toast for what was added, one for everything that was refused or failed.</summary>
-public sealed class MainWindowDropHandler(IMainWindowDropActions actions, IWindowNotificationService notifications, ILogger? logger = null)
-{
-    public async Task HandleAsync(IEnumerable<string> paths, CancellationToken cancellationToken)
+    public DropVerdict Inspect(DragPayload payload)
     {
-        var plan = MainWindowDropPlan.Classify(paths);
+        if (payload is not DragPayload.DroppedFiles files) return new DropVerdict.Ignore();
+
+        var plan = MainWindowDropPlan.Classify(files.Paths);
+        return plan.Items.Any(static item => item.Kind != DropKind.Refused)
+            ? new DropVerdict.Accept(DragDropEffects.Copy, plan.OverlayText)
+            : new DropVerdict.Refuse(plan.OverlayText);
+    }
+
+    public async Task DropAsync(DragPayload payload, CancellationToken cancellationToken)
+    {
+        if (payload is not DragPayload.DroppedFiles files) return;
+
+        var plan = MainWindowDropPlan.Classify(files.Paths);
         var problems = plan.Refused.Select(static item => $"{item.FileName}: {item.Reason}").ToList();
 
         foreach (var item in plan.Modlists)

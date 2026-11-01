@@ -2,6 +2,7 @@ using System.IO.Compression;
 using FluentAssertions;
 using NexusMods.Paths;
 using NSubstitute;
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.Sdk.Library;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -149,14 +150,14 @@ public class MainWindowDropTests : IDisposable
     {
         public IMainWindowDropActions Actions { get; } = Substitute.For<IMainWindowDropActions>();
         public IWindowNotificationService Notifications { get; } = Substitute.For<IWindowNotificationService>();
-        public MainWindowDropHandler Handler { get; }
+        public FilesDropTarget Handler { get; }
 
         public Fixture(string? loadoutName = null)
         {
             Actions.CurrentLoadoutName.Returns(loadoutName);
             Actions.AddModlist(Arg.Any<AbsolutePath>(), Arg.Any<CancellationToken>()).Returns(call => Task.FromResult(LibraryFileId.From(EntityId.From(7))));
             Actions.AddMod(Arg.Any<AbsolutePath>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
-            Handler = new MainWindowDropHandler(Actions, Notifications);
+            Handler = new FilesDropTarget(Actions, Notifications, logger: null);
         }
     }
 
@@ -165,7 +166,7 @@ public class MainWindowDropTests : IDisposable
     {
         var fixture = new Fixture();
 
-        await fixture.Handler.HandleAsync([File("list.wabbajack")], CancellationToken.None);
+        await fixture.Handler.DropAsync(new DragPayload.DroppedFiles([File("list.wabbajack")]), CancellationToken.None);
 
         await fixture.Actions.Received(1).AddModlist(Arg.Is<AbsolutePath>(p => p.FileName == "list.wabbajack"), Arg.Any<CancellationToken>());
         fixture.Actions.Received(1).OpenModlist(Arg.Any<LibraryFileId>());
@@ -176,7 +177,7 @@ public class MainWindowDropTests : IDisposable
     {
         var fixture = new Fixture();
 
-        await fixture.Handler.HandleAsync([File("a.zip"), File("b.7z"), File("c.rar")], CancellationToken.None);
+        await fixture.Handler.DropAsync(new DragPayload.DroppedFiles([File("a.zip"), File("b.7z"), File("c.rar")]), CancellationToken.None);
 
         await fixture.Actions.Received(3).AddMod(Arg.Any<AbsolutePath>(), Arg.Any<CancellationToken>());
         await fixture.Actions.DidNotReceiveWithAnyArgs().AddModlist(default, default);
@@ -187,7 +188,7 @@ public class MainWindowDropTests : IDisposable
     {
         var fixture = new Fixture(loadoutName: "Skyrim - Main");
 
-        await fixture.Handler.HandleAsync([File("a.zip"), File("b.zip")], CancellationToken.None);
+        await fixture.Handler.DropAsync(new DragPayload.DroppedFiles([File("a.zip"), File("b.zip")]), CancellationToken.None);
 
         fixture.Notifications.Received(1).ShowToast(
             Arg.Is<string>(text => text.Contains("Added 2 mods") && text.Contains("Skyrim - Main")),
@@ -199,7 +200,7 @@ public class MainWindowDropTests : IDisposable
     {
         var fixture = new Fixture(loadoutName: null);
 
-        await fixture.Handler.HandleAsync([File("a.zip")], CancellationToken.None);
+        await fixture.Handler.DropAsync(new DragPayload.DroppedFiles([File("a.zip")]), CancellationToken.None);
 
         fixture.Notifications.Received(1).ShowToast(
             Arg.Is<string>(text => text == "Added 1 mod to the library"),
@@ -211,7 +212,7 @@ public class MainWindowDropTests : IDisposable
     {
         var fixture = new Fixture();
 
-        await fixture.Handler.HandleAsync([File("a.txt"), File("b.txt"), Path.Combine(_root, "gone.zip")], CancellationToken.None);
+        await fixture.Handler.DropAsync(new DragPayload.DroppedFiles([File("a.txt"), File("b.txt"), Path.Combine(_root, "gone.zip")]), CancellationToken.None);
 
         fixture.Notifications.Received(1).ShowToast(
             Arg.Is<string>(text => text.Contains("a.txt") && text.Contains("b.txt") && text.Contains("gone.zip") && text.Contains("exist")),
@@ -226,7 +227,7 @@ public class MainWindowDropTests : IDisposable
         fixture.Actions.AddMod(Arg.Is<AbsolutePath>(p => p.FileName == "bad.zip"), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("disk full")));
 
-        await fixture.Handler.HandleAsync([File("bad.zip"), File("good.zip")], CancellationToken.None);
+        await fixture.Handler.DropAsync(new DragPayload.DroppedFiles([File("bad.zip"), File("good.zip")]), CancellationToken.None);
 
         await fixture.Actions.Received(2).AddMod(Arg.Any<AbsolutePath>(), Arg.Any<CancellationToken>());
         fixture.Notifications.Received(1).ShowToast(
@@ -244,7 +245,7 @@ public class MainWindowDropTests : IDisposable
         fixture.Actions.AddModlist(Arg.Any<AbsolutePath>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<LibraryFileId>(new InvalidOperationException("not a modlist")));
 
-        await fixture.Handler.HandleAsync([File("list.wabbajack")], CancellationToken.None);
+        await fixture.Handler.DropAsync(new DragPayload.DroppedFiles([File("list.wabbajack")]), CancellationToken.None);
 
         fixture.Actions.DidNotReceiveWithAnyArgs().OpenModlist(default);
         fixture.Notifications.Received(1).ShowToast(

@@ -26,6 +26,12 @@
         <windows:MainWindowViewModel />
     </Design.DataContext>
 
+    <reactiveUi:ReactiveWindow.Styles>
+        <Style Selector="Border#DropCaption.refuse > TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource DangerStrongBrush}" />
+        </Style>
+    </reactiveUi:ReactiveWindow.Styles>
+
     <!-- The frame paints the window's dark base and clips everything to its corners, which MainWindow rounds while the
          window floats on a compositor; the window itself stays transparent so those corners show the desktop -->
     <Border x:Name="WindowFrame"
@@ -64,6 +70,26 @@
                        FontSize="24"
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center" />
+        </Border>
+
+        <!-- Names what a drag over a zone other than the window will do; WindowDropFeedback places it beside the zone -->
+        <Border x:Name="DropCaption"
+                Background="{StaticResource SurfaceHighBrush}"
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Grid.Row="0"
+                Grid.RowSpan="2"
+                CornerRadius="6"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                IsHitTestVisible="False"
+                IsVisible="False"
+                Padding="10,6"
+                ZIndex="3">
+            <TextBlock x:Name="DropCaptionText"
+                       Foreground="{StaticResource PrimaryStrongBrush}"
+                       TextWrapping="Wrap"
+                       MaxWidth="320" />
         </Border>
 
         <!-- Transparent so presses on empty top bar space hit this border and can drag the window -->

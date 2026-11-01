@@ -8,6 +8,7 @@ using Avalonia.ReactiveUI;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.App.UI.Extensions;
 using SilverModManager.App.UI.Windows.Xdnd;
 using SilverModManager.UI.Sdk;
@@ -39,7 +40,8 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
         WindowChrome.AttachResizeGrips(this);
         TopBarBorder.PointerPressed += OnTopBarPointerPressed;
 
-        _ = new MainWindowDropTarget(this, DropOverlay, DropOverlayText, paths => ViewModel?.HandleDroppedFilesAsync(paths) ?? Task.CompletedTask);
+        // Zones inside the window (the modlist inbox, collections) find this through the top level.
+        DropFeedback.SetLayer(this, new WindowDropFeedback(DropOverlay, DropOverlayText, DropCaption, DropCaptionText));
 
         // Disposed by the receiver when this window closes.
         xdnd.Attach(this);
@@ -50,7 +52,13 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
 
         this.WhenActivated(disposables =>
         {
-            if (ViewModel is not null) AttachGlass(ViewModel.Glass).DisposeWith(disposables);
+            if (ViewModel is not null)
+            {
+                AttachGlass(ViewModel.Glass).DisposeWith(disposables);
+
+                // AllowDrop is inherited, so the whole window is a drop surface. outer: a zone inside takes its own drops first.
+                new DropZone(this, ViewModel.FilesDropTarget, ViewModel.ErrorPresenter, outer: true).DisposeWith(disposables);
+            }
 
             var storageProvider = GetTopLevel(this)?.StorageProvider;
             var clipboard = GetTopLevel(this)?.Clipboard;
