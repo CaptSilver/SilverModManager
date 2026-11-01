@@ -174,6 +174,22 @@ public class HeroicEpicLocatorTests
         problems.Problems.Should().ContainSingle().Which.Message.Should().Contain("First").And.Contain("Second");
     }
 
+    [Fact]
+    public void Locate_TwoGamesOnOneCatalogItem_IsTheGameThatNamesNoIdentifyingFiles()
+    {
+        // Legendary's list has no install folder to look in at lookup time, so the game every folder is until a
+        // file says otherwise gets the id, whatever order the games registered in.
+        var (fileSystem, home) = NewHome();
+        WriteInstall(fileSystem, NativeRoot(fileSystem), home.Combine("Games/Heroic/Game"), home.Combine("p"), home.Combine("wine"));
+        var identified = new FakeIdentifiedGameData("Conversion", "game.exe", ["Data/Other.esm"]) { StoreIdentifiers = Claim("Conversion") };
+        var plain = new FakeGameData("Base", primaryFile: "game.exe") { StoreIdentifiers = Claim("Base") };
+
+        NewLocator(fileSystem, new RecordingLogger<HeroicEpicLocator>(), identified, plain).Locate()
+            .Should().ContainSingle().Which.Game.Should().BeSameAs(plain);
+    }
+
+    private static StoreIdentifiers Claim(string id) => new(GameId.From(id)) { EGSCatalogItemId = [CatalogItemId] };
+
     private static IGameData Game(string name, string id)
     {
         var game = Substitute.For<IGameData>();

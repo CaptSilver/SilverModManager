@@ -173,6 +173,20 @@ public class HeroicAmazonLocatorTests
         problems.Problems.Should().ContainSingle().Which.Message.Should().Contain("First").And.Contain("Second");
     }
 
+    [Fact]
+    public void Locate_TwoGamesOnOneProduct_IsTheGameThatNamesNoIdentifyingFiles()
+    {
+        var (fileSystem, home) = NewHome();
+        WriteInstall(fileSystem, NativeRoot(fileSystem), home.Combine("Games/Heroic/Game"), home.Combine("p"), home.Combine("wine"));
+        var identified = new FakeIdentifiedGameData("Conversion", "game.exe", ["Data/Other.esm"]) { StoreIdentifiers = Claim("Conversion") };
+        var plain = new FakeGameData("Base", primaryFile: "game.exe") { StoreIdentifiers = Claim("Base") };
+
+        NewLocator(fileSystem, new RecordingLogger<HeroicAmazonLocator>(), identified, plain).Locate()
+            .Should().ContainSingle().Which.Game.Should().BeSameAs(plain);
+    }
+
+    private static StoreIdentifiers Claim(string id) => new(GameId.From(id)) { AmazonProductIds = [ProductId] };
+
     private static IGameData Game(string name, string id)
     {
         var game = Substitute.For<IGameData>();

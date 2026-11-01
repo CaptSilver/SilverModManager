@@ -349,6 +349,38 @@ public sealed class LutrisLocatorTests : IDisposable
         result.Game.Should().BeSameAs(otherGame);
     }
 
+    [Fact]
+    public void Locate_GogRowOnAnIdTwoGamesClaim_IsTheGameThatNamesNoIdentifyingFiles()
+    {
+        var root = NativeRoot();
+        var home = Home();
+        WriteGame(root, "game-slug", "gog", GogId.ToString(), runner: "wine", directory: home.Combine("Games/game").GetFullPath(), exe: "Game.exe", prefix: home.Combine("p").GetFullPath());
+        var identified = new FakeIdentifiedGameData("Conversion", "Game.exe", ["Data/Other.esm"]) { StoreIdentifiers = SharedClaim("Conversion") };
+        var plain = new FakeGameData("Base", primaryFile: "Game.exe") { StoreIdentifiers = SharedClaim("Base") };
+
+        var result = NewLocator(root, identified, plain).Locate().Should().ContainSingle().Subject;
+
+        result.Store.Should().Be(GameStore.GOG);
+        result.Game.Should().BeSameAs(plain);
+    }
+
+    [Fact]
+    public void Locate_EpicRowOnAnIdTwoGamesClaim_IsTheGameThatNamesNoIdentifyingFiles()
+    {
+        var root = NativeRoot();
+        var home = Home();
+        WriteGame(root, "epic-slug", "egs", EpicId, runner: "wine", directory: home.Combine("Games/epic").GetFullPath(), exe: "Game.exe", prefix: home.Combine("p").GetFullPath());
+        var identified = new FakeIdentifiedGameData("Conversion", "Game.exe", ["Data/Other.esm"]) { StoreIdentifiers = SharedClaim("Conversion") };
+        var plain = new FakeGameData("Base", primaryFile: "Game.exe") { StoreIdentifiers = SharedClaim("Base") };
+
+        var result = NewLocator(root, identified, plain).Locate().Should().ContainSingle().Subject;
+
+        result.Store.Should().Be(GameStore.EGS);
+        result.Game.Should().BeSameAs(plain);
+    }
+
+    private static StoreIdentifiers SharedClaim(string id) => new(GameId.From(id)) { GOGProductIds = [GogId], EGSCatalogItemId = [EpicId] };
+
     private static FakeGameData SharedSkyrim() => new("Skyrim", primaryFile: "TESV.exe");
 
     private static FakeIdentifiedGameData SharedEnderal()

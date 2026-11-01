@@ -167,6 +167,45 @@ public class HeroicGOGLocatorTests
         problems.Problems.Should().ContainSingle().Which.Message.Should().Contain("First").And.Contain("Second");
     }
 
+    [Fact]
+    public void Locate_TwoGamesOnOneGogId_FolderWithoutTheIdentifyingFile_IsTheGameThatNamesNone()
+    {
+        var (fileSystem, installPath) = NewSharedIdInstall(withFile: false);
+
+        var results = new HeroicGOGLocator([IdentifiedGogGame("Conversion"), PlainGogGame("Base")], NullLoggerFactory.Instance, fileSystem).Locate().ToArray();
+
+        results.Should().ContainSingle().Which.Game.GameId.Should().Be(GameId.From("Base"));
+        results[0].Path.Should().Be(installPath);
+    }
+
+    [Fact]
+    public void Locate_TwoGamesOnOneGogId_FolderWithTheIdentifyingFile_IsTheGameThatNamesIt()
+    {
+        var (fileSystem, _) = NewSharedIdInstall(withFile: true);
+
+        var results = new HeroicGOGLocator([PlainGogGame("Base"), IdentifiedGogGame("Conversion")], NullLoggerFactory.Instance, fileSystem).Locate().ToArray();
+
+        results.Should().ContainSingle().Which.Game.GameId.Should().Be(GameId.From("Conversion"));
+    }
+
+    private static readonly RelativePath IdentifyingFile = RelativePath.FromUnsanitizedInput("Data/Other.esm");
+
+    private static FakeGameData PlainGogGame(string id)
+        => new(id, primaryFile: "game.exe") { StoreIdentifiers = new StoreIdentifiers(GameId.From(id)) { GOGProductIds = [ProductId] } };
+
+    private static FakeIdentifiedGameData IdentifiedGogGame(string id)
+        => new(id, "game.exe", [IdentifyingFile]) { StoreIdentifiers = new StoreIdentifiers(GameId.From(id)) { GOGProductIds = [ProductId] } };
+
+    private static (InMemoryFileSystem FileSystem, AbsolutePath InstallPath) NewSharedIdInstall(bool withFile)
+    {
+        var (fileSystem, home) = NewHome();
+        var nativeRoot = fileSystem.GetKnownPath(KnownPath.XDG_CONFIG_HOME).Combine("heroic");
+        var installPath = home.Combine("Games/Heroic/Game");
+        WriteHeroicConfig(fileSystem, nativeRoot, installPath, home.Combine("Prefixes/p"), nativeRoot.Combine("wine"));
+        if (withFile) Write(fileSystem, installPath.Combine(IdentifyingFile), "");
+        return (fileSystem, installPath);
+    }
+
     private static IGameData GogGame(string name)
     {
         var game = Substitute.For<IGameData>();
