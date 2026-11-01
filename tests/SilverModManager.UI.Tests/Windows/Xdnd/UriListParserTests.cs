@@ -123,6 +123,36 @@ public class UriListParserTests
     }
 
     [Fact]
+    public void ARawTrailingSpaceBelongsToTheName()
+    {
+        Parse("file:///home/u/a.zip \r\n").LocalPaths.Should().Equal("/home/u/a.zip ");
+    }
+
+    [Fact]
+    public void ARawTrailingTabBelongsToTheName()
+    {
+        Parse("file:///home/u/a.zip\t\n").LocalPaths.Should().Equal("/home/u/a.zip\t");
+    }
+
+    [Fact]
+    public void ALineWithLeadingSpaceIsSkippedInsteadOfRepathed()
+    {
+        var parse = Parse(" file:///home/u/a.zip\n");
+
+        parse.LocalPaths.Should().BeEmpty();
+        parse.Skipped.Should().ContainSingle().Which.Reason.Should().Be("not a local file");
+    }
+
+    [Fact]
+    public void ALineOfOnlyWhitespaceIsBlank()
+    {
+        var parse = Parse(" \t \r\nfile:///home/u/a.zip\r\n");
+
+        parse.LocalPaths.Should().Equal("/home/u/a.zip");
+        parse.Skipped.Should().BeEmpty();
+    }
+
+    [Fact]
     public void ATrailingSlashIsKeptOffSoFoldersLookLikeFiles()
     {
         Parse("file:///home/u/folder/").LocalPaths.Should().Equal("/home/u/folder");

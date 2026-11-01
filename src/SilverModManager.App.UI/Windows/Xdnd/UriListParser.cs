@@ -19,8 +19,8 @@ public sealed class UriListParser
             var line = end < 0 ? bytes : bytes[..end];
             bytes = end < 0 ? [] : bytes[(end + 1)..];
 
-            line = Trim(line);
-            if (line.IsEmpty || line[0] == (byte)'#') continue;
+            line = DropLineEnding(line);
+            if (IsBlank(line) || line[0] == (byte)'#') continue;
 
             var rejection = TryReadPath(line, out var path);
             if (rejection is null) paths.Add(path);
@@ -97,14 +97,18 @@ public sealed class UriListParser
         _ => -1,
     };
 
-    private static ReadOnlySpan<byte> Trim(ReadOnlySpan<byte> line)
-    {
-        while (!line.IsEmpty && IsBlank(line[0])) line = line[1..];
-        while (!line.IsEmpty && IsBlank(line[^1])) line = line[..^1];
-        return line;
-    }
+    /// <summary>Removes the CR of a CRLF and nothing else: raw spaces and tabs at either end can be part of an unescaped name.</summary>
+    private static ReadOnlySpan<byte> DropLineEnding(ReadOnlySpan<byte> line) =>
+        !line.IsEmpty && line[^1] == (byte)'\r' ? line[..^1] : line;
 
-    private static bool IsBlank(byte b) => b is (byte)' ' or (byte)'\t' or (byte)'\r';
+    private static bool IsBlank(ReadOnlySpan<byte> line)
+    {
+        foreach (var b in line)
+        {
+            if (b is not ((byte)' ' or (byte)'\t')) return false;
+        }
+        return true;
+    }
 }
 
 public sealed record UriListParse(IReadOnlyList<string> LocalPaths, IReadOnlyList<UriListSkip> Skipped);
