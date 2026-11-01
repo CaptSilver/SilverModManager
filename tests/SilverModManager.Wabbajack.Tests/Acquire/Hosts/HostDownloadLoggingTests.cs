@@ -185,6 +185,32 @@ public class HostDownloadLoggingTests(IServiceProvider provider, TemporaryFileMa
         WarnedOnceAbout(log.Messages(LogLevel.Warning), "MEGA", "https://mega.nz/folder/abc", "not a MEGA file link");
     }
 
+    [Fact]
+    public async Task AFlakyMegaAnswerIsWarnedAboutOnceNotOncePerAttempt()
+    {
+        var log = new ListLogger<MegaDownloadJob>();
+        var host = new FakeHost((_, _) => new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        await using var destination = Files.CreateFile();
+        var job = new MegaDownloadJob
+        {
+            Client = new HttpClient(host),
+            Logger = log,
+            Throttle = new HostThrottle(),
+            Url = new Uri("https://mega.nz/file/AbCdEf12#" + MegaLinkTests.Base64Url(MegaLinkTests.FileKey)),
+            FileName = ArchiveName,
+            Destination = destination,
+            Attempts = 4,
+            RetryDelay = TimeSpan.FromMilliseconds(1),
+        };
+
+        var act = async () => await Begin(job);
+
+        await act.Should().ThrowAsync<Exception>();
+        host.Seen.Count.Should().Be(4);
+        WarnedOnceAbout(log.Messages(LogLevel.Warning), "MEGA", "https://mega.nz/file/AbCdEf12", "500");
+        log.Messages(LogLevel.Trace).Should().Contain(m => m.Contains("attempt 1 of 4"));
+    }
+
     [Fact(Timeout = 60000)]
     public async Task ADownloadCancelledWhileWaitingForASlotIsNotAWarning()
     {

@@ -42,7 +42,8 @@ public static class DownloadRetries
             }
             catch (Exception e) when (attempt < attempts)
             {
-                logger.LogWarning("Fetching {What} failed ({Message}), attempt {Attempt} of {Attempts}, waiting {Delay}", what, e.Message, attempt, attempts, delay);
+                // A step on the way to the one Warning the caller logs if the last attempt fails too.
+                logger.LogTrace("Fetching {What} failed ({Message}), attempt {Attempt} of {Attempts}, waiting {Delay}", what, e.Message, attempt, attempts, delay);
                 var wait = e is IRetryAfter hint && hint.RetryAfter > delay ? hint.RetryAfter : delay;
                 await Task.Delay(wait, time ?? TimeProvider.System, token);
                 delay *= 2;

@@ -251,6 +251,9 @@ public sealed class ArchiveAcquirer(
             }
             else
             {
+                var page = OriginalUrl(row);
+                logger.LogWarning("Downloaded '{Name}' does not match the list: expected {Expected}, got {Actual}, page {Page}; it is left for the user to fetch",
+                    row.Archive.Name, row.Archive.XxHash64, file.XxHash64Identity(), page is null ? "(unknown)" : HostTransfer.Plain(page));
                 Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = "hash mismatch", Page = OriginalUrl(r) });
                 Record(state, s => s.Failures.Add(new DownloadFailure(row.Archive.Name, "hash mismatch")));
             }
@@ -261,7 +264,9 @@ public sealed class ArchiveAcquirer(
         }
         catch (Exception e)
         {
-            logger.LogWarning(e, "Downloading '{Name}' failed; it is left for the user to fetch", row.Archive.Name);
+            // A host job has already said which host and page; this line would repeat it with a stack trace.
+            if (ReportedFailure.IsMarked(e)) logger.LogTrace(e, "Downloading '{Name}' failed; it is left for the user to fetch", row.Archive.Name);
+            else logger.LogWarning(e, "Downloading '{Name}' failed; it is left for the user to fetch", row.Archive.Name);
             Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = e.Message, Page = OriginalUrl(r) });
             Record(state, s => s.Failures.Add(new DownloadFailure(row.Archive.Name, e.Message)));
         }

@@ -20,6 +20,16 @@ public sealed class HostRefusedException(string message, Exception? inner = null
     public override string Title => "Download not completed";
 }
 
+/// <summary>Remembers that a failure already has its Warning, so it is logged once however many layers it passes through.</summary>
+internal static class ReportedFailure
+{
+    private const string Key = "SilverModManager.Reported";
+
+    public static void Mark(Exception e) => e.Data[Key] = true;
+
+    public static bool IsMarked(Exception e) => e.Data.Contains(Key);
+}
+
 /// <summary>
 /// The shared shape of a download from one file host. The base takes a slot from the <see cref="HostThrottle"/>,
 /// removes a partly written file when anything goes wrong, and records the library file's name and download page. A
@@ -83,8 +93,9 @@ public abstract record HostedDownloadJob : IDownloadJob
         }
         catch (Exception e) when (!(e is OperationCanceledException && token.IsCancellationRequested))
         {
-            // The one place a failed host download is reported, so every host's job says the same thing once.
+            // Every host's job says this once; the mark tells the acquirer, which would otherwise warn a second time.
             Logger.LogWarning("Download of {File} from {Host} failed, page {Page}: {Reason}", ArchiveName, HostName, PageAddress, e.Message);
+            ReportedFailure.Mark(e);
             throw;
         }
         Logger.LogTrace("Downloaded {File} from {Host}", ArchiveName, HostName);
