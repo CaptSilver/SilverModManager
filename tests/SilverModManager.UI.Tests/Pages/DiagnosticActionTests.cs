@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.References;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
@@ -297,6 +298,96 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
 
         fixture.LinkIsStillDangling.Should().BeTrue();
         File.ReadAllText(Path.Combine(fixture.Backup, "a.dat")).Should().Be("precious");
+    }
+
+    #endregion
+
+    #region Move the host copy into the game's folder
+
+    private sealed class HostCopyFixture : IDisposable
+    {
+        public string Root { get; } = Directory.CreateTempSubdirectory("host-copy-action").FullName;
+        public string Host => Path.Combine(Root, "host", "Skyrim");
+        public string Prefix => Path.Combine(Root, "pfx", "Skyrim");
+        public string DataHome => Path.Combine(Root, "data");
+
+        public HostCopyFixture()
+        {
+            Directory.CreateDirectory(Host);
+            File.WriteAllText(Path.Combine(Host, "old.ess"), "old save");
+            Directory.CreateDirectory(Prefix);
+        }
+
+        public void Dispose() => Directory.Delete(Root, recursive: true);
+    }
+
+    private MoveHostFolderIntoGameActionHandler HostCopyHandler(HostCopyFixture fixture, IDiagnosticManager manager, bool gameRunning = false)
+    {
+        var session = Substitute.For<IGameLaunchSession>();
+        session.IsRunning(Arg.Any<GameInstallation>()).Returns(gameRunning);
+        return new MoveHostFolderIntoGameActionHandler(new ServicesWith(Provider, (typeof(IGameLaunchSession), session)), new FreedesktopTrash(fixture.DataHome), manager);
+    }
+
+    [Fact]
+    public void Test_TheHostCopyActionHasAHandlerInTheApp()
+    {
+        Provider.GetServices<IDiagnosticActionHandler>().Select(h => h.ActionId).Should().Contain(DiagnosticActions.MoveHostFolderIntoGameId);
+    }
+
+    [Fact]
+    public async Task Test_MovingTheHostCopyMergesItTrashesTheHostFolderAndRefreshes()
+    {
+        using var fixture = new HostCopyFixture();
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "HostCopy");
+        var manager = Substitute.For<IDiagnosticManager>();
+
+        await HostCopyHandler(fixture, manager).ExecuteAsync(seeded.LoadoutId, DiagnosticActions.MoveHostFolderIntoGame(fixture.Host, fixture.Prefix).Arguments).WaitAsync(TimeSpan.FromSeconds(30));
+
+        File.ReadAllText(Path.Combine(fixture.Prefix, "old.ess")).Should().Be("old save");
+        Directory.Exists(fixture.Host).Should().BeFalse();
+        File.ReadAllText(Path.Combine(fixture.DataHome, "Trash", "files", "Skyrim", "old.ess")).Should().Be("old save");
+        File.Exists(Path.Combine(fixture.DataHome, "Trash", "info", "Skyrim.trashinfo")).Should().BeTrue();
+        await manager.Received(1).RefreshAsync(seeded.LoadoutId);
+    }
+
+    [Fact]
+    public async Task Test_MovingTheHostCopyRefusesWhileTheGameRuns_AndChangesNothing()
+    {
+        using var fixture = new HostCopyFixture();
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "HostCopy");
+        var manager = Substitute.For<IDiagnosticManager>();
+
+        var act = () => HostCopyHandler(fixture, manager, gameRunning: true).ExecuteAsync(seeded.LoadoutId, [fixture.Host, fixture.Prefix]);
+
+        (await act.Should().ThrowAsync<UserFacingException>()).Which.Title.Should().NotBeNullOrWhiteSpace();
+        File.Exists(Path.Combine(fixture.Host, "old.ess")).Should().BeTrue();
+        Directory.GetFileSystemEntries(fixture.Prefix).Should().BeEmpty();
+        Directory.Exists(fixture.DataHome).Should().BeFalse();
+        await manager.DidNotReceiveWithAnyArgs().RefreshAsync(default);
+    }
+
+    [Fact]
+    public async Task Test_MovingTheHostCopyRefusesAMissingPrefixParent_WithAPlainMessage()
+    {
+        using var fixture = new HostCopyFixture();
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "HostCopy");
+        var missing = Path.Combine(fixture.Root, "no-prefix", "Skyrim");
+
+        var act = () => HostCopyHandler(fixture, Substitute.For<IDiagnosticManager>()).ExecuteAsync(seeded.LoadoutId, [fixture.Host, missing]);
+
+        await act.Should().ThrowAsync<HostFolderMoveRefusedException>();
+        File.Exists(Path.Combine(fixture.Host, "old.ess")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Test_MovingTheHostCopyNeedsBothPaths()
+    {
+        using var fixture = new HostCopyFixture();
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "HostCopy");
+
+        var act = () => HostCopyHandler(fixture, Substitute.For<IDiagnosticManager>()).ExecuteAsync(seeded.LoadoutId, [fixture.Host]);
+
+        await act.Should().ThrowAsync<ArgumentException>();
     }
 
     #endregion

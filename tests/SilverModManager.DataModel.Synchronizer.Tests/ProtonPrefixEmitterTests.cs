@@ -171,6 +171,23 @@ public class ProtonPrefixEmitterTests(ITestOutputHelper helper) : AStubbedGameTe
     }
 
     [Fact]
+    public void HostCopyExists_OffersToMoveItIntoTheGameFolder_WithBothPaths()
+    {
+        var fixture = new Fixture();
+        fixture.MakePrefixReady();
+        fixture.HostCopy.CreateDirectory();
+
+        var diagnostic = ProtonPrefixEmitter.DiagnoseInstallation(fixture.Installation(withProvider: true), fixture.Host).Should().ContainSingle().Which;
+
+        var action = diagnostic.Actions.Should().ContainSingle().Which;
+        action.Should().Be(DiagnosticActions.MoveHostFolderIntoGame(fixture.HostCopy.GetFullPath(), fixture.PrefixCopy.GetFullPath()));
+        action.Id.Should().Be(DiagnosticActions.MoveHostFolderIntoGameId);
+        action.Label.Should().Be("Move it into the game's folder");
+        action.Arguments.Should().Equal(fixture.HostCopy.GetFullPath(), fixture.PrefixCopy.GetFullPath());
+        action.Note.Should().Contain("trash").And.Contain("kept");
+    }
+
+    [Fact]
     public void HostCopyAbsent_YieldsNothing()
     {
         var fixture = new Fixture();

@@ -94,4 +94,17 @@ public static class DiagnosticActions
     /// </summary>
     public static DiagnosticAction ReapplyCollectionOrder(ulong collectionGroup)
         => new(ReapplyCollectionOrderId, "Apply the collection's load order again", [collectionGroup.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+
+    /// <summary>
+    /// Id of the action that folds a game's folder on the host into the one inside its Proton prefix.
+    /// </summary>
+    public const string MoveHostFolderIntoGameId = "move-host-folder-into-game";
+
+    /// <summary>
+    /// Copies what <paramref name="hostPath"/> has and <paramref name="prefixPath"/> lacks, then trashes the host folder.
+    /// The arguments are the host folder, then the one inside the prefix.
+    /// </summary>
+    public static DiagnosticAction MoveHostFolderIntoGame(string hostPath, string prefixPath)
+        => new(MoveHostFolderIntoGameId, "Move it into the game's folder", [hostPath, prefixPath],
+            "The game's own copies are kept, anything only the host copy has is copied in, and the host folder goes to the trash so it can be restored.");
 }

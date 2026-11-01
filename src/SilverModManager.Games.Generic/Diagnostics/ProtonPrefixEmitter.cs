@@ -73,7 +73,9 @@ public class ProtonPrefixEmitter(IFileSystem hostFileSystem) : ILoadoutDiagnosti
             if (!hostLocations.TryGetValue(locationId, out var hostPath)) continue;
             if (hostPath.GetFullPath() == descriptor.Path.GetFullPath() || !hostPath.DirectoryExists()) continue;
 
-            yield return Diagnostics.CreateHostCopyOfGameFolder(gameName, locationId.ToString(), hostPath.GetFullPath(), descriptor.Path.GetFullPath());
+            var (host, inPrefix) = (hostPath.GetFullPath(), descriptor.Path.GetFullPath());
+            yield return Diagnostics.CreateHostCopyOfGameFolder(gameName, locationId.ToString(), host, inPrefix)
+                with { Actions = [DiagnosticActions.MoveHostFolderIntoGame(host, inPrefix)] };
         }
     }
 

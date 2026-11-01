@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using NexusMods.Paths;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.App.UI.Pages.Diagnostics.PrefixSetup;
 using SilverModManager.App.UI.Pages.Diagnostics.SaveToLibrary;
 using SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
@@ -24,6 +26,8 @@ public static class DiagnosticActionServices
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, DisableModsActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, SetUpPrefixActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, ReapplyCollectionOrderActionHandler>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, MoveHostFolderIntoGameActionHandler>());
+        services.TryAddSingleton<ITrash>(provider => new FreedesktopTrash(provider.GetRequiredService<IFileSystem>().GetKnownPath(KnownPath.XDG_DATA_HOME).GetFullPath()));
         services.TryAddSingleton<IPrefixSetupLauncher, PrefixSetupLauncher>();
         services.AddView<PrefixSetupView, IPrefixSetupViewModel>();
 
