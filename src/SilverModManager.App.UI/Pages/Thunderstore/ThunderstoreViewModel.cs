@@ -5,7 +5,6 @@ using System.Reactive.Linq;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Library;
-using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
@@ -37,8 +36,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
     private readonly IConnection _connection;
     private readonly IEnumerable<IGameData> _games;
     private readonly IThunderstoreCatalogSource _catalogs;
-    private readonly IThunderstoreSource _source;
-    private readonly ILoadoutManager _loadoutManager;
+    private readonly IThunderstoreInstaller _installer;
     private readonly ILogger<ThunderstoreViewModel> _logger;
     private readonly IStoreSortMemory _sortMemory;
     private readonly IAdultContentSetting _adultContent;
@@ -63,8 +61,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         IConnection connection,
         IEnumerable<IGameData> games,
         IThunderstoreCatalogSource catalogs,
-        IThunderstoreSource source,
-        ILoadoutManager loadoutManager,
+        IThunderstoreInstaller installer,
         IOSInterop osInterop,
         IThumbnailLoader icons,
         IStoreSortMemory sortMemory,
@@ -74,8 +71,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         _connection = connection;
         _games = games;
         _catalogs = catalogs;
-        _source = source;
-        _loadoutManager = loadoutManager;
+        _installer = installer;
         _logger = logger;
         Icons = icons;
         _sortMemory = sortMemory;
@@ -201,26 +197,10 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         ErrorText = "";
         try
         {
-            if (ThunderstoreGameOfLoadout() is not { } game) throw new InvalidOperationException("This game's mods do not come from Thunderstore.");
             if (row.Latest is not { } root) throw new InvalidOperationException($"{row.FullName} has no version to install.");
 
-            // A modpack lists the exact versions it was tested with; anything else follows the newest ones.
-            var isModpack = _catalog?.Categories(root.Package).Contains("Modpacks") ?? false;
-            var request = new ThunderstoreInstallRequest(
-                root,
-                game,
-                WithDependencies: true,
-                isModpack ? DependencyPolicy.Exact : DependencyPolicy.Latest,
-                ExpectedSha256: null,
-                ThunderstoreLoadoutPackages.Installed(_connection.Db, LoadoutId));
-
             // The downloads are jobs, so the spine's download indicator shows their progress.
-            var files = await _source.AddAsync(request, cancellationToken);
-            foreach (var file in files)
-            {
-                var item = file.AsLibraryItem();
-                await ThunderstoreLoadoutPackages.InstallOrEnable(_connection, item, LoadoutId, async () => await _loadoutManager.InstallItem(item, LoadoutId));
-            }
+            await _installer.InstallAsync(root, LoadoutId, cancellationToken);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {

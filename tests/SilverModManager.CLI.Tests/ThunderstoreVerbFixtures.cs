@@ -88,6 +88,22 @@ internal static class ThunderstoreVerbFixtures
         return services;
     }
 
+    /// <summary>
+    /// An <see cref="IThunderstoreSource"/> that records the requests it is given and downloads nothing.
+    /// </summary>
+    public sealed class RecordingThunderstoreSource : IThunderstoreSource
+    {
+        public List<ThunderstoreInstallRequest> Requests { get; } = [];
+        public Exception? Failure { get; set; }
+
+        public ValueTask<IReadOnlyList<LibraryFile.ReadOnly>> AddAsync(ThunderstoreInstallRequest request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request);
+            if (Failure is not null) throw Failure;
+            return ValueTask.FromResult<IReadOnlyList<LibraryFile.ReadOnly>>([]);
+        }
+    }
+
     public static async Task<(int ExitCode, string Output)> Run(IServiceProvider provider, params string[] args)
     {
         var renderer = new LoggingRenderer();

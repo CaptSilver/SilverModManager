@@ -32,6 +32,7 @@ public static class Services
             .AddSingleton<LibraryFileDigests>()
             .AddSingleton<IGitHubReleaseAssetSource, GitHubReleaseAssetSource>()
             .AddSingleton<IThunderstoreSource, ThunderstoreSource>()
+            .AddSingleton<IThunderstoreInstaller, ThunderstoreInstaller>()
             .AddSingleton<INexusUpdateDownloader, NexusUpdateDownloader>()
             .AddSingleton<IModSource, NexusModSource>()
             .AddSingleton<IModSource, ThunderstoreModSource>()

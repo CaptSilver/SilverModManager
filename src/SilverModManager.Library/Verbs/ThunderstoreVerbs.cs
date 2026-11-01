@@ -2,13 +2,9 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.Library;
-using SilverModManager.Abstractions.Loadouts;
-using SilverModManager.Abstractions.Loadouts.Extensions;
-using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Networking.Thunderstore;
 using SilverModManager.Sdk.Games;
-using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;
 using SilverModManager.Sdk.Thunderstore;
@@ -86,8 +82,7 @@ internal static class ThunderstoreVerbs
     [Verb("thunderstore install", "Downloads a package with the packages it needs and installs them into the loadout")]
     private static async Task<int> Install(
         [Injected] IRenderer renderer,
-        [Injected] IServiceProvider provider,
-        [Injected] IConnection connection,
+        [Injected] IThunderstoreInstaller installer,
         [Injected] ThunderstoreIndexCache cache,
         [Injected] CancellationToken token,
         [Option("l", "loadout", "The loadout to install into; its game says which Thunderstore community the package is in")] Loadout.ReadOnly loadout,
@@ -107,48 +102,24 @@ internal static class ThunderstoreVerbs
             return 1;
         }
 
-        var inLibraryBefore = ThunderstoreLibraryFile.All(connection.Db).Select(file => file.Id).ToHashSet();
-        var request = new ThunderstoreInstallRequest(
-            root,
-            game,
-            WithDependencies: true,
-            exact ? DependencyPolicy.Exact : DependencyPolicy.Latest,
-            ExpectedSha256: null,
-            ThunderstoreLoadoutPackages.Installed(connection.Db, loadout.LoadoutId));
-        IReadOnlyList<LibraryFile.ReadOnly> files;
+        IReadOnlyList<ThunderstoreInstallOutcome> outcomes;
         try
         {
-            files = await provider.GetRequiredService<IThunderstoreSource>().AddAsync(request, token);
+            outcomes = await installer.InstallAsync(root, loadout.LoadoutId, exact ? DependencyPolicy.Exact : DependencyPolicy.Latest, token);
         }
-        catch (Exception e) when (e is DependencyResolutionException or ThunderstoreIntegrityException)
+        catch (Exception e) when (e is DependencyResolutionException or ThunderstoreIntegrityException or ThunderstorePackageInDisabledGroupException)
         {
             await renderer.TextLine(e.Message);
             return 1;
         }
 
-        var loadoutManager = provider.GetRequiredService<ILoadoutManager>();
         var changed = 0;
-        foreach (var file in files)
+        foreach (var outcome in outcomes)
         {
-            var item = file.AsLibraryItem();
-            var name = file.TryGetAsThunderstoreLibraryFile(out var thunderstore)
-                ? $"{thunderstore.Namespace}-{thunderstore.Name}-{thunderstore.VersionNumber}"
-                : file.FileName.ToString();
+            var name = outcome.Version.ToString();
+            if (outcome.Downloaded) await renderer.TextLine($"[downloaded] {name}");
 
-            if (!inLibraryBefore.Contains(file.Id)) await renderer.TextLine($"[downloaded] {name}");
-
-            LoadoutPackageOutcome outcome;
-            try
-            {
-                outcome = await ThunderstoreLoadoutPackages.InstallOrEnable(connection, item, loadout.LoadoutId, async () => await loadoutManager.InstallItem(item, loadout.LoadoutId));
-            }
-            catch (ThunderstorePackageInDisabledGroupException e)
-            {
-                await renderer.TextLine(e.Message);
-                return 1;
-            }
-
-            switch (outcome)
+            switch (outcome.Outcome)
             {
                 case LoadoutPackageOutcome.AlreadyEnabled:
                     await renderer.TextLine($"[already in loadout] {name}");
@@ -162,7 +133,7 @@ internal static class ThunderstoreVerbs
                     changed++;
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(outcome), outcome, null);
+                    throw new ArgumentOutOfRangeException(nameof(outcome.Outcome), outcome.Outcome, null);
             }
         }
 

@@ -21,20 +21,7 @@ namespace SilverModManager.CLI.Tests;
 public class ThunderstoreVerbSourceTests(ITestOutputHelper helper) : AIsolatedGameTest<ThunderstoreVerbSourceTests, ThunderstoreStubbedGame>(helper)
 {
     private readonly RoutingHandler _routes = ThunderstoreVerbFixtures.BuildRoutes();
-    private readonly RecordingSource _source = new();
-
-    private sealed class RecordingSource : IThunderstoreSource
-    {
-        public List<ThunderstoreInstallRequest> Requests { get; } = [];
-        public Exception? Failure { get; set; }
-
-        public ValueTask<IReadOnlyList<LibraryFile.ReadOnly>> AddAsync(ThunderstoreInstallRequest request, CancellationToken cancellationToken)
-        {
-            Requests.Add(request);
-            if (Failure is not null) throw Failure;
-            return ValueTask.FromResult<IReadOnlyList<LibraryFile.ReadOnly>>([]);
-        }
-    }
+    private readonly ThunderstoreVerbFixtures.RecordingThunderstoreSource _source = new();
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
