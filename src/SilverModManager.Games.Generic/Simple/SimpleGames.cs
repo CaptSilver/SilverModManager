@@ -77,5 +77,5 @@ public static class SimpleGames
         },
     };
 
-    public static readonly IReadOnlyList<SimpleGameDefinition> All = [Witcher1, Witcher2];
+    public static readonly IReadOnlyList<SimpleGameDefinition> All = [Witcher1, Witcher2, .. GameFolderSimpleGames.All];
 }
