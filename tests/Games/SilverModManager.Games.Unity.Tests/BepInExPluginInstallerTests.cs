@@ -87,6 +87,22 @@ public class BepInExPluginInstallerTests(ITestOutputHelper outputHelper) : AUnit
         throw new Exception("No installer took the loader pack.");
     }
 
+    [Theory]
+    [InlineData("QMods")]
+    [InlineData("qmods")]
+    public async Task AQModManagerModIsNotSupportedBecauseNothingHereLoadsIt(string folder)
+    {
+        // Subnautica's older mods are QModManager mods: a mod.json and a DLL under QMods/<mod>. BepInEx would
+        // copy the DLL into plugins and never run it.
+        var archive = await AddFromPathsNamed("Someone-SomeMod-1.0.0.zip", $"{folder}/SomeMod/mod.json", $"{folder}/SomeMod/SomeMod.dll");
+
+        var (result, targets) = await TryInstall(PluginInstaller, archive);
+
+        result.IsNotSupported(out var reason).Should().BeTrue();
+        reason.Should().Contain("QModManager");
+        targets.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task AnEmptyArchiveIsNotSupported()
     {

@@ -47,6 +47,14 @@ public sealed class BepInExPluginInstaller(IServiceProvider serviceProvider, Bep
                 $"The archive is the {loader.LoaderPackage} loader pack, which the loader pack installer installs, not a plugin.");
         }
 
+        // QModManager (Subnautica's older loader) keeps mods under QMods/<mod>. Copied into BepInEx/plugins the
+        // DLL would sit there and never run, so say so instead.
+        if (paths.Any(IsInQModsFolder))
+        {
+            return new NotSupported(Reason:
+                "The archive is a QModManager mod (it installs below a QMods folder). Mods here load through BepInEx, which does not run QModManager mods.");
+        }
+
         IReadOnlyDictionary<RelativePath, GamePath> routes;
         try
         {
@@ -67,6 +75,10 @@ public sealed class BepInExPluginInstaller(IServiceProvider serviceProvider, Bep
 
         return new Success();
     }
+
+    private static bool IsInQModsFolder(RelativePath path)
+        => path.ToString().Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries) is [var top, _, ..]
+           && top.Equals("QMods", StringComparison.OrdinalIgnoreCase);
 
     // A manifest that does not parse is treated as absent: the file name still gives the package a folder.
     private async ValueTask<BepInExPackageFolder.Manifest?> ReadManifest(NexusMods.Hashing.xxHash3.Hash hash, CancellationToken cancellationToken)
