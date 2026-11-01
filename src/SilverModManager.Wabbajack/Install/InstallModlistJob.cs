@@ -76,6 +76,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         WabbajackModlistLibraryFile.ReadOnly modlist,
         InstallOptions options)
     {
+        var monitor = provider.GetRequiredService<IJobMonitor>();
+        provider.GetRequiredService<ModlistInstallRuns>().EnsureNoneInto(target);
+
         var fileStore = provider.GetRequiredService<IFileStore>();
         var job = new InstallModlistJob
         {
@@ -93,12 +96,13 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             Logger = provider.GetRequiredService<ILogger<InstallModlistJob>>(),
             OrderImporter = provider.GetRequiredService<ModOrderImporter>(),
         };
-        return provider.GetRequiredService<IJobMonitor>().Begin<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly>(job);
+        return monitor.Begin<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly>(job);
     }
 
     public async ValueTask<WabbajackModlistLoadoutGroup.ReadOnly> StartAsync(IJobContext<InstallModlistJob> context)
     {
         var cancellationToken = context.CancellationToken;
+        using var progressLog = Progress.Changes.Subscribe(new InstallProgressLog(Logger, Modlist.Name).Report);
 
         var check = await Check(cancellationToken);
         var (group, extrasFolder) = await EnsureGroup(check, cancellationToken);

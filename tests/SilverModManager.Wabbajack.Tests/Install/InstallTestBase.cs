@@ -1,12 +1,15 @@
 using System.Text.Json;
 using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Octodiff.Core;
 using Octodiff.Diagnostics;
+using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
+using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Library;
@@ -88,6 +91,31 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
         var task = InstallModlistJob.Create(ServiceProvider, loadout.LoadoutId, modlist, options);
         var group = await task;
         return (task.JobDefinition, group);
+    }
+
+    /// <summary>
+    /// The install job for <paramref name="modlist"/> into <paramref name="loadout"/>, built but not begun, so a test can
+    /// begin it with its own body or subscribe to its progress first.
+    /// </summary>
+    protected InstallModlistJob NewJob(Loadout.ReadOnly loadout, WabbajackModlistLibraryFile.ReadOnly modlist, InstallOptions options)
+    {
+        var fileStore = ServiceProvider.GetRequiredService<IFileStore>();
+        return new InstallModlistJob
+        {
+            TargetLoadout = loadout.LoadoutId,
+            Modlist = modlist,
+            Options = options,
+            Connection = Connection,
+            FileStore = fileStore,
+            Inventory = ServiceProvider.GetRequiredService<ArchiveInventory>(),
+            Transforms = ServiceProvider.GetRequiredService<IDirectiveTransforms>(),
+            PrefixResolver = ServiceProvider.GetRequiredService<IPrefixResolver>(),
+            Paths = ServiceProvider.GetRequiredService<WabbajackPaths>(),
+            Writer = new GeneratedFileWriter(fileStore, ServiceProvider.GetRequiredService<TemporaryFileManager>()),
+            Openers = ServiceProvider.GetServices<INestedArchiveOpener>().ToArray(),
+            Logger = ServiceProvider.GetRequiredService<ILogger<InstallModlistJob>>(),
+            OrderImporter = ServiceProvider.GetRequiredService<ModOrderImporter>(),
+        };
     }
 
     /// <summary>The extras folder recorded on the group, read fresh because it is recorded after the group is created.</summary>

@@ -128,23 +128,7 @@ public class InstallOrderReinstallTests(ITestOutputHelper helper) : InstallTestB
         // The job is built here, rather than through Create, so that the subscription exists before it starts: a small
         // list can finish before Create returns. Cancelling as the resume enters its resolve phase interrupts it after
         // the group was prepared and before it ends.
-        var fileStore = ServiceProvider.GetRequiredService<IFileStore>();
-        var job = new InstallModlistJob
-        {
-            TargetLoadout = loadout.LoadoutId,
-            Modlist = modlist,
-            Options = SkippingMissing,
-            Connection = Connection,
-            FileStore = fileStore,
-            Inventory = ServiceProvider.GetRequiredService<ArchiveInventory>(),
-            Transforms = ServiceProvider.GetRequiredService<IDirectiveTransforms>(),
-            PrefixResolver = ServiceProvider.GetRequiredService<IPrefixResolver>(),
-            Paths = ServiceProvider.GetRequiredService<WabbajackPaths>(),
-            Writer = new GeneratedFileWriter(fileStore, ServiceProvider.GetRequiredService<TemporaryFileManager>()),
-            Openers = ServiceProvider.GetServices<INestedArchiveOpener>().ToArray(),
-            Logger = ServiceProvider.GetRequiredService<ILogger<InstallModlistJob>>(),
-            OrderImporter = ServiceProvider.GetRequiredService<ModOrderImporter>(),
-        };
+        var job = NewJob(loadout, modlist, SkippingMissing);
         var monitor = ServiceProvider.GetRequiredService<IJobMonitor>();
         using var cancelOnResolve = job.Progress.Changes
             .Where(snapshot => snapshot.Phase == InstallPhase.Resolve)

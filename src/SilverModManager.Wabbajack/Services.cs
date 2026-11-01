@@ -48,6 +48,7 @@ public static class Services
             .AddSingleton<IModlistCatalog, ModlistCatalog>()
             .AddSingleton<ArchiveInventory>()
             .AddSingleton<IDirectiveTransforms, DirectiveTransforms>()
+            .AddSingleton<ModlistInstallRuns>()
             .AddSingleton<INestedArchiveOpener, BsaMemberOpener>()
             .AddSingleton<ModlistPlanner>()
             .AddSingleton<IModlistPlanner>(provider => provider.GetRequiredService<ModlistPlanner>())
