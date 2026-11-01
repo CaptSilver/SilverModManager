@@ -235,22 +235,27 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
         var provider = new LocalFileDataProvider(Provider);
         using var rows = provider.ObserveLibraryItems(Filter(loadout)).AsObservableCache();
         var counts = Counts(provider.CountLibraryItems(Filter(loadout)));
-        await Eventually(() => Last(counts).Should().BeGreaterThanOrEqualTo(0));
-        await Task.Delay(200);
-        var before = Last(counts);
 
+        // Local files carry no game, so every test in the suite writes into the same list. Another test's file can
+        // land at any point, so nothing here counts from a starting number: the count has to agree with the rows
+        // the tab shows, and the two files this test writes are checked by id.
+        var bystander = await AddLocalFile("bystander.7z");
         var fetched = await AddLocalFile("fetched.7z");
         var own = await AddLocalFile("own.7z");
         await AddArchiveRow(await AddModlist(), "fetched.7z", fetched: fetched);
+        // Changes reach the view in commit order, so once this file shows, the archive row above has been applied.
+        var last = await AddLocalFile("last.7z");
 
-        await Eventually(() => rows.Lookup(own).HasValue.Should().BeTrue());
+        await Eventually(() => rows.Lookup(last).HasValue.Should().BeTrue());
+        rows.Lookup(own).HasValue.Should().BeTrue();
+        rows.Lookup(bystander).HasValue.Should().BeTrue();
         rows.Lookup(fetched).HasValue.Should().BeFalse();
-        await Eventually(() => Last(counts).Should().Be(before + 1));
+        await Eventually(() => Last(counts).Should().Be(rows.Count));
 
         await Install(loadout, fetched);
 
         await Eventually(() => rows.Lookup(fetched).HasValue.Should().BeTrue());
-        await Eventually(() => Last(counts).Should().Be(before + 2));
+        await Eventually(() => Last(counts).Should().Be(rows.Count));
     }
 
     [Fact]
