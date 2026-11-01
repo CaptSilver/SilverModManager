@@ -229,21 +229,32 @@ public static class DownloadComponents
         public IReadOnlyBindableReactiveProperty<bool> CanResume { get; }
         public IReadOnlyBindableReactiveProperty<bool> CanCancel { get; }
         public IReadOnlyBindableReactiveProperty<bool> IsCompleted { get; }
+        public IReadOnlyBindableReactiveProperty<bool> IsFailed { get; }
+
+        /// <summary>The progress bar belongs to a download that is under way; a finished or failed one shows its outcome instead.</summary>
+        public IReadOnlyBindableReactiveProperty<bool> ShowsProgress { get; }
+
+        /// <summary>Why the download failed; null until it has.</summary>
+        public IReadOnlyBindableReactiveProperty<string?> FailureReason { get; }
 
         public StatusComponent(
             Percent initialProgress,
             JobStatus initialStatus,
             Observable<Percent> progressObservable,
-            Observable<JobStatus> statusObservable)
+            Observable<JobStatus> statusObservable,
+            bool supportsPausing,
+            string? initialFailureReason,
+            Observable<string?> failureReasonObservable)
         {
             Progress = progressObservable.Select(p => p.Value).ToBindableReactiveProperty(initialProgress.Value);
             Status = statusObservable.ToBindableReactiveProperty(initialStatus);
             IsPaused = statusObservable.Select(status => status == JobStatus.Paused).ToBindableReactiveProperty(initialStatus == JobStatus.Paused);
 
             // Set up can-execute properties based on status  
+            // A host that can only start over has nothing to pause
             CanPause = statusObservable
-                .Select(static status => status == JobStatus.Running)
-                .ToBindableReactiveProperty(initialStatus == JobStatus.Running);
+                .Select(status => supportsPausing && status == JobStatus.Running)
+                .ToBindableReactiveProperty(supportsPausing && initialStatus == JobStatus.Running);
 
             CanResume = statusObservable
                 .Select(static status => status == JobStatus.Paused)
@@ -256,6 +267,16 @@ public static class DownloadComponents
             IsCompleted = statusObservable
                 .Select(static status => status == JobStatus.Completed)
                 .ToBindableReactiveProperty(initialStatus == JobStatus.Completed);
+
+            IsFailed = statusObservable
+                .Select(static status => status == JobStatus.Failed)
+                .ToBindableReactiveProperty(initialStatus == JobStatus.Failed);
+
+            ShowsProgress = statusObservable
+                .Select(static status => status is not (JobStatus.Completed or JobStatus.Failed))
+                .ToBindableReactiveProperty(initialStatus is not (JobStatus.Completed or JobStatus.Failed));
+
+            FailureReason = failureReasonObservable.ToBindableReactiveProperty(initialFailureReason);
         }
 
         public int CompareTo(StatusComponent? other)
@@ -282,7 +303,7 @@ public static class DownloadComponents
             if (!_isDisposed)
             {
                 if (disposing)
-                    Disposable.Dispose(Progress, Status, PauseCommand, ResumeCommand, CancelCommand, CanPause, CanResume, CanCancel, IsCompleted);
+                    Disposable.Dispose(Progress, Status, PauseCommand, ResumeCommand, CancelCommand, CanPause, CanResume, CanCancel, IsCompleted, IsFailed, ShowsProgress, FailureReason);
 
                 _isDisposed = true;
             }

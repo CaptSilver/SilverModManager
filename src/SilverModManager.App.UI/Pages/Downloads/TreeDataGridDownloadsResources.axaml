@@ -96,13 +96,21 @@
                                              Classes="DownloadBar"
                                              Classes.Paused="{CompiledBinding IsPaused.Value}"
                                              Minimum="0" Maximum="1" Width="120"
-                                             IsVisible="{CompiledBinding !IsCompleted.Value}" />
+                                             IsVisible="{CompiledBinding ShowsProgress.Value}" />
                                 
                                 <!-- Completed State (visible when completed) -->
                                 <StackPanel Orientation="Horizontal" Spacing="4" 
                                            IsVisible="{CompiledBinding IsCompleted.Value}">
                                     <icons:UnifiedIcon Value="{x:Static icons:IconValues.CheckCircleOutline}" />
                                     <TextBlock Text="{x:Static resources:Language.DownloadsView__Completed}" VerticalAlignment="Center" />
+                                </StackPanel>
+                                
+                                <!-- Failed State (visible when failed; the reason is the tooltip) -->
+                                <StackPanel Orientation="Horizontal" Spacing="4"
+                                           IsVisible="{CompiledBinding IsFailed.Value}"
+                                           ToolTip.Tip="{CompiledBinding FailureReason.Value}">
+                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.Error}" />
+                                    <TextBlock Text="{x:Static resources:Language.Downloads_Failed}" VerticalAlignment="Center" />
                                 </StackPanel>
                                 
                                 <!-- Action Buttons -->

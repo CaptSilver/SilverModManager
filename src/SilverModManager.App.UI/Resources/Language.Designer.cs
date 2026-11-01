@@ -1044,6 +1044,15 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Failed.
+        /// </summary>
+        public static string Downloads_Failed {
+            get {
+                return ResourceManager.GetString("Downloads_Failed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Unknown Download.
         /// </summary>
         public static string Downloads_UnknownDownload {

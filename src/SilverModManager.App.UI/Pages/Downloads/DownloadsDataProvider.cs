@@ -63,9 +63,10 @@ public sealed class DownloadsDataProvider(IServiceProvider serviceProvider) : ID
         // Add icon component for Name+Icon column
         model.Add(DownloadColumns.Name.ImageComponentKey, CreateIconComponent(download));
 
-        // Add game component
+        // Add game component. Only a Nexus Mods download belongs to a game; the others show the modlist they are
+        // part of, or else where they come from.
         model.Add(DownloadColumns.Game.ComponentKey, new DownloadComponents.GameComponent(
-            gameName: ResolveGameName(download.GameId.Value)));
+            gameName: IsFromNexusMods(download) ? ResolveGameName(download.GameId.Value) : download.GroupName.Value ?? download.SourceName.Value));
 
         // Add size progress component (Size column)
         model.Add(DownloadColumns.Size.ComponentKey, new DownloadComponents.SizeProgressComponent(
@@ -84,13 +85,19 @@ public sealed class DownloadsDataProvider(IServiceProvider serviceProvider) : ID
             initialProgress: download.Progress.Value,
             initialStatus: download.Status.Value,
             progressObservable: download.Progress.AsObservable(),
-            statusObservable: download.Status.AsObservable()));
+            statusObservable: download.Status.AsObservable(),
+            supportsPausing: download.SupportsPausing.Value,
+            initialFailureReason: download.FailureReason.Value,
+            failureReasonObservable: download.FailureReason.AsObservable()));
 
         // Add download reference component
         model.Add(DownloadColumns.DownloadRefComponentKey, new DownloadRef(download));
 
         return model;
     }
+
+    // Nexus Mods downloads are the ones with file metadata; the id is what finds the icon and the game.
+    private static bool IsFromNexusMods(DownloadInfo download) => download.FileMetadataId.Value != default(EntityId);
 
     public string ResolveGameName(NexusModsGameId nexusModsGameId)
     {
@@ -101,6 +108,9 @@ public sealed class DownloadsDataProvider(IServiceProvider serviceProvider) : ID
 
     private ImageComponent CreateIconComponent(DownloadInfo download)
     {
+        if (!IsFromNexusMods(download))
+            return new ImageComponent(ImagePipelines.ModPageThumbnailFallback);
+
         try
         {
             // Try to load FileMetadata from the database

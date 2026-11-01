@@ -1419,6 +1419,10 @@ Use it for {0}?</value>
     <data name="Downloads_UnknownGame" xml:space="preserve">
         <value>Unknown Game</value>
     </data>
+    <data name="Downloads_Failed" xml:space="preserve">
+        <value>Failed</value>
+        <comment>Status of a download that did not finish; its reason is the tooltip</comment>
+    </data>
     <data name="Downloads_UnknownDownload" xml:space="preserve">
         <value>Unknown Download</value>
     </data>
