@@ -51,10 +51,28 @@ public sealed class ModdingTool(
     {
         var via = installed.RunVia ?? definition.RunVia;
         AbsolutePath? runFolder = definition.Output is ToolOutput.DeclaredFolder ? CreateRunFolder(loadout.InstallationInstance, via) : null;
-        var args = Arguments(loadout, runFolder);
-        var exitCode = via is ToolRunVia.Native
-            ? await RunNative(args, cancellationToken)
-            : await RunWindows(loadout.InstallationInstance, args, via, cancellationToken);
+        var started = false;
+        int exitCode;
+        try
+        {
+            var args = Arguments(loadout, runFolder);
+            exitCode = via is ToolRunVia.Native
+                ? await RunNative(args, cancellationToken)
+                : await RunWindows(loadout.InstallationInstance, args, via, () => started = true, cancellationToken);
+            started = true;
+        }
+        catch (Exception exception) when (runFolder is { } folder)
+        {
+            // Refused before the tool started: nothing was written, so nothing is worth keeping.
+            if (started is false)
+            {
+                folder.DeleteDirectory(recursive: true);
+                throw;
+            }
+
+            if (exception is OperationCanceledException) throw;
+            throw new InvalidOperationException($"{exception.Message} The tool's output was kept at {folder}.", exception);
+        }
 
         var kept = runFolder is null ? string.Empty : $" Its output was kept at {runFolder}.";
         if (definition.ExitCodes is ExitCodePolicy.ZeroIsSuccess && exitCode != 0)
@@ -97,14 +115,15 @@ public sealed class ModdingTool(
         return definition.ExtraArguments is { } more ? [.. words, .. more(game, Exe.FileName)] : words;
     }
 
-    private async Task<int> RunWindows(GameInstallation installation, IReadOnlyList<string> args, ToolRunVia via, CancellationToken cancellationToken)
+    private async Task<int> RunWindows(GameInstallation installation, IReadOnlyList<string> args, ToolRunVia via, Action onStart, CancellationToken cancellationToken)
     {
         // Plan with the strategy that will run, not Auto: a forced strategy can run in a prefix Auto cannot.
         // Without a way to run, starting quietly would leave the user wondering why nothing happened.
         var plan = toolRunner.Plan(installation, Exe, args, null, via);
-        if (!plan.IsRunnable)
+        if (plan.IsRunnable is false)
             throw new InvalidOperationException($"Cannot run {Name} for {installation.Game.DisplayName}: {plan.Diagnostic}");
 
+        onStart();
         var result = await toolRunner.RunWindowsTool(installation, Exe, args, null, logOutput: true, cancellationToken, via);
         return result.ExitCode;
     }

@@ -306,10 +306,16 @@ public class ModdingToolTests(ITestOutputHelper helper)
     };
 
     // Stands for the tool: finds the folder it was given in the -O: word and writes a plugin and a log into it.
-    private AbsolutePath UsePrefixAndWriteOutput(List<string> seenArguments)
+    private AbsolutePath UsePrefix()
     {
         var prefix = TemporaryFileManager.CreateFolder("pfx").Path;
         _prefixResolver.Resolve(default!).ReturnsForAnyArgs(PrefixResolution.Resolved(new ResolvedPrefix(prefix, CompatibilityLayerKind.SteamProton)));
+        return prefix;
+    }
+
+    private AbsolutePath UsePrefixAndWriteOutput(List<string> seenArguments)
+    {
+        var prefix = UsePrefix();
         StubRunners();
         _toolRunner.RunWindowsTool(default!, default, default!, default, default, default, default)
             .ReturnsForAnyArgs(call =>
@@ -401,5 +407,47 @@ public class ModdingToolTests(ITestOutputHelper helper)
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*DynDOLOD*Two prefixes found.*");
         await _toolRunner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default, default);
+    }
+
+    private IEnumerable<AbsolutePath> RunFoldersIn(AbsolutePath prefix)
+    {
+        var root = prefix / "drive_c/SilverModManager/tool-output/dyndolod";
+        return root.DirectoryExists() ? Directory.EnumerateDirectories(root.GetFullPath()).Select(d => FileSystem.FromUnsanitizedFullPath(d)) : [];
+    }
+
+    [Fact]
+    public async Task DeclaredFolderTool_ThatTheRunnerRefuses_LeavesNoRunFolderBehind()
+    {
+        var prefix = UsePrefix();
+        StubRunners("No Wine prefix was found.");
+        var loadout = await CreateLoadout();
+
+        var act = () => Tool(DynDolod()).Execute(loadout, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*No Wine prefix was found.*");
+        RunFoldersIn(prefix).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DeclaredFolderTool_WhoseRunnerThrowsAfterTheStart_KeepsTheFolderAndNamesItInTheMessage()
+    {
+        var seen = new List<string>();
+        var prefix = UsePrefix();
+        StubRunners();
+        _toolRunner.RunWindowsTool(default!, default, default!, default, default, default, default)
+            .ReturnsForAnyArgs<Task<ToolRunResult>>(call =>
+            {
+                seen.AddRange(call.ArgAt<IReadOnlyList<string>>(2));
+                throw new IOException("wine went away");
+            });
+        var loadout = await CreateLoadout();
+
+        var act = () => Tool(DynDolod()).Execute(loadout, CancellationToken.None);
+
+        var failure = (await act.Should().ThrowAsync<InvalidOperationException>()).Which;
+        var runFolder = seen.Single().Substring("-O:".Length);
+        failure.InnerException.Should().BeOfType<IOException>();
+        failure.Message.Should().Contain("wine went away").And.Contain(runFolder);
+        RunFoldersIn(prefix).Should().ContainSingle();
     }
 }
