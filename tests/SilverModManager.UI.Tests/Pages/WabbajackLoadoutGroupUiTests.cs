@@ -119,8 +119,8 @@ public class WabbajackLoadoutGroupUiTests(IServiceProvider provider) : AUiTest(p
         var result = await tx.Commit();
         var db = Connection.Db;
 
-        LibraryViewModel.IsInstallableAsMod(LibraryItem.Load(db, group.ModlistId.Value)).Should().BeFalse();
-        LibraryViewModel.IsInstallableAsMod(LibraryItem.Load(db, result.Remap(mod).Id)).Should().BeTrue();
+        CollectionInstallRules.IsInstallableAsMod(LibraryItem.Load(db, group.ModlistId.Value)).Should().BeFalse();
+        CollectionInstallRules.IsInstallableAsMod(LibraryItem.Load(db, result.Remap(mod).Id)).Should().BeTrue();
     }
 
     [Fact]

@@ -673,6 +673,34 @@ internal partial class LoadoutManager : ILoadoutManager
         });
     }
 
+    public async Task<LoadoutItemGroup.ReadOnly[]> InstallItems(IReadOnlyList<LibraryItem.ReadOnly> items, LoadoutId targetLoadout, Optional<LoadoutItemGroupId> parent = default)
+    {
+        if (items.Count == 0) return [];
+
+        using var tx = _connection.BeginTransaction();
+        var installed = new List<LoadoutItemGroupId>();
+
+        // One after another: the jobs add to a shared transaction, which isn't safe to write from several threads.
+        foreach (var item in items)
+        {
+            try
+            {
+                await InstallItem(item, targetLoadout, inputTx: tx, newGroups: installed, parent: parent);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                // The job's own message names the item only when no installer took it.
+                throw new InvalidOperationException($"Couldn't install `{item.Name}`, so nothing was installed: {e.Message}", e);
+            }
+        }
+
+        // One function for the whole batch, so every new group is placed against the same rules.
+        tx.Add(new ApplyGroupRulesTxFunc(targetLoadout, new RuleDelta { NewGroups = [..installed] }));
+
+        var result = await tx.Commit();
+        return installed.Select(id => LoadoutItemGroup.Load(result.Db, result[id])).ToArray();
+    }
+
     public async ValueTask RemoveItems(LoadoutItemGroupId[] groupIds)
     {
         using var tx = _connection.BeginTransaction();

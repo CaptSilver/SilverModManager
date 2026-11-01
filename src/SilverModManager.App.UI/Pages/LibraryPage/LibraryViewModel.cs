@@ -698,23 +698,41 @@ After asking design, we're choosing to simply open the mod page for now.
         var db = _connection.Db;
         var items = ids
             .Select(id => LibraryItem.Load(db, id))
-            .Where(x => x.IsValid() && IsInstallableAsMod(x))
+            .Where(x => x.IsValid() && CollectionInstallRules.IsInstallableAsMod(x))
             .ToArray();
 
-        await Parallel.ForAsync(
-            fromInclusive: 0,
-            toExclusive: items.Length,
-            body: (i, innerCancellationToken) => InstallLibraryItem(items[i], _loadout, targetLoadoutGroup, innerCancellationToken, useAdvancedInstaller),
-            parallelOptions: new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken }
-        );
-        
-        var targetCollection = LoadoutItem.Load(db, targetLoadoutGroup);
+        // The advanced installer asks questions mid-install, so each item keeps its own install.
+        if (useAdvancedInstaller)
+        {
+            await Parallel.ForAsync(
+                fromInclusive: 0,
+                toExclusive: items.Length,
+                body: (i, innerCancellationToken) => InstallLibraryItem(items[i], _loadout, targetLoadoutGroup, innerCancellationToken, useAdvancedInstaller),
+                parallelOptions: new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken }
+            );
+            return;
+        }
+
+        await InstallTogether(items, targetLoadoutGroup);
     }
 
-    // A modlist row still carries its library item so it can be selected and deleted, but installing the
-    // .wabbajack itself as a mod would put the zip's manifest into the loadout. The list's page installs it.
-    internal static bool IsInstallableAsMod(LibraryItem.ReadOnly item)
-        => !(item.TryGetAsLibraryFile(out var file) && file.TryGetAsWabbajackModlistLibraryFile(out _));
+    /// <summary>One transaction for the selection, so a failing item leaves the others uninstalled and says which one it was.</summary>
+    private async ValueTask InstallTogether(LibraryItem.ReadOnly[] items, LoadoutItemGroupId targetLoadoutGroup)
+    {
+        try
+        {
+            await _loadoutManager.InstallItems(items, _loadout, parent: targetLoadoutGroup);
+        }
+        catch (OperationCanceledException)
+        {
+            var logger = _serviceProvider.GetRequiredService<ILogger<LibraryViewModel>>();
+            logger.LogInformation("Installation of {Count} library items was cancelled by user", items.Length);
+        }
+        catch (Exception e)
+        {
+            await _serviceProvider.GetRequiredService<IErrorPresenter>().Report(e, Language.Library_Install_Activity);
+        }
+    }
 
     // Nexus collections and modlists decide what they contain; only the user's own collections take installs.
     internal static bool IsInstallTarget(ICollectionOwnership ownership, CollectionGroup.ReadOnly group) => ownership.WhyLocked(group) is null;

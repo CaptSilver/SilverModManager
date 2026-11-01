@@ -115,6 +115,17 @@ public interface ILoadoutManager
         ILibraryItemInstaller? fallbackInstaller = null);
 
     /// <summary>
+    /// Installs several library items into one group in one transaction, in the order given, so they land together at
+    /// the end of the load order and are one step in the database history. Default installers only: the advanced
+    /// installer shows dialogs mid-install and keeps <see cref="InstallItem"/>. A failure in any item installs none of
+    /// them, and the exception names that item.
+    /// </summary>
+    /// <param name="items">The items to install.</param>
+    /// <param name="targetLoadout">The loadout to install into.</param>
+    /// <param name="parent">The group to place them in; the user's local collection when omitted.</param>
+    Task<LoadoutItemGroup.ReadOnly[]> InstallItems(IReadOnlyList<LibraryItem.ReadOnly> items, LoadoutId targetLoadout, Optional<LoadoutItemGroupId> parent = default);
+
+    /// <summary>
     /// Removes the items from their Loadouts.
     /// </summary>
     ValueTask RemoveItems(LoadoutItemGroupId[] groupIds);
