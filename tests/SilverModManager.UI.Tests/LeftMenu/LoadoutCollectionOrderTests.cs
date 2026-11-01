@@ -91,7 +91,7 @@ public class LoadoutCollectionOrderTests(IServiceProvider provider) : AUiTest(pr
     private static string[] Names(OpenList open) => open.List.Items.Select(item => item.Text.Value.Value).ToArray();
 
     private Task ShowsEventually(OpenList open, params string[] names) =>
-        EventuallyOnUi(() => Names(open).Should().Equal(names), TimeSpan.FromSeconds(10), TimeSpan.FromMilliseconds(50));
+        EventuallyOnUi(() => Names(open).Should().Equal(names), delay: TimeSpan.FromMilliseconds(50));
 
     private void SaveOrder(Loadout.ReadOnly loadout, params CollectionGroupId[] order) =>
         Settings.Update<LoadoutCollectionOrderSettings>(settings => settings with

@@ -590,7 +590,8 @@ public class DownloadsPickupTests(ITestOutputHelper helper) : AcquireTestBase<Do
         Settings.Update<WabbajackSettings>(s => s with { DownloadsFolder = folderB.ToString() });
         await Drop(folderB, "wanted.txt", Wanted);
 
-        await Until(() => Acquirer.Plan.Rows[0].State == ArchiveState.Have);
+        // The row turns Have before the plan-changed handler ends the watch, so wait for both.
+        await Until(() => Acquirer.Plan.Rows[0].State == ArchiveState.Have && !pickup.IsWatching);
         Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Have, "the watch follows the folder the user chose");
         pickup.IsWatching.Should().BeFalse("the row is held, so the watch ended");
         pickup.Dispose();
