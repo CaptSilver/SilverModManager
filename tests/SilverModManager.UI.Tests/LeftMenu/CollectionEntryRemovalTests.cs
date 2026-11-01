@@ -88,7 +88,7 @@ public class CollectionEntryRemovalTests(IServiceProvider provider) : AUiTest(pr
     }
 
     [Fact]
-    public async Task AModlistEntryKeepsTheDeleteItemItHadBeforeItGotASource()
+    public async Task AModlistEntryRemovesTheListFromTheLoadoutWithTheDefaultStyling()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, $"Modlist entry {Guid.NewGuid()}");
         var group = await CollectionSeed.AddModlistGroup(Connection, loadout.LoadoutId, "Modlist entry", finished: true);
@@ -96,9 +96,10 @@ public class CollectionEntryRemovalTests(IServiceProvider provider) : AUiTest(pr
         var entry = await InstalledEntry<CollectionLeftMenuItemViewModel>(loadout, Controller(), group.Id);
 
         var delete = DeleteItem(entry);
-        delete.Header.Should().Be(Language.Loadout_DeleteCollection_Menu_Text);
-        delete.Icon.Should().Be(IconValues.DeleteOutline);
-        delete.Styling.Should().Be(ContextMenuItemStyling.Critical);
+        delete.Header.Should().Be("Remove modlist");
+        delete.Icon.Should().Be(IconValues.PlaylistRemove);
+        delete.Styling.Should().Be(ContextMenuItemStyling.Default, "the list stays in the library and the install can be redone");
+        entry.IsCollectionReadOnly.Should().BeFalse();
     }
 
     [Fact]

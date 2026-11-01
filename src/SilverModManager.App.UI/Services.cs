@@ -364,6 +364,7 @@ public static class Services
 
             // Collection sources: one provider per kind of collection, the local one as the fallback
             .AddSingleton<ICollectionProvider, NexusCollectionProvider>()
+            .AddSingleton<ICollectionProvider, WabbajackModlistProvider>()
             .AddSingleton<LocalCollectionProvider>()
             .AddSingleton<CollectionProviders>()
 

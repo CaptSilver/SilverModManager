@@ -50,10 +50,11 @@ public static class WabbajackModlistInstallState
     /// database thread.
     /// </summary>
     public static IObservable<WabbajackModlistInstall> Observe(IConnection connection, LibraryFileId list, LoadoutId loadout)
-        => connection.Revisions
+        // Deferred so the first value is the state when someone subscribes, not when the observable was made.
+        => Observable.Defer(() => connection.Revisions
             .Select(db => ReadInstall(db, list, loadout))
             .Prepend(ReadInstall(connection.Db, list, loadout))
-            .DistinctUntilChanged();
+            .DistinctUntilChanged());
 }
 
 /// <summary>Where a modlist stands in one loadout, the group that holds the answer, and whether the install ran to its end.</summary>

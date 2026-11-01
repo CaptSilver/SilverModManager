@@ -1,3 +1,4 @@
+using System.Reactive.Linq;
 using FluentAssertions;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Pages.LibraryPage.Collections;
@@ -77,6 +78,19 @@ public class WabbajackModlistInstallStateTests(IServiceProvider provider) : AUiT
 
         var skipped = WabbajackModlistInstallState.ReadInstall(Connection.Db, List, loadout);
         skipped.Should().Be(new WabbajackModlistInstall(WabbajackModlistCardState.Incomplete, CollectionGroupId.From(group), true));
+    }
+
+    [Fact]
+    public async Task ObserveStartsFromTheStateAtSubscriptionNotAtCreation()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Late subscriber loadout");
+        var observed = WabbajackModlistInstallState.Observe(Connection, List, loadout.LoadoutId);
+        var group = await WabbajackGroupSeed.AddGroup(Connection, List.Value, loadout.LoadoutId, "Late");
+        await Eventually(() => Read(loadout.LoadoutId).Should().Be(WabbajackModlistCardState.Incomplete));
+
+        var first = await observed.FirstAsync();
+
+        first.Should().Be(new WabbajackModlistInstall(WabbajackModlistCardState.Incomplete, CollectionGroupId.From(group), false));
     }
 
     [Fact]

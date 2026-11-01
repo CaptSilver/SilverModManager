@@ -360,4 +360,106 @@ public class CollectionLoadoutViewModelTests(IServiceProvider provider) : AUiTes
         page.Name.Should().Be("Factory list");
         page.TabTitle.Should().Be("Factory list");
     }
+
+    private async Task<(Loadout.ReadOnly Loadout, WabbajackModlistSource Source, EntityId File)> ModlistSource(string name)
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, $"Modlist page {Guid.NewGuid()}");
+        var file = await CollectionSeed.AddModlistFile(Connection, $"{name} {Guid.NewGuid():N}", version: "2.0", archiveCount: 10);
+        return (loadout, new WabbajackModlistSource(Provider, loadout.LoadoutId, file), file.Id);
+    }
+
+    [Fact]
+    public async Task AModlistThatIsNotInstalledShowsOnlyDownloadsAndSaysSo()
+    {
+        var (_, source, _) = await ModlistSource("Not installed");
+        var (page, activation) = await ActivePage(source);
+        using var _ = activation;
+
+        page.HasInstalledTab.Should().BeFalse();
+        page.SelectedTab.Should().Be(CollectionPageTab.Downloads);
+        page.Downloads.Should().NotBeNull();
+        page.VersionText.Should().Be("Version 2.0");
+        await EventuallyOnUi(() =>
+        {
+            page.StateLine.Should().Be("Not installed yet");
+            page.Adapter.Should().BeNull();
+            page.IsToggleVisible.Should().BeFalse();
+        });
+    }
+
+    [Fact]
+    public async Task AModlistWhoseInstallDidNotFinishOffersInstalledButOpensOnDownloads()
+    {
+        var (loadout, source, file) = await ModlistSource("Half installed");
+        await WabbajackGroupSeed.AddGroup(Connection, file, loadout.LoadoutId, "Half installed");
+        var (page, activation) = await ActivePage(source);
+        using var _ = activation;
+
+        page.SelectedTab.Should().Be(CollectionPageTab.Downloads, "Resume is on the Downloads tab");
+        await EventuallyOnUi(() =>
+        {
+            page.HasInstalledTab.Should().BeTrue();
+            page.StateLine.Should().Be("Install not finished");
+            page.Adapter.Should().NotBeNull();
+            page.IsToggleVisible.Should().BeFalse();
+        });
+    }
+
+    [Fact]
+    public async Task AnInstalledModlistOpensOnInstalledWithItsToggle()
+    {
+        var (loadout, source, file) = await ModlistSource("Installed list");
+        var group = await WabbajackGroupSeed.AddGroup(Connection, file, loadout.LoadoutId, "Installed list");
+        await WabbajackGroupSeed.Finish(Connection, group);
+        var (page, activation) = await ActivePage(source);
+        using var _ = activation;
+
+        page.SelectedTab.Should().Be(CollectionPageTab.Installed);
+        await EventuallyOnUi(() =>
+        {
+            page.HasInstalledTab.Should().BeTrue();
+            page.StateLine.Should().Be(Language.CollectionLoadoutView_CollectionInstalled);
+            page.IsToggleVisible.Should().BeTrue();
+            page.Adapter.Should().NotBeNull();
+        });
+    }
+
+    [Fact]
+    public async Task AModlistWhoseInstallIsRemovedFromItsPageFallsBackToDownloads()
+    {
+        var (loadout, source, file) = await ModlistSource("Removed list");
+        var group = await WabbajackGroupSeed.AddGroup(Connection, file, loadout.LoadoutId, "Removed list");
+        await WabbajackGroupSeed.Finish(Connection, group);
+        var (page, activation) = await ActivePage(source);
+        using var _ = activation;
+        await EventuallyOnUi(() => page.Adapter.Should().NotBeNull());
+
+        await WabbajackGroupSeed.Delete(Connection, group);
+
+        await EventuallyOnUi(() =>
+        {
+            page.HasInstalledTab.Should().BeFalse();
+            page.SelectedTab.Should().Be(CollectionPageTab.Downloads);
+            page.Adapter.Should().BeNull();
+            page.StateLine.Should().Be("Not installed yet");
+        });
+    }
+
+    [Fact]
+    public async Task AModlistPagesMoreMenuHasTheDownloadsItemsAndEndsWithRemoveWhileInstalled()
+    {
+        var (loadout, source, file) = await ModlistSource("Menu list");
+        var group = await WabbajackGroupSeed.AddGroup(Connection, file, loadout.LoadoutId, "Menu list");
+        await WabbajackGroupSeed.Finish(Connection, group);
+        var (page, activation) = await ActivePage(source);
+        using var _ = activation;
+
+        await EventuallyOnUi(() => page.MenuItems.Select(item => item.Header).Should().Equal(
+            Language.CollectionLoadoutView_ViewCollectionDownloadMenuItem,
+            "Check inbox",
+            "Open inbox folder",
+            "Choose download folder...",
+            "Use the default download folder",
+            "Remove modlist"));
+    }
 }

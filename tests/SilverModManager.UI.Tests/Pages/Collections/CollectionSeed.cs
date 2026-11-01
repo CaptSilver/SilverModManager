@@ -131,12 +131,15 @@ internal static class CollectionSeed
         return result.Remap(group);
     }
 
-    /// <summary>
-    /// A Wabbajack modlist in the library and its group in <paramref name="loadout"/>. A <paramref name="finished"/>
-    /// group is enabled and has <c>InstalledAt</c>; otherwise it is the disabled group the job creates at the start.
-    /// </summary>
-    public static async Task<WabbajackModlistLoadoutGroup.ReadOnly> AddModlistGroup(
-        IConnection connection, LoadoutId loadout, string name, bool finished = false)
+    /// <summary>A modlist file in the library, with no install anywhere.</summary>
+    public static async Task<WabbajackModlistLibraryFile.ReadOnly> AddModlistFile(
+        IConnection connection,
+        string name,
+        string gameType = "SkyrimSpecialEdition",
+        string version = "1.0",
+        string author = "Someone",
+        int archiveCount = 0,
+        Size? archiveSize = null)
     {
         using var tx = connection.BeginTransaction();
         var bytes = System.Text.Encoding.UTF8.GetBytes(name);
@@ -151,17 +154,30 @@ internal static class CollectionSeed
         {
             LibraryFile = file,
             Name = name,
-            Author = "Someone",
-            Version = "1.0",
-            GameType = "SkyrimSpecialEdition",
-            ArchiveCount = 0,
-            ArchiveSize = Size.Zero,
+            Author = author,
+            Version = version,
+            GameType = gameType,
+            ArchiveCount = archiveCount,
+            ArchiveSize = archiveSize ?? Size.Zero,
             InstallSize = Size.Zero,
             IsNsfw = false,
         };
+        var result = await tx.Commit();
+        return WabbajackModlistLibraryFile.Load(result.Db, result[modlist.Id]);
+    }
+
+    /// <summary>
+    /// A Wabbajack modlist in the library and its group in <paramref name="loadout"/>. A <paramref name="finished"/>
+    /// group is enabled and has <c>InstalledAt</c>; otherwise it is the disabled group the job creates at the start.
+    /// </summary>
+    public static async Task<WabbajackModlistLoadoutGroup.ReadOnly> AddModlistGroup(
+        IConnection connection, LoadoutId loadout, string name, bool finished = false)
+    {
+        var list = await AddModlistFile(connection, name);
+        using var tx = connection.BeginTransaction();
         var group = new WabbajackModlistLoadoutGroup.New(tx, out var id)
         {
-            ModlistId = modlist,
+            ModlistId = list.Id,
             CollectionGroup = new CollectionGroup.New(tx, id)
             {
                 IsReadOnly = false,

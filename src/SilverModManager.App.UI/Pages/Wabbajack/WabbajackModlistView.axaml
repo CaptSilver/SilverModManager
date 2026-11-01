@@ -24,25 +24,10 @@
         </Style>
     </reactive:ReactiveUserControl.Styles>
 
-    <reactive:ReactiveUserControl.Resources>
-        <MenuFlyout x:Key="ModlistMenuFlyout">
-            <MenuItem x:Name="MenuCheckInbox" Header="Check inbox" />
-            <MenuItem x:Name="MenuOpenInboxFolder" Header="Open inbox folder" />
-            <MenuItem x:Name="MenuChooseDownloadsFolder" Header="Choose download folder..." />
-            <MenuItem x:Name="MenuDefaultDownloadsFolder" Header="Use the default download folder" />
-            <MenuItem x:Name="MenuOpenReadme" Header="Open readme" IsVisible="False" />
-        </MenuFlyout>
-    </reactive:ReactiveUserControl.Resources>
-
     <!-- The toolbar, the one status line, then the archives. The collection page above supplies the header. -->
     <Grid x:Name="Body" RowDefinitions="Auto, Auto, *">
 
         <controls:Statusbar x:Name="Toolbar" Grid.Row="0">
-            <controls:StandardButton Flyout="{StaticResource ModlistMenuFlyout}"
-                                     ShowLabel="False"
-                                     LeftIcon="{x:Static icons:IconValues.MoreVertical}"
-                                     ShowIcon="Left"
-                                     Size="Toolbar" />
             <controls:StandardButton x:Name="DownloadButton" Type="Secondary" Fill="Strong" Size="Toolbar" Text="Download" />
             <controls:StandardButton x:Name="InstallButton" Type="Primary" Fill="Strong" Size="Toolbar" Text="Install collection" />
             <controls:StandardButton x:Name="ResumeButton" Type="Primary" Fill="Strong" Size="Toolbar" Text="Resume" />

@@ -10,9 +10,11 @@ using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.App.UI.Pages.Collections;
+using SilverModManager.App.UI.Pages.Wabbajack;
 using SilverModManager.Collections;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Wabbajack.Models;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
 namespace SilverModManager.UI.Tests.Pages.Collections;
@@ -48,6 +50,50 @@ public class CollectionProvidersTests(IServiceProvider provider) : AUiTest(provi
         var source = Providers.For(group, loadout.LoadoutId);
 
         source.Should().BeOfType<LocalCollectionSource>();
+    }
+
+    [Fact]
+    public async Task AModlistGroupGetsTheWabbajackSource()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, $"Wabbajack pick {Guid.NewGuid()}");
+        var group = await CollectionSeed.AddModlistGroup(Connection, loadout.LoadoutId, "Wabbajack pick", finished: true);
+
+        var source = Providers.For(group.AsCollectionGroup(), loadout.LoadoutId);
+
+        source.Should().BeOfType<WabbajackModlistSource>();
+        source.InitialName.Should().Be("Wabbajack pick");
+    }
+
+    [Fact]
+    public async Task AModlistGroupIsListedAsInstalledOnlyOnceTheInstallFinishedWithoutSkips()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, $"Wabbajack listed {Guid.NewGuid()}");
+        var group = await CollectionSeed.AddModlistGroup(Connection, loadout.LoadoutId, "Wabbajack listed");
+        var collectionGroup = group.AsCollectionGroup();
+        (await Providers.IsListedAsInstalled(collectionGroup).FirstAsync()).Should().BeFalse();
+
+        await WabbajackGroupSeed.Finish(Connection, group.Id);
+        (await Providers.IsListedAsInstalled(collectionGroup).FirstAsync()).Should().BeTrue();
+
+        await WabbajackGroupSeed.AddSkip(Connection, group.Id, loadout.LoadoutId);
+        (await Providers.IsListedAsInstalled(collectionGroup).FirstAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AModlistOfTheLoadoutsGameIsPendingAndOneOfAnotherGameIsNot()
+    {
+        var game = new TestGame(GameId.From("CreationEngine.SkyrimSE"), NexusModsGameId.From(1704));
+        var loadout = Loadout.Load(Connection.Db, (await TestGame.AddLoadout(Connection, game)).Value);
+        var here = await CollectionSeed.AddModlistFile(Connection, $"Here {Guid.NewGuid():N}", gameType: "SkyrimSpecialEdition");
+        var elsewhere = await CollectionSeed.AddModlistFile(Connection, $"Elsewhere {Guid.NewGuid():N}", gameType: "Fallout4");
+        var providers = new CollectionProviders([new WabbajackModlistProvider(Provider)], new LocalCollectionProvider(Provider));
+
+        using var pending = providers.ObservePending(loadout).AsObservableCache();
+        await WaitFor(() => pending.Lookup(here.Id).HasValue);
+
+        pending.Lookup(elsewhere.Id).HasValue.Should().BeFalse();
+        pending.Lookup(here.Id).Value.Should().BeOfType<WabbajackModlistSource>();
+        pending.Lookup(here.Id).Value.PendingPage!.FactoryId.Should().Be(WabbajackModlistPageFactory.StaticId);
     }
 
     [Fact]
@@ -122,10 +168,12 @@ public class CollectionProvidersTests(IServiceProvider provider) : AUiTest(provi
         var group = await CollectionSeed.AddInstalledGroup(Connection, loadout.LoadoutId, "Cheap", revision);
         var offered = await CollectionSeed.AddRevision(Connection, loadout.InstallationInstance.Game.NexusModsGameId.Value, "Cheap offered");
         var providers = new CollectionProviders(
-            [new NexusCollectionProvider(counting)],
+            [new NexusCollectionProvider(counting), new WabbajackModlistProvider(counting)],
             new LocalCollectionProvider(counting));
+        var modlistGroup = await CollectionSeed.AddModlistGroup(Connection, loadout.LoadoutId, "Cheap list", finished: true);
 
         _ = providers.For(group.AsCollectionGroup(), loadout.LoadoutId);
+        _ = providers.For(modlistGroup.AsCollectionGroup(), loadout.LoadoutId);
         using var pending = providers.ObservePending(loadout).AsObservableCache();
         await WaitFor(() => pending.Lookup(offered.Id).HasValue);
 
