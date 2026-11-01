@@ -101,4 +101,47 @@ public class TrackedDownloadJobTests(IServiceProvider provider, TemporaryFileMan
         state.ContentLength.Value.Value.Should().Be((ulong)fixture.Content.Length);
         state.TotalBytesDownloaded.Value.Should().Be((ulong)fixture.Content.Length);
     }
+
+    [Fact]
+    public async Task ACdnJobWithManyPartsNeverReportsFewerBytesThanItDidBefore()
+    {
+        for (var run = 0; run < 20; run++)
+        {
+            var fixture = new CdnFixture(length: CdnFixture.PartSize * 200);
+            await using var destination = Files.CreateFile();
+            var job = new WabbajackCdnDownloadJob
+            {
+                Client = new HttpClient(new CdnHandler(fixture)),
+                Logger = NullLogger<WabbajackCdnDownloadJob>.Instance,
+                Url = new Uri("https://authored-files.wabbajack.org/Some%20Mod-123-1-0.7z_abc"),
+                Destination = destination,
+                RetryDelay = TimeSpan.FromMilliseconds(1),
+            };
+            var seen = new List<ulong>();
+            job.State.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(job.State.TotalBytesDownloaded)) lock (seen) seen.Add(job.State.TotalBytesDownloaded.Value);
+            };
+
+            await Begin(job);
+
+            seen.Should().BeInAscendingOrder("parts finish in any order but the count only grows");
+            job.State.TotalBytesDownloaded.Value.Should().Be((ulong)fixture.Content.Length);
+        }
+    }
+
+    [Fact]
+    public async Task ACdnJobWithoutAFileNameIsNamedAfterItsDestination()
+    {
+        await using var destination = Files.CreateFile();
+        ITrackedDownloadJob job = new WabbajackCdnDownloadJob
+        {
+            Client = new HttpClient(new CdnHandler(new CdnFixture())),
+            Logger = NullLogger<WabbajackCdnDownloadJob>.Instance,
+            Url = new Uri("https://authored-files.wabbajack.org/list.wabbajack_abc"),
+            Destination = destination,
+        };
+
+        job.DisplayName.Should().Be(destination.Path.FileName);
+    }
 }

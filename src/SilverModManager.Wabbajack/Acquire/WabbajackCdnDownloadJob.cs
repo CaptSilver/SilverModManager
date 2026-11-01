@@ -57,7 +57,7 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
     public IPublicJobStateData? GetJobStateData() => State;
 
     /// <inheritdoc/>
-    public string DisplayName => _originalFileName ?? FileName ?? "";
+    public string DisplayName => _originalFileName ?? FileName ?? Destination.FileName;
 
     /// <inheritdoc/>
     public string SourceName => "Wabbajack CDN";
@@ -165,14 +165,15 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
                             {
                                 file.Position = part.Offset;
                                 await file.WriteAsync(bytes, partToken);
+                                // Reported under the lock so a slower part cannot overwrite a later total with an earlier one.
+                                written += bytes.Length;
+                                State.Report(written, definition.Size);
+                                context.SetPercent(Size.FromLong(written), Size.FromLong(Math.Max(1, definition.Size)));
                             }
                             finally
                             {
                                 writeLock.Release();
                             }
-                            var total = Interlocked.Add(ref written, bytes.Length);
-                            State.Report(total, definition.Size);
-                            context.SetPercent(Size.FromLong(total), Size.FromLong(Math.Max(1, definition.Size)));
                         }
                         finally
                         {
