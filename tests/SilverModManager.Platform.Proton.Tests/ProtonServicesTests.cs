@@ -42,6 +42,7 @@ public class ProtonServicesTests
         services.AddSingleton(Substitute.For<IGameLaunchSession>());
         services.AddSingleton(Substitute.For<ISettingsManager>());
         services.AddSingleton(Substitute.For<IToolManager>());
+        services.AddSingleton(Substitute.For<SilverModManager.Sdk.Jobs.IJobMonitor>());
         services.AddSingleton(new ToolOutputCapture(Substitute.For<IConnection>(), Substitute.For<IFileStore>()));
         services.AddSingleton(new HttpClient());
         services.AddLogging();

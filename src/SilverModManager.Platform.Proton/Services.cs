@@ -58,7 +58,7 @@ public static class Services
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, SteamLaunchOptionEmitter>());
         services.AddSingleton<IManagedInstallations, LoadoutManagedInstallations>();
         services.AddSingleton<ISupportBundleWriter, SupportBundleWriter>();
-        return services.AddDoctorVerbs().AddDeploymentVerbs().AddPrefixVerbs().AddSelftestVerbs();
+        return services.AddDoctorVerbs().AddDeploymentVerbs().AddPrefixVerbs().AddSelftestVerbs().AddToolRunVerbs();
     }
 
     /// <summary>

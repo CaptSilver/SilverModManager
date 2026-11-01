@@ -144,4 +144,15 @@ public class CreationEngineToolCatalogueTests(IServiceProvider provider)
 
         Definition("dyndolod").ExtraArguments!(skyrim, "DynDOLODx64.exe").Should().Equal("-sse");
     }
+
+    [Fact]
+    public void TheLodPipelineRunsTerrainThenTexturesThenObjectsAndNamesOnlyRegisteredTools()
+    {
+        var pipeline = provider.GetServices<ToolPipeline>().Should().ContainSingle().Subject;
+
+        pipeline.Name.Should().Be("LOD generation");
+        pipeline.Steps.Select(s => s.Value).Should().Equal("xlodgen", "texgen", "dyndolod");
+        var registered = provider.GetServices<ToolDefinition>().Select(d => d.Id).ToList();
+        pipeline.Steps.Should().OnlyContain(step => registered.Contains(step));
+    }
 }

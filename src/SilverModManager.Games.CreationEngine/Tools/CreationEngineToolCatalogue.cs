@@ -52,9 +52,13 @@ public static class CreationEngineToolCatalogue
 
     public static IReadOnlyList<ToolDefinition> All { get; } = Build();
 
+    /// <summary>Terrain LOD, then textures, then objects: each step reads what the one before wrote.</summary>
+    public static ToolPipeline LodGeneration { get; } = new("LOD generation", [new ToolId("xlodgen"), new ToolId("texgen"), new ToolId("dyndolod")]);
+
     public static IServiceCollection AddCreationEngineTools(this IServiceCollection services)
     {
         foreach (var definition in All) services.AddToolDefinition(definition);
+        services.AddToolPipeline(LodGeneration);
         return services;
     }
 
