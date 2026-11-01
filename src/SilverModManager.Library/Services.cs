@@ -33,6 +33,7 @@ public static class Services
             .AddSingleton<IGitHubReleaseAssetSource, GitHubReleaseAssetSource>()
             .AddSingleton<IThunderstoreSource, ThunderstoreSource>()
             .AddSingleton<IModSource, NexusModSource>()
+            .AddSingleton<IModSource, ThunderstoreModSource>()
             .AddSingleton<ModSourceResolver>()
             .AddLockVerbs()
             .AddThunderstoreVerbs();

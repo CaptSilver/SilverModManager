@@ -226,6 +226,16 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
     }
 
     [Fact]
+    public async Task APackageTheCatalogGivesNoAddressFor_LinksToItsPageInTheCommunity()
+    {
+        var catalog = new ThunderstoreCatalog("repo", [Package("Zehs", "REPOLib", rating: 900) with { PackageUrl = null }]);
+
+        var (vm, _) = await Open(new FakeCatalogSource(catalog));
+
+        vm.Packages.Single().PackageUrl.Should().Be(new Uri("https://thunderstore.io/c/repo/p/Zehs/REPOLib/"));
+    }
+
+    [Fact]
     public async Task SearchText_FiltersTheList()
     {
         var (vm, _) = await Open(new FakeCatalogSource(Catalog()));

@@ -250,7 +250,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         Packages = _catalog is null
             ? []
             : ThunderstoreSorting.Order(_catalog.Search(SearchText, ShowDeprecated).Where(IsListed), Sort)
-                .Select(ToRow).ToArray();
+                .Select(package => ToRow(package, _community)).ToArray();
     }
 
     private bool IsListed(SilverModManager.Networking.Thunderstore.DTOs.PackageListing package)
@@ -263,7 +263,13 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         return ThunderstoreVersionNumber.TryParse(latest.VersionNumber, out var number) ? new ThunderstoreVersionRef(reference, number) : null;
     }
 
-    private static ThunderstorePackageRow ToRow(SilverModManager.Networking.Thunderstore.DTOs.PackageListing package)
+    // A listing without its own address still has a page in the community being browsed.
+    private static Uri? PageIn(string? community, SilverModManager.Networking.Thunderstore.DTOs.PackageListing package)
+        => community is not null && package.Owner is not null && ThunderstorePackageRef.TryCreate(package.Owner, package.Name, out var reference)
+            ? ThunderstoreUrls.PackagePage(community, reference)
+            : null;
+
+    private static ThunderstorePackageRow ToRow(SilverModManager.Networking.Thunderstore.DTOs.PackageListing package, string? community)
     {
         var latest = package.Versions.FirstOrDefault(v => v.IsActive) ?? package.Versions.FirstOrDefault();
         var displayName = ThunderstoreRowText.DisplayName(package.Name, package.Owner);
@@ -273,7 +279,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
             package.RatingScore,
             package.IsDeprecated,
             latest?.Description ?? "",
-            Uri.TryCreate(package.PackageUrl, UriKind.Absolute, out var url) ? url : null,
+            Uri.TryCreate(package.PackageUrl, UriKind.Absolute, out var url) ? url : PageIn(community, package),
             LatestRef(package, latest),
             package.Owner ?? "",
             displayName != "" ? displayName : package.FullName,

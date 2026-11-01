@@ -84,6 +84,21 @@ public partial class ThunderstoreDownloadJobTests(IServiceProvider serviceProvid
     }
 
     [Fact]
+    public void TheDownloadRecordsThePackagePageAsWhereItCameFrom()
+    {
+        var job = new ThunderstoreDownloadJob(serviceProvider, new StubApi(Version()), new HttpClient(new PayloadHandler()))
+        {
+            Version = RepoLib,
+            Community = "repo",
+            Acquisition = UnassignedAcquisition.Instance,
+            ExpectedSha256 = null,
+        };
+
+        job.DownloadPageUri.Should().Be(ThunderstoreUrls.PackagePage("repo", RepoLib.Package));
+        job.DownloadPageUri.Should().Be(new Uri("https://thunderstore.io/c/repo/p/Zehs/REPOLib/"));
+    }
+
+    [Fact]
     public async Task DownloadingAVersionAddsTheZipAndRecordsThePackage()
     {
         var result = await Run(Version());

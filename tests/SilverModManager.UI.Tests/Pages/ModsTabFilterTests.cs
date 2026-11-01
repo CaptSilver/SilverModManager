@@ -250,4 +250,19 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
         var skyrim = SilverModManager.Wabbajack.WabbajackGames.GameIdFor("SkyrimSpecialEdition")!.Value;
         modlists.GetAllFiles(skyrim).Select(f => f.Id).Should().Contain(skyrimList);
     }
+
+    [Fact]
+    public async Task ALocalFileRowHasNoModPageOrChangelogToOpen()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Main");
+        var provider = new LocalFileDataProvider(Provider);
+        using var rows = provider.ObserveLibraryItems(Filter(loadout)).AsObservableCache();
+        var local = await AddLocalFile("nopage.7z");
+
+        await Eventually(() => rows.Lookup(local).HasValue.Should().BeTrue());
+
+        var row = rows.Lookup(local).Value;
+        row.Get<SharedComponents.ViewModPageAction>(LibraryColumns.Actions.ViewModPageComponentKey).IsEnabled.Value.Should().BeFalse();
+        row.Get<LibraryComponents.ViewChangelogAction>(LibraryColumns.Actions.ViewChangelogComponentKey).IsEnabled.Value.Should().BeFalse();
+    }
 }

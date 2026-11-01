@@ -45,7 +45,12 @@ public class ThunderstoreDownloadJob : IJobDefinitionWithStart<ThunderstoreDownl
     private HttpClient Client { get; }
     private IServiceProvider ServiceProvider { get; }
 
-    private ThunderstoreDownloadJob(IServiceProvider serviceProvider, IThunderstoreApi api, HttpClient client)
+    /// <summary>
+    /// The package's page in the community, which the download records as where the file came from.
+    /// </summary>
+    internal Uri DownloadPageUri => ThunderstoreUrls.PackagePage(Community, Version.Package);
+
+    internal ThunderstoreDownloadJob(IServiceProvider serviceProvider, IThunderstoreApi api, HttpClient client)
     {
         ServiceProvider = serviceProvider;
         Api = api;
@@ -105,7 +110,7 @@ public class ThunderstoreDownloadJob : IJobDefinitionWithStart<ThunderstoreDownl
             var download = new HttpDownloadJob
             {
                 Uri = Api.DownloadUri(Version),
-                DownloadPageUri = new Uri($"https://thunderstore.io/c/{Uri.EscapeDataString(Community)}/p/{Version.Package.Namespace}/{Version.Package.Name}/"),
+                DownloadPageUri = DownloadPageUri,
                 Destination = downloaded,
                 Client = Client,
                 Logger = ServiceProvider.GetRequiredService<ILogger<HttpDownloadJob>>(),

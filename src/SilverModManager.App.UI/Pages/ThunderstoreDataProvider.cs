@@ -196,7 +196,7 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
         parentItemModel.Add(LibraryColumns.Actions.LibraryItemIdsComponentKey, new LibraryComponents.LibraryItemIds(files.TransformImmutable(static file => file.AsLibraryFile().AsLibraryItem().LibraryItemId)));
         LibraryDataProviderHelper.AddInstalledDateComponent(parentItemModel, linkedLoadoutItemsObservable);
         LibraryDataProviderHelper.AddInstallActionComponent(parentItemModel, matchesObservable);
-        AddDisabledPageActions(parentItemModel);
+        AddPageActions(parentItemModel);
         LibraryDataProviderHelper.AddDeleteItemActionComponent(parentItemModel);
         LibraryDataProviderHelper.AddDestinationComponents(parentItemModel, _connection, libraryFilter.Game.GameId, _gameNames);
 
@@ -223,18 +223,19 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
 
         LibraryDataProviderHelper.AddInstalledDateComponent(itemModel, linkedLoadoutItemsObservable);
         LibraryDataProviderHelper.AddInstallActionComponent(itemModel, linkedLoadoutItemsObservable);
-        AddDisabledPageActions(itemModel);
+        AddPageActions(itemModel);
         LibraryDataProviderHelper.AddDeleteItemActionComponent(itemModel);
         LibraryDataProviderHelper.AddDestinationComponents(itemModel, _connection, libraryFilter.Game.GameId, _gameNames);
 
         return itemModel;
     }
 
-    // The mod page and changelog buttons open Nexus pages; a Thunderstore package has neither.
-    private static void AddDisabledPageActions(CompositeItemModel<EntityId> itemModel)
+    // The page and changelog buttons open the package's pages on thunderstore.io; there is no update button
+    // or hide switch yet.
+    private static void AddPageActions(CompositeItemModel<EntityId> itemModel)
     {
-        LibraryDataProviderHelper.AddViewChangelogActionComponent(itemModel, isEnabled: false);
-        LibraryDataProviderHelper.AddViewModPageActionComponent(itemModel, isEnabled: false);
+        LibraryDataProviderHelper.AddViewChangelogActionComponent(itemModel);
+        LibraryDataProviderHelper.AddViewModPageActionComponent(itemModel);
         LibraryDataProviderHelper.AddHideUpdatesActionComponent(itemModel, isEnabled: false, isVisible: false);
     }
 
@@ -308,7 +309,7 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
         LoadoutDataProviderHelper.AddLockedEnabledStates(parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddEnabledStateToggle(_connection, parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddLoadoutItemIds(parentItemModel, linkedItemsObservable);
-        LoadoutDataProviderHelper.AddViewModPageActionComponent(parentItemModel, isEnabled: false);
+        LoadoutDataProviderHelper.AddViewModPageActionComponent(parentItemModel);
         LoadoutDataProviderHelper.AddViewModFilesActionComponent(parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddUninstallItemComponent(parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddAllowProtectedPathsAction(_connection, parentItemModel, linkedItemsObservable);
@@ -320,7 +321,7 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
     {
         var childModel = LoadoutDataProviderHelper.ToChildItemModel(connection, loadoutItem);
         SharedColumns.Source.Add(childModel, ModSources.Thunderstore);
-        LoadoutDataProviderHelper.AddViewModPageActionComponent(childModel, isEnabled: false);
+        LoadoutDataProviderHelper.AddViewModPageActionComponent(childModel);
         return childModel;
     }
 }

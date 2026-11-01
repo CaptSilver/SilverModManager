@@ -9,8 +9,10 @@ using System.Security.Cryptography;
 using DynamicData;
 using DynamicData.Kernel;
 using FluentAssertions;
+using NSubstitute;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Pages;
@@ -621,5 +623,57 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
         using var rows = Rows(thunderstore.ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
 
         await Eventually(() => rows.Count.Should().Be(2));
+    }
+
+    [Fact]
+    public async Task LibraryRows_OfferTheModPageAndChangelog_ForThePackageAndEachVersion()
+    {
+        var community = UniqueCommunity();
+        await AddFile(community, "Zehs", "REPOLib", "4.1.0");
+        var game = ThunderstoreGameOf(community);
+
+        using var rows = Rows(CreateProvider(game).ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
+        await Eventually(() => rows.Count.Should().Be(1));
+        var parent = rows.Items.Single();
+        using var versions = ChildrenOf(parent);
+        await Eventually(() => versions.Count.Should().Be(1));
+
+        foreach (var row in new[] { parent, versions.Items.Single() })
+        {
+            row.Get<SharedComponents.ViewModPageAction>(LibraryColumns.Actions.ViewModPageComponentKey).IsEnabled.Value.Should().BeTrue();
+            row.Get<LibraryComponents.ViewChangelogAction>(LibraryColumns.Actions.ViewChangelogComponentKey).IsEnabled.Value.Should().BeTrue();
+        }
+    }
+
+    [Fact]
+    public async Task LoadoutRows_OfferTheModPage_ForThePackageAndEachInstalledItem()
+    {
+        var community = UniqueCommunity();
+        var game = ThunderstoreGameOf(community);
+        var loadout = await AddLoadout(game);
+        await Install(loadout, await AddFile(community, "Zehs", "REPOLib", "4.1.0"), "REPOLib");
+
+        using var rows = Rows(CreateProvider(game).ObserveLoadoutItems(WholeLoadout(loadout.Loadout)));
+        await Eventually(() => rows.Count.Should().Be(1));
+        var parent = rows.Items.Single();
+        using var items = ChildrenOf(parent);
+        await Eventually(() => items.Count.Should().Be(1));
+
+        foreach (var row in new[] { parent, items.Items.Single() })
+            row.Get<SharedComponents.ViewModPageAction>(LoadoutColumns.EnabledState.ViewModPageComponentKey).IsEnabled.Value.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task OpeningTheModPageOfAThunderstoreLoadoutItem_OpensThePackagePage()
+    {
+        var community = UniqueCommunity();
+        var game = ThunderstoreGameOf(community);
+        var loadout = await AddLoadout(game);
+        var installed = await Install(loadout, await AddFile(community, "Zehs", "REPOLib", "4.1.0"), "REPOLib");
+        var os = Substitute.For<IOSInterop>();
+
+        LoadoutViewModel.HandleOpenModPageFor([LoadoutItemId.From(installed)], Connection, os, Provider.GetRequiredService<ModSourceResolver>(), CancellationToken.None);
+
+        os.Received(1).OpenUri(new Uri($"https://thunderstore.io/c/{community}/p/Zehs/REPOLib/"));
     }
 }
