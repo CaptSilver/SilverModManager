@@ -9,6 +9,7 @@ using SilverModManager.App.UI.Pages.Wabbajack;
 using SilverModManager.App.UI.Windows;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
@@ -849,6 +850,22 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         vm.IsLoadoutPinned.Should().BeTrue();
         vm.LoadoutChoices.Select(choice => choice.Id).Should().Equal([wanted.LoadoutId], "a pinned page has no other loadout and no \"Create new loadout\"");
         service.PlannedFor.Should().Equal(wanted.LoadoutId);
+    }
+
+    [Fact]
+    public async Task APinnedLoadoutRemovedUnderAnOpenPageLeavesNothingToPick()
+    {
+        var service = new FakeService(TestGame) { Plan = Plan() };
+        var vm = new WabbajackModlistViewModel(Provider.GetRequiredService<IWindowManager>(), Connection, service, new FakeAcquirer(), Provider)
+        {
+            FileId = SomeFile,
+            PinnedLoadout = LoadoutId.From(EntityId.From(0x200000000FFFFFD)),
+        };
+
+        var load = () => vm.LoadAsync(CancellationToken.None);
+
+        await load.Should().NotThrowAsync();
+        vm.LoadoutChoices.Should().BeEmpty("the loadout the page was pinned to no longer exists");
     }
 
     [Fact]

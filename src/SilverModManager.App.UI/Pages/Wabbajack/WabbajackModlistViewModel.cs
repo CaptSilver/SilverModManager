@@ -750,10 +750,12 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
     private void RefreshLoadoutChoices()
     {
-        // A pinned page is for one loadout: nothing else to pick, and no new loadout to create.
+        // A pinned page is for one loadout: nothing else to pick, and no new loadout to create. The loadout can be
+        // removed while its page is still open, and then there is nothing to pick at all.
         if (PinnedLoadout is { } pinned)
         {
-            LoadoutChoices = [new WabbajackLoadoutChoice(pinned, Loadout.Load(_connection.Db, pinned).Name)];
+            var loadout = Loadout.Load(_connection.Db, pinned);
+            LoadoutChoices = loadout.IsValid() ? [new WabbajackLoadoutChoice(pinned, loadout.Name)] : [];
             return;
         }
 
