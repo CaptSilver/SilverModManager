@@ -1,6 +1,9 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.FromSoft.Tests.Saves;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Games.TestFramework.Helpers;
 using SilverModManager.Sdk;
@@ -84,4 +87,34 @@ public abstract class AFromSoftInstalledGameTests<TTest, TGame>(ITestOutputHelpe
     [Fact]
     public void SavesAreNotAMappedLocation()
         => Game.GetLocations(Library.FileSystem, GameInstallation.LocatorResult).Should().NotContainKey(LocationId.Saves);
+
+    [Fact]
+    public async Task TheGameKeepsAKeepSavesLoadoutsSavesInASlotOfItsOwn()
+    {
+        var loadout = await CreateLoadout();
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(loadout.Id, Loadout.KeepSavesWithLoadout, true);
+            await tx.Commit();
+        }
+
+        var plan = ((IPerLoadoutSaves)Game).PlanSaveRedirect(Refresh(loadout));
+
+        plan.Should().Be(new SaveRedirectPlan.LoaderKey("savefile", facts.SaveNames.Modded.Replace("silver", LoadoutSaveSlot.IdOf(loadout))));
+    }
+
+    [Fact]
+    public async Task AdoptingCopiesTheModdedSaveToTheLoadoutsSlot()
+    {
+        var loadout = await CreateLoadout();
+        using var folder = new SaveFixture();
+        var root = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath(folder.SaveFolder);
+        folder.Save(facts.SaveNames.Modded, "mine");
+        var slot = facts.SaveNames.Modded.Replace("silver", LoadoutSaveSlot.IdOf(loadout));
+
+        var plan = ((IPerLoadoutSaves)Game).PlanAdoptCurrentSave(loadout, root);
+
+        plan.Should().NotBeNull();
+        plan!.Copies.Should().Equal(new SaveAdoptionPlan.Copy(root / facts.SaveNames.Modded, root / slot));
+    }
 }

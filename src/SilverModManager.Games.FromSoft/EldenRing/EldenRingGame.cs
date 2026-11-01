@@ -19,7 +19,7 @@ using SilverModManager.Sdk.Settings;
 namespace SilverModManager.Games.FromSoft.EldenRing;
 
 [UsedImplicitly]
-public class EldenRingGame : AMe3FromSoftGame<EldenRingGame>, IGameData<EldenRingGame>, IPerLoadoutSaves
+public class EldenRingGame : AMe3FromSoftGame<EldenRingGame>, IGameData<EldenRingGame>
 {
     public static GameId GameId { get; } = GameId.From("FromSoft.EldenRing");
     public static string DisplayName => "Elden Ring";
@@ -136,33 +136,12 @@ public class EldenRingGame : AMe3FromSoftGame<EldenRingGame>, IGameData<EldenRin
     // No FOMOD installer: Elden Ring FOMODs assume the game folder, which nothing is ever installed into.
     protected override IEnumerable<ILibraryItemInstaller> GameInstallers(IServiceProvider provider) => [new SeamlessCoopInstaller(provider)];
 
-    /// <inheritdoc />
     /// <remarks>
-    /// me3 reads the save name from the profile's <c>savefile</c> key. Seamless Co-op writes ER0000.co2 itself and
-    /// me3 does not redirect it, so a loadout with the mod cannot keep its saves apart.
+    /// Seamless Co-op writes ER0000.co2 itself and me3 does not redirect it, so a loadout with the mod cannot keep its
+    /// saves apart.
     /// </remarks>
-    public SaveRedirectPlan? PlanSaveRedirect(Loadout.ReadOnly loadout)
+    protected override string? SaveRedirectRefusal(Loadout.ReadOnly loadout)
         => Me3Loader.HasOverlayNative(loadout, SeamlessCoop.Native)
-            ? new SaveRedirectPlan.Unsupported($"Seamless Co-op keeps its own save ({EldenRingPaths.SeamlessCoopSave}) and Elden Ring's launcher cannot move it, so a loadout with Seamless Co-op shares that save with the others.")
-            : new SaveRedirectPlan.LoaderKey("savefile", LoadoutSave(loadout));
-
-    private static string LoadoutSave(Loadout.ReadOnly loadout)
-        => Definition.SaveNames.ModdedFor(loadout) ?? throw new InvalidOperationException("Elden Ring's save names have no modded save to name for a loadout.");
-
-    /// <inheritdoc />
-    public SaveAdoptionPlan? PlanAdoptCurrentSave(Loadout.ReadOnly loadout, AbsolutePath saveRoot)
-    {
-        var target = LoadoutSave(loadout);
-        var source = saveRoot / EldenRingPaths.ModdedSave;
-        var destination = saveRoot / target;
-        // A backup alone is not worth bringing over, and nothing overwrites a slot that already has a save.
-        if (!source.FileExists || destination.FileExists) return null;
-
-        var copies = new List<SaveAdoptionPlan.Copy> { new(source, destination) };
-        var sourceBackup = saveRoot / (EldenRingPaths.ModdedSave + ".bak");
-        var destinationBackup = saveRoot / (target + ".bak");
-        if (sourceBackup.FileExists && !destinationBackup.FileExists) copies.Add(new SaveAdoptionPlan.Copy(sourceBackup, destinationBackup));
-
-        return new SaveAdoptionPlan($"Copy {EldenRingPaths.ModdedSave} to {target}, so this loadout continues from the save you play today.", copies);
-    }
+            ? $"Seamless Co-op keeps its own save ({EldenRingPaths.SeamlessCoopSave}) and Elden Ring's launcher cannot move it, so a loadout with Seamless Co-op shares that save with the others."
+            : null;
 }
