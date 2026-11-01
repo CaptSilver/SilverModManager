@@ -96,8 +96,8 @@ public interface IModSource
     IObservable<HideUpdatesState> ObserveHideUpdates(IReadOnlyList<LibraryItem.ReadOnly> items);
 
     /// <summary>
-    /// The menu text of the hide action without its count: "Hide updates" or "Show updates" for Nexus, "Freeze
-    /// version" or "Unfreeze version" for Thunderstore, which holds the version back rather than only hiding it.
+    /// The wording of the hide action without its count: hide or show for Nexus, freeze or unfreeze for
+    /// Thunderstore, which holds the version back rather than only hiding it. The UI turns it into translated text.
     /// </summary>
-    string HideUpdatesLabel(bool hidden);
+    HideUpdatesLabelKind HideUpdatesLabel(bool hidden);
 }

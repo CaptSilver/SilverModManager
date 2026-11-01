@@ -192,7 +192,6 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
         LibraryDataProviderHelper.AddViewChangelogActionComponent(parentItemModel);
         LibraryDataProviderHelper.AddViewModPageActionComponent(parentItemModel);
 
-        // Note(sewer):
         // The hide action stays on a row whose updates are all hidden, or the user would have no way to show them
         // again; the source reports its state from the unfiltered updates.
         var pageItemsNow = libraryItems.QueryWhenChanged(static query => (IReadOnlyList<LibraryItem.ReadOnly>)query.Items.Select(static item => item.AsLibraryItem()).ToArray());

@@ -197,7 +197,7 @@ internal sealed class ThunderstoreModSource(
             .DistinctUntilChanged();
     }
 
-    public string HideUpdatesLabel(bool hidden) => hidden ? "Unfreeze version" : "Freeze version";
+    public HideUpdatesLabelKind HideUpdatesLabel(bool hidden) => hidden ? HideUpdatesLabelKind.Unfreeze : HideUpdatesLabelKind.Freeze;
 
     // Library only: nothing is linked, so the old version stays in the loadouts.
     private async Task<IReadOnlyList<LibraryFile.ReadOnly>> AddToLibrary(ThunderstoreModUpdate package, CancellationToken cancellationToken)

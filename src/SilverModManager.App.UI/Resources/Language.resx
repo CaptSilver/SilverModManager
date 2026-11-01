@@ -1107,6 +1107,12 @@ To apply changes or launch the game again, please close the game first.</value>
     <data name="Library_ShowUpdates" xml:space="preserve">
         <value>Show updates ({0})</value>
     </data>
+    <data name="Library_FreezeVersion" xml:space="preserve">
+        <value>Freeze version ({0})</value>
+    </data>
+    <data name="Library_UnfreezeVersion" xml:space="preserve">
+        <value>Unfreeze version ({0})</value>
+    </data>
     <data name="Library_Update" xml:space="preserve">
         <value>Update ({0})</value>
     </data>

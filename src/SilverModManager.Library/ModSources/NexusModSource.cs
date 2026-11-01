@@ -134,7 +134,7 @@ internal sealed class NexusModSource(
         return state.DistinctUntilChanged();
     }
 
-    public string HideUpdatesLabel(bool hidden) => hidden ? "Show updates" : "Hide updates";
+    public HideUpdatesLabelKind HideUpdatesLabel(bool hidden) => hidden ? HideUpdatesLabelKind.Show : HideUpdatesLabelKind.Hide;
 
     private static readonly HideUpdatesState NoHideAction = new(IsHidden: false, ItemCount: 0, IsEnabled: false, IsVisible: false);
 
@@ -157,7 +157,7 @@ internal sealed class NexusModSource(
                 ? new HideUpdatesState(update.Value.NewerFiles.All(newer => filterService.IsFileHidden(newer.Uid)), 1, IsEnabled: true, IsVisible: true)
                 : NoHideAction with { ItemCount = 1 });
 
-    // Behaviour from design: when any file's updates are hidden the page offers to show them (all of them); the
+    // When any file's updates are hidden the page offers to show them (all of them); the
     // count is the files that action affects.
     private IObservable<HideUpdatesState> ObservePageHideState(NexusModsModPageMetadata.ReadOnly page)
         => modUpdateService.GetNewestModPageVersionObservableUnfiltered(page)

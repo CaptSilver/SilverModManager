@@ -639,8 +639,8 @@ public class ThunderstoreUpdateTests(IConnection connection)
     {
         var source = Arrange().Source;
 
-        source.HideUpdatesLabel(hidden: false).Should().Be("Freeze version");
-        source.HideUpdatesLabel(hidden: true).Should().Be("Unfreeze version");
+        source.HideUpdatesLabel(hidden: false).Should().Be(HideUpdatesLabelKind.Freeze);
+        source.HideUpdatesLabel(hidden: true).Should().Be(HideUpdatesLabelKind.Unfreeze);
     }
 
     public class Startup

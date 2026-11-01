@@ -96,11 +96,45 @@ public class HideUpdatesActionTests(IServiceProvider provider) : AUiTest(provide
         source.HideRequests.Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData("pl", HideUpdatesLabelKind.Hide, "Ukryj aktualizacje (2)")]
+    [InlineData("pl", HideUpdatesLabelKind.Show, "Pokaż aktualizacje (2)")]
+    [InlineData("pt-BR", HideUpdatesLabelKind.Hide, "Ocultar atualizações (2)")]
+    [InlineData("tr-TR", HideUpdatesLabelKind.Show, "Güncellemeleri göster (2)")]
+    [InlineData("pl", HideUpdatesLabelKind.Freeze, "Freeze version (2)")]
+    [InlineData("pl", HideUpdatesLabelKind.Unfreeze, "Unfreeze version (2)")]
+    public void TheMenuTextFollowsTheUserLanguage(string culture, HideUpdatesLabelKind kind, string expected)
+        => LibraryComponents.HideUpdatesAction.FormatLabel(kind, 2, System.Globalization.CultureInfo.GetCultureInfo(culture))
+            .Should().Be(expected);
+
+    [Fact]
+    public async Task ANexusRowsHideActionIsTranslatedInAnotherLanguage()
+    {
+        var item = await AddItem();
+        var source = new FakeModSource();
+        source.OwnedItems.Add(item.Id);
+        source.HideState.OnNext(new HideUpdatesState(IsHidden: false, ItemCount: 2, IsEnabled: true, IsVisible: true));
+        var row = new CompositeItemModel<EntityId>(item.Id);
+        var before = SilverModManager.App.UI.Resources.Language.Culture;
+        SilverModManager.App.UI.Resources.Language.Culture = System.Globalization.CultureInfo.GetCultureInfo("pl");
+        try
+        {
+            LibraryDataProviderHelper.AddHideUpdatesActionComponent(row, source, [item]);
+            var action = row.Get<LibraryComponents.HideUpdatesAction>(LibraryColumns.Actions.HideUpdatesComponentKey);
+
+            await EventuallyOnUi(() => action.ButtonText.Value.Should().Be("Ukryj aktualizacje (2)"));
+        }
+        finally
+        {
+            SilverModManager.App.UI.Resources.Language.Culture = before;
+        }
+    }
+
     [Fact]
     public async Task ARowsHideActionTakesItsStateAndLabelFromTheSource()
     {
         var item = await AddItem();
-        var source = new FakeModSource { HideLabel = "Hold back" };
+        var source = new FakeModSource { HideLabel = HideUpdatesLabelKind.Freeze };
         source.OwnedItems.Add(item.Id);
         source.HideState.OnNext(new HideUpdatesState(IsHidden: false, ItemCount: 3, IsEnabled: true, IsVisible: true));
         var row = new CompositeItemModel<EntityId>(item.Id);
@@ -109,7 +143,7 @@ public class HideUpdatesActionTests(IServiceProvider provider) : AUiTest(provide
         var action = row.Get<LibraryComponents.HideUpdatesAction>(LibraryColumns.Actions.HideUpdatesComponentKey);
         await EventuallyOnUi(() =>
         {
-            action.ButtonText.Value.Should().Be("Hold back (3)");
+            action.ButtonText.Value.Should().Be("Freeze version (3)");
             action.IsEnabled.Value.Should().BeTrue();
             action.IsVisible.Value.Should().BeTrue();
         });
@@ -118,7 +152,7 @@ public class HideUpdatesActionTests(IServiceProvider provider) : AUiTest(provide
 
         await EventuallyOnUi(() =>
         {
-            action.ButtonText.Value.Should().Be("Show fake (3)");
+            action.ButtonText.Value.Should().Be("Show updates (3)");
             action.IsEnabled.Value.Should().BeFalse();
             action.IsVisible.Value.Should().BeFalse();
         });

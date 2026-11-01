@@ -13,7 +13,7 @@ internal static class HideUpdatesToggle
     /// <summary>
     /// Flips the state each source reports for its share of the items. A parent row's items go to one source
     /// together, so the state is the row's: a row that shows "hidden" because any of its children is, shows all of
-    /// them again, as the design asks.
+    /// them again.
     /// </summary>
     public static async ValueTask Apply(IDb db, ModSourceResolver resolver, IEnumerable<LibraryItemId> ids, CancellationToken cancellationToken)
     {

@@ -44,7 +44,7 @@ internal class FakeModSource(string name = "fake") : IModSource
     /// <summary>What the hide action shows for a row of this source; changes land in <see cref="HideRequests"/>.</summary>
     public BehaviorSubject<HideUpdatesState> HideState { get; } = new(new HideUpdatesState(false, 0, false, false));
     public List<(IReadOnlyList<LibraryItem.ReadOnly> Items, bool Hidden)> HideRequests { get; } = [];
-    public string HideLabel { get; set; } = "Hide fake";
+    public HideUpdatesLabelKind HideLabel { get; set; } = HideUpdatesLabelKind.Hide;
 
     public ValueTask SetUpdatesHidden(IReadOnlyList<LibraryItem.ReadOnly> items, bool hidden, CancellationToken cancellationToken)
     {
@@ -53,7 +53,7 @@ internal class FakeModSource(string name = "fake") : IModSource
     }
 
     public IObservable<HideUpdatesState> ObserveHideUpdates(IReadOnlyList<LibraryItem.ReadOnly> items) => HideState;
-    public string HideUpdatesLabel(bool hidden) => hidden ? "Show " + name : HideLabel;
+    public HideUpdatesLabelKind HideUpdatesLabel(bool hidden) => hidden ? HideUpdatesLabelKind.Show : HideLabel;
 
     public ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken)
     {

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Aggregation;
@@ -665,10 +666,10 @@ public static class LibraryComponents
         }
 
         /// <param name="label">
-        /// The menu text for a hidden state, without the count. The source of the row supplies it, because what the
-        /// action does differs by source; null uses the Nexus wording from the resources.
+        /// The wording for a hidden or shown state. The source of the row supplies it, because what the action does
+        /// differs by source; null uses hide and show.
         /// </param>
-        public HideUpdatesAction(Observable<bool> isHiddenObservable, Observable<int> itemCount, Observable<bool> isEnabled, Observable<bool> isVisible, Func<bool, string>? label = null)
+        public HideUpdatesAction(Observable<bool> isHiddenObservable, Observable<int> itemCount, Observable<bool> isEnabled, Observable<bool> isVisible, Func<bool, HideUpdatesLabelKind>? label = null)
         {
             _label = label;
             IsHidden = isHiddenObservable.ToBindableReactiveProperty();
@@ -702,15 +703,25 @@ public static class LibraryComponents
             base.Dispose(disposing);
         }
 
-        private readonly Func<bool, string>? _label;
+        private readonly Func<bool, HideUpdatesLabelKind>? _label;
 
         private string FormatShowUpdates(bool isHidden, int itemCount)
-        {
-            if (_label is not null) return $"{_label(isHidden)} ({itemCount})";
+            => FormatLabel(_label?.Invoke(isHidden) ?? (isHidden ? HideUpdatesLabelKind.Show : HideUpdatesLabelKind.Hide), itemCount);
 
-            return string.Format(isHidden 
-                ? Resources.Language.Library_ShowUpdates 
-                : Resources.Language.Library_HideUpdates, itemCount);
+        /// <summary>The menu text for a wording and an item count, in <paramref name="culture"/> or the UI language.</summary>
+        internal static string FormatLabel(HideUpdatesLabelKind kind, int itemCount, CultureInfo? culture = null)
+        {
+            var name = kind switch
+            {
+                HideUpdatesLabelKind.Hide => nameof(Resources.Language.Library_HideUpdates),
+                HideUpdatesLabelKind.Show => nameof(Resources.Language.Library_ShowUpdates),
+                HideUpdatesLabelKind.Freeze => nameof(Resources.Language.Library_FreezeVersion),
+                HideUpdatesLabelKind.Unfreeze => nameof(Resources.Language.Library_UnfreezeVersion),
+                _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
+            };
+            var format = Resources.Language.ResourceManager.GetString(name, culture ?? Resources.Language.Culture)
+                         ?? throw new InvalidOperationException($"Missing language resource {name}");
+            return string.Format(culture ?? Resources.Language.Culture, format, itemCount);
         }
     }
 

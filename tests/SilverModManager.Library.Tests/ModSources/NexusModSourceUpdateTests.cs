@@ -391,8 +391,8 @@ public class NexusModSourceUpdateTests(IConnection connection)
     {
         var source = NexusModSources.Create(connection);
 
-        source.HideUpdatesLabel(hidden: false).Should().Be("Hide updates");
-        source.HideUpdatesLabel(hidden: true).Should().Be("Show updates");
+        source.HideUpdatesLabel(hidden: false).Should().Be(HideUpdatesLabelKind.Hide);
+        source.HideUpdatesLabel(hidden: true).Should().Be(HideUpdatesLabelKind.Show);
     }
 
     public class Startup

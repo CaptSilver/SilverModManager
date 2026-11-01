@@ -2377,6 +2377,24 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Freeze version ({0}).
+        /// </summary>
+        public static string Library_FreezeVersion {
+            get {
+                return ResourceManager.GetString("Library_FreezeVersion", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unfreeze version ({0}).
+        /// </summary>
+        public static string Library_UnfreezeVersion {
+            get {
+                return ResourceManager.GetString("Library_UnfreezeVersion", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Update ({0}).
         /// </summary>
         public static string Library_Update {
