@@ -129,6 +129,8 @@ public static class Services
         // Undo
         coll.AddSingleton<UndoService>();
 
+        coll.TryAddEnumerable(ServiceDescriptor.Singleton<ICollectionLock, NexusCollectionLock>());
+        coll.TryAddSingleton<ICollectionOwnership, CollectionOwnership>();
         coll.AddSingleton<ILoadoutManager, LoadoutManager>();
         coll.AddSingleton<IOverridesMover>(sp => new OverridesMover(sp.GetRequiredService<IConnection>()));
         coll.AddSingleton<IHostedService, InstallNexusIdBackfill>();

@@ -125,6 +125,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
         _connection = serviceProvider.GetRequiredService<IConnection>();
         _notificationService = serviceProvider.GetRequiredService<IWindowNotificationService>();
         _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
+        var ownership = serviceProvider.GetRequiredService<ICollectionOwnership>();
 
         var collectionDownloader = new CollectionDownloader(serviceProvider);
         var tileImagePipeline = ImagePipelines.GetCollectionTileImagePipeline(serviceProvider);
@@ -285,7 +286,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
 
             LoadoutQueries2.MutableCollections(_connection, _loadout.LoadoutId)
                 .Observe(r => r.GroupId)
-                .FilterImmutable(r => IsInstallTarget(CollectionGroup.Load(_connection.Db, r.GroupId)))
+                .FilterImmutable(r => IsInstallTarget(ownership, CollectionGroup.Load(_connection.Db, r.GroupId)))
                 .Transform(r => new InstallationTarget(r.GroupId, r.Name))
                 .SortBy(target => target.Id.Value.Value)
                 .DistinctUntilChanged()
@@ -773,8 +774,8 @@ After asking design, we're choosing to simply open the mod page for now.
     internal static bool IsInstallableAsMod(LibraryItem.ReadOnly item)
         => !(item.TryGetAsLibraryFile(out var file) && file.TryGetAsWabbajackModlistLibraryFile(out _));
 
-    // A modlist's group stays disabled until its install is complete and belongs to the list, not the user.
-    internal static bool IsInstallTarget(CollectionGroup.ReadOnly group) => !group.TryGetAsWabbajackModlistLoadoutGroup(out _);
+    // Nexus collections and modlists decide what they contain; only the user's own collections take installs.
+    internal static bool IsInstallTarget(ICollectionOwnership ownership, CollectionGroup.ReadOnly group) => ownership.WhyLocked(group) is null;
 
     private LibraryItemId[] GetSelectedIds()
     {

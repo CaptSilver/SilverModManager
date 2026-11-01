@@ -4,6 +4,7 @@ using SilverModManager.App.UI.LeftMenu.Items;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Helpers;
 using SilverModManager.Collections;
 using DynamicData;
@@ -141,8 +142,8 @@ public class WabbajackLoadoutGroupUiTests(IServiceProvider provider) : AUiTest(p
         var result = await tx.Commit();
         var db = Connection.Db;
 
-        LibraryViewModel.IsInstallTarget(CollectionGroup.Load(db, group.Id)).Should().BeFalse("the group stays disabled until the list is installed");
-        LibraryViewModel.IsInstallTarget(CollectionGroup.Load(db, result.Remap(mine).Id)).Should().BeTrue();
+        LibraryViewModel.IsInstallTarget(Provider.GetRequiredService<ICollectionOwnership>(), CollectionGroup.Load(db, group.Id)).Should().BeFalse("the group stays disabled until the list is installed");
+        LibraryViewModel.IsInstallTarget(Provider.GetRequiredService<ICollectionOwnership>(), CollectionGroup.Load(db, result.Remap(mine).Id)).Should().BeTrue();
     }
 
     [Fact]

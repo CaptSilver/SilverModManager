@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.DataModel.SchemaVersions;
@@ -31,6 +32,8 @@ public static class Services
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, WabbajackSkippedFilesEmitter>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WabbajackModlistRemovalWatcher>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDestinationInference, ModlistFetchInference>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ICollectionLock, WabbajackModlistLock>());
+        services.TryAddSingleton<ICollectionOwnership, CollectionOwnership>();
         return services
             .AddWabbajackModlistLibraryFileModel()
             .AddWabbajackModlistArchiveModel()
