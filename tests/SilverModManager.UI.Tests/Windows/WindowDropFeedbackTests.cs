@@ -145,4 +145,25 @@ public class WindowDropFeedbackTests(IServiceProvider provider) : AUiTest(provid
             harness.Caption.Margin.Top.Should().BeGreaterThan(pageTop.Y);
         });
     }
+
+    [Fact]
+    public async Task InTheRealWindow_ARefusalCaptionIsDanger_AndAnAcceptCaptionIsPrimary()
+    {
+        await OnUi(() =>
+        {
+            var window = Track(new MainWindow());
+            ShowRendered(window);
+            var feedback = DropFeedback.GetLayer(window)!;
+            var text = window.FindControl<TextBlock>("DropCaptionText")!;
+            var target = window.FindControl<Border>("WindowFrame")!;
+
+            feedback.Show(target, Refused);
+            ((ISolidColorBrush)text.Foreground!).Color.Should().Be(((ISolidColorBrush)Application.Current!.FindResource("DangerStrongBrush")!).Color);
+
+            feedback.Show(target, Accepted);
+            ((ISolidColorBrush)text.Foreground!).Color.Should().Be(((ISolidColorBrush)Application.Current!.FindResource("PrimaryStrongBrush")!).Color);
+
+            return Task.CompletedTask;
+        });
+    }
 }

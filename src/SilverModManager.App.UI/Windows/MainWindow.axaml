@@ -27,6 +27,9 @@
     </Design.DataContext>
 
     <reactiveUi:ReactiveWindow.Styles>
+        <Style Selector="Border#DropCaption > TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource PrimaryStrongBrush}" />
+        </Style>
         <Style Selector="Border#DropCaption.refuse > TextBlock">
             <Setter Property="Foreground" Value="{StaticResource DangerStrongBrush}" />
         </Style>
@@ -87,7 +90,6 @@
                 Padding="10,6"
                 ZIndex="3">
             <TextBlock x:Name="DropCaptionText"
-                       Foreground="{StaticResource PrimaryStrongBrush}"
                        TextWrapping="Wrap"
                        MaxWidth="320" />
         </Border>
