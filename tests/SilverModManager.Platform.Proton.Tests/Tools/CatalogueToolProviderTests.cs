@@ -47,6 +47,10 @@ public class CatalogueToolProviderTests(ITestOutputHelper helper)
             .AddUniversalGameLocator(Definition.GameId, locationsFileSystem: IsolatedKnownFolders.Create);
     }
 
+    private readonly IToolRunner _runner = Substitute.For<IToolRunner>();
+    private readonly IProcessRunner _processRunner = Substitute.For<IProcessRunner>();
+    private readonly List<CliWrap.Command> _commands = [];
+
     private static ToolDefinition Catalogue(string id, string display, Func<IGame, bool> appliesTo, ToolOutput? output = null) => new()
     {
         Id = new ToolId(id),
@@ -64,9 +68,9 @@ public class CatalogueToolProviderTests(ITestOutputHelper helper)
 
     private ModdingToolFactory ModdingToolFactory()
     {
-        var runner = Substitute.For<IToolRunner>();
+        var runner = _runner;
         var prefixResolver = Substitute.For<IPrefixResolver>();
-        return new ModdingToolFactory(runner, Substitute.For<IProcessRunner>(), new ToolArgumentResolver(), prefixResolver,
+        return new ModdingToolFactory(runner, _processRunner, new ToolArgumentResolver(), prefixResolver,
             ServiceProvider.GetRequiredService<ToolOutputCapture>(), new ToolPrefixSetup(runner, prefixResolver, new FakePrefixInspector()));
     }
 
@@ -146,5 +150,57 @@ public class CatalogueToolProviderTests(ITestOutputHelper helper)
 
         tools["DynDOLOD"].Should().Be(new ToolOutput.DeclaredFolder("Winter LOD", mapsTo));
         tools["TexGen"].Should().Be(new ToolOutput.DeclaredFolder("TexGen Output", mapsTo));
+    }
+
+    [Fact]
+    public async Task AGameFolderToolsGroupIsRenamedToo()
+    {
+        var loadout = await CreateLoadout();
+        await AddRow(loadout, "Pandora", "/tools/pandora.exe", toolId: "pandora", outputGroupName: "My Behaviours");
+
+        var tool = CatalogueProvider(Catalogue("pandora", "Pandora", _ => true, new ToolOutput.GameFolder("Pandora Output")))
+            .GetTools(loadout).Should().ContainSingle().Which.Should().BeAssignableTo<IToolWithOutput>().Subject;
+
+        tool.Output.Should().Be(new ToolOutput.GameFolder("My Behaviours"));
+    }
+
+    [Fact]
+    public async Task ASavedRowWithBlankArgumentsRunsWithTheDefinitionsArguments()
+    {
+        _runner.RunWindowsTool(default!, default, default!, default, default, default, default)
+            .ReturnsForAnyArgs(_ => new ToolRunResult(0));
+        _runner.Plan(default!, default, default!, default, default)
+            .ReturnsForAnyArgs(_ => ToolRunPlan.Runnable("test", ["run"], FileSystem.FromUnsanitizedFullPath("/tools"), new Dictionary<string, string>()));
+        var loadout = await CreateLoadout();
+        await AddRow(loadout, "xEdit", "/tools/xedit.exe", toolId: "xedit");
+        var definition = Catalogue("xedit", "xEdit", _ => true) with
+        {
+            Arguments = ArgumentTemplate.Of("-fixed"),
+            ExtraArguments = (_, exeName) => [$"--for-{exeName}"],
+        };
+
+        var tool = (ModdingTool)CatalogueProvider(definition).GetTools(loadout).Single();
+        await tool.Execute(loadout, CancellationToken.None);
+
+        await _runner.Received().RunWindowsTool(Arg.Any<GameInstallation>(), Arg.Any<AbsolutePath>(),
+            Arg.Is<IReadOnlyList<string>>(a => a.SequenceEqual(new[] { "-fixed", "--for-xedit.exe" })),
+            Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>(), Arg.Any<ToolRunVia>());
+    }
+
+    [Fact]
+    public async Task ASavedRowStoredWithAutoRunsHowTheDefinitionSays()
+    {
+        _processRunner
+            .RunAsync(Arg.Do<CliWrap.Command>(c => _commands.Add(c)), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(_ => new CliWrap.CommandResult(0, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch));
+        var loadout = await CreateLoadout();
+        await AddRow(loadout, "Wrye Bash", "/tools/wrye", toolId: "wrye");
+
+        var tool = (ModdingTool)CatalogueProvider(Catalogue("wrye", "Wrye Bash", _ => true) with { RunVia = ToolRunVia.Native })
+            .GetTools(loadout).Single();
+        await tool.Execute(loadout, CancellationToken.None);
+
+        _commands.Should().ContainSingle();
+        await _runner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default, default);
     }
 }
