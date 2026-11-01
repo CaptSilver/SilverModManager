@@ -20,6 +20,18 @@ public class NexusModsDownloadJob : INexusModsDownloadJob, IJobDefinitionWithSta
     /// <inheritdoc/>
     public AbsolutePath Destination => HttpDownloadJob.JobDefinition.Destination;
 
+    /// <inheritdoc/>
+    public string DisplayName => FileMetadata.Name;
+
+    /// <inheritdoc/>
+    public string SourceName => "Nexus Mods";
+
+    /// <inheritdoc/>
+    public Uri? PageUri => HttpDownloadJob.JobDefinition.DownloadPageUri;
+
+    /// <inheritdoc/>
+    public IJobTask? Transfer => HttpDownloadJob;
+
     public static IJobTask<NexusModsDownloadJob, AbsolutePath> Create(
         IServiceProvider provider,
         IJobTask<HttpDownloadJob, AbsolutePath> httpDownloadJob,

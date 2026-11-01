@@ -37,6 +37,10 @@ public class DownloadInfo : IDisposable
     private readonly BindableReactiveProperty<Optional<Uri>> _downloadPageUri = new(default(Optional<Uri>));
     private readonly BindableReactiveProperty<Optional<DateTimeOffset>> _completedAt = new(default(Optional<DateTimeOffset>));
     private readonly BindableReactiveProperty<EntityId> _fileMetadataId = new(default(EntityId));
+    private readonly BindableReactiveProperty<string> _sourceName = new(string.Empty);
+    private readonly BindableReactiveProperty<string?> _groupName = new(null);
+    private readonly BindableReactiveProperty<string?> _failureReason = new(null);
+    private readonly BindableReactiveProperty<bool> _supportsPausing = new(false);
     
     /// <summary>
     /// Display name of the download (typically mod name).
@@ -93,6 +97,26 @@ public class DownloadInfo : IDisposable
     public IReadOnlyBindableReactiveProperty<EntityId> FileMetadataId => _fileMetadataId;
     
     /// <summary>
+    /// Where the file comes from as the user knows it, such as "Nexus Mods" or "MEGA".
+    /// </summary>
+    public IReadOnlyBindableReactiveProperty<string> SourceName => _sourceName;
+
+    /// <summary>
+    /// What the download is part of, such as the name of a modlist; null when it stands alone.
+    /// </summary>
+    public IReadOnlyBindableReactiveProperty<string?> GroupName => _groupName;
+
+    /// <summary>
+    /// Why the download failed; null until it has.
+    /// </summary>
+    public IReadOnlyBindableReactiveProperty<string?> FailureReason => _failureReason;
+
+    /// <summary>
+    /// Whether the download can be paused and resumed; a host that can only start over cannot.
+    /// </summary>
+    public IReadOnlyBindableReactiveProperty<bool> SupportsPausing => _supportsPausing;
+
+    /// <summary>
     /// Internal subscription management for reactive updates.
     /// </summary>
     internal System.Reactive.Disposables.CompositeDisposable? Subscriptions { get; set; }
@@ -108,6 +132,10 @@ public class DownloadInfo : IDisposable
     internal void SetDownloadPageUri(Optional<Uri> value) => _downloadPageUri.Value = value;
     internal void SetCompletedAt(Optional<DateTimeOffset> value) => _completedAt.Value = value;
     internal void SetFileMetadataId(EntityId value) => _fileMetadataId.Value = value;
+    internal void SetSourceName(string value) => _sourceName.Value = value;
+    internal void SetGroupName(string? value) => _groupName.Value = value;
+    internal void SetFailureReason(string? value) => _failureReason.Value = value;
+    internal void SetSupportsPausing(bool value) => _supportsPausing.Value = value;
 
     private bool _isDisposed;
     public void Dispose()
@@ -133,6 +161,10 @@ public class DownloadInfo : IDisposable
                 _downloadPageUri?.Dispose();
                 _completedAt?.Dispose();
                 _fileMetadataId?.Dispose();
+                _sourceName?.Dispose();
+                _groupName?.Dispose();
+                _failureReason?.Dispose();
+                _supportsPausing?.Dispose();
             }
 
             _isDisposed = true;

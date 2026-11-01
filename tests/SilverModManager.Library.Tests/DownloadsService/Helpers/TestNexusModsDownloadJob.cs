@@ -28,6 +28,12 @@ public record TestNexusModsDownloadJob : IJobDefinitionWithStart<TestNexusModsDo
     public ManualResetEventSlim? StartSignal { get; init; }
     public ManualResetEventSlim? ReadySignal { get; init; }
     
+    // <see cref="ITrackedDownloadJob"/> implementation
+    public string DisplayName => FileMetadata.Name;
+    public string SourceName => "Nexus Mods";
+    public Uri? PageUri => HttpDownloadJob.JobDefinition.DownloadPageUri;
+    public IJobTask? Transfer => HttpDownloadJob;
+
     // <see cref="IDownloadJob"/> implementation
     public AbsolutePath Destination => HttpDownloadJob.JobDefinition.Destination;
     

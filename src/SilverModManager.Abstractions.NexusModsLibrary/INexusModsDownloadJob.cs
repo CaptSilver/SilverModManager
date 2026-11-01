@@ -8,7 +8,7 @@ namespace SilverModManager.Abstractions.NexusModsLibrary;
 /// <summary>
 /// Represents a Nexus Mods download job with associated metadata.
 /// </summary>
-public interface INexusModsDownloadJob : IDownloadJob
+public interface INexusModsDownloadJob : ITrackedDownloadJob
 {
     /// <summary>
     /// Gets the underlying HTTP download job task.
