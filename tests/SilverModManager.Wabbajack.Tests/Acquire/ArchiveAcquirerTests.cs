@@ -306,14 +306,4 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
         plan.Rows.Should().OnlyContain(r => r.State == ArchiveState.Browser);
         return plan;
     }
-
-    private static async Task WaitFor(Func<bool> condition)
-    {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
-        while (!condition())
-        {
-            if (DateTime.UtcNow > deadline) throw new TimeoutException("the condition never became true");
-            await Task.Delay(25);
-        }
-    }
 }

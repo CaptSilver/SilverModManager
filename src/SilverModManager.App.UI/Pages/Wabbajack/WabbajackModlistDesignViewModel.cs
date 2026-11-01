@@ -73,7 +73,10 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     // Built on first use: the state is set by initializers that run after the constructor.
     public ReactiveCommand<Unit, Unit> DownloadCommand => _download ??= ReactiveCommand.Create(() => { }, Observable.Return(CanDownload));
     public ReactiveCommand<Unit, Unit> InstallCommand => _install ??= ReactiveCommand.Create(() => { }, Observable.Return(CanInstall));
-    private ReactiveCommand<Unit, Unit>? _download, _install, _openNextFive;
+    private ReactiveCommand<Unit, Unit>? _download, _install, _openNextFive, _retryFailed;
+    public bool HasFailedDownloads => Archives.Any(row => row.CanRetry);
+    public ReactiveCommand<WabbajackArchiveRow, Unit> RetryArchiveCommand { get; } = ReactiveCommand.Create<WabbajackArchiveRow>(_ => { });
+    public ReactiveCommand<Unit, Unit> RetryFailedCommand => _retryFailed ??= ReactiveCommand.Create(() => { }, Observable.Return(HasFailedDownloads));
     public ReactiveCommand<WabbajackArchiveRow, Unit> OpenPageCommand { get; } = ReactiveCommand.Create<WabbajackArchiveRow>(_ => { });
     public ReactiveCommand<WabbajackArchiveRow, Unit> SignInToSourceCommand { get; } = ReactiveCommand.Create<WabbajackArchiveRow>(_ => { });
     public ReactiveCommand<WabbajackArchiveRow, Unit> InstallArchiveCommand { get; } = ReactiveCommand.Create<WabbajackArchiveRow>(_ => { });

@@ -102,6 +102,8 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
             OnUi(vm => vm.WhenAnyValue(x => x.HasNeedsYou)).Subscribe(has => NeedsYouPanel.IsVisible = has).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.NeedsYouHeading)).Subscribe(text => NeedsYouHeading.Text = text).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.CopyNeedsYouCommand, view => view.CopyListButton).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.RetryFailedCommand, view => view.RetryFailedButton).DisposeWith(disposables);
+            OnUi(vm => vm.WhenAnyValue(x => x.HasFailedDownloads)).Subscribe(has => RetryFailedButton.IsVisible = has).DisposeWith(disposables);
             OnUi(vm => vm.NeedsYouRevealRequested).Subscribe(_ => NeedsYouPanel.BringIntoView()).DisposeWith(disposables);
 
             // The combo box lists the filters in the order of the enum.

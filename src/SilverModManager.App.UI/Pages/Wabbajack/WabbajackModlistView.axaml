@@ -59,6 +59,8 @@
                     <DockPanel>
                         <controls:StandardButton x:Name="CopyListButton" DockPanel.Dock="Right" Type="Secondary" Fill="Weak" Size="Toolbar" Text="Copy list"
                                                  ToolTip.Tip="Copy the file names and pages of these archives to the clipboard" />
+                        <controls:StandardButton x:Name="RetryFailedButton" DockPanel.Dock="Right" Type="Secondary" Fill="Weak" Size="Toolbar" Text="Try again for all failed" Margin="0,0,8,0"
+                                                 ToolTip.Tip="Download every archive whose download failed once more" />
                         <TextBlock x:Name="NeedsYouHeading" Theme="{StaticResource HeadingSMSemiTheme}" VerticalAlignment="Center" />
                     </DockPanel>
                     <TextBlock Text="Get these yourself, then drop the files anywhere on this page." Opacity="0.7" />

@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Hashes;
+
 namespace SilverModManager.Wabbajack.Acquire;
 
 /// <summary>How far a run has got: archives finished out of the archives it set out to download.</summary>
@@ -42,6 +44,15 @@ public interface IArchiveAcquirer
     /// <see cref="Release"/> or the next run.
     /// </summary>
     Task Run(ArchivePlan plan, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Downloads again the rows of the current plan whose download failed (see <see cref="ArchivePlanRow.CanRetry"/>):
+    /// all of them, or only those of <paramref name="archives"/> (by xxHash64). A row goes back to Automatic with its
+    /// reason cleared and is fetched the way <see cref="Run"/> fetches it, so the same throttle and the same hash check
+    /// apply and a failure shows its new reason. Rows that are downloading, held, or not failed are left alone, and
+    /// nothing happens while a run is under way.
+    /// </summary>
+    Task Retry(IReadOnlyCollection<FileIdentity>? archives, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken);
 
     /// <summary>Stops the run that is under way, if any, whoever started it. <see cref="Run"/> then ends with a cancellation.</summary>
     void Cancel();

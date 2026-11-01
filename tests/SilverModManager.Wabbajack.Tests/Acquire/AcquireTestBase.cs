@@ -50,6 +50,16 @@ public abstract class AcquireTestBase<TTest>(ITestOutputHelper helper)
             .AddUniversalGameLocator<SkyrimSe>(new Version(GameVersion), StubGameFiles, locationsFileSystem: IsolatedPrefixFileSystem.Create);
     }
 
+    protected static async Task WaitFor(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+        while (!condition())
+        {
+            if (DateTime.UtcNow > deadline) throw new TimeoutException("the condition never became true");
+            await Task.Delay(25);
+        }
+    }
+
     protected static FileIdentity Hash64(byte[] bytes) => Xx64.Of(bytes);
 
     protected static ModList ListWith(params ArchiveEntry[] archives) => WabbajackFixture.EmptyList() with { Archives = archives };

@@ -75,6 +75,9 @@ public sealed class WabbajackArchiveRow(ArchivePlanRow plan) : ReactiveObject
 
     private static bool CanOpenPageOf(ArchivePlanRow plan) => plan.Page is not null && plan.State is ArchiveState.Browser or ArchiveState.SignIn or ArchiveState.Manual or ArchiveState.Unsupported;
 
+    /// <summary>The app tried to download the archive and could not, so it can be tried again.</summary>
+    public bool CanRetry => Plan.CanRetry;
+
     /// <summary>The user has to do something for this archive; see <see cref="WabbajackNeedsYou.Needs"/>.</summary>
     public bool NeedsYou => WabbajackNeedsYou.Needs(Plan);
 
@@ -102,6 +105,7 @@ public sealed class WabbajackArchiveRow(ArchivePlanRow plan) : ReactiveObject
         if (old.Reason != plan.Reason || old.Note != plan.Note || WaitsOf(old) != WaitsOf(plan)) this.RaisePropertyChanged(nameof(Reason));
         if (CanInstallOf(old) != CanInstall) this.RaisePropertyChanged(nameof(CanInstall));
         if (CanOpenPageOf(old) != CanOpenPage) this.RaisePropertyChanged(nameof(CanOpenPage));
+        if (old.CanRetry != CanRetry) this.RaisePropertyChanged(nameof(CanRetry));
         if (CanSignInOf(old) != CanSignIn) this.RaisePropertyChanged(nameof(CanSignIn));
         if (WabbajackNeedsYou.Needs(old) != NeedsYou) this.RaisePropertyChanged(nameof(NeedsYou));
     }

@@ -41,6 +41,9 @@ internal sealed record FakeDownloadJob : IJobDefinitionWithStart<FakeDownloadJob
     public Exception? Failure { get; init; }
     public Task? Gate { get; init; }
 
+    /// <summary>Written to the destination before a failure, like a transfer that dies half way.</summary>
+    public byte[]? PartialBytes { get; init; }
+
     public async ValueTask<AbsolutePath> StartAsync(IJobContext<FakeDownloadJob> context)
     {
         Gauge.Enter();
@@ -48,7 +51,11 @@ internal sealed record FakeDownloadJob : IJobDefinitionWithStart<FakeDownloadJob
         {
             await Task.Delay(40, context.CancellationToken);
             if (Gate is not null) await Gate.WaitAsync(context.CancellationToken);
-            if (Failure is not null) throw Failure;
+            if (Failure is not null)
+            {
+                if (PartialBytes is not null) await Destination.WriteAllBytesAsync(PartialBytes);
+                throw Failure;
+            }
             await Destination.WriteAllBytesAsync(Bytes);
             return Destination;
         }
@@ -86,7 +93,9 @@ internal sealed class FakeDownloadJobs(IServiceProvider provider) : IArchiveDown
     public ConcurrencyGauge Gauge { get; } = new();
     public Dictionary<FileIdentity, byte[]> Content { get; } = new();
     public Dictionary<FileIdentity, Exception> Failures { get; } = new();
+    public Dictionary<FileIdentity, byte[]> Partials { get; } = new();
     public List<ArchiveState> Requested { get; } = [];
+    public List<AbsolutePath> Destinations { get; } = [];
 
     /// <summary>When set, every download waits for this task to complete before writing its bytes.</summary>
     public Task? Gate { get; set; }
@@ -94,12 +103,14 @@ internal sealed class FakeDownloadJobs(IServiceProvider provider) : IArchiveDown
     public Task<IJobTask<IDownloadJob, AbsolutePath>> Create(ArchivePlanRow row, AbsolutePath destination, CancellationToken cancellationToken)
     {
         lock (Requested) Requested.Add(row.State);
+        lock (Destinations) Destinations.Add(destination);
         var job = new FakeDownloadJob
         {
             Destination = destination,
             Bytes = Content.GetValueOrDefault(row.Archive.XxHash64, [1, 2, 3]),
             Gauge = Gauge,
             Failure = Failures.GetValueOrDefault(row.Archive.XxHash64),
+            PartialBytes = Partials.GetValueOrDefault(row.Archive.XxHash64),
             Gate = Gate,
         };
         IJobTask<IDownloadJob, AbsolutePath> task = provider.GetRequiredService<IJobMonitor>().Begin<FakeDownloadJob, AbsolutePath>(job);

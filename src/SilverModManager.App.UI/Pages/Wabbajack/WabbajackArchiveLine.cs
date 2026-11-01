@@ -19,13 +19,16 @@ public sealed class WabbajackArchiveLine : Grid
     private readonly Button _install = new() { Content = "Install" };
     private readonly Button _open = new() { Content = "Open page" };
     private readonly Button _signIn = new() { Content = "Sign in" };
+    private readonly Button _retry = new() { Content = "Try again" };
+    private readonly IObservable<bool> _canRetry;
     private IDisposable? _subscription;
+    private IDisposable? _retryEnabled;
 
     public WabbajackArchiveLine(IWabbajackModlistViewModel viewModel, WabbajackArchiveRow row)
     {
         _row = row;
         Margin = new Thickness(0, 2);
-        ColumnDefinitions = new ColumnDefinitions("332,92,132,252,*,Auto,Auto,Auto");
+        ColumnDefinitions = new ColumnDefinitions("332,92,132,252,*,Auto,Auto,Auto,Auto");
 
         Add(new TextBlock { Text = row.Name, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center }, 0);
         Add(new TextBlock { Text = row.SizeText, VerticalAlignment = VerticalAlignment.Center }, 1);
@@ -35,10 +38,13 @@ public sealed class WabbajackArchiveLine : Grid
         Add(_install, 5);
         Add(_signIn, 6);
         Add(_open, 7);
-        _install.Margin = _open.Margin = _signIn.Margin = new Thickness(12, 0, 0, 0);
+        Add(_retry, 8);
+        _install.Margin = _open.Margin = _signIn.Margin = _retry.Margin = new Thickness(12, 0, 0, 0);
         _install.Click += (_, _) => viewModel.InstallArchiveCommand.Execute(row).Subscribe();
         _open.Click += (_, _) => viewModel.OpenPageCommand.Execute(row).Subscribe();
         _signIn.Click += (_, _) => viewModel.SignInToSourceCommand.Execute(row).Subscribe();
+        _retry.Click += (_, _) => viewModel.RetryArchiveCommand.Execute(row).Subscribe();
+        _canRetry = viewModel.RetryArchiveCommand.CanExecute;
         Show();
     }
 
@@ -57,6 +63,7 @@ public sealed class WabbajackArchiveLine : Grid
         _install.IsVisible = _row.CanInstall;
         _signIn.IsVisible = _row.CanSignIn;
         _open.IsVisible = _row.CanOpenPage;
+        _retry.IsVisible = _row.CanRetry;
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -64,6 +71,8 @@ public sealed class WabbajackArchiveLine : Grid
         base.OnAttachedToVisualTree(e);
         // A row can change on a download thread; the line is drawn on the UI thread.
         _subscription = _row.Changed.ObserveOn(RxApp.MainThreadScheduler).Subscribe(_ => Show());
+        // Off while downloads run, like the toolbar's Download.
+        _retryEnabled = _canRetry.ObserveOn(RxApp.MainThreadScheduler).Subscribe(can => _retry.IsEnabled = can);
         Show();
     }
 
@@ -71,6 +80,8 @@ public sealed class WabbajackArchiveLine : Grid
     {
         _subscription?.Dispose();
         _subscription = null;
+        _retryEnabled?.Dispose();
+        _retryEnabled = null;
         base.OnDetachedFromVisualTree(e);
     }
 

@@ -174,39 +174,72 @@ public sealed class ArchiveAcquirer(
 
     public async Task Run(ArchivePlan plan, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken)
     {
+        var rows = Adopt(plan, expecting: true);
+        var automatic = Enumerable.Range(0, plan.Rows.Count).Where(i => plan.Rows[i].State == ArchiveState.Automatic).ToArray();
+        await DownloadAll(rows, plan.Modlist, automatic, progress, cancellationToken);
+    }
+
+    public async Task Retry(IReadOnlyCollection<FileIdentity>? archives, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken)
+    {
+        ArchivePlanRow[] rows;
+        LibraryFileId? modlist;
+        int[] failed;
+        lock (_lock)
+        {
+            // A run in flight owns the status and the cancellation; a retry would take both from it.
+            if (_running is not null || _state is { IsRunning: true }) return;
+            rows = _rows;
+            modlist = _modlist;
+            failed = Enumerable.Range(0, rows.Length)
+                .Where(i => rows[i].CanRetry && (archives is null || archives.Contains(rows[i].Archive.XxHash64)))
+                .ToArray();
+            if (failed.Length == 0) return;
+            foreach (var i in failed) rows[i] = rows[i] with { State = ArchiveState.Automatic, Reason = null, DownloadFailed = false };
+            _running = rows;
+        }
+        UpdateExpected();
+        Notify(PlanChanged, Plan);
+        await DownloadAll(rows, modlist, failed, progress, cancellationToken);
+    }
+
+    /// <summary>
+    /// Downloads the <paramref name="indexes"/> rows of <paramref name="rows"/>, which <see cref="_rows"/> still is, as
+    /// one run: the user's "downloads at once" limit, one status, and a cancellation that <see cref="Cancel"/> reaches.
+    /// What a first run and a retry have in common is here, so a retried row is fetched and checked like any other.
+    /// </summary>
+    private async Task DownloadAll(ArchivePlanRow[] rows, LibraryFileId? modlist, int[] indexes, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken)
+    {
         // Cancel() reaches the run through this, whoever started it.
         using var runCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cancellationToken = runCancellation.Token;
-        var rows = Adopt(plan, expecting: true);
 
-        var automatic = Enumerable.Range(0, plan.Rows.Count).Where(i => plan.Rows[i].State == ArchiveState.Automatic).ToArray();
-        var state = new RunState(plan.Modlist, automatic.Length, time.GetTimestamp());
+        var state = new RunState(modlist, indexes.Length, time.GetTimestamp());
         lock (_lock)
         {
             _state = state;
             _runCancellation = runCancellation;
         }
-        if (plan.Modlist is { } listed) PendingDownload.Set(settings, listed);
+        if (modlist is { } listed) PendingDownload.Set(settings, listed);
         Record(state, _ => { });
-        progress?.Report(new AcquireProgress(0, automatic.Length));
+        progress?.Report(new AcquireProgress(0, indexes.Length));
 
         try
         {
             // Read per run: the user's "downloads at once" choice applies from the next run on.
             using var gate = new SemaphoreSlim(Math.Max(1, settings.Get<DownloadSettings>().MaxParallelDownloads));
-            await Task.WhenAll(automatic.Select(async index =>
+            await Task.WhenAll(indexes.Select(async index =>
             {
                 await gate.WaitAsync(cancellationToken);
                 try
                 {
-                    await Download(rows, plan.Modlist, state, index, cancellationToken);
+                    await Download(rows, modlist, state, index, cancellationToken);
                 }
                 finally
                 {
                     gate.Release();
                     var finished = 0;
                     Record(state, s => finished = ++s.Finished);
-                    progress?.Report(new AcquireProgress(finished, automatic.Length));
+                    progress?.Report(new AcquireProgress(finished, indexes.Length));
                 }
             }));
         }
@@ -219,7 +252,7 @@ public sealed class ArchiveAcquirer(
                 if (current) _running = null;
                 if (ReferenceEquals(_runCancellation, runCancellation)) _runCancellation = null;
             }
-            if (current && plan.Modlist is not null && !IsStopping) PendingDownload.Set(settings, null);
+            if (current && modlist is not null && !IsStopping) PendingDownload.Set(settings, null);
             Record(state, s =>
             {
                 s.IsRunning = false;
@@ -244,7 +277,7 @@ public sealed class ArchiveAcquirer(
 
             if (file.XxHash64Identity() is { } downloaded && downloaded.Equals(row.Archive.XxHash64))
             {
-                Update(rows, index, r => r with { State = ArchiveState.Have, Reason = null, Library = file });
+                Update(rows, index, r => r with { State = ArchiveState.Have, Reason = null, Library = file, DownloadFailed = false });
                 Record(state, s => s.Bytes += row.Archive.Size);
                 // The download was started for this list, so it was fetched for it even if the plan has since been replaced.
                 if (modlist is not null) await FetchedArchives.Mark(connection, row.Archive.XxHash64, file);
@@ -254,7 +287,7 @@ public sealed class ArchiveAcquirer(
                 var page = OriginalUrl(row);
                 logger.LogWarning("Downloaded '{Name}' does not match the list: expected {Expected}, got {Actual}, page {Page}; it is left for the user to fetch",
                     row.Archive.Name, row.Archive.XxHash64, file.XxHash64Identity(), page is null ? "(unknown)" : HostTransfer.Plain(page));
-                Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = FailureReason(r, "hash mismatch"), Page = OriginalUrl(r) });
+                Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = FailureReason(r, "hash mismatch"), Page = OriginalUrl(r), DownloadFailed = true });
                 Record(state, s => s.Failures.Add(new DownloadFailure(row.Archive.Name, "hash mismatch")));
             }
         }
@@ -267,7 +300,7 @@ public sealed class ArchiveAcquirer(
             // A host job has already said which host and page; this line would repeat it with a stack trace.
             if (ReportedFailure.IsMarked(e)) logger.LogTrace(e, "Downloading '{Name}' failed; it is left for the user to fetch", row.Archive.Name);
             else logger.LogWarning(e, "Downloading '{Name}' failed; it is left for the user to fetch", row.Archive.Name);
-            Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = FailureReason(r, e.Message), Page = OriginalUrl(r) });
+            Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = FailureReason(r, e.Message), Page = OriginalUrl(r), DownloadFailed = true });
             Record(state, s => s.Failures.Add(new DownloadFailure(row.Archive.Name, e.Message)));
         }
     }
@@ -333,7 +366,7 @@ public sealed class ArchiveAcquirer(
                 if (row.State == ArchiveState.Browser && _expecting && _modlist is not null
                     && locator.FindTopLevelByXxHash64(db, row.Archive.XxHash64) is { } topLevel)
                     (fetched ??= []).Add((row.Archive.XxHash64, topLevel));
-                _rows[i] = row with { State = ArchiveState.Have, Reason = null, Library = held };
+                _rows[i] = row with { State = ArchiveState.Have, Reason = null, Library = held, DownloadFailed = false };
                 changed = true;
             }
         }

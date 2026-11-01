@@ -66,6 +66,18 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
             return RunGate?.Task ?? Task.CompletedTask;
         }
 
+        public List<IReadOnlyCollection<FileIdentity>?> Retries { get; } = [];
+        public CancellationToken LastRetryToken { get; private set; }
+        public Exception? RetryFailure { get; set; }
+
+        public Task Retry(IReadOnlyCollection<FileIdentity>? archives, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken)
+        {
+            Retries.Add(archives);
+            LastRetryToken = cancellationToken;
+            if (RetryFailure is { } failure) return Task.FromException(failure);
+            return RunGate?.Task ?? Task.CompletedTask;
+        }
+
         public int OpenNext(int count)
         {
             OpenNextCalls.Add(count);

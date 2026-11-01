@@ -141,6 +141,15 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
     /// <summary>Downloads the archives the app can fetch itself and starts expecting the ones the user fetches in the browser.</summary>
     ReactiveCommand<Unit, Unit> DownloadCommand { get; }
 
+    /// <summary>At least one archive failed its automatic download, so "Try again for all failed" has something to run.</summary>
+    bool HasFailedDownloads { get; }
+
+    /// <summary>Downloads a row whose automatic download failed again, the way the first attempt did. A row that is not failed is left alone.</summary>
+    ReactiveCommand<WabbajackArchiveRow, Unit> RetryArchiveCommand { get; }
+
+    /// <summary>Downloads every row whose automatic download failed again.</summary>
+    ReactiveCommand<Unit, Unit> RetryFailedCommand { get; }
+
     ReactiveCommand<WabbajackArchiveRow, Unit> OpenPageCommand { get; }
 
     /// <summary>Signs in to the forum a row's archive comes from; the list is checked again once the account changes.</summary>

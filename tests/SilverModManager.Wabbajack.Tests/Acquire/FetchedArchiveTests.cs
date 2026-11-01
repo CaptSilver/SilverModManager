@@ -65,16 +65,6 @@ public class FetchedArchiveTests(ITestOutputHelper helper) : AcquireTestBase<Fet
         await LibraryService.AddLocalFile(file.Path, UnassignedAcquisition.Instance);
     }
 
-    private static async Task WaitFor(Func<bool> condition)
-    {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
-        while (!condition())
-        {
-            if (DateTime.UtcNow > deadline) throw new TimeoutException("the condition never became true");
-            await Task.Delay(25);
-        }
-    }
-
     [Fact]
     public async Task ADownloadTheAcquirerMadeIsMarkedFetchedForTheList()
     {

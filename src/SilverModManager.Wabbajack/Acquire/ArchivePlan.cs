@@ -40,8 +40,17 @@ public enum ArchiveState
 /// <paramref name="Page"/> for the states that send the user somewhere. <paramref name="Opened"/> is set once a
 /// <see cref="ArchiveState.Browser"/> row's page has been opened in the user's browser. <paramref name="Note"/> explains
 /// a row that is not what its name suggests, such as a Mod Organizer 2 release the list still takes a file from.
+/// <paramref name="DownloadFailed"/> is set when the app tried to download the archive and could not; the row then waits
+/// for the user like a Manual one, but a retry can still fetch it.
 /// </summary>
-public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, string? Reason, Uri? Page, LibraryFile.ReadOnly? Library, bool Opened = false, string? Note = null);
+public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, string? Reason, Uri? Page, LibraryFile.ReadOnly? Library, bool Opened = false, string? Note = null, bool DownloadFailed = false)
+{
+    /// <summary>
+    /// A retry can fetch it: its download failed, or it is an automatic row that still carries the reason of an
+    /// earlier failure. A Manual row the list gave without a host the app can read is never tried.
+    /// </summary>
+    public bool CanRetry => DownloadFailed || (State == ArchiveState.Automatic && !string.IsNullOrEmpty(Reason));
+}
 
 /// <summary>
 /// The rows for every archive of a list, in the list's order. <paramref name="Modlist"/> is the library file of the

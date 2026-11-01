@@ -23,6 +23,7 @@ using SilverModManager.Networking.Forums;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
@@ -131,6 +132,10 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     [Reactive] public partial string PickUpTooltip { get; private set; } = "";
     [Reactive] public partial bool CanInstall { get; private set; }
     [Reactive] public partial bool CanDownload { get; private set; }
+    [Reactive] public partial bool HasFailedDownloads { get; private set; }
+
+    /// <summary>Try again starts downloads, so it waits for what Download waits for, except that it needs no archive left to start.</summary>
+    [Reactive] public partial bool CanRetryDownloads { get; private set; }
     [Reactive] public partial string InstallBlockedReason { get; private set; } = "";
     [Reactive] public partial string DownloadBlockedReason { get; private set; } = "";
     [Reactive] public partial string OpenNextFiveBlockedReason { get; private set; } = "";
@@ -151,6 +156,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     public ReactiveCommand<WabbajackLoadoutChoice, Unit> SelectLoadoutCommand { get; }
     public ReactiveCommand<Unit, Unit> InstallCommand { get; }
     public ReactiveCommand<Unit, Unit> DownloadCommand { get; }
+    public ReactiveCommand<WabbajackArchiveRow, Unit> RetryArchiveCommand { get; }
+    public ReactiveCommand<Unit, Unit> RetryFailedCommand { get; }
     public ReactiveCommand<WabbajackArchiveRow, Unit> OpenPageCommand { get; }
     public ReactiveCommand<WabbajackArchiveRow, Unit> SignInToSourceCommand { get; }
     public ReactiveCommand<WabbajackArchiveRow, Unit> InstallArchiveCommand { get; }
@@ -214,6 +221,12 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         DownloadCommand = ReactiveCommand.CreateFromTask(
             async () => await Guarded(DownloadAsync),
             this.WhenAnyValue(vm => vm.CanDownload).CombineLatest(SelectLoadoutCommand.IsExecuting, (can, picking) => can && !picking));
+        RetryArchiveCommand = ReactiveCommand.CreateFromTask<WabbajackArchiveRow>(
+            async row => { if (row.CanRetry) await Guarded(_ => RetryAsync([row.Plan.Archive.XxHash64])); },
+            this.WhenAnyValue(vm => vm.CanRetryDownloads));
+        RetryFailedCommand = ReactiveCommand.CreateFromTask(
+            async () => await Guarded(_ => RetryAsync(null)),
+            this.WhenAnyValue(vm => vm.HasFailedDownloads, vm => vm.CanRetryDownloads, (failed, can) => failed && can));
         // The nxm handler only expects the files once Download has run, so opening their pages before that would be refused.
         CopyNeedsYouCommand = ReactiveCommand.CreateFromTask(
             async () => await Guarded(_ => _provider.GetRequiredService<IAvaloniaInterop>().SetClipboardTextAsync(WabbajackNeedsYou.CopyText(_needsYou))),
@@ -596,10 +609,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             // Another loadout was picked while planning; its own plan is the one on the page now.
             if (token.IsCancellationRequested) return;
 
-            Downloads = null;
-            HasStartedDownloads = true;
-            IsDownloading = true;
-            _ownsRun = true;
+            MarkDownloadsStarted();
             var run = _acquirer.Run(plan, new Progress<AcquireProgress>(OnDownloadProgress), token);
             ApplyPlan(_acquirer.Plan);
             _ = ObserveDownloads(run, token);
@@ -613,6 +623,36 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             // meanwhile is checked now unless a run or another check took over.
             RecheckPendingAccountChanges();
         }
+    }
+
+    /// <summary>
+    /// Downloads again the rows whose download failed (one archive, or every failed row for null) through the acquirer's
+    /// own retry, so they run under the same limits and checks as the first attempt. The list is not planned again:
+    /// the rows keep the classification they had. Like Download, it stops when another loadout is picked.
+    /// </summary>
+    private Task RetryAsync(IReadOnlyCollection<FileIdentity>? archives)
+    {
+        if (!CanRetryDownloads) return Task.CompletedTask;
+        ErrorText = "";
+        _acquireCancellation?.Cancel();
+        _acquireCancellation = new CancellationTokenSource();
+        var token = _acquireCancellation.Token;
+
+        MarkDownloadsStarted();
+        var run = _acquirer.Retry(archives, new Progress<AcquireProgress>(OnDownloadProgress), token);
+        // The retry has already put its rows back to waiting; a plan the acquirer forgot is not worth showing.
+        if (IsThisList(_acquirer.Plan) && _acquirer.Plan.Rows.Count > 0) ApplyPlan(_acquirer.Plan);
+        _ = ObserveDownloads(run, token);
+        return Task.CompletedTask;
+    }
+
+    // Download and Try again both run as this page's own batch.
+    private void MarkDownloadsStarted()
+    {
+        Downloads = null;
+        HasStartedDownloads = true;
+        IsDownloading = true;
+        _ownsRun = true;
     }
 
     private async Task ObserveDownloads(Task run, CancellationToken token)
@@ -659,6 +699,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
         AcquireText = WabbajackModlistText.PlanSummary(plan);
         HasWaitingArchives = plan.Rows.Any(row => row.State.WaitsForUser());
+        HasFailedDownloads = plan.Rows.Any(row => row.CanRetry);
         ShowPickUpTooltip();
         Recompute();
     }
@@ -739,13 +780,15 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         InstallBlockedReason = WabbajackModlistText.InstallBlockedReason(hasLoadout, IsPlanning, _planReady, IsInstalling, _plan, SkipMissingArchives);
         DownloadBlockedReason = WabbajackModlistText.DownloadBlockedReason(IsPlanning, _isPreparingDownloads, _planReady, IsDownloading, _plan);
         // The acquirer works on one list at a time; starting here would abandon the other list's batch.
-        if (DownloadBlockedReason == "" && _acquirer.Status is { IsRunning: true } running && running.Modlist != FileId)
+        var otherListRuns = _acquirer.Status is { IsRunning: true } running && running.Modlist != FileId;
+        if (DownloadBlockedReason == "" && otherListRuns)
             DownloadBlockedReason = "Another modlist's downloads are running. Cancel them or wait for them to finish.";
         OpenNextFiveBlockedReason = WabbajackModlistText.OpenNextFiveBlockedReason(HasStartedDownloads, DownloadBlockedReason, _plan);
 
         // The reasons are the single source: a button is on exactly when it has none to give.
         CanInstall = InstallBlockedReason == "";
         CanDownload = DownloadBlockedReason == "";
+        CanRetryDownloads = _planReady && !IsPlanning && !_isPreparingDownloads && !IsDownloading && !otherListRuns;
     }
 
     private void RefreshLoadoutChoices()

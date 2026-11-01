@@ -74,6 +74,27 @@ public class WabbajackNeedsYouViewTests(IServiceProvider provider) : AUiTest(pro
     }
 
     [Fact]
+    public async Task TryAgainForAllFailed_IsOnlyOfferedWhileADownloadHasFailed_AndFailedLinesOfferTryAgain()
+    {
+        var failed = new WabbajackArchiveRow(Archive(ArchiveState.Manual, "Failed.7z", "connection reset").Plan with { DownloadFailed = true });
+        var (window, view) = await Show(new WabbajackModlistDesignViewModel { Archives = [failed, Archive(ArchiveState.Manual, "Hand Made.zip", "get it")] });
+
+        await EventuallyOnUi(() =>
+        {
+            Render(window);
+            Named<StandardButton>(view, "RetryFailedButton").IsEffectivelyVisible.Should().BeTrue();
+            var buttons = Named<StackPanel>(view, "NeedsYouPanel").GetVisualDescendants().OfType<Button>().Where(b => b.Content as string == "Try again").ToArray();
+            buttons.Should().HaveCount(2);
+            buttons.Count(b => b.IsEffectivelyVisible).Should().Be(1, "only the failed line offers it");
+        });
+        await OnUi(window.Close);
+
+        var (plain, plainView) = await Show(new WabbajackModlistDesignViewModel { Archives = [Archive(ArchiveState.Manual, "Hand Made.zip", "get it")] });
+        await OnUi(() => Named<StandardButton>(plainView, "RetryFailedButton").IsEffectivelyVisible.Should().BeFalse());
+        await OnUi(plain.Close);
+    }
+
+    [Fact]
     public async Task ShowThem_IsBesideAPlainStatusLine_AndGoneWhileTheListIsBeingChecked()
     {
         var (window, view) = await Show(new WabbajackModlistDesignViewModel { CanShowMissing = true });
