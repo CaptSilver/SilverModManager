@@ -22,9 +22,6 @@ public class Oblivion(IServiceProvider provider) : AOblivionGame<Oblivion>(provi
 
     public override LootGame LootGame(GameInstallation installation) => Bethesda.Loot.Masterlists.LootGame.Oblivion;
 
-    // libloadorder game_settings.rs hardcoded_plugins: none for these games.
-    public override IReadOnlyList<string> HardcodedPlugins => [];
-
     // https://github.com/ModOrganizer2/modorganizer-game_oblivion/blob/master/src/gameoblivion.cpp
     // (the plugins.txt copy from localAppFolder() + "/Oblivion", and gameName() is "Oblivion")
     protected override string LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => "Oblivion";

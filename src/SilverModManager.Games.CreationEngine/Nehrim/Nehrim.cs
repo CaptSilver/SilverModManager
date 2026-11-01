@@ -26,14 +26,11 @@ public class Nehrim(IServiceProvider provider) : AOblivionGame<Nehrim>(provider)
         SteamAppIds = [22330u],
     };
 
-    // gamenehrim.cpp primaryPlugins: the master file every Nehrim install has and Oblivion does not.
+    // The master file every Nehrim install has and Oblivion does not (gamenehrim.cpp lists it among primaryPlugins).
     public override IReadOnlyList<RelativePath> IdentifyingFiles => ["Data/Nehrim.esm"];
 
     // No Nehrim masterlist is bundled (github.com/loot has no nehrim repository), so Oblivion's applies.
     public override LootGame LootGame(GameInstallation installation) => Bethesda.Loot.Masterlists.LootGame.Oblivion;
-
-    // gamenehrim.cpp primaryPlugins
-    public override IReadOnlyList<string> HardcodedPlugins => ["Nehrim.esm", "Translation.esp"];
 
     // gamenehrim.cpp: plugins.txt is copied from localAppFolder() + "/Oblivion" (localAppName), while My Games
     // follows gameName(), "Nehrim".

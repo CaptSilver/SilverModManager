@@ -28,6 +28,11 @@ public abstract class AOblivionGame<TSelf>(IServiceProvider provider) : ACreatio
     public Task<IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)>> PluginTimestamps(Loadout.ReadOnly loadout, IReadOnlyDictionary<GamePath, SyncNode> syncTree) =>
         PlanPluginTimestamps(loadout, syncTree);
 
+    // libloadorder game_settings.rs hardcoded_plugins: none for Oblivion. Nehrim's primaryPlugins in MO2 only lock
+    // its plugins in the UI; listing them here would load Translation.esp, which is not a master, ahead of every
+    // master.
+    public override IReadOnlyList<string> HardcodedPlugins => [];
+
     protected override RelativePath PrimaryExe => "Oblivion.exe";
 
     /// <inheritdoc />

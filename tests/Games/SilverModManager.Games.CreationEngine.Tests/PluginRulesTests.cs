@@ -40,8 +40,17 @@ public class PluginRulesTests(IServiceProvider serviceProvider)
         { typeof(CreationEngine.EnderalSE.EnderalSE), typeof(AsteriskMechanism), SkyrimSeHardcoded, true, true },
         { typeof(CreationEngine.SkyrimVR.SkyrimVR), typeof(AsteriskMechanism), [.. SkyrimSeHardcoded, "SkyrimVR.esm"], true, true },
         { typeof(CreationEngine.Fallout4.Fallout4), typeof(AsteriskMechanism), Fallout4Hardcoded, true, true },
+        { typeof(CreationEngine.Fallout4London.Fallout4London), typeof(AsteriskMechanism), Fallout4Hardcoded, true, true },
         { typeof(CreationEngine.Fallout4VR.Fallout4VR), typeof(AsteriskMechanism), ["Fallout4.esm", "Fallout4_VR.esm"], true, true },
         { typeof(CreationEngine.Starfield.Starfield), typeof(AsteriskMechanism), StarfieldHardcoded, true, true },
+    };
+
+    // Oblivion's engine: its header layout differs, plugins load by file time, and no plugin is forced to load first.
+    // Nehrim is a total conversion over it, so its Nehrim.esm and Translation.esp are ordinary plugins here.
+    public static TheoryData<Type> OblivionEngineTitles => new()
+    {
+        typeof(CreationEngine.Oblivion.Oblivion),
+        typeof(CreationEngine.Nehrim.Nehrim),
     };
 
     private ICreationEngineGame Registered(Type type) =>
@@ -64,6 +73,21 @@ public class PluginRulesTests(IServiceProvider serviceProvider)
     }
 
     [Theory]
+    [MemberData(nameof(OblivionEngineTitles))]
+    public void OblivionEngineTitlesHaveNoHardcodedPlugins(Type type)
+    {
+        var game = Registered(type);
+
+        game.HeaderFormat.Should().Be(PluginFormat.Tes4Oblivion);
+        game.PluginList(null!).Should().BeOfType<TimestampMechanism>();
+        game.HardcodedPlugins.Should().BeEmpty("libloadorder forces no plugin to the front for Oblivion or its conversions");
+        game.PluginExtensions.Should().Equal(WithoutLight);
+        game.SupportsLightPlugins.Should().BeFalse();
+        game.MasterByExtension.Should().BeFalse();
+        game.MasterFlagIgnored(null!).Should().BeFalse();
+    }
+
+    [Theory]
     [InlineData(typeof(CreationEngine.SkyrimLE.SkyrimLE), LootGame.Skyrim)]
     [InlineData(typeof(CreationEngine.SkyrimSE.SkyrimSE), LootGame.SkyrimSE)]
     [InlineData(typeof(CreationEngine.SkyrimVR.SkyrimVR), LootGame.SkyrimVR)]
@@ -72,9 +96,11 @@ public class PluginRulesTests(IServiceProvider serviceProvider)
     [InlineData(typeof(CreationEngine.Fallout3.Fallout3), LootGame.Fallout3)]
     [InlineData(typeof(CreationEngine.FalloutNewVegas.FalloutNewVegas), LootGame.FalloutNV)]
     [InlineData(typeof(CreationEngine.Fallout4.Fallout4), LootGame.Fallout4)]
+    [InlineData(typeof(CreationEngine.Fallout4London.Fallout4London), LootGame.Fallout4)]
     [InlineData(typeof(CreationEngine.Fallout4VR.Fallout4VR), LootGame.Fallout4VR)]
     [InlineData(typeof(CreationEngine.Starfield.Starfield), LootGame.Starfield)]
     [InlineData(typeof(CreationEngine.Oblivion.Oblivion), LootGame.Oblivion)]
+    [InlineData(typeof(CreationEngine.Nehrim.Nehrim), LootGame.Oblivion)]
     [InlineData(typeof(CreationEngine.OblivionRemastered.OblivionRemastered), LootGame.OblivionRemastered)]
     public void EachTitleSortsWithItsOwnLootGame(Type type, LootGame expected) =>
         Registered(type).LootGame(null!).Should().Be(expected);
@@ -82,6 +108,7 @@ public class PluginRulesTests(IServiceProvider serviceProvider)
     [Theory]
     [InlineData(typeof(CreationEngine.SkyrimSE.SkyrimSE), "Skyrim.ccc")]
     [InlineData(typeof(CreationEngine.Fallout4.Fallout4), "Fallout4.ccc")]
+    [InlineData(typeof(CreationEngine.Fallout4London.Fallout4London), "Fallout4.ccc")]
     public void CreationClubListLivesInTheGameFolder(Type type, string file) =>
         Registered(type).CreationClubListFile.Should().Be(new GamePath(LocationId.Game, file));
 
