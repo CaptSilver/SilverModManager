@@ -41,6 +41,10 @@ public record RuleDelta
     /// above mods the user installed since. They go in as groups without a row do.
     /// </summary>
     public ImmutableArray<LoadoutItemGroupId> UnplacedBlockGroups { get; init; } = [];
+
+    /// <summary>Groups this transaction re-parents, with their new collection. The resolver's view of collection
+    /// membership is the basis's with these applied, since a tx function can't see the transaction's own Parent writes.</summary>
+    public ImmutableDictionary<LoadoutItemGroupId, LoadoutItemGroupId> MovedGroups { get; init; } = ImmutableDictionary<LoadoutItemGroupId, LoadoutItemGroupId>.Empty;
 }
 
 /// <summary>

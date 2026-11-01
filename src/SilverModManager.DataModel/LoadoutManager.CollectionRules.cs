@@ -11,9 +11,11 @@ internal partial class LoadoutManager
     /// <summary>
     /// The mods of each collection that has any in the loadout's priority order, lowest priority first. A collection
     /// is not ordered on its own: it is the mods that carry its group as their parent, so a rule on a collection is
-    /// a rule on those.
+    /// a rule on those. <paramref name="moves"/> are re-parentings the caller's transaction is about to write (group to
+    /// its new collection); a tx function can't see them, so they are applied here over the stored parents.
     /// </summary>
-    internal static Dictionary<LoadoutItemGroupId, LoadoutItemGroupId[]> CollectionMembers(IDb db, LoadoutId loadoutId)
+    internal static Dictionary<LoadoutItemGroupId, LoadoutItemGroupId[]> CollectionMembers(
+        IDb db, LoadoutId loadoutId, IReadOnlyDictionary<LoadoutItemGroupId, LoadoutItemGroupId>? moves = null)
     {
         var members = new Dictionary<LoadoutItemGroupId, List<LoadoutItemGroupId>>();
         foreach (var row in LoadoutItemGroupPriority.FindByLoadout(db, loadoutId).OrderBy(static row => row.Priority))
@@ -21,9 +23,14 @@ internal partial class LoadoutManager
             if (!row.Target.IsValid()) continue;
 
             var item = row.Target.AsLoadoutItem();
-            if (!item.HasParent() || !CollectionGroup.Load(db, item.ParentId.Value).IsValid()) continue;
+            LoadoutItemGroupId parent;
+            if (moves is not null && moves.TryGetValue(row.TargetId, out var moved)) parent = moved;
+            else if (item.HasParent()) parent = item.ParentId.Value;
+            else continue;
 
-            if (!members.TryGetValue(item.ParentId, out var list)) members[item.ParentId] = list = [];
+            if (!CollectionGroup.Load(db, parent).IsValid()) continue;
+
+            if (!members.TryGetValue(parent, out var list)) members[parent] = list = [];
             list.Add(row.TargetId);
         }
 

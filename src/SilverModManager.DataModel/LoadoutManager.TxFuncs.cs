@@ -233,7 +233,7 @@ internal partial class LoadoutManager
             }
 
             // Rules on a collection stand for rules on its mods, which are what the order is made of.
-            var collections = CollectionMembers(basis, loadoutId);
+            var collections = CollectionMembers(basis, loadoutId, delta.MovedGroups);
             var storedRules = RuleResolver.ExpandCollections(
                 LoadoutGroupRule
                     .FindByLoadout(basis, loadoutId)
