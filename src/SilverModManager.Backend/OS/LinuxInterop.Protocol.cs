@@ -47,7 +47,7 @@ internal partial class LinuxInterop
         string? otherHandler = null;
         if (setAsDefaultHandler && canRegisterAsDefault)
         {
-            otherHandler = await GetOtherDefaultHandler(scheme, desktopFileName, cancellationToken);
+            otherHandler = await GetOtherDefaultHandler(scheme, desktopFileName, runningExecutable, cancellationToken);
             if (otherHandler is not null && claim is UriSchemeClaim.IfUnclaimed)
             {
                 _logger.LogInformation("`{Handler}` holds the default for `{Scheme}`, leaving it alone", otherHandler, scheme);
@@ -119,7 +119,7 @@ internal partial class LinuxInterop
     }
 
     /// <summary>The desktop file that opens the scheme now, or null when none does or it is ours.</summary>
-    private async ValueTask<string?> GetOtherDefaultHandler(string scheme, string desktopFileName, CancellationToken cancellationToken)
+    private async ValueTask<string?> GetOtherDefaultHandler(string scheme, string desktopFileName, string runningExecutable, CancellationToken cancellationToken)
     {
         var output = new StringBuilder();
         try
@@ -136,7 +136,28 @@ internal partial class LinuxInterop
 
         var current = output.ToString().Trim();
         if (current.Length == 0 || current == desktopFileName || current == DesktopFile) return null;
-        return current;
+
+        // An AppImage started without DESKTOPINTEGRATION never looks up its launcher entry, but one that runs this AppImage is still ours.
+        return await IsLauncherEntryForThisAppImage(current, runningExecutable, scheme, cancellationToken) ? null : current;
+    }
+
+    private async ValueTask<bool> IsLauncherEntryForThisAppImage(string fileName, string runningExecutable, string scheme, CancellationToken cancellationToken)
+    {
+        if (fileName.Contains('/')) return false;
+
+        var path = ApplicationsDirectory.Combine(fileName);
+        if (path.FileExists is false) return false;
+
+        try
+        {
+            var contents = await File.ReadAllTextAsync(path.ToString(), cancellationToken);
+            return FindLauncherDesktopEntry([(fileName, contents)], runningExecutable, scheme, ResolveRealPath) is not null;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(e, "Unable to read desktop file `{Path}`, treating it as another handler", path);
+            return false;
+        }
     }
 
     private async ValueTask<string?> FindLauncherEntry(AbsolutePath applicationsDirectory, string appImagePath, string scheme, CancellationToken cancellationToken)

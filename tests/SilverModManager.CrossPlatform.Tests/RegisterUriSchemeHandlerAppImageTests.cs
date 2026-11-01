@@ -206,6 +206,34 @@ public class RegisterUriSchemeHandlerAppImageTests : IDisposable
     }
 
     [Fact]
+    public async Task OurLauncherEntryHoldingTheDefaultIsNotAnotherHandlerWithoutTheVariable()
+    {
+        WriteLauncherEntry();
+        _currentDefault = "silvermodmanager.desktop";
+
+        var result = await Register(null, claim: UriSchemeClaim.IfUnclaimed);
+
+        result.Should().Be(new UriSchemeRegistration(true, null));
+    }
+
+    [Fact]
+    public async Task AnEntryThatRunsADifferentAppImageStillCountsAsAnotherHandler()
+    {
+        File.WriteAllText(Applications("silvermodmanager.desktop"), $"""
+            [Desktop Entry]
+            Type=Application
+            Name=Other
+            Exec=env DESKTOPINTEGRATION=1 {Path.Combine(_dataHome, "AppImages", "other.appimage")} %u
+            MimeType=x-scheme-handler/nxm;
+            """);
+        _currentDefault = "silvermodmanager.desktop";
+
+        var result = await Register(null, claim: UriSchemeClaim.IfUnclaimed);
+
+        result.Should().Be(new UriSchemeRegistration(false, "silvermodmanager.desktop"));
+    }
+
+    [Fact]
     public async Task OurOwnFileIsNotAnotherHandlerWhenNoLauncherEntryExists()
     {
         _currentDefault = OwnDesktopFile;

@@ -32,7 +32,7 @@ internal partial class LinuxInterop
             if (fileName == DesktopFile) continue;
 
             var keys = ReadDesktopEntryGroup(contents);
-            if (!keys.TryGetValue("Exec", out var exec)) continue;
+            if (keys.TryGetValue("Exec", out var exec) is false) continue;
 
             var executable = GetExecutable(exec);
             if (executable is null || resolvePath(executable) != wanted) continue;
