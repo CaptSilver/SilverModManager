@@ -32,11 +32,14 @@ public class InstallModlistBenchmarkTests(ITestOutputHelper helper) : InstallTes
     public async Task InstallingAMixedListReportsPeakMemoryAndWallTime()
     {
         var scale = Scale;
-        var plain = 3000 * scale;
-        var patches = 300 * scale;
-        var textures = 300 * scale;
-        var inlines = 500 * scale;
-        var archives = 5 * scale;
+        // SILVER_BENCH_KINDS limits the list to some kinds (plain, patch, texture, inline, bsa), to see which one costs what.
+        var kinds = Environment.GetEnvironmentVariable("SILVER_BENCH_KINDS")?.Split(',') ?? ["plain", "patch", "texture", "inline", "bsa"];
+        var plain = kinds.Contains("plain") ? 3000 * scale : 0;
+        var patches = kinds.Contains("patch") ? 300 * scale : 0;
+        var textures = kinds.Contains("texture") ? (int.TryParse(Environment.GetEnvironmentVariable("SILVER_BENCH_TEXCOUNT"), out var count) ? count : 300 * scale) : 0;
+        var textureSize = int.TryParse(Environment.GetEnvironmentVariable("SILVER_BENCH_TEXSIZE"), out var size) ? size : 256;
+        var inlines = kinds.Contains("inline") ? 500 * scale : 0;
+        var archives = kinds.Contains("bsa") ? 5 * scale : 0;
         var archiveInputs = 100;
 
         var list = new ListBuilder();
@@ -80,12 +83,12 @@ public class InstallModlistBenchmarkTests(ITestOutputHelper helper) : InstallTes
             }
         }
 
-        var dds = await AddZip("tex.zip", Enumerable.Range(0, textures).ToDictionary(i => $"t{i}.dds", i => Bc1Dds(256)));
+        var dds = await AddZip("tex.zip", Enumerable.Range(0, textures).ToDictionary(i => $"t{i}.dds", i => Bc1Dds(textureSize)));
         list.Archives.Add(dds);
         for (var i = 0; i < textures; i++)
         {
             list.Directives.Add(new TransformedTexture(P($"mods/T{i % 20}/textures/t{i}.dds"), Xx64.From(7), 1,
-                new ArchiveHashPath(dds.XxHash64, [P($"t{i}.dds")]), new ImageState(256, 256, 1, "BC7_UNORM")));
+                new ArchiveHashPath(dds.XxHash64, [P($"t{i}.dds")]), new ImageState(textureSize, textureSize, 1, "BC7_UNORM")));
         }
 
         for (var i = 0; i < inlines; i++)
@@ -114,21 +117,38 @@ public class InstallModlistBenchmarkTests(ITestOutputHelper helper) : InstallTes
         var process = Process.GetCurrentProcess();
         var startWorkingSet = process.WorkingSet64;
         long peakManaged = 0, peakWorkingSet = 0;
+        var phase = InstallPhase.Check;
+        var byPhase = new Dictionary<InstallPhase, (long Managed, long WorkingSet, TimeSpan Elapsed)>();
+        var phaseWatch = Stopwatch.StartNew();
         using var stop = new CancellationTokenSource();
         var sampler = Task.Run(async () =>
         {
             using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(25));
             while (!stop.IsCancellationRequested)
             {
-                peakManaged = Math.Max(peakManaged, GC.GetTotalMemory(false));
+                var managed = GC.GetTotalMemory(false);
                 process.Refresh();
-                peakWorkingSet = Math.Max(peakWorkingSet, process.WorkingSet64);
+                var workingSet = process.WorkingSet64;
+                peakManaged = Math.Max(peakManaged, managed);
+                peakWorkingSet = Math.Max(peakWorkingSet, workingSet);
+                lock (byPhase)
+                {
+                    var current = byPhase.GetValueOrDefault(phase);
+                    byPhase[phase] = (Math.Max(current.Managed, managed), Math.Max(current.WorkingSet, workingSet), phaseWatch.Elapsed);
+                }
                 try { await timer.WaitForNextTickAsync(stop.Token); } catch (OperationCanceledException) { }
             }
         });
 
         var watch = Stopwatch.StartNew();
-        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+        var job = NewJob(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+        var phaseStarts = new Dictionary<InstallPhase, TimeSpan>();
+        using var progress = job.Progress.Changes.Subscribe(snapshot =>
+        {
+            if (snapshot.Phase == phase) return;
+            lock (byPhase) { phase = snapshot.Phase; phaseStarts[snapshot.Phase] = watch.Elapsed; }
+        });
+        var group = await Run(job);
         watch.Stop();
         await stop.CancelAsync();
         await sampler;
@@ -137,6 +157,11 @@ public class InstallModlistBenchmarkTests(ITestOutputHelper helper) : InstallTes
         var line = ($"BENCH directives={directives} wall={watch.Elapsed.TotalSeconds:F1}s commits={commits} " +
                          $"startManagedMB={startManaged / 1048576} peakManagedMB={peakManaged / 1048576} peakWorkingSetMB={peakWorkingSet / 1048576} startWorkingSetMB={startWorkingSet / 1048576} " +
                          $"gcPeakHeapMB={GC.GetGCMemoryInfo().HeapSizeBytes / 1048576} gen2={GC.CollectionCount(2)}");
+        foreach (var (name, peak) in byPhase)
+        {
+            phaseStarts.TryGetValue(name, out var startedAt);
+            line += $"\n  phase {name}: from {startedAt.TotalSeconds:F1}s peakManagedMB={peak.Managed / 1048576} peakWorkingSetMB={peak.WorkingSet / 1048576}";
+        }
         helper.WriteLine(line);
         if (Environment.GetEnvironmentVariable("SILVER_BENCH_OUT") is { Length: > 0 } outFile) File.AppendAllText(outFile, line + "\n");
         SkipsOf(group).Should().BeEmpty();

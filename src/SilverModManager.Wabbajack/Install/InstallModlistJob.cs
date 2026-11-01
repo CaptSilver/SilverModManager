@@ -1,4 +1,7 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text;
+using System.Threading.Channels;
 using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -37,6 +40,16 @@ namespace SilverModManager.Wabbajack.Install;
 /// Running the job again on the same loadout continues in the same group and brings it in line with the list: files the
 /// list still installs are kept, ones whose content changed or that the list no longer installs are removed.
 /// </summary>
+/// <summary>
+/// A commit ends the batch of files written to the loadout when any limit is reached. Each commit makes the loadout
+/// recompute, so fewer is cheaper; the limits keep a long install from holding hours of work in one transaction, since
+/// what is committed is what a later run finds and keeps.
+/// </summary>
+public sealed record CommitPolicy(int MaxItems, long MaxBytes, TimeSpan MaxInterval)
+{
+    public static readonly CommitPolicy Default = new(10_000, 2L * 1024 * 1024 * 1024, TimeSpan.FromMinutes(2));
+}
+
 public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly>
 {
     private const int TransactionSize = 2000;
@@ -60,6 +73,15 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     public required ILogger Logger { get; init; }
     public required ModOrderImporter OrderImporter { get; init; }
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
+
+    /// <summary>What the install may hold in memory at once; the budget for this machine when not set.</summary>
+    public ByteBudget? MemoryBudget { get; init; }
+
+    /// <summary>How many directives are resolved and produced at once; one per processor when not set.</summary>
+    public int? Parallelism { get; init; }
+
+    /// <summary>When the files written so far are committed to the loadout.</summary>
+    public CommitPolicy Commits { get; init; } = CommitPolicy.Default;
 
     /// <summary>
     /// The toolbar entries of the list's ModOrganizer.ini that were not registered as tools, each with the reason, once the
@@ -116,8 +138,21 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         }
         finally
         {
-            // Releases the pins on the bytes the resolver backed up; the loadout files now reference them.
-            _resolver?.Dispose();
+            if (_resolver is { } resolver)
+            {
+                // Hashes computed before a stop are worth keeping; the next run would otherwise read the same files again.
+                try
+                {
+                    await resolver.FlushDigests(CancellationToken.None);
+                }
+                catch (Exception e)
+                {
+                    Logger.LogWarning(e, "Could not record the hashes computed for the library files of '{List}'", Modlist.Name);
+                }
+
+                // Releases the pins on the bytes the resolver backed up; the loadout files now reference them.
+                resolver.Dispose();
+            }
         }
 
         return WabbajackModlistLoadoutGroup.Load(Connection.Db, group.Value);
@@ -407,6 +442,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
     private ArchivePathResolver Resolver => _resolver ?? throw new InvalidOperationException("Archive members are read before the resolve phase created the resolver");
 
+    private int Workers => Math.Max(1, Parallelism ?? Environment.ProcessorCount);
+
     private async Task<IReadOnlyList<Prepared>> Resolve(Checked check, CancellationToken cancellationToken)
     {
         _resolver = NewResolver(check);
@@ -416,13 +453,15 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         Progress.Enter(InstallPhase.Resolve, executable.Length, executable.Sum(p => p.Directive.Size));
 
         var rows = check.Plan.Rows.GroupBy(r => r.Archive.XxHash64).ToDictionary(g => g.Key, g => g.First());
-        var prepared = new List<Prepared>(executable.Length);
-        foreach (var placement in executable)
+        var prepared = new Prepared[executable.Length];
+        var options = new ParallelOptions { MaxDegreeOfParallelism = Workers, CancellationToken = cancellationToken };
+        await Parallel.ForEachAsync(Enumerable.Range(0, executable.Length), options, async (i, token) =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            prepared.Add(await Prepare(check, rows, placement, cancellationToken));
+            var placement = executable[i];
+            prepared[i] = await Prepare(check, rows, placement, token);
             Progress.Advance(1, placement.Directive.Size);
-        }
+        });
+        await Resolver.FlushDigests(cancellationToken);
 
         // Later kinds read what earlier ones wrote; within a kind the list's order is kept.
         return prepared.OrderBy(p => WriteOrder.Of(p.Placement.Directive)).ThenBy(p => p.Placement.Index).ToArray();
@@ -518,13 +557,22 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     private sealed class WriteState
     {
         /// <summary>Directive destinations, folded, to the file store hash and xxHash64 of what was written, for merges to read back and check.</summary>
-        public Dictionary<string, (FileIdentity Store, FileIdentity XxHash64)> Written { get; } = new();
+        public ConcurrentDictionary<string, (FileIdentity Store, FileIdentity XxHash64)> Written { get; } = new();
 
-        /// <summary>Textures of the batch being written that are already being re-encoded, taken by <see cref="Produce"/> when it reaches them.</summary>
-        public Dictionary<Prepared, Task<GeneratedFile>> Textures { get; } = new(ReferenceEqualityComparer.Instance);
+        private readonly object _pendingLock = new();
+        private List<GeneratedFile> _pending = new();
+        private long _pendingBytes;
 
-        /// <summary>Generated files waiting for the next batch to the file store.</summary>
-        public List<GeneratedFile> Pending { get; } = new();
+        /// <summary>Held while pending files are handed to the file store, so a flush never starts before an earlier one has finished.</summary>
+        public SemaphoreSlim FlushLock { get; } = new(1, 1);
+
+        /// <summary>The batch of rows being written; the next commit takes it.</summary>
+        public IMainTransaction? Tx { get; set; }
+
+        public int BatchItems { get; set; }
+        public long BatchBytes { get; set; }
+        public bool BatchDirty { get; set; }
+        public Stopwatch BatchAge { get; } = new();
 
         /// <summary>Mod group name to its id: real once committed, a temp id while its transaction is open.</summary>
         public Dictionary<string, LoadoutItemGroupId> Groups { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -533,6 +581,28 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
         /// <summary>Per group, the files an earlier run (or this one) already created, as path and hash.</summary>
         public Dictionary<string, Dictionary<(GamePath Path, FileIdentity Identity), KnownFile>> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Queues a generated file for the file store and returns how many are waiting and their bytes.</summary>
+        public (int Count, long Bytes) AddPending(GeneratedFile file)
+        {
+            lock (_pendingLock)
+            {
+                _pending.Add(file);
+                _pendingBytes += (long)file.Size.Value;
+                return (_pending.Count, _pendingBytes);
+            }
+        }
+
+        public List<GeneratedFile> TakePending()
+        {
+            lock (_pendingLock)
+            {
+                var taken = _pending;
+                _pending = new List<GeneratedFile>();
+                _pendingBytes = 0;
+                return taken;
+            }
+        }
     }
 
     /// <summary>A file row of a group. <see cref="Ids"/> is empty for one made in this run, and <see cref="Wanted"/> is set once this run's list asks for it.</summary>
@@ -542,41 +612,188 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         public bool Wanted { get; set; }
     }
 
+    /// <summary>What producing the bytes of one directive came to, for the one thread that writes rows to take in list order.</summary>
+    private abstract record Outcome;
+
+    /// <summary>Nothing for the loadout: a file kept as the user has it, or a tool file already written to its folder.</summary>
+    private sealed record NothingToRecord : Outcome
+    {
+        public static readonly NothingToRecord Instance = new();
+    }
+
+    private sealed record FileProduced(FileIdentity Hash, Size Size, FileIdentity XxHash64) : Outcome;
+
+    private sealed record FileSkipped(SkipKind Kind, string Reason) : Outcome;
+
     private async Task Write(Checked check, LoadoutItemGroupId groupId, AbsolutePath extrasFolder, IReadOnlyList<Prepared> prepared, CancellationToken cancellationToken)
     {
         Progress.Enter(InstallPhase.Write, prepared.Count, prepared.Sum(p => p.Placement.Directive.Size));
         var state = LoadExisting(groupId);
         var extras = new ExtrasFolder(extrasFolder);
-        using var textureSlots = new SemaphoreSlim(Environment.ProcessorCount);
+        var budget = MemoryBudget ?? ByteBudget.ForThisMachine();
 
-        foreach (var batch in prepared.Chunk(TransactionSize))
+        try
         {
-            using var tx = Connection.BeginTransaction();
-            using var encodes = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            try
+            // Kinds run one after the other: a later kind reads what an earlier one wrote.
+            for (var start = 0; start < prepared.Count;)
             {
-                StartTextures(check, extras, state, batch, textureSlots, encodes.Token);
-                foreach (var item in batch)
+                var kind = WriteOrder.Of(prepared[start].Placement.Directive);
+                var end = start + 1;
+                while (end < prepared.Count && WriteOrder.Of(prepared[end].Placement.Directive) == kind) end++;
+
+                // Merges read each other's output, so they stay in the list's order.
+                var workers = kind == WriteOrder.Merge ? 1 : Workers;
+                await WriteRun(check, groupId, state, extras, budget, prepared, start, end, workers, cancellationToken);
+                start = end;
+            }
+
+            await CommitBatch(state, cancellationToken);
+        }
+        finally
+        {
+            state.Tx?.Dispose();
+            state.Tx = null;
+            await DiscardPending(state);
+        }
+
+        await RemoveStaleFiles(state);
+    }
+
+    /// <summary>
+    /// Produces the bytes of <paramref name="prepared"/>[<paramref name="start"/>..<paramref name="end"/>] on several
+    /// workers, as many as the byte budget lets in, while this thread takes the results in list order and writes the
+    /// rows. Producing carries on during a commit, so a slow commit does not hold up the next files.
+    /// </summary>
+    private async Task WriteRun(Checked check, LoadoutItemGroupId groupId, WriteState state, ExtrasFolder extras, ByteBudget budget,
+        IReadOnlyList<Prepared> prepared, int start, int end, int workers, CancellationToken cancellationToken)
+    {
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var slots = new SemaphoreSlim(workers);
+        var results = Channel.CreateBounded<Task<Outcome>>(new BoundedChannelOptions(Math.Max(256, workers * 4)) { SingleReader = true, SingleWriter = true });
+        var admitting = Task.Run(() => Admit(check, state, extras, budget, slots, results.Writer, prepared, start, end, stop.Token), CancellationToken.None);
+
+        try
+        {
+            for (var i = start; i < end; i++)
+            {
+                var item = prepared[i];
+                if (!await results.Reader.WaitToReadAsync(stop.Token)) break;
+                if (!results.Reader.TryRead(out var produced))
+                    throw new InvalidOperationException("A result was announced but is not in the queue");
+                var outcome = await produced;
+
+                Record(check, groupId, state, item, outcome);
+                Progress.Advance(1, item.Placement.Directive.Size);
+                if (BatchIsDue(state)) await CommitBatch(state, cancellationToken);
+            }
+            await admitting;
+        }
+        finally
+        {
+            // Whatever stopped this run, nothing it started may still be writing when the caller moves on.
+            await stop.CancelAsync();
+            try { await admitting; } catch { /* the failure being reported is the one that stopped the run */ }
+            while (results.Reader.TryRead(out var abandoned))
+            {
+                try { await abandoned; } catch { /* as above */ }
+            }
+        }
+    }
+
+    private async Task Admit(Checked check, WriteState state, ExtrasFolder extras, ByteBudget budget, SemaphoreSlim slots,
+        ChannelWriter<Task<Outcome>> results, IReadOnlyList<Prepared> prepared, int start, int end, CancellationToken cancellationToken)
+    {
+        try
+        {
+            for (var i = start; i < end; i++)
+            {
+                var item = prepared[i];
+                Task<Outcome> produced;
+                if (NeedsNoWork(item))
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await Execute(check, groupId, state, extras, tx, item, cancellationToken);
-                    Progress.Advance(1, item.Placement.Directive.Size);
+                    produced = Execute(check, state, extras, item, cancellationToken);
+                }
+                else
+                {
+                    await slots.WaitAsync(cancellationToken);
+                    IDisposable reservation;
+                    try
+                    {
+                        reservation = await budget.Reserve(WorkEstimate.Of(item.Placement.Directive, item.Member), cancellationToken);
+                    }
+                    catch
+                    {
+                        slots.Release();
+                        throw;
+                    }
+                    produced = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            return await Execute(check, state, extras, item, cancellationToken);
+                        }
+                        finally
+                        {
+                            reservation.Dispose();
+                            slots.Release();
+                        }
+                    }, CancellationToken.None);
+                }
+
+                try
+                {
+                    await results.WriteAsync(produced, cancellationToken);
+                }
+                catch
+                {
+                    try { await produced; } catch { /* stopping anyway */ }
+                    throw;
                 }
             }
-            finally
-            {
-                // A batch that stopped early would otherwise sit through every encode it queued before reporting why.
-                await encodes.CancelAsync();
-                await DiscardTextures(state);
-            }
+            results.Complete();
+        }
+        catch (Exception e)
+        {
+            results.TryComplete(e);
+        }
+    }
 
+    /// <summary>A directive whose bytes are already in the file store, or that has none to write.</summary>
+    private static bool NeedsNoWork(Prepared item)
+        => item.Silent || item.Skip is not null || item.Placement.Directive.GetType() == typeof(FromArchive) && item.Placement.Target is not Mo2Target.Extra;
+
+    private bool BatchIsDue(WriteState state)
+        => state.BatchItems >= Commits.MaxItems || state.BatchBytes >= Commits.MaxBytes || state.BatchAge.Elapsed >= Commits.MaxInterval;
+
+    /// <summary>
+    /// Stores the generated files the open batch refers to, commits its rows and starts the next batch. Files first, so a
+    /// row never names bytes the store lacks.
+    /// </summary>
+    private async Task CommitBatch(WriteState state, CancellationToken cancellationToken)
+    {
+        if (state.Tx is not { } tx) return;
+
+        if (state.BatchDirty)
+        {
             await FlushPending(state, cancellationToken);
             var result = await tx.Commit();
             foreach (var name in state.NewGroups) state.Groups[name] = result[state.Groups[name]];
             state.NewGroups.Clear();
         }
 
-        await RemoveStaleFiles(state);
+        tx.Dispose();
+        state.Tx = null;
+        state.BatchItems = 0;
+        state.BatchBytes = 0;
+        state.BatchDirty = false;
+        state.BatchAge.Reset();
+    }
+
+    private IMainTransaction OpenBatch(WriteState state)
+    {
+        if (state.Tx is { } open) return open;
+        state.BatchAge.Restart();
+        return state.Tx = Connection.BeginTransaction();
     }
 
     /// <summary>
@@ -622,58 +839,33 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
     private async Task FlushPending(WriteState state, CancellationToken cancellationToken)
     {
-        if (state.Pending.Count == 0) return;
-        await Writer.Store(state.Pending, cancellationToken);
-        state.Pending.Clear();
-    }
-
-    /// <summary>
-    /// Starts re-encoding the batch's textures together, at most one per core: a BC7 encode is slow enough that doing
-    /// them one after another dominates the install. Everything that touches the transaction still happens in order.
-    /// </summary>
-    private void StartTextures(Checked check, ExtrasFolder extras, WriteState state, IReadOnlyList<Prepared> batch, SemaphoreSlim slots, CancellationToken cancellationToken)
-    {
-        foreach (var item in batch)
-        {
-            if (item.Silent || item.Skip is not null || item.Placement.Directive is not TransformedTexture || item.Placement.Target is Mo2Target.Extra) continue;
-            state.Textures[item] = EncodeTexture(check, extras, item, slots, cancellationToken);
-        }
-    }
-
-    private async Task<GeneratedFile> EncodeTexture(Checked check, ExtrasFolder extras, Prepared item, SemaphoreSlim slots, CancellationToken cancellationToken)
-    {
-        await slots.WaitAsync(cancellationToken);
+        await state.FlushLock.WaitAsync(cancellationToken);
         try
         {
-            return await Writer.Generate(output => WriteBytes(check, extras, item.Placement, item.Member, output, cancellationToken), cancellationToken);
+            var batch = state.TakePending();
+            if (batch.Count == 0) return;
+            await Writer.Store(batch, cancellationToken);
         }
         finally
         {
-            slots.Release();
+            state.FlushLock.Release();
         }
     }
 
-    /// <summary>Waits out the textures nobody took, because the batch stopped early, and deletes the temp files of those that finished.</summary>
-    private static async Task DiscardTextures(WriteState state)
+    /// <summary>Deletes the temp files of generated files an install that stopped early never stored.</summary>
+    private static async Task DiscardPending(WriteState state)
     {
-        foreach (var pending in state.Textures.Values)
-        {
-            try
-            {
-                await using var file = await pending;
-            }
-            catch
-            {
-                // The batch is already failing or was cancelled; the encode's own error is not the one to report.
-            }
-        }
-        state.Textures.Clear();
+        foreach (var file in state.TakePending()) await file.DisposeAsync();
     }
 
-    private async Task Execute(Checked check, LoadoutItemGroupId modlistGroup, WriteState state, ExtrasFolder extras, ITransaction tx, Prepared item, CancellationToken cancellationToken)
+    /// <summary>
+    /// Makes the bytes of one directive and says what they came to. Safe to run for several directives at once: it
+    /// writes no rows and touches no group. A directive it cannot execute comes back as <see cref="FileSkipped"/>.
+    /// </summary>
+    private async Task<Outcome> Execute(Checked check, WriteState state, ExtrasFolder extras, Prepared item, CancellationToken cancellationToken)
     {
         var placement = item.Placement;
-        if (item.Silent) return;
+        if (item.Silent) return NothingToRecord.Instance;
 
         try
         {
@@ -681,41 +873,66 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             if (placement.Target is Mo2Target.Extra extra)
             {
                 await WriteExtra(check, extras, item, extra, cancellationToken);
-                return;
+                return NothingToRecord.Instance;
             }
-            if (placement.Group is not { } groupName || placement.Path is not { } path)
+            if (placement.Group is null || placement.Path is null)
                 throw new InvalidOperationException($"'{placement.To}' reached the write phase without a place in the loadout");
 
             var (hash, size, xxHash64) = await Produce(check, state, extras, item, cancellationToken);
             state.Written[Fold(placement.To)] = (hash, xxHash64);
-            if (placement.Target is Mo2Target.ProfileSetting && OwnedIniPath(check, path) is { } iniPath)
-                SetIniBaseline(tx, modlistGroup, state, groupName, check, iniPath, hash);
-            else
-                AddFile(tx, modlistGroup, state, groupName, path, hash, size);
+            return new FileProduced(hash, size, xxHash64);
         }
         catch (DirectiveSkipped skipped)
         {
-            AddSkip(tx, modlistGroup, state, placement, skipped.Kind, skipped.Message, check);
+            return new FileSkipped(skipped.Kind, skipped.Message);
         }
         catch (PatchException patchFailed)
         {
-            AddSkip(tx, modlistGroup, state, placement, SkipKind.Transform, $"the patch for '{placement.To}' could not be applied: {patchFailed.Message}", check);
+            return new FileSkipped(SkipKind.Transform, $"the patch for '{placement.To}' could not be applied: {patchFailed.Message}");
         }
         catch (UnsupportedTextureFormatException unsupported)
         {
-            AddSkip(tx, modlistGroup, state, placement, SkipKind.Transform, $"the texture '{placement.To}' could not be re-encoded: {unsupported.Message}", check);
+            return new FileSkipped(SkipKind.Transform, $"the texture '{placement.To}' could not be re-encoded: {unsupported.Message}");
         }
         catch (BethesdaArchiveException archiveFailed)
         {
-            AddSkip(tx, modlistGroup, state, placement, SkipKind.Transform, $"the archive '{placement.To}' could not be built: {archiveFailed.Message}", check);
+            return new FileSkipped(SkipKind.Transform, $"the archive '{placement.To}' could not be built: {archiveFailed.Message}");
         }
         catch (ArchiveMismatchException mismatch)
         {
-            AddSkip(tx, modlistGroup, state, placement, SkipKind.Transform, $"the archive '{placement.To}' was built wrong: {mismatch.Message}", check);
+            return new FileSkipped(SkipKind.Transform, $"the archive '{placement.To}' was built wrong: {mismatch.Message}");
         }
         catch (MemberNotFoundException notFound)
         {
-            AddSkip(tx, modlistGroup, state, placement, SkipKind.MemberNotFound, notFound.Message, check);
+            return new FileSkipped(SkipKind.MemberNotFound, notFound.Message);
+        }
+    }
+
+    /// <summary>Writes the rows for what <paramref name="outcome"/> says about <paramref name="item"/>. Only the thread that takes results in list order calls this.</summary>
+    private void Record(Checked check, LoadoutItemGroupId modlistGroup, WriteState state, Prepared item, Outcome outcome)
+    {
+        var placement = item.Placement;
+        state.BatchItems++;
+        state.BatchBytes += placement.Directive.Size;
+        if (outcome is NothingToRecord) return;
+
+        var tx = OpenBatch(state);
+        state.BatchDirty = true;
+        switch (outcome)
+        {
+            case FileProduced produced:
+                if (placement.Group is not { } groupName || placement.Path is not { } path)
+                    throw new InvalidOperationException($"'{placement.To}' was produced without a place in the loadout");
+                if (placement.Target is Mo2Target.ProfileSetting && OwnedIniPath(check, path) is { } iniPath)
+                    SetIniBaseline(tx, modlistGroup, state, groupName, check, iniPath, produced.Hash);
+                else
+                    AddFile(tx, modlistGroup, state, groupName, path, produced.Hash, produced.Size);
+                break;
+            case FileSkipped skipped:
+                AddSkip(tx, modlistGroup, state, placement, skipped.Kind, skipped.Reason, check);
+                break;
+            default:
+                throw new InvalidOperationException($"No rows are written for a {outcome.GetType().Name}");
         }
     }
 
@@ -1014,9 +1231,6 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             case CreateBsa bsa:
                 return await Generated(state, directive, output => BuildArchive(check, extras, bsa, output, cancellationToken), checkHash: false, cancellationToken);
 
-            case TransformedTexture when state.Textures.Remove(item, out var encoding):
-                return await Register(state, directive, await encoding, checkHash: false, cancellationToken);
-
             default:
                 var exempt = directive is RemappedInlineFile or TransformedTexture || IsHashUnchecked(directive);
                 return await Generated(state, directive, output => WriteBytes(check, extras, item.Placement, item.Member, output, cancellationToken), checkHash: !exempt, cancellationToken);
@@ -1042,8 +1256,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         if (directive is TransformedTexture && !file.XxHash64.Equals(directive.XxHash64))
             Logger.LogInformation("Texture {Path} was recompressed to {Actual} where the list records {Expected}", directive.To, file.XxHash64, directive.XxHash64);
 
-        state.Pending.Add(file);
-        if (state.Pending.Count >= GeneratedFileWriter.StoreBatchSize) await FlushPending(state, cancellationToken);
+        var (waiting, waitingBytes) = state.AddPending(file);
+        if (waiting >= GeneratedFileWriter.StoreBatchSize || waitingBytes >= Writer.StoreByteLimit) await FlushPending(state, cancellationToken);
         return (file.XxHash3, file.Size, file.XxHash64);
     }
 

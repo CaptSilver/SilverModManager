@@ -97,7 +97,8 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
     /// The install job for <paramref name="modlist"/> into <paramref name="loadout"/>, built but not begun, so a test can
     /// begin it with its own body or subscribe to its progress first.
     /// </summary>
-    protected InstallModlistJob NewJob(Loadout.ReadOnly loadout, WabbajackModlistLibraryFile.ReadOnly modlist, InstallOptions options)
+    protected InstallModlistJob NewJob(Loadout.ReadOnly loadout, WabbajackModlistLibraryFile.ReadOnly modlist, InstallOptions options,
+        GeneratedFileWriter? writer = null, ByteBudget? budget = null, int? parallelism = null, CommitPolicy? commits = null)
     {
         var fileStore = ServiceProvider.GetRequiredService<IFileStore>();
         return new InstallModlistJob
@@ -111,11 +112,21 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
             Transforms = ServiceProvider.GetRequiredService<IDirectiveTransforms>(),
             PrefixResolver = ServiceProvider.GetRequiredService<IPrefixResolver>(),
             Paths = ServiceProvider.GetRequiredService<WabbajackPaths>(),
-            Writer = new GeneratedFileWriter(fileStore, ServiceProvider.GetRequiredService<TemporaryFileManager>()),
+            Writer = writer ?? new GeneratedFileWriter(fileStore, ServiceProvider.GetRequiredService<TemporaryFileManager>()),
             Openers = ServiceProvider.GetServices<INestedArchiveOpener>().ToArray(),
             Logger = ServiceProvider.GetRequiredService<ILogger<InstallModlistJob>>(),
             OrderImporter = ServiceProvider.GetRequiredService<ModOrderImporter>(),
+            MemoryBudget = budget,
+            Parallelism = parallelism,
+            Commits = commits ?? CommitPolicy.Default,
         };
+    }
+
+    /// <summary>Runs <paramref name="job"/> built by <see cref="NewJob"/> to its end, the way <see cref="Install"/> runs one it creates itself.</summary>
+    protected async Task<WabbajackModlistLoadoutGroup.ReadOnly> Run(InstallModlistJob job)
+    {
+        ServiceProvider.GetRequiredService<ModlistInstallRuns>().EnsureNoneInto(job.TargetLoadout);
+        return await ServiceProvider.GetRequiredService<SilverModManager.Sdk.Jobs.IJobMonitor>().Begin<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly>(job);
     }
 
     /// <summary>The extras folder recorded on the group, read fresh because it is recorded after the group is created.</summary>

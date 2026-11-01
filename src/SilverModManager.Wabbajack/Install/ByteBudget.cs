@@ -41,17 +41,11 @@ public sealed class ByteBudget(long capacity)
         }
 
         if (cancellationToken.CanBeCanceled)
-            waiter.Registration = cancellationToken.Register(static state => ((Waiter)state!).Owner?.Cancel((Waiter)state!), Link(waiter));
-        return new ValueTask<IDisposable>(WaitFor(waiter, cancellationToken));
+            waiter.Registration = cancellationToken.Register(() => Cancel(waiter));
+        return new ValueTask<IDisposable>(WaitFor(waiter));
     }
 
-    private Waiter Link(Waiter waiter)
-    {
-        waiter.Owner = this;
-        return waiter;
-    }
-
-    private static async Task<IDisposable> WaitFor(Waiter waiter, CancellationToken cancellationToken)
+    private static async Task<IDisposable> WaitFor(Waiter waiter)
     {
         try
         {
@@ -104,7 +98,6 @@ public sealed class ByteBudget(long capacity)
         public TaskCompletionSource<IDisposable> Source { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public LinkedListNode<Waiter>? Node { get; set; }
         public CancellationTokenRegistration Registration { get; set; }
-        public ByteBudget? Owner { get; set; }
     }
 
     private sealed class Reservation(ByteBudget budget, long bytes) : IDisposable

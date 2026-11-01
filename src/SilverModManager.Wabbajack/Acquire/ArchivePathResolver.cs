@@ -57,8 +57,8 @@ public sealed class ArchivePathResolver(
     });
     private readonly ConcurrentDictionary<EntityId, Lazy<Dictionary<string, LibraryArchiveFileEntry.ReadOnly>>> _indexes = new();
     private readonly ConcurrentDictionary<string, Lazy<Task<ResolvedMember>>> _stored = new();
-    private readonly ConcurrentDictionary<EntityId, Hash> _hashed = new();
-    private readonly List<(EntityId File, Hash Digest)> _unrecorded = [];
+    private readonly ConcurrentDictionary<EntityId, FileIdentity> _hashed = new();
+    private readonly List<(EntityId File, FileIdentity XxHash64)> _unrecorded = [];
     private readonly SemaphoreSlim _recordLock = new(1, 1);
     private readonly List<IDisposable> _pins = [];
     private bool _disposed;
@@ -141,16 +141,16 @@ public sealed class ArchivePathResolver(
     private async Task<FileIdentity?> HashOf(LibraryFile.ReadOnly file, CancellationToken cancellationToken)
     {
         if (file.XxHash64Identity() is { } recorded) return recorded;
-        if (_hashed.TryGetValue(file.Id, out var known)) return FileIdentity.XxHash64(known);
+        if (_hashed.TryGetValue(file.Id, out var known)) return known;
 
         if (await _digests.ComputeXxHash64(file, cancellationToken) is not { } computed) return null;
-        if (!computed.NeedsRecording) return FileIdentity.XxHash64(computed.Hash);
-        if (!_hashed.TryAdd(file.Id, computed.Hash)) return FileIdentity.XxHash64(computed.Hash);
+        if (!computed.NeedsRecording) return computed.XxHash64;
+        if (!_hashed.TryAdd(file.Id, computed.XxHash64)) return computed.XxHash64;
 
-        List<(EntityId, Hash)>? batch = null;
+        List<(EntityId, FileIdentity)>? batch = null;
         lock (_unrecorded)
         {
-            _unrecorded.Add((file.Id, computed.Hash));
+            _unrecorded.Add((file.Id, computed.XxHash64));
             if (_unrecorded.Count >= RecordBatchSize)
             {
                 batch = [.. _unrecorded];
@@ -158,10 +158,10 @@ public sealed class ArchivePathResolver(
             }
         }
         if (batch is not null) await Record(batch);
-        return FileIdentity.XxHash64(computed.Hash);
+        return computed.XxHash64;
     }
 
-    private async Task Record(IReadOnlyCollection<(EntityId, Hash)> batch)
+    private async Task Record(IReadOnlyCollection<(EntityId, FileIdentity)> batch)
     {
         // One writer at a time; the commits are what the loadout reacts to, and they are few.
         await _recordLock.WaitAsync();
@@ -178,13 +178,13 @@ public sealed class ArchivePathResolver(
     /// <summary>Writes the hashes computed for library files that lacked one to the library, in one commit.</summary>
     public async Task FlushDigests(CancellationToken cancellationToken)
     {
-        List<(EntityId, Hash)> batch;
+        cancellationToken.ThrowIfCancellationRequested();
+        List<(EntityId, FileIdentity)> batch;
         lock (_unrecorded)
         {
             batch = [.. _unrecorded];
             _unrecorded.Clear();
         }
-        cancellationToken.ThrowIfCancellationRequested();
         await Record(batch);
     }
 

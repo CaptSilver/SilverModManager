@@ -6,10 +6,16 @@ namespace SilverModManager.Wabbajack.Format;
 /// </summary>
 public static class WriteOrder
 {
+    /// <summary>The kind that builds archives from loose files.</summary>
+    public const int Archive = 1;
+
+    /// <summary>The kind that joins installed files and patches the result; the last, since it reads what the others wrote.</summary>
+    public const int Merge = 2;
+
     public static int Of(Directive directive) => directive switch
     {
-        CreateBsa => 1,
-        MergedPatch => 2,
+        CreateBsa => Archive,
+        MergedPatch => Merge,
         _ => 0,
     };
 }

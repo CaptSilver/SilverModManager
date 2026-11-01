@@ -42,6 +42,9 @@ public sealed class GeneratedFileWriter(IFileStore store, TemporaryFileManager t
     /// <summary>How many files go to the file store in one call.</summary>
     public const int StoreBatchSize = 200;
 
+    /// <summary>How many bytes of generated files may wait in temp files before the job hands them to the file store.</summary>
+    public long StoreByteLimit { get; init; } = 256L * 1024 * 1024;
+
     public async Task<GeneratedFile> Generate(Func<Stream, Task> produce, CancellationToken cancellationToken)
     {
         var temporary = temporaryFiles.CreateFile();
