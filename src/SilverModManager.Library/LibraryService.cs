@@ -264,7 +264,7 @@ public sealed class LibraryService : ILibraryService
             {
                 var (loadoutId, items) = kv;
                 var groupIds = items.Select(x => x.linkedItem.AsLoadoutItemGroup().LoadoutItemGroupId).ToArray();
-                await _loadoutManager.ReplaceItems(loadoutId, groupIds, newItem);
+                await _loadoutManager.ReplaceItems(loadoutId, groupIds, newItem, options.KeepPlace);
             }
         }
         catch

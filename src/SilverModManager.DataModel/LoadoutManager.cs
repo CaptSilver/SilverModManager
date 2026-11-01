@@ -828,12 +828,32 @@ internal partial class LoadoutManager : ILoadoutManager
         return CollectionGroup.Load(result.Db, result[remappedIds[collectionId]]);
     }
 
-    public async ValueTask ReplaceItems(LoadoutId loadoutId, LoadoutItemGroupId[] groupsToRemove, LibraryItem.ReadOnly libraryItemToInstall)
+    public async ValueTask ReplaceItems(LoadoutId loadoutId, LoadoutItemGroupId[] groupsToRemove, LibraryItem.ReadOnly libraryItemToInstall, bool keepPlace = false)
     {
         using var tx = _connection.BeginTransaction();
+
+        // Read before the groups are deleted: afterwards there is nothing left to ask.
+        var parent = default(Optional<LoadoutItemGroupId>);
+        var wasDisabled = false;
+        if (keepPlace)
+        {
+            var old = groupsToRemove
+                .Select(id => LoadoutItemGroup.Load(_connection.Db, id))
+                .Where(static group => group.IsValid())
+                .Select(static group => group.AsLoadoutItem())
+                .ToArray();
+            var firstParent = old.FirstOrDefault(static item => LoadoutItem.Parent.TryGetValue(item, out _));
+            if (firstParent.IsValid()) parent = LoadoutItemGroupId.From(firstParent.ParentId.Value);
+            wasDisabled = old.Length > 0 && old.All(static item => item.IsDisabled);
+        }
+
         var removed = DeleteGroups(tx, groupsToRemove);
         var installed = new List<LoadoutItemGroupId>();
-        await InstallItem(libraryItemToInstall, loadoutId, inputTx: tx, newGroups: installed);
+        await InstallItem(libraryItemToInstall, loadoutId, inputTx: tx, newGroups: installed, parent: parent);
+        if (wasDisabled)
+        {
+            foreach (var group in installed) tx.Add(group.Value, LoadoutItem.Disabled, Null.Instance);
+        }
 
         // One function per loadout, with both halves in its delta.
         foreach (var affected in removed.Keys.Append(loadoutId).Distinct())

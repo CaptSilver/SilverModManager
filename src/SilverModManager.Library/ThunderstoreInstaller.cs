@@ -6,7 +6,6 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Extensions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.MnemonicDB.Abstractions;
-using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.Networking.Thunderstore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
@@ -123,7 +122,6 @@ internal sealed class ThunderstoreInstaller(
         downloaded[root.Id] = root;
 
         // A loadout that already links the new version only loses the old one: replacing would install a second copy.
-        var linkedBefore = LibraryLinkedLoadoutItem.FindByLibraryItem(connection.Db, root).Select(static link => link.Id).ToHashSet();
         var alreadyThere = LibraryLinkedLoadoutItem.FindByLibraryItem(connection.Db, root).Select(static link => link.AsLoadoutItem().LoadoutId).ToHashSet();
         var result = LibraryItemReplacementResult.Success;
         try
@@ -140,19 +138,13 @@ internal sealed class ThunderstoreInstaller(
             result = LibraryItemReplacementResult.FailedUnknownReason;
         }
 
-        // The replace installs the new version as a group of its own, which starts enabled, so a version the user had
-        // switched off is switched off again afterwards.
-        var switchedOff = loadouts
-            .Where(id => alreadyThere.Contains(id) is false)
-            .Where(id => replacedLinks.Where(link => link.AsLoadoutItem().LoadoutId == id).All(static link => link.AsLoadoutItem().IsDisabled))
-            .ToHashSet();
-
+        // KeepPlace: the new version takes the old one's collection and on/off switch in every loadout, so a replace
+        // that stops half way has not moved anything the user had switched off.
         if (result == LibraryItemReplacementResult.Success)
         {
             result = await provider.GetRequiredService<ILibraryService>()
-                .ReplaceLinkedItemsInAllLoadouts(current, root, new ReplaceLibraryItemOptions { IgnoreReadOnlyCollections = true });
+                .ReplaceLinkedItemsInAllLoadouts(current, root, new ReplaceLibraryItemOptions { IgnoreReadOnlyCollections = true, KeepPlace = true });
         }
-        if (result == LibraryItemReplacementResult.Success) await SwitchOff(root, switchedOff, linkedBefore);
 
         return ModUpdateOutcome.Nothing with
         {
@@ -172,19 +164,8 @@ internal sealed class ThunderstoreInstaller(
         => LibraryLinkedLoadoutItem.FindByLibraryItem(connection.Db, item)
             .Where(static link => link.AsLoadoutItem().Parent.ToCollectionGroup().IsReadOnly is false);
 
-    private async Task SwitchOff(LibraryItem.ReadOnly item, HashSet<LoadoutId> loadouts, HashSet<EntityId> linkedBefore)
-    {
-        using var tx = connection.BeginTransaction();
-        foreach (var link in LibraryLinkedLoadoutItem.FindByLibraryItem(connection.Db, item))
-        {
-            if (linkedBefore.Contains(link.Id) || loadouts.Contains(link.AsLoadoutItem().LoadoutId) is false) continue;
-            tx.Add(link.Id, LoadoutItem.Disabled, Null.Instance);
-        }
-        await tx.Commit();
-    }
-
     private IThunderstoreGame GameOfCommunity(string community)
-        => ThunderstoreGame.ForCommunity(games, community) ?? throw new InvalidOperationException(ThunderstoreGame.NoGameFor(community));
+        => ThunderstoreGame.ForCommunity(games, community) ?? throw new NoThunderstoreGameException(community);
 
     // A modpack lists the exact versions it was tested with; anything else follows the newest ones.
     private async Task<DependencyPolicy> PolicyFor(ThunderstoreVersionRef root, IThunderstoreGame game, CancellationToken cancellationToken)

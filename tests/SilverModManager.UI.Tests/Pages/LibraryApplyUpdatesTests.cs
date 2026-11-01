@@ -42,6 +42,7 @@ public class LibraryApplyUpdatesTests(IServiceProvider provider) : AUiTest(provi
         public LibraryViewModel Vm { get; set; } = null!;
         public required ILibraryService Library { get; init; }
         public required IWindowNotificationService Toasts { get; init; }
+        public required IErrorPresenter Errors { get; init; }
         public required Loadout.ReadOnly Loadout { get; init; }
         public List<string> DialogTitles { get; } = [];
         public Dictionary<string, ButtonDefinitionId> Answers { get; } = [];
@@ -66,10 +67,12 @@ public class LibraryApplyUpdatesTests(IServiceProvider provider) : AUiTest(provi
             .Returns(Array.Empty<(CollectionGroup.ReadOnly collection, LibraryLinkedLoadoutItem.ReadOnly linkedItem)>());
         var toasts = Substitute.For<IWindowNotificationService>();
         var windows = Substitute.For<IWindowManager>();
+        var errors = Substitute.For<IErrorPresenter>();
         var harness = new Harness
         {
             Library = library,
             Toasts = toasts,
+            Errors = errors,
             Loadout = loadout,
         };
         windows.ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>()).Returns(call =>
@@ -80,7 +83,7 @@ public class LibraryApplyUpdatesTests(IServiceProvider provider) : AUiTest(provi
         });
         harness.Vm = await OnUi(() => Task.FromResult(new LibraryViewModel(
             windows,
-            new ServicesWithSources(Provider, sources).With(library).With(toasts),
+            new ServicesWithSources(Provider, sources).With(library).With(toasts).With(errors),
             Provider.GetRequiredService<IGameDomainToGameIdMappingCache>(),
             loadout.LoadoutId)));
         _activation = await OnUi(() => Task.FromResult(harness.Vm.Activator.Activate()));
@@ -273,6 +276,52 @@ public class LibraryApplyUpdatesTests(IServiceProvider provider) : AUiTest(provi
             a.Requests[1].MayOpenBrowser.Should().BeTrue();
         });
         harness.TitlesOf(Language.Library_Update_SomeDownloadsFailed_Title).Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task ARefusal_IsShownWithItsOwnText_AndOffersNoRetry()
+    {
+        var a = new FakeModSource("a");
+        var harness = await CreateHarness(a);
+        var update = new FakeModUpdate(1, Source: "a");
+        var refusal = new ThunderstorePackageInDisabledGroupException("BepInExPack", "Off");
+        a.Outcome = _ => ModUpdateOutcome.Nothing with { DownloadFailures = [new ModUpdateFailure(update, "mod-3.0.zip", refusal)] };
+
+        Send(harness, update, replace: true);
+
+        await Eventually(() => harness.Errors.Received(1).Report(refusal, Language.Library_Update_Activity));
+        harness.TitlesOf(Language.Library_Update_SomeDownloadsFailed_Title).Should().BeEmpty();
+        a.Requests.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task ARefusalNextToADownloadFailure_StillOffersTheRetryForTheDownload()
+    {
+        var a = new FakeModSource("a");
+        var harness = await CreateHarness(a);
+        var refused = new FakeModUpdate(1, Source: "a");
+        var offline = new FakeModUpdate(2, Source: "a");
+        var refusal = new ThunderstorePackageInDisabledGroupException("BepInExPack", "Off");
+        a.Outcome = request => request.Updates.Contains(refused)
+            ? ModUpdateOutcome.Nothing with
+            {
+                DownloadFailures =
+                [
+                    new ModUpdateFailure(refused, "refused-3.0.zip", refusal),
+                    new ModUpdateFailure(offline, "offline-3.0.zip", new HttpRequestException("offline")),
+                ],
+            }
+            : ModUpdateOutcome.Nothing;
+        harness.Answers[Language.Library_Update_SomeDownloadsFailed_Title] = ButtonDefinitionId.Accept;
+
+        Send(harness, refused, replace: true);
+
+        await Eventually(() =>
+        {
+            a.Requests.Should().HaveCount(2);
+            a.Requests[1].Updates.Should().Equal(offline);
+        });
+        await harness.Errors.Received(1).Report(refusal, Language.Library_Update_Activity);
     }
 
     [Fact]

@@ -165,6 +165,12 @@ public struct ReplaceLibraryItemOptions
     /// Skips items in ReadOnly collections such as collections from Nexus Mods.
     /// </summary>
     public bool IgnoreReadOnlyCollections { get; set; }
+
+    /// <summary>
+    /// Installs the new item in the collection the old one was in, and switched off when the old one was. Without
+    /// it the new item goes into the loadout's default collection, enabled.
+    /// </summary>
+    public bool KeepPlace { get; set; }
 }
 
 /// <summary>

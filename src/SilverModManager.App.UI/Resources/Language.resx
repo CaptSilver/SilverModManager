@@ -1270,6 +1270,9 @@ Use it for {0}?</value>
     <data name="LibraryDestination_ChangeActivity" xml:space="preserve">
         <value>changing which game an item is for</value>
     </data>
+    <data name="Library_Update_Activity" xml:space="preserve">
+        <value>updating mods</value>
+    </data>
     <data name="Library_DeleteItem_Text" xml:space="preserve">
         <value>Delete</value>
     </data>

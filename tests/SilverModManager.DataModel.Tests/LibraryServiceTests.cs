@@ -8,8 +8,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using SilverModManager.Abstractions.Downloads;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
 using SilverModManager.Sdk;
@@ -222,6 +224,111 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
 
         loadoutsWithNewItem2.Should().ContainSingle()
             .Which.loadout.LoadoutId.Should().Be(loadout1.LoadoutId);
+    }
+
+    private async Task<(LibraryItem.ReadOnly Old, LibraryItem.ReadOnly New)> TwoLibraryItems()
+    {
+        var archive = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine("nested_archive.zip");
+        var other = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine("nested_game_archive.zip");
+        var old = (await _libraryService.AddLocalFile(archive, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
+        var replacement = (await _libraryService.AddLocalFile(other, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
+        return (old, replacement);
+    }
+
+    private async Task SetDisabled(EntityId id)
+    {
+        using var tx = _connection.BeginTransaction();
+        tx.Add(id, LoadoutItem.Disabled, Null.Instance);
+        await tx.Commit();
+    }
+
+    private LibraryLinkedLoadoutItem.ReadOnly LinkOf(LibraryItem.ReadOnly item)
+        => LibraryLinkedLoadoutItem.FindByLibraryItem(_connection.Db, item).Single();
+
+    [Fact]
+    public async Task ReplaceLinkedItemsInAllLoadouts_WithoutKeepPlace_InstallsIntoTheDefaultCollection()
+    {
+        var loadout = await CreateTestLoadout("Loadout");
+        await CreateCollectionInLoadout(loadout, "Default");
+        var collection = await CreateCollectionInLoadout(loadout, "Mine");
+        var (old, replacement) = await TwoLibraryItems();
+        await LoadoutManager.InstallItem(old, loadout.LoadoutId, parent: collection.AsLoadoutItemGroup().LoadoutItemGroupId);
+
+        await _libraryService.ReplaceLinkedItemsInAllLoadouts(old, replacement, new ReplaceLibraryItemOptions());
+
+        LinkOf(replacement).AsLoadoutItem().ParentId.Should().NotBe(collection.AsLoadoutItemGroup().LoadoutItemGroupId);
+    }
+
+    [Fact]
+    public async Task ReplaceLinkedItemsInAllLoadouts_WithKeepPlace_InstallsIntoTheCollectionTheOldOneWasIn()
+    {
+        var loadout = await CreateTestLoadout("Loadout");
+        await CreateCollectionInLoadout(loadout, "Default");
+        var collection = await CreateCollectionInLoadout(loadout, "Mine");
+        var (old, replacement) = await TwoLibraryItems();
+        await LoadoutManager.InstallItem(old, loadout.LoadoutId, parent: collection.AsLoadoutItemGroup().LoadoutItemGroupId);
+
+        var result = await _libraryService.ReplaceLinkedItemsInAllLoadouts(old, replacement, new ReplaceLibraryItemOptions { KeepPlace = true });
+
+        result.Should().Be(LibraryItemReplacementResult.Success);
+        LinkOf(replacement).AsLoadoutItem().ParentId.Should().Be(collection.AsLoadoutItemGroup().LoadoutItemGroupId);
+    }
+
+    [Fact]
+    public async Task ReplaceLinkedItemsInAllLoadouts_WithKeepPlace_KeepsADisabledLinkDisabled()
+    {
+        var loadout = await CreateTestLoadout("Loadout");
+        await CreateCollectionInLoadout(loadout, "Default");
+        var collection = await CreateCollectionInLoadout(loadout, "Mine");
+        var (old, replacement) = await TwoLibraryItems();
+        await LoadoutManager.InstallItem(old, loadout.LoadoutId, parent: collection.AsLoadoutItemGroup().LoadoutItemGroupId);
+        await SetDisabled(LinkOf(old).Id);
+
+        await _libraryService.ReplaceLinkedItemsInAllLoadouts(old, replacement, new ReplaceLibraryItemOptions { KeepPlace = true });
+
+        LinkOf(replacement).AsLoadoutItem().IsDisabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ReplaceLinkedItemsInAllLoadouts_WithKeepPlace_LeavesAnEnabledLinkInADisabledCollectionDisabled()
+    {
+        var loadout = await CreateTestLoadout("Loadout");
+        await CreateCollectionInLoadout(loadout, "Default");
+        var collection = await CreateCollectionInLoadout(loadout, "Off");
+        var (old, replacement) = await TwoLibraryItems();
+        await LoadoutManager.InstallItem(old, loadout.LoadoutId, parent: collection.AsLoadoutItemGroup().LoadoutItemGroupId);
+        await SetDisabled(collection.Id);
+
+        await _libraryService.ReplaceLinkedItemsInAllLoadouts(old, replacement, new ReplaceLibraryItemOptions { KeepPlace = true });
+
+        var link = LinkOf(replacement).AsLoadoutItem();
+        link.ParentId.Should().Be(collection.AsLoadoutItemGroup().LoadoutItemGroupId);
+        link.IsDisabled.Should().BeFalse("only its collection was switched off");
+        link.IsEnabled().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ReplaceLinkedItemsInAllLoadouts_WithKeepPlace_KeepsEachLoadoutsOwnPlace()
+    {
+        var first = await CreateTestLoadout("First");
+        var second = await CreateTestLoadout("Second");
+        await CreateCollectionInLoadout(first, "Default");
+        await CreateCollectionInLoadout(second, "Default");
+        var firstCollection = await CreateCollectionInLoadout(first, "A");
+        var secondCollection = await CreateCollectionInLoadout(second, "B");
+        var (old, replacement) = await TwoLibraryItems();
+        await LoadoutManager.InstallItem(old, first.LoadoutId, parent: firstCollection.AsLoadoutItemGroup().LoadoutItemGroupId);
+        await LoadoutManager.InstallItem(old, second.LoadoutId, parent: secondCollection.AsLoadoutItemGroup().LoadoutItemGroupId);
+        var firstLink = LibraryLinkedLoadoutItem.FindByLibraryItem(_connection.Db, old).Single(l => l.AsLoadoutItem().LoadoutId == first.LoadoutId);
+        await SetDisabled(firstLink.Id);
+
+        await _libraryService.ReplaceLinkedItemsInAllLoadouts(old, replacement, new ReplaceLibraryItemOptions { KeepPlace = true });
+
+        var links = LibraryLinkedLoadoutItem.FindByLibraryItem(_connection.Db, replacement).ToDictionary(l => l.AsLoadoutItem().LoadoutId);
+        links[first.LoadoutId].AsLoadoutItem().ParentId.Should().Be(firstCollection.AsLoadoutItemGroup().LoadoutItemGroupId);
+        links[first.LoadoutId].AsLoadoutItem().IsDisabled.Should().BeTrue();
+        links[second.LoadoutId].AsLoadoutItem().ParentId.Should().Be(secondCollection.AsLoadoutItemGroup().LoadoutItemGroupId);
+        links[second.LoadoutId].AsLoadoutItem().IsDisabled.Should().BeFalse();
     }
 
     [Fact]

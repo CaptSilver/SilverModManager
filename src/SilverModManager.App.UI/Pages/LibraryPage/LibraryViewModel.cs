@@ -392,8 +392,15 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
 
         // Some (but not all) downloads failed, so show relevant dialog.
         var failures = outcomes.SelectMany(outcome => outcome.DownloadFailures).ToArray();
-        if (failures.Length > 0)
-            await ShowSomeDownloadsFailedDialog(failures, replace, mayOpenBrowser, cancellationToken);
+
+        // A refusal says what to do in its own words, and asking again would be refused the same way, so it gets a
+        // plain dialog and no Retry.
+        foreach (var refusal in failures.Where(static failure => failure.Error is UserFacingException))
+            await _serviceProvider.GetRequiredService<IErrorPresenter>().Report(refusal.Error, Language.Library_Update_Activity);
+
+        var retryable = failures.Where(static failure => failure.Error is not UserFacingException).ToArray();
+        if (retryable.Length > 0)
+            await ShowSomeDownloadsFailedDialog(retryable, replace, mayOpenBrowser, cancellationToken);
 
         // Some installs failed, ask if they want to keep old files
         if (replacements.Any(replacement => replacement.Result != LibraryItemReplacementResult.Success))

@@ -2314,6 +2314,15 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to updating mods.
+        /// </summary>
+        public static string Library_Update_Activity {
+            get {
+                return ResourceManager.GetString("Library_Update_Activity", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Delete.
         /// </summary>
         public static string Library_DeleteItem_Text {

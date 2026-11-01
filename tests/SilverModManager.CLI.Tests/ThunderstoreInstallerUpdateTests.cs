@@ -123,6 +123,51 @@ public class ThunderstoreInstallerUpdateTests(ITestOutputHelper helper) : AIsola
     }
 
     [Fact]
+    public async Task UpdatingKeepsTheVersionInTheCollectionItWasIn()
+    {
+        var loadout = await CreateLoadout();
+        var mine = await AddCollection(loadout, "Mine");
+        var old = await Connection.AddThunderstoreLibraryPackage("4.1.0");
+        await LinkIntoCollection(loadout, old, parent: mine);
+
+        await Installer.UpdateAsync(Newest, old.AsLibraryItem(), CancellationToken.None);
+
+        LinkItem(loadout, "Zehs-REPOLib-4.2.0.zip").ParentId.Should().Be(mine);
+    }
+
+    [Fact]
+    public async Task UpdatingAnEnabledVersionInADisabledCollectionLeavesItDisabledInThatCollection()
+    {
+        var loadout = await CreateLoadout();
+        var off = await AddCollection(loadout, "Off", enabled: false);
+        var old = await Connection.AddThunderstoreLibraryPackage("4.1.0");
+        await LinkIntoCollection(loadout, old, parent: off);
+
+        await Installer.UpdateAsync(Newest, old.AsLibraryItem(), CancellationToken.None);
+
+        var link = LinkItem(loadout, "Zehs-REPOLib-4.2.0.zip");
+        link.ParentId.Should().Be(off);
+        link.IsEnabled().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task UpdatingKeepsEachLoadoutsOwnSwitchAndCollection()
+    {
+        var switchedOff = await CreateLoadout();
+        var switchedOn = await CreateLoadout();
+        var extra = await AddCollection(switchedOff, "Extra");
+        var old = await Connection.AddThunderstoreLibraryPackage("4.1.0");
+        await LinkIntoCollection(switchedOff, old, enabled: false, parent: extra);
+        await LinkIntoCollection(switchedOn, old);
+
+        await Installer.UpdateAsync(Newest, old.AsLibraryItem(), CancellationToken.None);
+
+        LinkItem(switchedOff, "Zehs-REPOLib-4.2.0.zip").IsEnabled().Should().BeFalse();
+        LinkItem(switchedOff, "Zehs-REPOLib-4.2.0.zip").ParentId.Should().Be(extra);
+        LinkItem(switchedOn, "Zehs-REPOLib-4.2.0.zip").IsEnabled().Should().BeTrue();
+    }
+
+    [Fact]
     public async Task UpdatingAnItemNoLoadoutLinksOnlyAddsTheNewVersionToTheLibrary()
     {
         var loadout = await CreateLoadout();
@@ -169,9 +214,9 @@ public class ThunderstoreInstallerUpdateTests(ITestOutputHelper helper) : AIsola
     }
 
     // Where an install puts a mod: a group under the loadout's own collection, which a replace needs to find.
-    private async Task LinkIntoCollection(Loadout.ReadOnly loadout, LibraryFile.ReadOnly file, bool enabled = true)
+    private async Task LinkIntoCollection(Loadout.ReadOnly loadout, LibraryFile.ReadOnly file, bool enabled = true, LoadoutItemGroupId? parent = null)
     {
-        var collection = Loadout.Load(Connection.Db, loadout.LoadoutId).MutableCollections().First().CollectionId;
+        var collection = parent ?? Loadout.Load(Connection.Db, loadout.LoadoutId).MutableCollections().First().CollectionId;
         using var tx = Connection.BeginTransaction();
         var group = new LoadoutItemGroup.New(tx, out var id)
         {
@@ -187,6 +232,28 @@ public class ThunderstoreInstallerUpdateTests(ITestOutputHelper helper) : AIsola
         _ = new LibraryLinkedLoadoutItem.New(tx, id) { LibraryItemId = file.Id, LoadoutItemGroup = group };
         await tx.Commit();
     }
+
+    // A collection of the user's own next to the default one, optionally switched off.
+    private async Task<LoadoutItemGroupId> AddCollection(Loadout.ReadOnly loadout, string name, bool enabled = true)
+    {
+        using var tx = Connection.BeginTransaction();
+        var collection = new CollectionGroup.New(tx, out var id)
+        {
+            IsReadOnly = false,
+            LoadoutItemGroup = new LoadoutItemGroup.New(tx, id)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, id) { Name = name, LoadoutId = loadout.LoadoutId, IsDisabled = !enabled },
+            },
+        };
+        var result = await tx.Commit();
+        return result.Remap(collection).AsLoadoutItemGroup().LoadoutItemGroupId;
+    }
+
+    private LoadoutItem.ReadOnly LinkItem(Loadout.ReadOnly loadout, string itemName)
+        => LibraryLinkedLoadoutItem.All(Connection.Db)
+            .Single(link => link.AsLoadoutItem().LoadoutId == loadout.LoadoutId && link.LibraryItem.Name == itemName)
+            .AsLoadoutItem();
 
     private async Task LinkInsideDisabledGroup(Loadout.ReadOnly loadout, LibraryFile.ReadOnly file)
     {

@@ -148,9 +148,11 @@ public interface ILoadoutManager
     GroupOrderResult SetGroupOrder(LoadoutId loadoutId, IReadOnlyList<LoadoutItemGroupId> winnerToLoser, ITransaction tx, IReadOnlySet<LoadoutItemGroupId>? newGroups = null);
 
     /// <summary>
-    /// Removes all groups and installs the new library item.
+    /// Removes all groups and installs the new library item. With <paramref name="keepPlace"/> the new group goes
+    /// under the parent of the first group removed and starts disabled when every removed group was; otherwise it goes
+    /// into the loadout's default collection, enabled.
     /// </summary>
-    ValueTask ReplaceItems(LoadoutId loadoutId, LoadoutItemGroupId[] groupsToRemove, LibraryItem.ReadOnly libraryItemToInstall);
+    ValueTask ReplaceItems(LoadoutId loadoutId, LoadoutItemGroupId[] groupsToRemove, LibraryItem.ReadOnly libraryItemToInstall, bool keepPlace = false);
 
     /// <summary>
     /// Resolves file conflicts by making items in <paramref name="winnerIds"/> win over <paramref name="loserId"/>.

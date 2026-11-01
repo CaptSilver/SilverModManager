@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Sdk.Games;
 
@@ -43,9 +44,16 @@ public static class ThunderstoreGame
     /// </summary>
     public static IThunderstoreGame? ForCommunity(IEnumerable<IGameData> games, string community)
         => games.Select(For).FirstOrDefault(game => game?.ThunderstoreCommunity == community);
+}
 
-    /// <summary>
-    /// The text for the failure when no game serves <paramref name="community"/>.
-    /// </summary>
-    public static string NoGameFor(string community) => $"No game installs mods from the Thunderstore community '{community}'.";
+/// <summary>
+/// A Thunderstore package belongs to a community that no game installed here takes its mods from, so there is no
+/// game to download it for.
+/// </summary>
+[PublicAPI]
+public sealed class NoThunderstoreGameException(string community)
+    : UserFacingException($"No game installs mods from the Thunderstore community '{community}'.")
+{
+    /// <inheritdoc />
+    public override string Title => "The update was not applied";
 }

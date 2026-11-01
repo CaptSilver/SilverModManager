@@ -58,7 +58,6 @@ public class UserFacingExceptionGuardTests
         ["SilverModManager.Games.Bethesda.Loot.Sorting.PluginGraphValidationException"] = Loot,
         ["SilverModManager.Games.Bethesda.Loot.Sorting.SortingException"] = Loot,
         ["SilverModManager.Games.Bethesda.Loot.Sorting.UndefinedGroupException"] = Loot,
-        ["SilverModManager.Abstractions.Library.ThunderstorePackageInDisabledGroupException"] = "The Thunderstore verbs catch it and word the refusal themselves.",
         ["SilverModManager.Abstractions.Loadouts.Synchronizers.NeedsIngestException"] = "Declared by the synchronizer API; nothing throws it.",
         ["SilverModManager.App.GarbageCollection.Errors.UnknownFileException"] = "Raised when the collector is asked to count a file it does not know, which its own documentation calls a bug in the core application.",
         ["SilverModManager.Abstractions.Games.Merge.MergeInputException"] = "A contributor the merge strategy cannot read; MergeEngine catches it and reports that path as not mergeable with the message.",

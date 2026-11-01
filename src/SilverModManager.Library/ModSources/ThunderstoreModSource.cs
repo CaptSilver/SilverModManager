@@ -124,10 +124,16 @@ internal sealed class ThunderstoreModSource(
 
         foreach (var package in request.Updates.OfType<ThunderstoreModUpdate>())
         {
+            // Apply swallows the user's cancellation, so the loops stop here instead of entering each remaining
+            // download with a token that is already cancelled.
+            if (cancellationToken.IsCancellationRequested) break;
+
             if (request.Replace)
             {
                 foreach (var update in package.Updates)
                 {
+                    if (cancellationToken.IsCancellationRequested) break;
+
                     await Apply(package, [update], async () =>
                     {
                         var current = LibraryItem.Load(connection.Db, update.LibraryFileId);
@@ -156,7 +162,7 @@ internal sealed class ThunderstoreModSource(
     private async Task<IReadOnlyList<LibraryFile.ReadOnly>> AddToLibrary(ThunderstoreModUpdate package, CancellationToken cancellationToken)
     {
         var community = ThunderstoreLibraryFile.Load(connection.Db, package.Updates[0].LibraryFileId).Community;
-        var game = ThunderstoreGame.ForCommunity(games, community) ?? throw new InvalidOperationException(ThunderstoreGame.NoGameFor(community));
+        var game = ThunderstoreGame.ForCommunity(games, community) ?? throw new NoThunderstoreGameException(community);
 
         var request = new ThunderstoreInstallRequest(package.Newest, game, WithDependencies: true, DependencyPolicy.Latest, ExpectedSha256: null, new Dictionary<ThunderstorePackageRef, ThunderstoreVersionNumber>());
         return await thunderstoreSource.AddAsync(request, cancellationToken);

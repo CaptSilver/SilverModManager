@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Extensions;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -90,7 +91,11 @@ public static class ThunderstoreLoadoutPackages
 /// enable on its own.
 /// </summary>
 public sealed class ThunderstorePackageInDisabledGroupException(string package, string group)
-    : Exception($"{package} is in the loadout, but '{group}', the group holding it, is disabled. Enable '{group}' and install again.");
+    : UserFacingException($"{package} is in the loadout, but '{group}', the group holding it, is disabled. Enable '{group}' and install again.")
+{
+    /// <inheritdoc />
+    public override string Title => "The package was not installed";
+}
 
 /// <summary>
 /// What <see cref="ThunderstoreLoadoutPackages.InstallOrEnable"/> did for one library item.

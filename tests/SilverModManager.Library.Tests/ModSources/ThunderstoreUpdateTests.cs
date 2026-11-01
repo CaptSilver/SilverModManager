@@ -307,6 +307,40 @@ public class ThunderstoreUpdateTests(IConnection connection)
     }
 
     [Fact]
+    public async Task CancellingStopsBeforeTheNextVersionIsUpdated()
+    {
+        var arranged = Arrange();
+        var older = await AddFile(arranged, "Pkg", "1.0.0");
+        var newer = await AddFile(arranged, "Pkg", "1.0.5");
+        arranged.Checker.Refresh(CatalogWith(arranged.Community, arranged.Team, ("Pkg", ["1.0.0", "1.0.5", "1.1.0"])));
+        var update = Latest(arranged.Source.ObserveUpdate([older.AsLibraryItem(), newer.AsLibraryItem()])).Value;
+        using var cancellation = new CancellationTokenSource();
+        arranged.Installer.UpdateAsync(default, default, default).ReturnsForAnyArgs<ValueTask<ModUpdateOutcome>>(_ =>
+        {
+            cancellation.Cancel();
+            throw new OperationCanceledException(cancellation.Token);
+        });
+
+        var outcome = await arranged.Source.ApplyUpdates(new ModUpdateRequest([update], true, true), cancellation.Token);
+
+        await arranged.Installer.ReceivedWithAnyArgs(1).UpdateAsync(default, default, default);
+        outcome.DownloadFailures.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task CancellingKeepsTheOldVersionStopsBeforeTheDownload()
+    {
+        var (arranged, update, _) = await ArrangeUpdate();
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        var outcome = await arranged.Source.ApplyUpdates(new ModUpdateRequest([update], false, true), cancellation.Token);
+
+        await arranged.Adder.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        outcome.DownloadFailures.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task AFailedReplaceIsAFailureForThatUpdateAndTheRestStillApply()
     {
         var arranged = Arrange();
@@ -404,7 +438,8 @@ public class ThunderstoreUpdateTests(IConnection connection)
 
         var outcome = await source.ApplyUpdates(new ModUpdateRequest([update], false, true), CancellationToken.None);
 
-        outcome.DownloadFailures.Should().ContainSingle().Which.Error.Message.Should().Contain(arranged.Community);
+        var error = outcome.DownloadFailures.Should().ContainSingle().Which.Error;
+        error.Should().BeOfType<NoThunderstoreGameException>().Which.Message.Should().Contain(arranged.Community);
     }
 
     [Fact]
@@ -416,7 +451,6 @@ public class ThunderstoreUpdateTests(IConnection connection)
 
         ThunderstoreGame.ForCommunity(games, "mine").Should().BeSameAs(mine);
         ThunderstoreGame.ForCommunity(games, "nobody").Should().BeNull();
-        ThunderstoreGame.NoGameFor("nobody").Should().Contain("nobody");
     }
 
     [Fact]
