@@ -83,6 +83,14 @@ public static class GameFolderSimpleGames
         Targets = [new SimpleInstallTarget { Destination = RelativePath.Empty, KnownValidFileExtensions = [new Extension(extension)] }],
     };
 
+    // Vortex's stop patterns: the folder holding one of these is the mod's root, and an archive with none goes in unchanged.
+    private static readonly string[] WolcenFolders = ["levels", "Lib", "Loot", "Objects", "Umbra"];
+
+    private static SimpleInstallRules StopFolders(string[] folders) => FolderNamed(folders) with { InstallAsIs = true };
+
+    // A Unity Mod Manager mod has an Info.json and is one folder; anything else is laid out like the Mods folder.
+    private static readonly SimpleInstallRules UnityModManagerMod = InOwnFolderByMarker("Info.json") with { InstallAsIs = true };
+
     /// <summary>From Mod Organizer 2.</summary>
     public static readonly SimpleGameDefinition DarkestDungeon = new()
     {
@@ -494,6 +502,94 @@ public static class GameFolderSimpleGames
         Install = AsIs,
     };
 
+    /// <summary>From Vortex.</summary>
+    public static readonly SimpleGameDefinition ShadowrunReturns = new()
+    {
+        GameId = GameId.From("Simple.ShadowrunReturns"),
+        DisplayName = "Shadowrun Returns",
+        NexusModsGameId = NexusModsGameId.From(102),
+        Stores = new StoreIdentifiers(GameId.From("Simple.ShadowrunReturns")) { SteamAppIds = [234650] },
+        Executable = "Shadowrun.exe",
+        NativeLinuxExecutable = (RelativePath)"Shadowrun",
+        ModRoot = new ModLocation(ModLocationRoot.GameFolder, "Shadowrun_Data/StreamingAssets/ContentPacks"),
+        Install = AsIs,
+    };
+
+    /// <remarks>
+    /// From Vortex. Vortex also merges the XML files of several mods into one; that is not encoded.
+    /// </remarks>
+    public static readonly SimpleGameDefinition WolcenLordsOfMayhem = new()
+    {
+        GameId = GameId.From("Simple.WolcenLordsOfMayhem"),
+        DisplayName = "Wolcen: Lords of Mayhem",
+        NexusModsGameId = NexusModsGameId.From(3169),
+        Stores = new StoreIdentifiers(GameId.From("Simple.WolcenLordsOfMayhem")) { SteamAppIds = [424370] },
+        Executable = "win_x64/Wolcen.exe",
+        ModRoot = new ModLocation(ModLocationRoot.GameFolder, "Game"),
+        Install = StopFolders(WolcenFolders),
+    };
+
+    /// <remarks>
+    /// From Vortex, which treats it as a Unity Mod Manager game. A mod with an Info.json gets a folder of its own, as for
+    /// Dawn of Man; any other archive goes into Mods unchanged, as Vortex does. Unity Mod Manager itself must be installed.
+    /// </remarks>
+    public static readonly SimpleGameDefinition GardenPaws = new()
+    {
+        GameId = GameId.From("Simple.GardenPaws"),
+        DisplayName = "Garden Paws",
+        NexusModsGameId = NexusModsGameId.From(2680),
+        Stores = new StoreIdentifiers(GameId.From("Simple.GardenPaws")) { SteamAppIds = [840010] },
+        Executable = "GardenPaws.exe",
+        ModRoot = new ModLocation(ModLocationRoot.GameFolder, "Mods"),
+        Install = UnityModManagerMod,
+    };
+
+    /// <remarks>
+    /// From Vortex, which treats it as a Unity Mod Manager game. A mod with an Info.json gets a folder of its own, as for
+    /// Dawn of Man; any other archive goes into Mods unchanged, as Vortex does. Unity Mod Manager itself must be installed.
+    /// </remarks>
+    public static readonly SimpleGameDefinition OxygenNotIncluded = new()
+    {
+        GameId = GameId.From("Simple.OxygenNotIncluded"),
+        DisplayName = "Oxygen Not Included",
+        NexusModsGameId = NexusModsGameId.From(2413),
+        Stores = new StoreIdentifiers(GameId.From("Simple.OxygenNotIncluded")) { SteamAppIds = [457140] },
+        Executable = "OxygenNotIncluded.exe",
+        NativeLinuxExecutable = (RelativePath)"OxygenNotIncluded",
+        ModRoot = new ModLocation(ModLocationRoot.GameFolder, "Mods"),
+        Install = UnityModManagerMod,
+    };
+
+    /// <remarks>
+    /// From Vortex, which treats it as a Unity Mod Manager game. A mod with an Info.json gets a folder of its own, as for
+    /// Dawn of Man; any other archive goes into Mods unchanged, as Vortex does. Unity Mod Manager itself must be installed.
+    /// </remarks>
+    public static readonly SimpleGameDefinition PathfinderKingmaker = new()
+    {
+        GameId = GameId.From("Simple.PathfinderKingmaker"),
+        DisplayName = "Pathfinder: Kingmaker",
+        NexusModsGameId = NexusModsGameId.From(2607),
+        Stores = new StoreIdentifiers(GameId.From("Simple.PathfinderKingmaker")) { SteamAppIds = [640820] },
+        Executable = "Kingmaker.exe",
+        ModRoot = new ModLocation(ModLocationRoot.GameFolder, "Mods"),
+        Install = UnityModManagerMod,
+    };
+
+    /// <remarks>
+    /// From Vortex, which treats it as a Unity Mod Manager game. A mod with an Info.json gets a folder of its own, as for
+    /// Dawn of Man; any other archive goes into Mods unchanged, as Vortex does. Unity Mod Manager itself must be installed.
+    /// </remarks>
+    public static readonly SimpleGameDefinition PathfinderWrathOfTheRighteous = new()
+    {
+        GameId = GameId.From("Simple.PathfinderWrathOfTheRighteous"),
+        DisplayName = "Pathfinder: Wrath of the Righteous",
+        NexusModsGameId = NexusModsGameId.From(3662),
+        Stores = new StoreIdentifiers(GameId.From("Simple.PathfinderWrathOfTheRighteous")) { SteamAppIds = [1184370], GOGProductIds = [1207187357] },
+        Executable = "Wrath.exe",
+        ModRoot = new ModLocation(ModLocationRoot.GameFolder, "Mods"),
+        Install = UnityModManagerMod,
+    };
+
     public static readonly IReadOnlyList<SimpleGameDefinition> All =
     [
         DarkestDungeon,
@@ -529,6 +625,12 @@ public static class GameFolderSimpleGames
         StateOfDecay,
         TeamFortress2,
         Starbound,
+        ShadowrunReturns,
+        WolcenLordsOfMayhem,
+        GardenPaws,
+        OxygenNotIncluded,
+        PathfinderKingmaker,
+        PathfinderWrathOfTheRighteous,
     ];
 }
 

@@ -76,6 +76,20 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
         ("Simple.GrimDawn", ["Mod/data.bin", "readme.txt"], ["{Game}/mods/Mod/data.bin", "{Game}/mods/readme.txt"]),
         ("Simple.StateOfDecay", ["Mod/data.bin", "readme.txt"], ["{Game}/game/Mod/data.bin", "{Game}/game/readme.txt"]),
         ("Simple.Starbound", ["Mod/data.bin", "readme.txt"], ["{Game}/mods/Mod/data.bin", "{Game}/mods/readme.txt"]),
+        // Mods in a Documents folder go below the location the row maps, which already ends at the mod folder.
+        ("Simple.LegendOfGrimrock", ["Mod/data.bin", "readme.txt"], ["{Simple.Documents}/Mod/data.bin", "{Simple.Documents}/readme.txt"]),
+        ("Simple.BindingOfIsaacRebirth", ["Mod/data.bin", "readme.txt"], ["{Simple.Documents}/Mod/data.bin", "{Simple.Documents}/readme.txt"]),
+        ("Simple.ShadowrunReturns", ["Mod/data.bin", "readme.txt"],
+            ["{Game}/Shadowrun_Data/StreamingAssets/ContentPacks/Mod/data.bin", "{Game}/Shadowrun_Data/StreamingAssets/ContentPacks/readme.txt"]),
+        // A folder the game knows marks the root, as Vortex's stop patterns do; an archive without one goes in unchanged.
+        ("Simple.WolcenLordsOfMayhem", ["levels/a.cry", "readme.txt"], ["{Game}/Game/levels/a.cry", "{Game}/Game/readme.txt"]),
+        ("Simple.WolcenLordsOfMayhem", ["Mod/Objects/b.cgf", "Mod/Lib/c.xml"], ["{Game}/Game/Lib/c.xml", "{Game}/Game/Objects/b.cgf"]),
+        ("Simple.WolcenLordsOfMayhem", ["Mod/data.bin"], ["{Game}/Game/Mod/data.bin"]),
+        // Unity Mod Manager mods have an Info.json and get a folder of their own; anything else goes in unchanged.
+        ("Simple.GardenPaws", ["Mod/data.bin"], ["{Game}/Mods/Mod/data.bin"]),
+        ("Simple.OxygenNotIncluded", ["Mod/data.bin"], ["{Game}/Mods/Mod/data.bin"]),
+        ("Simple.PathfinderKingmaker", ["Mod/data.bin"], ["{Game}/Mods/Mod/data.bin"]),
+        ("Simple.PathfinderWrathOfTheRighteous", ["Mod/data.bin"], ["{Game}/Mods/Mod/data.bin"]),
     ];
 
     /// <summary>Layouts the games with a published layout cannot use.</summary>
@@ -95,6 +109,8 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
         ("Simple.DawnOfMan", ["Mod/data.bin", "readme.txt"]),
         ("Simple.Elex", ["Mod/data.bin", "readme.txt"]),
         ("Simple.TeamFortress2", ["Mod/data.bin", "readme.txt"]),
+        // Surviving Mars loads a folder holding a modcontent.hpk.
+        ("Simple.SurvivingMars", ["Mod/data.bin", "readme.txt"]),
     ];
 
     /// <summary>Archives whose mod goes in a folder named after the folder holding the marker file, or after the archive.</summary>
@@ -106,6 +122,14 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
             ["{Game}/HatInTimeGame/Mods/MyHat/Content/a.upk", "{Game}/HatInTimeGame/Mods/MyHat/modinfo.ini"]),
         ("Simple.DawnOfMan", "SomeMod.zip", ["Info.json", "Mod.dll"], ["{Game}/Mods/SomeMod/Info.json", "{Game}/Mods/SomeMod/Mod.dll"]),
         ("Simple.DawnOfMan", "download.zip", ["Wrapper/Info.json", "Wrapper/Mod.dll"], ["{Game}/Mods/Wrapper/Info.json", "{Game}/Mods/Wrapper/Mod.dll"]),
+        ("Simple.GardenPaws", "CoolMod.zip", ["Info.json", "Mod.dll"], ["{Game}/Mods/CoolMod/Info.json", "{Game}/Mods/CoolMod/Mod.dll"]),
+        ("Simple.OxygenNotIncluded", "CoolMod.zip", ["Info.json", "Mod.dll"], ["{Game}/Mods/CoolMod/Info.json", "{Game}/Mods/CoolMod/Mod.dll"]),
+        ("Simple.PathfinderKingmaker", "download.zip", ["Wrapper/Info.json", "Wrapper/Mod.dll"], ["{Game}/Mods/Wrapper/Info.json", "{Game}/Mods/Wrapper/Mod.dll"]),
+        ("Simple.PathfinderWrathOfTheRighteous", "CoolMod.zip", ["Info.json", "Mod.dll"], ["{Game}/Mods/CoolMod/Info.json", "{Game}/Mods/CoolMod/Mod.dll"]),
+        ("Simple.SurvivingMars", "CoolMod.zip", ["modcontent.hpk", "Code/a.lua"],
+            ["{Simple.RoamingAppData}/CoolMod/Code/a.lua", "{Simple.RoamingAppData}/CoolMod/modcontent.hpk"]),
+        ("Simple.SurvivingMars", "download.zip", ["MyMod/modcontent.hpk", "MyMod/Code/a.lua"],
+            ["{Simple.RoamingAppData}/MyMod/Code/a.lua", "{Simple.RoamingAppData}/MyMod/modcontent.hpk"]),
     ];
 
     public static IEnumerable<object[]> CaseData() => Cases.Select(row => (object[])[row.GameId, row.ArchivePaths, row.Expected]);

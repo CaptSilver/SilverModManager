@@ -16,7 +16,7 @@ public class SimpleGamesTableTests(IServiceProvider serviceProvider, IFileSystem
 {
     private static IEnumerable<SimpleGameDefinition> Rows => SimpleGames.All;
 
-    // The shipped rows are all in the game folder so far; these stand in for the other roots.
+    // One stand-in per root, so a root is checked even if no shipped row uses it.
     private static IEnumerable<SimpleGameDefinition> RowsAndOneOfEachRoot =>
     [
         ..Rows,
@@ -74,6 +74,8 @@ public class SimpleGamesTableTests(IServiceProvider serviceProvider, IFileSystem
         ("Simple.Starbound", "linux/run-client.sh"),
         ("Simple.TeamFortress2", "tf.sh"),
         ("Simple.X4Foundations", "testandlaunch"),
+        ("Simple.ShadowrunReturns", "Shadowrun"),
+        ("Simple.OxygenNotIncluded", "OxygenNotIncluded"),
     ];
 
     [Fact]
