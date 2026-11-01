@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Games.Modlists;
+using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Sorting;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -32,7 +33,7 @@ namespace SilverModManager.Games.CreationEngine.Abstractions;
 /// A Bethesda title whose plugin headers the load order reader can parse: adds the Plugins.txt intrinsic file and the
 /// missing-master check on top of <see cref="ABethesdaGame{TSelf}"/>.
 /// </summary>
-public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame, IMo2InstanceTarget, IModOrderGame, IGameIniFiles, IPerLoadoutSaves, IWinePrefixRequirements
+public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame, IMo2InstanceTarget, IModOrderGame, IGameIniFiles, IPerLoadoutSaves, IWinePrefixRequirements, IToolVariableSource
     where TSelf : ACreationEngineGame<TSelf>, IGameData<TSelf>
 {
     private readonly IStreamSourceDispatcher _streamSource;
@@ -55,6 +56,22 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
         _scriptExtenderLoader is { } loader && ScriptExtender.IsInLoadout(loadout, loader)
             ? [PrefixComponents.VisualCppRuntime.Id]
             : [];
+
+    /// <summary>
+    /// The paths xEdit-style tools are pointed at: Data, the plugin list and the main game ini. A game without an
+    /// ini of its own has no <see cref="ToolVariableNames.IniFile"/>, and a tool that asks for it is refused by name.
+    /// </summary>
+    public IReadOnlyDictionary<string, GamePath> ToolVariables(Loadout.ReadOnly loadout)
+    {
+        var variables = new Dictionary<string, GamePath>
+        {
+            [ToolVariableNames.DataFolder] = DataPath,
+            [ToolVariableNames.PluginsFile] = PluginsFile,
+        };
+        if (((IGameIniFiles)this).ManagedKeysFile is { } ini)
+            variables[ToolVariableNames.IniFile] = ini;
+        return variables;
+    }
 
     public abstract PluginFormat HeaderFormat { get; }
 
