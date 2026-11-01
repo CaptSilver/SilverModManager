@@ -133,7 +133,8 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
             if (!list.Select(id => NexusModsCollectionLibraryFile.Load(db, id)).TryGetFirst(x => x.IsValid(), out var collectionFile))
             {
                 var downloadJob = nexusModsLibrary.CreateCollectionDownloadJob(destination, collectionUrl.Collection.Slug, collectionUrl.Revision, CancellationToken.None);
-                var libraryFile = await library.AddDownload(downloadJob, UnassignedAcquisition.Instance);
+                // The handler opens no loadout and the link names no modlist, so only the domain's loadouts can say.
+                var libraryFile = await library.AddDownload(downloadJob, new NxmAcquisition(_cache[domain]));
 
                 if (!libraryFile.TryGetAsNexusModsCollectionLibraryFile(out collectionFile))
                     throw new InvalidOperationException("The library file is not a NexusModsCollectionLibraryFile");
@@ -161,9 +162,17 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
         }
         
         var nexusModsLibrary = _serviceProvider.GetRequiredService<NexusModsLibrary>();
+        var library = _serviceProvider.GetRequiredService<ILibraryService>();
 
         var domain = GameDomain.From(modUrl.Game);
-        var expected = _serviceProvider.GetService<IExpectedNexusDownloads>()?.IsExpected(domain, modUrl.ModId, modUrl.FileId) ?? false;
+        var expectedDownloads = _serviceProvider.GetService<IExpectedNexusDownloads>();
+        var expected = expectedDownloads?.IsExpected(domain, modUrl.ModId, modUrl.FileId) ?? false;
+
+        // A modlist that expects the file says which of the domain's games it is for; otherwise the loadouts decide.
+        // The domain is only mapped on that second path, so an expected file never depends on the mapping.
+        IAcquisitionContext AcquisitionFor() => expectedDownloads is not null && expectedDownloads.TryGetExpectedGame(domain, modUrl.ModId, modUrl.FileId, out var plannedGame)
+            ? new GameAcquisition(plannedGame)
+            : new NxmAcquisition(_cache[domain]);
 
         // An expected file is one the app asked the user to download, so the library holding a row for it is no reason to refuse.
         if (!expected)
@@ -172,6 +181,9 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
             if (alreadyDownloaded)
             {
                 _logger.LogInformation("File `{Game}/{ModId}/{FileId}` has already been downloaded and will be skipped", modUrl.Game, modUrl.ModId, modUrl.FileId);
+                // Asking for it again from a game's page makes it that game's file too.
+                var acquisition = AcquisitionFor();
+                foreach (var item in items) await library.Adopt(item.AsLibraryItem(), acquisition);
                 _eventBus.Send(new CliMessages.ModDownloadFailed(new FailureReason.AlreadyExists(items.First().AsLibraryItem().Name)));
                 return;
             }
@@ -185,7 +197,6 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
             }
         }
 
-        var library = _serviceProvider.GetRequiredService<ILibraryService>();
         var temporaryFileManager = _serviceProvider.GetRequiredService<TemporaryFileManager>();
 
         _eventBus.Send(new CliMessages.ModDownloadStarted());
@@ -196,7 +207,7 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
             await using var destination = temporaryFileManager.CreateFile();
             var downloadJob = await nexusModsLibrary.CreateDownloadJob(destination, modUrl, cancellationToken: cancel);
 
-            libraryFile = await library.AddDownload(downloadJob, UnassignedAcquisition.Instance);
+            libraryFile = await library.AddDownload(downloadJob, AcquisitionFor());
             
             _eventBus.Send(new CliMessages.ModDownloadSucceeded(libraryFile.Value.AsLibraryItem()));
         }
