@@ -17,6 +17,7 @@
         <ProjectReference Include="..\SilverModManager.Games.CreationEngine\SilverModManager.Games.CreationEngine.csproj" />
         <ProjectReference Include="..\SilverModManager.Games.FromSoft\SilverModManager.Games.FromSoft.csproj" />
         <ProjectReference Include="..\SilverModManager.Games.REEngine\SilverModManager.Games.REEngine.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.LoadOrderFile\SilverModManager.Games.LoadOrderFile.csproj" />
         <ProjectReference Include="..\SilverModManager.Games.Unity\SilverModManager.Games.Unity.csproj" />
         <ProjectReference Include="..\SilverModManager.Games.Unreal\SilverModManager.Games.Unreal.csproj" />
         <ProjectReference Include="..\SilverModManager.Games.Witcher\SilverModManager.Games.Witcher.csproj" />

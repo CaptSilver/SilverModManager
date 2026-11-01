@@ -274,6 +274,7 @@ public static class Services
         Games.MountAndBlade2Bannerlord.Services.AddMountAndBlade2Bannerlord(services);
         Games.FromSoft.Services.AddFromSoftGames(services);
         Games.REEngine.Services.AddReEngineGames(services);
+        Games.LoadOrderFile.Services.AddLoadOrderFileGames(services);
         Games.Unity.Services.AddUnityGames(services);
         Games.Unreal.Services.AddUnrealGames(services);
         Games.Witcher.Services.AddWitcherGames(services);
