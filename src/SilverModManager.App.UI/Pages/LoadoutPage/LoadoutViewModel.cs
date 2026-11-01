@@ -3,6 +3,7 @@ using DynamicData;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Collections;
+using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Extensions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -548,6 +549,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
                             {
                                 HandleOpenModPageFor(viewModPageMessage.Ids, _connection, 
                                     _serviceProvider.GetRequiredService<IOSInterop>(), 
+                                    _serviceProvider.GetRequiredService<ModSourceResolver>(),
                                     cancellationToken);
                                 return Task.CompletedTask;
                             },
@@ -672,20 +674,16 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         return result;
     }
 
-    internal static void HandleOpenModPageFor(LoadoutItemId[] ids, IConnection connection, IOSInterop os, CancellationToken cancellationToken)
+    internal static void HandleOpenModPageFor(LoadoutItemId[] ids, IConnection connection, IOSInterop os, ModSourceResolver resolver, CancellationToken cancellationToken)
     {
         if (ids.Length == 0) return;
         var loadoutItemId = ids.First();
-        
+
         LibraryLinkedLoadoutItem.TryGet(connection.Db, loadoutItemId.Value, out var linkedItem);
         if (linkedItem is null) return;
-        var libraryItem = linkedItem.Value.LibraryItemId;
-        NexusModsLibraryItem.TryGet(connection.Db, libraryItem.Value, out var nexusModsLibraryItem);
-        if (nexusModsLibraryItem is null) return;
-        var modPage = nexusModsLibraryItem.Value.ModPageMetadata;
 
-        var url = NexusModsUrlBuilder.GetModUri(modPage.GameDomain, modPage.Uid.ModId);
-        os.OpenUri(url);
+        var url = ModSourcePages.Find(connection.Db, resolver, [linkedItem.Value.LibraryItemId], static (source, item) => source.PageUri(item));
+        if (url is not null) os.OpenUri(url);
     }
 
     private Uri GetCollectionChangelogUri(CollectionMetadata.ReadOnly collection)

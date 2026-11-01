@@ -32,6 +32,8 @@ public static class Services
             .AddSingleton<LibraryFileDigests>()
             .AddSingleton<IGitHubReleaseAssetSource, GitHubReleaseAssetSource>()
             .AddSingleton<IThunderstoreSource, ThunderstoreSource>()
+            .AddSingleton<IModSource, NexusModSource>()
+            .AddSingleton<ModSourceResolver>()
             .AddLockVerbs()
             .AddThunderstoreVerbs();
     }

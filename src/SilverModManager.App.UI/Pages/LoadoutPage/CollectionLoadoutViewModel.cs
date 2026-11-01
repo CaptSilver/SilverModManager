@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Library;
 using System.Reactive.Linq;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -224,6 +225,7 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
                 {
                     LoadoutViewModel.HandleOpenModPageFor(viewModPageMessage.Ids, _connection,
                         _services.GetRequiredService<IOSInterop>(),
+                        _services.GetRequiredService<ModSourceResolver>(),
                         cancellationToken);
                     return Task.CompletedTask;
                 },

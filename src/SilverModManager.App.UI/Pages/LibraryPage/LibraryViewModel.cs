@@ -764,20 +764,14 @@ A summarised quote/explanation from myself below:
 
 After asking design, we're choosing to simply open the mod page for now.
 */
-        return viewChangelogMessage.Id.Match(
-            modPageMetadataId => OpenModPage(modPageMetadataId),
-            libraryItemId => OpenModPage(new NexusModsLibraryItem.ReadOnly(_connection.Db, libraryItemId).ModPageMetadataId)
-        );
+        return OpenSourcePage(viewChangelogMessage.Ids, static (source, item) => source.ChangelogUri(item));
     }
 
     private ValueTask HandleViewModPageMessage(ViewModPageMessage viewModPageMessage, CancellationToken cancellationToken)
     {
-        return viewModPageMessage.Id.Match(
-            modPageMetadataId => OpenModPage(modPageMetadataId),
-            libraryItemId => OpenModPage(new NexusModsLibraryItem.ReadOnly(_connection.Db, libraryItemId).ModPageMetadataId)
-        );
+        return OpenSourcePage(viewModPageMessage.Ids, static (source, item) => source.PageUri(item));
     }
-    
+
     private async ValueTask HandleDeleteItemMessage(DeleteItemMessage deleteItemMessage, CancellationToken cancellationToken)
     {
         var ids = deleteItemMessage.Ids;
@@ -908,12 +902,12 @@ After asking design, we're choosing to simply open the mod page for now.
         );
     }
 
-    private ValueTask OpenModPage(NexusModsModPageMetadataId modPageMetadataId)
+    private ValueTask OpenSourcePage(LibraryItemId[] ids, Func<IModSource, LibraryItem.ReadOnly, Uri?> uriOf)
     {
-        var modPage = new NexusModsModPageMetadata.ReadOnly(_connection.Db, modPageMetadataId);
-        var url = NexusModsUrlBuilder.GetModUri(modPage.GameDomain, modPage.Uid.ModId);
+        var resolver = _serviceProvider.GetRequiredService<ModSourceResolver>();
         var os = _serviceProvider.GetRequiredService<IOSInterop>();
-        os.OpenUri(url);
+        var uri = ModSourcePages.Find(_connection.Db, resolver, ids, uriOf);
+        if (uri is not null) os.OpenUri(uri);
         return ValueTask.CompletedTask;
     }
 
@@ -1174,8 +1168,8 @@ After asking design, we're choosing to simply open the mod page for now.
 public readonly record struct InstallMessage(LibraryItemId[] Ids);
 public readonly record struct UpdateAndReplaceMessage(ModUpdatesOnModPage Updates, CompositeItemModel<EntityId> TreeNode);
 public readonly record struct UpdateAndKeepOldMessage(ModUpdatesOnModPage Updates, CompositeItemModel<EntityId> TreeNode);
-public readonly record struct ViewChangelogMessage(OneOf<NexusModsModPageMetadataId, NexusModsLibraryItemId> Id);
-public readonly record struct ViewModPageMessage(OneOf<NexusModsModPageMetadataId, NexusModsLibraryItemId> Id);
+public readonly record struct ViewChangelogMessage(LibraryItemId[] Ids);
+public readonly record struct ViewModPageMessage(LibraryItemId[] Ids);
 public readonly record struct HideUpdatesMessage(OneOf<NexusModsModPageMetadataId, NexusModsLibraryItemId> Id);
 public readonly record struct DeleteItemMessage(LibraryItemId[] Ids);
 public readonly record struct DestinationMessage(LibraryItemId[] Ids, DestinationActionKind Kind);
@@ -1244,7 +1238,8 @@ public class LibraryTreeDataGridAdapter :
             })
         );
 
-        static OneOf<NexusModsModPageMetadataId, NexusModsLibraryItemId> GetModPageIdOneOfType(IDb db, EntityId entityId)
+        // Hiding updates still works on Nexus ids; it moves onto IModSource with the hide action.
+        static OneOf<NexusModsModPageMetadataId, NexusModsLibraryItemId> GetHideUpdatesTarget(IDb db, EntityId entityId)
         {
             var modPageMetadata = NexusModsModPageMetadata.Load(db, entityId);
             if (modPageMetadata.IsValid())
@@ -1255,7 +1250,7 @@ public class LibraryTreeDataGridAdapter :
             if (libraryItem.IsValid())
                 return OneOf<NexusModsModPageMetadataId, NexusModsLibraryItemId>.FromT1(libraryItem.Id);
             
-            throw new Exception("Unknown type of entity for ViewChangelogAction: " + entityId);
+            throw new Exception("Unknown type of entity for HideUpdatesAction: " + entityId);
         }
 
         model.SubscribeToComponentAndTrack<LibraryComponents.ViewChangelogAction, LibraryTreeDataGridAdapter>(
@@ -1264,9 +1259,8 @@ public class LibraryTreeDataGridAdapter :
             factory: static (self, itemModel, component) => component.CommandViewChangelog.Subscribe((self, itemModel, component), static (_, state) =>
             {
                 var (self, model, _) = state;
-                var entityId = model.Key;
-                
-                self.MessageSubject.OnNext(new ViewChangelogMessage(GetModPageIdOneOfType(self._connection.Db, entityId)));
+
+                self.MessageSubject.OnNext(new ViewChangelogMessage(GetLibraryItemIds(model).ToArray()));
             })
         );
 
@@ -1276,9 +1270,8 @@ public class LibraryTreeDataGridAdapter :
             factory: static (self, itemModel, component) => component.CommandViewModPage.Subscribe((self, itemModel, component), static (_, state) =>
             {
                 var (self, model, _) = state;
-                var entityId = model.Key;
 
-                self.MessageSubject.OnNext(new ViewModPageMessage(GetModPageIdOneOfType(self._connection.Db, entityId)));
+                self.MessageSubject.OnNext(new ViewModPageMessage(GetLibraryItemIds(model).ToArray()));
             })
         );
         
@@ -1312,7 +1305,7 @@ public class LibraryTreeDataGridAdapter :
                 var (self, model, _) = state;
                 var entityId = model.Key;
 
-                self.MessageSubject.OnNext(new HideUpdatesMessage(GetModPageIdOneOfType(self._connection.Db, entityId)));
+                self.MessageSubject.OnNext(new HideUpdatesMessage(GetHideUpdatesTarget(self._connection.Db, entityId)));
             })
         );
     }
