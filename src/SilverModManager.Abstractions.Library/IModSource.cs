@@ -82,4 +82,22 @@ public interface IModSource
     /// items; both belong to the caller. A failed download comes back in the outcome rather than thrown.
     /// </summary>
     ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Hides the updates for these items, or shows them again. Nexus hides the file uids newer than each item's
+    /// file in its update filter. Thunderstore freezes the items, which the update check and the lock both honour.
+    /// </summary>
+    ValueTask SetUpdatesHidden(IReadOnlyList<LibraryItem.ReadOnly> items, bool hidden, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// What the hide action needs to show for one item (a one-element list) or a parent row's items, emitted on
+    /// subscribing and after every change to it.
+    /// </summary>
+    IObservable<HideUpdatesState> ObserveHideUpdates(IReadOnlyList<LibraryItem.ReadOnly> items);
+
+    /// <summary>
+    /// The menu text of the hide action without its count: "Hide updates" or "Show updates" for Nexus, "Freeze
+    /// version" or "Unfreeze version" for Thunderstore, which holds the version back rather than only hiding it.
+    /// </summary>
+    string HideUpdatesLabel(bool hidden);
 }

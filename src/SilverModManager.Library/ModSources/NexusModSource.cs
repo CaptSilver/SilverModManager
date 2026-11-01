@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Networking.NexusWebApi.UpdateFilters;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Library;
@@ -24,7 +25,8 @@ internal sealed class NexusModSource(
     ILibraryService libraryService,
     IConnection connection,
     ISettingsManager settingsManager,
-    IOSInterop osInterop) : IModSource
+    IOSInterop osInterop,
+    IModUpdateFilterService filterService) : IModSource
 {
     public string DisplayName => "Nexus Mods";
 
@@ -100,6 +102,80 @@ internal sealed class NexusModSource(
 
         return await DownloadAll(newestToCurrent, request, cancellationToken);
     }
+
+    // Every version of each file, the file itself included: the update check decides what is newer, and hiding a
+    // version that is not newer yet is what keeps a later upload hidden too.
+    public async ValueTask SetUpdatesHidden(IReadOnlyList<LibraryItem.ReadOnly> items, bool hidden, CancellationToken cancellationToken)
+    {
+        var uids = NexusItems(items)
+            .Select(static item => item.FileMetadata)
+            .SelectMany(RunUpdateCheck.GetAllVersionsForExistingFile)
+            .Select(static file => file.Uid)
+            .Distinct()
+            .ToArray();
+        if (uids.Length == 0) return;
+
+        if (hidden)
+            await filterService.HideFilesAsync(uids);
+        else
+            await filterService.ShowFilesAsync(uids);
+    }
+
+    // The update observables used here are the unfiltered ones: a row whose updates are all hidden has to keep its
+    // action, or the user could never show them again.
+    public IObservable<HideUpdatesState> ObserveHideUpdates(IReadOnlyList<LibraryItem.ReadOnly> items)
+    {
+        var nexusItems = NexusItems(items).ToList();
+        if (nexusItems.Count == 0) return Observable.Return(NoHideAction);
+
+        var state = nexusItems.Count == 1
+            ? ObserveFileHideState(nexusItems[0].FileMetadata)
+            : ObservePageHideState(nexusItems[0].ModPageMetadata);
+        return state.DistinctUntilChanged();
+    }
+
+    public string HideUpdatesLabel(bool hidden) => hidden ? "Show updates" : "Hide updates";
+
+    private static readonly HideUpdatesState NoHideAction = new(IsHidden: false, ItemCount: 0, IsEnabled: false, IsVisible: false);
+
+    // Read from the current database rather than the items' own: a row's items date from when it was built, and the
+    // newer files the update check found since are only in the current one.
+    private IEnumerable<NexusModsLibraryItem.ReadOnly> NexusItems(IEnumerable<LibraryItem.ReadOnly> items)
+    {
+        foreach (var item in items)
+        {
+            if (NexusModsLibraryItem.TryGet(connection.Db, item.Id, out var nexusItem)) yield return nexusItem.Value;
+        }
+    }
+
+    // Hidden when every newer file is. The button is only there while an unfiltered update exists, so the view
+    // can't be hiding the fact that there is nothing to hide.
+    private IObservable<HideUpdatesState> ObserveFileHideState(NexusModsFileMetadata.ReadOnly file)
+        => modUpdateService.GetNewestFileVersionObservableUnfiltered(file)
+            .CombineLatest(filterService.FilterTrigger.StartWith(System.Reactive.Unit.Default), static (update, _) => update)
+            .Select(update => update.HasValue
+                ? new HideUpdatesState(update.Value.NewerFiles.All(newer => filterService.IsFileHidden(newer.Uid)), 1, IsEnabled: true, IsVisible: true)
+                : NoHideAction with { ItemCount = 1 });
+
+    // Behaviour from design: when any file's updates are hidden the page offers to show them (all of them); the
+    // count is the files that action affects.
+    private IObservable<HideUpdatesState> ObservePageHideState(NexusModsModPageMetadata.ReadOnly page)
+        => modUpdateService.GetNewestModPageVersionObservableUnfiltered(page)
+            .CombineLatest(filterService.FilterTrigger.StartWith(System.Reactive.Unit.Default), static (updates, _) => updates)
+            .Select(updates =>
+            {
+                if (updates.HasValue is false) return NoHideAction;
+
+                var (hidden, shown) = (0, 0);
+                foreach (var mapping in updates.Value.FileMappings)
+                {
+                    if (mapping.NewerFiles.All(newer => filterService.IsFileHidden(newer.Uid))) hidden++;
+                    else shown++;
+                }
+
+                var hasUpdates = updates.Value.HasAnyUpdates;
+                return new HideUpdatesState(hidden > 0, hidden > 0 ? hidden : shown, hasUpdates, hasUpdates);
+            });
 
     private ModUpdateOutcome OpenInBrowser(IEnumerable<NexusModsFileMetadata.ReadOnly> newestFiles)
     {

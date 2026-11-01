@@ -3,6 +3,7 @@ using DynamicData;
 using DynamicData.Aggregation;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.App.UI.Controls;
@@ -11,8 +12,6 @@ using SilverModManager.App.UI.Pages.LibraryPage;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
 using SilverModManager.MnemonicDB.Abstractions.Query;
-using SilverModManager.Networking.NexusWebApi;
-using SilverModManager.Networking.NexusWebApi.UpdateFilters;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -261,105 +260,37 @@ public static class LibraryDataProviderHelper
         itemModel.Add(LibraryColumns.Actions.HideUpdatesComponentKey, new LibraryComponents.HideUpdatesAction(isHiddenObservable, itemCountObservable, Observable.Return(isEnabled), Observable.Return(isVisible)));
     }
 
+    /// <summary>
+    /// The hide action of a row whose items belong to <paramref name="source"/>: the source says what the row shows
+    /// and what the click does. A parent row passes the items it has now, so the action follows when it gains or
+    /// loses one.
+    /// </summary>
     public static void AddHideUpdatesActionComponent(
         CompositeItemModel<EntityId> itemModel,
-        IObservable<Optional<ModUpdateOnPage>> unfilteredFileUpdateObservable,
-        IModUpdateFilterService filterService,
-        Observable<bool> isVisibleObservable)
+        IModSource source,
+        IObservable<IReadOnlyList<LibraryItem.ReadOnly>> items)
     {
-        // Note(sewer):
-        // Determine if the current file is hidden by checking if any of the newer
-        // files are hidden in an unfiltered state.
-        //
-        // The reason we use the unfiltered observable is that we also need to capture
-        // cases where *there are no updates*; so we can appropriately disable the button.
-        // With a filtered view we *can't do that*, because we may not be seeing updates
-        
-        // The 'newest' in this context is unfiltered, and is the target we would update to,
-        // so this is the correct file to check.
-        var isHiddenObservable = unfilteredFileUpdateObservable
-            // Because our view is unfiltered, we must listen to filter changes ourselves.
-            .CombineLatest(filterService.FilterTrigger.StartWith(System.Reactive.Unit.Default), (optional, _) => optional)
-            .Select(optional =>
-            {
-                if (!optional.HasValue)
-                    return false;
-                    
-                // Check if all newer files are hidden to determine if this update is hidden.
-                return optional.Value.NewerFiles.All(x => filterService.IsFileHidden(x.Uid));
-            })
-            .ToObservable();
-        
-        // For individual files: count is always 1
-        var itemCountObservable = Observable.Return(1);
-        
-        // Disable the button if there are no newer files (when unfiltered).
-        // This means there are no updates, so show/hide is meaningless.
-        var isEnabledObservable = unfilteredFileUpdateObservable
-            .Select(optional => optional.HasValue)
+        // One subscription to the source feeds all four properties. The source emits from whichever thread changed
+        // the database or the filter, and the properties belong to the UI thread.
+        var state = items
+            .Select(source.ObserveHideUpdates)
+            .Switch()
+            .OnUI()
+            .Replay(1)
+            .RefCount()
             .ToObservable();
 
-        itemModel.Add(LibraryColumns.Actions.HideUpdatesComponentKey, new LibraryComponents.HideUpdatesAction(isHiddenObservable, itemCountObservable, isEnabledObservable, isVisibleObservable));
+        itemModel.Add(LibraryColumns.Actions.HideUpdatesComponentKey, new LibraryComponents.HideUpdatesAction(
+            state.Select(static x => x.IsHidden),
+            state.Select(static x => x.ItemCount),
+            state.Select(static x => x.IsEnabled),
+            state.Select(static x => x.IsVisible),
+            source.HideUpdatesLabel));
     }
 
-    private record struct FileUpdateDetails(int NumUpdatesHidden, int NumUpdatesShown);
     public static void AddHideUpdatesActionComponent(
         CompositeItemModel<EntityId> itemModel,
-        IObservable<Optional<ModUpdatesOnModPage>> unfilteredUpdatedOnModPage,
-        IModUpdateFilterService modUpdateFilterService,
-        Observable<bool> isVisibleObservable)
-    {
-        // Note(sewer):
-        //
-        // Same note as above.
-        //
-        // The reason we use the unfiltered observable is that we also need to capture
-        // cases where *there are no updates*; so we can appropriately disable the button.
-        // With a filtered view we *can't do that*, because we may not be seeing updates
-        //
-        // In addition, we must also be able to capture cases where *all* updates are hidden,
-        // not just where they are visible, so we can show proper counters in the UI, as per
-        // the design spec. Therefore, we must do the filtering ourselves 😉
-        
-        // Trigger refresh either if mods on page change, or filter is updated.
-        var currentDetails = unfilteredUpdatedOnModPage
-            .CombineLatest(modUpdateFilterService.FilterTrigger.StartWith(System.Reactive.Unit.Default), (files, _) => files)
-            .Select(files =>
-            {
-                if (!files.HasValue)
-                    return new FileUpdateDetails(0, 0);
-                
-                var numHidden = 0;
-                var numShown = 0;
-                foreach (var updateOnPage in files.Value.FileMappings)
-                {
-                    var areAllUpdatesHidden = updateOnPage.NewerFiles.All(newer => modUpdateFilterService.IsFileHidden(newer.Uid));
-                    if (areAllUpdatesHidden)
-                        numHidden++;
-                    else
-                        numShown++;
-                }
-
-                return new FileUpdateDetails(numHidden, numShown);
-            });
-
-        // Note(sewer):
-        // Behaviour per captainsandypants (Slack).
-        // 'If any children have updates set to hidden, then the parent should have "Show updates" as the menu item.
-        // When selected, this will set all children to show updates.'
-        var isHiddenObservable = currentDetails.Select(details => details.NumUpdatesHidden > 0)
-            .ToObservable();
-        
-        // Always show the number of files under the 'Mod Page' item, as this is the number of items
-        // affected by the 'Show updates' action.
-        var itemCountObservable = currentDetails.Select(details => details.NumUpdatesHidden > 0 ? details.NumUpdatesHidden : details.NumUpdatesShown)
-            .ToObservable();
-        
-        // ReSharper disable once MergeIntoPattern
-        var isEnabledObservable = unfilteredUpdatedOnModPage
-            .Select(optional => optional.HasValue && optional.Value.HasAnyUpdates)
-            .ToObservable();
-        
-        itemModel.Add(LibraryColumns.Actions.HideUpdatesComponentKey, new LibraryComponents.HideUpdatesAction(isHiddenObservable, itemCountObservable, isEnabledObservable, isVisibleObservable));
-    }
+        IModSource source,
+        IReadOnlyList<LibraryItem.ReadOnly> items)
+        => AddHideUpdatesActionComponent(itemModel, source, System.Reactive.Linq.Observable.Return(items));
 }

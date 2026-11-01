@@ -462,6 +462,187 @@ public class ThunderstoreUpdateTests(IConnection connection)
         arranged.Source.WillReplace(new ModUpdateRequest([update], Replace: false, MayOpenBrowser: false)).Should().BeFalse();
     }
 
+    private static HideUpdatesState LatestHide(IObservable<HideUpdatesState> observable)
+    {
+        HideUpdatesState latest = default;
+        using var _ = observable.Subscribe(value => latest = value);
+        return latest;
+    }
+
+    private async Task<(Arranged Arranged, LibraryFile.ReadOnly File)> ArrangeWithUpdate()
+    {
+        var arranged = Arrange();
+        var file = await AddFile(arranged, "Pkg", "1.0.0");
+        arranged.Checker.Refresh(CatalogWith(arranged.Community, arranged.Team, ("Pkg", ["1.0.0", "1.1.0"])));
+        return (arranged, file);
+    }
+
+    [Fact]
+    public async Task FreezingAnItemWritesTheUpdatePin()
+    {
+        var (arranged, file) = await ArrangeWithUpdate();
+
+        await arranged.Source.SetUpdatesHidden([file.AsLibraryItem()], hidden: true, CancellationToken.None);
+
+        UpdatePin.IsFrozen(connection.Db, file.Id).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task FreezingTakesTheUpdateAwayFromAnObserverWithoutANewCheck()
+    {
+        var (arranged, file) = await ArrangeWithUpdate();
+        var seen = new List<Optional<ModUpdate>>();
+        using var subscription = arranged.Source.ObserveUpdate(file.AsLibraryItem()).Subscribe(seen.Add);
+        seen.Last().HasValue.Should().BeTrue();
+
+        await arranged.Source.SetUpdatesHidden([file.AsLibraryItem()], hidden: true, CancellationToken.None);
+
+        seen.Last().HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task FreezingTakesTheUpdateAwayFromThePackageRow()
+    {
+        var (arranged, file) = await ArrangeWithUpdate();
+        var seen = new List<Optional<ModUpdate>>();
+        using var subscription = arranged.Source.ObserveUpdate([file.AsLibraryItem()]).Subscribe(seen.Add);
+        seen.Last().HasValue.Should().BeTrue();
+
+        await arranged.Source.SetUpdatesHidden([file.AsLibraryItem()], hidden: true, CancellationToken.None);
+
+        seen.Last().HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task UnfreezingBringsTheUpdateBack()
+    {
+        var (arranged, file) = await ArrangeWithUpdate();
+        var seen = new List<Optional<ModUpdate>>();
+        using var subscription = arranged.Source.ObserveUpdate(file.AsLibraryItem()).Subscribe(seen.Add);
+        await arranged.Source.SetUpdatesHidden([file.AsLibraryItem()], hidden: true, CancellationToken.None);
+
+        await arranged.Source.SetUpdatesHidden([file.AsLibraryItem()], hidden: false, CancellationToken.None);
+
+        UpdatePin.IsFrozen(connection.Db, file.Id).Should().BeFalse();
+        seen.Last().Value.NewestVersion.Should().Be("1.1.0");
+    }
+
+    [Fact]
+    public async Task FreezingAFrozenItemAgainAndUnfreezingAnUnfrozenOneChangeNothing()
+    {
+        var (arranged, file) = await ArrangeWithUpdate();
+        var items = new[] { file.AsLibraryItem() };
+
+        await arranged.Source.SetUpdatesHidden(items, hidden: false, CancellationToken.None);
+        UpdatePin.IsFrozen(connection.Db, file.Id).Should().BeFalse();
+
+        await arranged.Source.SetUpdatesHidden(items, hidden: true, CancellationToken.None);
+        await arranged.Source.SetUpdatesHidden(items, hidden: true, CancellationToken.None);
+        UpdatePin.IsFrozen(connection.Db, file.Id).Should().BeTrue();
+
+        await arranged.Source.SetUpdatesHidden(items, hidden: false, CancellationToken.None);
+        UpdatePin.IsFrozen(connection.Db, file.Id).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task FreezingAPackageFreezesEveryVersionOfIt()
+    {
+        var arranged = Arrange();
+        var older = await AddFile(arranged, "Pkg", "1.0.0");
+        var newer = await AddFile(arranged, "Pkg", "1.0.5");
+
+        await arranged.Source.SetUpdatesHidden([older.AsLibraryItem(), newer.AsLibraryItem()], hidden: true, CancellationToken.None);
+
+        UpdatePin.IsFrozen(connection.Db, older.Id).Should().BeTrue();
+        UpdatePin.IsFrozen(connection.Db, newer.Id).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task FreezingLeavesAnItemThunderstoreDoesNotOwnAlone()
+    {
+        var arranged = Arrange();
+        var local = await new LockFixtures(connection).AddLibraryFile("local.zip", "local " + Guid.NewGuid(), null);
+
+        await arranged.Source.SetUpdatesHidden([local.AsLibraryItem()], hidden: true, CancellationToken.None);
+
+        UpdatePin.IsFrozen(connection.Db, local.Id).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task TheFreezeActionIsEnabledAndVisibleWithNoUpdatePending()
+    {
+        var arranged = Arrange();
+        var file = await AddFile(arranged, "Pkg", "1.1.0");
+
+        LatestHide(arranged.Source.ObserveHideUpdates([file.AsLibraryItem()]))
+            .Should().Be(new HideUpdatesState(IsHidden: false, ItemCount: 1, IsEnabled: true, IsVisible: true));
+    }
+
+    [Fact]
+    public async Task TheFrozenRowStillShowsTheActionAndOffersToUnfreeze()
+    {
+        var (arranged, file) = await ArrangeWithUpdate();
+        var states = new List<HideUpdatesState>();
+        using var subscription = arranged.Source.ObserveHideUpdates([file.AsLibraryItem()]).Subscribe(states.Add);
+
+        await arranged.Source.SetUpdatesHidden([file.AsLibraryItem()], hidden: true, CancellationToken.None);
+
+        states.Last().Should().Be(new HideUpdatesState(IsHidden: true, ItemCount: 1, IsEnabled: true, IsVisible: true));
+        Latest(arranged.Source.ObserveUpdate(file.AsLibraryItem())).HasValue.Should().BeFalse("the frozen item has no update, yet its action is still there");
+    }
+
+    [Fact]
+    public async Task UnfreezingPutsTheActionBackToFreeze()
+    {
+        var (arranged, file) = await ArrangeWithUpdate();
+        await arranged.Source.SetUpdatesHidden([file.AsLibraryItem()], hidden: true, CancellationToken.None);
+        var states = new List<HideUpdatesState>();
+        using var subscription = arranged.Source.ObserveHideUpdates([file.AsLibraryItem()]).Subscribe(states.Add);
+        states.Last().IsHidden.Should().BeTrue();
+
+        await arranged.Source.SetUpdatesHidden([file.AsLibraryItem()], hidden: false, CancellationToken.None);
+
+        states.Last().IsHidden.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task APackageRowIsFrozenOnlyWhenEveryVersionIs()
+    {
+        var arranged = Arrange();
+        var older = await AddFile(arranged, "Pkg", "1.0.0");
+        var newer = await AddFile(arranged, "Pkg", "1.0.5");
+        var items = new[] { older.AsLibraryItem(), newer.AsLibraryItem() };
+        var states = new List<HideUpdatesState>();
+        using var subscription = arranged.Source.ObserveHideUpdates(items).Subscribe(states.Add);
+
+        await arranged.Source.SetUpdatesHidden([older.AsLibraryItem()], hidden: true, CancellationToken.None);
+        states.Last().Should().Be(new HideUpdatesState(IsHidden: false, ItemCount: 2, IsEnabled: true, IsVisible: true));
+
+        await arranged.Source.SetUpdatesHidden([newer.AsLibraryItem()], hidden: true, CancellationToken.None);
+        states.Last().IsHidden.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TheFreezeActionIsDisabledAndInvisibleForAnItemThunderstoreDoesNotOwn()
+    {
+        var arranged = Arrange();
+        var local = await new LockFixtures(connection).AddLibraryFile("local.zip", "local " + Guid.NewGuid(), null);
+
+        var state = LatestHide(arranged.Source.ObserveHideUpdates([local.AsLibraryItem()]));
+
+        state.IsEnabled.Should().BeFalse();
+        state.IsVisible.Should().BeFalse();
+    }
+
+    [Fact]
+    public void TheFreezeActionIsLabelledFreezeAndUnfreezeVersion()
+    {
+        var source = Arrange().Source;
+
+        source.HideUpdatesLabel(hidden: false).Should().Be("Freeze version");
+        source.HideUpdatesLabel(hidden: true).Should().Be("Unfreeze version");
+    }
+
     public class Startup
     {
         public void ConfigureServices(IServiceCollection services)

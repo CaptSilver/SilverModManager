@@ -664,8 +664,13 @@ public static class LibraryComponents
             return 0; // All hide updates actions are considered equal for sorting
         }
 
-        public HideUpdatesAction(Observable<bool> isHiddenObservable, Observable<int> itemCount, Observable<bool> isEnabled, Observable<bool> isVisible)
+        /// <param name="label">
+        /// The menu text for a hidden state, without the count. The source of the row supplies it, because what the
+        /// action does differs by source; null uses the Nexus wording from the resources.
+        /// </param>
+        public HideUpdatesAction(Observable<bool> isHiddenObservable, Observable<int> itemCount, Observable<bool> isEnabled, Observable<bool> isVisible, Func<bool, string>? label = null)
         {
+            _label = label;
             IsHidden = isHiddenObservable.ToBindableReactiveProperty();
             IsEnabled = isEnabled.ToBindableReactiveProperty();
             IsVisible = isVisible.ToBindableReactiveProperty();
@@ -673,7 +678,7 @@ public static class LibraryComponents
             // Button text changes based on hidden state and item count
             // We use BindableReactiveProperty on ButtonText field as UI elements bind to this.
             ButtonText = IsHidden.AsObservable()
-                .CombineLatest(itemCount, static (isHidden, count) => FormatShowUpdates(isHidden, count))
+                .CombineLatest(itemCount, (isHidden, count) => FormatShowUpdates(isHidden, count))
                 .ToBindableReactiveProperty(initialValue: FormatShowUpdates(false, 0));
 
             // Icon changes based on hidden state
@@ -697,8 +702,12 @@ public static class LibraryComponents
             base.Dispose(disposing);
         }
 
-        private static string FormatShowUpdates(bool isHidden, int itemCount)
+        private readonly Func<bool, string>? _label;
+
+        private string FormatShowUpdates(bool isHidden, int itemCount)
         {
+            if (_label is not null) return $"{_label(isHidden)} ({itemCount})";
+
             return string.Format(isHidden 
                 ? Resources.Language.Library_ShowUpdates 
                 : Resources.Language.Library_HideUpdates, itemCount);

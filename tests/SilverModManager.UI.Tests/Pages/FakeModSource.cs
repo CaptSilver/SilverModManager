@@ -3,13 +3,14 @@ using System.Reactive.Subjects;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Library;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.UI.Tests.Pages;
 
 /// <summary>
-/// A mod source that owns no library item and reports whatever the test sets: no updates until
+/// A mod source that owns no library item until a test adds some to <see cref="OwnedItems"/>, and reports whatever the test sets: no updates until
 /// <see cref="HasAnyUpdates"/> or <see cref="Updates"/> say otherwise. It owns the <see cref="FakeModUpdate"/>s
 /// made for its name, records the requests it is asked to apply, and answers each with <see cref="Outcome"/>.
 /// </summary>
@@ -22,7 +23,10 @@ internal class FakeModSource(string name = "fake") : IModSource
     public List<ModUpdateRequest> Requests { get; } = [];
     public Func<ModUpdateRequest, ModUpdateOutcome> Outcome { get; set; } = static _ => ModUpdateOutcome.Nothing;
 
-    public bool Owns(LibraryItem.ReadOnly item) => false;
+    /// <summary>The library items this source owns.</summary>
+    public HashSet<EntityId> OwnedItems { get; } = [];
+
+    public bool Owns(LibraryItem.ReadOnly item) => OwnedItems.Contains(item.Id);
     public bool Owns(ModUpdate update) => update is FakeModUpdate fake && fake.Source == name;
     public Uri? PageUri(LibraryItem.ReadOnly item) => null;
     public Uri? ChangelogUri(LibraryItem.ReadOnly item) => null;
@@ -36,6 +40,20 @@ internal class FakeModSource(string name = "fake") : IModSource
     public bool Replaces { get; set; } = true;
 
     public bool WillReplace(ModUpdateRequest request) => request.Replace && Replaces;
+
+    /// <summary>What the hide action shows for a row of this source; changes land in <see cref="HideRequests"/>.</summary>
+    public BehaviorSubject<HideUpdatesState> HideState { get; } = new(new HideUpdatesState(false, 0, false, false));
+    public List<(IReadOnlyList<LibraryItem.ReadOnly> Items, bool Hidden)> HideRequests { get; } = [];
+    public string HideLabel { get; set; } = "Hide fake";
+
+    public ValueTask SetUpdatesHidden(IReadOnlyList<LibraryItem.ReadOnly> items, bool hidden, CancellationToken cancellationToken)
+    {
+        HideRequests.Add((items, hidden));
+        return ValueTask.CompletedTask;
+    }
+
+    public IObservable<HideUpdatesState> ObserveHideUpdates(IReadOnlyList<LibraryItem.ReadOnly> items) => HideState;
+    public string HideUpdatesLabel(bool hidden) => hidden ? "Show " + name : HideLabel;
 
     public ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken)
     {

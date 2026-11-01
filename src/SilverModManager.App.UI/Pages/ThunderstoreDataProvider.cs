@@ -201,7 +201,7 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
         parentItemModel.Add(LibraryColumns.Actions.LibraryItemIdsComponentKey, new LibraryComponents.LibraryItemIds(files.TransformImmutable(static file => file.AsLibraryFile().AsLibraryItem().LibraryItemId)));
         LibraryDataProviderHelper.AddInstalledDateComponent(parentItemModel, linkedLoadoutItemsObservable);
         LibraryDataProviderHelper.AddInstallActionComponent(parentItemModel, matchesObservable);
-        AddPageActions(parentItemModel);
+        AddPageActions(parentItemModel, SourceOf(package.Cache.Items.First().AsLibraryFile().AsLibraryItem()), ObservePackageItems(files));
         LibraryDataProviderHelper.AddDeleteItemActionComponent(parentItemModel);
         LibraryDataProviderHelper.AddDestinationComponents(parentItemModel, _connection, libraryFilter.Game.GameId, _gameNames);
 
@@ -228,20 +228,28 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
 
         LibraryDataProviderHelper.AddInstalledDateComponent(itemModel, linkedLoadoutItemsObservable);
         LibraryDataProviderHelper.AddInstallActionComponent(itemModel, linkedLoadoutItemsObservable);
-        AddPageActions(itemModel);
+        AddPageActions(itemModel, SourceOf(libraryFile.AsLibraryItem()), System.Reactive.Linq.Observable.Return<IReadOnlyList<LibraryItem.ReadOnly>>([libraryFile.AsLibraryItem()]));
         LibraryDataProviderHelper.AddDeleteItemActionComponent(itemModel);
         LibraryDataProviderHelper.AddDestinationComponents(itemModel, _connection, libraryFilter.Game.GameId, _gameNames);
 
         return itemModel;
     }
 
-    // The page and changelog buttons open the package's pages on thunderstore.io; there is no hide switch yet.
-    private static void AddPageActions(CompositeItemModel<EntityId> itemModel)
+    // The page and changelog buttons open the package's pages on thunderstore.io, and the hide action freezes the
+    // versions. It stays on a frozen row (the source keeps it enabled), because that is where it unfreezes.
+    private static void AddPageActions(CompositeItemModel<EntityId> itemModel, IModSource source, IObservable<IReadOnlyList<LibraryItem.ReadOnly>> items)
     {
         LibraryDataProviderHelper.AddViewChangelogActionComponent(itemModel);
         LibraryDataProviderHelper.AddViewModPageActionComponent(itemModel);
-        LibraryDataProviderHelper.AddHideUpdatesActionComponent(itemModel, isEnabled: false, isVisible: false);
+        LibraryDataProviderHelper.AddHideUpdatesActionComponent(itemModel, source, items);
     }
+
+    private IModSource SourceOf(LibraryItem.ReadOnly item)
+        => _sources.For(item) ?? throw new InvalidOperationException($"No mod source owns the Thunderstore item {item.Id}.");
+
+    // The package's items as they stand, again whenever it gains or loses a version.
+    private static IObservable<IReadOnlyList<LibraryItem.ReadOnly>> ObservePackageItems(IObservable<IChangeSet<ThunderstoreLibraryFile.ReadOnly, EntityId>> files)
+        => files.QueryWhenChanged(static query => (IReadOnlyList<LibraryItem.ReadOnly>)query.Items.Select(static file => file.AsLibraryFile().AsLibraryItem()).ToArray());
 
     // The new version shows next to the installed one, and the Update button applies it through the source.
     private static void AddNewVersionComponent(

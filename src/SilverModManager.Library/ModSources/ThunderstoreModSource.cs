@@ -158,6 +158,47 @@ internal sealed class ThunderstoreModSource(
         return new ModUpdateOutcome([.. downloaded.Values], replacements, failures, [], false);
     }
 
+    // Hiding an update means freezing the version: the update check leaves a frozen item out and the lock keeps it
+    // where it is. Unfreezing retracts the flag instead of writing false, so an item that was never frozen carries
+    // nothing.
+    public async ValueTask SetUpdatesHidden(IReadOnlyList<LibraryItem.ReadOnly> items, bool hidden, CancellationToken cancellationToken)
+    {
+        using var tx = connection.BeginTransaction();
+        var changed = false;
+        foreach (var item in items)
+        {
+            if (TryGetFile(item, out _) is false) continue;
+
+            var isFrozen = UpdatePin.IsFrozen(connection.Db, item.Id);
+            if (hidden && isFrozen is false)
+            {
+                _ = new UpdatePin.New(tx, item.Id) { Frozen = true };
+                changed = true;
+            }
+            else if (hidden is false && isFrozen)
+            {
+                tx.Retract(item.Id, UpdatePin.Frozen, true);
+                changed = true;
+            }
+        }
+
+        if (changed) await tx.Commit();
+    }
+
+    // Always enabled and visible for an item of this source: the frozen item has no update, so tying the action to
+    // one would take away the only way to unfreeze it. Freezing also makes sense before any update exists.
+    public IObservable<HideUpdatesState> ObserveHideUpdates(IReadOnlyList<LibraryItem.ReadOnly> items)
+    {
+        var ids = items.Where(static item => TryGetFile(item, out _)).Select(static item => item.Id).ToArray();
+        if (ids.Length == 0) return Observable.Return(new HideUpdatesState(IsHidden: false, ItemCount: 0, IsEnabled: false, IsVisible: false));
+
+        return checker.ObserveFrozenChanges()
+            .Select(_ => new HideUpdatesState(ids.All(id => UpdatePin.IsFrozen(connection.Db, id)), ids.Length, IsEnabled: true, IsVisible: true))
+            .DistinctUntilChanged();
+    }
+
+    public string HideUpdatesLabel(bool hidden) => hidden ? "Unfreeze version" : "Freeze version";
+
     // Library only: nothing is linked, so the old version stays in the loadouts.
     private async Task<IReadOnlyList<LibraryFile.ReadOnly>> AddToLibrary(ThunderstoreModUpdate package, CancellationToken cancellationToken)
     {

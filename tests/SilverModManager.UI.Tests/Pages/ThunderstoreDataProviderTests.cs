@@ -507,6 +507,122 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
         await EventuallyOnUi(() => package.GetOptional<LibraryComponents.UpdateAction>(LibraryColumns.Actions.UpdateComponentKey).Value.Update.Value.Count.Should().Be(2));
     }
 
+    private static bool HasUpdate(CompositeItemModel<EntityId> row)
+        => row.GetOptional<LibraryComponents.UpdateAction>(LibraryColumns.Actions.UpdateComponentKey) is { HasValue: true } action && action.Value.Update.Value is not null;
+
+    private static LibraryComponents.HideUpdatesAction HideActionOf(CompositeItemModel<EntityId> row)
+        => row.Get<LibraryComponents.HideUpdatesAction>(LibraryColumns.Actions.HideUpdatesComponentKey);
+
+    [Fact]
+    public async Task EveryRow_OffersToFreezeTheVersion_WithoutAnUpdatePending()
+    {
+        var community = UniqueCommunity();
+        var team = "Team" + Guid.NewGuid().ToString("N");
+        await AddFile(community, team, "Package", "1.0.0");
+        await AddFile(community, team, "Package", "1.1.0");
+        var game = ThunderstoreGameOf(community);
+        using var rows = Rows(CreateProvider(game).ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
+        await Eventually(() => rows.Count.Should().Be(1));
+        var package = rows.Items.Single();
+        using var versions = ChildrenOf(package);
+        await Eventually(() => versions.Count.Should().Be(2));
+        var all = new[] { package }.Concat(versions.Items).ToArray();
+        await OnUi(() =>
+        {
+            foreach (var row in all) row.Activate();
+            return Task.CompletedTask;
+        });
+
+        await EventuallyOnUi(() =>
+        {
+            foreach (var row in all)
+            {
+                var action = HideActionOf(row);
+                action.IsVisible.Value.Should().BeTrue();
+                action.IsEnabled.Value.Should().BeTrue();
+                action.IsHidden.Value.Should().BeFalse();
+            }
+            HideActionOf(package).ButtonText.Value.Should().Be("Freeze version (2)");
+            versions.Items.Select(row => HideActionOf(row).ButtonText.Value).Should().AllBe("Freeze version (1)");
+        });
+    }
+
+    [Fact]
+    public async Task AFrozenVersion_KeepsItsAction_LabelledUnfreeze()
+    {
+        var community = UniqueCommunity();
+        var team = "Team" + Guid.NewGuid().ToString("N");
+        await AddFile(community, team, "Frozen", "1.0.0", frozen: true);
+        var game = ThunderstoreGameOf(community);
+        using var rows = Rows(CreateProvider(game).ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
+        await Eventually(() => rows.Count.Should().Be(1));
+        var package = rows.Items.Single();
+        using var versions = ChildrenOf(package);
+        await Eventually(() => versions.Count.Should().Be(1));
+        var all = new[] { package, versions.Items.Single() };
+        await OnUi(() =>
+        {
+            foreach (var row in all) row.Activate();
+            return Task.CompletedTask;
+        });
+
+        await EventuallyOnUi(() =>
+        {
+            foreach (var row in all)
+            {
+                var action = HideActionOf(row);
+                action.IsHidden.Value.Should().BeTrue();
+                action.IsVisible.Value.Should().BeTrue();
+                action.IsEnabled.Value.Should().BeTrue();
+                action.ButtonText.Value.Should().Be("Unfreeze version (1)");
+            }
+        });
+    }
+
+    [Fact]
+    public async Task FreezingARowThroughItsSource_TakesTheUpdateAwayAndKeepsTheAction_UnfreezingBringsItBack()
+    {
+        var community = UniqueCommunity();
+        var team = "Team" + Guid.NewGuid().ToString("N");
+        var file = await AddFile(community, team, "Package", "1.0.0");
+        var game = ThunderstoreGameOf(community);
+        using var rows = Rows(CreateProvider(game).ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
+        await Eventually(() => rows.Count.Should().Be(1));
+        var package = rows.Items.Single();
+        using var versions = ChildrenOf(package);
+        await Eventually(() => versions.Count.Should().Be(1));
+        var version = versions.Items.Single();
+        await OnUi(() =>
+        {
+            package.Activate();
+            version.Activate();
+            return Task.CompletedTask;
+        });
+        Provider.GetRequiredService<ThunderstoreUpdateChecker>().Refresh(CatalogWith(community, team, "Package", "1.0.0", "1.1.0"));
+        await EventuallyOnUi(() => version.GetOptional<LibraryComponents.UpdateAction>(LibraryColumns.Actions.UpdateComponentKey).Value.Update.Value.NewestVersion.Should().Be("1.1.0"));
+        var ids = new[] { LibraryItemId.From(file) };
+
+        await HideUpdatesToggle.Apply(Connection.Db, Provider.GetRequiredService<ModSourceResolver>(), ids, CancellationToken.None);
+
+        await EventuallyOnUi(() =>
+        {
+            foreach (var row in new[] { package, version })
+            {
+                HasUpdate(row).Should().BeFalse("a frozen version has no update");
+                HideActionOf(row).ButtonText.Value.Should().Be("Unfreeze version (1)");
+                HideActionOf(row).IsVisible.Value.Should().BeTrue();
+            }
+        });
+
+        await HideUpdatesToggle.Apply(Connection.Db, Provider.GetRequiredService<ModSourceResolver>(), ids, CancellationToken.None);
+
+        await EventuallyOnUi(() =>
+        {
+            version.GetOptional<LibraryComponents.UpdateAction>(LibraryColumns.Actions.UpdateComponentKey).Value.Update.Value.NewestVersion.Should().Be("1.1.0");
+            HideActionOf(version).ButtonText.Value.Should().Be("Freeze version (1)");
+        });
+    }
+
     private sealed class FixedCatalogSource(ThunderstoreCatalog catalog) : IThunderstoreCatalogSource
     {
         public bool IsStale(string community) => false;

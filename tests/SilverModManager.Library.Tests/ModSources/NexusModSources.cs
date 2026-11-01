@@ -3,6 +3,7 @@ using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Networking.NexusWebApi.UpdateFilters;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Settings;
 
@@ -20,6 +21,7 @@ internal static class NexusModSources
         INexusUpdateDownloader? downloader = null,
         ILibraryService? library = null,
         IOSInterop? os = null,
+        IModUpdateFilterService? filters = null,
         int maxParallelDownloads = 4)
     {
         var settings = Substitute.For<ISettingsManager>();
@@ -31,6 +33,7 @@ internal static class NexusModSources
             library ?? Substitute.For<ILibraryService>(),
             connection,
             settings,
-            os ?? Substitute.For<IOSInterop>());
+            os ?? Substitute.For<IOSInterop>(),
+            filters ?? Substitute.For<IModUpdateFilterService>());
     }
 }

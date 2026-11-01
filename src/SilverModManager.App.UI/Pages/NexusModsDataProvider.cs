@@ -16,8 +16,6 @@ using SilverModManager.App.UI.Pages.LibraryPage;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
 using SilverModManager.MnemonicDB.Abstractions.Query;
-using SilverModManager.Networking.NexusWebApi;
-using SilverModManager.Networking.NexusWebApi.UpdateFilters;
 using NuGet.Versioning;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
@@ -31,9 +29,7 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
     private readonly IServiceProvider _serviceProvider;
     private readonly IConnection _connection;
     private readonly GameNames _gameNames;
-    private readonly IModUpdateService _modUpdateService;
     private readonly ModSourceResolver _sources;
-    private readonly IModUpdateFilterService _modUpdateFilterService;
     private readonly Lazy<IResourceLoader<EntityId, Bitmap>> _thumbnailLoader;
 
     public NexusModsDataProvider(IServiceProvider serviceProvider) : this(serviceProvider, serviceProvider.GetRequiredService<IConnection>()) { }
@@ -43,9 +39,7 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
         _serviceProvider = serviceProvider;
         _connection = connection;
         _gameNames = new GameNames(serviceProvider.GetServices<IGameData>());
-        _modUpdateService = serviceProvider.GetRequiredService<IModUpdateService>();
         _sources = serviceProvider.GetRequiredService<ModSourceResolver>();
-        _modUpdateFilterService = serviceProvider.GetRequiredService<IModUpdateFilterService>();
 
         _thumbnailLoader = new Lazy<IResourceLoader<EntityId, Bitmap>>(() => ImagePipelines.GetModPageThumbnailPipeline(serviceProvider));
     }
@@ -198,24 +192,20 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
         LibraryDataProviderHelper.AddViewChangelogActionComponent(parentItemModel);
         LibraryDataProviderHelper.AddViewModPageActionComponent(parentItemModel);
 
-        var updatesOnPageUnfiltered = _modUpdateService.GetNewestModPageVersionObservableUnfiltered(modPage);
-        
         // Note(sewer):
-        // Hide the button if there are no updates available for any files on this mod page
-        // BUT
-        // We have to be very careful here! We only hide if we have the latest version of the mods
-        // from the mod page! If there is an update that's hidden, we still have to show the button,
-        // else the user has no way to unhide the update.
-        var isVisibleObservable = updatesOnPageUnfiltered
-            .Select(optional => optional.HasValue && optional.Value.HasAnyUpdates)
-            .ToObservable();
-        LibraryDataProviderHelper.AddHideUpdatesActionComponent(parentItemModel, updatesOnPageUnfiltered, _modUpdateFilterService, isVisibleObservable);
+        // The hide action stays on a row whose updates are all hidden, or the user would have no way to show them
+        // again; the source reports its state from the unfiltered updates.
+        var pageItemsNow = libraryItems.QueryWhenChanged(static query => (IReadOnlyList<LibraryItem.ReadOnly>)query.Items.Select(static item => item.AsLibraryItem()).ToArray());
+        LibraryDataProviderHelper.AddHideUpdatesActionComponent(parentItemModel, SourceOf(pageItems[0]), pageItemsNow);
         
         LibraryDataProviderHelper.AddDeleteItemActionComponent(parentItemModel);
         LibraryDataProviderHelper.AddDestinationComponents(parentItemModel, _connection, libraryFilter.Game.GameId, _gameNames);
 
         return parentItemModel;
     }
+
+    private IModSource SourceOf(LibraryItem.ReadOnly item)
+        => _sources.For(item) ?? throw new InvalidOperationException($"No mod source owns the Nexus Mods item {item.Id}.");
 
     private IObservable<Optional<ModUpdate>> ObserveUpdate(LibraryItem.ReadOnly item)
         => _sources.For(item)?.ObserveUpdate(item) ?? System.Reactive.Linq.Observable.Return(Optional<ModUpdate>.None);
@@ -279,19 +269,7 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
             )
         );
 
-        var newestFileUnfiltered = _modUpdateService.GetNewestFileVersionObservableUnfiltered(fileMetadata);
-        
-        // Note(sewer):
-        // Hide the button if there are no updates available for this mod.
-        // BUT
-        // We have to be very careful here! We only hide if we have the latest version of the mods
-        // from the mod page! If there is an update that's hidden, we still have to show the button,
-        // else the user has no way to unhide the update.
-        var isVisibleObservable = newestFileUnfiltered
-            .Select(optional => optional.HasValue)
-            .ToObservable();
-        
-        LibraryDataProviderHelper.AddHideUpdatesActionComponent(itemModel, newestFileUnfiltered, _modUpdateFilterService, isVisibleObservable);
+        LibraryDataProviderHelper.AddHideUpdatesActionComponent(itemModel, SourceOf(libraryItem.AsLibraryItem()), [libraryItem.AsLibraryItem()]);
         
         LibraryDataProviderHelper.AddDeleteItemActionComponent(itemModel);
         LibraryDataProviderHelper.AddDestinationComponents(itemModel, _connection, libraryFilter.Game.GameId, _gameNames);

@@ -657,67 +657,9 @@ After asking design, we're choosing to simply open the mod page for now.
             await actions.Accept(ids, suggestion);
     }
 
-    private async ValueTask HandleHideUpdatesMessage(HideUpdatesMessage hideUpdatesMessage, CancellationToken cancellationToken)
+    private ValueTask HandleHideUpdatesMessage(HideUpdatesMessage hideUpdatesMessage, CancellationToken cancellationToken)
     {
-        var modUpdateFilterService = _serviceProvider.GetRequiredService<IModUpdateFilterService>();
-
-        await hideUpdatesMessage.Id.Match(
-            async modPageId =>
-            {
-                // Handle hiding/showing updates for a mod page
-                // First get all library items we have that come from the mod page.
-                var allLibraryFilesForThisMod = _connection.Db.Datoms(NexusModsLibraryItem.ModPageMetadata, modPageId)
-                    .Select(datom => NexusModsLibraryItem.Load(_connection.Db, datom.E).FileMetadata)
-                    .ToArray();
-
-                // Note(sewer):
-                // Behaviour per captainsandypants (Slack).
-                // 'If any children have updates set to hidden, then the parent should have "Show updates" as the menu item.
-                // When selected, this will set all children to show updates.'
-                //
-                // We have to be careful here.
-                // We have a list of ***current versions*** of files in the mod page.
-                // We need to check if it's possible to update ***any of these current versions*** to a new file.
-                //     👉 👉 So for each file we need to check if any of its versions is not ignored as an update.
-                var modsWithUpdatesHidden = allLibraryFilesForThisMod.Where(x =>
-                    {
-                        // Checking all versions is not a bug, it is intended behaviour per design.
-                        // Search 'That definition also means older versions should be excluded from update checks.' in Slack.
-                        var newerFiles = RunUpdateCheck.GetAllVersionsForExistingFile(x).ToArray();
-                        return newerFiles.All(newer => modUpdateFilterService.IsFileHidden(newer.Uid));
-                    }
-                ).ToArray();
-
-                if (modsWithUpdatesHidden.Length > 0)
-                {
-                    var allVersionsOfLibraryItemsWithUpdatesHidden =
-                        modsWithUpdatesHidden.SelectMany(RunUpdateCheck.GetAllVersionsForExistingFile)
-                                             .Select(x => x.Uid);
-                    await modUpdateFilterService.ShowFilesAsync(allVersionsOfLibraryItemsWithUpdatesHidden);
-                }
-                else
-                {
-                    var allVersionsOfAllFilesForThisMod = allLibraryFilesForThisMod
-                        .SelectMany(RunUpdateCheck.GetAllVersionsForExistingFile)
-                        .Select(x => x.Uid);
-                    await modUpdateFilterService.HideFilesAsync(allVersionsOfAllFilesForThisMod);
-                }
-            },
-            async libraryItemId =>
-            {
-                // Handle hiding/showing updates for a single file
-                var libraryItem = NexusModsLibraryItem.Load(_connection.Db, libraryItemId);
-                var fileMetadata = libraryItem.FileMetadata;
-                var allVersions = RunUpdateCheck.GetAllVersionsForExistingFile(fileMetadata).ToArray();
-
-                var areAllHidden = allVersions.All(x => modUpdateFilterService.IsFileHidden(x.Uid));
-
-                if (areAllHidden)
-                    await modUpdateFilterService.ShowFilesAsync(allVersions.Select(x => x.Uid));
-                else
-                    await modUpdateFilterService.HideFilesAsync(allVersions.Select(x => x.Uid));
-            }
-        );
+        return HideUpdatesToggle.Apply(_connection.Db, _serviceProvider.GetRequiredService<ModSourceResolver>(), hideUpdatesMessage.Ids, cancellationToken);
     }
 
     private ValueTask OpenSourcePage(LibraryItemId[] ids, Func<IModSource, LibraryItem.ReadOnly, Uri?> uriOf)
@@ -959,7 +901,7 @@ public readonly record struct UpdateAndReplaceMessage(ModUpdate Update, Composit
 public readonly record struct UpdateAndKeepOldMessage(ModUpdate Update, CompositeItemModel<EntityId> TreeNode);
 public readonly record struct ViewChangelogMessage(LibraryItemId[] Ids);
 public readonly record struct ViewModPageMessage(LibraryItemId[] Ids);
-public readonly record struct HideUpdatesMessage(OneOf<NexusModsModPageMetadataId, NexusModsLibraryItemId> Id);
+public readonly record struct HideUpdatesMessage(LibraryItemId[] Ids);
 public readonly record struct DeleteItemMessage(LibraryItemId[] Ids);
 public readonly record struct DestinationMessage(LibraryItemId[] Ids, DestinationActionKind Kind);
 
@@ -1025,21 +967,6 @@ public class LibraryTreeDataGridAdapter :
             })
         );
 
-        // Hiding updates still works on Nexus ids; it moves onto IModSource with the hide action.
-        static OneOf<NexusModsModPageMetadataId, NexusModsLibraryItemId> GetHideUpdatesTarget(IDb db, EntityId entityId)
-        {
-            var modPageMetadata = NexusModsModPageMetadata.Load(db, entityId);
-            if (modPageMetadata.IsValid())
-                return OneOf<NexusModsModPageMetadataId, NexusModsLibraryItemId>.FromT0(modPageMetadata.Id);
-                
-            // Try to load as NexusModsLibraryItem
-            var libraryItem = NexusModsLibraryItem.Load(db, entityId);
-            if (libraryItem.IsValid())
-                return OneOf<NexusModsModPageMetadataId, NexusModsLibraryItemId>.FromT1(libraryItem.Id);
-            
-            throw new Exception("Unknown type of entity for HideUpdatesAction: " + entityId);
-        }
-
         model.SubscribeToComponentAndTrack<LibraryComponents.ViewChangelogAction, LibraryTreeDataGridAdapter>(
             key: LibraryColumns.Actions.ViewChangelogComponentKey,
             state: this,
@@ -1090,9 +1017,8 @@ public class LibraryTreeDataGridAdapter :
             factory: static (self, itemModel, component) => component.CommandHideUpdates.Subscribe((self, itemModel, component), static (_, state) =>
             {
                 var (self, model, _) = state;
-                var entityId = model.Key;
 
-                self.MessageSubject.OnNext(new HideUpdatesMessage(GetHideUpdatesTarget(self._connection.Db, entityId)));
+                self.MessageSubject.OnNext(new HideUpdatesMessage(GetLibraryItemIds(model).ToArray()));
             })
         );
     }
