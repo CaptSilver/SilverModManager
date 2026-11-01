@@ -234,6 +234,52 @@ public class UpdateCheckerTests(IConnection connection)
     }
 
     [Fact]
+    public async Task Observe_DropsTheUpdateWhenTheFileIsFrozenAndBringsItBackWhenUnfrozen()
+    {
+        var team = UniqueTeam();
+        var community = "community-" + Guid.NewGuid().ToString("N");
+        var file = await AddFile(team, "Mod", "4.1.0", community);
+        _checker.Refresh(Catalog(community, team, "Mod", ("4.1.0", true), ("4.2.0", true)));
+        var seen = new List<Optional<ThunderstoreUpdate>>();
+        using var subscription = _checker.Observe(file).Subscribe(seen.Add);
+        seen.Last().HasValue.Should().BeTrue();
+
+        using (var tx = connection.BeginTransaction())
+        {
+            _ = new UpdatePin.New(tx, file.Id) { Frozen = true };
+            await tx.Commit();
+        }
+        seen.Last().HasValue.Should().BeFalse("freezing takes the update away without a new check");
+
+        using (var tx = connection.BeginTransaction())
+        {
+            tx.Retract(file.Id, UpdatePin.Frozen, true);
+            await tx.Commit();
+        }
+        seen.Last().HasValue.Should().BeTrue("unfreezing brings it back");
+    }
+
+    [Fact]
+    public async Task Observe_StaysQuietWhenAnotherFileIsFrozen()
+    {
+        var team = UniqueTeam();
+        var community = "community-" + Guid.NewGuid().ToString("N");
+        var file = await AddFile(team, "Mod", "4.1.0", community);
+        var other = await AddFile(team, "Other", "1.0.0", community);
+        _checker.Refresh(Catalog(community, team, "Mod", ("4.1.0", true), ("4.2.0", true)));
+        var seen = new List<Optional<ThunderstoreUpdate>>();
+        using var subscription = _checker.Observe(file).Subscribe(seen.Add);
+
+        using (var tx = connection.BeginTransaction())
+        {
+            _ = new UpdatePin.New(tx, other.Id) { Frozen = true };
+            await tx.Commit();
+        }
+
+        seen.Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task Current_OnlyListsTheAskedCommunity()
     {
         var team = UniqueTeam();

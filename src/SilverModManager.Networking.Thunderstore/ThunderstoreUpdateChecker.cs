@@ -3,6 +3,7 @@ using System.Reactive.Subjects;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Thunderstore;
 
@@ -87,8 +88,15 @@ public sealed class ThunderstoreUpdateChecker(IConnection connection)
     }
 
     /// <summary>
-    /// The update for one library file, re-evaluated on every <see cref="Refresh"/> of its community. Emits the
-    /// last known state on subscribing when the community has been refreshed before, and nothing until then.
+    /// Emits on subscribing and again whenever any item is frozen or unfrozen.
+    /// </summary>
+    public IObservable<System.Reactive.Unit> ObserveFrozenChanges()
+        => connection.ObserveDatoms(UpdatePin.Frozen).Select(static _ => System.Reactive.Unit.Default).StartWith(System.Reactive.Unit.Default);
+
+    /// <summary>
+    /// The update for one library file, re-evaluated on every <see cref="Refresh"/> of its community and whenever an
+    /// item is frozen or unfrozen. Emits the last known state on subscribing when the community has been refreshed
+    /// before, and nothing until then.
     /// </summary>
     public IObservable<Optional<ThunderstoreUpdate>> Observe(ThunderstoreLibraryFile.ReadOnly file)
     {
@@ -96,13 +104,16 @@ public sealed class ThunderstoreUpdateChecker(IConnection connection)
 
         return CatalogOf(file.Community)
             .Where(catalog => catalog.HasValue)
-            .Select(catalog =>
-            {
-                var db = connection.Db;
-                var current = ThunderstoreLibraryFile.Load(db, id);
-                var update = current.IsValid() ? Check(current, catalog.Value, db) : null;
-                return update is { } found ? Optional.Some(found) : Optional<ThunderstoreUpdate>.None;
-            });
+            .Select(catalog => ObserveFrozenChanges()
+                .Select(_ =>
+                {
+                    var db = connection.Db;
+                    var current = ThunderstoreLibraryFile.Load(db, id);
+                    var update = current.IsValid() ? Check(current, catalog.Value, db) : null;
+                    return update is { } found ? Optional.Some(found) : Optional<ThunderstoreUpdate>.None;
+                })
+                .DistinctUntilChanged())
+            .Switch();
     }
 
     private static ThunderstoreUpdate? Check(ThunderstoreLibraryFile.ReadOnly file, ThunderstoreCatalog catalog, IDb db)
