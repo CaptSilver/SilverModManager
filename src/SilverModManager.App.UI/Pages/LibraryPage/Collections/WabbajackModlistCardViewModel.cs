@@ -8,8 +8,6 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Controls;
-using SilverModManager.App.UI.Dialog;
-using SilverModManager.App.UI.Dialog.Enums;
 using Microsoft.Extensions.Logging;
 using SilverModManager.App.UI.Extensions;
 using SilverModManager.App.UI.Pages.Wabbajack;
@@ -20,8 +18,6 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
-using SilverModManager.UI.Sdk.Dialog;
-using SilverModManager.UI.Sdk.Dialog.Enums;
 using SilverModManager.Wabbajack;
 using SilverModManager.Wabbajack.Library;
 using SilverModManager.Wabbajack.Models;
@@ -68,7 +64,8 @@ public partial class WabbajackModlistCardViewModel : AViewModel<IWabbajackModlis
 
         OpenCommand = ReactiveCommand.Create(() => OpenPage(preferInstall: false));
         InstallCommand = ReactiveCommand.Create(() => OpenPage(preferInstall: true));
-        RemoveCommand = ReactiveCommand.CreateFromTask(RemoveAsync);
+        RemoveCommand = ReactiveCommand.CreateFromTask(() =>
+            new WabbajackModlistRemover(_provider).ConfirmAndRemove(_windowManager, _windowManager.ActiveWorkspaceController, File));
 
         State = WabbajackModlistInstallState.Read(_connection.Db, File, _loadout);
         ArchivesHad = CountHeld(_connection.Db);
@@ -157,48 +154,5 @@ public partial class WabbajackModlistCardViewModel : AViewModel<IWabbajackModlis
         };
         var workspaceController = _windowManager.ActiveWorkspaceController;
         workspaceController.OpenPage(_workspaceId, page, workspaceController.GetOpenPageBehavior(page, new NavigationInformation(NavigationInput.Default, Optional<OpenPageBehaviorType>.None)));
-    }
-
-    private static readonly ButtonDefinitionId RemoveWithArchives = ButtonDefinitionId.From("remove-with-archives");
-
-    private async Task RemoveAsync()
-    {
-        var remover = new WabbajackModlistRemover(_provider);
-        var plan = remover.Plan(File);
-
-        var deleteArchives = false;
-        var dialog = DialogFactory.CreateStandardDialog(
-            title: $"Remove '{plan.Name}' from the library?",
-            new StandardDialogParameters { Text = RemovalText(plan) },
-            buttonDefinitions: RemovalButtons(plan));
-        var result = await _windowManager.ShowDialog(dialog, DialogWindowType.Modal);
-        if (result.ButtonId == RemoveWithArchives) deleteArchives = true;
-        else if (result.ButtonId != ButtonDefinitionId.Accept) return;
-
-        await remover.Remove(plan, deleteArchives, _windowManager.ActiveWorkspaceController);
-    }
-
-    internal static string RemovalText(ModlistRemovalPlan plan)
-    {
-        var text = new System.Text.StringBuilder();
-        if (plan.LoadoutNames.Count > 0)
-            text.AppendLine($"It is installed in {string.Join(", ", plan.LoadoutNames)}; those installs are removed too.");
-        if (plan.OwnedArchives.Count > 0)
-            text.AppendLine($"{plan.OwnedArchives.Count:N0} archives ({plan.OwnedSize}) were downloaded only for this modlist.");
-        if (plan.Kept.Count > 0)
-        {
-            text.AppendLine("These stay in the library:");
-            foreach (var kept in plan.Kept.Take(10)) text.AppendLine($"  {kept.Name}: {kept.Reason}");
-            if (plan.Kept.Count > 10) text.AppendLine($"  and {plan.Kept.Count - 10:N0} more");
-        }
-        return text.Length == 0 ? "The modlist file is removed from the library." : text.ToString().TrimEnd();
-    }
-
-    private static DialogButtonDefinition[] RemovalButtons(ModlistRemovalPlan plan)
-    {
-        var keep = new DialogButtonDefinition(plan.OwnedArchives.Count > 0 ? "Remove list, keep archives" : "Remove", ButtonDefinitionId.Accept, ButtonAction.Accept, ButtonStyling.Destructive);
-        return plan.OwnedArchives.Count == 0
-            ? [DialogStandardButtons.Cancel, keep]
-            : [DialogStandardButtons.Cancel, keep, new DialogButtonDefinition($"Remove list and {plan.OwnedArchives.Count:N0} archives ({plan.OwnedSize})", RemoveWithArchives, ButtonAction.Accept, ButtonStyling.Destructive)];
     }
 }

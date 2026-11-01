@@ -7,6 +7,8 @@ using NSubstitute;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Dialog;
+using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Pages;
 using SilverModManager.App.UI.Pages.LibraryPage.Collections;
 using SilverModManager.App.UI.Pages.Wabbajack;
@@ -19,6 +21,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.Wabbajack.Models;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
@@ -249,6 +252,21 @@ public class WabbajackModlistCardViewModelTests(IServiceProvider provider) : AUi
     private WabbajackModlistRemover Remover => new(Provider);
 
     [Fact]
+    public async Task TheCardsRemoveButtonAsksTheSharedPlanDialogAndRemovesTheList()
+    {
+        var (list, loadout) = await AddList("Removed from its card");
+        var card = Card(list, loadout);
+        Dialog? shown = null;
+        _windows.ShowDialog(Arg.Do<IDialog>(d => shown = (Dialog)d), Arg.Any<DialogWindowType>())
+            .Returns(new StandardDialogResult { ButtonId = ButtonDefinitionId.Accept });
+
+        await card.RemoveCommand.Execute();
+
+        shown!.ViewModel.WindowTitle.Should().Be("Remove 'Removed from its card' from the library?");
+        WabbajackModlistLibraryFile.Load(Connection.Db, list).IsValid().Should().BeFalse();
+    }
+
+    [Fact]
     public async Task TheRemovalPlanCountsOnlyTheArchivesThisListFetchedAndNothingElseUses()
     {
         var (list, loadout) = await AddList("Removing");
@@ -400,7 +418,7 @@ public class WabbajackModlistCardViewModelTests(IServiceProvider provider) : AUi
         }
         var plan = Remover.Plan(LibraryFileId.From(list));
         plan.LoadoutNames.Should().ContainSingle().Which.Should().Be(loadout.Name);
-        WabbajackModlistCardViewModel.RemovalText(plan).Should().Contain(loadout.Name);
+        WabbajackModlistRemover.RemovalText(plan).Should().Contain(loadout.Name);
 
         await Remover.Remove(plan, deleteArchives: false, _workspace);
 

@@ -13,6 +13,9 @@ using NexusMods.Paths;
 using NSubstitute;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Dialog;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.App.UI.Pages.Collections;
 using SilverModManager.App.UI.Pages.Wabbajack;
@@ -22,6 +25,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.UI.Sdk.Icons;
 using SilverModManager.Wabbajack.Models;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
@@ -300,6 +304,34 @@ public class WabbajackModlistSourceTests(IServiceProvider provider) : AUiTest(pr
         await f.Source.PendingRemoval!.Remove(controller);
 
         WabbajackModlistLibraryFile.Load(Connection.Db, f.File.Id).IsValid().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ConfirmingTheRemovalOfAPendingListAsksTheListsPlanDialogNotTheNameDialog()
+    {
+        var f = await Open();
+        var windows = Substitute.For<IWindowManager>();
+        Dialog? shown = null;
+        windows.ShowDialog(Arg.Do<IDialog>(d => shown = (Dialog)d), Arg.Any<DialogWindowType>())
+            .Returns(new StandardDialogResult { ButtonId = ButtonDefinitionId.Accept });
+
+        await f.Source.PendingRemoval!.ConfirmAndRemove(windows, Substitute.For<IWorkspaceController>());
+
+        shown!.ViewModel.WindowTitle.Should().Be($"Remove '{f.File.Name}' from the library?");
+        WabbajackModlistLibraryFile.Load(Connection.Db, f.File.Id).IsValid().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CancellingTheRemovalOfAPendingListKeepsIt()
+    {
+        var f = await Open();
+        var windows = Substitute.For<IWindowManager>();
+        windows.ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>())
+            .Returns(new StandardDialogResult { ButtonId = ButtonDefinitionId.Cancel });
+
+        await f.Source.PendingRemoval!.ConfirmAndRemove(windows, Substitute.For<IWorkspaceController>());
+
+        WabbajackModlistLibraryFile.Load(Connection.Db, f.File.Id).IsValid().Should().BeTrue();
     }
 
     [Fact]

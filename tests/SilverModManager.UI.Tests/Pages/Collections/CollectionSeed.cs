@@ -9,6 +9,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using SilverModManager.MnemonicDB.Abstractions.Query;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Sdk.Loadouts;
@@ -164,6 +165,31 @@ internal static class CollectionSeed
         };
         var result = await tx.Commit();
         return WabbajackModlistLibraryFile.Load(result.Db, result[modlist.Id]);
+    }
+
+    /// <summary>
+    /// An archive the app fetched for <paramref name="modlist"/> and nothing else uses: the list's archive row, a
+    /// library file with that row's hash, and the link between them. Returns the library file.
+    /// </summary>
+    public static async Task<EntityId> AddOwnedArchive(IConnection connection, EntityId modlist, string name)
+    {
+        var identity = FileIdentity.XxHash64(Hash.From((ulong)System.IO.Hashing.XxHash64.HashToUInt64(System.Text.Encoding.UTF8.GetBytes(name))));
+        if (!identity.TryXxHash64(out var xx)) throw new InvalidOperationException("Not an xxHash64 identity");
+        using var tx = connection.BeginTransaction();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(name + Guid.NewGuid());
+        var file = new LibraryFile.New(tx, out var fileId)
+        {
+            FileName = name,
+            Hash = bytes.xxHash3(),
+            XxHash64 = xx,
+            Size = Size.From(1_000),
+            LibraryItem = new LibraryItem.New(tx, fileId) { Name = name },
+        };
+        _ = new LocalFile.New(tx, fileId) { LibraryFile = file, OriginalPath = $"/x/{name}" };
+        var row = new WabbajackModlistArchive.New(tx) { ModlistId = modlist, Identity = identity, Size = Size.From(10), Name = name };
+        tx.Add(row.Id, WabbajackModlistArchive.FetchedFiles, fileId);
+        var result = await tx.Commit();
+        return result.Remap(file).Id;
     }
 
     /// <summary>

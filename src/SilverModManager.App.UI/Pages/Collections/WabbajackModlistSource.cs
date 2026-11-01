@@ -158,18 +158,22 @@ public sealed class WabbajackModlistSource : CollectionSource
         () => NameOf(group),
         DeleteGroup(group));
 
-    public override CollectionRemoval? PendingRemoval => CollectionRemoval.Confirmed(
-        "Remove modlist from library",
-        IconValues.DeleteOutline,
-        ContextMenuItemStyling.Critical,
-        Observable.Return(true),
-        () => WabbajackModlistLibraryFile.Load(Connection.Db, _file.Value).Name,
-        RemoveFromLibrary);
-
-    private Task RemoveFromLibrary(IWorkspaceController controller)
+    // The left menu's pending entry asks the same plan dialog as the Library card; the page's own item removes at once.
+    public override CollectionRemoval? PendingRemoval
     {
-        var remover = new WabbajackModlistRemover(Services);
-        return remover.Remove(remover.Plan(_file), deleteArchives: false, controller);
+        get
+        {
+            var remover = new WabbajackModlistRemover(Services);
+            return new CollectionRemoval
+            {
+                Header = "Remove modlist from library",
+                Icon = IconValues.DeleteOutline,
+                Styling = ContextMenuItemStyling.Critical,
+                CanExecute = Observable.Return(true),
+                Remove = controller => remover.Remove(remover.Plan(_file), deleteArchives: false, controller),
+                ConfirmAndRemove = (windowManager, controller) => remover.ConfirmAndRemove(windowManager, controller, _file),
+            };
+        }
     }
 
     public override IDisposable Activate()
