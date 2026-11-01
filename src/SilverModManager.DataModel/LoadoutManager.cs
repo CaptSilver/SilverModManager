@@ -50,6 +50,7 @@ internal partial class LoadoutManager : ILoadoutManager
     private readonly IGarbageCollectorRunner _garbageCollectorRunner;
     private readonly IGameRegistry _gameRegistry;
     private readonly IFileStore _fileStore;
+    private readonly ICollectionOwnership _collectionOwnership;
 
     // Nothing in the database makes a folder's row unique, so the check and the create have to happen as one
     // step: two callers that both miss would each commit a row for the same install.
@@ -66,6 +67,7 @@ internal partial class LoadoutManager : ILoadoutManager
         _garbageCollectorRunner = serviceProvider.GetRequiredService<IGarbageCollectorRunner>();
         _gameRegistry = serviceProvider.GetRequiredService<IGameRegistry>();
         _fileStore = serviceProvider.GetRequiredService<IFileStore>();
+        _collectionOwnership = serviceProvider.GetRequiredService<ICollectionOwnership>();
     }
 
     public async ValueTask<GameInstallMetadata.ReadOnly> ManageInstallation(GameInstallation installation)
@@ -867,6 +869,27 @@ internal partial class LoadoutManager : ILoadoutManager
 
         await tx.Commit();
     }
+
+    public async ValueTask<CollectionMoveResult> MoveItemsToCollection(IReadOnlyList<LoadoutItemId> items, CollectionGroupId target)
+    {
+        var plan = CollectionMovePlan.Plan(_connection.Db, items, target, _collectionOwnership);
+        if (plan.Movable.Count == 0) return new CollectionMoveResult([], plan.Skipped);
+
+        using var tx = _connection.BeginTransaction();
+        var targetGroup = LoadoutItemGroupId.From(target.Value);
+        foreach (var group in plan.Movable) tx.Add(group.Value, LoadoutItem.Parent, targetGroup);
+
+        // The resolver can't see the Parent writes above, and collection rules depend on them.
+        var loadoutId = LoadoutItem.Load(_connection.Db, LoadoutItemId.From(target.Value)).LoadoutId;
+        tx.Add(new ApplyGroupRulesTxFunc(loadoutId, new RuleDelta
+        {
+            MovedGroups = plan.Movable.ToImmutableDictionary(static group => group, _ => targetGroup),
+        }));
+
+        await tx.Commit();
+        return new CollectionMoveResult(plan.Movable, plan.Skipped);
+    }
+
 
     public ValueTask<ConflictMoveResult> ResolveFileConflicts(LoadoutItemGroupPriorityId[] winnerIds, LoadoutItemGroupPriorityId loserId)
         => MovePriorities(winnerIds, loserId);

@@ -155,6 +155,14 @@ public interface ILoadoutManager
     ValueTask ReplaceItems(LoadoutId loadoutId, LoadoutItemGroupId[] groupsToRemove, LibraryItem.ReadOnly libraryItemToInstall, bool keepPlace = false);
 
     /// <summary>
+    /// Re-parents mod groups into a collection of the same loadout, in one transaction. The items' own Disabled and
+    /// their priority rows are kept; the order only changes where a rule naming a collection now demands it. What can
+    /// move is decided by <see cref="CollectionMovePlan"/>; nothing movable commits nothing. Throws, and moves nothing,
+    /// when the new membership makes the stored group rules contradict each other.
+    /// </summary>
+    ValueTask<CollectionMoveResult> MoveItemsToCollection(IReadOnlyList<LoadoutItemId> items, CollectionGroupId target);
+
+    /// <summary>
     /// Resolves file conflicts by making items in <paramref name="winnerIds"/> win over <paramref name="loserId"/>.
     /// The move is refused, and nothing is written, when the resulting order would break a group rule.
     /// </summary>
