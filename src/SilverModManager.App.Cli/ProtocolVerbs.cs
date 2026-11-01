@@ -21,10 +21,22 @@ public static class ProtocolVerbs
 
 
     [Verb("associate-nxm", "Associate the nxm:// protocol with this application")]
-    private static async Task<int> AssociateNxm([Injected] IOSInterop osInterop)
+    private static async Task<int> AssociateNxm([Injected] IOSInterop osInterop, [Injected] ProtocolNotices notices, [Injected] CancellationToken token)
     {
-        await osInterop.RegisterUriSchemeHandler("nxm");
+        await Associate("nxm", osInterop, notices, token);
         return 0;
+    }
+
+    /// <summary>
+    /// Takes <paramref name="scheme"/> from whichever app holds it. A verb runs without <see cref="ProtocolRegistration"/>,
+    /// so it clears the remembered holder itself.
+    /// </summary>
+    public static async Task<UriSchemeRegistration> Associate(string scheme, IOSInterop osInterop, ProtocolNotices notices, CancellationToken token)
+    {
+        var result = await osInterop.RegisterUriSchemeHandler(scheme, UriSchemeClaim.Take, cancellationToken: token);
+        if (result.Registered)
+            notices.Forget(scheme);
+        return result;
     }
     
     [Verb("protocol-invoke", "Handle a URL with custom protocol")]

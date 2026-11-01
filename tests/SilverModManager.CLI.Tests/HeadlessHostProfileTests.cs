@@ -189,7 +189,7 @@ public class HeadlessHostProfileTests
     }
 
     [Fact]
-    public void HeadlessGraphHasNoInstallerViewsOrNxmRegistration()
+    public void HeadlessGraphHasNoInstallerViewsOrProtocolRegistration()
     {
         var services = Describe(Mode("as-main"));
 
@@ -251,7 +251,7 @@ public class HeadlessHostProfileTests
     }
 
     [Fact]
-    public void GuiGraphKeepsTheCliServerAndNxmRegistration()
+    public void GuiGraphKeepsTheCliServerAndProtocolRegistration()
     {
         var services = Describe(Mode("as-main-ui"));
 

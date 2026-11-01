@@ -32,7 +32,8 @@ public class ProtocolRegistrationTests
         public ISettingsManager Settings { get; } = Substitute.For<ISettingsManager>();
         public Subject<NxmHandlerSettings> NxmChanges { get; } = new();
         public Subject<Ror2mmHandlerSettings> Ror2mmChanges { get; } = new();
-        public ProtocolNoticeSettings Notices { get; private set; } = new();
+        public ProtocolNoticeSettings Stored { get; private set; } = new();
+        public ProtocolNotices Notices { get; private set; }
         public List<(string Scheme, UriSchemeClaim Claim)> Calls { get; } = [];
 
         private readonly SemaphoreSlim _registered = new(0);
@@ -43,9 +44,10 @@ public class ProtocolRegistrationTests
             Settings.Get<Ror2mmHandlerSettings>(Arg.Any<string?>()).Returns(new Ror2mmHandlerSettings { RegisterAsDefaultHandler = ror2mm });
             Settings.GetChanges<NxmHandlerSettings>(Arg.Any<string?>(), Arg.Any<bool>()).Returns(NxmChanges);
             Settings.GetChanges<Ror2mmHandlerSettings>(Arg.Any<string?>(), Arg.Any<bool>()).Returns(Ror2mmChanges);
-            Settings.Get<ProtocolNoticeSettings>(Arg.Any<string?>()).Returns(_ => Notices);
+            Settings.Get<ProtocolNoticeSettings>(Arg.Any<string?>()).Returns(_ => Stored);
             Settings.Update(Arg.Any<Func<ProtocolNoticeSettings, ProtocolNoticeSettings>>(), Arg.Any<string?>())
-                .Returns(call => Notices = call.Arg<Func<ProtocolNoticeSettings, ProtocolNoticeSettings>>()(Notices));
+                .Returns(call => Stored = call.Arg<Func<ProtocolNoticeSettings, ProtocolNoticeSettings>>()(Stored));
+            Notices = new ProtocolNotices(Settings, Events);
 
             Os.RegisterUriSchemeHandler(Arg.Any<string>(), Arg.Any<UriSchemeClaim>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
                 .Returns(call =>
@@ -55,6 +57,9 @@ public class ProtocolRegistrationTests
                     return new ValueTask<UriSchemeRegistration>(answer ?? new UriSchemeRegistration(true, null));
                 });
         }
+
+        // A new app process keeps the saved settings but starts with no pending notices.
+        public void RestartProcess() => Notices = new ProtocolNotices(Settings, Events);
 
         public void Answer(UriSchemeRegistration answer)
             => Os.RegisterUriSchemeHandler(Arg.Any<string>(), Arg.Any<UriSchemeClaim>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
@@ -77,7 +82,7 @@ public class ProtocolRegistrationTests
                     Substitute.For<IThunderstoreInstaller>(),
                     Substitute.For<ManagedGames>(Substitute.For<IGameRegistry>(), Substitute.For<IConnection>(), Substitute.For<ISynchronizerService>())),
             ];
-            return new ProtocolRegistration(handlers, Os, Settings, Events, NullLogger<ProtocolRegistration>.Instance);
+            return new ProtocolRegistration(handlers, Os, Settings, Events, Notices, NullLogger<ProtocolRegistration>.Instance);
         }
 
         public Task WaitForRegistrations(int count) => Task.Run(async () =>
@@ -96,6 +101,12 @@ public class ProtocolRegistrationTests
     }
 
     // There is no call to wait for in the "nothing happens" cases, so give the startup path a moment first.
+    private static void AcknowledgePending(Rig rig)
+    {
+        foreach (var notice in rig.Notices.Pending.ToArray())
+            rig.Notices.Acknowledge(notice);
+    }
+
     private static async Task Settle() => await Task.Delay(150, TestContext.Current.CancellationToken);
 
     [Fact]
@@ -242,7 +253,9 @@ public class ProtocolRegistrationTests
         var rig = new Rig(nxm: false, ror2mm: true, new UriSchemeRegistration(false, "r2modman.desktop"));
         var first = await Start(rig, 1);
         await first.StopAsync(TestContext.Current.CancellationToken);
+        AcknowledgePending(rig);
         rig.Events.ClearReceivedCalls();
+        rig.RestartProcess();
 
         var second = await Start(rig, 1);
         await Settle();
@@ -252,11 +265,40 @@ public class ProtocolRegistrationTests
     }
 
     [Fact]
+    public async Task AHolderNobodyWasListeningFor_IsReportedAgainOnTheNextStart()
+    {
+        var rig = new Rig(nxm: false, ror2mm: true, new UriSchemeRegistration(false, "r2modman.desktop"));
+        var first = await Start(rig, 1);
+        await first.StopAsync(TestContext.Current.CancellationToken);
+        rig.Stored.LastReportedHolder.Should().BeEmpty();
+        rig.Events.ClearReceivedCalls();
+        rig.RestartProcess();
+
+        var second = await Start(rig, 1);
+        await Settle();
+        await second.StopAsync(TestContext.Current.CancellationToken);
+
+        rig.Events.Received(1).Send(new CliMessages.ProtocolHandlerHeldElsewhere("ror2mm", "r2modman.desktop"));
+    }
+
+    [Fact]
+    public async Task AHolderFoundAtStartup_WaitsInPendingForTheWindowToPickItUp()
+    {
+        var rig = new Rig(nxm: false, ror2mm: true, new UriSchemeRegistration(false, "r2modman.desktop"));
+
+        var sut = await Start(rig, 1);
+        await sut.StopAsync(TestContext.Current.CancellationToken);
+
+        rig.Notices.Pending.Should().Equal(new CliMessages.ProtocolHandlerHeldElsewhere("ror2mm", "r2modman.desktop"));
+    }
+
+    [Fact]
     public async Task ASecondStartWithADifferentHolder_PublishesAgain()
     {
         var rig = new Rig(nxm: false, ror2mm: true, new UriSchemeRegistration(false, "r2modman.desktop"));
         var first = await Start(rig, 1);
         await first.StopAsync(TestContext.Current.CancellationToken);
+        AcknowledgePending(rig);
         rig.Answer(new UriSchemeRegistration(false, "gale.desktop"));
 
         var second = await Start(rig, 1);
@@ -271,11 +313,12 @@ public class ProtocolRegistrationTests
     {
         var rig = new Rig(nxm: false, ror2mm: true, new UriSchemeRegistration(false, "r2modman.desktop"));
         var first = await Start(rig, 1);
+        AcknowledgePending(rig);
         rig.Answer(new UriSchemeRegistration(true, null));
         rig.Ror2mmChanges.OnNext(new Ror2mmHandlerSettings { RegisterAsDefaultHandler = true });
         await rig.WaitForRegistrations(1);
         await first.StopAsync(TestContext.Current.CancellationToken);
-        rig.Notices.LastReportedHolder.Should().NotContainKey("ror2mm");
+        rig.Stored.LastReportedHolder.Should().NotContainKey("ror2mm");
 
         rig.Answer(new UriSchemeRegistration(false, "r2modman.desktop"));
         rig.Events.ClearReceivedCalls();

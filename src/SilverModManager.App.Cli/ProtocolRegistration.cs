@@ -21,6 +21,7 @@ public sealed class ProtocolRegistration(
     IOSInterop osInterop,
     ISettingsManager settingsManager,
     IEventBus eventBus,
+    ProtocolNotices notices,
     ILogger<ProtocolRegistration> logger) : BackgroundService
 {
     /// <inheritdoc/>
@@ -75,7 +76,7 @@ public sealed class ProtocolRegistration(
         {
             if (claim is UriSchemeClaim.Take)
             {
-                ForgetHolder(scheme);
+                notices.Forget(scheme);
                 if (result.OtherHandler is { } previous)
                     eventBus.Send(new CliMessages.ProtocolHandlerTaken(scheme, previous));
             }
@@ -85,22 +86,6 @@ public sealed class ProtocolRegistration(
         if (result.OtherHandler is not { } holder) return;
         logger.LogInformation("{Scheme}:// links open {Holder}, leaving them there", scheme, holder);
 
-        if (settingsManager.Get<ProtocolNoticeSettings>().LastReportedHolder.GetValueOrDefault(scheme) == holder) return;
-
-        settingsManager.Update<ProtocolNoticeSettings>(notices => notices with
-        {
-            LastReportedHolder = new Dictionary<string, string>(notices.LastReportedHolder) { [scheme] = holder },
-        });
-        eventBus.Send(new CliMessages.ProtocolHandlerHeldElsewhere(scheme, holder));
-    }
-
-    private void ForgetHolder(string scheme)
-    {
-        if (settingsManager.Get<ProtocolNoticeSettings>().LastReportedHolder.ContainsKey(scheme) is false) return;
-
-        settingsManager.Update<ProtocolNoticeSettings>(notices => notices with
-        {
-            LastReportedHolder = notices.LastReportedHolder.Where(pair => pair.Key != scheme).ToDictionary(pair => pair.Key, pair => pair.Value),
-        });
+        notices.ReportHeldElsewhere(scheme, holder);
     }
 }

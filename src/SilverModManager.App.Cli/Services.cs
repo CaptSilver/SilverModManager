@@ -45,6 +45,7 @@ public static class Services
         services.AddSingleton<IIpcProtocolHandler, Ror2mmIpcProtocolHandler>();
         services.AddSettings<Ror2mmHandlerSettings>();
         services.AddSettings<ProtocolNoticeSettings>();
+        services.AddSingleton<ProtocolNotices>();
 
         services.AddProtocolVerbs();
         return services;
