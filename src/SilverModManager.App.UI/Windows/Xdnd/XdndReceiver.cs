@@ -74,7 +74,7 @@ public sealed class XdndReceiver : IXdndReceiver, IDisposable
         if (_attachments.ContainsKey(xid)) return;
         if (Start() is not { } runtime) return;
 
-        if (runtime.Contract.WindowsOf(window.PlatformImpl!) is not { } windows)
+        if (window.PlatformImpl is not { } impl || runtime.Contract.WindowsOf(impl) is not { } windows)
         {
             _logger.LogDebug("XDND not attached to window {Xid}: its platform impl is not an Avalonia X11 window", xid);
             return;
