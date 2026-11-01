@@ -38,7 +38,14 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
 
     private NexusModsGameId NexusGame => LocateStubbedInstallation<Cyberpunk2077Game>(Provider).Game.NexusModsGameId.Value;
 
-    private async Task<EntityId> AddModlist(string name = "Some list", string gameType = "SkyrimSpecialEdition")
+    /// <summary>What the library records for a file added for the loadout's game.</summary>
+    private Destination ForTheGame => Destination.Of(LocateStubbedInstallation<Cyberpunk2077Game>(Provider).Game.GameId);
+
+    /// <summary>
+    /// A modlist for a game the app has no title for, which counts for whichever game is asked, unless a game type is given.
+    /// Its own destination is what the recogniser leaves: the list's game, or unassigned for a game with no title.
+    /// </summary>
+    private async Task<EntityId> AddModlist(string name = "Some list", string gameType = "NoSuchGame")
     {
         using var tx = Connection.BeginTransaction();
         var bytes = System.Text.Encoding.UTF8.GetBytes(name + Guid.NewGuid());
@@ -55,6 +62,7 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
             LibraryFile = file, Name = name, Author = "Someone", Version = "1.0", GameType = gameType,
             ArchiveCount = 0, ArchiveSize = Size.Zero, InstallSize = Size.Zero, IsNsfw = false,
         };
+        LibraryDestinations.Write(tx, id, SilverModManager.Wabbajack.WabbajackGames.GameIdFor(gameType) is { } listGame ? Destination.Of(listGame) : Destination.Unknown);
         var result = await tx.Commit();
         return result.Remap(file).Id;
     }
@@ -86,35 +94,15 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
             LibraryItem = new LibraryItem.New(tx, id) { Name = name },
         };
         _ = new LocalFile.New(tx, id) { LibraryFile = file, OriginalPath = $"/x/{name}" };
+        LibraryDestinations.Write(tx, id, ForTheGame);
         var result = await tx.Commit();
         return result.Remap(file).Id;
     }
 
-    /// <summary>
-    /// A Nexus game nothing else in the suite writes pages for. The host's database is shared, so a count of the
-    /// stubbed game's pages moves whenever another test adds one; this game's count only moves for this test.
-    /// </summary>
-    private static readonly NexusModsGameId IsolatedNexusGame = NexusModsGameId.From(987_654);
-
-    private LibraryFilter IsolatedFilter(Loadout.ReadOnly loadout) => new(loadout.LoadoutId, new IsolatedGame());
-
-    /// <summary>Only what the Mods tab's filter reads: which Nexus game the pages belong to.</summary>
-    private sealed class IsolatedGame : IGameData
-    {
-        public GameId GameId => GameId.From("isolated-nexus-game");
-        public Optional<NexusModsGameId> NexusModsGameId => Optional.Some(IsolatedNexusGame);
-        public StoreIdentifiers StoreIdentifiers => throw new NotSupportedException();
-        public string DisplayName => "Isolated game";
-        public IStreamFactory IconImage => throw new NotSupportedException();
-        public IStreamFactory TileImage => throw new NotSupportedException();
-        public ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult) => throw new NotSupportedException();
-        public GamePath GetPrimaryFile(GameInstallation installation) => throw new NotSupportedException();
-    }
-
-    private async Task<(EntityId Page, EntityId Item)> AddNexusFile(uint modId, uint fileId, string name, EntityId? existingPage = null, NexusModsGameId? nexusGame = null)
+    private async Task<(EntityId Page, EntityId Item)> AddNexusFile(uint modId, uint fileId, string name, EntityId? existingPage = null)
     {
         using var tx = Connection.BeginTransaction();
-        var game = nexusGame ?? NexusGame;
+        var game = NexusGame;
         var uid = new ModUid(ModId.From(modId), game);
         var page = existingPage is null
             ? new NexusModsModPageMetadata.New(tx)
@@ -149,6 +137,7 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
             Size = Size.FromLong(bytes.Length),
             LibraryItem = new LibraryItem.New(tx, id) { Name = name },
         };
+        LibraryDestinations.Write(tx, id, ForTheGame);
         var result = await tx.Commit();
         return (page is null ? existingPage!.Value : result.Remap(page).Id, result.Remap(item).Id);
     }
@@ -163,6 +152,7 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
             LoadoutItem = new LoadoutItem.New(tx, id) { LoadoutId = loadout.LoadoutId, Name = "installed" },
         };
         _ = new LibraryLinkedLoadoutItem.New(tx, id) { LibraryItemId = libraryItem, LoadoutItemGroup = group };
+        LibraryDestinations.Add(tx, libraryItem, new LoadoutAcquisition(loadout.LoadoutId).Destination(Connection.Db));
         await tx.Commit();
     }
 
@@ -179,26 +169,26 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
     public async Task ANexusFileTheAppFetchedForAModlistIsNotInTheModsTabUntilTheUserInstallsIt()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Main");
-        var filter = IsolatedFilter(loadout);
+        var filter = Filter(loadout);
         var provider = new NexusModsDataProvider(Provider);
         using var rows = provider.ObserveLibraryItems(filter).AsObservableCache();
         var counts = Counts(provider.CountLibraryItems(filter));
-        await Eventually(() => Last(counts).Should().Be(0));
 
-        var (page, item) = await AddNexusFile(7001, 8001, "Fetched.zip", nexusGame: IsolatedNexusGame);
+        var (page, item) = await AddNexusFile(7001, 8001, "Fetched.zip");
         await AddArchiveRow(await AddModlist(), "Fetched.zip", fetched: item);
         // Changes reach the view in commit order, so once this page shows, the fetched file's page (written
         // first, and hidden by the archive row) has been dealt with; no fixed delay stands in for that.
-        var (ownPage, _) = await AddNexusFile(7002, 8002, "Own.zip", nexusGame: IsolatedNexusGame);
+        var (ownPage, _) = await AddNexusFile(7002, 8002, "Own.zip");
         await Eventually(() => rows.Lookup(ownPage).HasValue.Should().BeTrue());
-        await Eventually(() => Last(counts).Should().Be(1));
+        // The game's slice is shared with the other tests in the class, so the count is checked against the rows.
+        await Eventually(() => Last(counts).Should().Be(rows.Count));
 
         rows.Lookup(page).HasValue.Should().BeFalse();
 
         await Install(loadout, item);
 
         await Eventually(() => rows.Lookup(page).HasValue.Should().BeTrue());
-        await Eventually(() => Last(counts).Should().Be(2));
+        await Eventually(() => Last(counts).Should().Be(rows.Count));
     }
 
     [Fact]
@@ -236,7 +226,7 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
         using var rows = provider.ObserveLibraryItems(Filter(loadout)).AsObservableCache();
         var counts = Counts(provider.CountLibraryItems(Filter(loadout)));
 
-        // Local files carry no game, so every test in the suite writes into the same list. Another test's file can
+        // Every test that adds files for this game writes into the same slice. Another test's file can
         // land at any point, so nothing here counts from a starting number: the count has to agree with the rows
         // the tab shows, and the two files this test writes are checked by id.
         var bystander = await AddLocalFile("bystander.7z");
@@ -264,7 +254,7 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Main");
         // A game the app has no title for shows in every library, so the row would appear here if the provider still emitted it.
         var list = await AddModlist("Listed", gameType: "NoSuchGame");
-        var skyrimList = await AddModlist("Skyrim list");
+        var skyrimList = await AddModlist("Skyrim list", gameType: "SkyrimSpecialEdition");
         var local = new LocalFileDataProvider(Provider);
         var modlists = new WabbajackModlistDataProvider(Provider);
         using var localRows = local.ObserveLibraryItems(Filter(loadout)).AsObservableCache();

@@ -25,7 +25,7 @@ using R3;
 
 namespace SilverModManager.App.UI.Pages;
 
-public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
+public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.ReadOnly>, ILoadoutDataProvider
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IConnection _connection;
@@ -33,73 +33,52 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
     private readonly IModUpdateFilterService _modUpdateFilterService;
     private readonly Lazy<IResourceLoader<EntityId, Bitmap>> _thumbnailLoader;
 
-    public NexusModsDataProvider(IServiceProvider serviceProvider)
+    public NexusModsDataProvider(IServiceProvider serviceProvider) : this(serviceProvider, serviceProvider.GetRequiredService<IConnection>()) { }
+
+    private NexusModsDataProvider(IServiceProvider serviceProvider, IConnection connection) : base(connection)
     {
         _serviceProvider = serviceProvider;
-        _connection = serviceProvider.GetRequiredService<IConnection>();
+        _connection = connection;
         _modUpdateService = serviceProvider.GetRequiredService<IModUpdateService>();
         _modUpdateFilterService = serviceProvider.GetRequiredService<IModUpdateFilterService>();
 
         _thumbnailLoader = new Lazy<IResourceLoader<EntityId, Bitmap>>(() => ImagePipelines.GetModPageThumbnailPipeline(serviceProvider));
     }
 
-    public LibraryFile.ReadOnly[] GetAllFiles(GameId gameId, IDb? db = null)
+    protected override Optional<LibraryFile.ReadOnly> AsLibraryFile(NexusModsLibraryItem.ReadOnly model)
+        => model.AsLibraryItem().TryGetAsLibraryFile(out var file) ? file : Optional<LibraryFile.ReadOnly>.None;
+
+    private static EntityId PageOf(NexusModsLibraryItem.ReadOnly item) => item.ModPageMetadataId;
+
+    /// <summary>
+    /// The game's mod pages, each with the files of it the Mods tab lists (the ones the app fetched for a Wabbajack
+    /// modlist are held back). A page with no listed file has no group, so no row. The pages come from the
+    /// game's items, not from the Nexus id: two games can share one id.
+    /// </summary>
+    private IObservable<IChangeSet<IGroup<NexusModsLibraryItem.ReadOnly, EntityId, EntityId>, EntityId>> ObserveShownPages(LibraryFilter libraryFilter)
     {
-        var nexusModsGameId = _serviceProvider.GetServices<IGameData>().First(x => x.GameId == gameId).NexusModsGameId;
-        if (!nexusModsGameId.HasValue) return [];
-
-        db ??= _connection.Db;
-
-        var libraryItems = NexusModsLibraryItem
-            .All(db)
-            .Where(libraryItem => libraryItem.AsLibraryItem().TryGetAsLibraryFile(out _))
-            .GroupBy(libraryItem => libraryItem.FileMetadataId)
-            .ToDictionary(group => group.Key, group => group.ToArray());
-
-        var files = NexusModsFileMetadata
-            .All(db)
-            .Where(modPage => modPage.Uid.GameId == nexusModsGameId)
-            .SelectMany(fileMetadata => libraryItems.GetValueOrDefault(fileMetadata) ?? [])
-            .Select(libraryItem => new LibraryFile.ReadOnly(db, libraryItem))
-            .ToArray();
-
-        return files;
+        var game = libraryFilter.Game.GameId;
+        return ObserveOwnItems(libraryFilter)
+            .FilterOnObservable((_, id) => LibraryDataProviderHelper.IsShownInMods(_connection, id, game))
+            .Group(PageOf);
     }
 
-    private IObservable<IChangeSet<NexusModsModPageMetadata.ReadOnly, EntityId>> FilterLibraryItems(LibraryFilter libraryFilter)
+    public override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
     {
-        return NexusModsModPageMetadata
-            .ObserveAll(_connection)
-            // only show mod pages for the currently selected game
-            .FilterImmutable(modPage => libraryFilter.Game.NexusModsGameId.IsNexusGame(modPage.Uid.GameId))
-            // only show mod pages that have library files the Mods tab lists
-            .FilterOnObservable(modPage => ShownLibraryItems(modPage.Id).IsNotEmpty());
+        return ObserveShownPages(libraryFilter)
+            .Transform(page => ToLibraryItemModel(page, libraryFilter))
+            .ChangeKey(static model => model.Key);
     }
 
-    /// <summary>The page's library files, without the ones the app fetched for a Wabbajack modlist.</summary>
-    private IObservable<IChangeSet<Datom, EntityId>> ShownLibraryItems(EntityId modPage)
+    public override IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
     {
-        return _connection
-            .ObserveDatoms(NexusModsLibraryItem.ModPageMetadata, modPage)
-            .AsEntityIds()
-            .FilterOnObservable((_, id) => LibraryDataProviderHelper.IsShownInMods(_connection, id));
+        return ObserveShownPages(libraryFilter).QueryWhenChanged(query => query.Count).Prepend(0);
     }
 
-    public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
+    private CompositeItemModel<EntityId> ToLibraryItemModel(IGroup<NexusModsLibraryItem.ReadOnly, EntityId, EntityId> page, LibraryFilter libraryFilter)
     {
-        return FilterLibraryItems(libraryFilter).Transform(modPage => ToLibraryItemModel(modPage, libraryFilter));
-    }
-
-    public IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
-    {
-        return FilterLibraryItems(libraryFilter).QueryWhenChanged(query => query.Count).Prepend(0);
-    }
-
-    private CompositeItemModel<EntityId> ToLibraryItemModel(NexusModsModPageMetadata.ReadOnly modPage, LibraryFilter libraryFilter)
-    {
-        var libraryItems = ShownLibraryItems(modPage.Id)
-            .Transform(datom => NexusModsLibraryItem.Load(_connection.Db, datom.E))
-            .RefCount();
+        var modPage = NexusModsModPageMetadata.Load(_connection.Db, page.Key);
+        var libraryItems = page.Cache.Connect().RefCount();
 
         var linkedLoadoutItemsObservable = libraryItems.MergeManyChangeSets(libraryItem => LibraryDataProviderHelper.GetLinkedLoadoutItems(_connection, libraryFilter, libraryItem.Id));
 
@@ -346,28 +325,24 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
         LibraryDataProviderHelper.AddRelatedCollectionsComponent(itemModel, linkedLoadoutItemsObservable, relatedDownloadedCollectionsObservable);
     }
 
-    private IObservable<IChangeSet<NexusModsModPageMetadata.ReadOnly, EntityId>> FilterLoadoutItems(LoadoutFilter loadoutFilter)
+    /// <summary>The loadout's game's mod pages, each with the files of it that are linked into the loadout.</summary>
+    private IObservable<IChangeSet<IGroup<NexusModsLibraryItem.ReadOnly, EntityId, EntityId>, EntityId>> FilterLoadoutItems(LoadoutFilter loadoutFilter)
     {
-        return NexusModsModPageMetadata
-            .ObserveAll(_connection)
-            .FilterOnObservable((_, modPageEntityId) => _connection
-                .ObserveDatoms(NexusModsLibraryItem.ModPageMetadataId, modPageEntityId)
-                .FilterOnObservable((d, _) => _connection
-                    .ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItemId, d.E)
-                    .AsEntityIds()
-                    .FilterInStaticLoadout(_connection, loadoutFilter)
-                    .IsNotEmpty())
-                .IsNotEmpty()
-            );
+        return ObserveOwnItemsForLoadout(loadoutFilter.LoadoutId)
+            .FilterOnObservable((_, itemId) => _connection
+                .ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItemId, itemId)
+                .AsEntityIds()
+                .FilterInStaticLoadout(_connection, loadoutFilter)
+                .IsNotEmpty())
+            .Group(PageOf);
     }
 
     public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLoadoutItems(LoadoutFilter loadoutFilter)
     {
-        return FilterLoadoutItems(loadoutFilter).Transform(modPage =>
+        return FilterLoadoutItems(loadoutFilter).Transform(page =>
         {
-            var linkedItemsObservable = _connection
-                .ObserveDatoms(NexusModsLibraryItem.ModPageMetadataId, modPage.Id).AsEntityIds()
-                .FilterOnObservable((_, e) => _connection.ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItemId, e).IsNotEmpty())
+            var modPage = NexusModsModPageMetadata.Load(_connection.Db, page.Key);
+            var linkedItemsObservable = page.Cache.Connect()
                 // NOTE(erri120): DynamicData 9.0.4 is broken for value types because it uses ReferenceEquals. Temporary workaround is a custom equality comparer.
                 .MergeManyChangeSets((_, e) => _connection.ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItemId, e).AsEntityIds(), equalityComparer: DatomEntityIdEqualityComparer.Instance)
                 .FilterInStaticLoadout(_connection, loadoutFilter)
@@ -400,7 +375,7 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
             LoadoutDataProviderHelper.AddAllowProtectedPathsAction(_connection, parentItemModel, linkedItemsObservable);
 
             return parentItemModel;
-        });
+        }).ChangeKey(static model => model.Key);
     }
     
     private static CompositeItemModel<EntityId> ToNexusChildLoadoutItemModel(IConnection connection, LoadoutItem.ReadOnly loadoutItem)

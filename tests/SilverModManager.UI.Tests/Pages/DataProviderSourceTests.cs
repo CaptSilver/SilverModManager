@@ -27,16 +27,19 @@ public class DataProviderSourceTests(IServiceProvider provider) : AUiTest(provid
 
     private LibraryFilter Filter() => new(NoLoadout, Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First().Game);
 
-    private static LibraryFile.New NewLibraryFile(ITransaction tx, out EntityId id, string fileName)
+    /// <summary>A library file for the filter's game, so the providers' slice holds it.</summary>
+    private LibraryFile.New NewLibraryFile(ITransaction tx, out EntityId id, string fileName)
     {
         var bytes = System.Text.Encoding.UTF8.GetBytes(fileName + Guid.NewGuid());
-        return new LibraryFile.New(tx, out id)
+        var file = new LibraryFile.New(tx, out id)
         {
             FileName = fileName,
             Hash = bytes.xxHash3(),
             Size = Size.From((ulong)bytes.Length),
             LibraryItem = new LibraryItem.New(tx, id) { Name = fileName },
         };
+        LibraryDestinations.Write(tx, id, Destination.Of(Filter().Game.GameId));
+        return file;
     }
 
     private async Task ShouldBeFrom(IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> changes, EntityId id, string source)

@@ -43,11 +43,14 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
 
     private static IGameData ThunderstoreGameOf(string community) => new CommunityGame(community);
 
+    /// <summary>The game a community's files are destined for, so a file's destination and its community's game agree.</summary>
+    private static GameId GameIdOf(string community) => GameId.From("game-" + community);
+
     private static IGameData PlainGame() => new PlainTestGame();
 
-    private class PlainTestGame : IGameData
+    private class PlainTestGame(GameId? gameId = null) : IGameData
     {
-        public GameId GameId { get; } = GameId.From(Guid.NewGuid().ToString("N"));
+        public GameId GameId { get; } = gameId ?? GameId.From(Guid.NewGuid().ToString("N"));
         public StoreIdentifiers StoreIdentifiers => new(GameId);
         public string DisplayName => "Test game";
         public Optional<NexusModsGameId> NexusModsGameId => Optional<NexusModsGameId>.None;
@@ -57,7 +60,7 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
         public GamePath GetPrimaryFile(GameInstallation installation) => throw new NotSupportedException();
     }
 
-    private sealed class CommunityGame(string community) : PlainTestGame, IThunderstoreGame
+    private sealed class CommunityGame(string community) : PlainTestGame(GameIdOf(community)), IThunderstoreGame
     {
         public string ThunderstoreCommunity => community;
         public string ThunderstoreLoaderPackage => "BepInEx-BepInExPack";
@@ -114,6 +117,7 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
             PinnedSha256 = Sha256Value.From(SHA256.HashData(bytes)),
         };
         if (frozen) _ = new UpdatePin.New(tx, id) { Frozen = true };
+        LibraryDestinations.Write(tx, id, Destination.Of(GameIdOf(community)));
         var result = await tx.Commit();
         return result[id];
     }
@@ -545,6 +549,8 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
         var community = UniqueCommunity();
         var game = PlainGame();
         var loadout = await AddLoadout(game);
+        // The file is destined for the community's game, not this one, and the fixture links it anyway: a game
+        // lists what is destined for it, whatever the packages' community.
         await Install(loadout, await AddFile(community, "Zehs", "REPOLib", "4.1.0"), "REPOLib");
         var thunderstore = CreateProvider(game);
         var count = -1;

@@ -307,8 +307,11 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
                 );
 
             // A modlist is a collection too; the card says it is a Wabbajack modlist.
-            var modlistCards = WabbajackModlistLibraryFile.ObserveAll(_connection)
-                .FilterImmutable(file => WabbajackModlistCardViewModel.IsForGame(file, game.GameId))
+            // A list for a game the app has no title for is unassigned and shows under every game: hiding it would make
+            // the file impossible to find and remove.
+            var modlistCards = LibraryDestinations.ObserveShownFor(_connection, game.GameId)
+                .Transform(datom => WabbajackModlistLibraryFile.Load(_connection.Db, datom.E))
+                .FilterImmutable(static file => file.IsValid())
                 .OnUI()
                 .Transform(ILibraryCollectionCardViewModel (file) => new WabbajackModlistCardViewModel(
                     provider: _serviceProvider,
@@ -791,9 +794,8 @@ After asking design, we're choosing to simply open the mod page for now.
             {
                 // Handle hiding/showing updates for a mod page
                 // First get all library items we have that come from the mod page.
-                var allLibraryFilesForThisMod =  NexusModsLibraryItem.All(_connection.Db)
-                    .Where(x => x.ModPageMetadataId == modPageId)
-                    .Select(x => x.FileMetadata)
+                var allLibraryFilesForThisMod = _connection.Db.Datoms(NexusModsLibraryItem.ModPageMetadata, modPageId)
+                    .Select(datom => NexusModsLibraryItem.Load(_connection.Db, datom.E).FileMetadata)
                     .ToArray();
 
                 // Note(sewer):

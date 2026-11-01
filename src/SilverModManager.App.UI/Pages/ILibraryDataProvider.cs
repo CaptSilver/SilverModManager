@@ -16,6 +16,7 @@ using SilverModManager.Networking.NexusWebApi.UpdateFilters;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Wabbajack;
 using SilverModManager.Wabbajack.Models;
 using R3;
 using Observable = R3.Observable;
@@ -56,17 +57,36 @@ public static class LibraryDataProviderHelper
     }
 
     /// <summary>
-    /// Whether the Mods tab lists the library file. One the app fetched for a Wabbajack modlist is that list's own
-    /// download and stays out of the way until the user installs it into a loadout, which makes it theirs.
+    /// Whether the Mods tab lists the library file under <paramref name="game"/>. One the app fetched for a Wabbajack
+    /// modlist of that game is that list's own download and stays out of the way until the user installs it into a
+    /// loadout of the game, which makes it theirs. A list for another game does not hide it here: a file held for
+    /// Skyrim SE that a Skyrim VR list adopts stays visible under Skyrim SE.
     /// </summary>
-    public static IObservable<bool> IsShownInMods(IConnection connection, EntityId libraryFile)
+    public static IObservable<bool> IsShownInMods(IConnection connection, EntityId libraryFile, GameId game)
     {
         // FetchedFiles is a collection, so it has no reference-attribute overload; the back-reference slice works for any reference.
         var fetchedFiles = connection.AttributeCache.GetAttributeId(WabbajackModlistArchive.FetchedFiles.Id);
-        var fetched = connection.ObserveDatoms(SliceDescriptor.Create(fetchedFiles, libraryFile)).IsNotEmpty();
-        var installed = connection.ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItem, libraryFile).IsNotEmpty();
+        var fetched = connection.ObserveDatoms(SliceDescriptor.Create(fetchedFiles, libraryFile))
+            .AsEntityIds()
+            .FilterImmutable(row => IsRowOfListFor(connection.Db, row.E, game))
+            .IsNotEmpty();
+        var installed = connection.ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItem, libraryFile)
+            .AsEntityIds()
+            .FilterImmutable(link => IsInLoadoutOf(connection.Db, link.E, game))
+            .IsNotEmpty();
         return fetched.CombineLatest(installed, static (isFetched, isInstalled) => !isFetched || isInstalled).DistinctUntilChanged();
     }
+
+    // A list for a game the app has no title for belongs to no game in particular, so it counts for whichever game is
+    // asked. So does a row whose list is gone: the file was fetched for a list, and hiding it is the old behaviour.
+    private static bool IsRowOfListFor(IDb db, EntityId archiveRow, GameId game)
+    {
+        var list = WabbajackModlistLibraryFile.Load(db, WabbajackModlistArchive.Load(db, archiveRow).ModlistId);
+        return !list.IsValid() || WabbajackGames.GameIdFor(list.GameType) is not { } listGame || listGame == game;
+    }
+
+    private static bool IsInLoadoutOf(IDb db, EntityId link, GameId game)
+        => new LoadoutAcquisition(LoadoutItem.Load(db, link).LoadoutId).Destination(db).Games.Contains(game);
 
     public static IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> GetLinkedLoadoutItems(
         IConnection connection,

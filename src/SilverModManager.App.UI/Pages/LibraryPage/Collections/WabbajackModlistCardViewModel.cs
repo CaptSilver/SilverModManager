@@ -103,11 +103,6 @@ public partial class WabbajackModlistCardViewModel : AViewModel<IWabbajackModlis
     public ReactiveCommand<Unit, Unit> InstallCommand { get; }
     public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
 
-    // A list for a game this app has no title for stays visible in every library: hiding it would make the file
-    // impossible to find and remove.
-    internal static bool IsForGame(WabbajackModlistLibraryFile.ReadOnly file, GameId gameId)
-        => WabbajackGames.GameIdFor(file.GameType) is not { } listGame || listGame == gameId;
-
     private static string GameNameFor(IServiceProvider provider, string gameType)
     {
         if (WabbajackGames.GameIdFor(gameType) is not { } gameId) return "Unknown game";

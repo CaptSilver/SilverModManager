@@ -25,13 +25,12 @@ namespace SilverModManager.App.UI.Pages;
 
 /// <summary>
 /// Lists the Thunderstore packages in the library and in a loadout, one row per package with a child row for
-/// each downloaded version. Only packages of the game's Thunderstore community are shown, and games whose
-/// mods don't come from Thunderstore show none.
+/// each downloaded version. Only packages destined for the game are shown, so a game whose mods don't come from
+/// Thunderstore has none.
 /// </summary>
 [UsedImplicitly]
-internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProvider
+internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibraryFile.ReadOnly>, ILoadoutDataProvider
 {
-    private readonly IServiceProvider _serviceProvider;
     private readonly IConnection _connection;
     private readonly ThunderstoreUpdateChecker _updateChecker;
     private readonly Lazy<IThumbnailLoader> _iconLoader;
@@ -40,8 +39,8 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
 
     // Tests pass a loader over a fake pipeline, so no row ever reaches the network.
     internal ThunderstoreDataProvider(IServiceProvider serviceProvider, IThumbnailLoader? iconLoader)
+        : base(serviceProvider.GetRequiredService<IConnection>())
     {
-        _serviceProvider = serviceProvider;
         _iconLoader = new Lazy<IThumbnailLoader>(() => iconLoader ?? serviceProvider.GetRequiredService<IThumbnailLoader>());
         _connection = serviceProvider.GetRequiredService<IConnection>();
         _updateChecker = serviceProvider.GetRequiredService<ThunderstoreUpdateChecker>();
@@ -78,33 +77,13 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
 
     private static Bitmap AsBitmap(IImage? image) => image as Bitmap ?? ImagePipelines.ModPageThumbnailFallback;
 
-    private static string? CommunityOf(IGameData? game) => game is null ? null : ThunderstoreGame.For(game)?.ThunderstoreCommunity;
+    protected override Optional<LibraryFile.ReadOnly> AsLibraryFile(ThunderstoreLibraryFile.ReadOnly model) => model.AsLibraryFile();
 
-    private IGameData? GameOf(GameId gameId) => _serviceProvider.GetServices<IGameData>().FirstOrDefault(game => game.GameId == gameId);
-
-    public LibraryFile.ReadOnly[] GetAllFiles(GameId gameId, IDb? db = null)
-    {
-        var community = CommunityOf(GameOf(gameId));
-        if (community is null) return [];
-
-        db ??= _connection.Db;
-        return ThunderstoreLibraryFile
-            .All(db)
-            .Where(file => file.Community == community)
-            .Select(static file => file.AsLibraryFile())
-            .ToArray();
-    }
-
-    private IObservable<IChangeSet<IGroup<ThunderstoreLibraryFile.ReadOnly, EntityId, string>, string>> ObservePackages(IGameData? game)
-    {
-        var community = CommunityOf(game);
-        if (community is null) return Observable.Return(ChangeSet<IGroup<ThunderstoreLibraryFile.ReadOnly, EntityId, string>, string>.Empty);
-
-        return ThunderstoreLibraryFile
-            .ObserveAll(_connection)
-            .FilterImmutable(file => file.Community == community)
-            .Group(PackageName);
-    }
+    // Community stays on the file as display metadata and as the lock and update key; which game a package is listed
+    // under comes from its destination.
+    private static IObservable<IChangeSet<IGroup<ThunderstoreLibraryFile.ReadOnly, EntityId, string>, string>> ByPackage(
+        IObservable<IChangeSet<ThunderstoreLibraryFile.ReadOnly, EntityId>> files)
+        => files.Group(PackageName);
 
     // A package has no entity of its own, so its row is keyed by an id derived from the package name. Keying it
     // by one of its files would leave the row holding the id of a deleted entity once that version goes. The id
@@ -140,16 +119,16 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
         );
     }
 
-    public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
+    public override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
     {
-        return ObservePackages(libraryFilter.Game)
+        return ByPackage(ObserveOwnItems(libraryFilter))
             .Transform(package => ToLibraryItemModel(package, libraryFilter))
             .ChangeKey(static model => model.Key);
     }
 
-    public IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
+    public override IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
     {
-        return ObservePackages(libraryFilter.Game)
+        return ByPackage(ObserveOwnItems(libraryFilter))
             .QueryWhenChanged(static query => query.Count)
             .Prepend(0);
     }
@@ -294,9 +273,7 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
     {
         // The game comes from the installation's recorded id, not the game registry: the registry throws for an
         // installation it hasn't located, and a loadout's page shouldn't fail because its game went missing.
-        var loadout = Loadout.Load(_connection.Db, loadoutFilter.LoadoutId);
-        var game = GameInstallMetadata.Game.TryGetValue(loadout.Installation, out var gameId) ? GameOf(gameId) : null;
-        return ObservePackages(game)
+        return ByPackage(ObserveOwnItemsForLoadout(loadoutFilter.LoadoutId))
             .FilterOnObservable(package => ObserveLinkedLoadoutItems(package, loadoutFilter).IsNotEmpty());
     }
 

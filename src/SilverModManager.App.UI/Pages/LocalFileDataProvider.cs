@@ -1,6 +1,7 @@
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Aggregation;
+using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
@@ -19,36 +20,41 @@ using UIObservableExtensions = SilverModManager.App.UI.Extensions.ObservableExte
 namespace SilverModManager.App.UI.Pages;
 
 [UsedImplicitly]
-internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvider
+internal class LocalFileDataProvider : ALibraryDataProvider<LocalFile.ReadOnly>, ILoadoutDataProvider
 {
     private readonly IConnection _connection;
 
-    public LocalFileDataProvider(IServiceProvider serviceProvider)
+    public LocalFileDataProvider(IServiceProvider serviceProvider) : this(serviceProvider.GetRequiredService<IConnection>()) { }
+
+    private LocalFileDataProvider(IConnection connection) : base(connection)
     {
-        _connection = serviceProvider.GetRequiredService<IConnection>();
+        _connection = connection;
     }
 
     // A Wabbajack modlist is added as a local file too; the Collections tab shows it.
     private static bool IsModlist(LocalFile.ReadOnly localFile) => localFile.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out _);
 
-    // TODO: update once we have game information on Local Files
-    public LibraryFile.ReadOnly[] GetAllFiles(GameId gameId, IDb? db = null) => [];
+    // The modlist file is a local file too, but game removal gets it from WabbajackModlistDataProvider; listing it here
+    // as well would delete it twice.
+    protected override Optional<LibraryFile.ReadOnly> AsLibraryFile(LocalFile.ReadOnly model)
+        => IsModlist(model) ? Optional<LibraryFile.ReadOnly>.None : model.AsLibraryFile();
 
-    public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
+    private IObservable<IChangeSet<LocalFile.ReadOnly, EntityId>> ObserveShown(LibraryFilter libraryFilter)
     {
-        return LocalFile
-            .ObserveAll(_connection)
+        var game = libraryFilter.Game.GameId;
+        return ObserveOwnItems(libraryFilter)
             .FilterImmutable(static localFile => !IsModlist(localFile))
-            .FilterOnObservable((_, id) => LibraryDataProviderHelper.IsShownInMods(_connection, id))
-            .Transform(localFile => ToLibraryItemModel(libraryFilter, localFile));
+            .FilterOnObservable((_, id) => LibraryDataProviderHelper.IsShownInMods(_connection, id, game));
     }
 
-    public IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
+    public override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
     {
-        return LocalFile
-            .ObserveAll(_connection)
-            .FilterImmutable(static localFile => !IsModlist(localFile))
-            .FilterOnObservable((_, id) => LibraryDataProviderHelper.IsShownInMods(_connection, id))
+        return ObserveShown(libraryFilter).Transform(localFile => ToLibraryItemModel(libraryFilter, localFile));
+    }
+
+    public override IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
+    {
+        return ObserveShown(libraryFilter)
             .QueryWhenChanged(query => query.Count)
             .Prepend(0);
     }
@@ -129,8 +135,7 @@ internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvide
 
     private IObservable<IChangeSet<LocalFile.ReadOnly, EntityId>> FilterLoadoutItems(LoadoutFilter loadoutFilter)
     {
-        return LocalFile
-            .ObserveAll(_connection)
+        return ObserveOwnItemsForLoadout(loadoutFilter.LoadoutId)
             .FilterOnObservable((_, entityId) => _connection
                 .ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItemId, entityId)
                 .AsEntityIds()

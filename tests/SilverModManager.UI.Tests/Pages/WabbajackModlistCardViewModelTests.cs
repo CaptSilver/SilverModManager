@@ -298,7 +298,7 @@ public class WabbajackModlistCardViewModelTests(IServiceProvider provider) : AUi
         LibraryFile.Load(Connection.Db, shared).IsValid().Should().BeTrue();
         WabbajackModlistArchive.FindByModlist(Connection.Db, other).Single().FetchedFiles.Select(f => f.Id).Should().Equal(shared);
         var shown = new List<bool>();
-        using var subscription = LibraryDataProviderHelper.IsShownInMods(Connection, shared).Subscribe(value => { lock (shown) shown.Add(value); });
+        using var subscription = LibraryDataProviderHelper.IsShownInMods(Connection, shared, GameId.From("CreationEngine.SkyrimSE")).Subscribe(value => { lock (shown) shown.Add(value); });
         await Eventually(() => { lock (shown) shown.Should().NotBeEmpty().And.EndWith(false); });
     }
 
@@ -431,6 +431,8 @@ public class LibraryCollectionsTabTests(IServiceProvider provider) : AUiTest(pro
                 LibraryFile = file, Name = "On the tab", Author = "Someone", Version = "1", GameType = "NoSuchGame",
                 ArchiveCount = 0, ArchiveSize = Size.Zero, InstallSize = Size.Zero, IsNsfw = false,
             };
+            // A game the app has no title for is what the recogniser leaves unassigned, and unassigned lists show under every game.
+            LibraryDestinations.Write(tx, id, Destination.Unknown);
             await tx.Commit();
         }
 

@@ -229,6 +229,7 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
             LibraryItem = item = new LibraryItem.New(tx, libraryId) { Name = name },
         };
         _ = new LocalFile.New(tx, libraryId) { OriginalPath = "/mods/" + name + ".zip", LibraryFile = file };
+        LibraryDestinations.Write(tx, libraryId, new LoadoutAcquisition(loadout.LoadoutId).Destination(Connection.Db));
         var group = new LoadoutItemGroup.New(tx, out var groupId)
         {
             IsGroup = true,

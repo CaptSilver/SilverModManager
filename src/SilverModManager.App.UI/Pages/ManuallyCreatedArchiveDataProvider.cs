@@ -1,6 +1,7 @@
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Aggregation;
+using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
@@ -15,29 +16,29 @@ using UIObservableExtensions = SilverModManager.App.UI.Extensions.ObservableExte
 namespace SilverModManager.App.UI.Pages;
 
 [UsedImplicitly]
-internal class ManuallyCreatedArchiveDataProvider : ILibraryDataProvider, ILoadoutDataProvider
+internal class ManuallyCreatedArchiveDataProvider : ALibraryDataProvider<ManuallyCreatedArchive.ReadOnly>, ILoadoutDataProvider
 {
     private readonly IConnection _connection;
 
-    public ManuallyCreatedArchiveDataProvider(IServiceProvider serviceProvider)
+    public ManuallyCreatedArchiveDataProvider(IServiceProvider serviceProvider) : this(serviceProvider.GetRequiredService<IConnection>()) { }
+
+    private ManuallyCreatedArchiveDataProvider(IConnection connection) : base(connection)
     {
-        _connection = serviceProvider.GetRequiredService<IConnection>();
+        _connection = connection;
     }
 
-    // TODO: update once we have game information on Local Files
-    public LibraryFile.ReadOnly[] GetAllFiles(GameId gameId, IDb? db = null) => [];
+    protected override Optional<LibraryFile.ReadOnly> AsLibraryFile(ManuallyCreatedArchive.ReadOnly model)
+        => model.AsLibraryArchive().AsLibraryFile();
 
-    public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
+    public override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
     {
-        return ManuallyCreatedArchive
-            .ObserveAll(_connection)
+        return ObserveOwnItems(libraryFilter)
             .Transform(archive => ToLibraryItemModel(libraryFilter, archive));
     }
 
-    public IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
+    public override IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
     {
-        return ManuallyCreatedArchive
-            .ObserveAll(_connection)
+        return ObserveOwnItems(libraryFilter)
             .QueryWhenChanged(query => query.Count)
             .Prepend(0);
     }
@@ -96,8 +97,7 @@ internal class ManuallyCreatedArchiveDataProvider : ILibraryDataProvider, ILoado
 
     private IObservable<IChangeSet<ManuallyCreatedArchive.ReadOnly, EntityId>> FilterLoadoutItems(LoadoutFilter loadoutFilter)
     {
-        return ManuallyCreatedArchive
-            .ObserveAll(_connection)
+        return ObserveOwnItemsForLoadout(loadoutFilter.LoadoutId)
             .FilterOnObservable((_, entityId) => _connection
                 .ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItemId, entityId)
                 .AsEntityIds()

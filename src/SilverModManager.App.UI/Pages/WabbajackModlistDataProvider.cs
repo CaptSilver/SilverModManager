@@ -1,5 +1,6 @@
 using System.Reactive.Linq;
 using DynamicData;
+using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
@@ -18,31 +19,16 @@ namespace SilverModManager.App.UI.Pages;
 /// Collections tab, and <see cref="LocalFileDataProvider"/> leaves them out too.
 /// </summary>
 [UsedImplicitly]
-internal class WabbajackModlistDataProvider : ILibraryDataProvider
+internal class WabbajackModlistDataProvider : ALibraryDataProvider<WabbajackModlistLibraryFile.ReadOnly>
 {
-    private readonly IConnection _connection;
+    public WabbajackModlistDataProvider(IServiceProvider serviceProvider) : base(serviceProvider.GetRequiredService<IConnection>()) { }
 
-    public WabbajackModlistDataProvider(IServiceProvider serviceProvider)
-    {
-        _connection = serviceProvider.GetRequiredService<IConnection>();
-    }
-
-    // Removing a game deletes these files, so only the lists made for that game count; a list whose game the app has
-    // no title for belongs to no game and must not go with whichever one is removed.
-    public LibraryFile.ReadOnly[] GetAllFiles(GameId gameId, IDb? db = null)
-    {
-        db ??= _connection.Db;
-        return WabbajackModlistLibraryFile
-            .All(db)
-            .Where(file => WabbajackGames.GameIdFor(file.GameType) == gameId)
-            .Select(static file => file.AsLibraryFile())
-            .ToArray();
-    }
+    protected override Optional<LibraryFile.ReadOnly> AsLibraryFile(WabbajackModlistLibraryFile.ReadOnly model) => model.AsLibraryFile();
 
     // Modlists are on the Collections tab, so the Mods tab has no row for them. The provider stays registered because
     // removing a game still asks it for the lists to delete.
-    public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
+    public override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
         => Observable.Never<IChangeSet<CompositeItemModel<EntityId>, EntityId>>().StartWith(ChangeSet<CompositeItemModel<EntityId>, EntityId>.Empty);
 
-    public IObservable<int> CountLibraryItems(LibraryFilter libraryFilter) => Observable.Never<int>().StartWith(0);
+    public override IObservable<int> CountLibraryItems(LibraryFilter libraryFilter) => Observable.Never<int>().StartWith(0);
 }
