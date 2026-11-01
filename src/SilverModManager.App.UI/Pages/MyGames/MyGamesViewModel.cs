@@ -151,7 +151,12 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                             {
                                 if (GetJobRunningForGameInstallation(installation).IsT2) return;
 
-                                var filesToDelete = libraryDataProviders.SelectMany(dataProvider => dataProvider.GetAllFiles(installation.Game.GameId)).ToArray();
+                                // Files another game still uses stay in the library; they leave this game when removing a
+                                // destination exists. Only the game's own files are offered for deletion.
+                                var filesToDelete = FilesOnlyForGame(
+                                    conn.Db,
+                                    libraryDataProviders.SelectMany(dataProvider => dataProvider.GetAllFiles(installation.Game.GameId)),
+                                    installation.Game.GameId);
                                 var totalSize = filesToDelete.Sum(static Size (file) => file.Size);
 
                                 var collections = installation.Game.CollectionsOf(conn.Db);
@@ -343,6 +348,18 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
         }
 
         return OneOf<None, CreateLoadoutJob, UnmanageGameJob>.FromT0(new None());
+    }
+
+    /// <summary>
+    /// The files whose only destination is <paramref name="game"/>. A file shared with a sibling game (an item
+    /// installed in both a Skyrim SE and a Skyrim VR loadout) is left out, so removing one game cannot delete
+    /// what the other still uses.
+    /// </summary>
+    internal static LibraryFile.ReadOnly[] FilesOnlyForGame(IDb db, IEnumerable<LibraryFile.ReadOnly> files, GameId game)
+    {
+        var byItem = files.DistinctBy(static file => file.Id).ToDictionary(static file => file.Id);
+        var (onlyThisGame, _) = LibraryDestinations.Partition(db, byItem.Values.Select(static file => file.AsLibraryItem()), game);
+        return onlyThisGame.Select(item => byItem[item.Id]).ToArray();
     }
 
     private async Task RemoveGame(GameInstallation installation, bool shouldDeleteDownloads, LibraryFile.ReadOnly[] filesToDelete, CollectionMetadata.ReadOnly[] collections, bool cleanGameFolder = true)

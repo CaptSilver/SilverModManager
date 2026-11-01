@@ -12,6 +12,7 @@ using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Pages;
+using SilverModManager.App.UI.Pages.MyGames;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -486,5 +487,24 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
         await Eventually(() => rows.Lookup(mine).HasValue.Should().BeTrue());
         await Eventually(() => { lock (counts) counts.Should().EndWith(rows.Count); });
         rows.Lookup(theirs).HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task FilesOnlyForGame_KeepsAFileAnotherGameStillUses_OutOfTheDeletion()
+    {
+        var (game, sibling) = NewPair();
+        var onlyMine = await AddLocalFile("only-mine.7z", Destination.Of(game.GameId));
+        var shared = await AddLocalFile("shared.7z", Both(game, sibling));
+        var sharedArchive = await AddArchive("shared-archive.7z", Both(game, sibling));
+        var onlyMineArchive = await AddArchive("only-mine-archive.7z", Destination.Of(game.GameId));
+
+        var files = new LocalFileDataProvider(Provider).GetAllFiles(game.GameId)
+            .Concat(new ManuallyCreatedArchiveDataProvider(Provider).GetAllFiles(game.GameId))
+            .ToArray();
+
+        var deletable = MyGamesViewModel.FilesOnlyForGame(Connection.Db, files, game.GameId);
+
+        deletable.Select(file => file.Id).Should().BeEquivalentTo([onlyMine, onlyMineArchive]);
+        deletable.Select(file => file.Id).Should().NotContain([shared, sharedArchive]);
     }
 }
