@@ -265,7 +265,7 @@ public static class Services
         return services;
     }
     
-    private static IServiceCollection AddSupportedGames(this IServiceCollection services)
+    public static IServiceCollection AddSupportedGames(this IServiceCollection services)
     {
         Games.RedEngine.Services.AddRedEngineGames(services);
         Games.StardewValley.Services.AddStardewValley(services);

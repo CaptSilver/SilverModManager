@@ -59,6 +59,20 @@ public interface IGameData
     RelativePath? NativeLinuxPrimaryFile => null;
 
     /// <summary>
+    /// Whether the game has an online side (multiplayer, matchmaking, an anti-cheat that talks to a server). A
+    /// modified game folder is a risk there, since a launch from outside the app takes the folder online. False for
+    /// a game that is single-player only.
+    /// </summary>
+    bool HasOnlinePlay => false;
+
+    /// <summary>
+    /// Whether the game's mods reach the game only inside the launched process (an overlay over the game folder), so
+    /// the real folder stays as the store shipped it. A game that merges files and has <see cref="HasOnlinePlay"/>
+    /// must say true.
+    /// </summary>
+    bool DeploysThroughOverlay => false;
+
+    /// <summary>
     /// The names a player knows this game's own locations by, keyed by the location's id string. Keyed by string and
     /// read from the game, so the name does not depend on whether a static <see cref="LocationId"/> field of the game
     /// has been touched yet.

@@ -23,6 +23,8 @@ namespace SilverModManager.Games.Witcher.Witcher3;
 public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witcher3Game>(provider), IGameData<Witcher3Game>, IHasMergeGame, IModOrderGame, IGameIniFiles, IHasIniFiles, IGameLauncherSkip
 {
     private AMergeGame? _mergeGame;
+
+    public bool HasOnlinePlay => false;
     private Witcher3VortexOrderFormat? _vortexOrder;
 
     // Steam's only launch entry for the game is REDprelauncher.exe, which asks for a renderer before starting.
