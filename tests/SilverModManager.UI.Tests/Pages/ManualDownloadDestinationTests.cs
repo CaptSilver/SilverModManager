@@ -27,23 +27,30 @@ public class ManualDownloadDestinationTests(IServiceProvider provider) : AUiTest
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Collection target");
         var game = loadout.InstallationInstance.Game.GameId;
         var root = Directory.CreateTempSubdirectory("manual-download-").FullName;
-        var picked = Path.Combine(root, "manual.zip");
-        await File.WriteAllTextAsync(picked, "manual " + Guid.NewGuid());
-        var md5 = await Md5Hasher.HashAsync(FileSystem.Shared.FromUnsanitizedFullPath(picked).Read());
-
-        var download = await SeedExternalDownload(md5);
-        var interop = Substitute.For<IAvaloniaInterop>();
-        interop.OpenFilePickerAsync(Arg.Any<FilePickerOpenOptions>()).Returns([FileSystem.Shared.FromUnsanitizedFullPath(picked)]);
-        var services = new ServiceCollection().AddSingleton(interop).AddSingleton<IGameDomainToGameIdMappingCache>(new CyberpunkDomains()).BuildServiceProvider();
-        var viewModel = new ManualDownloadRequiredOverlayViewModel(new OverlayProvider(Provider, services), download, loadout.LoadoutId, isEmbedded: false)
+        try
         {
-            Controller = Substitute.For<IOverlayController>(),
-        };
+            var picked = Path.Combine(root, "manual.zip");
+            await File.WriteAllTextAsync(picked, "manual " + Guid.NewGuid());
+            var md5 = await Md5Hasher.HashAsync(FileSystem.Shared.FromUnsanitizedFullPath(picked).Read());
 
-        viewModel.CommandAddFile.Execute(R3.Unit.Default);
-        await Eventually(() => LibraryDestinations.ItemsFor(Connection.Db, game).Any(item => item.Name == "manual.zip"));
+            var download = await SeedExternalDownload(md5);
+            var interop = Substitute.For<IAvaloniaInterop>();
+            interop.OpenFilePickerAsync(Arg.Any<FilePickerOpenOptions>()).Returns([FileSystem.Shared.FromUnsanitizedFullPath(picked)]);
+            var services = new ServiceCollection().AddSingleton(interop).AddSingleton<IGameDomainToGameIdMappingCache>(new CyberpunkDomains()).BuildServiceProvider();
+            var viewModel = new ManualDownloadRequiredOverlayViewModel(new OverlayProvider(Provider, services), download, loadout.LoadoutId, isEmbedded: false)
+            {
+                Controller = Substitute.For<IOverlayController>(),
+            };
 
-        LibraryDestinations.Unassigned(Connection.Db).Should().NotContain(item => item.Name == "manual.zip");
+            viewModel.CommandAddFile.Execute(R3.Unit.Default);
+            await Eventually(() => LibraryDestinations.ItemsFor(Connection.Db, game).Any(item => item.Name == "manual.zip"));
+
+            LibraryDestinations.Unassigned(Connection.Db).Should().NotContain(item => item.Name == "manual.zip");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     private async Task<CollectionDownloadExternal.ReadOnly> SeedExternalDownload(Md5Value md5)

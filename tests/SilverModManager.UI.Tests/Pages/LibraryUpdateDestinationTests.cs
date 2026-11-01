@@ -19,7 +19,8 @@ namespace SilverModManager.UI.Tests.Pages;
 
 /// <summary>
 /// An update of a library file is for the games the old file was for, not for the game of the page that started the
-/// update: a Nexus Mods page is shared by every game with its id.
+/// update: a Nexus Mods page is shared by every game with its id. The tests call the helper both update paths share;
+/// that those paths call it is not covered, since they download through the real Nexus Mods library.
 /// </summary>
 public class LibraryUpdateDestinationTests(IServiceProvider provider) : AUiTest(provider)
 {
@@ -64,16 +65,15 @@ public class LibraryUpdateDestinationTests(IServiceProvider provider) : AUiTest(
     }
 
     [Fact]
-    public async Task UpdateAndReplace_NewFile_KeepsTheOldFilesGames_NotThePagesGame()
+    public async Task AddUpdatedFile_KeepsTheOldFilesGames_NotThePagesGame()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "VR page");
         var pageGame = loadout.InstallationInstance.Game.GameId;
         var (oldFile, oldItem) = await SeedNexusItem(new Destination(new HashSet<GameId> { OtherGame, GameId.From("UpdateTestOtherSibling") }, Shared: true), number: 910);
         var vm = new LibraryViewModel(Substitute.For<IWindowManager>(), Provider, Provider.GetRequiredService<IGameDomainToGameIdMappingCache>(), loadout.LoadoutId);
-        var path = Path.Combine(Directory.CreateTempSubdirectory("update-destination-").FullName, "new.zip");
-        await File.WriteAllTextAsync(path, Guid.NewGuid().ToString());
+        using var download = new DownloadedFile();
         var job = Provider.GetRequiredService<IJobMonitor>()
-            .Begin<CompletedDownloadJob, AbsolutePath>(new CompletedDownloadJob(FileSystemPath(path)));
+            .Begin<CompletedDownloadJob, AbsolutePath>(new CompletedDownloadJob(download.Path));
 
         var added = await vm.AddUpdatedFile(job, [oldFile]);
 
@@ -84,15 +84,14 @@ public class LibraryUpdateDestinationTests(IServiceProvider provider) : AUiTest(
     }
 
     [Fact]
-    public async Task UpdateAndKeepOld_NewFile_OfAnUnassignedOldFile_IsUnassigned()
+    public async Task AddUpdatedFile_OfAnUnassignedOldFile_IsUnassigned()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Page of some game");
         var (oldFile, _) = await SeedNexusItem(Destination.Unknown, number: 911);
         var vm = new LibraryViewModel(Substitute.For<IWindowManager>(), Provider, Provider.GetRequiredService<IGameDomainToGameIdMappingCache>(), loadout.LoadoutId);
-        var path = Path.Combine(Directory.CreateTempSubdirectory("update-destination-").FullName, "new.zip");
-        await File.WriteAllTextAsync(path, Guid.NewGuid().ToString());
+        using var download = new DownloadedFile();
         var job = Provider.GetRequiredService<IJobMonitor>()
-            .Begin<CompletedDownloadJob, AbsolutePath>(new CompletedDownloadJob(FileSystemPath(path)));
+            .Begin<CompletedDownloadJob, AbsolutePath>(new CompletedDownloadJob(download.Path));
 
         var added = await vm.AddUpdatedFile(job, [oldFile]);
 
@@ -101,5 +100,15 @@ public class LibraryUpdateDestinationTests(IServiceProvider provider) : AUiTest(
         item.Contains(LibraryItem.DestinationUnknown).Should().BeTrue();
     }
 
-    private static AbsolutePath FileSystemPath(string path) => FileSystem.Shared.FromUnsanitizedFullPath(path);
+    /// <summary>A downloaded file in a scratch directory that is removed with it.</summary>
+    private sealed class DownloadedFile : IDisposable
+    {
+        private readonly string _directory = Directory.CreateTempSubdirectory("update-destination-").FullName;
+
+        public DownloadedFile() => File.WriteAllText(System.IO.Path.Combine(_directory, "new.zip"), Guid.NewGuid().ToString());
+
+        public AbsolutePath Path => FileSystem.Shared.FromUnsanitizedFullPath(System.IO.Path.Combine(_directory, "new.zip"));
+
+        public void Dispose() => Directory.Delete(_directory, recursive: true);
+    }
 }
