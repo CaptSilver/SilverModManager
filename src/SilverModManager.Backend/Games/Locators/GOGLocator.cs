@@ -26,15 +26,15 @@ internal class GOGLocator : IGameLocator
         _registeredGames = StoreIdMap.Build(games, game => game.StoreIdentifiers.GOGProductIds, "GOG product", nameof(GOGLocator), _logger);
     }
 
-    public IEnumerable<GameLocatorResult> Locate() => LocateGames();
+    public IEnumerable<GameLocatorResult> Locate() => LocateGames(null);
 
     public IEnumerable<GameLocatorResult> Locate(IGameLocatorProblemSink problems)
     {
         _registeredGames.ReportTo(problems);
-        return LocateGames();
+        return LocateGames(problems);
     }
 
-    private IEnumerable<GameLocatorResult> LocateGames()
+    private IEnumerable<GameLocatorResult> LocateGames(IGameLocatorProblemSink? problems)
     {
         var gameFinderGames = new List<GOGGame>();
 
@@ -54,9 +54,10 @@ internal class GOGLocator : IGameLocator
             var storeIdentifier = gameFinderGame.Id.Value;
             _logger.LogDebug("Found game '{GameName}' with store identifier '{StoreIdentifier}'", gameFinderGame.Name, storeIdentifier);
 
-            if (!_registeredGames.Games.TryGetValue(storeIdentifier, out var game)) continue;
-
             var path = gameFinderGame.Path;
+
+            var game = _registeredGames.Resolve(storeIdentifier, path, problems);
+            if (game is null) continue;
 
             var dlcIds = gameFinderGames
                 .Where(x => x.ParentGameId == gameFinderGame.Id)

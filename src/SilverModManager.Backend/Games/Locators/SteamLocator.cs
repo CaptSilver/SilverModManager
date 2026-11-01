@@ -31,15 +31,15 @@ internal class SteamLocator : IGameLocator
         _registeredGames = StoreIdMap.Build(games, game => game.StoreIdentifiers.SteamAppIds, "Steam app", nameof(SteamLocator), _logger);
     }
 
-    public IEnumerable<GameLocatorResult> Locate() => LocateGames();
+    public IEnumerable<GameLocatorResult> Locate() => LocateGames(null);
 
     public IEnumerable<GameLocatorResult> Locate(IGameLocatorProblemSink problems)
     {
         _registeredGames.ReportTo(problems);
-        return LocateGames();
+        return LocateGames(problems);
     }
 
-    private IEnumerable<GameLocatorResult> LocateGames()
+    private IEnumerable<GameLocatorResult> LocateGames(IGameLocatorProblemSink? problems)
     {
         var allGames = FindAllGames().ToArray();
         var libraries = allGames.Select(g => g.LibraryFolder.Path).Concat(allGames.Select(g => g.SteamPath)).Distinct().ToArray();
@@ -49,7 +49,11 @@ internal class SteamLocator : IGameLocator
             var storeIdentifier = gameFinderGame.AppId.Value;
             _logger.LogDebug("Found game '{GameName}' with store identifier '{StoreIdentifier}'", gameFinderGame.Name, storeIdentifier);
 
-            if (!_registeredGames.Games.TryGetValue(storeIdentifier, out var game)) continue;
+            if (!_registeredGames.Contains(storeIdentifier)) continue;
+
+            // Narrowed on the host path: the overlay file system a Proton build gets is only built in ToResult.
+            var game = _registeredGames.Resolve(storeIdentifier, HostPath(gameFinderGame), problems);
+            if (game is null) continue;
 
             yield return ToResult(game, gameFinderGame, libraries);
         }
@@ -64,10 +68,7 @@ internal class SteamLocator : IGameLocator
     {
         locatorResult = null;
 
-        // Locate gives an id to the first game registered for it; a later game claiming it is never found.
-        var appIds = game.StoreIdentifiers.SteamAppIds
-            .Where(id => _registeredGames.Games.TryGetValue(id, out var owner) && owner.GameId == game.GameId)
-            .ToArray();
+        var appIds = game.StoreIdentifiers.SteamAppIds.Where(id => _registeredGames.Claims(id, game)).ToArray();
         if (appIds.Length == 0) return false;
 
         if (!TryReadLibraryFolders(out var steamPath, out var libraryFolders)) return false;
@@ -79,6 +80,11 @@ internal class SteamLocator : IGameLocator
             {
                 if (!TryReadManifest(library, $"appmanifest_{appId}.acf", out var manifest)) continue;
                 var installed = new SteamGame { SteamPath = steamPath, AppManifest = manifest, LibraryFolder = library };
+
+                // Locate gives a shared id to the game its folder is, so asking for the other one finds nothing.
+                var owner = _registeredGames.Resolve(appId, HostPath(installed), problems: null);
+                if (owner is null || owner.GameId != game.GameId) continue;
+
                 locatorResult = ToResult(game, installed, libraries);
                 return true;
             }
@@ -86,6 +92,8 @@ internal class SteamLocator : IGameLocator
 
         return false;
     }
+
+    private AbsolutePath HostPath(SteamGame installed) => _fileSystem.FromUnsanitizedFullPath(installed.Path.GetFullPath());
 
     private GameLocatorResult ToResult(IGameData game, SteamGame gameFinderGame, IReadOnlyList<AbsolutePath> libraries)
     {
@@ -148,7 +156,7 @@ internal class SteamLocator : IGameLocator
     {
         try
         {
-            return game.IsInstalledAt(_fileSystem.FromUnsanitizedFullPath(installed.Path.GetFullPath()));
+            return game.IsInstalledAt(HostPath(installed));
         }
         catch (Exception e) when (IsStorageFailure(e))
         {

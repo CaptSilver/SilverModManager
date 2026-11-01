@@ -101,12 +101,12 @@ internal class LutrisLocator : IGameLocator
 
         if (string.Equals(row.Service, "gog", StringComparison.OrdinalIgnoreCase))
         {
-            if (!long.TryParse(row.ServiceId, out var productId) || !_gogGames.Games.TryGetValue(productId, out game)) return null;
+            if (!long.TryParse(row.ServiceId, out var productId) || (game = _gogGames.Default(productId)) is null) return null;
             store = GameStore.GOG;
         }
         else if (string.Equals(row.Service, "egs", StringComparison.OrdinalIgnoreCase))
         {
-            if (row.ServiceId is null || !_epicGames.Games.TryGetValue(row.ServiceId, out game)) return null;
+            if (row.ServiceId is null || (game = _epicGames.Default(row.ServiceId)) is null) return null;
             store = GameStore.EGS;
         }
         else if (row.Service is null && string.Equals(row.Runner, "wine", StringComparison.OrdinalIgnoreCase))

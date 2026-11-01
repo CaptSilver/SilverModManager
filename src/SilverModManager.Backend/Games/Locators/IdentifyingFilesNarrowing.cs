@@ -14,7 +14,7 @@ internal static class IdentifyingFilesNarrowing
     /// </summary>
     public static List<T> Narrow<T>(AbsolutePath folder, List<T> candidates, Func<T, IGameData> gameOf)
     {
-        IReadOnlyList<RelativePath> Declared(T entry) => (gameOf(entry) as IGameIdentifyingFiles)?.IdentifyingFiles ?? [];
+        IReadOnlyList<RelativePath> Declared(T entry) => DeclaredBy(gameOf(entry));
 
         var remaining = candidates
             .Where(entry => Declared(entry).All(file => FindIgnoringCase(folder, file) is not null))
@@ -23,6 +23,9 @@ internal static class IdentifyingFilesNarrowing
         var identified = remaining.Where(entry => Declared(entry).Count > 0).ToList();
         return identified.Count > 0 ? identified : remaining.Where(entry => Declared(entry).Count == 0).ToList();
     }
+
+    /// <summary>The files only the game's install has; empty for a game that names none.</summary>
+    public static IReadOnlyList<RelativePath> DeclaredBy(IGameData game) => (game as IGameIdentifyingFiles)?.IdentifyingFiles ?? [];
 
     /// <summary>
     /// The file at <paramref name="file"/> below <paramref name="folder"/>, matching each name exactly first and

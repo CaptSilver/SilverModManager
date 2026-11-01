@@ -36,13 +36,13 @@ internal class HeroicAmazonLocator : IGameLocator
     {
         var installs = HeroicConfigRoots.All(_fileSystem)
             .SelectMany(root => root.InstalledAmazonGames(_logger), (root, install) => (Root: root, Install: install))
-            .Where(entry => _registeredGames.Games.ContainsKey(entry.Install.ProductId))
+            .Where(entry => _registeredGames.Contains(entry.Install.ProductId))
             .GroupBy(entry => entry.Install.ProductId);
 
         foreach (var holders in installs)
         {
             var productId = holders.Key;
-            var game = _registeredGames.Games[productId];
+            if (_registeredGames.Default(productId) is not { } game) continue;
 
             // With the game in both Heroic installs nothing says which copy the user means, so locate
             // neither and say why.

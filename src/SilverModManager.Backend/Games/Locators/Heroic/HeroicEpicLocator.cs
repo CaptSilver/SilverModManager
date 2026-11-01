@@ -97,14 +97,16 @@ internal class HeroicEpicLocator : IGameLocator
         if (catalogItemId is null)
             _logger.LogInformation("Legendary has no catalog item id for Epic game {AppName}; matching it by app name", appName);
 
-        if (catalogItemId is not null && _registeredGames.Games.TryGetValue(catalogItemId, out game))
+        if (catalogItemId is not null && _registeredGames.Default(catalogItemId) is { } byCatalog)
         {
             storeIdentifier = catalogItemId;
+            game = byCatalog;
             return true;
         }
 
         storeIdentifier = appName;
-        return _registeredGames.Games.TryGetValue(appName, out game);
+        game = _registeredGames.Default(appName);
+        return game is not null;
     }
 
     private CompatibilityLayer CompatibilityLayer(HeroicConfigRoot root, AbsolutePath prefix, HeroicGameSettings settings)

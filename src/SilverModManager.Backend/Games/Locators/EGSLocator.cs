@@ -23,15 +23,15 @@ internal class EGSLocator : IGameLocator
         _registeredGames = StoreIdMap.Build(games, game => game.StoreIdentifiers.EGSCatalogItemId, "Epic catalog item", nameof(EGSLocator), _logger);
     }
 
-    public IEnumerable<GameLocatorResult> Locate() => LocateGames();
+    public IEnumerable<GameLocatorResult> Locate() => LocateGames(null);
 
     public IEnumerable<GameLocatorResult> Locate(IGameLocatorProblemSink problems)
     {
         _registeredGames.ReportTo(problems);
-        return LocateGames();
+        return LocateGames(problems);
     }
 
-    private IEnumerable<GameLocatorResult> LocateGames()
+    private IEnumerable<GameLocatorResult> LocateGames(IGameLocatorProblemSink? problems)
     {
         foreach (var result in _handler.FindAllGames())
         {
@@ -44,9 +44,10 @@ internal class EGSLocator : IGameLocator
             var storeIdentifier = gameFinderGame.CatalogItemId.Value;
             _logger.LogDebug("Found game '{GameName}' with store identifier '{StoreIdentifier}'", gameFinderGame.DisplayName, storeIdentifier);
 
-            if (!_registeredGames.Games.TryGetValue(storeIdentifier, out var game)) continue;
-
             var path = gameFinderGame.InstallLocation;
+
+            var game = _registeredGames.Resolve(storeIdentifier, path, problems);
+            if (game is null) continue;
             var locatorIds = gameFinderGame.ManifestHash.Select(LocatorId.From).ToImmutableArray();
 
             yield return new GameLocatorResult

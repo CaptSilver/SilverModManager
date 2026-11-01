@@ -54,7 +54,8 @@ internal class HeroicGOGLocator : IGameLocator
             var storeIdentifier = gameFinderGame.Id.Value;
             _logger.LogDebug("Found game '{GameName}' with store identifier '{StoreIdentifier}'", gameFinderGame.Name, storeIdentifier);
 
-            if (!_registeredGames.Games.TryGetValue(storeIdentifier, out var game)) continue;
+            var game = _registeredGames.Resolve(storeIdentifier, gameFinderGame.Path, problems);
+            if (game is null) continue;
 
             // The handler reads both Heroic installs and does not say which one a game came from. With the
             // game in both, nothing says which copy the user means, so locate neither and say why.
