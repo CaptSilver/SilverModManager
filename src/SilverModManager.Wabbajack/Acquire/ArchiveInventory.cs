@@ -183,8 +183,10 @@ public sealed class ArchiveInventory(
                 => Row(archive, ArchiveState.Manual, $"the list asks for the request header {refused}, which this app does not send", http.Url),
             HttpState => Row(archive, ArchiveState.Automatic),
             WabbajackCdnState => Row(archive, ArchiveState.Automatic),
+            // The prompt stays on the archive's state for when the host's job fails and the user has to follow it.
+            ManualState manual when HostDownloaders.For(manual.Url) is not null => Row(archive, ArchiveState.Automatic, page: manual.Url),
             ManualState manual => Row(archive, ArchiveState.Manual, manual.Prompt, manual.Url),
-            MegaState mega when !MegaLink.TryParse(mega.Url, out _) => Row(archive, ArchiveState.Manual, "the MEGA link is not a file link this app can read; download it in your browser", mega.Url),
+            MegaState mega when !HostDownloaders.Mega.CanFetch(mega.Url) => Row(archive, ArchiveState.Manual, "the MEGA link is not a file link this app can read; download it in your browser", mega.Url),
             MegaState or GoogleDriveState or MediaFireState or ModDbState => Row(archive, ArchiveState.Automatic),
             LoversLabState loversLab => ClassifyForum(archive, ForumSite.LoversLab, loversLab.Url, loversLab.FileId, loversLab.FileName, loversLab.IsAttachment),
             VectorPlexusState vectorPlexus => ClassifyForum(archive, ForumSite.VectorPlexus, vectorPlexus.Url, vectorPlexus.FileId, vectorPlexus.FileName, vectorPlexus.IsAttachment),

@@ -98,6 +98,26 @@ public class ArchiveDownloadJobsTests(ITestOutputHelper helper) : AcquireTestBas
     }
 
     [Theory]
+    [InlineData("https://www.mediafire.com/file/abc123xyz/Some_Mod.7z/file", typeof(MediaFireDownloadJob))]
+    [InlineData("https://www.moddb.com/mods/cool-mod/addons/cool-patch", typeof(ModDbDownloadJob))]
+    [InlineData("https://www.moddb.com/downloads/start/123456", typeof(ModDbDownloadJob))]
+    [InlineData("https://mega.nz/file/AbCdEf12#AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", typeof(MegaDownloadJob))]
+    [InlineData("https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view", typeof(GoogleDriveDownloadJob))]
+    public async Task AManualRowWhoseAddressAHostCanFetchGetsThatHostsJob(string address, Type job)
+    {
+        await using var destination = TemporaryFileManager.CreateFile();
+        var url = new Uri(address);
+
+        var started = await Jobs.Create(AutomaticRow(new ManualState(url, "get it")), destination.Path, CancellationToken.None);
+
+        started.JobDefinition.Should().BeOfType(job);
+        ((HostedDownloadJob)started.JobDefinition).Url.Should().Be(job == typeof(GoogleDriveDownloadJob) ? GoogleDriveDownloadJob.PageFor("1AbCdEfGhIjKlMnOp") : url);
+        // The fake network answers none of these hosts, so the job ends in a refusal; wait for it so no job outlives the test.
+        var act = async () => await LibraryService.AddDownload(started, UnassignedAcquisition.Instance);
+        await act.Should().ThrowAsync<Exception>();
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task ALoversLabRowIsFetchedFromTheAddressTheFilesApiListsAndKeepsTheQueryOutOfThePage(bool listHasPage)

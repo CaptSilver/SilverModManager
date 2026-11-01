@@ -254,7 +254,7 @@ public sealed class ArchiveAcquirer(
                 var page = OriginalUrl(row);
                 logger.LogWarning("Downloaded '{Name}' does not match the list: expected {Expected}, got {Actual}, page {Page}; it is left for the user to fetch",
                     row.Archive.Name, row.Archive.XxHash64, file.XxHash64Identity(), page is null ? "(unknown)" : HostTransfer.Plain(page));
-                Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = "hash mismatch", Page = OriginalUrl(r) });
+                Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = FailureReason(r, "hash mismatch"), Page = OriginalUrl(r) });
                 Record(state, s => s.Failures.Add(new DownloadFailure(row.Archive.Name, "hash mismatch")));
             }
         }
@@ -267,7 +267,7 @@ public sealed class ArchiveAcquirer(
             // A host job has already said which host and page; this line would repeat it with a stack trace.
             if (ReportedFailure.IsMarked(e)) logger.LogTrace(e, "Downloading '{Name}' failed; it is left for the user to fetch", row.Archive.Name);
             else logger.LogWarning(e, "Downloading '{Name}' failed; it is left for the user to fetch", row.Archive.Name);
-            Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = e.Message, Page = OriginalUrl(r) });
+            Update(rows, index, r => r with { State = ArchiveState.Manual, Reason = FailureReason(r, e.Message), Page = OriginalUrl(r) });
             Record(state, s => s.Failures.Add(new DownloadFailure(row.Archive.Name, e.Message)));
         }
     }
@@ -476,8 +476,16 @@ public sealed class ArchiveAcquirer(
     }
 
     /// <summary>Where the user can get the archive themselves when the app could not.</summary>
+    /// <summary>
+    /// What the row shows once its download failed. A row the list gave through the Manual downloader keeps the list's
+    /// prompt beside the reason, so the user is told what the list asked for as well as what went wrong.
+    /// </summary>
+    private static string FailureReason(ArchivePlanRow row, string reason)
+        => row.Archive.State is ManualState { Prompt: { Length: > 0 } prompt } ? $"{reason}. The list says: {prompt}" : reason;
+
     private static Uri? OriginalUrl(ArchivePlanRow row) => row.Page ?? row.Archive.State switch
     {
+        ManualState manual => manual.Url,
         HttpState http => http.Url,
         WabbajackCdnState cdn => cdn.Url,
         MegaState mega => mega.Url,

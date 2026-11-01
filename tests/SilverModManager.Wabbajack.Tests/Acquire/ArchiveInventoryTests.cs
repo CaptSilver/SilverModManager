@@ -432,6 +432,42 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         vectorPlexus.State.Should().Be(ArchiveState.SignIn);
     }
 
+    [Theory]
+    [InlineData("https://www.mediafire.com/file/abc123xyz/Some_Mod.7z/file")]
+    [InlineData("https://www.moddb.com/downloads/start/123456")]
+    [InlineData("https://www.moddb.com/mods/cool-mod/addons/cool-patch")]
+    [InlineData("https://mega.nz/file/AbCdEf12#AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
+    [InlineData("https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view")]
+    public async Task AManualRowWhoseAddressAHostCanFetchIsAutomaticAndKeepsTheListsPrompt(string address)
+    {
+        var url = new Uri(address);
+        var entry = Entry(new ManualState(url, "Click the big button"));
+
+        var row = await RowFor(entry);
+
+        row.State.Should().Be(ArchiveState.Automatic);
+        row.Reason.Should().BeNull("a reason would list the row under needs-you before anything was tried");
+        row.Page.Should().Be(url);
+        ((ManualState)row.Archive.State).Prompt.Should().Be("Click the big button");
+    }
+
+    [Theory]
+    [InlineData("https://www.mediafire.com/folder/abc123xyz/Mods")]
+    [InlineData("https://www.moddb.com/mods/cool-mod")]
+    [InlineData("https://mega.nz/folder/AbCdEf12#abc")]
+    [InlineData("https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOp")]
+    [InlineData("https://example.invalid/file")]
+    public async Task AManualRowWhoseAddressNoHostCanFetchStaysManualWithThePrompt(string address)
+    {
+        var url = new Uri(address);
+
+        var row = await RowFor(Entry(new ManualState(url, "Click the big button")));
+
+        row.State.Should().Be(ArchiveState.Manual);
+        row.Reason.Should().Be("Click the big button");
+        row.Page.Should().Be(url);
+    }
+
     [Fact]
     public async Task AManualPromptIsKeptAsTheReason()
     {
