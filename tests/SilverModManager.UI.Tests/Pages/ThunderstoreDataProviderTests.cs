@@ -13,6 +13,7 @@ using NSubstitute;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Library;
+using SilverModManager.Library;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Pages;
@@ -433,6 +434,43 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
             }
             return Task.CompletedTask;
         });
+    }
+
+    private sealed class FixedCatalogSource(ThunderstoreCatalog catalog) : IThunderstoreCatalogSource
+    {
+        public bool IsStale(string community) => false;
+        public Task Refresh(string community, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<ThunderstoreCatalog> Load(string community, CancellationToken cancellationToken) => Task.FromResult(catalog);
+    }
+
+    /// <summary>
+    /// The shipped app never called the checker, so the column stayed empty. Here nothing but the source's own
+    /// update check feeds it.
+    /// </summary>
+    [Fact]
+    public async Task CheckingForUpdates_ShowsTheNewVersionOnARow()
+    {
+        var community = UniqueCommunity();
+        var team = "Team" + Guid.NewGuid().ToString("N");
+        await AddFile(community, team, "Checked", "1.0.0");
+        var game = ThunderstoreGameOf(community);
+        using var rows = Rows(CreateProvider(game).ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
+        await Eventually(() => rows.Count.Should().Be(1));
+        var row = rows.Items.Single();
+        await OnUi(() =>
+        {
+            row.Activate();
+            return Task.CompletedTask;
+        });
+
+        var source = new ThunderstoreModSource(
+            new FixedCatalogSource(CatalogWith(community, team, "Checked", "1.0.0", "1.1.0")),
+            Provider.GetRequiredService<ThunderstoreUpdateChecker>());
+        await source.CheckUpdates(game, force: false, CancellationToken.None);
+
+        await EventuallyOnUi(() =>
+            row.GetOptional<LibraryComponents.NewVersionAvailable>(LibraryColumns.ItemVersion.NewVersionComponentKey)
+                .Value.NewVersion.Value.Should().Be("1.1.0"));
     }
 
     [Fact]

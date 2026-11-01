@@ -1,5 +1,6 @@
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Networking.Thunderstore;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Thunderstore;
 
@@ -9,7 +10,7 @@ namespace SilverModManager.Library;
 /// <summary>
 /// Items downloaded as a package from Thunderstore.
 /// </summary>
-internal sealed class ThunderstoreModSource : IModSource
+internal sealed class ThunderstoreModSource(IThunderstoreCatalogSource catalogs, ThunderstoreUpdateChecker checker) : IModSource
 {
     public string DisplayName => "Thunderstore";
 
@@ -20,6 +21,18 @@ internal sealed class ThunderstoreModSource : IModSource
 
     public Uri? ChangelogUri(LibraryItem.ReadOnly item)
         => TryGetPackage(item, out var community, out var package) ? ThunderstoreUrls.Changelog(community, package) : null;
+
+    public async Task CheckUpdates(IGameData game, bool force, CancellationToken cancellationToken)
+    {
+        if (ThunderstoreGame.For(game) is not { } thunderstoreGame) return;
+
+        var community = thunderstoreGame.ThunderstoreCommunity;
+        if (force || catalogs.IsStale(community)) await catalogs.Refresh(community, cancellationToken);
+
+        // The catalog is loaded even when it was not refreshed: the checker starts empty each run, and the
+        // cached listing is what it compares the library against.
+        checker.Refresh(await catalogs.Load(community, cancellationToken));
+    }
 
     private static bool TryGetFile(LibraryItem.ReadOnly item, out ThunderstoreLibraryFile.ReadOnly file)
     {

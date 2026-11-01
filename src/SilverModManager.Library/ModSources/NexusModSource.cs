@@ -1,6 +1,8 @@
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 
 // Not SilverModManager.Library.ModSources: App.UI has a static class ModSources and the names would clash.
@@ -9,7 +11,7 @@ namespace SilverModManager.Library;
 /// <summary>
 /// Items downloaded from Nexus Mods.
 /// </summary>
-internal sealed class NexusModSource : IModSource
+internal sealed class NexusModSource(IModUpdateService modUpdateService) : IModSource
 {
     public string DisplayName => "Nexus Mods";
 
@@ -25,4 +27,8 @@ internal sealed class NexusModSource : IModSource
     // The site has no changelog page for a single file (the popup that shows one can't be linked to), only the
     // mod page's own changelog tab, so both actions open the mod page.
     public Uri? ChangelogUri(LibraryItem.ReadOnly item) => PageUri(item);
+
+    // The Nexus check is global, not per game, and throttles itself, so neither game nor force changes what runs.
+    public async Task CheckUpdates(IGameData game, bool force, CancellationToken cancellationToken)
+        => await modUpdateService.CheckAndUpdateModPages(cancellationToken, notify: true);
 }

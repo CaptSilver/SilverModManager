@@ -20,7 +20,7 @@ public interface ILibraryViewModel : IPageViewModelInterface
     string EmptyLibrarySubtitleText { get; }
 
     public ReactiveCommand<Unit> UpdateAllCommand { get; }
-    public ReactiveCommand<Unit> RefreshUpdatesCommand { get; }
+    public ReactiveCommand<bool> RefreshUpdatesCommand { get; }
 
     ReactiveCommand<Unit> InstallSelectedItemsCommand { get; }
     ReactiveCommand<Unit> InstallSelectedItemsWithAdvancedInstallerCommand { get; }

@@ -132,7 +132,7 @@ public partial class LibraryView : ReactiveUserControl<ILibraryViewModel>
                 this.BindCommand(ViewModel, vm => vm.OpenNexusModsCommand, view => view.EmptyLibraryLinkButton)
                     .AddTo(disposables);
 
-                this.BindCommand(ViewModel, vm => vm.RefreshUpdatesCommand, view => view.Refresh)
+                this.BindCommand(ViewModel, vm => vm.RefreshUpdatesCommand, view => view.Refresh, System.Reactive.Linq.Observable.Return(true))
                     .AddTo(disposables);
 
                 this.BindCommand(ViewModel, vm => vm.UpdateAllCommand, view => view.UpdateAllButton)

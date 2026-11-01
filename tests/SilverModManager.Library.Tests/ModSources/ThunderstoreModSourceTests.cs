@@ -1,3 +1,7 @@
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Networking.NexusWebApi;
+using NSubstitute;
+using SilverModManager.Networking.Thunderstore;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Library;
@@ -16,7 +20,7 @@ namespace SilverModManager.Library.Tests.ModSources;
 
 public class ThunderstoreModSourceTests(IConnection connection)
 {
-    private static ModSourceResolver Resolver() => new([new NexusModSource(), new ThunderstoreModSource()]);
+    private ModSourceResolver Resolver() => new([new NexusModSource(Substitute.For<IModUpdateService>()), new ThunderstoreModSource(Substitute.For<IThunderstoreCatalogSource>(), new ThunderstoreUpdateChecker(connection))]);
 
     [Fact]
     public async Task AThunderstoreItemResolvesToTheThunderstoreSource()
@@ -36,7 +40,7 @@ public class ThunderstoreModSourceTests(IConnection connection)
         var fixtures = new LockFixtures(connection);
         var file = await fixtures.AddThunderstoreFile("Zehs", "REPOLib", "4.2.0", "ts " + Guid.NewGuid(), null, community: "repo");
 
-        new ThunderstoreModSource().PageUri(file.AsLibraryItem()).Should().Be(new Uri("https://thunderstore.io/c/repo/p/Zehs/REPOLib/"));
+        new ThunderstoreModSource(Substitute.For<IThunderstoreCatalogSource>(), new ThunderstoreUpdateChecker(connection)).PageUri(file.AsLibraryItem()).Should().Be(new Uri("https://thunderstore.io/c/repo/p/Zehs/REPOLib/"));
     }
 
     [Fact]
@@ -45,7 +49,7 @@ public class ThunderstoreModSourceTests(IConnection connection)
         var fixtures = new LockFixtures(connection);
         var file = await fixtures.AddThunderstoreFile("Zehs", "REPOLib", "4.2.0", "ts " + Guid.NewGuid(), null, community: "valheim");
 
-        new ThunderstoreModSource().ChangelogUri(file.AsLibraryItem()).Should().Be(new Uri("https://thunderstore.io/c/valheim/p/Zehs/REPOLib/changelog/"));
+        new ThunderstoreModSource(Substitute.For<IThunderstoreCatalogSource>(), new ThunderstoreUpdateChecker(connection)).ChangelogUri(file.AsLibraryItem()).Should().Be(new Uri("https://thunderstore.io/c/valheim/p/Zehs/REPOLib/changelog/"));
     }
 
     [Fact]
@@ -53,7 +57,7 @@ public class ThunderstoreModSourceTests(IConnection connection)
     {
         var fixtures = new LockFixtures(connection);
         var file = await fixtures.AddLibraryFile("local.zip", "local " + Guid.NewGuid(), null);
-        var source = new ThunderstoreModSource();
+        var source = new ThunderstoreModSource(Substitute.For<IThunderstoreCatalogSource>(), new ThunderstoreUpdateChecker(connection));
 
         source.Owns(file.AsLibraryItem()).Should().BeFalse();
         source.PageUri(file.AsLibraryItem()).Should().BeNull();
@@ -67,7 +71,7 @@ public class ThunderstoreModSourceTests(IConnection connection)
         var fixtures = new LockFixtures(connection);
         var file = await fixtures.AddThunderstoreFile("Zehs", "REPOLib", "4.2.0", "ts " + Guid.NewGuid(), null);
 
-        new NexusModSource().Owns(file.AsLibraryItem()).Should().BeFalse();
+        new NexusModSource(Substitute.For<IModUpdateService>()).Owns(file.AsLibraryItem()).Should().BeFalse();
     }
 
     public class Startup

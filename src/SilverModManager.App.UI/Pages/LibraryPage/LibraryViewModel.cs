@@ -65,7 +65,11 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
     public string EmptyLibrarySubtitleText { get; }
 
     public ReactiveCommand<Unit> UpdateAllCommand { get; }
-    public ReactiveCommand<Unit> RefreshUpdatesCommand { get; }
+    /// <summary>
+    /// Asks every mod source for updates. The parameter is <c>force</c>: the Refresh button passes true, entering
+    /// the page false so a source with a fresh cache can skip the network.
+    /// </summary>
+    public ReactiveCommand<bool> RefreshUpdatesCommand { get; }
     public ReactiveCommand<Unit> InstallSelectedItemsCommand { get; }
 
     public ReactiveCommand<Unit> InstallSelectedItemsWithAdvancedInstallerCommand { get; }
@@ -154,8 +158,8 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
             Adapter.ClearSelection();
         });
 
-        RefreshUpdatesCommand = new ReactiveCommand<Unit>(
-            executeAsync: (_, token) => RefreshUpdates(token),
+        RefreshUpdatesCommand = new ReactiveCommand<bool>(
+            executeAsync: (force, token) => RefreshUpdates(force, token),
             awaitOperation: AwaitOperation.Switch
         );
 
@@ -351,7 +355,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
             R3.Observable
                 .Return(Unit.Default)
                 .ObserveOnThreadPool()
-                .Subscribe(this,static (_, self) => self.RefreshUpdatesCommand.Execute(Unit.Default))
+                .Subscribe(this,static (_, self) => self.RefreshUpdatesCommand.Execute(false))
                 .AddTo(disposables);
         });
     }
@@ -912,9 +916,24 @@ After asking design, we're choosing to simply open the mod page for now.
     }
 
     // Note(sewer): ValueTask because of R3 constraints with ReactiveCommand API
-    private async ValueTask RefreshUpdates(CancellationToken token) 
+    private async ValueTask RefreshUpdates(bool force, CancellationToken token)
     {
-        await _modUpdateService.CheckAndUpdateModPages(token, notify: true);
+        var sources = _serviceProvider.GetRequiredService<ModSourceResolver>().Sources;
+        var game = _loadout.InstallationInstance.Game;
+        var logger = _serviceProvider.GetRequiredService<ILogger<LibraryViewModel>>();
+
+        // One source being offline must not stop the others from checking.
+        foreach (var source in sources)
+        {
+            try
+            {
+                await source.CheckUpdates(game, force, token);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                logger.LogWarning(e, "Checking {Source} for updates failed", source.DisplayName);
+            }
+        }
     }
 
     private async ValueTask InstallItems(LibraryItemId[] ids, LoadoutItemGroupId targetLoadoutGroup, bool useAdvancedInstaller, CancellationToken cancellationToken)

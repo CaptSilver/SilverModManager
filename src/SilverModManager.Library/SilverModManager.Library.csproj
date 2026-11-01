@@ -17,5 +17,6 @@
     </ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="SilverModManager.Library.Tests"/>
+        <InternalsVisibleTo Include="SilverModManager.UI.Tests"/>
     </ItemGroup>
 </Project>

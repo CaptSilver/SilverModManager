@@ -1,7 +1,10 @@
+using NSubstitute;
+using SilverModManager.Networking.Thunderstore;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Networking.NexusWebApi;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.Backend;
 using SilverModManager.Abstractions.Loadouts;
@@ -22,7 +25,7 @@ public class ModSourceResolverTests(IConnection connection)
     // The host's database is shared by every test in the run, so each test gets mod and file ids of its own.
     private static uint _nextId = 71000;
 
-    private static ModSourceResolver Resolver() => new([new NexusModSource()]);
+    private static ModSourceResolver Resolver() => new([new NexusModSource(Substitute.For<IModUpdateService>())]);
 
     [Fact]
     public async Task ANexusItemResolvesToTheNexusSource()
@@ -77,7 +80,7 @@ public class ModSourceResolverTests(IConnection connection)
     {
         var fixtures = new LockFixtures(connection);
         var file = await fixtures.AddLibraryFile("local.zip", "local " + _nextId++, null);
-        var source = new NexusModSource();
+        var source = new NexusModSource(Substitute.For<IModUpdateService>());
 
         source.Owns(file.AsLibraryItem()).Should().BeFalse();
         source.PageUri(file.AsLibraryItem()).Should().BeNull();

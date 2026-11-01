@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.Abstractions.Library;
@@ -29,4 +30,12 @@ public interface IModSource
     /// mod page.
     /// </summary>
     Uri? ChangelogUri(LibraryItem.ReadOnly item);
+
+    /// <summary>
+    /// Brings what the source knows about available updates up to date for one game and tells whoever observes
+    /// them. Each source decides whether its own cache is fresh enough: Nexus throttles inside its update
+    /// service, Thunderstore asks whether its catalog is stale. <paramref name="force"/> is the Refresh button
+    /// and skips that test; entering a page passes false.
+    /// </summary>
+    Task CheckUpdates(IGameData game, bool force, CancellationToken cancellationToken);
 }
