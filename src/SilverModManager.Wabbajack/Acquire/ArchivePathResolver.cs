@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Library;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -7,6 +8,7 @@ using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Install;
 using SilverModManager.Wabbajack.Library;
 
 namespace SilverModManager.Wabbajack.Acquire;
@@ -46,18 +48,34 @@ public sealed class ArchivePathResolver(
     private readonly LibraryArchiveLocator _locator = new();
     private readonly LibraryFileDigests _digests = new(store, db.Connection);
     private readonly INestedArchiveOpener[] _openers = openers.ToArray();
-    private readonly Dictionary<EntityId, Dictionary<string, LibraryArchiveFileEntry.ReadOnly>> _indexes = new();
-    private readonly Dictionary<string, ResolvedMember> _stored = new();
-    private readonly SemaphoreSlim _storeLock = new(1, 1);
+    // The plan's own lookup scans every row, once per directive.
+    private readonly Lazy<Dictionary<FileIdentity, ArchiveEntry>> _archives = new(() =>
+    {
+        var byHash = new Dictionary<FileIdentity, ArchiveEntry>();
+        foreach (var row in plan.Rows) byHash.TryAdd(row.Archive.XxHash64, row.Archive);
+        return byHash;
+    });
+    private readonly ConcurrentDictionary<EntityId, Lazy<Dictionary<string, LibraryArchiveFileEntry.ReadOnly>>> _indexes = new();
+    private readonly ConcurrentDictionary<string, Lazy<Task<ResolvedMember>>> _stored = new();
+    private readonly ConcurrentDictionary<EntityId, Hash> _hashed = new();
+    private readonly List<(EntityId File, Hash Digest)> _unrecorded = [];
+    private readonly SemaphoreSlim _recordLock = new(1, 1);
     private readonly List<IDisposable> _pins = [];
     private bool _disposed;
+    private int _indexesBuilt;
+
+    /// <summary>
+    /// How many hashes are computed for library files before they are written to the library in one commit. A commit
+    /// per file makes the loadout react to each one.
+    /// </summary>
+    private const int RecordBatchSize = 500;
 
     /// <summary>How many entry indexes have been built, one per archive that had a member looked up in it.</summary>
-    public int IndexesBuilt { get; private set; }
+    public int IndexesBuilt => Volatile.Read(ref _indexesBuilt);
 
     public async Task<ResolvedMember> Resolve(ArchiveHashPath path, CancellationToken cancellationToken)
     {
-        if (plan.FindArchive(path.ArchiveXxHash64) is { State: GameFileSourceState gameFile })
+        if (_archives.Value.TryGetValue(path.ArchiveXxHash64, out var planned) && planned.State is GameFileSourceState gameFile)
         {
             var source = await ResolveGameFile(gameFile, cancellationToken);
             if (path.Parts.Count == 0) return source;
@@ -92,17 +110,18 @@ public sealed class ArchivePathResolver(
 
     private Dictionary<string, LibraryArchiveFileEntry.ReadOnly> Entries(LibraryArchive.ReadOnly archive)
     {
-        if (_indexes.TryGetValue(archive.Id, out var existing)) return existing;
-
-        var index = new Dictionary<string, LibraryArchiveFileEntry.ReadOnly>();
-        foreach (var entry in LibraryArchiveFileEntry.FindByParent(db, archive))
+        // Lazy, so threads that need the same archive wait for one build instead of each making their own.
+        return _indexes.GetOrAdd(archive.Id, _ => new Lazy<Dictionary<string, LibraryArchiveFileEntry.ReadOnly>>(() =>
         {
-            // Two entries that differ only in case collapse to the first, as the install tree will.
-            index.TryAdd(Fold(entry.Path), entry);
-        }
-        _indexes[archive.Id] = index;
-        IndexesBuilt++;
-        return index;
+            var index = new Dictionary<string, LibraryArchiveFileEntry.ReadOnly>();
+            foreach (var entry in LibraryArchiveFileEntry.FindByParent(db, archive))
+            {
+                // Two entries that differ only in case collapse to the first, as the install tree will.
+                index.TryAdd(Fold(entry.Path), entry);
+            }
+            Interlocked.Increment(ref _indexesBuilt);
+            return index;
+        })).Value;
     }
 
     private async Task<ResolvedMember> FromLibraryFile(LibraryFile.ReadOnly file, string name, CancellationToken cancellationToken)
@@ -111,8 +130,62 @@ public sealed class ArchivePathResolver(
         if (!await store.HaveFile(file.Identity))
             throw new MemberNotFoundException($"'{name}' is an archive the library expanded, so its own bytes are not kept");
 
-        var xxHash64 = await _digests.EnsureXxHash64(file, cancellationToken);
+        var xxHash64 = await HashOf(file, cancellationToken);
         return new ResolvedMember(file.Identity, xxHash64, file.Size, async () => await store.GetFileStream(file.Identity, cancellationToken));
+    }
+
+    /// <summary>
+    /// The file's xxHash64, computed from the store when the row lacks it. A computed hash is kept for the next lookup and
+    /// queued for the library, which gets them in batches (see <see cref="FlushDigests"/>).
+    /// </summary>
+    private async Task<FileIdentity?> HashOf(LibraryFile.ReadOnly file, CancellationToken cancellationToken)
+    {
+        if (file.XxHash64Identity() is { } recorded) return recorded;
+        if (_hashed.TryGetValue(file.Id, out var known)) return FileIdentity.XxHash64(known);
+
+        if (await _digests.ComputeXxHash64(file, cancellationToken) is not { } computed) return null;
+        if (!computed.NeedsRecording) return FileIdentity.XxHash64(computed.Hash);
+        if (!_hashed.TryAdd(file.Id, computed.Hash)) return FileIdentity.XxHash64(computed.Hash);
+
+        List<(EntityId, Hash)>? batch = null;
+        lock (_unrecorded)
+        {
+            _unrecorded.Add((file.Id, computed.Hash));
+            if (_unrecorded.Count >= RecordBatchSize)
+            {
+                batch = [.. _unrecorded];
+                _unrecorded.Clear();
+            }
+        }
+        if (batch is not null) await Record(batch);
+        return FileIdentity.XxHash64(computed.Hash);
+    }
+
+    private async Task Record(IReadOnlyCollection<(EntityId, Hash)> batch)
+    {
+        // One writer at a time; the commits are what the loadout reacts to, and they are few.
+        await _recordLock.WaitAsync();
+        try
+        {
+            await _digests.RecordXxHash64(batch);
+        }
+        finally
+        {
+            _recordLock.Release();
+        }
+    }
+
+    /// <summary>Writes the hashes computed for library files that lacked one to the library, in one commit.</summary>
+    public async Task FlushDigests(CancellationToken cancellationToken)
+    {
+        List<(EntityId, Hash)> batch;
+        lock (_unrecorded)
+        {
+            batch = [.. _unrecorded];
+            _unrecorded.Clear();
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        await Record(batch);
     }
 
     /// <summary>
@@ -161,37 +234,48 @@ public sealed class ArchivePathResolver(
 
     /// <summary>
     /// Hashes what <paramref name="open"/> yields, backs it up unless the store has it, and returns a member that reads
-    /// it back from the store. Done once per <paramref name="key"/>: <paramref name="open"/> is called once to hash and,
-    /// when the store lacks the bytes, once more to copy.
+    /// it back from the store. Done once per <paramref name="key"/>: threads asking for the same key wait for the one
+    /// doing it, and different keys go ahead together. <paramref name="open"/> is called once; the stream is hashed and,
+    /// when the store lacks the bytes, read again from the start.
     /// </summary>
-    private async Task<ResolvedMember> Store(string key, Func<Task<Stream>> open, CancellationToken cancellationToken)
+    private Task<ResolvedMember> Store(string key, Func<Task<Stream>> open, CancellationToken cancellationToken)
     {
-        await _storeLock.WaitAsync(cancellationToken);
+        var entry = _stored.GetOrAdd(key, _ => new Lazy<Task<ResolvedMember>>(() => StoreOnce(key, open)));
+        return entry.Value.WaitAsync(cancellationToken);
+    }
+
+    private async Task<ResolvedMember> StoreOnce(string key, Func<Task<Stream>> open)
+    {
         try
         {
-            if (_stored.TryGetValue(key, out var known)) return known;
+            return await StoreBytes(await OpenSeekable(open));
+        }
+        catch
+        {
+            // A failure is not remembered: the next ask tries again.
+            _stored.TryRemove(key, out _);
+            throw;
+        }
+    }
 
-            FileIdentity xxHash3, xxHash64;
-            Size size;
-            await using (var stream = await open())
-            {
-                (xxHash3, xxHash64, size) = await StreamDigests.HashAndCount(stream, cancellationToken);
-            }
+    private async Task<ResolvedMember> StoreBytes(Stream source)
+    {
+        var cancellationToken = CancellationToken.None;
+        FileIdentity xxHash3, xxHash64;
+        Size size;
+        await using (source)
+        {
+            (xxHash3, xxHash64, size) = await StreamDigests.HashAndCount(source, cancellationToken);
+            source.Position = 0;
 
             // Pinned first, so every collection that marks from here on keeps the bytes. Deduplicating inside
             // BackupFiles checks for them under the store's read lock, after any collection already running (which
             // marked before the pin and may drop bytes the store still lists) has finished.
             Pin(xxHash3);
-            await store.BackupFiles([new ArchivedFileEntry(new OpenerStreamFactory(open), xxHash3, size)], deduplicate: true, cancellationToken);
+            await store.BackupFiles([new ArchivedFileEntry(new OneShotStreamFactory(source), xxHash3, size)], deduplicate: true, cancellationToken);
+        }
 
-            var resolved = new ResolvedMember(xxHash3, xxHash64, size, async () => await store.GetFileStream(xxHash3, cancellationToken));
-            _stored[key] = resolved;
-            return resolved;
-        }
-        finally
-        {
-            _storeLock.Release();
-        }
+        return new ResolvedMember(xxHash3, xxHash64, size, async () => await store.GetFileStream(xxHash3, cancellationToken));
     }
 
     private void Pin(FileIdentity identity)
@@ -225,23 +309,38 @@ public sealed class ArchivePathResolver(
     /// The store's packer reads its inputs by offset, so a stream that cannot seek (a decompressor an opener hands back,
     /// say) is spooled to a temp file first.
     /// </summary>
-    private sealed class OpenerStreamFactory(Func<Task<Stream>> open) : IStreamFactory
+    private static async Task<Stream> OpenSeekable(Func<Task<Stream>> open)
     {
-        public RelativePath FileName => RelativePath.Empty;
+        var source = await open();
+        if (source.CanSeek) return source;
 
-        public async ValueTask<Stream> GetStreamAsync()
+        await using (source)
         {
-            var source = await open();
-            if (source.CanSeek) return source;
-
-            await using (source)
+            var spool = new FileStream(System.IO.Path.GetTempFileName(), FileMode.Open, FileAccess.ReadWrite, FileShare.None,
+                bufferSize: HashBufferSize, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
+            try
             {
-                var spool = new FileStream(System.IO.Path.GetTempFileName(), FileMode.Open, FileAccess.ReadWrite, FileShare.None,
-                    bufferSize: HashBufferSize, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
                 await source.CopyToAsync(spool);
                 spool.Position = 0;
                 return spool;
             }
+            catch
+            {
+                await spool.DisposeAsync();
+                throw;
+            }
+        }
+    }
+
+    /// <summary>Hands the store the stream already open, positioned at the start; the caller disposes it.</summary>
+    private sealed class OneShotStreamFactory(Stream stream) : IStreamFactory
+    {
+        public RelativePath FileName => RelativePath.Empty;
+
+        public ValueTask<Stream> GetStreamAsync()
+        {
+            stream.Position = 0;
+            return ValueTask.FromResult<Stream>(new LeaveOpenStream(stream));
         }
     }
 }

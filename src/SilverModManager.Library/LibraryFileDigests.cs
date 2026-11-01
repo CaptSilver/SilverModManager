@@ -45,10 +45,23 @@ public sealed class LibraryFileDigests(IFileStore fileStore, IConnection connect
     /// </summary>
     public async ValueTask<FileIdentity?> EnsureXxHash64(LibraryFile.ReadOnly file, CancellationToken cancellationToken = default)
     {
-        if (file.XxHash64Identity() is { } recorded) return recorded;
+        var computed = await ComputeXxHash64(file, cancellationToken);
+        if (computed is not { } found) return null;
+        if (found.NeedsRecording) await RecordXxHash64([(file.Id, found.Hash)]);
+        return FileIdentity.XxHash64(found.Hash);
+    }
+
+    /// <summary>
+    /// The xxHash64 of the file, from the row when it has one and otherwise from the bytes in the file store, without
+    /// writing it back. <see cref="XxHash64Result.NeedsRecording"/> says the row lacks the value, so a caller that hashes
+    /// many files can write them together with <see cref="RecordXxHash64"/> instead of committing once per file.
+    /// </summary>
+    public async ValueTask<XxHash64Result?> ComputeXxHash64(LibraryFile.ReadOnly file, CancellationToken cancellationToken = default)
+    {
+        if (LibraryFile.XxHash64.TryGetValue(file, out var recorded)) return new XxHash64Result(recorded, NeedsRecording: false);
 
         var current = LibraryFile.Load(connection.Db, file.Id);
-        if (current.IsValid() && current.XxHash64Identity() is { } written) return written;
+        if (current.IsValid() && LibraryFile.XxHash64.TryGetValue(current, out var written)) return new XxHash64Result(written, NeedsRecording: false);
 
         if (file.TryGetAsLibraryArchive(out _)) return null;
         if (!await fileStore.HaveFile(file.Identity)) return null;
@@ -58,10 +71,18 @@ public sealed class LibraryFileDigests(IFileStore fileStore, IConnection connect
         {
             digest = await Xx64Hasher.HashAsync(stream, cancellationToken: cancellationToken);
         }
+        return new XxHash64Result(digest, NeedsRecording: true);
+    }
 
+    /// <summary>Writes the xxHash64 of each file in one commit.</summary>
+    public async Task RecordXxHash64(IReadOnlyCollection<(EntityId File, Hash Digest)> hashes)
+    {
+        if (hashes.Count == 0) return;
         using var tx = connection.BeginTransaction();
-        tx.Add(file.Id, LibraryFile.XxHash64, digest);
+        foreach (var (file, digest) in hashes) tx.Add(file, LibraryFile.XxHash64, digest);
         await tx.Commit();
-        return FileIdentity.XxHash64(digest);
     }
 }
+
+/// <summary>An xxHash64 of a library file and whether the file's row still has to be given it.</summary>
+public readonly record struct XxHash64Result(Hash Hash, bool NeedsRecording);

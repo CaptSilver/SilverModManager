@@ -279,6 +279,97 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
         resolver.IndexesBuilt.Should().Be(1);
     }
 
+    [Fact]
+    public async Task AMemberAnOpenerYieldsIsOpenedOncePerResolve()
+    {
+        var inner = System.Text.Encoding.UTF8.GetBytes($"opened once {Guid.NewGuid()}");
+        var (_, archive) = await ResolverOverZip(new() { [P("textures.bsa")] = "BSA\0not really"u8.ToArray() });
+        var opener = new CountingOpener(inner);
+        var resolver = Resolver(new ArchivePlan([]), await CreateLoadout(), opener);
+
+        var member = await resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P("a.dds")]), CancellationToken.None);
+
+        opener.Opens.Should().Be(1, "hashing and backing up read the same stream, so an archive's index is parsed once for the member");
+        (await ReadAll(member)).Should().Equal(inner);
+    }
+
+    [Fact]
+    public async Task ResolvingTheSameOpenerMemberFromManyThreadsOpensItOnce()
+    {
+        var inner = System.Text.Encoding.UTF8.GetBytes($"shared {Guid.NewGuid()}");
+        var (_, archive) = await ResolverOverZip(new() { [P("textures.bsa")] = "BSA\0not really"u8.ToArray() });
+        var opener = new CountingOpener(inner);
+        var resolver = Resolver(new ArchivePlan([]), await CreateLoadout(), opener);
+        var path = new ArchiveHashPath(archive, [P("textures.bsa"), P("a.dds")]);
+
+        var members = await Task.WhenAll(Enumerable.Range(0, 16).Select(_ => Task.Run(() => resolver.Resolve(path, CancellationToken.None))));
+
+        opener.Opens.Should().Be(1);
+        members.Select(m => m.StoreIdentity).Distinct().Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task DifferentMembersOfAnArchiveAreOpenedAtTheSameTime()
+    {
+        var (_, archive) = await ResolverOverZip(new() { [P("textures.bsa")] = "BSA\0not really"u8.ToArray() });
+        var opener = new CountingOpener(System.Text.Encoding.UTF8.GetBytes($"parallel {Guid.NewGuid()}"), rendezvous: 2);
+        var resolver = Resolver(new ArchivePlan([]), await CreateLoadout(), opener);
+
+        // Each open waits for the other, so this only finishes when the resolver lets both in at once.
+        var both = Task.WhenAll(
+            resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P("a.dds")]), CancellationToken.None),
+            resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P("b.dds")]), CancellationToken.None));
+
+        (await Task.WhenAny(both, Task.Delay(TimeSpan.FromSeconds(20)))).Should().BeSameAs(both, "one open must not wait for another's to finish");
+        await both;
+    }
+
+    [Fact]
+    public async Task LibraryFilesWithoutARecordedHashAreBackfilledInOneCommit()
+    {
+        var files = Enumerable.Range(0, 20).ToDictionary(i => P($"f/{i}.txt"), i => System.Text.Encoding.UTF8.GetBytes($"backfill {i} {Guid.NewGuid()}"));
+        var (_, archive) = await ResolverOverZip(files);
+        var locator = new LibraryArchiveLocator();
+        var members = files.Values.Select(b => locator.FindByXxHash64(Connection.Db, Hash64(b))!.Value).ToArray();
+        using (var tx = Connection.BeginTransaction())
+        {
+            foreach (var member in members) tx.Retract(member.Id, LibraryFile.XxHash64, LibraryFile.XxHash64.Get(member));
+            await tx.Commit();
+        }
+
+        // Made after the hashes are gone: a resolver reads the database as it was when it was created.
+        var resolver = Resolver(new ArchivePlan([]), await CreateLoadout());
+        var commits = 0;
+        using var revisions = Connection.Revisions.Subscribe(_ => Interlocked.Increment(ref commits));
+        await Task.Delay(200, TestContext.Current.CancellationToken); // the current revision is delivered to a new subscriber
+        var before = commits;
+
+        foreach (var path in files.Keys)
+            await resolver.Resolve(new ArchiveHashPath(archive, [path]), CancellationToken.None);
+        await resolver.FlushDigests(CancellationToken.None);
+
+        (commits - before).Should().BeLessThanOrEqualTo(1, "the hashes are written together, not one commit per file");
+        foreach (var member in members)
+            LibraryFile.Load(Connection.Db, member.Id).XxHash64Identity().Should().NotBeNull();
+    }
+
+    private sealed class CountingOpener(byte[] content, int rendezvous = 0) : INestedArchiveOpener
+    {
+        private int _opens;
+        private readonly TaskCompletionSource _met = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int Opens => Volatile.Read(ref _opens);
+
+        public bool CanOpen(RelativePath name) => name.Extension == new Extension(".bsa");
+
+        public async Task<Stream?> Open(Stream archive, RelativePath member, CancellationToken cancellationToken)
+        {
+            if (Interlocked.Increment(ref _opens) >= rendezvous && rendezvous > 0) _met.TrySetResult();
+            if (rendezvous > 0) await _met.Task;
+            return new MemoryStream(content);
+        }
+    }
+
     private sealed class FakeOpener(byte[] content, bool seekable = true) : INestedArchiveOpener
     {
         public bool CanOpen(RelativePath name) => name.Extension == new Extension(".bsa");
