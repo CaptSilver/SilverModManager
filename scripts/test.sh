@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs the offline test suite (everything except RequiresNetworking, RequiresApiKey,
-# RequiresProton, RequiresSecretService and FlakeyTest) through Microsoft.Testing.Platform, inside the
+# RequiresProton, RequiresSecretService, Benchmark and FlakeyTest) through Microsoft.Testing.Platform, inside the
 # distrobox named by SILVER_BOX (default fedora) unless already in a container.
 # Extra arguments go to `dotnet test`, e.g.
 #   scripts/test.sh --project tests/SilverModManager.CLI.Tests
@@ -108,7 +108,7 @@ before_dumps=$(find "$dump_dir" -maxdepth 1 -name 'core.*' 2>/dev/null | wc -l)
 status=0
 dotnet test "${target[@]}" --ignore-exit-code 8 \
     --max-parallel-test-modules "${SILVER_TEST_MODULES:-8}" \
-    -p:XunitArgs="--filter-not-trait RequiresNetworking=True --filter-not-trait RequiresApiKey=True --filter-not-trait RequiresProton=True --filter-not-trait RequiresSecretService=True --filter-not-trait FlakeyTest=True" \
+    -p:XunitArgs="--filter-not-trait RequiresNetworking=True --filter-not-trait RequiresApiKey=True --filter-not-trait RequiresProton=True --filter-not-trait RequiresSecretService=True --filter-not-trait FlakeyTest=True --filter-not-trait Benchmark=True" \
     "$@" || status=$?
 
 after_dumps=$(find "$dump_dir" -maxdepth 1 -name 'core.*' 2>/dev/null | wc -l)
