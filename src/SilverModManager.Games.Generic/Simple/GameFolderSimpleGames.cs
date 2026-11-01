@@ -8,8 +8,9 @@ namespace SilverModManager.Games.Generic.Simple;
 
 /// <summary>
 /// Simple games whose mods go in a folder inside the game folder. Executables, store ids and mod folders are read
-/// from the Mod Organizer 2 basic_games plugins and the Vortex game extensions (each row says which); Nexus ids come
-/// from the Nexus games list, https://data.nexusmods.com/file/nexus-data/games.json, by the domain the plugin or
+/// from the Mod Organizer 2 basic_games plugins (and Fluorine Manager's, which adds some) and the Vortex game
+/// extensions (each row says which); each row installs the way its plugin or extension does; Nexus ids come
+/// from the Nexus games list, https://data.nexusmods.com/file/nexus-data/games.json, by the domain or name the plugin or
 /// extension names. Epic ids are left out, and so are native Linux builds, until each is checked.
 /// </summary>
 public static class GameFolderSimpleGames
@@ -34,8 +35,51 @@ public static class GameFolderSimpleGames
         ],
     };
 
-    // The plugin or extension publishes no layout to match, so the archive goes in as it is laid out.
+    // Games whose plugin or extension checks no layout take any archive, laid out like the mod folder.
     private static readonly SimpleInstallRules AsIs = new() { InstallAsIs = true };
+
+    // Mod Organizer 2 accepts an archive when one of its top-level folders is on the game's list, and offers to unwrap
+    // an archive that has the folder one level down. The folder holding a listed one is the root here.
+    private static SimpleInstallRules FolderNamed(string[] folders) => new()
+    {
+        Targets = [new SimpleInstallTarget { Destination = RelativePath.Empty, KnownSubfolderNames = folders.Select(folder => (RelativePath)folder).ToArray() }],
+    };
+
+    private static readonly string[] DarkestDungeonFolders =
+    [
+        "activity_log", "audio", "campaign", "colours", "curios", "cursors", "dlc", "dungeons", "effects", "fe_flow", "fonts", "fx",
+        "game_over", "heroes", "inventory", "loading_screen", "localization", "loot", "maps", "modes", "monsters", "overlays", "panels",
+        "props", "raid", "raid_result", "scripts", "scrolls", "shaders", "shared", "trinkets", "upgrades", "video",
+    ];
+
+    private static readonly string[] BloodlinesFolders =
+    [
+        "cfg", "cl_dlls", "dlg", "dlls", "maps", "materials", "media", "models", "particles", "python", "resource", "scripts", "sound", "vdata",
+    ];
+
+    private static readonly string[] ArkhamCityFolders = ["config", "cookedpcconsole", "localization", "movies", "moviesstereo", "splash"];
+
+    // Vortex puts a mod with the marker file in a folder of its own and drops what lies outside the marker's folder, so
+    // a readme beside the mod folder does not make the archive unusable.
+    private static SimpleInstallRules InOwnFolderByMarker(string markerFile) => new()
+    {
+        MarkerRules =
+        [
+            new SimpleMarkerRule
+            {
+                MarkerFile = markerFile,
+                Destination = RelativePath.Empty,
+                InFolderNamedAfterMod = true,
+                IgnoredExtensions = [KnownExtensions.Txt, KnownExtensions.Md, KnownExtensions.Png, KnownExtensions.Jpg],
+            },
+        ],
+    };
+
+    // Vortex takes the folder holding the first file with the extension as the mod's root, and installs it unchanged.
+    private static SimpleInstallRules FolderOfFirstFile(string extension) => new()
+    {
+        Targets = [new SimpleInstallTarget { Destination = RelativePath.Empty, KnownValidFileExtensions = [new Extension(extension)] }],
+    };
 
     /// <summary>From Mod Organizer 2.</summary>
     public static readonly SimpleGameDefinition DarkestDungeon = new()
@@ -46,7 +90,7 @@ public static class GameFolderSimpleGames
         Stores = new StoreIdentifiers(GameId.From("Simple.DarkestDungeon")) { SteamAppIds = [262060], GOGProductIds = [1450711444] },
         Executable = "_windows/win64/Darkest.exe",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, RelativePath.Empty),
-        Install = AsIs,
+        Install = FolderNamed(DarkestDungeonFolders),
     };
 
     /// <summary>From Mod Organizer 2.</summary>
@@ -166,7 +210,7 @@ public static class GameFolderSimpleGames
         Stores = new StoreIdentifiers(GameId.From("Simple.VampireBloodlines")) { SteamAppIds = [2600], GOGProductIds = [1207659240] },
         Executable = "vampire.exe",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, "vampire"),
-        Install = AsIs,
+        Install = FolderNamed(BloodlinesFolders),
     };
 
     /// <summary>From Mod Organizer 2.</summary>
@@ -190,7 +234,7 @@ public static class GameFolderSimpleGames
         Stores = new StoreIdentifiers(GameId.From("Simple.BatmanArkhamCity")) { SteamAppIds = [200260], GOGProductIds = [1260066469] },
         Executable = "Binaries/Win32/BatmanAC.exe",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, "BmGame"),
-        Install = AsIs,
+        Install = FolderNamed(ArkhamCityFolders),
     };
 
     /// <summary>From Mod Organizer 2.</summary>
@@ -201,18 +245,6 @@ public static class GameFolderSimpleGames
         NexusModsGameId = NexusModsGameId.From(556),
         Stores = new StoreIdentifiers(GameId.From("Simple.AssettoCorsa")) { SteamAppIds = [244210] },
         Executable = "AssettoCorsa.exe",
-        ModRoot = new ModLocation(ModLocationRoot.GameFolder, RelativePath.Empty),
-        Install = AsIs,
-    };
-
-    /// <summary>From Mod Organizer 2.</summary>
-    public static readonly SimpleGameDefinition Borderlands = new()
-    {
-        GameId = GameId.From("Simple.Borderlands"),
-        DisplayName = "Borderlands",
-        NexusModsGameId = Optional<NexusModsGameId>.None,
-        Stores = new StoreIdentifiers(GameId.From("Simple.Borderlands")) { SteamAppIds = [8980] },
-        Executable = "Binaries/Borderlands.exe",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, RelativePath.Empty),
         Install = AsIs,
     };
@@ -229,7 +261,7 @@ public static class GameFolderSimpleGames
         Install = AsIs,
     };
 
-    /// <summary>From Mod Organizer 2.</summary>
+    /// <summary>From the basic_games plugins of Fluorine Manager, a Mod Organizer 2 port.</summary>
     public static readonly SimpleGameDefinition KarrynsPrison = new()
     {
         GameId = GameId.From("Simple.KarrynsPrison"),
@@ -238,7 +270,10 @@ public static class GameFolderSimpleGames
         Stores = new StoreIdentifiers(GameId.From("Simple.KarrynsPrison")) { SteamAppIds = [1619750] },
         Executable = "nw.exe",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, RelativePath.Empty),
-        Install = AsIs,
+        Install = new SimpleInstallRules
+        {
+            Targets = [new SimpleInstallTarget { Destination = "www", KnownSourceFolderNames = ["www"] }],
+        },
     };
 
     /// <summary>From Mod Organizer 2.</summary>
@@ -301,7 +336,7 @@ public static class GameFolderSimpleGames
         Install = AsIs,
     };
 
-    /// <summary>From Mod Organizer 2.</summary>
+    /// <summary>From the basic_games plugins of Fluorine Manager, a Mod Organizer 2 port.</summary>
     public static readonly SimpleGameDefinition TrackmaniaUnitedForever = new()
     {
         GameId = GameId.From("Simple.TrackmaniaUnitedForever"),
@@ -318,7 +353,7 @@ public static class GameFolderSimpleGames
     {
         GameId = GameId.From("Simple.TrainSimulator"),
         DisplayName = "Train Simulator",
-        NexusModsGameId = Optional<NexusModsGameId>.None,
+        NexusModsGameId = NexusModsGameId.From(8628),
         Stores = new StoreIdentifiers(GameId.From("Simple.TrainSimulator")) { SteamAppIds = [24010] },
         Executable = "RailWorks.exe",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, RelativePath.Empty),
@@ -337,18 +372,6 @@ public static class GameFolderSimpleGames
         Install = AsIs,
     };
 
-    /// <summary>From Mod Organizer 2.</summary>
-    public static readonly SimpleGameDefinition ZeusAndPoseidon = new()
-    {
-        GameId = GameId.From("Simple.ZeusAndPoseidon"),
-        DisplayName = "Zeus and Poseidon",
-        NexusModsGameId = Optional<NexusModsGameId>.None,
-        Stores = new StoreIdentifiers(GameId.From("Simple.ZeusAndPoseidon")) { SteamAppIds = [566050], GOGProductIds = [1207659039] },
-        Executable = "Zeus.exe",
-        ModRoot = new ModLocation(ModLocationRoot.GameFolder, "Adventures"),
-        Install = AsIs,
-    };
-
     /// <summary>From Vortex.</summary>
     public static readonly SimpleGameDefinition AHatInTime = new()
     {
@@ -358,7 +381,7 @@ public static class GameFolderSimpleGames
         Stores = new StoreIdentifiers(GameId.From("Simple.AHatInTime")) { SteamAppIds = [253230] },
         Executable = "Binaries/Win64/HatInTimeGame.exe",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, "HatInTimeGame/Mods"),
-        Install = AsIs,
+        Install = InOwnFolderByMarker("modinfo.ini"),
     };
 
     /// <summary>From Vortex.</summary>
@@ -373,7 +396,10 @@ public static class GameFolderSimpleGames
         Install = AsIs,
     };
 
-    /// <summary>From Vortex.</summary>
+    /// <remarks>
+    /// From Vortex. Only Unity Mod Manager mods (an Info.json) are taken; Vortex puts a scene mod (*.scn.xml) in the
+    /// Documents/DawnOfMan/Scenarios folder, which this row does not map, so such an archive is refused.
+    /// </remarks>
     public static readonly SimpleGameDefinition DawnOfMan = new()
     {
         GameId = GameId.From("Simple.DawnOfMan"),
@@ -382,7 +408,7 @@ public static class GameFolderSimpleGames
         Stores = new StoreIdentifiers(GameId.From("Simple.DawnOfMan")) { SteamAppIds = [858810], GOGProductIds = [1899257943] },
         Executable = "DawnOfMan.exe",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, "Mods"),
-        Install = AsIs,
+        Install = InOwnFolderByMarker("Info.json"),
     };
 
     /// <summary>From Vortex.</summary>
@@ -394,10 +420,10 @@ public static class GameFolderSimpleGames
         Stores = new StoreIdentifiers(GameId.From("Simple.Elex")) { SteamAppIds = [411300] },
         Executable = "system/ELEX.exe",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, "data/packed"),
-        Install = AsIs,
+        Install = FolderOfFirstFile(".pak"),
     };
 
-    /// <summary>From Vortex.</summary>
+    /// <remarks>From Vortex. It strips the path above a datalocal folder, and installs an archive without one unchanged.</remarks>
     public static readonly SimpleGameDefinition GreedFall = new()
     {
         GameId = GameId.From("Simple.GreedFall"),
@@ -406,7 +432,11 @@ public static class GameFolderSimpleGames
         Stores = new StoreIdentifiers(GameId.From("Simple.GreedFall")) { SteamAppIds = [606880] },
         Executable = "GreedFall.exe",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, "datalocal"),
-        Install = AsIs,
+        Install = new SimpleInstallRules
+        {
+            Targets = [new SimpleInstallTarget { Destination = RelativePath.Empty, KnownSourceFolderNames = ["datalocal"] }],
+            InstallAsIs = true,
+        },
     };
 
     /// <summary>From Vortex.</summary>
@@ -434,18 +464,6 @@ public static class GameFolderSimpleGames
     };
 
     /// <summary>From Vortex.</summary>
-    public static readonly SimpleGameDefinition XRebirth = new()
-    {
-        GameId = GameId.From("Simple.XRebirth"),
-        DisplayName = "X Rebirth",
-        NexusModsGameId = NexusModsGameId.From(154),
-        Stores = new StoreIdentifiers(GameId.From("Simple.XRebirth")) { SteamAppIds = [2870] },
-        Executable = "XRebirth.exe",
-        ModRoot = new ModLocation(ModLocationRoot.GameFolder, "extensions"),
-        Install = AsIs,
-    };
-
-    /// <summary>From Vortex.</summary>
     public static readonly SimpleGameDefinition TeamFortress2 = new()
     {
         GameId = GameId.From("Simple.TeamFortress2"),
@@ -454,7 +472,7 @@ public static class GameFolderSimpleGames
         Stores = new StoreIdentifiers(GameId.From("Simple.TeamFortress2")) { SteamAppIds = [440] },
         Executable = "tf_win64.exe",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, "tf/custom"),
-        Install = AsIs,
+        Install = FolderOfFirstFile(".vpk"),
     };
 
     /// <summary>From Vortex.</summary>
@@ -485,7 +503,6 @@ public static class GameFolderSimpleGames
         Control,
         BatmanArkhamCity,
         AssettoCorsa,
-        Borderlands,
         F123,
         KarrynsPrison,
         MetalGearSolid2MasterCollection,
@@ -496,7 +513,6 @@ public static class GameFolderSimpleGames
         TrackmaniaUnitedForever,
         TrainSimulator,
         ValkyriaChronicles,
-        ZeusAndPoseidon,
         AHatInTime,
         BreakingWheel,
         DawnOfMan,
@@ -504,7 +520,6 @@ public static class GameFolderSimpleGames
         GreedFall,
         GrimDawn,
         StateOfDecay,
-        XRebirth,
         TeamFortress2,
         Starbound,
     ];

@@ -29,7 +29,23 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
 
     public static readonly (string GameId, string[] ArchivePaths, string[] Expected)[] Cases =
     [
-        ("Simple.DarkestDungeon", ["Mod/data.bin", "readme.txt"], ["{Game}/Mod/data.bin", "{Game}/readme.txt"]),
+        // A folder name the game knows marks the root, however deep; wrappers above it and files beside it are handled.
+        ("Simple.DarkestDungeon", ["dungeons/d.bin", "readme.txt"], ["{Game}/dungeons/d.bin", "{Game}/readme.txt"]),
+        ("Simple.DarkestDungeon", ["Mod/Heroes/h.bin", "Mod/project.xml"], ["{Game}/Heroes/h.bin", "{Game}/project.xml"]),
+        ("Simple.VampireBloodlines", ["maps/a.bsp", "readme.txt"], ["{Game}/vampire/maps/a.bsp", "{Game}/vampire/readme.txt"]),
+        ("Simple.VampireBloodlines", ["Mod/cfg/a.cfg", "Mod/Python/b.py"], ["{Game}/vampire/Python/b.py", "{Game}/vampire/cfg/a.cfg"]),
+        ("Simple.BatmanArkhamCity", ["CookedPCConsole/a.upk"], ["{Game}/BmGame/CookedPCConsole/a.upk"]),
+        ("Simple.BatmanArkhamCity", ["Mod/Config/UserEngine.ini", "Mod/readme.txt"], ["{Game}/BmGame/Config/UserEngine.ini", "{Game}/BmGame/readme.txt"]),
+        // Files go under the www folder below any wrapper folder the repository archive adds; its other files are not mod files.
+        ("Simple.KarrynsPrison", ["www/js/plugins/a.js"], ["{Game}/www/js/plugins/a.js"]),
+        ("Simple.KarrynsPrison", ["repo-main/www/img/a.png", "repo-main/meta.ini"], ["{Game}/www/img/a.png"]),
+        // The folder holding the first file of the kind is the root.
+        ("Simple.Elex", ["a.pak"], ["{Game}/data/packed/a.pak"]),
+        ("Simple.Elex", ["Mod/a.pak", "Mod/readme.txt"], ["{Game}/data/packed/a.pak", "{Game}/data/packed/readme.txt"]),
+        ("Simple.TeamFortress2", ["Pack/a.vpk", "Pack/materials/b.vmt"], ["{Game}/tf/custom/a.vpk", "{Game}/tf/custom/materials/b.vmt"]),
+        // Paths below a datalocal folder lose it; an archive without one goes in unchanged.
+        ("Simple.GreedFall", ["datalocal/a.spk"], ["{Game}/datalocal/a.spk"]),
+        ("Simple.GreedFall", ["Mod/b.spk"], ["{Game}/datalocal/Mod/b.spk"]),
         ("Simple.DungeonSiege", ["Resources/a.dsres"], ["{Game}/Resources/a.dsres"]),
         ("Simple.DungeonSiege", ["Maps/m.dsmap"], ["{Game}/Maps/m.dsmap"]),
         ("Simple.DungeonSiege", ["a.dsres"], ["{Game}/Resources/a.dsres"]),
@@ -45,13 +61,9 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
         ("Simple.DarkMessiah", ["Mod/data.bin", "readme.txt"], ["{Game}/mm/Mod/data.bin", "{Game}/mm/readme.txt"]),
         ("Simple.X4Foundations", ["Mod/data.bin", "readme.txt"], ["{Game}/extensions/Mod/data.bin", "{Game}/extensions/readme.txt"]),
         ("Simple.KerbalSpaceProgram", ["Mod/data.bin", "readme.txt"], ["{Game}/GameData/Mod/data.bin", "{Game}/GameData/readme.txt"]),
-        ("Simple.VampireBloodlines", ["Mod/data.bin", "readme.txt"], ["{Game}/vampire/Mod/data.bin", "{Game}/vampire/readme.txt"]),
         ("Simple.Control", ["Mod/data.bin", "readme.txt"], ["{Game}/Mod/data.bin", "{Game}/readme.txt"]),
-        ("Simple.BatmanArkhamCity", ["Mod/data.bin", "readme.txt"], ["{Game}/BmGame/Mod/data.bin", "{Game}/BmGame/readme.txt"]),
         ("Simple.AssettoCorsa", ["Mod/data.bin", "readme.txt"], ["{Game}/Mod/data.bin", "{Game}/readme.txt"]),
-        ("Simple.Borderlands", ["Mod/data.bin", "readme.txt"], ["{Game}/Mod/data.bin", "{Game}/readme.txt"]),
         ("Simple.F123", ["Mod/data.bin", "readme.txt"], ["{Game}/Mod/data.bin", "{Game}/readme.txt"]),
-        ("Simple.KarrynsPrison", ["Mod/data.bin", "readme.txt"], ["{Game}/Mod/data.bin", "{Game}/readme.txt"]),
         ("Simple.MetalGearSolid2MasterCollection", ["Mod/data.bin", "readme.txt"], ["{Game}/Mod/data.bin", "{Game}/readme.txt"]),
         ("Simple.MetalGearSolid3MasterCollection", ["Mod/data.bin", "readme.txt"], ["{Game}/Mod/data.bin", "{Game}/readme.txt"]),
         ("Simple.MirrorsEdge", ["Mod/data.bin", "readme.txt"], ["{Game}/TdGame/Mod/data.bin", "{Game}/TdGame/readme.txt"]),
@@ -60,16 +72,9 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
         ("Simple.TrackmaniaUnitedForever", ["Mod/data.bin", "readme.txt"], ["{Game}/GameData/Mod/data.bin", "{Game}/GameData/readme.txt"]),
         ("Simple.TrainSimulator", ["Mod/data.bin", "readme.txt"], ["{Game}/Mod/data.bin", "{Game}/readme.txt"]),
         ("Simple.ValkyriaChronicles", ["Mod/data.bin", "readme.txt"], ["{Game}/Mod/data.bin", "{Game}/readme.txt"]),
-        ("Simple.ZeusAndPoseidon", ["Mod/data.bin", "readme.txt"], ["{Game}/Adventures/Mod/data.bin", "{Game}/Adventures/readme.txt"]),
-        ("Simple.AHatInTime", ["Mod/data.bin", "readme.txt"], ["{Game}/HatInTimeGame/Mods/Mod/data.bin", "{Game}/HatInTimeGame/Mods/readme.txt"]),
         ("Simple.BreakingWheel", ["Mod/data.bin", "readme.txt"], ["{Game}/ModdingTools/Mod/data.bin", "{Game}/ModdingTools/readme.txt"]),
-        ("Simple.DawnOfMan", ["Mod/data.bin", "readme.txt"], ["{Game}/Mods/Mod/data.bin", "{Game}/Mods/readme.txt"]),
-        ("Simple.Elex", ["Mod/data.bin", "readme.txt"], ["{Game}/data/packed/Mod/data.bin", "{Game}/data/packed/readme.txt"]),
-        ("Simple.GreedFall", ["Mod/data.bin", "readme.txt"], ["{Game}/datalocal/Mod/data.bin", "{Game}/datalocal/readme.txt"]),
         ("Simple.GrimDawn", ["Mod/data.bin", "readme.txt"], ["{Game}/mods/Mod/data.bin", "{Game}/mods/readme.txt"]),
         ("Simple.StateOfDecay", ["Mod/data.bin", "readme.txt"], ["{Game}/game/Mod/data.bin", "{Game}/game/readme.txt"]),
-        ("Simple.XRebirth", ["Mod/data.bin", "readme.txt"], ["{Game}/extensions/Mod/data.bin", "{Game}/extensions/readme.txt"]),
-        ("Simple.TeamFortress2", ["Mod/data.bin", "readme.txt"], ["{Game}/tf/custom/Mod/data.bin", "{Game}/tf/custom/readme.txt"]),
         ("Simple.Starbound", ["Mod/data.bin", "readme.txt"], ["{Game}/mods/Mod/data.bin", "{Game}/mods/readme.txt"]),
     ];
 
@@ -80,9 +85,32 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
         ("Simple.DungeonSiege", ["Textures/a.dds"]),
         ("Simple.DungeonSiege2", ["readme.txt"]),
         ("Simple.DungeonSiege2", ["Mod/readme.txt"]),
+        ("Simple.DarkestDungeon", ["Mod/data.bin", "readme.txt"]),
+        ("Simple.VampireBloodlines", ["Mod/data.bin", "readme.txt"]),
+        ("Simple.BatmanArkhamCity", ["Mod/data.bin", "readme.txt"]),
+        ("Simple.KarrynsPrison", ["Mod/data.bin", "readme.txt"]),
+        ("Simple.AHatInTime", ["Mod/data.bin", "readme.txt"]),
+        // A scene mod goes in the Documents folder, which this row does not map.
+        ("Simple.DawnOfMan", ["Scenes/a.scn.xml"]),
+        ("Simple.DawnOfMan", ["Mod/data.bin", "readme.txt"]),
+        ("Simple.Elex", ["Mod/data.bin", "readme.txt"]),
+        ("Simple.TeamFortress2", ["Mod/data.bin", "readme.txt"]),
+    ];
+
+    /// <summary>Archives whose mod goes in a folder named after the folder holding the marker file, or after the archive.</summary>
+    public static readonly (string GameId, string ArchiveFileName, string[] ArchivePaths, string[] Expected)[] NamedCases =
+    [
+        ("Simple.AHatInTime", "CoolHat.zip", ["modinfo.ini", "Content/a.upk"],
+            ["{Game}/HatInTimeGame/Mods/CoolHat/Content/a.upk", "{Game}/HatInTimeGame/Mods/CoolHat/modinfo.ini"]),
+        ("Simple.AHatInTime", "download.zip", ["MyHat/modinfo.ini", "MyHat/Content/a.upk", "readme.txt"],
+            ["{Game}/HatInTimeGame/Mods/MyHat/Content/a.upk", "{Game}/HatInTimeGame/Mods/MyHat/modinfo.ini"]),
+        ("Simple.DawnOfMan", "SomeMod.zip", ["Info.json", "Mod.dll"], ["{Game}/Mods/SomeMod/Info.json", "{Game}/Mods/SomeMod/Mod.dll"]),
+        ("Simple.DawnOfMan", "download.zip", ["Wrapper/Info.json", "Wrapper/Mod.dll"], ["{Game}/Mods/Wrapper/Info.json", "{Game}/Mods/Wrapper/Mod.dll"]),
     ];
 
     public static IEnumerable<object[]> CaseData() => Cases.Select(row => (object[])[row.GameId, row.ArchivePaths, row.Expected]);
+
+    public static IEnumerable<object[]> NamedCaseData() => NamedCases.Select(row => (object[])[row.GameId, row.ArchiveFileName, row.ArchivePaths, row.Expected]);
 
     public static IEnumerable<object[]> RefusedData() => Refused.Select(row => (object[])[row.GameId, row.ArchivePaths]);
 
@@ -91,6 +119,16 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
     public async Task AModArchive_InstallsIntoTheGamesModFolder(string gameId, string[] archivePaths, string[] expected)
     {
         var targets = await Install(RowOf(gameId), archivePaths);
+
+        targets.Should().NotBeNull(because: $"{gameId} should take {string.Join(", ", archivePaths)}");
+        targets!.Should().Equal(expected);
+    }
+
+    [Theory]
+    [MemberData(nameof(NamedCaseData))]
+    public async Task AModArchive_WithAMarkerFile_InstallsIntoAFolderOfItsOwn(string gameId, string archiveFileName, string[] archivePaths, string[] expected)
+    {
+        var targets = await Install(RowOf(gameId), archivePaths, archiveFileName);
 
         targets.Should().NotBeNull(because: $"{gameId} should take {string.Join(", ", archivePaths)}");
         targets!.Should().Equal(expected);
@@ -106,7 +144,7 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
     [Fact]
     public void EveryRow_HasAnInstallCase()
     {
-        var covered = Cases.Select(row => row.GameId).Concat(CoveredElsewhere).Distinct();
+        var covered = Cases.Select(row => row.GameId).Concat(NamedCases.Select(row => row.GameId)).Concat(CoveredElsewhere).Distinct();
 
         SimpleGames.All.Select(row => row.GameId.ToString()).Should().BeEquivalentTo(covered);
     }
@@ -117,10 +155,10 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
     /// The paths the first installer of the row that supports the archive puts its files at, or null when none does.
     /// The install job takes installers in order and keeps the first that succeeds; so does this.
     /// </summary>
-    private async Task<string[]?> Install(SimpleGameDefinition row, string[] archivePaths)
+    private async Task<string[]?> Install(SimpleGameDefinition row, string[] archivePaths, string? archiveFileName = null)
     {
         var loadout = await CreateLoadout();
-        var archive = await AddFromPaths(archivePaths);
+        var archive = archiveFileName is null ? await AddFromPaths(archivePaths) : await AddArchiveNamed(archiveFileName, archivePaths);
         var libraryItem = archive.AsLibraryFile().AsLibraryItem();
 
         foreach (var installer in new SimpleGame(ServiceProvider, row).LibraryItemInstallers)

@@ -39,16 +39,36 @@ public abstract class ALibraryArchiveInstallerTests<TTest, TGame> : AIsolatedGam
         await using var file = TemporaryFileManager.CreateFile();
         {
             await using var archiveStream = file.Path.Create();
-            using var zip = new ZipArchive(archiveStream, ZipArchiveMode.Create);
-            foreach (var path in paths)
-            {
-                var entry = zip.CreateEntry(path);
-                await using var stream = entry.Open();
-                await stream.WriteAsync(Encoding.UTF8.GetBytes(path));
-            }
+            await WriteZip(archiveStream, paths);
         }
 
         return await RegisterLocalArchive(file);
+    }
+
+    /// <summary>
+    /// Like <see cref="AddFromPaths"/>, but the archive file is called <paramref name="archiveFileName"/>, for installers
+    /// that name a folder after the archive.
+    /// </summary>
+    protected async Task<LibraryArchive.ReadOnly> AddArchiveNamed(string archiveFileName, params string[] paths)
+    {
+        var archivePath = TemporaryFileManager.CreateFolder().Path / archiveFileName;
+        await using (var archiveStream = archivePath.Create())
+        {
+            await WriteZip(archiveStream, paths);
+        }
+
+        return await RegisterLocalArchive(archivePath);
+    }
+
+    private static async Task WriteZip(Stream archiveStream, string[] paths)
+    {
+        using var zip = new ZipArchive(archiveStream, ZipArchiveMode.Create);
+        foreach (var path in paths)
+        {
+            var entry = zip.CreateEntry(path);
+            await using var stream = entry.Open();
+            await stream.WriteAsync(Encoding.UTF8.GetBytes(path));
+        }
     }
 
     

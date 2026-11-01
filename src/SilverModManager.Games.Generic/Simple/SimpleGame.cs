@@ -36,6 +36,7 @@ public sealed class SimpleGame(IServiceProvider provider, SimpleGameDefinition d
             {
                 Root = node => node.HasDirectChild(marker),
                 Destination = Definition.ModRoot.ToGamePath(rule.Destination),
+                InFolderNamedAfterMod = rule.InFolderNamedAfterMod,
                 IgnoreFiles = rule.IgnoredExtensions.Cast<object>().ToArray(),
             });
         }
@@ -48,6 +49,7 @@ public sealed class SimpleGame(IServiceProvider provider, SimpleGameDefinition d
                 {
                     DestinationGamePath = Definition.ModRoot.ToGamePath(target.Destination),
                     KnownSourceFolderNames = target.KnownSourceFolderNames,
+                    Names = target.KnownSubfolderNames,
                     KnownValidFileExtensions = target.KnownValidFileExtensions,
                     FileExtensionsToDiscard = target.FileExtensionsToDiscard,
                 }).ToArray(),

@@ -32,6 +32,13 @@ public sealed record SimpleInstallTarget
     /// <summary>Names an archive may call this folder, which are dropped from the installed path.</summary>
     public IReadOnlyList<RelativePath> KnownSourceFolderNames { get; init; } = [];
 
+    /// <summary>
+    /// Folders that only appear directly inside this one. The folder holding one of them is the archive's root, so a
+    /// wrapper folder above it is dropped and the files beside it come along. Unlike a source folder name, the
+    /// matched folder keeps its name.
+    /// </summary>
+    public IReadOnlyList<RelativePath> KnownSubfolderNames { get; init; } = [];
+
     /// <summary>Extensions of files that belong directly in this folder.</summary>
     public IReadOnlyList<Extension> KnownValidFileExtensions { get; init; } = [];
 
@@ -45,6 +52,13 @@ public sealed record SimpleMarkerRule
     public required string MarkerFile { get; init; }
 
     public required RelativePath Destination { get; init; }
+
+    /// <summary>
+    /// The mod goes in a folder of its own below <see cref="Destination"/>, for games that load every folder there as
+    /// one mod. The folder is named after the one that holds the marker file, or after the archive when the marker
+    /// is at its top level.
+    /// </summary>
+    public bool InFolderNamedAfterMod { get; init; }
 
     /// <summary>
     /// Extensions that are neither installed nor a reason to decline, so a readme outside the marker's folder does

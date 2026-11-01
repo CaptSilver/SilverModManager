@@ -25,6 +25,12 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
     public required GamePath Destination { get; init; }
     
     /// <summary>
+    /// Puts the files in a folder below <see cref="Destination"/>, named after the matched root folder, or after the
+    /// archive when the root is its top level.
+    /// </summary>
+    public bool InFolderNamedAfterMod { get; init; }
+
+    /// <summary>
     /// Files in this array will not be installed, and will not cause the installer to fail if they exist.
     /// </summary>
     public object[] IgnoreFiles { get; init; } = [];
@@ -146,6 +152,14 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
         }
 
         var rootDestination = Destination;
+        var destinationFolder = Destination.Path;
+        if (InFolderNamedAfterMod)
+        {
+            if (TryGetModFolder(libraryArchive, found, out var modFolder) is false)
+                return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "The mod's name does not make a valid folder name"));
+            destinationFolder = destinationFolder / modFolder;
+        }
+
         int handled = 0;
         int total = 0;
         foreach (var (_, libraryFile) in tree.EnumerateChildrenBfs())
@@ -163,7 +177,7 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
                 continue;
             }
 
-            var destinationPath = Destination.Path / libraryFile.Item.Path.RelativeTo(found.Path); 
+            var destinationPath = destinationFolder / libraryFile.Item.Path.RelativeTo(found.Path);
             _ = new LoadoutFile.New(transaction, out var id)
             {
                 LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(transaction, id)
@@ -186,6 +200,20 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
             return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "Did not handle all files"));
 
         return ValueTask.FromResult<InstallerResult>(new Success());
+    }
+
+    private static bool TryGetModFolder(LibraryArchive.ReadOnly libraryArchive, LibraryArchiveTree root, out RelativePath folder)
+    {
+        if (root.Path != RelativePath.Empty)
+        {
+            folder = root.Path.Name;
+            return true;
+        }
+
+        var name = Path.GetFileNameWithoutExtension(libraryArchive.AsLibraryFile().AsLibraryItem().Name);
+        var valid = name.Length > 0 && name is not "." and not ".." && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
+        folder = valid ? RelativePath.FromUnsanitizedInput(name) : RelativePath.Empty;
+        return valid;
     }
 
     private bool IsIgnored(object pattern, RelativePath path)
