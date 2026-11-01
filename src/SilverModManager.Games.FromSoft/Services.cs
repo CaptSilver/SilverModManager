@@ -78,6 +78,8 @@ public static class Services
             .AddSingleton<UpperdirAuditEmitter>()
             .AddSingleton<IFromSoftDiagnosticEmitter>(provider => provider.GetRequiredService<UpperdirAuditEmitter>())
             .AddSingleton<IFromSoftDiagnosticEmitter, GameFolderArtifactsEmitter>()
+            .AddSingleton<SteamFolderCheck>()
+            .AddSingleton<IFromSoftDiagnosticEmitter, SteamFolderEmitter>()
             .AddSingleton<IFromSoftDiagnosticEmitter, SpawnerEmitter>()
             .AddSingleton<IFromSoftDiagnosticEmitter, OverlaySupportEmitter>()
             .AddSingleton<IFromSoftDiagnosticEmitter, SaveWrittenByModdedSessionEmitter>()

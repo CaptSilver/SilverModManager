@@ -356,4 +356,28 @@ description before installing it. Disabling the mods lets the rest of the loadou
             .AddValue<string>("Path")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate FolderDiffersFromSteam = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 17))
+        .WithTitle("The game folder differs from the files Steam shipped")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("The {Game} game folder holds files that are not Steam's")
+        .WithDetails("""
+These files in the real {Game} game folder are not the ones Steam's manifest for the installed build lists, or are put
+there by mods:
+
+{Files}
+
+Modded sessions run on an overlay and never write to this folder, so these came from something else, such as an earlier
+mod manager or a manual install. Starting the game from Steam loads what is in the folder, so
+a Steam launch would take it online. Verify the game's files in Steam to restore them.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Game")
+            .AddValue<string>("Files")
+        )
+        .Finish();
 }

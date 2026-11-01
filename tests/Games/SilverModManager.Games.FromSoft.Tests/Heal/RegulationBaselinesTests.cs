@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Steam;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Games.FromSoft.Build;
@@ -41,6 +42,8 @@ public sealed class RegulationBaselinesTests : IDisposable
             => known.Where(k => Sha1Value.From(SHA1.HashData(k.File)) == hash)
                 .Select(k => new ManifestMatch(ManifestId.From(k.Manifest), DepotId.From(1245621)))
                 .FirstOrDefault();
+
+        public IReadOnlyList<ManifestFile>? InstalledFiles(GameInstallation installation) => null;
     }
 
     /// <summary>A regulation the game's key opens, stamped <paramref name="version"/>.</summary>

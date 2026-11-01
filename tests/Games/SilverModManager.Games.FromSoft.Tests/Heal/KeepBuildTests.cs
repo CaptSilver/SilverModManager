@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Steam;
 using FluentAssertions;
 using SilverModManager.Games.FromSoft.Build;
 using SilverModManager.Games.FromSoft.Heal;
@@ -28,6 +29,8 @@ public sealed class KeepBuildTests : IDisposable
     private sealed class Vouches(ulong manifest) : IManifestVouching
     {
         public ManifestMatch? Find(GameInstallation installation, Sha1Value hash) => new(ManifestId.From(manifest), DepotId.From(1245621));
+
+        public IReadOnlyList<ManifestFile>? InstalledFiles(GameInstallation installation) => null;
     }
 
     [Fact]

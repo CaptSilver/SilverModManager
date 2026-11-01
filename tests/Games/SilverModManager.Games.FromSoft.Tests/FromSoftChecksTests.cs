@@ -90,4 +90,24 @@ public class FromSoftChecksTests
         result.Should().Be(EldenRingChecks.Me3(binary, executable: true, version: "me3 0.13.0"));
         result.Id.Should().Be("me3");
     }
+
+    [Fact]
+    public void ModArtifactsNameTheSameFilesTheArtifactsResultReports()
+    {
+        var game = Folder();
+        Write(game / "dinput8.dll");
+        Write(game / "mod/regulation.bin");
+
+        var names = FromSoftChecks.ModArtifacts(game, EldenRingGame.Definition.CheckRules);
+
+        names.Should().BeEquivalentTo("dinput8.dll", "mod/regulation.bin", "ersc_launcher.exe", "SeamlessCoop/");
+        var message = FromSoftChecks.GameFolder(game, EldenRingGame.Definition.CheckRules).Single(r => r.Id == "artifacts").Message;
+        names.Should().OnlyContain(name => message.Contains(name));
+    }
+
+    [Fact]
+    public void ModArtifactsOfAMissingFolderAreEmpty()
+    {
+        FromSoftChecks.ModArtifacts(new InMemoryFileSystem().FromUnsanitizedFullPath("/nowhere/Game"), EldenRingGame.Definition.CheckRules).Should().BeEmpty();
+    }
 }

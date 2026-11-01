@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Steam;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.Abstractions.Steam.Values;
@@ -129,5 +130,74 @@ public sealed class SteamManifestVouchingTests : IDisposable
     {
         new SteamManifestVouching(null, NullLogger<SteamManifestVouching>.Instance)
             .Find(Install(200), FakeManifestSource.Sha1(Regulation)).Should().BeNull();
+    }
+
+    [Fact]
+    public void TheInstalledFilesAreEveryFileOfTheInstalledManifestsWithPathSizeAndHash()
+    {
+        var source = new FakeManifestSource();
+        source.AddNamed(Depot, 200, files: [("Game/regulation.bin", Regulation)]);
+        source.AddNamed(Depot + 1, 300, files: [("Game/other.dll", Other)]);
+
+        var files = Vouching(source).InstalledFiles(Install(200, 300));
+
+        files.Should().BeEquivalentTo(
+        [
+            new ManifestFile("Game/regulation.bin", (ulong)Regulation.Length, FakeManifestSource.Sha1(Regulation)),
+            new ManifestFile("Game/other.dll", (ulong)Other.Length, FakeManifestSource.Sha1(Other)),
+        ]);
+    }
+
+    [Fact]
+    public void AnOlderCachedManifestIsNotPartOfTheInstalledFiles()
+    {
+        // The older build's files are not what the folder should hold now.
+        var source = new FakeManifestCatalog();
+        source.AddNamed(Depot, 200, files: [("Game/new.dll", Other)]);
+        source.AddNamed(Depot, 100, files: [("Game/old.dll", Regulation)]);
+
+        Vouching(source).InstalledFiles(Install(200))!.Select(f => f.Path).Should().Equal("Game/new.dll");
+    }
+
+    [Fact]
+    public void EncryptedNamesStillListTheHashesWhenTheSourceCanReadThem()
+    {
+        var source = new FakeManifestCatalog();
+        source.AddNamed(Depot, 200, encryptedNames: true, files: [("Game/regulation.bin", Regulation)]);
+
+        var file = Vouching(source).InstalledFiles(Install(200)).Should().ContainSingle().Subject;
+
+        file.Path.Should().BeNull();
+        file.Hash.Should().Be(FakeManifestSource.Sha1(Regulation));
+    }
+
+    [Fact]
+    public void EncryptedNamesAScanOnlySourceCannotReadGiveNoInstalledFiles()
+    {
+        var source = new FakeManifestSource();
+        source.AddNamed(Depot, 200, encryptedNames: true, files: [("Game/regulation.bin", Regulation)]);
+
+        Vouching(source).InstalledFiles(Install(200)).Should().BeNull();
+    }
+
+    [Fact]
+    public void ASavedManifestListsTheInstalledFilesAfterSteamDroppedIt()
+    {
+        var source = new FakeManifestSource();
+        source.AddNamed(Depot, 200, files: [("Game/regulation.bin", Regulation)]);
+        var saved = new SavedManifestHashes(() => FileSystem.Shared.FromUnsanitizedFullPath(Path.Combine(_root, "saved")));
+        var vouching = new SteamManifestVouching(source, NullLogger<SteamManifestVouching>.Instance, saved);
+        vouching.InstalledFiles(Install(200)).Should().NotBeNull();
+
+        source.Remove(Depot, 200);
+
+        vouching.InstalledFiles(Install(200))!.Select(f => f.Path).Should().Equal("Game/regulation.bin");
+    }
+
+    [Fact]
+    public void WithoutAReadableManifestThereAreNoInstalledFiles()
+    {
+        Vouching(new FakeManifestSource()).InstalledFiles(Install(200)).Should().BeNull();
+        new SteamManifestVouching(null, NullLogger<SteamManifestVouching>.Instance).InstalledFiles(Install(200)).Should().BeNull();
     }
 }

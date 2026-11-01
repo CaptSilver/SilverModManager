@@ -51,11 +51,20 @@ public static class FromSoftChecks
         return results;
     }
 
-    /// <summary>The name an old launcher swap left the original launcher under. Throws for rules without a launcher, which have no swap to undo.</summary>
-    public static string LauncherBackup(GameFolderCheckRules rules)
-        => rules.Launcher is null ? throw new InvalidOperationException("The rules have no launcher, so there is no backup name.") : rules.Launcher + rules.LauncherBackupSuffix;
+    /// <summary>
+    /// What only mods put in <paramref name="gameFolder"/>, relative to it: loader files, the mod regulation, the rules'
+    /// extra files, and folders with a trailing slash. Empty when the folder does not exist.
+    /// </summary>
+    public static IReadOnlyList<string> ModArtifacts(AbsolutePath gameFolder, GameFolderCheckRules rules)
+    {
+        if (!gameFolder.DirectoryExists()) return [];
 
-    private static CheckResult Artifacts(AbsolutePath gameFolder, GameFolderCheckRules rules, HashSet<string> files, HashSet<string> folders, bool launcher, bool hardened)
+        var files = gameFolder.EnumerateFiles(recursive: false).Select(f => f.FileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var folders = gameFolder.EnumerateDirectories(recursive: false).Select(d => d.FileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return ModArtifacts(gameFolder, rules, files, folders);
+    }
+
+    private static List<string> ModArtifacts(AbsolutePath gameFolder, GameFolderCheckRules rules, HashSet<string> files, HashSet<string> folders)
     {
         var found = new List<string>();
         found.AddRange(rules.ModLoaderFiles.Where(files.Contains));
@@ -63,6 +72,16 @@ public static class FromSoftChecks
             found.Add("mod/regulation.bin");
         found.AddRange(rules.ExtraArtifacts.Where(files.Contains));
         found.AddRange(rules.ModFolders.Where(folders.Contains).Select(f => f + "/"));
+        return found;
+    }
+
+    /// <summary>The name an old launcher swap left the original launcher under. Throws for rules without a launcher, which have no swap to undo.</summary>
+    public static string LauncherBackup(GameFolderCheckRules rules)
+        => rules.Launcher is null ? throw new InvalidOperationException("The rules have no launcher, so there is no backup name.") : rules.Launcher + rules.LauncherBackupSuffix;
+
+    private static CheckResult Artifacts(AbsolutePath gameFolder, GameFolderCheckRules rules, HashSet<string> files, HashSet<string> folders, bool launcher, bool hardened)
+    {
+        var found = ModArtifacts(gameFolder, rules, files, folders);
 
         if (hardened)
         {

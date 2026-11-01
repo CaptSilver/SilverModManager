@@ -13,7 +13,10 @@ namespace SilverModManager.Games.FromSoft.Tests.Heal;
 /// </summary>
 public class FakeManifestSource : IDepotManifestSource
 {
-    protected sealed record Entry(DepotId Depot, ManifestId Id, byte[][] Files, bool EncryptedNames, bool Garbage = false);
+    protected sealed record Entry(DepotId Depot, ManifestId Id, byte[][] Files, bool EncryptedNames, bool Garbage = false, string[]? Names = null)
+    {
+        public string NameOf(int index) => Names?[index] ?? $"file{index}.bin";
+    }
 
     protected readonly Dictionary<string, Entry> ByPath = [];
 
@@ -25,6 +28,13 @@ public class FakeManifestSource : IDepotManifestSource
     {
         var path = $"/fake-depotcache/{depot}_{id}.manifest";
         ByPath[path] = new Entry(DepotId.From(depot), ManifestId.From(id), files, encryptedNames);
+    }
+
+    /// <summary>A manifest whose files have these paths, as they sit under the install folder.</summary>
+    public void AddNamed(uint depot, ulong id, bool encryptedNames = false, params (string Path, byte[] Content)[] files)
+    {
+        var path = $"/fake-depotcache/{depot}_{id}.manifest";
+        ByPath[path] = new Entry(DepotId.From(depot), ManifestId.From(id), files.Select(f => f.Content).ToArray(), encryptedNames, Names: files.Select(f => f.Path).ToArray());
     }
 
     /// <summary>A file Steam cached that is not a manifest: it can be found but not read.</summary>
@@ -59,7 +69,7 @@ public class FakeManifestSource : IDepotManifestSource
             TotalUncompressedSize = Size.Zero,
             Files = entry.Files.Select((content, i) => new Manifest.FileData
             {
-                Path = RelativePath.FromUnsanitizedInput($"file{i}.bin"),
+                Path = RelativePath.FromUnsanitizedInput(entry.NameOf(i)),
                 Size = Size.FromLong(content.Length),
                 Hash = Sha1(content),
                 Chunks = [],
@@ -87,6 +97,6 @@ public sealed class FakeManifestCatalog : FakeManifestSource, IDepotManifestCata
         if (!ByPath.TryGetValue(manifestPath.ToString(), out var entry) || entry.Garbage) return null;
         Reads.Add(entry.Id);
         return new ManifestFileList(entry.Depot, entry.Id, entry.Files
-            .Select((content, i) => new ManifestFile(entry.EncryptedNames ? null : $"file{i}.bin", (ulong)content.Length, Sha1(content))).ToArray());
+            .Select((content, i) => new ManifestFile(entry.EncryptedNames ? null : entry.NameOf(i), (ulong)content.Length, Sha1(content))).ToArray());
     }
 }

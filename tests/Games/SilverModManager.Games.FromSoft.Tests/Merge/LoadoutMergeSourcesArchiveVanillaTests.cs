@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Steam;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Games.Merge;
@@ -44,6 +45,8 @@ public class LoadoutMergeSourcesArchiveVanillaTests(ITestOutputHelper helper) : 
 
         public ManifestMatch? Find(GameInstallation installation, Sha1Value hash)
             => Listed.Contains(hash) ? new ManifestMatch(ManifestId.From(42), DepotId.From(1245621)) : null;
+
+        public IReadOnlyList<ManifestFile>? InstalledFiles(GameInstallation installation) => null;
     }
 
     private RegulationBaselines Baselines => ServiceProvider.GetRequiredService<RegulationBaselines>();

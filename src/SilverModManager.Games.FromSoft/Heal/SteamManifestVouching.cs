@@ -15,6 +15,9 @@ public interface IManifestVouching
 {
     /// <summary>The manifest of <paramref name="installation"/>'s game that lists a file with this SHA-1, or null when none the app can read does.</summary>
     ManifestMatch? Find(GameInstallation installation, Sha1Value hash);
+
+    /// <summary>Every file of the manifests <paramref name="installation"/> is at, or null when none of them can be read.</summary>
+    IReadOnlyList<ManifestFile>? InstalledFiles(GameInstallation installation);
 }
 
 /// <summary>
@@ -37,6 +40,56 @@ public sealed class SteamManifestVouching(IDepotManifestSource? source, ILogger<
 
         saved?.Capture(source, installation);
         return FindLive(installation, hash) ?? saved?.Find(locator.StoreIdentifier, hash);
+    }
+
+    /// <summary>
+    /// The manifests of the install's own build, and only those: an older cached manifest lists files the folder
+    /// should no longer hold. A manifest the live source cannot read is taken from the saved copy. File names are null
+    /// where the manifest's names are encrypted.
+    /// </summary>
+    public IReadOnlyList<ManifestFile>? InstalledFiles(GameInstallation installation)
+    {
+        var locator = installation.LocatorResult;
+        if (locator.Store != GameStore.Steam) return null;
+
+        saved?.Capture(source, installation);
+        var files = new List<ManifestFile>();
+        foreach (var id in locator.LocatorIds.Select(i => i.Value).Distinct(StringComparer.Ordinal))
+        {
+            if (!ulong.TryParse(id, out var value)) continue;
+            files.AddRange(FilesOf(installation, ManifestId.From(value)));
+        }
+        return files.Count == 0 ? null : files;
+    }
+
+    private IReadOnlyList<ManifestFile> FilesOf(GameInstallation installation, ManifestId manifestId)
+    {
+        var locator = installation.LocatorResult;
+        if (source is not null && locator.StoreRoot is { } storeRoot && source.TryGetManifestPath(storeRoot, manifestId, locator.Path, out var path)
+            && ListOf(source, path) is { } list)
+            return list.Files;
+
+        return saved?.Files(manifestId) ?? [];
+    }
+
+    private ManifestFileList? ListOf(IDepotManifestSource manifests, AbsolutePath path)
+    {
+        if (manifests is IDepotManifestCatalog catalog) return catalog.ReadFileList(path);
+
+        switch (manifests.Read(path))
+        {
+            case LocalManifestResult.Parsed parsed:
+                return new ManifestFileList(parsed.Manifest.DepotId, parsed.Manifest.ManifestId,
+                    parsed.Manifest.Files.Select(f => new ManifestFile(f.Path.ToString(), f.Size.Value, f.Hash)).ToArray());
+            case LocalManifestResult.NeedsDepotKey:
+                logger.LogDebug("Manifest {Path} has encrypted file names and this source cannot read its hashes without the depot key", path);
+                return null;
+            case LocalManifestResult.Unreadable unreadable:
+                logger.LogDebug("Manifest {Path} could not be read: {Reason}", path, unreadable.Reason);
+                return null;
+            default:
+                throw new NotSupportedException($"Unhandled manifest result for {path}");
+        }
     }
 
     private ManifestMatch? FindLive(GameInstallation installation, Sha1Value hash)
