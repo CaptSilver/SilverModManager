@@ -151,6 +151,11 @@ public static class CollectionCreator
                 },
             };
 
+            // The archive is for the game of the loadout whose mod it holds. Written here, once: the install job's
+            // Add would be a second write on an entity created in this transaction.
+            var loadoutId = ent.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId;
+            LibraryDestinations.Write(tx, libraryFileId, new LoadoutAcquisition(loadoutId).Destination(db));
+
             // Link the mod group to the archive
             tx.Add(item, LibraryLinkedLoadoutItem.LibraryItemId, libraryFileId);
 

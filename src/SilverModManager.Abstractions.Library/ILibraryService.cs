@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Library.Jobs;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -32,6 +33,15 @@ public interface ILibraryService
     /// A file the library already held was asked for again: unions the acquisition's games into it.
     /// </summary>
     Task Adopt(LibraryItem.ReadOnly item, IAcquisitionContext acquisition);
+
+    /// <summary>
+    /// Removes a game from items. An item left with no game is marked unknown, never deleted.
+    /// </summary>
+    /// <exception cref="DestinationStillInstalledException">
+    /// An item is linked into a loadout of <paramref name="game"/>: it has to be uninstalled first, so a loadout's
+    /// items always stay in that loadout's game. Nothing is changed.
+    /// </exception>
+    Task RemoveDestination(IEnumerable<LibraryItem.ReadOnly> items, GameId game);
 
     /// <summary>
     /// Returns all loadouts that contain the given library item.

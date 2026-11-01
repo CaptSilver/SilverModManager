@@ -13,6 +13,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
@@ -450,6 +451,74 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
         await _libraryService.Adopt(Reload(file.Id), new GameAcquisition(DestinationGameB));
 
         LibraryDestinations.GamesOf(Reload(file.Id)).Should().BeEquivalentTo([DestinationGameA, DestinationGameB]);
+    }
+
+    private async Task<(Loadout.ReadOnly Loadout, LibraryItem.ReadOnly Item)> InstalledItemFor(GameId game, string archive = "nested_archive.zip")
+    {
+        var loadout = await CreateTestLoadout("Destination loadout");
+        var collection = await CreateCollectionInLoadout(loadout, "Destination collection");
+        var path = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine(archive);
+        var item = (await _libraryService.AddLocalFile(path, new GameAcquisition(game))).AsLibraryFile().AsLibraryItem();
+        await LoadoutManager.InstallItem(item, loadout.LoadoutId, parent: collection.AsLoadoutItemGroup().LoadoutItemGroupId);
+        return (loadout, Reload(item.Id));
+    }
+
+    [Fact]
+    public async Task InstallItem_IntoALoadout_AddsTheLoadoutsGame()
+    {
+        var (_, item) = await InstalledItemFor(DestinationGameA);
+
+        LibraryDestinations.GamesOf(item).Should().BeEquivalentTo([DestinationGameA, GameInstallation.Game.GameId]);
+    }
+
+    [Fact]
+    public async Task InstallItem_UnassignedItem_BecomesTheLoadoutsGame()
+    {
+        var loadout = await CreateTestLoadout("Unassigned install");
+        var collection = await CreateCollectionInLoadout(loadout, "Unassigned collection");
+        var path = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine("nested_archive.zip");
+        var item = (await _libraryService.AddLocalFile(path, UnassignedAcquisition.Instance)).AsLibraryFile().AsLibraryItem();
+
+        await LoadoutManager.InstallItem(item, loadout.LoadoutId, parent: collection.AsLoadoutItemGroup().LoadoutItemGroupId);
+
+        var installed = Reload(item.Id);
+        LibraryDestinations.GamesOf(installed).Should().BeEquivalentTo([GameInstallation.Game.GameId]);
+        installed.Contains(LibraryItem.DestinationUnknown).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ReplaceLinkedItems_NewItem_GetsTheLoadoutsGame()
+    {
+        var (loadout, oldItem) = await InstalledItemFor(DestinationGameA);
+        var secondPath = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine("nested_game_archive.zip");
+        var newItem = (await _libraryService.AddLocalFile(secondPath, new GameAcquisition(DestinationGameB))).AsLibraryFile().AsLibraryItem();
+
+        var result = await _libraryService.ReplaceLinkedItemsInAllLoadouts(oldItem, newItem, new ReplaceLibraryItemOptions());
+
+        result.Should().Be(LibraryItemReplacementResult.Success);
+        _libraryService.LoadoutsWithLibraryItem(Reload(newItem.Id)).Should().ContainSingle().Which.loadout.LoadoutId.Should().Be(loadout.LoadoutId);
+        LibraryDestinations.GamesOf(Reload(newItem.Id)).Should().BeEquivalentTo([DestinationGameB, GameInstallation.Game.GameId]);
+    }
+
+    [Fact]
+    public async Task RemoveDestination_WhileLinkedIntoALoadoutOfThatGame_IsRefused()
+    {
+        var (_, item) = await InstalledItemFor(DestinationGameA);
+
+        var act = async () => await _libraryService.RemoveDestination([item], GameInstallation.Game.GameId);
+
+        await act.Should().ThrowAsync<UserFacingException>();
+        LibraryDestinations.GamesOf(Reload(item.Id)).Should().BeEquivalentTo([DestinationGameA, GameInstallation.Game.GameId]);
+    }
+
+    [Fact]
+    public async Task RemoveDestination_AGameTheItemIsNotInstalledFor_IsAllowed()
+    {
+        var (_, item) = await InstalledItemFor(DestinationGameA);
+
+        await _libraryService.RemoveDestination([item], DestinationGameA);
+
+        LibraryDestinations.GamesOf(Reload(item.Id)).Should().BeEquivalentTo([GameInstallation.Game.GameId]);
     }
 
     /// <summary>A download that has already finished, so the library step can run without a network.</summary>

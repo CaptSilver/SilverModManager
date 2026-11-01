@@ -103,6 +103,9 @@ internal class InstallLoadoutItemJob : IJobDefinitionWithStart<InstallLoadoutIte
             LibraryItemId = LibraryItem,
         };
 
+        // An item installed into a loadout is for that loadout's game, whatever it was added for.
+        LibraryDestinations.Add(Transaction, LibraryItem.Id, new LoadoutAcquisition(LoadoutId).Destination(Connection.Db));
+
         return new InstallLoadoutItemJobResult(null, loadoutGroup);
     }
 

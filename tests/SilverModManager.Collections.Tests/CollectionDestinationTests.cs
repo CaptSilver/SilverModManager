@@ -7,6 +7,11 @@ using NSubstitute;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Collections.Json;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FOMOD;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.Abstractions.NexusWebApi;
@@ -229,4 +234,66 @@ public class CollectionDestinationTests(ITestOutputHelper helper) : ACyberpunkIs
         new CollectionAcquisition(loadout.LoadoutId).Destination(Connection.Db)
             .Should().Be(Destination.Of(GameInstallation.Game.GameId));
     }
+
+    private static Mod BundledMod(string expression) => new()
+    {
+        Name = $"Mod {expression}",
+        DomainName = GameDomain.From("cyberpunk2077"),
+        Source = new ModSource { Type = ModSourceType.Bundle, FileExpression = expression, LogicalFilename = expression },
+    };
+
+    private static async Task<NexusCollectionLoadoutGroup.ReadOnly> AwaitJob(IJobTask<InstallCollectionJob, NexusCollectionLoadoutGroup.ReadOnly> job)
+    {
+        async Task<NexusCollectionLoadoutGroup.ReadOnly> Run() => await job;
+        return await Run().WaitAsync(TimeSpan.FromSeconds(60));
+    }
+
+    [Fact]
+    public async Task InstallCollection_LinkedItems_AreForTheLoadoutsGame()
+    {
+        // One mod installed through the fomod choices path, one through the plain installer: both link a library item.
+        var offline = new OfflineCollections(ServiceProvider, Connection, LibraryService, TemporaryFileManager);
+        var (file, revision, items) = await offline.Create([(Choices(), "Fomod mod"), ((FomodOption[]?)null, "Plain mod")]);
+        var loadout = await CreateLoadout();
+
+        await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items));
+
+        var linked = LibraryLinkedLoadoutItem.All(Connection.Db).Select(link => link.LibraryItem).ToArray();
+        linked.Should().HaveCountGreaterThanOrEqualTo(2);
+        foreach (var item in linked)
+        {
+            LibraryDestinations.GamesOf(item).Should().BeEquivalentTo([GameInstallation.Game.GameId], $"{item.Name} is installed in this game's loadout");
+            item.Contains(LibraryItem.DestinationUnknown).Should().BeFalse();
+        }
+    }
+
+    [Fact]
+    public async Task CollectionCreator_BundledArchive_IsForTheLoadoutsGame()
+    {
+        var offline = new OfflineCollections(ServiceProvider, Connection, LibraryService, TemporaryFileManager);
+        var info = new CollectionInfo { Name = "Offline", DomainName = GameDomain.From("cyberpunk2077") };
+        var first = await offline.Create(new CollectionRoot { Info = info, Mods = [BundledMod("kept")] }, null, 1,
+            new Dictionary<string, (string Path, string Content)[]> { ["kept"] = [("kept.txt", "content")] });
+        var second = await offline.Create(new CollectionRoot { Info = info, Mods = [] }, null, 2);
+        var loadout = await CreateLoadout();
+        var group = await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, first.File, first.Revision,
+            CollectionDownloader.GetItems(first.Revision, CollectionDownloader.ItemType.Required)));
+
+        // Switching to a revision without the mod detaches it, which gives the bundled files an archive of their own.
+        await CollectionUpdater.Switch(ServiceProvider, group, second.Revision);
+
+        var archive = ManuallyCreatedArchive.All(Connection.Db)
+            .Single(a => a.Source == ManuallyCreatedArchive.CreationSource.CollectionBundled);
+        var item = archive.AsLibraryArchive().AsLibraryFile().AsLibraryItem();
+        LibraryDestinations.GamesOf(item).Should().BeEquivalentTo([GameInstallation.Game.GameId]);
+        item.Contains(LibraryItem.DestinationUnknown).Should().BeFalse();
+        Connection.Db.Datoms(item.Id).Count(datom => datom.A == Connection.AttributeCache.GetAttributeId(LibraryItem.DestinationGames.Id))
+            .Should().Be(1, "the archive is written once, in the transaction that creates it");
+    }
+
+    private static FomodOption[] Choices() =>
+    [
+        new FomodOption { name = "Step 1", groups = [new FomodGroup { name = "Group 1", choices = [new FomodChoice { name = "Option A" }] }] },
+        new FomodOption { name = "Step 2", groups = [new FomodGroup { name = "Group 1", choices = [new FomodChoice { name = "Option C" }] }] },
+    ];
 }

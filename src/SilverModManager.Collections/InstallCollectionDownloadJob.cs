@@ -254,6 +254,10 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         return installer ?? throw new InvalidOperationException("FomodXmlInstaller not found");
     }
 
+    /// <summary>Keeps the link invariant for the installs that write the link themselves instead of going through the install job.</summary>
+    private void AddTargetGame(ITransaction tx, LibraryFile.ReadOnly libraryFile)
+        => LibraryDestinations.Add(tx, libraryFile.Id, new LoadoutAcquisition(TargetLoadout).Destination(Connection.Db));
+
     /// <summary>
     /// Install a fomod with predefined choices.
     /// </summary>
@@ -287,6 +291,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             LibraryItemId = libraryFile.AsLibraryItem(),
             LoadoutItemGroup = nexusCollectionItemLoadoutGroup.GetLoadoutItemGroup(tx),
         };
+        AddTargetGame(tx, libraryFile);
 
         var loadout = new Loadout.ReadOnly(Connection.Db, TargetLoadout);
 
@@ -367,6 +372,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             LibraryItemId = libraryFile.AsLibraryItem(),
             LoadoutItemGroup = group.GetNexusCollectionItemLoadoutGroup(tx).GetLoadoutItemGroup(tx),
         };
+        AddTargetGame(tx, libraryFile);
 
         // Now we map the files to their locations based on the hashes
         foreach (var pair in CollectionMod.Hashes)

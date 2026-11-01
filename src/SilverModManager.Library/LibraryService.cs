@@ -9,6 +9,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -50,6 +51,26 @@ public sealed class LibraryService : ILibraryService
     {
         using var tx = _connection.BeginTransaction();
         LibraryDestinations.Add(tx, item.Id, acquisition.Destination(_connection.Db));
+        await tx.Commit();
+    }
+
+    public async Task RemoveDestination(IEnumerable<LibraryItem.ReadOnly> items, GameId game)
+    {
+        var targets = items.ToArray();
+        var db = _connection.Db;
+
+        // Checked for every item before any is changed, so a refusal leaves the whole selection as it was.
+        foreach (var item in targets)
+        {
+            var installedHere = LibraryLinkedLoadoutItem.FindByLibraryItem(db, item)
+                .Any(link => new LoadoutAcquisition(link.AsLoadoutItem().LoadoutId).Destination(db).Games.Contains(game));
+            if (installedHere)
+                throw new DestinationStillInstalledException($"\"{item.Name}\" is installed in a loadout for this game. Uninstall it first, then take the game off it.");
+        }
+
+        using var tx = _connection.BeginTransaction();
+        foreach (var item in targets)
+            LibraryDestinations.Remove(tx, item.Id, game);
         await tx.Commit();
     }
 
