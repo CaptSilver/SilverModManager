@@ -17,9 +17,14 @@ public abstract class AMe3FromSoftGame<TSelf> : AFromSoftGame<TSelf>
 
     protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new FromSoftSynchronizer(provider, this);
 
-    protected override ILibraryItemInstaller[] CreateInstallers(IServiceProvider provider) =>
+    /// <remarks>The host installer goes first because a release of the loader can hold a lone DLL that the native installer would take for a mod.</remarks>
+    protected sealed override ILibraryItemInstaller[] CreateInstallers(IServiceProvider provider) =>
     [
         Loader.HostInstaller(),
+        ..GameInstallers(provider),
         ..Loader.ModInstallers(),
     ];
+
+    /// <summary>Installers for the game's own mods, tried after the loader's host installer and before its generic ones.</summary>
+    protected virtual IEnumerable<ILibraryItemInstaller> GameInstallers(IServiceProvider provider) => [];
 }

@@ -5,7 +5,6 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Secrets;
-using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.FromSoft.Cleanup;
 using SilverModManager.Games.FromSoft.Doctor;
 using SilverModManager.Games.FromSoft.Formats;
@@ -20,7 +19,7 @@ using SilverModManager.Sdk.Settings;
 namespace SilverModManager.Games.FromSoft.EldenRing;
 
 [UsedImplicitly]
-public class EldenRingGame : AFromSoftGame<EldenRingGame>, IGameData<EldenRingGame>, IPerLoadoutSaves
+public class EldenRingGame : AMe3FromSoftGame<EldenRingGame>, IGameData<EldenRingGame>, IPerLoadoutSaves
 {
     public static GameId GameId { get; } = GameId.From("FromSoft.EldenRing");
     public static string DisplayName => "Elden Ring";
@@ -128,22 +127,14 @@ public class EldenRingGame : AFromSoftGame<EldenRingGame>, IGameData<EldenRingGa
 
     public static readonly Me3LoaderOptions Me3Options = new("eldenring", [SeamlessCoop.Native]);
 
-    public EldenRingGame(IServiceProvider provider) : base(provider, Definition, _ => new Me3Loader(provider, Me3Options, Definition)) { }
+    public EldenRingGame(IServiceProvider provider) : base(provider, Definition, Me3Options) { }
 
     /// <summary>Seamless Co-op's settings file gets the co-op password when it is written for a session.</summary>
     public override IReadOnlyList<IConfigurationLayerTransform> LayerTransforms
         => [new SeamlessCoopSettingsTransform(Provider.GetRequiredService<ISecretStore>())];
 
-    protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new EldenRingSynchronizer(provider, this);
-
     // No FOMOD installer: Elden Ring FOMODs assume the game folder, which nothing is ever installed into.
-    protected override ILibraryItemInstaller[] CreateInstallers(IServiceProvider provider) =>
-    [
-        // First, because the release also holds a lone DLL that the native installer would take for a mod.
-        Loader.HostInstaller(),
-        new SeamlessCoopInstaller(provider),
-        ..Loader.ModInstallers(),
-    ];
+    protected override IEnumerable<ILibraryItemInstaller> GameInstallers(IServiceProvider provider) => [new SeamlessCoopInstaller(provider)];
 
     /// <inheritdoc />
     /// <remarks>
