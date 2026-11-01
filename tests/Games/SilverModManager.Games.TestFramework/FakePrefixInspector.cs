@@ -16,6 +16,11 @@ public class FakePrefixInspector : IPrefixInspector
     public Func<PrefixComponentId, PrefixComponentState> State { get; set; } = _ => PrefixComponentState.Installed;
 
     /// <summary>
+    /// The AppDefaults values the fake prefix holds, keyed by exe name and value name.
+    /// </summary>
+    public Dictionary<(string ExeName, string Value), string> AppDefaults { get; } = [];
+
+    /// <summary>
     /// When set, <see cref="Inspect"/> throws it, as a prefix the app cannot read would.
     /// </summary>
     public Exception? Failure { get; set; }
@@ -34,5 +39,11 @@ public class FakePrefixInspector : IPrefixInspector
         lock (_calls) _calls.Add((prefix, components));
         if (Failure is not null) throw Failure;
         return components.Select(id => new PrefixComponentStatus(id, State(id), $"fake: {State(id)}")).ToList();
+    }
+
+    /// <inheritdoc />
+    public string? ReadAppDefault(ResolvedPrefix prefix, string exeName, string value)
+    {
+        lock (AppDefaults) return AppDefaults.GetValueOrDefault((exeName, value));
     }
 }

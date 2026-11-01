@@ -38,6 +38,7 @@ public static class Services
         services.AddSingleton<IRuntimeDependency, AggregateProtontricksDependency>();
         services.AddSingleton<IToolRunStrategy, ProtontricksStrategy>();
         services.AddSingleton<ToolArgumentResolver>();
+        services.AddSingleton<ToolPrefixSetup>();
         services.AddSingleton<ModdingToolFactory>();
         services.AddSingleton<IToolProvider, UserToolProvider>();
         services.AddSingleton<IToolRunner, ToolRunner.ToolRunner>();

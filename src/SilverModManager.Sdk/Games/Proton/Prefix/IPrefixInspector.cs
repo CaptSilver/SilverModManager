@@ -39,4 +39,11 @@ public interface IPrefixInspector
     /// </summary>
     /// <exception cref="ArgumentException">A component id is not in <see cref="PrefixComponents"/>.</exception>
     IReadOnlyList<PrefixComponentStatus> Inspect(ResolvedPrefix prefix, IReadOnlyList<PrefixComponentId> components);
+
+    /// <summary>
+    /// The value <c>HKCU\Software\Wine\AppDefaults\&lt;exeName&gt;</c> holds under <paramref name="value"/>, read
+    /// from the prefix's <c>user.reg</c>, or null when the prefix has no such value. Exe and value names compare
+    /// without regard to case.
+    /// </summary>
+    string? ReadAppDefault(ResolvedPrefix prefix, string exeName, string value);
 }

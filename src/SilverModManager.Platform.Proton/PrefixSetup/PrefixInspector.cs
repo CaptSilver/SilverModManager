@@ -44,6 +44,9 @@ internal sealed class PrefixInspector : IPrefixInspector
         var native = files.Where(f => f.Kind == FileKind.Native).ToList();
         var placeholders = files.Where(f => f.Kind == FileKind.Placeholder).ToList();
         var unverified = files.Where(f => f.Kind == FileKind.Unverified).ToList();
+        if (InstalledVersionFolder(prefix, component) is { } folder)
+            return new PrefixComponentStatus(component.Id, PrefixComponentState.Installed, $"{folder} in drive_c");
+
         var needsRegistryEntry = component.RegistryKeys.Length > 0;
         var hasRegistryEntry = component.RegistryKeys.Any(set => registryKeys.Any(key => set.All(part => key.Contains(part, StringComparison.OrdinalIgnoreCase))));
         var winetricksHint = component.WinetricksVerbs.Any(winetricksVerbs.Contains);
@@ -70,6 +73,51 @@ internal sealed class PrefixInspector : IPrefixInspector
             return Result(PrefixComponentState.Unknown, "winetricks.log only");
 
         return Result(PrefixComponentState.Missing, placeholders.Count > 0 ? $"only Wine placeholder DLLs, such as {placeholders[0].Where}" : "no DLL or registry entry found");
+    }
+
+    // The first version subfolder of an install folder, as "<folder>/<version>", or null.
+    private static string? InstalledVersionFolder(ResolvedPrefix prefix, PrefixComponent component)
+    {
+        foreach (var installed in component.InstalledFolders)
+        {
+            var folder = prefix.Path.Combine("drive_c").Combine(installed.Path);
+            if (folder.DirectoryExists() is false) continue;
+
+            foreach (var child in folder.EnumerateDirectories(recursive: false))
+            {
+                if (child.FileName.StartsWith(installed.VersionPrefix, StringComparison.Ordinal))
+                    return $"{installed.Path}/{child.FileName}";
+            }
+        }
+
+        return null;
+    }
+
+    /// <inheritdoc/>
+    public string? ReadAppDefault(ResolvedPrefix prefix, string exeName, string value)
+    {
+        var path = prefix.Path.Combine("user.reg");
+        if (path.FileExists is false) return null;
+
+        // Wine writes a key as "[Software\\Wine\\AppDefaults\\x.exe] <timestamp>" and a string value as "Name"="Data".
+        var header = $"[Software\\\\Wine\\\\AppDefaults\\\\{exeName}]";
+        var valuePrefix = $"\"{value}\"=\"";
+        var inKey = false;
+
+        using var reader = new StreamReader(path.Read(), Encoding.UTF8);
+        while (reader.ReadLine() is { } line)
+        {
+            if (line.StartsWith('['))
+            {
+                inKey = line.StartsWith(header, StringComparison.OrdinalIgnoreCase) && (line.Length == header.Length || line[header.Length] == ' ');
+                continue;
+            }
+
+            if (inKey && line.StartsWith(valuePrefix, StringComparison.OrdinalIgnoreCase) && line.EndsWith('"'))
+                return line[valuePrefix.Length..^1];
+        }
+
+        return null;
     }
 
     private static FileKind Classify(AbsolutePath path)

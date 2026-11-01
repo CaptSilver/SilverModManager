@@ -43,6 +43,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
     private readonly IToolRunner _toolRunner = Substitute.For<IToolRunner>();
     private readonly IProcessRunner _processRunner = Substitute.For<IProcessRunner>();
     private readonly IPrefixResolver _prefixResolver = Substitute.For<IPrefixResolver>();
+    private readonly FakePrefixInspector _inspector = new();
     private readonly List<Command> _commands = [];
     private int _exitCode;
 
@@ -71,7 +72,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
     private AbsolutePath Exe => FileSystem.FromUnsanitizedFullPath("/tools/xEdit/SSEEdit.exe");
 
     private ModdingTool Tool(ToolDefinition definition, InstalledTool? installed = null)
-        => new(definition, installed ?? new InstalledTool(Exe), Definition.GameId, _toolRunner, _processRunner, new ToolArgumentResolver(), _prefixResolver, ServiceProvider.GetRequiredService<ToolOutputCapture>());
+        => new(definition, installed ?? new InstalledTool(Exe), Definition.GameId, _toolRunner, _processRunner, new ToolArgumentResolver(), _prefixResolver, ServiceProvider.GetRequiredService<ToolOutputCapture>(), new ToolPrefixSetup(_toolRunner, _prefixResolver, _inspector));
 
     private static ToolDefinition Editor(ToolRunVia via = ToolRunVia.Auto) => ToolDefinition.AdHoc(Definition.GameId, "xEdit", "SSEEdit.exe", via);
 
@@ -457,5 +458,211 @@ public class ModdingToolTests(ITestOutputHelper helper)
         failure.InnerException.Should().BeOfType<IOException>();
         failure.Message.Should().Contain("wine went away").And.Contain(runFolder);
         RunFoldersIn(prefix).Should().ContainSingle();
+    }
+
+    private static readonly PrefixComponentId Vc = PrefixComponents.VisualCppRuntime.Id;
+
+    private static ToolDefinition XEdit(ToolPrefixRequirements prefix) => Editor() with { Prefix = prefix };
+
+    private static ToolPrefixRequirements WinXpFor(params string[] exeNames) => new()
+    {
+        RegistryDefaults = [.. exeNames.Select(name => new PrefixRegistryDefault(name, "Version", "winxp"))],
+    };
+
+    private static bool IsRegAdd(PrefixCommand command, string exeName, string value, string data) =>
+        command.IsVerb
+        && command.Program == "reg"
+        && command.Args.SequenceEqual(new[] { "add", $@"HKCU\Software\Wine\AppDefaults\{exeName}", "/v", value, "/d", data, "/f" });
+
+    // A reg add that succeeds, and puts the value where the inspector reads it back.
+    private void RegAddWritesToThePrefix()
+    {
+        _toolRunner.RunInPrefix(default!, default!, default)
+            .ReturnsForAnyArgs(call =>
+            {
+                var args = call.ArgAt<PrefixCommand>(1).Args;
+                var exe = args[1][(args[1].LastIndexOf('\\') + 1)..];
+                _inspector.AppDefaults[(exe, args[3])] = args[5];
+                return new PrefixRunResult(0, "", "");
+            });
+    }
+
+    [Fact]
+    public async Task RegistryDefaults_AreWrittenWithRegAddBeforeTheToolStarts()
+    {
+        StubRunners();
+        UsePrefix();
+        RegAddWritesToThePrefix();
+        var loadout = await CreateLoadout();
+
+        await Tool(XEdit(WinXpFor("SSEEdit.exe", "SSEEdit64.exe"))).Execute(loadout, CancellationToken.None);
+
+        Received.InOrder(() =>
+        {
+            _toolRunner.RunInPrefix(loadout.InstallationInstance, Arg.Is<PrefixCommand>(c => IsRegAdd(c, "SSEEdit.exe", "Version", "winxp")), Arg.Any<CancellationToken>());
+            _toolRunner.RunInPrefix(loadout.InstallationInstance, Arg.Is<PrefixCommand>(c => IsRegAdd(c, "SSEEdit64.exe", "Version", "winxp")), Arg.Any<CancellationToken>());
+            _toolRunner.RunWindowsTool(loadout.InstallationInstance, Exe, Arg.Any<IReadOnlyList<string>>(), null, true, Arg.Any<CancellationToken>(), ToolRunVia.Auto);
+        });
+    }
+
+    [Fact]
+    public async Task RegistryDefault_IsWrittenOnceAcrossRuns()
+    {
+        StubRunners();
+        UsePrefix();
+        RegAddWritesToThePrefix();
+        var loadout = await CreateLoadout();
+        var tool = Tool(XEdit(WinXpFor("SSEEdit.exe")));
+
+        await tool.Execute(loadout, CancellationToken.None);
+        await tool.Execute(loadout, CancellationToken.None);
+
+        await _toolRunner.ReceivedWithAnyArgs(1).RunInPrefix(default!, default!, default);
+        await _toolRunner.ReceivedWithAnyArgs(2).RunWindowsTool(default!, default, default!, default, default, default, default);
+    }
+
+    [Fact]
+    public async Task RegistryDefault_ThatTheUserRegAlreadyHolds_IsNotWritten()
+    {
+        StubRunners();
+        UsePrefix();
+        RegAddWritesToThePrefix();
+        _inspector.AppDefaults[("SSEEdit.exe", "Version")] = "winxp";
+        var loadout = await CreateLoadout();
+
+        await Tool(XEdit(WinXpFor("SSEEdit.exe", "SSEEdit64.exe"))).Execute(loadout, CancellationToken.None);
+
+        await _toolRunner.Received(1).RunInPrefix(Arg.Any<GameInstallation>(), Arg.Is<PrefixCommand>(c => IsRegAdd(c, "SSEEdit64.exe", "Version", "winxp")), Arg.Any<CancellationToken>());
+        await _toolRunner.ReceivedWithAnyArgs(1).RunInPrefix(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task RegistryDefault_WithAnotherValueInThePrefix_IsWrittenOver()
+    {
+        StubRunners();
+        UsePrefix();
+        RegAddWritesToThePrefix();
+        _inspector.AppDefaults[("SSEEdit.exe", "Version")] = "win10";
+        var loadout = await CreateLoadout();
+
+        await Tool(XEdit(WinXpFor("SSEEdit.exe"))).Execute(loadout, CancellationToken.None);
+
+        await _toolRunner.Received(1).RunInPrefix(Arg.Any<GameInstallation>(), Arg.Is<PrefixCommand>(c => IsRegAdd(c, "SSEEdit.exe", "Version", "winxp")), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RegistryDefault_ThatFailsToWrite_RefusesTheRunNamingTheToolAndExe()
+    {
+        StubRunners();
+        UsePrefix();
+        _toolRunner.RunInPrefix(default!, default!, default)
+            .ReturnsForAnyArgs(new PrefixRunResult(1, "", "access denied"));
+        var loadout = await CreateLoadout();
+
+        var act = () => Tool(XEdit(WinXpFor("SSEEdit.exe"))).Execute(loadout, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message
+            .Should().Contain("xEdit").And.Contain("SSEEdit.exe").And.Contain("access denied");
+        await _toolRunner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default, default);
+    }
+
+    [Fact]
+    public async Task MissingComponent_RefusesTheRunNamingItAndNeverStartsTheTool()
+    {
+        StubRunners();
+        UsePrefix();
+        _inspector.State = id => id == Vc ? PrefixComponentState.Missing : PrefixComponentState.Installed;
+        var loadout = await CreateLoadout();
+
+        var act = () => Tool(XEdit(new ToolPrefixRequirements { Components = [Vc] })).Execute(loadout, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message
+            .Should().Contain("xEdit").And.Contain(PrefixComponents.VisualCppRuntime.DisplayName);
+        await _toolRunner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default, default);
+        await _toolRunner.DidNotReceiveWithAnyArgs().RunInPrefix(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task MissingComponent_IsCheckedBeforeAnyRegistryDefaultIsWritten()
+    {
+        StubRunners();
+        UsePrefix();
+        _inspector.State = _ => PrefixComponentState.Missing;
+        var loadout = await CreateLoadout();
+        var prefix = WinXpFor("SSEEdit.exe") with { Components = [Vc] };
+
+        var act = () => Tool(XEdit(prefix)).Execute(loadout, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _toolRunner.DidNotReceiveWithAnyArgs().RunInPrefix(default!, default!, default);
+    }
+
+    [Theory]
+    [InlineData(PrefixComponentState.Installed)]
+    [InlineData(PrefixComponentState.Unknown)]
+    public async Task Component_ThatIsNotMissing_LetsTheToolRun(PrefixComponentState state)
+    {
+        StubRunners();
+        UsePrefix();
+        _inspector.State = _ => state;
+        var loadout = await CreateLoadout();
+
+        await Tool(XEdit(new ToolPrefixRequirements { Components = [Vc] })).Execute(loadout, CancellationToken.None);
+
+        await _toolRunner.ReceivedWithAnyArgs(1).RunWindowsTool(default!, default, default!, default, default, default, default);
+    }
+
+    [Fact]
+    public async Task ToolWithoutPrefixRequirements_NeitherInspectsNorWritesThePrefix()
+    {
+        StubRunners();
+        var loadout = await CreateLoadout();
+
+        await Tool(Editor()).Execute(loadout, CancellationToken.None);
+
+        _inspector.Calls.Should().BeEmpty();
+        _prefixResolver.ReceivedCalls().Should().BeEmpty();
+        await _toolRunner.DidNotReceiveWithAnyArgs().RunInPrefix(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task NativeTool_DoesNotTouchThePrefixItsDefinitionDescribes()
+    {
+        StubRunners();
+        _inspector.State = _ => PrefixComponentState.Missing;
+        var loadout = await CreateLoadout();
+        var definition = XEdit(WinXpFor("SSEEdit.exe") with { Components = [Vc] });
+
+        await Tool(definition, new InstalledTool(Exe, null, ToolRunVia.Native)).Execute(loadout, CancellationToken.None);
+
+        _inspector.Calls.Should().BeEmpty();
+        await _toolRunner.DidNotReceiveWithAnyArgs().RunInPrefix(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task PrefixRequirements_WithNoResolvedPrefix_RefuseWithTheResolversReason()
+    {
+        StubRunners();
+        _prefixResolver.Resolve(default!).ReturnsForAnyArgs(PrefixResolution.Failed("No Wine prefix was found."));
+        var loadout = await CreateLoadout();
+
+        var act = () => Tool(XEdit(WinXpFor("SSEEdit.exe"))).Execute(loadout, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message
+            .Should().Contain("xEdit").And.Contain("No Wine prefix was found.");
+        await _toolRunner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default, default);
+    }
+
+    [Fact]
+    public async Task PrefixSetupThatRefuses_LeavesNoRunFolderBehind()
+    {
+        var prefix = UsePrefixAndWriteOutput([]);
+        _inspector.State = _ => PrefixComponentState.Missing;
+        var loadout = await CreateLoadout();
+
+        var act = () => Tool(DynDolod() with { Prefix = new ToolPrefixRequirements { Components = [Vc] } }).Execute(loadout, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        RunFoldersIn(prefix).Should().BeEmpty();
     }
 }

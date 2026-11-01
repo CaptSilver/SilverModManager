@@ -472,6 +472,8 @@ public class DoctorReporterTests : IDisposable
             Inspected.Add(prefix);
             return components.Select(status).ToArray();
         }
+
+        public string? ReadAppDefault(ResolvedPrefix prefix, string exeName, string value) => null;
     }
 
     private sealed class FakeRequirements(params PrefixComponentId[] ids) : IPrefixComponentRequirements

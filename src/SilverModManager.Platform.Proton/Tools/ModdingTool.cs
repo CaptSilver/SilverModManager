@@ -26,7 +26,8 @@ public sealed class ModdingTool(
     IProcessRunner processRunner,
     ToolArgumentResolver resolver,
     IPrefixResolver prefixResolver,
-    ToolOutputCapture outputCapture) : ITool, IToolWithOutput
+    ToolOutputCapture outputCapture,
+    ToolPrefixSetup prefixSetup) : ITool, IToolWithOutput
 {
     public AbsolutePath Exe => installed.Exe;
 
@@ -124,6 +125,8 @@ public sealed class ModdingTool(
         var plan = toolRunner.Plan(installation, Exe, args, null, via);
         if (plan.IsRunnable is false)
             throw new InvalidOperationException($"Cannot run {Name} for {installation.Game.DisplayName}: {plan.Diagnostic}");
+
+        await prefixSetup.Ensure(installation, Name, definition.Prefix, cancellationToken);
 
         onStart();
         var result = await toolRunner.RunWindowsTool(installation, Exe, args, null, logOutput: true, cancellationToken, via);

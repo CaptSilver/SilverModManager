@@ -185,4 +185,93 @@ public class PrefixInspectorTests
 
         results.Select(r => r.Id).Should().Equal(D3d, Vc);
     }
+
+    private static PrefixComponentId DotNet => PrefixComponents.DotNetDesktop8.Id;
+
+    private void CreateDesktopRuntime(string version)
+        => _prefixPath.Combine($"drive_c/Program Files/dotnet/shared/Microsoft.WindowsDesktop.App/{version}").CreateDirectory();
+
+    [Fact]
+    public void Inspect_DotNetDesktopRuntimeFolder_IsInstalled()
+    {
+        CreateDesktopRuntime("8.0.33");
+
+        var result = InspectOne(DotNet);
+
+        result.State.Should().Be(PrefixComponentState.Installed);
+        result.Evidence.Should().Contain("Microsoft.WindowsDesktop.App").And.Contain("8.0.33");
+    }
+
+    [Fact]
+    public void Inspect_DotNetDesktopRuntimeOfAnotherMajorVersion_IsMissing()
+    {
+        CreateDesktopRuntime("6.0.36");
+        CreateDesktopRuntime("10.0.1");
+
+        InspectOne(DotNet).State.Should().Be(PrefixComponentState.Missing);
+    }
+
+    [Fact]
+    public void Inspect_DotNetDesktopRuntimeFolderWithoutAVersionSubfolder_IsMissing()
+    {
+        _prefixPath.Combine("drive_c/Program Files/dotnet/shared/Microsoft.WindowsDesktop.App").CreateDirectory();
+
+        InspectOne(DotNet).State.Should().Be(PrefixComponentState.Missing);
+    }
+
+    [Fact]
+    public void Inspect_DotNetDesktopRuntimeInAPrefixWithoutDriveC_IsMissing()
+    {
+        InspectOne(DotNet).State.Should().Be(PrefixComponentState.Missing);
+    }
+
+    private const string UserRegHeader = "WINE REGISTRY Version 2\n;; All keys relative to \\\\User\\\\S-1-5-21-0-0-0-1000\n\n";
+
+    [Fact]
+    public void ReadAppDefault_ReadsTheValueFromUserReg()
+    {
+        WriteText("user.reg", UserRegHeader
+            + "[Software\\\\Wine\\\\AppDefaults\\\\SSEEdit.exe] 1700000000\n#time=1dc0000000000000\n\"Version\"=\"winxp\"\n\n"
+            + "[Software\\\\Wine\\\\AppDefaults\\\\Pandora Behaviour Engine+.exe] 1700000001\n\"Decorated\"=\"N\"\n");
+
+        var inspector = new PrefixInspector();
+
+        inspector.ReadAppDefault(_prefix, "SSEEdit.exe", "Version").Should().Be("winxp");
+        inspector.ReadAppDefault(_prefix, "Pandora Behaviour Engine+.exe", "Decorated").Should().Be("N");
+    }
+
+    [Fact]
+    public void ReadAppDefault_IgnoresCaseOfTheExeAndTheValueName()
+    {
+        WriteText("user.reg", "[Software\\\\Wine\\\\AppDefaults\\\\SSEEdit.exe] 1\n\"Version\"=\"winxp\"\n");
+
+        new PrefixInspector().ReadAppDefault(_prefix, "sseedit.EXE", "version").Should().Be("winxp");
+    }
+
+    [Fact]
+    public void ReadAppDefault_DoesNotTakeAValueFromAnotherExesKey()
+    {
+        WriteText("user.reg",
+            "[Software\\\\Wine\\\\AppDefaults\\\\FO4Edit.exe] 1\n\"Version\"=\"winxp\"\n\n"
+            + "[Software\\\\Wine\\\\AppDefaults\\\\SSEEdit.exe] 2\n\"Decorated\"=\"N\"\n");
+
+        var inspector = new PrefixInspector();
+
+        inspector.ReadAppDefault(_prefix, "SSEEdit.exe", "Version").Should().BeNull();
+        inspector.ReadAppDefault(_prefix, "FO4Edit.exe", "Decorated").Should().BeNull();
+    }
+
+    [Fact]
+    public void ReadAppDefault_DoesNotTakeASystemRegValue()
+    {
+        WriteText("system.reg", "[Software\\\\Wine\\\\AppDefaults\\\\SSEEdit.exe] 1\n\"Version\"=\"winxp\"\n");
+
+        new PrefixInspector().ReadAppDefault(_prefix, "SSEEdit.exe", "Version").Should().BeNull();
+    }
+
+    [Fact]
+    public void ReadAppDefault_WithoutAUserReg_IsNull()
+    {
+        new PrefixInspector().ReadAppDefault(_prefix, "SSEEdit.exe", "Version").Should().BeNull();
+    }
 }

@@ -659,6 +659,8 @@ public class PrefixSetupRunnerTests : IDisposable
                 return new PrefixComponentStatus(id, installed ? PrefixComponentState.Installed : PrefixComponentState.Missing, installed ? "fake native file" : "fake: nothing");
             }).ToList();
         }
+
+        public string? ReadAppDefault(ResolvedPrefix prefix, string exeName, string value) => null;
     }
 
     private sealed class FakeFetcher : IPrefixFileFetcher

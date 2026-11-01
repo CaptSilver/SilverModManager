@@ -74,6 +74,15 @@ public sealed record PrefixInstallStep(
 }
 
 /// <summary>
+/// A folder in the prefix's <c>drive_c</c> that holds one subfolder per installed version, such as
+/// <c>Program Files/dotnet/shared/Microsoft.WindowsDesktop.App</c>.
+/// </summary>
+/// <param name="Path">The folder, relative to <c>drive_c</c>.</param>
+/// <param name="VersionPrefix">What a version subfolder's name starts with, such as <c>8.</c> for any 8.x release.</param>
+[PublicAPI]
+public sealed record PrefixInstalledFolder(string Path, string VersionPrefix);
+
+/// <summary>
 /// A component the prefix can be checked for and installed: what it is called, where its files come from
 /// and how to tell it is already there.
 /// </summary>
@@ -103,6 +112,12 @@ public sealed record PrefixComponent
     /// the same name does not count.
     /// </summary>
     public required ImmutableArray<string> NativeFiles { get; init; }
+
+    /// <summary>
+    /// Versioned install folders under <c>drive_c</c> for a component that leaves no DLL in the system
+    /// directories, such as a .NET runtime. A matching subfolder is enough evidence on its own.
+    /// </summary>
+    public ImmutableArray<PrefixInstalledFolder> InstalledFolders { get; init; } = [];
 
     /// <summary>
     /// Registry key fragments, each a set that must all occur in one <c>system.reg</c> key name (compared
@@ -184,16 +199,46 @@ public static class PrefixComponents
     };
 
     /// <summary>
-    /// Every known component.
+    /// The .NET 8 desktop runtime, which WPF and WinForms apps such as Pandora Behaviour Engine+ need. The
+    /// installer is the x64 one Microsoft lists for 8.0.33 in its release metadata (releases.json for 8.0).
+    /// </summary>
+    public static readonly PrefixComponent DotNetDesktop8 = new()
+    {
+        Id = new PrefixComponentId("dotnetdesktop8"),
+        DisplayName = ".NET 8 desktop runtime",
+        Downloads =
+        [
+            new PrefixDownload(
+                "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.33/windowsdesktop-runtime-8.0.33-win-x64.exe",
+                "4de14de0b327e801d7a691cb1afc8a00db5313a698ef53b979fc6f84fce631de",
+                "windowsdesktop-runtime-8.0.33-win-x64.exe"),
+        ],
+        InstallSteps =
+        [
+            new PrefixInstallStep(PrefixInstallStepKind.RunInstaller, "windowsdesktop-runtime-8.0.33-win-x64.exe", PrefixArchitecture.X64, SilentInstall),
+        ],
+        // The runtime lives under Program Files\dotnet and puts nothing in system32.
+        NativeFiles = [],
+        InstalledFolders = [new PrefixInstalledFolder("Program Files/dotnet/shared/Microsoft.WindowsDesktop.App", "8.")],
+    };
+
+    /// <summary>
+    /// The components the prefix setup verb brings into every game's prefix.
     /// </summary>
     public static ImmutableArray<PrefixComponent> All { get; } = [VisualCppRuntime, D3DCompiler47];
+
+    /// <summary>
+    /// Every component that can be detected and installed: <see cref="All"/> plus the ones only a tool needs,
+    /// which are installed for that tool and not into every prefix.
+    /// </summary>
+    public static ImmutableArray<PrefixComponent> Known { get; } = [.. All, DotNetDesktop8];
 
     /// <summary>
     /// Finds a component by its id or one of its aliases, ignoring case.
     /// </summary>
     public static bool TryResolve(string name, [NotNullWhen(true)] out PrefixComponent? component)
     {
-        foreach (var candidate in All)
+        foreach (var candidate in Known)
         {
             if (!candidate.WinetricksVerbs.Contains(name, StringComparer.OrdinalIgnoreCase)) continue;
             component = candidate;
