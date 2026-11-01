@@ -25,6 +25,14 @@ public class WabbajackGamesTests
         return false;
     }
 
+    // Total conversions that install over another game's files. Wabbajack's game list has no type for them, so a
+    // modlist for one names its base game (Fallout 4, Oblivion) and the app never meets these ids in a modlist.
+    private static readonly GameId[] NotAWabbajackGame =
+    [
+        GameId.From("CreationEngine.Fallout4London"),
+        GameId.From("CreationEngine.Nehrim"),
+    ];
+
     [Fact]
     public void EveryCreationEngineGameTheAppRegistersHasARowInBothTables()
     {
@@ -39,8 +47,9 @@ public class WabbajackGamesTests
         var ids = games.Select(t => (GameId)t.GetProperty(nameof(IGameData.GameId))!.GetValue(null)!).ToList();
         var mapped = UpstreamNames.Select(WabbajackGames.GameIdFor).ToList();
 
+        ids.Should().Contain(NotAWabbajackGame, "a game listed as having no Wabbajack type must still be one the app registers");
         mapped.Should().NotContainNulls();
-        mapped.Cast<GameId>().Should().BeEquivalentTo(ids);
+        mapped.Cast<GameId>().Should().BeEquivalentTo(ids.Except(NotAWabbajackGame));
         UpstreamNames.Select(WabbajackGames.NexusDomainFor).Should().NotContainNulls();
     }
 
