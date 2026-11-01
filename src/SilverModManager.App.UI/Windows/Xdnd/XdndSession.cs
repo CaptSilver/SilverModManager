@@ -155,7 +155,7 @@ public sealed class XdndSession
         _at = at.Value;
         _allowed = _actions.ToEffects(message.L4);
         if (Phase == XdndPhase.Entered) RequestFiles(message.L3);
-        else if (Phase == XdndPhase.Ready) _replies.Status(_source, _sink.Over(_at, _data!, _allowed));
+        else if (Phase == XdndPhase.Ready && _data is { } data) _replies.Status(_source, _sink.Over(_at, data, _allowed));
     }
 
     /// <summary>Asks for the uri list. No Status goes out: the source sends nothing more until it has one, and the answer will carry the window's verdict.</summary>
@@ -206,6 +206,7 @@ public sealed class XdndSession
         if (value.Type == _atoms.Incr)
         {
             _incr = [];
+            DisposeRetry();
             ArmDataTimeout();
             return;
         }
@@ -235,7 +236,7 @@ public sealed class XdndSession
     private void OnRetry()
     {
         _retryTimer = null;
-        if (Phase == XdndPhase.FetchingData && _pendingProperty != 0) SendConversion();
+        if (Phase == XdndPhase.FetchingData && _pendingProperty != 0 && _incr is null) SendConversion();
     }
 
     private void ArmDataTimeout()
@@ -277,8 +278,7 @@ public sealed class XdndSession
     {
         _incr = null;
         _pendingProperty = 0;
-        _retryTimer?.Dispose();
-        _retryTimer = null;
+        DisposeRetry();
         _ = EnterSinkAsync(_uris.Parse(bytes), _generation);
     }
 
@@ -321,11 +321,16 @@ public sealed class XdndSession
     {
         _fetchTimeout?.Dispose();
         _fetchTimeout = null;
-        _retryTimer?.Dispose();
-        _retryTimer = null;
+        DisposeRetry();
         _pendingProperty = 0;
         _incr = null;
         _generation++;
+    }
+
+    private void DisposeRetry()
+    {
+        _retryTimer?.Dispose();
+        _retryTimer = null;
     }
 
     private void Forget()

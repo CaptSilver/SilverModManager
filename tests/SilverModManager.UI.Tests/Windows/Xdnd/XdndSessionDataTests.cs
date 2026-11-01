@@ -476,6 +476,37 @@ public class XdndSessionDataTests : XdndSessionTestBase
     }
 
     [Fact]
+    public void ALateRefusalFromBeforeALeaveDoesNotLeaveARetryArmedWhenTheIncrTransferStarts()
+    {
+        EnterWithFiles();
+        _session.Handle(Position(Source, 10, 10));
+        _session.Handle(Leave(Source));
+        EnterWithFiles();
+        _session.Handle(Position(Source, 10, 10));
+        _x.Conversions[1].Property.Should().Be(SecondProperty);
+        _session.Handle(Notify(0));
+        _timer.Live.Should().Contain(h => h.Delay == RetryDelay, "the stale refusal arms the quick retry");
+
+        _x.SetProperty(Target, SecondProperty, new XProperty(_atoms.Incr, 32, BitConverter.GetBytes((long)200_000)));
+        _session.Handle(Notify(SecondProperty));
+
+        _timer.Live.Should().NotContain(h => h.Delay == RetryDelay, "a transfer is under way, so there is nothing to ask again");
+        void Chunk(string text)
+        {
+            _x.SetProperty(Target, SecondProperty, new XProperty(_atoms.TextUriList, 8, System.Text.Encoding.UTF8.GetBytes(text)));
+            _session.Handle(NewValue(SecondProperty));
+        }
+        Chunk("file:///home/u/a.zip\r\n");
+        Chunk("file:///home/u/b.zip\r\n");
+        Chunk("");
+
+        _files.Requests.Single().Should().Equal("/home/u/a.zip", "/home/u/b.zip");
+        _sink.Kinds.Should().Equal("Enter");
+        _x.Conversions.Should().HaveCount(2);
+        LastStatus().L1.Should().Be(3);
+    }
+
+    [Fact]
     public void ANotifyAfterAGiveUpIsDeletedAndIgnored()
     {
         EnterWithFiles();
