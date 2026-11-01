@@ -70,6 +70,7 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
     protected ISortOrderManager InitAndGetSortOrderManager() => GameInstallation.GetGame().SortOrderManager;
     
     private bool _gameFilesWritten = false;
+    private readonly GameId? _targetGameId;
     private readonly IHost _host;
     private readonly ITestOutputHelper _helper;
     protected readonly ConfigOptionsRecord ConfigOptions;
@@ -85,8 +86,19 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
     /// <summary>
     /// Constructor.
     /// </summary>
-    protected AIsolatedGameTest(ITestOutputHelper helper)
+    protected AIsolatedGameTest(ITestOutputHelper helper) : this(helper, null)
     {
+    }
+
+    /// <summary>
+    /// Constructor for a game picked by id, not by type: several games built from definitions share one CLR type,
+    /// so the type cannot say which of them the test is about.
+    /// </summary>
+    /// <param name="helper">The test output.</param>
+    /// <param name="targetGameId">The game to boot, or null to boot the first game that is a <typeparamref name="TGame"/>.</param>
+    protected AIsolatedGameTest(ITestOutputHelper helper, GameId? targetGameId)
+    {
+        _targetGameId = targetGameId;
         ConfigOptions = new ConfigOptionsRecord();
         _helper = helper;
         _host = new HostBuilder()
@@ -575,6 +587,8 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
     /// </summary>
     protected virtual ValueTask PrepareGameInstall() => ValueTask.CompletedTask;
 
+    private bool IsTargetGame(IGameData game) => _targetGameId is { } id ? game.GameId == id : game is TGame;
+
     public async ValueTask InitializeAsync()
     {
         await PrepareGameInstall();
@@ -583,7 +597,7 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
         await _host.StartAsync();
 
         var installations = GameRegistry.LocateGameInstallations().ToArray();
-        var didFind = installations.TryGetFirst(g => g.Game is TGame, out var gameInstallation);
+        var didFind = installations.TryGetFirst(g => IsTargetGame(g.Game), out var gameInstallation);
         Debug.Assert(didFind);
         didFind.Should().BeTrue();
 

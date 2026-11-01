@@ -19,9 +19,16 @@ using PathTuple = (SilverModManager.MnemonicDB.Abstractions.EntityId, SilverModM
 
 namespace SilverModManager.Games.TestFramework;
 
-public abstract class ALibraryArchiveInstallerTests<TTest, TGame>(ITestOutputHelper outputHelper) : AIsolatedGameTest<TTest, TGame>(outputHelper)
+public abstract class ALibraryArchiveInstallerTests<TTest, TGame> : AIsolatedGameTest<TTest, TGame>
     where TGame : IGame
 {
+    protected ALibraryArchiveInstallerTests(ITestOutputHelper outputHelper) : base(outputHelper)
+    {
+    }
+
+    protected ALibraryArchiveInstallerTests(ITestOutputHelper outputHelper, GameId targetGameId) : base(outputHelper, targetGameId)
+    {
+    }
 
     /// <summary>
     /// Creates a test archive with the given paths, where each path represents a file whos content is the path itself,
@@ -245,3 +252,7 @@ public abstract class ALibraryArchiveInstallerTests<TTest, TGame>(ITestOutputHel
         return Verify(result, sourceFile: sourceFile);
     }
 }
+
+/// <summary>The installer fixture for a game picked by <see cref="GameId"/>, for games built from a definition.</summary>
+public abstract class ALibraryArchiveInstallerTests<TTest>(ITestOutputHelper outputHelper, GameId gameId)
+    : ALibraryArchiveInstallerTests<TTest, IGame>(outputHelper, gameId);

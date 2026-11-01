@@ -6,8 +6,11 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.StandardGameLocators.TestHelpers;
 
-public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
-    where TGame : IGame
+/// <summary>
+/// Locates one game in a throwaway folder. The game comes from a factory or a <see cref="GameId"/>, so a game that is
+/// an instance built from a definition can be located as well as one the container can resolve by its type.
+/// </summary>
+public class UniversalStubbedGameLocator : IGameLocator, IDisposable
 {
     private readonly TemporaryPath _path;
 
@@ -17,7 +20,7 @@ public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
     /// game's Documents and AppData locations land in the prefix, as for a game installed through Wine.
     /// </summary>
     private readonly AbsolutePath _locatedPath;
-    private readonly TGame _game;
+    private readonly IGame _game;
     private readonly GameStore[] _stores;
 
     public LocatorId[] LocatorIds { get; set; } = [LocatorId.From("StubbedGameState.zip")];
@@ -39,20 +42,24 @@ public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
     /// </summary>
     public ILinuxCompatabilityDataProvider? LinuxCompatabilityDataProvider { get; set; }
 
+    /// <param name="gameFactory">Builds or finds the game this locator reports.</param>
+    /// <param name="folderName">Names the game folder, so two games located in one test do not share it.</param>
     public UniversalStubbedGameLocator(
         IServiceProvider serviceProvider,
         IFileSystem fileSystem,
         TemporaryFileManager fileManager,
+        Func<IServiceProvider, IGame> gameFactory,
+        string folderName,
         Dictionary<RelativePath, byte[]>? gameFiles = null,
         GameStore[]? stores = null,
         IFileSystem? locationsFileSystem = null)
     {
         _stores = stores ?? [GameStore.Unknown];
-        _path = fileManager.CreateFolder(typeof(TGame).Name);
+        _path = fileManager.CreateFolder(folderName);
         _locatedPath = locationsFileSystem is null
             ? _path.Path
             : locationsFileSystem.FromUnsanitizedFullPath(_path.Path.GetFullPath());
-        _game = serviceProvider.GetRequiredService<TGame>();
+        _game = gameFactory(serviceProvider);
 
         if (gameFiles is null) return;
         foreach (var gameFile in gameFiles)
@@ -63,6 +70,23 @@ public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
             stream.Write(gameFile.Value, 0, gameFile.Value.Length);
         }
     }
+
+    /// <summary>Locates the registered <see cref="IGame"/> with this id, in a folder named after the id.</summary>
+    public UniversalStubbedGameLocator(
+        IServiceProvider serviceProvider,
+        IFileSystem fileSystem,
+        TemporaryFileManager fileManager,
+        GameId gameId,
+        Dictionary<RelativePath, byte[]>? gameFiles = null,
+        GameStore[]? stores = null,
+        IFileSystem? locationsFileSystem = null)
+        : this(serviceProvider, fileSystem, fileManager, provider => FindGame(provider, gameId), gameId.ToString(), gameFiles, stores, locationsFileSystem)
+    {
+    }
+
+    private static IGame FindGame(IServiceProvider provider, GameId gameId) =>
+        provider.GetServices<IGame>().FirstOrDefault(game => game.GameId == gameId)
+        ?? throw new InvalidOperationException($"No registered game has the id '{gameId}', so the stubbed locator has nothing to locate.");
 
     public IEnumerable<GameLocatorResult> Locate()
     {
@@ -88,3 +112,22 @@ public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
         _path.Dispose();
     }
 }
+
+/// <summary>Locates the game the container resolves as <typeparamref name="TGame"/>.</summary>
+public class UniversalStubbedGameLocator<TGame>(
+    IServiceProvider serviceProvider,
+    IFileSystem fileSystem,
+    TemporaryFileManager fileManager,
+    Dictionary<RelativePath, byte[]>? gameFiles = null,
+    GameStore[]? stores = null,
+    IFileSystem? locationsFileSystem = null)
+    : UniversalStubbedGameLocator(
+        serviceProvider,
+        fileSystem,
+        fileManager,
+        provider => provider.GetRequiredService<TGame>(),
+        typeof(TGame).Name,
+        gameFiles,
+        stores,
+        locationsFileSystem)
+    where TGame : IGame;

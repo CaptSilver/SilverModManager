@@ -32,4 +32,33 @@ public static class StubbedTestHarnessExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// Registers a stubbed locator for the registered <see cref="IGame"/> with this id, for games built from a
+    /// definition that have no type of their own to ask the container for.
+    /// </summary>
+    public static IServiceCollection AddUniversalGameLocator(
+        this IServiceCollection services,
+        GameId gameId,
+        Dictionary<RelativePath, byte[]>? gameFiles = null,
+        GameStore[]? stores = null,
+        Func<IServiceProvider, IFileSystem>? locationsFileSystem = null,
+        OSPlatform? platform = null)
+    {
+        services
+            .AddSingleton<IGameLocator, UniversalStubbedGameLocator>(s =>
+                new UniversalStubbedGameLocator(
+                    s,
+                    s.GetRequiredService<IFileSystem>(),
+                    s.GetRequiredService<TemporaryFileManager>(),
+                    gameId,
+                    gameFiles,
+                    stores,
+                    locationsFileSystem?.Invoke(s))
+                {
+                    Platform = platform ?? OSPlatform.Linux,
+                });
+
+        return services;
+    }
 }
