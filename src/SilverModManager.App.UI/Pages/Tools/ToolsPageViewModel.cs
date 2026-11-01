@@ -2,7 +2,9 @@ using SilverModManager.Sdk.Errors;
 using Avalonia.Platform.Storage;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
@@ -25,6 +27,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
     private readonly IConnection _conn;
     private readonly IToolManager _toolManager;
     private readonly IToolRunner _toolRunner;
+    private readonly ModdingToolFactory _toolFactory;
     private readonly IPrefixResolver _prefixResolver;
     private readonly IAvaloniaInterop _avaloniaInterop;
     private readonly IJobMonitor _monitor;
@@ -48,6 +51,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         IConnection conn,
         IToolManager toolManager,
         IToolRunner toolRunner,
+        ModdingToolFactory toolFactory,
         IPrefixResolver prefixResolver,
         IAvaloniaInterop avaloniaInterop,
         IJobMonitor monitor) : base(windowManager)
@@ -56,6 +60,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         _conn = conn;
         _toolManager = toolManager;
         _toolRunner = toolRunner;
+        _toolFactory = toolFactory;
         _prefixResolver = prefixResolver;
         _avaloniaInterop = avaloniaInterop;
         _monitor = monitor;
@@ -148,7 +153,9 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         });
         if (picked.Length == 0) return;
 
-        await RunToolAsync(new WindowsProgramTool(_toolRunner, loadout.Game.GameId, picked[0]), token);
+        var gameId = loadout.Game.GameId;
+        var definition = ToolDefinition.AdHoc(gameId, picked[0].FileName, picked[0].FileName);
+        await RunToolAsync(_toolFactory.Create(definition, new InstalledTool(picked[0]), gameId), token);
     }
 
     public async Task AddUserTool(UserToolDraft draft)

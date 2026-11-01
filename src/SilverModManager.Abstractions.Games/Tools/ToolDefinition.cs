@@ -43,4 +43,18 @@ public sealed record ToolDefinition
     /// Globs for output the loadout never keeps: backups of cleaned plugins, logs, caches, the tool's own config.
     /// </summary>
     public IReadOnlyList<string> IgnoredOutput { get; init; } = [];
+
+    /// <summary>
+    /// A program the user picked by hand: no catalogue id, listed for one game only, no output captured. Editors
+    /// exit non-zero for ordinary reasons, so any exit is fine.
+    /// </summary>
+    public static ToolDefinition AdHoc(GameId gameId, string displayName, string exeFileName, ToolRunVia runVia = ToolRunVia.Auto) => new()
+    {
+        DisplayName = displayName,
+        AppliesTo = game => game.GameId == gameId,
+        ExecutableNames = _ => [exeFileName],
+        Arguments = ArgumentTemplate.Empty,
+        RunVia = runVia,
+        ExitCodes = ExitCodePolicy.AnyExitIsFine,
+    };
 }

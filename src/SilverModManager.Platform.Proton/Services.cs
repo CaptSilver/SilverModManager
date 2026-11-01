@@ -8,6 +8,7 @@ using SilverModManager.Platform.Proton.Protontricks;
 using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Platform.Proton.Verbs;
 using SilverModManager.Platform.Proton.ToolRunner;
+using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.Platform.Proton.UserTools;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Loadouts;
@@ -36,6 +37,8 @@ public static class Services
         services.AddSingleton<AggregateProtontricksDependency>();
         services.AddSingleton<IRuntimeDependency, AggregateProtontricksDependency>();
         services.AddSingleton<IToolRunStrategy, ProtontricksStrategy>();
+        services.AddSingleton<ToolArgumentResolver>();
+        services.AddSingleton<ModdingToolFactory>();
         services.AddSingleton<IToolProvider, UserToolProvider>();
         services.AddSingleton<IToolRunner, ToolRunner.ToolRunner>();
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);

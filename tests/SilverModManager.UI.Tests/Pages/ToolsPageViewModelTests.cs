@@ -5,7 +5,9 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.Abstractions.Loadouts;
+using NSubstitute;
 using SilverModManager.App.UI;
+using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.App.UI.Pages.Tools;
 using SilverModManager.App.UI.Windows;
 using NexusMods.Paths;
@@ -61,6 +63,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
             Connection,
             toolManager,
             toolRunner,
+            new ModdingToolFactory(toolRunner, Substitute.For<IProcessRunner>(), new ToolArgumentResolver()),
             new FakePrefixResolver(),
             picker,
             Provider.GetRequiredService<IJobMonitor>()
@@ -105,7 +108,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
 
         await vm.RunWindowsProgramAsync(TestContext.Current.CancellationToken);
 
-        toolManager.Ran.Should().ContainSingle().Which.Should().BeOfType<WindowsProgramTool>().Which.Exe.Should().Be(exe);
+        toolManager.Ran.Should().ContainSingle().Which.Should().BeOfType<ModdingTool>().Which.Exe.Should().Be(exe);
         var call = toolRunner.Calls.Should().ContainSingle().Subject;
         call.Installation.Should().Be(loadout.InstallationInstance);
         call.Exe.Should().Be(exe);

@@ -1,8 +1,8 @@
+using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using SilverModManager.Sdk;
-using SilverModManager.Sdk.Games;
+using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Platform.Proton.UserTools;
@@ -10,7 +10,7 @@ namespace SilverModManager.Platform.Proton.UserTools;
 /// <summary>
 /// Lists the programs the user added for a loadout's installation as tools.
 /// </summary>
-public sealed class UserToolProvider(IConnection connection, IToolRunner toolRunner, IProcessRunner processRunner) : IToolProvider
+public sealed class UserToolProvider(IConnection connection, ModdingToolFactory factory) : IToolProvider
 {
     /// <inheritdoc/>
     public IEnumerable<ITool> GetTools(Loadout.ReadOnly loadout)
@@ -18,14 +18,9 @@ public sealed class UserToolProvider(IConnection connection, IToolRunner toolRun
         var gameId = loadout.Game.GameId;
         foreach (var tool in UserTool.FindByInstallation(connection.Db, loadout.InstallationId))
         {
-            yield return new UserToolAdapter(
-                gameId,
-                tool.Name,
-                FileSystem.Shared.FromUnsanitizedFullPath(tool.Exe),
-                tool.Arguments,
-                tool.RunVia,
-                toolRunner,
-                processRunner);
+            var exe = FileSystem.Shared.FromUnsanitizedFullPath(tool.Exe);
+            var definition = ToolDefinition.AdHoc(gameId, tool.Name, exe.FileName, tool.RunVia);
+            yield return factory.Create(definition, new InstalledTool(exe, tool.Arguments, tool.RunVia), gameId);
         }
     }
 }
