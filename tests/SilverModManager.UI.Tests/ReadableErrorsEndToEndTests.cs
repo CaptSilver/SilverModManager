@@ -130,7 +130,7 @@ public class ReadableErrorsEndToEndTests(IServiceProvider provider) : AUiTest(pr
 
         // The real tool manager: it applies the loadout, then starts the tool, as a click on Play does.
         var tool = new FakeRunTool(loadout.Game.GameId, launchFailure);
-        var toolManager = new ToolManager(NullLogger<ToolManager>.Instance, [tool], [], synchronizer);
+        var toolManager = new ToolManager(NullLogger<ToolManager>.Instance, [tool], [], synchronizer, new ToolOutputCapture(Connection, Substitute.For<IFileStore>()));
 
         var viewModel = new LaunchButtonViewModel(
             NullLogger<ILaunchButtonViewModel>.Instance,

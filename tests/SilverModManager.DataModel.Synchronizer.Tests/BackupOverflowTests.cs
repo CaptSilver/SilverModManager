@@ -857,7 +857,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         var prompt = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
         _prompt.Inner = prompt;
         var tool = new SyncingRunTool(loadout.Game.GameId, SynchronizerService, loadout.LoadoutId);
-        var toolManager = new ToolManager(NullLogger<ToolManager>.Instance, [tool], [], SynchronizerService);
+        var toolManager = new ToolManager(NullLogger<ToolManager>.Instance, [tool], [], SynchronizerService, ServiceProvider.GetRequiredService<ToolOutputCapture>());
 
         await toolManager.RunTool(tool, loadout, ServiceProvider.GetRequiredService<IJobMonitor>());
 

@@ -35,6 +35,12 @@ public sealed record ToolDefinition
 
     public ToolOutput Output { get; init; } = ToolOutput.None;
 
+    /// <summary>
+    /// Whether the group holding the previous run's <see cref="Output"/> is switched off while the tool runs, so it
+    /// reads none of its own old results. Switched back on if the run fails, replaced if it succeeds.
+    /// </summary>
+    public bool DisableOwnOutputDuringRun { get; init; }
+
     public ToolRunVia RunVia { get; init; } = ToolRunVia.Auto;
 
     public ExitCodePolicy ExitCodes { get; init; } = ExitCodePolicy.ZeroIsSuccess;

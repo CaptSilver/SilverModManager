@@ -23,13 +23,17 @@ public sealed class ModdingTool(
     GameId gameId,
     IToolRunner toolRunner,
     IProcessRunner processRunner,
-    ToolArgumentResolver resolver) : ITool
+    ToolArgumentResolver resolver) : ITool, IToolWithOutput
 {
     public AbsolutePath Exe => installed.Exe;
 
     public IEnumerable<GameId> GameIds => [gameId];
 
     public string Name => definition.DisplayName;
+
+    public ToolOutput Output => definition.Output;
+
+    public bool DisableOwnOutputDuringRun => definition.DisableOwnOutputDuringRun;
 
     public IJobTask<ITool, Unit> StartJob(Loadout.ReadOnly loadout, IJobMonitor monitor, CancellationToken cancellationToken)
     {

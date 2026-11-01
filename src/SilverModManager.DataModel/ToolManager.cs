@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk.Games;
@@ -17,17 +18,19 @@ public class ToolManager : IToolManager
     private readonly IToolProvider[] _providers;
     private readonly ILogger<ToolManager> _logger;
     private readonly ISynchronizerService _syncService;
+    private readonly ToolOutputCapture _outputCapture;
 
     /// <summary>
     /// DI Constructor
     /// </summary>
-    public ToolManager(ILogger<ToolManager> logger, IEnumerable<ITool> tools, IEnumerable<IToolProvider> providers, ISynchronizerService syncService)
+    public ToolManager(ILogger<ToolManager> logger, IEnumerable<ITool> tools, IEnumerable<IToolProvider> providers, ISynchronizerService syncService, ToolOutputCapture outputCapture)
     {
         _logger = logger;
         _tools = tools.SelectMany(tool => tool.GameIds.Select(gameId => (gameId, tool)))
             .ToLookup(t => t.gameId, t => t.tool);
         _providers = providers.ToArray();
         _syncService = syncService;
+        _outputCapture = outputCapture;
     }
 
     /// <inheritdoc />
@@ -35,6 +38,10 @@ public class ToolManager : IToolManager
     {
         return _tools[loadout.Game.GameId].Concat(_providers.SelectMany(p => p.GetTools(loadout)));
     }
+
+    private static string? OwnGroupToDisable(ITool tool) => tool is IToolWithOutput { DisableOwnOutputDuringRun: true, Output: ToolOutput.DeclaredFolder output }
+        ? output.GroupName
+        : null;
 
     /// <inheritdoc />
     public async Task<Loadout.ReadOnly> RunTool(
@@ -49,16 +56,31 @@ public class ToolManager : IToolManager
         // and the player is asked at most once: the scope carries the first answer to the others.
         using var answer = BackupOverflowAnswer.Begin(tool is IRunGameTool ? BackupOverflowOperation.Launch : BackupOverflowOperation.Apply);
 
-        _logger.LogInformation("Applying loadout {LoadoutId} on {GameName} {GameVersion}", 
-            loadout.Id, loadout.InstallationInstance.Game.DisplayName, loadout.GameVersion);
+        // A tool that regenerates all of its output must not read last run's: the group goes off before the apply
+        // takes it from disk. A run that fails turns it back on, and one that succeeds has replaced it already.
         var isGame = tool is IRunGameTool;
-        using (SyncOrigin.Begin(isGame ? SyncTrigger.Launch : SyncTrigger.ToolRun))
-            await _syncService.Synchronize(loadout);
-        var appliedLoadout = loadout.Rebase();
+        string? disabledGroup = null;
+        if (OwnGroupToDisable(tool) is { } ownGroup && await _outputCapture.SetEnabled(loadout.LoadoutId, ownGroup, enabled: false))
+            disabledGroup = ownGroup;
 
-        _logger.LogInformation("Running tool {ToolName} for loadout {LoadoutId} on {GameName} {GameVersion}", 
-            tool.Name, appliedLoadout.Id, appliedLoadout.InstallationInstance.Game.DisplayName, appliedLoadout.GameVersion);
-        await tool.StartJob(appliedLoadout, monitor, token);
+        Loadout.ReadOnly appliedLoadout;
+        try
+        {
+            _logger.LogInformation("Applying loadout {LoadoutId} on {GameName} {GameVersion}", 
+                loadout.Id, loadout.InstallationInstance.Game.DisplayName, loadout.GameVersion);
+            using (SyncOrigin.Begin(isGame ? SyncTrigger.Launch : SyncTrigger.ToolRun))
+                await _syncService.Synchronize(loadout);
+            appliedLoadout = loadout.Rebase();
+
+            _logger.LogInformation("Running tool {ToolName} for loadout {LoadoutId} on {GameName} {GameVersion}", 
+                tool.Name, appliedLoadout.Id, appliedLoadout.InstallationInstance.Game.DisplayName, appliedLoadout.GameVersion);
+            await tool.StartJob(appliedLoadout, monitor, token);
+        }
+        catch
+        {
+            if (disabledGroup is not null) await _outputCapture.SetEnabled(loadout.LoadoutId, disabledGroup, enabled: true);
+            throw;
+        }
 
         _logger.LogInformation("Ingesting loadout {LoadoutId} from {GameName} {GameVersion}", 
             appliedLoadout.Id, appliedLoadout.InstallationInstance.Game.DisplayName, appliedLoadout.GameVersion);
