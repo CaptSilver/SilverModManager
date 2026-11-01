@@ -16,22 +16,15 @@ public static class StubbedTestHarnessExtensions
         Func<IServiceProvider, IFileSystem>? locationsFileSystem = null,
         OSPlatform? platform = null)
         where TGame : IGame
-    {
-        services
-            .AddSingleton<IGameLocator, UniversalStubbedGameLocator<TGame>>(s =>
-                new UniversalStubbedGameLocator<TGame>(
-                    s,
-                    s.GetRequiredService<IFileSystem>(),
-                    s.GetRequiredService<TemporaryFileManager>(),
-                    gameFiles,
-                    stores,
-                    locationsFileSystem?.Invoke(s))
-                {
-                    Platform = platform ?? OSPlatform.Linux,
-                });
-
-        return services;
-    }
+        => services.AddStubbedLocator(
+            platform,
+            s => new UniversalStubbedGameLocator<TGame>(
+                s,
+                s.GetRequiredService<IFileSystem>(),
+                s.GetRequiredService<TemporaryFileManager>(),
+                gameFiles,
+                stores,
+                locationsFileSystem?.Invoke(s)));
 
     /// <summary>
     /// Registers a stubbed locator for the registered <see cref="IGame"/> with this id, for games built from a
@@ -44,21 +37,25 @@ public static class StubbedTestHarnessExtensions
         GameStore[]? stores = null,
         Func<IServiceProvider, IFileSystem>? locationsFileSystem = null,
         OSPlatform? platform = null)
-    {
-        services
-            .AddSingleton<IGameLocator, UniversalStubbedGameLocator>(s =>
-                new UniversalStubbedGameLocator(
-                    s,
-                    s.GetRequiredService<IFileSystem>(),
-                    s.GetRequiredService<TemporaryFileManager>(),
-                    gameId,
-                    gameFiles,
-                    stores,
-                    locationsFileSystem?.Invoke(s))
-                {
-                    Platform = platform ?? OSPlatform.Linux,
-                });
+        => services.AddStubbedLocator(
+            platform,
+            s => new UniversalStubbedGameLocator(
+                s,
+                s.GetRequiredService<IFileSystem>(),
+                s.GetRequiredService<TemporaryFileManager>(),
+                gameId,
+                gameFiles,
+                stores,
+                locationsFileSystem?.Invoke(s)));
 
-        return services;
-    }
+    private static IServiceCollection AddStubbedLocator(
+        this IServiceCollection services,
+        OSPlatform? platform,
+        Func<IServiceProvider, UniversalStubbedGameLocator> create)
+        => services.AddSingleton<IGameLocator, UniversalStubbedGameLocator>(s =>
+        {
+            var locator = create(s);
+            locator.Platform = platform ?? OSPlatform.Linux;
+            return locator;
+        });
 }

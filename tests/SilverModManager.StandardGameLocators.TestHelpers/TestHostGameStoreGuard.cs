@@ -77,5 +77,5 @@ public static class TestHostGameStoreGuard
 
     private static bool IsStubbed(Type type)
         => type.FullName == UserInstallLocatorName
-           || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(UniversalStubbedGameLocator<>));
+           || typeof(UniversalStubbedGameLocator).IsAssignableFrom(type);
 }

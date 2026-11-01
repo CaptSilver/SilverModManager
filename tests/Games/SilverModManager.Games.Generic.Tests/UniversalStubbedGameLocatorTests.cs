@@ -58,6 +58,19 @@ public class UniversalStubbedGameLocatorTests(IServiceProvider serviceProvider, 
     }
 
     [Fact]
+    public void AddUniversalGameLocator_ByGameId_PassesTheStubbedLocatorGuard()
+    {
+        var provider = new ServiceCollection()
+            .AddSingleton(fileSystem)
+            .AddSingleton(fileManager)
+            .AddSingleton<IGame>(FixtureGame.Create(serviceProvider, "Tests.Guarded"))
+            .AddUniversalGameLocator(GameId.From("Tests.Guarded"), Files)
+            .BuildServiceProvider();
+
+        TestHostGameStoreGuard.AssertOnlyStubbedLocators(provider);
+    }
+
+    [Fact]
     public void Constructing_ForAnIdNoGameHas_NamesTheId()
     {
         var provider = new ServiceCollection().AddSingleton<IGame>(FixtureGame.Create(serviceProvider, "Tests.Present")).BuildServiceProvider();
