@@ -67,9 +67,11 @@ public sealed class ModdingTool(
 
     private async Task<int> RunWindows(GameInstallation installation, IReadOnlyList<string> args, ToolRunVia via, CancellationToken cancellationToken)
     {
-        // Without a prefix to run in, starting quietly would leave the user wondering why nothing happened.
-        if (!toolRunner.CanRun(installation, out var cannotRunReason))
-            throw new InvalidOperationException($"Cannot run {Name} for {installation.Game.DisplayName}: {cannotRunReason}");
+        // Plan with the strategy that will run, not Auto: a forced strategy can run in a prefix Auto cannot.
+        // Without a way to run, starting quietly would leave the user wondering why nothing happened.
+        var plan = toolRunner.Plan(installation, Exe, args, null, via);
+        if (!plan.IsRunnable)
+            throw new InvalidOperationException($"Cannot run {Name} for {installation.Game.DisplayName}: {plan.Diagnostic}");
 
         var result = await toolRunner.RunWindowsTool(installation, Exe, args, null, logOutput: true, cancellationToken, via);
         return result.ExitCode;

@@ -48,15 +48,16 @@ public class ModdingToolTests(ITestOutputHelper helper)
             .AddUniversalGameLocator(Definition.GameId, locationsFileSystem: IsolatedKnownFolders.Create);
     }
 
-    private void StubRunners(string? cannotRunBecause = null)
+    // The reason applies to every strategy except runnableVia, standing in for a prefix where Auto has no way
+    // to run a program but a forced strategy does.
+    private void StubRunners(string? cannotRunBecause = null, ToolRunVia? runnableVia = null)
     {
         _toolRunner.RunWindowsTool(default!, default, default!, default, default, default, default)
             .ReturnsForAnyArgs(_ => new ToolRunResult(_exitCode));
-        _toolRunner.CanRun(Arg.Any<GameInstallation>(), out Arg.Any<string?>()).Returns(call =>
-        {
-            call[1] = cannotRunBecause;
-            return cannotRunBecause is null;
-        });
+        _toolRunner.Plan(default!, default, default!, default, default)
+            .ReturnsForAnyArgs(call => cannotRunBecause is not null && call.ArgAt<ToolRunVia>(4) != runnableVia
+                ? ToolRunPlan.Failed(cannotRunBecause)
+                : ToolRunPlan.Runnable("test", ["run"], Exe.Parent, new Dictionary<string, string>()));
         _processRunner
             .RunAsync(Arg.Do<Command>(c => _commands.Add(c)), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(_ => new CommandResult(_exitCode, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch));
@@ -183,6 +184,31 @@ public class ModdingToolTests(ITestOutputHelper helper)
 
         (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("xEdit").And.Contain("No Wine prefix was found.");
         await _toolRunner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default, default);
+    }
+
+    [Fact]
+    public async Task WindowsTool_ThatAutoCannotRunButTheForcedStrategyCan_Runs()
+    {
+        StubRunners("No Wine prefix was found.", runnableVia: ToolRunVia.Umu);
+        var loadout = await CreateLoadout();
+
+        await Tool(Editor(), new InstalledTool(Exe, null, ToolRunVia.Umu)).Execute(loadout, CancellationToken.None);
+
+        await _toolRunner.Received(1).RunWindowsTool(
+            Arg.Any<GameInstallation>(), Exe, Arg.Any<IReadOnlyList<string>>(), null, true, Arg.Any<CancellationToken>(), ToolRunVia.Umu);
+    }
+
+    [Fact]
+    public async Task WindowsTool_WhoseRunnerThrowsAfterThePlan_PassesTheRunnersMessageOnUnchanged()
+    {
+        StubRunners();
+        _toolRunner.RunWindowsTool(default!, default, default!, default, default, default, default)
+            .ReturnsForAnyArgs(_ => Task.FromException<ToolRunResult>(new InvalidOperationException("No Wine prefix was found.")));
+        var loadout = await CreateLoadout();
+
+        var act = () => Tool(Editor()).Execute(loadout, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("No Wine prefix was found.");
     }
 
     [Fact]
