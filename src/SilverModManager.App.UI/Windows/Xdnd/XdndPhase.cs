@@ -11,4 +11,7 @@ public enum XdndPhase
 
     /// <summary>The file list has been requested and a Status is owed to the source until it arrives.</summary>
     FetchingData,
+
+    /// <summary>The window has the file list and has been told of the drag; positions go to it.</summary>
+    Ready,
 }

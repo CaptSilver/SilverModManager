@@ -8,7 +8,7 @@ namespace SilverModManager.App.UI.Windows.Xdnd;
 /// IStorageItem can't be implemented outside Avalonia (it is sealed to client code in 11.3), so the items come
 /// from a real <see cref="IStorageProvider"/>, i.e. the window's own. That makes creation async.
 /// </summary>
-public sealed class FileDropData(IStorageProvider storage)
+public sealed class FileDropData(IStorageProvider storage) : IFileDropFactory
 {
     /// <summary>Items in path order. A path that doesn't exist, or isn't absolute, is left out and listed in <see cref="FileDrop.Missing"/>.</summary>
     public async Task<FileDrop> CreateAsync(IReadOnlyList<string> paths)

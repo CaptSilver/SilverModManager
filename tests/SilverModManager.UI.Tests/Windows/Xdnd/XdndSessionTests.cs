@@ -5,46 +5,11 @@ using SilverModManager.App.UI.Windows.Xdnd;
 namespace SilverModManager.UI.Tests.Windows.Xdnd;
 
 /// <summary>
-/// Enter and Position handling of one window's XDND conversation, against a scripted transport. The sink and the
-/// data half of the conversation belong to later tests.
+/// Enter and Position handling of one window's XDND conversation, against a scripted transport. Getting the data
+/// and what follows it is in <see cref="XdndSessionDataTests"/>.
 /// </summary>
-public class XdndSessionTests
+public class XdndSessionTests : XdndSessionTestBase
 {
-    private const nint Target = 500;
-    private const nint Source = 600;
-    private const nint OtherSource = 601;
-
-    private readonly FakeXTransport _x = new();
-    private readonly RecordingLogger _log = new();
-    private readonly XdndAtoms _atoms;
-    private readonly XdndSession _session;
-
-    public XdndSessionTests()
-    {
-        _atoms = new XdndAtoms(_x);
-        _session = new XdndSession(Target, _x, _atoms, _log);
-    }
-
-    private static nint Version5 => (nint)5 << 24;
-
-    private XIncomingEvent.ClientMessage Enter(nint source, nint flags, params nint[] types) =>
-        new(Target, _atoms.XdndEnter, 32, source, flags, Slot(types, 0), Slot(types, 1), Slot(types, 2));
-
-    private static nint Slot(nint[] types, int index) => index < types.Length ? types[index] : 0;
-
-    private XIncomingEvent.ClientMessage Position(nint source, int rootX, int rootY, nint time = 0, nint action = 0) =>
-        new(Target, _atoms.XdndPosition, 32, source, 0, ((nint)rootX << 16) | (nint)(rootY & 0xFFFF), time,
-            action == 0 ? _atoms.XdndActionCopy : action);
-
-    private void EnterWithFiles(nint source = Source) => _session.Handle(Enter(source, Version5, _atoms.TextUriList));
-
-    private SentClientMessage OnlyStatus()
-    {
-        var status = _x.SentMessages.Should().ContainSingle().Subject;
-        status.MessageType.Should().Be(_atoms.XdndStatus);
-        return status;
-    }
-
     [Fact]
     public void ASessionStartsIdle() => _session.Phase.Should().Be(XdndPhase.Idle);
 
@@ -266,12 +231,5 @@ public class XdndSessionTests
 
         _x.Calls.Should().BeEmpty();
         _session.Phase.Should().Be(XdndPhase.Idle);
-    }
-
-    private static XProperty LongsProperty(params nint[] values)
-    {
-        var bytes = new byte[values.Length * sizeof(long)];
-        for (var i = 0; i < values.Length; i++) BitConverter.GetBytes((long)values[i]).CopyTo(bytes, i * sizeof(long));
-        return new XProperty(4, 32, bytes);
     }
 }
