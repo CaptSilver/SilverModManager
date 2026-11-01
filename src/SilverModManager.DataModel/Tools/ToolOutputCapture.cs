@@ -109,17 +109,32 @@ public class ToolOutputCapture(IConnection connection, IFileStore fileStore)
         return true;
     }
 
+    // Only a group this class made: a plain group with a name, nothing else. A collection, a mod from the library or
+    // the overrides group can carry the same name (MO2 users name a mod "DynDOLOD Output"), and replacing the items
+    // of one of those would delete the mods inside it.
     private static LoadoutItemGroup.ReadOnly? FindGroup(IDb db, LoadoutId loadoutId, string groupName)
     {
         foreach (var group in LoadoutItem.FindByLoadout(db, loadoutId).OfTypeLoadoutItemGroup())
         {
             var item = group.AsLoadoutItem();
             if (item.HasParent() || item.Name != groupName) continue;
-            if (group.TryGetAsLoadoutOverridesGroup(out _)) continue;
-            return group;
+            if (IsPlainGroup(db, group)) return group;
         }
 
         return null;
+    }
+
+    private static bool IsPlainGroup(IDb db, LoadoutItemGroup.ReadOnly group)
+    {
+        var itemNamespace = LoadoutItem.Name.Id.Namespace;
+        foreach (var datom in db.Get(group.Id))
+        {
+            var attribute = db.AttributeCache.GetSymbol(datom.A);
+            if (attribute.Namespace == itemNamespace || attribute == LoadoutItemGroup.Group.Id) continue;
+            return false;
+        }
+
+        return true;
     }
 
     private static List<(RelativePath Relative, AbsolutePath Source)> ReadFolder(AbsolutePath folder, IReadOnlyList<string> ignored)

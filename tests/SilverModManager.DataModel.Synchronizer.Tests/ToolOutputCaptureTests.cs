@@ -161,4 +161,51 @@ public class ToolOutputCaptureTests(ITestOutputHelper helper) : ACyberpunkIsolat
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage($"*{GroupName}*");
         FilesOf(GroupsNamed(Refresh(loadout), GroupName)).Should().ContainSingle();
     }
+
+    private async Task<(CollectionGroup.ReadOnly Collection, LoadoutItemGroupId Mod)> CollectionNamedLikeTheOutput(Loadout.ReadOnly loadout)
+    {
+        var collection = await CreateCollection(loadout.LoadoutId, GroupName);
+        using var tx = Connection.BeginTransaction();
+        var mod = SilverModManager.DataModel.LoadoutManager.AddEmptyGroup(tx, loadout.LoadoutId, "Mod in the collection", LoadoutItemGroupId.From(collection.Id));
+        var result = await tx.Commit();
+        return (collection, result[mod]);
+    }
+
+    [Fact]
+    public async Task ACollectionWithTheSameNameIsNeitherEmptiedNorReused()
+    {
+        var loadout = await CreateLoadout();
+        var (collection, mod) = await CollectionNamedLikeTheOutput(loadout);
+
+        var result = await Capture.CaptureFolder(Refresh(loadout), OutputFolder(("meshes/a.nif", "mesh")), Data, GroupName, []);
+
+        result.Group.Value.Should().NotBe(collection.Id);
+        Refresh(collection).AsLoadoutItemGroup().Children.Select(c => c.Id).Should().Equal(mod.Value);
+        LoadoutItem.FindByLoadout(Connection.Db, loadout.LoadoutId).Count(i => i.Name == GroupName).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ACollectionWithTheSameNameStaysOnWhenTheOutputIsSwitchedOff()
+    {
+        var loadout = await CreateLoadout();
+        var (collection, _) = await CollectionNamedLikeTheOutput(loadout);
+        var result = await Capture.CaptureFolder(Refresh(loadout), OutputFolder(("a.esp", "x")), Data, GroupName, []);
+
+        (await Capture.SetEnabled(loadout.LoadoutId, GroupName, enabled: false)).Should().BeTrue();
+
+        Refresh(collection).AsLoadoutItemGroup().AsLoadoutItem().IsDisabled.Should().BeFalse();
+        LoadoutItem.Load(Connection.Db, result.Group.Value).IsDisabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ACaptureAfterACollectionOfThatNameReusesItsOwnGroup()
+    {
+        var loadout = await CreateLoadout();
+        await CollectionNamedLikeTheOutput(loadout);
+        var first = await Capture.CaptureFolder(Refresh(loadout), OutputFolder(("a.esp", "one")), Data, GroupName, []);
+
+        var second = await Capture.CaptureFolder(Refresh(loadout), OutputFolder(("b.esp", "two")), Data, GroupName, []);
+
+        second.Group.Should().Be(first.Group);
+    }
 }

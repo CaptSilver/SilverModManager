@@ -97,6 +97,24 @@ public class ToolRunOutputTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
     }
 
     [Fact]
+    public async Task ACancelledRunSwitchesTheOldOutputBackOn()
+    {
+        var loadout = await LoadoutWithAppliedOutput("first");
+        using var cts = new CancellationTokenSource();
+        var tool = new OutputTool(loadout.Game.GameId, disableOwn: true, _ =>
+        {
+            cts.Cancel();
+            cts.Token.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        });
+
+        var act = () => Manager(tool).RunTool(tool, loadout, ServiceProvider.GetRequiredService<IJobMonitor>(), cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        IsDisabled(loadout).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task AToolThatDoesNotAskLeavesItsGroupAlone()
     {
         var loadout = await LoadoutWithAppliedOutput("first");
