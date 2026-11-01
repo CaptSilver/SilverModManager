@@ -475,7 +475,6 @@ public sealed class ArchiveAcquirer(
             yield return (domain, ModId.From((uint)nexus.ModId), FileId.From((uint)nexus.FileId));
     }
 
-    /// <summary>Where the user can get the archive themselves when the app could not.</summary>
     /// <summary>
     /// What the row shows once its download failed. A row the list gave through the Manual downloader keeps the list's
     /// prompt beside the reason, so the user is told what the list asked for as well as what went wrong.
@@ -483,6 +482,7 @@ public sealed class ArchiveAcquirer(
     private static string FailureReason(ArchivePlanRow row, string reason)
         => row.Archive.State is ManualState { Prompt: { Length: > 0 } prompt } ? $"{reason}. The list says: {prompt}" : reason;
 
+    /// <summary>Where the user can get the archive themselves when the app could not.</summary>
     private static Uri? OriginalUrl(ArchivePlanRow row) => row.Page ?? row.Archive.State switch
     {
         ManualState manual => manual.Url,
