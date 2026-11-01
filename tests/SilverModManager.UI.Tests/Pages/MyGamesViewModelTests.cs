@@ -19,6 +19,8 @@ using SilverModManager.Sdk.Settings;
 using NSubstitute;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
@@ -178,28 +180,63 @@ public class MyGamesViewModelTests(IServiceProvider provider) : AUiTest(provider
         }
     }
 
-    [Fact]
-    public async Task RemoveGame_DeletesOnlyThisGamesFiles_KeepsTheShared_AndPreviewsBoth()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RemoveGame_UnmanagesFirst_ThenDeletesOnlyThisGamesFiles_AndKeepsTheShared(bool deleteDownloads)
     {
-        var game = GameId.From("remove-game-" + Guid.NewGuid().ToString("N"));
+        // The library is shared across the cases, so each one removes a different game.
+        var igame = Provider.GetServices<IGameData>().OfType<IGame>().Skip(deleteDownloads ? 0 : 1).First();
+        var game = igame.GameId;
         var sibling = GameId.From("remove-sibling-" + Guid.NewGuid().ToString("N"));
         var onlyMine = await AddLocalFile("only-mine.7z", Destination.Of(game));
         var shared = await AddLocalFile("shared.7z", new Destination(ImmutableHashSet.Create(game, sibling), Shared: false));
-        var files = new[] { onlyMine, shared }.Select(id => LibraryFile.Load(Connection.Db, id)).ToArray();
-        var library = Provider.GetRequiredService<ILibraryService>();
 
-        var removal = GameFileRemoval.Plan(Connection.Db, files, game);
+        // The game's own files must still be there when its loadouts are removed: UnManage comes first, and
+        // taking the game off a shared item is refused while a loadout still has it installed.
+        var calls = new List<string>();
+        var sync = Substitute.For<ISynchronizerService>();
+        sync.UnManage(Arg.Any<GameInstallation>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<BackupOverflowChoice?>()).Returns(_ =>
+        {
+            calls.Add("unmanage");
+            LibraryItem.Load(Connection.Db, onlyMine).IsValid().Should().BeTrue("nothing is deleted before the loadouts are removed");
+            LibraryDestinations.GamesOf(LibraryItem.Load(Connection.Db, shared)).Should().BeEquivalentTo([game, sibling]);
+            return Task.CompletedTask;
+        });
 
-        removal.FilesToDelete.Select(file => file.Id).Should().Equal(onlyMine);
-        removal.SharedItems.Select(item => item.Id).Should().Equal(shared);
-        removal.TotalSize.Should().Be(files[0].Size);
+        var registry = Substitute.For<IGameRegistry>();
+        registry.LocateGameInstallations().Returns(ImmutableArray<GameInstallation>.Empty);
+        registry.Problems.Returns(ImmutableArray<GameLocatorProblem>.Empty);
+        var viewModel = await OnUi(() => Task.FromResult(ActivatorUtilities.CreateInstance<MyGamesViewModel>(Provider, Provider, registry, sync)));
 
-        await removal.Apply(library);
+        var installation = new GameInstallation(
+            new GameLocatorResult
+            {
+                Game = igame,
+                Path = FileSystem.Shared.FromUnsanitizedFullPath("/games/removed"),
+                Store = GameStore.ManuallyAdded,
+                StoreIdentifier = "1",
+                LocatorIds = ImmutableArray<LocatorId>.Empty,
+                Locator = Substitute.For<IGameLocator>(),
+            },
+            GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty));
 
-        LibraryItem.Load(Connection.Db, onlyMine).IsValid().Should().BeFalse("the game's own file is deleted");
+        var removal = viewModel.PlanFileRemoval(installation);
+        var overlay = MyGamesViewModel.CreateRemoveOverlay(installation, removal, default, []);
+
+        overlay.GameName.Should().Be(igame.DisplayName);
+        overlay.NumDownloads.Should().Be(1);
+        overlay.NumKeptForOtherGames.Should().Be(1);
+        overlay.SumDownloadsSize.Should().Be(LibraryFile.Load(Connection.Db, onlyMine).Size);
+
+        await viewModel.RemoveGame(installation, deleteDownloads, removal, []);
+
+        calls.Should().Equal("unmanage");
+        var onlyMineAfter = LibraryItem.Load(Connection.Db, onlyMine).IsValid();
+        onlyMineAfter.Should().Be(!deleteDownloads, "the game's own file goes only when downloads are deleted");
         var kept = LibraryItem.Load(Connection.Db, shared);
         kept.IsValid().Should().BeTrue("another game still uses it");
-        LibraryDestinations.GamesOf(kept).Should().BeEquivalentTo([sibling]);
+        LibraryDestinations.GamesOf(kept).Should().BeEquivalentTo(deleteDownloads ? [sibling] : new[] { game, sibling });
     }
 
     private async Task<EntityId> AddLocalFile(string name, Destination destination)

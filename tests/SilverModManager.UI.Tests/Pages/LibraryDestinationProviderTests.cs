@@ -473,7 +473,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     }
 
     [Fact]
-    public async Task FilesOnlyForGame_KeepsAFileAnotherGameStillUses_OutOfTheDeletion()
+    public async Task GameFileRemovalPlan_KeepsAFileAnotherGameStillUses_OutOfTheDeletion()
     {
         var (game, sibling) = NewPair();
         var onlyMine = await AddLocalFile("only-mine.7z", Destination.Of(game.GameId));

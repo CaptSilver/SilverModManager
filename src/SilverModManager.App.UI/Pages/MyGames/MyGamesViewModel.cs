@@ -95,7 +95,6 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
         ISynchronizerService syncService,
         IGameRegistry gameRegistry) : base(windowManager)
     {
-        var libraryDataProviders = serviceProvider.GetServices<ILibraryDataProvider>().ToArray();
 
         _collectionDownloader = serviceProvider.GetRequiredService<CollectionDownloader>();
         _libraryService = serviceProvider.GetRequiredService<ILibraryService>();
@@ -152,10 +151,7 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                                 if (GetJobRunningForGameInstallation(installation).IsT2) return;
 
                                 // Files another game still uses stay in the library with this game taken off them.
-                                var fileRemoval = GameFileRemoval.Plan(
-                                    conn.Db,
-                                    libraryDataProviders.SelectMany(dataProvider => dataProvider.GetAllFiles(installation.Game.GameId)),
-                                    installation.Game.GameId);
+                                var fileRemoval = PlanFileRemoval(installation);
 
                                 var collections = installation.Game.CollectionsOf(conn.Db);
                                 var unbacked = default(UnbackedFiles);
@@ -169,15 +165,7 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                                     logger.LogWarning(e, "Counting the files without a backup copy failed for {Game}", installation.Game.DisplayName);
                                 }
 
-                                var overlay = new RemoveGameOverlayViewModel
-                                {
-                                    Unbacked = unbacked,
-                                    GameName = installation.Game.DisplayName,
-                                    NumDownloads = fileRemoval.FilesToDelete.Length,
-                                    SumDownloadsSize = fileRemoval.TotalSize,
-                                    NumKeptForOtherGames = fileRemoval.SharedItems.Length,
-                                    NumCollections = collections.Length,
-                                };
+                                var overlay = CreateRemoveOverlay(installation, fileRemoval, unbacked, collections);
 
                                 var result = await overlayController.EnqueueAndWait(overlay);
                                 if (!result.ShouldRemoveGame) return;
@@ -349,7 +337,28 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
         return OneOf<None, CreateLoadoutJob, UnmanageGameJob>.FromT0(new None());
     }
 
-    private async Task RemoveGame(GameInstallation installation, bool shouldDeleteDownloads, GameFileRemoval fileRemoval, CollectionMetadata.ReadOnly[] collections, bool cleanGameFolder = true)
+    internal GameFileRemoval PlanFileRemoval(GameInstallation installation)
+    {
+        var gameId = installation.Game.GameId;
+        var files = _serviceProvider.GetServices<ILibraryDataProvider>().SelectMany(dataProvider => dataProvider.GetAllFiles(gameId));
+        return GameFileRemoval.Plan(_connection.Db, files, gameId);
+    }
+
+    internal static RemoveGameOverlayViewModel CreateRemoveOverlay(
+        GameInstallation installation,
+        GameFileRemoval fileRemoval,
+        UnbackedFiles unbacked,
+        CollectionMetadata.ReadOnly[] collections) => new()
+    {
+        Unbacked = unbacked,
+        GameName = installation.Game.DisplayName,
+        NumDownloads = fileRemoval.FilesToDelete.Length,
+        SumDownloadsSize = fileRemoval.TotalSize,
+        NumKeptForOtherGames = fileRemoval.SharedItems.Length,
+        NumCollections = collections.Length,
+    };
+
+    internal async Task RemoveGame(GameInstallation installation, bool shouldDeleteDownloads, GameFileRemoval fileRemoval, CollectionMetadata.ReadOnly[] collections, bool cleanGameFolder = true)
     {
         await _syncService.UnManage(installation, cleanGameFolder: cleanGameFolder);
 
