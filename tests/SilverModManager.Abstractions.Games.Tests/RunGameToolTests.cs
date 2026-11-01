@@ -87,6 +87,21 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
     }
 
     [Fact]
+    public async Task NonGenericTool_LaunchesTheGameItIsGivenThroughSteam()
+    {
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+        IGame game = Game;
+        var tool = new RunGameTool(ServiceProvider, game);
+
+        await tool.Execute(loadout, _cts.Token, null);
+
+        tool.GameIds.Should().Equal(game.GameId);
+        tool.Name.Should().Be($"Run {game.DisplayName}");
+        var appId = GameInstallation.LocatorResult.StoreIdentifier;
+        _openedUris.Should().ContainSingle().Which.Should().Be(new Uri($"steam://run/{appId}"));
+    }
+
+    [Fact]
     public async Task ExtraArgs_NeverReachTheSteamUrl()
     {
         var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());

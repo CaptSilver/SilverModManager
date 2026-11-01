@@ -39,12 +39,14 @@ public interface IRunGameTool : ITool
 /// <summary>
 /// A tool that launches the game, using first found installation.
 /// </summary>
-/// <typeparam name="T"></typeparam>
-public class RunGameTool<T> : IRunGameTool
-    where T : IGame
+/// <remarks>
+/// Takes the game as an instance, so a game built from a data record, which has no type of its own, can have one.
+/// <see cref="RunGameTool{T}"/> is the same tool for a game that is a registered type.
+/// </remarks>
+public class RunGameTool : IRunGameTool
 {
-    private readonly ILogger<RunGameTool<T>> _logger;
-    private readonly T _game;
+    private readonly ILogger _logger;
+    private readonly IGame _game;
     private readonly IProcessRunner _processRunner;
     private readonly IToolRunner _toolRunner;
     private readonly IPrefixResolver _prefixResolver;
@@ -97,11 +99,19 @@ public class RunGameTool<T> : IRunGameTool
     /// <summary>
     /// Constructor
     /// </summary>
-    public RunGameTool(IServiceProvider serviceProvider, T game)
+    public RunGameTool(IServiceProvider serviceProvider, IGame game)
+        : this(serviceProvider, game, serviceProvider.GetRequiredService<ILogger<RunGameTool>>())
+    {
+    }
+
+    /// <summary>
+    /// For a subclass that wants its own log category.
+    /// </summary>
+    protected RunGameTool(IServiceProvider serviceProvider, IGame game, ILogger logger)
     {
         _game = game;
         _serviceProvider = serviceProvider;
-        _logger = serviceProvider.GetRequiredService<ILogger<RunGameTool<T>>>();
+        _logger = logger;
         _processRunner = serviceProvider.GetRequiredService<IProcessRunner>();
         _toolRunner = serviceProvider.GetRequiredService<IToolRunner>();
         _prefixResolver = serviceProvider.GetRequiredService<IPrefixResolver>();
@@ -469,6 +479,15 @@ public class RunGameTool<T> : IRunGameTool
         });
     }
 }
+
+/// <summary>
+/// <see cref="RunGameTool"/> for a game that is a registered type. Subclasses of this are the tools that add
+/// launch behaviour (a script extender, a launcher) to one game.
+/// </summary>
+/// <typeparam name="T">The game; its log category is this tool's.</typeparam>
+public class RunGameTool<T>(IServiceProvider serviceProvider, T game)
+    : RunGameTool(serviceProvider, game, serviceProvider.GetRequiredService<ILogger<RunGameTool<T>>>())
+    where T : IGame;
 
 internal static class LaunchPlatform
 {
