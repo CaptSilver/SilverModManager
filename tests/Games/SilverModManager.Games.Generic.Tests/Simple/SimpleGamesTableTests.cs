@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
@@ -66,7 +67,8 @@ public class SimpleGamesTableTests(IServiceProvider serviceProvider, IFileSystem
     }
 
     // What the Steam launch entry for Linux names, from the app info of each Steam app. Every game here has a Linux
-    // build on Steam; the ones left out have no Linux launch entry, or keep their mods outside the game folder.
+    // build on Steam; the ones left out have no Linux launch entry, or keep their mods outside the game folder with
+    // no place for the native build's mods confirmed.
     public static readonly (string GameId, string Executable)[] NativeExecutables =
     [
         ("Simple.DarkestDungeon", "_linux/darkest.bin.x86_64"),
@@ -76,6 +78,14 @@ public class SimpleGamesTableTests(IServiceProvider serviceProvider, IFileSystem
         ("Simple.X4Foundations", "testandlaunch"),
         ("Simple.ShadowrunReturns", "Shadowrun"),
         ("Simple.OxygenNotIncluded", "OxygenNotIncluded"),
+        ("Simple.NeverwinterNightsEnhancedEdition", "bin/linux-x86/nwmain-linux"),
+    ];
+
+    // Where the native build of a game with a mod root outside the game folder keeps its mods; the Windows folder
+    // the row's ModRoot names does not exist for it.
+    public static readonly (string GameId, string Folder)[] NativeDataFolders =
+    [
+        ("Simple.NeverwinterNightsEnhancedEdition", "Neverwinter Nights"),
     ];
 
     [Fact]
@@ -87,13 +97,15 @@ public class SimpleGamesTableTests(IServiceProvider serviceProvider, IFileSystem
     }
 
     [Fact]
-    public void ARootOutsideTheGameFolder_HasNoNativeExecutable()
+    public void ARootOutsideTheGameFolder_WithANativeExecutable_NamesWhereTheNativeBuildKeepsMods()
     {
         // A native build keeps its Documents and AppData data in the user's Linux folders, not the Windows paths a
-        // row names, so the mod folder would be wrong for it.
-        Rows.Where(row => row.ModRoot.Root != ModLocationRoot.GameFolder)
-            .Where(row => row.NativeLinuxExecutable is not null)
-            .Select(row => row.GameId.ToString()).Should().BeEmpty();
+        // row names, so without its own folder the mods would be deployed where the game never looks.
+        Rows.Where(row => row.ModRoot.Root != ModLocationRoot.GameFolder && row.NativeLinuxExecutable is not null)
+            .Select(row => (row.GameId.ToString(), row.NativeLinuxDataFolder?.ToString()))
+            .Should().BeEquivalentTo(NativeDataFolders.Select(native => (native.GameId, (string?)native.Folder)));
+        Rows.Where(row => row.NativeLinuxDataFolder is not null)
+            .Should().OnlyContain(row => row.NativeLinuxExecutable != null && row.ModRoot.Root != ModLocationRoot.GameFolder);
     }
 
     [Fact]
@@ -188,7 +200,12 @@ public class SimpleGamesTableTests(IServiceProvider serviceProvider, IFileSystem
 
     private UniversalStubbedGameLocator LocatorFor(SimpleGameDefinition row, Dictionary<RelativePath, byte[]>? files = null) => new(
         serviceProvider, fileSystem, fileManager, _ => new SimpleGame(serviceProvider, row), row.GameId.ToString(), files,
-        locationsFileSystem: IsolatedKnownFolders.Create(serviceProvider));
+        locationsFileSystem: IsolatedKnownFolders.Create(serviceProvider))
+    {
+        // A Proton build, so a known folder lands in the fixture's prefix rather than in the real home's Linux folders.
+        Platform = OSPlatform.Windows,
+        WinePrefixPath = fileManager.CreateFolder("wine-prefix").Path,
+    };
 
     private GameLocatorResult Located(SimpleGameDefinition row)
     {

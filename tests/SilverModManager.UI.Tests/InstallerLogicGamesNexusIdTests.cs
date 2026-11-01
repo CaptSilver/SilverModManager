@@ -18,7 +18,6 @@ public class InstallerLogicGamesNexusIdTests(IServiceProvider provider)
 
     [Theory]
     [InlineData("Simple.KnightsOfTheOldRepublic", 234u)]
-    [InlineData("Simple.KnightsOfTheOldRepublic2", 198u)]
     [InlineData("Simple.NeverwinterNightsEnhancedEdition", 180u)]
     [InlineData("Simple.TheSims4", 641u)]
     public void NxmRoutingPicksEachGameByItsOwnNexusId(string gameId, uint nexusId)

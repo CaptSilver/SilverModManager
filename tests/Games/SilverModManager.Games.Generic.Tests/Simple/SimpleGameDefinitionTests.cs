@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NexusMods.Paths;
+using NSubstitute;
 using SilverModManager.Games.Generic.Simple;
 using SilverModManager.Games.TestFramework.Helpers;
 using SilverModManager.Sdk.Games;
@@ -47,6 +48,45 @@ public class SimpleGameDefinitionTests
 
         // Removing a loadout deletes what is mapped, so saves must never be reachable through a mod root.
         definition.GetLocations(prefix.GameFileSystem, prefix.LocatorResult()).Should().NotContainKey(LocationId.Saves);
+    }
+
+    [Fact]
+    public void ANativeBuild_WithANativeDataFolder_MapsTheModRootBelowTheXdgDataFolder()
+    {
+        var host = new InMemoryFileSystem(OSInformation.FakeUnix);
+        var definition = SimpleDefinitions.With(new ModLocation(ModLocationRoot.Documents, "Windows Folder")) with
+        {
+            NativeLinuxExecutable = (RelativePath)"bin/game-linux",
+            NativeLinuxDataFolder = (RelativePath)"My Game",
+        };
+        var result = new GameLocatorResult
+        {
+            Game = Substitute.For<IGameData>(),
+            Path = host.FromUnsanitizedFullPath("/steam/steamapps/common/Game"),
+            Store = GameStore.Steam,
+            StoreIdentifier = "1",
+            LocatorIds = [],
+            Locator = Substitute.For<IGameLocator>(),
+        };
+
+        var locations = definition.GetLocations(host, result);
+
+        locations[SimpleLocations.Documents].Should().Be(host.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine("My Game"));
+    }
+
+    [Fact]
+    public void AProtonBuild_WithANativeDataFolder_StillUsesTheWindowsFolder()
+    {
+        var prefix = ProtonTestPrefix.Create();
+        var definition = SimpleDefinitions.With(new ModLocation(ModLocationRoot.Documents, "Windows Folder")) with
+        {
+            NativeLinuxExecutable = (RelativePath)"bin/game-linux",
+            NativeLinuxDataFolder = (RelativePath)"My Game",
+        };
+
+        var locations = definition.GetLocations(prefix.GameFileSystem, prefix.LocatorResult());
+
+        locations[SimpleLocations.Documents].Should().Be(prefix.Home.Combine("Documents").Combine("Windows Folder"));
     }
 
     [Fact]

@@ -26,6 +26,13 @@ public sealed record SimpleGameDefinition : IGameDefinition
 
     public required ModLocation ModRoot { get; init; }
 
+    /// <summary>
+    /// Where the native Linux build keeps what <see cref="ModRoot"/> names for the Windows build, as a folder below the
+    /// user's XDG data folder. Needed with <see cref="NativeLinuxExecutable"/> when the root is outside the game folder:
+    /// the native game never reads the Windows path, which only exists inside a Proton prefix.
+    /// </summary>
+    public RelativePath? NativeLinuxDataFolder { get; init; }
+
     public required SimpleInstallRules Install { get; init; }
 
     /// <summary>
@@ -47,7 +54,13 @@ public sealed record SimpleGameDefinition : IGameDefinition
         var locations = ImmutableDictionary.CreateBuilder<LocationId, AbsolutePath>();
         locations.Add(LocationId.Game, gameLocatorResult.Path);
         if (ModRoot.Root != ModLocationRoot.GameFolder)
-            locations.Add(SimpleLocations.For(ModRoot.Root), fileSystem.GetKnownPath(SimpleLocations.KnownFolderOf(ModRoot.Root)).Combine(ModRoot.Folder));
+            locations.Add(SimpleLocations.For(ModRoot.Root), ModFolder(fileSystem, gameLocatorResult));
         return locations.ToImmutable();
     }
+
+    // A build without a prefix is the native one: the locator gives a Proton build the prefix its Windows folders are in.
+    private AbsolutePath ModFolder(IFileSystem fileSystem, GameLocatorResult gameLocatorResult) =>
+        NativeLinuxDataFolder is { } nativeFolder && gameLocatorResult is { WinePrefixPath: null }
+            ? fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine(nativeFolder)
+            : fileSystem.GetKnownPath(SimpleLocations.KnownFolderOf(ModRoot.Root)).Combine(ModRoot.Folder);
 }

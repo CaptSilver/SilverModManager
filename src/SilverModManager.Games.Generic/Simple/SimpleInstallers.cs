@@ -56,6 +56,7 @@ public static class SimpleInstallers
                     DestinationGamePath = modRoot.ToGamePath(target.Destination),
                     KnownSourceFolderNames = target.KnownSourceFolderNames,
                     Names = target.KnownSubfolderNames,
+                    InstallOnlyBelowNames = target.InstallOnlyBelowKnownSubfolders,
                     KnownValidFileExtensions = target.KnownValidFileExtensions,
                     FileExtensionsToDiscard = target.FileExtensionsToDiscard,
                 }).ToArray(),

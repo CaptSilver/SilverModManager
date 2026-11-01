@@ -28,6 +28,12 @@ public class InstallFolderTarget : IModInstallDestination
     public IEnumerable<RelativePath> Names { get; init; } = [];
 
     /// <summary>
+    /// With <see cref="Names"/>: only files inside one of those folders are installed, so a file beside them (a readme,
+    /// a setup program) stays out. Without it everything under the archive's root comes along.
+    /// </summary>
+    public bool InstallOnlyBelowNames { get; init; }
+
+    /// <summary>
     /// List of known recognizable file extensions for direct children of the target <see cref="DestinationGamePath"/>.
     /// NOTE: Only include file extensions that are only likely to appear at this level of the folder hierarchy.
     /// </summary>

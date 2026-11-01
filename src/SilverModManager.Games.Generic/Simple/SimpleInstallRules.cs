@@ -79,6 +79,12 @@ public sealed record SimpleInstallTarget
     /// </summary>
     public IReadOnlyList<RelativePath> KnownSubfolderNames { get; init; } = [];
 
+    /// <summary>
+    /// Only files inside one of <see cref="KnownSubfolderNames"/> are installed; files beside those folders are left out.
+    /// For games whose manager copies the game's own folders and nothing else.
+    /// </summary>
+    public bool InstallOnlyBelowKnownSubfolders { get; init; }
+
     /// <summary>Extensions of files that belong directly in this folder.</summary>
     public IReadOnlyList<Extension> KnownValidFileExtensions { get; init; } = [];
 

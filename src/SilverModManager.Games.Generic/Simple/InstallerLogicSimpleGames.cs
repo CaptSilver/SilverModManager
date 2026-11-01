@@ -22,7 +22,6 @@ public static class InstallerLogicSimpleGames
         "data", "lips", "miles", "modules", "movies", "override", "rims", "saves", "streammusic", "streamsounds", "streamvoice", "streamwaves", "texturepack",
     ];
 
-    // Vortex installs only what lies at or below one of those folders, so a readme beside them stays out.
     // Folders a Neverwinter Nights archive may already be laid out in, from Vortex's list of moddable directories.
     private static readonly string[] NeverwinterFolders =
     [
@@ -57,6 +56,7 @@ public static class InstallerLogicSimpleGames
         Flat("Tray", ".bpi", ".blueprint", ".trayitem", ".sfx", ".ion", ".householdbinary", ".sgi", ".hhi", ".room", ".midi", ".rmi"),
     ];
 
+    // Vortex installs only what lies at or below one of those folders, so a readme beside them stays out.
     private static SimpleInstallRules Kotor => new()
     {
         Targets =
@@ -66,21 +66,24 @@ public static class InstallerLogicSimpleGames
                 Destination = RelativePath.Empty,
                 KnownSubfolderNames = KotorFolders.Select(folder => (RelativePath)folder).ToArray(),
                 FileExtensionsToDiscard = [KnownExtensions.Txt, KnownExtensions.Md, KnownExtensions.Pdf, KnownExtensions.Png, KnownExtensions.Jpg],
+                InstallOnlyBelowKnownSubfolders = true,
             },
         ],
         InstallAsIs = true,
         InstallAsIsDestination = "override",
         Refusals =
         [
-            new SimpleRefusalRule
-            {
-                FileName = "TSLPatcher.exe",
-                Reason = "This is TSLPatcher itself, a separate program that patches the game's files and has to be run on its own. This app only copies files, so it can't install it.",
-            },
+            // First: a mod that ships TSLPatcher beside its tslpatchdata folder is the common case, and wants the installer, not
+            // the message for the patcher download itself.
             new SimpleRefusalRule
             {
                 FolderName = "tslpatchdata",
                 Reason = "This mod is installed by running TSLPatcher, which patches the game's files. This app only copies files, so it can't install it. Run the mod's own installer instead.",
+            },
+            new SimpleRefusalRule
+            {
+                FileName = "TSLPatcher.exe",
+                Reason = "This is TSLPatcher itself, a separate program that patches the game's files and has to be run on its own. This app only copies files, so it can't install it.",
             },
         ],
     };
@@ -97,20 +100,9 @@ public static class InstallerLogicSimpleGames
         Install = Kotor,
     };
 
-    /// <remarks>From Vortex. Steam launch entry 0 of app 208580 is swkotor2.exe; the Linux entry is a separate port.</remarks>
-    public static readonly SimpleGameDefinition KnightsOfTheOldRepublic2 = new()
-    {
-        GameId = GameId.From("Simple.KnightsOfTheOldRepublic2"),
-        DisplayName = "Star Wars: Knights of the Old Republic II - The Sith Lords",
-        NexusModsGameId = NexusModsGameId.From(198),
-        Stores = new StoreIdentifiers(GameId.From("Simple.KnightsOfTheOldRepublic2")) { SteamAppIds = [208580], GOGProductIds = [1421404581] },
-        Executable = "swkotor2.exe",
-        ModRoot = new ModLocation(ModLocationRoot.GameFolder, RelativePath.Empty),
-        Install = Kotor,
-    };
-
     /// <remarks>
-    /// From Vortex's game-neverwinter-nights. Steam launch entry 0 of app 704450 is bin/win32/nwmain.exe. Nexus lists
+    /// From Vortex's game-neverwinter-nights. Steam launch entry 0 of app 704450 is bin/win32/nwmain.exe and entry 2, for Linux, is bin/linux-x86/nwmain-linux.
+    /// The native build keeps the same folder under ~/.local/share, the default user directory Beamdog lists for Linux. Nexus lists
     /// two games under the domain "neverwinter": id 180 is Neverwinter Nights, 8703 is the online game.
     /// </remarks>
     public static readonly SimpleGameDefinition NeverwinterNightsEnhancedEdition = new()
@@ -120,6 +112,8 @@ public static class InstallerLogicSimpleGames
         NexusModsGameId = NexusModsGameId.From(180),
         Stores = new StoreIdentifiers(GameId.From("Simple.NeverwinterNightsEnhancedEdition")) { SteamAppIds = [704450] },
         Executable = "bin/win32/nwmain.exe",
+        NativeLinuxExecutable = (RelativePath)"bin/linux-x86/nwmain-linux",
+        NativeLinuxDataFolder = (RelativePath)"Neverwinter Nights",
         ModRoot = new ModLocation(ModLocationRoot.Documents, "Neverwinter Nights"),
         LocationNames = Named(ModLocationRoot.Documents, "Neverwinter Nights folder"),
         LocationSentenceNames = Named(ModLocationRoot.Documents, "the Neverwinter Nights folder in Documents"),
@@ -151,5 +145,5 @@ public static class InstallerLogicSimpleGames
     private static IReadOnlyDictionary<string, string> Named(ModLocationRoot root, string name) =>
         ImmutableDictionary.CreateRange([KeyValuePair.Create(SimpleLocations.For(root).ToString(), name)]);
 
-    public static readonly IReadOnlyList<SimpleGameDefinition> All = [KnightsOfTheOldRepublic, KnightsOfTheOldRepublic2, NeverwinterNightsEnhancedEdition, TheSims4];
+    public static readonly IReadOnlyList<SimpleGameDefinition> All = [KnightsOfTheOldRepublic, NeverwinterNightsEnhancedEdition, TheSims4];
 }

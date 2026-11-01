@@ -94,12 +94,10 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
         // A folder of the game's own marks a root mod, wrapper folders above it are dropped; anything else goes in Override.
         ("Simple.KnightsOfTheOldRepublic", ["Override/a.tga", "readme.txt"], ["{Game}/Override/a.tga"]),
         ("Simple.KnightsOfTheOldRepublic", ["Wrap/StreamMusic/x.wav", "Wrap/modules/m.rim"], ["{Game}/StreamMusic/x.wav", "{Game}/modules/m.rim"]),
+        // Only what lies in one of those folders is part of the mod: a file beside them is not copied into the game folder.
+        ("Simple.KnightsOfTheOldRepublic", ["Wrap/Override/a.tga", "Wrap/notes.rtf", "Wrap/Setup.exe"], ["{Game}/Override/a.tga"]),
         ("Simple.KnightsOfTheOldRepublic", ["a.tga", "b.2da"], ["{Game}/override/a.tga", "{Game}/override/b.2da"]),
         ("Simple.KnightsOfTheOldRepublic", ["Mod/a.tga"], ["{Game}/override/Mod/a.tga"]),
-        ("Simple.KnightsOfTheOldRepublic2", ["Override/a.tga", "readme.txt"], ["{Game}/Override/a.tga"]),
-        ("Simple.KnightsOfTheOldRepublic2", ["Wrap/StreamMusic/x.wav", "Wrap/modules/m.rim"], ["{Game}/StreamMusic/x.wav", "{Game}/modules/m.rim"]),
-        ("Simple.KnightsOfTheOldRepublic2", ["a.tga", "b.2da"], ["{Game}/override/a.tga", "{Game}/override/b.2da"]),
-        ("Simple.KnightsOfTheOldRepublic2", ["Mod/a.tga"], ["{Game}/override/Mod/a.tga"]),
         // A layout with the game's own folders goes in as it is; loose files go to the folder their kind belongs in, whatever
         // folder the archive keeps them in, and files of no known kind are left out.
         ("Simple.NeverwinterNightsEnhancedEdition", ["Mod/hak/a.hak", "Mod/modules/m.mod"], ["{Simple.Documents}/hak/a.hak", "{Simple.Documents}/modules/m.mod"]),
@@ -128,12 +126,9 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
     public static readonly (string GameId, string[] ArchivePaths, string MessagePart)[] Refusals =
     [
         // A TSLPatcher mod patches the player's files with its own program; the app only copies files.
-        ("Simple.KnightsOfTheOldRepublic", ["tslpatchdata/changes.ini", "TSLPatcher.exe"], "TSLPatcher"),
-        ("Simple.KnightsOfTheOldRepublic", ["Mod/tslpatchdata/changes.ini", "Mod/Override/a.tga"], "TSLPatcher"),
-        ("Simple.KnightsOfTheOldRepublic", ["Tools/tslpatcher.exe"], "TSLPatcher"),
-        ("Simple.KnightsOfTheOldRepublic2", ["tslpatchdata/changes.ini", "TSLPatcher.exe"], "TSLPatcher"),
-        ("Simple.KnightsOfTheOldRepublic2", ["Mod/tslpatchdata/changes.ini", "Mod/Override/a.tga"], "TSLPatcher"),
-        ("Simple.KnightsOfTheOldRepublic2", ["Tools/tslpatcher.exe"], "TSLPatcher"),
+        ("Simple.KnightsOfTheOldRepublic", ["tslpatchdata/changes.ini", "TSLPatcher.exe"], "Run the mod's own installer"),
+        ("Simple.KnightsOfTheOldRepublic", ["Mod/tslpatchdata/changes.ini", "Mod/Override/a.tga"], "Run the mod's own installer"),
+        ("Simple.KnightsOfTheOldRepublic", ["Tools/tslpatcher.exe"], "TSLPatcher itself"),
     ];
 
     /// <summary>Layouts the games with a published layout cannot use.</summary>

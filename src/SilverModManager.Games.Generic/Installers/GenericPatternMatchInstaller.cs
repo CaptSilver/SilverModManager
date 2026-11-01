@@ -132,6 +132,7 @@ public class GenericPatternMatchInstaller : ALibraryArchiveInstaller
         {
             // rebase the path to the target location
             var relativePath = fileNode.Item.Path.DropFirst(dropDepth);
+            if (target.InstallOnlyBelowNames && !IsInsideOneOf(relativePath, target.Names)) continue;
             relativePath = target.DestinationGamePath.Path.Join(relativePath);
 
             GenerateFileItem(target,
@@ -143,6 +144,10 @@ public class GenericPatternMatchInstaller : ALibraryArchiveInstaller
             );
         }
     }
+
+    // Depth counts folders, so a file at the root has none and is never inside one of the names.
+    private static bool IsInsideOneOf(RelativePath path, IEnumerable<RelativePath> folders) =>
+        path.Depth > 0 && folders.Contains(path.TopParent);
 
     protected virtual void GenerateFileItem(
         InstallFolderTarget target,
