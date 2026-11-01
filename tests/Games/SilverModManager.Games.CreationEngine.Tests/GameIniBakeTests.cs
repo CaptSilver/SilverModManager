@@ -111,9 +111,10 @@ public class GameIniBakeTests(ITestOutputHelper helper) : AIsolatedGameTest<Game
     public void ExactlyTheGamesWithInisToOwnOfferTheChoice()
     {
         var games = typeof(ACreationEngineGame<>).Assembly.GetTypes()
-            .Where(type => !type.IsAbstract && type.BaseType is { IsGenericType: true } baseType && baseType.GetGenericTypeDefinition() == typeof(ACreationEngineGame<>))
+            .Where(type => !type.IsAbstract && DerivesFromCreationEngineGame(type))
             .ToList();
-        games.Should().Contain(typeof(CreationEngine.Fallout4.Fallout4)).And.Contain(typeof(CreationEngine.Morrowind.Morrowind));
+        games.Should().Contain(typeof(CreationEngine.Fallout4.Fallout4)).And.Contain(typeof(CreationEngine.Morrowind.Morrowind))
+            .And.Contain(typeof(CreationEngine.Fallout4London.Fallout4London)).And.Contain(typeof(CreationEngine.Nehrim.Nehrim));
 
         foreach (var type in games)
         {
@@ -124,6 +125,14 @@ public class GameIniBakeTests(ITestOutputHelper helper) : AIsolatedGameTest<Game
                 CreationEngineMo2Target.OwnedIniFiles((GameId)gameId).Count > 0,
                 "{0} shows the \"Own the game INIs\" choice only when it has INIs to own", type.Name);
         }
+    }
+
+    // A game can sit below a family base (AFallout4Game, AOblivionGame) rather than directly on the engine base.
+    private static bool DerivesFromCreationEngineGame(Type type)
+    {
+        for (var baseType = type.BaseType; baseType is not null; baseType = baseType.BaseType)
+            if (baseType.IsGenericType && baseType.GetGenericTypeDefinition() == typeof(ACreationEngineGame<>)) return true;
+        return false;
     }
 
     [Fact]

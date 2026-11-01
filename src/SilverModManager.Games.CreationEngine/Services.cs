@@ -23,10 +23,12 @@ public static class Services
         services.AddBethesdaGame<Enderal.Enderal>(KnownPaths.SKSELoader);
         services.AddBethesdaGame<EnderalSE.EnderalSE>(KnownPaths.SKSE64Loader);
         services.AddBethesdaGame<Fallout4.Fallout4>(KnownPaths.F4SELoader);
+        services.AddBethesdaGame<Fallout4London.Fallout4London>(KnownPaths.F4SELoader);
         services.AddBethesdaGame<Fallout4VR.Fallout4VR>(KnownPaths.F4SEVRLoader);
         services.AddBethesdaGame<Fallout76.Fallout76>(null);
         services.AddBethesdaGame<Starfield.Starfield>(KnownPaths.SFSELoader);
         services.AddBethesdaGame<Oblivion.Oblivion>(KnownPaths.OBSELoader);
+        services.AddBethesdaGame<Nehrim.Nehrim>(KnownPaths.OBSELoader);
         services.AddBethesdaGame<Fallout3.Fallout3>(KnownPaths.FOSELoader);
         services.AddBethesdaGame<FalloutNewVegas.FalloutNewVegas>(KnownPaths.NVSELoader);
         services.AddSingleton<Morrowind.OpenMw.IOpenMwConfigRoots, Morrowind.OpenMw.OpenMwConfigRoots>();

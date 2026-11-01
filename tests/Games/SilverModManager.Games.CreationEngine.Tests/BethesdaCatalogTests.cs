@@ -31,6 +31,8 @@ public class BethesdaCatalogTests
         { typeof(CreationEngine.FalloutNewVegas.FalloutNewVegas), "newvegas" },
         { typeof(CreationEngine.Morrowind.Morrowind), "morrowind" },
         { typeof(CreationEngine.OblivionRemastered.OblivionRemastered), "oblivionremastered" },
+        { typeof(CreationEngine.Fallout4London.Fallout4London), "fallout4london" },
+        { typeof(CreationEngine.Nehrim.Nehrim), "nehrim" },
     };
 
     private readonly IGameData[] _games;
@@ -72,13 +74,30 @@ public class BethesdaCatalogTests
     }
 
     [Fact]
-    public void SteamAndGogIdsAreUniqueAcrossTheCatalog()
+    public void SteamAndGogIdsAreUniqueAcrossTheCatalog_UnlessTheirFilesTellTheGamesApart()
     {
-        var titles = Titles.Select(t => _games.Single(g => g.GetType() == t.Data.Item1).StoreIdentifiers).ToArray();
+        var titles = Titles.Select(t => _games.Single(g => g.GetType() == t.Data.Item1)).ToArray();
 
-        titles.SelectMany(s => s.SteamAppIds).Should().OnlyHaveUniqueItems();
-        titles.SelectMany(s => s.GOGProductIds).Should().OnlyHaveUniqueItems();
+        // A shared id is allowed when no two claimants name the same identifying files: a folder then fits
+        // at most one of the games that name files, and the one naming none is what is left.
+        foreach (var ids in new[] { SteamIds(titles), GogIds(titles) })
+        {
+            foreach (var shared in ids.GroupBy(claim => claim.Id).Where(group => group.Count() > 1))
+            {
+                var declared = shared.Select(claim => string.Join('|', FilesOf(claim.Game).Order())).ToArray();
+                declared.Should().OnlyHaveUniqueItems($"{shared.Key} is shared by {string.Join(", ", shared.Select(claim => claim.Game.GameId))}");
+            }
+        }
     }
+
+    private static IEnumerable<(long Id, IGameData Game)> SteamIds(IEnumerable<IGameData> games)
+        => games.SelectMany(game => game.StoreIdentifiers.SteamAppIds.Select(id => ((long)id, game)));
+
+    private static IEnumerable<(long Id, IGameData Game)> GogIds(IEnumerable<IGameData> games)
+        => games.SelectMany(game => game.StoreIdentifiers.GOGProductIds.Select(id => (id, game)));
+
+    private static IEnumerable<string> FilesOf(IGameData game)
+        => (game as IGameIdentifyingFiles)?.IdentifyingFiles.Select(file => file.ToString().ToLowerInvariant()) ?? [];
 
     [Fact]
     public void SkyrimLEAndEnderalShareAnExecutable() => PrimaryExeOf<CreationEngine.SkyrimLE.SkyrimLE>()

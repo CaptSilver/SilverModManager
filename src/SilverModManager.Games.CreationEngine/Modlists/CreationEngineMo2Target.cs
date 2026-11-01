@@ -41,10 +41,14 @@ internal static class CreationEngineMo2Target
         // game_fallout4vr/src/gamefallout4vr.cpp:178. Fallout4VR.TestFileIniFiles names Fallout4VR.ini and
         // Fallout4VRCustom.ini instead; a profile holds what MO2 wrote, so this follows MO2.
         [Fallout4VR.Fallout4VR.GameId] = ["Fallout4.ini", "Fallout4Prefs.ini", "Fallout4Custom.ini"],
+        // Fluorine's game_bethesda fallout4london/gamefo4london.cpp iniFiles()
+        [Fallout4London.Fallout4London.GameId] = ["Fallout4.ini", "Fallout4Prefs.ini", "Fallout4Custom.ini"],
         // game_starfield/src/gamestarfield.cpp:264 (Starfield.ini is not a profile file)
         [Starfield.Starfield.GameId] = ["StarfieldPrefs.ini", "StarfieldCustom.ini"],
         // game_oblivion/src/gameoblivion.cpp:173
         [Oblivion.Oblivion.GameId] = ["Oblivion.ini", "OblivionPrefs.ini"],
+        // Fluorine's game_bethesda nehrim/gamenehrim.cpp iniFiles()
+        [Nehrim.Nehrim.GameId] = ["Oblivion.ini", "OblivionPrefs.ini"],
         // game_fallout3/src/gamefallout3.cpp:249
         [Fallout3.Fallout3.GameId] = ["Fallout.ini", "FalloutPrefs.ini", "FalloutCustom.ini", "GECKCustom.ini", "GECKPrefs.ini"],
         // game_falloutnv/src/gamefalloutnv.cpp:285

@@ -13,7 +13,9 @@ public class RegisteredGamesInvariantTests(IServiceProvider provider)
 {
     private IGameData[] Games => provider.GetServices<IGameData>().ToArray();
 
-    private static bool HasIdentifyingFiles(IGameData game) => game is IGameIdentifyingFiles { IdentifyingFiles.Count: > 0 };
+    /// <summary>The files a game names, as one comparable key; empty for a game that names none.</summary>
+    private static string IdentifyingFilesKey(IGameData game)
+        => game is IGameIdentifyingFiles files ? string.Join('|', files.IdentifyingFiles.Select(file => file.ToString().ToLowerInvariant()).Order()) : "";
 
     [Fact]
     public void GameIds_AreUniqueAcrossEveryRegisteredGame()
@@ -22,7 +24,7 @@ public class RegisteredGamesInvariantTests(IServiceProvider provider)
     }
 
     [Fact]
-    public void StoreIds_AreClaimedByOneGame_UnlessEveryClaimantDeclaresIdentifyingFiles()
+    public void StoreIds_AreClaimedByOneGame_UnlessTheClaimantsNameDifferentIdentifyingFiles()
     {
         var claims = Games
             .SelectMany(game => game.StoreIdentifiers.SteamAppIds.Select(id => (Key: $"steam:{id}", Game: game))
@@ -35,7 +37,11 @@ public class RegisteredGamesInvariantTests(IServiceProvider provider)
         foreach (var shared in claims)
         {
             var claimants = shared.Select(claim => claim.Game).Distinct().ToArray();
-            claimants.All(HasIdentifyingFiles).Should().BeTrue(
+
+            // The locators tell the claimants apart by the install folder: the games that name files win when the
+            // folder holds them all, and the one game naming none is what a folder is left as. Two claimants with
+            // the same files (or two naming none) can never be told apart.
+            claimants.Select(IdentifyingFilesKey).Should().OnlyHaveUniqueItems(
                 because: $"{shared.Key} is claimed by {string.Join(", ", claimants.Select(game => game.GameId))}");
         }
     }
