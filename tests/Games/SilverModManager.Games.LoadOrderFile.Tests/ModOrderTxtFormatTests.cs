@@ -39,4 +39,16 @@ public class ModOrderTxtFormatTests
     {
         Format.ModOf((RelativePath)file).Should().BeNull();
     }
+
+    [Fact]
+    public void TheModsAFileListsAreItsLinesInOrder()
+    {
+        Format.Listed("Alpha\r\nBeta\n\n Gamma \n").Should().Equal("Alpha", "Beta", "Gamma");
+    }
+
+    [Fact]
+    public void AnEmptyFileListsNothing()
+    {
+        Format.Listed("").Should().BeEmpty();
+    }
 }

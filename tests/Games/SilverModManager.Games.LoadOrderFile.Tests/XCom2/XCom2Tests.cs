@@ -3,7 +3,16 @@ using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
+using System.Reactive.Linq;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.LoadOrderFile.Tests.Fixtures;
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
@@ -30,7 +39,31 @@ public abstract class AXCom2RowTests<TTest>(ITestOutputHelper outputHelper, Load
 
     protected override string[] ArchivePathsOf(string mod) => [$"{mod}/{mod}.XComMod", $"{mod}/Content/{mod}.upk"];
 
-    // The game ships the options file, so the install under test has one to replace.
+    // The depot lists the options file, as it lists every file the game ships, so a reset knows what to put back.
+    protected override IServiceCollection AddServices(IServiceCollection services)
+    {
+        base.AddServices(services);
+        services.Remove(services.Last(descriptor => descriptor.ServiceType == typeof(IFileHashesService)));
+        var shipped = new GameFileRecord
+        {
+            Path = new GamePath(LocationId.Game, Definition.OrderFile),
+            Size = Size.FromLong(Encoding.UTF8.GetByteCount(ShippedOptions)),
+            Identity = FileIdentity.XxHash3(Encoding.UTF8.GetBytes(ShippedOptions).xxHash3()),
+        };
+        return services.AddSingleton<IFileHashesService>(provider => ActivatorUtilities.CreateInstance<HashesListingTheShippedFile>(provider, shipped));
+    }
+
+    /// <summary>The stubbed vanilla file list, plus one more file the game ships.</summary>
+    private sealed class HashesListingTheShippedFile(IServiceProvider provider, IFileStore fileStore, TemporaryFileManager temporaryFiles, GameFileRecord shipped)
+        : StubbedFileHasherService(provider, fileStore, temporaryFiles), IFileHashesService
+    {
+        public new IEnumerable<GameFileRecord> GetGameFiles(GameInstallation installation) => base.GetGameFiles(installation).Append(shipped);
+
+        public new IEnumerable<GameFileRecord> GetGameFiles(LocatorIdsWithGameStore locatorIdsWithGameStore) => base.GetGameFiles(locatorIdsWithGameStore).Append(shipped);
+    }
+
+    // The game ships the options file, so the install under test has one to replace. It sits in a Steam library's
+    // steamapps/common, where the Workshop content folder is its sibling.
     protected override IServiceCollection AddGameLocator(IServiceCollection services)
         => services.AddUniversalGameLocator(
             Definition.GameId,
@@ -39,7 +72,27 @@ public abstract class AXCom2RowTests<TTest>(ITestOutputHelper outputHelper, Load
                 [Definition.Executable] = [],
                 [Definition.OrderFile] = Encoding.UTF8.GetBytes(ShippedOptions),
             },
-            locationsFileSystem: IsolatedKnownFolders.Create);
+            locationsFileSystem: IsolatedKnownFolders.Create,
+            folderName: "steamapps/common/XCOM 2");
+
+    private AbsolutePath GameFolder => GameInstallation.Locations[LocationId.Game].Path;
+
+    private AbsolutePath OptionsFile => GameFolder.Combine(Definition.OrderFile);
+
+    private AbsolutePath WorkshopFolder => GameFolder.Parent.Parent.Combine("workshop/content/268500");
+
+    private async Task SubscribeToWorkshopMod(string id, string name)
+    {
+        var folder = WorkshopFolder.Combine(id);
+        folder.CreateDirectory();
+        await folder.Combine($"{name}.XComMod").WriteAllTextAsync("");
+    }
+
+    private async Task<LoadoutItemGroup.ReadOnly> InstalledMod(Loadout.ReadOnly loadout, string mod)
+    {
+        var archive = await AddArchiveNamed($"{mod}.zip", ArchivePathsOf(mod));
+        return (await LoadoutManager.InstallItems([archive.AsLibraryFile().AsLibraryItem()], loadout.LoadoutId)).Single();
+    }
 
     [Fact]
     public void ModsLiveBelowXComGameAndTheOptionsFileInItsConfigFolder()
@@ -101,13 +154,121 @@ public abstract class AXCom2RowTests<TTest>(ITestOutputHelper outputHelper, Load
     }
 
     [Fact]
-    public async Task TheOptionsFileTheGameShipsIsBackedUpBeforeItIsReplaced()
+    public async Task TheOptionsFileTheGameShipsIsInTheFileStoreOnceItIsReplaced()
     {
         var loadout = await CreateLoadout();
 
         await Synchronizer.Synchronize(Refresh(loadout));
 
         var original = FileIdentity.XxHash3(Encoding.UTF8.GetBytes(ShippedOptions).xxHash3());
-        (await FileStore.HaveFile(original)).Should().BeTrue("a reset to the original game state puts the shipped file back");
+        (await FileStore.HaveFile(original)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AResetToTheOriginalGameStatePutsTheShippedOptionsFileBack()
+    {
+        var loadout = await CreateLoadout();
+        await InstalledMod(loadout, "Alpha");
+        await Synchronizer.Synchronize(Refresh(loadout));
+        (await OptionsFile.ReadAllTextAsync()).Should().Contain("ActiveMods=\"Alpha\"", "the apply replaced the shipped file");
+
+        await Synchronizer.ResetToOriginalGameState(GameInstallation, GameInstallation.LocatorResult.LocatorIds.ToArray());
+
+        (await OptionsFile.ReadAllTextAsync()).Should().Be(ShippedOptions);
+    }
+
+    [Fact]
+    public async Task AWorkshopModTheOptionsFileListsStaysListedAfterApply()
+    {
+        await SubscribeToWorkshopMod("1122334455", "WorkshopMod");
+        await OptionsFile.WriteAllTextAsync(ShippedOptions + "ActiveMods=\"WorkshopMod\"\n");
+        var loadout = await CreateLoadout();
+        await InstalledMod(loadout, "Alpha");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["WorkshopMod", "Alpha"]));
+    }
+
+    [Fact]
+    public async Task AWorkshopModStaysListedAcrossEveryApply()
+    {
+        await SubscribeToWorkshopMod("1122334455", "WorkshopMod");
+        await OptionsFile.WriteAllTextAsync(ShippedOptions + "ActiveMods=\"WorkshopMod\"\n");
+        var loadout = await CreateLoadout();
+        await InstalledMod(loadout, "Alpha");
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["WorkshopMod", "Alpha"]));
+    }
+
+    [Fact]
+    public async Task AWorkshopModTheOptionsFileDoesNotListStaysOff()
+    {
+        await SubscribeToWorkshopMod("1122334455", "WorkshopMod");
+        var loadout = await CreateLoadout();
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render([]));
+    }
+
+    [Fact]
+    public async Task AListedModThatIsNeitherInTheLoadoutNorSubscribedToIsDropped()
+    {
+        await SubscribeToWorkshopMod("1122334455", "WorkshopMod");
+        await OptionsFile.WriteAllTextAsync(ShippedOptions + "ActiveMods=\"Removed\"\nActiveMods=\"WorkshopMod\"\n");
+        var loadout = await CreateLoadout();
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["WorkshopMod"]));
+    }
+
+    [Fact]
+    public async Task AWorkshopModWithTheNameOfALoadoutModIsListedOnce()
+    {
+        await SubscribeToWorkshopMod("1122334455", "Alpha");
+        await OptionsFile.WriteAllTextAsync(ShippedOptions + "ActiveMods=\"Alpha\"\n");
+        var loadout = await CreateLoadout();
+        await InstalledMod(loadout, "Alpha");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["Alpha"]));
+    }
+
+    [Fact]
+    public async Task ApplyLeavesNothingToApplyAgainWhileAWorkshopModIsListed()
+    {
+        await SubscribeToWorkshopMod("1122334455", "WorkshopMod");
+        await OptionsFile.WriteAllTextAsync(ShippedOptions + "ActiveMods=\"WorkshopMod\"\n");
+        var loadout = await CreateLoadout();
+        await InstalledMod(loadout, "Alpha");
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        var status = await (await SynchronizerService.StatusForLoadout(loadout.LoadoutId))
+            .Where(state => state != LoadoutSynchronizerState.Pending).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+
+        status.Should().Be(LoadoutSynchronizerState.Current);
+    }
+
+    [Fact]
+    public async Task ALinuxBuildOfTheGameIsRefusedBeforeAnythingIsWritten()
+    {
+        var loadout = await CreateLoadout();
+        await InstalledMod(loadout, "Alpha");
+        var nativeLauncher = GameFolder.Combine(Definition == LoadOrderFileGames.XCom2WarOfTheChosen ? "XCOM2WotC/XCOM2WotC.sh" : "XCOM2.sh");
+        nativeLauncher.Parent.CreateDirectory();
+        await nativeLauncher.WriteAllTextAsync("#!/bin/sh");
+        var before = await OptionsFile.ReadAllTextAsync();
+
+        var apply = async () => await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await apply.Should().ThrowAsync<UserFacingException>()).Which.Message.Should().Contain("Proton");
+        (GameFolder / Definition.ModFolder / "Alpha").DirectoryExists().Should().BeFalse();
+        (await OptionsFile.ReadAllTextAsync()).Should().Be(before);
     }
 }

@@ -23,9 +23,12 @@ public interface IIntrinsicFile
 }
 
 /// <summary>
-/// An intrinsic file whose <see cref="IIntrinsicFile.Write"/> reads the loadout and the sync tree and nothing else: no
-/// file store, no game folder, no bytes on disk. The Apply button's status renders such a file on every change to the
-/// loadout to see whether it would come out different from what the last apply wrote. A file that reads anything
-/// else must not declare this, because the status would render it without the state an apply has prepared.
+/// An intrinsic file whose <see cref="IIntrinsicFile.Write"/> reads the loadout and the sync tree and nothing an
+/// apply prepares: no file store and no bytes an apply has yet to move. The Apply button's status renders such a file
+/// on every change to the loadout to see whether it would come out different from what the last apply wrote. A file
+/// may also read game-folder state that an apply leaves alone until this file is written (the previous copy of the
+/// file itself, a folder the app does not manage), because the status render then sees what the next apply would. A
+/// file that reads anything else must not declare this, because the status would render it without the state an
+/// apply has prepared.
 /// </summary>
 public interface IIntrinsicFileRenderedFromLoadout : IIntrinsicFile;

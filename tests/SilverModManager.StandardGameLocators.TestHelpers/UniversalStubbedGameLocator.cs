@@ -71,7 +71,10 @@ public class UniversalStubbedGameLocator : IGameLocator, IDisposable
         }
     }
 
-    /// <summary>Locates the registered <see cref="IGame"/> with this id, in a folder named after the id.</summary>
+    /// <summary>
+    /// Locates the registered <see cref="IGame"/> with this id, in a folder named after the id, or at
+    /// <paramref name="folderName"/> (a relative path, to give the game a store's folder layout) when it is given.
+    /// </summary>
     public UniversalStubbedGameLocator(
         IServiceProvider serviceProvider,
         IFileSystem fileSystem,
@@ -79,8 +82,9 @@ public class UniversalStubbedGameLocator : IGameLocator, IDisposable
         GameId gameId,
         Dictionary<RelativePath, byte[]>? gameFiles = null,
         GameStore[]? stores = null,
-        IFileSystem? locationsFileSystem = null)
-        : this(serviceProvider, fileSystem, fileManager, provider => FindGame(provider, gameId), gameId.ToString(), gameFiles, stores, locationsFileSystem)
+        IFileSystem? locationsFileSystem = null,
+        string? folderName = null)
+        : this(serviceProvider, fileSystem, fileManager, provider => FindGame(provider, gameId), folderName ?? gameId.ToString(), gameFiles, stores, locationsFileSystem)
     {
     }
 

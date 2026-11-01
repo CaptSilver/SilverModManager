@@ -42,4 +42,30 @@ public class XComModOptionsIniFormatTests
     {
         Format.ModOf((RelativePath)file).Should().BeNull();
     }
+
+    [Fact]
+    public void TheModsAFileListsAreItsActiveModsLinesInOrder()
+    {
+        var file = ";comment\n[Engine.XComModOptions]\nActiveMods=\"Alpha\"\nActiveMods=\"Some Mod\"\r\nSomethingElse=\"x\"\n";
+
+        Format.Listed(file).Should().Equal("Alpha", "Some Mod");
+    }
+
+    [Fact]
+    public void ModsListedInAnotherSectionAreNotTheGamesActiveMods()
+    {
+        Format.Listed("[Other]\nActiveMods=\"Alpha\"\n[Engine.XComModOptions]\nActiveMods=\"Beta\"\n").Should().Equal("Beta");
+    }
+
+    [Fact]
+    public void AFileWithoutActiveModsListsNothing()
+    {
+        Format.Listed("[Engine.XComModOptions]\n").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void WhatRenderWritesListedReadsBack()
+    {
+        Format.Listed(Format.Render(["Alpha", "Some Mod"])).Should().Equal("Alpha", "Some Mod");
+    }
 }

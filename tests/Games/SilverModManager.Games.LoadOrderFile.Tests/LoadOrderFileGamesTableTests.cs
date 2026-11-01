@@ -18,12 +18,14 @@ public class LoadOrderFileGamesTableTests
     }
 
     // Steam ids, GOG ids and executables from each app's Steam launch entry (api.steamcmd.net), the Mod Organizer 2
-    // basic_games plugins and the Vortex extension; Nexus ids from games.json by domain.
+    // basic_games plugins and the Vortex extension; Nexus ids from games.json by domain. A launch entry is a
+    // case-insensitive Windows path, so its casing says nothing about the file's: Steam's own entries for one game
+    // disagree (XCOM 2's base entry says "binaries", its War of the Chosen entry "Binaries").
     public static TheoryData<string, string, string, uint, uint> Rows => new()
     {
         { "LoadOrderFile.KingdomComeDeliverance", "Kingdom Come: Deliverance", "Bin/Win64/KingdomCome.exe", 379430, 2298 },
         { "LoadOrderFile.KingdomComeDeliverance2", "Kingdom Come: Deliverance II", "Bin/Win64MasterMasterSteamPGO/KingdomCome.exe", 1771300, 7286 },
-        { "LoadOrderFile.XCom2", "XCOM 2", "binaries/Win64/XCom2.exe", 268500, 1271 },
+        { "LoadOrderFile.XCom2", "XCOM 2", "Binaries/Win64/XCom2.exe", 268500, 1271 },
         { "LoadOrderFile.XCom2WarOfTheChosen", "XCOM 2: War of the Chosen", "XCom2-WarOfTheChosen/Binaries/Win64/XCom2.exe", 268500, 1271 },
     };
 

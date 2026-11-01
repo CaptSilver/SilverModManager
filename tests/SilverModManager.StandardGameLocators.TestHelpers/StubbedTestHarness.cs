@@ -36,7 +36,8 @@ public static class StubbedTestHarnessExtensions
         Dictionary<RelativePath, byte[]>? gameFiles = null,
         GameStore[]? stores = null,
         Func<IServiceProvider, IFileSystem>? locationsFileSystem = null,
-        OSPlatform? platform = null)
+        OSPlatform? platform = null,
+        string? folderName = null)
         => services.AddStubbedLocator(
             platform,
             s => new UniversalStubbedGameLocator(
@@ -46,7 +47,8 @@ public static class StubbedTestHarnessExtensions
                 gameId,
                 gameFiles,
                 stores,
-                locationsFileSystem?.Invoke(s)));
+                locationsFileSystem?.Invoke(s),
+                folderName));
 
     private static IServiceCollection AddStubbedLocator(
         this IServiceCollection services,

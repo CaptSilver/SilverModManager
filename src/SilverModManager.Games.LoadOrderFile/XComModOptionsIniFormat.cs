@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using NexusMods.Paths;
 
 namespace SilverModManager.Games.LoadOrderFile;
@@ -22,5 +23,22 @@ public sealed class XComModOptionsIniFormat : ILoadOrderFileFormat
     }
 
     public string Render(IReadOnlyList<string> mods)
-        => $"{Header}\n[Engine.XComModOptions]\n{string.Concat(mods.Select(mod => $"ActiveMods=\"{mod}\"\n"))}";
+        => $"{Header}\n{Section}\n{string.Concat(mods.Select(mod => $"ActiveMods=\"{mod}\"\n"))}";
+
+    private const string Section = "[Engine.XComModOptions]";
+
+    private static readonly Regex ActiveModsLine = new("^\\s*ActiveMods\\s*=\\s*\"(?<mod>.*)\"\\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    public IReadOnlyList<string> Listed(string fileText)
+    {
+        var mods = new List<string>();
+        var inSection = false;
+        foreach (var line in fileText.Split('\n').Select(line => line.Trim()))
+        {
+            if (line.StartsWith('[')) inSection = line.Equals(Section, StringComparison.OrdinalIgnoreCase);
+            else if (inSection && ActiveModsLine.Match(line) is { Success: true } match) mods.Add(match.Groups["mod"].Value);
+        }
+
+        return mods;
+    }
 }

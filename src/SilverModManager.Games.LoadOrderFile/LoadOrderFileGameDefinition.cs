@@ -44,6 +44,15 @@ public sealed record LoadOrderFileGameDefinition : IGameDefinition
     /// <summary>Files only this game's install holds, for games that share a store id with another game.</summary>
     public IReadOnlyList<RelativePath> IdentifyingFiles { get; init; } = [];
 
+    /// <summary>Mods the game loads from a folder the app does not manage, kept in the order file when it already names them.</summary>
+    public IExternalModSource? ExternalMods { get; init; }
+
+    /// <summary>
+    /// Files only a native Linux build of the game holds. Its layout is not the Windows build's, so a loadout for an
+    /// install holding one is refused instead of deploying where the game does not read.
+    /// </summary>
+    public IReadOnlyList<RelativePath> NativeBuildFiles { get; init; } = [];
+
     /// <summary>Where the mod folder is, as a <see cref="ModLocation"/> the shared installers take.</summary>
     public ModLocation ModRoot => new(ModLocationRoot.GameFolder, ModFolder);
 

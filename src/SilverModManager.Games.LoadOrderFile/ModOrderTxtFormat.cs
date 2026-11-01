@@ -20,4 +20,7 @@ public sealed class ModOrderTxtFormat : ILoadOrderFileFormat
     }
 
     public string Render(IReadOnlyList<string> mods) => string.Join('\n', mods);
+
+    public IReadOnlyList<string> Listed(string fileText)
+        => fileText.Split('\n').Select(line => line.Trim()).Where(line => line.Length > 0).ToList();
 }

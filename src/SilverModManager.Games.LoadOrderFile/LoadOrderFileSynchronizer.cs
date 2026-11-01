@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -13,4 +14,17 @@ public sealed class LoadOrderFileSynchronizer(IServiceProvider provider, LoadOrd
 
     public override Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout)
         => new() { [_orderFile.Path] = _orderFile };
+
+    /// <summary>
+    /// A native Linux build is located like the Windows one (a Steam id has no platform), but lays its files out
+    /// differently, so a loadout for it is refused before anything is written.
+    /// </summary>
+    protected override Task PreflightLoadout(Loadout.ReadOnly loadout)
+    {
+        var gameFolder = loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty));
+        if (definition.NativeBuildFiles.Any(file => gameFolder.Combine(file).FileExists))
+            throw new NativeBuildNotSupportedException(definition.DisplayName);
+
+        return base.PreflightLoadout(loadout);
+    }
 }

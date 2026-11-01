@@ -16,4 +16,7 @@ public interface ILoadOrderFileFormat
 
     /// <summary>The file's content for <paramref name="mods"/>, the mod the game loads first at the start and the winner last.</summary>
     string Render(IReadOnlyList<string> mods);
+
+    /// <summary>The mods a file in this format names, in the order it names them.</summary>
+    IReadOnlyList<string> Listed(string fileText);
 }
