@@ -47,7 +47,7 @@ public readonly record struct Ror2mmUrl(ThunderstoreVersionRef Version)
     {
         if (host.Equals(Domain, StringComparison.OrdinalIgnoreCase)) return true;
         var suffix = "." + Domain;
-        if (!host.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) return false;
+        if (host.EndsWith(suffix, StringComparison.OrdinalIgnoreCase) is false) return false;
         var label = host[..^suffix.Length];
         return label.Length > 0 && label.All(char.IsAsciiLetterOrDigit);
     }
