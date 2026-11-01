@@ -521,6 +521,47 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
         LibraryDestinations.GamesOf(Reload(item.Id)).Should().BeEquivalentTo([GameInstallation.Game.GameId]);
     }
 
+    [Fact]
+    public async Task RemoveDestination_SharedItem_KeepsItsOtherGame()
+    {
+        var file = await _libraryService.AddLocalFile(await WriteFile("shared.txt"), new GameAcquisition(DestinationGameA));
+        var item = Reload(file.Id);
+        await _libraryService.AddDestination([item], DestinationGameB);
+
+        await _libraryService.RemoveDestination([Reload(item.Id)], DestinationGameA);
+
+        var kept = Reload(item.Id);
+        kept.IsValid().Should().BeTrue();
+        LibraryDestinations.GamesOf(kept).Should().BeEquivalentTo([DestinationGameB]);
+        kept.Contains(LibraryItem.DestinationUnknown).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RemoveDestination_LastGame_MarksUnknown_AndDoesNotDelete()
+    {
+        var file = await _libraryService.AddLocalFile(await WriteFile("only.txt"), new GameAcquisition(DestinationGameA));
+
+        await _libraryService.RemoveDestination([Reload(file.Id)], DestinationGameA);
+
+        var kept = Reload(file.Id);
+        kept.IsValid().Should().BeTrue();
+        LibraryDestinations.GamesOf(kept).Should().BeEmpty();
+        kept.Contains(LibraryItem.DestinationUnknown).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AddDestination_UnionsTheGame_AndClearsUnknown()
+    {
+        var file = await _libraryService.AddLocalFile(await WriteFile("unknown.txt"), UnassignedAcquisition.Instance);
+        Reload(file.Id).Contains(LibraryItem.DestinationUnknown).Should().BeTrue();
+
+        await _libraryService.AddDestination([Reload(file.Id)], DestinationGameA);
+
+        var item = Reload(file.Id);
+        LibraryDestinations.GamesOf(item).Should().BeEquivalentTo([DestinationGameA]);
+        item.Contains(LibraryItem.DestinationUnknown).Should().BeFalse();
+    }
+
     /// <summary>A download that has already finished, so the library step can run without a network.</summary>
     private sealed class CompletedDownloadJob(AbsolutePath path) : IDownloadJob, IJobDefinitionWithStart<CompletedDownloadJob, AbsolutePath>
     {

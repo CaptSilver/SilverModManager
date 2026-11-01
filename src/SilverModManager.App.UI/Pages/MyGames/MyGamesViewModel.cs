@@ -151,13 +151,11 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                             {
                                 if (GetJobRunningForGameInstallation(installation).IsT2) return;
 
-                                // Files another game still uses stay in the library; they leave this game when removing a
-                                // destination exists. Only the game's own files are offered for deletion.
-                                var filesToDelete = FilesOnlyForGame(
+                                // Files another game still uses stay in the library with this game taken off them.
+                                var fileRemoval = GameFileRemoval.Plan(
                                     conn.Db,
                                     libraryDataProviders.SelectMany(dataProvider => dataProvider.GetAllFiles(installation.Game.GameId)),
                                     installation.Game.GameId);
-                                var totalSize = filesToDelete.Sum(static Size (file) => file.Size);
 
                                 var collections = installation.Game.CollectionsOf(conn.Db);
                                 var unbacked = default(UnbackedFiles);
@@ -175,8 +173,9 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                                 {
                                     Unbacked = unbacked,
                                     GameName = installation.Game.DisplayName,
-                                    NumDownloads = filesToDelete.Length,
-                                    SumDownloadsSize = totalSize,
+                                    NumDownloads = fileRemoval.FilesToDelete.Length,
+                                    SumDownloadsSize = fileRemoval.TotalSize,
+                                    NumKeptForOtherGames = fileRemoval.SharedItems.Length,
                                     NumCollections = collections.Length,
                                 };
 
@@ -190,7 +189,7 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                                 {
                                     removed = await MessageBoxOkViewModel.RunOrExplain(
                                         _serviceProvider,
-                                        () => Task.Run(async () => await RemoveGame(installation, shouldDeleteDownloads: result.ShouldDeleteDownloads, filesToDelete, collections))
+                                        () => Task.Run(async () => await RemoveGame(installation, shouldDeleteDownloads: result.ShouldDeleteDownloads, fileRemoval, collections))
                                     );
                                 }
                                 catch (SynchronizerPreflightException e)
@@ -202,7 +201,7 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                                     {
                                         removed = await MessageBoxOkViewModel.RunOrExplain(
                                             _serviceProvider,
-                                            () => Task.Run(async () => await RemoveGame(installation, shouldDeleteDownloads: result.ShouldDeleteDownloads, filesToDelete, collections, cleanGameFolder: false))
+                                            () => Task.Run(async () => await RemoveGame(installation, shouldDeleteDownloads: result.ShouldDeleteDownloads, fileRemoval, collections, cleanGameFolder: false))
                                         );
                                     }
                                 }
@@ -350,24 +349,12 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
         return OneOf<None, CreateLoadoutJob, UnmanageGameJob>.FromT0(new None());
     }
 
-    /// <summary>
-    /// The files whose only destination is <paramref name="game"/>. A file shared with a sibling game (an item
-    /// installed in both a Skyrim SE and a Skyrim VR loadout) is left out, so removing one game cannot delete
-    /// what the other still uses.
-    /// </summary>
-    internal static LibraryFile.ReadOnly[] FilesOnlyForGame(IDb db, IEnumerable<LibraryFile.ReadOnly> files, GameId game)
-    {
-        var byItem = files.DistinctBy(static file => file.Id).ToDictionary(static file => file.Id);
-        var (onlyThisGame, _) = LibraryDestinations.Partition(db, byItem.Values.Select(static file => file.AsLibraryItem()), game);
-        return onlyThisGame.Select(item => byItem[item.Id]).ToArray();
-    }
-
-    private async Task RemoveGame(GameInstallation installation, bool shouldDeleteDownloads, LibraryFile.ReadOnly[] filesToDelete, CollectionMetadata.ReadOnly[] collections, bool cleanGameFolder = true)
+    private async Task RemoveGame(GameInstallation installation, bool shouldDeleteDownloads, GameFileRemoval fileRemoval, CollectionMetadata.ReadOnly[] collections, bool cleanGameFolder = true)
     {
         await _syncService.UnManage(installation, cleanGameFolder: cleanGameFolder);
 
         if (!shouldDeleteDownloads) return;
-        await _libraryService.RemoveLibraryItems(filesToDelete.Select(file => file.AsLibraryItem()));
+        await fileRemoval.Apply(_libraryService);
 
         foreach (var collection in collections)
         {

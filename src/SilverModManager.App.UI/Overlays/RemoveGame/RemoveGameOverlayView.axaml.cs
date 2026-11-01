@@ -25,6 +25,10 @@ public partial class RemoveGameOverlayView : ReactiveUserControl<IRemoveGameOver
                     DescriptionText.Text = string.Format(Language.RemoveGameOverlayView_Description, viewModel.GameName);
                     ToggleDescription.Text = string.Format(Language.RemoveGameOverlayView_ToggleDescription, viewModel.NumDownloads.ToString("N0"), viewModel.NumCollections.ToString("N0"), viewModel.GameName);
                     ButtonCancel.Text = Language.RemoveGameOverlayView_CancelButton;
+                    KeptForOtherGamesText.IsVisible = viewModel.NumKeptForOtherGames > 0;
+                    KeptForOtherGamesText.Text = viewModel.NumKeptForOtherGames > 0
+                        ? string.Format(Language.RemoveGameOverlayView_KeptForOtherGames, viewModel.NumKeptForOtherGames.ToString("N0"), viewModel.GameName)
+                        : "";
                     UnbackedText.IsVisible = viewModel.Unbacked.Count > 0;
                     UnbackedText.Text = viewModel.Unbacked.Count > 0 ? CleanFolderPrompt.RemoveGameNote(viewModel.Unbacked) : "";
                 }).AddTo(disposables);

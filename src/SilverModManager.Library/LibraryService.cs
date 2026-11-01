@@ -54,6 +54,14 @@ public sealed class LibraryService : ILibraryService
         await tx.Commit();
     }
 
+    public async Task AddDestination(IEnumerable<LibraryItem.ReadOnly> items, GameId game)
+    {
+        using var tx = _connection.BeginTransaction();
+        foreach (var item in items)
+            LibraryDestinations.Add(tx, item.Id, Destination.Of(game));
+        await tx.Commit();
+    }
+
     public async Task RemoveDestination(IEnumerable<LibraryItem.ReadOnly> items, GameId game)
     {
         var targets = items.ToArray();

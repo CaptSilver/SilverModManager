@@ -955,6 +955,9 @@ To apply changes or launch the game again, please close the game first.</value>
     <data name="RemoveGameOverlayView_ToggleDescription" xml:space="preserve">
         <value>Also delete {0} downloaded mods and {1} collections for {2}.</value>
     </data>
+    <data name="RemoveGameOverlayView_KeptForOtherGames" xml:space="preserve">
+        <value>{0} of the files stay in your Library because another game uses them too. They are only taken off {1}.</value>
+    </data>
     <data name="RemoveGameOverlayView_CancelButton" xml:space="preserve">
         <value>Cancel</value>
     </data>

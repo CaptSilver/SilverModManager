@@ -17,6 +17,11 @@ using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Settings;
 using NSubstitute;
+using NexusMods.Hashing.xxHash3;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.UI.Tests.Pages;
 
@@ -171,5 +176,46 @@ public class MyGamesViewModelTests(IServiceProvider provider) : AUiTest(provider
             }
             return serviceType == typeof(ISettingsManager) && settingsManager is not null ? settingsManager : inner.GetService(serviceType);
         }
+    }
+
+    [Fact]
+    public async Task RemoveGame_DeletesOnlyThisGamesFiles_KeepsTheShared_AndPreviewsBoth()
+    {
+        var game = GameId.From("remove-game-" + Guid.NewGuid().ToString("N"));
+        var sibling = GameId.From("remove-sibling-" + Guid.NewGuid().ToString("N"));
+        var onlyMine = await AddLocalFile("only-mine.7z", Destination.Of(game));
+        var shared = await AddLocalFile("shared.7z", new Destination(ImmutableHashSet.Create(game, sibling), Shared: false));
+        var files = new[] { onlyMine, shared }.Select(id => LibraryFile.Load(Connection.Db, id)).ToArray();
+        var library = Provider.GetRequiredService<ILibraryService>();
+
+        var removal = GameFileRemoval.Plan(Connection.Db, files, game);
+
+        removal.FilesToDelete.Select(file => file.Id).Should().Equal(onlyMine);
+        removal.SharedItems.Select(item => item.Id).Should().Equal(shared);
+        removal.TotalSize.Should().Be(files[0].Size);
+
+        await removal.Apply(library);
+
+        LibraryItem.Load(Connection.Db, onlyMine).IsValid().Should().BeFalse("the game's own file is deleted");
+        var kept = LibraryItem.Load(Connection.Db, shared);
+        kept.IsValid().Should().BeTrue("another game still uses it");
+        LibraryDestinations.GamesOf(kept).Should().BeEquivalentTo([sibling]);
+    }
+
+    private async Task<EntityId> AddLocalFile(string name, Destination destination)
+    {
+        using var tx = Connection.BeginTransaction();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(name + Guid.NewGuid());
+        var file = new LibraryFile.New(tx, out var id)
+        {
+            FileName = name,
+            Hash = bytes.xxHash3(),
+            Size = Size.From((ulong)bytes.Length),
+            LibraryItem = new LibraryItem.New(tx, id) { Name = name },
+        };
+        _ = new LocalFile.New(tx, id) { LibraryFile = file, OriginalPath = $"/x/{name}" };
+        LibraryDestinations.Write(tx, id, destination);
+        var result = await tx.Commit();
+        return result.Remap(file).Id;
     }
 }

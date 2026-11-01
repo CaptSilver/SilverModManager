@@ -19,6 +19,9 @@ public interface IRemoveGameOverlayViewModel : IOverlayViewModel<RemoveGameOverl
 
     int NumCollections { get; }
 
+    /// <summary>Files that stay in the library because another game still uses them.</summary>
+    int NumKeptForOtherGames { get; }
+
     BindableReactiveProperty<bool> ShouldDeleteDownloads { get; }
 
     /// <summary>

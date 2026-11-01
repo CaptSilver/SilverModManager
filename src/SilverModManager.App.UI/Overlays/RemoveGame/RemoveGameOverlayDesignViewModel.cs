@@ -10,6 +10,7 @@ public class RemoveGameOverlayDesignViewModel : AOverlayViewModel<IRemoveGameOve
     public required int NumDownloads { get; init; } = 98;
     public required Size SumDownloadsSize { get; init; } = Size.From(3435678);
     public required int NumCollections { get; init; } = 3;
+    public int NumKeptForOtherGames { get; init; } = 4;
     public UnbackedFiles Unbacked { get; init; }
     public BindableReactiveProperty<bool> ShouldDeleteDownloads { get; } = new(value: false);
     public ReactiveCommand<Unit> CommandCancel { get; }

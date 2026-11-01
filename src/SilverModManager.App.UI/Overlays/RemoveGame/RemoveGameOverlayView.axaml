@@ -29,6 +29,12 @@
                         Theme="{StaticResource BodyMDNormalTheme}" />
 
                     <TextBlock
+                        x:Name="KeptForOtherGamesText"
+                        IsVisible="False"
+                        TextWrapping="Wrap"
+                        Theme="{StaticResource BodyMDNormalTheme}" />
+
+                    <TextBlock
                         x:Name="UnbackedText"
                         IsVisible="False"
                         TextWrapping="Wrap"

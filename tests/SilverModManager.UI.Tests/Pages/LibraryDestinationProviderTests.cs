@@ -485,7 +485,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
             .Concat(new ManuallyCreatedArchiveDataProvider(Provider).GetAllFiles(game.GameId))
             .ToArray();
 
-        var deletable = MyGamesViewModel.FilesOnlyForGame(Connection.Db, files, game.GameId);
+        var deletable = GameFileRemoval.Plan(Connection.Db, files, game.GameId).FilesToDelete;
 
         deletable.Select(file => file.Id).Should().BeEquivalentTo([onlyMine, onlyMineArchive]);
         deletable.Select(file => file.Id).Should().NotContain([shared, sharedArchive]);

@@ -3625,6 +3625,15 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to {0} of the files stay in your Library because another game uses them too. They are only taken off {1}..
+        /// </summary>
+        public static string RemoveGameOverlayView_KeptForOtherGames {
+            get {
+                return ResourceManager.GetString("RemoveGameOverlayView_KeptForOtherGames", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Also delete {0} downloaded mods and {1} collections for {2}..
         /// </summary>
         public static string RemoveGameOverlayView_ToggleDescription {

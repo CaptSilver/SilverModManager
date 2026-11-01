@@ -35,6 +35,11 @@ public interface ILibraryService
     Task Adopt(LibraryItem.ReadOnly item, IAcquisitionContext acquisition);
 
     /// <summary>
+    /// Adds a game to items' destinations and clears their unknown marker.
+    /// </summary>
+    Task AddDestination(IEnumerable<LibraryItem.ReadOnly> items, GameId game);
+
+    /// <summary>
     /// Removes a game from items. An item left with no game is marked unknown, never deleted.
     /// </summary>
     /// <exception cref="DestinationStillInstalledException">
