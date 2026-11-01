@@ -89,6 +89,39 @@ public class SimpleGameTests(IServiceProvider serviceProvider)
     }
 
     [Fact]
+    public void Installers_AnAsIsRuleAddsOneInstallerThatTakesAnyLayout()
+    {
+        var game = GameOf(SimpleDefinitions.With(new ModLocation(ModLocationRoot.GameFolder, "GameData")) with
+        {
+            Install = new SimpleInstallRules { InstallAsIs = true },
+        });
+
+        var installer = game.LibraryItemInstallers.Should().ContainSingle().Which.Should().BeOfType<PredicateBasedInstaller>().Subject;
+
+        installer.Destination.Should().Be(new GamePath(LocationId.Game, "GameData"));
+    }
+
+    [Fact]
+    public void Installers_AnAsIsRuleComesAfterTheMarkerRulesAndTargets()
+    {
+        // It accepts everything, so any installer behind it would never be asked.
+        var game = GameOf(Plain with
+        {
+            Install = new SimpleInstallRules
+            {
+                InstallAsIs = true,
+                MarkerRules = [new SimpleMarkerRule { MarkerFile = "cook.hash", Destination = "UserContent" }],
+                Targets = [new SimpleInstallTarget { Destination = "CookedPC" }],
+            },
+        });
+
+        game.LibraryItemInstallers.Select(installer => installer.GetType())
+            .Should().Equal(typeof(PredicateBasedInstaller), typeof(GenericPatternMatchInstaller), typeof(PredicateBasedInstaller));
+        game.LibraryItemInstallers.Last().Should().BeOfType<PredicateBasedInstaller>()
+            .Which.Destination.Should().Be(new GamePath(LocationId.Game, "Mods"));
+    }
+
+    [Fact]
     public void Installers_TargetThePathBelowTheModRoot()
     {
         var game = GameOf(SimpleDefinitions.With(new ModLocation(ModLocationRoot.GameFolder, "Data")) with

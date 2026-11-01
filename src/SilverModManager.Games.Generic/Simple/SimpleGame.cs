@@ -54,6 +54,15 @@ public sealed class SimpleGame(IServiceProvider provider, SimpleGameDefinition d
             });
         }
 
+        if (rules.InstallAsIs)
+        {
+            installers.Add(new PredicateBasedInstaller(provider)
+            {
+                Root = _ => true,
+                Destination = Definition.ModRoot.ToGamePath(RelativePath.Empty),
+            });
+        }
+
         return installers.ToArray();
     }
 }

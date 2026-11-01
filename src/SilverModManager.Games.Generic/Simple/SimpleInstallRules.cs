@@ -16,6 +16,12 @@ public sealed record SimpleInstallRules
 
     /// <summary>Known folder names and file extensions, matched in the order given.</summary>
     public IReadOnlyList<SimpleInstallTarget> Targets { get; init; } = [];
+
+    /// <summary>
+    /// The archive is laid out like the mod folder and goes in unchanged, whatever it holds. For games that take any
+    /// file in their folder and publish no layout to match against. Tried last, because it accepts every archive.
+    /// </summary>
+    public bool InstallAsIs { get; init; }
 }
 
 /// <summary>A folder of a game that archives can be laid out for.</summary>
