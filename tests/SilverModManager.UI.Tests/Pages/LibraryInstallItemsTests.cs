@@ -138,11 +138,17 @@ public class LibraryInstallItemsTests(IServiceProvider provider) : AUiTest(provi
     [Fact]
     public async Task TheAdvancedInstallerKeepsInstallingOneItemAtATime()
     {
-        var harness = await CreateHarness();
+        // The items install in parallel, and asking the substitute what it received while those calls arrive can take a
+        // real call for part of the question; count them separately and ask the substitute only once they are all in.
+        var installs = 0;
+        var harness = await CreateHarness(manager => manager
+            .WhenForAnyArgs(m => m.InstallItem(default, default, default, default, default))
+            .Do(_ => Interlocked.Increment(ref installs)));
 
         harness.Vm.InstallSelectedItemsWithAdvancedInstallerCommand.Execute(R3.Unit.Default);
 
-        await Eventually(() => _ = harness.Manager.ReceivedWithAnyArgs(3).InstallItem(default, default, default, default, default));
+        await Eventually(() => Volatile.Read(ref installs).Should().Be(3));
+        _ = harness.Manager.ReceivedWithAnyArgs(3).InstallItem(default, default, default, default, default);
         _ = harness.Manager.DidNotReceiveWithAnyArgs().InstallItems(default!, default, default);
     }
 }
