@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using R3;
 using SilverModManager.CLI.Types;
 using SilverModManager.Sdk;
-using SilverModManager.Sdk.EventBus;
 using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.CLI;
@@ -20,7 +19,6 @@ public sealed class ProtocolRegistration(
     IEnumerable<IIpcProtocolHandler> handlers,
     IOSInterop osInterop,
     ISettingsManager settingsManager,
-    IEventBus eventBus,
     ProtocolNotices notices,
     ILogger<ProtocolRegistration> logger) : BackgroundService
 {
@@ -75,11 +73,7 @@ public sealed class ProtocolRegistration(
         if (result.Registered)
         {
             if (claim is UriSchemeClaim.Take)
-            {
-                notices.Forget(scheme);
-                if (result.OtherHandler is { } previous)
-                    eventBus.Send(new CliMessages.ProtocolHandlerTaken(scheme, previous));
-            }
+                notices.Took(scheme, result);
             return;
         }
 

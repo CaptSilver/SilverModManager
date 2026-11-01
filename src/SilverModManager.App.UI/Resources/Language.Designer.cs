@@ -3985,6 +3985,42 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to {0}:// links were opened by {1}; this app opens them now..
+        /// </summary>
+        public static string ToastNotification_Protocol_handler_taken {
+            get {
+                return ResourceManager.GetString("ToastNotification_Protocol_handler_taken", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0}:// links open {1}. Turn the {0}:// link setting off and on, or run associate-{0}, to open them here..
+        /// </summary>
+        public static string ToastNotification_Protocol_handler_held_elsewhere {
+            get {
+                return ResourceManager.GetString("ToastNotification_Protocol_handler_held_elsewhere", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Installed {0} into {1}.
+        /// </summary>
+        public static string ToastNotification_Mod_installed {
+            get {
+                return ResourceManager.GetString("ToastNotification_Mod_installed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} is listed for {1}; install it from the Thunderstore page of the game you mean..
+        /// </summary>
+        public static string ToastNotification_Download_failed__ambiguous_package {
+            get {
+                return ResourceManager.GetString("ToastNotification_Download_failed__ambiguous_package", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Download failed.
         /// </summary>
         public static string ToastNotification_Download_failed__An_unknown_error_occurred {

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk;
 using SilverModManager.Sdk.EventBus;
 using SilverModManager.Sdk.Settings;
 
@@ -61,6 +62,19 @@ public sealed class ProtocolNotices(ISettingsManager settingsManager, IEventBus 
         {
             LastReportedHolder = new Dictionary<string, string>(notices.LastReportedHolder) { [notice.Scheme] = notice.Holder },
         });
+    }
+
+    /// <summary>
+    /// Records the outcome of a take of <paramref name="scheme"/>. When it registered, the remembered holder is
+    /// dropped, and if another app held the scheme the user is told it was taken from it.
+    /// </summary>
+    public void Took(string scheme, UriSchemeRegistration result)
+    {
+        if (result.Registered is false) return;
+
+        Forget(scheme);
+        if (result.OtherHandler is { } previous)
+            eventBus.Send(new CliMessages.ProtocolHandlerTaken(scheme, previous));
     }
 
     /// <summary>

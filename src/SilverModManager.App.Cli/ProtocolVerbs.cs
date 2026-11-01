@@ -17,6 +17,7 @@ public static class ProtocolVerbs
     /// <returns></returns>
     public static IServiceCollection AddProtocolVerbs(this IServiceCollection services) =>
         services.AddVerb(() => AssociateNxm)
+            .AddVerb(() => AssociateRor2mm)
             .AddVerb(() => ProtocolInvoke);
 
 
@@ -27,15 +28,21 @@ public static class ProtocolVerbs
         return 0;
     }
 
+    [Verb("associate-ror2mm", "Associate the ror2mm:// protocol with this application")]
+    private static async Task<int> AssociateRor2mm([Injected] IOSInterop osInterop, [Injected] ProtocolNotices notices, [Injected] CancellationToken token)
+    {
+        await Associate("ror2mm", osInterop, notices, token);
+        return 0;
+    }
+
     /// <summary>
     /// Takes <paramref name="scheme"/> from whichever app holds it. A verb runs without <see cref="ProtocolRegistration"/>,
-    /// so it clears the remembered holder itself.
+    /// so it clears the remembered holder and reports the take itself.
     /// </summary>
     public static async Task<UriSchemeRegistration> Associate(string scheme, IOSInterop osInterop, ProtocolNotices notices, CancellationToken token)
     {
         var result = await osInterop.RegisterUriSchemeHandler(scheme, UriSchemeClaim.Take, cancellationToken: token);
-        if (result.Registered)
-            notices.Forget(scheme);
+        notices.Took(scheme, result);
         return result;
     }
     

@@ -279,6 +279,15 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
                                 ToastNotificationVariant.Failure
                             );
                             return;
+                        case FailureReason.Refused refused:
+                            self._notificationService.ShowToast(refused.Message, ToastNotificationVariant.Failure);
+                            return;
+                        case FailureReason.Ambiguous ambiguous:
+                            self._notificationService.ShowToast(
+                                string.Format(Language.ToastNotification_Download_failed__ambiguous_package, ambiguous.Package, JoinNames(ambiguous.Games)),
+                                ToastNotificationVariant.Failure
+                            );
+                            return;
                         case FailureReason.Unknown:
                             self._notificationService.ShowToast(
                                 Language.ToastNotification_Download_failed__An_unknown_error_occurred,
@@ -288,6 +297,52 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
                     }
                 })  
                 .DisposeWith(d);
+
+            eventBus
+                .ObserveMessages<CliMessages.ModInstalled>()
+                .ObserveOnUIThreadDispatcher()
+                .Subscribe(this, static (message, self) =>
+                {
+                    self._notificationService.ShowToast(
+                        string.Format(Language.ToastNotification_Mod_installed, message.Item.Name, message.LoadoutName),
+                        ToastNotificationVariant.Success
+                    );
+                })
+                .DisposeWith(d);
+
+            eventBus
+                .ObserveMessages<CliMessages.ProtocolHandlerTaken>()
+                .ObserveOnUIThreadDispatcher()
+                .Subscribe(this, static (message, self) =>
+                {
+                    self._notificationService.ShowToast(
+                        string.Format(Language.ToastNotification_Protocol_handler_taken, message.Scheme, message.PreviousHandler),
+                        ToastNotificationVariant.Neutral
+                    );
+                })
+                .DisposeWith(d);
+
+            // The startup pass can find a holder before this window exists, so notices that are still pending are
+            // shown now. Subscribing first means a notice that arrives meanwhile is not lost; the shown set keeps
+            // it from being toasted twice.
+            var protocolNotices = serviceProvider.GetRequiredService<ProtocolNotices>();
+            var shownNotices = new HashSet<CliMessages.ProtocolHandlerHeldElsewhere>();
+            void ShowHeldElsewhere(CliMessages.ProtocolHandlerHeldElsewhere notice)
+            {
+                if (shownNotices.Add(notice) is false) return;
+                _notificationService.ShowToast(
+                    string.Format(Language.ToastNotification_Protocol_handler_held_elsewhere, notice.Scheme, notice.Holder),
+                    ToastNotificationVariant.Neutral
+                );
+                protocolNotices.Acknowledge(notice);
+            }
+
+            eventBus
+                .ObserveMessages<CliMessages.ProtocolHandlerHeldElsewhere>()
+                .ObserveOnUIThreadDispatcher()
+                .Subscribe(ShowHeldElsewhere)
+                .DisposeWith(d);
+            foreach (var notice in protocolNotices.Pending) ShowHeldElsewhere(notice);
 
             R3.Disposable.Create(this, vm =>
             {
@@ -301,6 +356,14 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
             }
         });
     }
+
+    /// <summary>"A", "A and B", "A, B and C".</summary>
+    private static string JoinNames(IReadOnlyList<string> names) => names.Count switch
+    {
+        0 => string.Empty,
+        1 => names[0],
+        _ => $"{string.Join(", ", names.Take(names.Count - 1))} and {names[^1]}",
+    };
 
     private Optional<(LoadoutId, WorkspaceId)> GetWorkspaceIdForGame(IWorkspaceController workspaceController, NexusModsGameId nexusModsGameId)
     {

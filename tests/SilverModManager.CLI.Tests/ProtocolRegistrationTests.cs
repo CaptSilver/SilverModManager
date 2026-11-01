@@ -82,7 +82,7 @@ public class ProtocolRegistrationTests
                     Substitute.For<IThunderstoreInstaller>(),
                     Substitute.For<ManagedGames>(Substitute.For<IGameRegistry>(), Substitute.For<IConnection>(), Substitute.For<ISynchronizerService>())),
             ];
-            return new ProtocolRegistration(handlers, Os, Settings, Events, Notices, NullLogger<ProtocolRegistration>.Instance);
+            return new ProtocolRegistration(handlers, Os, Settings, Notices, NullLogger<ProtocolRegistration>.Instance);
         }
 
         public Task WaitForRegistrations(int count) => Task.Run(async () =>

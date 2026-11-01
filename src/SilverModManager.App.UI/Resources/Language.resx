@@ -1345,6 +1345,18 @@ Use it for {0}?</value>
     <data name="ToastNotification_Download_failed__An_unknown_error_occurred" xml:space="preserve">
         <value>Download failed</value>
     </data>
+    <data name="ToastNotification_Protocol_handler_taken" xml:space="preserve">
+        <value>{0}:// links were opened by {1}; this app opens them now.</value>
+    </data>
+    <data name="ToastNotification_Protocol_handler_held_elsewhere" xml:space="preserve">
+        <value>{0}:// links open {1}. Turn the {0}:// link setting off and on, or run associate-{0}, to open them here.</value>
+    </data>
+    <data name="ToastNotification_Mod_installed" xml:space="preserve">
+        <value>Installed {0} into {1}</value>
+    </data>
+    <data name="ToastNotification_Download_failed__ambiguous_package" xml:space="preserve">
+        <value>{0} is listed for {1}; install it from the Thunderstore page of the game you mean.</value>
+    </data>
     <data name="ToastNotification_Uploading_new_collection_revision___" xml:space="preserve">
         <value>Uploading new Collection Revision...</value>
     </data>
