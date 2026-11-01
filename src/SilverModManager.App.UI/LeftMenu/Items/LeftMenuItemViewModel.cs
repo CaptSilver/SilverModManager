@@ -4,6 +4,8 @@ using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Binding;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.DragAndDrop;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.UI.Sdk;
@@ -24,6 +26,12 @@ public partial class LeftMenuItemViewModel : AViewModel<ILeftMenuItemViewModel>,
     public IReadOnlyList<IContextMenuItem> AdditionalContextMenuItems { get; protected init; } = Array.Empty<IContextMenuItem>();
 
     public StringComponent? ToolTip { get; init; }
+
+    /// <inheritdoc/>
+    public IDropTarget? DropTarget { get; init; }
+
+    /// <inheritdoc/>
+    public IErrorPresenter? ErrorPresenter { get; init; }
 
     public LeftMenuItemViewModel(
         IWorkspaceController workspaceController,

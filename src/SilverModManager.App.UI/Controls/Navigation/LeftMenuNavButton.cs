@@ -9,11 +9,14 @@ namespace SilverModManager.App.UI.Controls.Navigation;
 /// A standard left menu button with active and selected states, as well as workspace navigation capabilities.
 /// </summary>
 [PublicAPI]
-[PseudoClasses(pcActive, pcSelected)]
+[PseudoClasses(pcActive, pcSelected, pcDropOver)]
 public class LeftMenuNavButton : NavigationControl
 {
     private const string pcActive = ":active";
     private const string pcSelected = ":selected";
+
+    // Set from outside by the drop feedback while a drag over the button is waiting to be dropped.
+    private const string pcDropOver = ":drop-over";
 
     /// <summary>
     /// Defines the <see cref="IsActive"/> property.

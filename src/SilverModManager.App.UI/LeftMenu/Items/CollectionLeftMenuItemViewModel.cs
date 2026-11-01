@@ -9,6 +9,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.Pages.Collections;
+using SilverModManager.App.UI.Pages.LoadoutPage;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
@@ -57,6 +58,9 @@ public partial class CollectionLeftMenuItemViewModel : LeftMenuItemViewModel, IL
         _connection = serviceProvider.GetRequiredService<IConnection>();
 
         CollectionGroupId = collectionGroupId;
+        // Read-only collections get a target too, so a drag over them says why they refuse.
+        DropTarget = CollectionDropTarget.For(serviceProvider, collectionGroupId);
+        ErrorPresenter = serviceProvider.GetRequiredService<IErrorPresenter>();
         IsDefaultCollection = isDefaultCollection;
 
         var deleteContextMenuItem = source.InstalledRemoval(collectionGroupId)

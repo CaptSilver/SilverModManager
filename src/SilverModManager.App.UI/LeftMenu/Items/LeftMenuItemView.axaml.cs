@@ -2,6 +2,7 @@ using System.Reactive.Disposables;
 using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.LeftMenu.Items;
@@ -43,6 +44,14 @@ public partial class LeftMenuItemView : ReactiveUserControl<ILeftMenuItemViewMod
                             RightContentControl.Content = vm;
                         }
                     )
+                    .DisposeWith(d);
+
+                // The button, not the view, is the zone: it carries the :drop-over state the theme styles.
+                var zone = new SerialDisposable().DisposeWith(d);
+                this.WhenAnyValue(view => view.ViewModel)
+                    .Subscribe(vm => zone.Disposable = vm is { DropTarget: { } target, ErrorPresenter: { } errors }
+                        ? new DropZone(NavButton, target, errors)
+                        : null)
                     .DisposeWith(d);
             }
         );

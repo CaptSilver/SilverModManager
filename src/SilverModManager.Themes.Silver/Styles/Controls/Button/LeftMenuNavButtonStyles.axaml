@@ -273,5 +273,13 @@
             <Setter Property="BorderBrush" Value="{StaticResource BrandNeutral600Brush}" />
             <Setter Property="Foreground" Value="{StaticResource NeutralStrongBrush}" />
         </Style>
+
+        <!-- DROP-OVER, last so it wins over the other states: a drag is over the button; the caption beside it says what dropping does -->
+
+        <Style Selector="^:drop-over">
+            <Setter Property="Background" Value="{StaticResource SurfaceTranslucentMidBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource PrimaryModerateBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource NeutralStrongBrush}" />
+        </Style>
     </Style>
 </Styles>

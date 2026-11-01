@@ -15,6 +15,8 @@ using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
 using SilverModManager.UI.Tests.Framework;
+using MenuStub = SilverModManager.UI.Tests.LeftMenu.LoadoutLeftMenuStub;
+using static SilverModManager.UI.Tests.LeftMenu.LeftMenuTestSupport;
 
 namespace SilverModManager.UI.Tests.LeftMenu;
 
@@ -22,47 +24,8 @@ namespace SilverModManager.UI.Tests.LeftMenu;
 [Collection(HeadlessUi.Collection)]
 public class LoadoutLeftMenuDragTests(IServiceProvider provider) : AUiTest(provider)
 {
-    private sealed class MenuStub : AViewModel<ILoadoutLeftMenuViewModel>, ILoadoutLeftMenuViewModel
-    {
-        private static ILeftMenuItemViewModel Item(string text) => new LeftMenuItemDesignViewModel { Text = new StringComponent(text), Icon = IconValues.Download };
-
-        public MenuStub(params ILeftMenuItemViewModel[] collections)
-        {
-            LeftMenuCollectionItems = new ReadOnlyObservableCollection<ILeftMenuItemViewModel>(new ObservableCollection<ILeftMenuItemViewModel>(collections));
-        }
-
-        public List<(int From, int To)> Moves { get; } = [];
-
-        /// <summary>The first entry keeps its place, as the oldest editable collection does.</summary>
-        public ReadOnlyObservableCollection<ILeftMenuItemViewModel> LeftMenuCollectionItems { get; }
-        public bool HasSingleCollection => false;
-        public WorkspaceId WorkspaceId { get; } = WorkspaceId.From(Guid.NewGuid());
-        public IApplyControlViewModel ApplyControlViewModel { get; } = new ApplyControlDesignViewModel();
-        public ILeftMenuItemViewModel LeftMenuItemLibrary { get; } = Item("Library item");
-        public ILeftMenuItemViewModel LeftMenuItemLoadout { get; } = Item("All item");
-        public ReadOnlyObservableCollection<ILeftMenuItemViewModel> LeftMenuStoreItems { get; } = new([]);
-        public ILeftMenuItemViewModel LeftMenuItemNewCollection { get; } = Item("New collection item");
-        public ILeftMenuItemViewModel LeftMenuItemHealthCheck { get; } = Item("Health item");
-        public ILeftMenuItemViewModel LeftMenuItemTools { get; } = Item("Tools item");
-        public ILeftMenuItemViewModel? LeftMenuItemIni => null;
-        public ILeftMenuItemViewModel? LeftMenuItemExternalChanges => null;
-
-        public void MoveCollection(int fromIndex, int toIndex) => Moves.Add((fromIndex, toIndex));
-        public bool IsCollectionMovable(int index) => index >= 1 && index < LeftMenuCollectionItems.Count;
-    }
-
     private static ILeftMenuItemViewModel Entry(string text, IWorkspaceController controller, PageData page) =>
         new LeftMenuItemViewModel(controller, WorkspaceId.From(Guid.NewGuid()), page) { Text = new StringComponent(text), Icon = IconValues.Download };
-
-    private static IWorkspaceController Controller()
-    {
-        var workspace = Substitute.For<IWorkspaceViewModel>();
-        workspace.Id.Returns(WorkspaceId.From(Guid.NewGuid()));
-        workspace.Panels.Returns(new ReadOnlyObservableCollection<IPanelViewModel>([]));
-        var controller = Substitute.For<IWorkspaceController>();
-        controller.ActiveWorkspace.Returns(workspace);
-        return controller;
-    }
 
     private async Task<(Window Window, LoadoutLeftMenuView View, MenuStub Menu)> Show(IWorkspaceController? controller = null)
     {

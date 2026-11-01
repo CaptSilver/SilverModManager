@@ -1,5 +1,7 @@
 using System.Reactive;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.DragAndDrop;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
@@ -22,4 +24,10 @@ public interface ILeftMenuItemViewModel : IViewModelInterface
     public bool IsSelected { get; }
     
     public IReadOnlyList<IContextMenuItem> AdditionalContextMenuItems { get; }
+
+    /// <summary>What the entry accepts when something is dragged onto it; null when it is not a drop target.</summary>
+    public IDropTarget? DropTarget { get; }
+
+    /// <summary>Receives a drop that fails. Set whenever <see cref="DropTarget"/> is.</summary>
+    public IErrorPresenter? ErrorPresenter { get; }
 }

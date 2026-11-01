@@ -1,7 +1,9 @@
 using System.Reactive;
 using System.Reactive.Disposables;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
@@ -20,6 +22,8 @@ public partial class LeftMenuItemDesignViewModel : AViewModel<ILeftMenuItemViewM
     public bool IsActive { get; } = false;
     public bool IsSelected { get; } = false;
     public IReadOnlyList<IContextMenuItem> AdditionalContextMenuItems { get; } = Array.Empty<IContextMenuItem>();
+    public IDropTarget? DropTarget => null;
+    public IErrorPresenter? ErrorPresenter => null;
     public bool IsToggleVisible { get; set; } = false;
     
     public bool IsEnabled { get; set; } = true;
