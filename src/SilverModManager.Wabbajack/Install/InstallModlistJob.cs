@@ -339,6 +339,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         {
             foreach (var skipped in WabbajackSkippedFile.FindByGroup(Connection.Db, found.Id))
                 tx.Delete(skipped.Id, recursive: false);
+            // A resume is an unfinished install again until it ends; with InstalledAt left in place it would read as
+            // installed from the moment its skip rows are gone.
+            if (found.InstalledAt is { HasValue: true } finishedAt)
+                tx.Retract(found.Id, WabbajackModlistLoadoutGroup.InstalledAt, finishedAt.Value);
             // A group made before folders carried the group id keeps the folder its tools were registered from.
             var folder = found.ExtrasFolder is { HasValue: true } recorded && recorded.Value.Length > 0
                 ? FileSystem.Shared.FromUnsanitizedFullPath(recorded.Value)

@@ -1,4 +1,14 @@
+using System.Reactive.Linq;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.Modlists;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Abstractions.Games.LoadOrder;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Wabbajack.Acquire;
+using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Sdk.Jobs;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Abstractions.Games.LoadOrder;
@@ -106,6 +116,45 @@ public class InstallOrderReinstallTests(ITestOutputHelper helper) : InstallTestB
         dropped.Should().OnlyContain(d => d.ContainerId == group.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId);
         dropped.Should().OnlyContain(d => d.Reason.Contains("the stored rule 'C wins over B'"), "the first install's note about the missing mod A is replaced");
         PrioritiesOf(group).Should().ContainKey("A");
+    }
+
+    [Fact]
+    public async Task ResumingAFinishedListRetractsInstalledAtBeforeTheRunSoAnInterruptedResumeReadsUnfinished()
+    {
+        var loadout = await CreateLoadout();
+        var modlist = await AddList();
+        var (_, first) = await Install(loadout, modlist, SkippingMissing);
+        WabbajackModlistLoadoutGroup.Load(Connection.Db, first.Id).Contains(WabbajackModlistLoadoutGroup.InstalledAt).Should().BeTrue();
+
+        // The job is built here, rather than through Create, so that the subscription exists before it starts: a small
+        // list can finish before Create returns. Cancelling as the resume enters its resolve phase interrupts it after
+        // the group was prepared and before it ends.
+        var fileStore = ServiceProvider.GetRequiredService<IFileStore>();
+        var job = new InstallModlistJob
+        {
+            TargetLoadout = loadout.LoadoutId,
+            Modlist = modlist,
+            Options = SkippingMissing,
+            Connection = Connection,
+            FileStore = fileStore,
+            Inventory = ServiceProvider.GetRequiredService<ArchiveInventory>(),
+            Transforms = ServiceProvider.GetRequiredService<IDirectiveTransforms>(),
+            PrefixResolver = ServiceProvider.GetRequiredService<IPrefixResolver>(),
+            Paths = ServiceProvider.GetRequiredService<WabbajackPaths>(),
+            Writer = new GeneratedFileWriter(fileStore, ServiceProvider.GetRequiredService<TemporaryFileManager>()),
+            Openers = ServiceProvider.GetServices<INestedArchiveOpener>().ToArray(),
+            Logger = ServiceProvider.GetRequiredService<ILogger<InstallModlistJob>>(),
+            OrderImporter = ServiceProvider.GetRequiredService<ModOrderImporter>(),
+        };
+        var monitor = ServiceProvider.GetRequiredService<IJobMonitor>();
+        using var cancelOnResolve = job.Progress.Changes
+            .Where(snapshot => snapshot.Phase == InstallPhase.Resolve)
+            .Take(1)
+            .Subscribe(_ => monitor.CancelAll());
+        var interrupted = await Record.ExceptionAsync(async () => await monitor.Begin<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly>(job));
+
+        interrupted.Should().BeAssignableTo<OperationCanceledException>();
+        WabbajackModlistLoadoutGroup.Load(Connection.Db, first.Id).Contains(WabbajackModlistLoadoutGroup.InstalledAt).Should().BeFalse("a resume is an unfinished install until it ends");
     }
 
     private LoadoutItemGroupId GroupId(WabbajackModlistLoadoutGroup.ReadOnly group, string name) =>

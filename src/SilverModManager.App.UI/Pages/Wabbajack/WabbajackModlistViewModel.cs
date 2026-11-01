@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using SilverModManager.App.UI.Pages.LibraryPage.Collections;
 using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Concurrency;
@@ -773,7 +774,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
             _groupId = found?.WabbajackModlistLoadoutGroupId;
             IsInstalled = found is not null;
-            CanResume = found is { } group && !group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().IsEnabled();
+            CanResume = SelectedLoadout?.Id is { } resumable && WabbajackModlistInstallState.Read(db, FileId, resumable) == WabbajackModlistCardState.Incomplete;
             SkippedFiles = found is { } owner
                 ? WabbajackSkippedFile.All(db).Where(skipped => skipped.GroupId == owner.WabbajackModlistLoadoutGroupId).Select(skipped => new WabbajackSkippedRow(skipped.To, skipped.Reason, skipped.Kind)).ToArray()
                 : [];

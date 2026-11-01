@@ -814,6 +814,24 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
     }
 
     [Fact]
+    public async Task ResumeIsOfferedForAnUnfinishedInstallAndForSkipsButNotForAFinishedListThatIsSwitchedOff()
+    {
+        var (vm, _, _) = await Open(Plan());
+        using var activation = vm.Activator.Activate();
+        var loadout = vm.SelectedLoadout!.Id!.Value;
+        vm.CanResume.Should().BeFalse("nothing is installed yet");
+
+        var group = await WabbajackGroupSeed.AddGroup(Connection, SomeFile.Value, loadout, "Resumable");
+        await EventuallyOnUi(() => vm.CanResume.Should().BeTrue("the install never finished"));
+
+        await WabbajackGroupSeed.Finish(Connection, group);
+        await EventuallyOnUi(() => vm.CanResume.Should().BeFalse("a finished list is not resumed just because it is switched off"));
+
+        await WabbajackGroupSeed.AddSkip(Connection, group, loadout);
+        await EventuallyOnUi(() => vm.CanResume.Should().BeTrue("files were skipped"));
+    }
+
+    [Fact]
     public async Task APageOpenedForALoadoutStartsOnThatLoadout()
     {
         await SeedLoadoutRow(GameStore.Steam, "First loadout of the game");
