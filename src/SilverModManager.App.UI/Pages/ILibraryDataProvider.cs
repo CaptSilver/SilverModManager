@@ -27,8 +27,6 @@ public interface ILibraryDataProvider
 {
     IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter);
 
-    IObservable<int> CountLibraryItems(LibraryFilter libraryFilter);
-
     /// <summary>
     /// Returns all library files for the given game.
     /// </summary>
@@ -39,23 +37,6 @@ public record LibraryFilter(LoadoutId LoadoutId, IGameData Game);
 
 public static class LibraryDataProviderHelper
 {
-    public static IObservable<int> CountAllLibraryItems(IServiceProvider serviceProvider, LoadoutId loadoutId)
-    {
-        var connection = serviceProvider.GetRequiredService<IConnection>();
-        var loadout = Loadout.Load(connection.Db, loadoutId);
-
-        var libraryFilter = new LibraryFilter(loadout, loadout.InstallationInstance.Game);
-        return CountAllLibraryItems(serviceProvider, libraryFilter);
-    }
-
-    public static IObservable<int> CountAllLibraryItems(IServiceProvider serviceProvider, LibraryFilter libraryFilter)
-    {
-        var libraryDataProviders = serviceProvider.GetServices<ILibraryDataProvider>();
-        return libraryDataProviders
-            .Select(provider => provider.CountLibraryItems(libraryFilter))
-            .CombineLatest(static counts => counts.Sum());
-    }
-
     /// <summary>
     /// Whether the Mods tab lists the library file under <paramref name="game"/>. One the app fetched for a Wabbajack
     /// modlist of that game is that list's own download and stays out of the way until the user installs it into a

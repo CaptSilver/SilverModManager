@@ -326,18 +326,17 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
     }
 
     [Fact]
-    public async Task CountLibraryItems_IsThePackageCount()
+    public async Task VersionsOfOnePackage_ShareOneRow()
     {
         var community = UniqueCommunity();
         await AddFile(community, "Zehs", "REPOLib", "4.1.0");
         await AddFile(community, "Zehs", "REPOLib", "4.2.0");
         await AddFile(community, "nickklmao", "REPOConfig", "1.2.6");
         var game = ThunderstoreGameOf(community);
-        var count = 0;
 
-        using var _ = CreateProvider(game).CountLibraryItems(new LibraryFilter(NoLoadout, game)).Subscribe(value => count = value);
+        using var rows = Rows(CreateProvider(game).ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
 
-        await Eventually(() => count.Should().Be(2));
+        await Eventually(() => rows.Count.Should().Be(2));
     }
 
     [Fact]
@@ -350,29 +349,24 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
         var game = ThunderstoreGameOf(community);
         var thunderstore = CreateProvider(game);
         var filter = new LibraryFilter(NoLoadout, game);
-        var count = -1;
 
         using var rows = Rows(thunderstore.ObserveLibraryItems(filter));
-        using var _ = thunderstore.CountLibraryItems(filter).Subscribe(value => count = value);
 
         await Eventually(() => rows.Count.Should().Be(1));
         NameOf(rows.Items.Single()).Should().Be("REPOLib");
-        await Eventually(() => count.Should().Be(1));
     }
 
     [Fact]
-    public async Task AGameWithoutThunderstoreSupport_ShowsNothingAndCountsZero()
+    public async Task AGameWithoutThunderstoreSupport_ShowsNothing()
     {
         await AddFile(UniqueCommunity(), "Zehs", "REPOLib", "4.1.0");
         var game = PlainGame();
         var thunderstore = CreateProvider(game);
         var filter = new LibraryFilter(NoLoadout, game);
-        var count = -1;
 
         using var rows = Rows(thunderstore.ObserveLibraryItems(filter));
-        using var _ = thunderstore.CountLibraryItems(filter).Subscribe(value => count = value);
 
-        await Eventually(() => count.Should().Be(0));
+        await Task.Delay(300);
         rows.Count.Should().Be(0);
     }
 
@@ -544,7 +538,7 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
     }
 
     [Fact]
-    public async Task ALoadoutOfAGameWithoutThunderstoreSupport_ShowsNothingAndCountsZero()
+    public async Task ALoadoutOfAGameWithoutThunderstoreSupport_ShowsNothing()
     {
         var community = UniqueCommunity();
         var game = PlainGame();

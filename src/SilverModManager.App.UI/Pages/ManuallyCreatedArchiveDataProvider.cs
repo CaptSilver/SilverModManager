@@ -36,13 +36,6 @@ internal class ManuallyCreatedArchiveDataProvider : ALibraryDataProvider<Manuall
             .Transform(archive => ToLibraryItemModel(libraryFilter, archive));
     }
 
-    public override IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
-    {
-        return ObserveOwnItems(libraryFilter)
-            .QueryWhenChanged(query => query.Count)
-            .Prepend(0);
-    }
-
     private CompositeItemModel<EntityId> ToLibraryItemModel(LibraryFilter libraryFilter, ManuallyCreatedArchive.ReadOnly archive)
     {
         var linkedLoadoutItemsObservable = LibraryDataProviderHelper

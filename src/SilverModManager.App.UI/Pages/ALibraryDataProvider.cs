@@ -68,7 +68,4 @@ public abstract class ALibraryDataProvider<TModel>(IConnection connection) : ILi
 
     /// <inheritdoc />
     public abstract IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter filter);
-
-    /// <inheritdoc />
-    public abstract IObservable<int> CountLibraryItems(LibraryFilter filter);
 }

@@ -156,15 +156,6 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
         await tx.Commit();
     }
 
-    private static List<int> Counts(IObservable<int> counts)
-    {
-        var seen = new List<int>();
-        counts.Subscribe(count => { lock (seen) seen.Add(count); });
-        return seen;
-    }
-
-    private static int Last(List<int> seen) { lock (seen) return seen.Count == 0 ? -1 : seen[^1]; }
-
     [Fact]
     public async Task ANexusFileTheAppFetchedForAModlistIsNotInTheModsTabUntilTheUserInstallsIt()
     {
@@ -172,7 +163,6 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
         var filter = Filter(loadout);
         var provider = new NexusModsDataProvider(Provider);
         using var rows = provider.ObserveLibraryItems(filter).AsObservableCache();
-        var counts = Counts(provider.CountLibraryItems(filter));
 
         var (page, item) = await AddNexusFile(7001, 8001, "Fetched.zip");
         await AddArchiveRow(await AddModlist(), "Fetched.zip", fetched: item);
@@ -180,15 +170,12 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
         // first, and hidden by the archive row) has been dealt with; no fixed delay stands in for that.
         var (ownPage, _) = await AddNexusFile(7002, 8002, "Own.zip");
         await Eventually(() => rows.Lookup(ownPage).HasValue.Should().BeTrue());
-        // The game's slice is shared with the other tests in the class, so the count is checked against the rows.
-        await Eventually(() => Last(counts).Should().Be(rows.Count));
 
         rows.Lookup(page).HasValue.Should().BeFalse();
 
         await Install(loadout, item);
 
         await Eventually(() => rows.Lookup(page).HasValue.Should().BeTrue());
-        await Eventually(() => Last(counts).Should().Be(rows.Count));
     }
 
     [Fact]
@@ -224,11 +211,9 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Main");
         var provider = new LocalFileDataProvider(Provider);
         using var rows = provider.ObserveLibraryItems(Filter(loadout)).AsObservableCache();
-        var counts = Counts(provider.CountLibraryItems(Filter(loadout)));
 
-        // Every test that adds files for this game writes into the same slice. Another test's file can
-        // land at any point, so nothing here counts from a starting number: the count has to agree with the rows
-        // the tab shows, and the two files this test writes are checked by id.
+        // Every test that adds files for this game writes into the same slice, so the files this test writes are
+        // checked by id.
         var bystander = await AddLocalFile("bystander.7z");
         var fetched = await AddLocalFile("fetched.7z");
         var own = await AddLocalFile("own.7z");
@@ -240,12 +225,10 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
         rows.Lookup(own).HasValue.Should().BeTrue();
         rows.Lookup(bystander).HasValue.Should().BeTrue();
         rows.Lookup(fetched).HasValue.Should().BeFalse();
-        await Eventually(() => Last(counts).Should().Be(rows.Count));
 
         await Install(loadout, fetched);
 
         await Eventually(() => rows.Lookup(fetched).HasValue.Should().BeTrue());
-        await Eventually(() => Last(counts).Should().Be(rows.Count));
     }
 
     [Fact]
@@ -259,13 +242,11 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
         var modlists = new WabbajackModlistDataProvider(Provider);
         using var localRows = local.ObserveLibraryItems(Filter(loadout)).AsObservableCache();
         using var listRows = modlists.ObserveLibraryItems(Filter(loadout)).AsObservableCache();
-        var listCounts = Counts(modlists.CountLibraryItems(Filter(loadout)));
 
         await Task.Delay(300);
 
         localRows.Lookup(list).HasValue.Should().BeFalse();
         listRows.Count.Should().Be(0);
-        Last(listCounts).Should().Be(0);
         var skyrim = SilverModManager.Wabbajack.WabbajackGames.GameIdFor("SkyrimSpecialEdition")!.Value;
         modlists.GetAllFiles(skyrim).Select(f => f.Id).Should().Contain(skyrimList);
     }

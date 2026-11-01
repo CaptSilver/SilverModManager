@@ -70,11 +70,6 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
             .ChangeKey(static model => model.Key);
     }
 
-    public override IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
-    {
-        return ObserveShownPages(libraryFilter).QueryWhenChanged(query => query.Count).Prepend(0);
-    }
-
     private CompositeItemModel<EntityId> ToLibraryItemModel(IGroup<NexusModsLibraryItem.ReadOnly, EntityId, EntityId> page, LibraryFilter libraryFilter)
     {
         var modPage = NexusModsModPageMetadata.Load(_connection.Db, page.Key);

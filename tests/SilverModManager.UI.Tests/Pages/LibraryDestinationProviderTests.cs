@@ -473,23 +473,6 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     }
 
     [Fact]
-    public async Task CountLibraryItems_CountsTheRowsOfTheGameOnly()
-    {
-        var (game, sibling) = NewPair();
-        var theirs = await AddLocalFile("theirs.7z", Destination.Of(sibling.GameId));
-        var mine = await AddLocalFile("mine.7z", Destination.Of(game.GameId));
-        var provider = new LocalFileDataProvider(Provider);
-        var counts = new List<int>();
-        using var _ = provider.CountLibraryItems(Filter(game)).Subscribe(count => { lock (counts) counts.Add(count); });
-        using var rows = Rows(provider.ObserveLibraryItems(Filter(game)));
-
-        // Other tests' unassigned files are listed under every game, so the count is checked against the rows.
-        await Eventually(() => rows.Lookup(mine).HasValue.Should().BeTrue());
-        await Eventually(() => { lock (counts) counts.Should().EndWith(rows.Count); });
-        rows.Lookup(theirs).HasValue.Should().BeFalse();
-    }
-
-    [Fact]
     public async Task FilesOnlyForGame_KeepsAFileAnotherGameStillUses_OutOfTheDeletion()
     {
         var (game, sibling) = NewPair();

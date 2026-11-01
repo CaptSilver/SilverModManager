@@ -29,6 +29,4 @@ internal class WabbajackModlistDataProvider : ALibraryDataProvider<WabbajackModl
     // removing a game still asks it for the lists to delete.
     public override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
         => Observable.Never<IChangeSet<CompositeItemModel<EntityId>, EntityId>>().StartWith(ChangeSet<CompositeItemModel<EntityId>, EntityId>.Empty);
-
-    public override IObservable<int> CountLibraryItems(LibraryFilter libraryFilter) => Observable.Never<int>().StartWith(0);
 }

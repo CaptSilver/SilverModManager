@@ -126,13 +126,6 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
             .ChangeKey(static model => model.Key);
     }
 
-    public override IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
-    {
-        return ByPackage(ObserveOwnItems(libraryFilter))
-            .QueryWhenChanged(static query => query.Count)
-            .Prepend(0);
-    }
-
     private CompositeItemModel<EntityId> ToLibraryItemModel(IGroup<ThunderstoreLibraryFile.ReadOnly, EntityId, string> package, LibraryFilter libraryFilter)
     {
         var files = package.Cache.Connect().RefCount();

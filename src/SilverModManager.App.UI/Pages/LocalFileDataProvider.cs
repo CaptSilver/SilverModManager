@@ -32,7 +32,7 @@ internal class LocalFileDataProvider : ALibraryDataProvider<LocalFile.ReadOnly>,
     }
 
     // A Wabbajack modlist is added as a local file too; the Collections tab shows it.
-    private static bool IsModlist(LocalFile.ReadOnly localFile) => localFile.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out _);
+    internal static bool IsModlist(LocalFile.ReadOnly localFile) => localFile.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out _);
 
     // The modlist file is a local file too, but game removal gets it from WabbajackModlistDataProvider; listing it here
     // as well would delete it twice.
@@ -50,13 +50,6 @@ internal class LocalFileDataProvider : ALibraryDataProvider<LocalFile.ReadOnly>,
     public override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
     {
         return ObserveShown(libraryFilter).Transform(localFile => ToLibraryItemModel(libraryFilter, localFile));
-    }
-
-    public override IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
-    {
-        return ObserveShown(libraryFilter)
-            .QueryWhenChanged(query => query.Count)
-            .Prepend(0);
     }
 
     private CompositeItemModel<EntityId> ToLibraryItemModel(LibraryFilter libraryFilter, LocalFile.ReadOnly localFile)

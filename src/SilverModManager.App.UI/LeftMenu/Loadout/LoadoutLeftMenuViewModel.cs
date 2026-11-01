@@ -59,8 +59,6 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
     private readonly LoadoutCollectionList _collectionList;
     public ReadOnlyObservableCollection<ILeftMenuItemViewModel> LeftMenuCollectionItems => _collectionList.Items;
     
-    [Reactive] private partial int NewDownloadModelCount { get; set; }
-
     public LoadoutLeftMenuViewModel(
         LoadoutContext loadoutContext,
         WorkspaceId workspaceId,
@@ -82,6 +80,7 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
 
         var loadout = Sdk.Loadouts.Loadout.Load(conn.Db, loadoutContext.LoadoutId.Value);
         var game = loadout.InstallationInstance.Game;
+        var newItems = serviceProvider.GetRequiredService<ILibraryNewItems>();
 
         // Library
         LeftMenuItemLibrary = new LeftMenuItemWithCountBadgeViewModel(
@@ -100,7 +99,7 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
             Text = new StringComponent(Language.LibraryPageTitle),
             Icon = IconValues.LibraryOutline,
             ToolTip = new StringComponent(Language.LibraryPageTitleToolTip),
-            CountObservable = this.WhenAnyValue(vm => vm.NewDownloadModelCount),
+            CountObservable = newItems.ObserveNewCount(loadoutContext.LoadoutId, game.GameId).OnUI(),
         };
         
         // Loadout
@@ -280,31 +279,14 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
                 _collectionList.Bind(collectionItemsObservable.MergeChangeSets(collectionRevisionsObservable))
                     .DisposeWith(disposable);
 
-                var previousCount = 0;
-                NewDownloadModelCount = 0;
-
-                LibraryDataProviderHelper
-                    .CountAllLibraryItems(serviceProvider, loadoutContext.LoadoutId)
-                    .OnUI()
-                    .SubscribeWithErrorLogging(currentCount =>
-                    {
-                        if (LeftMenuItemLibrary.IsActive || LeftMenuItemLibrary.IsSelected)
-                        {
-                            NewDownloadModelCount = 0;
-                        }
-                        else
-                        {
-                            var diff = Math.Max(0, currentCount - previousCount);
-                            NewDownloadModelCount += diff;
-                        }
-
-                        previousCount = currentCount;
-                    })
-                    .DisposeWith(disposable);
-
+                // Opening the Library page, or something arriving while it is open, clears the badge.
                 LeftMenuItemLibrary
                     .WhenAnyValue(item => item.IsActive, item => item.IsSelected, (isActive, isSelected) => isActive || isSelected)
-                    .Subscribe(isActive => NewDownloadModelCount = isActive ? 0 : NewDownloadModelCount)
+                    .Select(isOpen => isOpen
+                        ? newItems.ObserveNewCount(loadoutContext.LoadoutId, game.GameId).Where(count => count > 0).StartWith(1)
+                        : Observable.Never<int>())
+                    .Switch()
+                    .SubscribeWithErrorLogging(_ => newItems.MarkSeen(loadoutContext.LoadoutId))
                     .DisposeWith(disposable);
 
                 CollectionGroup.ObserveAll(conn)
