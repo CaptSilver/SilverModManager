@@ -192,6 +192,9 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         return new ThunderstoreInstaller(services, Connection, [game], Substitute.For<IThunderstoreApi>(), catalogs, NullLogger<ThunderstoreInstaller>.Instance);
     }
 
+    private ThunderstoreInstaller InstallerWithoutGames(IThunderstoreCatalogSource catalogs)
+        => new(new ServiceCollection().BuildServiceProvider(), Connection, [], Substitute.For<IThunderstoreApi>(), catalogs, NullLogger<ThunderstoreInstaller>.Instance);
+
     private async Task<(ThunderstoreViewModel Vm, FakeCatalogSource Source)> Open(FakeCatalogSource source, FakeInstallSource? installs = null, ILoadoutManager? loadoutManager = null, IStoreSortMemory? sortMemory = null, IAdultContentSetting? adultContent = null)
     {
         installs ??= new FakeInstallSource();
@@ -199,8 +202,6 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         var (loadoutId, game) = await SeedLoadout();
         var vm = new ThunderstoreViewModel(
             Provider.GetRequiredService<IWindowManager>(),
-            Connection,
-            [game],
             source,
             InstallerOver(source, installs, loadoutManager, game),
             Substitute.For<IOSInterop>(),
@@ -383,8 +384,8 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
     public async Task AGameWithoutAThunderstoreCommunity_HasNoCatalog()
     {
         var vm = new ThunderstoreViewModel(
-            Provider.GetRequiredService<IWindowManager>(), Connection, [], new FakeCatalogSource(Catalog()),
-            Substitute.For<IThunderstoreInstaller>(), Substitute.For<IOSInterop>(), Substitute.For<IThumbnailLoader>(), new InMemoryStoreSortMemory(), new FakeAdultContentSetting(), NullLogger<ThunderstoreViewModel>.Instance)
+            Provider.GetRequiredService<IWindowManager>(), new FakeCatalogSource(Catalog()),
+            InstallerWithoutGames(new FakeCatalogSource(Catalog())), Substitute.For<IOSInterop>(), Substitute.For<IThumbnailLoader>(), new InMemoryStoreSortMemory(), new FakeAdultContentSetting(), NullLogger<ThunderstoreViewModel>.Instance)
         {
             LoadoutId = (await SeedLoadout()).Id,
         };
@@ -455,8 +456,8 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
     {
         var os = Substitute.For<IOSInterop>();
         var (loadoutId, game) = await SeedLoadout();
-        var withOs = new ThunderstoreViewModel(Provider.GetRequiredService<IWindowManager>(), Connection,
-            [game], new FakeCatalogSource(Catalog()), Substitute.For<IThunderstoreInstaller>(), os, Substitute.For<IThumbnailLoader>(), new InMemoryStoreSortMemory(), new FakeAdultContentSetting(), NullLogger<ThunderstoreViewModel>.Instance)
+        var withOs = new ThunderstoreViewModel(Provider.GetRequiredService<IWindowManager>(),
+            new FakeCatalogSource(Catalog()), InstallerOver(new FakeCatalogSource(Catalog()), new FakeInstallSource(), Substitute.For<ILoadoutManager>(), game), os, Substitute.For<IThumbnailLoader>(), new InMemoryStoreSortMemory(), new FakeAdultContentSetting(), NullLogger<ThunderstoreViewModel>.Instance)
         {
             LoadoutId = loadoutId,
         };

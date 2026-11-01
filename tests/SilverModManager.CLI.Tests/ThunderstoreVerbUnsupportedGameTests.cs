@@ -54,4 +54,16 @@ public class ThunderstoreVerbUnsupportedGameTests(ITestOutputHelper helper) : AI
         (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage($"*{NoNexusIdStubbedGame.DisplayName}*");
         _routes.Requests.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task TryGetGameRefusesAndNamesTheGame()
+    {
+        var loadout = await CreateLoadout();
+
+        var found = ServiceProvider.GetRequiredService<IThunderstoreInstaller>().TryGetGame(loadout.LoadoutId, out var game, out var problem);
+
+        found.Should().BeFalse();
+        game.Should().BeNull();
+        problem.Should().Contain(NoNexusIdStubbedGame.DisplayName);
+    }
 }

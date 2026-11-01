@@ -33,8 +33,6 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         "Kesomannen-GaleModManager",
     };
 
-    private readonly IConnection _connection;
-    private readonly IEnumerable<IGameData> _games;
     private readonly IThunderstoreCatalogSource _catalogs;
     private readonly IThunderstoreInstaller _installer;
     private readonly ILogger<ThunderstoreViewModel> _logger;
@@ -58,8 +56,6 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
 
     public ThunderstoreViewModel(
         IWindowManager windowManager,
-        IConnection connection,
-        IEnumerable<IGameData> games,
         IThunderstoreCatalogSource catalogs,
         IThunderstoreInstaller installer,
         IOSInterop osInterop,
@@ -68,8 +64,6 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         IAdultContentSetting adultContent,
         ILogger<ThunderstoreViewModel> logger) : base(windowManager)
     {
-        _connection = connection;
-        _games = games;
         _catalogs = catalogs;
         _installer = installer;
         _logger = logger;
@@ -179,18 +173,8 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         }
     }
 
-    // The game comes from the installation's recorded id, not the game registry: the registry throws for an
-    // installation it hasn't located, and a page shouldn't fail because its game went missing.
-    private IThunderstoreGame? ThunderstoreGameOfLoadout()
-    {
-        if (LoadoutId == default) return null;
-        var loadout = Loadout.Load(_connection.Db, LoadoutId);
-        if (!GameInstallMetadata.Game.TryGetValue(loadout.Installation, out var gameId)) return null;
-        var game = _games.FirstOrDefault(game => game.GameId == gameId);
-        return game is null ? null : ThunderstoreGame.For(game);
-    }
-
-    private string? CommunityOfLoadout() => ThunderstoreGameOfLoadout()?.ThunderstoreCommunity;
+    private string? CommunityOfLoadout()
+        => LoadoutId != default && _installer.TryGetGame(LoadoutId, out var game, out _) ? game.ThunderstoreCommunity : null;
 
     private async Task InstallAsync(ThunderstorePackageRow row, CancellationToken cancellationToken)
     {

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Library;
@@ -23,6 +24,20 @@ internal sealed class ThunderstoreInstaller(
     IThunderstoreCatalogSource catalogs,
     ILogger<ThunderstoreInstaller> logger) : IThunderstoreInstaller
 {
+    public bool TryGetGame(LoadoutId loadoutId, [NotNullWhen(true)] out IThunderstoreGame? game, out string problem)
+    {
+        var loadout = Loadout.Load(connection.Db, loadoutId);
+        var data = GameInstallMetadata.Game.TryGetValue(loadout.Installation, out var gameId)
+            ? games.FirstOrDefault(candidate => candidate.GameId == gameId)
+            : null;
+
+        game = data is null ? null : ThunderstoreGame.For(data);
+        problem = game is null
+            ? $"{data?.DisplayName ?? "The loadout's game"} has no Thunderstore support: its mods do not come from Thunderstore."
+            : string.Empty;
+        return game is not null;
+    }
+
     public async ValueTask<IReadOnlyList<string>> CommunitiesOf(ThunderstorePackageRef package, CancellationToken cancellationToken)
     {
         var detail = await api.FetchPackage(package, cancellationToken);
@@ -85,20 +100,8 @@ internal sealed class ThunderstoreInstaller(
         return catalog.Categories(root.Package).Contains("Modpacks") ? DependencyPolicy.Exact : DependencyPolicy.Latest;
     }
 
-    // The game comes from the installation's recorded id, not the game registry: the registry throws for an
-    // installation it hasn't located, and an install shouldn't fail because its game went missing.
     private IThunderstoreGame GameOfLoadout(LoadoutId loadoutId)
-    {
-        var loadout = Loadout.Load(connection.Db, loadoutId);
-        var data = GameInstallMetadata.Game.TryGetValue(loadout.Installation, out var gameId)
-            ? games.FirstOrDefault(game => game.GameId == gameId)
-            : null;
-
-        if (data is not null && ThunderstoreGame.For(data) is { } thunderstore) return thunderstore;
-
-        var name = data?.DisplayName ?? "The loadout's game";
-        throw new InvalidOperationException($"{name} has no Thunderstore support: its mods do not come from Thunderstore.");
-    }
+        => TryGetGame(loadoutId, out var game, out var problem) ? game : throw new InvalidOperationException(problem);
 
     private static ThunderstoreVersionRef VersionOf(LibraryFile.ReadOnly file)
         => file.TryGetAsThunderstoreLibraryFile(out var package)

@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Thunderstore;
@@ -10,6 +12,13 @@ namespace SilverModManager.Abstractions.Library;
 /// </summary>
 public interface IThunderstoreInstaller
 {
+    /// <summary>
+    /// The Thunderstore side of the loadout's game. <paramref name="problem"/> says why not when the loadout's game
+    /// has no Thunderstore support, naming the game when it is known. The game comes from the installation's recorded
+    /// id, not the game registry, so a game that went missing does not fail the lookup.
+    /// </summary>
+    bool TryGetGame(LoadoutId loadoutId, [NotNullWhen(true)] out IThunderstoreGame? game, out string problem);
+
     /// <summary>
     /// The communities Thunderstore lists the package under, empty when it does not know the package.
     /// </summary>

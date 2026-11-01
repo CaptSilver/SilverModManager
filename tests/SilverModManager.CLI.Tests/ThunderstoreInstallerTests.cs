@@ -33,6 +33,18 @@ public class ThunderstoreInstallerTests(ITestOutputHelper helper) : AIsolatedGam
     private IThunderstoreInstaller Installer => ServiceProvider.GetRequiredService<IThunderstoreInstaller>();
 
     [Fact]
+    public async Task TryGetGameFindsTheThunderstoreSideOfTheLoadoutsGame()
+    {
+        var loadout = await CreateLoadout();
+
+        var found = Installer.TryGetGame(loadout.LoadoutId, out var game, out var problem);
+
+        found.Should().BeTrue(problem);
+        game!.ThunderstoreCommunity.Should().NotBeNullOrEmpty();
+        problem.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task InstallDownloadsAndInstallsTheLoaderPackBeforeThePackage()
     {
         var loadout = await CreateLoadout();

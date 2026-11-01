@@ -29,11 +29,12 @@ internal static class ThunderstoreVerbs
     [Verb("thunderstore refresh", "Downloads the package index of the loadout's game, fetching only the parts that changed")]
     private static async Task<int> Refresh(
         [Injected] IRenderer renderer,
+        [Injected] IThunderstoreInstaller installer,
         [Injected] ThunderstoreIndexCache cache,
         [Injected] CancellationToken token,
         [Option("l", "loadout", "The loadout whose game says which Thunderstore community to refresh")] Loadout.ReadOnly loadout)
     {
-        if (!TryGetGame(loadout, out var game, out var problem))
+        if (!installer.TryGetGame(loadout.LoadoutId, out var game, out var problem))
         {
             await renderer.TextLine(problem);
             return 1;
@@ -48,12 +49,13 @@ internal static class ThunderstoreVerbs
     [Verb("thunderstore search", "Lists the packages of the loadout's game whose name or team contains the query, best rated first")]
     private static async Task<int> Search(
         [Injected] IRenderer renderer,
+        [Injected] IThunderstoreInstaller installer,
         [Injected] ThunderstoreIndexCache cache,
         [Injected] CancellationToken token,
         [Option("l", "loadout", "The loadout whose game says which Thunderstore community to search")] Loadout.ReadOnly loadout,
         [Option("q", "query", "Text the package name or team contains")] string query)
     {
-        if (!TryGetGame(loadout, out var game, out var problem))
+        if (!installer.TryGetGame(loadout.LoadoutId, out var game, out var problem))
         {
             await renderer.TextLine(problem);
             return 1;
@@ -89,7 +91,7 @@ internal static class ThunderstoreVerbs
         [Option("p", "package", "Namespace-Name for the latest version, or Namespace-Name-1.2.3 for one version")] string package,
         [Option("e", "exact", "Take the dependency versions the package lists instead of the latest ones", true)] bool exact)
     {
-        if (!TryGetGame(loadout, out var game, out var problem))
+        if (!installer.TryGetGame(loadout.LoadoutId, out var game, out var problem))
         {
             await renderer.TextLine(problem);
             return 1;
@@ -145,12 +147,13 @@ internal static class ThunderstoreVerbs
     private static async Task<int> Updates(
         [Injected] IRenderer renderer,
         [Injected] IConnection connection,
+        [Injected] IThunderstoreInstaller installer,
         [Injected] ThunderstoreIndexCache cache,
         [Injected] ThunderstoreUpdateChecker checker,
         [Injected] CancellationToken token,
         [Option("l", "loadout", "The loadout whose game says which Thunderstore community to check")] Loadout.ReadOnly loadout)
     {
-        if (!TryGetGame(loadout, out var game, out var problem))
+        if (!installer.TryGetGame(loadout.LoadoutId, out var game, out var problem))
         {
             await renderer.TextLine(problem);
             return 1;
@@ -171,21 +174,6 @@ internal static class ThunderstoreVerbs
             update.Newest.Version.ToString(),
         }));
         return 0;
-    }
-
-    private static bool TryGetGame(Loadout.ReadOnly loadout, [NotNullWhen(true)] out IThunderstoreGame? game, out string problem)
-    {
-        var data = loadout.InstallationInstance.Game;
-        if (ThunderstoreGame.For(data) is { } found)
-        {
-            game = found;
-            problem = string.Empty;
-            return true;
-        }
-
-        game = null;
-        problem = $"{data.DisplayName} has no Thunderstore support: its mods do not come from Thunderstore.";
-        return false;
     }
 
     private static async Task<ThunderstoreCatalog> LoadCatalog(ThunderstoreIndexCache cache, string community, CancellationToken token)
