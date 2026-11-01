@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Backend;
+using SilverModManager.Games.Generic.Simple;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Sdk;
 
@@ -14,6 +15,7 @@ public class Startup
         container
             .AddDefaultServicesForTesting()
             .AddLogging(builder => builder.AddXUnit())
+            .AddSimpleGames()
             .AddGames()
             .AddGameServices()
             .Validate();

@@ -4,19 +4,19 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Games.Generic.Installers;
 using SilverModManager.Games.TestFramework;
-using SilverModManager.Games.Witcher.Witcher1;
+using SilverModManager.Games.Generic.Simple;
 using SilverModManager.Sdk.Games;
 using SilverModManager.StandardGameLocators.TestHelpers;
 
 namespace SilverModManager.Games.Witcher.Tests.Witcher1;
 
-public class Witcher1InstallerTests(ITestOutputHelper outputHelper) : ALibraryArchiveInstallerTests<Witcher1InstallerTests, Witcher1Game>(outputHelper)
+public class Witcher1InstallerTests(ITestOutputHelper outputHelper) : ALibraryArchiveInstallerTests<Witcher1InstallerTests>(outputHelper, SimpleGames.Witcher1.GameId)
 {
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         return base.AddServices(services)
-            .AddWitcherGames()
-            .AddUniversalGameLocator<Witcher1Game>(new Version("1.5"), locationsFileSystem: IsolatedKnownFolders.Create);
+            .AddSimpleGames()
+            .AddUniversalGameLocator(SimpleGames.Witcher1.GameId, locationsFileSystem: IsolatedKnownFolders.Create);
     }
 
     public static readonly List<(string TestName, string[] Paths)> TestCases =

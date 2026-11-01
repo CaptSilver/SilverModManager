@@ -1,3 +1,4 @@
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Generic.Installers;
@@ -12,7 +13,7 @@ namespace SilverModManager.Games.Generic.Simple;
 public sealed class SimpleGame(IServiceProvider provider, SimpleGameDefinition definition)
     : DefinedGame<SimpleGameDefinition>(provider, definition), IGameIdentifyingFiles
 {
-    public IReadOnlyList<NexusMods.Paths.RelativePath> IdentifyingFiles => Definition.IdentifyingFiles;
+    public IReadOnlyList<RelativePath> IdentifyingFiles => Definition.IdentifyingFiles;
 
     protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new SimpleGameSynchronizer(provider);
 

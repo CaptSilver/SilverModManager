@@ -5,21 +5,21 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.Generic.Installers;
+using SilverModManager.Games.Generic.Simple;
 using SilverModManager.Games.TestFramework;
-using SilverModManager.Games.Witcher.Witcher2;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.StandardGameLocators.TestHelpers;
 
 namespace SilverModManager.Games.Witcher.Tests.Witcher2;
 
-public class Witcher2InstallerTests(ITestOutputHelper outputHelper) : ALibraryArchiveInstallerTests<Witcher2InstallerTests, Witcher2Game>(outputHelper)
+public class Witcher2InstallerTests(ITestOutputHelper outputHelper) : ALibraryArchiveInstallerTests<Witcher2InstallerTests>(outputHelper, SimpleGames.Witcher2.GameId)
 {
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         return base.AddServices(services)
-            .AddWitcherGames()
-            .AddUniversalGameLocator<Witcher2Game>(new Version("3.5"), locationsFileSystem: IsolatedKnownFolders.Create);
+            .AddSimpleGames()
+            .AddUniversalGameLocator(SimpleGames.Witcher2.GameId, locationsFileSystem: IsolatedKnownFolders.Create);
     }
 
     public static readonly List<(string TestName, Type InstallerType, string[] Paths)> TestCases =

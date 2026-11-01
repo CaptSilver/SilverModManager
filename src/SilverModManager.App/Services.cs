@@ -271,6 +271,7 @@ public static class Services
         Games.FromSoft.Services.AddFromSoftGames(services);
         Games.Unity.Services.AddUnityGames(services);
         Games.Witcher.Services.AddWitcherGames(services);
+        Games.Generic.Simple.SimpleGamesServices.AddSimpleGames(services);
         return services;
     }
 }

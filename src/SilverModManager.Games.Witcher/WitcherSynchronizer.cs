@@ -4,7 +4,7 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.Witcher;
 
-/// <summary>The synchronizer of every Witcher game. The older two need nothing beyond the defaults.</summary>
+/// <summary>The base of the synchronizers of the Witcher games that have logic of their own.</summary>
 public class WitcherSynchronizer(IServiceProvider provider, IGame game) : ALoadoutSynchronizer(provider)
 {
     protected IGame Game { get; } = game;

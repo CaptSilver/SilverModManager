@@ -5,8 +5,7 @@ using SilverModManager.Abstractions.GuidedInstallers;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Backend;
 using SilverModManager.Games.TestFramework;
-using SilverModManager.Games.Witcher.Witcher1;
-using SilverModManager.Games.Witcher.Witcher2;
+using SilverModManager.Games.Generic.Simple;
 using SilverModManager.Games.Witcher.Witcher3;
 using SilverModManager.Sdk;
 using SilverModManager.StandardGameLocators.TestHelpers;
@@ -20,9 +19,10 @@ public class Startup
         container
             .AddSingleton<IGuidedInstaller, NullGuidedInstaller>()
             .AddDefaultServicesForTesting()
-            .AddUniversalGameLocator<Witcher1Game>(new Version("1.5"), locationsFileSystem: IsolatedKnownFolders.Create)
-            .AddUniversalGameLocator<Witcher2Game>(new Version("3.5"), locationsFileSystem: IsolatedKnownFolders.Create)
+            .AddUniversalGameLocator(SimpleGames.Witcher1.GameId, locationsFileSystem: IsolatedKnownFolders.Create)
+            .AddUniversalGameLocator(SimpleGames.Witcher2.GameId, locationsFileSystem: IsolatedKnownFolders.Create)
             .AddUniversalGameLocator<Witcher3Game>(new Version("4.0"), locationsFileSystem: IsolatedKnownFolders.Create)
+            .AddSimpleGames()
             .AddWitcherGames()
             .AddLogging(builder => builder.AddXUnit())
             .AddGames()
