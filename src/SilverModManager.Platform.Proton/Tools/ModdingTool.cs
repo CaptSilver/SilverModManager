@@ -27,9 +27,37 @@ public sealed class ModdingTool(
     ToolArgumentResolver resolver,
     IPrefixResolver prefixResolver,
     ToolOutputCapture outputCapture,
-    ToolPrefixSetup prefixSetup) : ITool, IToolWithOutput
+    ToolPrefixSetup prefixSetup,
+    IReadOnlyDictionary<string, string>? variables = null) : ITool, IToolWithOutput, IToolWithRunSummary
 {
     public AbsolutePath Exe => installed.Exe;
+
+    /// <summary>The catalogue id of the definition, or null for a program the user added by hand.</summary>
+    public ToolId? CatalogueId => definition.Id;
+
+    public ToolPrefixRequirements Prefix => definition.Prefix;
+
+    /// <inheritdoc/>
+    public ToolRunSummary? LastRun { get; private set; }
+
+    public bool CanQuickAutoClean => definition.QuickAutoClean is not null;
+
+    /// <summary>
+    /// The same program set up to clean <paramref name="plugin"/> (a file name) and exit, or null when the
+    /// definition has no such mode.
+    /// </summary>
+    public ModdingTool? ForQuickAutoClean(string plugin)
+        => definition.QuickAutoClean is not { } variant
+            ? null
+            : new ModdingTool(variant.Apply(definition), installed, gameId, toolRunner, processRunner, resolver, prefixResolver, outputCapture, prefixSetup,
+                new Dictionary<string, string>(variables ?? new Dictionary<string, string>()) { [ToolVariableNames.Plugin] = plugin });
+
+    /// <summary>
+    /// The display names of the prefix components the tool needs and the installation's prefix lacks. Empty when
+    /// the tool needs none, or the prefix cannot be inspected.
+    /// </summary>
+    public IReadOnlyList<string> MissingPrerequisites(GameInstallation installation)
+        => prefixSetup.MissingComponents(installation, definition.Prefix);
 
     public IEnumerable<GameId> GameIds => [gameId];
 
@@ -77,15 +105,18 @@ public sealed class ModdingTool(
             throw new InvalidOperationException($"{exception.Message} The tool's output was kept at {folder}.", exception);
         }
 
+        var captured = 0;
         var kept = runFolder is null ? string.Empty : $" Its output was kept at {runFolder}.";
         if (definition.ExitCodes is ExitCodePolicy.ZeroIsSuccess && exitCode != 0)
             throw new InvalidOperationException($"{Name} exited with code {exitCode}; see the process log.{kept}");
 
         if (runFolder is not null && Output is ToolOutput.DeclaredFolder output)
         {
-            await outputCapture.CaptureFolder(loadout, runFolder.Value, output.MapsTo, output.GroupName, definition.IgnoredOutput, cancellationToken);
+            captured = (await outputCapture.CaptureFolder(loadout, runFolder.Value, output.MapsTo, output.GroupName, definition.IgnoredOutput, cancellationToken)).FileCount;
             runFolder.Value.DeleteDirectory(recursive: true);
         }
+
+        LastRun = new ToolRunSummary(exitCode, captured);
     }
 
     // The user may have renamed the group in the tools list; the definition's name is the default.
@@ -116,7 +147,7 @@ public sealed class ModdingTool(
     // translates the arguments of a Windows exe, and a second pass here would translate twice.
     private IReadOnlyList<string> Arguments(Loadout.ReadOnly loadout, AbsolutePath? runFolder)
     {
-        var extra = new Dictionary<string, string> { [ToolVariableNames.Exe] = Exe.GetFullPath() };
+        var extra = new Dictionary<string, string>(variables ?? new Dictionary<string, string>()) { [ToolVariableNames.Exe] = Exe.GetFullPath() };
         if (runFolder is { } folder) extra[ToolVariableNames.OutputFolder] = folder.GetFullPath();
         if (installed.Arguments is { } line)
             return resolver.ResolveLine(line, loadout, extra);

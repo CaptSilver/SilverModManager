@@ -460,6 +460,107 @@ public class ModdingToolTests(ITestOutputHelper helper)
         RunFoldersIn(prefix).Should().ContainSingle();
     }
 
+    [Fact]
+    public async Task ARunRecordsItsExitCode()
+    {
+        StubRunners();
+        _exitCode = 3;
+        var loadout = await CreateLoadout();
+        var tool = Tool(Editor());
+        tool.LastRun.Should().BeNull("nothing has run yet");
+
+        await tool.Execute(loadout, CancellationToken.None);
+
+        tool.LastRun.Should().Be(new ToolRunSummary(3, CapturedFiles: 0));
+    }
+
+    [Fact]
+    public async Task ADeclaredFolderRunRecordsHowManyFilesItCaptured()
+    {
+        UsePrefixAndWriteOutput([]);
+        var loadout = await CreateLoadout();
+        var tool = Tool(DynDolod());
+
+        await tool.Execute(loadout, CancellationToken.None);
+
+        tool.LastRun.Should().Be(new ToolRunSummary(0, CapturedFiles: 1));
+    }
+
+    [Fact]
+    public void TheToolReportsItsCatalogueIdAndPrefixRequirements()
+    {
+        var definition = DynDolod() with { Prefix = new ToolPrefixRequirements { Components = [Vc] } };
+        var tool = Tool(definition);
+
+        tool.CatalogueId.Should().Be(new ToolId("dyndolod"));
+        tool.Prefix.Components.Should().Equal(Vc);
+        Tool(Editor()).CatalogueId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task MissingPrerequisites_NamesTheComponentsTheInspectorSaysAreMissing()
+    {
+        UsePrefix();
+        _inspector.State = id => id == Vc ? PrefixComponentState.Missing : PrefixComponentState.Installed;
+        var loadout = await CreateLoadout();
+
+        Tool(XEdit(new ToolPrefixRequirements { Components = [Vc] })).MissingPrerequisites(loadout.InstallationInstance)
+            .Should().Equal(PrefixComponents.VisualCppRuntime.DisplayName);
+    }
+
+    [Fact]
+    public async Task MissingPrerequisites_IsEmptyWhenNothingIsRequiredOrTheComponentIsThere()
+    {
+        UsePrefix();
+        var loadout = await CreateLoadout();
+
+        Tool(Editor()).MissingPrerequisites(loadout.InstallationInstance).Should().BeEmpty();
+        Tool(XEdit(new ToolPrefixRequirements { Components = [Vc] })).MissingPrerequisites(loadout.InstallationInstance).Should().BeEmpty();
+    }
+
+    private static ToolDefinition WithQuickAutoClean(ToolDefinition definition) => definition with
+    {
+        Arguments = ArgumentTemplate.Of("-D:{DataFolder}"),
+        QuickAutoClean = new ToolVariant("Quick Auto Clean", ArgumentTemplate.Of("-quickautoclean", "{Plugin}"), ExitCodePolicy.ZeroIsSuccess),
+    };
+
+    [Fact]
+    public void QuickAutoClean_IsOnlyOfferedWhenTheDefinitionHasTheVariant()
+    {
+        Tool(Editor()).ForQuickAutoClean("Update.esm").Should().BeNull();
+        Tool(WithQuickAutoClean(Editor())).CanQuickAutoClean.Should().BeTrue();
+        Tool(Editor()).CanQuickAutoClean.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task QuickAutoClean_RunsTheVariantsArgumentsWithThePickedPlugin()
+    {
+        StubRunners();
+        var loadout = await CreateLoadout();
+        var clean = Tool(WithQuickAutoClean(Editor())).ForQuickAutoClean("Update.esm")!;
+
+        clean.Name.Should().Be("xEdit: Quick Auto Clean");
+        await clean.Execute(loadout, CancellationToken.None);
+
+        await _toolRunner.Received(1).RunWindowsTool(
+            Arg.Any<GameInstallation>(), Exe,
+            Arg.Is<IReadOnlyList<string>>(a => a.SequenceEqual(new[] { "-quickautoclean", "Update.esm" })),
+            null, true, Arg.Any<CancellationToken>(), ToolRunVia.Auto);
+    }
+
+    [Fact]
+    public async Task QuickAutoClean_ThatExitsNonZero_IsAFailedRun()
+    {
+        StubRunners();
+        _exitCode = 2;
+        var loadout = await CreateLoadout();
+        var clean = Tool(WithQuickAutoClean(Editor())).ForQuickAutoClean("Update.esm")!;
+
+        var act = () => clean.Execute(loadout, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("exited with code 2");
+    }
+
     private static readonly PrefixComponentId Vc = PrefixComponents.VisualCppRuntime.Id;
 
     private static ToolDefinition XEdit(ToolPrefixRequirements prefix) => Editor() with { Prefix = prefix };

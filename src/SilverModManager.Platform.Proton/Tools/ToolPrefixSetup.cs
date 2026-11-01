@@ -25,16 +25,29 @@ public sealed class ToolPrefixSetup(IToolRunner toolRunner, IPrefixResolver pref
             await WriteRegistryDefault(installation, prefix, toolName, registryDefault, cancellationToken);
     }
 
+    /// <summary>
+    /// The display names of the required components the prefix lacks. Empty when nothing is required or the
+    /// installation has no prefix to look in; <see cref="Ensure"/> is the one that refuses the second.
+    /// </summary>
+    public IReadOnlyList<string> MissingComponents(GameInstallation installation, ToolPrefixRequirements requirements)
+    {
+        if (requirements.Components.Count == 0) return [];
+        return prefixResolver.Resolve(installation).Prefix is { } prefix ? MissingComponents(prefix, requirements.Components) : [];
+    }
+
+    // Unknown means some evidence but not enough to say either way. It does not stop the run: the user
+    // can see the same state on the prefix diagnostic, and a false refusal would be worse than a failed start.
+    private IReadOnlyList<string> MissingComponents(ResolvedPrefix prefix, IReadOnlyList<PrefixComponentId> components)
+        => inspector.Inspect(prefix, components)
+            .Where(status => status.State is PrefixComponentState.Missing)
+            .Select(status => PrefixComponents.Get(status.Id).DisplayName)
+            .ToList();
+
     private void RequireComponents(ResolvedPrefix prefix, string toolName, IReadOnlyList<PrefixComponentId> components)
     {
         if (components.Count == 0) return;
 
-        // Unknown means some evidence but not enough to say either way. It does not stop the run: the user
-        // can see the same state on the prefix diagnostic, and a false refusal would be worse than a failed start.
-        var missing = inspector.Inspect(prefix, components)
-            .Where(status => status.State is PrefixComponentState.Missing)
-            .Select(status => PrefixComponents.Get(status.Id).DisplayName)
-            .ToList();
+        var missing = MissingComponents(prefix, components);
         if (missing.Count == 0) return;
 
         throw new InvalidOperationException($"{toolName} needs the {string.Join(" and the ", missing)} in the game's Wine prefix, and it is not there. Set it up in the prefix, then run the tool again.");
