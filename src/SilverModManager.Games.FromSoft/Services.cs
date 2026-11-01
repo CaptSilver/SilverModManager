@@ -7,6 +7,7 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Secrets;
 using SilverModManager.Abstractions.Steam;
+using SilverModManager.Games.FromSoft.ArmoredCore6;
 using SilverModManager.Games.FromSoft.Build;
 using SilverModManager.Games.FromSoft.Cleanup;
 using SilverModManager.Games.FromSoft.Diagnostics;
@@ -31,7 +32,7 @@ public static class Services
 {
     /// <summary>Registers the FromSoft base and every FromSoft game.</summary>
     public static IServiceCollection AddFromSoftGames(this IServiceCollection services)
-        => services.AddFromSoftBase().AddEldenRing();
+        => services.AddFromSoftBase().AddEldenRing().AddArmoredCore6();
 
     /// <summary>Registers Elden Ring: the game, its tool and its cleanup verb.</summary>
     public static IServiceCollection AddEldenRing(this IServiceCollection services)
@@ -42,6 +43,11 @@ public static class Services
         return services.AddVerb(() => EldenRingCleanupVerb.Cleanup)
             .AddModule("elden-ring", "Commands for the Elden Ring installation");
     }
+
+    /// <summary>Registers Armored Core VI and its launch tool.</summary>
+    public static IServiceCollection AddArmoredCore6(this IServiceCollection services)
+        => services.AddGame<ArmoredCore6Game>()
+            .AddSingleton<ITool, RunFromSoftGame<ArmoredCore6Game>>();
 
     /// <summary>
     /// Registers everything the FromSoft games share. Each block takes the lines of one kind of registration, so two
