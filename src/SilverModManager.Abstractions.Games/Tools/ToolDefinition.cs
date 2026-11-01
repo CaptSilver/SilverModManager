@@ -41,6 +41,12 @@ public sealed record ToolDefinition
     /// </summary>
     public bool DisableOwnOutputDuringRun { get; init; }
 
+    /// <summary>
+    /// How to run the tool to clean one plugin and exit, for editors that can. The plugin is bound to
+    /// <see cref="ToolVariableNames.Plugin"/>.
+    /// </summary>
+    public ToolVariant? QuickAutoClean { get; init; }
+
     public ToolRunVia RunVia { get; init; } = ToolRunVia.Auto;
 
     public ExitCodePolicy ExitCodes { get; init; } = ExitCodePolicy.ZeroIsSuccess;

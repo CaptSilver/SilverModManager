@@ -21,6 +21,9 @@ public static class ToolVariableNames
     /// <summary>The run's output folder. Bound by the caller that creates it.</summary>
     public const string OutputFolder = "OutputFolder";
 
+    /// <summary>The file name of the plugin a run works on. Bound by the caller that picked it.</summary>
+    public const string Plugin = "Plugin";
+
     /// <summary>The tool's own path. Bound by the caller.</summary>
     public const string Exe = "Exe";
 }

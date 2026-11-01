@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
 using SilverModManager.Games.CreationEngine.Loot;
 using SilverModManager.Games.CreationEngine.Models;
+using SilverModManager.Games.CreationEngine.Tools;
 using SilverModManager.Games.CreationEngine.SortOrder;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
@@ -31,6 +32,8 @@ public static class Services
         services.AddSingleton<Morrowind.OpenMw.IOpenMwConfigRoots, Morrowind.OpenMw.OpenMwConfigRoots>();
         services.AddBethesdaGame<Morrowind.Morrowind>(null);
         services.AddBethesdaGame<OblivionRemastered.OblivionRemastered>(KnownPaths.OBSE64Loader);
+
+        services.AddCreationEngineTools();
 
         services.AddSettings<LootMasterlistSettings>();
         services.AddSingleton(s => new LootDataDirectory(
