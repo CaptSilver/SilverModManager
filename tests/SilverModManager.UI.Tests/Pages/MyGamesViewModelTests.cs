@@ -24,6 +24,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
 namespace SilverModManager.UI.Tests.Pages;
 
@@ -185,9 +186,10 @@ public class MyGamesViewModelTests(IServiceProvider provider) : AUiTest(provider
     [InlineData(false)]
     public async Task RemoveGame_UnmanagesFirst_ThenDeletesOnlyThisGamesFiles_AndKeepsTheShared(bool deleteDownloads)
     {
-        // The library is shared across the cases, so each one removes a different game.
-        var igame = Provider.GetServices<IGameData>().OfType<IGame>().Skip(deleteDownloads ? 0 : 1).First();
-        var game = igame.GameId;
+        // The library is shared with every other test in the host, and a registered game collects files from tests that
+        // add to it, so the game removed here exists only in this case.
+        var game = GameId.From("remove-game-" + Guid.NewGuid().ToString("N"));
+        var igame = new IdentifiedStubbedGame(game, DynamicData.Kernel.Optional<SilverModManager.Sdk.NexusModsApi.NexusModsGameId>.None);
         var sibling = GameId.From("remove-sibling-" + Guid.NewGuid().ToString("N"));
         var onlyMine = await AddLocalFile("only-mine.7z", Destination.Of(game));
         var shared = await AddLocalFile("shared.7z", new Destination(ImmutableHashSet.Create(game, sibling), Shared: false));
