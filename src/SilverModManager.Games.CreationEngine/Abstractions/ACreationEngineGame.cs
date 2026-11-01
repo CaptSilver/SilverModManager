@@ -6,6 +6,7 @@ using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Games.Modlists;
 using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
 using SilverModManager.Abstractions.Loadouts.Sorting;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
@@ -33,7 +34,7 @@ namespace SilverModManager.Games.CreationEngine.Abstractions;
 /// A Bethesda title whose plugin headers the load order reader can parse: adds the Plugins.txt intrinsic file and the
 /// missing-master check on top of <see cref="ABethesdaGame{TSelf}"/>.
 /// </summary>
-public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame, IMo2InstanceTarget, IModOrderGame, IGameIniFiles, IPerLoadoutSaves, IWinePrefixRequirements, IToolVariableSource
+public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame, IMo2InstanceTarget, IModOrderGame, IGameIniFiles, IPerLoadoutSaves, IWinePrefixRequirements, IToolVariableSource, IToolPluginSource
     where TSelf : ACreationEngineGame<TSelf>, IGameData<TSelf>
 {
     private readonly IStreamSourceDispatcher _streamSource;
@@ -72,6 +73,21 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
             variables[ToolVariableNames.IniFile] = ini;
         return variables;
     }
+
+    /// <summary>
+    /// The plugins the enabled mods put straight into Data. The game's own masters are not loadout files and are
+    /// not offered: nobody cleans them.
+    /// </summary>
+    public IReadOnlyList<string> PluginNames(Loadout.ReadOnly loadout) => LoadoutItem.FindByLoadout(loadout.Db, loadout.LoadoutId)
+        .OfTypeLoadoutItemWithTargetPath()
+        .OfTypeLoadoutFile()
+        .Where(file => file.AsLoadoutItemWithTargetPath().AsLoadoutItem().IsEnabled())
+        .Select(file => (GamePath)file.AsLoadoutItemWithTargetPath().TargetPath)
+        .Where(path => path.Parent == DataPath && PluginExtensions.Contains(path.Extension))
+        .Select(path => path.FileName.ToString())
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .Order(StringComparer.OrdinalIgnoreCase)
+        .ToList();
 
     public abstract PluginFormat HeaderFormat { get; }
 
