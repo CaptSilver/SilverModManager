@@ -7,6 +7,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Networking.ModUpdates;
 using SilverModManager.Networking.ModUpdates.Mixins;
 using SilverModManager.Networking.NexusWebApi.UpdateFilters;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using System.Reactive.Linq;
 using R3;
@@ -335,21 +336,35 @@ public class ModUpdateService : IModUpdateService, IDisposable
     }
 
     /// <inheritdoc />
-    public IEnumerable<(NexusModsModPageMetadataId modPageId, ModUpdatesOnModPage updates)> GetAllModPagesWithUpdates(Func<ModUpdatesOnModPage, ModUpdatesOnModPage?>? select = null)
+    public IEnumerable<(NexusModsModPageMetadataId modPageId, ModUpdatesOnModPage updates)> GetAllModPagesWithUpdates(GameId game, Func<ModUpdatesOnModPage, ModUpdatesOnModPage?>? select = null)
     {
         // If no custom selector is provided, apply default filters
         select ??= _filterService.SelectModPage;
 
-        // Efficiently get all mod pages with updates from the cache without LINQ
-        var results = new List<(NexusModsModPageMetadataId, ModUpdatesOnModPage)>();
-        
-        foreach (var cacheItem in _newestModOnAnyPageCache.Items)
+        // The files the game uses, grouped by their mod page. One page serves every game that shares the Nexus id,
+        // so the page's own game says nothing about which of these a game's library holds.
+        var db = _connection.Db;
+        var filesOfGame = new Dictionary<NexusModsModPageMetadataId, HashSet<NexusModsFileMetadataId>>();
+        foreach (var item in LibraryDestinations.ItemsFor(db, game))
         {
-            var modPageId = cacheItem.Key;
-            var updates = cacheItem.Value;
-            
-            // Apply the filter
-            var filteredUpdates = select(updates);
+            var nexusItem = NexusModsLibraryItem.Load(db, item.Id);
+            if (!nexusItem.IsValid()) continue;
+
+            if (!filesOfGame.TryGetValue(nexusItem.ModPageMetadataId, out var files))
+                filesOfGame[nexusItem.ModPageMetadataId] = files = [];
+            files.Add(nexusItem.FileMetadataId);
+        }
+
+        var results = new List<(NexusModsModPageMetadataId, ModUpdatesOnModPage)>();
+        foreach (var (modPageId, files) in filesOfGame)
+        {
+            var cached = _newestModOnAnyPageCache.Lookup(modPageId);
+            if (!cached.HasValue) continue;
+
+            var mappings = cached.Value.Value.FileMappings.Where(mapping => files.Contains(mapping.File.Id)).ToArray();
+            if (mappings.Length == 0) continue;
+
+            var filteredUpdates = select(new ModUpdatesOnModPage(mappings));
             if (filteredUpdates != null)
                 results.Add((modPageId, filteredUpdates.Value));
         }

@@ -13,6 +13,11 @@ using SilverModManager.Networking.NexusWebApi.UpdateFilters;
 using SilverModManager.Sdk.NexusModsApi;
 using Xunit;
 using SilverModManager.Sdk.Library;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Abstractions.NexusWebApi.Types;
 
 namespace SilverModManager.Networking.NexusWebApi.Tests;
 
@@ -755,4 +760,98 @@ internal static class StaticTestData
             },
         ],
     };
+}
+
+/// <summary>
+/// "Update all" on a game's Library page reads only the mod pages with an item destined for that game. Nexus Mods
+/// has no VR domain, so one page serves Skyrim SE and Skyrim VR and the page's game cannot tell them apart. Offline:
+/// the updates come from file metadata already in the database.
+/// </summary>
+public class ModUpdateServicePerGameTests(IConnection connection)
+{
+    private static readonly GameId Game = GameId.From("UpdateReadsGame");
+    private static readonly GameId Sibling = GameId.From("UpdateReadsSibling");
+
+    // The host's database is shared by every test in the run, so each test gets page and file ids of its own.
+    private static uint _nextId = 40_000;
+
+    private ModUpdateService CreateService() => new(
+        connection,
+        Substitute.For<INexusApiClient>(),
+        Substitute.For<IGameDomainToGameIdMappingCache>(),
+        NullLogger<ModUpdateService>.Instance,
+        Substitute.For<IGraphQlClient>(),
+        TimeProvider.System,
+        new ModUpdateFilterService(connection),
+        Substitute.For<ILoginManager>());
+
+    /// <summary>
+    /// A mod page with an old file in the library for <paramref name="destination"/> and a newer file that is not in
+    /// the library, which is an update.
+    /// </summary>
+    private async Task<NexusModsModPageMetadataId> SeedPageWithUpdate(Destination destination)
+    {
+        var number = Interlocked.Add(ref _nextId, 2);
+        using var tx = connection.BeginTransaction();
+        var page = new NexusModsModPageMetadata.New(tx)
+        {
+            Uid = new ModUid(ModId.From(number), NexusModsGameId.From(1704)),
+            Name = "Shared by SE and VR",
+            GameDomain = GameDomain.From("skyrimspecialedition"),
+            UpdatedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+            DataUpdatedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+        };
+        var oldFile = new NexusModsFileMetadata.New(tx)
+        {
+            Uid = new FileUid(FileId.From(number), NexusModsGameId.From(1704)),
+            Name = "Shared Mod",
+            Version = "1.0",
+            UploadedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+            ModPageId = page,
+        };
+        _ = new NexusModsFileMetadata.New(tx)
+        {
+            Uid = new FileUid(FileId.From(number + 1), NexusModsGameId.From(1704)),
+            Name = "Shared Mod",
+            Version = "2.0",
+            UploadedAt = DateTimeOffset.UnixEpoch.UtcDateTime.AddDays(1),
+            ModPageId = page,
+        };
+        var item = new NexusModsLibraryItem.New(tx, out var id)
+        {
+            FileMetadataId = oldFile.Id,
+            ModPageMetadataId = page.Id,
+            LibraryItem = new LibraryItem.New(tx, id) { Name = "Shared Mod" },
+        };
+        LibraryDestinations.Write(tx, id, destination);
+        var result = await tx.Commit();
+        return result[page.Id];
+    }
+
+    private IReadOnlyList<NexusModsModPageMetadataId> PagesWithUpdates(GameId game)
+    {
+        using var service = CreateService();
+        service.NotifyForUpdates();
+        return service.GetAllModPagesWithUpdates(game, static updates => updates).Select(pair => pair.modPageId).ToArray();
+    }
+
+    [Fact]
+    public async Task GetAllModPagesWithUpdates_ForAGame_SkipsPagesWhoseItemsAreOnlyForTheSibling()
+    {
+        var siblingPage = await SeedPageWithUpdate(Destination.Of(Sibling));
+        var ownPage = await SeedPageWithUpdate(Destination.Of(Game));
+
+        var pages = PagesWithUpdates(Game);
+
+        pages.Should().Contain(ownPage).And.NotContain(siblingPage);
+    }
+
+    [Fact]
+    public async Task GetAllModPagesWithUpdates_ForAGame_IncludesASharedItem()
+    {
+        var sharedPage = await SeedPageWithUpdate(new Destination(new HashSet<GameId> { Game, Sibling }, Shared: true));
+
+        PagesWithUpdates(Game).Should().Contain(sharedPage);
+        PagesWithUpdates(Sibling).Should().Contain(sharedPage);
+    }
 }

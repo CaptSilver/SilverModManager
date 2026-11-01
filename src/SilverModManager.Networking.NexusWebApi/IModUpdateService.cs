@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Games;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.Networking.ModUpdates;
@@ -84,16 +85,17 @@ public interface IModUpdateService
     IObservable<bool> HasAnyUpdatesObservable(Func<ModUpdatesOnModPage, ModUpdatesOnModPage?>? select = null);
 
     /// <summary>
-    /// Gets all mod pages that have updates available in the library.
-    /// This method efficiently checks the internal cache for all mod pages with updates.
+    /// Gets the mod pages that have updates available for the files destined for <paramref name="game"/>.
+    /// A page that only the files of another game use is left out, and so is a file of another game on a shared page.
     /// </summary>
+    /// <param name="game">The game whose library items are read.</param>
     /// <param name="select">
     ///     A selector that can be used to transform or discard mod page updates. Return null to discard updates.
     ///     If null is passed, default filters will be applied automatically.
     ///     To get unfiltered data, pass an empty filter function that returns the input unchanged.
     /// </param>
     /// <returns>An enumerable of tuples containing mod page IDs and their available updates.</returns>
-    IEnumerable<(NexusModsModPageMetadataId modPageId, ModUpdatesOnModPage updates)> GetAllModPagesWithUpdates(Func<ModUpdatesOnModPage, ModUpdatesOnModPage?>? select = null);
+    IEnumerable<(NexusModsModPageMetadataId modPageId, ModUpdatesOnModPage updates)> GetAllModPagesWithUpdates(GameId game, Func<ModUpdatesOnModPage, ModUpdatesOnModPage?>? select = null);
 }
 
 
