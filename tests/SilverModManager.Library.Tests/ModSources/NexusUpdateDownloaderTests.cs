@@ -1,30 +1,34 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
-using NSubstitute;
 using SilverModManager.Abstractions.Downloads;
+using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.NexusModsLibrary;
-using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Abstractions.NexusWebApi.Types;
-using SilverModManager.App.UI.Pages.LibraryPage;
-using SilverModManager.App.UI.Windows;
+using SilverModManager.Backend;
+using SilverModManager.Library.Tests.DownloadsService;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.NexusModsApi;
-using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
+using Xunit;
 
-namespace SilverModManager.UI.Tests.Pages;
+namespace SilverModManager.Library.Tests.ModSources;
 
 /// <summary>
 /// An update of a library file is for the games the old file was for, not for the game of the page that started the
 /// update: a Nexus Mods page is shared by every game with its id. The tests call the helper both update paths share;
-/// that those paths call it is not covered, since they download through the real Nexus Mods library.
+/// that the paths call it is not covered, since they download through the real Nexus Mods library.
 /// </summary>
-public class LibraryUpdateDestinationTests(IServiceProvider provider) : AUiTest(provider)
+public class NexusUpdateDownloaderTests(IServiceProvider provider, IConnection connection)
 {
-    private static readonly GameId OtherGame = GameId.From("UpdateTestSiblingGame");
+    // The host's database is shared by every test in the run, so each test gets mod and file ids of its own.
+    private static uint _nextId = 74000;
+
+    private static readonly GameId SiblingGame = GameId.From("UpdateTestSiblingGame");
+    private static readonly GameId OtherSiblingGame = GameId.From("UpdateTestOtherSibling");
 
     private sealed class CompletedDownloadJob(AbsolutePath path) : IDownloadJob, IJobDefinitionWithStart<CompletedDownloadJob, AbsolutePath>
     {
@@ -34,9 +38,10 @@ public class LibraryUpdateDestinationTests(IServiceProvider provider) : AUiTest(
     }
 
     /// <summary>A Nexus Mods library item for a file, with the games it is for.</summary>
-    private async Task<(NexusModsFileMetadata.ReadOnly File, EntityId Item)> SeedNexusItem(Destination destination, uint number)
+    private async Task<NexusModsFileMetadata.ReadOnly> SeedNexusItem(Destination destination)
     {
-        using var tx = Connection.BeginTransaction();
+        var number = _nextId++;
+        using var tx = connection.BeginTransaction();
         var page = new NexusModsModPageMetadata.New(tx)
         {
             Uid = new ModUid(ModId.From(number), NexusModsGameId.From(1704)),
@@ -61,41 +66,40 @@ public class LibraryUpdateDestinationTests(IServiceProvider provider) : AUiTest(
         };
         LibraryDestinations.Write(tx, id, destination);
         var result = await tx.Commit();
-        return (NexusModsFileMetadata.Load(result.Db, result[metadata.Id]), result[id]);
+        return NexusModsFileMetadata.Load(result.Db, result[metadata.Id]);
     }
+
+    private NexusUpdateDownloader Downloader() => new(
+        nexusModsLibrary: null!, // only AddUpdatedFile is called, which never reaches the Nexus Mods API
+        provider.GetRequiredService<ILibraryService>(),
+        connection,
+        provider.GetRequiredService<TemporaryFileManager>());
+
+    private IJobTask<IDownloadJob, AbsolutePath> CompletedJob(DownloadedFile download)
+        => provider.GetRequiredService<IJobMonitor>().Begin<CompletedDownloadJob, AbsolutePath>(new CompletedDownloadJob(download.Path));
 
     [Fact]
     public async Task AddUpdatedFile_KeepsTheOldFilesGames_NotThePagesGame()
     {
-        var loadout = await SeedLoadoutRow(GameStore.Steam, "VR page");
-        var pageGame = loadout.InstallationInstance.Game.GameId;
-        var (oldFile, oldItem) = await SeedNexusItem(new Destination(new HashSet<GameId> { OtherGame, GameId.From("UpdateTestOtherSibling") }, Shared: true), number: 910);
-        var vm = new LibraryViewModel(Substitute.For<IWindowManager>(), Provider, Provider.GetRequiredService<IGameDomainToGameIdMappingCache>(), loadout.LoadoutId);
+        var oldFile = await SeedNexusItem(new Destination(new HashSet<GameId> { SiblingGame, OtherSiblingGame }, Shared: true));
         using var download = new DownloadedFile();
-        var job = Provider.GetRequiredService<IJobMonitor>()
-            .Begin<CompletedDownloadJob, AbsolutePath>(new CompletedDownloadJob(download.Path));
 
-        var added = await vm.AddUpdatedFile(job, [oldFile]);
+        var added = await Downloader().AddUpdatedFile(CompletedJob(download), [oldFile]);
 
-        var item = LibraryItem.Load(Connection.Db, added.Id);
-        LibraryDestinations.GamesOf(item).Should().BeEquivalentTo([OtherGame, GameId.From("UpdateTestOtherSibling")])
-            .And.NotContain(pageGame);
+        var item = LibraryItem.Load(connection.Db, added.Id);
+        LibraryDestinations.GamesOf(item).Should().BeEquivalentTo([SiblingGame, OtherSiblingGame]);
         item.Contains(LibraryItem.DestinationsShared).Should().BeTrue();
     }
 
     [Fact]
     public async Task AddUpdatedFile_OfAnUnassignedOldFile_IsUnassigned()
     {
-        var loadout = await SeedLoadoutRow(GameStore.Steam, "Page of some game");
-        var (oldFile, _) = await SeedNexusItem(Destination.Unknown, number: 911);
-        var vm = new LibraryViewModel(Substitute.For<IWindowManager>(), Provider, Provider.GetRequiredService<IGameDomainToGameIdMappingCache>(), loadout.LoadoutId);
+        var oldFile = await SeedNexusItem(Destination.Unknown);
         using var download = new DownloadedFile();
-        var job = Provider.GetRequiredService<IJobMonitor>()
-            .Begin<CompletedDownloadJob, AbsolutePath>(new CompletedDownloadJob(download.Path));
 
-        var added = await vm.AddUpdatedFile(job, [oldFile]);
+        var added = await Downloader().AddUpdatedFile(CompletedJob(download), [oldFile]);
 
-        var item = LibraryItem.Load(Connection.Db, added.Id);
+        var item = LibraryItem.Load(connection.Db, added.Id);
         LibraryDestinations.GamesOf(item).Should().BeEmpty();
         item.Contains(LibraryItem.DestinationUnknown).Should().BeTrue();
     }
@@ -110,5 +114,18 @@ public class LibraryUpdateDestinationTests(IServiceProvider provider) : AUiTest(
         public AbsolutePath Path => FileSystem.Shared.FromUnsanitizedFullPath(System.IO.Path.Combine(_directory, "new.zip"));
 
         public void Dispose() => Directory.Delete(_directory, recursive: true);
+    }
+
+    public class Startup
+    {
+        public void ConfigureServices(IServiceCollection services)
+        {
+            DIHelpers.ConfigureServices(services);
+            services
+                .AddLibraryModels()
+                .AddOSInterop()
+                .AddFileExtractors()
+                .AddLibraryServiceForTests();
+        }
     }
 }

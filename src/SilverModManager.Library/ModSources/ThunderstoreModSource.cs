@@ -19,6 +19,9 @@ internal sealed class ThunderstoreModSource(IThunderstoreCatalogSource catalogs,
 
     public bool Owns(LibraryItem.ReadOnly item) => TryGetFile(item, out _);
 
+    // Thunderstore makes no ModUpdate yet, so there is none to own.
+    public bool Owns(ModUpdate update) => false;
+
     public Uri? PageUri(LibraryItem.ReadOnly item)
         => TryGetPackage(item, out var community, out var package) ? ThunderstoreUrls.PackagePage(community, package) : null;
 
@@ -59,6 +62,9 @@ internal sealed class ThunderstoreModSource(IThunderstoreCatalogSource catalogs,
     public IReadOnlyList<ModUpdate> AllUpdates(IGameData game) => [];
 
     public IObservable<bool> ObserveHasAnyUpdates(IGameData game) => Observable.Return(false);
+
+    public ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken)
+        => throw new NotSupportedException("Thunderstore does not report updates yet, so there is nothing for it to apply.");
 
     private static bool TryGetFile(LibraryItem.ReadOnly item, out ThunderstoreLibraryFile.ReadOnly file)
     {

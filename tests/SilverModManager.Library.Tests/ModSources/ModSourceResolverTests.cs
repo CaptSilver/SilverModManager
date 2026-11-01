@@ -25,7 +25,7 @@ public class ModSourceResolverTests(IConnection connection)
     // The host's database is shared by every test in the run, so each test gets mod and file ids of its own.
     private static uint _nextId = 71000;
 
-    private static ModSourceResolver Resolver() => new([new NexusModSource(Substitute.For<IModUpdateService>())]);
+    private ModSourceResolver Resolver() => new([NexusModSources.Create(connection, Substitute.For<IModUpdateService>())]);
 
     [Fact]
     public async Task ANexusItemResolvesToTheNexusSource()
@@ -80,7 +80,7 @@ public class ModSourceResolverTests(IConnection connection)
     {
         var fixtures = new LockFixtures(connection);
         var file = await fixtures.AddLibraryFile("local.zip", "local " + _nextId++, null);
-        var source = new NexusModSource(Substitute.For<IModUpdateService>());
+        var source = NexusModSources.Create(connection, Substitute.For<IModUpdateService>());
 
         source.Owns(file.AsLibraryItem()).Should().BeFalse();
         source.PageUri(file.AsLibraryItem()).Should().BeNull();

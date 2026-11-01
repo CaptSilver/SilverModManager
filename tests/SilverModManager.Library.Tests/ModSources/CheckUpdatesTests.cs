@@ -170,7 +170,7 @@ public class CheckUpdatesTests(IConnection connection)
     public async Task NexusCheckUpdates_ChecksModPagesAndNotifiesWhateverForceIs(bool force)
     {
         var service = Substitute.For<IModUpdateService>();
-        var source = new NexusModSource(service);
+        var source = NexusModSources.Create(connection, service);
         using var cts = new CancellationTokenSource();
 
         await source.CheckUpdates(Substitute.For<IGameData>(), force, cts.Token);

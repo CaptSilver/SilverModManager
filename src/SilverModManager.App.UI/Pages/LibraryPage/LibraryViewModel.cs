@@ -101,10 +101,6 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
     private readonly ILibraryItemInstaller _advancedInstaller;
     private readonly IGameDomainToGameIdMappingCache _gameIdMappingCache;
     private readonly Loadout.ReadOnly _loadout;
-    private readonly IModUpdateService _modUpdateService;
-    private readonly ILoginManager _loginManager;
-    private readonly NexusModsLibrary _nexusModsLibrary;
-    private readonly TemporaryFileManager _temporaryFileManager;
     private readonly IWindowNotificationService _notificationService;
     private readonly ILoadoutManager _loadoutManager;
 
@@ -126,11 +122,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
         _serviceProvider = serviceProvider;
         _gameIdMappingCache = gameIdMappingCache;
         _libraryService = serviceProvider.GetRequiredService<ILibraryService>();
-        _nexusModsLibrary = serviceProvider.GetRequiredService<NexusModsLibrary>();
         _connection = serviceProvider.GetRequiredService<IConnection>();
-        _modUpdateService = serviceProvider.GetRequiredService<IModUpdateService>();
-        _loginManager = serviceProvider.GetRequiredService<ILoginManager>();
-        _temporaryFileManager = serviceProvider.GetRequiredService<TemporaryFileManager>();
         _notificationService = serviceProvider.GetRequiredService<IWindowNotificationService>();
         _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
 
@@ -363,95 +355,77 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
         });
     }
 
-    private async ValueTask HandleUpdateAndReplaceMessage(UpdateAndReplaceMessage updateAndReplaceMessage, CancellationToken cancellationToken)
+    private ValueTask HandleUpdateAndReplaceMessage(UpdateAndReplaceMessage message, CancellationToken cancellationToken)
+        => ApplyUpdates([message.Update], replace: true, mayOpenBrowser: true, cancellationToken);
+
+    private ValueTask HandleUpdateAndKeepOldMessage(UpdateAndKeepOldMessage message, CancellationToken cancellationToken)
+        => ApplyUpdates([message.Update], replace: false, mayOpenBrowser: true, cancellationToken);
+
+    /// <summary>
+    /// The one way every Update button, Update Selected and Update All applies updates: each source applies its own
+    /// batch, then the dialogs and toasts for what happened are shown here. <paramref name="mayOpenBrowser"/> is
+    /// false for Update All, where opening a browser tab per mod is not an answer; a source that could only do
+    /// that says so and the premium dialog is shown once at the end. <paramref name="confirmed"/> is set when the
+    /// user has already agreed to replace in several collections, as on a retry.
+    /// </summary>
+    private async ValueTask ApplyUpdates(IReadOnlyList<ModUpdate> updates, bool replace, bool mayOpenBrowser, CancellationToken cancellationToken, bool confirmed = false)
     {
-        if (NexusUpdatesOf(updateAndReplaceMessage.Update) is not { } updates) return;
+        if (updates.Count == 0) return;
+        if (replace && confirmed is false && await ConfirmReplacingInSeveralCollections(updates) is false) return;
 
-        var isPremium = _loginManager.IsPremium;
-        if (!isPremium)
-        {
-            await UpdateAndReplaceForMultiModPagesFreeOnly(cancellationToken, [updates]);
-        }
-        else
-        {
-            await UpdateAndReplaceForMultiModPagesPremiumOnly(cancellationToken, [updates]);
-        }
-    }
+        var resolver = _serviceProvider.GetRequiredService<ModSourceResolver>();
+        var outcomes = new List<ModUpdateOutcome>();
+        foreach (var batch in updates.GroupBy(update => resolver.For(update) ?? throw new InvalidOperationException($"No mod source made the update to {update.NewestVersion}.")))
+            outcomes.Add(await batch.Key.ApplyUpdates(new ModUpdateRequest(batch.ToArray(), replace, mayOpenBrowser), cancellationToken));
 
-    private async ValueTask UpdateAndReplaceForMultiModPagesFreeOnly(CancellationToken cancellationToken, IEnumerable<ModUpdatesOnModPage> updatesOnPageCollection)
-    {
-        // Note(sewer): Per design, in the future this will expand the mod rows.
-        //              But, due to the TreeDataGrid bug, we can't do that today, yet.
-        // Instead update and keep old for free users.
-        UpdateAndKeepOldFree(updatesOnPageCollection);
-    }
-
-    private async ValueTask UpdateAndReplaceForMultiModPagesPremiumOnly(CancellationToken cancellationToken, IEnumerable<ModUpdatesOnModPage> updatesOnPageCollection)
-    {
-        // Collect all library items that will be updated by linking with file metadata.
-        var newestToCurrentMapping = new Dictionary<NexusModsFileMetadata.ReadOnly, List<NexusModsFileMetadata.ReadOnly>>();
-        foreach (var updatesOnPage in updatesOnPageCollection)
-            updatesOnPage.NewestToCurrentFileMapping(newestToCurrentMapping);
-        
-        await UpdateAndReplaceForNewestToCurrentMappingPremiumOnly(cancellationToken, newestToCurrentMapping);
-    }
-
-    private async ValueTask UpdateAndReplaceForNewestToCurrentMappingPremiumOnly(CancellationToken cancellationToken, Dictionary<NexusModsFileMetadata.ReadOnly, List<NexusModsFileMetadata.ReadOnly>> newestToCurrentMapping)
-    {
-        var libraryItemsToUpdate = new List<LibraryItem.ReadOnly>();
-        foreach (var (_, currentFiles) in newestToCurrentMapping)
-        {
-            foreach (var currentFile in currentFiles)
-            {
-                // Find existing library items for this file metadata
-                var existingLibraryItems = NexusModsLibraryItem.FindByFileMetadata(_connection.Db, currentFile);
-                foreach (var existingLibraryFile in existingLibraryItems)
-                {
-                    var currentLibraryItem = existingLibraryFile.AsLibraryItem();
-                    libraryItemsToUpdate.Add(currentLibraryItem);
-                }
-            }
-        }
-
-        // Find all affected loadouts
-        var collectionsAffected = _libraryService.CollectionsWithLibraryItems(libraryItemsToUpdate, excludeReadOnlyCollections: true);
-        var affectedCollectionCount = collectionsAffected.Count;
-
-        // If there is more than 1 non-readonly affected collection, show confirmation dialog
-        if (affectedCollectionCount >= 2)
-        {
-            (ButtonDefinitionId updateButtonId, StandardDialogResult dialogResult) = await ShowInstalledInMultipleCollectionsDialog(collectionsAffected, affectedCollectionCount);
-            if (dialogResult.ButtonId != updateButtonId)
-            {
-                // User cancelled, don't proceed with update
-                return;
-            }
-        }
-
-        var concurrencyLimit = _serviceProvider.GetRequiredService<ISettingsManager>().Get<DownloadSettings>().MaxParallelDownloads;
-        var results = await ProcessDownloadsInParallel(newestToCurrentMapping, concurrencyLimit, cancellationToken);
+        var replacements = outcomes.SelectMany(outcome => outcome.Replacements).ToArray();
+        foreach (var replacement in replacements.Where(replacement => replacement.Result == LibraryItemReplacementResult.Success))
+            _notificationService.ShowToast(string.Format(Language.ToastNotification_Mod_updated____0_, replacement.New.Name), ToastNotificationVariant.Success);
 
         // Some (but not all) downloads failed, so show relevant dialog.
-        if (results.DownloadErrors.Count > 0)
-            await ShowSomeDownloadsFailedDialog(results.DownloadErrors, newestToCurrentMapping, cancellationToken);
+        var failures = outcomes.SelectMany(outcome => outcome.DownloadFailures).ToArray();
+        if (failures.Length > 0)
+            await ShowSomeDownloadsFailedDialog(failures, replace, mayOpenBrowser, cancellationToken);
 
         // Some installs failed, ask if they want to keep old files
-        if (results.LibraryItemReplacementResults.Count(x => x.InstallResult != LibraryItemReplacementResult.Success) > 0)
-            await ShowSomeInstallsFailedDialog(results.LibraryItemReplacementResults);
+        if (replacements.Any(replacement => replacement.Result != LibraryItemReplacementResult.Success))
+            await ShowSomeInstallsFailedDialog(replacements);
 
-        // Remove all old library items where the install failed.
-        var successfullyInstalledItems = results.LibraryItemReplacementResults.Where(x => x.InstallResult == LibraryItemReplacementResult.Success);
-        await RemoveOldLibraryItemsIfNotInReadOnlyCollections(successfullyInstalledItems);
+        await RemoveOldLibraryItemsIfNotInReadOnlyCollections(replacements.Where(replacement => replacement.Result == LibraryItemReplacementResult.Success));
+
+        if (outcomes.Any(outcome => outcome.AccountCannotDownload))
+            await PremiumDialog.ShowUpdatePremiumDialog(WindowManager, _serviceProvider.GetRequiredService<IOSInterop>());
     }
-    
+
+    /// <summary>
+    /// A replace changes every collection that holds the old files, so when that is more than one the user is asked.
+    /// </summary>
+    private async ValueTask<bool> ConfirmReplacingInSeveralCollections(IEnumerable<ModUpdate> updates)
+    {
+        var db = _connection.Db;
+        var libraryItemsToUpdate = updates
+            .SelectMany(update => update.CurrentItems)
+            .Distinct()
+            .Select(id => LibraryItem.Load(db, id))
+            .Where(item => item.IsValid())
+            .ToArray();
+
+        var collectionsAffected = _libraryService.CollectionsWithLibraryItems(libraryItemsToUpdate, excludeReadOnlyCollections: true);
+        if (collectionsAffected.Count < 2) return true;
+
+        (ButtonDefinitionId updateButtonId, StandardDialogResult dialogResult) = await ShowInstalledInMultipleCollectionsDialog(collectionsAffected, collectionsAffected.Count);
+        return dialogResult.ButtonId == updateButtonId;
+    }
+
     private async Task ShowSomeDownloadsFailedDialog(
-        ConcurrentBag<DownloadError> downloadErrors,
-        Dictionary<NexusModsFileMetadata.ReadOnly, List<NexusModsFileMetadata.ReadOnly>> newestToCurrentMapping,
+        IReadOnlyList<ModUpdateFailure> downloadFailures,
+        bool replace,
+        bool mayOpenBrowser,
         CancellationToken ct)
     {
         var modsWhichFailed = new StringBuilder();
-        foreach (var err in downloadErrors)
-            modsWhichFailed.AppendLine(err.File.Name);
+        foreach (var failure in downloadFailures)
+            modsWhichFailed.AppendLine(failure.Name);
 
         var cancelFailedDownloads = new DialogButtonDefinition(
             Text: Language.Library_Update_SomeDownloadsFailed_Option_Cancel,
@@ -478,20 +452,17 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
         var result = await WindowManager.ShowDialog(allFailedDialog, DialogWindowType.Modal);
         if (result.ButtonId == retryFailedDownloads.Id)
         {
-            var downloadErrorsTable = downloadErrors.Select(x => x.File).ToHashSet();
-            var failedDownloads = newestToCurrentMapping.Where(x => downloadErrorsTable.Contains(x.Key)).ToDictionary(x => x.Key, x => x.Value);
-            await UpdateAndReplaceForNewestToCurrentMappingPremiumOnly(ct, failedDownloads);
+            // Only what failed: the rest was applied, and the user has already agreed to the replace.
+            await ApplyUpdates(downloadFailures.Select(failure => failure.Update).ToArray(), replace, mayOpenBrowser, ct, confirmed: true);
         }
     }
 
-    private async Task ShowSomeInstallsFailedDialog(ConcurrentBag<DownloadedProcessingResult> libraryItemReplacementResults)
+    private async Task ShowSomeInstallsFailedDialog(IEnumerable<ModUpdateReplacement> replacements)
     {
-        var failedToInstallItems = new List<LibraryItem.ReadOnly>();
-        foreach (var replaceResult in libraryItemReplacementResults)
-        {
-            if (replaceResult.InstallResult != LibraryItemReplacementResult.Success)
-                failedToInstallItems.Add(replaceResult.NewItem);
-        }
+        var failedToInstallItems = replacements
+            .Where(replacement => replacement.Result != LibraryItemReplacementResult.Success)
+            .Select(replacement => replacement.New)
+            .ToList();
 
         var modNames = string.Join(Environment.NewLine, failedToInstallItems.Select(failed => failed.Name));
         var description = string.Format(Language.Library_Update_SomeInstallsFailed_Description, modNames);
@@ -574,184 +545,6 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
 
         var dialogResult = await WindowManager.ShowDialog(confirmDialog, DialogWindowType.Modal);
         return (updateButtonId, dialogResult);
-    }
-
-    /// <summary>
-    /// This downloads a list of mods marked by <see cref="newestToCurrentMapping"/>.
-    /// Every mod is installed separately into the library (as a separate transaction).
-    /// </summary>
-    /// <param name="newestToCurrentMapping">The items to process.</param>
-    /// <param name="concurrencyLimit">Amount of items to process at the same time.</param>
-    /// <param name="cancellationToken">The token that can be used to cancel this operation.</param>
-    /// <returns>A struct containing all the processing results including successful downloads, errors, and mappings.</returns>
-    private async Task<DownloadProcessingResults> ProcessDownloadsInParallel(
-        Dictionary<NexusModsFileMetadata.ReadOnly, List<NexusModsFileMetadata.ReadOnly>> newestToCurrentMapping,
-        int concurrencyLimit,
-        CancellationToken cancellationToken)
-    {
-        var libraryItemReplacementResults = new ConcurrentBag<DownloadedProcessingResult>();
-        var downloadErrors = new ConcurrentBag<DownloadError>();
-
-        using var semaphore = new SemaphoreSlim(concurrencyLimit);
-        var tasks = new List<Task>();
-
-        // Helper function to process a single download with error handling
-        async Task ProcessDownload(SemaphoreSlim sema, NexusModsFileMetadata.ReadOnly newestFile, List<NexusModsFileMetadata.ReadOnly> currentFiles)
-        {
-            var isTaken = false;
-            try
-            {
-                isTaken = await sema.WaitAsync(Timeout.Infinite, cancellationToken);
-
-                // Try a download.
-                await using var tempPath = _temporaryFileManager.CreateFile();
-                var job = await _nexusModsLibrary.CreateDownloadJob(tempPath, newestFile, cancellationToken: cancellationToken);
-                var libraryFile = await AddUpdatedFile(job, currentFiles);
-                var newLibraryItem = libraryFile.AsLibraryItem();
-
-                // Map each current file to the new file
-                foreach (var currentFile in currentFiles)
-                {
-                    // Find existing library items for this file metadata
-                    var existingLibraryItems = NexusModsLibraryItem.FindByFileMetadata(_connection.Db, currentFile);
-                    foreach (var existingLibraryFile in existingLibraryItems) // Should only be one.
-                    {
-                        var currentLibraryItem = existingLibraryFile.AsLibraryItem();
-
-                        // Try to install the item right away
-                        var options = new ReplaceLibraryItemOptions { IgnoreReadOnlyCollections = true };
-                        var result = await _libraryService.ReplaceLinkedItemsInAllLoadouts(currentLibraryItem, newLibraryItem, options);
-                        libraryItemReplacementResults.Add(new DownloadedProcessingResult()
-                        {
-                            OldItem = currentLibraryItem,
-                            NewItem = newLibraryItem,
-                            InstallResult = result,
-                        });
-
-                        if (result == LibraryItemReplacementResult.Success)
-                            _notificationService.ShowToast(string.Format(Language.ToastNotification_Mod_updated____0_, newLibraryItem.Name), ToastNotificationVariant.Success);
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // Ignored.
-            }
-            catch (Exception ex)
-            {
-                downloadErrors.Add(new DownloadError()
-                {
-                    File = newestFile,
-                    Error = ex,
-                });
-            }
-            finally
-            {
-                if (isTaken)
-                    sema.Release();
-            }
-        }
-
-        // Create tasks for all downloads
-        foreach (var (newestFile, currentFiles) in newestToCurrentMapping)
-        {
-            tasks.Add(ProcessDownload(semaphore, newestFile, currentFiles));
-        }
-
-        // Wait for all tasks to complete
-        await Task.WhenAll(tasks);
-
-        return new DownloadProcessingResults(
-            libraryItemReplacementResults,
-            downloadErrors
-        );
-    }
-
-    private async ValueTask HandleUpdateAndKeepOldMessage(UpdateAndKeepOldMessage updateAndKeepOldMessage, CancellationToken cancellationToken)
-    {
-        if (NexusUpdatesOf(updateAndKeepOldMessage.Update) is not { } updatesOnPage) return;
-        
-        // Note(sewer)
-        // If the user is a free user, they have to go to the website due to API restrictions.
-        // For premium, we can start a download directly.
-        var isPremium = _loginManager.IsPremium;
-        if (!isPremium)
-        {
-            /*
-               // Note(sewer): The commented code here is the correct behaviour
-               // as intended per the phase one design. We temporarily need to alter
-               // this behaviour due to the TreeDataGrid bug. When TreeDataGrid
-               // is fixed, we can revert.
-
-               // If there are multiple mods, we expand the row
-               var treeNode = updateMessage.TreeNode;
-               if (updatesOnPage.NumberOfModFilesToUpdate > 1)
-               {
-                   treeNode.IsExpanded = true; // 👈 TreeDataGrid bug. Doesn't handle PropertyChanged right.
-               }
-               else
-               {
-                   // Otherwise send them to the download page!!
-                   var latestFile = updatesOnPage.NewestFile();
-                   var modFileUrl = NexusModsUrlBuilder.CreateModFileDownloadUri(latestFile.Uid.FileId, latestFile.Uid.GameId);
-                   var osInterop = _serviceProvider.GetRequiredService<IOSInterop>();
-                   await osInterop.OpenUrl(modFileUrl, cancellationToken: cancellationToken);
-               }
-            */
-
-            UpdateAndKeepOldFree([updatesOnPage]);
-        }
-        else
-        {
-            await UpdateAndKeepOldPremium([updatesOnPage], cancellationToken);
-        }
-    }
-
-    private void UpdateAndKeepOldFree(IEnumerable<ModUpdatesOnModPage> updatesOnPages)
-    {
-        // Aggregate all unique files across all mod pages
-        var newestToCurrentMapping = new Dictionary<NexusModsFileMetadata.ReadOnly, List<NexusModsFileMetadata.ReadOnly>>();
-        foreach (var updatesOnPage in updatesOnPages)
-            updatesOnPage.NewestToCurrentFileMapping(newestToCurrentMapping);
-        
-        // Open download page for every unique file
-        var osInterop = _serviceProvider.GetRequiredService<IOSInterop>();
-        foreach (var newestFile in newestToCurrentMapping.Keys)
-        {
-            var uri = NexusModsUrlBuilder.GetFileDownloadUri(newestFile.ModPage.GameDomain, newestFile.ModPage.Uid.ModId, newestFile.Uid.FileId, useNxmLink: true);
-            osInterop.OpenUri(uri);
-        }
-    }
-
-    private async Task UpdateAndKeepOldPremium(IEnumerable<ModUpdatesOnModPage> updatesOnPages, CancellationToken cancellationToken)
-    {
-        // Aggregate all unique files across all mod pages
-        var newestToCurrentMapping = new Dictionary<NexusModsFileMetadata.ReadOnly, List<NexusModsFileMetadata.ReadOnly>>();
-        foreach (var updatesOnPage in updatesOnPages)
-            updatesOnPage.NewestToCurrentFileMapping(newestToCurrentMapping);
-        
-        // Note(sewer): There's usually just 1 file in like 99% of the cases here
-        //              so no need to optimize around file reuse and TemporaryFileManager.
-        foreach (var (newestFile, currentFiles) in newestToCurrentMapping)
-        {
-            await using var tempPath = _temporaryFileManager.CreateFile();
-            var job = await _nexusModsLibrary.CreateDownloadJob(tempPath, newestFile, cancellationToken: cancellationToken);
-            await AddUpdatedFile(job, currentFiles);
-        }
-    }
-
-    /// <summary>
-    /// Adds the newer file of an update. It is for the games of the files it supersedes, not for the game of the page
-    /// that started the update: a Nexus Mods page serves every game that shares its id, so an update of a file that is
-    /// only for one of them must stay only for that one.
-    /// </summary>
-    internal async Task<LibraryFile.ReadOnly> AddUpdatedFile(IJobTask<IDownloadJob, AbsolutePath> job, IEnumerable<NexusModsFileMetadata.ReadOnly> replacedFiles)
-    {
-        var replaced = replacedFiles
-            .SelectMany(file => NexusModsLibraryItem.FindByFileMetadata(_connection.Db, file))
-            .Select(item => item.AsLibraryItem().LibraryItemId)
-            .ToArray();
-        return await _libraryService.AddDownload(job, new UpdateAcquisition(replaced));
     }
 
     private ValueTask HandleViewChangelogMessage(ViewChangelogMessage viewChangelogMessage, CancellationToken cancellationToken)
@@ -993,33 +786,6 @@ After asking design, we're choosing to simply open the mod page for now.
             });
     }
 
-    /// <summary>
-    /// The Nexus files an update would replace, in the form the Nexus apply paths take, or null when none of its
-    /// items came from Nexus. Rebuilt from the update's library items because the update's own type belongs to its
-    /// source; it carries the current state of the files, filtered the way the Update column filters them.
-    /// </summary>
-    private ModUpdatesOnModPage? NexusUpdatesOf(ModUpdate update)
-    {
-        var db = _connection.Db;
-        var files = new HashSet<NexusModsFileMetadataId>();
-        var pages = new Dictionary<NexusModsModPageMetadataId, NexusModsModPageMetadata.ReadOnly>();
-        foreach (var id in update.CurrentItems)
-        {
-            var item = LibraryItem.Load(db, id);
-            if (NexusModsLibraryItem.TryGet(db, item.Id, out var nexusItem) is false) continue;
-
-            files.Add(nexusItem.Value.FileMetadataId);
-            pages.TryAdd(nexusItem.Value.ModPageMetadataId, nexusItem.Value.ModPageMetadata);
-        }
-
-        var mappings = pages.Values
-            .Select(page => _modUpdateService.HasModPageUpdatesAvailable(page))
-            .Where(static onPage => onPage.HasValue)
-            .SelectMany(onPage => onPage.Value.FileMappings.Where(mapping => files.Contains(mapping.File.Id)))
-            .ToArray();
-        return mappings.Length > 0 ? new ModUpdatesOnModPage(mappings) : null;
-    }
-
     private LoadoutItemGroupId GetInstallationTarget() => (SelectedInstallationTarget?.Id ?? _installationTargets[0].Id).Value;
 
     private ValueTask InstallSelectedItems(bool useAdvancedInstaller, CancellationToken cancellationToken)
@@ -1104,55 +870,21 @@ After asking design, we're choosing to simply open the mod page for now.
     }
 
     private ValueTask UpdateSelectedItems(CancellationToken cancellationToken)
-    {
-        // TEMPORARY: Use conditional default behavior based on Premium status to avoid unwanted dialog for free users
-        // Original: return UpdateSelectedItemsInternal(useUpdateAndReplace: true, cancellationToken);
-        var isPremium = _loginManager.IsPremium;
-        return UpdateSelectedItemsInternal(useUpdateAndReplace: isPremium, cancellationToken);
-    }
+        => UpdateSelectedItemsInternal(replace: true, cancellationToken);
 
     private ValueTask UpdateAndKeepOldSelectedItems(CancellationToken cancellationToken)
-    {
-        return UpdateSelectedItemsInternal(useUpdateAndReplace: false, cancellationToken);
-    }
+        => UpdateSelectedItemsInternal(replace: false, cancellationToken);
 
-    private async ValueTask UpdateSelectedItemsInternal(bool useUpdateAndReplace, CancellationToken cancellationToken)
+    private ValueTask UpdateSelectedItemsInternal(bool replace, CancellationToken cancellationToken)
     {
-        var selectedModels = Adapter.SelectedModels.ToArray();
         // Note(sewer): The selection count is not guaranteed to equal the number of items
         // with updates because the user can select a mixture of items with and without updates
         // in a single selection.
-        var withUpdatesOnPage = new List<ModUpdatesOnModPage>(); 
-        
-        foreach (var model in selectedModels)
-        {
-            // Check if this model has an update component
-            var updateComponent = model.GetOptional<LibraryComponents.UpdateAction>(LibraryColumns.Actions.UpdateComponentKey);
-            if (!updateComponent.HasValue) continue;
+        var updates = GetSelectedModelsWithUpdates()
+            .Select(model => model.Get<LibraryComponents.UpdateAction>(LibraryColumns.Actions.UpdateComponentKey).Update.Value)
+            .ToArray();
 
-            if (NexusUpdatesOf(updateComponent.Value.Update.Value) is { } updatesOnPage)
-                withUpdatesOnPage.Add(updatesOnPage);
-        }
-        
-        // Note(sewer): This should (by definition) be always true, because the user had at least
-        // 1 selection with an update (otherwise they wouldn't be able to call this)
-        if (withUpdatesOnPage.Count > 0)
-        {
-            var isPremium = _loginManager.IsPremium;
-            if (useUpdateAndReplace)
-            {
-                if (!isPremium)
-                    await UpdateAndReplaceForMultiModPagesFreeOnly(cancellationToken, withUpdatesOnPage);
-                else
-                    await UpdateAndReplaceForMultiModPagesPremiumOnly(cancellationToken, withUpdatesOnPage);
-            }
-            else
-            {
-                if (!isPremium) UpdateAndKeepOldFree(withUpdatesOnPage);
-                else
-                    await UpdateAndKeepOldPremium(withUpdatesOnPage, cancellationToken);
-            }
-        }
+        return ApplyUpdates(updates, replace, mayOpenBrowser: true, cancellationToken);
     }
 
     private async ValueTask UpdateAllItems(CancellationToken cancellationToken)
@@ -1160,25 +892,13 @@ After asking design, we're choosing to simply open the mod page for now.
         IsUpdatingAll = true;
         try
         {
-            var isPremium = _loginManager.IsPremium;
-
-            if (!isPremium)
-            {
-                var osInterop = _serviceProvider.GetRequiredService<IOSInterop>();
-                await PremiumDialog.ShowUpdatePremiumDialog(WindowManager, osInterop);
-                return;
-            }
-
-            // Only the pages with a file destined for the current game
+            // Only the updates for files destined for the current game
             var game = _loadout.InstallationInstance.Game;
             var allUpdates = _serviceProvider.GetRequiredService<ModSourceResolver>().Sources
                 .SelectMany(source => source.AllUpdates(game))
-                .Select(NexusUpdatesOf)
-                .OfType<ModUpdatesOnModPage>()
                 .ToArray();
-            
-            if (allUpdates.Length > 0)
-                await UpdateAndReplaceForMultiModPagesPremiumOnly(cancellationToken, allUpdates);
+
+            await ApplyUpdates(allUpdates, replace: true, mayOpenBrowser: false, cancellationToken);
         }
         finally
         {
@@ -1194,23 +914,23 @@ After asking design, we're choosing to simply open the mod page for now.
     /// cleaning those up happens in <see cref="ShowSomeInstallsFailedDialog"/> in partial fail scenarios.
     /// </summary>
     /// <param name="oldToNewLibraryMapping">The mapping of old library items to their new replacements.</param>
-    private async ValueTask RemoveOldLibraryItemsIfNotInReadOnlyCollections(IEnumerable<DownloadedProcessingResult> oldToNewLibraryMapping)
+    private async ValueTask RemoveOldLibraryItemsIfNotInReadOnlyCollections(IEnumerable<ModUpdateReplacement> oldToNewLibraryMapping)
     {
         var oldItemsToRemove = new List<LibraryItem.ReadOnly>();
         
         foreach (var item in oldToNewLibraryMapping)
         {
             // If the new item is not valid (e.g. replace failed), and user chose to 'delete new files' we skip it.
-            if (!item.NewItem.IsValid())
+            if (item.New.IsValid() is false)
                 continue;
             
             // Check if the old item is still linked to any collections
-            var collectionsWithItem = _libraryService.CollectionsWithLibraryItem(item.OldItem, excludeReadOnlyCollections: false);
+            var collectionsWithItem = _libraryService.CollectionsWithLibraryItem(item.Old, excludeReadOnlyCollections: false);
             
             // Only remove if the item is NOT in any read-only collections (i.e., only in modifiable collections or no collections)
             var hasReadOnlyCollections = collectionsWithItem.Any(x => x.collection.IsReadOnly);
             if (!hasReadOnlyCollections)
-                oldItemsToRemove.Add(item.OldItem);
+                oldItemsToRemove.Add(item.Old);
         }
 
         if (oldItemsToRemove.Count > 0)
@@ -1395,58 +1115,4 @@ public class LibraryTreeDataGridAdapter :
 
         base.Dispose(disposing);
     }
-}
-
-/// <summary>
-/// Results from processing downloads in parallel.
-/// </summary>
-/// <param name="LibraryItemReplacementResults">
-///     Mapping of all the old mods to new mods; along with their replacement result.
-///     This excludes items where downloads failed.
-/// </param>
-/// <param name="DownloadErrors">Items which failed to download.</param>
-public readonly record struct DownloadProcessingResults(
-    ConcurrentBag<DownloadedProcessingResult> LibraryItemReplacementResults,
-    ConcurrentBag<DownloadError> DownloadErrors
-);
-
-/// <summary>
-/// The result of downloading and installing a given old->new mod tuple.
-/// </summary>
-public struct DownloadedProcessingResult
-{
-    /// <summary>
-    /// The old version of the mod.
-    /// </summary>
-    public LibraryItem.ReadOnly OldItem;
-
-    /// <summary>
-    /// The new version of the mod that was downloaded.
-    /// </summary>
-    /// <remarks>
-    ///     This item may be invalid if the user decides to delete the file when <see cref="InstallResult"/>
-    ///     is not success.
-    /// </remarks>
-    public LibraryItem.ReadOnly NewItem;
-    
-    /// <summary>
-    /// The install result for <see cref="NewItem"/>.
-    /// </summary>
-    public LibraryItemReplacementResult InstallResult;
-}
-
-/// <summary>
-/// An error which happened when downloading a new version of a library item.
-/// </summary>
-public struct DownloadError
-{
-    /// <summary>
-    /// The file which we tried to download.
-    /// </summary>
-    public NexusModsFileMetadata.ReadOnly File;
-    
-    /// <summary>
-    /// The error which occurred during the download or installation of the file.
-    /// </summary>
-    public Exception Error;
 }

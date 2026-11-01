@@ -87,7 +87,7 @@ public class NexusModSourceUpdateTests(IConnection connection)
         service.GetNewestFileVersionObservable(Arg.Any<NexusModsFileMetadata.ReadOnly>(), Arg.Any<Func<ModUpdateOnPage, ModUpdateOnPage?>>())
             .Returns(System.Reactive.Linq.Observable.Return(Optional.Some(new ModUpdateOnPage(current, [newer]))));
 
-        var update = Latest(new NexusModSource(service).ObserveUpdate(library.AsLibraryItem()));
+        var update = Latest(NexusModSources.Create(connection, service).ObserveUpdate(library.AsLibraryItem()));
 
         update.HasValue.Should().BeTrue();
         update.Value.Count.Should().Be(1);
@@ -105,7 +105,7 @@ public class NexusModSourceUpdateTests(IConnection connection)
         service.GetNewestFileVersionObservable(Arg.Any<NexusModsFileMetadata.ReadOnly>(), Arg.Any<Func<ModUpdateOnPage, ModUpdateOnPage?>>())
             .Returns(System.Reactive.Linq.Observable.Return(Optional<ModUpdateOnPage>.None));
 
-        Latest(new NexusModSource(service).ObserveUpdate(library.AsLibraryItem())).HasValue.Should().BeFalse();
+        Latest(NexusModSources.Create(connection, service).ObserveUpdate(library.AsLibraryItem())).HasValue.Should().BeFalse();
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public class NexusModSourceUpdateTests(IConnection connection)
     {
         var local = await new LockFixtures(connection).AddLibraryFile("local.zip", "local " + _nextId++, null);
 
-        Latest(new NexusModSource(Substitute.For<IModUpdateService>()).ObserveUpdate(local.AsLibraryItem())).HasValue.Should().BeFalse();
+        Latest(NexusModSources.Create(connection, Substitute.For<IModUpdateService>()).ObserveUpdate(local.AsLibraryItem())).HasValue.Should().BeFalse();
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class NexusModSourceUpdateTests(IConnection connection)
                 new ModUpdateOnPage(other, [newest]),
             ]))));
 
-        var update = Latest(new NexusModSource(service).ObserveUpdate([library.AsLibraryItem(), otherLibrary.AsLibraryItem()]));
+        var update = Latest(NexusModSources.Create(connection, service).ObserveUpdate([library.AsLibraryItem(), otherLibrary.AsLibraryItem()]));
 
         update.HasValue.Should().BeTrue();
         update.Value.Count.Should().Be(2);
@@ -149,13 +149,13 @@ public class NexusModSourceUpdateTests(IConnection connection)
         service.GetNewestModPageVersionObservable(Arg.Any<NexusModsModPageMetadata.ReadOnly>(), Arg.Any<Func<ModUpdatesOnModPage, ModUpdatesOnModPage?>>())
             .Returns(System.Reactive.Linq.Observable.Return(Optional.Some(new ModUpdatesOnModPage([]))));
 
-        Latest(new NexusModSource(service).ObserveUpdate([library.AsLibraryItem()])).HasValue.Should().BeFalse();
+        Latest(NexusModSources.Create(connection, service).ObserveUpdate([library.AsLibraryItem()])).HasValue.Should().BeFalse();
     }
 
     [Fact]
     public void ObserveUpdate_ForNoItems_IsNone()
     {
-        Latest(new NexusModSource(Substitute.For<IModUpdateService>()).ObserveUpdate(Array.Empty<LibraryItem.ReadOnly>())).HasValue.Should().BeFalse();
+        Latest(NexusModSources.Create(connection, Substitute.For<IModUpdateService>()).ObserveUpdate(Array.Empty<LibraryItem.ReadOnly>())).HasValue.Should().BeFalse();
     }
 
     [Fact]
@@ -170,7 +170,7 @@ public class NexusModSourceUpdateTests(IConnection connection)
             .Returns([(page.Id, new ModUpdatesOnModPage([new ModUpdateOnPage(current, [newer])]))]);
         service.GetAllModPagesWithUpdates(gameB.GameId, Arg.Any<Func<ModUpdatesOnModPage, ModUpdatesOnModPage?>>())
             .Returns([]);
-        var source = new NexusModSource(service);
+        var source = NexusModSources.Create(connection, service);
 
         var forA = source.AllUpdates(gameA);
         var forB = source.AllUpdates(gameB);
@@ -189,7 +189,7 @@ public class NexusModSourceUpdateTests(IConnection connection)
         service.HasAnyUpdatesObservable(Arg.Any<Func<ModUpdatesOnModPage, ModUpdatesOnModPage?>>())
             .Returns(System.Reactive.Linq.Observable.Return(hasAny));
 
-        Latest(new NexusModSource(service).ObserveHasAnyUpdates(GameWithId("update-game-c"))).Should().Be(hasAny);
+        Latest(NexusModSources.Create(connection, service).ObserveHasAnyUpdates(GameWithId("update-game-c"))).Should().Be(hasAny);
     }
 
     public class Startup

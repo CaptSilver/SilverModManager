@@ -22,6 +22,11 @@ public interface IModSource
     bool Owns(LibraryItem.ReadOnly item);
 
     /// <summary>
+    /// Whether the update is one this source made, by the type it defines.
+    /// </summary>
+    bool Owns(ModUpdate update);
+
+    /// <summary>
     /// The item's page on the source's site, or null when the source doesn't know the item's page.
     /// </summary>
     Uri? PageUri(LibraryItem.ReadOnly item);
@@ -62,4 +67,12 @@ public interface IModSource
     /// of sources never waits on one that has nothing to say.
     /// </summary>
     IObservable<bool> ObserveHasAnyUpdates(IGameData game);
+
+    /// <summary>
+    /// Downloads the newest files of a batch of this source's updates and, when
+    /// <see cref="ModUpdateRequest.Replace"/> is set, swaps them in for the current files in every loadout. One
+    /// batch per source so a source can share work across updates. Shows no dialogs and removes no old library
+    /// items; both belong to the caller. A failed download comes back in the outcome rather than thrown.
+    /// </summary>
+    ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken);
 }

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reactive.Linq;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Library;
@@ -5,7 +6,10 @@ using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Networking.NexusWebApi;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.MnemonicDB.Abstractions;
 
 // Not SilverModManager.Library.ModSources: App.UI has a static class ModSources and the names would clash.
 namespace SilverModManager.Library;
@@ -13,11 +17,20 @@ namespace SilverModManager.Library;
 /// <summary>
 /// Items downloaded from Nexus Mods.
 /// </summary>
-internal sealed class NexusModSource(IModUpdateService modUpdateService) : IModSource
+internal sealed class NexusModSource(
+    IModUpdateService modUpdateService,
+    ILoginManager loginManager,
+    INexusUpdateDownloader downloader,
+    ILibraryService libraryService,
+    IConnection connection,
+    ISettingsManager settingsManager,
+    IOSInterop osInterop) : IModSource
 {
     public string DisplayName => "Nexus Mods";
 
     public bool Owns(LibraryItem.ReadOnly item) => NexusModsLibraryItem.TryGet(item.Db, item.Id, out _);
+
+    public bool Owns(ModUpdate update) => update is NexusModUpdate;
 
     public Uri? PageUri(LibraryItem.ReadOnly item)
     {
@@ -70,6 +83,93 @@ internal sealed class NexusModSource(IModUpdateService modUpdateService) : IModS
 
     // The Nexus check is global, not per game.
     public IObservable<bool> ObserveHasAnyUpdates(IGameData game) => modUpdateService.HasAnyUpdatesObservable();
+
+    public async ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken)
+    {
+        // Every newest file once, with all the current files it replaces, whichever page asked for it.
+        var newestToCurrent = new Dictionary<NexusModsFileMetadata.ReadOnly, List<NexusModsFileMetadata.ReadOnly>>();
+        foreach (var update in request.Updates.OfType<NexusModUpdate>())
+            update.Updates.NewestToCurrentFileMapping(newestToCurrent);
+
+        // A free account can't start a download through the API; the website's download page takes it from there.
+        if (loginManager.IsPremium is false)
+            return request.MayOpenBrowser ? OpenInBrowser(newestToCurrent.Keys) : ModUpdateOutcome.Nothing with { AccountCannotDownload = true };
+
+        return await DownloadAll(newestToCurrent, request, cancellationToken);
+    }
+
+    private ModUpdateOutcome OpenInBrowser(IEnumerable<NexusModsFileMetadata.ReadOnly> newestFiles)
+    {
+        var opened = new List<Uri>();
+        foreach (var file in newestFiles)
+        {
+            var uri = NexusModsUrlBuilder.GetFileDownloadUri(file.ModPage.GameDomain, file.ModPage.Uid.ModId, file.Uid.FileId, useNxmLink: true);
+            osInterop.OpenUri(uri);
+            opened.Add(uri);
+        }
+        return ModUpdateOutcome.Nothing with { OpenedInBrowser = opened };
+    }
+
+    private async ValueTask<ModUpdateOutcome> DownloadAll(
+        Dictionary<NexusModsFileMetadata.ReadOnly, List<NexusModsFileMetadata.ReadOnly>> newestToCurrent,
+        ModUpdateRequest request,
+        CancellationToken cancellationToken)
+    {
+        var downloaded = new ConcurrentBag<LibraryItem.ReadOnly>();
+        var replacements = new ConcurrentBag<ModUpdateReplacement>();
+        var failures = new ConcurrentBag<ModUpdateFailure>();
+        var limit = settingsManager.Get<DownloadSettings>().MaxParallelDownloads;
+        using var semaphore = new SemaphoreSlim(limit);
+
+        async Task Apply(NexusModsFileMetadata.ReadOnly newest, List<NexusModsFileMetadata.ReadOnly> current)
+        {
+            var isTaken = false;
+            try
+            {
+                isTaken = await semaphore.WaitAsync(Timeout.Infinite, cancellationToken);
+                var newItem = (await downloader.Download(newest, current, cancellationToken)).AsLibraryItem();
+                downloaded.Add(newItem);
+                if (request.Replace is false) return;
+
+                foreach (var currentFile in current)
+                {
+                    // Should only be one library item per file.
+                    foreach (var held in NexusModsLibraryItem.FindByFileMetadata(connection.Db, currentFile))
+                    {
+                        var old = held.AsLibraryItem();
+                        var result = await libraryService.ReplaceLinkedItemsInAllLoadouts(old, newItem, new ReplaceLibraryItemOptions { IgnoreReadOnlyCollections = true });
+                        replacements.Add(new ModUpdateReplacement(old, newItem, result));
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // The user cancelled; there is nothing to report.
+            }
+            catch (Exception e)
+            {
+                failures.Add(new ModUpdateFailure(OnlyUpdateTo(newest, request), newest.Name, e));
+            }
+            finally
+            {
+                if (isTaken) semaphore.Release();
+            }
+        }
+
+        await Task.WhenAll(newestToCurrent.Select(pair => Apply(pair.Key, pair.Value)));
+        return new ModUpdateOutcome([.. downloaded], [.. replacements], [.. failures], [], false);
+    }
+
+    // What is left of the batch when only the update to this file is retried.
+    private static ModUpdate OnlyUpdateTo(NexusModsFileMetadata.ReadOnly newest, ModUpdateRequest request)
+    {
+        var mappings = request.Updates.OfType<NexusModUpdate>()
+            .SelectMany(update => update.Updates.FileMappings)
+            .Where(mapping => mapping.NewestFile.Id == newest.Id)
+            .ToArray();
+        return NexusModUpdate.From(new ModUpdatesOnModPage(mappings))
+            ?? throw new InvalidOperationException($"No update in the batch leads to {newest.Name}.");
+    }
 
     private static Optional<ModUpdate> AsUpdate(ModUpdatesOnModPage? updates)
         => updates is { } found && NexusModUpdate.From(found) is { } update ? Optional<ModUpdate>.Create(update) : Optional<ModUpdate>.None;

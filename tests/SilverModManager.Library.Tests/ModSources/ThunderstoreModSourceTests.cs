@@ -20,7 +20,7 @@ namespace SilverModManager.Library.Tests.ModSources;
 
 public class ThunderstoreModSourceTests(IConnection connection)
 {
-    private ModSourceResolver Resolver() => new([new NexusModSource(Substitute.For<IModUpdateService>()), new ThunderstoreModSource(Substitute.For<IThunderstoreCatalogSource>(), new ThunderstoreUpdateChecker(connection))]);
+    private ModSourceResolver Resolver() => new([NexusModSources.Create(connection, Substitute.For<IModUpdateService>()), new ThunderstoreModSource(Substitute.For<IThunderstoreCatalogSource>(), new ThunderstoreUpdateChecker(connection))]);
 
     [Fact]
     public async Task AThunderstoreItemResolvesToTheThunderstoreSource()
@@ -71,7 +71,7 @@ public class ThunderstoreModSourceTests(IConnection connection)
         var fixtures = new LockFixtures(connection);
         var file = await fixtures.AddThunderstoreFile("Zehs", "REPOLib", "4.2.0", "ts " + Guid.NewGuid(), null);
 
-        new NexusModSource(Substitute.For<IModUpdateService>()).Owns(file.AsLibraryItem()).Should().BeFalse();
+        NexusModSources.Create(connection, Substitute.For<IModUpdateService>()).Owns(file.AsLibraryItem()).Should().BeFalse();
     }
 
     // The Update All button combines every source's answer, so a source with nothing to report must still answer.

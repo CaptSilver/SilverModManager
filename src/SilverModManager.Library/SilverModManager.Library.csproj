@@ -18,5 +18,6 @@
     <ItemGroup>
         <InternalsVisibleTo Include="SilverModManager.Library.Tests"/>
         <InternalsVisibleTo Include="SilverModManager.UI.Tests"/>
+        <InternalsVisibleTo Include="DynamicProxyGenAssembly2"/>
     </ItemGroup>
 </Project>

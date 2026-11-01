@@ -18,4 +18,9 @@ public sealed class ModSourceResolver(IEnumerable<IModSource> sources)
     /// The source that owns the item, or null for an item no source owns.
     /// </summary>
     public IModSource? For(LibraryItem.ReadOnly item) => _sources.FirstOrDefault(source => source.Owns(item));
+
+    /// <summary>
+    /// The source that made the update.
+    /// </summary>
+    public IModSource? For(ModUpdate update) => _sources.FirstOrDefault(source => source.Owns(update));
 }

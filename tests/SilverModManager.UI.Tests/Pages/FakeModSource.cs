@@ -9,8 +9,9 @@ using SilverModManager.Sdk.Library;
 namespace SilverModManager.UI.Tests.Pages;
 
 /// <summary>
-/// A mod source that owns nothing and reports whatever the test sets: no updates until <see cref="HasAnyUpdates"/>
-/// or <see cref="Updates"/> say otherwise.
+/// A mod source that owns no library item and reports whatever the test sets: no updates until
+/// <see cref="HasAnyUpdates"/> or <see cref="Updates"/> say otherwise. It owns the <see cref="FakeModUpdate"/>s
+/// made for its name, records the requests it is asked to apply, and answers each with <see cref="Outcome"/>.
 /// </summary>
 internal class FakeModSource(string name = "fake") : IModSource
 {
@@ -18,7 +19,11 @@ internal class FakeModSource(string name = "fake") : IModSource
     public List<ModUpdate> Updates { get; } = [];
 
     public string DisplayName => name;
+    public List<ModUpdateRequest> Requests { get; } = [];
+    public Func<ModUpdateRequest, ModUpdateOutcome> Outcome { get; set; } = static _ => ModUpdateOutcome.Nothing;
+
     public bool Owns(LibraryItem.ReadOnly item) => false;
+    public bool Owns(ModUpdate update) => update is FakeModUpdate fake && fake.Source == name;
     public Uri? PageUri(LibraryItem.ReadOnly item) => null;
     public Uri? ChangelogUri(LibraryItem.ReadOnly item) => null;
     public virtual Task CheckUpdates(IGameData game, bool force, CancellationToken cancellationToken) => Task.CompletedTask;
@@ -26,22 +31,46 @@ internal class FakeModSource(string name = "fake") : IModSource
     public IObservable<Optional<ModUpdate>> ObserveUpdate(IReadOnlyList<LibraryItem.ReadOnly> items) => Observable.Return(Optional<ModUpdate>.None);
     public IReadOnlyList<ModUpdate> AllUpdates(IGameData game) => Updates;
     public IObservable<bool> ObserveHasAnyUpdates(IGameData game) => HasAnyUpdates;
+
+    public ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken)
+    {
+        lock (Requests) Requests.Add(request);
+        return ValueTask.FromResult(Outcome(request));
+    }
 }
 
 /// <summary>
 /// An update with the numbers the test chooses, for UI code that must not care which source made it.
 /// </summary>
-internal sealed record FakeModUpdate(int Items, string NewestVersion = "2.0", DateTimeOffset? PublishedAt = null, string CurrentVersion = "1.0")
-    : ModUpdate(Enumerable.Range(0, Items).Select(_ => default(LibraryItemId)).ToArray(), CurrentVersion, NewestVersion, PublishedAt);
+internal sealed record FakeModUpdate(IReadOnlyList<LibraryItemId> Ids, string NewestVersion = "2.0", DateTimeOffset? PublishedAt = null, string CurrentVersion = "1.0", string Source = "fake")
+    : ModUpdate(Ids, CurrentVersion, NewestVersion, PublishedAt)
+{
+    /// <summary>An update over <paramref name="items"/> library items that don't exist.</summary>
+    public FakeModUpdate(int Items, string NewestVersion = "2.0", DateTimeOffset? PublishedAt = null, string CurrentVersion = "1.0", string Source = "fake")
+        : this(Enumerable.Range(0, Items).Select(_ => default(LibraryItemId)).ToArray(), NewestVersion, PublishedAt, CurrentVersion, Source) { }
+}
 
 /// <summary>
-/// The host's services with the mod source resolver swapped for one over the test's sources.
+/// The host's services with the mod source resolver swapped for one over the test's sources, and any other service
+/// the test replaces through <see cref="With{TService}"/>.
 /// </summary>
 internal sealed class ServicesWithSources(IServiceProvider inner, params IModSource[] sources) : IServiceProvider, IKeyedServiceProvider
 {
     private readonly ModSourceResolver _resolver = new(sources);
 
-    public object? GetService(Type serviceType) => serviceType == typeof(ModSourceResolver) ? _resolver : inner.GetService(serviceType);
+    private readonly Dictionary<Type, object> _replaced = [];
+
+    public ServicesWithSources With<TService>(TService service) where TService : class
+    {
+        _replaced[typeof(TService)] = service;
+        return this;
+    }
+
+    public object? GetService(Type serviceType)
+    {
+        if (serviceType == typeof(ModSourceResolver)) return _resolver;
+        return _replaced.TryGetValue(serviceType, out var replaced) ? replaced : inner.GetService(serviceType);
+    }
     public object? GetKeyedService(Type serviceType, object? serviceKey) => ((IKeyedServiceProvider)inner).GetKeyedService(serviceType, serviceKey);
     public object GetRequiredKeyedService(Type serviceType, object? serviceKey) => ((IKeyedServiceProvider)inner).GetRequiredKeyedService(serviceType, serviceKey);
 }
