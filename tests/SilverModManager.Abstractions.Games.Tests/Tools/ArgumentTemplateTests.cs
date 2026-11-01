@@ -1,5 +1,6 @@
 using FluentAssertions;
 using SilverModManager.Abstractions.Games.Tools;
+using SilverModManager.Sdk.Errors;
 using Xunit;
 
 namespace SilverModManager.Abstractions.Games.Tests.Tools;
@@ -40,6 +41,16 @@ public class ArgumentTemplateTests
 
         act.Should().Throw<UnknownToolVariableException>()
             .Which.VariableName.Should().Be("OutputFolder");
+    }
+
+    [Fact]
+    public void Substitute_RefusesAnUnknownVariable_InWordsForThePlayer()
+    {
+        var act = () => ArgumentTemplate.Of("-O:{OutputFolder}").Substitute(Variables);
+
+        var refusal = act.Should().Throw<UserFacingException>().Which;
+        refusal.Title.Should().Be("The tool was not run");
+        refusal.Message.Should().Contain("{OutputFolder}");
     }
 
     [Theory]
