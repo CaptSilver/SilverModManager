@@ -690,7 +690,7 @@ internal partial class LoadoutManager : ILoadoutManager
             catch (Exception e) when (e is not OperationCanceledException)
             {
                 // The job's own message names the item only when no installer took it.
-                throw new InvalidOperationException($"Couldn't install `{item.Name}`, so nothing was installed: {e.Message}", e);
+                throw new BatchInstallException(item.Name, e);
             }
         }
 

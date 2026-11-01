@@ -13,6 +13,7 @@ using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Pages.LibraryPage;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -122,7 +123,7 @@ public class LibraryInstallItemsTests(IServiceProvider provider) : AUiTest(provi
     [Fact]
     public async Task WhenOneItemFails_NothingIsInstalledOneByOneAndTheFailureIsShown()
     {
-        var failure = new InvalidOperationException("Couldn't install `second.7z`, so nothing was installed");
+        var failure = new BatchInstallException("second.7z", new InvalidOperationException("Found no installer that supports `second.7z`"));
         var harness = await CreateHarness(manager => manager
             .InstallItems(Arg.Any<IReadOnlyList<LibraryItem.ReadOnly>>(), Arg.Any<LoadoutId>(), Arg.Any<Optional<LoadoutItemGroupId>>())
             .Returns(Task.FromException<LoadoutItemGroup.ReadOnly[]>(failure)));
@@ -130,6 +131,7 @@ public class LibraryInstallItemsTests(IServiceProvider provider) : AUiTest(provi
         harness.Vm.InstallSelectedItemsCommand.Execute(R3.Unit.Default);
 
         await Eventually(() => _ = harness.Errors.Received(1).Report(failure, Arg.Any<string>()));
+        UserFacingErrors.Find(failure)!.Message.Should().Contain("second.7z").And.Contain("Found no installer");
         _ = harness.Manager.DidNotReceiveWithAnyArgs().InstallItem(default, default, default, default, default);
     }
 

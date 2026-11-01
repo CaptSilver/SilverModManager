@@ -8,6 +8,8 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 
@@ -48,7 +50,9 @@ public class LoadoutManagerInstallItemsTests(ITestOutputHelper helper) : ACyberp
 
         var install = async () => await LoadoutManager.InstallItems([good[0], broken, good[1]], loadout.LoadoutId, LoadoutItemGroupId.From(collection.Id));
 
-        await install.Should().ThrowAsync<Exception>().WithMessage("*not-a-mod.txt*");
+        var thrown = (await install.Should().ThrowAsync<Exception>().WithMessage("*not-a-mod.txt*")).Which;
+        UserFacingErrors.Find(thrown).Should().NotBeNull("the player is told which item failed, not shown a crash").And.BeOfType<BatchInstallException>()
+            .Which.ItemName.Should().Be("not-a-mod.txt");
         Connection.Db.BasisTxId.Should().Be(before, "the failed transaction wrote nothing");
         LoadoutItem.All(Connection.Db).Where(item => LoadoutItem.Parent.TryGetValue(item, out var parent) && parent == collection.Id).Should().BeEmpty();
         LibraryLinkedLoadoutItem.All(Connection.Db).Should().BeEmpty();
