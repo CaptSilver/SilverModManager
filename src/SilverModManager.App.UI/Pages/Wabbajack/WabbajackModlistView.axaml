@@ -16,6 +16,9 @@
     </Design.DataContext>
 
     <reactive:ReactiveUserControl.Styles>
+        <Style Selector="TextBlock#FreeSpace.Warning">
+            <Setter Property="Foreground" Value="{DynamicResource DangerStrongBrush}" />
+        </Style>
         <Style Selector="TextBlock#StatusText.Warning">
             <Setter Property="Foreground" Value="{DynamicResource DangerStrongBrush}" />
         </Style>
@@ -28,67 +31,13 @@
             <MenuItem x:Name="MenuChooseDownloadsFolder" Header="Choose download folder..." />
             <MenuItem x:Name="MenuDefaultDownloadsFolder" Header="Use the default download folder" />
             <MenuItem x:Name="MenuOpenReadme" Header="Open readme" IsVisible="False" />
-            <MenuItem x:Name="MenuRemove" Header="Remove modlist" Classes="Critical" IsVisible="False" />
         </MenuFlyout>
     </reactive:ReactiveUserControl.Resources>
 
-    <!-- header, toolbar, the one status line, then the archives. Styled by the Collections page's header rules. -->
-    <Grid x:Name="Body" RowDefinitions="Auto, Auto, Auto, *">
+    <!-- The toolbar, the one status line, then the archives. The collection page above supplies the header. -->
+    <Grid x:Name="Body" RowDefinitions="Auto, Auto, *">
 
-        <Border x:Name="HeaderImageBorder" Grid.Row="0" />
-
-        <Border x:Name="HeaderBorder" Grid.Row="0">
-            <StackPanel x:Name="Header">
-                <Border x:Name="MainContentBorder">
-                    <Grid x:Name="MainContent" ColumnDefinitions="*, Auto">
-
-                        <DockPanel Grid.Column="0" x:Name="CollectionTitles">
-                            <Border DockPanel.Dock="Left" x:Name="CollectionImageBorder">
-                                <Image x:Name="CollectionImage" />
-                            </Border>
-                            <StackPanel>
-                                <TextBlock x:Name="Title" Text="Wabbajack modlist" />
-                                <TextBlock x:Name="CollectionName" />
-                            </StackPanel>
-                        </DockPanel>
-
-                        <StackPanel Grid.Column="1" x:Name="CollectionDetails">
-                            <StackPanel x:Name="TagsPanel">
-                                <StackPanel x:Name="AuthorStackPanel">
-                                    <TextBlock x:Name="AuthorName" />
-                                </StackPanel>
-                                <Ellipse Fill="{StaticResource NeutralTranslucentWeakBrush}" Width="4" Height="4" />
-                                <TextBlock x:Name="GameText" Classes="Tag" />
-                                <Ellipse Fill="{StaticResource NeutralTranslucentWeakBrush}" Width="4" Height="4" />
-                                <TextBlock x:Name="VersionText" Classes="Tag" />
-                            </StackPanel>
-
-                            <StackPanel x:Name="StatsPanel">
-                                <StackPanel>
-                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.ModsOutline}" />
-                                    <TextBlock x:Name="ArchiveCount" />
-                                </StackPanel>
-                                <StackPanel ToolTip.Tip="Download size of every archive">
-                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.HardDrive}" />
-                                    <TextBlock x:Name="ArchiveSize" />
-                                </StackPanel>
-                                <StackPanel x:Name="FreeSpacePanel" ToolTip.Tip="Extracted size, next to the free space where archives are kept">
-                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.HardDrive}" />
-                                    <TextBlock x:Name="FreeSpace" />
-                                </StackPanel>
-                            </StackPanel>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-
-                <StackPanel x:Name="DescriptionPanel" Margin="0,12,0,0" Spacing="4" IsVisible="False">
-                    <TextBlock x:Name="DescriptionText" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
-                    <controls:StandardButton x:Name="DescriptionToggle" Type="Tertiary" ShowIcon="None" Size="Toolbar" Text="Show more" HorizontalAlignment="Left" IsVisible="False" />
-                </StackPanel>
-            </StackPanel>
-        </Border>
-
-        <controls:Statusbar x:Name="Toolbar" Grid.Row="1">
+        <controls:Statusbar x:Name="Toolbar" Grid.Row="0">
             <controls:StandardButton Flyout="{StaticResource ModlistMenuFlyout}"
                                      ShowLabel="False"
                                      LeftIcon="{x:Static icons:IconValues.MoreVertical}"
@@ -97,7 +46,7 @@
             <controls:StandardButton x:Name="DownloadButton" Type="Secondary" Fill="Strong" Size="Toolbar" Text="Download" />
             <controls:StandardButton x:Name="InstallButton" Type="Primary" Fill="Strong" Size="Toolbar" Text="Install collection" />
             <controls:StandardButton x:Name="ResumeButton" Type="Primary" Fill="Strong" Size="Toolbar" Text="Resume" />
-            <TextBlock Text="into" VerticalAlignment="Center" />
+            <TextBlock x:Name="IntoLabel" Text="into" VerticalAlignment="Center" />
             <ComboBox x:Name="LoadoutBox" MaxHeight="24" MinWidth="220" PlaceholderText="Pick a loadout…" ToolTip.Tip="The modlist is added to this loadout as a collection, like a Nexus collection. Pick &quot;Create new loadout&quot; to keep it apart from your other mods." />
             <CheckBox x:Name="SkipBox" Content="Skip files from missing archives" VerticalAlignment="Center" />
             <CheckBox x:Name="PickUpBox" Content="Pick up finished downloads from your Downloads folder" VerticalAlignment="Center" IsVisible="False" />
@@ -105,14 +54,20 @@
             <controls:StandardButton x:Name="OpenNextFiveButton" Type="Secondary" Fill="Weak" Size="Toolbar" Text="Open next five" />
         </controls:Statusbar>
 
-        <StackPanel x:Name="StatusPanel" Grid.Row="2" Margin="24,8" Spacing="4">
+        <StackPanel x:Name="StatusPanel" Grid.Row="1" Margin="24,8" Spacing="4">
             <TextBlock x:Name="StatusText" TextWrapping="Wrap" />
+            <!-- Where the archives go, not a fact about the list. -->
+            <StackPanel x:Name="FreeSpacePanel" Orientation="Horizontal" Spacing="4" IsVisible="False"
+                        ToolTip.Tip="Extracted size, next to the free space where archives are kept">
+                <icons:UnifiedIcon Value="{x:Static icons:IconValues.HardDrive}" />
+                <TextBlock x:Name="FreeSpace" VerticalAlignment="Center" />
+            </StackPanel>
             <controls:StandardButton x:Name="ShowThemButton" Type="Tertiary" ShowIcon="None" Size="Toolbar" Text="Show them" HorizontalAlignment="Left" IsVisible="False"
                                      ToolTip.Tip="Jump to the archives you have to get yourself, or list what is missing" />
             <ProgressBar x:Name="StatusBar" Minimum="0" Maximum="1" HorizontalAlignment="Left" MinWidth="280" IsVisible="False" />
         </StackPanel>
 
-        <ScrollViewer Grid.Row="3">
+        <ScrollViewer Grid.Row="2">
             <StackPanel x:Name="Content" Margin="24,0,24,24" Spacing="{StaticResource Spacing-4}">
                 <!-- The few archives the user has to fetch, so they are not hunted for in a table of over a thousand. -->
                 <StackPanel x:Name="NeedsYouPanel" Spacing="2" IsVisible="False">

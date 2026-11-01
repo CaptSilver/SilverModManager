@@ -195,8 +195,8 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     /// <summary>
-    /// A modlist's page while its game files are being hashed: header with the list's description, Download and
-    /// Install in the toolbar, one status line with a bar, and the archive table.
+    /// A modlist's Downloads tab while its game files are being hashed: Download and Install in the toolbar, one
+    /// status line with a bar, and the archive table. The header belongs to the collection page around it.
     /// </summary>
     [Fact]
     public async Task Test_WabbajackModlist()
@@ -216,7 +216,6 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
                 InstallBlockedReason = Checking,
                 DownloadBlockedReason = Checking,
                 OpenNextFiveBlockedReason = Checking,
-                Description = "A heavily reworked Skyrim VR with new textures, combat and a lot of quests. Needs a fast machine and a patient afternoon.",
                 Archives = [Archive(ArchiveState.Have, "SKSEVR.7z", 3_000_000), Archive(ArchiveState.Browser, "Textures Pack.7z", 4_200_000_000), Archive(ArchiveState.Manual, "Hand Made.zip", 90_000_000)],
             },
         });
@@ -242,7 +241,6 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
                 ArchiveCountText = "1294 archives",
                 InstallBlockedReason = "4 of 1294 archives are not in your library yet. Get what is missing, or tick \"Skip files from missing archives\".",
                 DownloadBlockedReason = "",
-                Description = "A heavily reworked Skyrim VR with new textures, combat and a lot of quests.",
                 Archives =
                 [
                     Archive(ArchiveState.Have, "SKSEVR.7z", 3_000_000, "www.nexusmods.com"),

@@ -79,7 +79,19 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
     [Reactive] public partial LibraryFileId FileId { get; set; }
 
-    public LoadoutId? PreferredLoadout { get; set; }
+    private LoadoutId? _pinnedLoadout;
+
+    public LoadoutId? PinnedLoadout
+    {
+        get => _pinnedLoadout;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _pinnedLoadout, value);
+            this.RaisePropertyChanged(nameof(IsLoadoutPinned));
+        }
+    }
+
+    public bool IsLoadoutPinned => _pinnedLoadout is not null;
 
     [Reactive] public partial string Name { get; private set; } = "";
     [Reactive] public partial string Author { get; private set; } = "";
@@ -148,7 +160,6 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     public ReactiveCommand<Unit, Unit> CheckInboxCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenInboxFolderCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenHealthCheckCommand { get; }
-    public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenReadmeCommand { get; }
 
     public WabbajackModlistViewModel(
@@ -241,7 +252,6 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
                 ShowPickUpTooltip();
             });
         OpenHealthCheckCommand = ReactiveCommand.Create(OpenHealthCheck);
-        RemoveCommand = ReactiveCommand.CreateFromTask(RemoveAsync, this.WhenAnyValue(vm => vm.IsInstalled, vm => vm.IsInstalling, (installed, installing) => installed && !installing));
 
         // Deactivation is not the end of the page: switching to another tab deactivates it, and the user may be
         // going to watch the downloads. So the archives keep coming, and the Nexus Mods files the page opened stay
@@ -398,8 +408,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
                 RefreshLoadoutChoices();
                 // Without a loadout of the game, "Create new loadout" is the only way forward, so it starts out picked.
-                var first = LoadoutChoices.FirstOrDefault(choice => choice.Id is not null && choice.Id == PreferredLoadout)
-                    ?? LoadoutChoices.FirstOrDefault(choice => choice.Id is not null)
+                var first = LoadoutChoices.FirstOrDefault(choice => choice.Id is not null)
                     ?? WabbajackLoadoutChoice.CreateNew;
                 handedOver = true;
                 await SelectLoadoutAsync(first, token);
@@ -741,6 +750,13 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
     private void RefreshLoadoutChoices()
     {
+        // A pinned page is for one loadout: nothing else to pick, and no new loadout to create.
+        if (PinnedLoadout is { } pinned)
+        {
+            LoadoutChoices = [new WabbajackLoadoutChoice(pinned, Loadout.Load(_connection.Db, pinned).Name)];
+            return;
+        }
+
         var game = _details?.Game;
         var choices = new List<WabbajackLoadoutChoice>();
         if (game is { } gameId)
@@ -846,18 +862,6 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             Context = new DiagnosticListPageContext { LoadoutId = target },
         };
         GetWorkspaceController().OpenPage(WorkspaceId, pageData, new OpenPageBehavior.NewTab(PanelId));
-    }
-
-    private async Task RemoveAsync()
-    {
-        if (_groupId is not { } group) return;
-        await Guarded(async _ => await CollectionDeleteHelpers.DeleteCollectionAsync(
-            CollectionGroupId.From(group.Value),
-            _provider.GetRequiredService<ILoadoutManager>(),
-            GetWorkspaceController(),
-            _connection,
-            _provider.GetRequiredService<IWindowNotificationService>()));
-        RefreshInstalledState();
     }
 
     public async Task AddDroppedFilesAsync(IReadOnlyList<string> paths, CancellationToken cancellationToken)

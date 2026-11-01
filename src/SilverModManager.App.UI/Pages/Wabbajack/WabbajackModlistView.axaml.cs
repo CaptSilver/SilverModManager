@@ -3,12 +3,9 @@ using System.Reactive.Linq;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
-using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.Media.TextFormatting;
 using Avalonia.Platform.Storage;
 using Avalonia.ReactiveUI;
-using Avalonia.Threading;
 using JetBrains.Annotations;
 using ReactiveUI;
 
@@ -21,7 +18,7 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
     {
         InitializeComponent();
 
-        // The header and toolbar sit outside the scrolled part, and the page says "anywhere on this page".
+        // The toolbar sits outside the scrolled part, and the page says "anywhere on this page".
         DragDrop.SetAllowDrop(Body, true);
 
         GameFileRows.ItemTemplate = new FuncDataTemplate<WabbajackGameFileChoice>((file, _) =>
@@ -49,7 +46,6 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
             MenuChooseDownloadsFolder.Command = viewModel.ChooseDownloadsFolderCommand;
             MenuDefaultDownloadsFolder.Command = viewModel.UseDefaultDownloadsFolderCommand;
             MenuOpenReadme.Command = viewModel.OpenReadmeCommand;
-            MenuRemove.Command = viewModel.RemoveCommand;
             this.BindCommand(ViewModel, vm => vm.InstallCommand, view => view.InstallButton).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.InstallCommand, view => view.ResumeButton).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.OpenHealthCheckCommand, view => view.HealthCheckButton).DisposeWith(disposables);
@@ -58,36 +54,13 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
             OnUi(vm => vm.WhenAnyValue(x => x.HasWaitingArchives)).Subscribe(waiting => PickUpBox.IsVisible = waiting).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.PickUpTooltip)).Subscribe(text => ToolTip.SetTip(PickUpBox, text)).DisposeWith(disposables);
 
-            OnUi(vm => vm.WhenAnyValue(x => x.Name)).Subscribe(text => CollectionName.Text = text).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.Author)).Subscribe(text => AuthorName.Text = text).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.GameName)).Subscribe(text => GameText.Text = text).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.Version)).Subscribe(text => VersionText.Text = $"Version {text}").DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.ArchiveCountText)).Subscribe(text => ArchiveCount.Text = text).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.ArchiveSizeText)).Subscribe(text => ArchiveSize.Text = text).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.Banner)).Subscribe(bitmap =>
-            {
-                CollectionImage.Source = bitmap;
-                // A list's image is optional; without one the title should start at the gutter, not after a blank slot.
-                CollectionImageBorder.IsVisible = bitmap is not null;
-                HeaderImageBorder.Background = bitmap is null ? null : new ImageBrush { Source = bitmap, Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Top };
-            }).DisposeWith(disposables);
-            OnUi(vm => vm.WhenAnyValue(x => x.Description)).Subscribe(text =>
-            {
-                DescriptionText.Text = text;
-                DescriptionPanel.IsVisible = text != "";
-                UpdateDescriptionToggle();
-            }).DisposeWith(disposables);
-            // Whether the text gets cut off depends on the width it wraps at, so it is decided from the laid-out text.
-            DescriptionText.LayoutUpdated += OnDescriptionLayoutUpdated;
-            Disposable.Create(() => DescriptionText.LayoutUpdated -= OnDescriptionLayoutUpdated).DisposeWith(disposables);
-            DescriptionToggle.Click += (_, _) =>
-            {
-                var expand = DescriptionText.MaxLines != 0;
-                DescriptionText.MaxLines = expand ? 0 : CollapsedLines;
-                DescriptionToggle.Text = expand ? "Show less" : "Show more";
-            };
             OnUi(vm => vm.WhenAnyValue(x => x.ReadmeUri)).Subscribe(uri => MenuOpenReadme.IsVisible = uri is not null).DisposeWith(disposables);
 
+            OnUi(vm => vm.WhenAnyValue(x => x.IsLoadoutPinned)).Subscribe(pinned =>
+            {
+                LoadoutBox.IsVisible = !pinned;
+                IntoLabel.IsVisible = !pinned;
+            }).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.LoadoutChoices)).Subscribe(choices =>
             {
                 LoadoutBox.ItemsSource = choices;
@@ -107,7 +80,7 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
             {
                 FreeSpace.Text = state.Item1;
                 FreeSpacePanel.IsVisible = state.Item1 != "";
-                FreeSpacePanel.Classes.Set("Warning", state.Item2);
+                FreeSpace.Classes.Set("Warning", state.Item2);
             }).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.InstallBlockedReason)).Subscribe(text => ShowReason(text, InstallButton, ResumeButton)).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.DownloadBlockedReason)).Subscribe(text => ShowReason(text, DownloadButton)).DisposeWith(disposables);
@@ -158,11 +131,10 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
                 GameFileRows.ItemsSource = files;
             }).DisposeWith(disposables);
 
-            OnUi(vm => vm.WhenAnyValue(x => x.CanResume, x => x.IsInstalled, x => x.IsInstalling)).Subscribe(state =>
+            OnUi(vm => vm.WhenAnyValue(x => x.CanResume, x => x.IsInstalling)).Subscribe(state =>
             {
-                ResumeButton.IsVisible = state.Item1 && !state.Item3;
+                ResumeButton.IsVisible = state.Item1 && !state.Item2;
                 InstallButton.IsVisible = !state.Item1;
-                MenuRemove.IsVisible = state.Item2;
             }).DisposeWith(disposables);
 
             OnUi(vm => vm.WhenAnyValue(x => x.SkippedFiles)).Subscribe(skipped =>
@@ -181,30 +153,6 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
                 RemoveHandler(DragDrop.DropEvent, OnDrop);
             }).DisposeWith(disposables);
         });
-    }
-
-    private const int CollapsedLines = 3;
-
-    private void OnDescriptionLayoutUpdated(object? sender, EventArgs e) => UpdateDescriptionToggle();
-
-    // The lines the text takes at the width it is laid out in, however many the TextBlock is currently allowed to show.
-    private int WrappedLineCount()
-    {
-        var width = DescriptionText.Bounds.Width;
-        if (width <= 0 || string.IsNullOrEmpty(DescriptionText.Text)) return 0;
-        var typeface = new Typeface(DescriptionText.FontFamily, DescriptionText.FontStyle, DescriptionText.FontWeight, DescriptionText.FontStretch);
-        var layout = new TextLayout(DescriptionText.Text, typeface, DescriptionText.FontSize, DescriptionText.Foreground,
-            textWrapping: TextWrapping.Wrap, maxWidth: width, maxHeight: double.PositiveInfinity);
-        return layout.TextLines.Count;
-    }
-
-    // "Show more" is only worth offering when the collapsed text is actually cut off; once expanded it stays so the
-    // text can be collapsed again.
-    private void UpdateDescriptionToggle()
-    {
-        var expanded = DescriptionText.MaxLines == 0;
-        var cutOff = WrappedLineCount() > CollapsedLines;
-        DescriptionToggle.IsVisible = DescriptionPanel.IsVisible && (expanded || cutOff);
     }
 
     // A disabled button says why in its tooltip (which a disabled control only shows when asked to). The page's

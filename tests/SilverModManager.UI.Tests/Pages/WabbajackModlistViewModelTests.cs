@@ -840,12 +840,14 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         var vm = new WabbajackModlistViewModel(Provider.GetRequiredService<IWindowManager>(), Connection, service, new FakeAcquirer(), Provider)
         {
             FileId = SomeFile,
-            PreferredLoadout = wanted.LoadoutId,
+            PinnedLoadout = wanted.LoadoutId,
         };
 
         await vm.LoadAsync(CancellationToken.None);
 
         vm.SelectedLoadout!.Id.Should().Be(wanted.LoadoutId);
+        vm.IsLoadoutPinned.Should().BeTrue();
+        vm.LoadoutChoices.Select(choice => choice.Id).Should().Equal([wanted.LoadoutId], "a pinned page has no other loadout and no \"Create new loadout\"");
         service.PlannedFor.Should().Equal(wanted.LoadoutId);
     }
 

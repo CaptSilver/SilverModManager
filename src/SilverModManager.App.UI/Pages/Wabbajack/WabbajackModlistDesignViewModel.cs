@@ -11,7 +11,8 @@ namespace SilverModManager.App.UI.Pages.Wabbajack;
 public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistViewModel>, IWabbajackModlistViewModel
 {
     public LibraryFileId FileId { get; set; }
-    public SilverModManager.Sdk.Loadouts.LoadoutId? PreferredLoadout { get; set; }
+    public SilverModManager.Sdk.Loadouts.LoadoutId? PinnedLoadout { get; set; }
+    public bool IsLoadoutPinned { get; init; }
     public string Name => "Example list";
     public string Author => "Someone";
     public string Version => "1.0.0";
@@ -80,7 +81,6 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public ReactiveCommand<Unit, Unit> CheckInboxCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> OpenInboxFolderCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> OpenHealthCheckCommand { get; } = ReactiveCommand.Create(() => { });
-    public ReactiveCommand<Unit, Unit> RemoveCommand { get; } = ReactiveCommand.Create(() => { });
     public Task AddDroppedFilesAsync(IReadOnlyList<string> paths, CancellationToken cancellationToken) => Task.CompletedTask;
 
     public WabbajackModlistDesignViewModel() : base(new DesignWindowManager()) { }

@@ -94,40 +94,6 @@ public class WabbajackModlistViewTests(IServiceProvider provider) : AUiTest(prov
     }
 
     [Fact]
-    public async Task ALongDescription_IsCollapsedUntilShowMoreIsPressed()
-    {
-        var (window, view) = await Show(Colliding());
-
-        // The toggle is decided from the laid-out text, which exists a turn after the page binds.
-        await EventuallyOnUi(() =>
-        {
-            Named<TextBlock>(view, "DescriptionText").MaxLines.Should().Be(3);
-            ShownTexts(view).Should().Contain("Show more");
-            Click_AlreadyOnUi(Named<StandardButton>(view, "DescriptionToggle"));
-            Render(window);
-            Named<TextBlock>(view, "DescriptionText").MaxLines.Should().Be(0);
-            ShownTexts(view).Should().Contain("Show less");
-        });
-        await OnUi(window.Close);
-    }
-
-    [Fact]
-    public async Task AShortDescription_HasNoToggle_AndNoDescriptionHidesTheBlock()
-    {
-        var (window, view) = await Show(new WabbajackModlistDesignViewModel { Description = "A small list." });
-        await OnUi(() =>
-        {
-            Named<StackPanel>(view, "DescriptionPanel").IsEffectivelyVisible.Should().BeTrue();
-            Named<StandardButton>(view, "DescriptionToggle").IsEffectivelyVisible.Should().BeFalse();
-        });
-        await OnUi(window.Close);
-
-        var (bare, bareView) = await Show(new WabbajackModlistDesignViewModel { Description = "" });
-        await OnUi(() => Named<StackPanel>(bareView, "DescriptionPanel").IsEffectivelyVisible.Should().BeFalse());
-        await OnUi(bare.Close);
-    }
-
-    [Fact]
     public async Task WhenInstallIsBlockedByMissingArchives_TheReasonAndTheDropHintAppearOnce()
     {
         var (window, view) = await Show(new WabbajackModlistDesignViewModel
@@ -147,32 +113,22 @@ public class WabbajackModlistViewTests(IServiceProvider provider) : AUiTest(prov
     }
 
     [Fact]
-    public async Task ALongSingleParagraph_ThatWrapsPastThreeLinesInANarrowWindow_GetsShowMore()
+    public async Task APinnedLoadoutHidesThePicker()
     {
-        var text = "A big Skyrim VR overhaul with new textures, combat, quests and a lot of extra scripts that need room and a fast machine to run. " +
-                   "Read the readme first, then give the first install an afternoon, and keep the game files on a fast drive.";
-        text.Length.Should().BeLessThan(240, "a character count alone would call this short");
-        var (window, view) = await Show(new WabbajackModlistDesignViewModel { Description = text }, width: 420);
-
-        await EventuallyOnUi(() => ShownTexts(view).Should().Contain("Show more"));
+        var (window, view) = await Show(new WabbajackModlistDesignViewModel { IsLoadoutPinned = true });
+        await EventuallyOnUi(() =>
+        {
+            Named<ComboBox>(view, "LoadoutBox").IsEffectivelyVisible.Should().BeFalse("the loadout is fixed by the collection page");
+            Named<TextBlock>(view, "IntoLabel").IsEffectivelyVisible.Should().BeFalse();
+        });
         await OnUi(window.Close);
-    }
 
-    [Fact]
-    public async Task ADescriptionThatFitsInThreeLines_HasNoToggle_EvenWithABlankLine()
-    {
-        var (window, view) = await Show(new WabbajackModlistDesignViewModel { Description = "One short line.\n\nAnother short line." });
-
-        await OnUi(() => Named<StandardButton>(view, "DescriptionToggle").IsEffectivelyVisible.Should().BeFalse());
-        await OnUi(window.Close);
-    }
-
-    [Fact]
-    public async Task WithoutABanner_TheImageSlotIsGone_SoTheTitleAlignsWithTheRest()
-    {
-        var (window, view) = await Show(new WabbajackModlistDesignViewModel());
-
-        await OnUi(() => Named<Border>(view, "CollectionImageBorder").IsEffectivelyVisible.Should().BeFalse());
-        await OnUi(window.Close);
+        var (open, openView) = await Show(new WabbajackModlistDesignViewModel());
+        await EventuallyOnUi(() =>
+        {
+            Named<ComboBox>(openView, "LoadoutBox").IsEffectivelyVisible.Should().BeTrue("a page opened without a loadout still picks one");
+            Named<TextBlock>(openView, "IntoLabel").IsEffectivelyVisible.Should().BeTrue();
+        });
+        await OnUi(open.Close);
     }
 }

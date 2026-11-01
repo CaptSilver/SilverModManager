@@ -14,8 +14,13 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
 {
     LibraryFileId FileId { get; set; }
 
-    /// <summary>The loadout to pick once the list is read, if it is one of the list's game; otherwise the first one is.</summary>
-    LoadoutId? PreferredLoadout { get; set; }
+    /// <summary>
+    /// The loadout the page is fixed to: it is the only choice and the page shows no picker. Set when the page is
+    /// opened for a loadout; null on a page opened from the Library, the gallery or a drop, which picks one.
+    /// </summary>
+    LoadoutId? PinnedLoadout { get; set; }
+
+    bool IsLoadoutPinned { get; }
 
     string Name { get; }
     string Author { get; }
@@ -161,9 +166,6 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
     ReactiveCommand<Unit, Unit> CheckInboxCommand { get; }
     ReactiveCommand<Unit, Unit> OpenInboxFolderCommand { get; }
     ReactiveCommand<Unit, Unit> OpenHealthCheckCommand { get; }
-
-    /// <summary>Removes the list's mods from the loadout.</summary>
-    ReactiveCommand<Unit, Unit> RemoveCommand { get; }
 
     /// <summary>Copies files the user dropped on the page into the inbox and checks it.</summary>
     Task AddDroppedFilesAsync(IReadOnlyList<string> paths, CancellationToken cancellationToken);

@@ -12,7 +12,7 @@ public record WabbajackModlistPageContext : IPageFactoryContext
 {
     public required LibraryFileId LibraryFileId { get; init; }
 
-    /// <summary>The loadout the page starts on instead of the first one of the list's game.</summary>
+    /// <summary>The loadout the page is fixed to. Without one the page lets the user pick a loadout of the list's game.</summary>
     public LoadoutId? TargetLoadout { get; init; }
 }
 
@@ -28,7 +28,7 @@ public class WabbajackModlistPageFactory : APageFactory<IWabbajackModlistViewMod
     {
         var vm = ServiceProvider.GetRequiredService<IWabbajackModlistViewModel>();
         vm.FileId = context.LibraryFileId;
-        vm.PreferredLoadout = context.TargetLoadout;
+        vm.PinnedLoadout = context.TargetLoadout;
         return vm;
     }
 
