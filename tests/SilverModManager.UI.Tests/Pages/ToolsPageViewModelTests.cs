@@ -65,7 +65,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
             Connection,
             toolManager,
             toolRunner,
-            new ModdingToolFactory(toolRunner, Substitute.For<IProcessRunner>(), new ToolArgumentResolver(), new FakePrefixResolver(), new ToolOutputCapture(Connection, Substitute.For<IFileStore>())),
+            new ModdingToolFactory(toolRunner, Substitute.For<IProcessRunner>(), new ToolArgumentResolver(), new FakePrefixResolver(), new ToolOutputCapture(Connection, Substitute.For<IFileStore>()), new ToolPrefixSetup(toolRunner, new FakePrefixResolver(), Substitute.For<IPrefixInspector>())),
             new FakePrefixResolver(),
             picker,
             Provider.GetRequiredService<IJobMonitor>()
