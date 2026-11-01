@@ -45,12 +45,20 @@ internal sealed class ListedManagedGames(IReadOnlyList<GameInstallation> install
     : ManagedGames(Substitute.For<IGameRegistry>(), Substitute.For<IConnection>(), Substitute.For<ISynchronizerService>())
 {
     private static ulong _nextLoadout = 100;
+    private readonly Dictionary<GameInstallation, LoadoutId> _loadouts = new(ReferenceEqualityComparer.Instance);
 
-    public override IReadOnlyList<ManagedGame> Candidates(Func<IGameData, bool> isGame)
+    public override IReadOnlyList<ManagedGame> InstallationCandidates(Func<IGameData, bool> isGame)
         => installations.Where(i => isGame(i.Game)).Select(i => new ManagedGame(i, applied.Contains(i))).ToList();
 
     public override ManagedLoadout LoadoutOf(GameInstallation installation)
-        => new(LoadoutId.From(Interlocked.Increment(ref _nextLoadout)), $"{installation.Game.DisplayName} loadout");
+    {
+        var id = LoadoutId.From(Interlocked.Increment(ref _nextLoadout));
+        _loadouts[installation] = id;
+        return new ManagedLoadout(id, $"{installation.Game.DisplayName} loadout");
+    }
+
+    /// <summary>The loadout this fake handed out for <paramref name="installation"/>.</summary>
+    public LoadoutId LoadoutIdOf(GameInstallation installation) => _loadouts[installation];
 }
 
 /// <summary>
@@ -77,8 +85,13 @@ public class Ror2mmIpcProtocolHandlerTests
         },
         default);
 
+    private ListedManagedGames _managed = null!;
+
     private Ror2mmIpcProtocolHandler HandlerFor(IReadOnlyList<GameInstallation> installations, params GameInstallation[] applied)
-        => new(NullLogger<Ror2mmIpcProtocolHandler>.Instance, _events, _installer, new ListedManagedGames(installations, applied));
+    {
+        _managed = new ListedManagedGames(installations, applied);
+        return new Ror2mmIpcProtocolHandler(NullLogger<Ror2mmIpcProtocolHandler>.Instance, _events, _installer, _managed);
+    }
 
     private void PackageIsListedUnder(params string[] communities)
         => _installer.CommunitiesOf(RepoLib.Package, Arg.Any<CancellationToken>()).Returns(new ValueTask<IReadOnlyList<string>>(communities));
@@ -115,7 +128,7 @@ public class Ror2mmIpcProtocolHandlerTests
 
         await HandlerFor([other, repo]).Handle(Link, CancellationToken.None);
 
-        await _installer.Received(1).InstallAsync(RepoLib, Arg.Any<LoadoutId>(), Arg.Any<CancellationToken>());
+        await _installer.Received(1).InstallAsync(RepoLib, _managed.LoadoutIdOf(repo), Arg.Any<CancellationToken>());
         _events.Received(1).Send(Arg.Any<CliMessages.ModDownloadStarted>());
         _events.Received(1).Send(Arg.Any<CliMessages.ModDownloadSucceeded>());
         _events.Received(1).Send(Arg.Is<CliMessages.ModInstalled>(m => m.LoadoutName == "REPO loadout"));
@@ -175,7 +188,7 @@ public class Ror2mmIpcProtocolHandlerTests
 
         await HandlerFor([repo, lethal], lethal).Handle(Link, CancellationToken.None);
 
-        await _installer.Received(1).InstallAsync(RepoLib, Arg.Any<LoadoutId>(), Arg.Any<CancellationToken>());
+        await _installer.Received(1).InstallAsync(RepoLib, _managed.LoadoutIdOf(lethal), Arg.Any<CancellationToken>());
         _events.Received(1).Send(Arg.Is<CliMessages.ModInstalled>(m => m.LoadoutName == "Lethal Company loadout"));
     }
 
@@ -215,7 +228,7 @@ public class Ror2mmIpcProtocolHandlerTests
 
         await HandlerFor([first, second], second).Handle(Link, CancellationToken.None);
 
-        await _installer.Received(1).InstallAsync(RepoLib, Arg.Any<LoadoutId>(), Arg.Any<CancellationToken>());
+        await _installer.Received(1).InstallAsync(RepoLib, _managed.LoadoutIdOf(second), Arg.Any<CancellationToken>());
         _events.DidNotReceive().Send(Arg.Any<CliMessages.ModDownloadFailed>());
     }
 

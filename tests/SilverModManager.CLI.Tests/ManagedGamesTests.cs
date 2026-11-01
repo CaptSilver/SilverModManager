@@ -93,4 +93,55 @@ public class ManagedGamesTests(ITestOutputHelper helper) : AIsolatedGameTest<Man
         chosen.Id.Should().Be(first.LoadoutId);
         chosen.Name.Should().Be(first.Name);
     }
+
+    private GameInstallation SecondInstallationOfTheSameGame() => new(
+        new GameLocatorResult
+        {
+            Game = GameInstallation.Game,
+            Path = default,
+            Store = GameStore.Unknown,
+            StoreIdentifier = "second",
+            LocatorIds = [],
+            Locator = Substitute.For<IGameLocator>(),
+        },
+        default);
+
+    // Two installations of one game, with every loadout on GameInstallation, the way the registry tells them apart.
+    private ManagedGames ManagedWithASecondInstallation(GameInstallation second)
+    {
+        var registry = Substitute.For<IGameRegistry>();
+        registry.LocateGameInstallations().Returns([second, GameInstallation]);
+        registry.TryGetGameInstallation(Arg.Any<Loadout.ReadOnly>(), out Arg.Any<GameInstallation?>())
+            .Returns(call => { call[1] = GameInstallation; return true; });
+        return new ManagedGames(registry, Connection, Substitute.For<ISynchronizerService>());
+    }
+
+    [Fact]
+    public async Task OnlyTheInstallationThatOwnsALoadoutIsAnInstallationCandidate()
+    {
+        await CreateLoadout();
+
+        var candidates = ManagedWithASecondInstallation(SecondInstallationOfTheSameGame()).InstallationCandidates(IsRepo);
+
+        candidates.Should().ContainSingle().Which.Installation.Should().BeSameAs(GameInstallation);
+    }
+
+    [Fact]
+    public async Task TheGameCandidatesStillCountEveryInstallationOfTheGame()
+    {
+        await CreateLoadout();
+
+        ManagedWithASecondInstallation(SecondInstallationOfTheSameGame()).Candidates(IsRepo).Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task AnInstallationWithoutLoadoutsDoesNotBorrowTheLoadoutOfAnotherInstallation()
+    {
+        await CreateLoadout();
+        var second = SecondInstallationOfTheSameGame();
+
+        var act = () => ManagedWithASecondInstallation(second).LoadoutOf(second);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
 }

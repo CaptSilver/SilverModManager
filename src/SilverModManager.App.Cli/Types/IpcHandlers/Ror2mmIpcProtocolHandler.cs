@@ -45,7 +45,7 @@ public class Ror2mmIpcProtocolHandler(
             return;
         }
 
-        var candidates = managedGames.Candidates(game => ThunderstoreGame.For(game) is { } thunderstore && communities.Contains(thunderstore.ThunderstoreCommunity));
+        var candidates = managedGames.InstallationCandidates(game => ThunderstoreGame.For(game) is { } thunderstore && communities.Contains(thunderstore.ThunderstoreCommunity));
         var inUse = candidates.Count > 1 ? candidates.Where(candidate => candidate.HasAppliedLoadout).ToList() : candidates;
         if (candidates.Count == 0)
         {
