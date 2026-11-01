@@ -4,6 +4,7 @@ using R3;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.DataModel;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
@@ -23,7 +24,9 @@ public sealed class ModdingTool(
     GameId gameId,
     IToolRunner toolRunner,
     IProcessRunner processRunner,
-    ToolArgumentResolver resolver) : ITool, IToolWithOutput
+    ToolArgumentResolver resolver,
+    IPrefixResolver prefixResolver,
+    ToolOutputCapture outputCapture) : ITool, IToolWithOutput
 {
     public AbsolutePath Exe => installed.Exe;
 
@@ -46,21 +49,46 @@ public sealed class ModdingTool(
 
     internal async Task Execute(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
-        var args = Arguments(loadout);
         var via = installed.RunVia ?? definition.RunVia;
+        AbsolutePath? runFolder = definition.Output is ToolOutput.DeclaredFolder ? CreateRunFolder(loadout.InstallationInstance, via) : null;
+        var args = Arguments(loadout, runFolder);
         var exitCode = via is ToolRunVia.Native
             ? await RunNative(args, cancellationToken)
             : await RunWindows(loadout.InstallationInstance, args, via, cancellationToken);
 
+        var kept = runFolder is null ? string.Empty : $" Its output was kept at {runFolder}.";
         if (definition.ExitCodes is ExitCodePolicy.ZeroIsSuccess && exitCode != 0)
-            throw new InvalidOperationException($"{Name} exited with code {exitCode}; see the process log.");
+            throw new InvalidOperationException($"{Name} exited with code {exitCode}; see the process log.{kept}");
+
+        if (runFolder is not null && definition.Output is ToolOutput.DeclaredFolder output)
+        {
+            await outputCapture.CaptureFolder(loadout, runFolder.Value, output.MapsTo, output.GroupName, definition.IgnoredOutput, cancellationToken);
+            runFolder.Value.DeleteDirectory(recursive: true);
+        }
+    }
+
+    // The folder the tool writes to is in the prefix (see ToolRunFolder), so a tool that runs natively has none.
+    // A definition without a catalogue id has no name to give the folder.
+    private AbsolutePath CreateRunFolder(GameInstallation installation, ToolRunVia via)
+    {
+        if (definition.Id is not { } id)
+            throw new InvalidOperationException($"Cannot run {Name}: it writes output to a folder but has no catalogue id to name the run folder after.");
+        if (via is ToolRunVia.Native)
+            throw new InvalidOperationException($"Cannot run {Name} natively: the folder it writes to is kept in the game's Wine prefix.");
+
+        var prefix = prefixResolver.Resolve(installation);
+        if (prefix.IsResolved is false)
+            throw new InvalidOperationException($"Cannot run {Name} for {installation.Game.DisplayName}: {prefix.Diagnostic ?? "this installation does not run in a Wine prefix."}");
+
+        return ToolRunFolder.Create(prefix.Prefix.Path, id, DateTimeOffset.Now);
     }
 
     // A line the user typed replaces the definition's words. Host paths go in as they are: the tool runner
     // translates the arguments of a Windows exe, and a second pass here would translate twice.
-    private IReadOnlyList<string> Arguments(Loadout.ReadOnly loadout)
+    private IReadOnlyList<string> Arguments(Loadout.ReadOnly loadout, AbsolutePath? runFolder)
     {
         var extra = new Dictionary<string, string> { [ToolVariableNames.Exe] = Exe.GetFullPath() };
+        if (runFolder is { } folder) extra[ToolVariableNames.OutputFolder] = folder.GetFullPath();
         if (installed.Arguments is { } line)
             return resolver.ResolveLine(line, loadout, extra);
 

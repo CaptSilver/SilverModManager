@@ -1,3 +1,5 @@
+using SilverModManager.DataModel;
+using SilverModManager.Sdk.FileStore;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
@@ -39,6 +41,7 @@ public class ProtonServicesTests
         services.AddSingleton(Substitute.For<IGameLaunchSession>());
         services.AddSingleton(Substitute.For<ISettingsManager>());
         services.AddSingleton(Substitute.For<IToolManager>());
+        services.AddSingleton(new ToolOutputCapture(Substitute.For<IConnection>(), Substitute.For<IFileStore>()));
         services.AddSingleton(new HttpClient());
         services.AddLogging();
         services.AddProton();

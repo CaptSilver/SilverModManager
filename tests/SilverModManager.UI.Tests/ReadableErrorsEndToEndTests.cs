@@ -26,6 +26,7 @@ using SilverModManager.App.UI.Windows;
 using SilverModManager.Backend.Jobs;
 using SilverModManager.DataModel;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Settings;

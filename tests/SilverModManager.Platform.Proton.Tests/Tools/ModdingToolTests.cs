@@ -6,6 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 using NSubstitute;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.DataModel;
+using SilverModManager.Platform.Proton.ToolRunner;
 using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.Games.Generic;
 using SilverModManager.Games.Generic.Simple;
@@ -13,6 +16,7 @@ using SilverModManager.Games.TestFramework;
 using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 
@@ -38,6 +42,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
 
     private readonly IToolRunner _toolRunner = Substitute.For<IToolRunner>();
     private readonly IProcessRunner _processRunner = Substitute.For<IProcessRunner>();
+    private readonly IPrefixResolver _prefixResolver = Substitute.For<IPrefixResolver>();
     private readonly List<Command> _commands = [];
     private int _exitCode;
 
@@ -66,7 +71,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
     private AbsolutePath Exe => FileSystem.FromUnsanitizedFullPath("/tools/xEdit/SSEEdit.exe");
 
     private ModdingTool Tool(ToolDefinition definition, InstalledTool? installed = null)
-        => new(definition, installed ?? new InstalledTool(Exe), Definition.GameId, _toolRunner, _processRunner, new ToolArgumentResolver());
+        => new(definition, installed ?? new InstalledTool(Exe), Definition.GameId, _toolRunner, _processRunner, new ToolArgumentResolver(), _prefixResolver, ServiceProvider.GetRequiredService<ToolOutputCapture>());
 
     private static ToolDefinition Editor(ToolRunVia via = ToolRunVia.Auto) => ToolDefinition.AdHoc(Definition.GameId, "xEdit", "SSEEdit.exe", via);
 
@@ -285,5 +290,116 @@ public class ModdingToolTests(ITestOutputHelper helper)
         definition.ExitCodes.Should().Be(ExitCodePolicy.AnyExitIsFine);
         definition.ExecutableNames(Game).Should().Equal("SSEEdit.exe");
         ToolDefinition.AdHoc(GameId.From("Tests.Other"), "x", "x.exe").AppliesTo(Game).Should().BeFalse();
+    }
+
+    private static readonly GamePath OutputTarget = new(LocationId.Game, "My Mods");
+
+    private static ToolDefinition DynDolod() => new()
+    {
+        Id = new ToolId("dyndolod"),
+        DisplayName = "DynDOLOD",
+        AppliesTo = _ => true,
+        ExecutableNames = _ => ["DynDOLODx64.exe"],
+        Arguments = ArgumentTemplate.Of("-O:{OutputFolder}"),
+        Output = new ToolOutput.DeclaredFolder("DynDOLOD Output", OutputTarget),
+        IgnoredOutput = ["*.log"],
+    };
+
+    // Stands for the tool: finds the folder it was given in the -O: word and writes a plugin and a log into it.
+    private AbsolutePath UsePrefixAndWriteOutput(List<string> seenArguments)
+    {
+        var prefix = TemporaryFileManager.CreateFolder("pfx").Path;
+        _prefixResolver.Resolve(default!).ReturnsForAnyArgs(PrefixResolution.Resolved(new ResolvedPrefix(prefix, CompatibilityLayerKind.SteamProton)));
+        StubRunners();
+        _toolRunner.RunWindowsTool(default!, default, default!, default, default, default, default)
+            .ReturnsForAnyArgs(call =>
+            {
+                var args = call.ArgAt<IReadOnlyList<string>>(2);
+                seenArguments.AddRange(args);
+                var folder = FileSystem.FromUnsanitizedFullPath(args.Single(a => a.StartsWith("-O:"))[3..]);
+                File.WriteAllText((folder / "DynDOLOD.esp").GetFullPath(), "lod plugin");
+                File.WriteAllText((folder / "DynDOLOD.log").GetFullPath(), "noise");
+                return new ToolRunResult(_exitCode);
+            });
+        return prefix;
+    }
+
+    private IEnumerable<LoadoutItemGroup.ReadOnly> GroupsNamed(Loadout.ReadOnly loadout, string name) =>
+        LoadoutItem.FindByLoadout(Connection.Db, loadout.LoadoutId).OfTypeLoadoutItemGroup().Where(g => g.AsLoadoutItem().Name == name);
+
+    [Fact]
+    public async Task DeclaredFolderTool_GetsARunFolderInThePrefixsCDriveAndItsOutputIsCaptured()
+    {
+        var seen = new List<string>();
+        var prefix = UsePrefixAndWriteOutput(seen);
+        var loadout = await CreateLoadout();
+
+        await Tool(DynDolod()).Execute(loadout, CancellationToken.None);
+
+        var runFolder = seen.Single().Substring("-O:".Length);
+        var expectedRoot = (prefix / "drive_c/SilverModManager/tool-output/dyndolod").GetFullPath();
+        runFolder.Should().StartWith(expectedRoot + "/");
+        runFolder[(expectedRoot.Length + 1)..].Should().MatchRegex(@"^\d{8}-\d{6}$");
+        WindowsPathTranslator.Translate("-O:" + runFolder, prefix.GetFullPath())
+            .Should().StartWith(@"-O:C:\SilverModManager\tool-output\dyndolod\");
+
+        var group = GroupsNamed(loadout, "DynDOLOD Output").Should().ContainSingle().Subject;
+        group.Children.OfTypeLoadoutItemWithTargetPath().Select(c => (GamePath)c.TargetPath)
+            .Should().ContainSingle("the log is ignored").Which.Should().Be(new GamePath(LocationId.Game, "My Mods/DynDOLOD.esp"));
+        FileSystem.FromUnsanitizedFullPath(runFolder).DirectoryExists().Should().BeFalse("the folder is deleted after capture");
+    }
+
+    [Fact]
+    public async Task DeclaredFolderTool_ThatFails_KeepsItsRunFolderAndNamesItInTheMessage()
+    {
+        var seen = new List<string>();
+        UsePrefixAndWriteOutput(seen);
+        _exitCode = 3;
+        var loadout = await CreateLoadout();
+
+        var act = () => Tool(DynDolod()).Execute(loadout, CancellationToken.None);
+
+        var failure = (await act.Should().ThrowAsync<InvalidOperationException>()).Which;
+        var runFolder = seen.Single().Substring("-O:".Length);
+        failure.Message.Should().Contain("DynDOLOD").And.Contain("3").And.Contain(runFolder);
+        FileSystem.FromUnsanitizedFullPath(runFolder).DirectoryExists().Should().BeTrue();
+        GroupsNamed(loadout, "DynDOLOD Output").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DeclaredFolderTool_WithoutACatalogueId_IsRefusedBeforeAnythingStarts()
+    {
+        UsePrefixAndWriteOutput([]);
+        var loadout = await CreateLoadout();
+
+        var act = () => Tool(DynDolod() with { Id = null }).Execute(loadout, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*DynDOLOD*catalogue*");
+        await _toolRunner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default, default);
+    }
+
+    [Fact]
+    public async Task DeclaredFolderTool_RunNatively_IsRefusedBecauseTheRunFolderLivesInAPrefix()
+    {
+        UsePrefixAndWriteOutput([]);
+        var loadout = await CreateLoadout();
+
+        var act = () => Tool(DynDolod(), new InstalledTool(Exe, null, ToolRunVia.Native)).Execute(loadout, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*DynDOLOD*prefix*");
+        _commands.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DeclaredFolderTool_WithoutAPrefix_IsRefusedWithTheResolversReason()
+    {
+        StubRunners();
+        _prefixResolver.Resolve(default!).ReturnsForAnyArgs(PrefixResolution.Failed("Two prefixes found."));
+        var loadout = await CreateLoadout();
+
+        var act = () => Tool(DynDolod()).Execute(loadout, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*DynDOLOD*Two prefixes found.*");
+        await _toolRunner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default, default);
     }
 }

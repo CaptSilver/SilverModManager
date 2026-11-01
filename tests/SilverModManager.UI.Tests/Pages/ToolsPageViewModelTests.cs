@@ -7,11 +7,13 @@ using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.Abstractions.Loadouts;
 using NSubstitute;
 using SilverModManager.App.UI;
+using SilverModManager.DataModel;
 using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.App.UI.Pages.Tools;
 using SilverModManager.App.UI.Windows;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
@@ -63,7 +65,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
             Connection,
             toolManager,
             toolRunner,
-            new ModdingToolFactory(toolRunner, Substitute.For<IProcessRunner>(), new ToolArgumentResolver()),
+            new ModdingToolFactory(toolRunner, Substitute.For<IProcessRunner>(), new ToolArgumentResolver(), new FakePrefixResolver(), new ToolOutputCapture(Connection, Substitute.For<IFileStore>())),
             new FakePrefixResolver(),
             picker,
             Provider.GetRequiredService<IJobMonitor>()
