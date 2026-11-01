@@ -58,6 +58,20 @@ public abstract class AFromSoftInstalledGameTests<TTest, TGame>(ITestOutputHelpe
     }
 
     [Fact]
+    public void TheVersionIsReadFromTheGamesOwnExecutableNotTheLauncher()
+    {
+        // Any file with a version resource stands in for the game's executable; the launcher stays a stub without one.
+        var standIn = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath(typeof(TGame).Assembly.Location);
+        var expected = standIn.FileInfo.GetFileVersionInfo().ProductVersion;
+        File.Copy(standIn.ToString(), (Install.Folder / $"{facts.Layout.GameSubfolder}/{facts.Layout.GameExecutable}").ToString(), overwrite: true);
+
+        var version = ((IGameData)Game).GetLocalVersion(GameInstallation);
+
+        version.HasValue.Should().BeTrue();
+        version.Value.Should().Be(expected);
+    }
+
+    [Fact]
     public void TheMe3LocationsAreInTheHostDataFolderByGameAndAppId()
     {
         var dataRoot = ServiceProvider.GetRequiredService<Sdk.Settings.ISettingsManager>().Get<FromSoftSettings>().DataRoot.ToPath(ServiceProvider.GetRequiredService<IFileSystem>());
