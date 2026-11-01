@@ -82,6 +82,13 @@ public static class LibraryDestinations
         => tx.Add(new RemoveDestinationTxFunc(item, game));
 
     /// <summary>
+    /// Makes <paramref name="game"/> the item's only game: drops every other one, adds it when missing, and clears both
+    /// DestinationsShared and DestinationUnknown. Queued as a tx function.
+    /// </summary>
+    public static void Only(ITransaction tx, EntityId item, GameId game)
+        => tx.Add(new OnlyDestinationTxFunc(item, game));
+
+    /// <summary>
     /// Writes the first destination of an item created in this transaction: its games, Shared when it says so,
     /// Unknown when it has none. Asserts only, so it is called exactly once per new item.
     /// </summary>
@@ -149,6 +156,37 @@ public static class LibraryDestinations
 
         public bool Equals(ITxFunction? other)
             => other is RemoveDestinationTxFunc remove && remove.Item == item && remove.Game == game;
+
+        private EntityId Item => item;
+        private GameId Game => game;
+
+        public override bool Equals(object? obj) => obj is ITxFunction other && Equals(other);
+        public override int GetHashCode() => HashCode.Combine(item, game);
+    }
+
+    /// <inheritdoc cref="AddDestinationTxFunc"/>
+    private sealed class OnlyDestinationTxFunc(EntityId item, GameId game) : ITxFunction
+    {
+        public void Apply(ITransaction tx, IDb basis)
+        {
+            var current = LibraryItem.Load(basis, item);
+            var had = current.DestinationGames.ToHashSet();
+
+            foreach (var other in had.Where(other => other != game))
+                tx.Retract(item, LibraryItem.DestinationGames, other);
+
+            if (!had.Contains(game))
+                tx.Add(item, LibraryItem.DestinationGames, game);
+
+            if (current.Contains(LibraryItem.DestinationsShared))
+                tx.Retract(item, LibraryItem.DestinationsShared, Null.Instance);
+
+            if (current.Contains(LibraryItem.DestinationUnknown))
+                tx.Retract(item, LibraryItem.DestinationUnknown, Null.Instance);
+        }
+
+        public bool Equals(ITxFunction? other)
+            => other is OnlyDestinationTxFunc only && only.Item == item && only.Game == game;
 
         private EntityId Item => item;
         private GameId Game => game;

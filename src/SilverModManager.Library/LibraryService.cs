@@ -54,11 +54,14 @@ public sealed class LibraryService : ILibraryService
         await tx.Commit();
     }
 
-    public async Task AddDestination(IEnumerable<LibraryItem.ReadOnly> items, GameId game)
+    public Task AddDestination(IEnumerable<LibraryItem.ReadOnly> items, GameId game)
+        => AddDestination(items, Destination.Of(game));
+
+    public async Task AddDestination(IEnumerable<LibraryItem.ReadOnly> items, Destination destination)
     {
         using var tx = _connection.BeginTransaction();
         foreach (var item in items)
-            LibraryDestinations.Add(tx, item.Id, Destination.Of(game));
+            LibraryDestinations.Add(tx, item.Id, destination);
         await tx.Commit();
     }
 
@@ -69,17 +72,48 @@ public sealed class LibraryService : ILibraryService
 
         // Checked for every item before any is changed, so a refusal leaves the whole selection as it was.
         foreach (var item in targets)
-        {
-            var installedHere = LibraryLinkedLoadoutItem.FindByLibraryItem(db, item)
-                .Any(link => new LoadoutAcquisition(link.AsLoadoutItem().LoadoutId).Destination(db).Games.Contains(game));
-            if (installedHere)
-                throw new DestinationStillInstalledException($"\"{item.Name}\" is installed in a loadout for this game. Uninstall it first, then take the game off it.");
-        }
+            RefuseIfInstalledFor(db, item, game, "this game");
 
         using var tx = _connection.BeginTransaction();
         foreach (var item in targets)
             LibraryDestinations.Remove(tx, item.Id, game);
         await tx.Commit();
+    }
+
+    public async Task KeepOnlyDestination(IEnumerable<LibraryItem.ReadOnly> items, GameId game)
+    {
+        var targets = items.ToArray();
+        var db = _connection.Db;
+
+        foreach (var item in targets)
+        {
+            foreach (var dropped in LibraryItem.Load(db, item.Id).DestinationGames.Where(other => other != game))
+                RefuseIfInstalledFor(db, item, dropped, "another game it is for");
+        }
+
+        using var tx = _connection.BeginTransaction();
+        foreach (var item in targets)
+            LibraryDestinations.Only(tx, item.Id, game);
+        await tx.Commit();
+    }
+
+    public Destination SuggestDestination(IEnumerable<LibraryItem.ReadOnly> items)
+    {
+        var db = _connection.Db;
+        var inferences = DestinationInferences.InPriorityOrder(_serviceProvider.GetServices<IDestinationInference>());
+        var answers = items.Select(item => DestinationInferences.Infer(inferences, db, LibraryItem.Load(db, item.Id))).Where(answer => !answer.IsUnknown).ToArray();
+        return answers.Length == 0
+            ? Destination.Unknown
+            : new Destination(answers.SelectMany(answer => answer.Games).ToHashSet(), answers.Any(answer => answer.Shared));
+    }
+
+    /// <summary>A loadout's items stay in that loadout's game, so a game an item is installed for cannot be taken off it.</summary>
+    private static void RefuseIfInstalledFor(IDb db, LibraryItem.ReadOnly item, GameId game, string gameDescription)
+    {
+        var installedHere = LibraryLinkedLoadoutItem.FindByLibraryItem(db, item)
+            .Any(link => new LoadoutAcquisition(link.AsLoadoutItem().LoadoutId).Destination(db).Games.Contains(game));
+        if (installedHere)
+            throw new DestinationStillInstalledException($"\"{item.Name}\" is installed in a loadout for {gameDescription}. Uninstall it first, then take the game off it.");
     }
 
     public IEnumerable<(Loadout.ReadOnly loadout, LibraryLinkedLoadoutItem.ReadOnly linkedItem)> LoadoutsWithLibraryItem(LibraryItem.ReadOnly libraryItem)

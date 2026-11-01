@@ -25,14 +25,14 @@ public sealed class _0006_AssignLibraryDestinations(IEnumerable<IDestinationInfe
     public Task Prepare(IDb db)
     {
         _assignments.Clear();
-        var ordered = inferences.OrderBy(inference => inference.Priority).ToArray();
+        var ordered = DestinationInferences.InPriorityOrder(inferences);
         foreach (var datom in db.Datoms(LibraryItem.Name))
         {
             var item = LibraryItem.Load(db, datom.E);
             if (!item.IsValid() || item.DestinationGames.Any() || item.Contains(LibraryItem.DestinationUnknown)) continue;
             if (LibraryArchiveFileEntry.IsMember(db, item.Id)) continue;
 
-            _assignments.Add((item.Id, ordered.Select(inference => inference.Infer(db, item)).FirstOrDefault(found => !found.IsUnknown) ?? Destination.Unknown));
+            _assignments.Add((item.Id, DestinationInferences.Infer(ordered, db, item)));
         }
         return Task.CompletedTask;
     }

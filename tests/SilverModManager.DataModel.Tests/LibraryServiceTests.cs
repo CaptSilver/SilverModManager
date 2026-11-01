@@ -562,6 +562,56 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
         item.Contains(LibraryItem.DestinationUnknown).Should().BeFalse();
     }
 
+    [Fact]
+    public async Task AddDestination_ASharedDestination_MarksTheItemShared()
+    {
+        var file = await _libraryService.AddLocalFile(await WriteFile("shared-marker.txt"), UnassignedAcquisition.Instance);
+
+        await _libraryService.AddDestination([Reload(file.Id)], new Destination(System.Collections.Immutable.ImmutableHashSet.Create(DestinationGameA, DestinationGameB), Shared: true));
+
+        var item = Reload(file.Id);
+        LibraryDestinations.GamesOf(item).Should().BeEquivalentTo([DestinationGameA, DestinationGameB]);
+        item.Contains(LibraryItem.DestinationsShared).Should().BeTrue();
+        item.Contains(LibraryItem.DestinationUnknown).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task KeepOnlyDestination_DropsTheOtherGames_AndClearsShared()
+    {
+        var file = await _libraryService.AddLocalFile(await WriteFile("only-this.txt"), UnassignedAcquisition.Instance);
+        await _libraryService.AddDestination([Reload(file.Id)], new Destination(System.Collections.Immutable.ImmutableHashSet.Create(DestinationGameA, DestinationGameB), Shared: true));
+
+        await _libraryService.KeepOnlyDestination([Reload(file.Id)], DestinationGameA);
+
+        var item = Reload(file.Id);
+        item.IsValid().Should().BeTrue();
+        LibraryDestinations.GamesOf(item).Should().BeEquivalentTo([DestinationGameA]);
+        item.Contains(LibraryItem.DestinationsShared).Should().BeFalse();
+        item.Contains(LibraryItem.DestinationUnknown).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task KeepOnlyDestination_WhileLinkedIntoALoadoutOfAnotherGame_IsRefused()
+    {
+        var (_, item) = await InstalledItemFor(DestinationGameA);
+
+        var act = async () => await _libraryService.KeepOnlyDestination([item], DestinationGameA);
+
+        await act.Should().ThrowAsync<UserFacingException>();
+        LibraryDestinations.GamesOf(Reload(item.Id)).Should().BeEquivalentTo([DestinationGameA, GameInstallation.Game.GameId]);
+    }
+
+    [Fact]
+    public async Task SuggestDestination_AnItemLinkedIntoALoadout_IsThatLoadoutsGame()
+    {
+        var (_, linked) = await InstalledItemFor(DestinationGameA);
+        await _libraryService.RemoveDestination([linked], DestinationGameA);
+        var unassigned = (await _libraryService.AddLocalFile(await WriteFile("suggest.txt"), UnassignedAcquisition.Instance)).AsLibraryFile().AsLibraryItem();
+
+        _libraryService.SuggestDestination([unassigned]).IsUnknown.Should().BeTrue();
+        _libraryService.SuggestDestination([Reload(linked.Id)]).Games.Should().BeEquivalentTo([GameInstallation.Game.GameId]);
+    }
+
     /// <summary>A download that has already finished, so the library step can run without a network.</summary>
     private sealed class CompletedDownloadJob(AbsolutePath path) : IDownloadJob, IJobDefinitionWithStart<CompletedDownloadJob, AbsolutePath>
     {

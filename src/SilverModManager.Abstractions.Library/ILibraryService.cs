@@ -40,6 +40,26 @@ public interface ILibraryService
     Task AddDestination(IEnumerable<LibraryItem.ReadOnly> items, GameId game);
 
     /// <summary>
+    /// Adds a destination's games to items and clears their unknown marker. A shared destination marks an item that had
+    /// no game before as shared.
+    /// </summary>
+    Task AddDestination(IEnumerable<LibraryItem.ReadOnly> items, Destination destination);
+
+    /// <summary>
+    /// Makes a game the only one items are for: drops every other game and clears the shared and unknown markers.
+    /// </summary>
+    /// <exception cref="DestinationStillInstalledException">
+    /// An item is linked into a loadout of a game that would be dropped. Nothing is changed.
+    /// </exception>
+    Task KeepOnlyDestination(IEnumerable<LibraryItem.ReadOnly> items, GameId game);
+
+    /// <summary>
+    /// What the registered <see cref="IDestinationInference"/>s say items are for, the first answer in priority order for
+    /// each, combined. <see cref="Destination.IsUnknown"/> when nothing points to a game. Changes nothing.
+    /// </summary>
+    Destination SuggestDestination(IEnumerable<LibraryItem.ReadOnly> items);
+
+    /// <summary>
     /// Removes a game from items. An item left with no game is marked unknown, never deleted.
     /// </summary>
     /// <exception cref="DestinationStillInstalledException">
