@@ -9,7 +9,9 @@ using SilverModManager.Collections;
 using DynamicData;
 using SilverModManager.App.UI.Pages;
 using SilverModManager.App.UI.LeftMenu.Loadout;
+using SilverModManager.App.UI.Pages.Collections;
 using SilverModManager.App.UI.Pages.LibraryPage;
+using SilverModManager.UI.Tests.Pages.Collections;
 using SilverModManager.App.UI.Pages.LoadoutPage;
 using SilverModManager.App.UI.WorkspaceSystem;
 using NexusMods.Hashing.xxHash3;
@@ -30,45 +32,8 @@ namespace SilverModManager.UI.Tests.Pages;
 /// </summary>
 public class WabbajackLoadoutGroupUiTests(IServiceProvider provider) : AUiTest(provider)
 {
-    private async Task<WabbajackModlistLoadoutGroup.ReadOnly> AddModlistGroup(Loadout.ReadOnly loadout, string name)
-    {
-        using var tx = Connection.BeginTransaction();
-        var bytes = System.Text.Encoding.UTF8.GetBytes(name);
-        var file = new LibraryFile.New(tx, out var fileId)
-        {
-            FileName = $"{name}.wabbajack",
-            Hash = bytes.xxHash3(),
-            Size = Size.From((ulong)bytes.Length),
-            LibraryItem = new LibraryItem.New(tx, fileId) { Name = $"{name}.wabbajack" },
-        };
-        var modlist = new WabbajackModlistLibraryFile.New(tx, fileId)
-        {
-            LibraryFile = file,
-            Name = name,
-            Author = "Someone",
-            Version = "1.0",
-            GameType = "SkyrimSpecialEdition",
-            ArchiveCount = 0,
-            ArchiveSize = Size.Zero,
-            InstallSize = Size.Zero,
-            IsNsfw = false,
-        };
-        var group = new WabbajackModlistLoadoutGroup.New(tx, out var id)
-        {
-            ModlistId = modlist,
-            CollectionGroup = new CollectionGroup.New(tx, id)
-            {
-                IsReadOnly = false,
-                LoadoutItemGroup = new LoadoutItemGroup.New(tx, id)
-                {
-                    IsGroup = true,
-                    LoadoutItem = new LoadoutItem.New(tx, id) { Name = name, LoadoutId = loadout.LoadoutId, IsDisabled = true },
-                },
-            },
-        };
-        var result = await tx.Commit();
-        return result.Remap(group);
-    }
+    private Task<WabbajackModlistLoadoutGroup.ReadOnly> AddModlistGroup(Loadout.ReadOnly loadout, string name, bool finished = false) =>
+        CollectionSeed.AddModlistGroup(Connection, loadout.LoadoutId, name, finished);
 
     [Fact]
     public async Task AModlistIsNeverTheDefaultCollection()
@@ -89,7 +54,7 @@ public class WabbajackLoadoutGroupUiTests(IServiceProvider provider) : AUiTest(p
     public async Task AModlistGroup_ShowsInTheLeftMenusCollectionListUnderTheListsName()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Left menu loadout");
-        var group = await AddModlistGroup(loadout, "Left menu list");
+        var group = await AddModlistGroup(loadout, "Left menu list", finished: true);
 
         // Only the menu's collection list. The whole menu, activated in a test, leaves work running that crashes the
         // test host once the shared database closes after the last test.
@@ -103,7 +68,7 @@ public class WabbajackLoadoutGroupUiTests(IServiceProvider provider) : AUiTest(p
         Exception? failure = null;
         using var subscription = LoadoutLeftMenuViewModel.ObserveCollectionItems(
                 Connection,
-                Provider.GetRequiredService<CollectionDownloader>(),
+                Provider.GetRequiredService<CollectionProviders>(),
                 loadout,
                 controller,
                 WorkspaceId.From(Guid.NewGuid()),

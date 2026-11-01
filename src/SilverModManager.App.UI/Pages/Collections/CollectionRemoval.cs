@@ -1,3 +1,5 @@
+using System.Reactive.Linq;
+using ReactiveUI;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.Windows;
@@ -51,4 +53,19 @@ public sealed class CollectionRemoval
             },
         };
     }
+
+    /// <summary>
+    /// The left menu entry's item: header, icon, styling, can-execute and <see cref="ConfirmAndRemove"/>; no tooltip.
+    /// </summary>
+    public IContextMenuItem ToMenuItem(IWindowManager windowManager, IWorkspaceController controller) => new ContextMenuItem
+    {
+        Header = Header,
+        Icon = Icon,
+        Styling = Styling,
+        IsVisible = true,
+        // CanExecute may come from the database thread; the command's state reaches the menu on the UI thread.
+        Command = ReactiveCommand.CreateFromTask(
+            () => ConfirmAndRemove(windowManager, controller),
+            CanExecute.ObserveOn(RxApp.MainThreadScheduler)),
+    };
 }

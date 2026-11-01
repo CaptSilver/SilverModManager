@@ -12,6 +12,7 @@ using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Wabbajack.Models;
 
 namespace SilverModManager.UI.Tests.Pages.Collections;
 
@@ -126,6 +127,52 @@ internal static class CollectionSeed
                 LoadoutItem = new LoadoutItem.New(tx, id) { Name = name, LoadoutId = loadout },
             },
         };
+        var result = await tx.Commit();
+        return result.Remap(group);
+    }
+
+    /// <summary>
+    /// A Wabbajack modlist in the library and its group in <paramref name="loadout"/>. A <paramref name="finished"/>
+    /// group is enabled and has <c>InstalledAt</c>; otherwise it is the disabled group the job creates at the start.
+    /// </summary>
+    public static async Task<WabbajackModlistLoadoutGroup.ReadOnly> AddModlistGroup(
+        IConnection connection, LoadoutId loadout, string name, bool finished = false)
+    {
+        using var tx = connection.BeginTransaction();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(name);
+        var file = new LibraryFile.New(tx, out var fileId)
+        {
+            FileName = $"{name}.wabbajack",
+            Hash = bytes.xxHash3(),
+            Size = Size.From((ulong)bytes.Length),
+            LibraryItem = new LibraryItem.New(tx, fileId) { Name = $"{name}.wabbajack" },
+        };
+        var modlist = new WabbajackModlistLibraryFile.New(tx, fileId)
+        {
+            LibraryFile = file,
+            Name = name,
+            Author = "Someone",
+            Version = "1.0",
+            GameType = "SkyrimSpecialEdition",
+            ArchiveCount = 0,
+            ArchiveSize = Size.Zero,
+            InstallSize = Size.Zero,
+            IsNsfw = false,
+        };
+        var group = new WabbajackModlistLoadoutGroup.New(tx, out var id)
+        {
+            ModlistId = modlist,
+            CollectionGroup = new CollectionGroup.New(tx, id)
+            {
+                IsReadOnly = false,
+                LoadoutItemGroup = new LoadoutItemGroup.New(tx, id)
+                {
+                    IsGroup = true,
+                    LoadoutItem = new LoadoutItem.New(tx, id) { Name = name, LoadoutId = loadout, IsDisabled = finished is false },
+                },
+            },
+        };
+        if (finished) tx.Add(id, WabbajackModlistLoadoutGroup.InstalledAt, DateTimeOffset.UtcNow);
         var result = await tx.Commit();
         return result.Remap(group);
     }

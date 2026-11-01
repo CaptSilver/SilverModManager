@@ -87,40 +87,7 @@ public class NavigationControl : StandardButton
             contextMenu.Items.Add(new Separator());
 
             foreach (var item in additionalItems)
-            {
-                var menuItem = new MenuItem
-                {
-                    Header = item.Header,
-                    Command = item.Command,
-                };
-                
-                if (item.Icon != null)
-                {
-                    menuItem.Icon = new UnifiedIcon 
-                    { 
-                        Value = item.Icon,
-                        Size = 16,
-                    };
-                }
-                
-                // Apply CSS classes based on styling
-                switch (item.Styling)
-                {
-                    case ContextMenuItemStyling.Critical:
-                        menuItem.Classes.Add("Critical");
-                        break;
-                    case ContextMenuItemStyling.Premium:
-                        menuItem.Classes.Add("Premium");
-                        break;
-                    case ContextMenuItemStyling.None:
-                    case ContextMenuItemStyling.Default:
-                    default:
-                        // No additional classes for default styling
-                        break;
-                }
-                
-                contextMenu.Items.Add(menuItem);
-            }
+                contextMenu.Items.Add(item.ToMenuItem());
         }
 
         ContextMenu = contextMenu;

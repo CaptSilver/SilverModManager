@@ -1,4 +1,5 @@
 using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using Avalonia.Threading;
 using FluentAssertions;
 using NSubstitute;
@@ -76,5 +77,60 @@ public class CollectionRemovalTests(IServiceProvider provider) : AUiTest(provide
         removal.Icon.Should().Be(IconValues.DeleteOutline);
         removal.Styling.Should().Be(ContextMenuItemStyling.Critical);
         removal.ToolTip.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task TheMenuItemShowsTheRemovalWithoutATooltip()
+    {
+        var (removal, _) = Confirmed();
+        removal = new CollectionRemoval
+        {
+            Header = removal.Header, Icon = removal.Icon, Styling = removal.Styling, ToolTip = "page only",
+            CanExecute = removal.CanExecute, Remove = removal.Remove, ConfirmAndRemove = removal.ConfirmAndRemove,
+        };
+
+        var item = removal.ToMenuItem(Substitute.For<IWindowManager>(), Substitute.For<IWorkspaceController>());
+
+        item.Header.Should().Be("Remove it");
+        item.Icon.Should().Be(IconValues.DeleteOutline);
+        item.Styling.Should().Be(ContextMenuItemStyling.Critical);
+        item.ToolTip.Should().BeNull();
+        item.IsVisible.Should().BeTrue();
+        (await item.Command.CanExecute.FirstAsync()).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TheMenuItemsCommandAsksFirst()
+    {
+        var (removal, removed) = Confirmed("Asked");
+        var windows = Answering(ButtonDefinitionId.Cancel);
+        var item = removal.ToMenuItem(windows, Substitute.For<IWorkspaceController>());
+
+        await Dispatcher.UIThread.InvokeAsync(() => item.Command.Execute().FirstOrDefaultAsync().ToTask());
+        removed.Should().BeEmpty();
+
+        windows.ShowDialog(Arg.Any<IDialog>(), DialogWindowType.Modal).Returns(new StandardDialogResult { ButtonId = ButtonDefinitionId.Accept });
+        await Dispatcher.UIThread.InvokeAsync(() => item.Command.Execute().FirstOrDefaultAsync().ToTask());
+        removed.Should().Equal("Asked");
+    }
+
+    [Fact]
+    public async Task TheMenuItemsCommandFollowsTheRemovalsCanExecute()
+    {
+        var allowed = new System.Reactive.Subjects.BehaviorSubject<bool>(false);
+        var removal = new CollectionRemoval
+        {
+            Header = "Maybe", Icon = IconValues.DeleteOutline, Styling = ContextMenuItemStyling.Default,
+            CanExecute = allowed, Remove = _ => Task.CompletedTask, ConfirmAndRemove = (_, _) => Task.CompletedTask,
+        };
+        var item = removal.ToMenuItem(Substitute.For<IWindowManager>(), Substitute.For<IWorkspaceController>());
+        var seen = new List<bool>();
+        using var subscription = item.Command.CanExecute.Subscribe(seen.Add);
+
+        allowed.OnNext(true);
+
+        await Eventually(() => seen.Should().EndWith(true));
+        allowed.OnNext(false);
+        await Eventually(() => seen.Should().EndWith(false));
     }
 }

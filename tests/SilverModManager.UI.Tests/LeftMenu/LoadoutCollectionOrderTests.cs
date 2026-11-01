@@ -14,6 +14,7 @@ using SilverModManager.Collections;
 using System.Reactive.Linq;
 using SilverModManager.App.UI.LeftMenu.Items;
 using SilverModManager.App.UI.LeftMenu.Loadout;
+using SilverModManager.App.UI.Pages.Collections;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.WorkspaceSystem;
@@ -77,7 +78,7 @@ public class LoadoutCollectionOrderTests(IServiceProvider provider) : AUiTest(pr
         var extra = new SourceCache<ILeftMenuItemViewModel, EntityId>(_ => EntityId.From(0x00FF_0000_0000UL + (ulong)Interlocked.Increment(ref _extraKeys)));
         var source = LoadoutLeftMenuViewModel.ObserveCollectionItems(
                 Connection,
-                Provider.GetRequiredService<CollectionDownloader>(),
+                Provider.GetRequiredService<CollectionProviders>(),
                 loadout,
                 Controller(),
                 WorkspaceId.From(Guid.NewGuid()),

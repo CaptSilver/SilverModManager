@@ -16,7 +16,7 @@ using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.LeftMenu.Items;
 using SilverModManager.App.UI.Overlays;
 using SilverModManager.App.UI.Pages;
-using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Pages.Collections;
 using SilverModManager.App.UI.Pages.Diagnostics;
 using SilverModManager.App.UI.Pages.Ini;
 using SilverModManager.App.UI.Pages.LibraryPage;
@@ -76,7 +76,7 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
         var logger = serviceProvider.GetRequiredService<ILogger<LoadoutLeftMenuViewModel>>();
 
         _collectionList = new LoadoutCollectionList(settingsManager, loadoutContext.LoadoutId);
-        var collectionDownloader = serviceProvider.GetRequiredService<CollectionDownloader>();
+        var providers = serviceProvider.GetRequiredService<CollectionProviders>();
 
         var loadout = Sdk.Loadouts.Loadout.Load(conn.Db, loadoutContext.LoadoutId.Value);
         var game = loadout.InstallationInstance.Game;
@@ -131,37 +131,10 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
 
         LeftMenuItemNewCollection = new NewCollectionViewModel(serviceProvider, loadout, workspaceController, workspaceId);
 
-        var collectionRevisionsObservable = CollectionRevisionMetadata
-            .ObserveAll(conn)
-            .FilterImmutable(revision => game.NexusModsGameId.IsNexusGame(revision.Collection.GameId))
-            .FilterOnObservable(revision => collectionDownloader.IsOfferedForInstallObservable(revision, loadout))
-            .Transform(ILeftMenuItemViewModel (revision) =>
-            {
-                var pageData = new PageData
-                {
-                    FactoryId = CollectionDownloadPageFactory.StaticId,
-                    Context = new CollectionDownloadPageContext
-                    {
-                        TargetLoadout = loadout,
-                        CollectionRevisionMetadataId = revision,
-                    },
-                };
-
-                return new CollectionRevisionLeftMenuItemViewModel(
-                    workspaceController, 
-                    workspaceId, 
-                    pageData,
-                    revision,
-                    serviceProvider)
-                {
-                    Text = new StringComponent(initialValue: revision.Collection.Name, CollectionMetadata.Observe(conn, revision.Collection).Select(x => x.Name)),
-                    Icon = IconValues.CollectionsOutline,
-                    RightIcon = IconValues.Downloading,
-                };
-            });
+        var pendingItemsObservable = ObservePendingItems(providers, loadout, workspaceController, workspaceId, serviceProvider);
 
         // Collections
-        var collectionItemsObservable = ObserveCollectionItems(conn, collectionDownloader, loadout, workspaceController, WorkspaceId, serviceProvider, _collectionList.MoveBy);
+        var collectionItemsObservable = ObserveCollectionItems(conn, providers, loadout, workspaceController, WorkspaceId, serviceProvider, _collectionList.MoveBy);
         
         // Health Check
         LeftMenuItemHealthCheck = new HealthCheckLeftMenuItemViewModel(
@@ -276,7 +249,7 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
                     .SubscribeWithErrorLogging(item => LeftMenuItemExternalChanges = item)
                     .DisposeWith(disposable);
 
-                _collectionList.Bind(collectionItemsObservable.MergeChangeSets(collectionRevisionsObservable))
+                _collectionList.Bind(collectionItemsObservable.MergeChangeSets(pendingItemsObservable))
                     .DisposeWith(disposable);
 
                 // Opening the Library page, or something arriving while it is open, clears the badge.
@@ -311,7 +284,7 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
     /// <summary>The loadout's collections as menu items: each opens its own page, or the loadout page scoped to it.</summary>
     internal static IObservable<IChangeSet<ILeftMenuItemViewModel, EntityId>> ObserveCollectionItems(
         IConnection conn,
-        CollectionDownloader collectionDownloader,
+        CollectionProviders providers,
         Sdk.Loadouts.Loadout.ReadOnly loadout,
         IWorkspaceController workspaceController,
         WorkspaceId workspaceId,
@@ -321,47 +294,22 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
         var defaultCollection = LoadoutCollectionOrder.DefaultCollectionOf(conn.Db, loadout.LoadoutId);
         return CollectionGroup.ObserveAll(conn)
             .FilterImmutable(f => f.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId == loadout.LoadoutId)
-            .FilterOnObservable(group =>
-                {
-                    if (!group.TryGetAsNexusCollectionLoadoutGroup(out var nexusCollection))
-                        return Observable.Return(true);
-                    return collectionDownloader.IsListedAsInstalledObservable(nexusCollection);
-                }
-            )
+            .FilterOnObservable(providers.IsListedAsInstalled)
             .SortBy(item => item.IsReadOnly)
             .Transform(collection =>
             {
-                var pageData = collection.IsReadOnly
-                    ? new PageData
-                    {
-                        FactoryId = CollectionLoadoutPageFactory.StaticId,
-                        Context = new CollectionLoadoutPageContext
-                        {
-                            LoadoutId = loadout,
-                            GroupId = collection,
-                        },
-                    }
-                    : new PageData
-                    {
-                        FactoryId = LoadoutPageFactory.StaticId,
-                        Context = new LoadoutPageContext
-                        {
-                            LoadoutId = loadout,
-                            GroupScope = collection.CollectionGroupId,
-                        },
-                    };
-
+                var source = providers.For(collection, loadout.LoadoutId);
                 return new CollectionLeftMenuItemViewModel(
                     workspaceController,
                     workspaceId,
-                    pageData,
+                    source,
                     serviceProvider,
                     collection.CollectionGroupId,
                     collection.CollectionGroupId == defaultCollection,
                     moveBy
                 )
                 {
-                    Text = new StringComponent(initialValue: collection.AsLoadoutItemGroup().AsLoadoutItem().Name, LoadoutItem.Observe(conn, collection).Select(x => x.Name)),
+                    Text = new StringComponent(initialValue: source.InitialName, source.Name),
                     Icon = IconValues.CollectionsOutline,
                     IsCollectionReadOnly = collection.IsReadOnly,
                 };
@@ -369,4 +317,21 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
             .Transform(ILeftMenuItemViewModel (item) => item);
     }
 
+    /// <summary>
+    /// The collections of the loadout's game that are not installed in it, as menu entries that open the collection's
+    /// pending page. They flip to an installed entry when the install completes.
+    /// </summary>
+    internal static IObservable<IChangeSet<ILeftMenuItemViewModel, EntityId>> ObservePendingItems(
+        CollectionProviders providers,
+        Sdk.Loadouts.Loadout.ReadOnly loadout,
+        IWorkspaceController workspaceController,
+        WorkspaceId workspaceId,
+        IServiceProvider serviceProvider) =>
+        providers.ObservePending(loadout)
+            .Transform(ILeftMenuItemViewModel (source) => new PendingCollectionLeftMenuItemViewModel(workspaceController, workspaceId, source, serviceProvider)
+            {
+                Text = new StringComponent(initialValue: source.InitialName, source.Name),
+                Icon = IconValues.CollectionsOutline,
+                RightIcon = IconValues.Downloading,
+            });
 }
