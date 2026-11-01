@@ -17,6 +17,7 @@ using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Standard;
 using SilverModManager.App.UI.Dialog.Enums;
@@ -695,11 +696,7 @@ After asking design, we're choosing to simply open the mod page for now.
 
     private async ValueTask InstallItems(LibraryItemId[] ids, LoadoutItemGroupId targetLoadoutGroup, bool useAdvancedInstaller, CancellationToken cancellationToken)
     {
-        var db = _connection.Db;
-        var items = ids
-            .Select(id => LibraryItem.Load(db, id))
-            .Where(x => x.IsValid() && CollectionInstallRules.IsInstallableAsMod(x))
-            .ToArray();
+        var items = InstallableItems(ids);
 
         // The advanced installer asks questions mid-install, so each item keeps its own install.
         if (useAdvancedInstaller)
@@ -736,6 +733,21 @@ After asking design, we're choosing to simply open the mod page for now.
 
     // Nexus collections and modlists decide what they contain; only the user's own collections take installs.
     internal static bool IsInstallTarget(ICollectionOwnership ownership, CollectionGroup.ReadOnly group) => ownership.WhyLocked(group) is null;
+
+    public DragPayload? DragPayloadFor(IReadOnlyList<CompositeItemModel<EntityId>> rows)
+    {
+        var items = InstallableItems(rows.SelectMany(GetLibraryItemIds).Distinct());
+        return items.Length == 0 ? null : new DragPayload.LibraryItems(_loadout.LoadoutId, items.Select(static item => item.LibraryItemId).ToArray());
+    }
+
+    private LibraryItem.ReadOnly[] InstallableItems(IEnumerable<LibraryItemId> ids)
+    {
+        var db = _connection.Db;
+        return ids
+            .Select(id => LibraryItem.Load(db, id))
+            .Where(static item => item.IsValid() && CollectionInstallRules.IsInstallableAsMod(item))
+            .ToArray();
+    }
 
     private LibraryItemId[] GetSelectedIds()
     {

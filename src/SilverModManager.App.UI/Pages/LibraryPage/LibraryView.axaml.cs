@@ -1,7 +1,9 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.MnemonicDB.Abstractions;
 using R3;
@@ -39,6 +41,14 @@ public partial class LibraryView : ReactiveUserControl<ILibraryViewModel>
                         .SubscribeWithErrorLogging(vm => vm.StorageProvider = storageProvider)
                         .AddTo(disposables);
                 }
+
+                // Rows are dragged out as library items, to install them into a collection.
+                var dragSource = new SerialDisposable().AddTo(disposables);
+                this.WhenAnyValue(view => view.ViewModel)
+                    .SubscribeWithErrorLogging(vm => dragSource.Disposable = vm is null
+                        ? null
+                        : new TreeDataGridDragSource<CompositeItemModel<EntityId>>(TreeDataGridLibrary, () => vm.Adapter.SelectedModels.ToArray(), vm.DragPayloadFor, DragDropEffects.Copy))
+                    .AddTo(disposables);
 
                 SearchControl.AttachKeyboardHandlers(this, disposables);
                 this.OneWayBind(ViewModel, vm => vm.Adapter, view => view.SearchControl.Adapter)

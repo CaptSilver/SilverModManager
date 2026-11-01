@@ -1,10 +1,12 @@
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Pages.Sorting;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.MnemonicDB.Abstractions;
 using R3;
 
 namespace SilverModManager.App.UI.Pages.LoadoutPage;
@@ -28,6 +30,12 @@ public interface ILoadoutViewModel : IPageViewModelInterface
 
     /// <summary>Receives a drop that fails. Set whenever <see cref="DropTarget"/> is.</summary>
     IErrorPresenter? ErrorPresenter { get; }
+
+    /// <summary>
+    /// What dragging <paramref name="rows"/> out of the page carries: the loadout items they stand for, or null when
+    /// they stand for none.
+    /// </summary>
+    DragPayload? DragPayloadFor(IReadOnlyList<CompositeItemModel<EntityId>> rows);
     IReadOnlyBindableReactiveProperty<bool> IsCollectionUploaded { get; }
     IReadOnlyBindableReactiveProperty<string> CollectionName { get; }
     IReadOnlyBindableReactiveProperty<CollectionStatus> CollectionStatus { get; }

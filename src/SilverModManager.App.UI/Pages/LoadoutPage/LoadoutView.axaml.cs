@@ -38,6 +38,13 @@ public partial class LoadoutView : R3UserControl<ILoadoutViewModel>
                         : null)
                     .AddTo(disposables);
 
+                // Rows are dragged out as mods, to move them into another collection.
+                var dragSource = new SerialDisposable().AddTo(disposables);
+                BindableViewModel.Subscribe(this, (vm, view) => dragSource.Disposable = vm is null
+                        ? null
+                        : new TreeDataGridDragSource<CompositeItemModel<EntityId>>(view.TreeDataGrid, () => vm.Adapter.SelectedModels.ToArray(), vm.DragPayloadFor, DragDropEffects.Move))
+                    .AddTo(disposables);
+
                 // Bind search adapter
                 this.OneWayBind(ViewModel, vm => vm.Adapter, view => view.SearchControl.Adapter)
                     .AddTo(disposables);

@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
@@ -10,6 +11,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.App.UI.Pages.LoadoutPage;
 using SilverModManager.App.UI.Windows;
@@ -235,5 +237,71 @@ public class LoadoutPageDropTests(IServiceProvider provider) : AUiTest(provider)
             Body(harness).Classes.Contains(WindowDropFeedback.DropOverPseudoClass).Should().BeFalse();
             harness.WindowTarget.Inspected.Should().ContainSingle().Which.Should().BeOfType<DragPayload.LoadoutMods>();
         });
+    }
+
+    private sealed class RecordingTarget : IDropTarget
+    {
+        public List<DragPayload> Dropped { get; } = [];
+        public DropVerdict Inspect(DragPayload payload) => new DropVerdict.Accept(DragDropEffects.Move, "Move here");
+
+        public Task DropAsync(DragPayload payload, CancellationToken cancellationToken)
+        {
+            Dropped.Add(payload);
+            return Task.CompletedTask;
+        }
+    }
+
+    [Fact]
+    public async Task DraggingAModRow_CarriesItAsMods_ToATargetElsewhereInTheWindow()
+    {
+        var (loadout, here, _) = await Seed();
+        var mod = await SeedMod(loadout, "Picked up", here.Id);
+        var target = new RecordingTarget();
+        Window? window = null;
+        Border? drop = null;
+        LoadoutView? view = null;
+        await OnUi(async () =>
+        {
+            var viewModel = new LoadoutViewModel(Substitute.For<IWindowManager>(), Provider, loadout.LoadoutId);
+            view = new LoadoutView { DataContext = viewModel };
+            drop = new Border { Width = 200, Background = Avalonia.Media.Brushes.Gray };
+            Grid.SetColumn(drop, 1);
+            var host = new Grid { ColumnDefinitions = { new ColumnDefinition(1, GridUnitType.Star), new ColumnDefinition(200, GridUnitType.Pixel) }, Children = { view, drop } };
+            window = Track(new Window { Width = 1200, Height = 800, Content = host });
+            _ = new DropZone(drop, target, Substitute.For<IErrorPresenter>());
+            ShowRendered(window);
+            await Task.Yield();
+            Dispatcher.UIThread.RunJobs();
+            Render(window);
+        });
+
+        Control? row = null;
+        await EventuallyOnUi(() =>
+        {
+            Render(window!);
+            row = view!.GetVisualDescendants().OfType<TreeDataGridRow>()
+                .FirstOrDefault(candidate => candidate.Model is CompositeItemModel<EntityId> model
+                    && model.Get<LoadoutComponents.LoadoutItemIds>(LoadoutColumns.EnabledState.LoadoutItemIdsComponentKey).ItemIds.Contains(LoadoutItemId.From(mod)));
+            row.Should().NotBeNull("the seeded mod shows under its collection");
+        });
+
+        await OnUi(async () =>
+        {
+            var from = row!.TranslatePoint(new Point(row.Bounds.Width / 3, row.Bounds.Height / 2), window!)!.Value;
+            var to = drop!.TranslatePoint(new Point(100, 50), window!)!.Value;
+            window!.MouseDown(from, MouseButton.Left);
+            for (var step = 1; step <= 8; step++)
+            {
+                window.MouseMove(from + (to - from) * step / 8, RawInputModifiers.LeftMouseButton);
+                Dispatcher.UIThread.RunJobs();
+                await Task.Delay(5);
+            }
+            window.MouseUp(to, MouseButton.Left);
+            Dispatcher.UIThread.RunJobs();
+        });
+
+        var dropped = target.Dropped.Should().ContainSingle().Which.Should().BeOfType<DragPayload.LoadoutMods>().Subject;
+        dropped.Loadout.Should().Be(loadout.LoadoutId);
+        dropped.Items.Should().Contain(LoadoutItemId.From(mod));
     }
 }

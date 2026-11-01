@@ -67,6 +67,12 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
     public IDropTarget? DropTarget { get; }
 
     public IErrorPresenter? ErrorPresenter { get; }
+
+    public DragPayload? DragPayloadFor(IReadOnlyList<CompositeItemModel<EntityId>> rows)
+    {
+        var items = rows.SelectMany(LoadoutTreeDataGridAdapter.GetLoadoutItemIds).Distinct().ToArray();
+        return items.Length == 0 ? null : new DragPayload.LoadoutMods(_loadoutId, items);
+    }
     private BindableReactiveProperty<string> CollectionName { get; }
     IReadOnlyBindableReactiveProperty<string> ILoadoutViewModel.CollectionName => CollectionName;
     private BindableReactiveProperty<bool> IsCollectionUploaded { get; }
@@ -106,6 +112,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
     private readonly IAvaloniaInterop _avaloniaInterop;
     private readonly IWindowNotificationService _notificationService;
     private readonly ILoadoutManager _loadoutManager;
+    private readonly LoadoutId _loadoutId;
 
     public LoadoutViewModel(
         IWindowManager windowManager,
@@ -115,6 +122,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         Optional<LoadoutPageSubTabs> selectedSubTab = default) : base(windowManager)
     {
         _serviceProvider = serviceProvider;
+        _loadoutId = loadoutId;
         _connection = serviceProvider.GetRequiredService<IConnection>();
         _nexusModsLibrary = serviceProvider.GetRequiredService<NexusModsLibrary>();
         _avaloniaInterop = serviceProvider.GetRequiredService<IAvaloniaInterop>();
@@ -516,7 +524,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
             .ToReactiveCommand<Unit>(async (_, _) =>
                 {
                     var ids = Adapter.SelectedModels
-                        .SelectMany(static itemModel => GetLoadoutItemIds(itemModel))
+                        .SelectMany(static itemModel => LoadoutTreeDataGridAdapter.GetLoadoutItemIds(itemModel))
                         .ToHashSet()
                         .Where(id => !CannotRemove(id, _connection))
                         .Select(x => (LoadoutItemGroupId)x.Value)
@@ -577,7 +585,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
                 Adapter.SelectedModels
                     .ObserveChanged()
                     .Select(Adapter, static (_, adapter) => adapter.SelectedModels
-                        .SelectMany(GetLoadoutItemIds)
+                        .SelectMany(LoadoutTreeDataGridAdapter.GetLoadoutItemIds)
                         .Distinct()
                         .Count()
                     )
@@ -592,7 +600,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
                     .Select(_connection, static (model, connection) =>
                         {
                             if (model is null) return Optional<LoadoutItemGroup.ReadOnly>.None;
-                            return LoadoutGroupFilesViewModel.GetViewModFilesLoadoutItemGroup(GetLoadoutItemIds(model).ToArray(), connection);
+                            return LoadoutGroupFilesViewModel.GetViewModFilesLoadoutItemGroup(LoadoutTreeDataGridAdapter.GetLoadoutItemIds(model).ToArray(), connection);
                         }
                     )
                     .ObserveOnUIThreadDispatcher()
@@ -852,11 +860,6 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         {
             tx.Add(managedCollectionLoadoutGroup, ManagedCollectionLoadoutGroup.LastPublishedRevisionNumber, lastPublishedRevisionNumber.Value);
         }
-    }
-
-    private static IEnumerable<LoadoutItemId> GetLoadoutItemIds(CompositeItemModel<EntityId> itemModel)
-    {
-        return itemModel.Get<LoadoutComponents.LoadoutItemIds>(LoadoutColumns.EnabledState.LoadoutItemIdsComponentKey).ItemIds;
     }
 
     private static bool IsToggleLocked(LoadoutItemId id, IConnection connection)

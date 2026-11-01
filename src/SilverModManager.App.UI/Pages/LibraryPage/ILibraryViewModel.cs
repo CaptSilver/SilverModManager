@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
 using Avalonia.Platform.Storage;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.App.UI.Pages.LibraryPage.Collections;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.App.UI.WorkspaceSystem;
 using R3;
 
@@ -38,4 +41,10 @@ public interface ILibraryViewModel : IPageViewModelInterface
     ReactiveCommand<Unit> OpenNexusModsCollectionsCommand { get; }
     
     IStorageProvider? StorageProvider { get; set; }
+
+    /// <summary>
+    /// What dragging <paramref name="rows"/> out of the page carries: their library items that can be installed as
+    /// mods, or null when there are none.
+    /// </summary>
+    DragPayload? DragPayloadFor(IReadOnlyList<CompositeItemModel<EntityId>> rows);
 }
