@@ -1,7 +1,9 @@
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Pages.Sorting;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using R3;
 
@@ -20,6 +22,12 @@ public interface ILoadoutViewModel : IPageViewModelInterface
     ISortingSelectionViewModel RulesSectionViewModel { get; }
 
     bool IsCollection { get; }
+
+    /// <summary>What the page accepts when something is dragged onto it: non-null only on a collection's page. The "All" page takes no drops.</summary>
+    IDropTarget? DropTarget { get; }
+
+    /// <summary>Receives a drop that fails. Set whenever <see cref="DropTarget"/> is.</summary>
+    IErrorPresenter? ErrorPresenter { get; }
     IReadOnlyBindableReactiveProperty<bool> IsCollectionUploaded { get; }
     IReadOnlyBindableReactiveProperty<string> CollectionName { get; }
     IReadOnlyBindableReactiveProperty<CollectionStatus> CollectionStatus { get; }

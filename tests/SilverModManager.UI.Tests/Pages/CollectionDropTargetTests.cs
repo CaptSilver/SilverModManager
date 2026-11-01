@@ -196,12 +196,36 @@ public class CollectionDropTargetTests(IServiceProvider provider) : AUiTest(prov
     }
 
     [Fact]
-    public async Task ModsAlreadyInTheCollection_AreRefusedWithThePlansReason()
+    public async Task ModsAllAlreadyInTheCollection_AreRefusedAsAlreadyThere()
     {
         var harness = await CreateHarness();
+        var one = await SeedMod(harness.Loadout, "one", harness.Collection);
+        var two = await SeedMod(harness.Loadout, "two", harness.Collection);
+
+        harness.Target.Inspect(Mods(harness.Loadout, one, two)).Should().Be(new DropVerdict.Refuse("Already in NCR Core"));
+    }
+
+    [Fact]
+    public async Task ModsAlreadyInALockedCollection_AreRefusedWithTheLocksReason()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Locked mods " + Guid.NewGuid());
+        var nexus = await SeedCollection(loadout, "Big Nexus Collection", isReadOnly: true);
+        var inside = await SeedMod(loadout, "inside", nexus);
+        var harness = Build(loadout, nexus);
+
+        harness.Target.Inspect(Mods(loadout, inside))
+            .Should().Be(new DropVerdict.Refuse("Big Nexus Collection is a Nexus collection; it decides what it contains"));
+    }
+
+    [Fact]
+    public async Task ModsSomeOfWhichAreAlreadyThere_StillMoveTheRest()
+    {
+        var harness = await CreateHarness();
+        var source = await SeedCollection(harness.Loadout, "Source", isReadOnly: false);
+        var movable = await SeedMod(harness.Loadout, "movable", source);
         var here = await SeedMod(harness.Loadout, "here", harness.Collection);
 
-        harness.Target.Inspect(Mods(harness.Loadout, here)).Should().Be(new DropVerdict.Refuse("here is already in NCR Core"));
+        harness.Target.Inspect(Mods(harness.Loadout, movable, here)).Should().BeOfType<DropVerdict.Accept>();
     }
 
     [Fact]

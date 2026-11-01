@@ -78,13 +78,22 @@ public sealed class CollectionDropTarget(
     {
         var db = connection.Db;
         var plan = CollectionMovePlan.Plan(db, payload.Items, collection, ownership);
-        if (plan.Movable.Count == 0) return new DropVerdict.Refuse(plan.RefusalText);
+        if (plan.Movable.Count == 0) return new DropVerdict.Refuse(AllAlreadyHere(db, plan) ? $"Already in {plan.TargetName}" : plan.RefusalText);
 
         var text = $"Move {ModCount.Text(plan.Movable.Count)} to {plan.TargetName}"
                    + (plan.Skipped.Count > 0 ? $", {plan.Skipped.Count} can't move" : string.Empty)
                    + EnabledNote(db, plan.Movable);
         return new DropVerdict.Accept(DragDropEffects.Move, text);
     }
+
+    /// <summary>
+    /// True when the plan skipped every mod because it already sits in this collection. The plan's own reasons name
+    /// each mod, so they never agree and its <see cref="CollectionMovePlan.RefusalText"/> can't say it in one line.
+    /// </summary>
+    private bool AllAlreadyHere(IDb db, CollectionMovePlan plan)
+        => plan.Skipped.Count > 0
+           && ownership.WhyLocked(Group(db)) is null
+           && plan.Skipped.All(skip => LoadoutItem.Load(db, skip.Item) is { } item && item.IsValid() && item.HasParent() && item.ParentId.Value == collection.Value);
 
     /// <summary>
     /// Moving a mod changes whether it is switched on only through the collection: its own switch stays. So mods

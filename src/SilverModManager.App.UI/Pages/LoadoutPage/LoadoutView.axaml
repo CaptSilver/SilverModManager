@@ -16,6 +16,17 @@
     mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
     x:Class="SilverModManager.App.UI.Pages.LoadoutPage.LoadoutView">
 
+    <reactive:ReactiveUserControl.Styles>
+        <!-- The mods tab is the drop surface of a collection's page. Transparent, not null, so empty gaps take part in hit testing. -->
+        <Style Selector="Grid#ModsBody">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <!-- a drag is over it; the caption in the corner says what dropping does. A tint rather than a border, so nothing shifts. -->
+        <Style Selector="Grid#ModsBody:drop-over">
+            <Setter Property="Background" Value="{StaticResource SurfaceTranslucentMidBrush}" />
+        </Style>
+    </reactive:ReactiveUserControl.Styles>
+
     <Grid RowDefinitions="Auto, Auto, *">
 
         <!-- different page header if it's a collection (i.e. My Mods) or if it's just All mods -->
@@ -75,7 +86,7 @@
                     </StackPanel>
                 </TabItem.Header>
 
-                <Grid RowDefinitions="Auto, Auto, *">
+                <Grid x:Name="ModsBody" RowDefinitions="Auto, Auto, *">
 
                     <!-- STATUSBAR -->
 

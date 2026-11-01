@@ -7,6 +7,7 @@ using Humanizer.Localisation;
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.Collections;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -29,6 +30,13 @@ public partial class LoadoutView : R3UserControl<ILoadoutViewModel>
         this.WhenActivated(disposables =>
             {
                 SearchControl.AttachKeyboardHandlers(this, disposables);
+
+                // Only a collection's page takes drops; the "All" page has no target, so a drag over it reaches the window.
+                var zone = new SerialDisposable().AddTo(disposables);
+                BindableViewModel.Subscribe(this, (vm, view) => zone.Disposable = vm is { DropTarget: { } target, ErrorPresenter: { } errors }
+                        ? new DropZone(view.ModsBody, target, errors)
+                        : null)
+                    .AddTo(disposables);
 
                 // Bind search adapter
                 this.OneWayBind(ViewModel, vm => vm.Adapter, view => view.SearchControl.Adapter)

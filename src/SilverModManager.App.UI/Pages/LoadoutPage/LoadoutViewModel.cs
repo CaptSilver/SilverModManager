@@ -13,6 +13,7 @@ using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
@@ -62,6 +63,10 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
     public ISortingSelectionViewModel RulesSectionViewModel { get; }
 
     public bool IsCollection { get; }
+
+    public IDropTarget? DropTarget { get; }
+
+    public IErrorPresenter? ErrorPresenter { get; }
     private BindableReactiveProperty<string> CollectionName { get; }
     IReadOnlyBindableReactiveProperty<string> ILoadoutViewModel.CollectionName => CollectionName;
     private BindableReactiveProperty<bool> IsCollectionUploaded { get; }
@@ -131,6 +136,8 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         {
             var collectionGroup = LoadoutItem.Load(_connection.Db, collectionGroupId.Value);
             IsCollection = true;
+            DropTarget = CollectionDropTarget.For(serviceProvider, collectionGroupId.Value);
+            ErrorPresenter = serviceProvider.GetRequiredService<IErrorPresenter>();
             TabTitle = collectionGroup.Name;
             TabIcon = IconValues.CollectionsOutline;
 
