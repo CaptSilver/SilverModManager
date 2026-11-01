@@ -961,6 +961,12 @@ After asking design, we're choosing to simply open the mod page for now.
             .Where(path => path.FileExists)
             .ToArray();
 
+        await AddFilesToLibrary(paths, cancellationToken);
+    }
+
+    /// <summary>Adds the files to the library for this loadout's game.</summary>
+    internal async ValueTask AddFilesToLibrary(AbsolutePath[] paths, CancellationToken cancellationToken)
+    {
         await Parallel.ForAsync(
             fromInclusive: 0,
             toExclusive: paths.Length,
