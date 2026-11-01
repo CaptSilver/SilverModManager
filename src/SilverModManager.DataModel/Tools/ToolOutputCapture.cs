@@ -19,8 +19,8 @@ namespace SilverModManager.DataModel;
 public readonly record struct ToolOutputCaptureResult(LoadoutItemGroupId Group, int FileCount);
 
 /// <summary>The file rows of a loadout's Overrides group at one moment, by path.</summary>
-/// <param name="Files">Each file's row and content hash.</param>
-public sealed record OverridesSnapshot(IReadOnlyDictionary<GamePath, (EntityId Row, Hash Hash)> Files);
+/// <param name="Files">Each file's row and content identity.</param>
+public sealed record OverridesSnapshot(IReadOnlyDictionary<GamePath, (EntityId Row, FileIdentity Identity)> Files);
 
 /// <summary>
 /// Turns what a tool wrote into a group of the loadout. A tool's output exists to replace files the mods ship
@@ -98,11 +98,11 @@ public class ToolOutputCapture(IConnection connection, IFileStore fileStore)
     /// <summary>The file rows of the loadout's Overrides group as of the connection's latest database.</summary>
     public OverridesSnapshot SnapshotOverrides(Loadout.ReadOnly loadout)
     {
-        var files = new Dictionary<GamePath, (EntityId, Hash)>();
+        var files = new Dictionary<GamePath, (EntityId, FileIdentity)>();
         foreach (var overrides in LoadoutOverridesGroup.FindByOverridesFor(connection.Db, loadout.Id))
         {
             foreach (var file in overrides.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile())
-                files[file.AsLoadoutItemWithTargetPath().TargetPath] = (file.Id, file.Hash);
+                files[file.AsLoadoutItemWithTargetPath().TargetPath] = (file.Id, FileIdentity.XxHash3(file.Hash));
         }
 
         return new OverridesSnapshot(files);
@@ -133,7 +133,7 @@ public class ToolOutputCapture(IConnection connection, IFileStore fileStore)
     {
         var matcher = IncludeAllExcept(ignored);
         var delta = after.Files
-            .Where(f => before.Files.TryGetValue(f.Key, out var old) is false || old.Hash != f.Value.Hash)
+            .Where(f => before.Files.TryGetValue(f.Key, out var old) is false || old.Identity.Equals(f.Value.Identity) is false)
             .Where(f => matcher.Match(f.Key.Path.ToString()).HasMatches)
             .ToList();
         if (delta.Count == 0) return 0;
