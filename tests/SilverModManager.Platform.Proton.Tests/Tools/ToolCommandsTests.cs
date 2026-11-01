@@ -41,7 +41,7 @@ public class ToolCommandsTests(ITestOutputHelper helper) : AToolFlowTest<ToolCom
 
     private ToolCommands Commands(params ToolDefinition[] definitions)
     {
-        var runner = new ToolPipelineRunner(_manager, [Lod]);
+        var runner = new ToolPipelineRunner(_manager, [Lod], [TexGen, DynDolod]);
         return new ToolCommands(new ToolInstaller(Connection, new KnownToolDetector(definitions)), _manager, runner, Substitute.For<IJobMonitor>(), NullLogger<ToolCommands>.Instance);
     }
 
@@ -232,5 +232,19 @@ public class ToolCommandsTests(ITestOutputHelper helper) : AToolFlowTest<ToolCom
 
         exit.Should().Be(1);
         _out.All.Should().Contain("dyndolod");
+    }
+
+    [Fact]
+    public async Task RunPipelineForAGameItDoesNotApplyToIsRefusedAsUnknown()
+    {
+        var loadout = await CreateLoadout();
+        var runner = new ToolPipelineRunner(_manager, [Lod], [TexGen with { AppliesTo = _ => false }, DynDolod]);
+        var commands = new ToolCommands(new ToolInstaller(Connection, new KnownToolDetector([])), _manager, runner, Substitute.For<IJobMonitor>(), NullLogger<ToolCommands>.Instance);
+
+        var exit = await commands.RunPipelineAsync(_out, loadout, "LOD generation", CancellationToken.None);
+
+        exit.Should().Be(1);
+        _out.All.Should().Contain("No pipeline called 'LOD generation'");
+        await _manager.DidNotReceive().RunToolWithOutcome(Arg.Any<ITool>(), Arg.Any<Loadout.ReadOnly>(), Arg.Any<IJobMonitor>(), Arg.Any<CancellationToken>());
     }
 }

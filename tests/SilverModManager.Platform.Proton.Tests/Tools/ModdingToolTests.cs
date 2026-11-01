@@ -509,6 +509,17 @@ public class ModdingToolTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task MissingPrerequisiteIds_GivesTheIdsThePrefixSetupInstalls()
+    {
+        UsePrefix();
+        _inspector.State = id => id == Vc ? PrefixComponentState.Missing : PrefixComponentState.Installed;
+        var loadout = await CreateLoadout();
+
+        Tool(XEdit(new ToolPrefixRequirements { Components = [Vc] })).MissingPrerequisiteIds(loadout.InstallationInstance)
+            .Should().Equal(Vc);
+    }
+
+    [Fact]
     public async Task MissingPrerequisites_IsEmptyWhenNothingIsRequiredOrTheComponentIsThere()
     {
         UsePrefix();

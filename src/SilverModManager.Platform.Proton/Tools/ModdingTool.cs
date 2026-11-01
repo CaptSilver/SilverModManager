@@ -59,6 +59,10 @@ public sealed class ModdingTool(
     public IReadOnlyList<string> MissingPrerequisites(GameInstallation installation)
         => prefixSetup.MissingComponents(installation, definition.Prefix);
 
+    /// <summary>The ids behind <see cref="MissingPrerequisites"/>, for the prefix setup to install.</summary>
+    public IReadOnlyList<PrefixComponentId> MissingPrerequisiteIds(GameInstallation installation)
+        => prefixSetup.MissingComponentIds(installation, definition.Prefix);
+
     public IEnumerable<GameId> GameIds => [gameId];
 
     public string Name => definition.DisplayName;

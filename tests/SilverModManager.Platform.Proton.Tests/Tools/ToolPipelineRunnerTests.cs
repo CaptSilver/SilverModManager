@@ -44,7 +44,7 @@ public class ToolPipelineRunnerTests(ITestOutputHelper helper) : AToolFlowTest<T
         Installed(Tool(DynDolod), Tool(TexGen));
         var lines = new List<string>();
 
-        await new ToolPipelineRunner(_manager, [Lod]).Run(Lod, loadout, _monitor, lines.Add, CancellationToken.None);
+        await new ToolPipelineRunner(_manager, [Lod], [TexGen, DynDolod]).Run(Lod, loadout, _monitor, lines.Add, CancellationToken.None);
 
         _ran.Should().Equal("TexGen", "DynDOLOD");
         lines.Should().Equal("TexGen finished (exit code 0).", "DynDOLOD finished (exit code 0).");
@@ -58,7 +58,7 @@ public class ToolPipelineRunnerTests(ITestOutputHelper helper) : AToolFlowTest<T
         _manager.RunToolWithOutcome(Arg.Is<ITool>(t => t.Name == "TexGen"), Arg.Any<Loadout.ReadOnly>(), Arg.Any<IJobMonitor>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<ToolRunOutcome>(new InvalidOperationException("TexGen exited with code 3; see the process log.")));
 
-        var act = () => new ToolPipelineRunner(_manager, [Lod]).Run(Lod, loadout, _monitor, _ => { }, CancellationToken.None);
+        var act = () => new ToolPipelineRunner(_manager, [Lod], [TexGen, DynDolod]).Run(Lod, loadout, _monitor, _ => { }, CancellationToken.None);
 
         (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("TexGen exited with code 3");
         await _manager.DidNotReceive().RunToolWithOutcome(Arg.Is<ITool>(t => t.Name == "DynDOLOD"), Arg.Any<Loadout.ReadOnly>(), Arg.Any<IJobMonitor>(), Arg.Any<CancellationToken>());
@@ -70,7 +70,7 @@ public class ToolPipelineRunnerTests(ITestOutputHelper helper) : AToolFlowTest<T
         var loadout = await CreateLoadout();
         Installed(Tool(TexGen));
 
-        var act = () => new ToolPipelineRunner(_manager, [Lod]).Run(Lod, loadout, _monitor, _ => { }, CancellationToken.None);
+        var act = () => new ToolPipelineRunner(_manager, [Lod], [TexGen, DynDolod]).Run(Lod, loadout, _monitor, _ => { }, CancellationToken.None);
 
         (await act.Should().ThrowAsync<ToolRefusedException>()).Which.Message.Should().Contain("dyndolod").And.Contain("LOD generation");
         _ran.Should().BeEmpty();
@@ -85,19 +85,39 @@ public class ToolPipelineRunnerTests(ITestOutputHelper helper) : AToolFlowTest<T
         _manager.RunToolWithOutcome(Arg.Is<ITool>(t => t.Name == "TexGen"), Arg.Any<Loadout.ReadOnly>(), Arg.Any<IJobMonitor>(), Arg.Any<CancellationToken>())
             .Returns(new ToolRunOutcome(second, null, 0, 0));
 
-        var result = await new ToolPipelineRunner(_manager, [Lod]).Run(Lod, first, _monitor, _ => { }, CancellationToken.None);
+        var result = await new ToolPipelineRunner(_manager, [Lod], [TexGen, DynDolod]).Run(Lod, first, _monitor, _ => { }, CancellationToken.None);
 
         await _manager.Received(1).RunToolWithOutcome(Arg.Is<ITool>(t => t.Name == "DynDOLOD"), second, Arg.Any<IJobMonitor>(), Arg.Any<CancellationToken>());
         result.LoadoutId.Should().Be(second.LoadoutId);
     }
 
     [Fact]
-    public void FindsAPipelineByNameIgnoringCase()
+    public async Task FindsAPipelineByNameIgnoringCase()
     {
-        var runner = new ToolPipelineRunner(_manager, [Lod]);
+        var game = await CreateLoadout();
+        var runner = new ToolPipelineRunner(_manager, [Lod], [TexGen, DynDolod]);
 
-        runner.Find("lod GENERATION").Should().Be(Lod);
-        runner.Find("nothing").Should().BeNull();
-        runner.Pipelines.Should().Equal(Lod);
+        runner.Find("lod GENERATION", game).Should().Be(Lod);
+        runner.Find("nothing", game).Should().BeNull();
+        runner.PipelinesFor(game).Should().Equal(Lod);
+    }
+
+    [Fact]
+    public async Task APipelineIsOfferedOnlyForAGameEveryStepAppliesTo()
+    {
+        var game = await CreateLoadout();
+        var elsewhere = Catalogue("dyndolod", "DynDOLOD", "DynDOLOD.exe") with { AppliesTo = _ => false };
+        var runner = new ToolPipelineRunner(_manager, [Lod], [TexGen, elsewhere]);
+
+        runner.PipelinesFor(game).Should().BeEmpty();
+        runner.Find("LOD generation", game).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task APipelineWhoseStepHasNoDefinitionIsNotOffered()
+    {
+        var game = await CreateLoadout();
+
+        new ToolPipelineRunner(_manager, [Lod], [TexGen]).PipelinesFor(game).Should().BeEmpty();
     }
 }

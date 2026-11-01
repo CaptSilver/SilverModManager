@@ -66,6 +66,9 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
                 {
                     Show(RunningText, state.Item2);
                     CancelRunButton.IsVisible = state.Item1;
+                    // One run at a time: the run buttons wait until the one in progress ends or is cancelled.
+                    var idle = state.Item1 is false;
+                    ToolsPanel.IsEnabled = CatalogueToolsPanel.IsEnabled = PipelinesPanel.IsEnabled = idle;
                 }))
                 .AddTo(disposables);
 
@@ -141,7 +144,15 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
             var card = new StackPanel { Spacing = 4 };
             card.Children.Add(header);
             if (row.PrerequisiteMessage is { } needs)
-                card.Children.Add(new TextBlock { Text = needs, TextWrapping = Avalonia.Media.TextWrapping.Wrap });
+            {
+                var install = new StandardButton { Text = "Install", Type = StandardButton.Types.Secondary };
+                install.Click += (_, _) => ViewModel?.InstallPrerequisitesCommand.Execute(row);
+                var message = new DockPanel();
+                DockPanel.SetDock(install, Dock.Right);
+                message.Children.Add(install);
+                message.Children.Add(new TextBlock { Text = needs, TextWrapping = Avalonia.Media.TextWrapping.Wrap, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+                card.Children.Add(message);
+            }
             if (row.CanQuickAutoClean && plugins.Count > 0) card.Children.Add(QuickAutoCleanPicker(row, plugins));
             CatalogueToolsPanel.Children.Add(card);
         }

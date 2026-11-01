@@ -103,6 +103,11 @@ public interface IToolsPageViewModel : IPageViewModelInterface
     ReactiveCommand<bool> AddToolCommand { get; }
 
     /// <summary>
+    /// Opens the prefix setup for the components a tool is missing.
+    /// </summary>
+    ReactiveCommand<CatalogueToolRow> InstallPrerequisitesCommand { get; }
+
+    /// <summary>
     /// Stops the tool or pipeline that is running.
     /// </summary>
     ReactiveCommand<Unit> CancelRunCommand { get; }
@@ -137,12 +142,13 @@ public sealed record UserToolDraft(string Name, string Exe, string Arguments, To
 /// </summary>
 /// <param name="Row">The saved row, for removing the tool; null when it cannot be matched to one.</param>
 /// <param name="MissingPrerequisites">Display names of the prefix components the tool needs and lacks.</param>
-public sealed record CatalogueToolRow(string Name, ModdingTool Tool, UserTool.ReadOnly? Row, IReadOnlyList<string> MissingPrerequisites, bool CanQuickAutoClean)
+/// <param name="MissingComponentIds">The same components by id, for the prefix setup that installs them.</param>
+public sealed record CatalogueToolRow(string Name, ModdingTool Tool, UserTool.ReadOnly? Row, IReadOnlyList<string> MissingPrerequisites, IReadOnlyList<PrefixComponentId> MissingComponentIds, bool CanQuickAutoClean)
 {
     /// <summary>What to tell the user about the missing components, or null when the tool is ready.</summary>
     public string? PrerequisiteMessage => MissingPrerequisites.Count == 0
         ? null
-        : $"Needs {string.Join(" and ", MissingPrerequisites)} in the game's Wine prefix. Set it up in the prefix before running.";
+        : $"Needs {string.Join(" and ", MissingPrerequisites)} in the game's Wine prefix. Install it before running.";
 
     internal static CatalogueToolRow For(ModdingTool tool, GameInstallation installation, IEnumerable<UserTool.ReadOnly> rows)
     {
@@ -156,7 +162,7 @@ public sealed record CatalogueToolRow(string Name, ModdingTool Tool, UserTool.Re
             }
         }
 
-        return new CatalogueToolRow(tool.Name, tool, row, tool.MissingPrerequisites(installation), tool.CanQuickAutoClean);
+        return new CatalogueToolRow(tool.Name, tool, row, tool.MissingPrerequisites(installation), tool.MissingPrerequisiteIds(installation), tool.CanQuickAutoClean);
     }
 }
 

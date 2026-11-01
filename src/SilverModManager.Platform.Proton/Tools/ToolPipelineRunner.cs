@@ -1,5 +1,7 @@
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
 
@@ -9,14 +11,22 @@ namespace SilverModManager.Platform.Proton.Tools;
 /// Runs a <see cref="ToolPipeline"/>: each step is the catalogue tool the user has added under that id, run through
 /// the tool manager like any other tool, and the first failure ends the pipeline.
 /// </summary>
-public sealed class ToolPipelineRunner(IToolManager tools, IEnumerable<ToolPipeline> pipelines)
+public sealed class ToolPipelineRunner(IToolManager tools, IEnumerable<ToolPipeline> pipelines, IEnumerable<ToolDefinition> definitions)
 {
     private readonly ToolPipeline[] _pipelines = pipelines.ToArray();
+    private readonly ToolDefinition[] _definitions = definitions.ToArray();
 
-    public IReadOnlyList<ToolPipeline> Pipelines => _pipelines;
+    /// <summary>
+    /// The pipelines worth offering for a loadout's game: every step is a catalogue tool that applies to it. A pipeline whose
+    /// tools can never be added to the game is left out.
+    /// </summary>
+    public IReadOnlyList<ToolPipeline> PipelinesFor(Loadout.ReadOnly loadout)
+        => loadout.InstallationInstance.Game is IGame game
+            ? _pipelines.Where(pipeline => pipeline.Steps.All(step => _definitions.Any(d => d.Id == step && d.AppliesTo(game)))).ToArray()
+            : [];
 
-    public ToolPipeline? Find(string name)
-        => _pipelines.FirstOrDefault(p => string.Equals(p.Name, name.Trim(), StringComparison.OrdinalIgnoreCase));
+    public ToolPipeline? Find(string name, Loadout.ReadOnly loadout)
+        => PipelinesFor(loadout).FirstOrDefault(p => string.Equals(p.Name, name.Trim(), StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// Runs the steps in order. <paramref name="report"/> gets each step's finished line as it ends. Returns the

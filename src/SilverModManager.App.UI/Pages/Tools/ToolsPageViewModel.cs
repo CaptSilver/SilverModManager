@@ -5,6 +5,7 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Pages.Diagnostics.PrefixSetup;
 using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.Platform.Proton.UserTools;
 using SilverModManager.Sdk.Loadouts;
@@ -35,8 +36,10 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
     private readonly IJobMonitor _monitor;
     private readonly ToolInstaller _installer;
     private readonly ToolPipelineRunner _pipelineRunner;
+    private readonly IPrefixSetupLauncher _prefixSetup;
     private readonly object _runLock = new();
     private CancellationTokenSource? _runCancellation;
+    private string? _runningName;
     private readonly BehaviorSubject<bool> _canRunWindowsProgram = new(false);
 
     [Reactive] public partial LoadoutId LoadoutId { get; set; }
@@ -58,6 +61,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
     public R3.ReactiveCommand<QuickAutoCleanRequest> QuickAutoCleanCommand { get; }
     public R3.ReactiveCommand<ToolPipeline> RunPipelineCommand { get; }
     public R3.ReactiveCommand<bool> AddToolCommand { get; }
+    public R3.ReactiveCommand<CatalogueToolRow> InstallPrerequisitesCommand { get; }
     public R3.ReactiveCommand<Unit> CancelRunCommand { get; }
 
     public ToolsPageViewModel(
@@ -71,7 +75,8 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         IAvaloniaInterop avaloniaInterop,
         IJobMonitor monitor,
         ToolInstaller installer,
-        ToolPipelineRunner pipelineRunner) : base(windowManager)
+        ToolPipelineRunner pipelineRunner,
+        IPrefixSetupLauncher prefixSetup) : base(windowManager)
     {
         _logger = logger;
         _conn = conn;
@@ -83,6 +88,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         _monitor = monitor;
         _installer = installer;
         _pipelineRunner = pipelineRunner;
+        _prefixSetup = prefixSetup;
 
         TabIcon = IconValues.Wrench;
         TabTitle = "Tools";
@@ -92,6 +98,8 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
             await ReportFailure(request.Tool.Name, () => RunQuickAutoCleanAsync(request.Tool, request.Plugin, token)));
         RunPipelineCommand = new R3.ReactiveCommand<ToolPipeline>(executeAsync: async (pipeline, token) => await RunPipelineReportingAsync(pipeline, token));
         AddToolCommand = new R3.ReactiveCommand<bool>(executeAsync: async (folder, token) => await AddToolFromPickerAsync(folder));
+        InstallPrerequisitesCommand = new R3.ReactiveCommand<CatalogueToolRow>(executeAsync: async (row, token) =>
+            await ReportFailure(row.Name, () => InstallPrerequisitesAsync(row)));
         CancelRunCommand = new R3.ReactiveCommand<Unit>(_ => CancelRun());
         RunWindowsProgramCommand = _canRunWindowsProgram.ToReactiveCommand<Unit>(
             async (_, token) => await ReportFailure("The program", () => RunWindowsProgramAsync(token)),
@@ -126,7 +134,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
             .Select(tool => CatalogueToolRow.For(tool, installation, rows))
             .ToArray();
         Plugins = installation.Game is IToolPluginSource source ? source.PluginNames(loadout) : [];
-        Pipelines = _pipelineRunner.Pipelines;
+        Pipelines = _pipelineRunner.PipelinesFor(loadout);
 
         var canRun = _toolRunner.CanRun(installation, out var diagnostic);
         var prefix = _prefixResolver.Resolve(installation);
@@ -181,11 +189,28 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         lock (_runLock) _runCancellation?.Cancel();
     }
 
+    // One run at a time: the page has a single Cancel button and a single running line, and two runs would both
+    // apply and ingest the same loadout, each crediting the other's output to itself.
+    private void EnsureIdle()
+    {
+        lock (_runLock)
+        {
+            if (_runCancellation is not null)
+                throw new ToolRefusedException($"{_runningName} is still running. Wait for it to finish, or cancel it, before starting another.");
+        }
+    }
+
     // Holds the run's cancellation source for the Cancel button and keeps the "running for n min" line fresh.
     private async Task Tracked(string name, Func<CancellationToken, Task> run, CancellationToken token)
     {
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
-        lock (_runLock) _runCancellation = cancellation;
+        lock (_runLock)
+        {
+            EnsureIdle();
+            _runCancellation = cancellation;
+            _runningName = name;
+        }
+
         var started = Stopwatch.StartNew();
         IsRunning = true;
         RunningMessage = ToolRunMessage.Running(name, started.Elapsed);
@@ -204,7 +229,11 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         {
             ticker.Dispose();
             try { await ticking; } catch (OperationCanceledException) { }
-            lock (_runLock) _runCancellation = null;
+            lock (_runLock)
+            {
+                _runCancellation = null;
+                _runningName = null;
+            }
             IsRunning = false;
             RunningMessage = null;
         }
@@ -212,6 +241,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
 
     internal async Task RunToolAsync(ITool tool, CancellationToken token)
     {
+        EnsureIdle();
         LastRunMessage = null;
         var loadout = LoadLoadout();
         await Tracked(tool.Name, async runToken =>
@@ -229,6 +259,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
 
     internal async Task RunPipelineAsync(ToolPipeline pipeline, CancellationToken token)
     {
+        EnsureIdle();
         LastRunMessage = null;
         var loadout = LoadLoadout();
         var lines = new List<string>();
@@ -243,6 +274,13 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
                 if (lines.Count > 0) LastRunMessage = string.Join('\n', lines);
             }
         }, token);
+    }
+
+    /// <summary>Opens the prefix setup for what a tool is missing, then checks the tool again.</summary>
+    internal async Task InstallPrerequisitesAsync(CatalogueToolRow row)
+    {
+        await _prefixSetup.ShowAsync(LoadoutId, row.MissingComponentIds);
+        Refresh();
     }
 
     /// <summary>Asks for a folder (or a program) and adds the tools in it to this game.</summary>
@@ -265,6 +303,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
 
     internal async Task RunWindowsProgramAsync(CancellationToken token)
     {
+        EnsureIdle();
         var loadout = LoadLoadout();
         if (!_toolRunner.CanRun(loadout.InstallationInstance, out var diagnostic))
             throw new WindowsProgramRefusedException($"Cannot run a Windows program for {loadout.InstallationInstance.Game.DisplayName}: {diagnostic}");

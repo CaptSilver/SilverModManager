@@ -11,6 +11,7 @@ using SilverModManager.DataModel;
 using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.Platform.Proton.UserTools;
+using SilverModManager.App.UI.Pages.Diagnostics.PrefixSetup;
 using SilverModManager.App.UI.Pages.Tools;
 using SilverModManager.App.UI.Windows;
 using NexusMods.Paths;
@@ -60,6 +61,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
     }
 
     private IPrefixInspector _inspector = Substitute.For<IPrefixInspector>();
+    private readonly IPrefixSetupLauncher _prefixSetup = Substitute.For<IPrefixSetupLauncher>();
 
     private ModdingToolFactory CreateToolFactory(FakeToolRunner toolRunner)
         => new(toolRunner, Substitute.For<IProcessRunner>(), new ToolArgumentResolver(), new FakePrefixResolver(), new ToolOutputCapture(Connection, Substitute.For<IFileStore>()), new ToolPrefixSetup(toolRunner, new FakePrefixResolver(), _inspector));
@@ -73,7 +75,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         Arguments = ArgumentTemplate.Empty,
     };
 
-    private ToolsPageViewModel CreateViewModel(FakeToolManager toolManager, FakeToolRunner toolRunner, FakeFilePicker picker, ToolPipeline[]? pipelines = null, ToolDefinition[]? definitions = null)
+    private ToolsPageViewModel CreateViewModel(FakeToolManager toolManager, FakeToolRunner toolRunner, FakeFilePicker picker, ToolPipeline[]? pipelines = null, ToolDefinition[]? definitions = null, ToolDefinition[]? pipelineDefinitions = null)
     {
         return new ToolsPageViewModel(
             Provider.GetRequiredService<IWindowManager>(),
@@ -86,7 +88,8 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
             picker,
             Provider.GetRequiredService<IJobMonitor>(),
             new ToolInstaller(Connection, new KnownToolDetector(definitions ?? [])),
-            new ToolPipelineRunner(toolManager, pipelines ?? [])
+            new ToolPipelineRunner(toolManager, pipelines ?? [], pipelineDefinitions ?? []),
+            _prefixSetup
         );
     }
 
@@ -339,7 +342,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
 
         var row = vm.CatalogueTools.Should().ContainSingle().Subject;
         row.MissingPrerequisites.Should().Equal(vc.DisplayName);
-        row.PrerequisiteMessage.Should().Be($"Needs {vc.DisplayName} in the game's Wine prefix. Set it up in the prefix before running.");
+        row.PrerequisiteMessage.Should().Be($"Needs {vc.DisplayName} in the game's Wine prefix. Install it before running.");
     }
 
     [Fact]
@@ -483,7 +486,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         var lod = new ToolPipeline("LOD generation", [new ToolId("texgen"), new ToolId("dyndolod")]);
         var tools = new ITool[] { CatalogueTool(runner, Catalogue("texgen", "TexGen", "TexGen.exe")), CatalogueTool(runner, Catalogue("dyndolod", "DynDOLOD", "DynDOLOD.exe")) };
         var manager = new FakeToolManager { Tools = tools, Report = _ => (null, 0, 0) };
-        var vm = CreateViewModel(manager, runner, new FakeFilePicker(), [lod]);
+        var vm = CreateViewModel(manager, runner, new FakeFilePicker(), [lod], pipelineDefinitions: [Catalogue("texgen", "TexGen", "TexGen.exe"), Catalogue("dyndolod", "DynDOLOD", "DynDOLOD.exe")]);
         vm.LoadoutId = loadout.LoadoutId;
 
         vm.Pipelines.Should().Equal(lod);
@@ -494,12 +497,96 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
     }
 
     [Fact]
+    public async Task APipelineIsNotListedForAGameItsToolsDoNotApplyTo()
+    {
+        var loadout = await CreateLoadout();
+        var lod = new ToolPipeline("LOD generation", [new ToolId("texgen")]);
+        var elsewhere = Catalogue("texgen", "TexGen", "TexGen.exe") with { AppliesTo = _ => false };
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker(), [lod], pipelineDefinitions: [elsewhere]);
+
+        vm.LoadoutId = loadout.LoadoutId;
+
+        vm.Pipelines.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ASecondRunWhileOneIsGoingIsRefusedAndCancelStillStopsTheFirst()
+    {
+        var loadout = await CreateLoadout();
+        var first = new StubTool("DynDOLOD", loadout.Game.GameId);
+        var second = new StubTool("TexGen", loadout.Game.GameId);
+        var manager = new FakeToolManager { Tools = [first, second], Gate = new TaskCompletionSource().Task };
+        var vm = CreateViewModel(manager, new FakeToolRunner(), new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+        var run = vm.RunToolReportingAsync(first, TestContext.Current.CancellationToken).AsTask();
+
+        await vm.RunToolReportingAsync(second, TestContext.Current.CancellationToken);
+
+        manager.Ran.Should().Equal(first);
+        vm.IsRunning.Should().BeTrue();
+        vm.LastRunMessage.Should().Contain("DynDOLOD is still running");
+        vm.CancelRun();
+        await run;
+        manager.Tokens.Single().IsCancellationRequested.Should().BeTrue();
+        vm.IsRunning.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task APipelineOrACleanIsRefusedWhileAToolRuns()
+    {
+        var loadout = await CreateLoadout();
+        var runner = new FakeToolRunner();
+        var xedit = Catalogue("xedit", "xEdit", "xEdit.exe") with
+        {
+            QuickAutoClean = new ToolVariant("Quick Auto Clean", ArgumentTemplate.Of("{Plugin}"), ExitCodePolicy.ZeroIsSuccess),
+        };
+        var running = new StubTool("DynDOLOD", loadout.Game.GameId);
+        var lod = new ToolPipeline("LOD generation", [new ToolId("xedit")]);
+        var tool = CatalogueTool(runner, xedit);
+        var manager = new FakeToolManager { Tools = [running, tool], Gate = new TaskCompletionSource().Task };
+        var vm = CreateViewModel(manager, runner, new FakeFilePicker(), [lod], pipelineDefinitions: [xedit]);
+        vm.LoadoutId = loadout.LoadoutId;
+        var run = vm.RunToolReportingAsync(running, TestContext.Current.CancellationToken).AsTask();
+
+        await vm.RunPipelineReportingAsync(lod, TestContext.Current.CancellationToken);
+        await ((Func<Task>)(() => vm.RunQuickAutoCleanAsync(vm.CatalogueTools.Single(), "Update.esm", TestContext.Current.CancellationToken))).Should().ThrowAsync<SilverModManager.Sdk.Errors.UserFacingException>();
+
+        manager.Ran.Should().Equal(running);
+        vm.CancelRun();
+        await run;
+    }
+
+    [Fact]
+    public async Task InstallPrerequisitesSetsUpTheMissingComponentsThenChecksTheRowAgain()
+    {
+        var loadout = await CreateLoadout();
+        var vc = SilverModManager.Sdk.Games.PrefixComponents.VisualCppRuntime;
+        var state = PrefixComponentState.Missing;
+        _inspector.Inspect(Arg.Any<ResolvedPrefix>(), Arg.Any<IReadOnlyList<PrefixComponentId>>())
+            .Returns(call => call.ArgAt<IReadOnlyList<PrefixComponentId>>(1).Select(id => new PrefixComponentStatus(id, state, "test")).ToArray());
+        _prefixSetup.ShowAsync(loadout.LoadoutId, Arg.Any<IReadOnlyList<PrefixComponentId>>()).Returns(_ =>
+        {
+            state = PrefixComponentState.Installed;
+            return Task.CompletedTask;
+        });
+        var runner = new FakeToolRunner();
+        var needy = Catalogue("xedit", "xEdit", "xEdit.exe") with { Prefix = new ToolPrefixRequirements { Components = [vc.Id] } };
+        var vm = CreateViewModel(new FakeToolManager { Tools = [CatalogueTool(runner, needy)] }, runner, new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+
+        await vm.InstallPrerequisitesAsync(vm.CatalogueTools.Single());
+
+        await _prefixSetup.Received(1).ShowAsync(loadout.LoadoutId, Arg.Is<IReadOnlyList<PrefixComponentId>>(ids => ids.SequenceEqual(new[] { vc.Id })));
+        vm.CatalogueTools.Single().PrerequisiteMessage.Should().BeNull();
+    }
+
+    [Fact]
     public async Task APipelineWithAMissingToolShowsTheRefusalAndRunsNothing()
     {
         var loadout = await CreateLoadout();
         var lod = new ToolPipeline("LOD generation", [new ToolId("texgen")]);
         var manager = new FakeToolManager();
-        var vm = CreateViewModel(manager, new FakeToolRunner(), new FakeFilePicker(), [lod]);
+        var vm = CreateViewModel(manager, new FakeToolRunner(), new FakeFilePicker(), [lod], pipelineDefinitions: [Catalogue("texgen", "TexGen", "TexGen.exe")]);
         vm.LoadoutId = loadout.LoadoutId;
 
         await vm.RunPipelineReportingAsync(lod, TestContext.Current.CancellationToken);

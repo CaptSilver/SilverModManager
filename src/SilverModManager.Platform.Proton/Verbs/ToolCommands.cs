@@ -54,8 +54,8 @@ public sealed class ToolCommands(ToolInstaller installer, IToolManager tools, To
     public Task<int> RunPipelineAsync(IRenderer renderer, Loadout.ReadOnly loadout, string pipelineName, CancellationToken token)
         => Guarded(renderer, "Running the pipeline", async () =>
         {
-            var pipeline = pipelines.Find(pipelineName)
-                           ?? throw new ToolRefusedException($"No pipeline called '{pipelineName}'. Pipelines: {string.Join(", ", pipelines.Pipelines.Select(p => p.Name))}.");
+            var pipeline = pipelines.Find(pipelineName, loadout)
+                           ?? throw new ToolRefusedException($"No pipeline called '{pipelineName}'. Pipelines: {string.Join(", ", pipelines.PipelinesFor(loadout).Select(p => p.Name))}.");
 
             var lines = new List<string>();
             try
