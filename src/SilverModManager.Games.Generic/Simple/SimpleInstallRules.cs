@@ -9,6 +9,12 @@ namespace SilverModManager.Games.Generic.Simple;
 public sealed record SimpleInstallRules
 {
     /// <summary>
+    /// Archives the game turns away, tried before every other rule. For mods that only work with a program the app does
+    /// not run, so installing their files would leave the player with half a mod and no hint why.
+    /// </summary>
+    public IReadOnlyList<SimpleRefusalRule> Refusals { get; init; } = [];
+
+    /// <summary>
     /// Archives with a marker file, tried first: the folder holding the marker is the mod, installed to the rule's
     /// destination. Needed where the folder shape alone would send the same files somewhere else.
     /// </summary>
@@ -28,6 +34,22 @@ public sealed record SimpleInstallRules
     /// file in their folder and publish no layout to match against. Tried last, because it accepts every archive.
     /// </summary>
     public bool InstallAsIs { get; init; }
+
+    /// <summary>Where an <see cref="InstallAsIs"/> archive goes, below the definition's <see cref="SimpleGameDefinition.ModRoot"/>.</summary>
+    public RelativePath InstallAsIsDestination { get; init; } = RelativePath.Empty;
+}
+
+/// <summary>
+/// An archive holding a file named <see cref="FileName"/> or a folder named <see cref="FolderName"/>, at any depth and in
+/// any case, is refused with <see cref="Reason"/>, which is shown to the player as it is.
+/// </summary>
+public sealed record SimpleRefusalRule
+{
+    public string? FileName { get; init; }
+
+    public string? FolderName { get; init; }
+
+    public required string Reason { get; init; }
 }
 
 /// <summary>A folder of a game that archives can be laid out for.</summary>

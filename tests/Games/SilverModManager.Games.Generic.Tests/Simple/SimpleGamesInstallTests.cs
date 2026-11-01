@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.Generic.Simple;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.StandardGameLocators.TestHelpers;
@@ -90,6 +91,30 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
         ("Simple.OxygenNotIncluded", ["Mod/data.bin"], ["{Game}/Mods/Mod/data.bin"]),
         ("Simple.PathfinderKingmaker", ["Mod/data.bin"], ["{Game}/Mods/Mod/data.bin"]),
         ("Simple.PathfinderWrathOfTheRighteous", ["Mod/data.bin"], ["{Game}/Mods/Mod/data.bin"]),
+        // A folder of the game's own marks a root mod, wrapper folders above it are dropped; anything else goes in Override.
+        ("Simple.KnightsOfTheOldRepublic", ["Override/a.tga", "readme.txt"], ["{Game}/Override/a.tga"]),
+        ("Simple.KnightsOfTheOldRepublic", ["Wrap/StreamMusic/x.wav", "Wrap/modules/m.rim"], ["{Game}/StreamMusic/x.wav", "{Game}/modules/m.rim"]),
+        ("Simple.KnightsOfTheOldRepublic", ["a.tga", "b.2da"], ["{Game}/override/a.tga", "{Game}/override/b.2da"]),
+        ("Simple.KnightsOfTheOldRepublic", ["Mod/a.tga"], ["{Game}/override/Mod/a.tga"]),
+        ("Simple.KnightsOfTheOldRepublic2", ["Override/a.tga", "readme.txt"], ["{Game}/Override/a.tga"]),
+        ("Simple.KnightsOfTheOldRepublic2", ["Wrap/StreamMusic/x.wav", "Wrap/modules/m.rim"], ["{Game}/StreamMusic/x.wav", "{Game}/modules/m.rim"]),
+        ("Simple.KnightsOfTheOldRepublic2", ["a.tga", "b.2da"], ["{Game}/override/a.tga", "{Game}/override/b.2da"]),
+        ("Simple.KnightsOfTheOldRepublic2", ["Mod/a.tga"], ["{Game}/override/Mod/a.tga"]),
+    ];
+
+    /// <summary>
+    /// Archives a game turns away on purpose, with the text the player reads. Each is a plain refusal, not a layout
+    /// that merely fails to match, so it must name what the mod needs.
+    /// </summary>
+    public static readonly (string GameId, string[] ArchivePaths, string MessagePart)[] Refusals =
+    [
+        // A TSLPatcher mod patches the player's files with its own program; the app only copies files.
+        ("Simple.KnightsOfTheOldRepublic", ["tslpatchdata/changes.ini", "TSLPatcher.exe"], "TSLPatcher"),
+        ("Simple.KnightsOfTheOldRepublic", ["Mod/tslpatchdata/changes.ini", "Mod/Override/a.tga"], "TSLPatcher"),
+        ("Simple.KnightsOfTheOldRepublic", ["Tools/tslpatcher.exe"], "TSLPatcher"),
+        ("Simple.KnightsOfTheOldRepublic2", ["tslpatchdata/changes.ini", "TSLPatcher.exe"], "TSLPatcher"),
+        ("Simple.KnightsOfTheOldRepublic2", ["Mod/tslpatchdata/changes.ini", "Mod/Override/a.tga"], "TSLPatcher"),
+        ("Simple.KnightsOfTheOldRepublic2", ["Tools/tslpatcher.exe"], "TSLPatcher"),
     ];
 
     /// <summary>Layouts the games with a published layout cannot use.</summary>
@@ -136,6 +161,8 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
 
     public static IEnumerable<object[]> NamedCaseData() => NamedCases.Select(row => (object[])[row.GameId, row.ArchiveFileName, row.ArchivePaths, row.Expected]);
 
+    public static IEnumerable<object[]> RefusalData() => Refusals.Select(row => (object[])[row.GameId, row.ArchivePaths, row.MessagePart]);
+
     public static IEnumerable<object[]> RefusedData() => Refused.Select(row => (object[])[row.GameId, row.ArchivePaths]);
 
     [Theory]
@@ -163,6 +190,15 @@ public class SimpleGamesInstallTests(ITestOutputHelper outputHelper)
     public async Task AWrongLayout_IsNotSupported(string gameId, string[] archivePaths)
     {
         (await Install(RowOf(gameId), archivePaths)).Should().BeNull();
+    }
+
+    [Theory]
+    [MemberData(nameof(RefusalData))]
+    public async Task AnArchiveTheGameRefuses_FailsWithAMessageForThePlayer(string gameId, string[] archivePaths, string messagePart)
+    {
+        var act = async () => await Install(RowOf(gameId), archivePaths);
+
+        (await act.Should().ThrowAsync<UserFacingException>()).Which.Message.Should().Contain(messagePart);
     }
 
     [Fact]

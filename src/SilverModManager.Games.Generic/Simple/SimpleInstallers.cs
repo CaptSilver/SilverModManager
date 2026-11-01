@@ -16,6 +16,10 @@ public static class SimpleInstallers
     {
         var installers = new List<ILibraryItemInstaller>();
 
+        // Before everything else: an archive the game turns away must not be taken by a rule that accepts any layout.
+        if (rules.Refusals.Count > 0)
+            installers.Add(new RefusingInstaller(provider, rules.Refusals));
+
         // First: a marker file says what the archive is, and its other files would otherwise match a folder target.
         foreach (var rule in rules.MarkerRules)
         {
@@ -63,7 +67,7 @@ public static class SimpleInstallers
             installers.Add(new PredicateBasedInstaller(provider)
             {
                 Root = _ => true,
-                Destination = modRoot.ToGamePath(RelativePath.Empty),
+                Destination = modRoot.ToGamePath(rules.InstallAsIsDestination),
             });
         }
 
