@@ -27,4 +27,11 @@ public interface IToolManager
     /// <returns></returns>
     public Task<Loadout.ReadOnly> RunTool(ITool tool, Loadout.ReadOnly loadout, IJobMonitor monitor,
         CancellationToken token = default);
+
+    /// <summary>
+    /// Runs a tool exactly as <see cref="RunTool"/> does and also reports what it left behind: the exit code the
+    /// tool gave, and how many files went into its output group.
+    /// </summary>
+    public Task<ToolRunOutcome> RunToolWithOutcome(ITool tool, Loadout.ReadOnly loadout, IJobMonitor monitor,
+        CancellationToken token = default);
 }

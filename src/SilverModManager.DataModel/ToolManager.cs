@@ -43,14 +43,31 @@ public class ToolManager : IToolManager
         ? output.GroupName
         : null;
 
+    private static string? OutputGroupName(ITool tool) => tool is IToolWithOutput { Output: var output }
+        ? output switch
+        {
+            ToolOutput.GameFolder gameFolder => gameFolder.GroupName,
+            ToolOutput.DeclaredFolder declared => declared.GroupName,
+            _ => null,
+        }
+        : null;
+
     private static string? OwnGroupToDisable(ITool tool) => tool is IToolWithOutput { DisableOwnOutputDuringRun: true, Output: ToolOutput.DeclaredFolder output }
         ? output.GroupName
         : null;
 
     /// <inheritdoc />
     public async Task<Loadout.ReadOnly> RunTool(
-        ITool tool, 
-        Loadout.ReadOnly loadout, 
+        ITool tool,
+        Loadout.ReadOnly loadout,
+        IJobMonitor monitor,
+        CancellationToken token = default)
+        => (await RunToolWithOutcome(tool, loadout, monitor, token)).Loadout;
+
+    /// <inheritdoc />
+    public async Task<ToolRunOutcome> RunToolWithOutcome(
+        ITool tool,
+        Loadout.ReadOnly loadout,
         IJobMonitor monitor,
         CancellationToken token = default)
     {
@@ -98,12 +115,14 @@ public class ToolManager : IToolManager
 
         // What reached Overrides during the run is the tool's output. It belongs in the tool's group, which ranks
         // above the mods; left in Overrides it would be mixed with everything else the user changed by hand.
+        var moved = 0;
         if (overridesBefore is not null && GameFolderGroup(tool) is { } groupName && tool is IToolWithOutput withOutput)
         {
             var ingested = appliedLoadout.Rebase();
-            await _outputCapture.MoveOverridesDelta(ingested, overridesBefore, _outputCapture.SnapshotOverrides(ingested), groupName, withOutput.IgnoredOutput);
+            moved = await _outputCapture.MoveOverridesDelta(ingested, overridesBefore, _outputCapture.SnapshotOverrides(ingested), groupName, withOutput.IgnoredOutput);
         }
 
-        return appliedLoadout.Rebase();
+        var summary = (tool as IToolWithRunSummary)?.LastRun;
+        return new ToolRunOutcome(appliedLoadout.Rebase(), OutputGroupName(tool), summary?.ExitCode, moved + (summary?.CapturedFiles ?? 0));
     }
 }

@@ -43,6 +43,13 @@ public class ToolGameFolderOutputTests(ITestOutputHelper helper) : ACyberpunkIso
         return manager.RunTool(tool, loadout, ServiceProvider.GetRequiredService<IJobMonitor>());
     }
 
+    private Task<ToolRunOutcome> RunForOutcome(Loadout.ReadOnly loadout, ToolOutput output, Action<Loadout.ReadOnly> body, ToolRunSummary? reported = null)
+    {
+        var tool = new WritingTool(loadout.Game.GameId, output, [], body) { LastRun = reported };
+        var manager = new ToolManager(NullLogger<ToolManager>.Instance, [tool], [], SynchronizerService, Capture);
+        return manager.RunToolWithOutcome(tool, loadout, ServiceProvider.GetRequiredService<IJobMonitor>());
+    }
+
     private Task RunGameFolder(Loadout.ReadOnly loadout, Action<Loadout.ReadOnly> body, string[]? ignored = null) =>
         Run(loadout, new ToolOutput.GameFolder(GroupName), ignored, body);
 
@@ -65,6 +72,44 @@ public class ToolGameFolderOutputTests(ITestOutputHelper helper) : ACyberpunkIso
 
     private string DiskText(Loadout.ReadOnly loadout, GamePath path) =>
         File.ReadAllText(loadout.InstallationInstance.Locations.ToAbsolutePath(path).GetFullPath());
+
+    [Fact]
+    public async Task TheOutcomeCountsTheFilesMovedIntoTheToolsGroup()
+    {
+        var loadout = await CreateLoadout();
+
+        var outcome = await RunForOutcome(loadout, new ToolOutput.GameFolder(GroupName), l => { Write(l, B, "mesh"); Write(l, C, "mesh"); },
+            new ToolRunSummary(0, CapturedFiles: 0));
+
+        outcome.OutputGroup.Should().Be(GroupName);
+        outcome.CapturedFiles.Should().Be(2);
+        outcome.ExitCode.Should().Be(0);
+        outcome.Loadout.LoadoutId.Should().Be(loadout.LoadoutId);
+    }
+
+    [Fact]
+    public async Task TheOutcomeOfAToolWithoutOutputNamesNoGroupAndCapturesNothing()
+    {
+        var loadout = await CreateLoadout();
+
+        var outcome = await RunForOutcome(loadout, ToolOutput.None, l => Write(l, B, "mesh"));
+
+        outcome.OutputGroup.Should().BeNull();
+        outcome.CapturedFiles.Should().Be(0);
+        outcome.ExitCode.Should().BeNull("the tool reports no run summary");
+    }
+
+    [Fact]
+    public async Task TheOutcomeOfADeclaredFolderToolCountsWhatTheToolCapturedItself()
+    {
+        var loadout = await CreateLoadout();
+
+        var outcome = await RunForOutcome(loadout, new ToolOutput.DeclaredFolder("Lod", new GamePath(LocationId.Game, "Data")), _ => { },
+            new ToolRunSummary(0, CapturedFiles: 7));
+
+        outcome.OutputGroup.Should().Be("Lod");
+        outcome.CapturedFiles.Should().Be(7);
+    }
 
     [Fact]
     public async Task AFileTheToolWritesEndsUpInTheNamedGroupAndNotInOverrides()
@@ -210,8 +255,10 @@ public class ToolGameFolderOutputTests(ITestOutputHelper helper) : ACyberpunkIso
         OverridesPaths(loadout).Should().Contain(B);
     }
 
-    private sealed class WritingTool(GameId game, ToolOutput output, IReadOnlyList<string> ignored, Action<Loadout.ReadOnly> body) : ITool, IToolWithOutput
+    private sealed class WritingTool(GameId game, ToolOutput output, IReadOnlyList<string> ignored, Action<Loadout.ReadOnly> body) : ITool, IToolWithOutput, IToolWithRunSummary
     {
+        public ToolRunSummary? LastRun { get; init; }
+
         public IEnumerable<GameId> GameIds => [game];
         public string Name => "Writing tool";
         public ToolOutput Output => output;

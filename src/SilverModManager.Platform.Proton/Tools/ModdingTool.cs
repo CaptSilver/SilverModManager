@@ -80,6 +80,7 @@ public sealed class ModdingTool(
 
     internal async Task Execute(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
+        LastRun = null;
         var via = installed.RunVia ?? definition.RunVia;
         AbsolutePath? runFolder = definition.Output is ToolOutput.DeclaredFolder ? CreateRunFolder(loadout.InstallationInstance, via) : null;
         var started = false;
