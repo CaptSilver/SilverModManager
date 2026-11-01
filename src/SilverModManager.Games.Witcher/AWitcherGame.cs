@@ -13,7 +13,7 @@ public abstract class AWitcherGame<TSelf>(IServiceProvider provider) : AGame<TSe
     private StoreIdentifiers? _storeIdentifiers;
 
     /// <inheritdoc />
-    public IReadOnlyDictionary<string, string> LocationNames => WitcherConstants.LocationNames;
+    public override IReadOnlyDictionary<string, string> LocationNames => WitcherConstants.LocationNames;
 
     protected abstract StoreIdentifiers CreateStoreIdentifiers();
 
