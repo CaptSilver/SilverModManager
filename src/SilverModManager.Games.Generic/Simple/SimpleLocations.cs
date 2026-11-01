@@ -10,9 +10,9 @@ namespace SilverModManager.Games.Generic.Simple;
 /// </summary>
 public static class SimpleLocations
 {
-    public static readonly LocationId Documents = LocationId.From("Simple.Documents");
-    public static readonly LocationId LocalAppData = LocationId.From("Simple.LocalAppData");
-    public static readonly LocationId RoamingAppData = LocationId.From("Simple.RoamingAppData");
+    public static readonly LocationId Documents = LocationId.From("Simple.Documents", "Documents", "the Documents folder");
+    public static readonly LocationId LocalAppData = LocationId.From("Simple.LocalAppData", "Local AppData", "the Local AppData folder");
+    public static readonly LocationId RoamingAppData = LocationId.From("Simple.RoamingAppData", "Roaming AppData", "the Roaming AppData folder");
 
     /// <summary>The location a mod root of <paramref name="root"/> is mapped to.</summary>
     public static LocationId For(ModLocationRoot root) => root switch
