@@ -3,6 +3,7 @@ namespace SilverModManager.Sdk.IO;
 /// <summary>Resolves symbolic links in paths that may not exist yet.</summary>
 public static class LinkResolution
 {
+    // Linux gives up at 40 link expansions in one lookup (ELOOP), so a longer chain cannot be a real one.
     private const int MaxLinkExpansions = 40;
 
     /// <summary>

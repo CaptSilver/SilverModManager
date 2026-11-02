@@ -12,8 +12,6 @@ namespace SilverModManager.Backend.FileExtractor.Extractors;
 /// </summary>
 internal static class ExtractedLinks
 {
-    // Linux gives up at 40 link expansions in one lookup (ELOOP), so a longer chain cannot be a real one.
-
     internal static void Sanitize(string root, string archive, ILogger logger)
     {
         if (!Directory.Exists(root)) return;
