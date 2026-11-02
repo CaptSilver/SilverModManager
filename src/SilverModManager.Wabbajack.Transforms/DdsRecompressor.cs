@@ -2,7 +2,6 @@
 using BCnEncoder.Decoder;
 using BCnEncoder.Encoder;
 using BCnEncoder.Shared;
-using BCnEncoder.Shared.ImageFiles;
 using System.Runtime.InteropServices;
 using SkiaSharp;
 
@@ -30,22 +29,21 @@ public static class DdsRecompressor
         // Check the target before the expensive decode.
         var targetFormat = ToCompressionFormat(target.Format);
 
-        var file = DdsFile.Load(input);
-        var sourceFormat = file.dx10Header.dxgiFormat == BCnEncoder.Shared.ImageFiles.DxgiFormat.DxgiFormatUnknown
-            ? file.header.ddsPixelFormat.DxgiFormat
-            : file.dx10Header.dxgiFormat;
-        var decodeFormat = ToCompressionFormat((DxgiFormat)(uint)sourceFormat);
+        using var buffer = new MemoryStream();
+        input.CopyTo(buffer);
+        var dds = buffer.GetBuffer().AsMemory(0, (int)buffer.Length);
 
-        if (file.Faces.Count is not (1 or 6))
-            throw new UnsupportedTextureFormatException($"Can't encode a DDS with {file.Faces.Count} faces");
+        var header = DdsHeader.Read(dds.Span);
+        var decodeFormat = ToDecodeFormat(header);
 
         var decoder = new BcDecoder();
-        var faces = new List<ColorRgba32[]>(file.Faces.Count);
-        foreach (var face in file.Faces)
+        var faces = new List<ColorRgba32[]>(header.FaceCount);
+        for (var face = 0; face < header.FaceCount; face++)
         {
             token.ThrowIfCancellationRequested();
-            var pixels = decoder.DecodeRaw(face.MipMaps[0].Data, (int)face.Width, (int)face.Height, decodeFormat);
-            faces.Add(Resize(pixels, (int)face.Width, (int)face.Height, target.Width, target.Height));
+            var data = dds.Slice((int)header.TopLevelOffset(face), (int)header.LevelSize(0)).ToArray();
+            var pixels = decoder.DecodeRaw(data, header.Width, header.Height, decodeFormat);
+            faces.Add(Resize(pixels, header.Width, header.Height, target.Width, target.Height));
         }
 
         var encoder = new BcEncoder
@@ -85,6 +83,11 @@ public static class DdsRecompressor
         return MemoryMarshal.Cast<byte, ColorRgba32>(resized.GetPixelSpan()).ToArray();
     }
 
+    /// <summary>The decoder for the stored pixels of a source; every layout <see cref="DdsHeader"/> accepts has one.</summary>
+    private static CompressionFormat ToDecodeFormat(DdsHeader header) => header.Format == DxgiFormat.BC1_UNORM && header.AlphaPixels
+        ? CompressionFormat.Bc1WithAlpha
+        : ToCompressionFormat(header.Format);
+
     private static CompressionFormat ToCompressionFormat(DxgiFormat format) => format switch
     {
         DxgiFormat.BC1_UNORM => CompressionFormat.Bc1,
@@ -96,6 +99,6 @@ public static class DdsRecompressor
         DxgiFormat.B8G8R8A8_UNORM => CompressionFormat.Bgra,
         DxgiFormat.R8G8B8A8_UNORM => CompressionFormat.Rgba,
         _ => throw new UnsupportedTextureFormatException(
-            $"Cannot re-encode a texture with format {(Enum.IsDefined(format) ? format.ToString() : $"DXGI {(uint)format}")}"),
+            $"cannot write {(Enum.IsDefined(format) ? format.ToString() : $"DXGI {(uint)format}")}"),
     };
 }

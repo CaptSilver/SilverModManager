@@ -419,7 +419,7 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
 
         SkipsOf(group).Select(s => (s.To, s.Kind, s.Reason)).Should().BeEquivalentTo(
         [
-            ("mods/A/t.dds", SkipKind.KeptOriginal, "kept the original 'mods/A/t.dds' because its format cannot be re-encoded to BC6H_UF16: Cannot re-encode a texture with format BC6H_UF16"),
+            ("mods/A/t.dds", SkipKind.KeptOriginal, "kept the original 'mods/A/t.dds' because its format cannot be re-encoded to BC6H_UF16: cannot write BC6H_UF16"),
         ]);
         TreeOf(group)["A"].Should().ContainKey("Game/Data/pack.bsa").And.ContainKey("Game/Data/t.dds");
     }

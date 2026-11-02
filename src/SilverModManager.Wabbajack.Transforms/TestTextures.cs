@@ -55,4 +55,79 @@ internal static class TestTextures
         file.dx10Header.dxgiFormat = (BCnEncoder.Shared.ImageFiles.DxgiFormat)(uint)format;
         file.Write(output);
     }
+
+    /// <summary>A legacy (no DX10 extension) DDS pixel format: a FourCC, or a set of bit masks.</summary>
+    public readonly record struct LegacyLayout(uint PixelFlags, string FourCc, uint BitCount, uint RMask, uint GMask, uint BMask, uint AMask)
+    {
+        private const uint FourCcFlag = 0x4;
+        private const uint RgbaFlags = 0x41;
+
+        public static LegacyLayout Dxt1 { get; } = new(FourCcFlag, "DXT1", 0, 0, 0, 0, 0);
+        public static LegacyLayout Dxt3 { get; } = new(FourCcFlag, "DXT3", 0, 0, 0, 0, 0);
+        public static LegacyLayout Dxt5 { get; } = new(FourCcFlag, "DXT5", 0, 0, 0, 0, 0);
+        public static LegacyLayout Ati1 { get; } = new(FourCcFlag, "ATI1", 0, 0, 0, 0, 0);
+        public static LegacyLayout Ati2 { get; } = new(FourCcFlag, "ATI2", 0, 0, 0, 0, 0);
+        public static LegacyLayout A8B8G8R8 { get; } = new(RgbaFlags, "", 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
+        public static LegacyLayout A8R8G8B8 { get; } = new(RgbaFlags, "", 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+    }
+
+    /// <summary>
+    /// Encodes <see cref="Gradient"/> to <paramref name="format"/> and returns the bytes of <paramref name="levels"/> mips
+    /// back to back, which is how a DDS stores them.
+    /// </summary>
+    public static byte[] EncodedGradient(CompressionFormat format, int size, int levels)
+    {
+        var encoder = Encoder(format);
+        encoder.OutputOptions.MaxMipMapLevel = levels;
+        return [.. encoder.EncodeToRawBytes(MemoryMarshal.AsBytes(Gradient(size).AsSpan()), size, size, PixelFormat.Rgba32).SelectMany(level => level)];
+    }
+
+    /// <summary>
+    /// Writes a DDS with a legacy pixel format. <paramref name="data"/> is everything after the header: every mip of
+    /// every face, face by face.
+    /// </summary>
+    public static void WriteLegacy(Stream output, LegacyLayout layout, int width, int height, ReadOnlySpan<byte> data, int mipLevels = 1, bool cubeMap = false)
+        => WriteHeader(output, width, height, mipLevels, cubeMap, layout, dxgi: null, data);
+
+    /// <summary>Writes a DDS with a DX10 extension naming <paramref name="dxgi"/>; <paramref name="blocks"/> is everything after the headers.</summary>
+    public static void WriteDx10(Stream output, DxgiFormat dxgi, int width, int height, ReadOnlySpan<byte> blocks, int mipLevels = 1, bool cubeMap = false)
+        => WriteHeader(output, width, height, mipLevels, cubeMap, new LegacyLayout(0x4, "DX10", 0, 0, 0, 0, 0), dxgi, blocks);
+
+    private static void WriteHeader(Stream output, int width, int height, int mipLevels, bool cubeMap, LegacyLayout layout, DxgiFormat? dxgi, ReadOnlySpan<byte> data)
+    {
+        const uint caps = 0x1000 | 0x8 | 0x400000; // TEXTURE, COMPLEX, MIPMAP
+        var header = new byte[128];
+        void Put(int offset, uint value) => System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(offset), value);
+
+        Put(0, 0x20534444);
+        Put(4, 124);
+        Put(8, 0x1 | 0x2 | 0x4 | 0x1000 | (mipLevels > 1 ? 0x20000u : 0)); // CAPS, HEIGHT, WIDTH, PIXELFORMAT, MIPMAPCOUNT
+        Put(12, (uint)height);
+        Put(16, (uint)width);
+        Put(28, (uint)mipLevels);
+        Put(76, 32);
+        Put(80, layout.PixelFlags);
+        if (layout.FourCc.Length == 4)
+            Put(84, (uint)(layout.FourCc[0] | layout.FourCc[1] << 8 | layout.FourCc[2] << 16 | layout.FourCc[3] << 24));
+        Put(88, layout.BitCount);
+        Put(92, layout.RMask);
+        Put(96, layout.GMask);
+        Put(100, layout.BMask);
+        Put(104, layout.AMask);
+        Put(108, caps);
+        if (cubeMap && dxgi is null) Put(112, 0x200 | 0xFC00);
+        output.Write(header);
+
+        if (dxgi is { } format)
+        {
+            Span<byte> extension = stackalloc byte[20];
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(extension, (uint)format);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(extension[4..], 3);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(extension[8..], cubeMap ? 4u : 0);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(extension[12..], 1);
+            output.Write(extension);
+        }
+
+        output.Write(data);
+    }
 }

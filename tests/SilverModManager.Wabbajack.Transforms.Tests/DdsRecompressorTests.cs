@@ -50,6 +50,107 @@ public class DdsRecompressorTests(ITestOutputHelper output)
         Assert.True(Math.Abs(sb - db) < 8.0);
     }
 
+    private static byte[] LegacySource(TestTextures.LegacyLayout layout, CompressionFormat encode, int size = 16, int mips = 1, bool cube = false)
+    {
+        var level = TestTextures.EncodedGradient(encode, size, mips);
+        var data = cube ? [.. Enumerable.Repeat(level, 6).SelectMany(x => x)] : level;
+        var stream = new MemoryStream();
+        TestTextures.WriteLegacy(stream, layout, size, size, data, mips, cube);
+        return stream.ToArray();
+    }
+
+    private static async Task<ColorRgba32[]> DecodedTopLevel(byte[] dds, DxgiFormat format)
+    {
+        var header = DdsFile.Load(new MemoryStream(dds));
+        var face = header.Faces.First();
+        return new BcDecoder().DecodeRaw(face.MipMaps[0].Data, (int)face.Width, (int)face.Height,
+            format == DxgiFormat.R8G8B8A8_UNORM ? CompressionFormat.Rgba : CompressionFormat.Bc7);
+    }
+
+    public static TheoryData<string, CompressionFormat> LegacyColourSources => new()
+    {
+        { "DXT1", CompressionFormat.Bc1 },
+        { "DXT3", CompressionFormat.Bc2 },
+        { "DXT5", CompressionFormat.Bc3 },
+    };
+
+    [Theory]
+    [MemberData(nameof(LegacyColourSources))]
+    public async Task Recompress_LegacyColourBlockSources_KeepTheirColour(string fourCc, CompressionFormat encode)
+    {
+        var layout = fourCc switch { "DXT1" => TestTextures.LegacyLayout.Dxt1, "DXT3" => TestTextures.LegacyLayout.Dxt3, _ => TestTextures.LegacyLayout.Dxt5 };
+        var result = await Recompress(LegacySource(layout, encode), new DdsTarget(16, 16, 1, DxgiFormat.R8G8B8A8_UNORM));
+
+        var (r, g, b) = Mean(await DecodedTopLevel(result, DxgiFormat.R8G8B8A8_UNORM));
+        var (sr, sg, sb) = Mean(TestTextures.Gradient(16));
+        Assert.True(Math.Abs(r - sr) < 8.0 && Math.Abs(g - sg) < 8.0 && Math.Abs(b - sb) < 8.0, $"{r},{g},{b} vs {sr},{sg},{sb}");
+    }
+
+    [Fact]
+    public async Task Recompress_Ati1Source_KeepsTheRedChannel()
+    {
+        var result = await Recompress(LegacySource(TestTextures.LegacyLayout.Ati1, CompressionFormat.Bc4), new DdsTarget(16, 16, 1, DxgiFormat.R8G8B8A8_UNORM));
+
+        var (r, _, _) = Mean(await DecodedTopLevel(result, DxgiFormat.R8G8B8A8_UNORM));
+        Assert.True(Math.Abs(r - Mean(TestTextures.Gradient(16)).R) < 8.0);
+    }
+
+    [Fact]
+    public async Task Recompress_Ati2Source_KeepsRedAndGreen()
+    {
+        var result = await Recompress(LegacySource(TestTextures.LegacyLayout.Ati2, CompressionFormat.Bc5), new DdsTarget(16, 16, 1, DxgiFormat.R8G8B8A8_UNORM));
+
+        var (r, g, _) = Mean(await DecodedTopLevel(result, DxgiFormat.R8G8B8A8_UNORM));
+        var (sr, sg, _) = Mean(TestTextures.Gradient(16));
+        Assert.True(Math.Abs(r - sr) < 8.0 && Math.Abs(g - sg) < 8.0);
+    }
+
+    [Fact]
+    public async Task Recompress_Bc7Dx10Source_KeepsItsColour()
+    {
+        var stream = new MemoryStream();
+        TestTextures.WriteDx10(stream, DxgiFormat.BC7_UNORM, 16, 16, TestTextures.EncodedGradient(CompressionFormat.Bc7, 16, 1));
+
+        var result = await Recompress(stream.ToArray(), new DdsTarget(16, 16, 1, DxgiFormat.R8G8B8A8_UNORM));
+
+        var (r, g, b) = Mean(await DecodedTopLevel(result, DxgiFormat.R8G8B8A8_UNORM));
+        var (sr, sg, sb) = Mean(TestTextures.Gradient(16));
+        Assert.True(Math.Abs(r - sr) < 4.0 && Math.Abs(g - sg) < 4.0 && Math.Abs(b - sb) < 4.0);
+    }
+
+    [Fact]
+    public async Task Recompress_TwoMipSource_UsesOnlyTheTopLevel()
+    {
+        var result = await Recompress(LegacySource(TestTextures.LegacyLayout.Dxt1, CompressionFormat.Bc1, mips: 2), new DdsTarget(16, 16, 1, DxgiFormat.R8G8B8A8_UNORM));
+
+        var (r, g, b) = Mean(await DecodedTopLevel(result, DxgiFormat.R8G8B8A8_UNORM));
+        var (sr, sg, sb) = Mean(TestTextures.Gradient(16));
+        Assert.True(Math.Abs(r - sr) < 8.0 && Math.Abs(g - sg) < 8.0 && Math.Abs(b - sb) < 8.0);
+    }
+
+    [Fact]
+    public async Task Recompress_LegacyCubeMapSource_ProducesSixFaces()
+    {
+        var result = await Recompress(LegacySource(TestTextures.LegacyLayout.Dxt1, CompressionFormat.Bc1, size: 16, cube: true), new DdsTarget(8, 8, 1, DxgiFormat.BC1_UNORM));
+
+        var dds = DdsFile.Load(new MemoryStream(result));
+        Assert.Equal(6, dds.Faces.Count);
+        Assert.True(dds.Faces.All(f => f.Width == 8));
+    }
+
+    [Fact]
+    public async Task Recompress_Uncompressed32BitLegacySource_IsDecodedAsRgba()
+    {
+        var pixels = TestTextures.Gradient(8);
+        var stream = new MemoryStream();
+        TestTextures.WriteLegacy(stream, TestTextures.LegacyLayout.A8B8G8R8, 8, 8, System.Runtime.InteropServices.MemoryMarshal.AsBytes(pixels.AsSpan()));
+
+        var result = await Recompress(stream.ToArray(), new DdsTarget(8, 8, 1, DxgiFormat.R8G8B8A8_UNORM));
+
+        var decoded = await DecodedTopLevel(result, DxgiFormat.R8G8B8A8_UNORM);
+        Assert.Equal(pixels, decoded);
+    }
+
     [Fact]
     public async Task Recompress_ZeroMipLevels_GeneratesFullChain()
     {
