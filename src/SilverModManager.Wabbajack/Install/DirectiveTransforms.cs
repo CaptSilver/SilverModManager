@@ -24,6 +24,8 @@ public sealed class DirectiveTransforms(TemporaryFileManager temporaryFiles) : I
     {
         if (!Enum.TryParse<DxgiFormat>(image.Format, ignoreCase: false, out var format) || !Enum.IsDefined(format))
             throw new UnsupportedTextureFormatException($"Cannot re-encode a texture with format {image.Format}");
+        if (image.Width < 1 || image.Height < 1)
+            throw new UnsupportedTextureFormatException($"cannot write: the list records a {image.Width}x{image.Height} texture");
         return new DdsTarget(image.Width, image.Height, image.MipLevels, format);
     }
 

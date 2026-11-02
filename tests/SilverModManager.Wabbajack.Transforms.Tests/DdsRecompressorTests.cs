@@ -79,9 +79,45 @@ public class DdsRecompressorTests(ITestOutputHelper output)
     [InlineData("BC7_UNORM")]
     [InlineData("B8G8R8A8_UNORM")]
     [InlineData("R8G8B8A8_UNORM")]
+    [InlineData("R8G8B8A8_UNORM_SRGB")]
+    [InlineData("R8G8_UNORM")]
+    [InlineData("R16_UNORM")]
+    [InlineData("R8_UNORM")]
+    [InlineData("A8_UNORM")]
+    [InlineData("BC1_UNORM_SRGB")]
+    [InlineData("BC2_UNORM_SRGB")]
+    [InlineData("BC3_UNORM_SRGB")]
+    [InlineData("B5G6R5_UNORM")]
+    [InlineData("B5G5R5A1_UNORM")]
+    [InlineData("B8G8R8X8_UNORM")]
+    [InlineData("B8G8R8A8_UNORM_SRGB")]
+    [InlineData("B8G8R8X8_UNORM_SRGB")]
+    [InlineData("BC7_UNORM_SRGB")]
+    [InlineData("B4G4R4A4_UNORM")]
     public void DxgiFormat_UpstreamNamesParse(string name)
     {
         Assert.Equal(name, Enum.Parse<DxgiFormat>(name).ToString());
+    }
+
+    [Theory]
+    [InlineData("R8G8B8A8_UNORM_SRGB", 29)]
+    [InlineData("R8G8_UNORM", 49)]
+    [InlineData("R16_UNORM", 56)]
+    [InlineData("R8_UNORM", 61)]
+    [InlineData("A8_UNORM", 65)]
+    [InlineData("BC1_UNORM_SRGB", 72)]
+    [InlineData("BC2_UNORM_SRGB", 75)]
+    [InlineData("BC3_UNORM_SRGB", 78)]
+    [InlineData("B5G6R5_UNORM", 85)]
+    [InlineData("B5G5R5A1_UNORM", 86)]
+    [InlineData("B8G8R8X8_UNORM", 88)]
+    [InlineData("B8G8R8A8_UNORM_SRGB", 91)]
+    [InlineData("B8G8R8X8_UNORM_SRGB", 93)]
+    [InlineData("BC7_UNORM_SRGB", 99)]
+    [InlineData("B4G4R4A4_UNORM", 115)]
+    public void DxgiFormat_ValuesMatchUpstream(string name, uint value)
+    {
+        Assert.Equal(value, (uint)Enum.Parse<DxgiFormat>(name));
     }
 
     [Fact]

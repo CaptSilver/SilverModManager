@@ -70,6 +70,22 @@ public class DirectiveTransformsTests : IDisposable
         failure.Should().BeOfType<UnsupportedTextureFormatException>().Which.Message.Should().Contain("NOT_A_FORMAT");
     }
 
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(0, 16)]
+    [InlineData(16, 0)]
+    public async Task RecompressingToAZeroSizedTextureThrowsUnsupportedTextureFormatNamingTheSize(int width, int height)
+    {
+        using var source = new MemoryStream();
+        TestTextures.WriteBc1(source, 8);
+        source.Position = 0;
+
+        var failure = await Record.ExceptionAsync(() => _transforms.Recompress(source, new ImageState(width, height, 1, "BC1_UNORM"), Stream.Null, CancellationToken.None));
+
+        failure.Should().BeOfType<UnsupportedTextureFormatException>().Which.Message
+            .Should().Be($"cannot write: the list records a {width}x{height} texture");
+    }
+
     private static Func<RelativePath, FileState, Task<Stream>> Inputs(Dictionary<string, byte[]> files)
         => (path, _) => Task.FromResult<Stream>(new MemoryStream(files[path.ToString()]));
 
