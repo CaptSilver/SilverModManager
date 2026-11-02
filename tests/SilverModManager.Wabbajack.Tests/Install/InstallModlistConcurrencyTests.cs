@@ -149,6 +149,32 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
     }
 
     [Fact]
+    public async Task AnArchiveReservesForTheSizeOfTheTextureFileItsInputsReadNotJustTheirPixels()
+    {
+        _transforms.SkipEncoding = true;
+        // The declared pixels are tiny, so only the 8 * file size term (about 64 MB for this 8 MB file) can hold builds back.
+        var archive = await AddZip("t.zip", new() { ["t.dds"] = Bc1Dds(4096) });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        for (var i = 0; i < 6; i++)
+        {
+            list.Directives.Add(new TransformedTexture(P($"TEMP_BSA_FILES/pack{i}/textures/t{i}.dds"), Xx64.From(7), 1,
+                new ArchiveHashPath(archive.XxHash64, [P("t.dds")]), new ImageState(64, 64, 1, "BC7_UNORM")));
+            list.Directives.Add(list.Bsa($"mods/A/pack{i}.bsa", $"pack{i}", $"textures/t{i}.dds"));
+        }
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        // An archive costs 64 MB to build plus that texture's file term, so two fit and a third does not. Counted by pixels
+        // alone each would cost about 64 MB and four would fit.
+        var group = await Run(NewJob(loadout, modlist, Defaults, budget: new ByteBudget(300L * 1024 * 1024), parallelism: 8));
+
+        SkipsOf(group).Should().BeEmpty();
+        TreeOf(group)["A"].Should().HaveCount(6);
+        _transforms.MaxConcurrentRecompress.Should().BeLessThanOrEqualTo(2, "each build reserves for decoding the texture file it reads");
+    }
+
+    [Fact]
     public async Task TexturesRunTogetherWhenTheBudgetAllowsIt()
     {
         _transforms.RecompressRendezvous = 2;
