@@ -58,18 +58,20 @@ public static class DdsRecompressor
                 Quality = CompressionQuality.Balanced,
                 GenerateMipMaps = true,
                 Format = targetFormat,
-                FileFormat = OutputFileFormat.Dds,
                 MaxMipMapLevel = target.MipLevels != 0 ? target.MipLevels : -1,
             },
         };
 
-        token.ThrowIfCancellationRequested();
-        var result = faces.Count == 1
-            ? encoder.EncodeToDds(Bytes(faces[0]), target.Width, target.Height, PixelFormat.Rgba32)
-            : encoder.EncodeCubeMapToDds(
-                Bytes(faces[0]), Bytes(faces[1]), Bytes(faces[2]), Bytes(faces[3]), Bytes(faces[4]), Bytes(faces[5]),
-                target.Width, target.Height, PixelFormat.Rgba32);
-        result.Write(output);
+        // Every level of every face is encoded before the first byte goes to the output, so a failure here
+        // leaves the stream untouched.
+        var encoded = new List<byte[][]>(faces.Count);
+        foreach (var face in faces)
+        {
+            token.ThrowIfCancellationRequested();
+            encoded.Add(encoder.EncodeToRawBytes(Bytes(face), target.Width, target.Height, PixelFormat.Rgba32));
+        }
+
+        DdsWriter.Write(output, target.Format, target.Width, target.Height, encoded);
     }
 
     private static ReadOnlySpan<byte> Bytes(ColorRgba32[] pixels) => MemoryMarshal.AsBytes(pixels.AsSpan());
