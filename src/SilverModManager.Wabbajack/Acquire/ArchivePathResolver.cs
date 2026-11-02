@@ -398,7 +398,8 @@ public sealed class ArchivePathResolver(
     public void Dispose()
     {
         _lifetime.Cancel();
-        _openArchives.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        // On the pool, so the disposal's continuations cannot need the thread that is blocked waiting for them (a UI thread).
+        Task.Run(() => _openArchives.DisposeAsync().AsTask()).GetAwaiter().GetResult();
         lock (_pins)
         {
             _disposed = true;

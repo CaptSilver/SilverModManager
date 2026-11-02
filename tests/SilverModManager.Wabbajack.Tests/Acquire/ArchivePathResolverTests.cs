@@ -502,6 +502,20 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
     }
 
     [Fact]
+    public async Task DisposingOnAThreadWithASynchronizationContextDoesNotDeadlock()
+    {
+        var (_, archive) = await ResolverOverZip(new() { [P("textures.bsa")] = "BSA\0not really"u8.ToArray() });
+        var opener = new NamedMemberOpener(disposeAfterYielding: true);
+        var resolver = Resolver(new ArchivePlan([]), await CreateLoadout(), opener);
+        await resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P("textures/a.dds")]), CancellationToken.None);
+        using var uiThread = new LoneThreadContext();
+
+        await uiThread.Run(resolver.Dispose).WaitAsync(TimeSpan.FromSeconds(10));
+
+        opener.ArchivesDisposed.Should().Be(1);
+    }
+
+    [Fact]
     public async Task OnlyAFewOpenedArchivesAreKeptAtOnce()
     {
         const int Containers = 12;
@@ -656,9 +670,11 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
     }
 
     /// <summary>Yields the member's own name as its bytes, and counts the archives opened and let go.</summary>
-    private sealed class NamedMemberOpener : INestedArchiveOpener
+    private sealed class NamedMemberOpener(bool disposeAfterYielding = false) : INestedArchiveOpener
     {
         private int _opened, _disposed;
+
+        private bool DisposeAfterYielding => disposeAfterYielding;
 
         public int ArchivesOpened => Volatile.Read(ref _opened);
         public int ArchivesDisposed => Volatile.Read(ref _disposed);
@@ -679,12 +695,45 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
         {
             public Task<Stream?> Open(RelativePath member, CancellationToken cancellationToken) => owner.Open(Stream.Null, member, cancellationToken);
 
-            public ValueTask DisposeAsync()
+            public async ValueTask DisposeAsync()
             {
+                // Like an archive that closes a file: the rest of the disposal resumes on the caller's context.
+                if (owner.DisposeAfterYielding) await Task.Yield();
                 Interlocked.Increment(ref owner._disposed);
-                return ValueTask.CompletedTask;
             }
         }
+    }
+
+    /// <summary>A context that runs what is posted to it on one thread, as a UI thread does.</summary>
+    private sealed class LoneThreadContext : SynchronizationContext, IDisposable
+    {
+        private readonly System.Collections.Concurrent.BlockingCollection<(SendOrPostCallback Callback, object? State)> _queue = [];
+        private readonly Thread _thread;
+
+        public LoneThreadContext()
+        {
+            _thread = new Thread(() =>
+            {
+                SetSynchronizationContext(this);
+                foreach (var (callback, state) in _queue.GetConsumingEnumerable()) callback(state);
+            }) { IsBackground = true };
+            _thread.Start();
+        }
+
+        public override void Post(SendOrPostCallback d, object? state) => _queue.Add((d, state));
+
+        public Task Run(Action action)
+        {
+            var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            Post(_ =>
+            {
+                try { action(); done.SetResult(); }
+                catch (Exception e) { done.SetException(e); }
+            }, null);
+            return done.Task;
+        }
+
+        public void Dispose() => _queue.CompleteAdding();
     }
 
     private sealed class FakeOpener(byte[] content, bool seekable = true) : INestedArchiveOpener
