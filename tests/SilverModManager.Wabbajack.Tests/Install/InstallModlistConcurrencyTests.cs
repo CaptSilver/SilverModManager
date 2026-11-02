@@ -85,6 +85,30 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
     }
 
     [Fact]
+    public async Task ThePathsRemappedFilesAreWrittenWithAreWorkedOutOncePerInstall()
+    {
+        var list = new ListBuilder();
+        for (var i = 0; i < 20; i++) list.Directives.Add(list.Remapped($"mods/A/r{i}.ini", $"path={{--||GAME_PATH_MAGIC_BACK||--}} {i}"));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+        var job = NewJob(loadout, modlist, Defaults);
+        var resolver = (SilverModManager.Games.TestFramework.FakePrefixResolver)job.PrefixResolver;
+        var resolves = 0;
+        var inner = resolver.Resolution;
+        resolver.Resolution = installation =>
+        {
+            Interlocked.Increment(ref resolves);
+            return inner(installation);
+        };
+
+        var group = await Run(job);
+
+        SkipsOf(group).Should().BeEmpty();
+        TreeOf(group)["A"].Should().HaveCount(20);
+        resolves.Should().Be(1, "the game and prefix do not change during an install, and the lookup reads the disk");
+    }
+
+    [Fact]
     public async Task WorkInFlightStaysWithinTheByteBudget()
     {
         var (list, _) = await TextureList(6);

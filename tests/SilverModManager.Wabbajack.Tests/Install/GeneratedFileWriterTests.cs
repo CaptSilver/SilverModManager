@@ -22,19 +22,19 @@ public class GeneratedFileWriterTests(ITestOutputHelper helper) : InstallTestBas
     }
 
     [Fact]
-    public async Task HashingManySmallFilesDoesNotAllocateABigBufferForEach()
+    public async Task HashingManySmallStreamsDoesNotAllocateABigBufferForEach()
     {
         var bytes = "small"u8.ToArray();
-        // Warm up, so one-time setup is not counted.
-        await using (await Writer.Generate(async output => await output.WriteAsync(bytes), CancellationToken.None)) { }
+        // A memory stream reads synchronously, so every await stays on this thread and its allocation counter is the whole story.
+        await SilverModManager.Wabbajack.Acquire.StreamDigests.HashAndCount(new MemoryStream(bytes), CancellationToken.None);
 
         var before = GC.GetAllocatedBytesForCurrentThread();
         for (var i = 0; i < 100; i++)
-            await using (await Writer.Generate(async output => await output.WriteAsync(bytes), CancellationToken.None)) { }
+            await SilverModManager.Wabbajack.Acquire.StreamDigests.HashAndCount(new MemoryStream(bytes), CancellationToken.None);
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
-        // A 1 MB buffer per file is 100 MB for these; the files themselves cost a few kilobytes each.
-        allocated.Should().BeLessThan(20L * 1024 * 1024);
+        // A new 1 MB buffer per call is 100 MB for these.
+        allocated.Should().BeLessThan(10L * 1024 * 1024);
     }
 
     [Fact]

@@ -52,8 +52,6 @@ public sealed record CommitPolicy(int MaxItems, long MaxBytes, TimeSpan MaxInter
 
 public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly>
 {
-    private const int TransactionSize = 2000;
-
     // The compiler records the hash of these before MO2 rewrites them, so the installed copy never matches.
     private static readonly string[] HashUnchecked = ["modlist.txt", "SkyrimPrefs.ini"];
 
@@ -1327,7 +1325,16 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     private static ResolvedMember RequireMember(Placement placement, ResolvedMember? member)
         => member ?? throw new InvalidOperationException($"'{placement.To}' reads an archive member that was never resolved");
 
+    private readonly Lock _markerLock = new();
+    private PathMarkerValues? _markerValues;
+
+    /// <summary>The values that replace path markers; the same for every file of an install, so worked out once.</summary>
     private PathMarkerValues MarkerValues(Checked check, ExtrasFolder extras)
+    {
+        lock (_markerLock) return _markerValues ??= WorkOutMarkerValues(check, extras);
+    }
+
+    private PathMarkerValues WorkOutMarkerValues(Checked check, ExtrasFolder extras)
     {
         var installation = check.Loadout.InstallationInstance;
         var gameRoot = installation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty));
