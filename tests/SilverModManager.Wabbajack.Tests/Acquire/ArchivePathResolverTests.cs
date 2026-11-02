@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -33,10 +34,16 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
         => ResolverOver(FileStore, plan, loadout, openers);
 
     private ArchivePathResolver ResolverOver(IFileStore store, ArchivePlan plan, Loadout.ReadOnly loadout, params INestedArchiveOpener[] openers)
+        => ResolverOver(store, new ListLogger<ArchivePathResolver>(), TimeSpan.FromSeconds(30), plan, loadout, openers);
+
+    private ArchivePathResolver ResolverOver(IFileStore store, ILogger logger, TimeSpan drainTimeout, ArchivePlan plan, Loadout.ReadOnly loadout, params INestedArchiveOpener[] openers)
     {
         var resolver = new ArchivePathResolver(plan, Connection.Db, store,
             new GameFileSourceLookup(loadout, Connection, store, ServiceProvider.GetRequiredService<IFileIdentityResolver>(), ServiceProvider.GetRequiredService<IFileHashesService>()),
-            openers);
+            openers, logger)
+        {
+            CopyDrainTimeout = drainTimeout,
+        };
         _resolvers.Add(resolver);
         return resolver;
     }
@@ -392,6 +399,93 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
 
         slow.Cancelled.Should().BeTrue("the back up is told to stop, not left running against the store");
         FileStorePins.Pinned().Should().NotContain(FileIdentity.XxHash3(inner.xxHash3()));
+    }
+
+    [Fact]
+    public async Task DisposingGivesUpOnACopyThatIgnoresItsTokenAndSaysWhichOne()
+    {
+        var kept = System.Text.Encoding.UTF8.GetBytes($"already stored {Guid.NewGuid()}");
+        var (_, archive) = await ResolverOverZip(new() { [P("textures.bsa")] = "BSA\0not really"u8.ToArray() });
+        var deaf = new DeafOpener(kept);
+        var log = new ListLogger<ArchivePathResolver>();
+        var resolver = ResolverOver(FileStore, log, TimeSpan.FromMilliseconds(200), new ArchivePlan([]), await CreateLoadout(), deaf);
+        await resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P("done.dds")]), CancellationToken.None);
+        FileStorePins.Pinned().Should().Contain(FileIdentity.XxHash3(kept.xxHash3()), "the finished copy is pinned until the resolver is disposed");
+        deaf.Hang = true;
+        using var caller = new CancellationTokenSource();
+        var resolving = resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P("stuck.dds")]), caller.Token);
+        await deaf.Reading.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        await caller.CancelAsync();
+        (await Record.ExceptionAsync(() => resolving)).Should().BeAssignableTo<OperationCanceledException>();
+
+        await resolver.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        log.Messages(LogLevel.Warning).Should().ContainSingle(m => m.Contains("stuck.dds"), "the log names the copy still running");
+        FileStorePins.Pinned().Should().NotContain(FileIdentity.XxHash3(kept.xxHash3()), "the pins are released even though a copy never ended");
+        deaf.Release.SetResult();
+    }
+
+    [Fact]
+    public async Task ABackUpThatEndsAfterDisposalIsLoggedAndLeavesNothingPinned()
+    {
+        var inner = System.Text.Encoding.UTF8.GetBytes($"late bytes {Guid.NewGuid()}");
+        var deaf = new DeafBackups(FileStore);
+        var log = new ListLogger<ArchivePathResolver>();
+        var (_, archive) = await ResolverOverZip(new() { [P("textures.bsa")] = "BSA\0not really"u8.ToArray() });
+        var resolver = ResolverOver(deaf, log, TimeSpan.FromMilliseconds(200), new ArchivePlan([]), await CreateLoadout(), new FakeOpener(inner));
+        using var caller = new CancellationTokenSource();
+        var resolving = resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P("a.dds")]), caller.Token);
+        await deaf.Started.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        await caller.CancelAsync();
+        (await Record.ExceptionAsync(() => resolving)).Should().BeAssignableTo<OperationCanceledException>();
+        await resolver.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        deaf.Release.SetResult();
+        await Eventually(() => log.Messages(LogLevel.Warning).Any(m => m.Contains("after") && m.Contains("a.dds")));
+
+        FileStorePins.Pinned().Should().NotContain(FileIdentity.XxHash3(inner.xxHash3()), "a copy that ends late does not take a pin nothing would release");
+    }
+
+    private static async Task Eventually(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (!condition())
+        {
+            if (DateTime.UtcNow > deadline) throw new TimeoutException("the condition never became true");
+            await Task.Delay(20, TestContext.Current.CancellationToken);
+        }
+    }
+
+    /// <summary>A store whose back up waits to be released and takes no notice of its token.</summary>
+    private sealed class DeafBackups(IFileStore inner) : ForwardingFileStore(inner)
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null)
+        {
+            Started.TrySetResult();
+            await Release.Task;
+            await base.BackupFiles(backups, deduplicate, CancellationToken.None, progress);
+        }
+    }
+
+    /// <summary>Yields a small file at once, until told to hang; a hanging open waits to be released and ignores its token.</summary>
+    private sealed class DeafOpener(byte[] content) : INestedArchiveOpener
+    {
+        public bool Hang { get; set; }
+        public TaskCompletionSource Reading { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public bool CanOpen(RelativePath name) => name.Extension == new Extension(".bsa");
+
+        public async Task<Stream?> Open(Stream archive, RelativePath member, CancellationToken cancellationToken)
+        {
+            if (!Hang) return new MemoryStream(content);
+            Reading.TrySetResult();
+            await Release.Task;
+            return new MemoryStream(content);
+        }
     }
 
     private sealed class SlowBackups(IFileStore inner) : ForwardingFileStore(inner)

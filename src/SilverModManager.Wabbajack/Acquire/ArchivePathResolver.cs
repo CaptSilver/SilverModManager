@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Library;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -43,8 +44,12 @@ public sealed class ArchivePathResolver(
     IDb db,
     IFileStore store,
     GameFileSourceLookup gameFiles,
-    IEnumerable<INestedArchiveOpener> openers) : IDisposable, IAsyncDisposable
+    IEnumerable<INestedArchiveOpener> openers,
+    ILogger logger) : IDisposable, IAsyncDisposable
 {
+    /// <summary>How long <see cref="DisposeAsync"/> waits for copies still running before it gives up on them.</summary>
+    internal TimeSpan CopyDrainTimeout { get; init; } = TimeSpan.FromSeconds(30);
+
     private const int HashBufferSize = 1024 * 1024;
 
     private readonly LibraryArchiveLocator _locator = new();
@@ -64,8 +69,10 @@ public sealed class ArchivePathResolver(
     private readonly SemaphoreSlim _recordLock = new(1, 1);
     private readonly List<IDisposable> _pins = [];
     private readonly CancellationTokenSource _lifetime = new();
-    private readonly ConcurrentDictionary<Task, byte> _copies = new();
+    // Each running copy with the store key it is for, so a log line can name what is still going.
+    private readonly ConcurrentDictionary<Task, string> _copies = new();
     private bool _disposed;
+    private bool _abandoned;
     private int _indexesBuilt;
 
     /// <summary>
@@ -244,15 +251,24 @@ public sealed class ArchivePathResolver(
     /// </summary>
     private Task<ResolvedMember> Store(string key, Func<CancellationToken, Task<Stream>> open, CancellationToken cancellationToken)
     {
-        var entry = _stored.GetOrAdd(key, _ => new Lazy<Task<ResolvedMember>>(() => Track(StoreOnce(key, open))));
+        var entry = _stored.GetOrAdd(key, _ => new Lazy<Task<ResolvedMember>>(() => Track(key, StoreOnce(key, open))));
         return entry.Value.WaitAsync(cancellationToken);
     }
 
     /// <summary>Remembers a copy until it ends, for <see cref="DisposeAsync"/> to wait for.</summary>
-    private Task<ResolvedMember> Track(Task<ResolvedMember> copy)
+    private Task<ResolvedMember> Track(string key, Task<ResolvedMember> copy)
     {
-        _copies[copy] = 0;
-        _ = copy.ContinueWith(done => _copies.TryRemove(done, out _), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        _copies[copy] = key;
+        _ = copy.ContinueWith(done =>
+        {
+            _copies.TryRemove(done, out _);
+            if (Volatile.Read(ref _abandoned))
+            {
+                // Nothing is waiting any more and its pin is gone; whatever it stored is unreferenced and the next
+                // collection of the store takes it. Said so that a late write is not a silent one.
+                logger.LogWarning("The copy of '{Key}' ended after the install stopped waiting for it ({Outcome}); anything it stored is unpinned", key, done.Status);
+            }
+        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         return copy;
     }
 
@@ -308,17 +324,36 @@ public sealed class ArchivePathResolver(
     }
 
     /// <summary>
-    /// Stops the copies still running, waits for them, then releases the pins on everything this resolver backed up. A
-    /// copy that was cancelled leaves nothing pinned and nothing running against the store.
+    /// Stops the copies still running, waits for them for <see cref="CopyDrainTimeout"/>, then releases the pins on
+    /// everything this resolver backed up. A copy that honours its token leaves nothing pinned and nothing running
+    /// against the store. One that does not (the store's packer cannot be interrupted once it is building) is named in
+    /// a warning and left to finish on its own, so the install job can return; its pin is released with the rest, and
+    /// what it stores when it ends is unreferenced bytes the next store collection removes.
     /// </summary>
     public async ValueTask DisposeAsync()
     {
         await _lifetime.CancelAsync();
-        foreach (var copy in _copies.Keys)
+        var running = _copies.Keys.ToArray();
+        if (running.Length > 0)
         {
-            try { await copy; } catch { /* its failure went to whoever asked for it; here it only has to be over */ }
+            try
+            {
+                await Task.WhenAll(running.Select(Ended)).WaitAsync(CopyDrainTimeout);
+            }
+            catch (TimeoutException)
+            {
+                Volatile.Write(ref _abandoned, true);
+                var names = _copies.Values.ToArray();
+                logger.LogWarning("Stopped waiting after {Seconds} s for {Count} archive member copies that ignore cancellation: {Keys}",
+                    CopyDrainTimeout.TotalSeconds, names.Length, string.Join(", ", names));
+            }
         }
         Dispose();
+    }
+
+    private static async Task Ended(Task copy)
+    {
+        try { await copy; } catch { /* its failure went to whoever asked for it; here it only has to be over */ }
     }
 
     /// <summary>Stops the copies still running and releases the pins without waiting for them; prefer <see cref="DisposeAsync"/>.</summary>

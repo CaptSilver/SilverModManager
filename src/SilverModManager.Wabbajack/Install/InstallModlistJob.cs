@@ -435,7 +435,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     }
 
     private ArchivePathResolver NewResolver(Checked check)
-        => new(check.Plan, Connection.Db, FileStore, check.GameFiles, Openers);
+        => new(check.Plan, Connection.Db, FileStore, check.GameFiles, Openers, Logger);
 
     private ArchivePathResolver? _resolver;
 
