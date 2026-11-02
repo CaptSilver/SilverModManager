@@ -60,6 +60,27 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
     }
 
     [Fact]
+    public async Task BackingUpASmallFile_DoesNotAllocateBuffersForEveryCore()
+    {
+        // The packer sizes its buffers by its thread count, which defaults to the core count; a few KB of payload
+        // must not cost that many megabytes, because a list install makes one backup per archive member.
+        var seed = 1000;
+        await _fileStore.BackupFiles([RandomEntry(seed++, 2048, out _)], token: TestContext.Current.CancellationToken);
+
+        // The least of several samples, since the counter is process-wide and other tests allocate too.
+        var perBackup = long.MaxValue;
+        for (var sample = 0; sample < 5; sample++)
+        {
+            var before = GC.GetTotalAllocatedBytes(precise: true);
+            for (var i = 0; i < 4; i++)
+                await _fileStore.BackupFiles([RandomEntry(seed++, 2048, out _)], token: TestContext.Current.CancellationToken);
+            perBackup = Math.Min(perBackup, (GC.GetTotalAllocatedBytes(precise: true) - before) / 4);
+        }
+
+        perBackup.Should().BeLessThan(4 * 1024 * 1024);
+    }
+
+    [Fact]
     public async Task BackingUpFiles_StoresBytesThatReadBackIdenticallyAtTheBackupCompressionLevel()
     {
         // One file past the chunk size and several below it, so both the chunked and the solid path are used.

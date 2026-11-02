@@ -46,6 +46,20 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
     private const int BackupCompressionLevel = 3;
 
     /// <summary>
+    /// The packer's solid block size (its default). Each packer thread holds buffers of about this size, so a pack
+    /// gets no more threads than it has blocks of input; see <see cref="PackerThreads"/>.
+    /// </summary>
+    private const int PackBlockSize = 1024 * 1024;
+
+    /// <summary>
+    /// How many threads a pack of <paramref name="totalBytes"/> can use. The packer starts one thread per core
+    /// whatever the input, and every thread allocates its block buffers up front, so packing a few KB used to
+    /// allocate tens of MB. A list install packs one member at a time, thousands of times.
+    /// </summary>
+    internal static int PackerThreads(long totalBytes)
+        => (int)Math.Clamp((totalBytes + PackBlockSize - 1) / PackBlockSize, 1, Environment.ProcessorCount);
+
+    /// <summary>
     /// Passes on only reports that raise the fraction: the packer finishes its blocks in order, but nothing here
     /// should depend on that, and a bar fed from it must not move backwards.
     /// </summary>
@@ -268,6 +282,7 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
             });
         }
 
+        builder.WithMaxNumThreads(PackerThreads(filesToBackup.Sum(kv => (long)kv.Value.Item1.Size.Value)));
         _logger.LogDebug("Backing up {Count} files of {Size} in size", filesToBackup.Count, filesToBackup.Sum(kv => kv.Value.Item1.Size));
         var guid = Guid.NewGuid();
         var id = guid.ToString();
