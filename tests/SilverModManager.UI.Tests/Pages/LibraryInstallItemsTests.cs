@@ -15,6 +15,7 @@ using SilverModManager.App.UI.Windows;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
@@ -140,10 +141,18 @@ public class LibraryInstallItemsTests(IServiceProvider provider) : AUiTest(provi
     {
         // The items install in parallel, and asking the substitute what it received while those calls arrive can take a
         // real call for part of the question; count them separately and ask the substitute only once they are all in.
+        // Each call returns a job whose awaiter is complete: a bare substitute job hands back a default TaskAwaiter, which
+        // throws when awaited, and the first item to throw stops the loop from starting the rest.
         var installs = 0;
         var harness = await CreateHarness(manager => manager
-            .WhenForAnyArgs(m => m.InstallItem(default, default, default, default, default))
-            .Do(_ => Interlocked.Increment(ref installs)));
+            .InstallItem(default, default, default, default, default)
+            .ReturnsForAnyArgs(_ =>
+            {
+                Interlocked.Increment(ref installs);
+                var job = Substitute.For<IJobTask<IInstallLoadoutItemJob, InstallLoadoutItemJobResult>>();
+                job.GetAwaiter().Returns(Task.FromResult(default(InstallLoadoutItemJobResult)).GetAwaiter());
+                return job;
+            }));
 
         harness.Vm.InstallSelectedItemsWithAdvancedInstallerCommand.Execute(R3.Unit.Default);
 

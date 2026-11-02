@@ -522,6 +522,9 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         vm.LoadoutId = loadout.LoadoutId;
         var run = vm.RunToolReportingAsync(first, TestContext.Current.CancellationToken).AsTask();
 
+        // The run hops to the thread pool before it reaches the manager; Ran is empty until it has.
+        await manager.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
         await vm.RunToolReportingAsync(second, TestContext.Current.CancellationToken);
 
         manager.Ran.Should().Equal(first);
@@ -549,6 +552,8 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         var vm = CreateViewModel(manager, runner, new FakeFilePicker(), [lod], pipelineDefinitions: [xedit]);
         vm.LoadoutId = loadout.LoadoutId;
         var run = vm.RunToolReportingAsync(running, TestContext.Current.CancellationToken).AsTask();
+        // The run hops to the thread pool before it reaches the manager; Ran is empty until it has.
+        await manager.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
         await vm.RunPipelineReportingAsync(lod, TestContext.Current.CancellationToken);
         await ((Func<Task>)(() => vm.RunQuickAutoCleanAsync(vm.CatalogueTools.Single(), "Update.esm", TestContext.Current.CancellationToken))).Should().ThrowAsync<SilverModManager.Sdk.Errors.UserFacingException>();
