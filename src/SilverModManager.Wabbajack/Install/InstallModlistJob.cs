@@ -484,7 +484,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             if (Options.GameFilesNotToReplace.Any(kept => SameFile(kept, root.Path)))
                 return new Prepared(placement, null, null, Silent: true);
 
-            if (placement.Directive is FromArchive { Source.Parts.Count: 0 } vanilla
+            // Only a plain copy can be compared with the live file. A patched or re-encoded directive derives from
+            // FromArchive too, but its output is never the vanilla file; it goes the normal way and ResolveMember
+            // checks the patch's FromHash against the game file source.
+            if (placement.Directive is FromArchive { Source.Parts.Count: 0 } vanilla && vanilla.GetType() == typeof(FromArchive)
                 && rows.TryGetValue(vanilla.Source.ArchiveXxHash64, out var gameRow)
                 && gameRow.Archive.State is GameFileSourceState gameFile
                 && SameFile(gameFile.GameFile, root.Path))

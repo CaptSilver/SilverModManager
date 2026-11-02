@@ -662,6 +662,59 @@ public class InstallModlistTransformTests(ITestOutputHelper helper) : InstallTes
     }
 
     [Fact]
+    public async Task APatchedGameRootFileFromTheGameIsInstalledWithThePatchedBytes()
+    {
+        var exe = GameExeArchive();
+        var patched = StubExe.Concat(new byte[] { 4 }).ToArray();
+        var list = new ListBuilder();
+        list.Archives.Add(exe);
+        list.Directives.Add(new PatchedFromArchive(P("Stock Game/SkyrimSE.exe"), Hash64(patched), patched.Length, new ArchiveHashPath(exe.XxHash64, []), Hash64(StubExe), list.Blob([4])));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        SkipsOf(group).Should().BeEmpty();
+        TreeOf(group)["Stock Game"]["Game/SkyrimSE.exe"].Should().Be(patched.xxHash3());
+    }
+
+    [Fact]
+    public async Task APlainGameRootFileThatAlreadyMatchesTheGameIsLeftAloneSilently()
+    {
+        var exe = GameExeArchive();
+        var list = new ListBuilder();
+        list.Archives.Add(exe);
+        list.Directives.Add(new FromArchive(P("Stock Game/SkyrimSE.exe"), Hash64(StubExe), StubExe.Length, new ArchiveHashPath(exe.XxHash64, [])));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        SkipsOf(group).Should().BeEmpty();
+        TreeOf(group).Should().NotContainKey("Stock Game");
+    }
+
+    [Fact]
+    public async Task APatchedGameRootFileCutAgainstAnotherGameVersionIsSkippedWithAReason()
+    {
+        var other = "another version"u8.ToArray();
+        var exe = new ArchiveEntry(Hash64(other), other.Length, "SkyrimSE.exe", "",
+            new GameFileSourceState("SkyrimSpecialEdition", P("SkyrimSE.exe"), Hash64(other), "1.5.97"));
+        var list = new ListBuilder();
+        list.Archives.Add(exe);
+        list.Directives.Add(new PatchedFromArchive(P("Stock Game/SkyrimSE.exe"), Xx64.From(1), 1, new ArchiveHashPath(exe.XxHash64, []), Hash64(other), list.Blob([4])));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(SkipMissingArchives: true, new HashSet<RelativePath>()));
+
+        var skipped = SkipsOf(group).Should().ContainSingle().Subject;
+        skipped.Kind.Should().Be(SkipKind.GameFileVersion);
+        skipped.Reason.Should().Contain("1.5.97");
+        TreeOf(group).Should().NotContainKey("Stock Game");
+    }
+
+    [Fact]
     public async Task ARecompressedTextureIsInstalledEvenWhenItDoesNotHashToTheListsValue()
     {
         var archive = await AddZip("a.zip", new() { ["t.dds"] = [1, 2, 3] });
