@@ -155,9 +155,27 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     [Reactive] public partial bool IsDownloading { get; private set; }
     [Reactive] public partial bool HasStartedDownloads { get; private set; }
     [Reactive] public partial bool IsInstalling { get; private set; }
-    [Reactive] public partial string ProgressText { get; private set; } = "";
-    [Reactive] public partial double ProgressFraction { get; private set; }
-    [Reactive] public partial string InstallEtaText { get; private set; } = "";
+    private WabbajackInstallStatus _installStatus;
+
+    /// <summary>
+    /// What the running install shows, as one value: the page's status line and the collection header both read it,
+    /// so neither can draw a bar for one snapshot under the text of another.
+    /// </summary>
+    public WabbajackInstallStatus InstallStatus
+    {
+        get => _installStatus;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref _installStatus, value);
+            this.RaisePropertyChanged(nameof(ProgressText));
+            this.RaisePropertyChanged(nameof(ProgressFraction));
+            this.RaisePropertyChanged(nameof(InstallEtaText));
+        }
+    }
+
+    public string ProgressText => InstallStatus.Text ?? "";
+    public double ProgressFraction => InstallStatus.Fraction;
+    public string InstallEtaText => InstallStatus.EtaText ?? "";
     [Reactive] public partial string ErrorText { get; private set; } = "";
     [Reactive] public partial bool CanResume { get; private set; }
     [Reactive] public partial bool IsInstalled { get; private set; }
@@ -200,12 +218,12 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         this.WhenAnyValue(vm => vm.SkipMissingArchives, vm => vm.IsPlanning, vm => vm.IsDownloading, vm => vm.HasStartedDownloads)
             .Subscribe(_ => Recompute());
 
-        // Ten inputs decide the one status line; a single subscription keeps them from being refreshed by hand at every setter.
+        // Nine inputs decide the one status line; a single subscription keeps them from being refreshed by hand at every setter.
         this.WhenAnyValue(
-                vm => vm.ErrorText, vm => vm.ProgressText, vm => vm.ProgressFraction, vm => vm.CheckText, vm => vm.CheckFraction,
+                vm => vm.ErrorText, vm => vm.InstallStatus, vm => vm.CheckText, vm => vm.CheckFraction,
                 vm => vm.IsCheckIndeterminate, vm => vm.Downloads, vm => vm.InstallBlockedReason, vm => vm.DownloadBlockedReason, vm => vm.AcquireText,
-                (error, install, installFraction, check, checkFraction, indeterminate, downloads, installReason, downloadReason, plan) =>
-                    WabbajackModlistText.Status(error, install, installFraction, check, checkFraction, indeterminate, downloads, installReason, downloadReason, plan))
+                (error, install, check, checkFraction, indeterminate, downloads, installReason, downloadReason, plan) =>
+                    WabbajackModlistText.Status(error, install.Text ?? "", install.Fraction, check, checkFraction, indeterminate, downloads, installReason, downloadReason, plan))
             .Subscribe(status => Status = status);
 
         OpenReadmeCommand = ReactiveCommand.Create(
@@ -1010,9 +1028,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
     private void ShowInstallStatus(WabbajackInstallStatus status)
     {
-        ProgressText = status.Text ?? "";
-        ProgressFraction = status.Fraction;
-        InstallEtaText = status.EtaText ?? "";
+        InstallStatus = status;
     }
 
     // "Create new loadout" is only a pick until Install; this is where the loadout comes into being.

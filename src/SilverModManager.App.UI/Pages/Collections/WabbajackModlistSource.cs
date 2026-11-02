@@ -130,8 +130,9 @@ public sealed class WabbajackModlistSource : CollectionSource
         var downloads = _downloads
             ?? throw new InvalidOperationException("The install is followed by the Downloads tab's model, which CreateDownloads builds first");
         return downloads.WhenAnyValue(
-            model => model.IsInstalling, model => model.ProgressText, model => model.ProgressFraction, model => model.InstallEtaText,
-            (installing, text, fraction, eta) => installing ? new CollectionInstallStatus(text, fraction, eta) : null);
+            model => model.IsInstalling, model => model.InstallStatus,
+            // IsInstalling and the status are set a moment apart, so there is a blank status while one of them lags.
+            (installing, status) => installing && status.Text is { Length: > 0 } text ? new CollectionInstallStatus(text, status.Fraction, status.EtaText ?? "") : null);
     });
 
     public override IPageViewModelInterface? CreateDownloads()
