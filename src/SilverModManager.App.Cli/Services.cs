@@ -48,6 +48,7 @@ public static class Services
         services.AddSingleton<ProtocolNotices>();
 
         services.AddProtocolVerbs();
+        services.AddTexturesVerbs();
         return services;
     }
 
