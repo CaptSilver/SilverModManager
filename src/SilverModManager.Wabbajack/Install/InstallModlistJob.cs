@@ -693,12 +693,12 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
     private const int SkipExamplesLogged = 5;
 
-    /// <summary>One line per kind of skip, so a list that skips thousands of files stays readable in the log; each skip has its own warning already.</summary>
+    /// <summary>One line per kind of skip, so a list that skips thousands of files stays readable in the log; each skip has its own trace line.</summary>
     private void LogSkipSummary(Checked check, WriteState state)
     {
         foreach (var (kind, paths) in state.Skipped.OrderBy(pair => pair.Key))
         {
-            Logger.LogInformation("{Count} file(s) of '{List}' were skipped as {Kind}, for example: {Examples}",
+            Logger.LogWarning("{Count} file(s) of '{List}' were skipped as {Kind}, for example: {Examples}",
                 paths.Count, check.List.Name, kind, string.Join(", ", paths.Take(SkipExamplesLogged)));
         }
     }
@@ -1076,7 +1076,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             Kind = kind,
         };
 
-        Logger.LogWarning("Skipped '{To}' of '{List}' ({Kind}): {Reason}", placement.To, check.List.Name, kind, reason);
+        Logger.LogTrace("Skipped '{To}' of '{List}' ({Kind}): {Reason}", placement.To, check.List.Name, kind, reason);
         if (!state.Skipped.TryGetValue(kind, out var skippedOfKind)) state.Skipped[kind] = skippedOfKind = new List<string>();
         skippedOfKind.Add(placement.To.ToString());
 
@@ -1085,7 +1085,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         {
             Progress.AddDropped(inputs.Count);
             Logger.LogWarning("Dropped {Count} input file(s) of '{To}' in '{List}' because the archive was not built ({Reason}): {Inputs}",
-                inputs.Count, placement.To, check.List.Name, reason, string.Join(", ", inputs.Values.Select(i => i.To.ToString())));
+                inputs.Count, placement.To, check.List.Name, reason, string.Join(", ", inputs.Values.Take(SkipExamplesLogged).Select(i => i.To.ToString())));
         }
     }
 

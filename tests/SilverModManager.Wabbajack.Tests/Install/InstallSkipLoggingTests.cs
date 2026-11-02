@@ -20,7 +20,7 @@ public class InstallSkipLoggingTests(ITestOutputHelper helper) : InstallTestBase
         => base.AddServices(services).AddSingleton<ILogger<InstallModlistJob>>(_log);
 
     [Fact]
-    public async Task EachSkipIsWarnedAboutOnceWithTheListTheTargetTheKindAndTheReason()
+    public async Task EachSkipIsTracedOnceWithTheListTheTargetTheKindAndTheReason()
     {
         var archive = await AddZip("a.zip", new() { ["t.dds"] = Bc1Dds(8) });
         var list = new ListBuilder();
@@ -30,8 +30,8 @@ public class InstallSkipLoggingTests(ITestOutputHelper helper) : InstallTestBase
 
         await Install(loadout, await AddModlist(list.ToList("My List"), list.Blobs), Defaults);
 
-        var warning = _log.Messages(LogLevel.Warning).Where(m => m.Contains("mods/A/t.dds")).Should().ContainSingle().Subject;
-        warning.Should().Contain("My List").And.Contain("Transform").And.Contain("could not be re-encoded");
+        var traced = _log.Messages(LogLevel.Trace).Where(m => m.Contains("mods/A/t.dds")).Should().ContainSingle().Subject;
+        traced.Should().Contain("My List").And.Contain("Transform").And.Contain("could not be re-encoded");
     }
 
     [Fact]
@@ -45,7 +45,8 @@ public class InstallSkipLoggingTests(ITestOutputHelper helper) : InstallTestBase
 
         await Install(loadout, await AddModlist(list.ToList("My List"), list.Blobs), Defaults);
 
-        var summary = _log.Messages(LogLevel.Information).Where(m => m.Contains("skipped as Transform")).Should().ContainSingle().Subject;
+        _log.Messages(LogLevel.Warning).Where(m => m.Contains("Skipped '")).Should().BeEmpty();
+        var summary = _log.Messages(LogLevel.Warning).Where(m => m.Contains("skipped as Transform")).Should().ContainSingle().Subject;
         summary.Should().Contain("7 file(s)").And.Contain("My List");
         Enumerable.Range(0, 7).Count(i => summary.Contains($"mods/A/t{i}.dds")).Should().Be(5);
     }
@@ -64,6 +65,22 @@ public class InstallSkipLoggingTests(ITestOutputHelper helper) : InstallTestBase
 
         var dropped = _log.Messages(LogLevel.Warning).Where(m => m.Contains("Dropped")).Should().ContainSingle().Subject;
         dropped.Should().Contain("mods/A/pack.bsa").And.Contain("one.txt").And.Contain("two.txt").And.Contain("NotAnArchive");
+    }
+
+    [Fact]
+    public async Task TheInputsOfAnArchiveThatWasNotBuiltAreListedAsAFewExamplesWithTheFullCount()
+    {
+        var list = new ListBuilder();
+        for (var i = 0; i < 7; i++) list.Directives.Add(list.Inline($"TEMP_BSA_FILES/pack/f{i}.txt", "x"));
+        list.Directives.Add(new CreateBsa(P("mods/A/pack.bsa"), Xx64.From(1), 2, P("pack"),
+            System.Text.Json.JsonDocument.Parse("{\"$type\":\"NotAnArchive\"}").RootElement, []));
+        var loadout = await CreateLoadout();
+
+        await Install(loadout, await AddModlist(list.ToList("My List"), list.Blobs), Defaults);
+
+        var dropped = _log.Messages(LogLevel.Warning).Where(m => m.Contains("Dropped")).Should().ContainSingle().Subject;
+        dropped.Should().Contain("Dropped 7 input");
+        Enumerable.Range(0, 7).Count(i => dropped.Contains($"f{i}.txt")).Should().Be(5);
     }
 
     [Fact]
