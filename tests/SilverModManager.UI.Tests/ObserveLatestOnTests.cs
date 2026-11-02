@@ -106,4 +106,65 @@ public class ObserveLatestOnTests
 
         seen.Should().BeEmpty();
     }
+
+    /// <summary>
+    /// Runs the first job inline, before Schedule returns, like a UI thread that picks the job up at once. Later jobs
+    /// queue, and disposing the handle of a queued job cancels it.
+    /// </summary>
+    private sealed class InlineFirstScheduler : IScheduler
+    {
+        private bool _first = true;
+
+        public Queue<Action> Queue { get; } = new();
+
+        public DateTimeOffset Now => DateTimeOffset.UtcNow;
+
+        public IDisposable Schedule<TState>(TState state, Func<IScheduler, TState, IDisposable> action)
+        {
+            if (_first)
+            {
+                _first = false;
+                action(this, state);
+                return System.Reactive.Disposables.Disposable.Empty;
+            }
+
+            var cancelled = false;
+            Queue.Enqueue(() =>
+            {
+                if (!cancelled) action(this, state);
+            });
+            return System.Reactive.Disposables.Disposable.Create(() => cancelled = true);
+        }
+
+        public IDisposable Schedule<TState>(TState state, TimeSpan dueTime, Func<IScheduler, TState, IDisposable> action) => Schedule(state, action);
+
+        public IDisposable Schedule<TState>(TState state, DateTimeOffset dueTime, Func<IScheduler, TState, IDisposable> action) => Schedule(state, action);
+
+        public void RunAll()
+        {
+            while (Queue.Count > 0) Queue.Dequeue()();
+        }
+    }
+
+    [Fact]
+    public void AValuePostedWhileTheFirstJobRunsInlineIsStillDelivered()
+    {
+        var scheduler = new InlineFirstScheduler();
+        var source = new Subject<int>();
+        var seen = new List<string>();
+        using var subscription = source.ObserveLatestOn(scheduler).Subscribe(
+            v =>
+            {
+                seen.Add($"{v}");
+                if (v == 1) source.OnNext(2);
+            },
+            () => seen.Add("done"));
+
+        source.OnNext(1);
+        scheduler.RunAll();
+        source.OnCompleted();
+        scheduler.RunAll();
+
+        seen.Should().Equal("1", "2", "done");
+    }
 }

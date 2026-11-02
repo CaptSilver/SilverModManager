@@ -38,7 +38,10 @@ public static class ReactiveUiExtensions
     /// large job (tens of thousands) fills the UI thread's queue, and whatever else the page posts for each value
     /// (another hop to a view model, another to a view) lands behind that whole backlog, so two views of one value
     /// show different moments of the run. Here at most one job is pending, so the queue never grows, and the last
-    /// value, the completion or the failure is always delivered, in that order.
+    /// value, the completion or the failure is always delivered, in that order. The scheduled jobs' handles are
+    /// deliberately not kept: a scheduler may run a job before <c>Schedule</c> returns, and a handle stored after that
+    /// would cancel the follow-up the job had already queued, leaving nothing to ever deliver again. Disposing the
+    /// subscription sets a flag the job checks instead.
     /// </summary>
     public static IObservable<T> ObserveLatestOn<T>(this IObservable<T> source, IScheduler scheduler)
         => Observable.Create<T>(observer =>
@@ -49,7 +52,6 @@ public static class ReactiveUiExtensions
             var ended = false;
             Exception? failure = null;
             var disposed = false;
-            var work = new SerialDisposable();
 
             void Drain()
             {
@@ -81,7 +83,7 @@ public static class ReactiveUiExtensions
                         return;
                     }
                 }
-                work.Disposable = scheduler.Schedule(Drain);
+                _ = scheduler.Schedule(Drain);
             }
 
             void Post(Action update)
@@ -92,14 +94,14 @@ public static class ReactiveUiExtensions
                     if (scheduled) return;
                     scheduled = true;
                 }
-                work.Disposable = scheduler.Schedule(Drain);
+                _ = scheduler.Schedule(Drain);
             }
 
             var subscription = source.Subscribe(
                 value => Post(() => pending = new Latest<T>(value)),
                 error => Post(() => { ended = true; failure = error; }),
                 () => Post(() => ended = true));
-            return new CompositeDisposable(subscription, work, Disposable.Create(() => Volatile.Write(ref disposed, true)));
+            return new CompositeDisposable(subscription, Disposable.Create(() => Volatile.Write(ref disposed, true)));
         });
 
     /// <summary>
