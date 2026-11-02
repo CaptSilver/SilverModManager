@@ -15,10 +15,18 @@ using SilverModManager.Wabbajack.Library;
 
 namespace SilverModManager.Wabbajack.Tests.Acquire;
 
+/// <summary>Tests that read the process-wide allocation counter or collect the heap; nothing else may run beside them.</summary>
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class MemoryMeasuringCollection
+{
+    public const string Name = "Measures process memory";
+}
+
 /// <summary>
 /// Resolves thousands of members out of one Bethesda archive, as a list that draws its textures and meshes from
 /// the game's own archives and from mod archives does, and measures what the resolver keeps afterwards.
 /// </summary>
+[Collection(MemoryMeasuringCollection.Name)]
 public class ArchivePathResolverBsaMemoryTests(ITestOutputHelper helper) : AcquireTestBase<ArchivePathResolverBsaMemoryTests>(helper)
 {
     private static int Env(string name, int fallback) => int.TryParse(Environment.GetEnvironmentVariable(name), out var v) ? v : fallback;
