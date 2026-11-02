@@ -35,8 +35,7 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
     /// <inheritdoc />
     public event Action? ArchivesChanged;
 
-    private FrozenDictionary<Hash, ArchiveContents> _archivesByEntry = FrozenDictionary<Hash, ArchiveContents>.Empty;
-    private FrozenDictionary<AbsolutePath, ArchiveContents> _archives = FrozenDictionary<AbsolutePath, ArchiveContents>.Empty;
+    private ArchiveIndex _index = ArchiveIndex.Empty;
 
     /// <summary>
     /// The zstd level backups are packed at, for both solid blocks and chunked files. Backups are read back rarely
@@ -80,7 +79,6 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
         }
     }
 
-    private record ArchiveContents(AbsolutePath ArchivePath, Size Size, DateTimeOffset LastModified, FrozenDictionary<Hash, FileEntry> Entries);
     
     /// <summary>
     /// This is the hash of an empty byte sequence. Useful for determining if we're being asked
@@ -113,7 +111,7 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
     /// <inheritdoc />
     public void ReloadCaches()
     {
-        var oldFrozenArchives = _archives;
+        var oldIndex = _index;
 
         var archives = _archiveLocations
             .SelectMany(folder => folder.EnumerateFiles(KnownExtensions.Nx))
@@ -121,7 +119,7 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
             .Select(file =>
                 {
                     var info = file.FileInfo;
-                    if (oldFrozenArchives.TryGetValue(file, out var oldArchive) && oldArchive.LastModified == info.LastWriteTimeUtc && oldArchive.Size == info.Size)
+                    if (oldIndex.TryGetArchive(file, out var oldArchive) && oldArchive.LastModified == info.LastWriteTimeUtc && oldArchive.Size == info.Size)
                         return oldArchive;
                 
                     using var stream = file.Read();
@@ -132,19 +130,9 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
                         entries[Hash.From(entry.Hash)] = entry;
                     return new ArchiveContents(file, info.Size, info.LastWriteTimeUtc, entries.ToFrozenDictionary());
                 }
-            ).ToDictionary(static x => x.ArchivePath);
-        
-        var index = new Dictionary<Hash, ArchiveContents>();
-        
-        foreach (var archive in archives.Values)
-        {
-            // Using the indexer (instead of .Add) so we don't throw an error on duplicates. Duplicates may be removed later by the
-            // GC but are benign  
-            foreach (var entry in archive.Entries)
-                index[entry.Key] = archive;
-        }
-        _archivesByEntry = index.ToFrozenDictionary();
-        _archives = archives.ToFrozenDictionary();
+            ).ToList();
+
+        _index = ArchiveIndex.Of(archives);
         RaiseArchivesChanged();
     }
 
@@ -181,32 +169,12 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
         var info = archivePath.FileInfo;
         var newArchive = new ArchiveContents(archivePath, info.Size, info.LastWriteTimeUtc, entries);
         
-        // Use compare-and-swap with retry to handle concurrent updates
+        // Compare-and-swap with retry for concurrent additions; adding is cheap, so a lost race costs little.
         while (true)
         {
-            // Capture current state
-            var currentArchives = _archives;
-            var currentIndex = _archivesByEntry;
-            
-            // Create new dictionaries with the additional archive
-            var newArchives = currentArchives.ToDictionary();
-            newArchives[archivePath] = newArchive;
-            
-            var newIndex = currentIndex.ToDictionary();
-            foreach (var entry in newArchive.Entries)
-                newIndex[entry.Key] = newArchive;
-            
-            var newArchivesFrozen = newArchives.ToFrozenDictionary();
-            var newIndexFrozen = newIndex.ToFrozenDictionary();
-            
-            // Atomic compare-and-swap: only update if the references haven't changed
-            // In case of a partial update succeeding, retrying should be fine as the operation is idempotent
-            if (ReferenceEquals(Interlocked.CompareExchange(ref _archives, newArchivesFrozen, currentArchives), currentArchives) &&
-                ReferenceEquals(Interlocked.CompareExchange(ref _archivesByEntry, newIndexFrozen, currentIndex), currentIndex))
-            {
-                // Both updates completed atomically
+            var current = _index;
+            if (ReferenceEquals(Interlocked.CompareExchange(ref _index, current.With(newArchive), current), current))
                 break;
-            }
         }
 
         RaiseArchivesChanged();
@@ -233,7 +201,7 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
     public virtual ValueTask<bool> HaveFile(FileIdentity identity)
     {
         var key = identity.XxHash3();
-        return ValueTask.FromResult(_archivesByEntry.ContainsKey(key));
+        return ValueTask.FromResult(_index.ContainsFile(key));
     }
 
     /// <inheritdoc />
@@ -709,7 +677,7 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
         archivePath = default(AbsolutePath);
         fileEntry = default(FileEntry);
         
-        if (!_archivesByEntry.TryGetValue(hash, out var archive))
+        if (!_index.TryGetArchiveOf(hash, out var archive))
             return false;
         archivePath = archive.ArchivePath;
         if (!archive.Entries.TryGetValue(hash, out fileEntry))
@@ -729,7 +697,7 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
 
     public bool Exists(FileIdentity identity)
     {
-        return identity.TryXxHash3(out var hash) && _archivesByEntry.ContainsKey(hash);
+        return identity.TryXxHash3(out var hash) && _index.ContainsFile(hash);
     }
 
     public SourcePriority Priority => SourcePriority.Backup;

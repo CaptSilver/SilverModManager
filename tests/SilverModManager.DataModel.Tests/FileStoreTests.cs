@@ -22,9 +22,11 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
     private readonly IFileStore _fileStore;
     private readonly IConnection _connection;
     private readonly IGarbageCollectorRunner _gcRunner;
+    private readonly ITestOutputHelper _output;
 
     public FileStoreTests(ITestOutputHelper helper) : base(helper)
     {
+        _output = helper;
         _libraryService = ServiceProvider.GetRequiredService<ILibraryService>();
         _fileStore = ServiceProvider.GetRequiredService<IFileStore>();
         _connection = ServiceProvider.GetRequiredService<IConnection>();
@@ -57,6 +59,41 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
         progress.Reports.Should().BeInAscendingOrder("a bar fed by it must not move backwards");
         progress.Reports.Should().OnlyContain(value => value >= 0 && value <= 1);
         progress.Reports.Last().Should().Be(1.0);
+    }
+
+    [Fact]
+    public async Task BackingUpOneFile_AllocatesNoMoreWhenTheStoreAlreadyHoldsManyFiles()
+    {
+        // A list install makes thousands of backups against a store that already holds hundreds of thousands of
+        // entries; each one used to copy and re-freeze the whole index, so the garbage grew with the store.
+        var token = TestContext.Current.CancellationToken;
+        var seed = 100_000;
+
+        async Task<long> OneBackup()
+        {
+            var least = long.MaxValue;
+            for (var sample = 0; sample < 5; sample++)
+            {
+                var entry = RandomEntry(seed++, 2048, out _);
+                var before = GC.GetTotalAllocatedBytes(precise: true);
+                await _fileStore.BackupFiles([entry], token: token);
+                least = Math.Min(least, GC.GetTotalAllocatedBytes(precise: true) - before);
+            }
+            return least;
+        }
+
+        var small = await OneBackup();
+
+        for (var archive = 0; archive < 150; archive++)
+        {
+            var entries = Enumerable.Range(0, 1000).Select(n => RandomEntry(seed++, 32, out _)).ToList();
+            await _fileStore.BackupFiles(entries, deduplicate: false, token: token);
+        }
+
+        var large = await OneBackup();
+        _output.WriteLine($"one backup allocates {small:N0} bytes in a small store, {large:N0} in a store of 150,000 entries");
+
+        (large - small).Should().BeLessThan(1024 * 1024);
     }
 
     [Fact]
