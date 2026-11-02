@@ -18,6 +18,8 @@ internal sealed class DdsHeader
 
     private const uint PixelAlphaPixels = 0x1;
     private const uint PixelFourCc = 0x4;
+    private const uint PixelPalette = 0x20;
+    private const uint PixelPaletteAlpha = 0x21;
 
     private const uint CapsCubeMap = 0x200;
     private const uint CapsCubeMapAllFaces = 0xFC00;
@@ -68,8 +70,8 @@ internal sealed class DdsHeader
     /// <summary>Bytes per 4x4 block, or 0 for a format stored per pixel.</summary>
     public static int BlockBytes(DxgiFormat format) => format switch
     {
-        DxgiFormat.BC1_UNORM or DxgiFormat.BC4_UNORM => 8,
-        DxgiFormat.BC2_UNORM or DxgiFormat.BC3_UNORM or DxgiFormat.BC5_UNORM or DxgiFormat.BC7_UNORM => 16,
+        DxgiFormat.BC1_UNORM or DxgiFormat.BC4_UNORM or DxgiFormat.BC4_SNORM => 8,
+        DxgiFormat.BC2_UNORM or DxgiFormat.BC3_UNORM or DxgiFormat.BC5_UNORM or DxgiFormat.BC5_SNORM or DxgiFormat.BC7_UNORM => 16,
         _ => 0,
     };
 
@@ -136,6 +138,9 @@ internal sealed class DdsHeader
         var dataOffset = PixelDataOffset;
         var faces = (caps2 & CapsCubeMap) != 0 ? 6 : 1;
 
+        // BC6H has a DXGI name even in a legacy header; print it so the message reads like the DX10 one.
+        if (!hasDx10 && (pixelFlags & PixelFourCc) != 0 && fourCc == FourCc("BC6H")) dxgi = (uint)DxgiFormat.BC6H_UF16;
+
         string Fields() => DescribeFields(pixelFlags, fourCc, bitCount, masks, dxgi);
 
         if (hasDx10)
@@ -161,9 +166,19 @@ internal sealed class DdsHeader
         if (width is 0 or > int.MaxValue || height is 0 or > int.MaxValue)
             throw new InvalidDataException($"A DDS file records a {width}x{height} texture");
 
+        var isPaletted = !hasDx10 && ((pixelFlags == PixelPalette && bitCount == 8) || (pixelFlags == PixelPaletteAlpha && bitCount == 16));
+        if (isPaletted)
+        {
+            // The colour table sits between the header and the pixels.
+            if (dds.Length < dataOffset + UncompressedReader.PaletteBytes) throw new InvalidDataException("A DDS file ends inside its palette");
+            dataOffset += UncompressedReader.PaletteBytes;
+        }
+
         var source = hasDx10
             ? FromDx10(dxgi)
-            : FromLegacy(pixelFlags, fourCc, bitCount, masks);
+            : isPaletted
+                ? (DxgiFormat.R8G8B8A8_UNORM, false, UncompressedReader.Paletted(dds.Slice(PixelDataOffset, UncompressedReader.PaletteBytes), alphaInPixel: bitCount == 16))
+                : FromLegacy(pixelFlags, fourCc, bitCount, masks);
         if (source is not var (known, srgb, reader))
             throw new UnsupportedTextureFormatException($"cannot read the source texture: {Fields()}");
 
@@ -196,24 +211,72 @@ internal sealed class DdsHeader
         };
 
         if (unorm is DxgiFormat.BC1_UNORM or DxgiFormat.BC2_UNORM or DxgiFormat.BC3_UNORM or DxgiFormat.BC4_UNORM
-            or DxgiFormat.BC5_UNORM or DxgiFormat.BC7_UNORM)
+            or DxgiFormat.BC4_SNORM or DxgiFormat.BC5_UNORM or DxgiFormat.BC5_SNORM or DxgiFormat.BC7_UNORM)
             return (unorm, srgb, null);
 
         return UncompressedReader.FromDxgi(unorm) is { } reader ? (unorm, srgb, reader) : null;
     }
 
+    /// <summary>Block-compressed FourCCs, as DirectXTex's legacy table maps them.</summary>
+    private static readonly Dictionary<uint, DxgiFormat> FourCcFormats = new()
+    {
+        [FourCc("DXT1")] = DxgiFormat.BC1_UNORM,
+        [FourCc("DXT3")] = DxgiFormat.BC2_UNORM,
+        [FourCc("DXT5")] = DxgiFormat.BC3_UNORM,
+        // DXT2 and DXT4 store premultiplied alpha. They are read as stored, with straight alpha and no
+        // un-premultiplying, which is what texconv does unless it is asked for -alpha.
+        [FourCc("DXT2")] = DxgiFormat.BC2_UNORM,
+        [FourCc("DXT4")] = DxgiFormat.BC3_UNORM,
+        // Swizzled normal-map variants of DXT5. DirectXTex hands them back as BC3 without un-swizzling, and so do we.
+        [FourCc("A2D5")] = DxgiFormat.BC3_UNORM,
+        [FourCc("xGBR")] = DxgiFormat.BC3_UNORM,
+        [FourCc("RxBG")] = DxgiFormat.BC3_UNORM,
+        [FourCc("RBxG")] = DxgiFormat.BC3_UNORM,
+        [FourCc("xRBG")] = DxgiFormat.BC3_UNORM,
+        [FourCc("RGxB")] = DxgiFormat.BC3_UNORM,
+        [FourCc("xGxR")] = DxgiFormat.BC3_UNORM,
+        [FourCc("GXRB")] = DxgiFormat.BC3_UNORM,
+        [FourCc("GRXB")] = DxgiFormat.BC3_UNORM,
+        [FourCc("RXGB")] = DxgiFormat.BC3_UNORM,
+        [FourCc("BRGX")] = DxgiFormat.BC3_UNORM,
+        [FourCc("ATI1")] = DxgiFormat.BC4_UNORM,
+        [FourCc("BC4U")] = DxgiFormat.BC4_UNORM,
+        [FourCc("BC4S")] = DxgiFormat.BC4_SNORM,
+        [FourCc("ATI2")] = DxgiFormat.BC5_UNORM,
+        [FourCc("BC5U")] = DxgiFormat.BC5_UNORM,
+        [FourCc("A2XY")] = DxgiFormat.BC5_UNORM,
+        [FourCc("BC5S")] = DxgiFormat.BC5_SNORM,
+        [FourCc("BC7L")] = DxgiFormat.BC7_UNORM,
+        [FourCc("BC7\0")] = DxgiFormat.BC7_UNORM,
+    };
+
+    /// <summary>FourCC values that name a D3DFMT this reader does not decode, so the message can say which.</summary>
+    private static readonly Dictionary<uint, string> UnsupportedFourCcs = new()
+    {
+        [36] = "D3DFMT_A16B16G16R16",
+        [60] = "D3DFMT_V8U8",
+        [61] = "D3DFMT_L6V5U5",
+        [62] = "D3DFMT_X8L8V8U8",
+        [63] = "D3DFMT_Q8W8V8U8",
+        [64] = "D3DFMT_V16U16",
+        [67] = "D3DFMT_A2W10V10U10",
+        [110] = "D3DFMT_Q16W16V16U16",
+        [111] = "D3DFMT_R16F",
+        [112] = "D3DFMT_G16R16F",
+        [113] = "D3DFMT_A16B16G16R16F",
+        [114] = "D3DFMT_R32F",
+        [115] = "D3DFMT_G32R32F",
+        [116] = "D3DFMT_A32B32G32R32F",
+        [FourCc("RGBG")] = "D3DFMT_R8G8_B8G8",
+        [FourCc("GRGB")] = "D3DFMT_G8R8_G8B8",
+        [FourCc("YUY2")] = "D3DFMT_YUY2",
+        [FourCc("UYVY")] = "D3DFMT_UYVY",
+    };
+
     private static (DxgiFormat Format, bool Srgb, UncompressedReader? Reader)? FromLegacy(uint pixelFlags, uint fourCc, uint bitCount, (uint R, uint G, uint B, uint A) masks)
     {
         if ((pixelFlags & PixelFourCc) != 0)
-        {
-            // BC4S and BC5S are signed; they are read as their unsigned twins until a signed decoder exists.
-            if (fourCc == FourCc("DXT1")) return (DxgiFormat.BC1_UNORM, false, null);
-            if (fourCc == FourCc("DXT3")) return (DxgiFormat.BC2_UNORM, false, null);
-            if (fourCc == FourCc("DXT5")) return (DxgiFormat.BC3_UNORM, false, null);
-            if (fourCc == FourCc("ATI1") || fourCc == FourCc("BC4U") || fourCc == FourCc("BC4S")) return (DxgiFormat.BC4_UNORM, false, null);
-            if (fourCc == FourCc("ATI2") || fourCc == FourCc("BC5U") || fourCc == FourCc("BC5S")) return (DxgiFormat.BC5_UNORM, false, null);
-            return null;
-        }
+            return FourCcFormats.TryGetValue(fourCc, out var format) ? (format, false, null) : null;
 
         return UncompressedReader.FromBitmasks(pixelFlags, bitCount, masks.R, masks.G, masks.B, masks.A) is var (reader, dxgi)
             ? (dxgi, false, reader)
@@ -230,11 +293,12 @@ internal sealed class DdsHeader
     private static string FourCcText(uint fourCc)
     {
         if (fourCc == 0) return "none";
+        var named = UnsupportedFourCcs.TryGetValue(fourCc, out var name) ? $" ({name})" : "";
         Span<byte> bytes = stackalloc byte[4];
         BinaryPrimitives.WriteUInt32LittleEndian(bytes, fourCc);
         foreach (var b in bytes)
-            if (b is < 0x20 or > 0x7E) return fourCc.ToString(CultureInfo.InvariantCulture);
-        return System.Text.Encoding.ASCII.GetString(bytes);
+            if (b is < 0x20 or > 0x7E) return fourCc.ToString(CultureInfo.InvariantCulture) + named;
+        return System.Text.Encoding.ASCII.GetString(bytes) + named;
     }
 
     private static uint U32(ReadOnlySpan<byte> bytes, int offset) => BinaryPrimitives.ReadUInt32LittleEndian(bytes[offset..]);

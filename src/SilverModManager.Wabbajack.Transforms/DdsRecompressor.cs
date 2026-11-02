@@ -34,7 +34,9 @@ public static class DdsRecompressor
         var dds = buffer.GetBuffer().AsMemory(0, (int)buffer.Length);
 
         var header = DdsHeader.Read(dds.Span);
-        var decodeFormat = header.IsBlockCompressed ? ToDecodeFormat(header) : CompressionFormat.Unknown;
+        var decodeFormat = header.IsBlockCompressed && header.Format is not (DxgiFormat.BC4_SNORM or DxgiFormat.BC5_SNORM)
+            ? ToDecodeFormat(header)
+            : CompressionFormat.Unknown;
 
         var decoder = new BcDecoder();
         var faces = new List<ColorRgba32[]>(header.FaceCount);
@@ -42,8 +44,9 @@ public static class DdsRecompressor
         {
             token.ThrowIfCancellationRequested();
             var data = dds.Slice((int)header.TopLevelOffset(face), (int)header.LevelSize(0));
-            var pixels = header.Reader is { } reader
-                ? reader.Unpack(data.Span, header.Width, header.Height)
+            var pixels = header.Reader is { } reader ? reader.Unpack(data.Span, header.Width, header.Height)
+                : header.Format == DxgiFormat.BC4_SNORM ? Bc4SnormDecoder.DecodeBc4(data.Span, header.Width, header.Height)
+                : header.Format == DxgiFormat.BC5_SNORM ? Bc4SnormDecoder.DecodeBc5(data.Span, header.Width, header.Height)
                 : decoder.DecodeRaw(data.ToArray(), header.Width, header.Height, decodeFormat);
             faces.Add(Resize(pixels, header.Width, header.Height, target.Width, target.Height));
         }

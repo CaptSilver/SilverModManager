@@ -21,7 +21,32 @@ internal sealed class UncompressedReader
         _a = new Channel(a, 255);
     }
 
+    private readonly uint[]? _palette;
+    private readonly bool _paletteAlphaInPixel;
+
+    private UncompressedReader(int bitsPerPixel, uint[] palette, bool alphaInPixel)
+        : this(bitsPerPixel, 0, 0, 0, 0)
+    {
+        _palette = palette;
+        _paletteAlphaInPixel = alphaInPixel;
+    }
+
     public int BitsPerPixel { get; }
+
+    /// <summary>Bytes of the colour table that follows the header of a palettised DDS: 256 four-byte entries.</summary>
+    public const int PaletteBytes = 256 * 4;
+
+    /// <summary>
+    /// A palettised layout (D3DFMT P8, or A8P8 when <paramref name="alphaInPixel"/>). The table is read the way
+    /// DirectXTex does, each entry copied as it stands to an R8G8B8A8 pixel, so its bytes are R, G, B, A. A8P8 adds
+    /// the pixel's own alpha byte to the entry's.
+    /// </summary>
+    public static UncompressedReader Paletted(ReadOnlySpan<byte> palette, bool alphaInPixel)
+    {
+        var entries = new uint[256];
+        for (var i = 0; i < entries.Length; i++) entries[i] = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(palette[(i * 4)..]);
+        return new UncompressedReader(alphaInPixel ? 16 : 8, entries, alphaInPixel);
+    }
 
     /// <summary>
     /// The layout a DX10 header names, or null when <paramref name="format"/> is not a per-pixel layout this reader
@@ -111,11 +136,21 @@ internal sealed class UncompressedReader
             {
                 uint value = 0;
                 for (var i = 0; i < bytesPerPixel; i++) value |= (uint)row[x * bytesPerPixel + i] << (8 * i);
-                pixels[y * width + x] = new ColorRgba32(_r.Read(value), _g.Read(value), _b.Read(value), _a.Read(value));
+                pixels[y * width + x] = _palette is null
+                    ? new ColorRgba32(_r.Read(value), _g.Read(value), _b.Read(value), _a.Read(value))
+                    : FromPalette(value);
             }
         }
 
         return pixels;
+    }
+
+    private ColorRgba32 FromPalette(uint pixel)
+    {
+        var entry = _palette![pixel & 0xFF];
+        var alpha = (byte)(entry >> 24);
+        if (_paletteAlphaInPixel) alpha |= (byte)(pixel >> 8);
+        return new ColorRgba32((byte)entry, (byte)(entry >> 8), (byte)(entry >> 16), alpha);
     }
 
     private readonly struct Channel

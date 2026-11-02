@@ -105,6 +105,107 @@ public class DdsRecompressorTests(ITestOutputHelper output)
         Assert.True(Math.Abs(r - sr) < 8.0 && Math.Abs(g - sg) < 8.0);
     }
 
+    public static TheoryData<string, CompressionFormat> OtherFourCcSources => new()
+    {
+        { "DXT2", CompressionFormat.Bc2 }, { "DXT4", CompressionFormat.Bc3 },
+        { "A2D5", CompressionFormat.Bc3 }, { "xGBR", CompressionFormat.Bc3 }, { "RXGB", CompressionFormat.Bc3 },
+        { "BRGX", CompressionFormat.Bc3 }, { "BC4U", CompressionFormat.Bc4 }, { "BC5U", CompressionFormat.Bc5 },
+        { "A2XY", CompressionFormat.Bc5 },
+    };
+
+    [Theory]
+    [MemberData(nameof(OtherFourCcSources))]
+    public async Task Recompress_OtherFourCcSources_DecodeAsTheirBlockFormat(string fourCc, CompressionFormat encode)
+    {
+        var layout = TestTextures.LegacyLayout.Dxt1 with { FourCc = fourCc };
+        var result = await Recompress(LegacySource(layout, encode), new DdsTarget(16, 16, 1, DxgiFormat.R8G8B8A8_UNORM));
+
+        var (r, _, _) = Mean(await DecodedTopLevel(result, DxgiFormat.R8G8B8A8_UNORM));
+        Assert.True(Math.Abs(r - Mean(TestTextures.Gradient(16)).R) < 8.0);
+    }
+
+    [Theory]
+    [InlineData("BC7L")]
+    [InlineData("BC7\0")]
+    public async Task Recompress_Bc7FourCcSources_DecodeAsBc7(string fourCc)
+    {
+        var layout = TestTextures.LegacyLayout.Dxt1 with { FourCc = fourCc };
+        var result = await Recompress(LegacySource(layout, CompressionFormat.Bc7), new DdsTarget(16, 16, 1, DxgiFormat.R8G8B8A8_UNORM));
+
+        var (r, g, b) = Mean(await DecodedTopLevel(result, DxgiFormat.R8G8B8A8_UNORM));
+        var (sr, sg, sb) = Mean(TestTextures.Gradient(16));
+        Assert.True(Math.Abs(r - sr) < 4.0 && Math.Abs(g - sg) < 4.0 && Math.Abs(b - sb) < 4.0);
+    }
+
+    [Fact]
+    public async Task Recompress_Dxt4Source_KeepsItsStoredAlphaAsIs()
+    {
+        // A flat BC3 block of colour (200, 100, 50) with alpha 80, stored the way DXT4 stores premultiplied data.
+        var block = BlockSolidBc3(80);
+        var stream = new MemoryStream();
+        TestTextures.WriteLegacy(stream, TestTextures.LegacyLayout.Dxt1 with { FourCc = "DXT4" }, 4, 4, block);
+
+        var result = await Recompress(stream.ToArray(), new DdsTarget(4, 4, 1, DxgiFormat.R8G8B8A8_UNORM));
+
+        var decoded = new BcDecoder().DecodeRaw(DdsFile.Load(new MemoryStream(result)).Faces[0].MipMaps[0].Data, 4, 4, CompressionFormat.Rgba);
+        Assert.All(decoded, p => Assert.Equal(80, p.a));
+    }
+
+    private static byte[] BlockSolidBc3(byte alpha)
+    {
+        var pixels = new ColorRgba32[16];
+        Array.Fill(pixels, new ColorRgba32(200, 100, 50, alpha));
+        var encoder = new BCnEncoder.Encoder.BcEncoder(CompressionFormat.Bc3);
+        encoder.OutputOptions.GenerateMipMaps = false;
+        return encoder.EncodeToRawBytes(System.Runtime.InteropServices.MemoryMarshal.AsBytes(pixels.AsSpan()), 4, 4, BCnEncoder.Encoder.PixelFormat.Rgba32)[0];
+    }
+
+    [Fact]
+    public async Task Recompress_P8Source_ExpandsThroughItsPalette()
+    {
+        var palette = new byte[1024];
+        palette[0] = 10; palette[1] = 20; palette[2] = 30; palette[3] = 255;
+        palette[4] = 200; palette[5] = 150; palette[6] = 100; palette[7] = 255;
+        var stream = new MemoryStream();
+        TestTextures.WriteLegacy(stream, new TestTextures.LegacyLayout(0x20, "", 8, 0, 0, 0, 0), 2, 2, [.. palette, 0, 1, 1, 0]);
+
+        var result = await Recompress(stream.ToArray(), new DdsTarget(2, 2, 1, DxgiFormat.R8G8B8A8_UNORM));
+
+        var decoded = new BcDecoder().DecodeRaw(DdsFile.Load(new MemoryStream(result)).Faces[0].MipMaps[0].Data, 2, 2, CompressionFormat.Rgba);
+        var first = new ColorRgba32(10, 20, 30, 255);
+        var second = new ColorRgba32(200, 150, 100, 255);
+        Assert.Equal([first, second, second, first], decoded);
+    }
+
+    [Theory]
+    [InlineData("BC5S", 2)]
+    [InlineData("BC4S", 1)]
+    public async Task Recompress_SignedSources_ReEncodeWithoutThrowing(string fourCc, int channels)
+    {
+        // Endpoints 0/0 and index 0 everywhere: every texel is signed zero, which maps to 128.
+        var data = new byte[16 * 8 * channels];
+        var stream = new MemoryStream();
+        TestTextures.WriteLegacy(stream, TestTextures.LegacyLayout.Dxt1 with { FourCc = fourCc }, 16, 16, data);
+
+        var result = await Recompress(stream.ToArray(), new DdsTarget(16, 16, 1, channels == 2 ? DxgiFormat.BC5_UNORM : DxgiFormat.BC4_UNORM));
+
+        var face = DdsFile.Load(new MemoryStream(result)).Faces[0];
+        var decoded = new BcDecoder().DecodeRaw(face.MipMaps[0].Data, 16, 16, channels == 2 ? CompressionFormat.Bc5 : CompressionFormat.Bc4);
+        Assert.All(decoded, p => Assert.InRange(p.r, 126, 130));
+        if (channels == 2) Assert.All(decoded, p => Assert.InRange(p.g, 126, 130));
+    }
+
+    [Fact]
+    public async Task Recompress_Bc5Dx10SnormSource_ReEncodesWithoutThrowing()
+    {
+        var stream = new MemoryStream();
+        TestTextures.WriteDx10(stream, DxgiFormat.BC5_SNORM, 8, 8, new byte[4 * 16]);
+
+        var result = await Recompress(stream.ToArray(), new DdsTarget(8, 8, 1, DxgiFormat.BC5_UNORM));
+
+        Assert.NotEmpty(result);
+    }
+
     [Fact]
     public async Task Recompress_Bc7Dx10Source_KeepsItsColour()
     {

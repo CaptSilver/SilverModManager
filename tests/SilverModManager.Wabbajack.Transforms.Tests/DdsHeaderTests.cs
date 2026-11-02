@@ -216,4 +216,105 @@ public class DdsHeaderTests
         Assert.Equal(expected, actual);
         Assert.NotEqual(header.Reader.Unpack(level0.AsSpan(0, bytesPerPixel), 1, 1), actual);
     }
+
+    public static TheoryData<string, DxgiFormat> FourCcRows => new()
+    {
+        { "DXT1", DxgiFormat.BC1_UNORM }, { "DXT2", DxgiFormat.BC2_UNORM }, { "DXT3", DxgiFormat.BC2_UNORM },
+        { "DXT4", DxgiFormat.BC3_UNORM }, { "DXT5", DxgiFormat.BC3_UNORM },
+        { "A2D5", DxgiFormat.BC3_UNORM }, { "xGBR", DxgiFormat.BC3_UNORM }, { "RxBG", DxgiFormat.BC3_UNORM },
+        { "RBxG", DxgiFormat.BC3_UNORM }, { "xRBG", DxgiFormat.BC3_UNORM }, { "RGxB", DxgiFormat.BC3_UNORM },
+        { "xGxR", DxgiFormat.BC3_UNORM }, { "GXRB", DxgiFormat.BC3_UNORM }, { "GRXB", DxgiFormat.BC3_UNORM },
+        { "RXGB", DxgiFormat.BC3_UNORM }, { "BRGX", DxgiFormat.BC3_UNORM },
+        { "ATI1", DxgiFormat.BC4_UNORM }, { "BC4U", DxgiFormat.BC4_UNORM }, { "BC4S", DxgiFormat.BC4_SNORM },
+        { "ATI2", DxgiFormat.BC5_UNORM }, { "BC5U", DxgiFormat.BC5_UNORM }, { "A2XY", DxgiFormat.BC5_UNORM },
+        { "BC5S", DxgiFormat.BC5_SNORM }, { "BC7L", DxgiFormat.BC7_UNORM }, { "BC7\0", DxgiFormat.BC7_UNORM },
+    };
+
+    [Theory]
+    [MemberData(nameof(FourCcRows))]
+    public void EveryBlockFourCcMapsToItsDxgiFormat(string fourCc, DxgiFormat expected)
+        => Assert.Equal(expected, DdsHeader.Read(Legacy(LegacyLayout.Dxt1 with { FourCc = fourCc }, 4, 4, new byte[16])).Format);
+
+    [Fact]
+    public void ABc6hFourCcIsUnsupportedAndNamesItsDxgiFormat()
+    {
+        var ex = Assert.Throws<UnsupportedTextureFormatException>(() => DdsHeader.Read(Legacy(LegacyLayout.Dxt1 with { FourCc = "BC6H" }, 4, 4, new byte[16])));
+
+        Assert.Contains("BC6H_UF16 (95)", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(111, "D3DFMT_R16F")]
+    [InlineData(116, "D3DFMT_A32B32G32R32F")]
+    [InlineData(60, "D3DFMT_V8U8")]
+    [InlineData(110, "D3DFMT_Q16W16V16U16")]
+    public void ANumericD3dFormatThatIsNotDecodedIsNamed(int d3dFormat, string name)
+    {
+        var bytes = Legacy(LegacyLayout.Dxt1, 4, 4, new byte[16]);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(84), (uint)d3dFormat);
+
+        var ex = Assert.Throws<UnsupportedTextureFormatException>(() => DdsHeader.Read(bytes));
+
+        Assert.Contains($"fourcc={d3dFormat} ({name})", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("YUY2", "D3DFMT_YUY2")]
+    [InlineData("UYVY", "D3DFMT_UYVY")]
+    [InlineData("RGBG", "D3DFMT_R8G8_B8G8")]
+    [InlineData("GRGB", "D3DFMT_G8R8_G8B8")]
+    public void ATextD3dFormatThatIsNotDecodedIsNamed(string fourCc, string name)
+    {
+        var ex = Assert.Throws<UnsupportedTextureFormatException>(() => DdsHeader.Read(Legacy(LegacyLayout.Dxt1 with { FourCc = fourCc }, 4, 4, new byte[16])));
+
+        Assert.Contains($"fourcc={fourCc} ({name})", ex.Message);
+    }
+
+    [Fact]
+    public void Bc4AndBc5SnormDx10FormatsAreReadAsSigned()
+    {
+        Assert.Equal(DxgiFormat.BC4_SNORM, DdsHeader.Read(Dx10(DxgiFormat.BC4_SNORM, 4, 4, new byte[8])).Format);
+        Assert.Equal(DxgiFormat.BC5_SNORM, DdsHeader.Read(Dx10(DxgiFormat.BC5_SNORM, 4, 4, new byte[16])).Format);
+        Assert.Equal(16, DdsHeader.Read(Dx10(DxgiFormat.BC5_SNORM, 4, 4, new byte[16])).LevelSize(0));
+    }
+
+    private static byte[] TwoColourPalette(byte alpha = 255)
+    {
+        var palette = new byte[1024];
+        palette[0] = 255; palette[3] = alpha;      // entry 0: red
+        palette[6] = 255; palette[7] = alpha;      // entry 1: blue
+        return palette;
+    }
+
+    [Fact]
+    public void AP8SourceReadsItsPaletteAndStartsPixelsAfterIt()
+    {
+        var layout = new LegacyLayout(0x20, "", 8, 0, 0, 0, 0);
+        var dds = Legacy(layout, 2, 2, [.. TwoColourPalette(), 0, 1, 1, 0]);
+
+        var header = DdsHeader.Read(dds);
+        var pixels = header.Reader!.Unpack(dds.AsSpan((int)header.TopLevelOffset(0), (int)header.LevelSize(0)), 2, 2);
+
+        Assert.Equal(128 + 1024, header.DataOffset);
+        Assert.Equal(DxgiFormat.R8G8B8A8_UNORM, header.Format);
+        var red = new ColorRgba32(255, 0, 0, 255);
+        var blue = new ColorRgba32(0, 0, 255, 255);
+        Assert.Equal([red, blue, blue, red], pixels);
+    }
+
+    [Fact]
+    public void AnA8P8SourceTakesItsAlphaFromTheHighByteOfEachPixel()
+    {
+        var layout = new LegacyLayout(0x21, "", 16, 0, 0, 0, 0xFF00);
+        var dds = Legacy(layout, 2, 1, [.. TwoColourPalette(alpha: 0), 0, 128, 1, 64]);
+
+        var header = DdsHeader.Read(dds);
+        var pixels = header.Reader!.Unpack(dds.AsSpan((int)header.TopLevelOffset(0), (int)header.LevelSize(0)), 2, 1);
+
+        Assert.Equal([new ColorRgba32(255, 0, 0, 128), new ColorRgba32(0, 0, 255, 64)], pixels);
+    }
+
+    [Fact]
+    public void APaletteCutShortIsNotAHeader()
+        => Assert.Throws<InvalidDataException>(() => DdsHeader.Read(Legacy(new LegacyLayout(0x20, "", 8, 0, 0, 0, 0), 2, 2, new byte[100])));
 }
