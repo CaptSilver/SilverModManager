@@ -13,6 +13,7 @@ using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.Abstractions.GC;
 using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Exceptions;
 using SilverModManager.Abstractions.Loadouts.Files.Diff;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Abstractions.Loadouts.Sorting;
@@ -1530,6 +1531,17 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             $"Loadout `{loadout.Name}` is recorded against {second}, so applying it would mix up which files are tracked. Nothing was changed.");
     }
 
+    /// <summary>
+    /// Every path that writes a loadout into the game folder or reads the folder back into it comes through
+    /// <see cref="Synchronize"/>, so the check lives here. Optional so a host without installs syncs as before.
+    /// </summary>
+    /// <exception cref="LoadoutInstallRunningException">An install is still writing into <paramref name="loadout"/>.</exception>
+    private void EnsureNoInstallInto(LoadoutId loadout)
+    {
+        if (_serviceProvider.GetService<ILoadoutInstallActivity>()?.IsInstallingInto(loadout) == true)
+            throw new LoadoutInstallRunningException();
+    }
+
     public record struct AddedEntry
     {
         public required LoadoutItem.New LoadoutItem { get; init; }
@@ -1544,6 +1556,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // database, and neither can mean anything when the prefix they read from is gone.
         await Preflight(loadout.InstallationInstance);
         _ = MetadataOf(loadout);
+        EnsureNoInstallInto(loadout.LoadoutId);
+
+        // A switch syncs the loadout on disk first, and that one can be the one a list is being installed into.
+        if (GameInstallMetadata.LastSyncedLoadout.TryGetValue(loadout.Installation, out var onDiskId))
+            EnsureNoInstallInto(LoadoutId.From(onDiskId));
 
         loadout = loadout.Rebase();
         SyncOrigin.LogStart(Logger, $"sync of loadout {loadout.Name} ({loadout.LoadoutId}) at revision {loadout.Db.BasisTxId}");

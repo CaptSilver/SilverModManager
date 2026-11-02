@@ -96,6 +96,36 @@ public class RunningGameGuardTests(ITestOutputHelper helper) : ACyberpunkIsolate
     }
 
     [Fact]
+    public async Task Synchronize_ThrowsWhenSwitchingAwayFromTheLoadoutBeingInstalledInto_AndLeavesTheGameFolderAlone()
+    {
+        var applied = await LoadoutManager.CreateLoadout(GameInstallation, "Half Installed");
+        var target = await LoadoutManager.CreateLoadout(GameInstallation, "Switch Target");
+        LastSynced().Should().Be(applied.LoadoutId, "the first loadout is the one on disk");
+        var before = GameFolderFiles();
+        Installs.SetInstalling(applied.LoadoutId, true);
+
+        var act = () => SynchronizerService.Synchronize(target.LoadoutId);
+
+        await act.Should().ThrowAsync<LoadoutInstallRunningException>();
+        LastSynced().Should().Be(applied.LoadoutId, "the half-installed loadout must not be synced out of the game folder");
+        GameFolderFiles().Should().Equal(before);
+    }
+
+    [Fact]
+    public async Task DeactivateCurrentLoadout_ThrowsWhileAnInstallWritesIntoTheAppliedLoadout()
+    {
+        var applied = await LoadoutManager.CreateLoadout(GameInstallation, "Half Installed");
+        var before = GameFolderFiles();
+        Installs.SetInstalling(applied.LoadoutId, true);
+
+        var act = async () => await LoadoutManager.DeactivateCurrentLoadout(GameInstallation);
+
+        await act.Should().ThrowAsync<LoadoutInstallRunningException>();
+        LastSynced().Should().Be(applied.LoadoutId);
+        GameFolderFiles().Should().Equal(before);
+    }
+
+    [Fact]
     public async Task CreateLoadout_ThrowsWhileRunning_AndLeavesNoHalfCreatedLoadout()
     {
         LaunchSession.Running = true;
