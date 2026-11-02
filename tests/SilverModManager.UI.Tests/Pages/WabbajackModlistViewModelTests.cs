@@ -71,11 +71,15 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         public CancellationToken LastRetryToken { get; private set; }
         public Exception? RetryFailure { get; set; }
 
+        /// <summary>Reported to the retry's progress before it fails, like a batch that counts some archives and then throws.</summary>
+        public AcquireProgress? RetryProgressBeforeFailure { get; set; }
+
         public Task Retry(IReadOnlyCollection<FileIdentity>? archives, LibraryFileId? modlist, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken)
         {
             Retries.Add(archives);
             RetriedLists.Add(modlist);
             LastRetryToken = cancellationToken;
+            if (RetryProgressBeforeFailure is { } before) progress?.Report(before);
             if (RetryFailure is { } failure) return Task.FromException(failure);
             return RunGate?.Task ?? Task.CompletedTask;
         }

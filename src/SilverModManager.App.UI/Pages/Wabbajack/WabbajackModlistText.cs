@@ -131,11 +131,12 @@ public static class WabbajackModlistText
     public static WabbajackStatus Running(
         WabbajackInstallStatus install,
         string checkText, double checkFraction, bool isCheckIndeterminate,
-        AcquireProgress? downloads)
+        bool isDownloading, AcquireProgress? downloads)
     {
         if (!string.IsNullOrEmpty(install.Text)) return new WabbajackStatus(install.Text, install.Fraction, false, false);
         if (checkText != "") return new WabbajackStatus(checkText, checkFraction, isCheckIndeterminate, false);
-        if (downloads is { Total: > 0 } running && running.Finished < running.Total)
+        // A batch that ended early leaves its count part done; only a running batch is worth a header.
+        if (isDownloading && downloads is { Total: > 0 } running && running.Finished < running.Total)
             return new WabbajackStatus(Downloads(running), (double)running.Finished / running.Total, false, false);
         return new WabbajackStatus("", null, false, false);
     }
@@ -151,12 +152,12 @@ public static class WabbajackModlistText
         string errorText,
         string installProgressText,
         string checkText, double checkFraction, bool isCheckIndeterminate,
-        AcquireProgress? downloads,
+        bool isDownloading, AcquireProgress? downloads,
         string installBlockedReason, string downloadBlockedReason,
         string planSummary)
     {
         if (errorText != "") return new WabbajackStatus(errorText, null, false, true);
-        var running = Running(new WabbajackInstallStatus(installProgressText, 0), checkText, checkFraction, isCheckIndeterminate, downloads);
+        var running = Running(new WabbajackInstallStatus(installProgressText, 0), checkText, checkFraction, isCheckIndeterminate, isDownloading, downloads);
         if (running.Text != "") return new WabbajackStatus("", null, false, false);
         if (installBlockedReason != "") return new WabbajackStatus(installBlockedReason, null, false, false);
         if (downloadBlockedReason != "") return new WabbajackStatus(downloadBlockedReason, null, false, false);

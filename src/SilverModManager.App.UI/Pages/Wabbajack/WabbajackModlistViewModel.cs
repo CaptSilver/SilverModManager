@@ -215,17 +215,17 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         this.WhenAnyValue(vm => vm.SkipMissingArchives, vm => vm.IsPlanning, vm => vm.IsDownloading, vm => vm.HasStartedDownloads)
             .Subscribe(_ => Recompute());
 
-        // Nine inputs decide the one status line; a single subscription keeps them from being refreshed by hand at every setter.
+        // Ten inputs decide the one status line; a single subscription keeps them from being refreshed by hand at every setter.
         this.WhenAnyValue(
                 vm => vm.ErrorText, vm => vm.InstallStatus, vm => vm.CheckText, vm => vm.CheckFraction,
-                vm => vm.IsCheckIndeterminate, vm => vm.Downloads, vm => vm.InstallBlockedReason, vm => vm.DownloadBlockedReason, vm => vm.AcquireText,
-                (error, install, check, checkFraction, indeterminate, downloads, installReason, downloadReason, plan) =>
-                    WabbajackModlistText.Status(error, install.Text ?? "", check, checkFraction, indeterminate, downloads, installReason, downloadReason, plan))
+                vm => vm.IsCheckIndeterminate, vm => vm.IsDownloading, vm => vm.Downloads, vm => vm.InstallBlockedReason, vm => vm.DownloadBlockedReason, vm => vm.AcquireText,
+                (error, install, check, checkFraction, indeterminate, isDownloading, downloads, installReason, downloadReason, plan) =>
+                    WabbajackModlistText.Status(error, install.Text ?? "", check, checkFraction, indeterminate, isDownloading, downloads, installReason, downloadReason, plan))
             .Subscribe(status => Status = status);
 
         // The check, the downloads and the install all report through the header, one step at a time.
         this.WhenAnyValue(
-                vm => vm.InstallStatus, vm => vm.CheckText, vm => vm.CheckFraction, vm => vm.IsCheckIndeterminate, vm => vm.Downloads,
+                vm => vm.InstallStatus, vm => vm.CheckText, vm => vm.CheckFraction, vm => vm.IsCheckIndeterminate, vm => vm.IsDownloading, vm => vm.Downloads,
                 WabbajackModlistText.Running)
             .Subscribe(status => RunningStatus = status);
 

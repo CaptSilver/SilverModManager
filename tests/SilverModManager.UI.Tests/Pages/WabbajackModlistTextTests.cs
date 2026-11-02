@@ -309,8 +309,8 @@ public class WabbajackModlistTextTests
     private static WabbajackStatus Status(
         string error = "", string install = "",
         string check = "", double checkFraction = 0, bool checkIndeterminate = false,
-        AcquireProgress? downloads = null, string installReason = "", string downloadReason = "", string plan = "plan")
-        => WabbajackModlistText.Status(error, install, check, checkFraction, checkIndeterminate, downloads, installReason, downloadReason, plan);
+        AcquireProgress? downloads = null, bool isDownloading = true, string installReason = "", string downloadReason = "", string plan = "plan")
+        => WabbajackModlistText.Status(error, install, check, checkFraction, checkIndeterminate, isDownloading, downloads, installReason, downloadReason, plan);
 
     [Fact]
     public void Status_ShowsAnErrorAsAWarningAheadOfARunningInstall()
@@ -333,6 +333,11 @@ public class WabbajackModlistTextTests
             .Should().Be(new WabbajackStatus("", null, false, false));
 
     [Fact]
+    public void Status_FallsToTheReasonWhenABatchEndedPartway()
+        => Status(downloads: new AcquireProgress(2, 3), isDownloading: false, installReason: "Get what is missing.")
+            .Text.Should().Be("Get what is missing.");
+
+    [Fact]
     public void Status_StillShowsAnErrorWhileTheListIsChecked()
         => Status(error: "boom", check: "Reading the list").Should().Be(new WabbajackStatus("boom", null, false, true));
 
@@ -344,8 +349,13 @@ public class WabbajackModlistTextTests
     private static WabbajackStatus Running(
         string install = "", double installFraction = 0,
         string check = "", double checkFraction = 0, bool checkIndeterminate = false,
-        AcquireProgress? downloads = null)
-        => WabbajackModlistText.Running(new WabbajackInstallStatus(install, installFraction), check, checkFraction, checkIndeterminate, downloads);
+        AcquireProgress? downloads = null, bool isDownloading = true)
+        => WabbajackModlistText.Running(new WabbajackInstallStatus(install, installFraction), check, checkFraction, checkIndeterminate, isDownloading, downloads);
+
+    [Fact]
+    public void Running_IgnoresADownloadCountOnceNothingIsDownloading()
+        => Running(downloads: new AcquireProgress(2, 3), isDownloading: false)
+            .Should().Be(new WabbajackStatus("", null, false, false));
 
     [Fact]
     public void Running_IsEmptyWhenNothingRuns()

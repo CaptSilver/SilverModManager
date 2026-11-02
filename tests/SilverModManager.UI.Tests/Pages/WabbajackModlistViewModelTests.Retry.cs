@@ -158,6 +158,19 @@ public partial class WabbajackModlistViewModelTests
         vm.ErrorText.Should().Be("disk full");
     }
 
+    [Fact]
+    public async Task ABatchThatFailsPartway_ClearsTheHeader()
+    {
+        var (vm, _, acquirer) = await Open(Plan(Failed("one.7z")));
+        acquirer.RetryProgressBeforeFailure = new AcquireProgress(2, 3);
+        acquirer.RetryFailure = new IOException("disk full");
+
+        await vm.RetryFailedCommand.Execute();
+        await WaitUntil(() => !vm.IsDownloading);
+
+        vm.RunningStatus.Text.Should().BeEmpty("nothing is downloading any more, whatever the last count was");
+    }
+
     private static readonly LibraryFileId OtherFile = LibraryFileId.From(EntityId.From(0xBEEF));
 
     [Theory]
