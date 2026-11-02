@@ -18,7 +18,6 @@ internal sealed class DdsHeader
 
     private const uint PixelAlphaPixels = 0x1;
     private const uint PixelFourCc = 0x4;
-    private const uint PixelRgb = 0x40;
 
     private const uint CapsCubeMap = 0x200;
     private const uint CapsCubeMapAllFaces = 0xFC00;
@@ -27,8 +26,10 @@ internal sealed class DdsHeader
     private const uint Dx10Texture2D = 3;
     private const uint Dx10MiscCubeMap = 0x4;
 
-    private DdsHeader(int width, int height, int mipLevels, int faceCount, DxgiFormat format, bool alphaPixels, int dataOffset)
+    private DdsHeader(int width, int height, int mipLevels, int faceCount, DxgiFormat format, bool isSrgb, UncompressedReader? reader, bool alphaPixels, int dataOffset)
     {
+        IsSrgb = isSrgb;
+        Reader = reader;
         Width = width;
         Height = height;
         MipLevels = mipLevels;
@@ -50,13 +51,19 @@ internal sealed class DdsHeader
     /// <summary>The layout of the stored pixels, as the DXGI format that describes it.</summary>
     public DxgiFormat Format { get; }
 
+    /// <summary>The DX10 header names an <c>_SRGB</c> format. <see cref="Format"/> then holds the UNORM twin, which decodes the same bytes.</summary>
+    public bool IsSrgb { get; }
+
+    /// <summary>Unpacks the pixels of a per-pixel layout; null for a block-compressed source.</summary>
+    public UncompressedReader? Reader { get; }
+
     /// <summary>A legacy BC1 header that says the colour data carries alpha, so 3-colour blocks mean transparent.</summary>
     public bool AlphaPixels { get; }
 
     /// <summary>Offset of the first byte of pixel data.</summary>
     public int DataOffset { get; }
 
-    public bool IsBlockCompressed => BlockBytes(Format) > 0;
+    public bool IsBlockCompressed => Reader is null;
 
     /// <summary>Bytes per 4x4 block, or 0 for a format stored per pixel.</summary>
     public static int BlockBytes(DxgiFormat format) => format switch
@@ -66,19 +73,13 @@ internal sealed class DdsHeader
         _ => 0,
     };
 
-    private static int BitsPerPixel(DxgiFormat format) => format switch
-    {
-        DxgiFormat.R8G8B8A8_UNORM or DxgiFormat.B8G8R8A8_UNORM => 32,
-        _ => 0,
-    };
-
     /// <summary>Bytes in one row of blocks (or pixels) of mip <paramref name="level"/>; DirectXTex <c>ComputePitch</c>.</summary>
     public long RowPitch(int level)
     {
         var width = Math.Max(1, Width >> level);
         return IsBlockCompressed
             ? (long)Math.Max(1, (width + 3) / 4) * BlockBytes(Format)
-            : ((long)width * BitsPerPixel(Format) + 7) / 8;
+            : ((long)width * Reader!.BitsPerPixel + 7) / 8;
     }
 
     /// <summary>Bytes of mip <paramref name="level"/> of one face.</summary>
@@ -97,6 +98,14 @@ internal sealed class DdsHeader
             for (var level = 0; level < MipLevels; level++) size += LevelSize(level);
             return size;
         }
+    }
+
+    /// <summary>Offset of mip <paramref name="level"/> of face <paramref name="face"/>.</summary>
+    public long LevelOffset(int face, int level)
+    {
+        var offset = TopLevelOffset(face);
+        for (var i = 0; i < level; i++) offset += LevelSize(i);
+        return offset;
     }
 
     /// <summary>Offset of the top mip of face <paramref name="face"/>.</summary>
@@ -152,13 +161,13 @@ internal sealed class DdsHeader
         if (width is 0 or > int.MaxValue || height is 0 or > int.MaxValue)
             throw new InvalidDataException($"A DDS file records a {width}x{height} texture");
 
-        var format = hasDx10
+        var source = hasDx10
             ? FromDx10(dxgi)
             : FromLegacy(pixelFlags, fourCc, bitCount, masks);
-        if (format is not { } known)
+        if (source is not var (known, srgb, reader))
             throw new UnsupportedTextureFormatException($"cannot read the source texture: {Fields()}");
 
-        var header = new DdsHeader((int)width, (int)height, (int)Math.Max(1, mipCount), faces, known,
+        var header = new DdsHeader((int)width, (int)height, (int)Math.Max(1, mipCount), faces, known, srgb, reader,
             alphaPixels: !hasDx10 && known == DxgiFormat.BC1_UNORM && (pixelFlags & PixelAlphaPixels) != 0, dataOffset);
 
         var lastFaceEnd = header.TopLevelOffset(faces - 1) + header.LevelSize(0);
@@ -166,35 +175,49 @@ internal sealed class DdsHeader
         return header;
     }
 
-    private static DxgiFormat? FromDx10(uint dxgi)
+    private static (DxgiFormat Format, bool Srgb, UncompressedReader? Reader)? FromDx10(uint dxgi)
     {
         var format = (DxgiFormat)dxgi;
-        return format is DxgiFormat.BC1_UNORM or DxgiFormat.BC2_UNORM or DxgiFormat.BC3_UNORM or DxgiFormat.BC4_UNORM
-            or DxgiFormat.BC5_UNORM or DxgiFormat.BC7_UNORM or DxgiFormat.R8G8B8A8_UNORM or DxgiFormat.B8G8R8A8_UNORM
-            ? format
-            : null;
+        var srgb = format is DxgiFormat.BC1_UNORM_SRGB or DxgiFormat.BC2_UNORM_SRGB or DxgiFormat.BC3_UNORM_SRGB
+            or DxgiFormat.BC7_UNORM_SRGB or DxgiFormat.R8G8B8A8_UNORM_SRGB or DxgiFormat.B8G8R8A8_UNORM_SRGB
+            or DxgiFormat.B8G8R8X8_UNORM_SRGB;
+
+        // The _SRGB block formats store the same bytes as their UNORM twins; only the transfer function differs.
+        var unorm = format switch
+        {
+            DxgiFormat.BC1_UNORM_SRGB => DxgiFormat.BC1_UNORM,
+            DxgiFormat.BC2_UNORM_SRGB => DxgiFormat.BC2_UNORM,
+            DxgiFormat.BC3_UNORM_SRGB => DxgiFormat.BC3_UNORM,
+            DxgiFormat.BC7_UNORM_SRGB => DxgiFormat.BC7_UNORM,
+            DxgiFormat.R8G8B8A8_UNORM_SRGB => DxgiFormat.R8G8B8A8_UNORM,
+            DxgiFormat.B8G8R8A8_UNORM_SRGB => DxgiFormat.B8G8R8A8_UNORM,
+            DxgiFormat.B8G8R8X8_UNORM_SRGB => DxgiFormat.B8G8R8X8_UNORM,
+            _ => format,
+        };
+
+        if (unorm is DxgiFormat.BC1_UNORM or DxgiFormat.BC2_UNORM or DxgiFormat.BC3_UNORM or DxgiFormat.BC4_UNORM
+            or DxgiFormat.BC5_UNORM or DxgiFormat.BC7_UNORM)
+            return (unorm, srgb, null);
+
+        return UncompressedReader.FromDxgi(unorm) is { } reader ? (unorm, srgb, reader) : null;
     }
 
-    private static DxgiFormat? FromLegacy(uint pixelFlags, uint fourCc, uint bitCount, (uint R, uint G, uint B, uint A) masks)
+    private static (DxgiFormat Format, bool Srgb, UncompressedReader? Reader)? FromLegacy(uint pixelFlags, uint fourCc, uint bitCount, (uint R, uint G, uint B, uint A) masks)
     {
         if ((pixelFlags & PixelFourCc) != 0)
         {
             // BC4S and BC5S are signed; they are read as their unsigned twins until a signed decoder exists.
-            if (fourCc == FourCc("DXT1")) return DxgiFormat.BC1_UNORM;
-            if (fourCc == FourCc("DXT3")) return DxgiFormat.BC2_UNORM;
-            if (fourCc == FourCc("DXT5")) return DxgiFormat.BC3_UNORM;
-            if (fourCc == FourCc("ATI1") || fourCc == FourCc("BC4U") || fourCc == FourCc("BC4S")) return DxgiFormat.BC4_UNORM;
-            if (fourCc == FourCc("ATI2") || fourCc == FourCc("BC5U") || fourCc == FourCc("BC5S")) return DxgiFormat.BC5_UNORM;
+            if (fourCc == FourCc("DXT1")) return (DxgiFormat.BC1_UNORM, false, null);
+            if (fourCc == FourCc("DXT3")) return (DxgiFormat.BC2_UNORM, false, null);
+            if (fourCc == FourCc("DXT5")) return (DxgiFormat.BC3_UNORM, false, null);
+            if (fourCc == FourCc("ATI1") || fourCc == FourCc("BC4U") || fourCc == FourCc("BC4S")) return (DxgiFormat.BC4_UNORM, false, null);
+            if (fourCc == FourCc("ATI2") || fourCc == FourCc("BC5U") || fourCc == FourCc("BC5S")) return (DxgiFormat.BC5_UNORM, false, null);
             return null;
         }
 
-        if ((pixelFlags & PixelRgb) != 0 && (pixelFlags & PixelAlphaPixels) != 0 && bitCount == 32 && masks.A == 0xFF000000)
-        {
-            if (masks is { R: 0x000000FF, G: 0x0000FF00, B: 0x00FF0000 }) return DxgiFormat.R8G8B8A8_UNORM;
-            if (masks is { R: 0x00FF0000, G: 0x0000FF00, B: 0x000000FF }) return DxgiFormat.B8G8R8A8_UNORM;
-        }
-
-        return null;
+        return UncompressedReader.FromBitmasks(pixelFlags, bitCount, masks.R, masks.G, masks.B, masks.A) is var (reader, dxgi)
+            ? (dxgi, false, reader)
+            : null;
     }
 
     /// <summary>The header fields the message prints, so the next layout nobody handled can be named from the panel.</summary>

@@ -34,15 +34,17 @@ public static class DdsRecompressor
         var dds = buffer.GetBuffer().AsMemory(0, (int)buffer.Length);
 
         var header = DdsHeader.Read(dds.Span);
-        var decodeFormat = ToDecodeFormat(header);
+        var decodeFormat = header.IsBlockCompressed ? ToDecodeFormat(header) : CompressionFormat.Unknown;
 
         var decoder = new BcDecoder();
         var faces = new List<ColorRgba32[]>(header.FaceCount);
         for (var face = 0; face < header.FaceCount; face++)
         {
             token.ThrowIfCancellationRequested();
-            var data = dds.Slice((int)header.TopLevelOffset(face), (int)header.LevelSize(0)).ToArray();
-            var pixels = decoder.DecodeRaw(data, header.Width, header.Height, decodeFormat);
+            var data = dds.Slice((int)header.TopLevelOffset(face), (int)header.LevelSize(0));
+            var pixels = header.Reader is { } reader
+                ? reader.Unpack(data.Span, header.Width, header.Height)
+                : decoder.DecodeRaw(data.ToArray(), header.Width, header.Height, decodeFormat);
             faces.Add(Resize(pixels, header.Width, header.Height, target.Width, target.Height));
         }
 

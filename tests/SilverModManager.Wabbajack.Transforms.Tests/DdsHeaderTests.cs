@@ -147,11 +147,11 @@ public class DdsHeaderTests
     [Fact]
     public void AnUnmatchedBitmaskPrintsItsMasks()
     {
-        var rgb24 = new LegacyLayout(0x40, "", 24, 0xFF0000, 0xFF00, 0xFF, 0);
+        var scrambled = new LegacyLayout(0x40, "", 32, 0xFF00FF, 0xFF00, 0xFF0000, 0);
 
-        var ex = Assert.Throws<UnsupportedTextureFormatException>(() => DdsHeader.Read(Legacy(rgb24, 2, 2, new byte[12])));
+        var ex = Assert.Throws<UnsupportedTextureFormatException>(() => DdsHeader.Read(Legacy(scrambled, 2, 2, new byte[16])));
 
-        Assert.Equal("cannot read the source texture: fourcc=none, flags=0x40, bpp=24, masks=0xFF0000/0xFF00/0xFF/0x0, dxgi=UNKNOWN (0)", ex.Message);
+        Assert.Equal("cannot read the source texture: fourcc=none, flags=0x40, bpp=32, masks=0xFF00FF/0xFF00/0xFF0000/0x0, dxgi=UNKNOWN (0)", ex.Message);
     }
 
     [Fact]
@@ -179,4 +179,41 @@ public class DdsHeaderTests
     [Fact]
     public void PixelDataShorterThanTheHeaderSaysIsNotAHeader()
         => Assert.Throws<InvalidDataException>(() => DdsHeader.Read(Legacy(LegacyLayout.Dxt1, 16, 16, new byte[64])));
+
+    [Theory]
+    [InlineData(DxgiFormat.BC1_UNORM_SRGB, DxgiFormat.BC1_UNORM)]
+    [InlineData(DxgiFormat.BC2_UNORM_SRGB, DxgiFormat.BC2_UNORM)]
+    [InlineData(DxgiFormat.BC3_UNORM_SRGB, DxgiFormat.BC3_UNORM)]
+    [InlineData(DxgiFormat.BC7_UNORM_SRGB, DxgiFormat.BC7_UNORM)]
+    [InlineData(DxgiFormat.R8G8B8A8_UNORM_SRGB, DxgiFormat.R8G8B8A8_UNORM)]
+    [InlineData(DxgiFormat.B8G8R8A8_UNORM_SRGB, DxgiFormat.B8G8R8A8_UNORM)]
+    [InlineData(DxgiFormat.B8G8R8X8_UNORM_SRGB, DxgiFormat.B8G8R8X8_UNORM)]
+    public void AnSrgbDx10FormatReadsAsItsUnormTwinAndSaysSo(DxgiFormat srgb, DxgiFormat unorm)
+    {
+        var header = DdsHeader.Read(Dx10(srgb, 4, 4, new byte[64]));
+
+        Assert.Equal(unorm, header.Format);
+        Assert.True(header.IsSrgb);
+        Assert.False(DdsHeader.Read(Dx10(unorm, 4, 4, new byte[64])).IsSrgb);
+    }
+
+    [Theory]
+    [InlineData(24, 0xFF0000u, 0xFF00u, 0xFFu, 0u, 0x40u, 3)]
+    [InlineData(16, 0xF800u, 0x7E0u, 0x1Fu, 0u, 0x40u, 2)]
+    public void ALowerMipOfAnUncompressedSourceStartsAfterTheRealBytesOfTheLevelAbove(int bits, uint r, uint g, uint b, uint a, uint flags, int bytesPerPixel)
+    {
+        var layout = new LegacyLayout(flags, "", (uint)bits, r, g, b, a);
+        var level0 = Enumerable.Range(0, 4 * bytesPerPixel).Select(i => (byte)(10 + i)).ToArray();
+        var level1 = Enumerable.Range(0, bytesPerPixel).Select(i => (byte)(200 + i)).ToArray();
+        var dds = Legacy(layout, 2, 2, [.. level0, .. level1], mips: 2);
+
+        var header = DdsHeader.Read(dds);
+
+        Assert.Equal(128 + 4 * bytesPerPixel, header.LevelOffset(0, 1));
+        Assert.Equal(bytesPerPixel, header.LevelSize(1));
+        var expected = header.Reader!.Unpack(level1, 1, 1);
+        var actual = header.Reader.Unpack(dds.AsSpan((int)header.LevelOffset(0, 1), (int)header.LevelSize(1)), 1, 1);
+        Assert.Equal(expected, actual);
+        Assert.NotEqual(header.Reader.Unpack(level0.AsSpan(0, bytesPerPixel), 1, 1), actual);
+    }
 }

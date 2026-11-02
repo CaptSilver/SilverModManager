@@ -299,4 +299,124 @@ public class DdsRecompressorTests(ITestOutputHelper output)
         await Recompress(big.ToArray(), new DdsTarget(1024, 1024, 0, DxgiFormat.BC7_UNORM));
         output.WriteLine($"BC7 1024x1024 recompress: {watch.ElapsedMilliseconds} ms");
     }
+
+    private static byte[] Dx10Source(DxgiFormat format, int width, int height, byte[] data)
+    {
+        var stream = new MemoryStream();
+        TestTextures.WriteDx10(stream, format, width, height, data);
+        return stream.ToArray();
+    }
+
+    /// <summary>Re-encodes <paramref name="dds"/> to R8G8B8A8 at its own size and returns the top level's pixels as r,g,b,a bytes.</summary>
+    private static async Task<byte[]> RgbaOf(byte[] dds, int width, int height)
+    {
+        var result = await Recompress(dds, new DdsTarget(width, height, 1, DxgiFormat.R8G8B8A8_UNORM));
+        var face = DdsFile.Load(new MemoryStream(result)).Faces.First();
+        return face.MipMaps[0].Data;
+    }
+
+    public static TheoryData<DxgiFormat, byte[], byte[]> Dx10UncompressedSources => new()
+    {
+        { DxgiFormat.R8_UNORM, [10, 200], [10, 0, 0, 255, 200, 0, 0, 255] },
+        { DxgiFormat.R8G8_UNORM, [1, 2, 3, 4], [1, 2, 0, 255, 3, 4, 0, 255] },
+        { DxgiFormat.B8G8R8X8_UNORM, [1, 2, 3, 77, 4, 5, 6, 88], [3, 2, 1, 255, 6, 5, 4, 255] },
+        { DxgiFormat.R8G8B8A8_UNORM_SRGB, [1, 2, 3, 4, 5, 6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8] },
+        { DxgiFormat.B8G8R8A8_UNORM_SRGB, [1, 2, 3, 4, 5, 6, 7, 8], [3, 2, 1, 4, 7, 6, 5, 8] },
+        { DxgiFormat.B8G8R8X8_UNORM_SRGB, [1, 2, 3, 77, 4, 5, 6, 88], [3, 2, 1, 255, 6, 5, 4, 255] },
+    };
+
+    [Theory]
+    [MemberData(nameof(Dx10UncompressedSources))]
+    public async Task Recompress_Dx10UncompressedSource_DecodesToExactPixels(DxgiFormat format, byte[] data, byte[] expected)
+    {
+        var width = 2;
+        var rows = data.Length / (format is DxgiFormat.R8_UNORM ? 1 : format is DxgiFormat.R8G8_UNORM ? 2 : 4) / width;
+
+        Assert.Equal(expected, await RgbaOf(Dx10Source(format, width, rows, data), width, rows));
+    }
+
+    [Fact]
+    public async Task Recompress_R8Source_PutsTheValueInRedAndNothingElse()
+    {
+        var rgba = await RgbaOf(Dx10Source(DxgiFormat.R8_UNORM, 1, 1, [77]), 1, 1);
+
+        Assert.Equal(new byte[] { 77, 0, 0, 255 }, rgba);
+    }
+
+    [Fact]
+    public async Task Recompress_R8G8Source_PutsTheTwoValuesInRedAndGreen()
+    {
+        var rgba = await RgbaOf(Dx10Source(DxgiFormat.R8G8_UNORM, 1, 1, [77, 99]), 1, 1);
+
+        Assert.Equal(new byte[] { 77, 99, 0, 255 }, rgba);
+    }
+
+    public static TheoryData<DxgiFormat, DxgiFormat, CompressionFormat> SrgbBlockSources => new()
+    {
+        { DxgiFormat.BC1_UNORM_SRGB, DxgiFormat.BC1_UNORM, CompressionFormat.Bc1 },
+        { DxgiFormat.BC2_UNORM_SRGB, DxgiFormat.BC2_UNORM, CompressionFormat.Bc2 },
+        { DxgiFormat.BC3_UNORM_SRGB, DxgiFormat.BC3_UNORM, CompressionFormat.Bc3 },
+        { DxgiFormat.BC7_UNORM_SRGB, DxgiFormat.BC7_UNORM, CompressionFormat.Bc7 },
+    };
+
+    [Theory]
+    [MemberData(nameof(SrgbBlockSources))]
+    public async Task Recompress_SrgbBlockSource_DecodesLikeItsUnormTwin(DxgiFormat srgb, DxgiFormat unorm, CompressionFormat encode)
+    {
+        var blocks = TestTextures.EncodedGradient(encode, 8, 1);
+
+        var fromSrgb = await RgbaOf(Dx10Source(srgb, 8, 8, blocks), 8, 8);
+        var fromUnorm = await RgbaOf(Dx10Source(unorm, 8, 8, blocks), 8, 8);
+
+        Assert.Equal(fromUnorm, fromSrgb);
+        var (r, g, _) = Mean(DecodedPixels(fromSrgb));
+        var (sr, sg, _) = Mean(TestTextures.Gradient(8));
+        Assert.True(Math.Abs(r - sr) < 12.0 && Math.Abs(g - sg) < 12.0, $"{r},{g} vs {sr},{sg}");
+    }
+
+    private static ColorRgba32[] DecodedPixels(byte[] rgba)
+        => System.Runtime.InteropServices.MemoryMarshal.Cast<byte, ColorRgba32>(rgba.AsSpan()).ToArray();
+
+    private const uint Rgb = 0x40, Lum = 0x20000, Alp = 0x2;
+
+    // name, pixel flags, bits, masks r/g/b/a, the pixel's stored value, expected r/g/b/a
+    public static TheoryData<string, uint, uint, uint, uint, uint, uint, uint, byte[]> BitmaskSources => new()
+    {
+        { "R8G8B8", Rgb, 24, 0xFF0000, 0xFF00, 0xFF, 0, 0x302010, [0x30, 0x20, 0x10, 255] },
+        { "R5G6B5", Rgb, 16, 0xF800, 0x7E0, 0x1F, 0, 0x8410, [132, 130, 132, 255] },
+        { "R5G6B5 full", Rgb, 16, 0xF800, 0x7E0, 0x1F, 0, 0xFFE0, [255, 255, 0, 255] },
+        { "A1R5G5B5", Rgb | 1, 16, 0x7C00, 0x3E0, 0x1F, 0x8000, 0xFC00, [255, 0, 0, 255] },
+        { "A1R5G5B5 clear", Rgb | 1, 16, 0x7C00, 0x3E0, 0x1F, 0x8000, 0x7C00, [255, 0, 0, 0] },
+        { "X1R5G5B5", Rgb, 16, 0x7C00, 0x3E0, 0x1F, 0, 0x7C00, [255, 0, 0, 255] },
+        { "A4R4G4B4", Rgb | 1, 16, 0xF00, 0xF0, 0xF, 0xF000, 0x8F4A, [255, 68, 170, 136] },
+        { "X4R4G4B4", Rgb, 16, 0xF00, 0xF0, 0xF, 0, 0x0F4A, [255, 68, 170, 255] },
+        { "A4L4", Lum | 1, 8, 0xF, 0, 0, 0xF0, 0xA5, [85, 85, 85, 170] },
+        { "L8", Lum, 8, 0xFF, 0, 0, 0, 200, [200, 0, 0, 255] },
+        { "A8L8", Lum | 1, 16, 0xFF, 0, 0, 0xFF00, 0x140A, [10, 20, 0, 255] },
+        { "L16", Lum, 16, 0xFFFF, 0, 0, 0, 0x1234, [0x12, 0, 0, 255] },
+        { "A8", Alp, 8, 0, 0, 0, 0xFF, 77, [0, 0, 0, 77] },
+        { "A8R3G3B2", Rgb | 1, 16, 0xE0, 0x1C, 0x3, 0xFF00, 0x80E0, [255, 0, 0, 128] },
+        { "R3G3B2", Rgb, 8, 0xE0, 0x1C, 0x3, 0, 0xE3, [255, 0, 255, 255] },
+        { "X8R8G8B8", Rgb, 32, 0xFF0000, 0xFF00, 0xFF, 0, 0x04030201, [3, 2, 1, 255] },
+        { "A8R8G8B8", Rgb | 1, 32, 0xFF0000, 0xFF00, 0xFF, 0xFF000000, 0x04030201, [3, 2, 1, 4] },
+        { "A8B8G8R8", Rgb | 1, 32, 0xFF, 0xFF00, 0xFF0000, 0xFF000000, 0x04030201, [1, 2, 3, 4] },
+        { "X8B8G8R8", Rgb, 32, 0xFF, 0xFF00, 0xFF0000, 0, 0x04030201, [1, 2, 3, 255] },
+        { "G16R16", Rgb, 32, 0xFFFF, 0xFFFF0000, 0, 0, 0x56781234, [0x12, 0x56, 0, 255] },
+        { "A2R10G10B10", Rgb | 1, 32, 0x3FF00000, 0xFFC00, 0x3FF, 0xC0000000, (512u << 20) | (256u << 10) | 1023 | (1u << 30), [128, 64, 255, 85] },
+        { "A2B10G10R10", Rgb | 1, 32, 0x3FF, 0xFFC00, 0x3FF00000, 0xC0000000, 512 | (256u << 10) | (1023u << 20) | (1u << 30), [128, 64, 255, 85] },
+    };
+
+    [Theory]
+    [MemberData(nameof(BitmaskSources))]
+    public async Task Recompress_BitmaskSource_DecodesToExactPixels(string name, uint flags, uint bits, uint r, uint g, uint b, uint a, uint value, byte[] expected)
+    {
+        var bytes = new byte[bits / 8];
+        for (var i = 0; i < bytes.Length; i++) bytes[i] = (byte)(value >> (8 * i));
+        var stream = new MemoryStream();
+        TestTextures.WriteLegacy(stream, new TestTextures.LegacyLayout(flags, "", bits, r, g, b, a), 1, 1, bytes);
+
+        var actual = await RgbaOf(stream.ToArray(), 1, 1);
+
+        Assert.True(Enumerable.SequenceEqual(expected, actual), $"{name}: {string.Join(',', actual)}");
+    }
 }
