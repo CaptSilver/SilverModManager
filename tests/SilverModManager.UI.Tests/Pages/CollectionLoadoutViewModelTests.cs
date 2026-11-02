@@ -467,7 +467,7 @@ public class CollectionLoadoutViewModelTests(IServiceProvider provider) : AUiTes
     }
 
     [Fact]
-    public async Task AModlistPagesMoreMenuHasTheDownloadsItemsAndEndsWithRemoveWhileInstalled()
+    public async Task AModlistPagesMoreMenuHasTheDownloadsItemsAndEndsWithReinstallThenRemoveWhileInstalled()
     {
         var (loadout, source, file) = await ModlistSource("Menu list");
         var group = await WabbajackGroupSeed.AddGroup(Connection, file, loadout.LoadoutId, "Menu list");
@@ -481,6 +481,7 @@ public class CollectionLoadoutViewModelTests(IServiceProvider provider) : AUiTes
             "Open inbox folder",
             "Choose download folder...",
             "Use the default download folder",
+            "Reinstall modlist",
             "Remove modlist"));
     }
 }

@@ -67,6 +67,7 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public double ProgressFraction { get; init; } = 0;
     public string InstallEtaText { get; init; } = "";
     public IDisposable FollowRunningInstall() => System.Reactive.Disposables.Disposable.Empty;
+    public Task PrepareInstallAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     public string ErrorText { get; init; } = "";
     public bool CanResume { get; init; } = false;
     public bool IsInstalled { get; init; } = false;

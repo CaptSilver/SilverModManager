@@ -135,6 +135,14 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
     /// install on every tab. The page stops following when the last hold is disposed.
     /// </summary>
     IDisposable FollowRunningInstall();
+
+    /// <summary>
+    /// Returns once the list has been read and checked against the library, so <see cref="CanInstall"/> and
+    /// <see cref="InstallBlockedReason"/> mean something. The page does this itself when its tab is first shown; a
+    /// caller that never showed the tab (the more menu's Reinstall) asks for it here. A model that was already
+    /// checked is not checked again.
+    /// </summary>
+    Task PrepareInstallAsync(CancellationToken cancellationToken);
     string ErrorText { get; }
 
     /// <summary>The list is in the selected loadout but disabled, because an earlier install did not finish or skipped files.</summary>

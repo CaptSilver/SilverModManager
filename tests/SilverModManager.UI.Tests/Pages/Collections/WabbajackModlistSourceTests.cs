@@ -252,7 +252,8 @@ public class WabbajackModlistSourceTests(IServiceProvider provider) : AUiTest(pr
 
         var items = f.Source.MenuItems(Substitute.For<ICollectionPageHost>(), viewDownloads);
 
-        items.Select(item => item.Header).Should().Equal("View downloads", "Check inbox", "Open inbox folder", "Choose download folder...", "Use the default download folder");
+        items.Select(item => item.Header).Should().Equal(
+            "View downloads", "Check inbox", "Open inbox folder", "Choose download folder...", "Use the default download folder", "Reinstall modlist");
         items[0].Should().BeSameAs(viewDownloads);
     }
 
@@ -264,8 +265,36 @@ public class WabbajackModlistSourceTests(IServiceProvider provider) : AUiTest(pr
 
         var items = f.Source.MenuItems(Substitute.For<ICollectionPageHost>(), null);
 
-        items.Select(item => item.Command).Should().Equal(
+        items.Take(4).Select(item => item.Command).Should().Equal(
             model.CheckInboxCommand, model.OpenInboxFolderCommand, model.ChooseDownloadsFolderCommand, model.UseDefaultDownloadsFolderCommand);
+    }
+
+    [Fact]
+    public async Task ReinstallSitsLastSoItIsNextToRemoveAndCarriesItsIconAndTooltip()
+    {
+        var f = await Open();
+        f.Source.CreateDownloads();
+
+        var reinstall = f.Source.MenuItems(Substitute.For<ICollectionPageHost>(), null)[^1];
+
+        reinstall.Header.Should().Be("Reinstall modlist");
+        reinstall.Icon.Should().Be(IconValues.Refresh);
+        reinstall.ToolTip.Should().Be("Removes what the install put in the loadout and installs it again from the library. Nothing is downloaded.");
+    }
+
+    [Fact]
+    public async Task ReinstallCanRunOnlyOnceTheListIsInstalledInTheLoadout()
+    {
+        var f = await Open();
+        f.Source.CreateDownloads();
+        var reinstall = f.Source.MenuItems(Substitute.For<ICollectionPageHost>(), null)[^1];
+        await Eventually(async () => (await reinstall.Command.CanExecute.FirstAsync()).Should().BeFalse("nothing is installed yet"));
+
+        var group = await InstallGroup(f, finished: true);
+        await Eventually(async () => (await reinstall.Command.CanExecute.FirstAsync()).Should().BeTrue());
+
+        await WabbajackGroupSeed.Delete(Connection, group);
+        await Eventually(async () => (await reinstall.Command.CanExecute.FirstAsync()).Should().BeFalse("the group is gone"));
     }
 
     [Fact]

@@ -5,6 +5,7 @@ using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Reactive.Threading.Tasks;
 using Avalonia.Media.Imaging;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
@@ -403,6 +404,18 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         InboxText = unmatched.Count == 0
             ? ""
             : $"In the inbox but not part of this list: {string.Join(", ", unmatched.Select(file => file.FileName))}";
+    }
+
+    public async Task PrepareInstallAsync(CancellationToken cancellationToken)
+    {
+        if (!_loadStarted)
+        {
+            await LoadAsync(cancellationToken);
+            return;
+        }
+
+        // IsPlanning is set on the UI thread and cleared when the check ends, so it can be waited on from anywhere.
+        await this.WhenAnyValue(vm => vm.IsPlanning).Where(planning => !planning).FirstAsync().ToTask(cancellationToken);
     }
 
     /// <summary>Reads the list, offers the loadouts of its game and builds the archive table for the first of them.</summary>

@@ -9,12 +9,14 @@ using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.App.UI.Pages.LibraryPage.Collections;
 using SilverModManager.App.UI.Pages.Wabbajack;
 using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk;
@@ -22,6 +24,7 @@ using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.Wabbajack.Install;
 using SilverModManager.Wabbajack.Models;
 using Observable = System.Reactive.Linq.Observable;
 using ReactiveCommand = ReactiveUI.ReactiveCommand;
@@ -154,7 +157,36 @@ public sealed class WabbajackModlistSource : CollectionSource
         items.Add(Item("Open inbox folder", IconValues.FolderOpen, model.OpenInboxFolderCommand));
         items.Add(Item("Choose download folder...", IconValues.FolderOpen, model.ChooseDownloadsFolderCommand));
         items.Add(Item("Use the default download folder", IconValues.Refresh, model.UseDefaultDownloadsFolderCommand));
+        // Last, so it sits next to the page's Remove item.
+        items.Add(ReinstallItem(host, model));
         return items;
+    }
+
+    private ContextMenuItem ReinstallItem(ICollectionPageHost host, IWabbajackModlistViewModel model)
+    {
+        var reinstaller = new WabbajackModlistReinstaller(
+            Connection,
+            Services.GetRequiredService<ILoadoutManager>(),
+            Services.GetRequiredService<IErrorPresenter>(),
+            Services.GetRequiredService<ModlistInstallRuns>(),
+            model,
+            _file,
+            () => LoadoutId ?? model.SelectedLoadout?.Id);
+
+        // Only an installed list has anything to reinstall, and a running install owns the group's contents.
+        var canReinstall = Group.Select(static group => group.HasValue)
+            .CombineLatest(model.WhenAnyValue(vm => vm.IsInstalling), static (installed, installing) => installed && !installing)
+            .StartWith(false)
+            .DistinctUntilChanged()
+            .ObserveOn(RxApp.MainThreadScheduler);
+
+        return new ContextMenuItem
+        {
+            Header = "Reinstall modlist",
+            Icon = IconValues.Refresh,
+            ToolTip = "Removes what the install put in the loadout and installs it again from the library. Nothing is downloaded.",
+            Command = ReactiveCommand.CreateFromTask(() => reinstaller.Reinstall(host), canReinstall),
+        };
     }
 
     private static ContextMenuItem Item(string header, IconValue icon, ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> command) =>
