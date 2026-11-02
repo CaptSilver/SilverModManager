@@ -18,11 +18,10 @@ public interface ILoadoutSynchronizer
     IGamePathFilter GamePathFilter { get; }
 
     /// <summary>
-    /// Folders, written as they sit in the game folder, whose case variants the next Apply merges into one. Empty
-    /// for a game that does not repair them. Health Check names them so it can tell the user which pairs need no
-    /// hand work.
+    /// Whether an Apply merges folders that differ only in letter case into one, for this installation: every folder of a
+    /// game that runs under Wine, and the fixed top folders of a game that names some. Health Check words its advice by it.
     /// </summary>
-    IReadOnlyList<string> FoldersMergedOnApply { get; }
+    bool MergesCaseVariantFoldersOnApply(GameInstallation installation);
 
     /// <summary>
     /// Whether the sync tree leaves out the loadout item's file at <paramref name="path"/>: the path is

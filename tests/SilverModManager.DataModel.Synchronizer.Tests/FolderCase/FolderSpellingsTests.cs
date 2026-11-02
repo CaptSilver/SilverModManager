@@ -138,4 +138,28 @@ public class FolderSpellingsTests
         // One miss per distinct folder; every other path of the folder is a hit.
         s.CacheHits.Should().Be(targets.Count - 1000);
     }
+
+    [Fact]
+    public void NeedsDiskMerge_TrueForTwinsAndForALoneVariantOfAFixedFolder_FalseOtherwise()
+    {
+        Build(folders: ["Data/Interface", "Data/interface"]).NeedsDiskMerge.Should().BeTrue();
+        Build(["Mods"], folders: ["mods"]).NeedsDiskMerge.Should().BeTrue();
+        Build(["Mods"], allTiers: false, folders: ["mods"]).NeedsDiskMerge.Should().BeTrue();
+        Build(["Mods"], folders: ["Mods", "Data/Interface"]).NeedsDiskMerge.Should().BeFalse();
+        Build(folders: ["Data/Interface"], targets: ["Data/interface/a"]).NeedsDiskMerge.Should().BeFalse("the loadout's spelling follows the disk");
+    }
+
+    [Fact]
+    public void KeepSplitFolders_LeavesATwinThatIsStillOnDiskAsSpelled_AndEverythingBeneathIt()
+    {
+        var s = FolderSpellings.Build(new FolderSpellingSources([], true,
+            new[] { "Data/Interface", "Data/interface", "Data/Interface/sub" }.Select(G).ToArray(),
+            [(G("Data/Interface/a.swf"), false), (G("Data/interface/b.swf"), false), (G("Data/Interface/sub/c.swf"), false)],
+            [G("Data/interface/Sub/d.swf"), G("Data/Other/e.swf"), G("data/other/f.swf")], KeepSplitFolders: true));
+
+        s.Canonical(G("Data/interface/b.swf")).Path.ToString().Should().Be("Data/interface/b.swf");
+        s.Canonical(G("Data/Interface/sub/c.swf")).Path.ToString().Should().Be("Data/Interface/sub/c.swf");
+        s.Canonical(G("Data/interface/Sub/d.swf")).Path.ToString().Should().Be("Data/interface/Sub/d.swf");
+        s.Canonical(G("data/other/f.swf")).Path.ToString().Should().Be("Data/Other/f.swf", "a folder with one spelling on disk is still folded");
+    }
 }

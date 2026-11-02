@@ -87,7 +87,10 @@ public sealed class Witcher3Synchronizer(IServiceProvider provider, IGame game) 
         return new MergeSynchronizerPart(engine, provider.GetRequiredService<ILogger<Witcher3Synchronizer>>());
     }
 
-    public override IReadOnlyList<string> FoldersMergedOnApply => Witcher3FolderCase.TopFolders;
+    /// <summary>The game's own spelling of its top folders. Wine resolves names without regard to case, so <c>mods</c> beside <c>Mods</c> leaves the game one of them.</summary>
+    internal static readonly string[] FixedTopFolders = [WitcherConstants.W3ModsFolder, WitcherConstants.W3DlcFolder, "bin"];
+
+    protected override IReadOnlyList<string> FixedFolderSpellings => FixedTopFolders;
 
     /// <summary>
     /// Creates the loadout's Load Order if it has none yet and brings it up to date before the sync tree is built. A
@@ -97,10 +100,6 @@ public sealed class Witcher3Synchronizer(IServiceProvider provider, IGame game) 
     /// </summary>
     protected override async ValueTask<Loadout.ReadOnly> PrepareLoadoutForSync(Loadout.ReadOnly loadout)
     {
-        // Before the tree is built: an install from before the plan wrote targets canonically has its folders merged and its rows
-        // respelled together, so the recorded spelling is always one the disk has.
-        Witcher3FolderCase.MergeFoldersOnDisk(loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty)), Logger);
-        loadout = await Witcher3FolderCase.Repair(provider.GetRequiredService<IConnection>(), loadout);
         await Game.SortOrderManager.UpdateLoadOrders(loadout.LoadoutId);
         loadout = await GameInis.Prepare(Inis, loadout.Rebase(), provider);
 

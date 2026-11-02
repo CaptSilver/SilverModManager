@@ -166,25 +166,26 @@ internal class GameLocationsService : IGameLocationsService
     /// </summary>
     private static List<AbsolutePath> KeepOneCopyPerPath(GameInstallation installation, List<AbsolutePath> files, Func<GamePath, bool>? preferred)
     {
-        var best = new Dictionary<GamePath, (AbsolutePath File, string Spelled, bool Preferred)>(files.Count);
+        // The callback is asked only about files that have a twin: it can be costly, and most files have none.
+        var best = new Dictionary<GamePath, (AbsolutePath File, GamePath Path)>(files.Count);
         var twins = false;
         foreach (var file in files)
         {
             var path = installation.Locations.ToGamePath(file);
-            var spelled = path.Path.ToString();
-            var candidate = (File: file, Spelled: spelled, Preferred: preferred?.Invoke(path) ?? false);
             ref var current = ref CollectionsMarshal.GetValueRefOrAddDefault(best, path, out var exists);
             if (!exists)
             {
-                current = candidate;
+                current = (file, path);
                 continue;
             }
 
             twins = true;
-            var better = candidate.Preferred != current.Preferred
-                ? candidate.Preferred
-                : string.CompareOrdinal(candidate.Spelled, current.Spelled) < 0;
-            if (better) current = candidate;
+            var candidatePreferred = preferred?.Invoke(path) ?? false;
+            var currentPreferred = preferred?.Invoke(current.Path) ?? false;
+            var better = candidatePreferred != currentPreferred
+                ? candidatePreferred
+                : string.CompareOrdinal(path.Path.ToString(), current.Path.Path.ToString()) < 0;
+            if (better) current = (file, path);
         }
 
         if (!twins) return files;

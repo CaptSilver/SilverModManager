@@ -43,9 +43,6 @@ using DiskState = Entities<DiskStateEntry.ReadOnly>;
 /// </summary>
 public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 {
-    /// <inheritdoc />
-    public virtual IReadOnlyList<string> FoldersMergedOnApply => [];
-
     private readonly ScopedAsyncLock _lock = new();
     private readonly IFileStore _fileStore;
 
@@ -407,8 +404,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <inheritdoc />
     public void MergeStates(IEnumerable<PathPartPair> currentState, IEnumerable<PathPartPair> previousTree, Dictionary<GamePath, SyncNode> loadoutItems)
     {
-        // Disk first: paths compare without regard to case, so the spelling a node is keyed by is the first one
-        // added, and a delete must name the file as it is on disk now, not as an earlier sync recorded it.
+        // Disk before the previous state: paths compare without regard to case, so the spelling a node is keyed by is the
+        // first one added, and a delete must name the file as it is on disk now, not as an earlier sync recorded it. The
+        // loadout's rows were added before either, so a row spelled differently from the disk keys its node, and the
+        // folder-case fold rewrites the rows to the disk's spelling before the tree is built.
         foreach (var node in currentState)
         {
             ref var existing = ref CollectionsMarshal.GetValueRefOrAddDefault(loadoutItems, node.Path, out var exists);
@@ -705,6 +704,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     {
         await Preflight(loadout.InstallationInstance);
         var gameMetadataId = MetadataOf(loadout).GameInstallMetadataId;
+        RespellTree(syncTree, _applySpellings);
         RefuseTraversalPaths(syncTree);
         KeepNeverWrittenPathsOffDisk(syncTree);
         await PreflightActions(syncTree, loadout);
@@ -1050,6 +1050,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     public async Task RunActions(Dictionary<GamePath, SyncNode> syncTree, GameInstallation gameInstallation, BackupOverflowChoice choice = BackupOverflowChoice.BackUpAnyway)
     {
         await Preflight(gameInstallation);
+
+        // The initial state can name folders the disk no longer spells that way (a merge ran since), and writing there
+        // would bring the twin back. The spelling comes from the disk as it is now: a reset does not merge.
+        if (MergesCaseVariantFoldersOnApply(gameInstallation))
+            RespellTree(syncTree, BuildSpellings(gameInstallation, null, _gameRegistry.ForceGetMetadata(gameInstallation)));
         RefuseTraversalPaths(syncTree);
         KeepNeverWrittenPathsOffDisk(syncTree);
         await PreflightActions(syncTree, null);
@@ -1588,40 +1593,51 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         job?.SetStatus(SyncPhases.Collecting);
-        var metadata = await ReindexState(installation, job, cancellationToken);
 
-        // Reconcile sees the fresh disk state, and the game's preparation sees the group it writes.
-        loadout = await ReconcileGameInstalledContent(loadout, metadata, cancellationToken);
-        loadout = await PrepareLoadoutForSync(loadout);
+        // Folders that differ only in case are merged and the recorded paths respelled before anything reads them, so the
+        // game-installed rows below record the spelling the disk has.
+        var metadata = await FoldAndReindex(installation, loadout.Id, job, alwaysReindex: true, cancellationToken);
+        loadout = loadout.Rebase();
 
-        // Rows already in the Overrides are settled before the tree is built, so the apply covers them: an edit made
-        // after the apply would read as a change still to apply.
-        loadout = await ReprocessOverrides(loadout, recordAsApplied: false);
-
-        // The preparation can respell recorded disk state, and the tree reads the state it left, not the snapshot taken before.
-        metadata = GameInstallMetadata.Load(Connection.Db, metadata.Id);
-
-        var tree = BuildSyncTreeFromIndex(loadout, metadata);
-        ProcessSyncTree(tree);
-
-        var (choice, asked) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, largeFiles, cancellationToken, job: job);
-        if (asked)
+        try
         {
-            // The folder can change while the question is open, so the answer is applied to a tree of the folder as
-            // it is now. The answer is the preset this time, so nothing is asked twice.
-            metadata = await ReindexState(installation, job, cancellationToken);
-            tree = BuildSyncTreeFromIndex(loadout, metadata);
+            // Reconcile sees the fresh disk state, and the game's preparation sees the group it writes.
+            loadout = await ReconcileGameInstalledContent(loadout, metadata, cancellationToken);
+            loadout = await PrepareLoadoutForSync(loadout);
+
+            // Rows already in the Overrides are settled before the tree is built, so the apply covers them: an edit made
+            // after the apply would read as a change still to apply.
+            loadout = await ReprocessOverrides(loadout, recordAsApplied: false);
+
+            // The preparation can respell recorded disk state, and the tree reads the state it left, not the snapshot taken before.
+            metadata = GameInstallMetadata.Load(Connection.Db, metadata.Id);
+
+            var tree = BuildSyncTreeFromIndex(loadout, metadata);
             ProcessSyncTree(tree);
-            (choice, _) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, choice, cancellationToken, presetIsAnAnswer: true, job: job);
+
+            var (choice, asked) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, largeFiles, cancellationToken, job: job);
+            if (asked)
+            {
+                // The folder can change while the question is open, so the answer is applied to a tree of the folder as
+                // it is now. The answer is the preset this time, so nothing is asked twice.
+                metadata = await ReindexState(installation, job, cancellationToken);
+                tree = BuildSyncTreeFromIndex(loadout, metadata);
+                ProcessSyncTree(tree);
+                (choice, _) = await ResolveBackupOverflow(tree, loadout.InstallationInstance, choice, cancellationToken, presetIsAnAnswer: true, job: job);
+            }
+
+            await ConfirmMassRemoval(tree, loadout, cancellationToken);
+
+            loadout = await RunActions(tree, loadout, job, choice);
+
+            // The apply can ingest a file whose path is a game file, which is dropped again here and never deployed.
+            // That edit follows the record of what was applied, so the record moves with it.
+            return await ReprocessOverrides(loadout, recordAsApplied: true);
         }
-
-        await ConfirmMassRemoval(tree, loadout, cancellationToken);
-
-        loadout = await RunActions(tree, loadout, job, choice);
-
-        // The apply can ingest a file whose path is a game file, which is dropped again here and never deployed.
-        // That edit follows the record of what was applied, so the record moves with it.
-        return await ReprocessOverrides(loadout, recordAsApplied: true);
+        finally
+        {
+            _applySpellings = null;
+        }
     }
 
     public async Task<GameInstallMetadata.ReadOnly> RescanFiles(GameInstallation gameInstallation, CancellationToken cancellationToken = default)
@@ -1825,7 +1841,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     public async Task<GameInstallMetadata.ReadOnly> ReindexState(GameInstallation installation, SynchronizeLoadoutJob? job = null, CancellationToken cancellationToken = default)
     {
         using var _ = await _lock.LockAsync();
+        return await ReindexStateCore(installation, job, cancellationToken);
+    }
 
+    /// <summary><see cref="ReindexState"/> for a caller that already holds the lock.</summary>
+    private async Task<GameInstallMetadata.ReadOnly> ReindexStateCore(GameInstallation installation, SynchronizeLoadoutJob? job, CancellationToken cancellationToken)
+    {
         var metadata = _gameRegistry.ForceGetMetadata(installation);
         var previousState = GetDiskState(metadata);
 
@@ -1842,7 +1863,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 WriteIndexedFiles(batchTx, metadata, previousState, batch);
                 batchTx.Add(metadata.Id, Sdk.Games.GameInstallMetadata.LastScannedDiskStateTransaction, EntityId.From(TxId.Tmp.Value));
                 await batchTx.Commit();
-            });
+            },
+            preferred: PreferredCopy(installation, metadata));
 
         using var tx = Connection.BeginTransaction();
         var changed = indexGameResult.RemovedFiles.Count != 0;
@@ -1962,6 +1984,29 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     public async ValueTask BuildProcessRun(Loadout.ReadOnly loadout, GameInstallMetadata.ReadOnly state, CancellationToken cancellationToken, BackupOverflowChoice? largeFiles = null)
+    {
+        // Folders that differ only in case are merged and the recorded paths respelled before the loadout is read: a switch
+        // to a loadout authored on Windows would otherwise deploy both spellings. The caller's state predates the merge, so
+        // the loadout and the state are read again from the database when it changed anything.
+        var installation = loadout.InstallationInstance;
+        var folded = MergesCaseVariantFoldersOnApply(installation);
+        if (folded)
+        {
+            state = await FoldAndReindex(installation, loadout.Id, null, alwaysReindex: false, cancellationToken);
+            loadout = loadout.Rebase();
+        }
+
+        try
+        {
+            await BuildProcessRunCore(loadout, state, cancellationToken, largeFiles);
+        }
+        finally
+        {
+            _applySpellings = null;
+        }
+    }
+
+    private async ValueTask BuildProcessRunCore(Loadout.ReadOnly loadout, GameInstallMetadata.ReadOnly state, CancellationToken cancellationToken, BackupOverflowChoice? largeFiles)
     {
         // The loadout-switch path reaches the hook only here: Synchronize hands the switch to the loadout
         // manager, which ends in this method.

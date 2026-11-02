@@ -6,6 +6,7 @@ using SilverModManager.DataModel.Diagnostics;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.FolderCase;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
@@ -189,7 +190,7 @@ public class Witcher3SynchronizerTests(ITestOutputHelper helper)
 
         // What the reindex at the start of an apply does: records a file after the caller took its snapshot.
         await RecordDiskState(loadout, "mods/modMenu/content/a.ws", "menu");
-        await Witcher3FolderCase.Repair(Connection, snapshot);
+        await GamePathRespeller.Respell(Connection, loadout.LoadoutId, loadout.Installation.Id, FolderSpellings.Fixed(Witcher3Synchronizer.FixedTopFolders), GamePathFilters.Empty);
 
         DiskStateEntry.FindByGame(Connection.Db, loadout.Installation.Id)
             .Select(e => ((GamePath)e.Path).ToString()).Where(p => p.StartsWith("{Game}/", StringComparison.Ordinal))
@@ -286,6 +287,7 @@ public class Witcher3SynchronizerTests(ITestOutputHelper helper)
         await foreach (var card in new CaseVariantFolderEmitter().Diagnose(Refresh(loadout), tree.ToFrozenDictionary(), CancellationToken.None))
             cards.Add(card);
         var details = cards.Should().ContainSingle().Subject.FormatDetails(new PlainDiagnosticWriter());
-        details.Should().Contain("{Game}/mods").And.Contain("{Game}/Mods").And.Contain("Move the files of one folder").And.Contain("`Mods`, `dlc`, `bin`");
+        details.Should().Contain("{Game}/mods").And.Contain("{Game}/Mods").And.Contain("The next Apply merges each pair into one folder").And.Contain("move or delete those by hand");
+        DeletedFile.All(Connection.Db).Should().BeEmpty("a twin the merge refuses is not a file the user deleted");
     }
 }

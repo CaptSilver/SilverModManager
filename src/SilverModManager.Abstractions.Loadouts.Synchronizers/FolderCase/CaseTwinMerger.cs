@@ -234,7 +234,9 @@ public sealed class CaseTwinMerger(IFullFileHasher hasher, IFileStore store, ILo
             return;
         }
 
-        // Different bytes. A copy the app can restore from its archive is not worth keeping next to the other one.
+        // Different bytes. A variant that is the app's own copy, archived, is restorable and is dropped. The reverse is not done:
+        // when the canonical file is the app's and the variant is someone else's, both stay and the caller reports the pair,
+        // because moving the variant over the app's file would make the next apply read it as the user's edit.
         run.NeedsFreshRead.Add(canonicalPath);
         if (run.Managed.TryGetValue(canonicalPath, out var wanted) && !wanted.IsNone && await store.HaveFile(wanted))
         {
@@ -242,15 +244,6 @@ public sealed class CaseTwinMerger(IFullFileHasher hasher, IFileStore store, ILo
             {
                 logger.LogInformation("Deleted '{Variant}': the app's copy is archived and '{Canonical}' differs", variantFile, canonicalFile);
                 File.Delete(variantFile);
-                return;
-            }
-
-            if (canonicalHash.Equals(wanted))
-            {
-                logger.LogInformation("Replaced '{Canonical}' with '{Variant}': the app's copy is archived", canonicalFile, variantFile);
-                File.Delete(canonicalFile);
-                Rename(variantFile, canonicalFile);
-                run.Moved.Add(canonicalPath);
                 return;
             }
         }

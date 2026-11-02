@@ -1,4 +1,5 @@
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.FolderCase;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.Witcher.Witcher3.Installers;
@@ -458,7 +459,9 @@ internal static class Witcher3InstallPlan
     }
 
     /// <summary>Every placement goes through here, so the first segment is in the game's spelling of Mods, dlc or bin.</summary>
-    private static GamePath Target(string path) => new(LocationId.Game, Witcher3FolderCase.Canonical(path));
+    private static GamePath Target(string path) => FixedSpellings.Canonical(new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(path)));
+
+    private static readonly FolderSpellings FixedSpellings = FolderSpellings.Fixed(Witcher3Synchronizer.FixedTopFolders);
 
     private sealed class ArchivePath(string original)
     {

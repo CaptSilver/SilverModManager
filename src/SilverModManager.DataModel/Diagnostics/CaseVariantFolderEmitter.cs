@@ -17,7 +17,8 @@ namespace SilverModManager.DataModel.Diagnostics;
 /// per loadout listing every pair. Wine shows the game one folder of each pair, so the files in the other do not
 /// load. It looks at what the loadout deploys and at what is on disk, vanilla and unmanaged files included, because
 /// the game sees all of them. It never stops an Apply: a pair can come from the game's own files, which the app
-/// cannot repair.
+/// cannot repair. An Apply merges the pairs it can, so the card is what is left: pairs the merge refused, folders the
+/// app did not create, and any pair in a game that does not run under Wine.
 /// </summary>
 public class CaseVariantFolderEmitter : ILoadoutDiagnosticEmitter
 {
@@ -55,17 +56,14 @@ public class CaseVariantFolderEmitter : ILoadoutDiagnosticEmitter
 
         var list = new StringBuilder();
         foreach (var (first, second) in pairs) list.AppendLine($"* `{first}` and `{second}`");
-        return CaseVariantFolderDiagnostics.CreateCaseVariantFolders(installation.Game.DisplayName, list.ToString().TrimEnd(), AdviceFor(installation.GetGame().Synchronizer.FoldersMergedOnApply));
+        return CaseVariantFolderDiagnostics.CreateCaseVariantFolders(installation.Game.DisplayName, list.ToString().TrimEnd(), AdviceFor(installation.GetGame().Synchronizer.MergesCaseVariantFoldersOnApply(installation)));
     }
 
-    private static string AdviceFor(IReadOnlyList<string> mergedOnApply)
-    {
-        const string byHand = "Move the files of one folder of the pair into the other, or delete them.";
-        if (mergedOnApply.Count == 0) return byHand;
-
-        var folders = string.Join(", ", mergedOnApply.Select(f => $"`{f}`"));
-        return $"The next Apply merges a pair of {folders} folders. It leaves a file in place when the other folder already has a file of that name, and it does not touch other pairs. {byHand}";
-    }
+    /// <summary>The advice under the list: what an Apply does about the pairs, or what the user has to do.</summary>
+    internal static string AdviceFor(bool mergedOnApply)
+        => mergedOnApply
+            ? "The next Apply merges each pair into one folder. A file present in both spellings with different contents, the game's own folders, and saves stay where they are and are listed here; move or delete those by hand."
+            : "Move the files of one folder of the pair into the other, or delete them.";
 
     private static IEnumerable<GamePath> FoldersOnDisk(GameInstallation installation)
     {

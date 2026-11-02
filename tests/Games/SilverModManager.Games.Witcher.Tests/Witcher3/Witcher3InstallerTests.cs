@@ -73,6 +73,12 @@ public class Witcher3InstallerTests(ITestOutputHelper outputHelper) : AWitcher3A
     private static string[] PlanTargets(string archiveName, params string[] paths) =>
         Witcher3InstallPlan.Plan(paths, archiveName)?.Placements.Select(p => p.Target.ToString()).Order(StringComparer.Ordinal).ToArray() ?? [];
 
+    [Fact]
+    public void Witcher3InstallPlan_Target_UsesTheFixedSpellings()
+    {
+        PlanTargets("Example Mod.zip", "MODS/modFoo/content/a.ws", "BIN/x64/c.dll").Should().Contain("{Game}/Mods/modFoo/content/a.ws").And.Contain("{Game}/bin/x64/c.dll");
+    }
+
     [Theory]
     [InlineData("Option A/modFoo/content/a.ws", "Option B/modFoo/content/a.ws")]
     [InlineData("Option A/dlc/dlcX/content/a.bundle", "Option B/dlc/dlcX/content/a.bundle")]
