@@ -104,6 +104,12 @@ public static class JobStatusExtensions
     public static bool IsActive(this JobStatus currentStatus) => currentStatus is JobStatus.Running or JobStatus.Paused;
 
     /// <summary>
+    /// True for every status but the three ends (<see cref="JobStatus.Completed"/>, <see cref="JobStatus.Cancelled"/>,
+    /// <see cref="JobStatus.Failed"/>). Unlike <see cref="IsActive"/> it holds for a job that is created and not yet running.
+    /// </summary>
+    public static bool IsUnfinished(this JobStatus currentStatus) => currentStatus is not (JobStatus.Completed or JobStatus.Cancelled or JobStatus.Failed);
+
+    /// <summary>
     /// Determines if a job was "activated" based on the previous and current job status.
     /// A job is considered "activated" if the status changed to <see cref="JobStatus.Running"/> or <see cref="JobStatus.Paused"/> from any other state.
     /// </summary>

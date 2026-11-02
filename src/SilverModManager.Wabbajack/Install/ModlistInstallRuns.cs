@@ -1,5 +1,6 @@
 using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
+using DynamicData;
 using SilverModManager.Abstractions.Games.Modlists;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Jobs;
@@ -69,8 +70,11 @@ public sealed class ModlistInstallRuns(IJobMonitor monitor) : ILoadoutInstallAct
     public bool IsInstallingInto(LoadoutId loadout) => FindInto(loadout) is not null;
 
     /// <inheritdoc />
+    /// <remarks>Counts the same jobs as <see cref="IsInstallingInto"/>: the Apply button must not come on while the check would refuse.</remarks>
     public IObservable<bool> ObserveInstallingInto(LoadoutId loadout)
-        => monitor.HasActiveJob<InstallModlistJob>(job => job.TargetLoadout == loadout)
+        => monitor.GetObservableChangeSet<InstallModlistJob>()
+            .FilterOnObservable(job => job.ObservableStatus.Select(status => status.IsUnfinished()))
+            .QueryWhenChanged(query => query.Items.Any(job => job.Definition is InstallModlistJob definition && definition.TargetLoadout == loadout))
             .Prepend(IsInstallingInto(loadout))
             .DistinctUntilChanged();
 
@@ -79,7 +83,7 @@ public sealed class ModlistInstallRuns(IJobMonitor monitor) : ILoadoutInstallAct
         foreach (var job in monitor.Snapshot())
         {
             // A job the monitor has only just begun has no status yet, so unfinished is everything but the three ends.
-            if (job.Status is JobStatus.Completed or JobStatus.Cancelled or JobStatus.Failed) continue;
+            if (!job.Status.IsUnfinished()) continue;
             if (job.Definition is InstallModlistJob definition) yield return For(definition, job);
         }
     }

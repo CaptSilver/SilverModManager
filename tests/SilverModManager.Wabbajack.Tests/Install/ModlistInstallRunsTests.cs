@@ -1,4 +1,7 @@
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
+using DynamicData;
+using NSubstitute;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -178,6 +181,41 @@ public class ModlistInstallRunsTests(ITestOutputHelper helper) : InstallTestBase
         await running;
 
         Runs.IsInstallingInto(busy.LoadoutId).Should().BeFalse();
+        seen.Should().Equal(true, false);
+    }
+
+    [Fact]
+    public async Task AnInstallThatIsCreatedButNotYetRunningIsInstallingForBothTheCheckAndTheObservable()
+    {
+        var loadout = await CreateLoadout();
+        var job = NewJob(loadout, await AddList(), Options);
+        var status = new BehaviorSubject<JobStatus>(JobStatus.Created);
+        var handle = Substitute.For<IJob>();
+        handle.Id.Returns(JobId.From(Guid.NewGuid()));
+        handle.Definition.Returns(job);
+        handle.Status.Returns(_ => status.Value);
+        handle.ObservableStatus.Returns(status);
+        var jobs = new SourceCache<IJob, JobId>(j => j.Id);
+        var monitor = Substitute.For<IJobMonitor>();
+        monitor.Snapshot().Returns(_ => jobs.Items.ToArray());
+        monitor.GetObservableChangeSet<InstallModlistJob>().Returns(_ => jobs.Connect());
+        jobs.AddOrUpdate(handle);
+        var runs = new ModlistInstallRuns(monitor);
+        var seen = new List<bool>();
+        using var _ = runs.ObserveInstallingInto(loadout.LoadoutId).Subscribe(seen.Add);
+
+        runs.IsInstallingInto(loadout.LoadoutId).Should().BeTrue();
+        // Any other install starting re-evaluates the set, while ours has still not left Created.
+        var otherJob = NewJob(await CreateLoadout(), await AddList(), Options);
+        var other = Substitute.For<IJob>();
+        other.Id.Returns(JobId.From(Guid.NewGuid()));
+        other.Definition.Returns(otherJob);
+        other.ObservableStatus.Returns(new BehaviorSubject<JobStatus>(JobStatus.Running));
+        jobs.AddOrUpdate(other);
+        seen.Should().Equal(true);
+        status.OnNext(JobStatus.Running);
+        status.OnNext(JobStatus.Completed);
+
         seen.Should().Equal(true, false);
     }
 
