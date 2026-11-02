@@ -16,7 +16,7 @@ internal static class DdsWriter
     private const uint FlagCaps = 0x1, FlagHeight = 0x2, FlagWidth = 0x4, FlagPitch = 0x8, FlagPixelFormat = 0x1000;
     private const uint FlagMipMapCount = 0x20000, FlagLinearSize = 0x80000;
 
-    private const uint PixelFourCc = 0x4, PixelRgba = 0x41;
+    private const uint PixelAlphaPixels = 0x1, PixelAlpha = 0x2, PixelFourCc = 0x4, PixelRgb = 0x40, PixelRgba = 0x41, PixelLuminance = 0x20000;
 
     private const uint CapsTexture = 0x1000, CapsComplex = 0x8, CapsMipMap = 0x400000;
     private const uint Caps2CubeMapAllFaces = 0x200 | 0xFC00;
@@ -92,11 +92,19 @@ internal static class DdsWriter
         DxgiFormat.BC4_UNORM => new(PixelFourCc, "BC4U", 0, 0, 0, 0, 0),
         DxgiFormat.BC5_UNORM => new(PixelFourCc, "ATI2", 0, 0, 0, 0, 0),
         DxgiFormat.BC7_UNORM or DxgiFormat.BC7_UNORM_SRGB => new(PixelFourCc, "DX10", 0, 0, 0, 0, 0),
-        // No legacy pixel format carries an sRGB tag, so these get the DX10 extension and the masks stay empty.
-        DxgiFormat.R8G8B8A8_UNORM_SRGB => new(PixelFourCc, "DX10", 32, 0, 0, 0, 0),
-        DxgiFormat.B8G8R8A8_UNORM_SRGB => new(PixelFourCc, "DX10", 32, 0, 0, 0, 0),
         DxgiFormat.R8G8B8A8_UNORM => new(PixelRgba, "", 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000),
         DxgiFormat.B8G8R8A8_UNORM => new(PixelRgba, "", 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000),
+        DxgiFormat.B8G8R8X8_UNORM => new(PixelRgb, "", 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0),
+        DxgiFormat.R8_UNORM => new(PixelLuminance, "", 8, 0xFF, 0, 0, 0),
+        // A8L8: green goes in the alpha mask.
+        DxgiFormat.R8G8_UNORM => new(PixelLuminance | PixelAlphaPixels, "", 16, 0x00FF, 0, 0, 0xFF00),
+        DxgiFormat.B5G6R5_UNORM => new(PixelRgb, "", 16, 0xF800, 0x07E0, 0x001F, 0),
+        DxgiFormat.B5G5R5A1_UNORM => new(PixelRgba, "", 16, 0x7C00, 0x03E0, 0x001F, 0x8000),
+        DxgiFormat.B4G4R4A4_UNORM => new(PixelRgba, "", 16, 0x0F00, 0x00F0, 0x000F, 0xF000),
+        DxgiFormat.R16_UNORM => new(PixelLuminance, "", 16, 0xFFFF, 0, 0, 0),
+        DxgiFormat.A8_UNORM => new(PixelAlpha, "", 8, 0, 0, 0, 0xFF),
+        // No legacy pixel format carries an sRGB tag, so these get the DX10 extension and an empty legacy layout.
+        DxgiFormat.R8G8B8A8_UNORM_SRGB or DxgiFormat.B8G8R8A8_UNORM_SRGB or DxgiFormat.B8G8R8X8_UNORM_SRGB => new(PixelFourCc, "DX10", 32, 0, 0, 0, 0),
         _ => throw new UnsupportedTextureFormatException(
             $"cannot write {(Enum.IsDefined(format) ? format.ToString() : $"DXGI {(uint)format}")}"),
     };

@@ -27,7 +27,8 @@ public static class DdsRecompressor
     private static void RecompressCore(Stream input, DdsTarget target, Stream output, CancellationToken token)
     {
         // Check the target before the expensive decode.
-        var targetFormat = ToCompressionFormat(target.Format);
+        var packed = UncompressedWriter.Handles(target.Format);
+        var targetFormat = packed ? CompressionFormat.Rgba : ToCompressionFormat(target.Format);
 
         using var buffer = new MemoryStream();
         input.CopyTo(buffer);
@@ -52,9 +53,9 @@ public static class DdsRecompressor
         }
 
         // BCnEncoder builds the mip chain and hands back one level at a time as RGBA. Each level then takes the
-        // sRGB transfer if the source and target disagree about it, and goes through a second encoder that only
-        // converts (no mip generation) into the target's layout. The transfer runs after the filtering, so block
-        // targets match texconv, which filters in the source's space and converts at compress time.
+        // sRGB transfer if the source and target disagree about it, and is packed by UncompressedWriter or sent
+        // through a second encoder with mip generation off. The transfer runs after the filtering, so block targets
+        // match texconv, which filters in the source's space and converts at compress time.
         var mipSource = new BcEncoder
         {
             OutputOptions =
@@ -83,7 +84,9 @@ public static class DdsRecompressor
                 token.ThrowIfCancellationRequested();
                 var rgba = mipSource.EncodeToRawBytes(Bytes(face), target.Width, target.Height, PixelFormat.Rgba32, level, out var width, out var height);
                 if (transfer is not null) SrgbTransfer.Apply(rgba, transfer);
-                faceLevels[level] = levelEncoder.EncodeToRawBytes(rgba, width, height, PixelFormat.Rgba32, 0, out _, out _);
+                faceLevels[level] = packed
+                    ? UncompressedWriter.Pack(rgba, target.Format)
+                    : levelEncoder.EncodeToRawBytes(rgba, width, height, PixelFormat.Rgba32, 0, out _, out _);
             }
             encoded.Add(faceLevels);
         }
@@ -120,8 +123,6 @@ public static class DdsRecompressor
         DxgiFormat.BC4_UNORM => CompressionFormat.Bc4,
         DxgiFormat.BC5_UNORM => CompressionFormat.Bc5,
         DxgiFormat.BC7_UNORM or DxgiFormat.BC7_UNORM_SRGB => CompressionFormat.Bc7,
-        DxgiFormat.B8G8R8A8_UNORM or DxgiFormat.B8G8R8A8_UNORM_SRGB => CompressionFormat.Bgra,
-        DxgiFormat.R8G8B8A8_UNORM or DxgiFormat.R8G8B8A8_UNORM_SRGB => CompressionFormat.Rgba,
         _ => throw new UnsupportedTextureFormatException(
             $"cannot write {(Enum.IsDefined(format) ? format.ToString() : $"DXGI {(uint)format}")}"),
     };
