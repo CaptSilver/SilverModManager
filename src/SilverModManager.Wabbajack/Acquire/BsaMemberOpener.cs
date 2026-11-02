@@ -77,17 +77,38 @@ public sealed class BsaMemberOpener : INestedArchiveOpener
     }
 
     /// <summary>
+    /// How many readers an opened archive keeps. Each holds its own entry table and a stream of the container whose
+    /// cache of decompressed chunks can reach 16 MiB, so the count caps what a large archive costs while it is open.
+    /// </summary>
+    private const int ReadersPerArchive = 2;
+
+    /// <summary>
     /// An archive whose index is read once per reader. Reads on one reader are one at a time (they share a stream),
-    /// so a reader is lent to one member's copy and taken back; a thread that finds none idle opens another.
+    /// so a reader is lent to one member's copy and taken back. Threads beyond <see cref="ReadersPerArchive"/> wait
+    /// for a reader instead of opening another.
     /// </summary>
     private sealed class OpenedArchive(Func<CancellationToken, Task<Stream>> openContainer) : INestedArchive
     {
         private readonly ConcurrentBag<ArchiveReader> _idle = [];
+        private readonly SemaphoreSlim _readers = new(ReadersPerArchive);
         private int _disposed;
 
         public async Task<Stream?> Open(RelativePath member, CancellationToken cancellationToken)
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
+            await _readers.WaitAsync(cancellationToken);
+            try
+            {
+                return await OpenWithReader(member, cancellationToken);
+            }
+            finally
+            {
+                _readers.Release();
+            }
+        }
+
+        private async Task<Stream?> OpenWithReader(RelativePath member, CancellationToken cancellationToken)
+        {
             if (!_idle.TryTake(out var reader))
                 reader = await OpenReader(await openContainer(cancellationToken), member, cancellationToken);
 

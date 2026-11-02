@@ -122,6 +122,38 @@ public class ArchivePathResolverBsaMemoryTests(ITestOutputHelper helper) : Acqui
     }
 
     [Fact]
+    public async Task WhatTheResolverKeepsDoesNotGrowWithTheNumberOfMembersResolved()
+    {
+        var loadout = await CreateLoadout();
+        await using var zip = await CreateTestArchive(new Dictionary<RelativePath, byte[]> { [RelativePath.FromUnsanitizedInput("data/pack.bsa")] = BigBsa });
+        var library = await RegisterLocalArchive(zip.Path);
+        var hash = library.AsLibraryFile().XxHash64Identity()!.Value;
+        using var resolver = NewResolver(new ArchivePlan([]), loadout);
+        var via = new[] { RelativePath.FromUnsanitizedInput("data/pack.bsa") };
+
+        async Task ResolveRange(int from, int count)
+        {
+            var gate = new SemaphoreSlim(16);
+            await Task.WhenAll(Enumerable.Range(from, count).Select(async i =>
+            {
+                await gate.WaitAsync();
+                try { await resolver.Resolve(new ArchiveHashPath(hash, [.. via, RelativePath.FromUnsanitizedInput(NameOf(i))]), CancellationToken.None); }
+                finally { gate.Release(); }
+            }));
+        }
+
+        // The first members open the archive and fill its readers' caches; the rest only add what each member costs.
+        await ResolveRange(0, 200);
+        var afterFirst = Retained();
+        await ResolveRange(200, 800);
+        var afterMore = Retained();
+
+        var perMember = (afterMore - afterFirst) / 800;
+        helper.WriteLine($"retained per further member: {perMember} B");
+        perMember.Should().BeLessThan(16 * 1024);
+    }
+
+    [Fact]
     [Trait("Benchmark", "True")]
     public async Task MembersOfAGameFolderArchiveReportRetainedMemory()
     {
