@@ -56,7 +56,8 @@ internal static class DdsWriter
         Put(80, layout.PixelFlags);
         if (layout.FourCc.Length == 4)
             Put(84, (uint)(layout.FourCc[0] | layout.FourCc[1] << 8 | layout.FourCc[2] << 16 | layout.FourCc[3] << 24));
-        Put(88, layout.BitCount);
+        // A DX10 pixel format names its layout in the extension; the legacy bit count stays zero.
+        if (!dx10) Put(88, layout.BitCount);
         Put(92, layout.RMask);
         Put(96, layout.GMask);
         Put(100, layout.BMask);
@@ -83,11 +84,17 @@ internal static class DdsWriter
     private static PixelLayout LayoutOf(DxgiFormat format) => format switch
     {
         DxgiFormat.BC1_UNORM => new(PixelFourCc, "DXT1", 0, 0, 0, 0, 0),
+        DxgiFormat.BC1_UNORM_SRGB => new(PixelFourCc, "DX10", 0, 0, 0, 0, 0),
         DxgiFormat.BC2_UNORM => new(PixelFourCc, "DXT3", 0, 0, 0, 0, 0),
+        DxgiFormat.BC2_UNORM_SRGB => new(PixelFourCc, "DX10", 0, 0, 0, 0, 0),
         DxgiFormat.BC3_UNORM => new(PixelFourCc, "DXT5", 0, 0, 0, 0, 0),
+        DxgiFormat.BC3_UNORM_SRGB => new(PixelFourCc, "DX10", 0, 0, 0, 0, 0),
         DxgiFormat.BC4_UNORM => new(PixelFourCc, "BC4U", 0, 0, 0, 0, 0),
         DxgiFormat.BC5_UNORM => new(PixelFourCc, "ATI2", 0, 0, 0, 0, 0),
-        DxgiFormat.BC7_UNORM => new(PixelFourCc, "DX10", 0, 0, 0, 0, 0),
+        DxgiFormat.BC7_UNORM or DxgiFormat.BC7_UNORM_SRGB => new(PixelFourCc, "DX10", 0, 0, 0, 0, 0),
+        // No legacy pixel format carries an sRGB tag, so these get the DX10 extension and the masks stay empty.
+        DxgiFormat.R8G8B8A8_UNORM_SRGB => new(PixelFourCc, "DX10", 32, 0, 0, 0, 0),
+        DxgiFormat.B8G8R8A8_UNORM_SRGB => new(PixelFourCc, "DX10", 32, 0, 0, 0, 0),
         DxgiFormat.R8G8B8A8_UNORM => new(PixelRgba, "", 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000),
         DxgiFormat.B8G8R8A8_UNORM => new(PixelRgba, "", 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000),
         _ => throw new UnsupportedTextureFormatException(

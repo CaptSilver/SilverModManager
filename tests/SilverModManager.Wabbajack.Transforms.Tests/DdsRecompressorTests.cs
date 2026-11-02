@@ -408,12 +408,16 @@ public class DdsRecompressorTests(ITestOutputHelper output)
         return stream.ToArray();
     }
 
-    /// <summary>Re-encodes <paramref name="dds"/> to R8G8B8A8 at its own size and returns the top level's pixels as r,g,b,a bytes.</summary>
+    /// <summary>
+    /// Re-encodes <paramref name="dds"/> to R8G8B8A8 at its own size and returns the top level's pixels as r,g,b,a bytes.
+    /// An sRGB source goes to the sRGB twin so no transfer runs and the stored values come back unchanged.
+    /// </summary>
     private static async Task<byte[]> RgbaOf(byte[] dds, int width, int height)
     {
-        var result = await Recompress(dds, new DdsTarget(width, height, 1, DxgiFormat.R8G8B8A8_UNORM));
-        var face = DdsFile.Load(new MemoryStream(result)).Faces.First();
-        return face.MipMaps[0].Data;
+        var format = DdsHeader.Read(dds).IsSrgb ? DxgiFormat.R8G8B8A8_UNORM_SRGB : DxgiFormat.R8G8B8A8_UNORM;
+        var result = await Recompress(dds, new DdsTarget(width, height, 1, format));
+        var header = DdsHeader.Read(result);
+        return result.AsSpan(header.DataOffset, (int)header.LevelSize(0)).ToArray();
     }
 
     public static TheoryData<DxgiFormat, byte[], byte[]> Dx10UncompressedSources => new()
@@ -434,6 +438,75 @@ public class DdsRecompressorTests(ITestOutputHelper output)
         var rows = data.Length / (format is DxgiFormat.R8_UNORM ? 1 : format is DxgiFormat.R8G8_UNORM ? 2 : 4) / width;
 
         Assert.Equal(expected, await RgbaOf(Dx10Source(format, width, rows, data), width, rows));
+    }
+
+    private static byte[] FlatSource(DxgiFormat format)
+    {
+        var pixels = new byte[8 * 8 * 4];
+        for (var i = 0; i < pixels.Length; i += 4) { pixels[i] = pixels[i + 1] = pixels[i + 2] = 128; pixels[i + 3] = 200; }
+        return Dx10Source(format, 8, 8, pixels);
+    }
+
+    public static TheoryData<DxgiFormat, DxgiFormat, int> SrgbMatrix
+    {
+        get
+        {
+            var data = new TheoryData<DxgiFormat, DxgiFormat, int>();
+            foreach (var (unorm, srgb) in new[]
+                     {
+                         (DxgiFormat.BC7_UNORM, DxgiFormat.BC7_UNORM_SRGB),
+                         (DxgiFormat.R8G8B8A8_UNORM, DxgiFormat.R8G8B8A8_UNORM_SRGB),
+                     })
+            {
+                data.Add(DxgiFormat.R8G8B8A8_UNORM, unorm, 128);
+                data.Add(DxgiFormat.R8G8B8A8_UNORM_SRGB, srgb, 128);
+                data.Add(DxgiFormat.R8G8B8A8_UNORM, srgb, 188);
+                data.Add(DxgiFormat.R8G8B8A8_UNORM_SRGB, unorm, 55);
+            }
+            return data;
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(SrgbMatrix))]
+    public async Task Recompress_SrgbTransfer_RunsOnlyWhenSourceAndTargetDiffer(DxgiFormat source, DxgiFormat target, int expected)
+    {
+        var result = await Recompress(FlatSource(source), new DdsTarget(8, 8, 1, target));
+
+        var header = DdsHeader.Read(result);
+        var data = result.AsSpan(header.DataOffset, (int)header.LevelSize(0)).ToArray();
+        var pixels = header.IsBlockCompressed
+            ? new BcDecoder().DecodeRaw(data, 8, 8, CompressionFormat.Bc7)
+            : header.Reader!.Unpack(data, 8, 8);
+        Assert.All(pixels, p =>
+        {
+            Assert.InRange(p.r, expected - 1, expected + 1);
+            Assert.InRange(p.g, expected - 1, expected + 1);
+            Assert.InRange(p.b, expected - 1, expected + 1);
+            Assert.Equal(200, p.a);
+        });
+        Assert.Equal(target, header.IsSrgb ? SrgbOf(header.Format) : header.Format);
+        // Every _SRGB value is recorded in a DX10 extension; the UNORM RGBA target keeps its legacy header.
+        if (header.IsSrgb || target == DxgiFormat.BC7_UNORM)
+            Assert.Equal((uint)target, System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(result.AsSpan(128)));
+        else
+            Assert.NotEqual(0x30315844u, System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(result.AsSpan(84)));
+    }
+
+    private static DxgiFormat SrgbOf(DxgiFormat unorm) => unorm switch
+    {
+        DxgiFormat.BC7_UNORM => DxgiFormat.BC7_UNORM_SRGB,
+        DxgiFormat.R8G8B8A8_UNORM => DxgiFormat.R8G8B8A8_UNORM_SRGB,
+        _ => throw new ArgumentOutOfRangeException(nameof(unorm)),
+    };
+
+    [Fact]
+    public void SrgbTransfer_TablesRoundTripTheEndsAndTheMiddle()
+    {
+        Assert.Equal(0, SrgbTransfer.ToSrgb[0]);
+        Assert.Equal(255, SrgbTransfer.ToSrgb[255]);
+        Assert.Equal(188, SrgbTransfer.ToSrgb[128]);
+        Assert.InRange(SrgbTransfer.ToLinear[128], 54, 56);
     }
 
     [Fact]

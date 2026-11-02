@@ -51,24 +51,41 @@ public static class DdsRecompressor
             faces.Add(Resize(pixels, header.Width, header.Height, target.Width, target.Height));
         }
 
-        var encoder = new BcEncoder
+        // BCnEncoder builds the mip chain and hands back one level at a time as RGBA. Each level then takes the
+        // sRGB transfer if the source and target disagree about it, and goes through a second encoder that only
+        // converts (no mip generation) into the target's layout. The transfer runs after the filtering, so block
+        // targets match texconv, which filters in the source's space and converts at compress time.
+        var mipSource = new BcEncoder
         {
             OutputOptions =
             {
-                Quality = CompressionQuality.Balanced,
                 GenerateMipMaps = true,
-                Format = targetFormat,
+                Format = CompressionFormat.Rgba,
                 MaxMipMapLevel = target.MipLevels != 0 ? target.MipLevels : -1,
             },
         };
+        var levelEncoder = new BcEncoder
+        {
+            OutputOptions = { Quality = CompressionQuality.Balanced, GenerateMipMaps = false, Format = targetFormat },
+        };
+        var transfer = header.IsSrgb == target.Format.IsSrgb() ? null : target.Format.IsSrgb() ? SrgbTransfer.ToSrgb : SrgbTransfer.ToLinear;
+        var levels = mipSource.CalculateNumberOfMipLevels(target.Width, target.Height);
+        if (target.MipLevels != 0) levels = Math.Min(levels, target.MipLevels);
 
         // Every level of every face is encoded before the first byte goes to the output, so a failure here
         // leaves the stream untouched.
         var encoded = new List<byte[][]>(faces.Count);
         foreach (var face in faces)
         {
-            token.ThrowIfCancellationRequested();
-            encoded.Add(encoder.EncodeToRawBytes(Bytes(face), target.Width, target.Height, PixelFormat.Rgba32));
+            var faceLevels = new byte[levels][];
+            for (var level = 0; level < levels; level++)
+            {
+                token.ThrowIfCancellationRequested();
+                var rgba = mipSource.EncodeToRawBytes(Bytes(face), target.Width, target.Height, PixelFormat.Rgba32, level, out var width, out var height);
+                if (transfer is not null) SrgbTransfer.Apply(rgba, transfer);
+                faceLevels[level] = levelEncoder.EncodeToRawBytes(rgba, width, height, PixelFormat.Rgba32, 0, out _, out _);
+            }
+            encoded.Add(faceLevels);
         }
 
         DdsWriter.Write(output, target.Format, target.Width, target.Height, encoded);
@@ -97,14 +114,14 @@ public static class DdsRecompressor
 
     private static CompressionFormat ToCompressionFormat(DxgiFormat format) => format switch
     {
-        DxgiFormat.BC1_UNORM => CompressionFormat.Bc1,
-        DxgiFormat.BC2_UNORM => CompressionFormat.Bc2,
-        DxgiFormat.BC3_UNORM => CompressionFormat.Bc3,
+        DxgiFormat.BC1_UNORM or DxgiFormat.BC1_UNORM_SRGB => CompressionFormat.Bc1,
+        DxgiFormat.BC2_UNORM or DxgiFormat.BC2_UNORM_SRGB => CompressionFormat.Bc2,
+        DxgiFormat.BC3_UNORM or DxgiFormat.BC3_UNORM_SRGB => CompressionFormat.Bc3,
         DxgiFormat.BC4_UNORM => CompressionFormat.Bc4,
         DxgiFormat.BC5_UNORM => CompressionFormat.Bc5,
-        DxgiFormat.BC7_UNORM => CompressionFormat.Bc7,
-        DxgiFormat.B8G8R8A8_UNORM => CompressionFormat.Bgra,
-        DxgiFormat.R8G8B8A8_UNORM => CompressionFormat.Rgba,
+        DxgiFormat.BC7_UNORM or DxgiFormat.BC7_UNORM_SRGB => CompressionFormat.Bc7,
+        DxgiFormat.B8G8R8A8_UNORM or DxgiFormat.B8G8R8A8_UNORM_SRGB => CompressionFormat.Bgra,
+        DxgiFormat.R8G8B8A8_UNORM or DxgiFormat.R8G8B8A8_UNORM_SRGB => CompressionFormat.Rgba,
         _ => throw new UnsupportedTextureFormatException(
             $"cannot write {(Enum.IsDefined(format) ? format.ToString() : $"DXGI {(uint)format}")}"),
     };

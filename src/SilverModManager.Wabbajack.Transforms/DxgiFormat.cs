@@ -35,3 +35,22 @@ public enum DxgiFormat : uint
     BC7_UNORM_SRGB = 99,
     B4G4R4A4_UNORM = 115,
 }
+
+internal static class DxgiFormatExtensions
+{
+    /// <summary>The format names an <c>_SRGB</c> encoding of its channels.</summary>
+    public static bool IsSrgb(this DxgiFormat format) => format.UnormTwin() != format;
+
+    /// <summary>The same layout without the sRGB tag; a UNORM format is its own twin.</summary>
+    public static DxgiFormat UnormTwin(this DxgiFormat format) => format switch
+    {
+        DxgiFormat.R8G8B8A8_UNORM_SRGB => DxgiFormat.R8G8B8A8_UNORM,
+        DxgiFormat.B8G8R8A8_UNORM_SRGB => DxgiFormat.B8G8R8A8_UNORM,
+        DxgiFormat.B8G8R8X8_UNORM_SRGB => DxgiFormat.B8G8R8X8_UNORM,
+        DxgiFormat.BC1_UNORM_SRGB => DxgiFormat.BC1_UNORM,
+        DxgiFormat.BC2_UNORM_SRGB => DxgiFormat.BC2_UNORM,
+        DxgiFormat.BC3_UNORM_SRGB => DxgiFormat.BC3_UNORM,
+        DxgiFormat.BC7_UNORM_SRGB => DxgiFormat.BC7_UNORM,
+        _ => format,
+    };
+}
