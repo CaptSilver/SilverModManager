@@ -154,9 +154,9 @@ public class ArchivePathResolverBsaMemoryTests(ITestOutputHelper helper) : Acqui
         await ResolveRange(0, 200);
 
         // The heap is process-wide, so anything else the process does while a stage runs (a finalizer, a pool thread
-        // finishing an earlier test's work) lands in that stage's number. A resolver that keeps something per member
-        // grows in every stage, one that does not shows a cleaner stage among them, so the quietest stage is the one
-        // that says what the resolver keeps.
+        // finishing an earlier test's work) lands in that stage's number, and memory another thread frees can pull it
+        // to zero or below. A resolver that keeps something per member grows in every stage, so the middle stage of
+        // three says what it keeps: one noisy stage in either direction cannot move it.
         const int Stages = 3, StageMembers = 400;
         var next = 200;
         var perStage = new List<long>();
@@ -169,7 +169,7 @@ public class ArchivePathResolverBsaMemoryTests(ITestOutputHelper helper) : Acqui
         }
 
         helper.WriteLine($"retained per further member, by stage: {string.Join(", ", perStage.Select(b => $"{b} B"))}");
-        perStage.Min().Should().BeLessThan(16 * 1024);
+        perStage.Order().ElementAt(Stages / 2).Should().BeLessThan(16 * 1024, "the median stage is what the resolver keeps per member");
     }
 
     [Fact]
