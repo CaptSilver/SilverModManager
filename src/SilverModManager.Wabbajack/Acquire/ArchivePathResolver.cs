@@ -29,6 +29,34 @@ public interface INestedArchiveOpener
 
     /// <summary>The bytes of <paramref name="member"/>, or null when the archive has no such member.</summary>
     Task<Stream?> Open(Stream archive, RelativePath member, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Opens the archive once so that many members can be read from it without reading its index again. The
+    /// container is opened with <paramref name="openContainer"/>, as often as the returned archive needs a stream of
+    /// it. The default reads each member with <see cref="Open"/> over a fresh stream, which is right for an opener
+    /// that has no index to keep.
+    /// </summary>
+    Task<INestedArchive> OpenArchive(Func<CancellationToken, Task<Stream>> openContainer, CancellationToken cancellationToken)
+        => Task.FromResult<INestedArchive>(new PerMemberArchive(this, openContainer));
+}
+
+/// <summary>An archive opened by <see cref="INestedArchiveOpener.OpenArchive"/>. Members can be read from several threads at once.</summary>
+public interface INestedArchive : IAsyncDisposable
+{
+    /// <summary>The bytes of <paramref name="member"/>, or null when the archive has no such member.</summary>
+    Task<Stream?> Open(RelativePath member, CancellationToken cancellationToken);
+}
+
+/// <summary>Reads every member through <see cref="INestedArchiveOpener.Open"/> over a stream of the container opened for it alone.</summary>
+internal sealed class PerMemberArchive(INestedArchiveOpener opener, Func<CancellationToken, Task<Stream>> openContainer) : INestedArchive
+{
+    public async Task<Stream?> Open(RelativePath member, CancellationToken cancellationToken)
+    {
+        await using var container = await openContainer(cancellationToken);
+        return await opener.Open(container, member, cancellationToken);
+    }
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
 
 /// <summary>
@@ -50,7 +78,11 @@ public sealed class ArchivePathResolver(
     /// <summary>How long <see cref="DisposeAsync"/> waits for copies still running before it gives up on them.</summary>
     internal TimeSpan CopyDrainTimeout { get; init; } = TimeSpan.FromSeconds(30);
 
-    private const int HashBufferSize = 1024 * 1024;
+    // Under the large object heap's 85 KB threshold: a spool per member would otherwise be a LOH array each.
+    private const int HashBufferSize = 64 * 1024;
+
+    /// <summary>How many opened archives are kept for the next member (see <see cref="NestedArchiveCache"/>).</summary>
+    private const int OpenArchivesKept = 8;
 
     private readonly LibraryArchiveLocator _locator = new();
     private readonly LibraryFileDigests _digests = new(store, db.Connection);
@@ -69,6 +101,9 @@ public sealed class ArchivePathResolver(
     private readonly SemaphoreSlim _recordLock = new(1, 1);
     private readonly List<IDisposable> _pins = [];
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly NestedArchiveCache _openArchives = new(OpenArchivesKept);
+    private BackupBatcher Backups => _backupBatcher ??= new BackupBatcher(store, _lifetime.Token);
+    private BackupBatcher? _backupBatcher;
     // Each running copy with the store key it is for, so a log line can name what is still going.
     private readonly ConcurrentDictionary<Task, string> _copies = new();
     private bool _disposed;
@@ -214,8 +249,10 @@ public sealed class ArchivePathResolver(
         var member = remaining[0];
         async Task<Stream> OpenMember(CancellationToken copyToken)
         {
-            await using var archive = await store.GetFileStream(containerHash, copyToken);
-            return await opener.Open(archive, member, copyToken)
+            // Opening the archive reads its index; one opened for an earlier member is reused.
+            await using var lease = await _openArchives.Acquire(containerHash.ToString(),
+                () => opener.OpenArchive(openToken => store.GetFileStream(containerHash, openToken), _lifetime.Token));
+            return await lease.Archive.Open(member, copyToken)
                 ?? throw new MemberNotFoundException($"'{member}' is not in '{containerName}'");
         }
 
@@ -301,7 +338,7 @@ public sealed class ArchivePathResolver(
             // BackupFiles checks for them under the store's read lock, after any collection already running (which
             // marked before the pin and may drop bytes the store still lists) has finished.
             Pin(xxHash3);
-            await store.BackupFiles([new ArchivedFileEntry(new OneShotStreamFactory(source), xxHash3, size)], deduplicate: true, cancellationToken);
+            await Backups.Add(new ArchivedFileEntry(new OneShotStreamFactory(source), xxHash3, size));
         }
 
         return new ResolvedMember(xxHash3, xxHash64, size, async () => await store.GetFileStream(xxHash3, CancellationToken.None));
@@ -348,6 +385,7 @@ public sealed class ArchivePathResolver(
                     CopyDrainTimeout.TotalSeconds, names.Length, string.Join(", ", names));
             }
         }
+        await _openArchives.DisposeAsync();
         Dispose();
     }
 
@@ -360,6 +398,7 @@ public sealed class ArchivePathResolver(
     public void Dispose()
     {
         _lifetime.Cancel();
+        _openArchives.DisposeAsync().AsTask().GetAwaiter().GetResult();
         lock (_pins)
         {
             _disposed = true;

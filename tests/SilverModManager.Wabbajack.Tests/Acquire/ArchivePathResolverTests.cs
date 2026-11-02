@@ -450,6 +450,83 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
         FileStorePins.Pinned().Should().NotContain(FileIdentity.XxHash3(inner.xxHash3()), "a copy that ends late does not take a pin nothing would release");
     }
 
+    [Fact]
+    public async Task ManyMembersAreBackedUpTogetherNotOneBackupEach()
+    {
+        var (_, archive) = await ResolverOverZip(new() { [P("textures.bsa")] = "BSA\0not really"u8.ToArray() });
+        var store = new CountingBackups(FileStore);
+        var resolver = ResolverOver(store, new ArchivePlan([]), await CreateLoadout(), new NamedMemberOpener());
+        var names = Enumerable.Range(0, 200).Select(i => $"textures/{Guid.NewGuid()}-{i}.dds").ToArray();
+
+        var members = await Task.WhenAll(names.Select(name => resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P(name)]), CancellationToken.None)));
+
+        for (var i = 0; i < names.Length; i++)
+            (await ReadAll(members[i])).Should().Equal(System.Text.Encoding.UTF8.GetBytes(names[i]));
+        store.Calls.Should().BeLessThan(names.Length / 3, "each backup is a file in the store and a rebuild of its index");
+    }
+
+    [Fact]
+    public async Task AFailedBackupFailsEveryMemberInItsBatchAndIsNotRemembered()
+    {
+        var (_, archive) = await ResolverOverZip(new() { [P("textures.bsa")] = "BSA\0not really"u8.ToArray() });
+        var store = new FailingBackups(FileStore) { Fail = true };
+        var resolver = ResolverOver(store, new ArchivePlan([]), await CreateLoadout(), new NamedMemberOpener());
+        var names = Enumerable.Range(0, 5).Select(i => $"textures/{Guid.NewGuid()}-{i}.dds").ToArray();
+
+        var failures = await Task.WhenAll(names.Select(name => Record.ExceptionAsync(
+            () => resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P(name)]), CancellationToken.None)).AsTask()));
+
+        failures.Should().OnlyContain(failure => failure is InvalidOperationException);
+
+        store.Fail = false;
+        var again = await resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P(names[0])]), CancellationToken.None);
+        (await ReadAll(again)).Should().Equal(System.Text.Encoding.UTF8.GetBytes(names[0]));
+    }
+
+    [Fact]
+    public async Task AnArchiveIsOpenedOnceForAllTheMembersReadFromIt()
+    {
+        var (_, archive) = await ResolverOverZip(new() { [P("textures.bsa")] = "BSA\0not really"u8.ToArray() });
+        var opener = new NamedMemberOpener();
+        var resolver = Resolver(new ArchivePlan([]), await CreateLoadout(), opener);
+
+        for (var i = 0; i < 30; i++)
+            await resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P($"textures/{Guid.NewGuid()}-{i}.dds")]), CancellationToken.None);
+
+        opener.ArchivesOpened.Should().Be(1);
+        opener.ArchivesDisposed.Should().Be(0, "the resolver keeps it for the next member");
+
+        await resolver.DisposeAsync();
+
+        opener.ArchivesDisposed.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task OnlyAFewOpenedArchivesAreKeptAtOnce()
+    {
+        const int Containers = 12;
+        var hashes = new List<FileIdentity>();
+        for (var i = 0; i < Containers; i++)
+        {
+            await using var zip = await CreateTestArchive(new Dictionary<RelativePath, byte[]> { [P("textures.bsa")] = System.Text.Encoding.UTF8.GetBytes($"BSA\0 container {Guid.NewGuid()}") });
+            hashes.Add((await RegisterLocalArchive(zip.Path)).AsLibraryFile().XxHash64Identity()!.Value);
+        }
+
+        // Made once the archives are in the library: a resolver reads the database as it was when it was made.
+        var opener = new NamedMemberOpener();
+        var resolver = Resolver(new ArchivePlan([]), await CreateLoadout(), opener);
+        foreach (var hash in hashes)
+            await resolver.Resolve(new ArchiveHashPath(hash, [P("textures.bsa"), P("textures/a.dds")]), CancellationToken.None);
+
+        opener.ArchivesOpened.Should().Be(Containers);
+        (opener.ArchivesOpened - opener.ArchivesDisposed).Should().BeLessThan(Containers, "an archive nothing is reading is let go once there are too many");
+        (opener.ArchivesOpened - opener.ArchivesDisposed).Should().BeLessThanOrEqualTo(8);
+
+        await resolver.DisposeAsync();
+
+        opener.ArchivesDisposed.Should().Be(Containers);
+    }
+
     private static async Task Eventually(Func<bool> condition)
     {
         var deadline = DateTime.UtcNow.AddSeconds(30);
@@ -566,6 +643,47 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
             if (Interlocked.Increment(ref _opens) >= rendezvous && rendezvous > 0) _met.TrySetResult();
             if (rendezvous > 0) await _met.Task;
             return new MemoryStream(content);
+        }
+    }
+
+    /// <summary>Refuses every back up while <see cref="Fail"/> is set.</summary>
+    private sealed class FailingBackups(IFileStore inner) : ForwardingFileStore(inner)
+    {
+        public bool Fail { get; set; }
+
+        public override Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null)
+            => Fail ? Task.FromException(new InvalidOperationException("the store refused")) : base.BackupFiles(backups, deduplicate, token, progress);
+    }
+
+    /// <summary>Yields the member's own name as its bytes, and counts the archives opened and let go.</summary>
+    private sealed class NamedMemberOpener : INestedArchiveOpener
+    {
+        private int _opened, _disposed;
+
+        public int ArchivesOpened => Volatile.Read(ref _opened);
+        public int ArchivesDisposed => Volatile.Read(ref _disposed);
+
+        public bool CanOpen(RelativePath name) => name.Extension == new Extension(".bsa");
+
+        public Task<Stream?> Open(Stream archive, RelativePath member, CancellationToken cancellationToken)
+            => Task.FromResult<Stream?>(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(member.ToString())));
+
+        public async Task<INestedArchive> OpenArchive(Func<CancellationToken, Task<Stream>> openContainer, CancellationToken cancellationToken)
+        {
+            await using (await openContainer(cancellationToken)) { }
+            Interlocked.Increment(ref _opened);
+            return new Archive(this);
+        }
+
+        private sealed class Archive(NamedMemberOpener owner) : INestedArchive
+        {
+            public Task<Stream?> Open(RelativePath member, CancellationToken cancellationToken) => owner.Open(Stream.Null, member, cancellationToken);
+
+            public ValueTask DisposeAsync()
+            {
+                Interlocked.Increment(ref owner._disposed);
+                return ValueTask.CompletedTask;
+            }
         }
     }
 

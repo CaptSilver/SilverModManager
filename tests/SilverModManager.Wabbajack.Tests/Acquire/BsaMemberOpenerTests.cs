@@ -47,6 +47,89 @@ public class BsaMemberOpenerTests : IDisposable
     }
 
     [Fact]
+    public async Task AnOpenedArchiveGivesAMemberByItsPathWhateverTheCase()
+    {
+        var bytes = await TestArchives.Tes5Archive(_temp);
+        await using var archive = await _opener.OpenArchive(_ => Task.FromResult<Stream>(new MemoryStream(bytes)), CancellationToken.None);
+
+        (await ReadAll(await archive.Open(P("Meshes\\FIRST.nif"), CancellationToken.None))).Should().Equal(TestArchives.FirstMemberData);
+        (await ReadAll(await archive.Open(TestArchives.SecondMemberPath, CancellationToken.None))).Should().Equal(TestArchives.SecondMemberData);
+        (await archive.Open(P("meshes/absent.nif"), CancellationToken.None)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AnOpenedArchiveReadsItsIndexOnceHoweverManyMembersAreAskedForOneAfterAnother()
+    {
+        var bytes = await TestArchives.Tes5Archive(_temp);
+        var containers = 0;
+        await using var archive = await _opener.OpenArchive(_ =>
+        {
+            Interlocked.Increment(ref containers);
+            return Task.FromResult<Stream>(new MemoryStream(bytes));
+        }, CancellationToken.None);
+
+        for (var i = 0; i < 20; i++)
+            await ReadAll(await archive.Open(TestArchives.FirstMemberPath, CancellationToken.None));
+
+        containers.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AnOpenedArchiveServesMembersToSeveralThreadsAtOnce()
+    {
+        var bytes = await TestArchives.Tes5Archive(_temp);
+        await using var archive = await _opener.OpenArchive(_ => Task.FromResult<Stream>(new MemoryStream(bytes)), CancellationToken.None);
+
+        var reads = await Task.WhenAll(Enumerable.Range(0, 40).Select(i => Task.Run(async () =>
+            await ReadAll(await archive.Open(i % 2 == 0 ? TestArchives.FirstMemberPath : TestArchives.SecondMemberPath, CancellationToken.None)))));
+
+        reads.Where((_, i) => i % 2 == 0).Should().OnlyContain(read => read.SequenceEqual(TestArchives.FirstMemberData));
+        reads.Where((_, i) => i % 2 == 1).Should().OnlyContain(read => read.SequenceEqual(TestArchives.SecondMemberData));
+    }
+
+    [Fact]
+    public async Task DisposingAnOpenedArchiveDisposesTheContainerStreamsItHolds()
+    {
+        var bytes = await TestArchives.Tes5Archive(_temp);
+        var streams = new List<TrackedStream>();
+        var archive = await _opener.OpenArchive(_ =>
+        {
+            var stream = new TrackedStream(bytes);
+            lock (streams) streams.Add(stream);
+            return Task.FromResult<Stream>(stream);
+        }, CancellationToken.None);
+        await ReadAll(await archive.Open(TestArchives.FirstMemberPath, CancellationToken.None));
+        streams.Should().OnlyContain(stream => !stream.IsDisposed, "the next member reads from it");
+
+        await archive.DisposeAsync();
+
+        streams.Should().NotBeEmpty().And.OnlyContain(stream => stream.IsDisposed);
+    }
+
+    [Fact]
+    public async Task AContainerThatIsNotAnArchiveIsAMemberNotFoundWhenItIsOpened()
+    {
+        var failure = await Record.ExceptionAsync(async () =>
+        {
+            await using var archive = await _opener.OpenArchive(_ => Task.FromResult<Stream>(new MemoryStream(new byte[100])), CancellationToken.None);
+            await archive.Open(P("meshes/a.nif"), CancellationToken.None);
+        });
+
+        failure.Should().BeOfType<MemberNotFoundException>().Which.Message.Should().Contain("meshes/a.nif");
+    }
+
+    private sealed class TrackedStream(byte[] bytes) : MemoryStream(bytes)
+    {
+        public bool IsDisposed { get; private set; }
+
+        protected override void Dispose(bool disposing)
+        {
+            IsDisposed = true;
+            base.Dispose(disposing);
+        }
+    }
+
+    [Fact]
     public async Task AMemberTheArchiveLacksIsNull()
     {
         var archive = await TestArchives.Tes5Archive(_temp);
