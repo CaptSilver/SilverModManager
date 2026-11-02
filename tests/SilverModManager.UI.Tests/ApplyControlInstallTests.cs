@@ -48,6 +48,9 @@ public class ApplyControlInstallTests(IServiceProvider provider) : AUiTest(provi
     private async Task<bool> CanApply(ApplyControlViewModel vm)
         => await OnUi(() => Task.FromResult(vm.ApplyCommand.CanExecute.FirstAsync().GetAwaiter().GetResult()));
 
+    private async Task<bool> ApplyShown(ApplyControlViewModel vm)
+        => await OnUi(() => Task.FromResult(vm.IsApplyButtonVisible));
+
     private async Task<(IJobTask<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly> Task, TaskCompletionSource Gate)> BeginInstall(
         Loadout.ReadOnly loadout, Func<IJobContext<InstallModlistJob>, ValueTask<WabbajackModlistLoadoutGroup.ReadOnly>>? body = null)
     {
@@ -79,10 +82,12 @@ public class ApplyControlInstallTests(IServiceProvider provider) : AUiTest(provi
 
         var (install, gate) = await BeginInstall(loadout);
         await EventuallyOnUi(async () => (await CanApply(vm)).Should().BeFalse("a half-installed list must not be synced"));
+        await EventuallyOnUi(async () => (await ApplyShown(vm)).Should().BeFalse("the button is hidden, not just disabled"));
 
         gate.SetResult();
         await install;
         await EventuallyOnUi(async () => (await CanApply(vm)).Should().BeTrue());
+        await EventuallyOnUi(async () => (await ApplyShown(vm)).Should().BeTrue());
     }
 
     [Fact]
@@ -97,11 +102,13 @@ public class ApplyControlInstallTests(IServiceProvider provider) : AUiTest(provi
             throw new InvalidOperationException("boom");
         });
         await EventuallyOnUi(async () => (await CanApply(vm)).Should().BeFalse());
+        await EventuallyOnUi(async () => (await ApplyShown(vm)).Should().BeFalse());
 
         fail.SetResult();
         await Record.ExceptionAsync(async () => await install);
 
         await EventuallyOnUi(async () => (await CanApply(vm)).Should().BeTrue());
+        await EventuallyOnUi(async () => (await ApplyShown(vm)).Should().BeTrue());
     }
 
     [Fact]
@@ -115,11 +122,13 @@ public class ApplyControlInstallTests(IServiceProvider provider) : AUiTest(provi
             return default;
         });
         await EventuallyOnUi(async () => (await CanApply(vm)).Should().BeFalse());
+        await EventuallyOnUi(async () => (await ApplyShown(vm)).Should().BeFalse());
 
         Provider.GetRequiredService<IJobMonitor>().Cancel(install);
         await Record.ExceptionAsync(async () => await install);
 
         await EventuallyOnUi(async () => (await CanApply(vm)).Should().BeTrue());
+        await EventuallyOnUi(async () => (await ApplyShown(vm)).Should().BeTrue());
     }
 
     [Fact]
@@ -133,6 +142,7 @@ public class ApplyControlInstallTests(IServiceProvider provider) : AUiTest(provi
 
         await Task.Delay(300);
         (await CanApply(vm)).Should().BeTrue();
+        (await ApplyShown(vm)).Should().BeTrue();
         gate.SetResult();
         await install;
     }

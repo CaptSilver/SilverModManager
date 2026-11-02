@@ -17,6 +17,11 @@ public interface IApplyControlViewModel : IViewModelInterface
     bool IsProcessing { get; }
     
     bool IsApplying { get; }
+
+    /// <summary>
+    /// Whether the Apply button is shown. False, not merely disabled, while a modlist install writes into the loadout.
+    /// </summary>
+    bool IsApplyButtonVisible { get; }
     
     string ApplyButtonText { get; }
     

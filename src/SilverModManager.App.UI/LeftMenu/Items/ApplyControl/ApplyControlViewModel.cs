@@ -36,6 +36,7 @@ public partial class ApplyControlViewModel : AViewModel<IApplyControlViewModel>,
     private readonly GameInstallMetadataId _gameMetadataId;
     [Reactive] private partial bool CanApply { get; set; } = true;
     [Reactive] public partial bool IsApplying { get; private set; }
+    [Reactive] public partial bool IsApplyButtonVisible { get; private set; } = true;
 
     public ReactiveUI.ReactiveCommand<Unit, Unit> ApplyCommand { get; }
     public ReactiveUI.ReactiveCommand<NavigationInformation, Unit> ShowApplyDiffCommand { get; }
@@ -129,6 +130,8 @@ public partial class ApplyControlViewModel : AViewModel<IApplyControlViewModel>,
                                    && ldStatus != LoadoutSynchronizerState.Unavailable
                                    && !isUnmanaging
                                    && !installing;
+                        // Shares CanApply's inputs, so an install hides the button instead of leaving a dead one on screen.
+                        IsApplyButtonVisible = CanApply;
                         LaunchButtonViewModel.CanLaunch = !isProcessing 
                                                 && !running
                                                 && gameStatus != GameSynchronizerState.Busy
