@@ -132,7 +132,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         {
             var prepared = await Resolve(check, cancellationToken);
             await Write(check, group, extrasFolder, prepared, cancellationToken);
-            await RegisterTools(check, extrasFolder, cancellationToken);
+            await RegisterTools(check, group, extrasFolder, cancellationToken);
             await Order(check, group, cancellationToken);
         }
         finally
@@ -1166,7 +1166,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     /// Registers the executables the list's ModOrganizer.ini names as tools of the installation, once their files are on
     /// disk. A tool that is already registered is left as it is, so installing again adds nothing.
     /// </summary>
-    private async Task RegisterTools(Checked check, AbsolutePath extrasFolder, CancellationToken cancellationToken)
+    private async Task RegisterTools(Checked check, LoadoutItemGroupId modlistGroup, AbsolutePath extrasFolder, CancellationToken cancellationToken)
     {
         var iniText = await ReadModOrganizerIni(check, cancellationToken);
         if (iniText is null) return;
@@ -1176,7 +1176,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var gameRoot = installation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty));
         var primary = installation.Game.GetPrimaryFile(installation);
 
-        var found = ModlistTools.Find(iniText, extras.Root, gameRoot, primary.FileName.ToString(), relative => AppliedPath(check, relative));
+        var skipped = WabbajackSkippedFile.FindByGroup(Connection.Db, modlistGroup).Select(f => f.To).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var switchedOff = await GroupsSwitchedOffByProfile(check, cancellationToken);
+        var found = ModlistTools.Find(iniText, extras.Root, gameRoot, primary.FileName.ToString(), relative => AppliedPath(check, relative, skipped, switchedOff));
         UnregisteredTools = found.Unregistered;
         foreach (var line in found.Unregistered) Logger.LogWarning("Not registering a tool of '{List}': {Reason}", check.List.Name, line);
 
@@ -1204,17 +1206,31 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     /// <summary>
     /// Where Apply puts the list's file at <paramref name="relative"/> (a path inside the Mod Organizer instance), for the
     /// files the loadout deploys: game-root folders land in the game folder and mod files at their mapped place. Null for
-    /// anything else.
+    /// anything else, including a file this run skipped and a file of a mod the profile's modlist.txt switches off: Apply
+    /// never writes either, so a tool pointing at them would not start.
     /// </summary>
-    private static string? AppliedPath(Checked check, string relative)
+    private static string? AppliedPath(Checked check, string relative, IReadOnlySet<string> skipped, IReadOnlySet<string> switchedOff)
     {
         var placement = check.Placements.FirstOrDefault(p =>
             p.Target is Mo2Target.GameRootFile or Mo2Target.ModFile
             && p.Path is not null
             && string.Equals(p.To.ToString(), relative, StringComparison.OrdinalIgnoreCase));
-        return placement?.Path is { } path
-            ? check.Loadout.InstallationInstance.Locations.ToAbsolutePath(path).ToString()
-            : null;
+        if (placement?.Path is not { } path) return null;
+        if (skipped.Contains(placement.To.ToString()) || placement.Group is { } group && switchedOff.Contains(group)) return null;
+
+        return check.Loadout.InstallationInstance.Locations.ToAbsolutePath(path).ToString();
+    }
+
+    /// <summary>The names of the groups the profile's modlist.txt gives a '-' line, which <see cref="Order"/> switches off.</summary>
+    private async Task<IReadOnlySet<string>> GroupsSwitchedOffByProfile(Checked check, CancellationToken cancellationToken)
+    {
+        var texts = await ReadProfileTexts(check, cancellationToken);
+        if (texts.ModlistTxt is null) return new HashSet<string>();
+
+        return ModlistTxt.Parse(texts.ModlistTxt)
+            .Where(e => !e.IsSeparator && !e.IsForeign && !e.Enabled)
+            .Select(e => e.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
     private async Task<string?> ReadModOrganizerIni(Checked check, CancellationToken cancellationToken)

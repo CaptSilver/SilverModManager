@@ -165,6 +165,50 @@ public class ModlistToolsTests(ITestOutputHelper helper) : InstallTestBase<Modli
     }
 
     [Fact]
+    public async Task AGameRootToolThatWasSkippedIsReportedBecauseApplyNeverWritesIt()
+    {
+        var entry = "4\\arguments=\n4\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/Stock Game/Tools/Loader.exe\n4\\title=Loader\n";
+        var archive = await AddZip("loader.zip", new() { ["base.bin"] = [1, 2, 3] });
+        var list = ListWith(DefaultExecutables + entry);
+        list.Archives.Add(archive);
+        list.Directives.Add(list.Patched("Stock Game/Tools/Loader.exe", archive, "base.bin", [9, 9, 9], [9, 9, 9, 4]));
+        var (loadout, group, job) = await InstallList(list);
+
+        SkipsOf(group).Should().ContainSingle(s => s.Kind == SkipKind.HashMismatch && s.To == "Stock Game/Tools/Loader.exe");
+        ToolsOf(loadout).Should().BeEmpty();
+        job.UnregisteredTools.Should().ContainSingle().Which.Should().Contain("Loader");
+    }
+
+    [Fact]
+    public async Task AModToolThatWasSkippedIsReportedBecauseApplyNeverWritesIt()
+    {
+        var entry = "4\\arguments=\n4\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/mods/A/Tools/Mod.exe\n4\\title=ModTool\n";
+        var archive = await AddZip("mod.zip", new() { ["base.bin"] = [1, 2, 3] });
+        var list = ListWith(DefaultExecutables + entry);
+        list.Archives.Add(archive);
+        list.Directives.Add(list.Patched("mods/A/Tools/Mod.exe", archive, "base.bin", [9, 9, 9], [9, 9, 9, 4]));
+        var (loadout, group, job) = await InstallList(list);
+
+        SkipsOf(group).Should().ContainSingle(s => s.To == "mods/A/Tools/Mod.exe");
+        ToolsOf(loadout).Should().BeEmpty();
+        job.UnregisteredTools.Should().ContainSingle().Which.Should().Contain("ModTool");
+    }
+
+    [Fact]
+    public async Task AToolOfAModThatModlistTxtSwitchesOffIsReportedBecauseApplyNeverWritesIt()
+    {
+        var entry = "4\\arguments=\n4\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/mods/Off/Tools/Mod.exe\n4\\title=OffTool\n";
+        var list = ListWith(DefaultExecutables + entry);
+        list.Directives.RemoveAll(d => d.To.ToString().EndsWith("modlist.txt", StringComparison.OrdinalIgnoreCase));
+        list.Directives.Add(list.Inline("profiles/Default/modlist.txt", "+A\n-Off\n"));
+        list.Directives.Add(list.Inline("mods\\Off\\Tools\\Mod.exe", "tool"));
+        var (loadout, _, job) = await InstallList(list);
+
+        ToolsOf(loadout).Should().BeEmpty();
+        job.UnregisteredTools.Should().ContainSingle().Which.Should().Contain("OffTool");
+    }
+
+    [Fact]
     public async Task InstallingAgainDoesNotRegisterTheSameToolTwice()
     {
         var list = ListWith(DefaultExecutables + SseEditEntry);
