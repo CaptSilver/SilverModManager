@@ -67,10 +67,10 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
     private sealed class SwitchableIndexer(IGameLocationsService inner, Func<bool> fails) : IGameLocationsService
     {
         public Task<IndexGameResult> IndexGame(GameInstallation installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly> previousDiskState, IGamePathFilter filter,
-            CancellationToken cancellationToken = default, Action<long, long>? progress = null, Func<IReadOnlyList<IndexFileResult>, ValueTask>? onBatch = null)
+            CancellationToken cancellationToken = default, Action<long, long>? progress = null, Func<IReadOnlyList<IndexFileResult>, ValueTask>? onBatch = null, Func<GamePath, bool>? preferred = null)
             => fails()
                 ? throw new GameFolderUnreadableException(installation, "Listing the files", new IOException("Input/output error"))
-                : inner.IndexGame(installation, previousDiskState, filter, cancellationToken, progress, onBatch);
+                : inner.IndexGame(installation, previousDiskState, filter, cancellationToken, progress, onBatch, preferred);
     }
 
     private AbsolutePath GameDir => GameInstallation.Locations[LocationId.Game].Path;

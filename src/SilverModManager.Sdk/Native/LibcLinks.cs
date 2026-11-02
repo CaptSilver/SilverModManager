@@ -64,6 +64,17 @@ public static partial class LibcLinks
             ? 0
             : Marshal.GetLastPInvokeError();
 
+    /// <summary>
+    /// <c>rename(2)</c>: moves a file, folder or symlink within one file system, keeping its size and times. Unlike
+    /// <c>File.Move</c> it never falls back to copy and delete when the paths are on different mounts (EXDEV), so
+    /// the caller sees the failure. Returns 0 or the errno.
+    /// </summary>
+    public static int TryRename(string oldPath, string newPath) =>
+        rename(oldPath, newPath) == 0 ? 0 : Marshal.GetLastPInvokeError();
+
+    [LibraryImport("libc", EntryPoint = "rename", StringMarshalling = StringMarshalling.Utf8, SetLastError = true)]
+    private static partial int rename(string oldPath, string newPath);
+
     [LibraryImport("libc", EntryPoint = "link", StringMarshalling = StringMarshalling.Utf8, SetLastError = true)]
     private static partial int link(string oldPath, string newPath);
 
