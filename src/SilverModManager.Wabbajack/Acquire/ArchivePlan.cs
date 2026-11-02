@@ -37,7 +37,8 @@ public enum ArchiveState
 }
 
 /// <summary>
-/// One archive of the list and what to do about it. <paramref name="Library"/> is set for <see cref="ArchiveState.Have"/>;
+/// One archive of the list and what to do about it. <paramref name="Library"/> is set for <see cref="ArchiveState.Have"/>
+/// and for a row that holds a copy lacking bytes the list needs (see <see cref="HoldsIncompleteCopy"/>);
 /// <paramref name="Page"/> for the states that send the user somewhere. <paramref name="Opened"/> is set once a
 /// <see cref="ArchiveState.Browser"/> row's page has been opened in the user's browser. <paramref name="Note"/> explains
 /// a row that is not what its name suggests, such as a Mod Organizer 2 release the list still takes a file from.
@@ -46,6 +47,12 @@ public enum ArchiveState
 /// </summary>
 public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, string? Reason, Uri? Page, LibraryFile.ReadOnly? Library, bool Opened = false, string? Note = null, bool DownloadFailed = false)
 {
+    /// <summary>
+    /// The library holds the archive but without the bytes of nested archives the list copies whole, so the row still
+    /// waits for a fresh copy. Everything else the list reads from the held copy can be installed.
+    /// </summary>
+    public bool HoldsIncompleteCopy => State != ArchiveState.Have && Library is not null;
+
     /// <summary>
     /// A retry can fetch it: its download failed, or it is an automatic row that still carries the reason of an
     /// earlier failure. A Manual row the list gave without a host the app can read is never tried.

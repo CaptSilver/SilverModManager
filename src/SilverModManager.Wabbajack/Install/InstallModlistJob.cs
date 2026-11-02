@@ -541,6 +541,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         {
             case ArchiveState.Have or ArchiveState.GameFile:
                 break;
+            // The held copy lacks only nested archives the list copies whole; the resolver skips those directives alone.
+            case var _ when row.HoldsIncompleteCopy:
+                break;
             case ArchiveState.GameFileVersion:
                 throw new DirectiveSkipped(SkipKind.GameFileVersion, row.Reason ?? $"'{row.Archive.Name}' is not the version the list was made for");
             case ArchiveState.Unsupported:

@@ -20,62 +20,11 @@ namespace SilverModManager.Wabbajack.Tests.Acquire;
 /// </summary>
 public class HeldArchiveCompletenessTests(ITestOutputHelper helper) : AcquireTestBase<HeldArchiveCompletenessTests>(helper)
 {
-    private static readonly RelativePath InnerZip = RelativePath.FromUnsanitizedInput("pack/inner.zip");
-    private static readonly RelativePath InnerMember = RelativePath.FromUnsanitizedInput("deep/c.txt");
-
     private IArchiveAcquirer Acquirer => ServiceProvider.GetRequiredService<IArchiveAcquirer>();
     private ArchiveInbox Inbox => ServiceProvider.GetRequiredService<ArchiveInbox>();
     private ArchiveInventory Inventory => ServiceProvider.GetRequiredService<ArchiveInventory>();
     private ILibraryArchiveLocator Locator => ServiceProvider.GetRequiredService<ILibraryArchiveLocator>();
     private AbsolutePath InboxFolder => ServiceProvider.GetRequiredService<WabbajackPaths>().Inbox;
-
-    /// <summary>A zip holding <c>pack/inner.zip</c>, which holds <c>deep/c.txt</c>.</summary>
-    private sealed record NestedZip(TemporaryPath Outer, byte[] OuterBytes, byte[] InnerBytes) : IAsyncDisposable
-    {
-        public ValueTask DisposeAsync() => Outer.DisposeAsync();
-
-        public FileIdentity OuterHash => Xx64.Of(OuterBytes);
-
-        public FileIdentity InnerStoreIdentity => FileIdentity.XxHash3(InnerBytes.xxHash3());
-    }
-
-    private async Task<NestedZip> BuildNestedZip()
-    {
-        await using var inner = await CreateTestArchive(new Dictionary<RelativePath, byte[]> { [InnerMember] = Guid.NewGuid().ToByteArray() });
-        var innerBytes = await inner.Path.ReadAllBytesAsync();
-        var outer = await CreateTestArchive(new Dictionary<RelativePath, byte[]> { [InnerZip] = innerBytes });
-        return new NestedZip(outer, await outer.Path.ReadAllBytesAsync(), innerBytes);
-    }
-
-    /// <summary>
-    /// The rows an import leaves when it keeps no bytes for the nested archive: the outer archive and the inner one
-    /// as its member, with nothing in the file store for the inner.
-    /// </summary>
-    private async Task AddWithoutNestedBytes(NestedZip zip)
-    {
-        using var tx = Connection.BeginTransaction();
-        var outer = NewFile(tx, "outer.zip", zip.OuterBytes);
-        var outerArchive = new LibraryArchive.New(tx, outer.Id) { IsArchive = true, LibraryFile = outer };
-        var inner = NewFile(tx, "inner.zip", zip.InnerBytes);
-        _ = new LibraryArchive.New(tx, inner.Id) { IsArchive = true, LibraryFile = inner };
-        _ = new LibraryArchiveFileEntry.New(tx, inner.Id) { Path = InnerZip, LibraryFile = inner, ParentId = outerArchive.Id };
-        await tx.Commit();
-
-        (await FileStore.HaveFile(zip.InnerStoreIdentity)).Should().BeFalse("this is how an earlier import left the library");
-    }
-
-    private static LibraryFile.New NewFile(ITransaction tx, string name, byte[] bytes)
-    {
-        var file = new LibraryFile.New(tx, out var id)
-        {
-            FileName = name,
-            Hash = bytes.xxHash3(),
-            Size = Size.FromLong(bytes.Length),
-            LibraryItem = new LibraryItem.New(tx, id) { Name = name },
-        };
-        tx.Add(id, LibraryFile.XxHash64, Xx64.Of(bytes).XxHash64Value());
-        return file;
-    }
 
     private static FromArchive Copy(NestedZip zip, params RelativePath[] parts)
         => new(RelativePath.FromUnsanitizedInput("mods/A/x.bin"), Xx64.From(1), 1, new ArchiveHashPath(zip.OuterHash, parts));
@@ -102,7 +51,8 @@ public class HeldArchiveCompletenessTests(ITestOutputHelper helper) : AcquireTes
 
         var row = plan.Rows.Should().ContainSingle().Subject;
         row.State.Should().Be(ArchiveState.Automatic);
-        row.Library.Should().BeNull();
+        row.Library.Should().NotBeNull("the install reads the files it can from the held copy");
+        row.HoldsIncompleteCopy.Should().BeTrue();
     }
 
     [Fact]
@@ -127,6 +77,22 @@ public class HeldArchiveCompletenessTests(ITestOutputHelper helper) : AcquireTes
         var row = plan.Rows.Should().ContainSingle().Subject;
         row.State.Should().Be(ArchiveState.Browser);
         row.Page.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ModOrganizerKeptForAFileTheListTakesStillSaysWhyItIsFetchedAgain()
+    {
+        await using var zip = await BuildNestedZip();
+        await AddWithoutNestedBytes(zip);
+        var mo2 = new ArchiveEntry(zip.OuterHash, zip.OuterBytes.Length, "Mod.Organizer-2.4.4.7z", "", Http);
+        var taken = new FromArchive(RelativePath.FromUnsanitizedInput("mods/Tool/Data/inner.zip"), Xx64.From(1), 1, new ArchiveHashPath(zip.OuterHash, [InnerZip]));
+        var exe = new FromArchive(RelativePath.FromUnsanitizedInput("ModOrganizer.exe"), Xx64.From(1), 1, new ArchiveHashPath(zip.OuterHash, [RelativePath.FromUnsanitizedInput("ModOrganizer.exe")]));
+
+        var plan = await Inventory.Build(ListWith(mo2) with { Directives = [exe, taken] }, Connection.Db, await CreateLoadout());
+
+        var row = plan.Rows.Should().ContainSingle().Subject;
+        row.Note.Should().Contain("mods/Tool/Data/inner.zip", "the reason the program archive is kept");
+        row.Note.Should().Contain("fetching it again", "why a held copy is not used as it is");
     }
 
     [Fact]

@@ -239,7 +239,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         });
         InstallArchiveCommand = ReactiveCommand.CreateFromTask<WabbajackArchiveRow>(async row =>
         {
-            if (row.Plan.Library is not { } library || SelectedLoadout?.Id is not { } loadout) return;
+            if (row.Plan.State != ArchiveState.Have || row.Plan.Library is not { } library || SelectedLoadout?.Id is not { } loadout) return;
             await Guarded(token => _service.InstallArchive(LibraryFileId.From(library.Id), loadout, token));
         });
         // Not while a pick is still planning: its plan would replace the one Download starts on.

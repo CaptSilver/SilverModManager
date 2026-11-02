@@ -144,7 +144,10 @@ public sealed class ArchiveInventory(
             return new ArchivePlanRow(archive, ArchiveState.NotNeeded, null, null, null);
 
         var row = await Classify(archive, db, gameFiles, check, cancellationToken);
-        return program.Kept.TryGetValue(archive.XxHash64, out var why) ? row with { Note = why } : row;
+        if (!program.Kept.TryGetValue(archive.XxHash64, out var why)) return row;
+
+        // The reason it is still wanted does not replace why it is fetched again.
+        return row with { Note = row.Note is { } fetchedAgain ? $"{why}. {fetchedAgain}" : why };
     }
 
     private static Mo2ProgramArchives FindModOrganizer(ModList list, GameInstallation installation)
@@ -169,8 +172,10 @@ public sealed class ArchiveInventory(
         }
 
         // What the library holds cannot serve the list, so the archive is fetched as if it were missing.
+        // The incomplete copy stays on the row: it still serves every file the list reads from it except the nested
+        // archives it lacks, so an install that skips the unfetchable archive can use it.
         var row = ClassifyBySource(archive);
-        return candidates.Count == 0 ? row : row with { Note = IncompleteCopyNote };
+        return candidates.Count == 0 ? row : row with { Library = candidates[0], Note = IncompleteCopyNote };
     }
 
     private const string IncompleteCopyNote = "The library holds this archive without the archives inside it that the list copies whole; fetching it again adds them";

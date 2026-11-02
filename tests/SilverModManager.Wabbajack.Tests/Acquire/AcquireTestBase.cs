@@ -1,4 +1,9 @@
+using FluentAssertions;
 using GameFinder.Wine;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Library;
 using SkyrimSe = SilverModManager.Games.CreationEngine.SkyrimSE.SkyrimSE;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -21,6 +26,16 @@ using SilverModManager.Wabbajack.Tests.Fixtures;
 using NSubstitute;
 
 namespace SilverModManager.Wabbajack.Tests.Acquire;
+
+/// <summary>A zip holding <c>pack/inner.zip</c>, which holds <c>deep/c.txt</c>.</summary>
+public sealed record NestedZip(TemporaryPath Outer, byte[] OuterBytes, byte[] InnerBytes) : IAsyncDisposable
+{
+    public ValueTask DisposeAsync() => Outer.DisposeAsync();
+
+    public FileIdentity OuterHash => Xx64.Of(OuterBytes);
+
+    public FileIdentity InnerStoreIdentity => FileIdentity.XxHash3(InnerBytes.xxHash3());
+}
 
 /// <summary>
 /// A stubbed Skyrim SE install (game files from <see cref="StubGameFiles"/>, Documents in a throwaway prefix) with the
@@ -50,6 +65,55 @@ public abstract class AcquireTestBase<TTest>(ITestOutputHelper helper)
                 DownloadsFolder = TestScratch.Combine($"{Startup.SettingsRoot}/Downloads-{Guid.NewGuid()}").ToString(),
             })
             .AddUniversalGameLocator<SkyrimSe>(new Version(GameVersion), StubGameFiles, locationsFileSystem: IsolatedPrefixFileSystem.Create);
+    }
+
+    protected static readonly RelativePath InnerZip = RelativePath.FromUnsanitizedInput("pack/inner.zip");
+    protected static readonly RelativePath InnerMember = RelativePath.FromUnsanitizedInput("deep/c.txt");
+
+    protected async Task<NestedZip> BuildNestedZip()
+    {
+        await using var inner = await CreateTestArchive(new Dictionary<RelativePath, byte[]> { [InnerMember] = Guid.NewGuid().ToByteArray() });
+        var innerBytes = await inner.Path.ReadAllBytesAsync();
+        var outer = await CreateTestArchive(new Dictionary<RelativePath, byte[]> { [InnerZip] = innerBytes });
+        return new NestedZip(outer, await outer.Path.ReadAllBytesAsync(), innerBytes);
+    }
+
+    /// <summary>
+    /// The rows an import leaves when it keeps no bytes for the nested archive: the outer archive and the inner one
+    /// as its member, with nothing in the file store for the inner. <paramref name="plain"/> is a further, ordinary
+    /// member of the outer archive whose bytes are kept, so a list can still read a file out of the incomplete copy.
+    /// </summary>
+    protected async Task AddWithoutNestedBytes(NestedZip zip, (RelativePath Path, byte[] Bytes)? plain = null)
+    {
+        using var tx = Connection.BeginTransaction();
+        var outer = NewFile(tx, "outer.zip", zip.OuterBytes);
+        var outerArchive = new LibraryArchive.New(tx, outer.Id) { IsArchive = true, LibraryFile = outer };
+        var inner = NewFile(tx, "inner.zip", zip.InnerBytes);
+        _ = new LibraryArchive.New(tx, inner.Id) { IsArchive = true, LibraryFile = inner };
+        _ = new LibraryArchiveFileEntry.New(tx, inner.Id) { Path = InnerZip, LibraryFile = inner, ParentId = outerArchive.Id };
+        if (plain is var (path, bytes))
+        {
+            var member = NewFile(tx, path.FileName.ToString(), bytes);
+            _ = new LibraryArchiveFileEntry.New(tx, member.Id) { Path = path, LibraryFile = member, ParentId = outerArchive.Id };
+        }
+        await tx.Commit();
+        if (plain is { } kept)
+            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(kept.Path, new MemoryStream(kept.Bytes)), FileIdentity.XxHash3(kept.Bytes.xxHash3()), Size.FromLong(kept.Bytes.Length))]);
+
+        (await FileStore.HaveFile(zip.InnerStoreIdentity)).Should().BeFalse("this is how an earlier import left the library");
+    }
+
+    private static LibraryFile.New NewFile(ITransaction tx, string name, byte[] bytes)
+    {
+        var file = new LibraryFile.New(tx, out var id)
+        {
+            FileName = name,
+            Hash = bytes.xxHash3(),
+            Size = Size.FromLong(bytes.Length),
+            LibraryItem = new LibraryItem.New(tx, id) { Name = name },
+        };
+        tx.Add(id, LibraryFile.XxHash64, Xx64.Of(bytes).XxHash64Value());
+        return file;
     }
 
     protected static async Task WaitFor(Func<bool> condition)
