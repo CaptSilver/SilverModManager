@@ -301,11 +301,11 @@ public class CollectionLoadoutViewModelTests(IServiceProvider provider) : AUiTes
         var (_, group, source) = await TestSource();
         var (page, activation) = await ActivePage(source);
         using var _ = activation;
-        var threads = new List<(string Property, bool OnUi)>();
+        var threads = new System.Collections.Concurrent.ConcurrentQueue<(string Property, bool OnUi)>();
         using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(
-            page.WhenAnyValue(x => x.Name).Skip(1).Subscribe(_ => threads.Add(("Name", Dispatcher.UIThread.CheckAccess()))),
-            page.WhenAnyValue(x => x.StateLine).Skip(1).Subscribe(_ => threads.Add(("StateLine", Dispatcher.UIThread.CheckAccess()))),
-            page.WhenAnyValue(x => x.Adapter).Skip(1).Subscribe(_ => threads.Add(("Adapter", Dispatcher.UIThread.CheckAccess()))));
+            page.WhenAnyValue(x => x.Name).Skip(1).Subscribe(_ => threads.Enqueue(("Name", Dispatcher.UIThread.CheckAccess()))),
+            page.WhenAnyValue(x => x.StateLine).Skip(1).Subscribe(_ => threads.Enqueue(("StateLine", Dispatcher.UIThread.CheckAccess()))),
+            page.WhenAnyValue(x => x.Adapter).Skip(1).Subscribe(_ => threads.Enqueue(("Adapter", Dispatcher.UIThread.CheckAccess()))));
 
         await Task.Run(() =>
         {
@@ -319,8 +319,9 @@ public class CollectionLoadoutViewModelTests(IServiceProvider provider) : AUiTes
             page.Name.Should().Be("From a pool thread");
             page.StateLine.Should().Be("Pool state");
             page.Adapter.Should().NotBeNull();
+            // The change notifications are part of what is waited for: the values can be readable before the last one is raised.
+            threads.Select(t => t.Property).Should().Contain(["Name", "StateLine", "Adapter"]);
         });
-        threads.Select(t => t.Property).Should().Contain(["Name", "StateLine", "Adapter"]);
         threads.Should().OnlyContain(t => t.OnUi, "bound state is only touched on the UI thread");
     }
 

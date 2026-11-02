@@ -90,8 +90,20 @@ public class LoadoutCollectionOrderTests(IServiceProvider provider) : AUiTest(pr
 
     private static string[] Names(OpenList open) => open.List.Items.Select(item => item.Text.Value.Value).ToArray();
 
-    private Task ShowsEventually(OpenList open, params string[] names) =>
-        EventuallyOnUi(() => Names(open).Should().Equal(names), delay: TimeSpan.FromMilliseconds(50));
+    /// <summary>
+    /// Waits for the list to show <paramref name="names"/>, then for it to still show them on the following polls. The
+    /// menu is filled by two streams (the entries and the saved order) that the UI thread interleaves as it gets to
+    /// them, so a correct list seen once can be a step on the way to another one when the machine is busy.
+    /// </summary>
+    private async Task ShowsEventually(OpenList open, params string[] names)
+    {
+        await EventuallyOnUi(() => Names(open).Should().Equal(names), delay: TimeSpan.FromMilliseconds(50));
+        for (var settled = 0; settled < 3; settled++)
+        {
+            await Task.Delay(50);
+            await OnUi(() => Names(open).Should().Equal(names, "the list keeps the order once it shows it"));
+        }
+    }
 
     private void SaveOrder(Loadout.ReadOnly loadout, params CollectionGroupId[] order) =>
         Settings.Update<LoadoutCollectionOrderSettings>(settings => settings with
@@ -180,7 +192,7 @@ public class LoadoutCollectionOrderTests(IServiceProvider provider) : AUiTest(pr
             await ShowsEventually(open, "My Mods", "B", "C", "A");
         }
 
-        SavedOrder(loadout).Should().Equal(b.Value.Value, c.Value.Value, a.Value.Value);
+        await Eventually(() => SavedOrder(loadout).Should().Equal(b.Value.Value, c.Value.Value, a.Value.Value), delay: TimeSpan.FromMilliseconds(50));
         using var reopened = await Open(loadout);
         await ShowsEventually(reopened, "My Mods", "B", "C", "A");
     }

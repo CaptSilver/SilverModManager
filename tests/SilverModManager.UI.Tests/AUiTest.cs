@@ -261,7 +261,7 @@ public class AUiTest : IAsyncDisposable
             {
                 await action();
             });
-        });
+        }, maxTimeout, delay);
     }
 
     /// <summary>
@@ -272,7 +272,7 @@ public class AUiTest : IAsyncDisposable
     /// <param name="delay"></param>
     public async Task EventuallyOnUi(Action action, TimeSpan? maxTimeout = null, TimeSpan? delay = null)
     {
-        await Eventually(async () => await OnUi(action));
+        await Eventually(async () => await OnUi(action), maxTimeout, delay);
     }
 
     /// <summary>

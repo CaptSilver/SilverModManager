@@ -152,13 +152,24 @@ public class ArchivePathResolverBsaMemoryTests(ITestOutputHelper helper) : Acqui
 
         // The first members open the archive and fill its readers' caches; the rest only add what each member costs.
         await ResolveRange(0, 200);
-        var afterFirst = Retained();
-        await ResolveRange(200, 800);
-        var afterMore = Retained();
 
-        var perMember = (afterMore - afterFirst) / 800;
-        helper.WriteLine($"retained per further member: {perMember} B");
-        perMember.Should().BeLessThan(16 * 1024);
+        // The heap is process-wide, so anything else the process does while a stage runs (a finalizer, a pool thread
+        // finishing an earlier test's work) lands in that stage's number. A resolver that keeps something per member
+        // grows in every stage, one that does not shows a cleaner stage among them, so the quietest stage is the one
+        // that says what the resolver keeps.
+        const int Stages = 3, StageMembers = 400;
+        var next = 200;
+        var perStage = new List<long>();
+        for (var stage = 0; stage < Stages; stage++)
+        {
+            var before = Retained();
+            await ResolveRange(next, StageMembers);
+            perStage.Add((Retained() - before) / StageMembers);
+            next += StageMembers;
+        }
+
+        helper.WriteLine($"retained per further member, by stage: {string.Join(", ", perStage.Select(b => $"{b} B"))}");
+        perStage.Min().Should().BeLessThan(16 * 1024);
     }
 
     [Fact]
