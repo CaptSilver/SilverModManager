@@ -450,6 +450,21 @@ public class ProtonPreflightTests(ITestOutputHelper helper) : AStubbedGameTest<P
     }
 
     [Fact]
+    public async Task Synchronize_ProtonGameWithTwoModsOneFileInTwoSpellingsOfItsName_HigherPriorityWins()
+    {
+        UseProtonPrefix(prefixReady: true);
+        var loadout = await CreateLoadout();
+        (loadout, _) = await AddPrioritisedMod(loadout, "low", 1, "Data/Textures/Foo.dds", "low");
+        (loadout, _) = await AddPrioritisedMod(loadout, "high", 2, "Data/Textures/foo.dds", "high");
+
+        loadout = await Synchronize(loadout);
+
+        var deployed = Directory.EnumerateFiles(GameDir.Combine("Data/Textures").GetFullPath()).ToArray();
+        deployed.Should().ContainSingle();
+        (await File.ReadAllTextAsync(deployed[0])).Should().Be("high");
+    }
+
+    [Fact]
     public async Task Synchronize_ProtonGameWithAPinnedWinnerInAnotherSpelling_KeepsThePin()
     {
         UseProtonPrefix(prefixReady: true);
