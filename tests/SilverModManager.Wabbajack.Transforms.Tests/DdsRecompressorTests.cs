@@ -642,9 +642,25 @@ public class DdsRecompressorTests(ITestOutputHelper output)
         { "A8B8G8R8", Rgb | 1, 32, 0xFF, 0xFF00, 0xFF0000, 0xFF000000, 0x04030201, [1, 2, 3, 4] },
         { "X8B8G8R8", Rgb, 32, 0xFF, 0xFF00, 0xFF0000, 0, 0x04030201, [1, 2, 3, 255] },
         { "G16R16", Rgb, 32, 0xFFFF, 0xFFFF0000, 0, 0, 0x56781234, [0x12, 0x56, 0, 255] },
-        { "A2R10G10B10", Rgb | 1, 32, 0x3FF00000, 0xFFC00, 0x3FF, 0xC0000000, (512u << 20) | (256u << 10) | 1023 | (1u << 30), [128, 64, 255, 85] },
-        { "A2B10G10R10", Rgb | 1, 32, 0x3FF, 0xFFC00, 0x3FF00000, 0xC0000000, 512 | (256u << 10) | (1023u << 20) | (1u << 30), [128, 64, 255, 85] },
+        // DirectXTex assumes the writer reversed the 10-bit masks, so both rows come out with red and blue swapped.
+        { "A2R10G10B10", Rgb | 1, 32, 0x3FF00000, 0xFFC00, 0x3FF, 0xC0000000, (512u << 20) | (256u << 10) | 1023 | (1u << 30), [255, 64, 128, 85] },
+        { "A2B10G10R10", Rgb | 1, 32, 0x3FF, 0xFFC00, 0x3FF00000, 0xC0000000, 512 | (256u << 10) | (1023u << 20) | (1u << 30), [255, 64, 128, 85] },
+        { "L8 as RGB", Rgb, 8, 0xFF, 0, 0, 0, 200, [200, 0, 0, 255] },
+        { "L16 as RGB", Rgb, 16, 0xFFFF, 0, 0, 0, 0x1234, [0x12, 0, 0, 255] },
+        { "A8L8 as RGBA", Rgb | 1, 16, 0xFF, 0, 0, 0xFF00, 0x140A, [10, 20, 0, 255] },
     };
+
+    [Fact]
+    public async Task Recompress_LuminanceAlphaHeaderWithEightBitCount_DecodesTwoBytesPerPixel()
+    {
+        // Some writers put 8 in the bit count of an A8L8 header; the pixels are still two bytes.
+        var stream = new MemoryStream();
+        TestTextures.WriteLegacy(stream, new TestTextures.LegacyLayout(Lum | 1, "", 8, 0xFF, 0, 0, 0xFF00), 1, 1, [10, 20]);
+
+        var actual = await RgbaOf(stream.ToArray(), 1, 1);
+
+        Assert.Equal(new byte[] { 10, 20, 0, 255 }, actual);
+    }
 
     [Theory]
     [MemberData(nameof(BitmaskSources))]

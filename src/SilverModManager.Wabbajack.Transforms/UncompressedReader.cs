@@ -84,8 +84,12 @@ internal sealed class UncompressedReader
         new(Kind.Rgb, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0, DxgiFormat.B8G8R8X8_UNORM),           // X8R8G8B8
         new(Kind.Rgb, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0, DxgiFormat.R8G8B8A8_UNORM),           // X8B8G8R8
         new(Kind.Rgb, 32, 0x0000FFFF, 0xFFFF0000, 0, 0, DxgiFormat.UNKNOWN),                           // G16R16
-        new(Kind.Rgb, 32, 0x000003FF, 0x000FFC00, 0x3FF00000, 0xC0000000, DxgiFormat.UNKNOWN),         // A2B10G10R10
-        new(Kind.Rgb, 32, 0x3FF00000, 0x000FFC00, 0x000003FF, 0xC0000000, DxgiFormat.UNKNOWN),         // A2R10G10B10
+        // DirectXTex assumes the writer reversed the masks of both 10-bit layouts (the D3DX reversal), so it reads
+        // the red mask as blue and the other way round. Match on the header's masks, decode with them swapped.
+        new(Kind.Rgb, 32, 0x000003FF, 0x000FFC00, 0x3FF00000, 0xC0000000, DxgiFormat.UNKNOWN,          // DDSPF_A2R10G10B10
+            new UncompressedReader(32, 0x3FF00000, 0x000FFC00, 0x000003FF, 0xC0000000)),
+        new(Kind.Rgb, 32, 0x3FF00000, 0x000FFC00, 0x000003FF, 0xC0000000, DxgiFormat.UNKNOWN,          // DDSPF_A2B10G10R10
+            new UncompressedReader(32, 0x000003FF, 0x000FFC00, 0x3FF00000, 0xC0000000)),
         new(Kind.Rgb, 24, 0xFF0000, 0x00FF00, 0x0000FF, 0, DxgiFormat.UNKNOWN),                        // R8G8B8
         new(Kind.Rgb, 16, 0xF800, 0x07E0, 0x001F, 0, DxgiFormat.B5G6R5_UNORM),                         // R5G6B5
         new(Kind.Rgb, 16, 0x7C00, 0x03E0, 0x001F, 0x8000, DxgiFormat.B5G5R5A1_UNORM),                  // A1R5G5B5
@@ -100,6 +104,11 @@ internal sealed class UncompressedReader
         new(Kind.Luminance, 16, 0x00FF, 0, 0, 0xFF00, DxgiFormat.R8G8_UNORM, new UncompressedReader(16, 0x00FF, 0xFF00, 0, 0)),
         // A4L4 spreads the luminance over RGB, as DirectXTex expands it to B4G4R4A4.
         new(Kind.Luminance, 8, 0x0F, 0, 0, 0xF0, DxgiFormat.B4G4R4A4_UNORM, new UncompressedReader(8, 0x0F, 0x0F, 0x0F, 0xF0)),
+        // NVTT v1 wrote luminance layouts with the RGB flag, and some writers give A8L8 an 8 in the bit count.
+        new(Kind.Rgb, 8, 0xFF, 0, 0, 0, DxgiFormat.R8_UNORM),                                          // L8, NVTT v1
+        new(Kind.Rgb, 16, 0xFFFF, 0, 0, 0, DxgiFormat.R16_UNORM),                                      // L16, NVTT v1
+        new(Kind.Rgb, 16, 0x00FF, 0, 0, 0xFF00, DxgiFormat.R8G8_UNORM, new UncompressedReader(16, 0x00FF, 0xFF00, 0, 0)),  // A8L8, NVTT v1
+        new(Kind.Luminance, 8, 0x00FF, 0, 0, 0xFF00, DxgiFormat.R8G8_UNORM, new UncompressedReader(16, 0x00FF, 0xFF00, 0, 0)),  // A8L8, 8 in the bit count
         new(Kind.Alpha, 8, 0, 0, 0, 0xFF, DxgiFormat.A8_UNORM),                                        // A8
     ];
 
@@ -136,18 +145,18 @@ internal sealed class UncompressedReader
             {
                 uint value = 0;
                 for (var i = 0; i < bytesPerPixel; i++) value |= (uint)row[x * bytesPerPixel + i] << (8 * i);
-                pixels[y * width + x] = _palette is null
-                    ? new ColorRgba32(_r.Read(value), _g.Read(value), _b.Read(value), _a.Read(value))
-                    : FromPalette(value);
+                pixels[y * width + x] = _palette is { } palette
+                    ? FromPalette(palette, value)
+                    : new ColorRgba32(_r.Read(value), _g.Read(value), _b.Read(value), _a.Read(value));
             }
         }
 
         return pixels;
     }
 
-    private ColorRgba32 FromPalette(uint pixel)
+    private ColorRgba32 FromPalette(uint[] palette, uint pixel)
     {
-        var entry = _palette![pixel & 0xFF];
+        var entry = palette[pixel & 0xFF];
         var alpha = (byte)(entry >> 24);
         if (_paletteAlphaInPixel) alpha |= (byte)(pixel >> 8);
         return new ColorRgba32((byte)entry, (byte)(entry >> 8), (byte)(entry >> 16), alpha);

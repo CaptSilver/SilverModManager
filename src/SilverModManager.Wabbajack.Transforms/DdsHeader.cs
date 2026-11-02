@@ -14,7 +14,6 @@ internal sealed class DdsHeader
     private const int PixelDataOffset = 4 + HeaderSize;
     private const int Dx10ExtensionSize = 20;
 
-    private const uint FlagMipMapCount = 0x20000;
 
     private const uint PixelAlphaPixels = 0x1;
     private const uint PixelFourCc = 0x4;
@@ -79,9 +78,9 @@ internal sealed class DdsHeader
     public long RowPitch(int level)
     {
         var width = Math.Max(1, Width >> level);
-        return IsBlockCompressed
-            ? (long)Math.Max(1, (width + 3) / 4) * BlockBytes(Format)
-            : ((long)width * Reader!.BitsPerPixel + 7) / 8;
+        return Reader is { } reader
+            ? ((long)width * reader.BitsPerPixel + 7) / 8
+            : (long)Math.Max(1, (width + 3) / 4) * BlockBytes(Format);
     }
 
     /// <summary>Bytes of mip <paramref name="level"/> of one face.</summary>
@@ -123,10 +122,10 @@ internal sealed class DdsHeader
         if (dds.Length < PixelDataOffset || U32(dds, 0) != Magic || U32(dds, 4) != HeaderSize || U32(dds, 76) != 32)
             throw new InvalidDataException("Not a DDS file");
 
-        var flags = U32(dds, 8);
         var height = U32(dds, 12);
         var width = U32(dds, 16);
-        var mipCount = (flags & FlagMipMapCount) != 0 ? U32(dds, 28) : 0;
+        // DirectXTex reads the count whatever the flags say, and writers differ on setting the flag.
+        var mipCount = U32(dds, 28);
         var pixelFlags = U32(dds, 80);
         var fourCc = U32(dds, 84);
         var bitCount = U32(dds, 88);

@@ -86,6 +86,19 @@ public class DdsHeaderTests
     }
 
     [Fact]
+    public void TheMipCountIsReadEvenWhenTheHeaderDoesNotFlagIt()
+    {
+        // 8x8 BC1 with three levels: 32 + 8 + 8 bytes a face.
+        var bytes = Legacy(LegacyLayout.Dxt1, 8, 8, new byte[6 * 48], mips: 3, cube: true);
+        bytes[10] &= 0xFD; // clears DDSD_MIPMAPCOUNT (0x20000) in the header flags
+
+        var header = DdsHeader.Read(bytes);
+
+        Assert.Equal(3, header.MipLevels);
+        Assert.Equal(48L, header.FaceSize);
+    }
+
+    [Fact]
     public void ADx10CubeMapHasSixFaces()
     {
         var header = DdsHeader.Read(Dx10(DxgiFormat.BC7_UNORM, 8, 8, new byte[6 * 64], cube: true));
