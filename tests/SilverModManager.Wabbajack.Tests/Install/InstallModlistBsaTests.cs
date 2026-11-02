@@ -116,12 +116,14 @@ public class InstallModlistBsaTests(ITestOutputHelper helper) : InstallTestBase<
         list.Directives.Add(list.Bsa("mods/A/pack.bsa", "pack", "textures/one.dds", "textures/two.dds"));
         var loadout = await CreateLoadout();
 
-        var (_, group) = await Install(loadout, await AddModlist(list.ToList(), list.Blobs), Defaults);
+        var (job, group) = await Install(loadout, await AddModlist(list.ToList(), list.Blobs), Defaults);
 
         (await MembersOf(await InstalledBytes(group, "A", "Game/Data/pack.bsa"))).Keys.Should().BeEquivalentTo(["textures/one.dds", "textures/two.dds"]);
         var rows = SkipsOf(group);
         rows.Should().HaveCount(2).And.OnlyContain(r => r.Kind == SkipKind.KeptOriginal);
         rows.Should().Contain(r => r.Reason.Contains("'textures/one.dds'")).And.Contain(r => r.Reason.Contains("'textures/two.dds'"));
+        // The archive was built and installed, so none of its inputs were lost.
+        job.Progress.DroppedCount.Should().Be(0);
     }
 
     [Fact]

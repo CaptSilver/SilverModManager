@@ -1098,8 +1098,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         if (!state.Skipped.TryGetValue(kind, out var skippedOfKind)) state.Skipped[kind] = skippedOfKind = new List<string>();
         skippedOfKind.Add(placement.To.ToString());
 
-        // An archive that could not be built takes its inputs with it: they are not installed anywhere else.
-        if (placement.Directive is CreateBsa bsa && check.BsaInputs.TryGetValue(Fold(bsa.TempId), out var inputs))
+        // An archive that could not be built takes its inputs with it: they are not installed anywhere else. A kept
+        // original is a note on an archive that was built, so its inputs are all there.
+        if (kind != SkipKind.KeptOriginal && placement.Directive is CreateBsa bsa && check.BsaInputs.TryGetValue(Fold(bsa.TempId), out var inputs))
         {
             Progress.AddDropped(inputs.Count);
             Logger.LogWarning("Dropped {Count} input file(s) of '{To}' in '{List}' because the archive was not built ({Reason}): {Inputs}",
