@@ -74,6 +74,13 @@ public partial class GameInstallMetadata : IModelDefinition
     public static readonly BooleanAttribute LastApplyLeftFilesUnextracted = new(Namespace, nameof(LastApplyLeftFilesUnextracted)) { IsOptional = true };
 
     /// <summary>
+    /// Set while the paths recorded for the game are being rewritten to the folder spelling on disk, and cleared with the
+    /// last rewrite. A rewrite is a pair of commits per batch of rows; a crash between them leaves rows carrying a
+    /// marker, and this flag tells the next apply to finish them without scanning every row.
+    /// </summary>
+    public static readonly BooleanAttribute RespellPending = new(Namespace, nameof(RespellPending)) { IsOptional = true };
+
+    /// <summary>
     /// The 'AsOf' transaction ID of the initial disk state when the game folder was first indexed
     /// </summary>
     public static readonly ReferenceAttribute<Transaction> InitialDiskStateTransaction = new(Namespace, nameof(InitialDiskStateTransaction)) { IsOptional = true };
