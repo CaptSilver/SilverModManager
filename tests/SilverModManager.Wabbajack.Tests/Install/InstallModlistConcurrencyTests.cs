@@ -54,6 +54,35 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
     }
 
     [Fact]
+    public async Task ResolvingTheInputsOfSeveralArchivesNeverOpensMoreMembersAtOnceThanThereAreWorkers()
+    {
+        _opener.Delay = TimeSpan.FromMilliseconds(100);
+        var archive = await AddZip("a.zip", new() { ["textures.bsa"] = "BSA\0not really"u8.ToArray() });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        for (var pack = 0; pack < 6; pack++)
+        {
+            var paths = new List<string>();
+            for (var input = 0; input < 6; input++)
+            {
+                var name = $"textures/p{pack}i{input}.dds";
+                paths.Add(name);
+                list.Directives.Add(new FromArchive(P($"TEMP_BSA_FILES/pack{pack}/{name}"), Hash64(RendezvousOpener.Content), RendezvousOpener.Content.Length,
+                    new ArchiveHashPath(archive.XxHash64, [P("textures.bsa"), P($"p{pack}i{input}.dds")])));
+            }
+            list.Directives.Add(list.Bsa($"mods/A/pack{pack}.bsa", $"pack{pack}", paths.ToArray()));
+        }
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var group = await Run(NewJob(loadout, modlist, Defaults, parallelism: 4));
+
+        SkipsOf(group).Should().BeEmpty();
+        _opener.MaxConcurrentOpens.Should().BeGreaterThan(1, "the inputs are resolved in parallel");
+        _opener.MaxConcurrentOpens.Should().BeLessThanOrEqualTo(4, "inputs resolved for all the archives together are bounded by the worker count");
+    }
+
+    [Fact]
     public async Task PatchesOfOneListAreAppliedAtTheSameTime()
     {
         _transforms.PatchRendezvous = 2;
@@ -329,14 +358,32 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
 
         public bool Gate { get; set; }
 
+        /// <summary>How long each open takes, so overlapping ones can be counted.</summary>
+        public TimeSpan Delay { get; set; }
+
+        public int MaxConcurrentOpens => Volatile.Read(ref _maxOpens);
+
+        private int _opening, _maxOpens;
+
         public bool CanOpen(RelativePath name) => name.Extension == new Extension(".bsa");
 
         public async Task<Stream?> Open(Stream archive, RelativePath member, CancellationToken cancellationToken)
         {
-            if (Gate)
+            var now = Interlocked.Increment(ref _opening);
+            int seen;
+            while ((seen = Volatile.Read(ref _maxOpens)) < now && Interlocked.CompareExchange(ref _maxOpens, now, seen) != seen) { }
+            try
             {
-                if (Interlocked.Increment(ref _arrived) >= rendezvous) _met.TrySetResult();
-                await _met.Task.WaitAsync(TimeSpan.FromSeconds(60), cancellationToken);
+                if (Gate)
+                {
+                    if (Interlocked.Increment(ref _arrived) >= rendezvous) _met.TrySetResult();
+                    await _met.Task.WaitAsync(TimeSpan.FromSeconds(60), cancellationToken);
+                }
+                if (Delay > TimeSpan.Zero) await Task.Delay(Delay, cancellationToken);
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _opening);
             }
             return new MemoryStream(Content);
         }

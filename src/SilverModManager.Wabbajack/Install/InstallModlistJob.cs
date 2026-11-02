@@ -427,8 +427,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
     private sealed record Skip(SkipKind Kind, string Reason);
 
-    /// <param name="InputMembers">For an archive build, each input with the member it reads, so Admit can size the build without reading anything.</param>
-    private sealed record Prepared(Placement Placement, ResolvedMember? Member, Skip? Skip, bool Silent, IReadOnlyList<(Directive Directive, ResolvedMember? Member)>? InputMembers = null);
+    /// <param name="ArchiveEstimate">For an archive build, its <see cref="WorkEstimate.OfArchive"/> size worked out from the members its inputs read, so Admit can reserve for it without reading anything and the members themselves are not kept.</param>
+    private sealed record Prepared(Placement Placement, ResolvedMember? Member, Skip? Skip, bool Silent, long? ArchiveEstimate = null);
 
     private sealed class DirectiveSkipped(SkipKind kind, string reason) : Exception(reason)
     {
@@ -444,9 +444,19 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
     private int Workers => Math.Max(1, Parallelism ?? Environment.ProcessorCount);
 
+    /// <summary>
+    /// Bounds the archive inputs resolved at once across the whole resolve phase. Each archive resolves its inputs in
+    /// parallel while up to <see cref="Workers"/> archives are being prepared, so without a shared limit the two loops multiply.
+    /// The outer loop never holds it, so taking it cannot deadlock.
+    /// </summary>
+    private SemaphoreSlim? _inputResolves;
+
+    private SemaphoreSlim InputResolves => _inputResolves ?? throw new InvalidOperationException("Archive inputs are resolved before the resolve phase created their limiter");
+
     private async Task<IReadOnlyList<Prepared>> Resolve(Checked check, CancellationToken cancellationToken)
     {
         _resolver = NewResolver(check);
+        _inputResolves = new SemaphoreSlim(Workers);
         var executable = check.Placements
             .Where(p => p.Target is Mo2Target.ModFile or Mo2Target.ProfileSetting or Mo2Target.ProfileTweak or Mo2Target.GameRootFile or Mo2Target.Extra)
             .ToArray();
@@ -484,7 +494,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         }
 
         if (placement.Directive is CreateBsa)
-            return new Prepared(placement, null, null, Silent: false, await ResolveInputMembers(check, rows, placement.Directive, cancellationToken));
+            return new Prepared(placement, null, null, Silent: false, WorkEstimate.OfArchive(await ResolveInputMembers(check, rows, placement.Directive, cancellationToken)));
 
         if (placement.Directive is not FromArchive from) return new Prepared(placement, null, null, Silent: false);
 
@@ -737,7 +747,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                         try
                         {
                             reservation = await budget.Reserve(
-                                item.Placement.Directive is CreateBsa ? WorkEstimate.OfArchive(item.InputMembers ?? []) : WorkEstimate.Of(item.Placement.Directive, item.Member),
+                                item.Placement.Directive is CreateBsa
+                                    ? item.ArchiveEstimate ?? throw new InvalidOperationException($"The archive build for {item.Placement.Directive.To} was prepared without a work estimate")
+                                    : WorkEstimate.Of(item.Placement.Directive, item.Member),
                                 cancellationToken);
                         }
                         catch
@@ -797,13 +809,21 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         await Parallel.ForEachAsync(Enumerable.Range(0, inputs.Length), options, async (i, token) =>
         {
             ResolvedMember? member = null;
-            try
+            if (inputs[i] is FromArchive from)
             {
-                if (inputs[i] is FromArchive from) member = await ResolveMember(rows, from, token);
-            }
-            catch (DirectiveSkipped)
-            {
-                // Left without a member; BuildArchive reaches this input and reports the skip with its reason.
+                await InputResolves.WaitAsync(token);
+                try
+                {
+                    member = await ResolveMember(rows, from, token);
+                }
+                catch (DirectiveSkipped)
+                {
+                    // Left without a member; BuildArchive reaches this input and reports the skip with its reason.
+                }
+                finally
+                {
+                    InputResolves.Release();
+                }
             }
             resolved[i] = (inputs[i], member);
         });
