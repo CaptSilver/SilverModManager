@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading.Channels;
 using SilverModManager.Sdk.Hashes;
@@ -564,6 +565,12 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         /// <summary>Held while pending files are handed to the file store, so a flush never starts before an earlier one has finished.</summary>
         public SemaphoreSlim FlushLock { get; } = new(1, 1);
 
+        /// <summary>
+        /// Set, under <see cref="FlushLock"/>, when handing files to the file store failed. A failed flush has already
+        /// taken files of items that finished, so a later flush would find nothing waiting and let their rows commit.
+        /// </summary>
+        public ExceptionDispatchInfo? FlushFailure { get; set; }
+
         /// <summary>The batch of rows being written; the next commit takes it.</summary>
         public IMainTransaction? Tx { get; set; }
 
@@ -863,9 +870,18 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         await state.FlushLock.WaitAsync(cancellationToken);
         try
         {
+            state.FlushFailure?.Throw();
             var batch = state.TakePending();
             if (batch.Count == 0) return;
-            await Writer.Store(batch, cancellationToken);
+            try
+            {
+                await Writer.Store(batch, cancellationToken);
+            }
+            catch (Exception e)
+            {
+                state.FlushFailure = ExceptionDispatchInfo.Capture(e);
+                throw;
+            }
         }
         finally
         {

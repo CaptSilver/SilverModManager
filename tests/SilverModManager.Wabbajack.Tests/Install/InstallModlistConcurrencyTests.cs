@@ -198,6 +198,36 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
     }
 
     [Fact]
+    public async Task AFlushThatFailsOnAWorkerNeverLetsALaterCommitNameFilesTheStoreLacks()
+    {
+        var list = new ListBuilder();
+        // The installed text differs from the list's blob, so these bytes reach the store only by being generated.
+        list.Directives.Add(list.Remapped("mods/A/a-small.ini", "game={--||GAME_PATH_MAGIC_BACK||--}"));
+        var big = new byte[3_000_000];
+        new Random(1).NextBytes(big);
+        list.Directives.Add(list.Inline("mods/A/b-big.bin", big));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+        var failing = new FailingBackups(FileStore);
+        // The big file overfills the waiting files, so its worker flushes the small one with it and that flush fails.
+        var writer = new GeneratedFileWriter(failing, TemporaryFileManager) { StoreByteLimit = 1_000_000 };
+        var job = NewJob(loadout, modlist, Defaults, writer: writer, parallelism: 2, commits: new CommitPolicy(1, long.MaxValue, TimeSpan.FromHours(1)));
+        // Holds the thread that records rows after the small file until the failure has happened, so its commit comes later.
+        using var holdBack = job.Progress.Changes.Subscribe(snapshot =>
+        {
+            if (snapshot is { Phase: InstallPhase.Write, DoneItems: >= 1 }) failing.Failed.Task.Wait(TimeSpan.FromSeconds(10));
+        });
+
+        var failure = await Record.ExceptionAsync(() => Run(job));
+
+        failure.Should().NotBeNull();
+        failing.Failed.Task.IsCompleted.Should().BeTrue("the test needs a flush of two files to have failed");
+        var group = WabbajackModlistLoadoutGroup.FindByModlist(Connection.Db, modlist).Single();
+        foreach (var hash in TreeOf(group).Values.SelectMany(files => files.Values))
+            (await FileStore.HaveFile(FileIdentity.XxHash3(hash))).Should().BeTrue("a committed row must never name bytes the store lacks");
+    }
+
+    [Fact]
     public async Task ManyTinyFilesShareFewCommits()
     {
         var (group, commits) = await InstallInlines(5000, CommitPolicy.Default);
@@ -361,38 +391,22 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
             => _inner.BuildBsa(state, fileStates, openInput, output, cancellationToken);
     }
 
-    /// <summary>Forwards to a store and counts the calls that back files up.</summary>
-    private sealed class CountingBackups(IFileStore inner) : IFileStore
+    /// <summary>Forwards to a store, but the first call that backs up two or more files fails.</summary>
+    private sealed class FailingBackups(IFileStore inner) : ForwardingFileStore(inner)
     {
-        private int _calls;
+        private int _failed;
 
-        public int Calls => Volatile.Read(ref _calls);
+        public TaskCompletionSource Failed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public ValueTask<bool> HaveFile(FileIdentity identity) => inner.HaveFile(identity);
-
-        public Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null)
+        public override Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null)
         {
-            Interlocked.Increment(ref _calls);
-            return inner.BackupFiles(backups, deduplicate, token, progress);
-        }
-
-        public Task ExtractFiles(IEnumerable<(FileIdentity Identity, AbsolutePath Dest)> files, CancellationToken token = default, Action<(int Current, int Max)>? progress = null)
-            => inner.ExtractFiles(files, token, progress);
-
-        public Task<Dictionary<FileIdentity, byte[]>> ExtractFiles(IEnumerable<FileIdentity> files, CancellationToken token = default) => inner.ExtractFiles(files, token);
-
-        public Task<Stream> GetFileStream(FileIdentity identity, CancellationToken token = default) => inner.GetFileStream(identity, token);
-
-        public Task<byte[]> Load(FileIdentity identity, CancellationToken token = default) => inner.Load(identity, token);
-
-        public SilverModManager.Sdk.Threading.AsyncFriendlyReaderWriterLock.WriteLockDisposable WriteLock() => inner.WriteLock();
-
-        public void ReloadCaches() => inner.ReloadCaches();
-
-        public event Action? ArchivesChanged
-        {
-            add => inner.ArchivesChanged += value;
-            remove => inner.ArchivesChanged -= value;
+            var entries = backups.ToList();
+            if (entries.Count >= 2 && Interlocked.Exchange(ref _failed, 1) == 0)
+            {
+                Failed.SetResult();
+                throw new IOException("The disk is full");
+            }
+            return base.BackupFiles(entries, deduplicate, token, progress);
         }
     }
 }
