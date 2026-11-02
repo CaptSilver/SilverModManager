@@ -7,11 +7,15 @@ namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
 
 internal static class TestArchives
 {
-    /// <summary>Writes a zip at the path whose entries each hold their own path as content.</summary>
+    /// <summary>
+    /// Writes a zip at the path whose entries each hold their own path as content. The archive comment is the file's path,
+    /// so two archives with the same entries still differ in bytes; the library keeps one file per distinct hash.
+    /// </summary>
     public static async Task Write(AbsolutePath path, params string[] entryPaths)
     {
         await using var stream = path.Create();
         using var zip = new ZipArchive(stream, ZipArchiveMode.Create);
+        zip.Comment = path.GetFullPath();
         foreach (var entryPath in entryPaths)
         {
             await using var entry = zip.CreateEntry(entryPath).Open();
@@ -19,11 +23,12 @@ internal static class TestArchives
         }
     }
 
-    /// <summary>Writes a zip at the path with each entry holding the bytes given for it.</summary>
+    /// <summary>Writes a zip at the path with each entry holding the bytes given for it. The archive comment is the file's path (see <see cref="Write"/>).</summary>
     public static async Task WriteEntries(AbsolutePath path, params (string Path, byte[] Content)[] entries)
     {
         await using var stream = path.Create();
         using var zip = new ZipArchive(stream, ZipArchiveMode.Create);
+        zip.Comment = path.GetFullPath();
         foreach (var (entryPath, content) in entries)
         {
             await using var entry = zip.CreateEntry(entryPath).Open();

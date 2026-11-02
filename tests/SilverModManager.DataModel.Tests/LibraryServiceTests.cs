@@ -161,6 +161,16 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
             .Which.loadout.LoadoutId.Should().Be(loadout.LoadoutId);
     }
 
+    /// <summary>A copy of a zip whose archive comment differs, so the copy has the same entries but different bytes.</summary>
+    private AbsolutePath CopyWithComment(AbsolutePath source, string comment)
+    {
+        var copy = TemporaryFileManager.CreateFolder().Path / source.FileName;
+        File.Copy(source.GetFullPath(), copy.GetFullPath());
+        using (var zip = System.IO.Compression.ZipFile.Open(copy.GetFullPath(), System.IO.Compression.ZipArchiveMode.Update))
+            zip.Comment = comment;
+        return copy;
+    }
+
     [Fact]
     public async Task ReplaceLinkedItemsInAllLoadouts_ShouldReplaceItemsAcrossLoadouts()
     {
@@ -179,6 +189,10 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
             .Combine("Resources")
             .Combine("nested_game_archive.zip");
 
+        // Replacements must be different bytes: adding held bytes again returns the held file
+        var replacementArchivePath1 = CopyWithComment(firstArchivePath, "replacement 1");
+        var replacementArchivePath2 = CopyWithComment(secondArchivePath, "replacement 2");
+
         // Add files to library
         var oldItem1 = (await _libraryService.AddLocalFile(firstArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
         var oldItem2 = (await _libraryService.AddLocalFile(secondArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
@@ -190,8 +204,8 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
 
         // Act
         // Replace both items across all loadouts
-        var newItem1 = (await _libraryService.AddLocalFile(firstArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem(); // Same content but different LibraryItem instance
-        var newItem2 = (await _libraryService.AddLocalFile(secondArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
+        var newItem1 = (await _libraryService.AddLocalFile(replacementArchivePath1, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem(); // Different bytes: adding held bytes again returns the held file
+        var newItem2 = (await _libraryService.AddLocalFile(replacementArchivePath2, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
         var replacements = new List<(LibraryItem.ReadOnly oldItem, LibraryItem.ReadOnly newItem)>
         {
             (oldItem1, newItem1),
@@ -351,6 +365,10 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
             .Combine("Resources")
             .Combine("nested_game_archive.zip");
 
+        // Replacements must be different bytes: adding held bytes again returns the held file
+        var replacementArchivePath1 = CopyWithComment(firstArchivePath, "replacement 1");
+        var replacementArchivePath2 = CopyWithComment(secondArchivePath, "replacement 2");
+
         // Add files to library
         var oldItem1 = (await _libraryService.AddLocalFile(firstArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
         var oldItem2 = (await _libraryService.AddLocalFile(secondArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
@@ -361,8 +379,8 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
 
         // Act
         // Create new items to replace the old ones
-        var newItem1 = (await _libraryService.AddLocalFile(firstArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem(); // Same content but different LibraryItem instance
-        var newItem2 = (await _libraryService.AddLocalFile(secondArchivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
+        var newItem1 = (await _libraryService.AddLocalFile(replacementArchivePath1, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem(); // Different bytes: adding held bytes again returns the held file
+        var newItem2 = (await _libraryService.AddLocalFile(replacementArchivePath2, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
         var replacements = new List<(LibraryItem.ReadOnly oldItem, LibraryItem.ReadOnly newItem)>
         {
             (oldItem1, newItem1),
