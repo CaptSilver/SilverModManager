@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using DynamicData;
 using SilverModManager.Abstractions.Games.Modlists;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -61,9 +62,15 @@ public sealed class ModlistInstallRuns(IJobMonitor monitor) : ILoadoutInstallAct
         => For(task.JobDefinition, task.Job);
 
     /// <exception cref="InstallAlreadyRunningException">An install into <paramref name="loadout"/> has not finished.</exception>
+    /// <exception cref="LoadoutApplyRunningException"><paramref name="loadout"/> is being applied.</exception>
     public void EnsureNoneInto(LoadoutId loadout)
     {
         if (FindInto(loadout) is not null) throw new InstallAlreadyRunningException();
+
+        // The other direction of the guard in the synchronizer: an apply that is already past it must not have the
+        // loadout written under it.
+        if (monitor.Snapshot().Any(job => job.Status.IsUnfinished() && job.Definition is SynchronizeLoadoutJob sync && sync.LoadoutId == loadout))
+            throw new LoadoutApplyRunningException();
     }
 
     /// <inheritdoc />

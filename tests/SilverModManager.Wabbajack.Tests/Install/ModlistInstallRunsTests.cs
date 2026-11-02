@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games.Modlists;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Wabbajack.Format;
@@ -82,6 +83,34 @@ public class ModlistInstallRunsTests(ITestOutputHelper helper) : InstallTestBase
         refused.Should().BeOfType<InstallAlreadyRunningException>();
         gate.SetResult();
         await running;
+    }
+
+    private (IJobTask<SynchronizeLoadoutJob, R3.Unit> Task, TaskCompletionSource Gate) BeginHeldSync(LoadoutId loadout)
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var task = ServiceProvider.GetRequiredService<IJobMonitor>().Begin<SynchronizeLoadoutJob, R3.Unit>(new SynchronizeLoadoutJob(loadout), async _ =>
+        {
+            await gate.Task;
+            return R3.Unit.Default;
+        });
+        return (task, gate);
+    }
+
+    [Fact]
+    public async Task AnInstallIsRefusedWhileTheLoadoutIsBeingAppliedAndStartsAgainOnceItEnds()
+    {
+        var applying = await CreateLoadout();
+        var idle = await CreateLoadout();
+        var (sync, gate) = BeginHeldSync(applying.LoadoutId);
+
+        var refused = () => Runs.EnsureNoneInto(applying.LoadoutId);
+        var elsewhere = () => Runs.EnsureNoneInto(idle.LoadoutId);
+
+        refused.Should().Throw<LoadoutApplyRunningException>().Which.Should().BeAssignableTo<UserFacingException>();
+        elsewhere.Should().NotThrow();
+        gate.SetResult();
+        await sync;
+        refused.Should().NotThrow();
     }
 
     [Fact]
