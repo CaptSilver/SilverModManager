@@ -107,6 +107,31 @@ public class HeldArchiveCompletenessTests(ITestOutputHelper helper) : AcquireTes
     }
 
     [Fact]
+    public async Task ThePlanReadsNoEntryRowsOfAHeldArchiveWhoseListOnlyReadsFilesInsideNestedOnes()
+    {
+        await using var zip = await BuildNestedZip();
+        await AddWithoutNestedBytes(zip);
+
+        var plan = await Plan(zip, Http, Copy(zip, InnerZip, InnerMember), Copy(zip, RelativePath.FromUnsanitizedInput("pack/other.bsa"), InnerMember));
+
+        plan.Check.Should().NotBeNull().And.Subject.As<HeldArchiveCheck>().IndexesBuilt.Should().Be(0, "a path that does not end on an archive the library expands cannot lack its bytes");
+    }
+
+    [Fact]
+    public async Task TheEntryRowsOfAHeldArchiveAreReadOnceHoweverOftenItIsChecked()
+    {
+        await using var zip = await BuildNestedZip();
+        await AddWithoutNestedBytes(zip);
+        var plan = await Plan(zip, Http, Copy(zip, InnerZip));
+        var held = Locator.FindByXxHash64(Connection.Db, zip.OuterHash)!.Value;
+
+        plan.IsComplete(Connection.Db, zip.OuterHash, held).Should().BeFalse();
+        plan.IsComplete(Connection.Db, zip.OuterHash, held).Should().BeFalse();
+
+        plan.Check!.IndexesBuilt.Should().Be(1);
+    }
+
+    [Fact]
     public async Task AHeldArchiveIsStillHeldWhenNoDirectiveReadsTheNestedArchive()
     {
         await using var zip = await BuildNestedZip();

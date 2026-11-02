@@ -26,13 +26,6 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
     private ConcurrentBag<TemporaryPath> ExtractionDirectories { get; } = [];
     private ConcurrentBag<ArchivedFileEntry> ToArchive { get; } = [];
 
-    private Extension[] NestedArchiveExtensions { get; } =
-    [
-        KnownExtensions._7z, KnownExtensions.Rar, KnownExtensions.Zip, KnownExtensions._7zip,
-        // Stardew Valley SMAPI nested archive
-        new(".dat"),
-    ];
-
     public static IJobTask<AddLibraryFileJob, LibraryFile.New> Create(IServiceProvider provider, ITransaction transaction, AbsolutePath filePath, IAcquisitionContext acquisition)
     {
         var monitor = provider.GetRequiredService<IJobMonitor>();
@@ -202,7 +195,7 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
     /// </summary>
     private async Task<bool> CheckIfNestedArchiveAsync(AbsolutePath filePath)
     {
-        if (NestedArchiveExtensions.Contains(filePath.Extension))
+        if (NestedArchives.MayBeExpanded(filePath))
             return await CheckIfArchiveAsync(filePath);
         return false;
     }
