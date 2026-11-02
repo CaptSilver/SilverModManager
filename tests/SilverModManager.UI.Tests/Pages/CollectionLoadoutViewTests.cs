@@ -195,6 +195,24 @@ public class CollectionLoadoutViewTests(IServiceProvider provider) : AUiTest(pro
         await OnUi(window.Close);
     }
 
+    [Theory]
+    [InlineData(CollectionPageTab.Installed, true)]
+    [InlineData(CollectionPageTab.Downloads, true)]
+    [InlineData(CollectionPageTab.Downloads, false)]
+    public async Task TheMoreButtonIsShownOnEveryTabAndWithoutAnInstalledGroup(CollectionPageTab tab, bool hasInstalledTab)
+    {
+        var items = new IContextMenuItem[] { new ContextMenuItem { Header = "Reinstall modlist", Command = ReactiveCommand.Create(() => { }) } };
+        var (window, view) = await Show(new CollectionLoadoutDesignViewModel { MenuItems = items, SelectedTab = tab, HasInstalledTab = hasInstalledTab });
+
+        await EventuallyOnUi(() =>
+        {
+            var more = Named<StandardButton>(view, "MoreButton");
+            more.IsEffectivelyVisible.Should().BeTrue();
+            ((MenuFlyout)more.Flyout!).Items.OfType<MenuItem>().Select(item => item.Header).Should().Equal("Reinstall modlist");
+        });
+        await OnUi(window.Close);
+    }
+
     [Fact]
     public async Task WithoutAnInstalledGroupTheInstalledTabIsHidden()
     {

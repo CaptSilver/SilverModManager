@@ -24,19 +24,6 @@
             <!-- statusbar -->
             <controls:Statusbar Classes="Primary" DockPanel.Dock="Top">
 
-                <!-- Dots menu button -->
-                <controls:StandardButton x:Name="MoreButton"
-                                         LeftIcon="{x:Static icons:IconValues.MoreVertical}"
-                                         ShowLabel="False"
-                                         ShowIcon="Left"
-                                         Size="Toolbar"
-                                         ToolTip.Tip="{x:Static resources:Language.CollectionLoadoutView_More_ToolTip}">
-
-                    <controls:StandardButton.Flyout>
-                        <!-- filled from the page's MenuItems -->
-                        <MenuFlyout />
-                    </controls:StandardButton.Flyout>
-                </controls:StandardButton>
                 <!-- "Open on Nexus Mods", "Open readme" -->
                 <!-- text, icon and command are bound rather than set in code, so the button's first layout already has them -->
                 <controls:StandardButton x:Name="LinkButton"
@@ -113,7 +100,7 @@
 
                     <!-- first header row (image and metadata) -->
                     <Border x:Name="MainContentBorder">
-                        <Grid x:Name="MainContent" ColumnDefinitions="*, Auto">
+                        <Grid x:Name="MainContent" ColumnDefinitions="*, Auto, Auto">
 
                             <!-- left column (image and headings) -->
                             <DockPanel Grid.Column="0" x:Name="CollectionTitles">
@@ -190,6 +177,22 @@
                                 </StackPanel>
                             </StackPanel>
 
+
+                            <!-- Dots menu button: in the header so every tab, and a page without an Installed tab, has it -->
+                            <controls:StandardButton x:Name="MoreButton"
+                                                     Grid.Column="2"
+                                                     VerticalAlignment="Top"
+                                                     LeftIcon="{x:Static icons:IconValues.MoreVertical}"
+                                                     ShowLabel="False"
+                                                     ShowIcon="Left"
+                                                     Size="Toolbar"
+                                                     ToolTip.Tip="{x:Static resources:Language.CollectionLoadoutView_More_ToolTip}">
+
+                                <controls:StandardButton.Flyout>
+                                    <!-- filled from the page's MenuItems -->
+                                    <MenuFlyout />
+                                </controls:StandardButton.Flyout>
+                            </controls:StandardButton>
                         </Grid>
                     </Border>
 

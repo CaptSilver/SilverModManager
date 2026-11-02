@@ -20,6 +20,7 @@ using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
@@ -173,9 +174,12 @@ public sealed class WabbajackModlistSource : CollectionSource
             _file,
             () => LoadoutId ?? model.SelectedLoadout?.Id);
 
-        // Only an installed list has anything to reinstall, and a running install owns the group's contents.
-        var canReinstall = Group.Select(static group => group.HasValue)
-            .CombineLatest(model.WhenAnyValue(vm => vm.IsInstalling), static (installed, installing) => installed && !installing)
+        // Anything the install put in the loadout can be put in again, an unfinished install included. Only a run that
+        // owns the group's contents (an install, or an apply that reads them) holds it back.
+        var canReinstall = Group
+            .DistinctUntilChanged()
+            .Select(group => group.HasValue ? ObserveContentsInUse(model, group.Value).Select(static inUse => !inUse) : Observable.Return(false))
+            .Switch()
             .StartWith(false)
             .DistinctUntilChanged()
             .ObserveOn(RxApp.MainThreadScheduler);
@@ -187,6 +191,18 @@ public sealed class WabbajackModlistSource : CollectionSource
             ToolTip = "Removes what the install put in the loadout and installs it again from the library. Nothing is downloaded.",
             Command = ReactiveCommand.CreateFromTask(() => reinstaller.Reinstall(host), canReinstall),
         };
+    }
+
+    private IObservable<bool> ObserveContentsInUse(IWabbajackModlistViewModel model, CollectionGroupId group)
+    {
+        var loadout = LoadoutItem.Load(Connection.Db, group).LoadoutId;
+        var monitor = Services.GetRequiredService<IJobMonitor>();
+        var installingHere = Services.GetRequiredService<ModlistInstallRuns>().ObserveInstallingInto(loadout);
+        var applying = monitor.HasActiveJob<SynchronizeLoadoutJob>(job => job.LoadoutId == loadout)
+            .Prepend(monitor.Jobs.Any(job => job.Definition is SynchronizeLoadoutJob sync && sync.LoadoutId == loadout));
+        return model.WhenAnyValue(vm => vm.IsInstalling)
+            .CombineLatest(installingHere, applying, static (installing, installingInto, isApplying) => installing || installingInto || isApplying)
+            .DistinctUntilChanged();
     }
 
     private static ContextMenuItem Item(string header, IconValue icon, ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> command) =>

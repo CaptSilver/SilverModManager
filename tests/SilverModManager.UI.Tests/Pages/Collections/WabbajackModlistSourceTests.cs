@@ -2,6 +2,8 @@ using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using Avalonia;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Jobs;
 using Size = NexusMods.Paths.Size;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
@@ -295,6 +297,40 @@ public class WabbajackModlistSourceTests(IServiceProvider provider) : AUiTest(pr
 
         await WabbajackGroupSeed.Delete(Connection, group);
         await Eventually(async () => (await reinstall.Command.CanExecute.FirstAsync()).Should().BeFalse("the group is gone"));
+    }
+
+    [Fact]
+    public async Task ReinstallCanRunOnAnUnfinishedInstall()
+    {
+        var f = await Open();
+        f.Source.CreateDownloads();
+        var reinstall = f.Source.MenuItems(Substitute.For<ICollectionPageHost>(), null)[^1];
+
+        await InstallGroup(f, finished: false, skipped: true);
+
+        await Eventually(async () => (await reinstall.Command.CanExecute.FirstAsync()).Should().BeTrue("an install that did not finish can be started over"));
+    }
+
+    [Fact]
+    public async Task ReinstallWaitsWhileTheLoadoutIsBeingAppliedAndComesBackWhenTheApplyEnds()
+    {
+        var f = await Open();
+        f.Source.CreateDownloads();
+        var reinstall = f.Source.MenuItems(Substitute.For<ICollectionPageHost>(), null)[^1];
+        await InstallGroup(f, finished: true);
+        await Eventually(async () => (await reinstall.Command.CanExecute.FirstAsync()).Should().BeTrue());
+
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var apply = Provider.GetRequiredService<IJobMonitor>().Begin<SynchronizeLoadoutJob, R3.Unit>(new SynchronizeLoadoutJob(f.Loadout.LoadoutId), async _ =>
+        {
+            await gate.Task;
+            return R3.Unit.Default;
+        });
+        await Eventually(async () => (await reinstall.Command.CanExecute.FirstAsync()).Should().BeFalse("the apply reads the group's contents"));
+
+        gate.SetResult();
+        await apply;
+        await Eventually(async () => (await reinstall.Command.CanExecute.FirstAsync()).Should().BeTrue());
     }
 
     [Fact]
