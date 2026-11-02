@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xD0AD3C0A04874E39
-   - Total attributes: 390
-   - Total namespaces: 107
+   - Fingerprint: 0x09B95A2FF1CC2E05
+   - Total attributes: 391
+   - Total namespaces: 108
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -379,6 +379,7 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.StardewValley.SMAPIManifestLoadoutFile/ManifestFile                      | Null                    | True    | False | False     | 
 | SilverModManager.StardewValley.SMAPIModDatabaseLoadoutFile/ModDatabaseFile                | Null                    | False   | False | False     | 
 | SilverModManager.StardewValley.SMAPIModLoadoutItem/Manifest                               | Reference               | False   | False | False     | 
+| SilverModManager.Wabbajack.InstalledFile/ListHash                                         | Blob                    | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistArchive/FetchedFiles                                    | Reference               | True    | True  | False     | 
 | SilverModManager.Wabbajack.ModlistArchive/Identity                                        | Blob                    | True    | False | False     | 
 | SilverModManager.Wabbajack.ModlistArchive/Modlist                                         | Reference               | True    | False | False     | 
