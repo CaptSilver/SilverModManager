@@ -61,13 +61,37 @@ internal sealed class BackupBatcher(IFileStore store, CancellationToken token, i
     {
         try
         {
-            // Pins are the caller's: each is taken before its file is added here.
-            await store.BackupFiles(batch.Select(b => b.Entry).ToArray(), deduplicate: true, token);
-            foreach (var (_, done) in batch) done.TrySetResult();
+            await Store(batch);
+        }
+        catch (Exception e) when (batch.Count > 1 && e is not OperationCanceledException && !token.IsCancellationRequested)
+        {
+            // One unreadable file must not fail the up to 64 unrelated members that happened to share its batch, so
+            // each goes again by itself; the one at fault fails again and the rest are stored. A failure that is
+            // not the file's (a full disk) fails each of them in turn, as it would have without batching.
+            foreach (var single in batch) await StoreAlone(single);
         }
         catch (Exception e)
         {
             foreach (var (_, done) in batch) done.TrySetException(e);
+        }
+    }
+
+    private async Task Store(List<(ArchivedFileEntry Entry, TaskCompletionSource Done)> batch)
+    {
+        // Pins are the caller's: each is taken before its file is added here.
+        await store.BackupFiles(batch.Select(b => b.Entry).ToArray(), deduplicate: true, token);
+        foreach (var (_, done) in batch) done.TrySetResult();
+    }
+
+    private async Task StoreAlone((ArchivedFileEntry Entry, TaskCompletionSource Done) single)
+    {
+        try
+        {
+            await Store([single]);
+        }
+        catch (Exception e)
+        {
+            single.Done.TrySetException(e);
         }
     }
 }
