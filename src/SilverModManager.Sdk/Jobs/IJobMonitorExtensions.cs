@@ -40,6 +40,17 @@ public static class IJobMonitorExtensions
     }
     
     /// <summary>
+    /// Whether an active (Paused or Running) job of the given type satisfies the predicate right now. Reads
+    /// <see cref="IJobMonitor.Snapshot"/>, so any thread can call it; <see cref="HasActiveJob{TJobType}"/> is the
+    /// observable form of the same question.
+    /// </summary>
+    public static bool IsAnyJobActive<TJobType>(this IJobMonitor jobMonitor, Func<TJobType, bool> predicate)
+        where TJobType : IJobDefinition
+    {
+        return jobMonitor.Snapshot().Any(job => job.Status.IsActive() && job.Definition is TJobType concrete && predicate(concrete));
+    }
+
+    /// <summary>
     /// Gets an observable of the average progress percent of all given jobs.
     /// </summary>
     public static IObservable<Percent> AverageProgressPercent<TJobType>(this IObservable<IChangeSet<TJobType, JobId>> jobs) 

@@ -104,4 +104,19 @@ public class JobMonitorTrackingTests : AJobsTest
         await heldJob.Job.WaitAsync(TestContext.Current.CancellationToken);
         seen.Should().BeGreaterThan(0, "the snapshot has to see the job that stays open while the other thread churns");
     }
+
+    [Fact]
+    public async Task IsAnyJobActive_SeesARunningJobThatMatchesAndNothingOnceItEnds()
+    {
+        using var held = new ManualResetEventSlim();
+        var running = JobMonitor.Begin<ProgressReportingJob, double>(new ProgressReportingJob(1, TimeSpan.Zero, held));
+
+        JobMonitor.IsAnyJobActive<ProgressReportingJob>(_ => true).Should().BeTrue();
+        JobMonitor.IsAnyJobActive<ProgressReportingJob>(_ => false).Should().BeFalse("the predicate decides which jobs count");
+        JobMonitor.IsAnyJobActive<SimpleTestJob>(_ => true).Should().BeFalse("only jobs of the asked type count");
+
+        held.Set();
+        await running.Job.WaitAsync(TestContext.Current.CancellationToken);
+        JobMonitor.IsAnyJobActive<ProgressReportingJob>(_ => true).Should().BeFalse("a finished job is not active");
+    }
 }

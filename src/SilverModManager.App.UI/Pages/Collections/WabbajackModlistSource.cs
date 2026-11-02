@@ -199,7 +199,7 @@ public sealed class WabbajackModlistSource : CollectionSource
         var monitor = Services.GetRequiredService<IJobMonitor>();
         var installingHere = Services.GetRequiredService<ModlistInstallRuns>().ObserveInstallingInto(loadout);
         var applying = monitor.HasActiveJob<SynchronizeLoadoutJob>(job => job.LoadoutId == loadout)
-            .Prepend(monitor.Jobs.Any(job => job.Definition is SynchronizeLoadoutJob sync && sync.LoadoutId == loadout));
+            .Prepend(monitor.IsAnyJobActive<SynchronizeLoadoutJob>(job => job.LoadoutId == loadout));
         return model.WhenAnyValue(vm => vm.IsInstalling)
             .CombineLatest(installingHere, applying, static (installing, installingInto, isApplying) => installing || installingInto || isApplying)
             .DistinctUntilChanged();
