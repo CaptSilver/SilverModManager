@@ -378,7 +378,7 @@ public sealed class ArchiveAcquirer(
                 // A Browser row is one the library lacked when the plan was built and the run sent the user to fetch,
                 // so its arrival is the download the run asked for. Manual, SignIn and Unsupported rows are the user's own adds.
                 if (row.State == ArchiveState.Browser && _expecting && _modlist is not null
-                    && locator.FindTopLevelByXxHash64(db, row.Archive.XxHash64) is { } topLevel)
+                    && locator.FindNewestTopLevelByXxHash64(db, row.Archive.XxHash64) is { } topLevel)
                     (fetched ??= []).Add((row.Archive.XxHash64, topLevel));
                 _rows[i] = row with { State = ArchiveState.Have, Reason = null, Library = held, DownloadFailed = false };
                 changed = true;

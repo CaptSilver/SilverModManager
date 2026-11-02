@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.GC;
 using SilverModManager.Abstractions.Library;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
@@ -324,5 +325,60 @@ public class FetchedArchiveTests(ITestOutputHelper helper) : AcquireTestBase<Fet
 
         await WaitFor(() => Acquirer.Plan.Rows[0].State == ArchiveState.Have);
         RowFor(modlist, Content).FetchedFiles.Should().BeEmpty("a member belongs to the user's archive");
+    }
+
+    /// <summary>
+    /// A held copy without the bytes of its nested archive, a list that wants the archive, and a drop of the same
+    /// archive in the inbox: the scan adds it as a second library file. Returns the list row and the copy held before.
+    /// </summary>
+    private async Task<(WabbajackModlistArchive.ReadOnly Row, EntityId Old)> DropOverIncompleteCopy(NestedZip zip, bool oldCopyFetchedForTheList)
+    {
+        await AddWithoutNestedBytes(zip);
+        var locator = ServiceProvider.GetRequiredService<SilverModManager.Wabbajack.Library.ILibraryArchiveLocator>();
+        var old = locator.FindTopLevelByXxHash64(Connection.Db, zip.OuterHash)!.Value.Id;
+        var entry = new ArchiveEntry(zip.OuterHash, zip.OuterBytes.Length, "outer.zip", "", new ManualState(new Uri("https://example.test/m"), "get it"));
+        var modlist = await AddModlist(entry);
+        var row = WabbajackModlistArchive.FindByModlist(Connection.Db, modlist.Value).Single();
+        if (oldCopyFetchedForTheList)
+        {
+            using var tx = Connection.BeginTransaction();
+            tx.Add(row.Id, WabbajackModlistArchive.FetchedFiles, old);
+            await tx.Commit();
+        }
+
+        var list = ListWith(entry) with { Directives = [new FromArchive(RelativePath.FromUnsanitizedInput("mods/A/x.bin"), Xx64.From(1), 1, new ArchiveHashPath(zip.OuterHash, [InnerZip]))] };
+        var plan = await ServiceProvider.GetRequiredService<ArchiveInventory>().Build(list, Connection.Db, await CreateLoadout());
+        Acquirer.Show(plan with { Modlist = modlist });
+        await InboxFolder.Combine("outer.zip").WriteAllBytesAsync(zip.OuterBytes);
+
+        await Inbox.Scan(CancellationToken.None);
+
+        return (WabbajackModlistArchive.Load(Connection.Db, row.Id), old);
+    }
+
+    [Fact]
+    public async Task AnAgainFetchedCopyIsMarkedAlongsideTheOneTheListFetchedBefore()
+    {
+        using var page = Acquirer.Attach();
+        await using var zip = await BuildNestedZip();
+
+        var (row, old) = await DropOverIncompleteCopy(zip, oldCopyFetchedForTheList: true);
+
+        var copies = Connection.Db.Datoms(LibraryFile.XxHash64, zip.OuterHash.XxHash64Value()).Select(d => d.E).ToArray();
+        copies.Should().HaveCount(2);
+        row.FetchedFiles.Select(f => f.Id).Should().BeEquivalentTo(copies, "removing the list has to reach both copies");
+        copies.Should().Contain(old);
+    }
+
+    [Fact]
+    public async Task AnAgainFetchedCopyIsMarkedInsteadOfTheOneTheUserHad()
+    {
+        using var page = Acquirer.Attach();
+        await using var zip = await BuildNestedZip();
+
+        var (row, old) = await DropOverIncompleteCopy(zip, oldCopyFetchedForTheList: false);
+
+        var marked = row.FetchedFiles.Should().ContainSingle("only the copy this scan added came for the list").Subject;
+        marked.Id.Should().NotBe(old, "the user's own file is never deleted with the list");
     }
 }

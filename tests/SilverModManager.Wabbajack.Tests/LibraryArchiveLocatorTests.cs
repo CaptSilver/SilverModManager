@@ -49,6 +49,21 @@ public class LibraryArchiveLocatorTests(ILibraryService libraryService, IConnect
     }
 
     [Fact]
+    public async Task TheNewestTopLevelCopyIsTheOneAddedLast()
+    {
+        await using var folder = temporaryFileManager.CreateFolder();
+        var path = folder.Path.Combine("plugin.esp");
+        await File.WriteAllBytesAsync(path.ToString(), Enumerable.Range(0, 2000).Select(i => (byte)(i * 11)).ToArray(), TestContext.Current.CancellationToken);
+        var expected = await Hash64(path);
+        var first = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
+        var second = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
+
+        locator.FindNewestTopLevelByXxHash64(connection.Db, expected)!.Value.Id.Should().Be(second.AsLibraryFile().Id);
+        locator.FindTopLevelByXxHash64(connection.Db, expected)!.Value.Id.Should().NotBe(second.AsLibraryFile().Id, "the plain lookup keeps answering with the first copy");
+        first.AsLibraryFile().Id.Should().NotBe(second.AsLibraryFile().Id);
+    }
+
+    [Fact]
     public void AnUnknownHashFindsNothing()
     {
         locator.FindByXxHash64(connection.Db, Xx64.From(0xDEADBEEF12345678)).Should().BeNull();

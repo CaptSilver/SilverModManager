@@ -17,8 +17,9 @@ namespace SilverModManager.Wabbajack.Acquire;
 internal static class FetchedArchives
 {
     /// <summary>
-    /// Marks every list's row for <paramref name="archive"/> as fetched; a row already marked is left as it is. A file
-    /// that is a member of another archive is never marked.
+    /// Marks every list's row for <paramref name="archive"/> as fetched with <paramref name="file"/>. A row can hold
+    /// several fetched files: fetching an archive again leaves two library files with the same hash, and removing the
+    /// list has to reach both. A file that is a member of another archive is never marked.
     /// </summary>
     public static async Task Mark(IConnection connection, FileIdentity archive, LibraryFile.ReadOnly file)
     {
@@ -27,7 +28,7 @@ internal static class FetchedArchives
         var any = false;
         foreach (var row in WabbajackModlistArchive.FindByIdentity(connection.Db, archive))
         {
-            if (row.FetchedFiles.Any()) continue;
+            if (row.FetchedFiles.Any(fetched => fetched.Id == file.Id)) continue;
             tx.Add(row.Id, WabbajackModlistArchive.FetchedFiles, file.Id);
             // The file is held for this list now, so it is for the list's game as well as whatever it was already for.
             LibraryDestinations.Add(tx, file.Id, ModlistAcquisition.ForList(row.Modlist.Id, row.Modlist.GameType, null));
