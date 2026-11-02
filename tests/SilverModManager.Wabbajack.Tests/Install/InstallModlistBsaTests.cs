@@ -86,6 +86,65 @@ public class InstallModlistBsaTests(ITestOutputHelper helper) : InstallTestBase<
     }
 
     [Fact]
+    public async Task AnArchiveWithATextureThatCannotBeReEncodedIsBuiltWithTheOriginalAndOneKeptOriginalRow()
+    {
+        var source = Bc1Dds(8);
+        var archive = await AddZip("a.zip", new() { ["t.dds"] = source });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(UnwritableTexture("TEMP_BSA_FILES/pack/textures/t.dds", archive, "t.dds"));
+        list.Directives.Add(list.Bsa("mods/A/pack.bsa", "pack", "textures/t.dds"));
+        var loadout = await CreateLoadout();
+
+        var (_, group) = await Install(loadout, await AddModlist(list.ToList(), list.Blobs), Defaults);
+
+        (await MembersOf(await InstalledBytes(group, "A", "Game/Data/pack.bsa")))["textures/t.dds"].Should().Equal(source);
+        var kept = SkipsOf(group).Should().ContainSingle().Subject;
+        kept.Kind.Should().Be(SkipKind.KeptOriginal);
+        kept.To.Should().Be("mods/A/pack.bsa");
+        kept.Reason.Should().StartWith("kept the original 'textures/t.dds' because its format cannot be re-encoded to BC6H_UF16: ").And.NotContain("TEMP_BSA_FILES");
+    }
+
+    [Fact]
+    public async Task AnArchiveWithTwoTexturesThatCannotBeReEncodedRecordsARowForEach()
+    {
+        var archive = await AddZip("a.zip", new() { ["t.dds"] = Bc1Dds(8) });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(UnwritableTexture("TEMP_BSA_FILES/pack/textures/one.dds", archive, "t.dds"));
+        list.Directives.Add(UnwritableTexture("TEMP_BSA_FILES/pack/textures/two.dds", archive, "t.dds"));
+        list.Directives.Add(list.Bsa("mods/A/pack.bsa", "pack", "textures/one.dds", "textures/two.dds"));
+        var loadout = await CreateLoadout();
+
+        var (_, group) = await Install(loadout, await AddModlist(list.ToList(), list.Blobs), Defaults);
+
+        (await MembersOf(await InstalledBytes(group, "A", "Game/Data/pack.bsa"))).Keys.Should().BeEquivalentTo(["textures/one.dds", "textures/two.dds"]);
+        var rows = SkipsOf(group);
+        rows.Should().HaveCount(2).And.OnlyContain(r => r.Kind == SkipKind.KeptOriginal);
+        rows.Should().Contain(r => r.Reason.Contains("'textures/one.dds'")).And.Contain(r => r.Reason.Contains("'textures/two.dds'"));
+    }
+
+    [Fact]
+    public async Task ATextureArchiveThatNeedsATextureItCannotReEncodeIsSkippedWholeWithItsStateNamed()
+    {
+        var archive = await AddZip("a.zip", new() { ["t.dds"] = Bc1Dds(8) });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(UnwritableTexture("TEMP_BSA_FILES/pack/textures/t.dds", archive, "t.dds"));
+        var state = System.Text.Json.JsonDocument.Parse("{\"$type\":\"BA2State, Compression.BSA\",\"HasNameTable\":true,\"Type\":1,\"HeaderMagic\":\"BTDX\",\"Version\":1}").RootElement;
+        var texture = System.Text.Json.JsonDocument.Parse("{\"$type\":\"BA2DX10Entry\",\"Index\":0,\"Path\":\"textures/t.dds\",\"Chunks\":[],\"PixelFormat\":71,\"NumMips\":1,\"Width\":4,\"Height\":4,\"ChunkHdrLen\":24,\"Unk8\":0,\"DirHash\":0,\"Extension\":\"dds\",\"NameHash\":0,\"IsCubeMap\":0,\"TileMode\":8}").RootElement;
+        list.Directives.Add(new CreateBsa(P("mods/A/pack.ba2"), Xx64.From(1), 1, P("pack"), state, [texture]));
+        var loadout = await CreateLoadout();
+
+        var (_, group) = await Install(loadout, await AddModlist(list.ToList(), list.Blobs), Defaults);
+
+        var skip = SkipsOf(group).Should().ContainSingle().Subject;
+        skip.Kind.Should().Be(SkipKind.Transform);
+        skip.To.Should().Be("mods/A/pack.ba2");
+        skip.Reason.Should().Contain("textures/t.dds").And.Contain("BC6H_UF16").And.Contain(nameof(Ba2Dx10FileState));
+    }
+
+    [Fact]
     public async Task AnArchiveWhoseStateCannotBeReadIsASkipRowAndItsInputsAreCountedAsDropped()
     {
         var list = new ListBuilder();

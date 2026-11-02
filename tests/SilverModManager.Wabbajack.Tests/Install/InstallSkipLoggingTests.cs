@@ -96,7 +96,7 @@ public class InstallSkipLoggingTests(ITestOutputHelper helper) : InstallTestBase
     }
 
     [Fact]
-    public async Task ATextureThatFailsInsideAnArchiveNamesItsMemberPathAndFormat()
+    public async Task ATextureKeptInsideAnArchiveNamesItsMemberPathAndFormat()
     {
         var archive = await AddZip("a.zip", new() { ["t.dds"] = Bc1Dds(8) });
         var list = new ListBuilder();

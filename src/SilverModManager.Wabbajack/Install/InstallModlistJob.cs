@@ -29,6 +29,7 @@ using SilverModManager.Wabbajack.Mapping;
 using SilverModManager.Wabbajack.Models;
 using BethesdaArchiveException = SilverModManager.Games.Bethesda.Archives.BethesdaArchiveException;
 using FileState = SilverModManager.Games.Bethesda.Archives.FileState;
+using Ba2Dx10FileState = SilverModManager.Games.Bethesda.Archives.Ba2Dx10FileState;
 using PatchException = SilverModManager.Wabbajack.Transforms.PatchException;
 using UnsupportedTextureFormatException = SilverModManager.Wabbajack.Transforms.UnsupportedTextureFormatException;
 
@@ -1399,7 +1400,11 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 return WithNotes(await Generated(state, directive, await MergedBytes(check, state, merged, cancellationToken), checkHash: true, cancellationToken), []);
 
             case CreateBsa bsa:
-                return WithNotes(await Generated(state, directive, output => BuildArchive(check, extras, bsa, output, cancellationToken), checkHash: false, cancellationToken), []);
+            {
+                // Inputs the archive could not re-encode are stored as they are; the notes say which.
+                var archiveNotes = new List<string>();
+                return WithNotes(await Generated(state, directive, output => BuildArchive(check, extras, bsa, output, archiveNotes, cancellationToken), checkHash: false, cancellationToken), archiveNotes);
+            }
 
             default:
                 var exempt = directive is RemappedInlineFile or TransformedTexture || IsHashUnchecked(directive);
@@ -1440,10 +1445,11 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     /// <summary>
     /// The bytes of one directive other than a merge or an archive, written to <paramref name="output"/>. A texture whose
     /// format cannot be re-encoded is copied as it is when <paramref name="keepOriginalIfUnsupported"/> allows it, and
-    /// <paramref name="notes"/> gets a line saying so; otherwise the exception goes to the caller.
+    /// <paramref name="notes"/> gets a line saying so; otherwise the exception goes to the caller. <paramref name="named"/>
+    /// is the path that line uses when the directive's own path is a temp folder name, as it is for an archive's input.
     /// </summary>
     private async Task WriteBytes(Checked check, ExtrasFolder extras, Placement placement, ResolvedMember? member, Stream output,
-        bool keepOriginalIfUnsupported, List<string> notes, CancellationToken cancellationToken)
+        bool keepOriginalIfUnsupported, List<string> notes, CancellationToken cancellationToken, RelativePath? named = null)
     {
         switch (placement.Directive)
         {
@@ -1466,7 +1472,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                     // Recompress writes nothing before it throws this, but it has read from the stream, so open the member again.
                     await using var original = await RequireMember(placement, member).Open();
                     await original.CopyToAsync(output, cancellationToken);
-                    notes.Add($"kept the original '{placement.To}' because its format cannot be re-encoded to {texture.Image.Format}: {unsupported.Message}");
+                    notes.Add($"kept the original '{named ?? placement.To}' because its format cannot be re-encoded to {texture.Image.Format}: {unsupported.Message}");
                 }
                 break;
             }
@@ -1561,7 +1567,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         };
     }
 
-    private async Task BuildArchive(Checked check, ExtrasFolder extras, CreateBsa bsa, Stream output, CancellationToken cancellationToken)
+    private async Task BuildArchive(Checked check, ExtrasFolder extras, CreateBsa bsa, Stream output, List<string> notes, CancellationToken cancellationToken)
     {
         var inputs = check.BsaInputs.GetValueOrDefault(Fold(bsa.TempId)) ?? new Dictionary<string, Placement>();
         var rows = check.Plan.Rows.GroupBy(r => r.Archive.XxHash64).ToDictionary(g => g.Key, g => g.First());
@@ -1575,15 +1581,17 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
                 var member = input.Directive is FromArchive from ? await ResolveMember(rows, from, cancellationToken) : null;
                 TemporaryPath temporary;
+                // A BA2 texture's state records its size, mips and format, so an original that was not re-encoded would not match it.
+                var canKeepOriginal = fileState is not Ba2Dx10FileState;
                 try
                 {
-                    temporary = await Writer.WriteTemporary(file => WriteBytes(check, extras, input, member, file, keepOriginalIfUnsupported: false, notes: [], cancellationToken));
+                    temporary = await Writer.WriteTemporary(file => WriteBytes(check, extras, input, member, file, canKeepOriginal, notes, cancellationToken, named: path));
                 }
                 catch (UnsupportedTextureFormatException unsupported)
                 {
                     // The member's own path says which texture failed; the input's directive path is a temp folder name.
                     var format = input.Directive is TransformedTexture texture ? texture.Image.Format : "unknown";
-                    throw new DirectiveSkipped(SkipKind.Transform, $"the archive '{bsa.To}' could not be built: the texture '{path}' in it could not be re-encoded to {format}: {unsupported.Message}");
+                    throw new DirectiveSkipped(SkipKind.Transform, $"the archive '{bsa.To}' could not be built: the texture '{path}' in it could not be re-encoded to {format} and its {nameof(Ba2Dx10FileState)} records the size and format, so the original cannot stand in: {unsupported.Message}");
                 }
                 spilled.Add(temporary);
                 return temporary.Path.Read();
