@@ -427,7 +427,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
     private sealed record Skip(SkipKind Kind, string Reason);
 
-    private sealed record Prepared(Placement Placement, ResolvedMember? Member, Skip? Skip, bool Silent);
+    /// <param name="InputMembers">For an archive build, each input with the member it reads, so Admit can size the build without reading anything.</param>
+    private sealed record Prepared(Placement Placement, ResolvedMember? Member, Skip? Skip, bool Silent, IReadOnlyList<(Directive Directive, ResolvedMember? Member)>? InputMembers = null);
 
     private sealed class DirectiveSkipped(SkipKind kind, string reason) : Exception(reason)
     {
@@ -481,6 +482,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 return await PrepareVanillaFile(check, placement, vanilla, gameRow, gameFile, cancellationToken);
             }
         }
+
+        if (placement.Directive is CreateBsa)
+            return new Prepared(placement, null, null, Silent: false, await ResolveInputMembers(check, rows, placement.Directive, cancellationToken));
 
         if (placement.Directive is not FromArchive from) return new Prepared(placement, null, null, Silent: false);
 
@@ -733,7 +737,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                         try
                         {
                             reservation = await budget.Reserve(
-                                item.Placement.Directive is CreateBsa ? WorkEstimate.OfArchive(await ResolveInputMembers(check, item.Placement.Directive, cancellationToken)) : WorkEstimate.Of(item.Placement.Directive, item.Member),
+                                item.Placement.Directive is CreateBsa ? WorkEstimate.OfArchive(item.InputMembers ?? []) : WorkEstimate.Of(item.Placement.Directive, item.Member),
                                 cancellationToken);
                         }
                         catch
@@ -782,13 +786,12 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
     /// <summary>
     /// The directives an archive is built from, each with the member it reads, so the build can be sized before it starts.
-    /// Resolving is cached by the resolver, so the build itself finds these already done. An input whose member cannot be
+    /// Done in the resolve phase, off the admit loop; the resolver caches, so the build itself finds these already done. An input whose member cannot be
     /// resolved has none here; the build reports why when it reaches that input.
     /// </summary>
-    private async Task<IReadOnlyList<(Directive Directive, ResolvedMember? Member)>> ResolveInputMembers(Checked check, Directive directive, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<(Directive Directive, ResolvedMember? Member)>> ResolveInputMembers(Checked check, Dictionary<FileIdentity, ArchivePlanRow> rows, Directive directive, CancellationToken cancellationToken)
     {
         var inputs = InputsOf(check, directive).ToArray();
-        var rows = check.Plan.Rows.GroupBy(r => r.Archive.XxHash64).ToDictionary(g => g.Key, g => g.First());
         var resolved = new (Directive Directive, ResolvedMember? Member)[inputs.Length];
         var options = new ParallelOptions { MaxDegreeOfParallelism = Workers, CancellationToken = cancellationToken };
         await Parallel.ForEachAsync(Enumerable.Range(0, inputs.Length), options, async (i, token) =>
