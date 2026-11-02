@@ -169,26 +169,6 @@ public partial class WabbajackModlistViewModelTests
     }
 
     [Fact]
-    public async Task TheTimeLeftAppearsOnlyOnceAMinuteOfTheInstallHasBeenSeen()
-    {
-        var time = new ManualTime();
-        var (vm, _, run) = await OpenWhileInstalling(new OverridingServices(Provider, typeof(TimeProvider), time));
-        using var activation = vm.Activator.Activate();
-        await vm.LoadAsync(CancellationToken.None);
-
-        run.Snapshots.OnNext(Writing(0, 600));
-        time.Now = time.Now.AddSeconds(30);
-        run.Snapshots.OnNext(Writing(30, 600));
-        await EventuallyOnUi(() => vm.ProgressText.Should().Be("Writing files: 30 of 600"));
-        vm.InstallEtaText.Should().BeEmpty("30 seconds is not enough to estimate from");
-
-        time.Now = time.Now.AddSeconds(30);
-        run.Snapshots.OnNext(Writing(60, 600));
-
-        await EventuallyOnUi(() => vm.InstallEtaText.Should().Be("about 9 min left"));
-    }
-
-    [Fact]
     public async Task TheCollectionHeaderShowsTheDownloadsModelsInstallWhicheverTabIsOpen()
     {
         var run = new FakeRun();

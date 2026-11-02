@@ -128,7 +128,6 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
     double ProgressFraction { get; }
 
     /// <summary>"about 12 min left" while an install runs and has run long enough to estimate from; empty otherwise.</summary>
-    string InstallEtaText { get; }
 
     /// <summary>
     /// Follows the install running into the selected (or pinned) loadout, if there is one, so a page opened after the

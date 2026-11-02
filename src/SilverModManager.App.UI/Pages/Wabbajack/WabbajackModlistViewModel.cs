@@ -85,7 +85,6 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     private IDisposable _followedProgress = Disposable.Empty;
     private int _followHolds;
     private bool _hasUnfinishedInstall;
-    private readonly TimeProvider _time;
 
     [Reactive] public partial LibraryFileId FileId { get; set; }
 
@@ -169,13 +168,11 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             this.RaiseAndSetIfChanged(ref _installStatus, value);
             this.RaisePropertyChanged(nameof(ProgressText));
             this.RaisePropertyChanged(nameof(ProgressFraction));
-            this.RaisePropertyChanged(nameof(InstallEtaText));
         }
     }
 
     public string ProgressText => InstallStatus.Text ?? "";
     public double ProgressFraction => InstallStatus.Fraction;
-    public string InstallEtaText => InstallStatus.EtaText ?? "";
     [Reactive] public partial string ErrorText { get; private set; } = "";
     [Reactive] public partial bool CanResume { get; private set; }
     [Reactive] public partial bool IsInstalled { get; private set; }
@@ -209,7 +206,6 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         _acquirer = acquirer;
         _provider = provider;
         _logger = provider.GetService<ILogger<WabbajackModlistViewModel>>();
-        _time = provider.GetService<TimeProvider>() ?? TimeProvider.System;
 
         TabIcon = IconValues.Download;
         TabTitle = "Modlist";
@@ -907,7 +903,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     {
         var picked = SelectedLoadout ?? throw new InvalidOperationException("No loadout is selected");
         ErrorText = "";
-        ShowInstallStatus(new WabbajackInstallStatus(WabbajackModlistText.Progress(ModlistInstallProgress.Snapshot.Empty), 0, ""));
+        ShowInstallStatus(new WabbajackInstallStatus(WabbajackModlistText.Progress(ModlistInstallProgress.Snapshot.Empty), 0));
         IsInstalling = true;
         Recompute();
 
@@ -979,13 +975,13 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         StopFollowing();
         _followed = run;
         IsInstalling = true;
-        if (ProgressText == "") ShowInstallStatus(new WabbajackInstallStatus(WabbajackModlistText.Progress(ModlistInstallProgress.Snapshot.Empty), 0, ""));
+        if (ProgressText == "") ShowInstallStatus(new WabbajackInstallStatus(WabbajackModlistText.Progress(ModlistInstallProgress.Snapshot.Empty), 0));
         Recompute();
 
         // Progress comes from the install job's thread, one snapshot per item. Only the latest is worth showing, and
         // a job per snapshot would back the UI thread up so that the views fed from this status (the page's and the
         // collection header's, which hop through further queues) each show a different moment of the run.
-        _followedProgress = WabbajackInstallStatusFeed.Follow(run.Progress, _time)
+        _followedProgress = WabbajackInstallStatusFeed.Follow(run.Progress)
             .ObserveLatestOn(RxApp.MainThreadScheduler)
             .Subscribe(status =>
             {

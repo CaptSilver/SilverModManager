@@ -36,19 +36,6 @@ public static class WabbajackModlistText
     public static double Fraction(ModlistInstallProgress.Snapshot snapshot)
         => snapshot.TotalItems <= 0 ? 0 : Math.Clamp((double)snapshot.DoneItems / snapshot.TotalItems, 0, 1);
 
-    /// <summary>
-    /// "about 12 min left" for the time an install phase has left, rounded to the minute; empty when there is no
-    /// estimate, and "less than a minute left" when it is under half a minute.
-    /// </summary>
-    public static string Eta(TimeSpan? remaining)
-    {
-        if (remaining is not { } left) return "";
-        var minutes = (int)Math.Round(left.TotalMinutes, MidpointRounding.AwayFromZero);
-        if (minutes < 1) return "less than a minute left";
-        if (minutes < 60) return $"about {minutes} min left";
-        return minutes % 60 == 0 ? $"about {minutes / 60} h left" : $"about {minutes / 60} h {minutes % 60} min left";
-    }
-
     /// <summary>The line for the phase of the check the page is waiting on.</summary>
     public static string Checking(PlanProgress progress) => progress.Phase switch
     {

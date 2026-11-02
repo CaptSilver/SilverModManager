@@ -132,7 +132,7 @@ public sealed class WabbajackModlistSource : CollectionSource
         return downloads.WhenAnyValue(
             model => model.IsInstalling, model => model.InstallStatus,
             // IsInstalling and the status are set a moment apart, so there is a blank status while one of them lags.
-            (installing, status) => installing && status.Text is { Length: > 0 } text ? new CollectionInstallStatus(text, status.Fraction, status.EtaText ?? "") : null);
+            (installing, status) => installing && status.Text is { Length: > 0 } text ? new CollectionInstallStatus(text, status.Fraction) : null);
     });
 
     public override IPageViewModelInterface? CreateDownloads()

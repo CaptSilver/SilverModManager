@@ -133,12 +133,12 @@ public class CollectionLoadoutViewModelTests(IServiceProvider provider) : AUiTes
         using var _ = activation;
         await EventuallyOnUi(() => page.InstallProgress.Should().BeNull("no install is running"));
 
-        source.InstallProgressSubject.OnNext(new CollectionInstallStatus("Writing files: 4 of 8", 0.5, "about 3 min left"));
+        source.InstallProgressSubject.OnNext(new CollectionInstallStatus("Writing files: 4 of 8", 0.5));
 
         foreach (var tab in new[] { CollectionPageTab.Installed, CollectionPageTab.Instructions, CollectionPageTab.Downloads })
         {
             await Dispatcher.UIThread.InvokeAsync(() => page.SelectedTab = tab);
-            await EventuallyOnUi(() => page.InstallProgress.Should().Be(new CollectionInstallStatus("Writing files: 4 of 8", 0.5, "about 3 min left"), $"the {tab} tab shows it too"));
+            await EventuallyOnUi(() => page.InstallProgress.Should().Be(new CollectionInstallStatus("Writing files: 4 of 8", 0.5), $"the {tab} tab shows it too"));
         }
 
         source.InstallProgressSubject.OnNext(null);

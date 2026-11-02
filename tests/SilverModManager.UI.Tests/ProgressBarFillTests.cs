@@ -166,7 +166,7 @@ public class ProgressBarFillTests(IServiceProvider provider) : AUiTest(provider)
     [Fact]
     public async Task TheCollectionHeaderBarFillsHalfForHalfOfTheItemsDone()
     {
-        var viewModel = new CollectionLoadoutDesignViewModel { InstallProgress = new CollectionInstallStatus(Locating, 25871d / 51774, "") };
+        var viewModel = new CollectionLoadoutDesignViewModel { InstallProgress = new CollectionInstallStatus(Locating, 25871d / 51774) };
         var (window, view) = await Dispatcher.UIThread.InvokeAsync(() =>
         {
             var view = new CollectionLoadoutView { DataContext = viewModel };

@@ -130,7 +130,7 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
                 .Subscribe(progress =>
                 {
                     InstallProgressPanel.IsVisible = progress is not null;
-                    InstallProgressText.Text = progress is null ? "" : progress.EtaText == "" ? progress.Text : $"{progress.Text} - {progress.EtaText}";
+                    InstallProgressText.Text = progress is null ? "" : progress.Text;
                     InstallProgressBar.Value = progress?.Fraction ?? 0;
                 })
                 .DisposeWith(disposables);

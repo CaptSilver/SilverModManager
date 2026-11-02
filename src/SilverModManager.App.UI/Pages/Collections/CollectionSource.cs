@@ -144,8 +144,8 @@ public sealed record CollectionStats(Percent? Rating, ulong? Endorsements, ulong
     public static CollectionStats None { get; } = new(null, null, null, null, null);
 }
 
-/// <summary>An install in flight, as the header shows it. <paramref name="EtaText"/> is empty until there is enough to estimate from.</summary>
-public sealed record CollectionInstallStatus(string Text, double Fraction, string EtaText);
+/// <summary>An install in flight, as the header shows it.</summary>
+public sealed record CollectionInstallStatus(string Text, double Fraction);
 
 public sealed record CollectionBadge(IconValue Icon, string Text);
 
