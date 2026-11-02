@@ -45,10 +45,24 @@ public sealed class BsaMemberOpener : INestedArchiveOpener
             await source.DisposeAsync();
             throw new MemberNotFoundException($"cannot look for '{member}': {e.Message}");
         }
+        catch
+        {
+            // Cancelled or failed to read: nothing else holds the stream, and it can be a file handle and a chunk cache.
+            await source.DisposeAsync();
+            throw;
+        }
 
-        var entries = new Dictionary<string, IBethesdaArchiveEntry>(reader.Entries.Count);
-        foreach (var entry in reader.Entries) entries.TryAdd(Fold(entry.Path.ToString()), entry);
-        return new ArchiveReader(reader, entries);
+        try
+        {
+            var entries = new Dictionary<string, IBethesdaArchiveEntry>(reader.Entries.Count);
+            foreach (var entry in reader.Entries) entries.TryAdd(Fold(entry.Path.ToString()), entry);
+            return new ArchiveReader(reader, entries);
+        }
+        catch
+        {
+            await reader.DisposeAsync();
+            throw;
+        }
     }
 
     private static async Task<Stream?> Copy(Dictionary<string, IBethesdaArchiveEntry> entries, RelativePath member, CancellationToken cancellationToken)

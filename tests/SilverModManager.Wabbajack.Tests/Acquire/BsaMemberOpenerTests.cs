@@ -118,6 +118,42 @@ public class BsaMemberOpenerTests : IDisposable
         failure.Should().BeOfType<MemberNotFoundException>().Which.Message.Should().Contain("meshes/a.nif");
     }
 
+    [Fact]
+    public async Task AContainerStreamThatFailsWhileTheIndexIsReadIsDisposedAndTheFailureSurfaces()
+        => await AFailedIndexReadDisposesTheContainerStream(() => new IOException("disk went away"), typeof(IOException));
+
+    [Fact]
+    public async Task AContainerStreamIsDisposedWhenTheIndexReadIsCancelled()
+        => await AFailedIndexReadDisposesTheContainerStream(() => new OperationCanceledException(), typeof(OperationCanceledException));
+
+    private async Task AFailedIndexReadDisposesTheContainerStream(Func<Exception> failure, Type expected)
+    {
+        var bytes = await TestArchives.Tes5Archive(_temp);
+        var stream = new FailingStream(bytes, failure);
+        await using var archive = await _opener.OpenArchive(_ => Task.FromResult<Stream>(stream), CancellationToken.None);
+
+        var thrown = await Record.ExceptionAsync(() => archive.Open(TestArchives.FirstMemberPath, CancellationToken.None));
+
+        thrown.Should().BeOfType(expected);
+        stream.IsDisposed.Should().BeTrue("nothing else holds it once the archive could not be opened");
+    }
+
+    private sealed class FailingStream(byte[] bytes, Func<Exception> failure) : MemoryStream(bytes)
+    {
+        public bool IsDisposed { get; private set; }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw failure();
+        public override int Read(Span<byte> buffer) => throw failure();
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => throw failure();
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => throw failure();
+
+        protected override void Dispose(bool disposing)
+        {
+            IsDisposed = true;
+            base.Dispose(disposing);
+        }
+    }
+
     private sealed class TrackedStream(byte[] bytes) : MemoryStream(bytes)
     {
         public bool IsDisposed { get; private set; }
