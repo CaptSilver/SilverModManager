@@ -41,6 +41,19 @@ internal static class DxgiFormatExtensions
     /// <summary>The format names an <c>_SRGB</c> encoding of its channels.</summary>
     public static bool IsSrgb(this DxgiFormat format) => format.UnormTwin() != format;
 
+    /// <summary>The sRGB-tagged name of a UNORM format, or the format itself when it has none.</summary>
+    public static DxgiFormat WithSrgb(this DxgiFormat format) => format switch
+    {
+        DxgiFormat.R8G8B8A8_UNORM => DxgiFormat.R8G8B8A8_UNORM_SRGB,
+        DxgiFormat.B8G8R8A8_UNORM => DxgiFormat.B8G8R8A8_UNORM_SRGB,
+        DxgiFormat.B8G8R8X8_UNORM => DxgiFormat.B8G8R8X8_UNORM_SRGB,
+        DxgiFormat.BC1_UNORM => DxgiFormat.BC1_UNORM_SRGB,
+        DxgiFormat.BC2_UNORM => DxgiFormat.BC2_UNORM_SRGB,
+        DxgiFormat.BC3_UNORM => DxgiFormat.BC3_UNORM_SRGB,
+        DxgiFormat.BC7_UNORM => DxgiFormat.BC7_UNORM_SRGB,
+        _ => format,
+    };
+
     /// <summary>The same layout without the sRGB tag; a UNORM format is its own twin.</summary>
     public static DxgiFormat UnormTwin(this DxgiFormat format) => format switch
     {

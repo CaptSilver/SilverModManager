@@ -510,6 +510,72 @@ public class DdsRecompressorTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task Recompress_UnknownTarget_KeepsABlockSourcesFormatAtTheTargetSize()
+    {
+        var source = new MemoryStream();
+        TestTextures.WriteLegacy(source, TestTextures.LegacyLayout.Dxt5, 16, 16, TestTextures.EncodedGradient(CompressionFormat.Bc3, 16, 1));
+
+        var result = await Recompress(source.ToArray(), new DdsTarget(8, 8, 1, DxgiFormat.UNKNOWN));
+
+        var header = DdsHeader.Read(result);
+        Assert.Equal(DxgiFormat.BC3_UNORM, header.Format);
+        Assert.Equal((8, 8), (header.Width, header.Height));
+        Assert.Equal("DXT5", System.Text.Encoding.ASCII.GetString(result, 84, 4));
+    }
+
+    [Fact]
+    public async Task Recompress_UnknownTarget_ExpandsA24BitSourceToRgba()
+    {
+        var source = new MemoryStream();
+        TestTextures.WriteLegacy(source, new TestTextures.LegacyLayout(0x40, "", 24, 0xFF0000, 0x00FF00, 0x0000FF, 0), 2, 1, [1, 2, 3, 4, 5, 6]);
+
+        var result = await Recompress(source.ToArray(), new DdsTarget(2, 1, 1, DxgiFormat.UNKNOWN));
+
+        var header = DdsHeader.Read(result);
+        Assert.Equal(32, header.Reader!.BitsPerPixel);
+        Assert.Equal(new byte[] { 3, 2, 1, 255, 6, 5, 4, 255 }, Rgba(result));
+    }
+
+    [Fact]
+    public async Task Recompress_UnknownTarget_KeepsA565Layout()
+    {
+        var source = new MemoryStream();
+        TestTextures.WriteLegacy(source, new TestTextures.LegacyLayout(0x40, "", 16, 0xF800, 0x07E0, 0x001F, 0), 1, 1, [0x00, 0xF8]);
+
+        var result = await Recompress(source.ToArray(), new DdsTarget(1, 1, 1, DxgiFormat.UNKNOWN));
+
+        Assert.Equal(DxgiFormat.B5G6R5_UNORM, DdsHeader.Read(result).Format);
+        Assert.Equal(new byte[] { 255, 0, 0, 255 }, Rgba(result));
+    }
+
+    [Fact]
+    public async Task Recompress_UnknownTarget_KeepsAnSrgbBlockSourcesFormat()
+    {
+        var source = Dx10Source(DxgiFormat.BC7_UNORM_SRGB, 8, 8, TestTextures.EncodedGradient(CompressionFormat.Bc7, 8, 1));
+
+        var result = await Recompress(source, new DdsTarget(8, 8, 1, DxgiFormat.UNKNOWN));
+
+        Assert.Equal((uint)DxgiFormat.BC7_UNORM_SRGB, System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(result.AsSpan(128)));
+    }
+
+    [Fact]
+    public async Task Recompress_UnknownTarget_FallsBackToRgbaWhenTheSourceFormatCannotBeWritten()
+    {
+        var source = Dx10Source(DxgiFormat.BC4_SNORM, 4, 4, new byte[8]);
+
+        var result = await Recompress(source, new DdsTarget(4, 4, 1, DxgiFormat.UNKNOWN));
+
+        Assert.Equal(DxgiFormat.R8G8B8A8_UNORM, DdsHeader.Read(result).Format);
+    }
+
+    private static byte[] Rgba(byte[] dds)
+    {
+        var header = DdsHeader.Read(dds);
+        var data = dds.AsSpan((int)header.TopLevelOffset(0), (int)header.LevelSize(0));
+        return System.Runtime.InteropServices.MemoryMarshal.AsBytes(header.Reader!.Unpack(data, header.Width, header.Height).AsSpan()).ToArray();
+    }
+
+    [Fact]
     public async Task Recompress_R8Source_PutsTheValueInRedAndNothingElse()
     {
         var rgba = await RgbaOf(Dx10Source(DxgiFormat.R8_UNORM, 1, 1, [77]), 1, 1);

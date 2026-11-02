@@ -19,7 +19,8 @@ public sealed class DirectiveTransforms(TemporaryFileManager temporaryFiles) : I
     public Task Recompress(Stream dds, ImageState target, Stream output, CancellationToken cancellationToken)
         => DdsRecompressor.Recompress(dds, ToTarget(target), output, cancellationToken);
 
-    /// <summary>The list names the format as a DXGI_FORMAT; a name this build does not know cannot be written either.</summary>
+    /// <summary>The list names the format as a DXGI_FORMAT; a name this build does not know cannot be written either.
+    /// <c>UNKNOWN</c> passes through: the recompressor resolves it to the source texture's format.</summary>
     private static DdsTarget ToTarget(ImageState image)
     {
         if (!Enum.TryParse<DxgiFormat>(image.Format, ignoreCase: false, out var format) || !Enum.IsDefined(format))

@@ -86,6 +86,20 @@ public class DirectiveTransformsTests : IDisposable
             .Should().Be($"cannot write: the list records a {width}x{height} texture");
     }
 
+    [Fact]
+    public async Task RecompressingToAnUnknownFormatKeepsTheSourcesFormatAtTheRecordedSize()
+    {
+        using var source = new MemoryStream();
+        TestTextures.WriteBc1(source, 64);
+        source.Position = 0;
+        using var output = new MemoryStream();
+
+        await _transforms.Recompress(source, new ImageState(32, 32, 1, "UNKNOWN"), output, CancellationToken.None);
+
+        System.Text.Encoding.ASCII.GetString(output.ToArray(), 84, 4).Should().Be("DXT1");
+        BitConverter.ToInt32(output.ToArray(), 16).Should().Be(32);
+    }
+
     private static Func<RelativePath, FileState, Task<Stream>> Inputs(Dictionary<string, byte[]> files)
         => (path, _) => Task.FromResult<Stream>(new MemoryStream(files[path.ToString()]));
 

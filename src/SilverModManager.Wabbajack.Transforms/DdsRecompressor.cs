@@ -26,15 +26,17 @@ public static class DdsRecompressor
 
     private static void RecompressCore(Stream input, DdsTarget target, Stream output, CancellationToken token)
     {
-        // Check the target before the expensive decode.
-        var packed = UncompressedWriter.Handles(target.Format);
-        var targetFormat = packed ? CompressionFormat.Rgba : ToCompressionFormat(target.Format);
-
         using var buffer = new MemoryStream();
         input.CopyTo(buffer);
         var dds = buffer.GetBuffer().AsMemory(0, (int)buffer.Length);
 
         var header = DdsHeader.Read(dds.Span);
+        if (target.Format == DxgiFormat.UNKNOWN) target = target with { Format = KeepSourceFormat(header) };
+
+        // Check the target before the expensive decode.
+        var packed = UncompressedWriter.Handles(target.Format);
+        var targetFormat = packed ? CompressionFormat.Rgba : ToCompressionFormat(target.Format);
+
         var decodeFormat = header.IsBlockCompressed && header.Format is not (DxgiFormat.BC4_SNORM or DxgiFormat.BC5_SNORM)
             ? ToDecodeFormat(header)
             : CompressionFormat.Unknown;
@@ -93,6 +95,21 @@ public static class DdsRecompressor
 
         DdsWriter.Write(output, target.Format, target.Width, target.Height, encoded);
     }
+
+    /// <summary>
+    /// What an <c>UNKNOWN</c> target means: texconv without a format keeps the source's, so do the same when the
+    /// source's format is one we can write, and fall back to plain RGBA otherwise (24-bit, palettised and signed
+    /// sources have no writable twin).
+    /// </summary>
+    private static DxgiFormat KeepSourceFormat(DdsHeader header)
+    {
+        var format = header.IsSrgb ? header.Format.WithSrgb() : header.Format;
+        return UncompressedWriter.Handles(format) || IsBlockTarget(format) ? format : DxgiFormat.R8G8B8A8_UNORM;
+    }
+
+    private static bool IsBlockTarget(DxgiFormat format) => format.UnormTwin() is
+        DxgiFormat.BC1_UNORM or DxgiFormat.BC2_UNORM or DxgiFormat.BC3_UNORM or DxgiFormat.BC4_UNORM
+        or DxgiFormat.BC5_UNORM or DxgiFormat.BC7_UNORM;
 
     private static ReadOnlySpan<byte> Bytes(ColorRgba32[] pixels) => MemoryMarshal.AsBytes(pixels.AsSpan());
 
