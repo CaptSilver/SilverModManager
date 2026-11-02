@@ -373,9 +373,8 @@ public sealed class ArchiveAcquirer(
             {
                 var row = _rows[i];
                 if (row.State is not (ArchiveState.Browser or ArchiveState.SignIn or ArchiveState.Manual or ArchiveState.Unsupported)) continue;
-                if (locator.FindByXxHash64(db, row.Archive.XxHash64) is not { } held) continue;
-                // Held, but without bytes the list copies out of it: the row keeps waiting for a fresh copy.
-                if (!_check.IsComplete(db, row.Archive.XxHash64, held)) continue;
+                // A copy without the bytes the list copies out of it is not held: the row keeps waiting for a fresh copy.
+                if (!_check.TryFindHeld(db, locator, row.Archive.XxHash64, out var held)) continue;
                 // A Browser row is one the library lacked when the plan was built and the run sent the user to fetch,
                 // so its arrival is the download the run asked for. Manual, SignIn and Unsupported rows are the user's own adds.
                 if (row.State == ArchiveState.Browser && !row.HoldsIncompleteCopy && _expecting && _modlist is not null

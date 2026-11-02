@@ -74,7 +74,7 @@ public sealed class ArchiveInbox(
             foreach (var (file, hash) in found)
             {
                 // A held archive that lacks what the list copies out of it is added again; the drop would otherwise be deleted as a duplicate.
-                if (locator.FindByXxHash64(connection.Db, hash) is { } held && wanting.IsComplete(connection.Db, hash, held)) continue;
+                if (wanting.IsHeld(connection.Db, locator, hash)) continue;
                 // Adding a file the library already holds completes that copy, which stays the user's own.
                 var userHad = locator.FindTopLevelByXxHash64(connection.Db, hash) is not null;
                 try

@@ -256,6 +256,19 @@ public class HeldArchiveCompletenessTests(ITestOutputHelper helper) : AcquireTes
         plan.Check!.IsHeld(Connection.Db, Locator, zip.OuterHash).Should().BeFalse();
     }
 
+    [Fact]
+    public async Task TryFindHeldHandsBackTheLibraryCopyOnlyWhenItIsHeld()
+    {
+        await using var zip = await BuildNestedZip();
+        await AddWithoutNestedBytes(zip);
+        var incomplete = await Plan(zip, Http, Copy(zip, InnerZip));
+        var complete = await Plan(zip, Http, Copy(zip, InnerZip, InnerMember));
+
+        incomplete.Check!.TryFindHeld(Connection.Db, Locator, zip.OuterHash, out _).Should().BeFalse();
+        complete.Check!.TryFindHeld(Connection.Db, Locator, zip.OuterHash, out var held).Should().BeTrue();
+        held.Id.Should().Be(Locator.FindByXxHash64(Connection.Db, zip.OuterHash)!.Value.Id);
+    }
+
     private ArchivePathResolver Resolver(ArchivePlan plan, SilverModManager.Sdk.Loadouts.Loadout.ReadOnly loadout)
         => new(plan, Connection.Db, FileStore, Inventory.GameFilesFor(loadout), [], NullLogger.Instance);
 }

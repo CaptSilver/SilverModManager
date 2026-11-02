@@ -76,10 +76,22 @@ public sealed class HeldArchiveCheck
 
     /// <summary>
     /// Whether the library holds <paramref name="archive"/> by its xxHash64 and the copy is complete for the list.
-    /// This is the test for "held" that a plan, the inbox and the list's card share.
+    /// The card, the inbox and the acquirer's recheck share this test. A plan also takes a Nexus Mods download of the
+    /// same file id as a copy (see ArchiveInventory), which this test cannot, as it knows only the hash.
     /// </summary>
-    public bool IsHeld(IDb db, ILibraryArchiveLocator locator, FileIdentity archive)
-        => locator.FindByXxHash64(db, archive) is { } held && IsComplete(db, archive, held);
+    public bool IsHeld(IDb db, ILibraryArchiveLocator locator, FileIdentity archive) => TryFindHeld(db, locator, archive, out _);
+
+    /// <summary>Like <see cref="IsHeld"/>, and hands back the library's copy when it is held.</summary>
+    public bool TryFindHeld(IDb db, ILibraryArchiveLocator locator, FileIdentity archive, out LibraryFile.ReadOnly held)
+    {
+        if (locator.FindByXxHash64(db, archive) is { } found && IsComplete(db, archive, found))
+        {
+            held = found;
+            return true;
+        }
+        held = default;
+        return false;
+    }
 
     /// <summary>
     /// Follows <paramref name="parts"/> through the library's expanded archives the way the path resolver does, and
