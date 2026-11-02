@@ -1,6 +1,7 @@
 using GameFinder.Wine;
 using SkyrimSe = SilverModManager.Games.CreationEngine.SkyrimSE.SkyrimSE;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using SilverModManager.Networking.Forums;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.NexusWebApi;
@@ -38,6 +39,7 @@ public abstract class AcquireTestBase<TTest>(ITestOutputHelper helper)
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         return base.AddServices(services)
+            .WithPrivateSettingsFolder()
             .AddCreationEngine()
             .AddForums()
             .AddWabbajack()
@@ -105,6 +107,23 @@ internal static class Fakes
 }
 
 /// <summary>A game-folder file system whose Documents and AppData sit in a throwaway Wine prefix.</summary>
+internal static class PrivateSettingsFolder
+{
+    /// <summary>
+    /// Points XDG_DATA_HOME, where the JSON settings backend keeps its files, at a folder of this host's own. The
+    /// process-wide folder is shared by every host, so a setting one test saved, or one a parallel test was saving,
+    /// was read by the next host.
+    /// </summary>
+    public static IServiceCollection WithPrivateSettingsFolder(this IServiceCollection services)
+    {
+        var dataHome = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine($"{Startup.SettingsRoot}/DataHome-{Guid.NewGuid()}"));
+        var overlay = NexusMods.Paths.FileSystem.Shared.CreateOverlayFileSystem(
+            new Dictionary<AbsolutePath, AbsolutePath>(),
+            new Dictionary<KnownPath, AbsolutePath> { [KnownPath.XDG_DATA_HOME] = dataHome });
+        return services.Replace(ServiceDescriptor.Singleton<IFileSystem>(overlay));
+    }
+}
+
 internal static class IsolatedPrefixFileSystem
 {
     public static IFileSystem Create(IServiceProvider provider)
