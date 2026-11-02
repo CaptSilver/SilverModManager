@@ -5,6 +5,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Install;
 using SilverModManager.Wabbajack.Models;
 
@@ -184,5 +185,53 @@ public class InstallResumeTests(ITestOutputHelper helper) : InstallTestBase<Inst
         phases.Should().Be(new Phases(1, 1));
         TreeOf(again)["A"].Keys.Should().BeEquivalentTo("Game/Data/a.txt", "Game/Data/b.txt");
         (await InstalledBytes(again, "A", "Game/Data/a.txt")).Should().Equal("two"u8.ToArray());
+    }
+
+    /// <summary>A plain copy a resume keeps, next to the directive under test, so the phase totals show only that directive running.</summary>
+    private async Task<(Phases Phases, WabbajackModlistLoadoutGroup.ReadOnly Group)> ResumeAfterInstalling(Func<ListBuilder, ArchiveEntry, Directive> directiveUnderTest)
+    {
+        var archive = await AddZip("a.zip", new() { ["a.bin"] = [1, 2, 3], ["tex.dds"] = Bc1Dds(8) });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(list.Member("mods/A/a.bin", archive, "a.bin", [1, 2, 3]));
+        list.Directives.Add(directiveUnderTest(list, archive));
+        list.Directives.Add(list.Inline("profiles/Default/modlist.txt", "+A\n"));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+        await Install(loadout, modlist, Options);
+        return await Resume(loadout, modlist);
+    }
+
+    [Fact]
+    public async Task AKeptOriginalNoteIsWrittenAgainAndItsDirectiveCountsInTheResume()
+    {
+        var (phases, resumed) = await ResumeAfterInstalling((_, archive) => UnwritableTexture("mods/A/kept.dds", archive, "tex.dds"));
+
+        phases.Should().Be(new Phases(1, 1), "the resume deletes the note, so the directive that left it has to run again");
+        SkipsOf(resumed).Should().ContainSingle().Which.Kind.Should().Be(SkipKind.KeptOriginal);
+    }
+
+    [Fact]
+    public async Task AFileWithPathsRemappedToThisMachineIsWrittenAgain()
+    {
+        var (phases, _) = await ResumeAfterInstalling((list, _) => list.Remapped("mods/A/remapped.ini", "path=%GAME_PATH%"));
+
+        phases.Should().Be(new Phases(1, 1));
+    }
+
+    [Fact]
+    public async Task AFileTheListDoesNotHashIsWrittenAgain()
+    {
+        var (phases, _) = await ResumeAfterInstalling((list, _) => list.Inline("mods/A/SkyrimPrefs.ini", "[Display]\niSize W=1920\n"));
+
+        phases.Should().Be(new Phases(1, 1));
+    }
+
+    [Fact]
+    public async Task AGameIniTheLoadoutOwnsIsWrittenAgain()
+    {
+        var (phases, _) = await ResumeAfterInstalling((list, _) => list.Inline("profiles/Default/skyrim.ini", "[General]\nsLanguage=ENGLISH\n"));
+
+        phases.Should().Be(new Phases(1, 1), "the game's INI leaves a baseline and no file row to keep");
     }
 }
