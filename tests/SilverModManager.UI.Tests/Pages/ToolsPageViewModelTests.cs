@@ -522,11 +522,11 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         vm.LoadoutId = loadout.LoadoutId;
         var run = vm.RunToolReportingAsync(first, TestContext.Current.CancellationToken).AsTask();
 
-        // The run hops to the thread pool before it reaches the manager; Ran is empty until it has.
-        await manager.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
-
+        // Refused before the first run has necessarily reached the manager.
         await vm.RunToolReportingAsync(second, TestContext.Current.CancellationToken);
 
+        // The run hops to the thread pool before it reaches the manager; Ran is empty until it has.
+        await manager.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         manager.Ran.Should().Equal(first);
         vm.IsRunning.Should().BeTrue();
         vm.LastRunMessage.Should().Contain("DynDOLOD is still running");
@@ -552,12 +552,13 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         var vm = CreateViewModel(manager, runner, new FakeFilePicker(), [lod], pipelineDefinitions: [xedit]);
         vm.LoadoutId = loadout.LoadoutId;
         var run = vm.RunToolReportingAsync(running, TestContext.Current.CancellationToken).AsTask();
-        // The run hops to the thread pool before it reaches the manager; Ran is empty until it has.
-        await manager.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
+        // Refused before the first run has necessarily reached the manager.
         await vm.RunPipelineReportingAsync(lod, TestContext.Current.CancellationToken);
         await ((Func<Task>)(() => vm.RunQuickAutoCleanAsync(vm.CatalogueTools.Single(), "Update.esm", TestContext.Current.CancellationToken))).Should().ThrowAsync<SilverModManager.Sdk.Errors.UserFacingException>();
 
+        // The run hops to the thread pool before it reaches the manager; Ran is empty until it has.
+        await manager.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         manager.Ran.Should().Equal(running);
         vm.CancelRun();
         await run;
