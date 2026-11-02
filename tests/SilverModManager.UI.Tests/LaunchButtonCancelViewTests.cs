@@ -27,7 +27,6 @@ public class LaunchButtonCancelViewTests(IServiceProvider provider) : AUiTest(pr
         public ILaunchButtonViewModel LaunchButtonViewModel { get; }
         public bool IsProcessing => false;
         public bool IsApplying => false;
-        public bool IsApplyButtonVisible => true;
         public string ApplyButtonText => "APPLY";
         public string ProcessingText => "";
         public double ProgressFraction => 0;

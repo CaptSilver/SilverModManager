@@ -15,7 +15,6 @@ public partial class ApplyControlDesignViewModel : AViewModel<IApplyControlViewM
     public ReactiveCommand<NavigationInformation, Unit> ShowApplyDiffCommand { get; }
     [Reactive] public partial bool CanApply { get; private set; } = true;
     [Reactive] public partial bool IsApplying { get; private set; } = false;
-    public bool IsApplyButtonVisible => CanApply;
     public bool IsIngesting { get; private set; }
 
     public ILaunchButtonViewModel LaunchButtonViewModel { get; } = new LaunchButtonDesignViewModel();

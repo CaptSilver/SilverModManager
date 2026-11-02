@@ -28,12 +28,14 @@ public partial class ApplyControlView : ReactiveUserControl<IApplyControlViewMod
                 this.OneWayBind(ViewModel, vm => vm.IsApplying, v => v.ProgressBarControl.IsVisible)
                     .DisposeWith(disposables);
 
-                this.OneWayBind(ViewModel, vm => vm.IsApplyButtonVisible, v => v.ApplyButton.IsVisible)
-                    .DisposeWith(disposables);
-
                 this.WhenViewModel(vm => vm.ApplyCommand.CanExecute)
                     .OnUI()
-                    .Subscribe(canApply => PreviewChangesButton.IsVisible = canApply)
+                    .Subscribe(canApply =>
+                        {
+                            ApplyButton.IsVisible = canApply;
+                            PreviewChangesButton.IsVisible = canApply;
+                        }
+                    )
                     .DisposeWith(disposables);
 
                 this.OneWayBind(ViewModel, vm => vm.ApplyButtonText, v => v.ApplyButtonTextBlock.Text)
