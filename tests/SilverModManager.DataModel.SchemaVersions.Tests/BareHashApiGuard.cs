@@ -54,6 +54,8 @@ public class BareHashApiGuard
         ["SilverModManager.App.GarbageCollection.Nx.NxRepacker"] = "permanent",
         ["SilverModManager.App.GarbageCollection.Structs.ArchiveReference`1"] = "permanent",
         ["SilverModManager.App.GarbageCollection.Structs.HashEntry"] = "permanent",
+        ["SilverModManager.DataModel.ArchiveContents"] = "permanent",
+        ["SilverModManager.DataModel.ArchiveIndex"] = "permanent",
         ["SilverModManager.Deployment.Vfs.VfsCatalogEntry+New"] = "permanent",
         ["SilverModManager.Deployment.Vfs.VfsCatalogEntry+ReadOnly"] = "permanent",
         ["SilverModManager.Games.FileHashes.DTOs.Asset"] = "permanent",
