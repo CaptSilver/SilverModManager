@@ -167,25 +167,54 @@ public sealed class CaseTwinMergerTests : IDisposable
         File.ReadAllText(_game.Combine("mods/a/x.ws").GetFullPath()).Should().Be("variant");
         result.LeftInPlace.Should().Contain(G("mods/a/x.ws"));
         result.NeedsFreshRead.Should().Contain(G("Mods/a/x.ws"));
+        result.LeftFolders.Should().BeEmpty("a refused file leaves its folder to be folded; only a folder left whole stays as it is");
     }
 
     [Fact]
-    public async Task AppOwnedCopy_DeletedOnlyWhenArchived()
+    public async Task AppsVariantCopy_CanonicalNotArchived_LeavesBoth()
     {
         Write("Mods/a/x.ws", "other");
         Write("mods/a/x.ws", "app copy");
         _managed[G("Mods/a/x.ws")] = Hash("app copy");
-
-        var notArchived = await Merge(Spellings(["Mods"], "Mods/a/x.ws"));
-        notArchived.LeftInPlace.Should().Contain(G("mods/a/x.ws"));
-        File.ReadAllText(_game.Combine("mods/a/x.ws").GetFullPath()).Should().Be("app copy");
-
         _store.HaveFile(Hash("app copy")).Returns(true);
-        var archived = await Merge(Spellings(["Mods"], "Mods/a/x.ws"));
 
-        File.ReadAllText(_game.Combine("Mods/a/x.ws").GetFullPath()).Should().Be("other", "the other copy keeps the place");
+        var result = await Merge(Spellings(["Mods"], "Mods/a/x.ws"));
+
+        result.LeftInPlace.Should().Contain(G("mods/a/x.ws"));
+        File.ReadAllText(_game.Combine("mods/a/x.ws").GetFullPath()).Should().Be("app copy");
+        File.ReadAllText(_game.Combine("Mods/a/x.ws").GetFullPath()).Should().Be("other", "deleting the app's copy would leave the other file reading as an edit of it");
+    }
+
+    [Fact]
+    public async Task AppsVariantCopy_CanonicalArchived_TakesTheCanonicalPlace()
+    {
+        Write("Mods/a/x.ws", "other");
+        Write("mods/a/x.ws", "app copy");
+        _managed[G("Mods/a/x.ws")] = Hash("app copy");
+        _store.HaveFile(Hash("app copy")).Returns(true);
+        _store.HaveFile(Hash("other")).Returns(true);
+
+        var result = await Merge(Spellings(["Mods"], "Mods/a/x.ws"));
+
+        File.ReadAllText(_game.Combine("Mods/a/x.ws").GetFullPath()).Should().Be("app copy", "disk, last applied state and loadout then all hold the app's bytes");
         DirExists("mods").Should().BeFalse();
-        archived.NeedsFreshRead.Should().Contain(G("Mods/a/x.ws"));
+        result.NeedsFreshRead.Should().Contain(G("Mods/a/x.ws"));
+        result.LeftInPlace.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task CanonicalCopyIsTheApps_VariantIsSomeoneElses_LeavesBoth()
+    {
+        Write("Mods/a/x.ws", "app copy");
+        Write("mods/a/x.ws", "other");
+        _managed[G("Mods/a/x.ws")] = Hash("app copy");
+        _store.HaveFile(Hash("app copy")).Returns(true);
+        _store.HaveFile(Hash("other")).Returns(true);
+
+        var result = await Merge(Spellings(["Mods"], "Mods/a/x.ws"));
+
+        result.LeftInPlace.Should().Contain(G("mods/a/x.ws"));
+        File.ReadAllText(_game.Combine("mods/a/x.ws").GetFullPath()).Should().Be("other");
     }
 
     [Fact]
@@ -200,6 +229,7 @@ public sealed class CaseTwinMergerTests : IDisposable
         Exists("Mods/a").Should().BeTrue();
         Exists("mods/a/inner.ws").Should().BeTrue();
         result.LeftInPlace.Should().Contain(G("mods/a"));
+        result.LeftFolders.Should().Contain(G("mods/a"));
     }
 
     [Fact]
@@ -257,6 +287,7 @@ public sealed class CaseTwinMergerTests : IDisposable
         Exists("Data/Own/a.txt").Should().BeTrue();
         Exists("Data/own/b.txt").Should().BeTrue();
         result.LeftInPlace.Should().Contain(G("Data/Own")).And.Contain(G("Data/own"));
+        result.LeftFolders.Should().BeEquivalentTo([G("Data/Own"), G("Data/own")]);
     }
 
     [Fact]

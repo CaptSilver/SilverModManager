@@ -37,7 +37,8 @@ public partial class ALoadoutSynchronizer
     /// <summary>The spellings of the apply in progress; the writes that do not come from rows are mapped through them.</summary>
     private FolderSpellings? _applySpellings;
 
-    private FolderSpellings BuildSpellings(GameInstallation installation, EntityId? loadout, GameInstallMetadata.ReadOnly metadata, bool afterMerge = false)
+    private FolderSpellings BuildSpellings(GameInstallation installation, EntityId? loadout, GameInstallMetadata.ReadOnly metadata,
+        bool keepSplit = false, IReadOnlyCollection<GamePath>? leftFolders = null)
     {
         var underWine = CaseVariantFolders.RunsUnderWine(installation);
         var filter = GamePathFilter;
@@ -59,7 +60,7 @@ public partial class ALoadoutSynchronizer
         IEnumerable<GamePath> targets = underWine && loadout is { } id
             ? GamePathRows.TargetPaths(Connection.Db, id).Select(r => r.GamePath).Where(p => !filter.ShouldFilter(p)).ToList()
             : [];
-        return FolderSpellings.Build(new FolderSpellingSources(FixedFolderSpellings, underWine, folders, files, targets, KeepSplitFolders: afterMerge));
+        return FolderSpellings.Build(new FolderSpellingSources(FixedFolderSpellings, underWine, folders, files, targets, KeepSplitFolders: keepSplit, LeftFolders: leftFolders));
     }
 
     /// <summary>The directories on disk, not following symlinks, with filtered paths left out.</summary>
@@ -122,23 +123,26 @@ public partial class ALoadoutSynchronizer
 
         var spellings = BuildSpellings(installation, loadoutId, metadata);
         var reindex = false;
+        IReadOnlyCollection<GamePath>? leftFolders = null;
         if (spellings.NeedsDiskMerge)
         {
             var merge = await new CaseTwinMerger(_fullHasher, _fileStore, Logger, GamePathFilter)
-                .MergeTwins(installation, spellings, ManagedPaths(installation, loadoutId, metadata), cancellationToken);
+                .MergeTwins(installation, spellings, ManagedPaths(loadoutId, metadata), cancellationToken);
 
             // A row whose file the merge replaced is dropped BEFORE the reindex, which then records the canonical file
             // afresh. Dropped after, the last applied state would still hold the row while the path has none on disk, and
             // "no disk, previous present, previous equals loadout" is a user deleting the file.
             await DropRows(metadata, merge.NeedsFreshRead);
+            leftFolders = merge.LeftFolders;
             reindex |= merge.Moved.Count > 0 || merge.Deduplicated.Count > 0 || merge.NeedsFreshRead.Count > 0;
         }
 
         if (reindex) metadata = await ReindexStateCore(installation, job, cancellationToken);
 
-        // Rebuilt from the disk as the merge left it, and a folder it left split stays as spelled: rows must agree with the
-        // disk, so they are not moved to a spelling the disk does not have.
-        if (reindex || spellings.NeedsDiskMerge) spellings = BuildSpellings(installation, loadoutId, metadata, afterMerge: true);
+        // Rebuilt from the disk as the merge left it. A folder it left whole stays as spelled, with everything beneath it:
+        // rows must agree with the disk, so they are not moved to a spelling the disk does not have. A folder with only a
+        // refused file in it is folded like any other: the file keeps the canonical copy's row, the rest was moved.
+        if (reindex || spellings.NeedsDiskMerge) spellings = BuildSpellings(installation, loadoutId, metadata, leftFolders: leftFolders);
 
         var respelled = await GamePathRespeller.Respell(Connection, LoadoutId.From(loadoutId), metadata.Id, spellings, GamePathFilter);
         if (respelled > 0) Logger.LogInformation("Rewrote {Count} recorded paths to the spelling of the folders on disk", respelled);
@@ -147,20 +151,32 @@ public partial class ALoadoutSynchronizer
     }
 
     /// <summary>
-    /// What the loadout deploys or has deployed, with the bytes wanted at each path where known: every target path, what
-    /// the last apply put on disk, and the winning files.
+    /// What the loadout deploys or has deployed, with the bytes wanted at each path where known: every target path of the
+    /// loadout, and the target paths and winning files of the loadout as the last apply left it. Not the recorded disk
+    /// state, which lists the game's own files and the player's too: a folder holding only those is not the app's to merge,
+    /// and an archived copy of one is not the app's copy.
     /// </summary>
-    private Dictionary<GamePath, FileIdentity> ManagedPaths(GameInstallation installation, EntityId loadoutId, GameInstallMetadata.ReadOnly metadata)
+    private Dictionary<GamePath, FileIdentity> ManagedPaths(EntityId loadoutId, GameInstallMetadata.ReadOnly metadata)
     {
         var managed = new Dictionary<GamePath, FileIdentity>();
-        foreach (var row in GamePathRows.TargetPaths(Connection.Db, loadoutId)) managed[row.GamePath] = FileIdentity.None;
-        foreach (var pair in ((ILoadoutSynchronizer)this).GetPreviouslyAppliedDiskState(metadata)) managed[pair.Path] = pair.Part.Identity;
-        foreach (var tuple in WinningFilesQuery(Connection.Db, LoadoutId.From(loadoutId)))
+        if (GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastSynced))
+        {
+            var txId = GameInstallMetadata.LastSyncedLoadoutTransactionId.Get(metadata);
+            var asOfDb = metadata.Db.Connection.AsOf(TxId.From(txId.Value));
+            AddDeployed(managed, asOfDb, lastSynced);
+        }
+        AddDeployed(managed, Connection.Db, loadoutId);
+        return managed;
+    }
+
+    private static void AddDeployed(Dictionary<GamePath, FileIdentity> managed, IDb db, EntityId loadoutId)
+    {
+        foreach (var row in GamePathRows.TargetPaths(db, loadoutId)) managed.TryAdd(row.GamePath, FileIdentity.None);
+        foreach (var tuple in WinningFilesQuery(db, LoadoutId.From(loadoutId)))
         {
             var identity = ParseIdentity(tuple.Identity);
             if (!identity.IsNone) managed[new GamePath(tuple.Location, tuple.Path)] = identity;
         }
-        return managed;
     }
 
     private async ValueTask DropRows(GameInstallMetadata.ReadOnly metadata, IReadOnlyList<GamePath> paths)

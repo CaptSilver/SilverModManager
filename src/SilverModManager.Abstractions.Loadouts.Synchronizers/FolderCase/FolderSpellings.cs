@@ -12,8 +12,13 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers.FolderCase;
 /// <param name="DiskFiles">Recorded disk state. <c>Vanilla</c> is true when the row matches a file the game's store attests.</param>
 /// <param name="LoadoutTargets">Every target path of the loadout, enabled or not.</param>
 /// <param name="KeepSplitFolders">
-/// Leave a folder that is still spelled two ways on disk as spelled. Set after a merge: what it refused to merge stays
-/// split, and rows must keep agreeing with the disk rather than be moved to a spelling the disk does not have.
+/// Leave every folder that is still spelled two ways on disk as spelled. For a caller that does not merge (a reset): its
+/// paths must go where the disk has them.
+/// </param>
+/// <param name="LeftFolders">
+/// After a merge, the folders it left whole (unmanaged, linked, mounted, or a folder against a file). Those stay as
+/// spelled, with everything beneath them. A folder that only has a refused file in it is not listed: its rows are
+/// folded, because the indexer keeps the canonical copy of that file and the other files in it were moved.
 /// </param>
 public readonly record struct FolderSpellingSources(
     IReadOnlyList<string> Fixed,
@@ -21,7 +26,8 @@ public readonly record struct FolderSpellingSources(
     IEnumerable<GamePath> DiskFolders,
     IEnumerable<(GamePath Path, bool Vanilla)> DiskFiles,
     IEnumerable<GamePath> LoadoutTargets,
-    bool KeepSplitFolders = false);
+    bool KeepSplitFolders = false,
+    IReadOnlyCollection<GamePath>? LeftFolders = null);
 
 /// <summary>
 /// One spelling for every folder, whatever the paths of the loadout, the recorded disk state and the disk itself
@@ -103,7 +109,8 @@ public sealed class FolderSpellings
         foreach (var path in sources.LoadoutTargets) result.Add(path, isFolder: false, onDisk: false, vanilla: false, counted: true);
         result.Resolve();
         result.NeedsDiskMerge = result.FindDiskMerge();
-        if (sources.KeepSplitFolders) result.UnfoldSplitFolders();
+        if (sources.KeepSplitFolders) result.UnfoldSplitFolders(null);
+        else if (sources.LeftFolders is { Count: > 0 } left) result.UnfoldSplitFolders(left);
         return result;
     }
 
@@ -172,14 +179,16 @@ public sealed class FolderSpellings
         foreach (var group in _leaves.Values.SelectMany(g => g.Values)) ResolveLeaf(group);
     }
 
-    private void UnfoldSplitFolders()
+    /// <param name="only">The folders to keep split, or null for every folder spelled two ways.</param>
+    private void UnfoldSplitFolders(IReadOnlyCollection<GamePath>? only)
     {
         foreach (var (location, groups) in _folders)
         {
+            var wanted = only?.Where(p => p.LocationId == location).Select(p => p.Path.ToString()).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var split = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var (key, group) in groups)
             {
-                if (PresentSpellings(group).Count() > 1) split.Add(key);
+                if ((wanted is null || wanted.Contains(key)) && PresentSpellings(group).Count() > 1) split.Add(key);
             }
 
             if (split.Count == 0) continue;

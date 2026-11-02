@@ -149,17 +149,34 @@ public class FolderSpellingsTests
         Build(folders: ["Data/Interface"], targets: ["Data/interface/a"]).NeedsDiskMerge.Should().BeFalse("the loadout's spelling follows the disk");
     }
 
+    private static FolderSpellings BuildKept(bool keepAll, string[]? left)
+        => FolderSpellings.Build(new FolderSpellingSources([], true,
+            new[] { "Data/Interface", "Data/interface", "Data/Interface/sub", "Data/Textures", "Data/textures" }.Select(G).ToArray(),
+            [(G("Data/Interface/a.swf"), false), (G("Data/interface/b.swf"), false), (G("Data/Interface/sub/c.swf"), false),
+             (G("Data/Textures/t1.dds"), false), (G("Data/Textures/t2.dds"), false), (G("Data/textures/t3.dds"), false)],
+            [G("Data/interface/Sub/d.swf"), G("Data/Other/e.swf"), G("data/other/f.swf")],
+            KeepSplitFolders: keepAll, LeftFolders: left?.Select(G).ToArray()));
+
     [Fact]
-    public void KeepSplitFolders_LeavesATwinThatIsStillOnDiskAsSpelled_AndEverythingBeneathIt()
+    public void KeepSplitFolders_LeavesEveryFolderStillOnDiskAsSpelled_AndEverythingBeneathIt()
     {
-        var s = FolderSpellings.Build(new FolderSpellingSources([], true,
-            new[] { "Data/Interface", "Data/interface", "Data/Interface/sub" }.Select(G).ToArray(),
-            [(G("Data/Interface/a.swf"), false), (G("Data/interface/b.swf"), false), (G("Data/Interface/sub/c.swf"), false)],
-            [G("Data/interface/Sub/d.swf"), G("Data/Other/e.swf"), G("data/other/f.swf")], KeepSplitFolders: true));
+        var s = BuildKept(keepAll: true, left: null);
 
         s.Canonical(G("Data/interface/b.swf")).Path.ToString().Should().Be("Data/interface/b.swf");
         s.Canonical(G("Data/Interface/sub/c.swf")).Path.ToString().Should().Be("Data/Interface/sub/c.swf");
         s.Canonical(G("Data/interface/Sub/d.swf")).Path.ToString().Should().Be("Data/interface/Sub/d.swf");
+        s.Canonical(G("Data/textures/t3.dds")).Path.ToString().Should().Be("Data/textures/t3.dds");
         s.Canonical(G("data/other/f.swf")).Path.ToString().Should().Be("Data/Other/f.swf", "a folder with one spelling on disk is still folded");
+    }
+
+    [Fact]
+    public void LeftFolders_KeepsOnlyThoseFoldersAsSpelled_AndFoldsTheRest()
+    {
+        var s = BuildKept(keepAll: false, left: ["Data/interface", "Data/Interface"]);
+
+        s.Canonical(G("Data/interface/b.swf")).Path.ToString().Should().Be("Data/interface/b.swf");
+        s.Canonical(G("Data/Interface/sub/c.swf")).Path.ToString().Should().Be("Data/Interface/sub/c.swf");
+        s.Canonical(G("Data/textures/t3.dds")).Path.ToString().Should().Be("Data/Textures/t3.dds",
+            "a folder that merely has a refused file is folded, so the rows under it agree with the disk");
     }
 }

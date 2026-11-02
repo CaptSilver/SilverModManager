@@ -1052,9 +1052,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         await Preflight(gameInstallation);
 
         // The initial state can name folders the disk no longer spells that way (a merge ran since), and writing there
-        // would bring the twin back. The spelling comes from the disk as it is now: a reset does not merge.
+        // would bring the twin back. The spelling comes from the disk as it is now: a reset does not merge, so a folder
+        // still spelled two ways stays as the disk has it and paths are restored into the folder they came from.
         if (MergesCaseVariantFoldersOnApply(gameInstallation))
-            RespellTree(syncTree, BuildSpellings(gameInstallation, null, _gameRegistry.ForceGetMetadata(gameInstallation)));
+            RespellTree(syncTree, BuildSpellings(gameInstallation, null, _gameRegistry.ForceGetMetadata(gameInstallation), keepSplit: true));
         RefuseTraversalPaths(syncTree);
         KeepNeverWrittenPathsOffDisk(syncTree);
         await PreflightActions(syncTree, null);

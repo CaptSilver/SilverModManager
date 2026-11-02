@@ -15,12 +15,14 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers.FolderCase;
 /// <param name="Moved">Files moved into the chosen spelling, as their new paths.</param>
 /// <param name="Deduplicated">Files deleted because the other spelling held the same bytes, as the path that remains.</param>
 /// <param name="LeftInPlace">Paths in the variant spelling that stayed, because they conflict, are protected or belong to the game.</param>
+/// <param name="LeftFolders">The folders among <paramref name="LeftInPlace"/>: whole folders the merge did not touch, as opposed to a file in a folder it did.</param>
 /// <param name="NeedsFreshRead">Paths whose recorded disk row may no longer describe the file there; the caller drops the row so the next index records the file.</param>
 public sealed record MergeResult(
     IReadOnlyList<GamePath> Moved,
     IReadOnlyList<GamePath> Deduplicated,
     IReadOnlyList<GamePath> LeftInPlace,
-    IReadOnlyList<GamePath> NeedsFreshRead);
+    IReadOnlyList<GamePath> NeedsFreshRead,
+    IReadOnlyList<GamePath> LeftFolders);
 
 /// <summary>
 /// Merges folders whose names differ only in case, on a case-sensitive disk where they are different folders, into the
@@ -54,6 +56,7 @@ public sealed class CaseTwinMerger(IFullFileHasher hasher, IFileStore store, ILo
         public readonly List<GamePath> Deduplicated = [];
         public readonly List<GamePath> LeftInPlace = [];
         public readonly List<GamePath> NeedsFreshRead = [];
+        public readonly List<GamePath> LeftFolders = [];
     }
 
     /// <summary>
@@ -68,7 +71,7 @@ public sealed class CaseTwinMerger(IFullFileHasher hasher, IFileStore store, ILo
             if (!root.DirectoryExists()) continue;
             await Walk(run, location, root.GetFullPath(), "");
         }
-        return new MergeResult(run.Moved, run.Deduplicated, run.LeftInPlace, run.NeedsFreshRead);
+        return new MergeResult(run.Moved, run.Deduplicated, run.LeftInPlace, run.NeedsFreshRead, run.LeftFolders);
     }
 
     private async ValueTask Walk(Run run, LocationId location, string abs, string rel)
@@ -137,8 +140,16 @@ public sealed class CaseTwinMerger(IFullFileHasher hasher, IFileStore store, ILo
         foreach (var member in members)
         {
             logger.LogWarning("Folders '{Folder}' differ only in case and are left as they are", Join(rel, member.Name));
-            run.LeftInPlace.Add(Path(location, Join(rel, member.Name)));
+            var path = Path(location, Join(rel, member.Name));
+            run.LeftInPlace.Add(path);
+            run.LeftFolders.Add(path);
         }
+    }
+
+    private static void LeaveChild(Run run, GamePath path, bool isFolder)
+    {
+        run.LeftInPlace.Add(path);
+        if (isFolder) run.LeftFolders.Add(path);
     }
 
     private async ValueTask MergeInto(Run run, LocationId location, string variantAbs, string canonicalAbs, string canonicalRel, string variantRel)
@@ -168,13 +179,13 @@ public sealed class CaseTwinMerger(IFullFileHasher hasher, IFileStore store, ILo
             if (entry.IsSymlink)
             {
                 if (match == default) Move(run, location, from, System.IO.Path.Combine(canonicalAbs, entry.Name), childRel, record: false);
-                else run.LeftInPlace.Add(variantChildPath);
+                else LeaveChild(run, variantChildPath, entry.IsDirectory);
                 continue;
             }
 
             if (entry.IsDirectory && IsMountPoint(variantAbs, [entry]))
             {
-                run.LeftInPlace.Add(variantChildPath);
+                LeaveChild(run, variantChildPath, isFolder: true);
                 continue;
             }
 
@@ -188,7 +199,7 @@ public sealed class CaseTwinMerger(IFullFileHasher hasher, IFileStore store, ILo
             if (entry.IsDirectory != match.IsDirectory || match.IsSymlink)
             {
                 logger.LogWarning("'{Variant}' stays: '{Canonical}' is a {Kind}", from, to, entry.IsDirectory ? "file" : "folder");
-                run.LeftInPlace.Add(variantChildPath);
+                LeaveChild(run, variantChildPath, entry.IsDirectory);
                 continue;
             }
 
@@ -234,18 +245,20 @@ public sealed class CaseTwinMerger(IFullFileHasher hasher, IFileStore store, ILo
             return;
         }
 
-        // Different bytes. A variant that is the app's own copy, archived, is restorable and is dropped. The reverse is not done:
-        // when the canonical file is the app's and the variant is someone else's, both stay and the caller reports the pair,
-        // because moving the variant over the app's file would make the next apply read it as the user's edit.
+        // Different bytes. Neither copy is deleted unless the other can be restored from the archive, and nothing is
+        // left reading as a user's edit of what the app applied:
+        //  - The variant is the app's copy and the canonical file is archived: the app's copy takes the canonical place
+        //    (rename replaces atomically). The last applied state, the loadout and the disk then all hold the app's
+        //    bytes. Deleting the app's copy instead would leave the other file at the path, to be ingested as an edit.
+        //  - The canonical file is the app's and the variant is someone else's, or the app's copy has no archived
+        //    counterpart to replace: both stay and the caller reports the pair.
         run.NeedsFreshRead.Add(canonicalPath);
-        if (run.Managed.TryGetValue(canonicalPath, out var wanted) && !wanted.IsNone && await store.HaveFile(wanted))
+        if (run.Managed.TryGetValue(canonicalPath, out var wanted) && !wanted.IsNone && variantHash.Equals(wanted)
+            && await store.HaveFile(wanted) && await store.HaveFile(canonicalHash))
         {
-            if (variantHash.Equals(wanted))
-            {
-                logger.LogInformation("Deleted '{Variant}': the app's copy is archived and '{Canonical}' differs", variantFile, canonicalFile);
-                File.Delete(variantFile);
-                return;
-            }
+            logger.LogInformation("Replaced '{Canonical}' with '{Variant}': the app's copy takes the place and the other file is archived", canonicalFile, variantFile);
+            Rename(variantFile, canonicalFile);
+            return;
         }
 
         logger.LogWarning("'{Variant}' stays: '{Canonical}' has different contents", variantFile, canonicalFile);

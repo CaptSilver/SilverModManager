@@ -534,6 +534,114 @@ public class ProtonPreflightTests(ITestOutputHelper helper) : AStubbedGameTest<P
         GameFolders().Should().NotContain("mods");
     }
 
+    private string[] OverridesPaths(Loadout.ReadOnly loadout)
+        => LoadoutOverridesGroup.FindByOverridesFor(Connection.Db, loadout.Id)
+            .SelectMany(group => group.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
+            .Select(item => ((GamePath)item.TargetPath).Path.ToString())
+            .ToArray();
+
+    [Fact]
+    public async Task Synchronize_ProtonGameWithATwinTheLoadoutDoesNotHoldYet_LeavesItOnThatApply_MergesOnTheNext()
+    {
+        // The player's own files are not the loadout's until an apply ingests them into the overrides.
+        UseProtonPrefix(prefixReady: true);
+        var loadout = await CreateLoadout();
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Data/Textures/m.dds"), "m");
+        loadout = await Synchronize(loadout);
+        await WriteOnDisk("Data/Fonts/g.txt", "g");
+        await WriteOnDisk("Data/fonts/f.txt", "f");
+
+        loadout = await Synchronize(Refresh(loadout));
+        GameFolders().Should().Contain("Data/Fonts").And.Contain("Data/fonts");
+
+        loadout = await Synchronize(Refresh(loadout));
+        GameFolders().Should().NotContain("Data/fonts");
+        GameDir.Combine("Data/Fonts/f.txt").FileExists.Should().BeTrue();
+        GameDir.Combine("Data/Fonts/g.txt").FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Synchronize_ProtonGameWithOneRefusedFile_StillFoldsTheRowsOfTheFilesItMoved()
+    {
+        var loadout = await CreateLoadout();
+        foreach (var name in new[] { "a", "c", "d" })
+            loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, $"Mods/modX/content/{name}.ws"), "from the mod " + name);
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "mods/modX/content/b.ws"), "b");
+        loadout = await Synchronizer.Synchronize(loadout);
+        await WriteOnDisk("mods/modX/content/a.ws", "left behind");
+        UseProtonPrefix(prefixReady: true);
+
+        loadout = await Synchronize(Refresh(loadout));
+
+        GameDir.Combine("Mods/modX/content/b.ws").FileExists.Should().BeTrue("the file with no twin moved");
+        GameDir.Combine("mods/modX/content/a.ws").FileExists.Should().BeTrue("the file with different bytes stayed");
+        DiskRowPaths().Where(p => p.StartsWith("mods", StringComparison.OrdinalIgnoreCase)).Should().OnlyContain(p => p.StartsWith("Mods/", StringComparison.Ordinal));
+        GamePathRows.TargetPaths(Connection.Db, loadout.Id).Select(r => r.Path).Where(p => p.StartsWith("mods", StringComparison.OrdinalIgnoreCase))
+            .Should().OnlyContain(p => p.StartsWith("Mods/", StringComparison.Ordinal));
+    }
+
+    private async Task<Loadout.ReadOnly> LegacyTwinOfAnAppsFileBesideAnotherFile(bool archiveTheOther)
+    {
+        // An earlier build deployed the mod's bytes into interface/; a file of the same name, more files beside it, then
+        // appeared in Interface/.
+        var loadout = await CreateLoadout();
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Data/interface/a.swf"), "from the mod");
+        loadout = await Synchronizer.Synchronize(loadout);
+        GameDir.Combine("Data/interface/a.swf").FileExists.Should().BeTrue();
+        await WriteOnDisk("Data/Interface/a.swf", "original");
+        for (var i = 0; i < 3; i++) await WriteOnDisk($"Data/Interface/own{i}.swf", "own");
+        if (archiveTheOther)
+        {
+            var bytes = Encoding.UTF8.GetBytes("original");
+            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("a.swf", new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length))]);
+        }
+        UseProtonPrefix(prefixReady: true);
+        return Refresh(loadout);
+    }
+
+    [Fact]
+    public async Task Synchronize_ProtonGameWhereTheAppsCopyIsTheVariantAndTheOtherFileIsArchived_ModBytesWin_NoOverride()
+    {
+        var loadout = await LegacyTwinOfAnAppsFileBesideAnotherFile(archiveTheOther: true);
+
+        loadout = await Synchronize(loadout);
+        loadout = await Synchronize(Refresh(loadout));
+
+        GameFolders().Should().NotContain("Data/interface");
+        (await GameDir.Combine("Data/Interface/a.swf").ReadAllTextAsync()).Should().Be("from the mod");
+        OverridesPaths(loadout).Should().NotContain("Data/Interface/a.swf", "the mod's bytes are what was applied, so nothing on disk reads as an edit of it");
+        OverridesPaths(loadout).Should().NotContain("Data/interface/a.swf");
+    }
+
+    [Fact]
+    public async Task Synchronize_ProtonGameWhereTheAppsCopyIsTheVariantAndTheOtherFileIsNotArchived_DeletesNeitherCopy()
+    {
+        var loadout = await LegacyTwinOfAnAppsFileBesideAnotherFile(archiveTheOther: false);
+
+        loadout = await Synchronize(loadout);
+
+        (await GameDir.Combine("Data/interface/a.swf").ReadAllTextAsync()).Should().Be("from the mod");
+        (await GameDir.Combine("Data/Interface/a.swf").ReadAllTextAsync()).Should().Be("original");
+    }
+
+    [Fact]
+    public async Task ResetToOriginalGameState_ProtonGameWithAFolderLeftSplit_DeletesTheFilesWhereTheyAre()
+    {
+        UseProtonPrefix(prefixReady: true);
+        var loadout = await CreateLoadout();
+        loadout = await AddFileMod(loadout, new GamePath(LocationId.Game, "Data/Other/m.txt"), "m");
+        loadout = await Synchronize(loadout);
+        await WriteOnDisk("Data/Fonts/g.txt", "g");
+        await WriteOnDisk("Data/fonts/f.txt", "f");
+        loadout = await Synchronize(Refresh(loadout));
+        GameFolders().Should().Contain("Data/Fonts").And.Contain("Data/fonts", "the apply left the folders the loadout did not hold yet");
+
+        await Synchronizer.ResetToOriginalGameState(GameInstallation, GameInstallation.LocatorResult.LocatorIds.ToArray());
+
+        GameDir.Combine("Data/fonts/f.txt").FileExists.Should().BeFalse("a reset does not merge folders, so the file is deleted where it is");
+        GameDir.Combine("Data/Fonts/g.txt").FileExists.Should().BeFalse();
+    }
+
     /// <summary>A refused twin: the same relative file in two spellings of a folder, with different bytes.</summary>
     private async Task<Loadout.ReadOnly> ApplyWithRefusedTwin(Loadout.ReadOnly loadout, string folder, string twinFolder)
     {
