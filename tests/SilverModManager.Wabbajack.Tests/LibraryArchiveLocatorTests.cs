@@ -49,7 +49,7 @@ public class LibraryArchiveLocatorTests(ILibraryService libraryService, IConnect
     }
 
     [Fact]
-    public async Task TheNewestTopLevelCopyIsTheOneAddedLast()
+    public async Task AddingTheSameFileTwiceLeavesOneTopLevelCopy()
     {
         await using var folder = temporaryFileManager.CreateFolder();
         var path = folder.Path.Combine("plugin.esp");
@@ -58,9 +58,9 @@ public class LibraryArchiveLocatorTests(ILibraryService libraryService, IConnect
         var first = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
         var second = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
 
-        locator.FindNewestTopLevelByXxHash64(connection.Db, expected)!.Value.Id.Should().Be(second.AsLibraryFile().Id);
-        locator.FindTopLevelByXxHash64(connection.Db, expected)!.Value.Id.Should().NotBe(second.AsLibraryFile().Id, "the plain lookup keeps answering with the first copy");
-        first.AsLibraryFile().Id.Should().NotBe(second.AsLibraryFile().Id);
+        second.AsLibraryFile().Id.Should().Be(first.AsLibraryFile().Id);
+        locator.FindTopLevelByXxHash64(connection.Db, expected)!.Value.Id.Should().Be(first.AsLibraryFile().Id);
+        connection.Db.Datoms(LibraryFile.XxHash64, expected.XxHash64Value()).Should().ContainSingle();
     }
 
     [Fact]

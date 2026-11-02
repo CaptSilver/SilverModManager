@@ -18,8 +18,8 @@ internal static class FetchedArchives
 {
     /// <summary>
     /// Marks every list's row for <paramref name="archive"/> as fetched with <paramref name="file"/>. A row can hold
-    /// several fetched files: fetching an archive again leaves two library files with the same hash, and removing the
-    /// list has to reach both. A file that is a member of another archive is never marked.
+    /// several fetched files, and marking one that is already there changes nothing. A file that is a member of
+    /// another archive is never marked.
     /// </summary>
     public static async Task Mark(IConnection connection, FileIdentity archive, LibraryFile.ReadOnly file)
     {

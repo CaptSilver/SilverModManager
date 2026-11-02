@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 using System.Collections.Frozen;
 using System.IO.Hashing;
 using DynamicData.Kernel;
@@ -39,7 +40,8 @@ internal class GameLocationsService : IGameLocationsService
         IGamePathFilter filter,
         CancellationToken outerToken = default,
         Action<long, long>? progress = null,
-        Func<IReadOnlyList<IndexFileResult>, ValueTask>? onBatch = null)
+        Func<IReadOnlyList<IndexFileResult>, ValueTask>? onBatch = null,
+        Func<GamePath, bool>? preferred = null)
     {
         // A baseline build commits all its rows at the end; indexing meanwhile would find none and read the whole folder.
         await _fileHashesService.WaitForLocalBaselineBuild(installation, outerToken);
@@ -56,6 +58,7 @@ internal class GameLocationsService : IGameLocationsService
         {
             throw new GameFolderUnreadableException(installation, $"Listing the files of {installation.Game.DisplayName}", e);
         }
+        files = KeepOneCopyPerPath(installation, files, preferred);
         var enumerable = files.ToAsyncEnumerable();
         var totalFiles = files.Count;
         long filesDone = 0;
@@ -154,6 +157,40 @@ internal class GameLocationsService : IGameLocationsService
         );
 
         return result;
+    }
+
+    /// <summary>
+    /// Of files whose paths differ only in case, keeps the one spelled the preferred way, otherwise the ordinal smallest.
+    /// The indexer visits files in parallel and keeps the first it sees of a path, so without this the copy that owns
+    /// the row would change from run to run. One dictionary pass; the order of the remaining files is kept.
+    /// </summary>
+    private static List<AbsolutePath> KeepOneCopyPerPath(GameInstallation installation, List<AbsolutePath> files, Func<GamePath, bool>? preferred)
+    {
+        var best = new Dictionary<GamePath, (AbsolutePath File, string Spelled, bool Preferred)>(files.Count);
+        var twins = false;
+        foreach (var file in files)
+        {
+            var path = installation.Locations.ToGamePath(file);
+            var spelled = path.Path.ToString();
+            var candidate = (File: file, Spelled: spelled, Preferred: preferred?.Invoke(path) ?? false);
+            ref var current = ref CollectionsMarshal.GetValueRefOrAddDefault(best, path, out var exists);
+            if (!exists)
+            {
+                current = candidate;
+                continue;
+            }
+
+            twins = true;
+            var better = candidate.Preferred != current.Preferred
+                ? candidate.Preferred
+                : string.CompareOrdinal(candidate.Spelled, current.Spelled) < 0;
+            if (better) current = candidate;
+        }
+
+        if (!twins) return files;
+        // Compared as text: paths of different case are equal as AbsolutePaths, which would keep both twins.
+        var keep = best.Values.Select(v => v.File.GetFullPath()).ToHashSet(StringComparer.Ordinal);
+        return files.Where(f => keep.Contains(f.GetFullPath())).ToList();
     }
 
     private static bool HasFileChanged(FileFingerprint fingerprint, DiskStateEntry.ReadOnly previousState)

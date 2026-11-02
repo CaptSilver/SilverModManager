@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Backend;
 using SilverModManager.Library.Tests.DownloadsService;
 using SilverModManager.MnemonicDB.Abstractions;
+using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Hashes;
@@ -204,6 +205,58 @@ public class AddLibraryFileJobTests(IServiceProvider serviceProvider, IConnectio
         using var copy = new MemoryStream();
         await kept.CopyToAsync(copy, TestContext.Current.CancellationToken);
         copy.ToArray().Should().Equal(innerBytes);
+    }
+
+    [Fact]
+    public async Task FetchingAHeldArchiveAgainKeepsOneRowAndStoresTheNestedBytesItLacked()
+    {
+        await using var folder = temporaryFileManager.CreateFolder();
+        var innerBytes = BuildZip(("again.txt", "member of the nested archive"u8.ToArray()));
+        var outerPath = folder.Path.Combine("outer.zip");
+        using (var zip = new ZipArchive(File.Create(outerPath.ToString()), ZipArchiveMode.Create))
+        {
+            using var entry = zip.CreateEntry("lib/inner.zip").Open();
+            entry.Write(innerBytes);
+        }
+        var outerBytes = await File.ReadAllBytesAsync(outerPath.ToString(), TestContext.Current.CancellationToken);
+
+        // The library as an earlier import left it: rows for the archive and the nested archive, no bytes for the latter.
+        EntityId held;
+        using (var seed = connection.BeginTransaction())
+        {
+            var outer = SeedFile(seed, "outer.zip", outerBytes);
+            var outerArchive = new LibraryArchive.New(seed, outer.Id) { IsArchive = true, LibraryFile = outer };
+            var inner = SeedFile(seed, "inner.zip", innerBytes);
+            _ = new LibraryArchive.New(seed, inner.Id) { IsArchive = true, LibraryFile = inner };
+            _ = new LibraryArchiveFileEntry.New(seed, inner.Id) { Path = "lib/inner.zip", LibraryFile = inner, ParentId = outerArchive.Id };
+            held = (await seed.Commit()).Remap(outer).Id;
+        }
+
+        var store = serviceProvider.GetRequiredService<IFileStore>();
+        var innerIdentity = FileIdentity.XxHash3(innerBytes.xxHash3());
+        (await store.HaveFile(innerIdentity)).Should().BeFalse("this is how the earlier import left it");
+
+        using var tx = connection.BeginTransaction();
+        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, outerPath, UnassignedAcquisition.Instance);
+        var result = await tx.Commit();
+
+        result.Remap(libraryFile).Id.Should().Be(held, "the fetch reuses the copy the library holds");
+        connection.Db.Datoms(LibraryFile.Hash, outerBytes.xxHash3()).Should().ContainSingle("a second row for the same archive is a duplicate");
+        LibraryArchive.Load(connection.Db, held).Children.Should().ContainSingle("the nested archive is listed once");
+        (await store.HaveFile(innerIdentity)).Should().BeTrue("the fetch brings back the nested archive's bytes");
+    }
+
+    private static LibraryFile.New SeedFile(ITransaction tx, string name, byte[] bytes)
+    {
+        var file = new LibraryFile.New(tx, out var id)
+        {
+            FileName = name,
+            Hash = bytes.xxHash3(),
+            Size = Size.FromLong(bytes.Length),
+            LibraryItem = new LibraryItem.New(tx, id) { Name = name },
+        };
+        tx.Add(id, LibraryFile.XxHash64, Xx64Hasher.Hash(bytes));
+        return file;
     }
 
     private static byte[] BuildZip(params (string Name, byte[] Bytes)[] members)

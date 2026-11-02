@@ -19,8 +19,10 @@ namespace SilverModManager.Library.Tests;
 public partial class AddGitHubReleaseAssetJobTests(IServiceProvider serviceProvider, IConnection connection, TemporaryFileManager temporaryFileManager)
 {
     private const string AssetName = "tool-linux-amd64.tar.gz";
-    private static readonly byte[] Payload = Enumerable.Range(0, 4000).Select(i => (byte)(i * 13 + 5)).ToArray();
-    private static readonly Sha256Value PayloadDigest = Sha256Value.From(SHA256.HashData(Payload));
+    // Each test gets its own bytes: the library keeps one file per set of bytes, and the tests share a database, so a
+    // payload common to them would carry one test's release record into the next.
+    private readonly byte[] Payload = Guid.NewGuid().ToByteArray().Concat(Enumerable.Range(0, 4000).Select(i => (byte)(i * 13 + 5))).ToArray();
+    private Sha256Value PayloadDigest => Sha256Value.From(SHA256.HashData(Payload));
     private static readonly Sha256Value OtherDigest = Sha256Value.From(SHA256.HashData("other"u8));
 
     internal sealed class PayloadHandler(byte[] payload) : HttpMessageHandler
@@ -71,7 +73,7 @@ public partial class AddGitHubReleaseAssetJobTests(IServiceProvider serviceProvi
         }
     }
 
-    private static Release ReleaseWith(string tag, string? assetDigest)
+    private Release ReleaseWith(string tag, string? assetDigest)
     {
         var asset = new Asset(
             Url: "u", Id: 1, Name: AssetName, ContentType: "application/gzip", State: "uploaded", Size: Payload.Length,

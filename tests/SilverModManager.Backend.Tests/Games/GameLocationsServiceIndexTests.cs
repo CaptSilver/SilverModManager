@@ -105,6 +105,26 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
     }
 
     [Fact]
+    public async Task IndexGame_CaseTwinFiles_PicksTheSameCopyEveryRun()
+    {
+        _gameDir.Combine("mods/x").CreateDirectory();
+        _gameDir.Combine("Mods/x").CreateDirectory();
+        await _gameDir.Combine("mods/x/a.ws").WriteAllBytesAsync(Content(1));
+        await _gameDir.Combine("Mods/x/a.ws").WriteAllBytesAsync(Content(2));
+        var service = CreateService();
+        var empty = FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty;
+
+        for (var run = 0; run < 5; run++)
+        {
+            var result = await service.IndexGame(_installation, empty, GamePathFilters.Empty);
+            result.NewFiles.Should().ContainSingle().Which.Value.Path.Path.ToString().Should().Be("Mods/x/a.ws", "the ordinal smallest spelling when nobody prefers one");
+        }
+
+        var preferLower = await service.IndexGame(_installation, empty, GamePathFilters.Empty, preferred: p => p.Path.ToString().StartsWith("mods/", StringComparison.Ordinal));
+        preferLower.NewFiles.Should().ContainSingle().Which.Value.Path.Path.ToString().Should().Be("mods/x/a.ws");
+    }
+
+    [Fact]
     public async Task AFullReadOfAGameLocationFile_RecordsEveryHashOfItsBytes()
     {
         await WriteGameFiles(1);

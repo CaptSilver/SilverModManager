@@ -50,7 +50,9 @@ public class AddThunderstorePackageJobTests(IServiceProvider serviceProvider)
     private static ThunderstoreVersionRef Ref(string team, string name, string version) => new(Package(team, name), Number(version));
 
     private static byte[] ZipBytes(string team, string name, string version)
-        => Enumerable.Range(0, 1500).Select(i => (byte)(i * 31 + team.Length * 7 + name.Length * 3 + version.Length)).ToArray();
+        => SHA256.HashData(System.Text.Encoding.UTF8.GetBytes($"{team}/{name}/{version}")) is var seed
+            ? Enumerable.Range(0, 1500).Select(i => (byte)(i * 31 + seed[i % seed.Length])).ToArray()
+            : throw new InvalidOperationException();
 
     private static Sha256Value Digest(string team, string name, string version) => Sha256Value.From(SHA256.HashData(ZipBytes(team, name, version)));
 

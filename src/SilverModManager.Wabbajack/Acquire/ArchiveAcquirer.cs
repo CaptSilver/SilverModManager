@@ -287,7 +287,8 @@ public sealed class ArchiveAcquirer(
                 Update(rows, index, r => r with { State = ArchiveState.Have, Reason = null, Library = file, DownloadFailed = false });
                 Record(state, s => s.Bytes += row.Archive.Size);
                 // The download was started for this list, so it was fetched for it even if the plan has since been replaced.
-                if (modlist is not null) await FetchedArchives.Mark(connection, row.Archive.XxHash64, file);
+                // A row that held an incomplete copy was completed in place; that copy is the user's own, not the list's.
+                if (modlist is not null && !row.HoldsIncompleteCopy) await FetchedArchives.Mark(connection, row.Archive.XxHash64, file);
             }
             else
             {
@@ -377,8 +378,8 @@ public sealed class ArchiveAcquirer(
                 if (!_check.IsComplete(db, row.Archive.XxHash64, held)) continue;
                 // A Browser row is one the library lacked when the plan was built and the run sent the user to fetch,
                 // so its arrival is the download the run asked for. Manual, SignIn and Unsupported rows are the user's own adds.
-                if (row.State == ArchiveState.Browser && _expecting && _modlist is not null
-                    && locator.FindNewestTopLevelByXxHash64(db, row.Archive.XxHash64) is { } topLevel)
+                if (row.State == ArchiveState.Browser && !row.HoldsIncompleteCopy && _expecting && _modlist is not null
+                    && locator.FindTopLevelByXxHash64(db, row.Archive.XxHash64) is { } topLevel)
                     (fetched ??= []).Add((row.Archive.XxHash64, topLevel));
                 _rows[i] = row with { State = ArchiveState.Have, Reason = null, Library = held, DownloadFailed = false };
                 changed = true;

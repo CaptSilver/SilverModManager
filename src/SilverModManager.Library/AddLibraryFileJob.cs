@@ -56,8 +56,10 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
         if (!FilePath.FileExists)
             throw new Exception($"File '{FilePath}' does not exist.");
 
-        var topFile = await AnalyzeFile(context, FilePath);
-        WriteDestination(topFile);
+        var created = await AnalyzeFile(context, FilePath);
+        var topFile = created ?? ReuseHeldCopy();
+        if (created is not null) WriteDestination(created);
+        else LibraryDestinations.Add(Transaction, topFile.Id, Acquisition.Destination(Connection.Db));
         await FileStore.BackupFiles(ToArchive, deduplicate: false, context.CancellationToken);
         return topFile;
     }
@@ -88,12 +90,32 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
         }, cancellationToken);
     }
 
-    private async Task<LibraryFile.New> AnalyzeFile(IJobContext<AddLibraryFileJob> context, AbsolutePath filePath, bool isNestedFile = false)
+    /// <summary>
+    /// The top-level library file this job found already holding the same bytes. Its rows stay as they are, and
+    /// only the bytes the file store lacks (a nested archive an older import did not keep) are added.
+    /// </summary>
+    private LibraryFile.ReadOnly? _heldCopy;
+    private Hash _heldHash;
+    private Optional<Md5Value> _heldMd5;
+    private Optional<Sha256Value> _heldSha256;
+    private Hash _heldXxHash64;
+
+    /// <summary>
+    /// Adds the file's rows, or nothing when the library already holds this top-level file (the result is then
+    /// null and <see cref="ReuseHeldCopy"/> names the held one). Either way the bytes the store lacks are queued.
+    /// </summary>
+    private async Task<LibraryFile.New?> AnalyzeFile(IJobContext<AddLibraryFileJob> context, AbsolutePath filePath, bool isNestedFile = false, bool recordRows = true)
     {
         var isArchive = isNestedFile ? await CheckIfNestedArchiveAsync(filePath) : await CheckIfArchiveAsync(filePath);
 
         var (hash, md5, sha256, xxHash64) = await HashAsync(filePath, isNestedFile: isNestedFile, cancellationToken: context.CancellationToken);
-        var libraryFile = CreateLibraryFile(Transaction, filePath, hash, md5, sha256, xxHash64);
+        if (recordRows && !isNestedFile && FindHeldCopy(hash) is { } held)
+        {
+            (_heldCopy, _heldHash, _heldMd5, _heldSha256, _heldXxHash64) = (held, hash, md5, sha256, xxHash64);
+            recordRows = false;
+        }
+
+        var libraryFile = recordRows ? CreateLibraryFile(Transaction, filePath, hash, md5, sha256, xxHash64) : null;
 
         AbsolutePath? extractedFolder = null;
         if (isArchive)
@@ -116,15 +138,18 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
 
         if (extractedFolder is { } folder)
         {
-            var libraryArchive = new LibraryArchive.New(Transaction, libraryFile.Id)
-            {
-                IsArchive = true,
-                LibraryFile = libraryFile,
-            };
+            var libraryArchive = libraryFile is null
+                ? null
+                : new LibraryArchive.New(Transaction, libraryFile.Id)
+                {
+                    IsArchive = true,
+                    LibraryFile = libraryFile,
+                };
 
             foreach (var extracted in folder.EnumerateFiles())
             {
-                var subFile = await AnalyzeFile(context, extracted, isNestedFile: true);
+                var subFile = await AnalyzeFile(context, extracted, isNestedFile: true, recordRows: recordRows);
+                if (libraryArchive is null || subFile is null) continue;
                 var path = extracted.RelativeTo(folder);
                 _ = new LibraryArchiveFileEntry.New(Transaction, subFile.Id)
                 {
@@ -140,16 +165,41 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
             if (isNestedFile) await ArchiveBytes(filePath, hash);
 
             // The extraction folder is only around until the job is disposed, so recognisers see it now.
-            if (!isNestedFile) await RecogniseAsync(libraryFile, folder, context.CancellationToken);
+            if (!isNestedFile && libraryFile is not null) await RecogniseAsync(libraryFile, folder, context.CancellationToken);
         }
         else
         {
             await ArchiveBytes(filePath, hash);
 
-            if (!isNestedFile) await RecogniseAsync(libraryFile, extractedFolder: null, context.CancellationToken);
+            if (!isNestedFile && libraryFile is not null) await RecogniseAsync(libraryFile, extractedFolder: null, context.CancellationToken);
         }
 
         return libraryFile;
+    }
+
+    /// <summary>
+    /// A top-level library file with these bytes, if the library has one. A second row for a re-fetched archive
+    /// would show the same file twice and leave two rows for one set of nested entries.
+    /// </summary>
+    private LibraryFile.ReadOnly? FindHeldCopy(Hash hash)
+    {
+        var db = Connection.Db;
+        foreach (var datom in db.Datoms(LibraryFile.Hash, hash))
+        {
+            var file = LibraryFile.Load(db, datom.E);
+            if (file.IsValid() && !LibraryArchiveFileEntry.IsMember(db, file.Id)) return file;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The held copy as the job's result, so callers attach their metadata to it. It carries the held file's own
+    /// name and the values it was added with, so committing it changes nothing on the row.
+    /// </summary>
+    private LibraryFile.New ReuseHeldCopy()
+    {
+        var held = _heldCopy ?? throw new InvalidOperationException("No held copy was found for this file.");
+        return CreateLibraryFile(Transaction, held.FileName, held.AsLibraryItem().Name, FilePath.FileInfo.Size, _heldHash, _heldMd5, _heldSha256, _heldXxHash64, reuse: held.Id);
     }
 
     private async Task ArchiveBytes(AbsolutePath filePath, Hash hash)
@@ -201,17 +251,21 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
     }
 
     private static LibraryFile.New CreateLibraryFile(ITransaction tx, AbsolutePath filePath, Hash hash, Optional<Md5Value> md5, Optional<Sha256Value> sha256, Hash xxHash64)
+        => CreateLibraryFile(tx, filePath.FileName, filePath.FileName, filePath.FileInfo.Size, hash, md5, sha256, xxHash64, reuse: null);
+
+    private static LibraryFile.New CreateLibraryFile(ITransaction tx, RelativePath fileName, string itemName, Size size, Hash hash, Optional<Md5Value> md5, Optional<Sha256Value> sha256, Hash xxHash64, EntityId? reuse)
     {
-        var libraryFile = new LibraryFile.New(tx, out var id)
+        var id = reuse ?? tx.TempId();
+        var libraryFile = new LibraryFile.New(tx, id)
         {
-            FileName = filePath.FileName,
+            FileName = fileName,
             Hash = hash,
             Md5 = md5.ValueOrDefault(),
             XxHash64 = xxHash64,
-            Size = filePath.FileInfo.Size,
+            Size = size,
             LibraryItem = new LibraryItem.New(tx, id)
             {
-                Name = filePath.FileName,
+                Name = itemName,
             },
         };
 

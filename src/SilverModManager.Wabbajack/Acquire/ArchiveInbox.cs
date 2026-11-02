@@ -75,10 +75,12 @@ public sealed class ArchiveInbox(
             {
                 // A held archive that lacks what the list copies out of it is added again; the drop would otherwise be deleted as a duplicate.
                 if (locator.FindByXxHash64(connection.Db, hash) is { } held && wanting.IsComplete(connection.Db, hash, held)) continue;
+                // Adding a file the library already holds completes that copy, which stays the user's own.
+                var userHad = locator.FindTopLevelByXxHash64(connection.Db, hash) is not null;
                 try
                 {
                     await library.AddLocalFile(file, AcquisitionFor(wanting, hash));
-                    addedHere.Add(hash);
+                    if (!userHad) addedHere.Add(hash);
                 }
                 catch (Exception e) when (e is not OperationCanceledException)
                 {
@@ -97,7 +99,7 @@ public sealed class ArchiveInbox(
                 if (added && plan.FindArchive(hash) is not null)
                 {
                     // Only a file this scan added came for the list; one the library already held was the user's.
-                    if (plan.Modlist is not null && addedHere.Contains(hash) && locator.FindNewestTopLevelByXxHash64(connection.Db, hash) is { } held)
+                    if (plan.Modlist is not null && addedHere.Contains(hash) && locator.FindTopLevelByXxHash64(connection.Db, hash) is { } held)
                         await FetchedArchives.Mark(connection, hash, held);
                     file.Delete();
                 }

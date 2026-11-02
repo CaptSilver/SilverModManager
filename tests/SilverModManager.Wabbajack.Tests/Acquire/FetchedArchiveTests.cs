@@ -357,7 +357,7 @@ public class FetchedArchiveTests(ITestOutputHelper helper) : AcquireTestBase<Fet
     }
 
     [Fact]
-    public async Task AnAgainFetchedCopyIsMarkedAlongsideTheOneTheListFetchedBefore()
+    public async Task AnAgainFetchedArchiveIsNotDuplicatedAndStaysMarked()
     {
         using var page = Acquirer.Attach();
         await using var zip = await BuildNestedZip();
@@ -365,20 +365,19 @@ public class FetchedArchiveTests(ITestOutputHelper helper) : AcquireTestBase<Fet
         var (row, old) = await DropOverIncompleteCopy(zip, oldCopyFetchedForTheList: true);
 
         var copies = Connection.Db.Datoms(LibraryFile.XxHash64, zip.OuterHash.XxHash64Value()).Select(d => d.E).ToArray();
-        copies.Should().HaveCount(2);
-        row.FetchedFiles.Select(f => f.Id).Should().BeEquivalentTo(copies, "removing the list has to reach both copies");
-        copies.Should().Contain(old);
+        copies.Should().ContainSingle("the drop completes the held copy instead of adding a second one").Which.Should().Be(old);
+        row.FetchedFiles.Select(f => f.Id).Should().ContainSingle("the copy that was already marked stays marked").Which.Should().Be(old);
     }
 
     [Fact]
-    public async Task AnAgainFetchedCopyIsMarkedInsteadOfTheOneTheUserHad()
+    public async Task ACompletedCopyTheUserHadIsNotMarkedAsFetched()
     {
         using var page = Acquirer.Attach();
         await using var zip = await BuildNestedZip();
 
         var (row, old) = await DropOverIncompleteCopy(zip, oldCopyFetchedForTheList: false);
 
-        var marked = row.FetchedFiles.Should().ContainSingle("only the copy this scan added came for the list").Subject;
-        marked.Id.Should().NotBe(old, "the user's own file is never deleted with the list");
+        row.FetchedFiles.Should().BeEmpty("the drop completed the user's own copy, which is never deleted with the list");
+        Connection.Db.Datoms(LibraryFile.XxHash64, zip.OuterHash.XxHash64Value()).Select(d => d.E).Should().Equal(old);
     }
 }

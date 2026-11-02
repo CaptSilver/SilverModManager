@@ -36,13 +36,19 @@ public interface IGameLocationsService
     /// (possibly none) when every file has been looked at. The hash rows for a batch's files are written first. A call
     /// that throws ends the run.
     /// </param>
+    /// <param name="preferred">
+    /// Says whether a path is spelled the way the caller wants it. When the folder holds two files whose paths differ only
+    /// in case (case twins on a case-sensitive disk), only one is indexed: the preferred spelling, otherwise the
+    /// ordinal smallest. Without this the copy that owned the row would change from run to run.
+    /// </param>
     Task<IndexGameResult> IndexGame(
         GameInstallation installation,
         FrozenDictionary<GamePath, DiskStateEntry.ReadOnly> previousDiskState,
         IGamePathFilter filter,
         CancellationToken cancellationToken = default,
         Action<long, long>? progress = null,
-        Func<IReadOnlyList<IndexFileResult>, ValueTask>? onBatch = null
+        Func<IReadOnlyList<IndexFileResult>, ValueTask>? onBatch = null,
+        Func<GamePath, bool>? preferred = null
     );
 
     // Task RemoveEmptyDirectories(GameInstallation installation, CancellationToken cancellationToken = default);

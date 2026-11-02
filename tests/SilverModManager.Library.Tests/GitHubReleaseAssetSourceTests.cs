@@ -14,12 +14,12 @@ public partial class AddGitHubReleaseAssetJobTests
 {
     private const string LinuxName = "me3-linux-amd64.tar.gz";
 
-    private static Asset Me3Asset(string name, string? digest) => new(
+    private Asset Me3Asset(string name, string? digest) => new(
         Url: "u", Id: 1, Name: name, ContentType: "application/octet-stream", State: "uploaded", Size: Payload.Length,
         DownloadCount: 0, CreatedAt: default, UpdatedAt: default, BrowserDownloadUrl: "https://example.invalid/" + name, Digest: digest
     );
 
-    private static Release Me3Release(params Asset[] assets) => new(
+    private Release Me3Release(params Asset[] assets) => new(
         "u", "u", "https://github.com/o/r/releases/tag/v0.13.0", 1, "v0.13.0", "main", "v0.13.0", false, false, default, default, assets, "u", "u", ""
     );
 

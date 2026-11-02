@@ -22,13 +22,6 @@ public interface ILibraryArchiveLocator
     /// would cut it out of that archive.
     /// </summary>
     LibraryFile.ReadOnly? FindTopLevelByXxHash64(IDb db, FileIdentity identity);
-
-    /// <summary>
-    /// Like <see cref="FindTopLevelByXxHash64"/> but the most recently added copy when there are several. Fetching an
-    /// archive again adds a second library file with the same hash; the one just fetched is the one to record as
-    /// fetched, not the older copy that may be the user's own.
-    /// </summary>
-    LibraryFile.ReadOnly? FindNewestTopLevelByXxHash64(IDb db, FileIdentity identity);
 }
 
 public sealed class LibraryArchiveLocator : ILibraryArchiveLocator
@@ -36,17 +29,6 @@ public sealed class LibraryArchiveLocator : ILibraryArchiveLocator
     public LibraryFile.ReadOnly? FindByXxHash64(IDb db, FileIdentity identity) => Find(db, identity, topLevelOnly: false);
 
     public LibraryFile.ReadOnly? FindTopLevelByXxHash64(IDb db, FileIdentity identity) => Find(db, identity, topLevelOnly: true);
-
-    public LibraryFile.ReadOnly? FindNewestTopLevelByXxHash64(IDb db, FileIdentity identity)
-    {
-        LibraryFile.ReadOnly? newest = null;
-        foreach (var file in Matching(db, identity, topLevelOnly: true))
-        {
-            // Entity ids grow with creation, so the largest is the latest add.
-            if (newest is null || file.Id.Value > newest.Value.Id.Value) newest = file;
-        }
-        return newest;
-    }
 
     /// <summary>Whether the file is a member extracted from another library archive rather than a file the library holds itself.</summary>
     public static bool IsArchiveMember(IDb db, EntityId file) => LibraryArchiveFileEntry.IsMember(db, file);
