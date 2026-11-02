@@ -8,7 +8,8 @@ public sealed record ModlistTool(string Name, string Exe, string Arguments);
 
 /// <summary>
 /// Picks the programs of a list's <c>[customExecutables]</c> that can be run as tools: the ones whose binary is a file in
-/// the list's tools folder or in the game folder.
+/// the list's tools folder or in the game folder, or one the list's own files will put in the game folder when the
+/// loadout is applied.
 /// </summary>
 public static class ModlistTools
 {
@@ -21,7 +22,12 @@ public static class ModlistTools
     /// <param name="extrasRoot">The list's tools folder; what <c>MO2_PATH</c> stands for.</param>
     /// <param name="gameRoot">The game folder.</param>
     /// <param name="primaryExecutable">File name of the game's executable.</param>
-    public static Result Find(string iniText, AbsolutePath extrasRoot, AbsolutePath gameRoot, string primaryExecutable)
+    /// <param name="appliedPath">
+    /// Where a file the list's loadout deploys ends up on disk, given its path inside the instance (<c>Stock Game/x.exe</c>,
+    /// <c>mods/Mod/x.exe</c>), or null when the loadout does not deploy it. Those files are not on disk until Apply, so the
+    /// path the ini names under the tools folder would never exist.
+    /// </param>
+    public static Result Find(string iniText, AbsolutePath extrasRoot, AbsolutePath gameRoot, string primaryExecutable, Func<string, string?> appliedPath)
     {
         var values = new PathMarkerValues(gameRoot.ToString(), extrasRoot.ToString(), extrasRoot.Combine("downloads").ToString());
         var leftOut = new HashSet<string>(AlwaysLeftOut, StringComparer.OrdinalIgnoreCase) { primaryExecutable };
@@ -35,7 +41,7 @@ public static class ModlistTools
             var fileName = binary[(binary.LastIndexOfAny(['/', '\\']) + 1)..];
             if (leftOut.Contains(fileName)) continue;
 
-            var exe = FindFile(binary, extrasRoot) ?? FindFile(binary, gameRoot);
+            var exe = FindFile(binary, extrasRoot) ?? FindFile(binary, gameRoot) ?? Deployed(binary, extrasRoot, appliedPath);
             if (exe is null)
             {
                 unregistered.Add($"'{entry.Title}' runs '{binary}', which is not a file in the list's tools folder or the game folder");
@@ -45,6 +51,15 @@ public static class ModlistTools
             tools.Add(new ModlistTool(entry.Title, exe, PathMarkers.Substitute(entry.Arguments, values, nativeSpelling: true)));
         }
         return new Result(tools, unregistered);
+    }
+
+    private static string? Deployed(string binary, AbsolutePath extrasRoot, Func<string, string?> appliedPath)
+    {
+        var root = System.IO.Path.GetFullPath(extrasRoot.ToString()).TrimEnd('/') + "/";
+        if (!System.IO.Path.IsPathRooted(binary)) return null;
+
+        var full = System.IO.Path.GetFullPath(binary);
+        return full.StartsWith(root, StringComparison.Ordinal) ? appliedPath(full[root.Length..]) : null;
     }
 
     /// <summary>

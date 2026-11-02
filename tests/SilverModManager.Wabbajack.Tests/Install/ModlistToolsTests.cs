@@ -137,6 +137,34 @@ public class ModlistToolsTests(ITestOutputHelper helper) : InstallTestBase<Modli
     }
 
     [Fact]
+    public async Task AGameRootFileOfTheListIsRegisteredAtTheGameFolderPathItIsAppliedTo()
+    {
+        var entry = "4\\arguments=\n4\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/Stock Game/Tools/Loader.exe\n4\\title=Loader\n";
+        var list = ListWith(DefaultExecutables + entry);
+        list.Directives.Add(list.Inline("Stock Game\\Tools\\Loader.exe", "loader"));
+        var (loadout, _, job) = await InstallList(list);
+
+        var gameRoot = loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty));
+        var tool = ToolsOf(loadout).Should().ContainSingle().Subject;
+        tool.Exe.Should().Be(gameRoot.Combine("Tools/Loader.exe").ToString(), "Apply puts game-root files in the game folder, not in the tools folder");
+        job.UnregisteredTools.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AModFileOfTheListIsRegisteredWhereTheGameWillFindItAfterApply()
+    {
+        var entry = "4\\arguments=\n4\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/mods/A/Tools/Mod.exe\n4\\title=ModTool\n";
+        var list = ListWith(DefaultExecutables + entry);
+        list.Directives.Add(list.Inline("mods\\A\\Tools\\Mod.exe", "tool"));
+        var (loadout, _, job) = await InstallList(list);
+
+        var tool = ToolsOf(loadout).Should().ContainSingle().Subject;
+        tool.Exe.Should().EndWith("/Data/Tools/Mod.exe");
+        tool.Exe.Should().StartWith(loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty)).ToString());
+        job.UnregisteredTools.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task InstallingAgainDoesNotRegisterTheSameToolTwice()
     {
         var list = ListWith(DefaultExecutables + SseEditEntry);

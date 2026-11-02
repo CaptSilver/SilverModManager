@@ -1176,7 +1176,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var gameRoot = installation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty));
         var primary = installation.Game.GetPrimaryFile(installation);
 
-        var found = ModlistTools.Find(iniText, extras.Root, gameRoot, primary.FileName.ToString());
+        var found = ModlistTools.Find(iniText, extras.Root, gameRoot, primary.FileName.ToString(), relative => AppliedPath(check, relative));
         UnregisteredTools = found.Unregistered;
         foreach (var line in found.Unregistered) Logger.LogWarning("Not registering a tool of '{List}': {Reason}", check.List.Name, line);
 
@@ -1199,6 +1199,22 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             any = true;
         }
         if (any) await tx.Commit();
+    }
+
+    /// <summary>
+    /// Where Apply puts the list's file at <paramref name="relative"/> (a path inside the Mod Organizer instance), for the
+    /// files the loadout deploys: game-root folders land in the game folder and mod files at their mapped place. Null for
+    /// anything else.
+    /// </summary>
+    private static string? AppliedPath(Checked check, string relative)
+    {
+        var placement = check.Placements.FirstOrDefault(p =>
+            p.Target is Mo2Target.GameRootFile or Mo2Target.ModFile
+            && p.Path is not null
+            && string.Equals(p.To.ToString(), relative, StringComparison.OrdinalIgnoreCase));
+        return placement?.Path is { } path
+            ? check.Loadout.InstallationInstance.Locations.ToAbsolutePath(path).ToString()
+            : null;
     }
 
     private async Task<string?> ReadModOrganizerIni(Checked check, CancellationToken cancellationToken)
