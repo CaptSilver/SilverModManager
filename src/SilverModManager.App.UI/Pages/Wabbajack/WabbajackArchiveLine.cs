@@ -29,16 +29,20 @@ public sealed class WabbajackArchiveLine : Grid
         _row = row;
         Margin = new Thickness(0, 2);
         ColumnDefinitions = new ColumnDefinitions("332,92,132,252,*,Auto,Auto,Auto,Auto");
+        // The note gets a row of its own under the line, across all of it: beside the buttons it had a sliver to wrap in.
+        RowDefinitions = new RowDefinitions("Auto,Auto");
 
         Add(new TextBlock { Text = row.Name, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center }, 0);
         Add(new TextBlock { Text = row.SizeText, VerticalAlignment = VerticalAlignment.Center }, 1);
         Add(new TextBlock { Text = row.Source, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center }, 2);
         Add(_state, 3);
-        Add(_reason, 4);
         Add(_install, 5);
         Add(_signIn, 6);
         Add(_open, 7);
         Add(_retry, 8);
+        SetRow(_reason, 1);
+        SetColumnSpan(_reason, ColumnDefinitions.Count);
+        Children.Add(_reason);
         _install.Margin = _open.Margin = _signIn.Margin = _retry.Margin = new Thickness(12, 0, 0, 0);
         _install.Click += (_, _) => viewModel.InstallArchiveCommand.Execute(row).Subscribe();
         _open.Click += (_, _) => viewModel.OpenPageCommand.Execute(row).Subscribe();

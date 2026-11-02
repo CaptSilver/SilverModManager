@@ -131,6 +131,7 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
                 {
                     InstallProgressPanel.IsVisible = progress is not null;
                     InstallProgressText.Text = progress is null ? "" : progress.Text;
+                    InstallProgressBar.IsIndeterminate = progress?.IsIndeterminate ?? false;
                     InstallProgressBar.Value = progress?.Fraction ?? 0;
                 })
                 .DisposeWith(disposables);

@@ -106,7 +106,7 @@ public partial class WabbajackModlistViewModelTests
     }
 
     [Fact]
-    public async Task WhileTheListIsChecked_TheViewShowsOneProgressLineWithABar_AndNoReasonSentence()
+    public async Task WhileTheListIsChecked_TheTabShowsNoProgressLineNorBar_AndTheHeaderGetsTheCheck()
     {
         var (vm, service, _) = await Open(Plan(Row(ArchiveState.Have)), load: false);
         var gate = new TaskCompletionSource();
@@ -115,35 +115,56 @@ public partial class WabbajackModlistViewModelTests
         var view = await ShowView(vm);
         await UntilPlanning(service);
 
-        // No Render tick while the bar is indeterminate: its endless animation never lets the headless tick finish.
+        // No Render tick while the check is indeterminate: its endless animation never lets the headless tick finish.
         await EventuallyOnUi(() =>
         {
-            var line = view.FindControl<TextBlock>("StatusText")!;
-            var bar = view.FindControl<ProgressBar>("StatusBar")!;
-            line.IsVisible.Should().BeTrue();
-            line.Text.Should().Be(vm.CheckText).And.NotBeEmpty();
-            bar.IsVisible.Should().BeTrue();
-            bar.IsIndeterminate.Should().BeTrue("nothing has been counted yet");
+            view.FindControl<ProgressBar>("StatusBar").Should().BeNull("the header draws the bar");
+            view.FindControl<TextBlock>("StatusText")!.IsVisible.Should().BeFalse();
+            vm.RunningStatus.Text.Should().Be(vm.CheckText).And.NotBeEmpty();
+            vm.RunningStatus.IsIndeterminate.Should().BeTrue("nothing has been counted yet");
             vm.DownloadBlockedReason.Should().Contain("Checking the list");
-            TextsIn(view).Should().NotContain(text => text.Contains("Checking the list against"), "the buttons keep that reason in their tooltips");
+            TextsIn(view).Should().NotContain(text => text.Contains("Checking the list"), "the buttons keep that reason in their tooltips and the header says the step");
         });
 
         service.LastProgress!.Report(new SilverModManager.Wabbajack.Acquire.PlanProgress(SilverModManager.Wabbajack.Acquire.PlanPhase.CheckingLibrary, 412, 1294));
         await EventuallyOnUi(() =>
         {
-            view.FindControl<TextBlock>("StatusText")!.Text.Should().Be("Checking archives against your library: 412 of 1294");
-            var bar = view.FindControl<ProgressBar>("StatusBar")!;
-            bar.IsIndeterminate.Should().BeFalse();
-            bar.Value.Should().BeApproximately(412d / 1294, 1e-6);
+            vm.RunningStatus.Text.Should().Be("Checking archives against your library: 412 of 1294");
+            vm.RunningStatus.IsIndeterminate.Should().BeFalse();
+            vm.RunningStatus.Fraction.Should().BeApproximately(412d / 1294, 1e-6);
+            TextsIn(view).Should().NotContain(text => text.Contains("Checking archives"));
         });
 
         gate.SetResult();
         await EventuallyOnUi(() =>
         {
-            Render((Window)view.GetVisualRoot()!);
             vm.IsPlanning.Should().BeFalse();
-            view.FindControl<TextBlock>("StatusText")!.Text.Should().NotContain("Checking archives");
-            view.FindControl<ProgressBar>("StatusBar")!.IsVisible.Should().BeFalse();
+            vm.RunningStatus.Text.Should().BeEmpty("the header clears when the check ends");
+        });
+    }
+
+    [Fact]
+    public async Task AnArchivesNote_HasTheRoomToBeReadInFull()
+    {
+        var note = string.Join(' ', Enumerable.Repeat("The library holds this archive without the archives inside it that the list copies whole; fetching it again adds them.", 3));
+        var plan = Row(ArchiveState.Manual, "a.7z") with { Note = note, Page = new Uri("https://example.com/a") };
+        var row = new WabbajackArchiveRow(plan);
+        var model = new WabbajackModlistDesignViewModel { Archives = [row] };
+        var line = await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var line = new WabbajackArchiveLine(model, row);
+            ShowRendered(Track(new Window { Width = 1000, Height = 300, Content = line }));
+            return line;
+        });
+
+        await EventuallyOnUi(() =>
+        {
+            Render((Window)line.GetVisualRoot()!);
+            var text = line.GetVisualDescendants().OfType<TextBlock>().Single(block => block.Text == row.Reason);
+            text.Bounds.Width.Should().BeGreaterThan(400, "the note is wrapped into the room the line has, not squeezed beside the buttons");
+            text.Bounds.Right.Should().BeLessThanOrEqualTo(line.Bounds.Width + 0.5);
+            text.Bounds.Height.Should().BeGreaterThan(0);
+            text.Bounds.Bottom.Should().BeLessThanOrEqualTo(line.Bounds.Height + 0.5, "the line grows to hold every wrapped row");
         });
     }
 

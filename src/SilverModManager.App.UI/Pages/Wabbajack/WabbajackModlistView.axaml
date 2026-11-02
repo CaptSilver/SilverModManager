@@ -49,7 +49,6 @@
             </StackPanel>
             <controls:StandardButton x:Name="ShowThemButton" Type="Tertiary" ShowIcon="None" Size="Toolbar" Text="Show them" HorizontalAlignment="Left" IsVisible="False"
                                      ToolTip.Tip="Jump to the archives you have to get yourself, or list what is missing" />
-            <ProgressBar x:Name="StatusBar" Minimum="0" Maximum="1" HorizontalAlignment="Left" MinWidth="280" IsVisible="False" />
         </StackPanel>
 
         <ScrollViewer Grid.Row="2">

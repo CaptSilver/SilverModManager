@@ -144,8 +144,8 @@ public sealed record CollectionStats(Percent? Rating, ulong? Endorsements, ulong
     public static CollectionStats None { get; } = new(null, null, null, null, null);
 }
 
-/// <summary>An install in flight, as the header shows it.</summary>
-public sealed record CollectionInstallStatus(string Text, double Fraction);
+/// <summary>A step in flight, as the header shows it. The bar only shows that work goes on when <paramref name="IsIndeterminate"/>.</summary>
+public sealed record CollectionInstallStatus(string Text, double Fraction, bool IsIndeterminate = false);
 
 public sealed record CollectionBadge(IconValue Icon, string Text);
 

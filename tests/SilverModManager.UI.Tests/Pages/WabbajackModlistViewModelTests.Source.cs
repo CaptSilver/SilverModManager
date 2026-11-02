@@ -68,4 +68,55 @@ public partial class WabbajackModlistViewModelTests
             "an emission that pairs one snapshot's text with another's fraction would draw the wrong bar for a moment");
         service.Run.Done.SetResult();
     }
+
+    [Fact]
+    public async Task TheHeaderShowsTheCheckAndItsBarThroughTheSameStatusAsTheInstall()
+    {
+        var (vm, service, _) = await Open(Plan(Row(ArchiveState.Have)), load: false);
+        var file = await CollectionSeed.AddModlistFile(Connection, $"Check list {Guid.NewGuid():N}");
+        var source = new WabbajackModlistSource(new OverridingServices(Provider, typeof(IWabbajackModlistViewModel), vm), loadoutId: null, file);
+        source.CreateDownloads();
+        CollectionInstallStatus? header = null;
+        using var subscription = source.InstallProgress.Subscribe(status => header = status);
+        var gate = new TaskCompletionSource();
+        service.PlanGate = gate;
+
+        var loading = vm.LoadAsync(CancellationToken.None);
+        await UntilPlanning(service);
+        header.Should().NotBeNull();
+        header!.Text.Should().Be(vm.CheckText);
+        header.IsIndeterminate.Should().BeTrue("nothing has been counted yet");
+
+        service.LastProgress!.Report(new PlanProgress(PlanPhase.CheckingLibrary, 412, 1294));
+        header!.Text.Should().Be("Checking archives against your library: 412 of 1294");
+        header.IsIndeterminate.Should().BeFalse();
+        header.Fraction.Should().BeApproximately(412d / 1294, 1e-9);
+        vm.Status.Text.Should().BeEmpty("the tab says nothing while the header does");
+
+        gate.SetResult();
+        await loading;
+        header.Should().BeNull("the header clears when the check ends");
+    }
+
+    [Fact]
+    public async Task TheHeaderShowsDownloadProgressWhileArchivesAreComing()
+    {
+        var (vm, _, acquirer) = await Open(Plan(Row(ArchiveState.Automatic)), runUnderWay: null);
+        using var activation = vm.Activator.Activate();
+        var file = await CollectionSeed.AddModlistFile(Connection, $"Download list {Guid.NewGuid():N}");
+        var source = new WabbajackModlistSource(new OverridingServices(Provider, typeof(IWabbajackModlistViewModel), vm), loadoutId: null, file);
+        source.CreateDownloads();
+        CollectionInstallStatus? header = null;
+        using var subscription = source.InstallProgress.Subscribe(status => header = status);
+
+        acquirer.ChangeStatus(new AcquireStatus(vm.FileId, true, 1, 4, 0, TimeSpan.Zero, []));
+
+        await EventuallyOnUi(() =>
+        {
+            vm.Downloads.Should().Be(new AcquireProgress(1, 4));
+            vm.RunningStatus.Text.Should().Be("Downloading archives: 1 of 4");
+            header.Should().Be(new CollectionInstallStatus("Downloading archives: 1 of 4", 0.25));
+            vm.Status.Text.Should().NotContain("Downloading archives");
+        });
+    }
 }

@@ -42,8 +42,11 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
 
     ReactiveCommand<Unit, Unit> OpenReadmeCommand { get; }
 
-    /// <summary>The single line under the toolbar: an error, progress, or the one thing that blocks the buttons.</summary>
+    /// <summary>The single line under the toolbar: an error, or the one thing that blocks the buttons. Empty while a step runs.</summary>
     WabbajackStatus Status { get; }
+
+    /// <summary>The step that runs now (check, downloads or install) with its bar, which the collection page header shows. Empty text when none runs.</summary>
+    WabbajackStatus RunningStatus { get; }
 
     Bitmap? Banner { get; }
 

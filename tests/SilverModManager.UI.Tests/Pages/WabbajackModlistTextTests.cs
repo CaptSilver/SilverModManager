@@ -4,6 +4,7 @@ using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
@@ -132,6 +133,33 @@ public class WabbajackModlistTextTests
     public void InstallBlockedReason_SaysOneMissingArchiveInTheSingular()
         => WabbajackModlistText.InstallBlockedReason(true, false, true, false, Plan(Row(ArchiveState.Manual), Row(ArchiveState.Have, "b")), false)
             .Should().Contain("1 of 2 archives is not in your library yet");
+
+    private static ArchivePlanRow HeldIncomplete(string name)
+        => Row(ArchiveState.Manual, name) with { Library = default(LibraryFile.ReadOnly) };
+
+    [Fact]
+    public void InstallBlockedReason_CountsAHeldCopyThatLacksNestedArchivesApartFromMissingArchives()
+    {
+        var plan = Plan(Row(ArchiveState.Manual, "a"), HeldIncomplete("b"), Row(ArchiveState.Have, "c"));
+
+        var reason = WabbajackModlistText.InstallBlockedReason(true, false, true, false, plan, false);
+
+        reason.Should().Contain("1 of 3 archives is not in your library yet")
+            .And.Contain("1 archive needs downloading again: the library copy is missing archives packed inside it.")
+            .And.Contain("Get what is missing");
+    }
+
+    [Fact]
+    public void InstallBlockedReason_DoesNotCallAHeldIncompleteArchiveNotInTheLibrary()
+    {
+        var plan = Plan(HeldIncomplete("a"), HeldIncomplete("b"), Row(ArchiveState.Have, "c"));
+
+        var reason = WabbajackModlistText.InstallBlockedReason(true, false, true, false, plan, false);
+
+        reason.Should().NotContain("not in your library yet")
+            .And.Contain("2 archives need downloading again: the library copies are missing archives packed inside them.")
+            .And.Contain("Get what is missing");
+    }
 
     [Fact]
     public void DownloadBlockedReason_IsEmptyWhenAnArchiveCanBeFetched()
@@ -295,23 +323,56 @@ public class WabbajackModlistTextTests
             .Should().Be(new WabbajackStatus("", null, false, false));
 
     [Fact]
-    public void Status_ShowsTheCheckOnceWhenBothReasonsRepeatTheCheckingSentence()
+    public void Status_SaysNothingWhileTheListIsCheckedBecauseTheHeaderShowsIt()
         => Status(check: "Hashing game files: 3.2 of 15.1 GB", checkFraction: 0.2, installReason: Checking, downloadReason: Checking)
-            .Should().Be(new WabbajackStatus("Hashing game files: 3.2 of 15.1 GB", 0.2, false, false));
+            .Should().Be(new WabbajackStatus("", null, false, false));
 
     [Fact]
-    public void Status_PassesOnAnIndeterminateCheck()
-        => Status(check: "Reading the list", checkIndeterminate: true).IsIndeterminate.Should().BeTrue();
-
-    [Fact]
-    public void Status_ShowsDownloadProgressWhileArchivesAreStillComing()
+    public void Status_SaysNothingWhileArchivesAreStillComingBecauseTheHeaderShowsIt()
         => Status(downloads: new AcquireProgress(1, 4), installReason: "later")
-            .Should().Be(new WabbajackStatus("Downloading archives: 1 of 4", 0.25, false, false));
+            .Should().Be(new WabbajackStatus("", null, false, false));
+
+    [Fact]
+    public void Status_StillShowsAnErrorWhileTheListIsChecked()
+        => Status(error: "boom", check: "Reading the list").Should().Be(new WabbajackStatus("boom", null, false, true));
 
     [Fact]
     public void Status_IgnoresFinishedDownloadsAndFallsToTheReason()
         => Status(downloads: new AcquireProgress(4, 4), installReason: "Get what is missing.")
             .Text.Should().Be("Get what is missing.");
+
+    private static WabbajackStatus Running(
+        string install = "", double installFraction = 0,
+        string check = "", double checkFraction = 0, bool checkIndeterminate = false,
+        AcquireProgress? downloads = null)
+        => WabbajackModlistText.Running(new WabbajackInstallStatus(install, installFraction), check, checkFraction, checkIndeterminate, downloads);
+
+    [Fact]
+    public void Running_IsEmptyWhenNothingRuns()
+        => Running().Should().Be(new WabbajackStatus("", null, false, false));
+
+    [Fact]
+    public void Running_ShowsTheInstallLineAndBarAheadOfTheCheck()
+        => Running(install: "Writing files: 1 of 4", installFraction: 0.25, check: "Reading the list")
+            .Should().Be(new WabbajackStatus("Writing files: 1 of 4", 0.25, false, false));
+
+    [Fact]
+    public void Running_ShowsTheCheckWithItsFraction()
+        => Running(check: "Hashing game files: 3.2 of 15.1 GB", checkFraction: 0.2)
+            .Should().Be(new WabbajackStatus("Hashing game files: 3.2 of 15.1 GB", 0.2, false, false));
+
+    [Fact]
+    public void Running_PassesOnAnIndeterminateCheck()
+        => Running(check: "Reading the list", checkIndeterminate: true).IsIndeterminate.Should().BeTrue();
+
+    [Fact]
+    public void Running_ShowsDownloadProgressWhileArchivesAreStillComing()
+        => Running(downloads: new AcquireProgress(1, 4))
+            .Should().Be(new WabbajackStatus("Downloading archives: 1 of 4", 0.25, false, false));
+
+    [Fact]
+    public void Running_IgnoresFinishedDownloads()
+        => Running(downloads: new AcquireProgress(4, 4)).Should().Be(new WabbajackStatus("", null, false, false));
 
     [Fact]
     public void Status_PrefersInstallsReasonOverDownloadsBecauseItNamesTheNextStep()

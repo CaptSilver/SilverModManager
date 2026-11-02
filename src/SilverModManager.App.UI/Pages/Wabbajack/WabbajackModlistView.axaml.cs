@@ -81,9 +81,6 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
                 StatusText.Text = status.Text;
                 StatusText.IsVisible = status.Text != "";
                 StatusText.Classes.Set("Warning", status.IsWarning);
-                StatusBar.IsVisible = status.Fraction is not null || status.IsIndeterminate;
-                StatusBar.IsIndeterminate = status.IsIndeterminate;
-                StatusBar.Value = status.Fraction ?? 0;
             }).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.InboxText)).Subscribe(text =>
             {
@@ -113,7 +110,7 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
                 if (ArchiveFilterBox.SelectedIndex >= 0) viewModel.ArchiveFilter = (WabbajackArchiveFilter)ArchiveFilterBox.SelectedIndex;
             };
 
-            // Only beside a plain sentence about what is missing; a running check, download or error has its own line.
+            // Only beside a plain sentence about what is missing, not beside an error.
             this.BindCommand(ViewModel, vm => vm.ShowMissingCommand, view => view.ShowThemButton).DisposeWith(disposables);
             OnUi(vm => vm.WhenAnyValue(x => x.CanShowMissing, x => x.Status)).Subscribe(state =>
                 ShowThemButton.IsVisible = state.Item1 && state.Item2 is { Text: not "", IsWarning: false, IsIndeterminate: false, Fraction: null }).DisposeWith(disposables);

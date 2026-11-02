@@ -111,6 +111,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     [Reactive] public partial string Description { get; private set; } = "";
     [Reactive] public partial Uri? ReadmeUri { get; private set; }
     [Reactive] public partial WabbajackStatus Status { get; private set; }
+    [Reactive] public partial WabbajackStatus RunningStatus { get; private set; }
     [Reactive] public partial AcquireProgress? Downloads { get; private set; }
     [Reactive] public partial Bitmap? Banner { get; private set; }
 
@@ -221,6 +222,12 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
                 (error, install, check, checkFraction, indeterminate, downloads, installReason, downloadReason, plan) =>
                     WabbajackModlistText.Status(error, install.Text ?? "", check, checkFraction, indeterminate, downloads, installReason, downloadReason, plan))
             .Subscribe(status => Status = status);
+
+        // The check, the downloads and the install all report through the header, one step at a time.
+        this.WhenAnyValue(
+                vm => vm.InstallStatus, vm => vm.CheckText, vm => vm.CheckFraction, vm => vm.IsCheckIndeterminate, vm => vm.Downloads,
+                WabbajackModlistText.Running)
+            .Subscribe(status => RunningStatus = status);
 
         OpenReadmeCommand = ReactiveCommand.Create(
             () => { if (ReadmeUri is { } readme) _provider.GetRequiredService<IOSInterop>().OpenUri(readme); },

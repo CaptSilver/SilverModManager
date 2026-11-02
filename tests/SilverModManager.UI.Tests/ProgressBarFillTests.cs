@@ -143,7 +143,7 @@ public class ProgressBarFillTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Fact]
-    public async Task TheDownloadsTabBarFillsHalfForHalfOfTheArchivesChecked()
+    public async Task TheDownloadsTabDrawsNoBarOfItsOwnWhileTheListIsChecked()
     {
         var viewModel = new WabbajackModlistDesignViewModel { CheckText = "Checking archives against your library: 25871 of 51774", CheckFraction = 25871d / 51774 };
         var (window, view) = await Dispatcher.UIThread.InvokeAsync(() =>
@@ -157,9 +157,9 @@ public class ProgressBarFillTests(IServiceProvider provider) : AUiTest(provider)
         await EventuallyOnUi(() =>
         {
             Render(window);
-            var bar = ViewProbe.Named<ProgressBar>(view, "StatusBar");
-            bar.IsVisible.Should().BeTrue();
-            Fill(bar).Should().BeApproximately(0.5, 0.01, Describe(bar));
+            view.FindControl<ProgressBar>("StatusBar").Should().BeNull("the collection header draws the bar");
+            view.FindControl<TextBlock>("StatusText")!.IsVisible.Should().BeFalse("the collection header says the step");
+            viewModel.RunningStatus.Fraction.Should().BeApproximately(0.5, 1e-3);
         });
     }
 

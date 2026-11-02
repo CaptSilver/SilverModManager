@@ -27,6 +27,7 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public WabbajackStatus Status => WabbajackModlistText.Status(
         ErrorText, ProgressText, CheckText, CheckFraction, IsCheckIndeterminate, null,
         InstallBlockedReason, DownloadBlockedReason, AcquireText);
+    public WabbajackStatus RunningStatus => WabbajackModlistText.Running(InstallStatus, CheckText, CheckFraction, IsCheckIndeterminate, null);
     public Bitmap? Banner => null;
     public IReadOnlyList<WabbajackLoadoutChoice> LoadoutChoices { get; } = [new(null, "Create new loadout")];
     public WabbajackLoadoutChoice? SelectedLoadout => null;

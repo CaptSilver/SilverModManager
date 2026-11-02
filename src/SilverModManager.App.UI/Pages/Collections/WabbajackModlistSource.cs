@@ -123,16 +123,15 @@ public sealed class WabbajackModlistSource : CollectionSource
     public override IObservable<bool> CanToggle { get; }
     public override IObservable<CollectionInstructions> Instructions => _instructions.AsObservable();
 
-    // The Downloads tab's model follows the run, so the header shows what the tab shows. It reads the model on
-    // subscription because the model is built after the source.
+    // The Downloads tab's model reports the step that runs (check, downloads or install), and the header is the only
+    // place that shows it. It reads the model on subscription because the model is built after the source.
     public override IObservable<CollectionInstallStatus?> InstallProgress => Observable.Defer(() =>
     {
         var downloads = _downloads
             ?? throw new InvalidOperationException("The install is followed by the Downloads tab's model, which CreateDownloads builds first");
         return downloads.WhenAnyValue(
-            model => model.IsInstalling, model => model.InstallStatus,
-            // IsInstalling and the status are set a moment apart, so there is a blank status while one of them lags.
-            (installing, status) => installing && status.Text is { Length: > 0 } text ? new CollectionInstallStatus(text, status.Fraction) : null);
+            model => model.RunningStatus,
+            status => status.Text is { Length: > 0 } text ? new CollectionInstallStatus(text, status.Fraction ?? 0, status.IsIndeterminate) : null);
     });
 
     public override IPageViewModelInterface? CreateDownloads()

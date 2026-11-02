@@ -125,8 +125,25 @@ public static class WabbajackModlistText
         => skipMissingArchives || plan.Rows.All(IsAvailable);
 
     /// <summary>
-    /// The one line under the toolbar. The first thing that applies wins, so a sentence several buttons share (the
-    /// list is being checked) is shown once, as the check's own progress. A button's own reason stays in its tooltip.
+    /// What the page header says while a step runs: the install, else the check, else the archive downloads. The bar
+    /// and the line come from the same step, so they never describe two. Empty text when nothing runs.
+    /// </summary>
+    public static WabbajackStatus Running(
+        WabbajackInstallStatus install,
+        string checkText, double checkFraction, bool isCheckIndeterminate,
+        AcquireProgress? downloads)
+    {
+        if (!string.IsNullOrEmpty(install.Text)) return new WabbajackStatus(install.Text, install.Fraction, false, false);
+        if (checkText != "") return new WabbajackStatus(checkText, checkFraction, isCheckIndeterminate, false);
+        if (downloads is { Total: > 0 } running && running.Finished < running.Total)
+            return new WabbajackStatus(Downloads(running), (double)running.Finished / running.Total, false, false);
+        return new WabbajackStatus("", null, false, false);
+    }
+
+    /// <summary>
+    /// The one line under the toolbar when no step runs: an error, or the one thing that blocks the buttons. While a
+    /// step runs (see <see cref="Running"/>) the page header shows it with a bar and this line stays empty, except for
+    /// an error. A button's own reason stays in its tooltip.
     /// </summary>
     /// <param name="installBlockedReason">Wins over Download's because it names the next step towards the goal.</param>
     /// <param name="planSummary">What is left to get; shown when both Install and Download are allowed.</param>
@@ -139,11 +156,8 @@ public static class WabbajackModlistText
         string planSummary)
     {
         if (errorText != "") return new WabbajackStatus(errorText, null, false, true);
-        // The page header already shows the install text and bar, so the tab says nothing while one runs.
-        if (installProgressText != "") return new WabbajackStatus("", null, false, false);
-        if (checkText != "") return new WabbajackStatus(checkText, checkFraction, isCheckIndeterminate, false);
-        if (downloads is { Total: > 0 } running && running.Finished < running.Total)
-            return new WabbajackStatus(Downloads(running), (double)running.Finished / running.Total, false, false);
+        var running = Running(new WabbajackInstallStatus(installProgressText, 0), checkText, checkFraction, isCheckIndeterminate, downloads);
+        if (running.Text != "") return new WabbajackStatus("", null, false, false);
         if (installBlockedReason != "") return new WabbajackStatus(installBlockedReason, null, false, false);
         if (downloadBlockedReason != "") return new WabbajackStatus(downloadBlockedReason, null, false, false);
         return new WabbajackStatus(planSummary, null, false, false);
@@ -173,11 +187,15 @@ public static class WabbajackModlistText
         if (CanInstall(plan, skipMissingArchives)) return "";
 
         var differing = plan.Rows.Count(row => row.State == ArchiveState.GameFileVersion);
-        var missing = plan.Rows.Count(row => !IsAvailable(row)) - differing;
+        var incomplete = plan.Rows.Count(row => !IsAvailable(row) && row.HoldsIncompleteCopy);
+        var missing = plan.Rows.Count(row => !IsAvailable(row)) - differing - incomplete;
         var parts = new List<string>();
         if (missing > 0) parts.Add($"{missing} of {Wanted(plan)} {(missing == 1 ? "archives is" : "archives are")} not in your library yet.");
+        if (incomplete > 0) parts.Add(incomplete == 1
+            ? "1 archive needs downloading again: the library copy is missing archives packed inside it."
+            : $"{incomplete} archives need downloading again: the library copies are missing archives packed inside them.");
         if (differing > 0) parts.Add($"{GameFilesDiffer(differing)} from the version the list was made for.");
-        parts.Add(missing > 0
+        parts.Add(missing > 0 || incomplete > 0
             ? "Get what is missing, or tick \"Skip files from missing archives\"."
             : "Put back the game files the list was made for, or tick \"Skip files from missing archives\".");
         return string.Join(" ", parts);
