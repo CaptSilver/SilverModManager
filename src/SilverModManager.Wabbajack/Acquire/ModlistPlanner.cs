@@ -19,6 +19,12 @@ public interface IModlistPlanner
     /// the list will install into, or null for one that does not exist yet.
     /// </summary>
     Task<ArchivePlan> BuildPlan(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The test of which held archives are complete for the list (see <see cref="HeldArchiveCheck"/>), without a
+    /// plan: for a page that counts held archives but checks nothing against the game folder. The list is read once.
+    /// </summary>
+    Task<HeldArchiveCheck> ReadHeldCheck(LibraryFileId file, CancellationToken cancellationToken);
 }
 
 /// <summary>The list's game is not installed, so there is no game folder to check its files against.</summary>
@@ -34,6 +40,8 @@ public sealed class ModlistPlanner(IServiceProvider provider) : IModlistPlanner
 
     private readonly Lock _lock = new();
     private (LibraryFileId File, ModList List)? _lastList;
+    // Small next to the list, and a library file never changes, so every list that was asked about keeps its check.
+    private readonly Dictionary<LibraryFileId, HeldArchiveCheck> _checks = [];
 
     private WabbajackModlistLibraryFile.ReadOnly Modlist(LibraryFileId file)
         => WabbajackModlistLibraryFile.Load(_connection.Db, file.Value);
@@ -54,6 +62,17 @@ public sealed class ModlistPlanner(IServiceProvider provider) : IModlistPlanner
         var list = await ModlistArchive.ReadModlist(_fileStore, ArchiveOf(Modlist(file)), cancellationToken);
         lock (_lock) _lastList = (file, list);
         return list;
+    }
+
+    public async Task<HeldArchiveCheck> ReadHeldCheck(LibraryFileId file, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            if (_checks.TryGetValue(file, out var known)) return known;
+        }
+
+        var check = HeldArchiveCheck.For(await ReadList(file, cancellationToken), _fileStore);
+        lock (_lock) return _checks.TryAdd(file, check) ? check : _checks[file];
     }
 
     public async Task<ArchivePlan> BuildPlan(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)

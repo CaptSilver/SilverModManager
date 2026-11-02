@@ -19,6 +19,7 @@ using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using SilverModManager.Wabbajack;
+using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Library;
 using SilverModManager.Wabbajack.Models;
 using ReactiveUI;
@@ -68,7 +69,8 @@ public partial class WabbajackModlistCardViewModel : AViewModel<IWabbajackModlis
             new WabbajackModlistRemover(_provider).ConfirmAndRemove(_windowManager, _windowManager.ActiveWorkspaceController, File));
 
         State = WabbajackModlistInstallState.Read(_connection.Db, File, _loadout);
-        ArchivesHad = CountHeld(_connection.Db);
+        // The list is read in the background (see Refresh); until then every held archive counts, as it does with no list to check.
+        ArchivesHad = CountHeld(_connection.Db, HeldArchiveCheck.NothingNeeded);
 
         this.WhenActivated(d =>
         {
@@ -110,13 +112,14 @@ public partial class WabbajackModlistCardViewModel : AViewModel<IWabbajackModlis
     /// <summary>The scan walks every archive of the list, which takes a moment for a big one, so it stays off the UI thread.</summary>
     private void Refresh()
     {
-        _ = Task.Run(() =>
+        _ = Task.Run(async () =>
         {
             try
             {
+                var check = await ReadHeldCheck();
                 var db = _connection.Db;
                 var state = WabbajackModlistInstallState.Read(db, File, _loadout);
-                var had = CountHeld(db);
+                var had = CountHeld(db, check);
                 RxApp.MainThreadScheduler.Schedule(() =>
                 {
                     State = state;
@@ -131,15 +134,25 @@ public partial class WabbajackModlistCardViewModel : AViewModel<IWabbajackModlis
         });
     }
 
-    private int CountHeld(IDb db)
+    /// <summary>
+    /// A copy that lacks the nested archives the list copies whole is not held, so the count needs the list's directives.
+    /// A list that cannot be read counts every copy, so the card still shows what the library has.
+    /// </summary>
+    private async Task<HeldArchiveCheck> ReadHeldCheck()
     {
-        var held = 0;
-        foreach (var row in WabbajackModlistArchive.FindByModlist(db, File.Value))
+        try
         {
-            if (_locator.FindByXxHash64(db, row.Identity) is not null) held++;
+            return await _provider.GetRequiredService<IModlistPlanner>().ReadHeldCheck(File, CancellationToken.None);
         }
-        return held;
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _provider.GetService<Microsoft.Extensions.Logging.ILogger<WabbajackModlistCardViewModel>>()?.LogDebug(e, "Could not read '{List}' to check its held archives", Name);
+            return HeldArchiveCheck.NothingNeeded;
+        }
     }
+
+    private int CountHeld(IDb db, HeldArchiveCheck check)
+        => WabbajackModlistArchive.FindByModlist(db, File.Value).Count(row => check.IsHeld(db, _locator, row.Identity));
 
     private void OpenPage(bool preferInstall)
     {

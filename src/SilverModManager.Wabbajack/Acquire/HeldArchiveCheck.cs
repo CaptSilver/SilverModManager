@@ -4,6 +4,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Library;
 using NexusMods.Paths;
 using SilverModManager.Wabbajack.Format;
 
@@ -72,6 +73,13 @@ public sealed class HeldArchiveCheck
         }
         return true;
     }
+
+    /// <summary>
+    /// Whether the library holds <paramref name="archive"/> by its xxHash64 and the copy is complete for the list.
+    /// This is the test for "held" that a plan, the inbox and the list's card share.
+    /// </summary>
+    public bool IsHeld(IDb db, ILibraryArchiveLocator locator, FileIdentity archive)
+        => locator.FindByXxHash64(db, archive) is { } held && IsComplete(db, archive, held);
 
     /// <summary>
     /// Follows <paramref name="parts"/> through the library's expanded archives the way the path resolver does, and

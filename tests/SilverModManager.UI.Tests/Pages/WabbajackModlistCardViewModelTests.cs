@@ -22,7 +22,10 @@ using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk.Dialog;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Models;
+using SilverModManager.UI.Tests.Pages.Collections;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
 namespace SilverModManager.UI.Tests.Pages;
@@ -57,10 +60,10 @@ public class WabbajackModlistCardViewModelTests(IServiceProvider provider) : AUi
         return (result.Remap(file).Id, loadout);
     }
 
-    private WabbajackModlistCardViewModel Card(EntityId file, Loadout.ReadOnly loadout)
+    private WabbajackModlistCardViewModel Card(EntityId file, Loadout.ReadOnly loadout, IServiceProvider? services = null)
     {
         _windows.ActiveWorkspaceController.Returns(_workspace);
-        return new WabbajackModlistCardViewModel(Provider, _windows, _workspaceId, WabbajackModlistLibraryFile.Load(Connection.Db, file), loadout.LoadoutId);
+        return new WabbajackModlistCardViewModel(services ?? Provider, _windows, _workspaceId, WabbajackModlistLibraryFile.Load(Connection.Db, file), loadout.LoadoutId);
     }
 
     /// <summary>An archive row for <paramref name="name"/>, hashed from its name; it is in the library when <paramref name="file"/> is given.</summary>
@@ -140,6 +143,67 @@ public class WabbajackModlistCardViewModelTests(IServiceProvider provider) : AUi
         await AddLibraryFile("late.7z", lateIdentity);
 
         await Eventually(() => card.ArchivesHad.Should().Be(2));
+    }
+
+    /// <summary>
+    /// A library file with the xxHash64 <paramref name="identity"/> that expanded as an archive with one nested archive
+    /// (<c>pack/inner.zip</c>) whose own bytes the file store does not hold, as an earlier import left it.
+    /// </summary>
+    private async Task AddArchiveLackingNestedBytes(string name, FileIdentity identity)
+    {
+        identity.TryXxHash64(out var xx).Should().BeTrue();
+        using var tx = Connection.BeginTransaction();
+        var outerBytes = System.Text.Encoding.UTF8.GetBytes(name + Guid.NewGuid());
+        var outer = new LibraryFile.New(tx, out var outerId)
+        {
+            FileName = name, Hash = outerBytes.xxHash3(), XxHash64 = xx, Size = Size.From(1_000),
+            LibraryItem = new LibraryItem.New(tx, outerId) { Name = name },
+        };
+        var outerArchive = new LibraryArchive.New(tx, outer.Id) { IsArchive = true, LibraryFile = outer };
+        var innerBytes = System.Text.Encoding.UTF8.GetBytes("inner" + Guid.NewGuid());
+        var inner = new LibraryFile.New(tx, out var innerId)
+        {
+            FileName = "inner.zip", Hash = innerBytes.xxHash3(), Size = Size.From(500),
+            LibraryItem = new LibraryItem.New(tx, innerId) { Name = "inner.zip" },
+        };
+        _ = new LibraryArchive.New(tx, inner.Id) { IsArchive = true, LibraryFile = inner };
+        _ = new LibraryArchiveFileEntry.New(tx, inner.Id) { Path = RelativePath.FromUnsanitizedInput("pack/inner.zip"), LibraryFile = inner, ParentId = outerArchive.Id };
+        await tx.Commit();
+    }
+
+    [Fact]
+    public async Task ArchivesHadLeavesOutAHeldArchiveThatLacksNestedArchivesTheListCopiesWhole()
+    {
+        var (file, loadout) = await AddList("Incomplete", archives: 2);
+        var (_, completeIdentity) = await AddArchive(file, "complete.7z");
+        await AddLibraryFile("complete.7z", completeIdentity);
+        var (_, lackingIdentity) = await AddArchive(file, "lacking.zip");
+        await AddArchiveLackingNestedBytes("lacking.zip", lackingIdentity);
+        var copy = new FromArchive(RelativePath.FromUnsanitizedInput("mods/A/x.bin"), FileIdentity.XxHash64(Hash.From(1UL)), 1, new ArchiveHashPath(lackingIdentity, [RelativePath.FromUnsanitizedInput("pack/inner.zip")]));
+        var list = new ModList("Incomplete", "", "", "1.0.0.0", null, "SkyrimSpecialEdition", [], "", "", "", "", false, [], [copy]);
+        var planner = Substitute.For<IModlistPlanner>();
+        planner.ReadHeldCheck(Arg.Any<LibraryFileId>(), Arg.Any<CancellationToken>())
+            .Returns(HeldArchiveCheck.For(list, Provider.GetRequiredService<SilverModManager.Sdk.FileStore.IFileStore>()));
+        var card = Card(file, loadout, new OverridingServices(Provider, typeof(IModlistPlanner), planner));
+        using var activation = card.Activator.Activate();
+
+        await Eventually(() => card.ArchivesHad.Should().Be(1, "the copy that lacks the nested archive has to be fetched again"));
+    }
+
+    [Fact]
+    public async Task ArchivesHadStillCountsEveryHeldArchiveWhenTheListCannotBeRead()
+    {
+        var (file, loadout) = await AddList("Unreadable", archives: 1);
+        var (_, identity) = await AddArchive(file, "held.7z");
+        await AddLibraryFile("held.7z", identity);
+        var planner = Substitute.For<IModlistPlanner>();
+        planner.ReadHeldCheck(Arg.Any<LibraryFileId>(), Arg.Any<CancellationToken>())
+            .Returns<Task<HeldArchiveCheck>>(_ => throw new InvalidOperationException("no list"));
+        var card = Card(file, loadout, new OverridingServices(Provider, typeof(IModlistPlanner), planner));
+        using var activation = card.Activator.Activate();
+
+        await Eventually(() => card.State.Should().Be(WabbajackModlistCardState.NotInstalled));
+        card.ArchivesHad.Should().Be(1);
     }
 
     [Fact]

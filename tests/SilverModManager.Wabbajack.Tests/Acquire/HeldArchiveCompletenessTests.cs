@@ -227,6 +227,35 @@ public class HeldArchiveCompletenessTests(ITestOutputHelper helper) : AcquireTes
         read.ToArray().Should().Equal(zip.InnerBytes);
     }
 
+    [Fact]
+    public async Task IsHeldIsFalseForAnArchiveThatLacksTheNestedArchiveTheListCopiesWhole()
+    {
+        await using var zip = await BuildNestedZip();
+        await AddWithoutNestedBytes(zip);
+        var plan = await Plan(zip, Http, Copy(zip, InnerZip));
+
+        plan.Check!.IsHeld(Connection.Db, Locator, zip.OuterHash).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsHeldIsTrueForACompleteArchiveAndForOneNoDirectiveReadsNestedArchivesFrom()
+    {
+        await using var zip = await BuildNestedZip();
+        await AddWithoutNestedBytes(zip);
+        var plan = await Plan(zip, Http, Copy(zip, InnerZip, InnerMember));
+
+        plan.Check!.IsHeld(Connection.Db, Locator, zip.OuterHash).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task IsHeldIsFalseForAnArchiveTheLibraryDoesNotHold()
+    {
+        await using var zip = await BuildNestedZip();
+        var plan = await Plan(zip, Http, Copy(zip, InnerZip));
+
+        plan.Check!.IsHeld(Connection.Db, Locator, zip.OuterHash).Should().BeFalse();
+    }
+
     private ArchivePathResolver Resolver(ArchivePlan plan, SilverModManager.Sdk.Loadouts.Loadout.ReadOnly loadout)
         => new(plan, Connection.Db, FileStore, Inventory.GameFilesFor(loadout), [], NullLogger.Instance);
 }

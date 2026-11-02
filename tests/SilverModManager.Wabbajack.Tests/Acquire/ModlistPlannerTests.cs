@@ -5,6 +5,7 @@ using NexusMods.Paths;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Library;
 using SilverModManager.Wabbajack.Tests.Fixtures;
 
 namespace SilverModManager.Wabbajack.Tests.Acquire;
@@ -41,5 +42,19 @@ public class ModlistPlannerTests(ITestOutputHelper helper) : AcquireTestBase<Mod
         var act = () => Planner.BuildPlan(file, null, null, TestContext.Current.CancellationToken);
 
         (await act.Should().ThrowAsync<ModlistGameMissingException>()).Which.Message.Should().Contain("not installed");
+    }
+
+    [Fact]
+    public async Task TheHeldArchiveCheckOfAListKnowsTheNestedArchivesItsDirectivesCopyWhole()
+    {
+        await using var zip = await BuildNestedZip();
+        await AddWithoutNestedBytes(zip);
+        var copy = new FromArchive(RelativePath.FromUnsanitizedInput("mods/A/x.bin"), Xx64.From(1), 1, new ArchiveHashPath(zip.OuterHash, [InnerZip]));
+        var file = await AddList(ListWith(Entry(new HttpState(new Uri("https://example.test/a.7z"), []), zip.OuterHash, name: "outer.zip")) with { Directives = [copy] });
+
+        var check = await Planner.ReadHeldCheck(file, TestContext.Current.CancellationToken);
+
+        check.IsHeld(Connection.Db, ServiceProvider.GetRequiredService<ILibraryArchiveLocator>(), zip.OuterHash).Should().BeFalse();
+        (await Planner.ReadHeldCheck(file, TestContext.Current.CancellationToken)).Should().BeSameAs(check, "the list is read once");
     }
 }
