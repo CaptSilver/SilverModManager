@@ -107,6 +107,26 @@ public class BsaMemberOpenerTests : IDisposable
     }
 
     [Fact]
+    public async Task AnOpenedArchiveHoldsNoMoreContainerStreamsThanItHasReaders()
+    {
+        var bytes = await TestArchives.Tes5Archive(_temp);
+        var open = 0;
+        var mostOpen = 0;
+        await using var archive = await new BsaMemberOpener(readersPerArchive: 3).OpenArchive(_ =>
+        {
+            var now = Interlocked.Increment(ref open);
+            int seen;
+            while ((seen = Volatile.Read(ref mostOpen)) < now && Interlocked.CompareExchange(ref mostOpen, now, seen) != seen) { }
+            return Task.FromResult<Stream>(new MemoryStream(bytes));
+        }, CancellationToken.None);
+
+        await Task.WhenAll(Enumerable.Range(0, 40).Select(_ => Task.Run(async () =>
+            await ReadAll(await archive.Open(TestArchives.FirstMemberPath, CancellationToken.None)))));
+
+        mostOpen.Should().BeInRange(1, 3);
+    }
+
+    [Fact]
     public async Task AContainerThatIsNotAnArchiveIsAMemberNotFoundWhenItIsOpened()
     {
         var failure = await Record.ExceptionAsync(async () =>

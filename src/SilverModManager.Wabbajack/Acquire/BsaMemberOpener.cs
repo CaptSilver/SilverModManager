@@ -10,6 +10,27 @@ namespace SilverModManager.Wabbajack.Acquire;
 /// </summary>
 public sealed class BsaMemberOpener : INestedArchiveOpener
 {
+    /// <summary>
+    /// How many readers an opened archive keeps, so how many threads extract from one archive at once. Each holds its
+    /// own entry table and a stream of the container whose cache of decompressed chunks can reach 16 MiB, so the count
+    /// caps what a large archive costs while it is open (about 20 MB a reader). A list draws most members from a few
+    /// large archives, where one reader extracts about 400 MB/s of compressed members and the gain flattens at four
+    /// (BsaMemberOpenerBenchmarks), so four on a machine with the cores for it and two on a small one.
+    /// </summary>
+    internal static readonly int DefaultReadersPerArchive = Math.Clamp(Environment.ProcessorCount / 4, 2, 4);
+
+    private readonly int _readersPerArchive;
+
+    public BsaMemberOpener() : this(DefaultReadersPerArchive)
+    {
+    }
+
+    internal BsaMemberOpener(int readersPerArchive)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(readersPerArchive, 1);
+        _readersPerArchive = readersPerArchive;
+    }
+
     // Under the large object heap's 85 KB threshold: a buffer per member copy would otherwise be a LOH array each.
     private const int BufferSize = 64 * 1024;
 
@@ -18,7 +39,7 @@ public sealed class BsaMemberOpener : INestedArchiveOpener
 
     /// <summary>Reads the archive's index once; its readers, one for each thread reading at the same time, are kept until it is disposed.</summary>
     public Task<INestedArchive> OpenArchive(Func<CancellationToken, Task<Stream>> openContainer, CancellationToken cancellationToken)
-        => Task.FromResult<INestedArchive>(new OpenedArchive(openContainer));
+        => Task.FromResult<INestedArchive>(new OpenedArchive(openContainer, _readersPerArchive));
 
     public async Task<Stream?> Open(Stream archive, RelativePath member, CancellationToken cancellationToken)
     {
@@ -91,20 +112,14 @@ public sealed class BsaMemberOpener : INestedArchiveOpener
     }
 
     /// <summary>
-    /// How many readers an opened archive keeps. Each holds its own entry table and a stream of the container whose
-    /// cache of decompressed chunks can reach 16 MiB, so the count caps what a large archive costs while it is open.
-    /// </summary>
-    private const int ReadersPerArchive = 2;
-
-    /// <summary>
     /// An archive whose index is read once per reader. Reads on one reader are one at a time (they share a stream),
-    /// so a reader is lent to one member's copy and taken back. Threads beyond <see cref="ReadersPerArchive"/> wait
+    /// so a reader is lent to one member's copy and taken back. Threads beyond the reader count wait
     /// for a reader instead of opening another.
     /// </summary>
-    private sealed class OpenedArchive(Func<CancellationToken, Task<Stream>> openContainer) : INestedArchive
+    private sealed class OpenedArchive(Func<CancellationToken, Task<Stream>> openContainer, int readers) : INestedArchive
     {
         private readonly ConcurrentBag<ArchiveReader> _idle = [];
-        private readonly SemaphoreSlim _readers = new(ReadersPerArchive);
+        private readonly SemaphoreSlim _readers = new(readers);
         private int _disposed;
 
         public async Task<Stream?> Open(RelativePath member, CancellationToken cancellationToken)
