@@ -167,4 +167,50 @@ public class ObserveLatestOnTests
 
         seen.Should().Equal("1", "2", "done");
     }
+
+    /// <summary>An observer that records every call and does not filter any after disposal, as <c>Subscribe</c>'s wrapper would.</summary>
+    private sealed class RawObserver(List<string> seen, Action<int>? onValue = null) : IObserver<int>
+    {
+        public void OnNext(int value)
+        {
+            seen.Add($"{value}");
+            onValue?.Invoke(value);
+        }
+
+        public void OnError(Exception error) => seen.Add($"error {error.Message}");
+
+        public void OnCompleted() => seen.Add("done");
+    }
+
+    [Fact]
+    public void ACompletionIsNotDeliveredAfterTheObserverDisposesInsideTheLastValue()
+    {
+        var scheduler = new QueuedScheduler();
+        var source = new Subject<int>();
+        var seen = new List<string>();
+        var subscription = new System.Reactive.Disposables.SingleAssignmentDisposable();
+        subscription.Disposable = source.ObserveLatestOn(scheduler).Subscribe(new RawObserver(seen, _ => subscription.Dispose()));
+
+        source.OnNext(7);
+        source.OnCompleted();
+        scheduler.RunAll();
+
+        seen.Should().Equal("7");
+    }
+
+    [Fact]
+    public void AFailureIsNotDeliveredAfterTheObserverDisposesInsideTheLastValue()
+    {
+        var scheduler = new QueuedScheduler();
+        var source = new Subject<int>();
+        var seen = new List<string>();
+        var subscription = new System.Reactive.Disposables.SingleAssignmentDisposable();
+        subscription.Disposable = source.ObserveLatestOn(scheduler).Subscribe(new RawObserver(seen, _ => subscription.Dispose()));
+
+        source.OnNext(7);
+        source.OnError(new InvalidOperationException("the run failed"));
+        scheduler.RunAll();
+
+        seen.Should().Equal("7");
+    }
 }
