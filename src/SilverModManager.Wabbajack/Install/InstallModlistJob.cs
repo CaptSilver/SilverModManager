@@ -354,7 +354,13 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
         // Files for an archive no CreateBsa directive builds go nowhere either.
         var built = list.Directives.OfType<CreateBsa>().Select(b => Fold(b.TempId)).ToHashSet();
-        Progress.AddDropped(placements.Count(p => p.Target is Mo2Target.BsaInput input && !built.Contains(Fold(input.TempId))));
+        var unbuilt = placements.Where(p => p.Target is Mo2Target.BsaInput input && !built.Contains(Fold(input.TempId))).ToArray();
+        Progress.AddDropped(unbuilt.Length);
+        foreach (var group in unbuilt.GroupBy(p => ((Mo2Target.BsaInput)p.Target).TempId.ToString()))
+        {
+            Logger.LogWarning("Dropped {Count} file(s) for archive '{TempId}' of '{List}' because no directive builds it: {Inputs}",
+                group.Count(), group.Key, list.Name, string.Join(", ", group.Select(p => p.To.ToString()).Take(SkipExamplesLogged)));
+        }
     }
 
     #endregion
@@ -575,6 +581,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         /// <summary>Directive destinations, folded, to the file store hash and xxHash64 of what was written, for merges to read back and check.</summary>
         public ConcurrentDictionary<string, (FileIdentity Store, FileIdentity XxHash64)> Written { get; } = new();
 
+        /// <summary>Where each kind of skip happened, in the order the rows were written; only the thread that writes rows touches it.</summary>
+        public Dictionary<SkipKind, List<string>> Skipped { get; } = new();
+
         private readonly object _pendingLock = new();
         private List<GeneratedFile> _pending = new();
         private long _pendingBytes;
@@ -679,6 +688,19 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         }
 
         await RemoveStaleFiles(state);
+        LogSkipSummary(check, state);
+    }
+
+    private const int SkipExamplesLogged = 5;
+
+    /// <summary>One line per kind of skip, so a list that skips thousands of files stays readable in the log; each skip has its own warning already.</summary>
+    private void LogSkipSummary(Checked check, WriteState state)
+    {
+        foreach (var (kind, paths) in state.Skipped.OrderBy(pair => pair.Key))
+        {
+            Logger.LogInformation("{Count} file(s) of '{List}' were skipped as {Kind}, for example: {Examples}",
+                paths.Count, check.List.Name, kind, string.Join(", ", paths.Take(SkipExamplesLogged)));
+        }
     }
 
     /// <summary>
@@ -1054,9 +1076,17 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             Kind = kind,
         };
 
+        Logger.LogWarning("Skipped '{To}' of '{List}' ({Kind}): {Reason}", placement.To, check.List.Name, kind, reason);
+        if (!state.Skipped.TryGetValue(kind, out var skippedOfKind)) state.Skipped[kind] = skippedOfKind = new List<string>();
+        skippedOfKind.Add(placement.To.ToString());
+
         // An archive that could not be built takes its inputs with it: they are not installed anywhere else.
         if (placement.Directive is CreateBsa bsa && check.BsaInputs.TryGetValue(Fold(bsa.TempId), out var inputs))
+        {
             Progress.AddDropped(inputs.Count);
+            Logger.LogWarning("Dropped {Count} input file(s) of '{To}' in '{List}' because the archive was not built ({Reason}): {Inputs}",
+                inputs.Count, placement.To, check.List.Name, reason, string.Join(", ", inputs.Values.Select(i => i.To.ToString())));
+        }
     }
 
     /// <summary>
@@ -1505,7 +1535,17 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                     throw new DirectiveSkipped(SkipKind.MemberNotFound, $"the archive '{bsa.To}' needs '{path}', which no directive writes");
 
                 var member = input.Directive is FromArchive from ? await ResolveMember(rows, from, cancellationToken) : null;
-                var temporary = await Writer.WriteTemporary(file => WriteBytes(check, extras, input, member, file, cancellationToken));
+                TemporaryPath temporary;
+                try
+                {
+                    temporary = await Writer.WriteTemporary(file => WriteBytes(check, extras, input, member, file, cancellationToken));
+                }
+                catch (UnsupportedTextureFormatException unsupported)
+                {
+                    // The member's own path says which texture failed; the input's directive path is a temp folder name.
+                    var format = input.Directive is TransformedTexture texture ? texture.Image.Format : "unknown";
+                    throw new DirectiveSkipped(SkipKind.Transform, $"the archive '{bsa.To}' could not be built: the texture '{path}' in it could not be re-encoded to {format}: {unsupported.Message}");
+                }
                 spilled.Add(temporary);
                 return temporary.Path.Read();
             }

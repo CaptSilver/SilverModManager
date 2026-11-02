@@ -37,6 +37,18 @@ public class SkippedFilesTests(ITestOutputHelper helper) : InstallTestBase<Skipp
     }
 
     [Fact]
+    public async Task EachListedPathIsFollowedByTheReasonTheModlistPageShows()
+    {
+        var loadout = await CreateLoadout();
+        var group = await AddGroup(loadout, "List");
+        await AddSkips(group, "Mods/A/a.esp");
+
+        var text = Text((await Diagnose(loadout)).Should().ContainSingle().Subject);
+
+        text.Should().Contain("`Mods/A/a.esp`: test");
+    }
+
+    [Fact]
     public async Task OnlyTheFirstTenPathsAreListed()
     {
         var loadout = await CreateLoadout();

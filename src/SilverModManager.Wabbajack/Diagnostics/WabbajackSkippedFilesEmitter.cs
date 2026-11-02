@@ -33,10 +33,10 @@ public sealed class WabbajackSkippedFilesEmitter : ILoadoutDiagnosticEmitter
             var item = group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem();
             if (item.LoadoutId != loadout.LoadoutId) continue;
 
-            var skipped = WabbajackSkippedFile.FindByGroup(db, group.Id).Select(row => row.To).Order(StringComparer.Ordinal).ToArray();
+            var skipped = WabbajackSkippedFile.FindByGroup(db, group.Id).Select(row => (Path: row.To, row.Reason)).OrderBy(row => row.Path, StringComparer.Ordinal).ToArray();
             if (skipped.Length == 0) continue;
 
-            var paths = string.Join('\n', skipped.Take(MaxPathsListed).Select(path => $"- `{path}`"));
+            var paths = string.Join('\n', skipped.Take(MaxPathsListed).Select(row => $"- `{row.Path}`: {row.Reason}"));
             if (skipped.Length > MaxPathsListed) paths += $"\n- and {skipped.Length - MaxPathsListed} more";
 
             yield return WabbajackDiagnostics.CreateModlistFilesSkipped(
