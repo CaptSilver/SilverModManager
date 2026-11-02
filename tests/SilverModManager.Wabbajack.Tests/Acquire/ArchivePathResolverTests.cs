@@ -30,9 +30,12 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
     private static RelativePath P(string path) => RelativePath.FromUnsanitizedInput(path);
 
     private ArchivePathResolver Resolver(ArchivePlan plan, Loadout.ReadOnly loadout, params INestedArchiveOpener[] openers)
+        => ResolverOver(FileStore, plan, loadout, openers);
+
+    private ArchivePathResolver ResolverOver(IFileStore store, ArchivePlan plan, Loadout.ReadOnly loadout, params INestedArchiveOpener[] openers)
     {
-        var resolver = new ArchivePathResolver(plan, Connection.Db, FileStore,
-            new GameFileSourceLookup(loadout, Connection, FileStore, ServiceProvider.GetRequiredService<IFileIdentityResolver>(), ServiceProvider.GetRequiredService<IFileHashesService>()),
+        var resolver = new ArchivePathResolver(plan, Connection.Db, store,
+            new GameFileSourceLookup(loadout, Connection, store, ServiceProvider.GetRequiredService<IFileIdentityResolver>(), ServiceProvider.GetRequiredService<IFileHashesService>()),
             openers);
         _resolvers.Add(resolver);
         return resolver;
@@ -351,6 +354,104 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
         (commits - before).Should().BeLessThanOrEqualTo(1, "the hashes are written together, not one commit per file");
         foreach (var member in members)
             LibraryFile.Load(Connection.Db, member.Id).XxHash64Identity().Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task DisposingStopsACopyStillInProgressAfterTheCallerGaveUp()
+    {
+        var counting = new CountingBackups(FileStore);
+        var (_, archive) = await ResolverOverZip(new() { [P("textures.bsa")] = "BSA\0not really"u8.ToArray() });
+        var hanging = new HangingOpener();
+        var resolver = ResolverOver(counting, new ArchivePlan([]), await CreateLoadout(), hanging);
+        using var caller = new CancellationTokenSource();
+        var resolving = resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P("a.dds")]), caller.Token);
+        await hanging.Reading.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        await caller.CancelAsync();
+        (await Record.ExceptionAsync(() => resolving)).Should().BeAssignableTo<OperationCanceledException>();
+        await resolver.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        hanging.Cancelled.Should().BeTrue("the copy belongs to the resolver, which stops it when it is disposed");
+        counting.Calls.Should().Be(0, "nothing may be backed up once the job has returned");
+    }
+
+    [Fact]
+    public async Task DisposingStopsABackUpStillInProgressAfterTheCallerGaveUp()
+    {
+        var slow = new SlowBackups(FileStore);
+        var inner = System.Text.Encoding.UTF8.GetBytes($"opener output {Guid.NewGuid()}");
+        var (_, archive) = await ResolverOverZip(new() { [P("textures.bsa")] = "BSA\0not really"u8.ToArray() });
+        var resolver = ResolverOver(slow, new ArchivePlan([]), await CreateLoadout(), new FakeOpener(inner));
+        using var caller = new CancellationTokenSource();
+        var resolving = resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P("a.dds")]), caller.Token);
+        await slow.Started.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        await caller.CancelAsync();
+        (await Record.ExceptionAsync(() => resolving)).Should().BeAssignableTo<OperationCanceledException>();
+        await resolver.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        slow.Cancelled.Should().BeTrue("the back up is told to stop, not left running against the store");
+        FileStorePins.Pinned().Should().NotContain(FileIdentity.XxHash3(inner.xxHash3()));
+    }
+
+    private sealed class SlowBackups(IFileStore inner) : ForwardingFileStore(inner)
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public bool Cancelled { get; private set; }
+
+        public override async Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null)
+        {
+            Started.TrySetResult();
+            try
+            {
+                await Task.Delay(Timeout.Infinite, token);
+            }
+            catch (OperationCanceledException)
+            {
+                Cancelled = true;
+                throw;
+            }
+        }
+    }
+
+    /// <summary>Hands back a stream whose first read waits until it is cancelled.</summary>
+    private sealed class HangingOpener : INestedArchiveOpener
+    {
+        public TaskCompletionSource Reading { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public bool Cancelled { get; private set; }
+
+        public bool CanOpen(RelativePath name) => name.Extension == new Extension(".bsa");
+
+        public Task<Stream?> Open(Stream archive, RelativePath member, CancellationToken cancellationToken) => Task.FromResult<Stream?>(new HangingStream(this));
+
+        private sealed class HangingStream(HangingOpener owner) : Stream
+        {
+            public override bool CanRead => true;
+            public override bool CanSeek => false;
+            public override bool CanWrite => false;
+            public override long Length => throw new NotSupportedException();
+            public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+            public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+            public override void Flush() { }
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+            public override void SetLength(long value) => throw new NotSupportedException();
+            public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+            public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            {
+                owner.Reading.TrySetResult();
+                try
+                {
+                    await Task.Delay(Timeout.Infinite, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    owner.Cancelled = true;
+                    throw;
+                }
+                return 0;
+            }
+        }
     }
 
     private sealed class CountingOpener(byte[] content, int rendezvous = 0) : INestedArchiveOpener

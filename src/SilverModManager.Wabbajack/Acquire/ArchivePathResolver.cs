@@ -34,14 +34,16 @@ public interface INestedArchiveOpener
 /// Turns a directive's <see cref="ArchiveHashPath"/> into bytes in the file store. Create one per job: it keeps one
 /// case-folded index of the entries per archive, built on first use, so resolving thousands of directives against one
 /// archive reads its entry rows once. Bytes it backs up are pinned against garbage collection until it is disposed,
-/// since nothing in the database references them until the install writes the loadout file that uses them.
+/// since nothing in the database references them until the install writes the loadout file that uses them. Copying a
+/// member into the store belongs to the resolver, not to the call that asked for it: a call that gives up stops
+/// waiting, and <see cref="DisposeAsync"/> stops the copies still running and waits for them before releasing the pins.
 /// </summary>
 public sealed class ArchivePathResolver(
     ArchivePlan plan,
     IDb db,
     IFileStore store,
     GameFileSourceLookup gameFiles,
-    IEnumerable<INestedArchiveOpener> openers) : IDisposable
+    IEnumerable<INestedArchiveOpener> openers) : IDisposable, IAsyncDisposable
 {
     private const int HashBufferSize = 1024 * 1024;
 
@@ -61,6 +63,8 @@ public sealed class ArchivePathResolver(
     private readonly List<(EntityId File, FileIdentity XxHash64)> _unrecorded = [];
     private readonly SemaphoreSlim _recordLock = new(1, 1);
     private readonly List<IDisposable> _pins = [];
+    private readonly CancellationTokenSource _lifetime = new();
+    private readonly ConcurrentDictionary<Task, byte> _copies = new();
     private bool _disposed;
     private int _indexesBuilt;
 
@@ -201,10 +205,10 @@ public sealed class ArchivePathResolver(
             throw new MemberNotFoundException($"cannot look for '{remaining[1]}' inside '{remaining[0]}' inside '{containerName}': archives nested in {name.Extension} files are not supported");
 
         var member = remaining[0];
-        async Task<Stream> OpenMember()
+        async Task<Stream> OpenMember(CancellationToken copyToken)
         {
-            await using var archive = await store.GetFileStream(containerHash, cancellationToken);
-            return await opener.Open(archive, member, cancellationToken)
+            await using var archive = await store.GetFileStream(containerHash, copyToken);
+            return await opener.Open(archive, member, copyToken)
                 ?? throw new MemberNotFoundException($"'{member}' is not in '{containerName}'");
         }
 
@@ -217,11 +221,11 @@ public sealed class ArchivePathResolver(
     /// </summary>
     private Task<ResolvedMember> ResolveGameFile(GameFileSourceState state, CancellationToken cancellationToken)
     {
-        async Task<Stream> OpenGameFile()
+        async Task<Stream> OpenGameFile(CancellationToken copyToken)
         {
             try
             {
-                return (await gameFiles.Open(state.GameFile, cancellationToken)).Stream;
+                return (await gameFiles.Open(state.GameFile, copyToken)).Stream;
             }
             catch (FileNotFoundException e)
             {
@@ -238,17 +242,27 @@ public sealed class ArchivePathResolver(
     /// doing it, and different keys go ahead together. <paramref name="open"/> is called once; the stream is hashed and,
     /// when the store lacks the bytes, read again from the start.
     /// </summary>
-    private Task<ResolvedMember> Store(string key, Func<Task<Stream>> open, CancellationToken cancellationToken)
+    private Task<ResolvedMember> Store(string key, Func<CancellationToken, Task<Stream>> open, CancellationToken cancellationToken)
     {
-        var entry = _stored.GetOrAdd(key, _ => new Lazy<Task<ResolvedMember>>(() => StoreOnce(key, open)));
+        var entry = _stored.GetOrAdd(key, _ => new Lazy<Task<ResolvedMember>>(() => Track(StoreOnce(key, open))));
         return entry.Value.WaitAsync(cancellationToken);
     }
 
-    private async Task<ResolvedMember> StoreOnce(string key, Func<Task<Stream>> open)
+    /// <summary>Remembers a copy until it ends, for <see cref="DisposeAsync"/> to wait for.</summary>
+    private Task<ResolvedMember> Track(Task<ResolvedMember> copy)
     {
+        _copies[copy] = 0;
+        _ = copy.ContinueWith(done => _copies.TryRemove(done, out _), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        return copy;
+    }
+
+    private async Task<ResolvedMember> StoreOnce(string key, Func<CancellationToken, Task<Stream>> open)
+    {
+        // Not the asking call's token: that call may give up while others wait for the same copy.
+        var cancellationToken = _lifetime.Token;
         try
         {
-            return await StoreBytes(await OpenSeekable(open));
+            return await StoreBytes(await OpenSeekable(open, cancellationToken), cancellationToken);
         }
         catch
         {
@@ -258,9 +272,8 @@ public sealed class ArchivePathResolver(
         }
     }
 
-    private async Task<ResolvedMember> StoreBytes(Stream source)
+    private async Task<ResolvedMember> StoreBytes(Stream source, CancellationToken cancellationToken)
     {
-        var cancellationToken = CancellationToken.None;
         FileIdentity xxHash3, xxHash64;
         Size size;
         await using (source)
@@ -275,7 +288,7 @@ public sealed class ArchivePathResolver(
             await store.BackupFiles([new ArchivedFileEntry(new OneShotStreamFactory(source), xxHash3, size)], deduplicate: true, cancellationToken);
         }
 
-        return new ResolvedMember(xxHash3, xxHash64, size, async () => await store.GetFileStream(xxHash3, cancellationToken));
+        return new ResolvedMember(xxHash3, xxHash64, size, async () => await store.GetFileStream(xxHash3, CancellationToken.None));
     }
 
     private void Pin(FileIdentity identity)
@@ -294,9 +307,24 @@ public sealed class ArchivePathResolver(
         pin.Dispose();
     }
 
-    /// <summary>Releases the pins on everything this resolver backed up.</summary>
+    /// <summary>
+    /// Stops the copies still running, waits for them, then releases the pins on everything this resolver backed up. A
+    /// copy that was cancelled leaves nothing pinned and nothing running against the store.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        await _lifetime.CancelAsync();
+        foreach (var copy in _copies.Keys)
+        {
+            try { await copy; } catch { /* its failure went to whoever asked for it; here it only has to be over */ }
+        }
+        Dispose();
+    }
+
+    /// <summary>Stops the copies still running and releases the pins without waiting for them; prefer <see cref="DisposeAsync"/>.</summary>
     public void Dispose()
     {
+        _lifetime.Cancel();
         lock (_pins)
         {
             _disposed = true;
@@ -309,9 +337,9 @@ public sealed class ArchivePathResolver(
     /// The store's packer reads its inputs by offset, so a stream that cannot seek (a decompressor an opener hands back,
     /// say) is spooled to a temp file first.
     /// </summary>
-    private static async Task<Stream> OpenSeekable(Func<Task<Stream>> open)
+    private static async Task<Stream> OpenSeekable(Func<CancellationToken, Task<Stream>> open, CancellationToken cancellationToken)
     {
-        var source = await open();
+        var source = await open(cancellationToken);
         if (source.CanSeek) return source;
 
         await using (source)
@@ -320,7 +348,7 @@ public sealed class ArchivePathResolver(
                 bufferSize: HashBufferSize, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
             try
             {
-                await source.CopyToAsync(spool);
+                await source.CopyToAsync(spool, cancellationToken);
                 spool.Position = 0;
                 return spool;
             }

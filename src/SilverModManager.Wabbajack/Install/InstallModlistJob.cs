@@ -149,8 +149,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                     Logger.LogWarning(e, "Could not record the hashes computed for the library files of '{List}'", Modlist.Name);
                 }
 
-                // Releases the pins on the bytes the resolver backed up; the loadout files now reference them.
-                resolver.Dispose();
+                // Stops copies still running, then releases the pins on the bytes the resolver backed up; the loadout files now reference them.
+                await resolver.DisposeAsync();
             }
         }
 
