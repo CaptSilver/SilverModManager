@@ -64,10 +64,15 @@ public class WabbajackModlistViewTests(IServiceProvider provider) : AUiTest(prov
 
         await OnUi(() =>
         {
-            var texts = ShownTexts(view);
+            var viewModel = (WabbajackModlistDesignViewModel)view.DataContext!;
+            var header = viewModel.RunningStatus.Text;
+            header.Should().StartWith("Hashing game files", "the collection page header draws the running check");
+
+            // The header sits above this view on the collection page, so its line counts as part of the page.
+            var texts = ShownTexts(view).Append(header).ToArray();
             texts.Should().OnlyHaveUniqueItems();
-            texts.Should().NotContain(Checking, "the check has its own line with a bar");
-            texts.Should().ContainSingle(t => t.StartsWith("Hashing game files"));
+            texts.Should().NotContain(Checking, "the check is said once, by the header");
+            ShownTexts(view).Should().NotContain(t => t.StartsWith("Hashing game files"), "the tab no longer draws the running step");
         });
         await OnUi(window.Close);
     }
