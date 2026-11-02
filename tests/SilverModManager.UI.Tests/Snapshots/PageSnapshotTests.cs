@@ -291,7 +291,13 @@ LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = name, LoadoutId = loadou
     {
         var dates = DateComponentsIn(window);
         dates.Should().HaveCount(2, "both seeded mods' install dates have to be pinned");
-        foreach (var date in dates) date.FormattedValue.Value = "2 days ago";
+        // Pin the value as well as the text: the page's ticker re-formats the text from the value on its next
+        // tick, so a pinned string alone flips back to "one second ago" whenever a tick lands after this.
+        foreach (var date in dates)
+        {
+            date.Value.Value = DateTimeOffset.Now - TimeSpan.FromHours(49);
+            date.FormattedValue.Value = "2 days ago";
+        }
 
         // An auto column keeps the widest text it has seen, and before pinning the dates read "now" or "one second
         // ago" depending on timing, which moved every column after this one between runs.
