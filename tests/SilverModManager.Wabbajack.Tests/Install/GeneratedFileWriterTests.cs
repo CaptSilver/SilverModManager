@@ -22,6 +22,22 @@ public class GeneratedFileWriterTests(ITestOutputHelper helper) : InstallTestBas
     }
 
     [Fact]
+    public async Task HashingManySmallFilesDoesNotAllocateABigBufferForEach()
+    {
+        var bytes = "small"u8.ToArray();
+        // Warm up, so one-time setup is not counted.
+        await using (await Writer.Generate(async output => await output.WriteAsync(bytes), CancellationToken.None)) { }
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < 100; i++)
+            await using (await Writer.Generate(async output => await output.WriteAsync(bytes), CancellationToken.None)) { }
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        // A 1 MB buffer per file is 100 MB for these; the files themselves cost a few kilobytes each.
+        allocated.Should().BeLessThan(20L * 1024 * 1024);
+    }
+
+    [Fact]
     public async Task StoringKeepsTheBytesInTheFileStoreAndRemovesTheTemporaryFiles()
     {
         // More than two batches, so the batching is exercised.

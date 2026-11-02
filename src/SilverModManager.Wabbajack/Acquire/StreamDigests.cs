@@ -1,3 +1,4 @@
+using System.Buffers;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Hashes;
@@ -16,14 +17,22 @@ internal static class StreamDigests
     /// </summary>
     public static async Task<(FileIdentity XxHash3, FileIdentity XxHash64, Size Size)> HashAndCount(Stream stream, CancellationToken cancellationToken)
     {
-        var buffer = GC.AllocateUninitializedArray<byte>(BufferSize);
+        // Rented: a fresh 1 MB array per file lands on the large object heap, and an install hashes one file after another.
+        var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
         var state = DigestHasher.Initialize();
         long length = 0;
-        int read;
-        while ((read = await stream.ReadAsync(buffer, cancellationToken)) > 0)
+        try
         {
-            state = DigestHasher.Update(state, buffer, 0, read);
-            length += read;
+            int read;
+            while ((read = await stream.ReadAsync(buffer.AsMemory(0, BufferSize), cancellationToken)) > 0)
+            {
+                state = DigestHasher.Update(state, buffer, 0, read);
+                length += read;
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
         }
         var hashes = DigestHasher.Finish(state);
         return (FileIdentity.XxHash3(hashes.Hash1), FileIdentity.XxHash64(hashes.Hash2), Size.FromLong(length));

@@ -141,7 +141,8 @@ public class InstallModlistBenchmarkTests(ITestOutputHelper helper) : InstallTes
         });
 
         var watch = Stopwatch.StartNew();
-        var job = NewJob(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+        var workers = int.TryParse(Environment.GetEnvironmentVariable("SILVER_BENCH_WORKERS"), out var w) ? w : (int?)null;
+        var job = NewJob(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()), parallelism: workers);
         var phaseStarts = new Dictionary<InstallPhase, TimeSpan>();
         using var progress = job.Progress.Changes.Subscribe(snapshot =>
         {
@@ -154,7 +155,7 @@ public class InstallModlistBenchmarkTests(ITestOutputHelper helper) : InstallTes
         await sampler;
 
         var directives = list.Directives.Count;
-        var line = ($"BENCH directives={directives} wall={watch.Elapsed.TotalSeconds:F1}s commits={commits} " +
+        var line = ($"BENCH workers={workers?.ToString() ?? "default"} directives={directives} wall={watch.Elapsed.TotalSeconds:F1}s commits={commits} " +
                          $"startManagedMB={startManaged / 1048576} peakManagedMB={peakManaged / 1048576} peakWorkingSetMB={peakWorkingSet / 1048576} startWorkingSetMB={startWorkingSet / 1048576} " +
                          $"gcPeakHeapMB={GC.GetGCMemoryInfo().HeapSizeBytes / 1048576} gen2={GC.CollectionCount(2)}");
         foreach (var (name, peak) in byPhase)

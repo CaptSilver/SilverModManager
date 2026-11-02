@@ -71,6 +71,20 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
     }
 
     [Fact]
+    public async Task PatchesRunOnFewerWorkersThanOtherDirectivesBecauseEachAllocatesMegabytes()
+    {
+        var (list, _) = await PatchList(8);
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var group = await Run(NewJob(loadout, modlist, Defaults, parallelism: 16));
+
+        SkipsOf(group).Should().BeEmpty();
+        TreeOf(group)["A"].Should().HaveCount(8);
+        _transforms.MaxConcurrentPatch.Should().BeInRange(1, 2, "an eighth of 16 workers, and Octodiff allocates megabytes for each patch");
+    }
+
+    [Fact]
     public async Task WorkInFlightStaysWithinTheByteBudget()
     {
         var (list, _) = await TextureList(6);
@@ -228,13 +242,14 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
     private sealed class TrackingTransforms : IDirectiveTransforms
     {
         private IDirectiveTransforms _inner = null!;
-        private int _recompressing, _maxRecompress, _patchArrived, _recompressArrived;
+        private int _recompressing, _maxRecompress, _patchArrived, _recompressArrived, _patching, _maxPatch;
         private readonly TaskCompletionSource _patchMet = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource _recompressMet = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public int PatchRendezvous { get; set; }
         public int RecompressRendezvous { get; set; }
         public int MaxConcurrentRecompress => Volatile.Read(ref _maxRecompress);
+        public int MaxConcurrentPatch => Volatile.Read(ref _maxPatch);
 
         public TrackingTransforms Over(IDirectiveTransforms inner)
         {
@@ -244,12 +259,26 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
 
         public async Task Patch(Stream basis, Stream delta, Stream output, CancellationToken cancellationToken)
         {
-            if (PatchRendezvous > 0)
+            var now = Interlocked.Increment(ref _patching);
+            int seen;
+            while ((seen = Volatile.Read(ref _maxPatch)) < now && Interlocked.CompareExchange(ref _maxPatch, now, seen) != seen) { }
+            try
             {
-                if (Interlocked.Increment(ref _patchArrived) >= PatchRendezvous) _patchMet.TrySetResult();
-                await _patchMet.Task.WaitAsync(TimeSpan.FromSeconds(60), cancellationToken);
+                if (PatchRendezvous > 0)
+                {
+                    if (Interlocked.Increment(ref _patchArrived) >= PatchRendezvous) _patchMet.TrySetResult();
+                    await _patchMet.Task.WaitAsync(TimeSpan.FromSeconds(60), cancellationToken);
+                }
+                else
+                {
+                    await Task.Delay(30, cancellationToken);
+                }
+                await _inner.Patch(basis, delta, output, cancellationToken);
             }
-            await _inner.Patch(basis, delta, output, cancellationToken);
+            finally
+            {
+                Interlocked.Decrement(ref _patching);
+            }
         }
 
         public async Task Recompress(Stream dds, ImageState target, Stream output, CancellationToken cancellationToken)

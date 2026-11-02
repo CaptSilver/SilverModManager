@@ -669,8 +669,11 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     {
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         using var slots = new SemaphoreSlim(workers);
+        // Octodiff allocates megabytes of buffers for every patch whatever its size, and patching is mostly copying, so
+        // it gets few workers; the garbage it leaves is what a patch-heavy list would otherwise pile up.
+        using var patchSlots = new SemaphoreSlim(Math.Max(2, workers / 8));
         var results = Channel.CreateBounded<Task<Outcome>>(new BoundedChannelOptions(Math.Max(256, workers * 4)) { SingleReader = true, SingleWriter = true });
-        var admitting = Task.Run(() => Admit(check, state, extras, budget, slots, results.Writer, prepared, start, end, stop.Token), CancellationToken.None);
+        var admitting = Task.Run(() => Admit(check, state, extras, budget, slots, patchSlots, results.Writer, prepared, start, end, stop.Token), CancellationToken.None);
 
         try
         {
@@ -700,7 +703,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         }
     }
 
-    private async Task Admit(Checked check, WriteState state, ExtrasFolder extras, ByteBudget budget, SemaphoreSlim slots,
+    private async Task Admit(Checked check, WriteState state, ExtrasFolder extras, ByteBudget budget, SemaphoreSlim slots, SemaphoreSlim patchSlots,
         ChannelWriter<Task<Outcome>> results, IReadOnlyList<Prepared> prepared, int start, int end, CancellationToken cancellationToken)
     {
         try
@@ -715,11 +718,21 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 }
                 else
                 {
+                    var patching = item.Placement.Directive is PatchedFromArchive or MergedPatch;
                     await slots.WaitAsync(cancellationToken);
                     IDisposable reservation;
                     try
                     {
-                        reservation = await budget.Reserve(WorkEstimate.Of(item.Placement.Directive, item.Member), cancellationToken);
+                        if (patching) await patchSlots.WaitAsync(cancellationToken);
+                        try
+                        {
+                            reservation = await budget.Reserve(WorkEstimate.Of(item.Placement.Directive, item.Member), cancellationToken);
+                        }
+                        catch
+                        {
+                            if (patching) patchSlots.Release();
+                            throw;
+                        }
                     }
                     catch
                     {
@@ -735,6 +748,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                         finally
                         {
                             reservation.Dispose();
+                            if (patching) patchSlots.Release();
                             slots.Release();
                         }
                     }, CancellationToken.None);
