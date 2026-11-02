@@ -624,7 +624,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         public HashSet<string> NewGroups { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>Per group, the files an earlier run (or this one) already created, as path and hash.</summary>
-        public Dictionary<string, Dictionary<(GamePath Path, FileIdentity Identity), KnownFile>> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, GroupFiles> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>Queues a generated file for the file store and returns how many are waiting and their bytes.</summary>
         public (int Count, long Bytes) AddPending(GeneratedFile file)
@@ -647,16 +647,6 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 return taken;
             }
         }
-    }
-
-    /// <summary>A file row of a group. <see cref="Ids"/> is empty for one made in this run, and <see cref="Wanted"/> is set once this run's list asks for it.</summary>
-    private sealed class KnownFile
-    {
-        public List<EntityId> Ids { get; } = [];
-        public bool Wanted { get; set; }
-
-        /// <summary>The xxHash64 the list gave the directive this file was written for, when the run that wrote it recorded one.</summary>
-        public FileIdentity? ListHash { get; set; }
     }
 
     /// <summary>The destinations of the <see cref="SkipKind.KeptOriginal"/> notes an earlier run left, which the resume deletes and so has to write again.</summary>
@@ -698,10 +688,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         if (!state.Files.TryGetValue(groupName, out var files)) return null;
         var expected = placement.Directive.XxHash64;
 
-        foreach (var (key, known) in files)
+        foreach (var (identity, known) in files.AtPath(path))
         {
-            if (key.Path != path) continue;
-            if (known.ListHash is { } recorded ? recorded.Equals(expected) : IsLibraryCopyOf(placement.Directive, key.Identity)) return (key.Identity, known);
+            if (known.ListHash is { } recorded ? recorded.Equals(expected) : IsLibraryCopyOf(placement.Directive, identity)) return (identity, known);
         }
         return null;
     }
@@ -1002,7 +991,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     {
         using var tx = Connection.BeginTransaction();
         var any = false;
-        foreach (var known in state.Files.Values.SelectMany(files => files.Values))
+        foreach (var known in state.Files.Values.SelectMany(files => files.Known))
         {
             // Rows beyond the first of a wanted file are duplicates a past run left.
             foreach (var id in known.Wanted ? known.Ids.Skip(1) : known.Ids)
@@ -1026,8 +1015,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             var files = state.Files[name] = new();
             foreach (var file in LoadoutItem.FindByParent(db, child.Id).OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile())
             {
-                var key = (file.AsLoadoutItemWithTargetPath().TargetPath, file.Identity);
-                if (!files.TryGetValue(key, out var known)) files[key] = known = new KnownFile();
+                var path = file.AsLoadoutItemWithTargetPath().TargetPath;
+                if (!files.TryGet(path, file.Identity, out var known)) known = files.Add(path, file.Identity, new KnownFile());
                 known.Ids.Add(file.Id);
                 if (WabbajackInstalledFile.ListHash.TryGetValue(file, out var listHash)) known.ListHash = listHash;
             }
@@ -1206,10 +1195,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     {
         if (placement.Group is not { } groupName || placement.Path is not { } path) return;
         if (!state.Files.TryGetValue(groupName, out var files)) return;
-        foreach (var (key, known) in files)
-        {
-            if (key.Path == path) known.Wanted = true;
-        }
+        foreach (var (_, known) in files.AtPath(path)) known.Wanted = true;
     }
 
     /// <summary>
@@ -1274,7 +1260,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     private void AddFile(ITransaction tx, LoadoutItemGroupId modlistGroup, WriteState state, string groupName, GamePath path, FileIdentity identity, Size size, FileIdentity listHash)
     {
         var expected = listHash;
-        if (state.Files.TryGetValue(groupName, out var known) && known.TryGetValue((path, identity), out var existing))
+        if (state.Files.TryGetValue(groupName, out var known) && known.TryGet(path, identity, out var existing))
         {
             existing.Wanted = true;
             // A file an earlier version of the app wrote carries no list hash; recording it lets the next run keep the file without reading anything.
@@ -1308,7 +1294,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 Size = size,
             },
         };
-        known[(path, identity)] = new KnownFile { Wanted = true, ListHash = expected };
+        known.Add(path, identity, new KnownFile { Wanted = true, ListHash = expected });
     }
 
     #endregion
