@@ -7,6 +7,7 @@ using SilverModManager.Backend;
 using SilverModManager.Library.Tests.DownloadsService;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Settings;
@@ -176,6 +177,47 @@ public class AddLibraryFileJobTests(IServiceProvider serviceProvider, IConnectio
         var brokenEntry = outer.Children.Single(c => c.Path.ToString() == "broken.zip").AsLibraryFile();
         brokenEntry.TryGetAsLibraryArchive(out _).Should().BeFalse("an archive that can't be opened is recorded as the file it is");
         brokenEntry.Size.Value.Should().Be((ulong)broken.Length);
+    }
+
+    [Fact]
+    public async Task AnArchiveNestedInADownloadKeepsItsOwnBytesInTheFileStore()
+    {
+        await using var folder = temporaryFileManager.CreateFolder();
+        var innerBytes = BuildZip(("deep.txt", "deep member"u8.ToArray()));
+        var outerPath = folder.Path.Combine("outer.zip");
+        using (var zip = new ZipArchive(File.Create(outerPath.ToString()), ZipArchiveMode.Create))
+        {
+            using (var entry = zip.CreateEntry("lib/inner.zip").Open()) entry.Write(innerBytes);
+        }
+
+        using var tx = connection.BeginTransaction();
+        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, outerPath, UnassignedAcquisition.Instance);
+        var result = await tx.Commit();
+
+        result.Remap(libraryFile).TryGetAsLibraryArchive(out var outer).Should().BeTrue();
+        var inner = outer.Children.Should().ContainSingle().Which.AsLibraryFile();
+        inner.TryGetAsLibraryArchive(out _).Should().BeTrue("the library still lists what is inside it");
+
+        var store = serviceProvider.GetRequiredService<IFileStore>();
+        (await store.HaveFile(inner.Identity)).Should().BeTrue("a directive can copy the nested archive whole");
+        await using var kept = await store.GetFileStream(inner.Identity, TestContext.Current.CancellationToken);
+        using var copy = new MemoryStream();
+        await kept.CopyToAsync(copy, TestContext.Current.CancellationToken);
+        copy.ToArray().Should().Equal(innerBytes);
+    }
+
+    private static byte[] BuildZip(params (string Name, byte[] Bytes)[] members)
+    {
+        using var buffer = new MemoryStream();
+        using (var zip = new ZipArchive(buffer, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var (name, bytes) in members)
+            {
+                using var entry = zip.CreateEntry(name).Open();
+                entry.Write(bytes);
+            }
+        }
+        return buffer.ToArray();
     }
 
     public class Startup

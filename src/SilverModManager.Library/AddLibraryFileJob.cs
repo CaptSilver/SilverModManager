@@ -141,20 +141,29 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
                 };
             }
 
+            // Only the members of an expanded archive are kept, so a nested one would otherwise lose its own bytes
+            // and nothing could copy it whole (a Wabbajack directive can). The outer download is not kept either,
+            // so they cannot be recovered from it later.
+            if (isNestedFile) await ArchiveBytes(filePath, hash);
+
             // The extraction folder is only around until the job is disposed, so recognisers see it now.
             if (!isNestedFile) await RecogniseAsync(libraryFile, folder, context.CancellationToken);
         }
         else
         {
-            var size = filePath.FileInfo.Size;
-            var identity = FileIdentity.XxHash3(hash);
-            if (!await FileStore.HaveFile(identity))
-                ToArchive.Add(new ArchivedFileEntry(new NativeFileStreamFactory(filePath), identity, size));
+            await ArchiveBytes(filePath, hash);
 
             if (!isNestedFile) await RecogniseAsync(libraryFile, extractedFolder: null, context.CancellationToken);
         }
 
         return libraryFile;
+    }
+
+    private async Task ArchiveBytes(AbsolutePath filePath, Hash hash)
+    {
+        var identity = FileIdentity.XxHash3(hash);
+        if (!await FileStore.HaveFile(identity))
+            ToArchive.Add(new ArchivedFileEntry(new NativeFileStreamFactory(filePath), identity, filePath.FileInfo.Size));
     }
 
     /// <summary>
