@@ -61,4 +61,28 @@ public class ModlistToolsContainmentTests : IDisposable
         result.Tools.Should().BeEmpty();
         result.Unregistered.Should().ContainSingle();
     }
+
+    [Fact]
+    public void AToolThatIsNotOnDiskIsReportedAsMissing()
+    {
+        var result = Find(_link, Path.Combine(_link, "Missing", "Tool.exe"));
+
+        var message = result.Unregistered.Should().ContainSingle().Subject;
+        message.Should().Contain("does not exist");
+        message.Should().NotContain("outside");
+    }
+
+    [Fact]
+    public void AToolThatIsOnDiskButOutsideBothFoldersIsReportedAsOutside()
+    {
+        var other = Path.Combine(_scratch, "elsewhere");
+        Directory.CreateDirectory(other);
+        File.WriteAllText(Path.Combine(other, "Tool.exe"), "tool");
+
+        var result = Find(_link, Path.Combine(other, "Tool.exe"));
+
+        var message = result.Unregistered.Should().ContainSingle().Subject;
+        message.Should().Contain("outside the list's tools folder and the game folder");
+        message.Should().NotContain("does not exist");
+    }
 }

@@ -51,7 +51,7 @@ public static class ModlistTools
             if (exe is null)
             {
                 var why = InsideTools(binary, extrasRoot) is { } relative ? skipReason(relative) : null;
-                unregistered.Add($"'{entry.Title}' runs '{binary}', which is not a file in the list's tools folder or the game folder"
+                unregistered.Add($"'{entry.Title}' runs '{binary}', {WhyUnregistered(binary)}"
                     + (why is null ? "" : $"; the install skipped it: {why}"));
                 continue;
             }
@@ -60,6 +60,12 @@ public static class ModlistTools
         }
         return new Result(tools, unregistered);
     }
+
+    /// <summary>Why a binary no folder of the list holds cannot be a tool: it is not on disk, or it is somewhere the list does not own.</summary>
+    internal static string WhyUnregistered(string binary)
+        => File.Exists(binary)
+            ? "which exists but lies outside the list's tools folder and the game folder"
+            : "which does not exist";
 
     private static string? Deployed(string binary, AbsolutePath extrasRoot, Func<string, string?> appliedPath)
     {
