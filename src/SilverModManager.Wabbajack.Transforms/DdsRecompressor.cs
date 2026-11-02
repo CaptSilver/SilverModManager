@@ -104,23 +104,15 @@ public static class DdsRecompressor
     }
 
     /// <summary>
-    /// The decoders signal bad data with whatever exception they trip over (a short buffer, an index out of range),
-    /// so anything but cancellation from here is reported as an unreadable source rather than leaking out as a crash.
+    /// Decodes one face. Block data cannot be malformed past what <see cref="DdsHeader.Read"/> already checked (every
+    /// block pattern decodes to some colour), so anything thrown from here is a bug in a decoder and is left to
+    /// surface as one instead of passing for a damaged source.
     /// </summary>
     private static ColorRgba32[] DecodeFace(DdsHeader header, BcDecoder decoder, CompressionFormat decodeFormat, ReadOnlyMemory<byte> data)
-    {
-        try
-        {
-            return header.Reader is { } reader ? reader.Unpack(data.Span, header.Width, header.Height)
-                : header.Format == DxgiFormat.BC4_SNORM ? Bc4SnormDecoder.DecodeBc4(data.Span, header.Width, header.Height)
-                : header.Format == DxgiFormat.BC5_SNORM ? Bc4SnormDecoder.DecodeBc5(data.Span, header.Width, header.Height)
-                : decoder.DecodeRaw(data.ToArray(), header.Width, header.Height, decodeFormat);
-        }
-        catch (Exception failed) when (failed is not (OperationCanceledException or UnsupportedTextureFormatException))
-        {
-            throw new UnreadableTextureException(failed.Message, failed);
-        }
-    }
+        => header.Reader is { } reader ? reader.Unpack(data.Span, header.Width, header.Height)
+            : header.Format == DxgiFormat.BC4_SNORM ? Bc4SnormDecoder.DecodeBc4(data.Span, header.Width, header.Height)
+            : header.Format == DxgiFormat.BC5_SNORM ? Bc4SnormDecoder.DecodeBc5(data.Span, header.Width, header.Height)
+            : decoder.DecodeRaw(data.ToArray(), header.Width, header.Height, decodeFormat);
 
     /// <summary>
     /// What an <c>UNKNOWN</c> target means: texconv without a format keeps the source's, so do the same when the

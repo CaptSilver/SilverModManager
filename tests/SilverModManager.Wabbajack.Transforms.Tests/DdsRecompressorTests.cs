@@ -348,6 +348,26 @@ public class DdsRecompressorTests(ITestOutputHelper output)
         Assert.Equal(0, output.BytesWritten);
     }
 
+    public static TheoryData<DxgiFormat> BlockFormats => new()
+    {
+        DxgiFormat.BC1_UNORM, DxgiFormat.BC2_UNORM, DxgiFormat.BC3_UNORM, DxgiFormat.BC4_UNORM, DxgiFormat.BC4_SNORM,
+        DxgiFormat.BC5_UNORM, DxgiFormat.BC5_SNORM, DxgiFormat.BC7_UNORM,
+    };
+
+    [Theory]
+    [MemberData(nameof(BlockFormats))]
+    public async Task Recompress_ValidHeaderOverGarbageBlocks_DecodesToNoiseInsteadOfFailing(DxgiFormat format)
+    {
+        // Every block pattern is some colour, so damage inside the blocks cannot be told from texture content and
+        // is not an error; only the header and the data length can be wrong.
+        var garbage = new byte[16 * 16 * 2];
+        new Random(7).NextBytes(garbage);
+
+        var result = await Recompress(Dx10Source(format, 16, 16, garbage), new DdsTarget(16, 16, 1, DxgiFormat.R8G8B8A8_UNORM));
+
+        Assert.NotEmpty(result);
+    }
+
     [Fact]
     public async Task Recompress_UnsupportedTargetFormat_ThrowsNamingIt()
     {
