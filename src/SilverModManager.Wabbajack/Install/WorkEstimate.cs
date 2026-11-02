@@ -21,4 +21,11 @@ public static class WorkEstimate
         PatchedFromArchive or MergedPatch => ReadLimit,
         _ => Math.Clamp(directive.Size, Floor, ReadLimit),
     };
+
+    /// <summary>
+    /// An archive build makes its inputs one at a time, so it holds the builder and the most any one input needs. An
+    /// input's member size is not known before the build, so a texture counts by its pixels alone.
+    /// </summary>
+    public static long OfArchive(IEnumerable<Directive> inputs)
+        => BuildCost + inputs.Select(input => Of(input, member: null)).DefaultIfEmpty(0).Max();
 }

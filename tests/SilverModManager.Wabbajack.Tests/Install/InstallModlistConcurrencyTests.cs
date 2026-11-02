@@ -125,6 +125,30 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
     }
 
     [Fact]
+    public async Task ArchivesBuiltFromLargeTexturesRunNoMoreAtOnceThanTheBudgetAllows()
+    {
+        _transforms.SkipEncoding = true;
+        var archive = await AddZip("t.zip", Enumerable.Range(0, 6).ToDictionary(i => $"t{i}.dds", _ => Bc1Dds(64)));
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        for (var i = 0; i < 6; i++)
+        {
+            // A 4096 px texture takes about 270 MB to encode, whatever the archive around it costs.
+            list.Directives.Add(new TransformedTexture(P($"TEMP_BSA_FILES/pack{i}/textures/t{i}.dds"), Xx64.From(7), 1,
+                new ArchiveHashPath(archive.XxHash64, [P($"t{i}.dds")]), new ImageState(4096, 4096, 1, "BC7_UNORM")));
+            list.Directives.Add(list.Bsa($"mods/A/pack{i}.bsa", $"pack{i}", $"textures/t{i}.dds"));
+        }
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var group = await Run(NewJob(loadout, modlist, Defaults, budget: new ByteBudget(400L * 1024 * 1024), parallelism: 8));
+
+        SkipsOf(group).Should().BeEmpty();
+        TreeOf(group)["A"].Should().HaveCount(6);
+        _transforms.MaxConcurrentRecompress.Should().Be(1, "each build can be encoding a texture that fills most of the budget");
+    }
+
+    [Fact]
     public async Task TexturesRunTogetherWhenTheBudgetAllowsIt()
     {
         _transforms.RecompressRendezvous = 2;
@@ -272,6 +296,9 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
 
         public int PatchRendezvous { get; set; }
         public int RecompressRendezvous { get; set; }
+
+        /// <summary>Counts an encode without doing it, for a test that declares sizes it could not afford to encode.</summary>
+        public bool SkipEncoding { get; set; }
         public int MaxConcurrentRecompress => Volatile.Read(ref _maxRecompress);
         public int MaxConcurrentPatch => Volatile.Read(ref _maxPatch);
 
@@ -321,7 +348,8 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
                 {
                     await Task.Delay(30, cancellationToken); // long enough for a second one to start if the budget lets it
                 }
-                await _inner.Recompress(dds, target, output, cancellationToken);
+                if (SkipEncoding) await output.WriteAsync(new byte[] { 1, 2, 3, 4 }, cancellationToken);
+                else await _inner.Recompress(dds, target, output, cancellationToken);
             }
             finally
             {

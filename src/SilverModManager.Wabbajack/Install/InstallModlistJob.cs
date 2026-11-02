@@ -716,7 +716,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 }
                 else
                 {
-                    var patching = item.Placement.Directive is PatchedFromArchive or MergedPatch;
+                    var inputs = InputsOf(check, item.Placement.Directive);
+                    var patching = item.Placement.Directive is PatchedFromArchive or MergedPatch || inputs.Any(i => i is PatchedFromArchive or MergedPatch);
                     await slots.WaitAsync(cancellationToken);
                     IDisposable reservation;
                     try
@@ -724,7 +725,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                         if (patching) await patchSlots.WaitAsync(cancellationToken);
                         try
                         {
-                            reservation = await budget.Reserve(WorkEstimate.Of(item.Placement.Directive, item.Member), cancellationToken);
+                            reservation = await budget.Reserve(
+                                item.Placement.Directive is CreateBsa ? WorkEstimate.OfArchive(inputs) : WorkEstimate.Of(item.Placement.Directive, item.Member),
+                                cancellationToken);
                         }
                         catch
                         {
@@ -769,6 +772,12 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             results.TryComplete(e);
         }
     }
+
+    /// <summary>The directives whose files an archive is built from; none for any other directive.</summary>
+    private static IReadOnlyCollection<Directive> InputsOf(Checked check, Directive directive)
+        => directive is CreateBsa bsa && check.BsaInputs.TryGetValue(Fold(bsa.TempId), out var inputs)
+            ? inputs.Values.Select(p => p.Directive).ToArray()
+            : [];
 
     /// <summary>A directive whose bytes are already in the file store, or that has none to write.</summary>
     private static bool NeedsNoWork(Prepared item)
