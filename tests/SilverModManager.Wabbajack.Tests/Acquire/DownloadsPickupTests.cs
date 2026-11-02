@@ -605,12 +605,17 @@ public class DownloadsPickupTests(ITestOutputHelper helper) : AcquireTestBase<Do
         var folderB = DownloadsFolder.Parent.Combine("browser-downloads");
         folderB.CreateDirectory();
         await RunWithManualRows(("wanted.txt", Wanted));
-        var (pickup, _) = NewPickup();
+        var logs = new CapturingLoggerProvider();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(logs));
+        var (pickup, _) = NewPickup(logger: factory.CreateLogger<DownloadsPickup>());
         pickup.Follow();
 
         Settings.Update<WabbajackSettings>(s => s with { DownloadsFolder = folderB.ToString() });
 
-        pickup.IsWatching.Should().BeTrue();
+        // The watcher starts inside the settings-change handler, but a plan change from the run can re-evaluate
+        // on another thread at the same moment, so wait for the watch instead of reading it once.
+        await Until(() => pickup.IsWatching && pickup.WatchedFolder == folderB);
+        pickup.IsWatching.Should().BeTrue("the pickup logged: {0}", string.Join(" | ", logs.Messages));
         pickup.WatchedFolder.Should().Be(pickup.Folder);
         pickup.WatchedFolder.Should().Be(folderB);
         pickup.Dispose();
