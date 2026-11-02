@@ -982,9 +982,11 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         if (ProgressText == "") ShowInstallStatus(new WabbajackInstallStatus(WabbajackModlistText.Progress(ModlistInstallProgress.Snapshot.Empty), 0, ""));
         Recompute();
 
-        // Progress comes from the install job's thread.
+        // Progress comes from the install job's thread, one snapshot per item. Only the latest is worth showing, and
+        // a job per snapshot would back the UI thread up so that the views fed from this status (the page's and the
+        // collection header's, which hop through further queues) each show a different moment of the run.
         _followedProgress = WabbajackInstallStatusFeed.Follow(run.Progress, _time)
-            .ObserveOn(RxApp.MainThreadScheduler)
+            .ObserveLatestOn(RxApp.MainThreadScheduler)
             .Subscribe(status =>
             {
                 if (ReferenceEquals(_followed, run)) ShowInstallStatus(status);
@@ -1028,6 +1030,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
     private void ShowInstallStatus(WabbajackInstallStatus status)
     {
+        if (_logger?.IsEnabled(LogLevel.Trace) == true && status.Text is { Length: > 0 })
+            _logger.LogTrace("Install status shown for '{List}': {Text} at {Fraction:P1}", Name, status.Text, status.Fraction);
         InstallStatus = status;
     }
 

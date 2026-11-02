@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reactive;
+using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
@@ -27,6 +29,78 @@ public static class ReactiveUiExtensions
     {
         return observable.ObserveOn(RxApp.MainThreadScheduler);
     }
+
+    private sealed record Latest<T>(T Value);
+
+    /// <summary>
+    /// Like <c>ObserveOn</c>, but a value that arrives before the scheduler has delivered the last one replaces it
+    /// instead of queueing behind it. <c>ObserveOn</c> posts a job per value; a source that reports every item of a
+    /// large job (tens of thousands) fills the UI thread's queue, and whatever else the page posts for each value
+    /// (another hop to a view model, another to a view) lands behind that whole backlog, so two views of one value
+    /// show different moments of the run. Here at most one job is pending, so the queue never grows, and the last
+    /// value, the completion or the failure is always delivered, in that order.
+    /// </summary>
+    public static IObservable<T> ObserveLatestOn<T>(this IObservable<T> source, IScheduler scheduler)
+        => Observable.Create<T>(observer =>
+        {
+            var gate = new object();
+            Latest<T>? pending = null;
+            var scheduled = false;
+            var ended = false;
+            Exception? failure = null;
+            var disposed = false;
+            var work = new SerialDisposable();
+
+            void Drain()
+            {
+                Latest<T>? value;
+                bool end;
+                Exception? error;
+                lock (gate)
+                {
+                    value = pending;
+                    pending = null;
+                    end = ended;
+                    error = failure;
+                }
+
+                if (Volatile.Read(ref disposed)) return;
+                if (value is not null) observer.OnNext(value.Value);
+                if (end)
+                {
+                    if (error is not null) observer.OnError(error);
+                    else observer.OnCompleted();
+                    return;
+                }
+
+                lock (gate)
+                {
+                    if (pending is null && !ended)
+                    {
+                        scheduled = false;
+                        return;
+                    }
+                }
+                work.Disposable = scheduler.Schedule(Drain);
+            }
+
+            void Post(Action update)
+            {
+                lock (gate)
+                {
+                    update();
+                    if (scheduled) return;
+                    scheduled = true;
+                }
+                work.Disposable = scheduler.Schedule(Drain);
+            }
+
+            var subscription = source.Subscribe(
+                value => Post(() => pending = new Latest<T>(value)),
+                error => Post(() => { ended = true; failure = error; }),
+                () => Post(() => ended = true));
+            return new CompositeDisposable(subscription, work, Disposable.Create(() => Volatile.Write(ref disposed, true)));
+        });
 
     /// <summary>
     /// Run the current observable off the UI thread.

@@ -134,7 +134,8 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
             source.Description.OnUI().Subscribe(description => Description = description).AddTo(disposables);
             source.CanToggle.OnUI().Subscribe(canToggle => IsToggleVisible = canToggle).AddTo(disposables);
             source.Instructions.OnUI().Subscribe(instructions => Instructions = instructions).AddTo(disposables);
-            source.InstallProgress.OnUI().Subscribe(progress => InstallProgress = progress).AddTo(disposables);
+            // One status per item of a large install: only the latest is worth a turn of the UI thread.
+            source.InstallProgress.ObserveLatestOn(RxApp.MainThreadScheduler).Subscribe(progress => InstallProgress = progress).AddTo(disposables);
             source.TileImage.OnUI().Subscribe(image => TileImage = image).AddTo(disposables);
             source.BackgroundImage.OnUI().Subscribe(image => BackgroundImage = image).AddTo(disposables);
             source.AuthorAvatar.OnUI().Subscribe(image => AuthorAvatar = image).AddTo(disposables);
