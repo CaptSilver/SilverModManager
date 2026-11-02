@@ -98,8 +98,8 @@ public static class GamePathRespeller
         for (var offset = 0; offset < all.Count; offset += chunk)
         {
             var slice = all.Skip(offset).Take(chunk).ToList();
-            var referenced = slice.Where(s => s.Referenced is not null).Select(s => s.Referenced!.Value).ToList();
-            var recreated = slice.Where(s => s.Disk is not null).Select(s => s.Disk!.Value).ToList();
+            var referenced = slice.Select(s => s.Referenced).OfType<Change>().ToList();
+            var recreated = slice.Select(s => s.Disk).OfType<(PathRow Row, string Canonical)>().ToList();
             await CommitFirstPhase(connection, referenced, recreated, metadata);
             if (referenced.Count > 0) await CommitSecondPhase(connection, referenced);
         }
