@@ -143,9 +143,9 @@ public class ProgressBarFillTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Fact]
-    public async Task TheDownloadsTabBarFillsHalfForHalfOfTheItemsDone()
+    public async Task TheDownloadsTabBarFillsHalfForHalfOfTheArchivesChecked()
     {
-        var viewModel = new WabbajackModlistDesignViewModel { ProgressText = Locating, ProgressFraction = 25871d / 51774 };
+        var viewModel = new WabbajackModlistDesignViewModel { CheckText = "Checking archives against your library: 25871 of 51774", CheckFraction = 25871d / 51774 };
         var (window, view) = await Dispatcher.UIThread.InvokeAsync(() =>
         {
             var view = new WabbajackModlistView { DataContext = viewModel };

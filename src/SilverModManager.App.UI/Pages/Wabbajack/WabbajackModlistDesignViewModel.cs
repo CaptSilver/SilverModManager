@@ -25,7 +25,7 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
 
     // Computed from the same inputs the real view model feeds the rule, so a state set here shows what the page would.
     public WabbajackStatus Status => WabbajackModlistText.Status(
-        ErrorText, ProgressText, ProgressFraction, CheckText, CheckFraction, IsCheckIndeterminate, null,
+        ErrorText, ProgressText, CheckText, CheckFraction, IsCheckIndeterminate, null,
         InstallBlockedReason, DownloadBlockedReason, AcquireText);
     public Bitmap? Banner => null;
     public IReadOnlyList<WabbajackLoadoutChoice> LoadoutChoices { get; } = [new(null, "Create new loadout")];

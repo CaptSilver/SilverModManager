@@ -223,7 +223,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
                 vm => vm.ErrorText, vm => vm.InstallStatus, vm => vm.CheckText, vm => vm.CheckFraction,
                 vm => vm.IsCheckIndeterminate, vm => vm.Downloads, vm => vm.InstallBlockedReason, vm => vm.DownloadBlockedReason, vm => vm.AcquireText,
                 (error, install, check, checkFraction, indeterminate, downloads, installReason, downloadReason, plan) =>
-                    WabbajackModlistText.Status(error, install.Text ?? "", install.Fraction, check, checkFraction, indeterminate, downloads, installReason, downloadReason, plan))
+                    WabbajackModlistText.Status(error, install.Text ?? "", check, checkFraction, indeterminate, downloads, installReason, downloadReason, plan))
             .Subscribe(status => Status = status);
 
         OpenReadmeCommand = ReactiveCommand.Create(

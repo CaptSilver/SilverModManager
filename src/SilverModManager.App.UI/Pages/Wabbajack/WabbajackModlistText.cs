@@ -145,14 +145,15 @@ public static class WabbajackModlistText
     /// <param name="planSummary">What is left to get; shown when both Install and Download are allowed.</param>
     public static WabbajackStatus Status(
         string errorText,
-        string installProgressText, double installFraction,
+        string installProgressText,
         string checkText, double checkFraction, bool isCheckIndeterminate,
         AcquireProgress? downloads,
         string installBlockedReason, string downloadBlockedReason,
         string planSummary)
     {
         if (errorText != "") return new WabbajackStatus(errorText, null, false, true);
-        if (installProgressText != "") return new WabbajackStatus(installProgressText, installFraction, false, false);
+        // The page header already shows the install text and bar, so the tab says nothing while one runs.
+        if (installProgressText != "") return new WabbajackStatus("", null, false, false);
         if (checkText != "") return new WabbajackStatus(checkText, checkFraction, isCheckIndeterminate, false);
         if (downloads is { Total: > 0 } running && running.Finished < running.Total)
             return new WabbajackStatus(Downloads(running), (double)running.Finished / running.Total, false, false);

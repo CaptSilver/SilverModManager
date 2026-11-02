@@ -36,7 +36,7 @@ public partial class WabbajackModlistViewModelTests
     }
 
     [Fact]
-    public async Task TheHeaderShowsTheSameProgressAsTheTabAndNeverAMixOfTwoSnapshots()
+    public async Task TheHeaderShowsTheInstallProgressAndTheTabDoesNotRepeatItNorMixesTwoSnapshots()
     {
         var (vm, service, _) = await Open(Plan(Row(ArchiveState.Have)));
         var file = await CollectionSeed.AddModlistFile(Connection, $"Progress list {Guid.NewGuid():N}");
@@ -60,8 +60,7 @@ public partial class WabbajackModlistViewModelTests
             var shown = header[^1];
             shown.Text.Should().Be(WabbajackModlistText.Progress(snapshot));
             shown.Fraction.Should().BeApproximately(WabbajackModlistText.Fraction(snapshot), 1e-9);
-            vm.Status.Text.Should().Be(shown.Text);
-            vm.Status.Fraction.Should().Be(shown.Fraction, "the tab and the header read the same install progress");
+            vm.Status.Should().Be(new WabbajackStatus("", null, false, false), "the header shows the install progress, so the Downloads tab does not repeat it");
         }
 
         var expected = snapshots.Select(snapshot => (WabbajackModlistText.Progress(snapshot), WabbajackModlistText.Fraction(snapshot))).ToHashSet();

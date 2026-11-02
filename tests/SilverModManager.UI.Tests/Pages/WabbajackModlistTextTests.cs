@@ -291,20 +291,20 @@ public class WabbajackModlistTextTests
     private const string Checking = "Checking the list against your library and game files. This can take a while for a big list.";
 
     private static WabbajackStatus Status(
-        string error = "", string install = "", double installFraction = 0,
+        string error = "", string install = "",
         string check = "", double checkFraction = 0, bool checkIndeterminate = false,
         AcquireProgress? downloads = null, string installReason = "", string downloadReason = "", string plan = "plan")
-        => WabbajackModlistText.Status(error, install, installFraction, check, checkFraction, checkIndeterminate, downloads, installReason, downloadReason, plan);
+        => WabbajackModlistText.Status(error, install, check, checkFraction, checkIndeterminate, downloads, installReason, downloadReason, plan);
 
     [Fact]
     public void Status_ShowsAnErrorAsAWarningAheadOfARunningInstall()
-        => Status(error: "boom", install: "Writing files: 1 of 2", installFraction: 0.5)
+        => Status(error: "boom", install: "Writing files: 1 of 2")
             .Should().Be(new WabbajackStatus("boom", null, false, true));
 
     [Fact]
-    public void Status_ShowsInstallProgressWithItsFraction()
-        => Status(install: "Writing files: 1 of 2", installFraction: 0.5, check: "Reading the list")
-            .Should().Be(new WabbajackStatus("Writing files: 1 of 2", 0.5, false, false));
+    public void Status_SaysNothingWhileAnInstallRunsBecauseTheHeaderShowsIt()
+        => Status(install: "Writing files: 1 of 2", check: "Reading the list")
+            .Should().Be(new WabbajackStatus("", null, false, false));
 
     [Fact]
     public void Status_ShowsTheCheckOnceWhenBothReasonsRepeatTheCheckingSentence()
