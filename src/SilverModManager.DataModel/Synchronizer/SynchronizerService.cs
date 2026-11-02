@@ -182,6 +182,10 @@ public class SynchronizerService : ISynchronizerService, IDisposable
                         return Unit.Default;
                     }
                     if (refuseWhileRunning) RunningGameGuard.ThrowIfRunning(_serviceProvider, loadout);
+                    // Every sync, a launch's included: a half-installed list is no better in the game folder for being launched.
+                    // Optional so a host without installs (and no registration) syncs as before.
+                    if (_serviceProvider.GetService<ILoadoutInstallActivity>()?.IsInstallingInto(loadoutId) == true)
+                        throw new LoadoutInstallRunningException();
 
                     var loadoutState = GetOrAddLoadoutState(loadoutId);
                     using var _ = loadoutState.WithLock();

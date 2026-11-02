@@ -1,5 +1,7 @@
+using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
 using SilverModManager.Abstractions.Games.Modlists;
+using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -39,7 +41,7 @@ public sealed class RunningModlistInstall
 /// Answers which modlist installs are running, from the job monitor: the one place that knows, so a page that was
 /// opened after an install started follows it instead of offering to start another.
 /// </summary>
-public sealed class ModlistInstallRuns(IJobMonitor monitor)
+public sealed class ModlistInstallRuns(IJobMonitor monitor) : ILoadoutInstallActivity
 {
     private readonly ConditionalWeakTable<InstallModlistJob, RunningModlistInstall> _runs = new();
 
@@ -62,6 +64,15 @@ public sealed class ModlistInstallRuns(IJobMonitor monitor)
     {
         if (FindInto(loadout) is not null) throw new InstallAlreadyRunningException();
     }
+
+    /// <inheritdoc />
+    public bool IsInstallingInto(LoadoutId loadout) => FindInto(loadout) is not null;
+
+    /// <inheritdoc />
+    public IObservable<bool> ObserveInstallingInto(LoadoutId loadout)
+        => monitor.HasActiveJob<InstallModlistJob>(job => job.TargetLoadout == loadout)
+            .Prepend(IsInstallingInto(loadout))
+            .DistinctUntilChanged();
 
     private IEnumerable<RunningModlistInstall> Running()
     {

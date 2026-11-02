@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Abstractions.NexusWebApi;
@@ -49,6 +50,7 @@ public static class Services
             .AddSingleton<ArchiveInventory>()
             .AddSingleton<IDirectiveTransforms, DirectiveTransforms>()
             .AddSingleton<ModlistInstallRuns>()
+            .AddSingleton<ILoadoutInstallActivity>(sp => sp.GetRequiredService<ModlistInstallRuns>())
             .AddSingleton<INestedArchiveOpener, BsaMemberOpener>()
             .AddSingleton<ModlistPlanner>()
             .AddSingleton<IModlistPlanner>(provider => provider.GetRequiredService<ModlistPlanner>())

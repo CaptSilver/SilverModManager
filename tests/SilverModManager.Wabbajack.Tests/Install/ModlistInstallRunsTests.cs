@@ -164,6 +164,50 @@ public class ModlistInstallRunsTests(ITestOutputHelper helper) : InstallTestBase
     }
 
     [Fact]
+    public async Task AnInstallIntoTheLoadoutIsReportedAsInstallingUntilItEnds_AndNotForAnotherLoadout()
+    {
+        var busy = await CreateLoadout();
+        var idle = await CreateLoadout();
+        var (running, gate) = BeginHeld(NewJob(busy, await AddList(), Options));
+        var seen = new List<bool>();
+        using var _ = Runs.ObserveInstallingInto(busy.LoadoutId).Subscribe(seen.Add);
+
+        Runs.IsInstallingInto(busy.LoadoutId).Should().BeTrue();
+        Runs.IsInstallingInto(idle.LoadoutId).Should().BeFalse();
+        gate.SetResult();
+        await running;
+
+        Runs.IsInstallingInto(busy.LoadoutId).Should().BeFalse();
+        seen.Should().Equal(true, false);
+    }
+
+    [Fact]
+    public async Task AFailedOrCancelledInstallIsNoLongerReportedAsInstalling()
+    {
+        var failed = await CreateLoadout();
+        var cancelled = await CreateLoadout();
+        var monitor = ServiceProvider.GetRequiredService<IJobMonitor>();
+        var modlist = await AddList();
+
+        var failing = monitor.Begin<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly>(NewJob(failed, modlist, Options),
+            _ => throw new InvalidOperationException("boom"));
+        await Record.ExceptionAsync(async () => await failing);
+        var cancelGate = new TaskCompletionSource();
+        var cancelling = monitor.Begin<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly>(NewJob(cancelled, modlist, Options),
+            async ctx =>
+            {
+                await cancelGate.Task.WaitAsync(ctx.CancellationToken);
+                return default;
+            });
+        Runs.IsInstallingInto(cancelled.LoadoutId).Should().BeTrue();
+        monitor.Cancel(cancelling);
+        await Record.ExceptionAsync(async () => await cancelling);
+
+        Runs.IsInstallingInto(failed.LoadoutId).Should().BeFalse();
+        Runs.IsInstallingInto(cancelled.LoadoutId).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task AnInstallLogsWhereItIsWithTheListName()
     {
         var loadout = await CreateLoadout();

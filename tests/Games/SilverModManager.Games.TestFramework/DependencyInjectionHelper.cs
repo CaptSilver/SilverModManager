@@ -81,6 +81,7 @@ public static class DependencyInjectionHelper
             .AddInMemoryUserGameInstallStore()
             .AddFakeProcessTracker()
             .AddFakeGameLaunchSession()
+            .AddFakeLoadoutInstallActivity()
             .AddFakeToolRunner()
             .AddSettings<LoggingSettings>()
             .AddHttpDownloader()

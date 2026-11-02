@@ -102,6 +102,10 @@ public partial class ApplyControlViewModel : AViewModel<IApplyControlViewModel>,
                     return metadata.GameInstallMetadataId == _gameMetadataId;
                 }).Prepend(false);
 
+                // A modlist install writes into the loadout for minutes; applying then would sync a half-installed list.
+                var isInstalling = serviceProvider.GetService<ILoadoutInstallActivity>()?.ObserveInstallingInto(loadoutId).Prepend(false)
+                                   ?? Observable.Return(false);
+
                 // Note(sewer):
                 // Fire an initial value with StartWith because CombineLatest requires all stuff to have latest values.
                 // In any case, we should prevent Apply from being available while a file is in use.
@@ -111,11 +115,11 @@ public partial class ApplyControlViewModel : AViewModel<IApplyControlViewModel>,
                 //     - This is done in 'Synchronize' method.
                 // - They're running a tool from within the App.
                 //     - Check running jobs.
-                loadoutStatuses.CombineLatest(isProcessingObservable, gameStatuses, gameRunningTracker.GetWithCurrentStateAsStarting(), hasUnmanagingJob)
+                loadoutStatuses.CombineLatest(isProcessingObservable, gameStatuses, gameRunningTracker.GetWithCurrentStateAsStarting(), hasUnmanagingJob, isInstalling)
                     .OnUI()
                     .Subscribe(status =>
                     {
-                        var (ldStatus, isProcessing,  gameStatus, running, isUnmanaging) = status;
+                        var (ldStatus, isProcessing,  gameStatus, running, isUnmanaging, installing) = status;
                         IsProcessing = isProcessing;
                         CanApply = !isProcessing
                                    && !running
@@ -123,12 +127,14 @@ public partial class ApplyControlViewModel : AViewModel<IApplyControlViewModel>,
                                    && ldStatus != LoadoutSynchronizerState.Pending
                                    && ldStatus != LoadoutSynchronizerState.Current
                                    && ldStatus != LoadoutSynchronizerState.Unavailable
-                                   && !isUnmanaging;
+                                   && !isUnmanaging
+                                   && !installing;
                         LaunchButtonViewModel.CanLaunch = !isProcessing 
                                                 && !running
                                                 && gameStatus != GameSynchronizerState.Busy
                                                 && ldStatus == LoadoutSynchronizerState.Current
-                                                && !isUnmanaging;
+                                                && !isUnmanaging
+                                                && !installing;
                         
                     })
                     .DisposeWith(disposables);
