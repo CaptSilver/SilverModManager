@@ -1,3 +1,5 @@
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using DynamicData;
 using SilverModManager.Jobs.Tests;
 using SilverModManager.Jobs.Tests.TestInfrastructure;
@@ -110,6 +112,10 @@ public class JobMonitorTrackingTests : AJobsTest
     {
         using var held = new ManualResetEventSlim();
         var running = JobMonitor.Begin<ProgressReportingJob, double>(new ProgressReportingJob(1, TimeSpan.Zero, held));
+
+        // Begin returns while the job is still Created; it only turns Running once the thread pool starts it.
+        await running.Job.ObservableStatus.Where(status => status == JobStatus.Running).FirstAsync()
+            .ToTask(TestContext.Current.CancellationToken);
 
         JobMonitor.IsAnyJobActive<ProgressReportingJob>(_ => true).Should().BeTrue();
         JobMonitor.IsAnyJobActive<ProgressReportingJob>(_ => false).Should().BeFalse("the predicate decides which jobs count");
