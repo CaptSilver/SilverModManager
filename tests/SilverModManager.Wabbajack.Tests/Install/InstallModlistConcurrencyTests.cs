@@ -2,6 +2,7 @@ using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
+using SilverModManager.Games.Bethesda.Archives;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
@@ -460,7 +461,7 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
             }
         }
 
-        public Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
+        public Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, FileState, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
             => _inner.BuildBsa(state, fileStates, openInput, output, cancellationToken);
     }
 
@@ -579,7 +580,7 @@ public class InstallModlistCancelTests(ITestOutputHelper helper) : InstallTestBa
             await dds.CopyToAsync(output, cancellationToken);
         }
 
-        public Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
+        public Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, FileState, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
             => throw new InvalidOperationException("no archive here");
     }
 }

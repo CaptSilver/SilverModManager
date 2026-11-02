@@ -28,6 +28,7 @@ using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Mapping;
 using SilverModManager.Wabbajack.Models;
 using BethesdaArchiveException = SilverModManager.Games.Bethesda.Archives.BethesdaArchiveException;
+using FileState = SilverModManager.Games.Bethesda.Archives.FileState;
 using PatchException = SilverModManager.Wabbajack.Transforms.PatchException;
 using UnsupportedTextureFormatException = SilverModManager.Wabbajack.Transforms.UnsupportedTextureFormatException;
 
@@ -1567,7 +1568,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var spilled = new List<TemporaryPath>();
         try
         {
-            async Task<Stream> OpenInput(RelativePath path)
+            async Task<Stream> OpenInput(RelativePath path, FileState fileState)
             {
                 if (!inputs.TryGetValue(Fold(path), out var input))
                     throw new DirectiveSkipped(SkipKind.MemberNotFound, $"the archive '{bsa.To}' needs '{path}', which no directive writes");

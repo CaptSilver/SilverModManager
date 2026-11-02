@@ -1,5 +1,6 @@
 using System.Text.Json;
 using NexusMods.Paths;
+using SilverModManager.Games.Bethesda.Archives;
 using SilverModManager.Wabbajack.Format;
 
 namespace SilverModManager.Wabbajack.Install;
@@ -14,7 +15,11 @@ public interface IDirectiveTransforms
 
     Task Recompress(Stream dds, ImageState target, Stream output, CancellationToken cancellationToken);
 
-    Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken);
+    /// <summary>
+    /// <paramref name="openInput"/> gets the parsed state of the file it opens next to its path, so the caller can treat
+    /// a kind of archive entry differently from another.
+    /// </summary>
+    Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, FileState, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken);
 }
 
 /// <summary>

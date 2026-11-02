@@ -32,7 +32,7 @@ public sealed class DirectiveTransforms(TemporaryFileManager temporaryFiles) : I
     /// writer shows up as an <see cref="ArchiveMismatchException"/> instead of a broken archive in the user's mod folder.
     /// <paramref name="output"/> has to be readable and seekable for that.
     /// </summary>
-    public async Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
+    public async Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, FileState, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
     {
         if (output is not { CanRead: true, CanSeek: true })
             throw new ArgumentException("An archive is checked by reading it back, so the stream it is written to must be readable and seekable", nameof(output));
@@ -44,7 +44,7 @@ public sealed class DirectiveTransforms(TemporaryFileManager temporaryFiles) : I
             foreach (var element in fileStates)
             {
                 var fileState = ArchiveStateJson.ParseFileState(element);
-                await using var input = await openInput(fileState.Path);
+                await using var input = await openInput(fileState.Path, fileState);
                 using var hashing = new Xx64HashingStream(input);
                 await builder.AddFile(fileState, hashing, cancellationToken);
                 written[BuiltArchiveCheck.Fold(fileState.Path.ToString())] = hashing.Hash;

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using NexusMods.Paths;
+using SilverModManager.Games.Bethesda.Archives;
 using SilverModManager.Wabbajack.Install;
 
 namespace SilverModManager.Wabbajack.Tests.Install;
@@ -24,12 +25,12 @@ internal sealed class ConcatenatingTransforms : IDirectiveTransforms
         output.WriteByte(0xFF);
     }
 
-    public async Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
+    public async Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, FileState, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
     {
         foreach (var fileState in fileStates)
         {
             var path = RelativePath.FromUnsanitizedInput(fileState.GetProperty("Path").GetString()!);
-            await using var input = await openInput(path);
+            await using var input = await openInput(path, FakeFileStates.Of(path));
             await input.CopyToAsync(output, cancellationToken);
         }
     }
@@ -47,8 +48,14 @@ internal sealed class FailingPatchSlowTextureTransforms : IDirectiveTransforms
     public async Task Recompress(Stream dds, SilverModManager.Wabbajack.Format.ImageState target, Stream output, CancellationToken cancellationToken)
         => await Task.Delay(Timeout.Infinite, cancellationToken);
 
-    public Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
+    public Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, FileState, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
         => throw new InvalidOperationException("no archive is built here");
+}
+
+/// <summary>The doubles' file states are not real archive states; the callback only needs some state to be handed.</summary>
+internal static class FakeFileStates
+{
+    public static FileState Of(RelativePath path) => new Tes5FileState(0, path, FlipCompression: false);
 }
 
 /// <summary>Builds archives the way the real transforms report a bad one: by saying an entry came back different.</summary>
@@ -60,10 +67,10 @@ internal sealed class MismatchingArchiveTransforms : IDirectiveTransforms
     public Task Recompress(Stream dds, SilverModManager.Wabbajack.Format.ImageState target, Stream output, CancellationToken cancellationToken)
         => throw new InvalidOperationException("no texture is encoded here");
 
-    public async Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
+    public async Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, FileState, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
     {
         var path = RelativePath.FromUnsanitizedInput(fileStates[0].GetProperty("Path").GetString()!);
-        await (await openInput(path)).DisposeAsync();
+        await (await openInput(path, FakeFileStates.Of(path))).DisposeAsync();
         throw new ArchiveMismatchException(path.ToString(), $"'{path}' reads back from the built archive as different bytes than the file written for it");
     }
 }

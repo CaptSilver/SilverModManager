@@ -70,8 +70,8 @@ public class DirectiveTransformsTests : IDisposable
         failure.Should().BeOfType<UnsupportedTextureFormatException>().Which.Message.Should().Contain("NOT_A_FORMAT");
     }
 
-    private static Func<RelativePath, Task<Stream>> Inputs(Dictionary<string, byte[]> files)
-        => path => Task.FromResult<Stream>(new MemoryStream(files[path.ToString()]));
+    private static Func<RelativePath, FileState, Task<Stream>> Inputs(Dictionary<string, byte[]> files)
+        => (path, _) => Task.FromResult<Stream>(new MemoryStream(files[path.ToString()]));
 
     [Fact]
     public async Task BuildingAnArchiveWritesEveryInputAsAReadableMember()
@@ -94,11 +94,29 @@ public class DirectiveTransformsTests : IDisposable
     }
 
     [Fact]
+    public async Task TheInputCallbackReceivesTheParsedStateOfTheFileItOpens()
+    {
+        var files = new Dictionary<string, byte[]> { ["meshes/one.nif"] = [1, 2, 3] };
+        var states = files.Keys.Select((path, i) => ListBuilder.Tes5File(i, path)).ToArray();
+        var seen = new List<(RelativePath Path, FileState State)>();
+        using var output = new MemoryStream();
+
+        await _transforms.BuildBsa(ListBuilder.Tes5State(), states, (path, state) =>
+        {
+            seen.Add((path, state));
+            return Task.FromResult<Stream>(new MemoryStream(files[path.ToString()]));
+        }, output, CancellationToken.None);
+
+        var (path, state) = seen.Should().ContainSingle().Subject;
+        state.Should().BeOfType<Tes5FileState>().Which.Path.Should().Be(path);
+    }
+
+    [Fact]
     public async Task BuildingAnArchiveIntoAStreamThatCannotBeReadBackFailsLoudly()
     {
         await using var writeOnly = new System.IO.Compression.GZipStream(Stream.Null, System.IO.Compression.CompressionMode.Compress);
 
-        var failure = await Record.ExceptionAsync(() => _transforms.BuildBsa(ListBuilder.Tes5State(), [], _ => Task.FromResult(Stream.Null), writeOnly, CancellationToken.None));
+        var failure = await Record.ExceptionAsync(() => _transforms.BuildBsa(ListBuilder.Tes5State(), [], (_, _) => Task.FromResult(Stream.Null), writeOnly, CancellationToken.None));
 
         failure.Should().BeOfType<ArgumentException>();
     }
@@ -108,7 +126,7 @@ public class DirectiveTransformsTests : IDisposable
     {
         var state = JsonDocument.Parse("{\"$type\":\"NotAnArchive\"}").RootElement;
 
-        var failure = await Record.ExceptionAsync(() => _transforms.BuildBsa(state, [], _ => Task.FromResult(Stream.Null), new MemoryStream(), CancellationToken.None));
+        var failure = await Record.ExceptionAsync(() => _transforms.BuildBsa(state, [], (_, _) => Task.FromResult(Stream.Null), new MemoryStream(), CancellationToken.None));
 
         failure.Should().BeOfType<BethesdaArchiveException>().Which.Message.Should().Contain("NotAnArchive");
     }
