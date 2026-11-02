@@ -157,19 +157,14 @@ public sealed class ArchivePathResolver(
         return await FromLibraryFile(current, path.Parts[^1].ToString(), cancellationToken);
     }
 
-    private static string Fold(RelativePath path) => path.ToString().Replace('\\', '/').ToLowerInvariant();
+    private static string Fold(RelativePath path) => LibraryArchiveIndex.Fold(path);
 
     private Dictionary<string, LibraryArchiveFileEntry.ReadOnly> Entries(LibraryArchive.ReadOnly archive)
     {
         // Lazy, so threads that need the same archive wait for one build instead of each making their own.
         return _indexes.GetOrAdd(archive.Id, _ => new Lazy<Dictionary<string, LibraryArchiveFileEntry.ReadOnly>>(() =>
         {
-            var index = new Dictionary<string, LibraryArchiveFileEntry.ReadOnly>();
-            foreach (var entry in LibraryArchiveFileEntry.FindByParent(db, archive))
-            {
-                // Two entries that differ only in case collapse to the first, as the install tree will.
-                index.TryAdd(Fold(entry.Path), entry);
-            }
+            var index = LibraryArchiveIndex.Build(db, archive);
             Interlocked.Increment(ref _indexesBuilt);
             return index;
         })).Value;

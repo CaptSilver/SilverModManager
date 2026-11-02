@@ -61,6 +61,8 @@ public sealed class ArchiveInventory(
     {
         program ??= FindModOrganizer(list, gameFiles.Installation);
         var rows = new ArchivePlanRow[list.Archives.Count];
+        // Read from the directives once, not for each archive.
+        var check = HeldArchiveCheck.For(list, fileStore);
         var gate = new PlanProgressGate(progress);
 
         var lookups = Enumerable.Range(0, rows.Length).Where(i => list.Archives[i].State is not GameFileSourceState).ToArray();
@@ -69,7 +71,7 @@ public sealed class ArchiveInventory(
         foreach (var index in lookups)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            rows[index] = await ClassifyWithModOrganizer(list.Archives[index], program, db, gameFiles, cancellationToken);
+            rows[index] = await ClassifyWithModOrganizer(list.Archives[index], program, db, gameFiles, check, cancellationToken);
             gate.Report(new PlanProgress(PlanPhase.CheckingLibrary, ++done, lookups.Length));
         }
 
@@ -113,7 +115,7 @@ public sealed class ArchiveInventory(
             }
         }, stop.Token)).ToArray();
         await AwaitAll(hashing, cancellationToken);
-        return new ArchivePlan(rows);
+        return new ArchivePlan(rows, Check: check);
     }
 
     /// <summary>
@@ -136,12 +138,12 @@ public sealed class ArchiveInventory(
     /// The Mod Organizer 2 release among the archives is not fetched, whether or not the library holds it: nothing
     /// of it is installed. One the list still takes a mod's or the game's file from is looked up like any other.
     /// </summary>
-    private async Task<ArchivePlanRow> ClassifyWithModOrganizer(ArchiveEntry archive, Mo2ProgramArchives program, IDb db, GameFileSourceLookup gameFiles, CancellationToken cancellationToken)
+    private async Task<ArchivePlanRow> ClassifyWithModOrganizer(ArchiveEntry archive, Mo2ProgramArchives program, IDb db, GameFileSourceLookup gameFiles, HeldArchiveCheck check, CancellationToken cancellationToken)
     {
         if (program.NotNeeded.Contains(archive.XxHash64))
             return new ArchivePlanRow(archive, ArchiveState.NotNeeded, null, null, null);
 
-        var row = await Classify(archive, db, gameFiles, cancellationToken);
+        var row = await Classify(archive, db, gameFiles, check, cancellationToken);
         return program.Kept.TryGetValue(archive.XxHash64, out var why) ? row with { Note = why } : row;
     }
 
@@ -153,21 +155,42 @@ public sealed class ArchiveInventory(
         return Mo2Program.Find(list, roots);
     }
 
-    private async Task<ArchivePlanRow> Classify(ArchiveEntry archive, IDb db, GameFileSourceLookup gameFiles, CancellationToken cancellationToken)
+    private async Task<ArchivePlanRow> Classify(ArchiveEntry archive, IDb db, GameFileSourceLookup gameFiles, HeldArchiveCheck check, CancellationToken cancellationToken)
     {
         // A game file is never in the library, whatever its hash says.
         if (archive.State is GameFileSourceState gameFile)
             return await ClassifyGameFile(archive, gameFile, gameFiles, null, cancellationToken);
 
-        if (locator.FindByXxHash64(db, archive.XxHash64) is { } held)
-            return new ArchivePlanRow(archive, ArchiveState.Have, null, null, held);
+        var candidates = HeldCopies(db, archive);
+        foreach (var candidate in candidates)
+        {
+            if (check.IsComplete(db, archive.XxHash64, candidate))
+                return new ArchivePlanRow(archive, ArchiveState.Have, null, null, candidate);
+        }
 
+        // What the library holds cannot serve the list, so the archive is fetched as if it were missing.
+        var row = ClassifyBySource(archive);
+        return candidates.Count == 0 ? row : row with { Note = IncompleteCopyNote };
+    }
+
+    private const string IncompleteCopyNote = "The library holds this archive without the archives inside it that the list copies whole; fetching it again adds them";
+
+    /// <summary>Every library file that stands for the archive: the one with its hash, and for a Nexus Mods file the downloads of that very file.</summary>
+    private List<LibraryFile.ReadOnly> HeldCopies(IDb db, ArchiveEntry archive)
+    {
+        var copies = new List<LibraryFile.ReadOnly>();
+        if (locator.FindByXxHash64(db, archive.XxHash64) is { } held) copies.Add(held);
+
+        if (archive.State is NexusState nexus && NexusDomain(nexus) is { } domain)
+            copies.AddRange(FindByIdentity(db, domain, nexus, archive));
+        return copies;
+    }
+
+    private ArchivePlanRow ClassifyBySource(ArchiveEntry archive)
+    {
         if (archive.State is NexusState nexus)
         {
             var domain = NexusDomain(nexus);
-            if (domain is { } known && FindByIdentity(db, known, nexus, archive) is { } identified)
-                return new ArchivePlanRow(archive, ArchiveState.Have, null, null, identified);
-
             if (domain is null)
                 return Row(archive, ArchiveState.Unsupported, $"the list's game '{nexus.GameName}' has no Nexus Mods domain here");
 
@@ -221,10 +244,10 @@ public sealed class ArchiveInventory(
     private static GameDomain? NexusDomain(NexusState state) => WabbajackGames.NexusDomainFor(state.GameName);
 
     /// <summary>
-    /// A library file that came from this very Nexus Mods file. File ids are immutable, so identity is as good as a
+    /// The library files that came from this very Nexus Mods file. File ids are immutable, so identity is as good as a
     /// hash for something the app downloaded itself, provided the size agrees. A recorded xxHash64 that differs rules it out.
     /// </summary>
-    private LibraryFile.ReadOnly? FindByIdentity(IDb db, GameDomain domain, NexusState state, ArchiveEntry archive)
+    private IEnumerable<LibraryFile.ReadOnly> FindByIdentity(IDb db, GameDomain domain, NexusState state, ArchiveEntry archive)
     {
         var gameId = mappingCache.GetId(domain);
         var uid = new FileUid(FileId.From((uint)state.FileId), gameId);
@@ -241,15 +264,14 @@ public sealed class ArchiveInventory(
 
                 if (file.XxHash64Identity() is { } known)
                 {
-                    if (known.Equals(archive.XxHash64)) return file;
+                    if (known.Equals(archive.XxHash64)) yield return file;
                     continue;
                 }
 
                 if (NexusModsFileMetadata.Size.TryGetValue(metadata, out var recorded) && recorded.Value == (ulong)archive.Size)
-                    return file;
+                    yield return file;
             }
         }
-        return null;
     }
 
     private static async Task<ArchivePlanRow> ClassifyGameFile(ArchiveEntry archive, GameFileSourceState state, GameFileSourceLookup gameFiles, Action<int>? onRead, CancellationToken cancellationToken)

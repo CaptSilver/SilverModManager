@@ -1,3 +1,4 @@
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Wabbajack.Format;
@@ -54,10 +55,15 @@ public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, st
 
 /// <summary>
 /// The rows for every archive of a list, in the list's order. <paramref name="Modlist"/> is the library file of the
-/// list the plan was built for; it is how a download is credited to the list that wanted it.
+/// list the plan was built for; it is how a download is credited to the list that wanted it. <paramref name="Check"/>
+/// says which held archives lack something the list copies out of them (see <see cref="HeldArchiveCheck"/>).
 /// </summary>
-public sealed record ArchivePlan(IReadOnlyList<ArchivePlanRow> Rows, LibraryFileId? Modlist = null)
+public sealed record ArchivePlan(IReadOnlyList<ArchivePlanRow> Rows, LibraryFileId? Modlist = null, HeldArchiveCheck? Check = null)
 {
+    /// <summary>Whether the library's <paramref name="held"/> copy of the list's <paramref name="archive"/> has all the list needs from it.</summary>
+    public bool IsComplete(IDb db, FileIdentity archive, LibraryFile.ReadOnly held)
+        => (Check ?? HeldArchiveCheck.NothingNeeded).IsComplete(db, archive, held);
+
     /// <summary>The archive entry the list names with that xxHash64, if any.</summary>
     public ArchiveEntry? FindArchive(FileIdentity xxHash64)
     {

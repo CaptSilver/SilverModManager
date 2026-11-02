@@ -73,7 +73,8 @@ public sealed class ArchiveInbox(
             var addedHere = new HashSet<FileIdentity>();
             foreach (var (file, hash) in found)
             {
-                if (locator.FindByXxHash64(connection.Db, hash) is not null) continue;
+                // A held archive that lacks what the list copies out of it is added again; the drop would otherwise be deleted as a duplicate.
+                if (locator.FindByXxHash64(connection.Db, hash) is { } held && wanting.IsComplete(connection.Db, hash, held)) continue;
                 try
                 {
                     await library.AddLocalFile(file, AcquisitionFor(wanting, hash));

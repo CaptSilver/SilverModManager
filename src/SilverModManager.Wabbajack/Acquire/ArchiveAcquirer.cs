@@ -36,6 +36,7 @@ public sealed class ArchiveAcquirer(
     private readonly Lock _lock = new();
     private ArchivePlanRow[] _rows = [];
     private LibraryFileId? _modlist;
+    private HeldArchiveCheck _check = HeldArchiveCheck.NothingNeeded;
     private IDisposable? _subscription;
     private ITimer? _timer;
     private bool _recheckDue;
@@ -134,7 +135,7 @@ public sealed class ArchiveAcquirer(
 
     public ArchivePlan Plan
     {
-        get { lock (_lock) return new ArchivePlan(_rows.ToArray(), _modlist); }
+        get { lock (_lock) return new ArchivePlan(_rows.ToArray(), _modlist, _check); }
     }
 
     public void Show(ArchivePlan plan) => Adopt(plan, expecting: false);
@@ -155,6 +156,7 @@ public sealed class ArchiveAcquirer(
             }
             _rows = rows;
             _modlist = plan.Modlist;
+            _check = plan.Check ?? HeldArchiveCheck.NothingNeeded;
             _expecting = expecting;
             _running = expecting ? rows : null;
         }
@@ -371,6 +373,8 @@ public sealed class ArchiveAcquirer(
                 var row = _rows[i];
                 if (row.State is not (ArchiveState.Browser or ArchiveState.SignIn or ArchiveState.Manual or ArchiveState.Unsupported)) continue;
                 if (locator.FindByXxHash64(db, row.Archive.XxHash64) is not { } held) continue;
+                // Held, but without bytes the list copies out of it: the row keeps waiting for a fresh copy.
+                if (!_check.IsComplete(db, row.Archive.XxHash64, held)) continue;
                 // A Browser row is one the library lacked when the plan was built and the run sent the user to fetch,
                 // so its arrival is the download the run asked for. Manual, SignIn and Unsupported rows are the user's own adds.
                 if (row.State == ArchiveState.Browser && _expecting && _modlist is not null
