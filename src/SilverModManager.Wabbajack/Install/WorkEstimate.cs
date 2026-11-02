@@ -24,8 +24,8 @@ public static class WorkEstimate
 
     /// <summary>
     /// An archive build makes its inputs one at a time, so it holds the builder and the most any one input needs. An
-    /// input's member size is not known before the build, so a texture counts by its pixels alone.
+    /// input whose member could not be resolved counts as <see cref="Of"/> does without one: by its pixels alone.
     /// </summary>
-    public static long OfArchive(IEnumerable<Directive> inputs)
-        => BuildCost + inputs.Select(input => Of(input, member: null)).DefaultIfEmpty(0).Max();
+    public static long OfArchive(IEnumerable<(Directive Directive, ResolvedMember? Member)> inputs)
+        => BuildCost + inputs.Select(input => Of(input.Directive, input.Member)).DefaultIfEmpty(0).Max();
 }

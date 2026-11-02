@@ -733,7 +733,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                         try
                         {
                             reservation = await budget.Reserve(
-                                item.Placement.Directive is CreateBsa ? WorkEstimate.OfArchive(inputs) : WorkEstimate.Of(item.Placement.Directive, item.Member),
+                                item.Placement.Directive is CreateBsa ? WorkEstimate.OfArchive(await ResolveInputMembers(check, item.Placement.Directive, cancellationToken)) : WorkEstimate.Of(item.Placement.Directive, item.Member),
                                 cancellationToken);
                         }
                         catch
@@ -778,6 +778,33 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         {
             results.TryComplete(e);
         }
+    }
+
+    /// <summary>
+    /// The directives an archive is built from, each with the member it reads, so the build can be sized before it starts.
+    /// Resolving is cached by the resolver, so the build itself finds these already done. An input whose member cannot be
+    /// resolved has none here; the build reports why when it reaches that input.
+    /// </summary>
+    private async Task<IReadOnlyList<(Directive Directive, ResolvedMember? Member)>> ResolveInputMembers(Checked check, Directive directive, CancellationToken cancellationToken)
+    {
+        var inputs = InputsOf(check, directive).ToArray();
+        var rows = check.Plan.Rows.GroupBy(r => r.Archive.XxHash64).ToDictionary(g => g.Key, g => g.First());
+        var resolved = new (Directive Directive, ResolvedMember? Member)[inputs.Length];
+        var options = new ParallelOptions { MaxDegreeOfParallelism = Workers, CancellationToken = cancellationToken };
+        await Parallel.ForEachAsync(Enumerable.Range(0, inputs.Length), options, async (i, token) =>
+        {
+            ResolvedMember? member = null;
+            try
+            {
+                if (inputs[i] is FromArchive from) member = await ResolveMember(rows, from, token);
+            }
+            catch (DirectiveSkipped)
+            {
+                // Left without a member; BuildArchive reaches this input and reports the skip with its reason.
+            }
+            resolved[i] = (inputs[i], member);
+        });
+        return resolved;
     }
 
     /// <summary>The directives whose files an archive is built from; none for any other directive.</summary>
