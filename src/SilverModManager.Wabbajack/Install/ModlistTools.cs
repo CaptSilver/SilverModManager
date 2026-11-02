@@ -27,7 +27,12 @@ public static class ModlistTools
     /// <c>mods/Mod/x.exe</c>), or null when the loadout does not deploy it. Those files are not on disk until Apply, so the
     /// path the ini names under the tools folder would never exist.
     /// </param>
-    public static Result Find(string iniText, AbsolutePath extrasRoot, AbsolutePath gameRoot, string primaryExecutable, Func<string, string?> appliedPath)
+    /// <param name="skipReason">
+    /// Why the install did not produce the file at a path inside the instance, or null when it was not skipped. Only used
+    /// to say so when a tool is left out: a file the install skipped is the usual reason its binary is missing.
+    /// </param>
+    public static Result Find(string iniText, AbsolutePath extrasRoot, AbsolutePath gameRoot, string primaryExecutable,
+        Func<string, string?> appliedPath, Func<string, string?> skipReason)
     {
         var values = new PathMarkerValues(gameRoot.ToString(), extrasRoot.ToString(), extrasRoot.Combine("downloads").ToString());
         var leftOut = new HashSet<string>(AlwaysLeftOut, StringComparer.OrdinalIgnoreCase) { primaryExecutable };
@@ -44,7 +49,9 @@ public static class ModlistTools
             var exe = FindFile(binary, extrasRoot) ?? FindFile(binary, gameRoot) ?? Deployed(binary, extrasRoot, appliedPath);
             if (exe is null)
             {
-                unregistered.Add($"'{entry.Title}' runs '{binary}', which is not a file in the list's tools folder or the game folder");
+                var why = InsideTools(binary, extrasRoot) is { } relative ? skipReason(relative) : null;
+                unregistered.Add($"'{entry.Title}' runs '{binary}', which is not a file in the list's tools folder or the game folder"
+                    + (why is null ? "" : $"; the install skipped it: {why}"));
                 continue;
             }
 
@@ -55,11 +62,17 @@ public static class ModlistTools
 
     private static string? Deployed(string binary, AbsolutePath extrasRoot, Func<string, string?> appliedPath)
     {
+        return InsideTools(binary, extrasRoot) is { } relative ? appliedPath(relative) : null;
+    }
+
+    /// <summary>The path of <paramref name="binary"/> inside the tools folder, or null when it is elsewhere.</summary>
+    private static string? InsideTools(string binary, AbsolutePath extrasRoot)
+    {
         var root = System.IO.Path.GetFullPath(extrasRoot.ToString()).TrimEnd('/') + "/";
         if (!System.IO.Path.IsPathRooted(binary)) return null;
 
         var full = System.IO.Path.GetFullPath(binary);
-        return full.StartsWith(root, StringComparison.Ordinal) ? appliedPath(full[root.Length..]) : null;
+        return full.StartsWith(root, StringComparison.Ordinal) ? full[root.Length..] : null;
     }
 
     /// <summary>

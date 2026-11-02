@@ -1229,9 +1229,13 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var gameRoot = installation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty));
         var primary = installation.Game.GetPrimaryFile(installation);
 
-        var skipped = WabbajackSkippedFile.FindByGroup(Connection.Db, modlistGroup).Select(f => f.To).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var skips = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in WabbajackSkippedFile.FindByGroup(Connection.Db, modlistGroup))
+            skips[row.To] = row.Reason;
+        var skipped = skips.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var switchedOff = await GroupsSwitchedOffByProfile(check, cancellationToken);
-        var found = ModlistTools.Find(iniText, extras.Root, gameRoot, primary.FileName.ToString(), relative => AppliedPath(check, relative, skipped, switchedOff));
+        var found = ModlistTools.Find(iniText, extras.Root, gameRoot, primary.FileName.ToString(), relative => AppliedPath(check, relative, skipped, switchedOff),
+            relative => skips.GetValueOrDefault(relative));
         UnregisteredTools = found.Unregistered;
         foreach (var line in found.Unregistered) Logger.LogWarning("Not registering a tool of '{List}': {Reason}", check.List.Name, line);
 

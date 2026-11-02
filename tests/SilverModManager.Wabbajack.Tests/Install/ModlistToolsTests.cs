@@ -195,6 +195,21 @@ public class ModlistToolsTests(ITestOutputHelper helper) : InstallTestBase<Modli
     }
 
     [Fact]
+    public async Task AToolFileTheInstallSkippedIsReportedWithTheReasonItWasSkipped()
+    {
+        var entry = "4\\arguments=\n4\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/tools/xLODGen/xLODGenx64.exe\n4\\title=xLODGen\n";
+        var archive = await AddZip("xlodgen.zip", new() { ["base.bin"] = [1, 2, 3] });
+        var list = ListWith(DefaultExecutables + entry);
+        list.Archives.Add(archive);
+        list.Directives.Add(list.Patched("tools/xLODGen/xLODGenx64.exe", archive, "base.bin", [9, 9, 9], [9, 9, 9, 4]));
+        var (loadout, group, job) = await InstallList(list);
+
+        var skip = SkipsOf(group).Should().ContainSingle(s => s.To == "tools/xLODGen/xLODGenx64.exe").Subject;
+        ToolsOf(loadout).Should().BeEmpty();
+        job.UnregisteredTools.Should().ContainSingle().Which.Should().Contain("the install skipped it").And.Contain(skip.Reason);
+    }
+
+    [Fact]
     public async Task AToolOfAModThatModlistTxtSwitchesOffIsReportedBecauseApplyNeverWritesIt()
     {
         var entry = "4\\arguments=\n4\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/mods/Off/Tools/Mod.exe\n4\\title=OffTool\n";
@@ -242,6 +257,39 @@ public class ModlistToolsTests(ITestOutputHelper helper) : InstallTestBase<Modli
         Group(group).ExtrasFolder.Value.Should().Be(recorded.ToString());
         recorded.Combine("xEdit/SSEEdit.exe").FileExists.Should().BeTrue();
         ToolsOf(loadout).Should().Contain(t => t.Exe == recorded.Combine("xEdit/SSEEdit.exe").ToString());
+    }
+
+    [Fact]
+    public async Task AToolIsRegisteredFromAFolderWhoseNameHoldsAColonAndWhoseParentIsReachedThroughASymlink()
+    {
+        var real = Path.Combine(Path.GetTempPath(), "smm-link-target-" + Guid.NewGuid().ToString("N"));
+        var link = Path.Combine(Path.GetTempPath(), "smm-link-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(real);
+        Directory.CreateSymbolicLink(link, real);
+        try
+        {
+            var list = ListWith(DefaultExecutables + SseEditEntry);
+            var loadout = await CreateLoadout();
+            var modlist = await AddModlist(list.ToList(), list.Blobs);
+            var (_, group) = await Install(loadout, modlist, Options);
+
+            var recorded = ServiceProvider.GetRequiredService<NexusMods.Paths.IFileSystem>().FromUnsanitizedFullPath(Path.Combine(link, "Extras", "Test list-EId:2000000000527D6"));
+            using (var tx = Connection.BeginTransaction())
+            {
+                tx.Add(group.Id, WabbajackModlistLoadoutGroup.ExtrasFolder, recorded.ToString());
+                await tx.Commit();
+            }
+
+            var job = (await Install(loadout, modlist, Options)).Job;
+
+            job.UnregisteredTools.Should().BeEmpty();
+            ToolsOf(loadout).Should().Contain(t => t.Exe == recorded.Combine("xEdit/SSEEdit.exe").ToString());
+        }
+        finally
+        {
+            Directory.Delete(link);
+            Directory.Delete(real, recursive: true);
+        }
     }
 
     private WabbajackModlistLoadoutGroup.ReadOnly Group(WabbajackModlistLoadoutGroup.ReadOnly stale)
