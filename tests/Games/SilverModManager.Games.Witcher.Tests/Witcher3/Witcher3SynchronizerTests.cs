@@ -183,12 +183,10 @@ public class Witcher3SynchronizerTests(ITestOutputHelper helper)
     }
 
     [Fact]
-    public async Task RepairRespellsDiskStateRecordedAfterTheLoadoutSnapshotWasTaken()
+    public async Task RepairRespellsDiskStateRecordedUnderALowercaseFixedFolder()
     {
         var loadout = await CreateLoadout();
-        var snapshot = Refresh(loadout);
 
-        // What the reindex at the start of an apply does: records a file after the caller took its snapshot.
         await RecordDiskState(loadout, "mods/modMenu/content/a.ws", "menu");
         await GamePathRespeller.Respell(Connection, loadout.LoadoutId, loadout.Installation.Id, FolderSpellings.Fixed(Witcher3Synchronizer.FixedTopFolders), GamePathFilters.Empty);
 
