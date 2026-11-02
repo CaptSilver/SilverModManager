@@ -56,6 +56,7 @@ public class Startup
                 .AddFileHashes()
                 .AddCLI()
                 .AddWabbajackVerbs()
+                .AddSingleton<INestedArchiveOpener, BsaMemberOpener>()
                 // The verbs run against doubles; WabbajackBatchVerbTests sets them up.
                 .AddSingleton(Substitute.For<IModlistCatalog>())
                 .AddSingleton(Substitute.For<IArchiveAcquirer>())

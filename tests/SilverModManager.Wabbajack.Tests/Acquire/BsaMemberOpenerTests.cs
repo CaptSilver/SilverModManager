@@ -47,6 +47,17 @@ public class BsaMemberOpenerTests : IDisposable
     }
 
     [Fact]
+    public async Task EveryMemberOfAnArchiveIsListed()
+    {
+        var archive = await TestArchives.Tes5Archive(_temp);
+
+        var members = await _opener.ListMembers(new MemoryStream(archive), CancellationToken.None);
+
+        members.Select(m => m.ToString().Replace('\\', '/')).Should().BeEquivalentTo(
+            [TestArchives.FirstMemberPath.ToString().Replace('\\', '/'), TestArchives.SecondMemberPath.ToString().Replace('\\', '/')]);
+    }
+
+    [Fact]
     public async Task AnOpenedArchiveGivesAMemberByItsPathWhateverTheCase()
     {
         var bytes = await TestArchives.Tes5Archive(_temp);

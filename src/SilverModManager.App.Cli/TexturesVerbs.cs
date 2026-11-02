@@ -5,6 +5,7 @@ using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.FileExtractor;
 using SilverModManager.Abstractions.Cli;
 using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Transforms;
 
 namespace SilverModManager.CLI;
@@ -23,6 +24,7 @@ public static class TexturesVerbs
     private static async Task<int> Census([Injected] IRenderer renderer,
         [Option("d", "directory", "The folder holding the downloaded archives")] AbsolutePath directory,
         [Injected] IFileExtractor extractor,
+        [Injected] IEnumerable<INestedArchiveOpener> nestedOpeners,
         [Injected] TemporaryFileManager temporaryFileManager,
         [Injected] CancellationToken token)
     {
@@ -34,8 +36,15 @@ public static class TexturesVerbs
         foreach (var archive in directory.EnumerateFiles().OrderBy(f => f.FileName, StringComparer.Ordinal))
         {
             token.ThrowIfCancellationRequested();
-            if (!await extractor.CanExtract(archive)) continue;
+            var isNested = nestedOpeners.Any(o => o.CanOpen(archive.FileName));
+            if (!isNested && !await extractor.CanExtract(archive)) continue;
             archives++;
+
+            if (isNested)
+            {
+                await CensusNested(census, nestedOpeners, archive, archive.FileName, token);
+                continue;
+            }
 
             await using var folder = temporaryFileManager.CreateFolder();
             try
@@ -49,10 +58,14 @@ public static class TexturesVerbs
                 continue;
             }
 
-            foreach (var file in folder.Path.EnumerateFiles("*.dds", recursive: true).OrderBy(f => f.ToString(), StringComparer.Ordinal))
+            foreach (var file in folder.Path.EnumerateFiles(recursive: true).OrderBy(f => f.ToString(), StringComparer.Ordinal))
             {
-                var name = $"{archive.FileName}: {file.RelativeTo(folder.Path).ToString().Replace('\\', '/')}";
-                census.Add(name, await File.ReadAllBytesAsync(file.ToString(), token));
+                var relative = file.RelativeTo(folder.Path).ToString().Replace('\\', '/');
+                var name = $"{archive.FileName}: {relative}";
+                if (file.Extension == new Extension(".dds"))
+                    census.Add(name, await File.ReadAllBytesAsync(file.ToString(), token));
+                else if (nestedOpeners.Any(o => o.CanOpen(file.FileName)))
+                    await CensusNested(census, nestedOpeners, file, name, token);
             }
         }
 
@@ -62,6 +75,38 @@ public static class TexturesVerbs
         if (census.Unreadable.Count > 0)
             await renderer.Table(["File", "Why"], census.Unreadable.Select(u => new object[] { u.Name, u.Reason }));
         return 0;
+    }
+
+    /// <summary>Counts the .dds members of a .bsa or .ba2 on disk, the way the install reads them.</summary>
+    private static async Task CensusNested(TextureCensus census, IEnumerable<INestedArchiveOpener> openers, AbsolutePath file, string name, CancellationToken token)
+    {
+        var opener = openers.First(o => o.CanOpen(file.FileName));
+        try
+        {
+            IReadOnlyList<RelativePath> members;
+            await using (var stream = file.Read())
+                members = await opener.ListMembers(stream, token);
+
+            await using var nested = await opener.OpenArchive(_ => Task.FromResult<Stream>(file.Read()), token);
+            foreach (var member in members.Where(m => m.Extension == new Extension(".dds")).OrderBy(m => m.ToString(), StringComparer.Ordinal))
+            {
+                var memberName = $"{name}: {member.ToString().Replace('\\', '/')}";
+                await using var content = await nested.Open(member, token);
+                if (content is null)
+                {
+                    census.AddUnreadable(memberName, "the archive lists the file but would not give it");
+                    continue;
+                }
+
+                using var bytes = new MemoryStream();
+                await content.CopyToAsync(bytes, token);
+                census.Add(memberName, bytes.ToArray());
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            census.AddUnreadable(name, $"the archive could not be read: {ex.Message}");
+        }
     }
 }
 

@@ -30,6 +30,11 @@ public interface INestedArchiveOpener
     /// <summary>The bytes of <paramref name="member"/>, or null when the archive has no such member.</summary>
     Task<Stream?> Open(Stream archive, RelativePath member, CancellationToken cancellationToken);
 
+    /// <summary>The path of every member of <paramref name="archive"/>, for tools that survey an archive's contents; a list path always names its member.</summary>
+    /// <exception cref="NotSupportedException">The opener has no index to read members from.</exception>
+    Task<IReadOnlyList<RelativePath>> ListMembers(Stream archive, CancellationToken cancellationToken)
+        => throw new NotSupportedException($"{GetType().Name} cannot list the members of an archive");
+
     /// <summary>
     /// Opens the archive once so that many members can be read from it without reading its index again. The
     /// container is opened with <paramref name="openContainer"/>, as often as the returned archive needs a stream of

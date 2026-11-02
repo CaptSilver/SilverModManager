@@ -41,9 +41,16 @@ public sealed class BsaMemberOpener : INestedArchiveOpener
     public Task<INestedArchive> OpenArchive(Func<CancellationToken, Task<Stream>> openContainer, CancellationToken cancellationToken)
         => Task.FromResult<INestedArchive>(new OpenedArchive(openContainer, _readersPerArchive));
 
+    public async Task<IReadOnlyList<RelativePath>> ListMembers(Stream archive, CancellationToken cancellationToken)
+    {
+        var reader = await OpenReader(archive, "list its members", cancellationToken);
+        await using (reader.Reader)
+            return reader.Entries.Values.Select(e => e.Path).ToArray();
+    }
+
     public async Task<Stream?> Open(Stream archive, RelativePath member, CancellationToken cancellationToken)
     {
-        var reader = await OpenReader(archive, member, cancellationToken);
+        var reader = await OpenReader(archive, $"look for '{member}'", cancellationToken);
         await using (reader.Reader)
             return await Copy(reader.Entries, member, cancellationToken);
     }
@@ -51,7 +58,7 @@ public sealed class BsaMemberOpener : INestedArchiveOpener
     /// <summary>A reader over one stream of the archive and its entries by folded path, the first of two that differ only in case.</summary>
     private sealed record ArchiveReader(IBethesdaArchiveReader Reader, Dictionary<string, IBethesdaArchiveEntry> Entries);
 
-    private static async Task<ArchiveReader> OpenReader(Stream archive, RelativePath member, CancellationToken cancellationToken)
+    private static async Task<ArchiveReader> OpenReader(Stream archive, string purpose, CancellationToken cancellationToken)
     {
         // The readers seek. A store stream that cannot is spooled; the reader then owns (and disposes) the spool.
         var source = archive.CanSeek ? archive : await Spool(archive, cancellationToken);
@@ -64,7 +71,7 @@ public sealed class BsaMemberOpener : INestedArchiveOpener
         catch (BethesdaArchiveException e)
         {
             await source.DisposeAsync();
-            throw new MemberNotFoundException($"cannot look for '{member}': {e.Message}");
+            throw new MemberNotFoundException($"cannot {purpose}: {e.Message}");
         }
         catch
         {
@@ -139,7 +146,7 @@ public sealed class BsaMemberOpener : INestedArchiveOpener
         private async Task<Stream?> OpenWithReader(RelativePath member, CancellationToken cancellationToken)
         {
             if (!_idle.TryTake(out var reader))
-                reader = await OpenReader(await openContainer(cancellationToken), member, cancellationToken);
+                reader = await OpenReader(await openContainer(cancellationToken), $"look for '{member}'", cancellationToken);
 
             var healthy = false;
             try

@@ -3,6 +3,7 @@ using System.IO.Compression;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
+using SilverModManager.Games.Bethesda.Archives;
 using SilverModManager.Sdk.ProxyConsole;
 using SilverModManager.SingleProcess;
 using Table = SilverModManager.Sdk.ProxyConsole.Table;
@@ -70,6 +71,36 @@ public class TexturesCensusVerbTests(IServiceProvider provider, TemporaryFileMan
         unreadable.Should().ContainSingle();
         unreadable[0][0].Should().Be("second.zip: textures/broken.dds");
         unreadable[0][1].Should().Contain("fourcc=");
+    }
+
+    private async Task<byte[]> Bsa(params (string Path, byte[] Bytes)[] files)
+    {
+        await using var builder = BethesdaArchiveBuilder.Create(new Tes5ArchiveState("BSA\0", 104, 0x3, 0), temporaryFileManager);
+        foreach (var (path, bytes) in files)
+            await builder.AddFile(new Tes5FileState(0, RelativePath.FromUnsanitizedInput(path), false), new MemoryStream(bytes), CancellationToken.None);
+        var output = new MemoryStream();
+        await builder.Build(output, CancellationToken.None);
+        return output.ToArray();
+    }
+
+    [Fact]
+    public async Task CountsTexturesInsideABsaThatAZipShipsAndABareBsaDownload()
+    {
+        await using var folder = temporaryFileManager.CreateFolder();
+        AddZip(folder.Path / "mod.zip",
+            ("Data/pack.bsa", await Bsa(("textures/a.dds", Dds("DXT5", 16)), ("textures/b.dds", Dds("DXT5", 16)), ("meshes/m.nif", [1, 2, 3]))),
+            ("textures/loose.dds", Dds("DXT5", 16)));
+        await File.WriteAllBytesAsync((folder.Path / "bare.bsa").ToString(), await Bsa(("textures/c.dds", Dds("ATI2", 16)), ("textures/broken.dds", Dds("????", 16))));
+
+        var (exitCode, renderer) = await Run("textures", "census", "-d", folder.Path.ToString());
+
+        exitCode.Should().Be(0);
+        var tables = renderer.Logs.OfType<Table>().ToArray();
+        tables.Should().HaveCount(2);
+        Cells(tables[0]).Should().BeEquivalentTo(new[] { new[] { "BC3_UNORM", "3" }, new[] { "BC5_UNORM", "1" } });
+        var unreadable = Cells(tables[1]);
+        unreadable.Should().ContainSingle();
+        unreadable[0][0].Should().Be("bare.bsa: textures/broken.dds");
     }
 
     [Fact]
