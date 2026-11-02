@@ -440,8 +440,12 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
         (await Record.ExceptionAsync(() => resolving)).Should().BeAssignableTo<OperationCanceledException>();
         await resolver.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
+        // The warning for giving up waiting also names the key; only the copy ending later says "ended after".
+        log.Messages(LogLevel.Warning).Should().NotContain(m => m.Contains("ended after"));
+
         deaf.Release.SetResult();
-        await Eventually(() => log.Messages(LogLevel.Warning).Any(m => m.Contains("after") && m.Contains("a.dds")));
+        // The message is written when the copy ends, so waiting for it also lets the late back up finish before teardown.
+        await Eventually(() => log.Messages(LogLevel.Warning).Any(m => m.Contains("ended after") && m.Contains("a.dds")));
 
         FileStorePins.Pinned().Should().NotContain(FileIdentity.XxHash3(inner.xxHash3()), "a copy that ends late does not take a pin nothing would release");
     }
