@@ -25,10 +25,13 @@ public enum SkipKind : byte
 
     /// <summary>The directive patches, recompresses or builds a file and this build cannot do that yet.</summary>
     Transform = 5,
+
+    /// <summary>The file is installed, but as the author's original bytes: its format could not be re-encoded to the one the list asks for.</summary>
+    KeptOriginal = 6,
 }
 
 /// <summary>
-/// A directive the install could not execute. The list is left disabled while any of these exist for its group.
+/// A directive the install could not execute. The list is left disabled while any of these other than <see cref="SkipKind.KeptOriginal"/> exist for its group.
 /// It is a <see cref="LoadoutItem"/> so the loadout owns it: removing the list deletes the row with the group, and
 /// only an owned row comes back when the removal is undone.
 /// </summary>

@@ -654,6 +654,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
     private sealed record FileProduced(FileIdentity Hash, Size Size, FileIdentity XxHash64) : Outcome;
 
+    /// <summary>A file that was written, with a note for each way it is not what the list asked for; each note becomes a <see cref="SkipKind.KeptOriginal"/> row.</summary>
+    private sealed record FileProducedWithNotes(FileProduced File, IReadOnlyList<string> Notes) : Outcome;
+
     private sealed record FileSkipped(SkipKind Kind, string Reason) : Outcome;
 
     private async Task Write(Checked check, LoadoutItemGroupId groupId, AbsolutePath extrasFolder, IReadOnlyList<Prepared> prepared, CancellationToken cancellationToken)
@@ -990,9 +993,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             if (placement.Group is null || placement.Path is null)
                 throw new InvalidOperationException($"'{placement.To}' reached the write phase without a place in the loadout");
 
-            var (hash, size, xxHash64) = await Produce(check, state, extras, item, cancellationToken);
+            var (hash, size, xxHash64, notes) = await Produce(check, state, extras, item, cancellationToken);
             state.Written[Fold(placement.To)] = (hash, xxHash64);
-            return new FileProduced(hash, size, xxHash64);
+            var produced = new FileProduced(hash, size, xxHash64);
+            return notes.Count > 0 ? new FileProducedWithNotes(produced, notes) : produced;
         }
         catch (DirectiveSkipped skipped)
         {
@@ -1033,12 +1037,13 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         switch (outcome)
         {
             case FileProduced produced:
-                if (placement.Group is not { } groupName || placement.Path is not { } path)
-                    throw new InvalidOperationException($"'{placement.To}' was produced without a place in the loadout");
-                if (placement.Target is Mo2Target.ProfileSetting && OwnedIniPath(check, path) is { } iniPath)
-                    SetIniBaseline(tx, modlistGroup, state, groupName, check, iniPath, produced.Hash);
-                else
-                    AddFile(tx, modlistGroup, state, groupName, path, produced.Hash, produced.Size);
+                RecordFile(tx, check, modlistGroup, state, placement, produced);
+                break;
+            case FileProducedWithNotes withNotes:
+                // The file row goes in first: AddSkip only marks earlier rows wanted, it retracts nothing.
+                RecordFile(tx, check, modlistGroup, state, placement, withNotes.File);
+                foreach (var note in withNotes.Notes)
+                    AddSkip(tx, modlistGroup, state, placement, SkipKind.KeptOriginal, note, check);
                 break;
             case FileSkipped skipped:
                 AddSkip(tx, modlistGroup, state, placement, skipped.Kind, skipped.Reason, check);
@@ -1046,6 +1051,16 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             default:
                 throw new InvalidOperationException($"No rows are written for a {outcome.GetType().Name}");
         }
+    }
+
+    private void RecordFile(ITransaction tx, Checked check, LoadoutItemGroupId modlistGroup, WriteState state, Placement placement, FileProduced produced)
+    {
+        if (placement.Group is not { } groupName || placement.Path is not { } path)
+            throw new InvalidOperationException($"'{placement.To}' was produced without a place in the loadout");
+        if (placement.Target is Mo2Target.ProfileSetting && OwnedIniPath(check, path) is { } iniPath)
+            SetIniBaseline(tx, modlistGroup, state, groupName, check, iniPath, produced.Hash);
+        else
+            AddFile(tx, modlistGroup, state, groupName, path, produced.Hash, produced.Size);
     }
 
     /// <summary>A tool file goes to the list's folder on disk as it is: the loadout never deploys it, so the file store is not involved.</summary>
@@ -1057,7 +1072,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var destination = extras.Root.Combine(extra.Path);
         destination.Parent.CreateDirectory();
         await using var output = destination.Create();
-        await WriteBytes(check, extras, item.Placement, item.Member, output, cancellationToken);
+        // A tool file has no rows to hold a note, so a kept original there is silent.
+        await WriteBytes(check, extras, item.Placement, item.Member, output, keepOriginalIfUnsupported: true, notes: [], cancellationToken);
     }
 
     private void AddSkip(ITransaction tx, LoadoutItemGroupId group, WriteState state, Placement placement, SkipKind kind, string reason, Checked check)
@@ -1318,7 +1334,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             Logger.LogWarning("The profile of '{List}' has neither a plugins.txt nor a loadorder.txt, so the plugin order is left as it was", check.List.Name);
 
         tx.Add(modlistGroup.Value, WabbajackModlistLoadoutGroup.InstalledAt, DateTimeOffset.UtcNow);
-        if (!WabbajackSkippedFile.FindByGroup(db, modlistGroup).Any() && LoadoutItem.Load(db, modlistGroup).IsDisabled)
+        // A kept original is on disk and the game loads it, so only rows for content that is missing keep the list off.
+        if (WabbajackSkippedFile.FindByGroup(db, modlistGroup).All(r => r.Kind == SkipKind.KeptOriginal) && LoadoutItem.Load(db, modlistGroup).IsDisabled)
             tx.Retract(modlistGroup.Value, LoadoutItem.Disabled, Null.Instance);
 
         await tx.Commit();
@@ -1366,7 +1383,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     }
 
     /// <summary>The file store hash and size of what the directive writes, producing and storing the bytes when they are not a member already in the store.</summary>
-    private async Task<(FileIdentity Identity, Size Size, FileIdentity XxHash64)> Produce(Checked check, WriteState state, ExtrasFolder extras, Prepared item, CancellationToken cancellationToken)
+    private async Task<(FileIdentity Identity, Size Size, FileIdentity XxHash64, IReadOnlyList<string> Notes)> Produce(Checked check, WriteState state, ExtrasFolder extras, Prepared item, CancellationToken cancellationToken)
     {
         var directive = item.Placement.Directive;
         switch (directive)
@@ -1374,20 +1391,26 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             case FromArchive when directive.GetType() == typeof(FromArchive):
             {
                 var member = RequireMember(item.Placement, item.Member);
-                return (member.StoreIdentity, member.Size, member.XxHash64 ?? directive.XxHash64);
+                return (member.StoreIdentity, member.Size, member.XxHash64 ?? directive.XxHash64, []);
             }
 
             case MergedPatch merged:
-                return await Generated(state, directive, await MergedBytes(check, state, merged, cancellationToken), checkHash: true, cancellationToken);
+                return WithNotes(await Generated(state, directive, await MergedBytes(check, state, merged, cancellationToken), checkHash: true, cancellationToken), []);
 
             case CreateBsa bsa:
-                return await Generated(state, directive, output => BuildArchive(check, extras, bsa, output, cancellationToken), checkHash: false, cancellationToken);
+                return WithNotes(await Generated(state, directive, output => BuildArchive(check, extras, bsa, output, cancellationToken), checkHash: false, cancellationToken), []);
 
             default:
                 var exempt = directive is RemappedInlineFile or TransformedTexture || IsHashUnchecked(directive);
-                return await Generated(state, directive, output => WriteBytes(check, extras, item.Placement, item.Member, output, cancellationToken), checkHash: !exempt, cancellationToken);
+                // Loose files keep the original bytes when the texture cannot be re-encoded; the notes say which did.
+                var notes = new List<string>();
+                var file = await Generated(state, directive, output => WriteBytes(check, extras, item.Placement, item.Member, output, keepOriginalIfUnsupported: true, notes, cancellationToken), checkHash: !exempt, cancellationToken);
+                return WithNotes(file, notes);
         }
     }
+
+    private static (FileIdentity, Size, FileIdentity, IReadOnlyList<string>) WithNotes((FileIdentity Identity, Size Size, FileIdentity XxHash64) file, IReadOnlyList<string> notes)
+        => (file.Identity, file.Size, file.XxHash64, notes);
 
     private static bool IsHashUnchecked(Directive directive)
         => directive is InlineFile or ArchiveMeta && HashUnchecked.Contains(directive.To.FileName.ToString(), StringComparer.OrdinalIgnoreCase);
@@ -1413,8 +1436,13 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         return (file.XxHash3, file.Size, file.XxHash64);
     }
 
-    /// <summary>The bytes of one directive other than a merge or an archive, written to <paramref name="output"/>.</summary>
-    private async Task WriteBytes(Checked check, ExtrasFolder extras, Placement placement, ResolvedMember? member, Stream output, CancellationToken cancellationToken)
+    /// <summary>
+    /// The bytes of one directive other than a merge or an archive, written to <paramref name="output"/>. A texture whose
+    /// format cannot be re-encoded is copied as it is when <paramref name="keepOriginalIfUnsupported"/> allows it, and
+    /// <paramref name="notes"/> gets a line saying so; otherwise the exception goes to the caller.
+    /// </summary>
+    private async Task WriteBytes(Checked check, ExtrasFolder extras, Placement placement, ResolvedMember? member, Stream output,
+        bool keepOriginalIfUnsupported, List<string> notes, CancellationToken cancellationToken)
     {
         switch (placement.Directive)
         {
@@ -1427,8 +1455,18 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             }
             case TransformedTexture texture:
             {
-                await using var dds = await RequireMember(placement, member).Open();
-                await Transforms.Recompress(dds, texture.Image, output, cancellationToken);
+                try
+                {
+                    await using var dds = await RequireMember(placement, member).Open();
+                    await Transforms.Recompress(dds, texture.Image, output, cancellationToken);
+                }
+                catch (UnsupportedTextureFormatException unsupported) when (keepOriginalIfUnsupported)
+                {
+                    // Recompress writes nothing before it throws this, but it has read from the stream, so open the member again.
+                    await using var original = await RequireMember(placement, member).Open();
+                    await original.CopyToAsync(output, cancellationToken);
+                    notes.Add($"kept the original '{placement.To}' because its format cannot be re-encoded to {texture.Image.Format}: {unsupported.Message}");
+                }
                 break;
             }
             case FromArchive:
@@ -1538,7 +1576,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 TemporaryPath temporary;
                 try
                 {
-                    temporary = await Writer.WriteTemporary(file => WriteBytes(check, extras, input, member, file, cancellationToken));
+                    temporary = await Writer.WriteTemporary(file => WriteBytes(check, extras, input, member, file, keepOriginalIfUnsupported: false, notes: [], cancellationToken));
                 }
                 catch (UnsupportedTextureFormatException unsupported)
                 {

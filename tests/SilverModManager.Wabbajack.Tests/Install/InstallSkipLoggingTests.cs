@@ -31,7 +31,7 @@ public class InstallSkipLoggingTests(ITestOutputHelper helper) : InstallTestBase
         await Install(loadout, await AddModlist(list.ToList("My List"), list.Blobs), Defaults);
 
         var traced = _log.Messages(LogLevel.Trace).Where(m => m.Contains("mods/A/t.dds")).Should().ContainSingle().Subject;
-        traced.Should().Contain("My List").And.Contain("Transform").And.Contain("could not be re-encoded");
+        traced.Should().Contain("My List").And.Contain("KeptOriginal").And.Contain("kept the original");
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public class InstallSkipLoggingTests(ITestOutputHelper helper) : InstallTestBase
         await Install(loadout, await AddModlist(list.ToList("My List"), list.Blobs), Defaults);
 
         _log.Messages(LogLevel.Warning).Where(m => m.Contains("Skipped '")).Should().BeEmpty();
-        var summary = _log.Messages(LogLevel.Warning).Where(m => m.Contains("skipped as Transform")).Should().ContainSingle().Subject;
+        var summary = _log.Messages(LogLevel.Warning).Where(m => m.Contains("skipped as KeptOriginal")).Should().ContainSingle().Subject;
         summary.Should().Contain("7 file(s)").And.Contain("My List");
         Enumerable.Range(0, 7).Count(i => summary.Contains($"mods/A/t{i}.dds")).Should().Be(5);
     }
@@ -111,5 +111,26 @@ public class InstallSkipLoggingTests(ITestOutputHelper helper) : InstallTestBase
         var skip = SkipsOf(group).Should().ContainSingle().Subject;
         skip.To.Should().Be("mods/A/pack.bsa");
         skip.Reason.Should().Contain("textures/t.dds").And.Contain("BC6H_UF16").And.NotContain("TEMP_BSA_FILES");
+    }
+
+    [Fact]
+    public async Task ALooseTextureThatCannotBeReEncodedIsKeptAsItIsAndRecordedWithItsTarget()
+    {
+        var source = Bc1Dds(8);
+        var archive = await AddZip("a.zip", new() { ["t.dds"] = source });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(UnwritableTexture("mods/A/t.dds", archive, "t.dds"));
+        var loadout = await CreateLoadout();
+
+        var (_, group) = await Install(loadout, await AddModlist(list.ToList("My List"), list.Blobs), Defaults);
+
+        var files = TreeOf(group)["A"];
+        var key = files.Keys.Should().ContainSingle(k => k.EndsWith("t.dds")).Subject;
+        (await InstalledBytes(group, "A", key)).Should().Equal(source);
+        var kept = SkipsOf(group).Should().ContainSingle().Subject;
+        kept.Kind.Should().Be(SkipKind.KeptOriginal);
+        kept.To.Should().Be("mods/A/t.dds");
+        kept.Reason.Should().StartWith("kept the original 'mods/A/t.dds' because its format cannot be re-encoded to BC6H_UF16: ");
     }
 }

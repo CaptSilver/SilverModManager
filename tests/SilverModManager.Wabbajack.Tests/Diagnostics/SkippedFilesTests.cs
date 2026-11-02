@@ -167,7 +167,7 @@ public class SkippedFilesTests(ITestOutputHelper helper) : InstallTestBase<Skipp
         var archive = await AddZip("a.zip", new() { ["base.bin"] = [1, 2, 3], ["tex.dds"] = Bc1Dds(8) });
         var list = new ListBuilder();
         list.Archives.Add(archive);
-        list.Directives.Add(UnwritableTexture("mods/A/patched.bin", archive, "tex.dds"));
+        list.Directives.Add(UnbuildableArchive("mods/A/patched.bin"));
         var loadout = await CreateLoadout();
         var (_, group) = await Install(loadout, await AddModlist(list.ToList(), list.Blobs), new InstallOptions(false, new HashSet<RelativePath>()));
         SkipsOf(group).Should().ContainSingle();

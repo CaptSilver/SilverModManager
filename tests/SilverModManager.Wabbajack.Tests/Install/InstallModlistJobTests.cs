@@ -404,7 +404,7 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
     }
 
     [Fact]
-    public async Task ATextureTheEncoderCannotWriteIsTheOnlySkipWhenAnArchiveIsBuiltInTheSameList()
+    public async Task ATextureTheEncoderCannotWriteIsKeptWhileAnArchiveIsStillBuiltInTheSameList()
     {
         var archive = await AddZip("a.zip", new() { ["t.dds"] = Bc1Dds(8) });
         var list = new ListBuilder();
@@ -419,9 +419,9 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
 
         SkipsOf(group).Select(s => (s.To, s.Kind, s.Reason)).Should().BeEquivalentTo(
         [
-            ("mods/A/t.dds", SkipKind.Transform, "the texture 'mods/A/t.dds' could not be re-encoded: Cannot re-encode a texture with format BC6H_UF16"),
+            ("mods/A/t.dds", SkipKind.KeptOriginal, "kept the original 'mods/A/t.dds' because its format cannot be re-encoded to BC6H_UF16: Cannot re-encode a texture with format BC6H_UF16"),
         ]);
-        TreeOf(group)["A"].Should().ContainKey("Game/Data/pack.bsa");
+        TreeOf(group)["A"].Should().ContainKey("Game/Data/pack.bsa").And.ContainKey("Game/Data/t.dds");
     }
 
     [Fact]
@@ -550,7 +550,7 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         list.Archives.Add(archive);
         list.Directives.Add(list.Member("mods/A/plain.bin", archive, "base.bin", [1, 2, 3]));
         list.Directives.Add(list.Inline("mods/A/inline.txt", "inline"));
-        list.Directives.Add(UnwritableTexture("mods/A/patched.bin", archive, "tex.dds"));
+        list.Directives.Add(UnbuildableArchive("mods/A/patched.bin"));
         var loadout = await CreateLoadout();
         var modlist = await AddModlist(list.ToList(), list.Blobs);
         var options = new InstallOptions(false, new HashSet<RelativePath>());
@@ -780,7 +780,7 @@ public class InstallModlistTextureTests(ITestOutputHelper helper) : InstallTestB
     }
 
     [Fact]
-    public async Task ATextureWhoseTargetFormatWeCannotWriteBecomesATransformSkipNamingTheFormat()
+    public async Task ATextureWhoseTargetFormatWeCannotWriteIsKeptAndTheRowNamesTheFormat()
     {
         var archive = await AddZip("a.zip", new() { ["t.dds"] = Bc1Dds(8) });
         var list = new ListBuilder();
@@ -792,9 +792,9 @@ public class InstallModlistTextureTests(ITestOutputHelper helper) : InstallTestB
         var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
 
         var skip = SkipsOf(group).Should().ContainSingle().Subject;
-        skip.Kind.Should().Be(SkipKind.Transform);
+        skip.Kind.Should().Be(SkipKind.KeptOriginal);
         skip.Reason.Should().Contain("BC6H_UF16");
-        TreeOf(group).Should().NotContainKey("A");
+        TreeOf(group)["A"].Should().ContainKey("Game/Data/t.dds");
     }
 
     [Fact]

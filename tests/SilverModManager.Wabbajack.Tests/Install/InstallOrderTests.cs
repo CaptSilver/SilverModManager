@@ -259,11 +259,40 @@ public class InstallOrderTests(ITestOutputHelper helper) : InstallTestBase<Insta
         var archive = await AddZip("a.zip", new() { ["base.bin"] = [1, 2, 3], ["tex.dds"] = Bc1Dds(8) });
         var list = List();
         list.Archives.Add(archive);
-        list.Directives.Add(UnwritableTexture("mods/A/patched.bin", archive, "tex.dds"));
+        list.Directives.Add(UnbuildableArchive("mods/A/patched.bin"));
         var (_, skipped) = await InstallList(list);
 
         SkipsOf(skipped).Should().ContainSingle(s => s.Kind == SkipKind.Transform);
         skipped.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().IsDisabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AListWhoseOnlySkipsAreKeptOriginalsIsEnabled()
+    {
+        var archive = await AddZip("a.zip", new() { ["tex.dds"] = Bc1Dds(8) });
+        var list = List();
+        list.Archives.Add(archive);
+        list.Directives.Add(UnwritableTexture("mods/A/kept.dds", archive, "tex.dds"));
+
+        var (_, group) = await InstallList(list);
+
+        SkipsOf(group).Should().ContainSingle().Which.Kind.Should().Be(SkipKind.KeptOriginal);
+        group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().IsDisabled.Should().BeFalse("a kept original is on disk and the game loads it");
+    }
+
+    [Fact]
+    public async Task AKeptOriginalDoesNotHideARealSkipFromTheDisableRule()
+    {
+        var archive = await AddZip("a.zip", new() { ["tex.dds"] = Bc1Dds(8) });
+        var list = List();
+        list.Archives.Add(archive);
+        list.Directives.Add(UnwritableTexture("mods/A/kept.dds", archive, "tex.dds"));
+        list.Directives.Add(UnbuildableArchive("mods/A/pack.bsa"));
+
+        var (_, group) = await InstallList(list);
+
+        SkipsOf(group).Select(s => s.Kind).Should().Contain([SkipKind.KeptOriginal, SkipKind.Transform]);
+        group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().IsDisabled.Should().BeTrue();
     }
 
     [Fact]

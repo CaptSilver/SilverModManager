@@ -56,9 +56,13 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
         return stream.ToArray();
     }
 
-    /// <summary>A texture directive over a real DDS that asks for BC6H, which the re-encoder cannot write, so it always becomes a Transform skip row.</summary>
+    /// <summary>A texture directive over a real DDS that asks for BC6H, which the re-encoder cannot write, so the install keeps the original bytes and records a KeptOriginal row.</summary>
     protected static TransformedTexture UnwritableTexture(string to, ArchiveEntry archive, string member)
         => new(P(to), Xx64.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P(member)]), new ImageState(4, 4, 1, "BC6H_UF16"));
+
+    /// <summary>An archive directive whose state is not a Bethesda archive, so it can never be built and always becomes a Transform skip row.</summary>
+    protected static CreateBsa UnbuildableArchive(string to)
+        => new(P(to), Xx64.From(1), 1, P("none"), JsonDocument.Parse("{\"$type\":\"NotAnArchive\"}").RootElement, []);
 
     protected static RelativePath P(string path) => RelativePath.FromUnsanitizedInput(path);
 

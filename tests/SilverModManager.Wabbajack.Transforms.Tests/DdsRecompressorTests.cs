@@ -103,6 +103,47 @@ public class DdsRecompressorTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task Recompress_UnsupportedSourceFormat_WritesNothingToTheOutput()
+    {
+        var source = new MemoryStream();
+        TestTextures.WriteDds(source, DxgiFormat.BC6H_UF16);
+        var output = new CountingStream();
+
+        await Assert.ThrowsAsync<UnsupportedTextureFormatException>(() =>
+            DdsRecompressor.Recompress(new MemoryStream(source.ToArray()), new DdsTarget(32, 32, 1, DxgiFormat.BC1_UNORM), output, CancellationToken.None));
+
+        Assert.Equal(0, output.BytesWritten);
+    }
+
+    [Fact]
+    public async Task Recompress_UnsupportedTargetFormat_WritesNothingToTheOutput()
+    {
+        var output = new CountingStream();
+
+        await Assert.ThrowsAsync<UnsupportedTextureFormatException>(() =>
+            DdsRecompressor.Recompress(new MemoryStream(Bc1Fixture()), new DdsTarget(32, 32, 1, DxgiFormat.BC6H_UF16), output, CancellationToken.None));
+
+        Assert.Equal(0, output.BytesWritten);
+    }
+
+    /// <summary>A write-only sink that counts what reaches it, so a test can tell "wrote nothing" from "wrote and was rewound".</summary>
+    private sealed class CountingStream : Stream
+    {
+        public long BytesWritten { get; private set; }
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => BytesWritten;
+        public override long Position { get => BytesWritten; set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => BytesWritten += count;
+        public override void Write(ReadOnlySpan<byte> buffer) => BytesWritten += buffer.Length;
+    }
+
+    [Fact]
     public async Task Recompress_CancelledToken_Throws()
     {
         using var cts = new CancellationTokenSource();

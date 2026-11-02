@@ -72,7 +72,7 @@ public class InstallConvergenceTests(ITestOutputHelper helper) : InstallTestBase
         var first = List("+A\n", ("mods/A/x.bin", "one"));
         var second = List("+A\n");
         second.Archives.Add(archive);
-        second.Directives.Add(UnwritableTexture("mods/A/x.bin", archive, "tex.dds"));
+        second.Directives.Add(UnbuildableArchive("mods/A/x.bin"));
 
         var (_, _, again) = await Reinstall(first, second);
 
