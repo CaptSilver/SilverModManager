@@ -344,7 +344,7 @@ public sealed class ArchivePathResolver(
             {
                 Volatile.Write(ref _abandoned, true);
                 var names = _copies.Values.ToArray();
-                logger.LogWarning("Stopped waiting after {Seconds} s for {Count} archive member copies that ignore cancellation: {Keys}",
+                logger.LogWarning("Stopped waiting after {Seconds} s for {Count} archive member copies that have not stopped: {Keys}",
                     CopyDrainTimeout.TotalSeconds, names.Length, string.Join(", ", names));
             }
         }
