@@ -17,7 +17,8 @@ public static class DdsRecompressor
     /// a new DDS with the target format and mip chain to <paramref name="output"/>. Neither stream is closed.
     /// The CPU-bound decode and encode run on a thread-pool thread.
     /// </summary>
-    /// <exception cref="UnsupportedTextureFormatException">The source or target format, or the face count, cannot be handled.</exception>
+    /// <exception cref="UnsupportedTextureFormatException">The source or target format, or the face count, cannot be handled,
+    /// or the source is truncated or corrupt (<see cref="UnreadableTextureException"/>). Nothing has been written to <paramref name="output"/> when it is thrown.</exception>
     public static Task Recompress(Stream dds, DdsTarget target, Stream output, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
@@ -30,7 +31,16 @@ public static class DdsRecompressor
         input.CopyTo(buffer);
         var dds = buffer.GetBuffer().AsMemory(0, (int)buffer.Length);
 
-        var header = DdsHeader.Read(dds.Span);
+        DdsHeader header;
+        try
+        {
+            header = DdsHeader.Read(dds.Span);
+        }
+        catch (InvalidDataException malformed)
+        {
+            throw new UnreadableTextureException(malformed.Message, malformed);
+        }
+
         if (target.Format == DxgiFormat.UNKNOWN) target = target with { Format = KeepSourceFormat(header) };
 
         // Check the target before the expensive decode.
@@ -47,10 +57,7 @@ public static class DdsRecompressor
         {
             token.ThrowIfCancellationRequested();
             var data = dds.Slice((int)header.TopLevelOffset(face), (int)header.LevelSize(0));
-            var pixels = header.Reader is { } reader ? reader.Unpack(data.Span, header.Width, header.Height)
-                : header.Format == DxgiFormat.BC4_SNORM ? Bc4SnormDecoder.DecodeBc4(data.Span, header.Width, header.Height)
-                : header.Format == DxgiFormat.BC5_SNORM ? Bc4SnormDecoder.DecodeBc5(data.Span, header.Width, header.Height)
-                : decoder.DecodeRaw(data.ToArray(), header.Width, header.Height, decodeFormat);
+            var pixels = DecodeFace(header, decoder, decodeFormat, data);
             faces.Add(Resize(pixels, header.Width, header.Height, target.Width, target.Height));
         }
 
@@ -94,6 +101,25 @@ public static class DdsRecompressor
         }
 
         DdsWriter.Write(output, target.Format, target.Width, target.Height, encoded);
+    }
+
+    /// <summary>
+    /// The decoders signal bad data with whatever exception they trip over (a short buffer, an index out of range),
+    /// so anything but cancellation from here is reported as an unreadable source rather than leaking out as a crash.
+    /// </summary>
+    private static ColorRgba32[] DecodeFace(DdsHeader header, BcDecoder decoder, CompressionFormat decodeFormat, ReadOnlyMemory<byte> data)
+    {
+        try
+        {
+            return header.Reader is { } reader ? reader.Unpack(data.Span, header.Width, header.Height)
+                : header.Format == DxgiFormat.BC4_SNORM ? Bc4SnormDecoder.DecodeBc4(data.Span, header.Width, header.Height)
+                : header.Format == DxgiFormat.BC5_SNORM ? Bc4SnormDecoder.DecodeBc5(data.Span, header.Width, header.Height)
+                : decoder.DecodeRaw(data.ToArray(), header.Width, header.Height, decodeFormat);
+        }
+        catch (Exception failed) when (failed is not (OperationCanceledException or UnsupportedTextureFormatException))
+        {
+            throw new UnreadableTextureException(failed.Message, failed);
+        }
     }
 
     /// <summary>

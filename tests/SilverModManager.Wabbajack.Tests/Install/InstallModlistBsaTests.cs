@@ -105,6 +105,34 @@ public class InstallModlistBsaTests(ITestOutputHelper helper) : InstallTestBase<
         kept.Reason.Should().StartWith("kept the original 'textures/t.dds' because its format cannot be re-encoded to BC6H_UF16: ").And.NotContain("TEMP_BSA_FILES");
     }
 
+    [Theory]
+    [InlineData("truncated header")]
+    [InlineData("truncated level data")]
+    [InlineData("garbage")]
+    public async Task AnArchiveWithACorruptSourceTextureIsBuiltWithTheOriginalAndOneKeptOriginalRow(string kind)
+    {
+        var good = Bc1Dds(8);
+        var source = kind switch
+        {
+            "truncated header" => good[..40],
+            "truncated level data" => good[..140],
+            _ => Enumerable.Range(0, 300).Select(i => (byte)(i * 37 + 11)).ToArray(),
+        };
+        var archive = await AddZip("a.zip", new() { ["t.dds"] = source });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(new TransformedTexture(P("TEMP_BSA_FILES/pack/textures/t.dds"), Xx64.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P("t.dds")]), new ImageState(8, 8, 1, "BC7_UNORM")));
+        list.Directives.Add(list.Bsa("mods/A/pack.bsa", "pack", "textures/t.dds"));
+        var loadout = await CreateLoadout();
+
+        var (_, group) = await Install(loadout, await AddModlist(list.ToList(), list.Blobs), Defaults);
+
+        (await MembersOf(await InstalledBytes(group, "A", "Game/Data/pack.bsa")))["textures/t.dds"].Should().Equal(source);
+        var kept = SkipsOf(group).Should().ContainSingle().Subject;
+        kept.Kind.Should().Be(SkipKind.KeptOriginal);
+        kept.Reason.Should().StartWith("kept the original 'textures/t.dds' because it could not be read as a texture: ").And.NotContain("TEMP_BSA_FILES");
+    }
+
     [Fact]
     public async Task AnArchiveWithTwoTexturesThatCannotBeReEncodedRecordsARowForEach()
     {

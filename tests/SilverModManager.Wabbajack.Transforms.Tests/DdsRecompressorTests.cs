@@ -322,6 +322,32 @@ public class DdsRecompressorTests(ITestOutputHelper output)
         Assert.Equal(value, (uint)Enum.Parse<DxgiFormat>(name));
     }
 
+    public static TheoryData<string> MalformedSources => new() { "truncated header", "truncated level data", "garbage" };
+
+    private static byte[] Malformed(string kind)
+    {
+        var good = Bc1Fixture();
+        return kind switch
+        {
+            "truncated header" => good[..40],
+            "truncated level data" => good[..300],
+            _ => Enumerable.Range(0, 300).Select(i => (byte)(i * 37 + 11)).ToArray(),
+        };
+    }
+
+    [Theory]
+    [MemberData(nameof(MalformedSources))]
+    public async Task Recompress_MalformedSource_ThrowsUnreadableAndWritesNothing(string kind)
+    {
+        var output = new CountingStream();
+
+        var ex = await Assert.ThrowsAsync<UnreadableTextureException>(() =>
+            DdsRecompressor.Recompress(new MemoryStream(Malformed(kind)), new DdsTarget(32, 32, 1, DxgiFormat.BC7_UNORM), output, CancellationToken.None));
+
+        Assert.NotEmpty(ex.Message);
+        Assert.Equal(0, output.BytesWritten);
+    }
+
     [Fact]
     public async Task Recompress_UnsupportedTargetFormat_ThrowsNamingIt()
     {

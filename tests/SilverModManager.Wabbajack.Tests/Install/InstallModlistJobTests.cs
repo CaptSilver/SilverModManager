@@ -779,6 +779,38 @@ public class InstallModlistTextureTests(ITestOutputHelper helper) : InstallTestB
         _logs.Messages.Should().ContainSingle(m => m.Contains("mods/A/t.dds") && m.Contains(Hash64(written).ToString()) && m.Contains(Xx64.From(7).ToString()));
     }
 
+    public static TheoryData<string> CorruptTextures => new() { "truncated header", "truncated level data", "garbage" };
+
+    private static byte[] CorruptDds(string kind)
+    {
+        var good = Bc1Dds(8);
+        return kind switch
+        {
+            "truncated header" => good[..40],
+            "truncated level data" => good[..140],
+            _ => Enumerable.Range(0, 300).Select(i => (byte)(i * 37 + 11)).ToArray(),
+        };
+    }
+
+    [Theory]
+    [MemberData(nameof(CorruptTextures))]
+    public async Task ACorruptSourceTextureIsKeptAndTheRowSaysItCouldNotBeRead(string kind)
+    {
+        var source = CorruptDds(kind);
+        var archive = await AddZip("a.zip", new() { ["t.dds"] = source });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(new TransformedTexture(P("mods/A/t.dds"), Xx64.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P("t.dds")]), new ImageState(8, 8, 1, "BC7_UNORM")));
+        var loadout = await CreateLoadout();
+
+        var (_, group) = await Install(loadout, await AddModlist(list.ToList(), list.Blobs), new InstallOptions(false, new HashSet<RelativePath>()));
+
+        (await InstalledBytes(group, "A", "Game/Data/t.dds")).Should().Equal(source);
+        var skip = SkipsOf(group).Should().ContainSingle().Subject;
+        skip.Kind.Should().Be(SkipKind.KeptOriginal);
+        skip.Reason.Should().StartWith("kept the original 'mods/A/t.dds' because it could not be read as a texture: ");
+    }
+
     [Fact]
     public async Task ATextureWhoseTargetFormatWeCannotWriteIsKeptAndTheRowNamesTheFormat()
     {

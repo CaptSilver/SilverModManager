@@ -31,6 +31,7 @@ using BethesdaArchiveException = SilverModManager.Games.Bethesda.Archives.Bethes
 using FileState = SilverModManager.Games.Bethesda.Archives.FileState;
 using Ba2Dx10FileState = SilverModManager.Games.Bethesda.Archives.Ba2Dx10FileState;
 using PatchException = SilverModManager.Wabbajack.Transforms.PatchException;
+using UnreadableTextureException = SilverModManager.Wabbajack.Transforms.UnreadableTextureException;
 using UnsupportedTextureFormatException = SilverModManager.Wabbajack.Transforms.UnsupportedTextureFormatException;
 
 namespace SilverModManager.Wabbajack.Install;
@@ -1443,6 +1444,13 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         return (file.XxHash3, file.Size, file.XxHash64);
     }
 
+    /// <summary>Recompress writes nothing before it throws, but it has read from the member's stream, so open the member again.</summary>
+    private async Task KeepOriginal(Placement placement, ResolvedMember? member, Stream output, CancellationToken cancellationToken)
+    {
+        await using var original = await RequireMember(placement, member).Open();
+        await original.CopyToAsync(output, cancellationToken);
+    }
+
     /// <summary>
     /// The bytes of one directive other than a merge or an archive, written to <paramref name="output"/>. A texture whose
     /// format cannot be re-encoded is copied as it is when <paramref name="keepOriginalIfUnsupported"/> allows it, and
@@ -1468,11 +1476,14 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                     await using var dds = await RequireMember(placement, member).Open();
                     await Transforms.Recompress(dds, texture.Image, output, cancellationToken);
                 }
+                catch (UnreadableTextureException unreadable) when (keepOriginalIfUnsupported)
+                {
+                    await KeepOriginal(placement, member, output, cancellationToken);
+                    notes.Add($"kept the original '{named ?? placement.To}' because it could not be read as a texture: {unreadable.Message}");
+                }
                 catch (UnsupportedTextureFormatException unsupported) when (keepOriginalIfUnsupported)
                 {
-                    // Recompress writes nothing before it throws this, but it has read from the stream, so open the member again.
-                    await using var original = await RequireMember(placement, member).Open();
-                    await original.CopyToAsync(output, cancellationToken);
+                    await KeepOriginal(placement, member, output, cancellationToken);
                     notes.Add($"kept the original '{named ?? placement.To}' because its format cannot be re-encoded to {texture.Image.Format}: {unsupported.Message}");
                 }
                 break;
