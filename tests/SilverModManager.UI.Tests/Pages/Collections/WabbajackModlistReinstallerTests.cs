@@ -240,6 +240,18 @@ public class WabbajackModlistReinstallerTests(IServiceProvider provider) : AUiTe
     }
 
     [Fact]
+    public async Task TheGroupIsDisabledWhileTheNewRunFillsItAgain()
+    {
+        var f = await Open(ButtonDefinitionId.Accept);
+        await WabbajackGroupSeed.SetEnabled(Connection, f.Group, true);
+        LoadoutItem.Load(Connection.Db, f.Group).IsDisabled.Should().BeFalse("a finished install is enabled");
+
+        await Run(f);
+
+        LoadoutItem.Load(Connection.Db, f.Group).IsDisabled.Should().BeTrue("a failed or cancelled reinstall must not leave a half-filled enabled group; the finish step enables it");
+    }
+
+    [Fact]
     public async Task TheMenuEntryShowsARefusalInsteadOfThrowingIt()
     {
         var f = await Open(ButtonDefinitionId.Accept);

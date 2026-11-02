@@ -7,6 +7,7 @@ using SilverModManager.App.UI.Pages.LibraryPage.Collections;
 using SilverModManager.App.UI.Pages.Wabbajack;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -106,7 +107,11 @@ public sealed class WabbajackModlistReinstaller(
         using var tx = connection.BeginTransaction();
         foreach (var item in LoadoutItem.FindByParent(connection.Db, group)) tx.Delete(item.Id, recursive: true);
         // The list is not installed until the new run ends; with InstalledAt left in place an install that fails to
-        // start would leave an empty group that reads as installed and offers no Resume.
+        // start would leave an empty group that reads as installed and offers no Resume. The group is disabled the way
+        // a first install creates it, so a failed or cancelled run never leaves a half-filled group enabled for the
+        // next apply; the install's finish step enables it again.
+        if (!LoadoutItem.Load(connection.Db, group).IsDisabled)
+            tx.Add(group, LoadoutItem.Disabled, Null.Instance);
         var modlistGroup = WabbajackModlistLoadoutGroup.Load(connection.Db, group);
         if (modlistGroup.InstalledAt is { HasValue: true } installedAt)
             tx.Retract(group, WabbajackModlistLoadoutGroup.InstalledAt, installedAt.Value);

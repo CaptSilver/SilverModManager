@@ -106,7 +106,6 @@ internal static class Fakes
     }
 }
 
-/// <summary>A game-folder file system whose Documents and AppData sit in a throwaway Wine prefix.</summary>
 internal static class PrivateSettingsFolder
 {
     /// <summary>
@@ -124,6 +123,7 @@ internal static class PrivateSettingsFolder
     }
 }
 
+/// <summary>A game-folder file system whose Documents and AppData sit in a throwaway Wine prefix.</summary>
 internal static class IsolatedPrefixFileSystem
 {
     public static IFileSystem Create(IServiceProvider provider)
