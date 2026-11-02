@@ -116,8 +116,12 @@ public partial class ALoadoutSynchronizer
         await GamePathRespeller.FinishPending(Connection, metadata.Id, loadouts, Logger);
         metadata = _gameRegistry.ForceGetMetadata(installation);
 
+        // Indexed first so the spelling is judged on rows that describe the disk: whether a folder holds a file the store
+        // attests is read from them, and a stale answer would pick a spelling the game's own files are not in.
+        if (alwaysReindex) metadata = await ReindexStateCore(installation, job, cancellationToken);
+
         var spellings = BuildSpellings(installation, loadoutId, metadata);
-        var reindex = alwaysReindex;
+        var reindex = false;
         if (spellings.NeedsDiskMerge)
         {
             var merge = await new CaseTwinMerger(_fullHasher, _fileStore, Logger, GamePathFilter)
