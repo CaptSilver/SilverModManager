@@ -1,4 +1,5 @@
 using NexusMods.Paths;
+using SilverModManager.Sdk.IO;
 using SilverModManager.Wabbajack.Mapping;
 
 namespace SilverModManager.Wabbajack.Install;
@@ -65,13 +66,36 @@ public static class ModlistTools
         return InsideTools(binary, extrasRoot) is { } relative ? appliedPath(relative) : null;
     }
 
+    /// <summary>
+    /// The folder with every symlink on its path resolved. The ini spells paths one way and the folders come from
+    /// elsewhere, and <c>/home</c> is a link to <c>/var/home</c> on an ostree system, so a lexical comparison would
+    /// call a tool outside the folder it is in.
+    /// </summary>
+    private static string ResolvedRoot(AbsolutePath root)
+    {
+        var full = System.IO.Path.GetFullPath(root.ToString()).TrimEnd('/');
+        return (LinkResolution.RealPath(full) ?? full).TrimEnd('/');
+    }
+
+    /// <summary>
+    /// The file's path with the links on its folders resolved. The file itself is left alone, so a tool that is a link
+    /// to somewhere else still counts as being where the list put it.
+    /// </summary>
+    private static string ResolvedFile(string path)
+    {
+        var full = System.IO.Path.GetFullPath(path);
+        var folder = System.IO.Path.GetDirectoryName(full);
+        if (folder is null || LinkResolution.RealPath(folder) is not { } resolved) return full;
+        return System.IO.Path.Combine(resolved, System.IO.Path.GetFileName(full));
+    }
+
     /// <summary>The path of <paramref name="binary"/> inside the tools folder, or null when it is elsewhere.</summary>
     private static string? InsideTools(string binary, AbsolutePath extrasRoot)
     {
-        var root = System.IO.Path.GetFullPath(extrasRoot.ToString()).TrimEnd('/') + "/";
+        var root = ResolvedRoot(extrasRoot) + "/";
         if (!System.IO.Path.IsPathRooted(binary)) return null;
 
-        var full = System.IO.Path.GetFullPath(binary);
+        var full = ResolvedFile(binary);
         return full.StartsWith(root, StringComparison.Ordinal) ? full[root.Length..] : null;
     }
 
@@ -83,10 +107,12 @@ public static class ModlistTools
     {
         if (!System.IO.Path.IsPathRooted(path)) return null;
 
-        var rootPath = System.IO.Path.GetFullPath(root.ToString()).TrimEnd('/');
-        var full = System.IO.Path.GetFullPath(path);
+        var rootPath = ResolvedRoot(root);
+        var full = ResolvedFile(path);
         if (!full.StartsWith(rootPath + "/", StringComparison.Ordinal)) return null;
-        if (File.Exists(full)) return full;
+        // The file is reported in the spelling the ini gave it, which is also how the folder is recorded.
+        var spelled = System.IO.Path.GetFullPath(path);
+        if (File.Exists(spelled)) return spelled;
 
         var current = rootPath;
         var segments = full[(rootPath.Length + 1)..].Split('/', StringSplitOptions.RemoveEmptyEntries);

@@ -178,7 +178,7 @@ public class ExtractedLinksTests : IDisposable
     {
         Directory.CreateDirectory(InRoot("a/b"));
         Link("l", "a/b");
-        ExtractedLinks.RealPath(InRoot("l/../x")).Should().Be(InRoot("a/x"));
+        SilverModManager.Sdk.IO.LinkResolution.RealPath(InRoot("l/../x")).Should().Be(InRoot("a/x"));
     }
 
     private sealed class ListLogger(List<string> messages) : ILogger

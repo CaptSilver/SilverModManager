@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using SilverModManager.Sdk.IO;
 
 namespace SilverModManager.Backend.FileExtractor.Extractors;
 
@@ -12,7 +13,6 @@ namespace SilverModManager.Backend.FileExtractor.Extractors;
 internal static class ExtractedLinks
 {
     // Linux gives up at 40 link expansions in one lookup (ELOOP), so a longer chain cannot be a real one.
-    private const int MaxLinkExpansions = 40;
 
     internal static void Sanitize(string root, string archive, ILogger logger)
     {
@@ -22,7 +22,7 @@ internal static class ExtractedLinks
         if (links.Count == 0) return;
 
         var lexicalRoot = TrimSeparator(Path.GetFullPath(root));
-        var realRoot = RealPath(lexicalRoot) ?? throw new InvalidOperationException($"Extraction folder `{root}` is part of a link loop");
+        var realRoot = LinkResolution.RealPath(lexicalRoot) ?? throw new InvalidOperationException($"Extraction folder `{root}` is part of a link loop");
 
         // Every link is judged against the tree as extracted, before any is removed: dropping a folder
         // link first would change what the links that go through it resolve to.
@@ -53,7 +53,7 @@ internal static class ExtractedLinks
 
         if (!IsInside(Path.GetFullPath(target, directory), lexicalRoot)) return new Decision(null, $"it points outside the extraction folder (`{target}`)");
 
-        var real = RealPath(Path.Combine(directory, target));
+        var real = LinkResolution.RealPath(Path.Combine(directory, target));
         if (real is null) return new Decision(null, $"`{target}` is part of a link loop");
         if (!IsInside(real, realRoot)) return new Decision(null, $"`{target}` resolves outside the extraction folder");
 
@@ -76,46 +76,6 @@ internal static class ExtractedLinks
         }
 
         return links;
-    }
-
-    /// <summary>
-    /// <c>realpath</c> without the file needing to exist: resolves every link on the way, and a <c>..</c>
-    /// following a link steps out of the link's target, not out of the link's own folder. Returns null
-    /// for a link loop. <paramref name="path"/> must be absolute.
-    /// </summary>
-    internal static string? RealPath(string path)
-    {
-        var pending = new LinkedList<string>(path.Split('/'));
-        var current = "/";
-        var expansions = 0;
-
-        while (pending.First is { } node)
-        {
-            pending.RemoveFirst();
-            var part = node.Value;
-            if (part.Length == 0 || part == ".") continue;
-            if (part == "..")
-            {
-                current = Path.GetDirectoryName(current) ?? "/";
-                continue;
-            }
-
-            var next = Path.Combine(current, part);
-            var target = new FileInfo(next).LinkTarget;
-            if (target is null)
-            {
-                current = next;
-                continue;
-            }
-
-            if (++expansions > MaxLinkExpansions) return null;
-            if (Path.IsPathRooted(target)) current = "/";
-
-            var parts = target.Split('/');
-            for (var i = parts.Length - 1; i >= 0; i--) pending.AddFirst(parts[i]);
-        }
-
-        return current;
     }
 
     private static string TrimSeparator(string path) => path.Length > 1 ? path.TrimEnd('/') : path;
