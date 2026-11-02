@@ -50,7 +50,8 @@ internal sealed class NestedArchiveCache(int capacity) : IAsyncDisposable
         lock (_slots)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (!_slots.TryGetValue(key, out slot!))
+            if (_slots.TryGetValue(key, out var existing)) slot = existing;
+            else
             {
                 slot = new Slot(new Lazy<Task<INestedArchive>>(open));
                 _slots[key] = slot;
