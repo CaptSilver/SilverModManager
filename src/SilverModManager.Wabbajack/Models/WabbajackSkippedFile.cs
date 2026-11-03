@@ -28,10 +28,22 @@ public enum SkipKind : byte
 
     /// <summary>The file is installed, but as the author's original bytes: its format could not be re-encoded to the one the list asks for.</summary>
     KeptOriginal = 6,
+
+    /// <summary>The directive builds a file from other files of the list (a merged patch or an archive) and its destination is a tool folder, which keeps no such files.</summary>
+    ToolFolder = 7,
+}
+
+public static class SkipKindExtensions
+{
+    /// <summary>
+    /// Whether the list leaves this out on purpose, so nothing it needs is missing: the game loads a kept original, and a
+    /// tool folder never held the file. Any other kind is something the run failed to produce and keeps the list disabled.
+    /// </summary>
+    public static bool IsByDesign(this SkipKind kind) => kind is SkipKind.KeptOriginal or SkipKind.ToolFolder;
 }
 
 /// <summary>
-/// A directive the install could not execute. The list is left disabled while any of these other than <see cref="SkipKind.KeptOriginal"/> exist for its group.
+/// A directive the install could not execute. The list is left disabled while any of these other than the by-design kinds (<see cref="SkipKindExtensions.IsByDesign"/>) exist for its group.
 /// It is a <see cref="LoadoutItem"/> so the loadout owns it: removing the list deletes the row with the group, and
 /// only an owned row comes back when the removal is undone.
 /// </summary>

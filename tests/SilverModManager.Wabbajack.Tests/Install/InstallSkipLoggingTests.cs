@@ -59,7 +59,21 @@ public class InstallSkipLoggingTests(ITestOutputHelper helper) : InstallTestBase
 
         _log.Messages(LogLevel.Warning).Where(m => m.Contains("Skipped '")).Should().BeEmpty();
         var logged = _log.Messages(LogLevel.Information).Where(m => m.Contains("Skipped '") && m.Contains("tools/X/pack.bsa")).Should().ContainSingle().Subject;
-        logged.Should().Contain("Transform").And.Contain("tool folder");
+        logged.Should().Contain("ToolFolder").And.Contain("tool folder");
+    }
+
+    [Fact]
+    public async Task AListWhoseOnlySkipIsAnArchiveAimedAtAToolFolderEndsEnabled()
+    {
+        var list = new ListBuilder();
+        list.Directives.Add(list.Inline("TEMP_BSA_FILES/pack/one.txt", "1"));
+        list.Directives.Add(list.Bsa("tools/X/pack.bsa", "pack", "one.txt"));
+        var loadout = await CreateLoadout();
+
+        var (_, group) = await Install(loadout, await AddModlist(list.ToList("My List"), list.Blobs), Defaults);
+
+        SkipsOf(group).Should().ContainSingle().Which.Kind.Should().Be(SkipKind.ToolFolder);
+        group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().IsDisabled.Should().BeFalse("a tool folder never keeps such an archive, so nothing the list needs is missing");
     }
 
     [Fact]
@@ -74,10 +88,11 @@ public class InstallSkipLoggingTests(ITestOutputHelper helper) : InstallTestBase
 
         await Install(loadout, await AddModlist(list.ToList("My List"), list.Blobs), Defaults);
 
-        var summaries = _log.Messages(LogLevel.Warning).Where(m => m.Contains("were skipped as")).ToArray();
-        summaries.Should().HaveCount(2);
-        summaries.Should().ContainSingle(m => m.Contains("KeptOriginal") && m.Contains("1 file(s)"));
-        summaries.Should().ContainSingle(m => m.Contains("MemberNotFound") && m.Contains("1 file(s)"));
+        _log.Messages(LogLevel.Warning).Where(m => m.Contains("were skipped as")).Should()
+            .ContainSingle(m => m.Contains("MemberNotFound") && m.Contains("1 file(s)"));
+        _log.Messages(LogLevel.Information).Where(m => m.Contains("were skipped as")).Should()
+            .ContainSingle(m => m.Contains("KeptOriginal") && m.Contains("1 file(s)"));
+        _log.Messages(LogLevel.Warning).Should().NotContain(m => m.Contains("skipped as KeptOriginal"));
     }
 
     [Fact]
@@ -104,7 +119,7 @@ public class InstallSkipLoggingTests(ITestOutputHelper helper) : InstallTestBase
         await Install(loadout, await AddModlist(list.ToList("My List"), list.Blobs), Defaults);
 
         _log.Messages(LogLevel.Warning).Where(m => m.Contains("Skipped '")).Should().BeEmpty();
-        var summary = _log.Messages(LogLevel.Warning).Where(m => m.Contains("skipped as KeptOriginal")).Should().ContainSingle().Subject;
+        var summary = _log.Messages(LogLevel.Information).Where(m => m.Contains("skipped as KeptOriginal")).Should().ContainSingle().Subject;
         summary.Should().Contain("7 file(s)").And.Contain("My List");
         Enumerable.Range(0, 7).Count(i => summary.Contains($"mods/A/t{i}.dds")).Should().Be(5);
     }

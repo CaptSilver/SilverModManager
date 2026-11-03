@@ -776,12 +776,17 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
     private const int SkipExamplesLogged = 5;
 
-    /// <summary>One line per kind of skip, so a list that skips thousands of files stays readable in the log; each skip has its own trace line.</summary>
+    private static LogLevel LevelOf(SkipKind kind) => kind.IsByDesign() ? LogLevel.Information : LogLevel.Warning;
+
+    /// <summary>
+    /// One line per kind of skip, so a list that skips thousands of files stays readable in the log; each skip also has
+    /// its own line. A kind the list leaves out on purpose is Information, any other is a Warning.
+    /// </summary>
     private void LogSkipSummary(Checked check, WriteState state)
     {
         foreach (var (kind, paths) in state.Skipped.OrderBy(pair => pair.Key))
         {
-            Logger.LogWarning("{Count} file(s) of '{List}' were skipped as {Kind}, for example: {Examples}",
+            Logger.Log(LevelOf(kind), "{Count} file(s) of '{List}' were skipped as {Kind}, for example: {Examples}",
                 paths.Count, check.List.Name, kind, string.Join(", ", paths.Take(SkipExamplesLogged)));
         }
     }
@@ -1148,7 +1153,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     private async Task WriteExtra(Checked check, ExtrasFolder extras, Prepared item, Mo2Target.Extra extra, CancellationToken cancellationToken)
     {
         if (item.Placement.Directive is MergedPatch or CreateBsa)
-            throw new DirectiveSkipped(SkipKind.Transform, $"'{item.Placement.To}' is built from other files of the list, which a tool folder does not keep");
+            throw new DirectiveSkipped(SkipKind.ToolFolder, $"'{item.Placement.To}' is built from other files of the list, which a tool folder does not keep");
 
         var destination = extras.Root.Combine(extra.Path);
         destination.Parent.CreateDirectory();
@@ -1194,8 +1199,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     /// </summary>
     private void LogSkip(Checked check, Placement placement, SkipKind kind, string reason)
     {
-        var byDesign = kind == SkipKind.KeptOriginal || placement.Target is Mo2Target.Extra && placement.Directive is MergedPatch or CreateBsa;
-        Logger.Log(byDesign ? LogLevel.Information : LogLevel.Warning, "Skipped '{To}' of '{List}' ({Kind}): {Reason}", placement.To, check.List.Name, kind, reason);
+        Logger.Log(LevelOf(kind), "Skipped '{To}' of '{List}' ({Kind}): {Reason}", placement.To, check.List.Name, kind, reason);
     }
 
     /// <summary>
@@ -1439,8 +1443,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             Logger.LogWarning("The profile of '{List}' has neither a plugins.txt nor a loadorder.txt, so the plugin order is left as it was", check.List.Name);
 
         tx.Add(modlistGroup.Value, WabbajackModlistLoadoutGroup.InstalledAt, DateTimeOffset.UtcNow);
-        // A kept original is on disk and the game loads it, so only rows for content that is missing keep the list off.
-        if (WabbajackSkippedFile.FindByGroup(db, modlistGroup).All(r => r.Kind == SkipKind.KeptOriginal) && LoadoutItem.Load(db, modlistGroup).IsDisabled)
+        // A kept original is on disk and the game loads it, and a tool folder never held the file, so only rows for content that is missing keep the list off.
+        if (WabbajackSkippedFile.FindByGroup(db, modlistGroup).All(r => r.Kind.IsByDesign()) && LoadoutItem.Load(db, modlistGroup).IsDisabled)
             tx.Retract(modlistGroup.Value, LoadoutItem.Disabled, Null.Instance);
 
         await tx.Commit();
