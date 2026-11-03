@@ -100,6 +100,65 @@ public class SevenZipExtractionTests : AFileExtractorTest
         File.ReadAllText(secret.ToString()).Should().Be("private");
     }
 
+    // What 7z 26.05 prints for a link it refuses; extraction carries on without the link. The old build
+    // printed "Dangerous symbolic link path", which a system 7z can still print.
+    [Theory]
+    [InlineData("ERROR: Dangerous link path was ignored : l3 : l1/../../outside")]
+    [InlineData("ERROR: Dangerous link via another link was ignored : l3 : l1/x")]
+    [InlineData("ERROR: Dangerous symbolic link path was ignored : l3 : ../x")]
+    public void ARefusedLinkIsNotAnExtractionFailure(string line)
+    {
+        SevenZipExtractor.AreAllDangerousLinkErrors([line, "ERROR: Dangerous link path was ignored : l1 : ."]).Should().BeTrue();
+    }
+
+    [Fact]
+    public void AnythingBesideRefusedLinksIsAnExtractionFailure()
+    {
+        SevenZipExtractor.AreAllDangerousLinkErrors([]).Should().BeFalse();
+        SevenZipExtractor.AreAllDangerousLinkErrors([
+            "ERROR: Dangerous link via another link was ignored : l3 : l1/x",
+            "ERROR: Cannot open output file : errno=20 : Not a directory : ./l1/f.txt",
+        ]).Should().BeFalse();
+    }
+
+    // A link whose target runs through another link is refused by 7z; the archive still extracts with the
+    // link dropped and nothing written outside the destination.
+    [Fact]
+    public async Task LinkThroughAnotherLinkIsDroppedAndTheRestExtracts()
+    {
+        await using var outside = TemporaryFileManager.CreateFolder();
+        var archive = outside.Path.Combine("through-link.zip");
+        await using (var stream = File.Create(archive.ToString()))
+        await using (var zip = new ZipArchive(stream, ZipArchiveMode.Create))
+        {
+            void Add(string name, string content, int unixMode)
+            {
+                var entry = zip.CreateEntry(name);
+                entry.ExternalAttributes = unixMode << 16;
+                using var writer = new StreamWriter(entry.Open());
+                writer.Write(content);
+            }
+
+            Add("d/inner.txt", "inner content", 0x81A4);
+            Add("hop", "d", 0xA1FF);
+            Add("hop/evil.txt", "written through the link", 0x81A4);
+            Add("viahop", "hop/inner.txt", 0xA1FF);
+            Add("ok.txt", "fine", 0x81A4);
+        }
+
+        var destination = outside.Path.Combine("extracted");
+        destination.CreateDirectory();
+        await FileExtractor.ExtractAllAsync(archive, destination, TestContext.Current.CancellationToken);
+
+        var root = destination.ToString();
+        var entries = Directory.EnumerateFileSystemEntries(root, "*", SearchOption.AllDirectories).ToArray();
+        entries.Where(e => new FileInfo(e).LinkTarget is not null).Should().BeEmpty();
+        File.ReadAllText(Path.Combine(root, "ok.txt")).Should().Be("fine");
+        File.ReadAllText(Path.Combine(root, "d", "inner.txt")).Should().Be("inner content");
+        Directory.EnumerateFileSystemEntries(outside.Path.ToString()).Select(Path.GetFileName).Order()
+            .Should().Equal("extracted", "through-link.zip");
+    }
+
     // 7z-with-unreadable-link-target.7z stores hidden.txt and the folder locked at mode 000 and link-hidden, a
     // link to hidden.txt. Modes have to be fixed before the links are swept, or the sweep can neither list
     // locked nor copy hidden.txt over the link.

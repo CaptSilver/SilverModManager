@@ -39,6 +39,7 @@ Licenses below are the SPDX expressions in each package's nuspec at the pinned v
 | ooz (Powzix, https://github.com/powzix/ooz, `extern/ooz`) | GPL-3.0-or-later, built from source into `libooz.so` for Kraken decompression |
 | SoulsFormats (JKAnderson, https://github.com/JKAnderson/SoulsFormats) | GPL-3.0; used as the description of the BND3 layout, no code taken |
 | SMAPI (Pathoschild, `extern/SMAPI`) | LGPL-3.0, see `extern/SMAPI/LICENSE.txt` |
+| 7-Zip 26.05 (Igor Pavlov, `src/SilverModManager.Backend/runtimes/linux-x64/native/7zz`) | LGPL-2.1-or-later with the unRAR restriction for some code, BSD 3-clause and 2-clause for other code; the unmodified official Linux build, license text in `7zz.License.txt` next to it |
 
 `src/SilverModManager.Sdk/FileExtractor/Definitions/magic_sigs.txt` is derived from Gary Kessler's
 file signatures table, used under the terms in `GKA_software_license.pdf` next to it.

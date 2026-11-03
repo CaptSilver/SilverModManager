@@ -1,0 +1,4 @@
+7-Zip 26.05 (7zz, dynamic Linux x64 build), unmodified from the official release.
+Source: https://github.com/ip7z/7zip/releases/download/26.05/7z2605-linux-x64.tar.xz
+Tarball sha256: 22cf82fcc6eb7474f1d5bb4f02c0f8ebd573a718089d6833dc30f8350a3b232e
+License: 7zz.License.txt (GNU LGPL, parts with the unRAR restriction, BSD 3-clause and 2-clause)

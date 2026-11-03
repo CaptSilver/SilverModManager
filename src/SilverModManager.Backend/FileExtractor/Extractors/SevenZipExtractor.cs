@@ -161,11 +161,21 @@ public class SevenZipExtractor : IExtractor
         return (temporaryFile.Path, temporaryFile);
     }
 
-    // 7z refuses to create a link whose target contains "..", and reports each one on stderr in one of
-    // these forms while exiting with code 2; the second is used for a target that climbs and comes back
-    // down inside the archive. There is no switch that stops it creating the remaining links (-snld only
-    // allows the dangerous ones), so ExtractedLinks sweeps the result.
-    private static readonly string[] DangerousLinkErrors = ["ERROR: Dangerous link path was ignored", "ERROR: Dangerous symbolic link path was ignored"];
+    // 7z refuses to create a link whose target contains "..", or runs through another link of the archive,
+    // and reports each one on stderr in one of these forms while exiting with code 2. 26.05 prints the first
+    // and the second; the third is what 21.03 printed, kept for a system 7z (SMM_USE_SYSTEM_EXTRACTOR).
+    // There is no switch that stops it creating the remaining links (-snld only allows the dangerous ones),
+    // so ExtractedLinks sweeps the result.
+    private static readonly string[] DangerousLinkErrors =
+    [
+        "ERROR: Dangerous link path was ignored",
+        "ERROR: Dangerous link via another link was ignored",
+        "ERROR: Dangerous symbolic link path was ignored",
+    ];
+
+    /// <summary>True when 7z reported errors and every one of them is a link it refused to create.</summary>
+    internal static bool AreAllDangerousLinkErrors(IReadOnlyCollection<string> errors) =>
+        errors.Count > 0 && errors.All(e => DangerousLinkErrors.Any(prefix => e.StartsWith(prefix, StringComparison.Ordinal)));
 
     /// <summary>
     /// A 7z command. The locale is pinned so that what 7z prints and how it reads a list file never depend on
@@ -605,7 +615,7 @@ public class SevenZipExtractor : IExtractor
 
         // An archive whose only problem is links it was not allowed to create still extracts: the links are
         // dropped and the rest of the mod is usable.
-        if (errors.Count > 0 && errors.All(e => DangerousLinkErrors.Any(prefix => e.StartsWith(prefix, StringComparison.Ordinal))))
+        if (AreAllDangerousLinkErrors(errors))
         {
             foreach (var error in errors) _logger.LogWarning("Dropped a symlink from `{Archive}`: {Error}", archiveName, error);
             return;
