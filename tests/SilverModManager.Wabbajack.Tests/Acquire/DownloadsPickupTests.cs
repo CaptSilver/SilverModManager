@@ -108,7 +108,7 @@ public class DownloadsPickupTests(ITestOutputHelper helper) : AcquireTestBase<Do
 
         Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Have);
         DownloadsFolder.Combine("wanted.txt").FileExists.Should().BeTrue("nothing in Downloads is deleted or moved");
-        InboxFolder.EnumerateFiles().Should().BeEmpty("the inbox scan removes the staged name once it is in the library");
+        InboxFolder.Combine("wanted.txt").FileExists.Should().BeTrue("the inbox scan never deletes what is in the inbox");
     }
 
     [Fact]

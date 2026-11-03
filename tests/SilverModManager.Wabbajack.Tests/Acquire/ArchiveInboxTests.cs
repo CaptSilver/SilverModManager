@@ -39,7 +39,52 @@ public class ArchiveInboxTests(ITestOutputHelper helper) : AcquireTestBase<Archi
         unmatched.Should().BeEmpty();
         Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Have);
         Acquirer.Plan.Rows[0].Library.Should().NotBeNull();
-        InboxFolder.Combine("whatever-the-browser-called-it.txt").FileExists.Should().BeFalse("a matched file now lives in the library");
+    }
+
+    [Fact]
+    public async Task AFileTheListWantedIsLeftInTheInboxUntouched()
+    {
+        using var page = Acquirer.Attach();
+        await RunWithManualRowFor(Wanted);
+        var dropped = InboxFolder.Combine("whatever-the-browser-called-it.txt");
+        await dropped.WriteAllBytesAsync(Wanted);
+
+        await Inbox.Scan(CancellationToken.None);
+
+        dropped.FileExists.Should().BeTrue("the user dropped it, and the library holds its own copy");
+        (await dropped.ReadAllBytesAsync()).Should().Equal(Wanted);
+        Connection.Db.Datoms(LibraryFile.XxHash64, Hash64(Wanted).XxHash64Value()).Count.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task AWantedFileKeptInTheInboxIsNotAddedAgainByTheNextScan()
+    {
+        using var page = Acquirer.Attach();
+        await RunWithManualRowFor(Wanted);
+        await InboxFolder.Combine("wanted.txt").WriteAllBytesAsync(Wanted);
+
+        var first = await Inbox.Scan(CancellationToken.None);
+        var second = await Inbox.Scan(CancellationToken.None);
+
+        first.Should().BeEmpty();
+        second.Should().BeEmpty("a file the plan wanted is not a stray, however many scans see it");
+        Connection.Db.Datoms(LibraryFile.XxHash64, Hash64(Wanted).XxHash64Value()).Count.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AFileReplacedBetweenScansIsHashedAgain()
+    {
+        using var page = Acquirer.Attach();
+        await RunWithManualRowFor(Wanted);
+        var file = InboxFolder.Combine("drop.bin");
+        await file.WriteAllBytesAsync(Stray);
+        (await Inbox.Scan(CancellationToken.None)).Should().ContainSingle();
+
+        await file.WriteAllBytesAsync(Wanted);
+        var unmatched = await Inbox.Scan(CancellationToken.None);
+
+        unmatched.Should().BeEmpty();
+        Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Have);
     }
 
     [Fact]

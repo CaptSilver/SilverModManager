@@ -31,6 +31,8 @@ public sealed class ArchiveInbox(
     private static readonly HashSet<string> InProgressExtensions = new(StringComparer.OrdinalIgnoreCase) { ".part", ".crdownload", ".download", ".tmp" };
 
     private readonly SemaphoreSlim _scanning = new(1);
+    // Only touched inside Scan, which _scanning serialises.
+    private readonly Dictionary<string, ((long Length, DateTime WrittenUtc) Stamp, FileIdentity Hash)> _hashed = new();
     private readonly Lock _watchLock = new();
     private FileSystemWatcher? _watcher;
     private Timer? _debounce;
@@ -43,8 +45,9 @@ public sealed class ArchiveInbox(
     public IReadOnlyList<UnmatchedInbox> Unmatched { get; private set; } = [];
 
     /// <summary>
-    /// Adds every file in the inbox to the library and checks the plan against it. Files the plan wanted have
-    /// served their purpose and are removed from the inbox; the rest stay and are returned.
+    /// Adds every file in the inbox to the library and checks the plan against it. Every file stays where it is,
+    /// the ones the plan wanted included: the user dropped it, and the library holds its own copy. The files that
+    /// matched nothing are returned.
     /// </summary>
     public async Task<IReadOnlyList<UnmatchedInbox>> Scan(CancellationToken cancellationToken)
     {
@@ -59,7 +62,7 @@ public sealed class ArchiveInbox(
 
                 try
                 {
-                    found.Add((file, FileIdentity.XxHash64(await FileHashing.XxHash64(file, cancellationToken))));
+                    found.Add((file, await HashOf(file, cancellationToken)));
                 }
                 catch (IOException e)
                 {
@@ -73,7 +76,7 @@ public sealed class ArchiveInbox(
             var addedHere = new HashSet<FileIdentity>();
             foreach (var (file, hash) in found)
             {
-                // A held archive that lacks what the list copies out of it is added again; the drop would otherwise be deleted as a duplicate.
+                // A held archive that lacks what the list copies out of it is added again; the drop would otherwise be skipped as a duplicate.
                 if (wanting.IsHeld(connection.Db, locator, hash)) continue;
                 // Adding a file the library already holds completes that copy, which stays the user's own.
                 var userHad = locator.FindTopLevelByXxHash64(connection.Db, hash) is not null;
@@ -101,7 +104,6 @@ public sealed class ArchiveInbox(
                     // Only a file this scan added came for the list; one the library already held was the user's.
                     if (plan.Modlist is not null && addedHere.Contains(hash) && locator.FindTopLevelByXxHash64(connection.Db, hash) is { } held)
                         await FetchedArchives.Mark(connection, hash, held);
-                    file.Delete();
                 }
                 else unmatched.Add(new UnmatchedInbox(file.FileName, hash));
             }
@@ -113,6 +115,21 @@ public sealed class ArchiveInbox(
         {
             _scanning.Release();
         }
+    }
+
+    /// <summary>
+    /// Files stay in the inbox after a scan, so the same ones are looked at again on every change in the folder. A file
+    /// whose size and write time are as they were is not read again.
+    /// </summary>
+    private async Task<FileIdentity> HashOf(AbsolutePath file, CancellationToken cancellationToken)
+    {
+        var info = new FileInfo(file.ToString());
+        var stamp = (info.Length, info.LastWriteTimeUtc);
+        if (_hashed.TryGetValue(file.ToString(), out var known) && known.Stamp == stamp) return known.Hash;
+
+        var hash = FileIdentity.XxHash64(await FileHashing.XxHash64(file, cancellationToken));
+        _hashed[file.ToString()] = (stamp, hash);
+        return hash;
     }
 
     private IAcquisitionContext AcquisitionFor(ArchivePlan plan, FileIdentity hash)

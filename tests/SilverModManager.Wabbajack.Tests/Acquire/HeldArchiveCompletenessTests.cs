@@ -180,9 +180,9 @@ public class HeldArchiveCompletenessTests(ITestOutputHelper helper) : AcquireTes
         var unmatched = await Inbox.Scan(CancellationToken.None);
 
         unmatched.Should().BeEmpty();
-        (await FileStore.HaveFile(zip.InnerStoreIdentity)).Should().BeTrue("the drop was added to the library, not just deleted");
+        (await FileStore.HaveFile(zip.InnerStoreIdentity)).Should().BeTrue("the drop was added to the library");
         Acquirer.Plan.Rows.Should().ContainSingle().Which.State.Should().Be(ArchiveState.Have);
-        InboxFolder.Combine("outer.zip").FileExists.Should().BeFalse("a matched file now lives in the library");
+        InboxFolder.Combine("outer.zip").FileExists.Should().BeTrue("the user's drop is left where it was");
     }
 
     [Fact]
