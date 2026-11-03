@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x10B5E45E405A64A2
-   - Total attributes: 392
-   - Total namespaces: 108
+   - Fingerprint: 0x4E6771805CEA70E5
+   - Total attributes: 399
+   - Total namespaces: 109
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -76,6 +76,13 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Collections.NexusCollectionLoadoutGroup/Collection                       | Reference               | True    | False | False     | 
 | SilverModManager.Collections.NexusCollectionLoadoutGroup/LibraryFile                      | Reference               | False   | False | False     | 
 | SilverModManager.Collections.NexusCollectionLoadoutGroup/Revision                         | Reference               | True    | False | False     | 
+| SilverModManager.Collections.NexusCollectionPendingInstall/CollectionGroup                | Reference               | True    | False | False     | 
+| SilverModManager.Collections.NexusCollectionPendingInstall/Dismissed                      | UInt8                   | False   | False | False     | 
+| SilverModManager.Collections.NexusCollectionPendingInstall/Download                       | Reference               | True    | False | False     | 
+| SilverModManager.Collections.NexusCollectionPendingInstall/Kind                           | Int32                   | False   | False | False     | 
+| SilverModManager.Collections.NexusCollectionPendingInstall/Reason                         | Utf8                    | False   | False | False     | 
+| SilverModManager.Collections.NexusCollectionPendingInstall/ReplacedWasDisabled            | UInt8                   | False   | False | False     | 
+| SilverModManager.Collections.NexusCollectionPendingInstall/ReplacesGroup                  | UInt64                  | False   | False | False     | 
 | SilverModManager.Collections.NexusCollectionReplicatedLoadoutGroup/Replicated             | Null                    | True    | False | False     | 
 | SilverModManager.DataModel.SchemaVersioning.SchemaVersionModel/CurrentVersion             | UInt16                  | False   | False | False     | 
 | SilverModManager.DataModel.SchemaVersions.MigrationLogItem/MigrationId                    | UInt16                  | False   | False | False     | 

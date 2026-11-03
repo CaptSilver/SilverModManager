@@ -15,6 +15,7 @@ public static class Services
         return services
             .AddManagedCollectionLoadoutGroupModel()
             .AddNexusCollectionLoadoutGroupModel()
+            .AddNexusCollectionPendingInstallModel()
             .AddDirectDownloadLibraryFileModel()
             .AddNexusCollectionBundledLoadoutGroupModel()
             .AddNexusCollectionItemLoadoutGroupModel()
