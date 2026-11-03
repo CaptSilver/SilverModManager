@@ -266,6 +266,41 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Fact]
+    public async Task CanExecuteOnlyChangesOnTheUiThreadWhenTheStatusTicksOnAPoolThread()
+    {
+        var h = await Open("Remove Status Thread", entries: (ModFile, FileChangeType.Added));
+        await SeedGroup(h.Loadout.LoadoutId, "One", files: [ModFile]);
+        await Select(h, Node(ModFile));
+        await Eventually(() => h.CanRun.Should().BeTrue());
+        var offUi = new System.Collections.Concurrent.ConcurrentBag<bool>();
+        // Subscribed on the UI thread: the current value replays on subscribe, on the subscriber's own thread.
+        await Dispatcher.UIThread.InvokeAsync(() => h.Page.RemoveSelectedCommand.CanExecute.Subscribe(_ => offUi.Add(!Dispatcher.UIThread.CheckAccess())));
+
+        await Task.Run(() => h.Status.OnNext(LoadoutSynchronizerState.Pending), TestContext.Current.CancellationToken);
+
+        await Eventually(() => h.CanRun.Should().BeFalse());
+        offUi.Should().NotContain(true, "the button binds to can-execute, and Avalonia only lets the UI thread change it");
+    }
+
+    [Fact]
+    public async Task RefreshingClearsTheSelectionWithoutChangingCanExecuteOffTheUiThread()
+    {
+        var h = await Open("Remove Refresh Thread", entries: (ModFile, FileChangeType.Added));
+        await SeedGroup(h.Loadout.LoadoutId, "One", files: [ModFile]);
+        await Select(h, Node(ModFile));
+        await Eventually(() => h.CanRun.Should().BeTrue());
+        var offUi = new System.Collections.Concurrent.ConcurrentBag<bool>();
+        // Subscribed on the UI thread: the current value replays on subscribe, on the subscriber's own thread.
+        await Dispatcher.UIThread.InvokeAsync(() => h.Page.RemoveSelectedCommand.CanExecute.Subscribe(_ => offUi.Add(!Dispatcher.UIThread.CheckAccess())));
+
+        await Dispatcher.UIThread.InvokeAsync(() => { h.Page.RefreshCommand.Execute().Subscribe(); }).GetTask();
+
+        await Eventually(() => h.CanRun.Should().BeFalse());
+        await Eventually(() => h.Page.LoadFailed.Should().BeFalse());
+        offUi.Should().NotContain(true);
+    }
+
+    [Fact]
     public async Task TheClickPlansAfresh()
     {
         var h = await Open("Remove Fresh", entries: (ModFile, FileChangeType.Added));
@@ -327,7 +362,6 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
     public async Task AFailureFromTheServiceGoesToTheErrorPresenterAndNothingIsThrown()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Remove Fault Seed");
-        var request = new FileRemovalRequest(loadout.LoadoutId, [ModFile]);
         var row = new FileRemovalRow(EntityId.From(1), ModFile, "Mod", LoadoutItemGroupId.From(EntityId.From(2)), null, null, null, false, false, true);
         var remover = Substitute.For<ILoadoutFileRemover>();
         remover.Plan(Arg.Any<FileRemovalRequest>()).Returns(call => new FileRemovalPlan(call.Arg<FileRemovalRequest>(), [row]));
@@ -342,7 +376,7 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
         await Eventually(() => _ = h.Presenter.Received(1).Report(Arg.Is<Exception>(e => e is InvalidOperationException), Arg.Any<string>()));
         await Task.Delay(200, TestContext.Current.CancellationToken);
         h.Thrown.Should().BeEmpty();
-        request.Paths.Should().ContainSingle();
+        await remover.Received(1).Remove(Arg.Is<FileRemovalRequest>(r => r.Paths.Single() == ModFile), true);
     }
 
     [Fact]

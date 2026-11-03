@@ -78,6 +78,7 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
             if (_status is null) return;
             Observable.FromAsync(() => _status)
                 .Switch()
+                .OnUI()
                 .Subscribe(state => _applyRunning.OnNext(state == LoadoutSynchronizerState.Pending))
                 ?.DisposeWith(disposables);
         });
@@ -112,6 +113,9 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
             throw;
         }
 
+        // The rebuilt tree holds new node instances, so nothing selected before is still in it. Cleared here rather
+        // than in Refresh: the selection feeds the Delete button's can-execute, which has to tick on the UI thread.
+        diffTreeViewModel.SelectedNodes = [];
         LoadFailed = false;
         BodyViewModel = diffTreeViewModel;
     }

@@ -198,9 +198,6 @@ public partial class DiffTreeViewModel : AViewModel<IFileTreeViewModel>, IFileTr
             }
         );
 
-        // The nodes just built are new instances, so nothing that was selected is still in the tree.
-        SelectedNodes = [];
-
         _statusBarSourceList.Edit(innerList =>
             {
                 innerList.Clear();

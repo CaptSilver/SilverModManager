@@ -116,6 +116,27 @@ public class RemovedFileRowsTests(ITestOutputHelper helper) : AStubbedGameTest<R
 
         ChangeOf(loadout, ModFile).Should().BeNull();
     }
+
+    [Fact]
+    public async Task RemovingAnExternalChangesDeleteMarkerStopsTheDeleteWinning()
+    {
+        var loadout = await CreateLoadout();
+        LoadoutOverridesGroupId overrides;
+        using (var tx = Connection.BeginTransaction())
+        {
+            overrides = ((ALoadoutSynchronizer)Synchronizer).GetOrCreateOverridesGroup(tx, loadout);
+            OverridesGroupItems.AddReifiedDelete(tx, Refresh(loadout), overrides, ModFile);
+            await tx.Commit();
+        }
+        ((ALoadoutSynchronizer)Synchronizer).WinningFilesForTest(Refresh(loadout))
+            .Should().Contain(row => row.Path == ModFile, "the delete marker wins its path");
+
+        // Scoped to the group, as the External Changes page does: an unscoped request refuses a recorded delete.
+        await Remover.Remove(new FileRemovalRequest(loadout.LoadoutId, [ModFile], [LoadoutItemGroupId.From(overrides.Value)]), includeLocked: true);
+
+        ((ALoadoutSynchronizer)Synchronizer).WinningFilesForTest(Refresh(loadout))
+            .Should().NotContain(row => row.Path == ModFile, "the path no longer counts as a winning delete");
+    }
 }
 
 /// <summary>
@@ -164,3 +185,4 @@ public class RemovedGameFileOverrideTests(ITestOutputHelper helper) : ASteamInst
             .Should().Contain(row => row.Path == VanillaPath && row.ItemType == "Game", "the path never left the winning files");
     }
 }
+

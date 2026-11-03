@@ -29,7 +29,7 @@
                                          Fill="WeakAlt" />
                 <controls:StandardButton x:Name="RemoveButton"
                                          LeftIcon="{x:Static icons:IconValues.DeleteForever}"
-                                         Text="Delete"
+                                         Text="{x:Static resources:Language.ApplyDiff_Remove}"
                                          ShowIcon="Left"
                                          Size="Small"
                                          Fill="WeakAlt" />
@@ -39,7 +39,7 @@
         <reactiveUi:ViewModelViewHost Grid.Row="1" x:Name="TreeViewHost">
             <reactiveUi:ViewModelViewHost.ContextFlyout>
                 <MenuFlyout>
-                    <MenuItem x:Name="MenuItemRemove" Classes="Critical" Header="Delete">
+                    <MenuItem x:Name="MenuItemRemove" Classes="Critical" Header="{x:Static resources:Language.ApplyDiff_Remove}">
                         <MenuItem.Icon>
                             <icons:UnifiedIcon Value="{x:Static icons:IconValues.DeleteForever}" />
                         </MenuItem.Icon>
