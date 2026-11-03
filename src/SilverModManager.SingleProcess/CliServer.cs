@@ -135,11 +135,13 @@ public sealed class CliServer : IHostedService, IDisposable
                 continue;
             }
 
+            // Logged before the hand-off: the handler disposes the connection when it is done, and a client that hangs
+            // up at once gets there before this thread does. An exception here has no catcher and ends the process.
+            _logger.LogInformation("Accepted TCP connection from {RemoteEndPoint}", (found.Client.RemoteEndPoint as IPEndPoint)?.Port);
+
             var id = Guid.NewGuid();
             var task = Task.Run(() => HandleClientAsync(id, found, serializer), CancellationToken.None);
             _ = _runningClients.GetOrAdd(id, task);
-
-            _logger.LogInformation("Accepted TCP connection from {RemoteEndPoint}", (found.Client.RemoteEndPoint as IPEndPoint)?.Port);
         }
     }
 
