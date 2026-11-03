@@ -43,6 +43,40 @@ public class CollectionLoadoutViewTests(IServiceProvider provider) : AUiTest(pro
         new(Percent.CreateClamped(0.75), 1234UL, 99_000UL, Size.From(5_000_000UL), null);
 
     [Fact]
+    public async Task TheSearchBoxFiltersTheInstalledTreeThroughItsAdapter()
+    {
+        var viewModel = new CollectionLoadoutDesignViewModel();
+        var (window, view) = await Show(viewModel);
+        var search = Named<SilverModManager.App.UI.Controls.Search.SearchControl>(view, "SearchControl");
+
+        await OnUi(() => search.Adapter.Should().BeSameAs(viewModel.Adapter));
+        await OnUi(() => Named<TextBox>(view, "SearchTextBox").Text = "Upscaler");
+
+        await EventuallyOnUi(() => viewModel.Adapter!.Filter.Value.Should().Be(new SilverModManager.App.UI.Controls.Filters.Filter.TextFilter("Upscaler")));
+        await OnUi(window.Close);
+    }
+
+    [Fact]
+    public async Task NoModsMatchShowsOnlyWhileTheAdapterReportsNoMatches()
+    {
+        var viewModel = new CollectionLoadoutDesignViewModel();
+        var (window, view) = await Show(viewModel);
+        await OnUi(() => Named<TextBlock>(view, "NoMatchesText").IsEffectivelyVisible.Should().BeFalse());
+
+        await OnUi(() => viewModel.Adapter!.HasNoMatches.Value = true);
+        await EventuallyOnUi(() =>
+        {
+            Render(window);
+            Named<TextBlock>(view, "NoMatchesText").IsEffectivelyVisible.Should().BeTrue();
+            Named<TextBlock>(view, "NoMatchesText").Text.Should().Be("No mods match");
+        });
+
+        await OnUi(() => viewModel.Adapter!.HasNoMatches.Value = false);
+        await EventuallyOnUi(() => Named<TextBlock>(view, "NoMatchesText").IsEffectivelyVisible.Should().BeFalse());
+        await OnUi(window.Close);
+    }
+
+    [Fact]
     public async Task ALongDescription_IsCollapsedUntilShowMoreIsPressed()
     {
         var (window, view) = await Show(new CollectionLoadoutDesignViewModel { Description = TwoParagraphs });

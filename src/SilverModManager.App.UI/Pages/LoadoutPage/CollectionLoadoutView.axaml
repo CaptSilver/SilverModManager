@@ -8,6 +8,7 @@
     xmlns:loadoutPage="clr-namespace:SilverModManager.App.UI.Pages.LoadoutPage"
     xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
     xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    xmlns:search="clr-namespace:SilverModManager.App.UI.Controls.Search"
     xmlns:navigation="clr-namespace:SilverModManager.App.UI.Controls.Navigation"
     xmlns:collectionDownload="clr-namespace:SilverModManager.App.UI.Pages.CollectionDownload"
     xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
@@ -23,6 +24,9 @@
         <DockPanel x:Key="TabItemContent">
             <!-- statusbar -->
             <controls:Statusbar Classes="Primary" DockPanel.Dock="Top">
+
+                <!-- filters the mods by name or by a file they deploy -->
+                <search:SearchControl x:Name="SearchControl" ButtonSize="Toolbar" />
 
                 <!-- "Open on Nexus Mods", "Open readme" -->
                 <!-- text, icon and command are bound rather than set in code, so the button's first layout already has them -->
@@ -69,18 +73,28 @@
             <Border x:Name="DownloadsTreeContainer"
                     Padding="0 8 0 0"
                     Background="{StaticResource SurfaceTransparentBrush}">
-                <!-- tree data grid -->
-                <TreeDataGrid Grid.Row="2" x:Name="TreeDataGrid"
-                              ShowColumnHeaders="True"
-                              CanUserResizeColumns="True"
-                              CanUserSortColumns="True"
-                              Classes="MainListsStyling" >
-                    <TreeDataGrid.Styles>
-                        <Style Selector="TreeDataGridRow">
-                            <Setter Property="ContextFlyout" Value="{StaticResource LoadoutItemMenuFlyout}" />
-                        </Style>
-                    </TreeDataGrid.Styles>
-                </TreeDataGrid>
+                <Panel>
+                    <!-- tree data grid -->
+                    <TreeDataGrid Grid.Row="2" x:Name="TreeDataGrid"
+                                  ShowColumnHeaders="True"
+                                  CanUserResizeColumns="True"
+                                  CanUserSortColumns="True"
+                                  Classes="MainListsStyling" >
+                        <TreeDataGrid.Styles>
+                            <Style Selector="TreeDataGridRow">
+                                <Setter Property="ContextFlyout" Value="{StaticResource LoadoutItemMenuFlyout}" />
+                            </Style>
+                        </TreeDataGrid.Styles>
+                    </TreeDataGrid>
+
+                    <!-- shown over the empty table while a search hides every mod -->
+                    <TextBlock x:Name="NoMatchesText"
+                               Text="{x:Static resources:Language.CollectionLoadoutView_NoModsMatch}"
+                               IsVisible="False"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Foreground="{StaticResource NeutralTranslucentModerateBrush}" />
+                </Panel>
             </Border>
         </DockPanel>
     </reactive:ReactiveUserControl.Resources>

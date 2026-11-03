@@ -73,10 +73,11 @@ public partial class SearchControl : UserControl
         // So there is no risk of event leaks, as the lifetime of self equals self.
 
         // Setup search text binding
-        this.WhenAnyValue(x => x.SearchTextBox.Text)
+        // The adapter is part of the trigger: a page binds it after the user may have typed, or swaps it for another.
+        this.WhenAnyValue(x => x.SearchTextBox.Text, x => x.Adapter, static (text, adapter) => (text, adapter))
             .Throttle(dueTime: TimeSpan.FromMilliseconds(100))
             .OnUI()
-            .Subscribe(ApplySearchFilter);
+            .Subscribe(static state => ApplySearchFilter(state.text, state.adapter));
 
         // Clear button functionality
         SearchClearButton.Click += (_, _) => ClearSearch();
@@ -95,11 +96,11 @@ public partial class SearchControl : UserControl
             });
     }
 
-    private void ApplySearchFilter(string? searchText)
+    private static void ApplySearchFilter(string? searchText, ISearchableTreeDataGridAdapter? adapter)
     {
-        if (Adapter?.Filter != null)
+        if (adapter?.Filter != null)
         {
-            Adapter.Filter.Value = string.IsNullOrWhiteSpace(searchText)
+            adapter.Filter.Value = string.IsNullOrWhiteSpace(searchText)
                 ? NoFilter.Instance
                 : new TextFilter(searchText, CaseSensitive: false);
         }

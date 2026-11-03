@@ -1466,6 +1466,9 @@ Use it for {0}?</value>
     <data name="CollectionLoadoutView_NexusMods" xml:space="preserve">
         <value>Nexus Mods</value>
     </data>
+    <data name="CollectionLoadoutView_NoModsMatch" xml:space="preserve">
+        <value>No mods match</value>
+    </data>
     <data name="CollectionLoadoutView_ReadOnly_ToolTip" xml:space="preserve">
         <value>Collections downloaded from Nexus Mods are currently not editable. However, the ability to create local, editable copies will be available soon.</value>
     </data>

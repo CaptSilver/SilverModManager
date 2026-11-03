@@ -511,6 +511,15 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to No mods match.
+        /// </summary>
+        public static string CollectionLoadoutView_NoModsMatch {
+            get {
+                return ResourceManager.GetString("CollectionLoadoutView_NoModsMatch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Read only.
         /// </summary>
         public static string CollectionLoadoutView_ReadOnly {

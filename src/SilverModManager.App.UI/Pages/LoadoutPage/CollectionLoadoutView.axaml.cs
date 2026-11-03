@@ -42,6 +42,24 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
                 .AddTo(disposables);
             this.OneWayBind(ViewModel, vm => vm.Adapter, view => view.ModsPanel.IsVisible, static adapter => adapter is not null)
                 .AddTo(disposables);
+
+            SearchControl.AttachKeyboardHandlers(this, disposables);
+            this.OneWayBind(ViewModel, vm => vm.Adapter, view => view.SearchControl.Adapter)
+                .AddTo(disposables);
+
+            // "No mods match" follows the adapter, which is null while there is no installed group.
+            this.WhenAnyValue(view => view.ViewModel)
+                .Select(vm => vm is null
+                    ? System.Reactive.Linq.Observable.Return<LoadoutTreeDataGridAdapter?>(null)
+                    : vm.WhenAnyValue(model => model.Adapter))
+                .Switch()
+                .Select(adapter => adapter is null
+                    ? System.Reactive.Linq.Observable.Return(false)
+                    : adapter.HasNoMatches.AsSystemObservable())
+                .Switch()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(hasNoMatches => NoMatchesText.IsVisible = hasNoMatches)
+                .AddTo(disposables);
             this.OneWayBind(ViewModel, vm => vm.HasInstalledTab, view => view.InstalledTab.IsVisible)
                 .AddTo(disposables);
             this.OneWayBind(ViewModel, vm => vm.Name, view => view.CollectionName.Text)
