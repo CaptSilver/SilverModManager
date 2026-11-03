@@ -147,16 +147,24 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
         .OrderBy(notice => notice.Path.ToString(), StringComparer.Ordinal)
         .ToArray();
 
-    // One request over every listed file, scoped to the groups the diagnostics named. The diagnostics refresh by
-    // themselves once the removal is a revision of the loadout, which empties the notice.
+    // One request per group, each with only that group's paths: a request names a set of paths and a set of groups and
+    // removes every path from every group, so a combined one would take a file out of a group that never listed it.
+    // Each request asks its own question; declining one stops the rest. The diagnostics refresh by themselves once the
+    // removal is a revision of the loadout, which empties the notice.
     private async Task RemoveStrayFilesAsync()
     {
         var strays = StrayFiles;
         if (strays.Count == 0) return;
 
-        var request = new FileRemovalRequest(_loadoutId, strays.Select(s => s.Path).Distinct().ToArray(), strays.Select(s => s.Group).Distinct().ToArray());
-        if (!await LoadoutFileRemovalFlow.Run(_serviceProvider, WindowManager, request, Language.ApplyDiff_Remove_Activity)) return;
-        if (_fileTreeViewModel is { } tree) await RefreshAfterRemovalAsync(tree);
+        var removedAny = false;
+        foreach (var byGroup in strays.GroupBy(s => s.Group))
+        {
+            var request = new FileRemovalRequest(_loadoutId, byGroup.Select(s => s.Path).Distinct().ToArray(), [byGroup.Key]);
+            if (!await LoadoutFileRemovalFlow.Run(_serviceProvider, WindowManager, request, Language.ApplyDiff_Remove_Activity)) break;
+            removedAny = true;
+        }
+
+        if (removedAny && _fileTreeViewModel is { } tree) await RefreshAfterRemovalAsync(tree);
     }
 
     /// <summary>

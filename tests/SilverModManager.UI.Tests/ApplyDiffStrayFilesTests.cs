@@ -162,6 +162,24 @@ public class ApplyDiffStrayFilesTests(IServiceProvider provider) : AUiTest(provi
     }
 
     [Fact]
+    public async Task EachNoticeIsRemovedOnlyFromItsOwnGroup()
+    {
+        var otherGroup = LoadoutItemGroupId.From(EntityId.From(0x78));
+        var h = await Open("Stray Two Groups", Stray(Dll, Group), Stray(OtherDll, otherGroup));
+        await Eventually(() => h.Page.StrayFiles.Should().HaveCount(2));
+        h.Answer = new StandardDialogResult { ButtonId = ButtonDefinitionId.Accept };
+
+        await Press(h);
+
+        // One request carrying both paths and both groups would also remove Dll from otherGroup and OtherDll from Group.
+        await Eventually(() => h.Remover.Received(1).Remove(
+            Arg.Is<FileRemovalRequest>(r => r.Paths.SequenceEqual(new[] { Dll }) && r.OnlyInGroups!.SequenceEqual(new[] { Group })), true));
+        await Eventually(() => h.Remover.Received(1).Remove(
+            Arg.Is<FileRemovalRequest>(r => r.Paths.SequenceEqual(new[] { OtherDll }) && r.OnlyInGroups!.SequenceEqual(new[] { otherGroup })), true));
+        await h.Remover.DidNotReceive().Remove(Arg.Is<FileRemovalRequest>(r => r.Paths.Length > 1 && r.OnlyInGroups!.Length > 1), true);
+    }
+
+    [Fact]
     public async Task CancellingRemovesNothing()
     {
         var h = await Open("Stray Cancel", Stray(Dll, Group));
