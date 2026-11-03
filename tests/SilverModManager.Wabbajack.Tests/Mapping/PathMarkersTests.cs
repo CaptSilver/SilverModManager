@@ -43,4 +43,56 @@ public class PathMarkersTests
     {
         PathMarkers.Substitute("a{b}c", Windows, nativeSpelling: false).Should().Be("a{b}c");
     }
+
+    private static readonly PathMarkerValues WithStock = new(@"Z:\stub\game", @"Z:\stub\mo2", @"Z:\stub\dl", new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Game Root" });
+
+    [Fact]
+    public void Mo2PathFollowedByTheStockGameFolder_ResolvesToTheGameFolder_InWindowsSpelling()
+    {
+        PathMarkers.Substitute(@"gamePath={--||MO2_PATH_MAGIC_BACK||--}\Game Root", WithStock, nativeSpelling: false)
+            .Should().Be(@"gamePath=Z:\stub\game");
+        PathMarkers.Substitute(@"{--||MO2_PATH_MAGIC_BACK||--}\Game Root\SKSE\x.exe", WithStock, nativeSpelling: false)
+            .Should().Be(@"Z:\stub\game\SKSE\x.exe");
+    }
+
+    [Fact]
+    public void Mo2PathFollowedByTheStockGameFolder_ResolvesToTheGameFolder_InNativeSpelling()
+    {
+        var values = new PathMarkerValues("/stub/game", "/stub/mo2", "/stub/dl", new HashSet<string> { "Game Root" });
+
+        PathMarkers.Substitute(@"{--||MO2_PATH_MAGIC_BACK||--}\Game Root\SKSE\x.exe", values, nativeSpelling: true)
+            .Should().Be("/stub/game/SKSE/x.exe");
+    }
+
+    [Fact]
+    public void DoubleBackAndForwardSpellings_AlsoResolveTheStockGameFolder()
+    {
+        PathMarkers.Substitute(@"{--||MO2_PATH_MAGIC_DOUBLE_BACK||--}\\Game Root\\data", WithStock, nativeSpelling: false)
+            .Should().Be(@"Z:\\stub\\game\\data");
+        PathMarkers.Substitute("{--||MO2_PATH_MAGIC_FORWARD||--}/Game Root/data", WithStock, nativeSpelling: false)
+            .Should().Be("Z:/stub/game/data");
+    }
+
+    [Fact]
+    public void AStockFolderWithAnotherName_IsMatchedByItsName_AndTheOneTheListDoesNotHaveIsNot()
+    {
+        var values = new PathMarkerValues(@"Z:\g", @"Z:\m", @"Z:\d", new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Stock Game" });
+
+        PathMarkers.Substitute(@"{--||MO2_PATH_MAGIC_BACK||--}\stock game\a", values, nativeSpelling: false).Should().Be(@"Z:\g\a");
+        PathMarkers.Substitute(@"{--||MO2_PATH_MAGIC_BACK||--}\Game Root\a", values, nativeSpelling: false).Should().Be(@"Z:\m\Game Root\a");
+    }
+
+    [Fact]
+    public void AListWithoutAStockGameFolder_IsUnchanged()
+    {
+        PathMarkers.Substitute(@"{--||MO2_PATH_MAGIC_BACK||--}\Game Root\a", Windows, nativeSpelling: false)
+            .Should().Be(@"Z:\stub\mo2\Game Root\a");
+    }
+
+    [Fact]
+    public void APathUnderMo2ThatIsNotTheStockFolder_StillMapsToTheToolsFolder()
+    {
+        PathMarkers.Substitute(@"{--||MO2_PATH_MAGIC_BACK||--}\tools\x.exe {--||MO2_PATH_MAGIC_BACK||--}\Game Root2\x {--||MO2_PATH_MAGIC_BACK||--}", WithStock, nativeSpelling: false)
+            .Should().Be(@"Z:\stub\mo2\tools\x.exe Z:\stub\mo2\Game Root2\x Z:\stub\mo2");
+    }
 }

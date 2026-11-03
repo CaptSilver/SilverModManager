@@ -3,7 +3,12 @@ using System.Text;
 namespace SilverModManager.Wabbajack.Mapping;
 
 /// <summary>What the nine placeholders a modlist leaves in MO2's files stand for.</summary>
-public readonly record struct PathMarkerValues(string GamePath, string Mo2Path, string DownloadsPath);
+/// <param name="StockGameFolders">
+/// Names of the list's folders that hold a copy of the game ("Stock Game", "Game Root"). The app deploys their contents
+/// into the real game folder and never creates them under the tools folder, so a <c>MO2_PATH</c> marker followed by one
+/// of these names stands for <paramref name="GamePath"/>. See <see cref="Mo2Layout.GameRootFolders"/>.
+/// </param>
+public readonly record struct PathMarkerValues(string GamePath, string Mo2Path, string DownloadsPath, IReadOnlySet<string>? StockGameFolders = null);
 
 /// <summary>
 /// Replaces the placeholders the Wabbajack compiler wrote in place of absolute paths, the way the installer does
@@ -46,13 +51,20 @@ public static class PathMarkers
                 continue;
             }
 
-            var value = marker.Path switch
+            i += marker.Marker.Length;
+            var path = marker.Path;
+            if (path == 1 && StockFolderLength(text, i, values.StockGameFolders) is var stockLength and > 0)
+            {
+                path = 0;
+                i += stockLength;
+            }
+
+            var value = path switch
             {
                 0 => values.GamePath,
                 1 => values.Mo2Path,
                 _ => values.DownloadsPath,
             };
-            i += marker.Marker.Length;
 
             if (nativeSpelling)
             {
@@ -75,6 +87,33 @@ public static class PathMarkers
         }
         return result.ToString();
     }
+
+    /// <summary>
+    /// The length of a separator (<c>\</c>, <c>\\</c> or <c>/</c>) and stock-game folder name at <paramref name="index"/>,
+    /// or 0 when the text there is some other path. The longest name wins, and the name must end the path segment.
+    /// </summary>
+    private static int StockFolderLength(string text, int index, IReadOnlySet<string>? folders)
+    {
+        if (folders is null || folders.Count == 0) return 0;
+
+        var separator = text.AsSpan(index).StartsWith("\\\\") ? 2 : index < text.Length && text[index] is '\\' or '/' ? 1 : 0;
+        if (separator == 0) return 0;
+
+        var start = index + separator;
+        var best = 0;
+        foreach (var folder in folders)
+        {
+            if (folder.Length <= best || !EqualsIgnoreCase(text, start, folder)) continue;
+
+            var end = start + folder.Length;
+            if (end < text.Length && text[end] is not ('\\' or '/' or '"' or '\'' or '{') && !char.IsWhiteSpace(text[end])) continue;
+            best = folder.Length;
+        }
+        return best == 0 ? 0 : separator + best;
+    }
+
+    private static bool EqualsIgnoreCase(string text, int start, string folder)
+        => start + folder.Length <= text.Length && string.Compare(text, start, folder, 0, folder.Length, StringComparison.OrdinalIgnoreCase) == 0;
 
     private static bool TryMatch(string text, int index, out (string Marker, int Path, Spelling Spelling) found)
     {

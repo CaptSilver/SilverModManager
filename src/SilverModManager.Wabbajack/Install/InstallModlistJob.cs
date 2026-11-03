@@ -1321,7 +1321,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var skipped = skips.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var switchedOff = await GroupsSwitchedOffByProfile(check, cancellationToken);
         var found = ModlistTools.Find(iniText, extras.Root, gameRoot, primary.FileName.ToString(), relative => AppliedPath(check, relative, skipped, switchedOff),
-            relative => skips.GetValueOrDefault(relative));
+            relative => skips.GetValueOrDefault(relative), StockGameFolders(check));
         UnregisteredTools = found.Unregistered;
         foreach (var line in found.Unregistered) Logger.LogWarning("Not registering a tool of '{List}': {Reason}", check.List.Name, line);
 
@@ -1632,8 +1632,15 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         return new PathMarkerValues(
             GamePath: WindowsPathTranslator.Translate(gameRoot.ToString(), prefixRoot),
             Mo2Path: WindowsPathTranslator.Translate(extras.Root.ToString(), prefixRoot),
-            DownloadsPath: WindowsPathTranslator.Translate(extras.Downloads.ToString(), prefixRoot));
+            DownloadsPath: WindowsPathTranslator.Translate(extras.Downloads.ToString(), prefixRoot),
+            StockGameFolders: StockGameFolders(check));
     }
+
+    /// <summary>The list's stock-game folders, which Apply deploys into the game folder: the ones <see cref="Mo2Layout.Classify"/> sorted files into.</summary>
+    private static HashSet<string> StockGameFolders(Checked check)
+        => check.Placements.Select(p => p.Target).OfType<Mo2Target.GameRootFile>()
+            .Select(t => t.GroupName)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The sources a merge names, already written by earlier directives, joined in the order the list gives.</summary>
     private async Task<Func<Stream, Task>> MergedBytes(Checked check, WriteState state, MergedPatch merged, CancellationToken cancellationToken)

@@ -32,10 +32,15 @@ public static class ModlistTools
     /// Why the install did not produce the file at a path inside the instance, or null when it was not skipped. Only used
     /// to say so when a tool is left out: a file the install skipped is the usual reason its binary is missing.
     /// </param>
+    /// <param name="stockGameFolders">
+    /// The list's stock-game folder names. A tool's arguments that name one under <c>MO2_PATH</c> get the game folder,
+    /// where the loadout puts the folder's contents. A binary keeps the tools-folder path, which <paramref name="appliedPath"/> maps.
+    /// </param>
     public static Result Find(string iniText, AbsolutePath extrasRoot, AbsolutePath gameRoot, string primaryExecutable,
-        Func<string, string?> appliedPath, Func<string, string?> skipReason)
+        Func<string, string?> appliedPath, Func<string, string?> skipReason, IReadOnlySet<string>? stockGameFolders = null)
     {
         var values = new PathMarkerValues(gameRoot.ToString(), extrasRoot.ToString(), extrasRoot.Combine("downloads").ToString());
+        var argumentValues = values with { StockGameFolders = stockGameFolders };
         var leftOut = new HashSet<string>(AlwaysLeftOut, StringComparer.OrdinalIgnoreCase) { primaryExecutable };
         leftOut.Add(System.IO.Path.GetFileNameWithoutExtension(primaryExecutable) + "Launcher.exe");
 
@@ -56,7 +61,7 @@ public static class ModlistTools
                 continue;
             }
 
-            tools.Add(new ModlistTool(entry.Title, exe, PathMarkers.Substitute(entry.Arguments, values, nativeSpelling: true)));
+            tools.Add(new ModlistTool(entry.Title, exe, PathMarkers.Substitute(entry.Arguments, argumentValues, nativeSpelling: true)));
         }
         return new Result(tools, unregistered);
     }

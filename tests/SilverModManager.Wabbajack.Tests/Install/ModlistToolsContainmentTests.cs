@@ -85,4 +85,17 @@ public class ModlistToolsContainmentTests : IDisposable
         message.Should().Contain("outside the list's tools folder and the game folder");
         message.Should().NotContain("does not exist");
     }
+
+    [Fact]
+    public void AnArgumentUnderTheStockGameFolderPointsAtTheGameFolder_AndOneUnderAnotherFolderStaysInTheToolsFolder()
+    {
+        var ini = "[customExecutables]\nsize=1\n1\\arguments=-g \"{--||MO2_PATH_MAGIC_BACK||--}\\Game Root\\cfg.ini\" -t {--||MO2_PATH_MAGIC_BACK||--}\\tools\\a.ini\n"
+            + $"1\\binary={Path.Combine(_real, "xEdit", "SSEEdit.exe")}\n1\\title=SSEEdit\n";
+
+        var result = ModlistTools.Find(ini, Absolute(_real), Absolute(Path.Combine(_scratch, "game")), "Game.exe", _ => null, _ => null,
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Game Root" });
+
+        result.Tools.Should().ContainSingle().Which.Arguments.Should().Be(
+            $"-g \"{Path.Combine(_scratch, "game")}/cfg.ini\" -t {_real}/tools/a.ini");
+    }
 }
