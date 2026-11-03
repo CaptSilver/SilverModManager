@@ -116,9 +116,9 @@ public sealed class ConditionEvaluator : IConditionEvaluator
         if (_refused.Add(path)) _logger?.LogInformation("Condition path \"{Path}\" {Reason}; the condition does not hold", path, reason);
     }
 
-    /// <summary>The regular file a condition path names, or null when it is missing, refused, or a pipe, device or the like.</summary>
-    private string? ResolveRegularFile(string path) =>
-        Resolve(path) is { } resolved && ConditionPaths.IsRegularFile(resolved) ? resolved : null;
+    /// <summary>The regular file a condition path names, open for reading, or null when it is missing, refused, or a pipe, device or the like.</summary>
+    private FileStream? OpenRegularFile(string path) =>
+        Resolve(path) is { } resolved ? ConditionPaths.OpenRegularFile(resolved) : null;
 
     /// <summary>The name the context knows a plugin by: the path as written, without a <c>.ghost</c> suffix.</summary>
     private string PluginName(string path) => ConditionPaths.NormaliseFileName(_context.Game, path);
@@ -150,15 +150,12 @@ public sealed class ConditionEvaluator : IConditionEvaluator
 
     private bool FileSize(ConditionFunction.FileSize function)
     {
-        var path = ResolveRegularFile(function.Path);
-        return path is not null && TryRead(function.Path, () => LengthOfTarget(path)) == (long)function.Size;
-    }
-
-    // A deployed file may be a symbolic link, and FileInfo.Length on a link is the length of the link itself.
-    private static long LengthOfTarget(string path)
-    {
-        var file = new FileInfo(path);
-        return (file.ResolveLinkTarget(returnFinalTarget: true) as FileInfo ?? file).Length;
+        // The stream's length is that of the file behind the handle, which for a deployed symbolic link is its target.
+        return TryRead(function.Path, () =>
+        {
+            using var stream = OpenRegularFile(function.Path);
+            return stream is not null && stream.Length == (long)function.Size;
+        });
     }
 
     private bool IsReadable(string path)
@@ -172,9 +169,8 @@ public sealed class ConditionEvaluator : IConditionEvaluator
                 return true;
             }
 
-            if (!ConditionPaths.IsRegularFile(path)) return false;
-            using var stream = System.IO.File.OpenRead(path);
-            return true;
+            using var stream = ConditionPaths.OpenRegularFile(path);
+            return stream is not null;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -189,22 +185,26 @@ public sealed class ConditionEvaluator : IConditionEvaluator
 
     private bool Checksum(ConditionFunction.Checksum function)
     {
-        var path = ResolveRegularFile(function.Path);
-        if (path is null) return false;
+        if (Resolve(function.Path) is not { } path) return false;
 
         var key = path.ToLowerInvariant();
         if (_checksums.TryGetValue(key, out var known)) return known == function.Crc;
 
-        var crc = TryRead(function.Path, () => Crc32OfFile(path));
+        var crc = TryRead(function.Path, () =>
+        {
+            using var stream = ConditionPaths.OpenRegularFile(path);
+            return stream is null ? (uint?)null : Crc32OfStream(stream);
+        });
+        if (crc is null) return false;
 
-        _checksums[key] = crc;
+        _checksums[key] = crc.Value;
         return crc == function.Crc;
     }
 
-    // The app's sequential-read open and block size; a stream handed to the hasher reads in small blocks.
-    private static uint Crc32OfFile(string path)
+    // The app's block size and read-ahead hint; a stream handed to the hasher reads in small blocks.
+    private static uint Crc32OfStream(FileStream stream)
     {
-        using var stream = SequentialFileRead.Open(FileSystem.Shared.FromUnsanitizedFullPath(path));
+        SequentialFileRead.AdviseSequential(stream);
 
         var hash = new Crc32();
         var buffer = new byte[HashingLimits.ReadBlockSize];
@@ -243,10 +243,8 @@ public sealed class ConditionEvaluator : IConditionEvaluator
     {
         try
         {
-            if (ResolveRegularFile(conditionPath) is not { } path) return default;
-
-            using var stream = System.IO.File.OpenRead(path);
-            return read(stream);
+            using var stream = OpenRegularFile(conditionPath);
+            return stream is null ? default : read(stream);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {

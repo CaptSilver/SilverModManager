@@ -90,27 +90,51 @@ public class ConditionPathsTests : IDisposable
     public void IsPlainFileName_AcceptsOnlyANameWithNoSeparator(string name, bool expected) =>
         ConditionPaths.IsPlainFileName(name).Should().Be(expected);
 
+    private static bool Opens(string path)
+    {
+        using var stream = ConditionPaths.OpenRegularFile(path);
+        return stream is not null;
+    }
+
     [Fact]
-    public void IsRegularFile_TrueForAFileAndFalseForAFolderAndAMissingPath()
+    public void OpenRegularFile_ReadsTheBytesOfAFileAndOfASymlinkToIt()
+    {
+        var file = _data.Write("b.esp", [7, 8, 9]);
+        var link = Path.Combine(_data.Path, "link.esp");
+        System.IO.File.CreateSymbolicLink(link, file);
+
+        foreach (var path in new[] { file, link })
+        {
+            using var stream = ConditionPaths.OpenRegularFile(path);
+            stream.Should().NotBeNull();
+            stream!.Length.Should().Be(3);
+            var bytes = new byte[3];
+            stream.ReadExactly(bytes);
+            bytes.Should().Equal(7, 8, 9);
+        }
+    }
+
+    [Fact]
+    public void OpenRegularFile_TrueForAFileAndFalseForAFolderAndAMissingPath()
     {
         var file = _data.Write("a.esp");
         var folder = _data.CreateDirectory("Meshes");
 
-        ConditionPaths.IsRegularFile(file).Should().BeTrue();
-        ConditionPaths.IsRegularFile(folder).Should().BeFalse();
-        ConditionPaths.IsRegularFile(Path.Combine(_data.Path, "missing.esp")).Should().BeFalse();
+        Opens(file).Should().BeTrue();
+        Opens(folder).Should().BeFalse();
+        Opens(Path.Combine(_data.Path, "missing.esp")).Should().BeFalse();
     }
 
     [Fact]
-    public void IsRegularFile_FalseForAFifo()
+    public void OpenRegularFile_FalseForAFifo()
     {
         var fifo = _data.CreateFifo("pipe.esp");
 
-        ConditionPaths.IsRegularFile(fifo).Should().BeFalse();
+        Opens(fifo).Should().BeFalse();
     }
 
     [Fact]
-    public void IsRegularFile_FollowsASymlinkIntoAFolderOutsideTheGameRoot()
+    public void OpenRegularFile_FollowsASymlinkIntoAFolderOutsideTheGameRoot()
     {
         // The symlink deployment backend links each file to its copy in the staging store.
         var data = _data.CreateDirectory("Game/Data");
@@ -118,28 +142,28 @@ public class ConditionPathsTests : IDisposable
         var staged = store.Write("mod/plugin.esp", [1, 2, 3]);
         System.IO.File.CreateSymbolicLink(Path.Combine(data, "plugin.esp"), staged);
 
-        ConditionPaths.IsRegularFile(Path.Combine(data, "plugin.esp")).Should().BeTrue();
+        Opens(Path.Combine(data, "plugin.esp")).Should().BeTrue();
     }
 
     [Fact]
-    public void IsRegularFile_FalseForASymlinkToAFifo()
+    public void OpenRegularFile_FalseForASymlinkToAFifo()
     {
         var data = _data.CreateDirectory("Data");
         using var elsewhere = new TempDirectory();
         var fifo = elsewhere.CreateFifo("pipe");
         System.IO.File.CreateSymbolicLink(Path.Combine(data, "link.esp"), fifo);
 
-        var task = Task.Run(() => ConditionPaths.IsRegularFile(Path.Combine(data, "link.esp")));
+        var task = Task.Run(() => Opens(Path.Combine(data, "link.esp")));
         task.Wait(TimeSpan.FromSeconds(10)).Should().BeTrue("a pipe must not make the check block");
         task.Result.Should().BeFalse();
     }
 
     [Fact]
-    public void IsRegularFile_FalseForAPathHoldingANul()
+    public void OpenRegularFile_FalseForAPathHoldingANul()
     {
         var file = _data.Write("x.exe");
 
-        ConditionPaths.IsRegularFile(file + "\0").Should().BeFalse();
+        Opens(file + "\0").Should().BeFalse();
     }
 
     [Fact]

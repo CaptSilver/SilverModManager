@@ -67,9 +67,11 @@ internal sealed class LootConditionContext : IConditionContext
         var path = ConditionPaths.Resolve(DataDirectory, name, ConditionPaths.ShouldTryGhost(Game, name));
         try
         {
-            if (path is null || !ConditionPaths.IsRegularFile(path)) return default;
+            if (path is null) return default;
 
-            using var stream = System.IO.File.OpenRead(path);
+            using var stream = ConditionPaths.OpenRegularFile(path);
+            if (stream is null) return default;
+
             var header = PluginHeaderReader.Read(stream, _game.HeaderFormat, name);
             return new PluginFacts(_game.IsMaster(header, _installation), header.Description);
         }

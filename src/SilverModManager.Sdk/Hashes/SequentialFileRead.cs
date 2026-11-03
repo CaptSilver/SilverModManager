@@ -26,7 +26,8 @@ public static class SequentialFileRead
         return stream;
     }
 
-    private static void AdviseSequential(FileStream stream)
+    /// <summary>Tells the kernel an already opened file will be read in order. Best-effort, like <see cref="Open"/>.</summary>
+    public static void AdviseSequential(FileStream stream)
     {
         var handle = stream.SafeFileHandle;
         var added = false;

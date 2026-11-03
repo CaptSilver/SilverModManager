@@ -57,12 +57,12 @@ public static class ConditionPaths
         name.Length > 0 && name is not ("." or "..") && name.AsSpan().IndexOfAny('/', '\\', '\0') < 0;
 
     /// <summary>
-    /// Whether <paramref name="path"/> is a regular file that is safe to open. A pipe, socket or device is not, since
-    /// opening one can block; a symbolic link counts when it ends at a regular file, wherever that is (the symlink
-    /// deployment backend links into the staging store). Callers test this before every <c>OpenRead</c> of a path a
-    /// condition named.
+    /// Opens <paramref name="path"/> for reading when it is a regular file, or returns null. A pipe, socket or device is
+    /// not one, since opening it can block; a symbolic link counts when it ends at a regular file, wherever that is
+    /// (the symlink deployment backend links into the staging store). The type is checked on the handle the stream
+    /// reads, so every read of a path a condition named goes through this and not through a second open.
     /// </summary>
-    public static bool IsRegularFile(string path) => RegularFiles.IsRegular(path);
+    public static FileStream? OpenRegularFile(string path) => RegularFiles.Open(path);
 
     /// <summary>
     /// The names in the folder <paramref name="parent"/> of <paramref name="dataDirectory"/> (files and folders),
