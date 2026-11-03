@@ -153,16 +153,30 @@ public sealed class ConditionEvaluator : IConditionEvaluator
 
         if (!System.IO.File.Exists(path)) return false;
 
-        var crc = TryRead(function.Path, () =>
-        {
-            using var stream = System.IO.File.OpenRead(path);
-            var hash = new Crc32();
-            hash.Append(stream);
-            return hash.GetCurrentHashAsUInt32();
-        });
+        var crc = TryRead(function.Path, () => Crc32OfFile(path));
 
         _checksums[key] = crc;
         return crc == function.Crc;
+    }
+
+    // Sequential 1 MB reads, as the rest of the app hashes files; a stream handed to the hasher reads in small blocks.
+    private static uint Crc32OfFile(string path)
+    {
+        using var stream = new FileStream(path, new FileStreamOptions
+        {
+            Mode = FileMode.Open,
+            Access = FileAccess.Read,
+            Share = FileShare.ReadWrite | FileShare.Delete,
+            Options = FileOptions.SequentialScan,
+            BufferSize = 0,
+        });
+
+        var hash = new Crc32();
+        var buffer = new byte[1024 * 1024];
+        int read;
+        while ((read = stream.Read(buffer)) > 0) hash.Append(buffer.AsSpan(0, read));
+
+        return hash.GetCurrentHashAsUInt32();
     }
 
     /// <summary>The version of a plugin from its description, or of any other file from its PE version resource. Null when there is none.</summary>
