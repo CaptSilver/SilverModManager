@@ -1321,7 +1321,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var skipped = skips.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var switchedOff = await GroupsSwitchedOffByProfile(check, cancellationToken);
         var found = ModlistTools.Find(iniText, extras.Root, gameRoot, primary.FileName.ToString(), relative => AppliedPath(check, relative, skipped, switchedOff),
-            relative => skips.GetValueOrDefault(relative), StockGameFolders(check));
+            relative => skips.GetValueOrDefault(relative), StockGameFolders(check), ListFolders(check));
         UnregisteredTools = found.Unregistered;
         foreach (var line in found.Unregistered) Logger.LogWarning("Not registering a tool of '{List}': {Reason}", check.List.Name, line);
 
@@ -1413,7 +1413,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var db = Connection.Db;
         var children = LoadoutItem.FindByParent(db, modlistGroup).OfTypeLoadoutItemGroup().ToArray();
         var entries = texts.ModlistTxt is null ? [] : ModlistTxt.Parse(texts.ModlistTxt);
-        var rootNames = check.Placements.Select(p => p.Target).OfType<Mo2Target.GameRootFile>().Select(t => t.GroupName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var rootNames = StockGameFolders(check);
         var order = Mo2ProfileOrderReader.Read(children, entries, rootNames, check.List.Name, Logger);
 
         // The importer's priority write must be the only one in this transaction, so it opens fresh. The profile's own plugin
@@ -1633,13 +1633,21 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             GamePath: WindowsPathTranslator.Translate(gameRoot.ToString(), prefixRoot),
             Mo2Path: WindowsPathTranslator.Translate(extras.Root.ToString(), prefixRoot),
             DownloadsPath: WindowsPathTranslator.Translate(extras.Downloads.ToString(), prefixRoot),
-            StockGameFolders: StockGameFolders(check));
+            StockGameFolders: StockGameFolders(check),
+            ListFolders: ListFolders(check));
     }
 
     /// <summary>The list's stock-game folders, which Apply deploys into the game folder: the ones <see cref="Mo2Layout.Classify"/> sorted files into.</summary>
     private static HashSet<string> StockGameFolders(Checked check)
         => check.Placements.Select(p => p.Target).OfType<Mo2Target.GameRootFile>()
             .Select(t => t.GroupName)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The top-level folders the list's directives write into.</summary>
+    private static HashSet<string> ListFolders(Checked check)
+        => check.Placements.Select(p => p.To.ToString().Split('/', StringSplitOptions.RemoveEmptyEntries))
+            .Where(parts => parts.Length > 1)
+            .Select(parts => parts[0])
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The sources a merge names, already written by earlier directives, joined in the order the list gives.</summary>

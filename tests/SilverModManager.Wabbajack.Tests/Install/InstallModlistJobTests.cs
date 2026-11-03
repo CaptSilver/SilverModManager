@@ -225,6 +225,25 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         Directory.Exists(extras + "/downloads").Should().BeTrue("the downloads folder the list points at is created empty");
     }
 
+    [Fact]
+    public async Task ARemappedFileNamingTheStockGameFolderUnderMo2GetsTheGamePath()
+    {
+        var (fixture, _, _, _) = await FixtureList();
+        fixture.Directives.Add(fixture.Remapped("tools/X/config.ini",
+            "p={--||MO2_PATH_MAGIC_BACK||--}\\Stock Game\\x\nq={--||MO2_PATH_MAGIC_BACK||--}\\tools\\X\n"));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(fixture.ToList(), fixture.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        var written = ExtrasOf(group).Combine("tools/X/config.ini");
+        var text = Encoding.UTF8.GetString(await written.ReadAllBytesAsync());
+        var gameRoot = loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty)).ToString();
+        var extras = ExtrasOf(group).ToString();
+        text.Should().Contain("p=Z:" + gameRoot.Replace('/', '\\') + "\\x\n");
+        text.Should().Contain("q=Z:" + extras.Replace('/', '\\') + "\\tools\\X\n");
+    }
+
     private static void AssertSpellings(string text, string prefix, string hostPath)
     {
         var windows = "Z:" + hostPath.Replace('/', '\\');

@@ -36,11 +36,12 @@ public static class ModlistTools
     /// The list's stock-game folder names. A tool's arguments that name one under <c>MO2_PATH</c> get the game folder,
     /// where the loadout puts the folder's contents. A binary keeps the tools-folder path, which <paramref name="appliedPath"/> maps.
     /// </param>
+    /// <param name="listFolders">All the list's top-level folder names; see <see cref="PathMarkerValues.ListFolders"/>.</param>
     public static Result Find(string iniText, AbsolutePath extrasRoot, AbsolutePath gameRoot, string primaryExecutable,
-        Func<string, string?> appliedPath, Func<string, string?> skipReason, IReadOnlySet<string>? stockGameFolders = null)
+        Func<string, string?> appliedPath, Func<string, string?> skipReason, IReadOnlySet<string>? stockGameFolders = null, IReadOnlySet<string>? listFolders = null)
     {
         var values = new PathMarkerValues(gameRoot.ToString(), extrasRoot.ToString(), extrasRoot.Combine("downloads").ToString());
-        var argumentValues = values with { StockGameFolders = stockGameFolders };
+        var argumentValues = values with { StockGameFolders = stockGameFolders, ListFolders = listFolders };
         var leftOut = new HashSet<string>(AlwaysLeftOut, StringComparer.OrdinalIgnoreCase) { primaryExecutable };
         leftOut.Add(System.IO.Path.GetFileNameWithoutExtension(primaryExecutable) + "Launcher.exe");
 

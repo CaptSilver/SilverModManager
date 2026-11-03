@@ -44,7 +44,7 @@ public class PathMarkersTests
         PathMarkers.Substitute("a{b}c", Windows, nativeSpelling: false).Should().Be("a{b}c");
     }
 
-    private static readonly PathMarkerValues WithStock = new(@"Z:\stub\game", @"Z:\stub\mo2", @"Z:\stub\dl", new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Game Root" });
+    private static readonly PathMarkerValues WithStock = new(@"Z:\stub\game", @"Z:\stub\mo2", @"Z:\stub\dl", new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Game Root" }, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Game Root Backup", "mods", "tools" });
 
     [Fact]
     public void Mo2PathFollowedByTheStockGameFolder_ResolvesToTheGameFolder_InWindowsSpelling()
@@ -94,5 +94,19 @@ public class PathMarkersTests
     {
         PathMarkers.Substitute(@"{--||MO2_PATH_MAGIC_BACK||--}\tools\x.exe {--||MO2_PATH_MAGIC_BACK||--}\Game Root2\x {--||MO2_PATH_MAGIC_BACK||--}", WithStock, nativeSpelling: false)
             .Should().Be(@"Z:\stub\mo2\tools\x.exe Z:\stub\mo2\Game Root2\x Z:\stub\mo2");
+    }
+
+    [Fact]
+    public void AModFolderNamedLikeTheStockFolder_IsNotTheGameFolder()
+    {
+        PathMarkers.Substitute(@"{--||MO2_PATH_MAGIC_BACK||--}\mods\Game Root\x", WithStock, nativeSpelling: false)
+            .Should().Be(@"Z:\stub\mo2\mods\Game Root\x");
+    }
+
+    [Fact]
+    public void AListFolderWhoseNameStartsWithTheStockNameAndASpace_IsNotTheGameFolder()
+    {
+        PathMarkers.Substitute(@"a={--||MO2_PATH_MAGIC_BACK||--}\Game Root Backup\x b={--||MO2_PATH_MAGIC_BACK||--}\Game Root --flag", WithStock, nativeSpelling: false)
+            .Should().Be(@"a=Z:\stub\mo2\Game Root Backup\x b=Z:\stub\game --flag");
     }
 }

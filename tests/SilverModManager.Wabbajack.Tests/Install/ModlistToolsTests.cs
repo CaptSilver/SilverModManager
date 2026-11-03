@@ -103,6 +103,17 @@ public class ModlistToolsTests(ITestOutputHelper helper) : InstallTestBase<Modli
     }
 
     [Fact]
+    public async Task AToolArgumentNamingTheStockGameFolderUnderMo2GetsTheGameFolder()
+    {
+        var entry = "4\\arguments=\\\"{--||MO2_PATH_MAGIC_FORWARD||--}/Stock Game/data\\\"\n4\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/xEdit/SSEEdit.exe\n4\\title=SSEEdit\n";
+        var (loadout, _, _) = await InstallList(ListWith(DefaultExecutables + entry));
+
+        var tool = ToolsOf(loadout).Should().ContainSingle().Subject;
+        var gameRoot = loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty)).ToString();
+        tool.Arguments.Trim('"').Should().Be($"{gameRoot}/data");
+    }
+
+    [Fact]
     public async Task APathArgumentOfAToolIsTranslatedForTheWinePrefix()
     {
         var entry = "4\\arguments=\\\"{--||GAME_PATH_MAGIC_DOUBLE_BACK||--}\\\\data\\\"\n4\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/xEdit/SSEEdit.exe\n4\\title=SSEEdit\n";
