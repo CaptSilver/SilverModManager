@@ -132,6 +132,51 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Delete.
+        /// </summary>
+        public static string ApplyDiff_Remove {
+            get {
+                return ResourceManager.GetString("ApplyDiff_Remove", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to removing files from the loadout.
+        /// </summary>
+        public static string ApplyDiff_Remove_Activity {
+            get {
+                return ResourceManager.GetString("ApplyDiff_Remove_Activity", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove.
+        /// </summary>
+        public static string ApplyDiff_Remove_Confirm {
+            get {
+                return ResourceManager.GetString("ApplyDiff_Remove_Confirm", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove files from the loadout.
+        /// </summary>
+        public static string ApplyDiff_Remove_Title {
+            get {
+                return ResourceManager.GetString("ApplyDiff_Remove_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Files removed from the loadout..
+        /// </summary>
+        public static string ApplyDiff_Remove_Toast {
+            get {
+                return ResourceManager.GetString("ApplyDiff_Remove_Toast", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Refresh.
         /// </summary>
         public static string ApplyDiff_Refresh {

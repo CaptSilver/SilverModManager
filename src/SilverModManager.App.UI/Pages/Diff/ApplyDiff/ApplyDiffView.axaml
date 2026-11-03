@@ -14,19 +14,39 @@
         <applyDiff:ApplyDiffDesignViewModel />
     </Design.DataContext>
 
-    <Grid RowDefinitions="Auto, *">
+    <Grid x:Name="RootGrid" RowDefinitions="Auto, *">
+        <Grid.KeyBindings>
+            <KeyBinding Gesture="Delete" />
+        </Grid.KeyBindings>
+
         <Border Classes="Toolbar" Grid.Row="0">
-            <StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
                 <controls:StandardButton x:Name="RefreshButton"
                                          LeftIcon="{x:Static icons:IconValues.Refresh}"
                                          Text="Refresh"
                                          ShowIcon="Left"
                                          Size="Small"
                                          Fill="WeakAlt" />
+                <controls:StandardButton x:Name="RemoveButton"
+                                         LeftIcon="{x:Static icons:IconValues.DeleteForever}"
+                                         Text="Delete"
+                                         ShowIcon="Left"
+                                         Size="Small"
+                                         Fill="WeakAlt" />
             </StackPanel>
         </Border>
 
-        <reactiveUi:ViewModelViewHost Grid.Row="1" x:Name="TreeViewHost" />
+        <reactiveUi:ViewModelViewHost Grid.Row="1" x:Name="TreeViewHost">
+            <reactiveUi:ViewModelViewHost.ContextFlyout>
+                <MenuFlyout>
+                    <MenuItem x:Name="MenuItemRemove" Classes="Critical" Header="Delete">
+                        <MenuItem.Icon>
+                            <icons:UnifiedIcon Value="{x:Static icons:IconValues.DeleteForever}" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </MenuFlyout>
+            </reactiveUi:ViewModelViewHost.ContextFlyout>
+        </reactiveUi:ViewModelViewHost>
         <TextBlock Grid.Row="1" x:Name="FailedText"
                    Text="{x:Static resources:Language.ApplyDiff_LoadFailed}"
                    IsVisible="False"

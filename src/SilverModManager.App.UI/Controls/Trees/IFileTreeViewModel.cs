@@ -11,6 +11,12 @@ public interface IFileTreeViewModel : IViewModelInterface
     ITreeDataGridSource<IFileTreeNodeViewModel> TreeSource { get; }
     
     ReadOnlyObservableCollection<string> StatusBarStrings { get; }
+
+    /// <summary>
+    /// The nodes selected in the tree, folders and files alike. Follows the tree's selection; a refresh builds new
+    /// node instances, so it empties then.
+    /// </summary>
+    IReadOnlyList<IFileTreeNodeViewModel> SelectedNodes { get; set; }
     
     /// <summary>
     /// The invalid GamePath used to represent the parent of a root entry.

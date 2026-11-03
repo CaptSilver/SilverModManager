@@ -79,55 +79,6 @@ public class LoadoutGroupFilesViewModelTests(IServiceProvider provider) : AUiTes
         services,
         Connection);
 
-    private async Task<LoadoutItemGroupId> AddGroup(LoadoutId loadout, string name, LoadoutItemGroupId? parent = null, bool collection = false, params GamePath[] files)
-    {
-        using var tx = Connection.BeginTransaction();
-        EntityId id;
-        if (collection)
-        {
-            _ = new CollectionGroup.New(tx, out id)
-            {
-                IsReadOnly = true,
-                LoadoutItemGroup = new LoadoutItemGroup.New(tx, id)
-                {
-                    IsGroup = true,
-                    LoadoutItem = new LoadoutItem.New(tx, id) { Name = name, LoadoutId = loadout },
-                },
-            };
-        }
-        else
-        {
-            _ = new LoadoutItemGroup.New(tx, out id)
-            {
-                IsGroup = true,
-                LoadoutItem = new LoadoutItem.New(tx, id)
-                {
-                    Name = name,
-                    LoadoutId = loadout,
-                    ParentId = parent is { } p ? p.Value : default,
-                },
-            };
-        }
-
-        foreach (var path in files)
-        {
-            var hash = path.Path.ToString().xxHash3AsUtf8();
-            _ = new LoadoutFile.New(tx, out var fileId)
-            {
-                LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, fileId)
-                {
-                    LoadoutItem = new LoadoutItem.New(tx, fileId) { LoadoutId = loadout, ParentId = id, Name = path.Path },
-                    TargetPath = path.ToGamePathParentTuple(loadout),
-                },
-                Hash = hash,
-                Size = Size.FromLong(1),
-            };
-        }
-
-        var result = await tx.Commit();
-        return LoadoutItemGroupId.From(result[id].Value);
-    }
-
     private int RowsAt(Loadout.ReadOnly loadout, GamePath path) =>
         LoadoutItemWithTargetPath.FindByTargetPath(Connection.Db, path.ToGamePathParentTuple(loadout.Id)).Count;
 
@@ -146,7 +97,7 @@ public class LoadoutGroupFilesViewModelTests(IServiceProvider provider) : AUiTes
     public async Task RemoveCommand_GoesThroughTheFileRemoverScopedToThePagesGroups()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Files Page Scope");
-        var group = await AddGroup(loadout.LoadoutId, "Mod", files: [SomeFile]);
+        var group = await SeedGroup(loadout.LoadoutId, "Mod", files: [SomeFile]);
         var remover = Substitute.For<ILoadoutFileRemover>();
         remover.Remove(Arg.Any<FileRemovalRequest>(), Arg.Any<bool>()).Returns(new FileRemovalResult([SomeFile], default));
         var viewModel = await OnUi(() => Task.FromResult(CreateViewModel(new ServiceCollection().AddSingleton(remover).BuildServiceProvider())));
@@ -163,8 +114,8 @@ public class LoadoutGroupFilesViewModelTests(IServiceProvider provider) : AUiTes
     public async Task RemoveCommand_OnAWabbajackModsFilesPage_StillRemovesTheRow()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Files Page Wabbajack");
-        var list = await AddGroup(loadout.LoadoutId, "A Modlist", collection: true);
-        var mod = await AddGroup(loadout.LoadoutId, "Listed Mod", parent: list, files: [SomeFile]);
+        var list = await SeedGroup(loadout.LoadoutId, "A Modlist", collection: true);
+        var mod = await SeedGroup(loadout.LoadoutId, "Listed Mod", parent: list, files: [SomeFile]);
         var viewModel = await OnUi(() => Task.FromResult(CreateViewModel(Provider)));
 
         // LoadoutViewModel hands a Wabbajack mod's page a writable context: only required Nexus items and game-installed content lock it.

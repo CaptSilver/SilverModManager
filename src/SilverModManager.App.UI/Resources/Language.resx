@@ -496,6 +496,21 @@
     <data name="GameWidget__Removing_game" xml:space="preserve">
         <value>Removing...</value>
     </data>
+    <data name="ApplyDiff_Remove" xml:space="preserve">
+        <value>Delete</value>
+    </data>
+    <data name="ApplyDiff_Remove_Activity" xml:space="preserve">
+        <value>removing files from the loadout</value>
+    </data>
+    <data name="ApplyDiff_Remove_Confirm" xml:space="preserve">
+        <value>Remove</value>
+    </data>
+    <data name="ApplyDiff_Remove_Title" xml:space="preserve">
+        <value>Remove files from the loadout</value>
+    </data>
+    <data name="ApplyDiff_Remove_Toast" xml:space="preserve">
+        <value>Files removed from the loadout.</value>
+    </data>
     <data name="ApplyDiff_Refresh" xml:space="preserve">
         <value>Refresh</value>
     </data>

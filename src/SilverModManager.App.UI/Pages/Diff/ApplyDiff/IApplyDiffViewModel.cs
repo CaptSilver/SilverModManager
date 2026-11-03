@@ -13,6 +13,12 @@ public interface IApplyDiffViewModel : IPageViewModelInterface
     public void Initialize(LoadoutId loadoutId);
     
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
+
+    /// <summary>
+    /// Removes the selected files and folders from the loadout, after asking. Disabled while nothing removable is
+    /// selected and while an apply is running.
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> RemoveSelectedCommand { get; }
     
     public IViewModelInterface? BodyViewModel { get; set; }
 

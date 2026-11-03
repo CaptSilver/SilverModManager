@@ -51,9 +51,9 @@ internal sealed class LoadoutFileRemover(
 
         // The caller's earlier plan was for its dialog; the database may have moved since.
         var plan = Plan(request);
+        if (!plan.HasAnythingToRemove(includeLocked))
+            throw new FileRemovalRefusedException(plan.RefusalMessage());
         var toRemove = (includeLocked ? plan.Removable.Concat(plan.Locked) : plan.Removable).ToArray();
-        if (toRemove.Length == 0)
-            throw new FileRemovalRefusedException(RefusalMessage(plan));
 
         // The marker has to precede the removal: reverting restores the state as of the marked transaction.
         using var mark = connection.BeginTransaction();
@@ -69,16 +69,6 @@ internal sealed class LoadoutFileRemover(
         var removed = toRemove.Select(r => r.Path).Distinct().ToArray();
         logger.LogInformation("Removed {RowCount} file rows at {PathCount} paths from loadout {Loadout}", toRemove.Length, removed.Length, request.LoadoutId);
         return new FileRemovalResult(removed, restorePoint);
-    }
-
-    private static string RefusalMessage(FileRemovalPlan plan)
-    {
-        var lines = new List<string>();
-        lines.AddRange(plan.Blocked.Select(r => r.Blocker).OfType<string>().Distinct());
-        lines.AddRange(plan.Locked.Select(r => $"`{r.Path.Path}` belongs to {r.CollectionName}, which stays as it is unless locked files are included.").Distinct());
-        if (lines.Count == 0)
-            lines.AddRange(plan.Request.Paths.Distinct().Select(p => $"Nothing in the loadout provides `{p.Path}`."));
-        return string.Join('\n', lines);
     }
 
     private static IEnumerable<LoadoutItemWithTargetPath.ReadOnly> FindRows(IDb db, FileRemovalRequest request)

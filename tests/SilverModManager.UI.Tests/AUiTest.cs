@@ -5,6 +5,8 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Hashing.xxHash3;
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -155,6 +157,59 @@ public class AUiTest : IAsyncDisposable
         };
         var result = await tx.Commit();
         return result.Remap(loadout);
+    }
+
+    /// <summary>
+    /// A group in the loadout, with one file row per path (a collection group, read-only, when <paramref name="collection"/>).
+    /// Only rows are written: the file store has no bytes for them.
+    /// </summary>
+    protected async Task<LoadoutItemGroupId> SeedGroup(LoadoutId loadout, string name, LoadoutItemGroupId? parent = null, bool collection = false, params GamePath[] files)
+    {
+        using var tx = Connection.BeginTransaction();
+        EntityId id;
+        if (collection)
+        {
+            _ = new CollectionGroup.New(tx, out id)
+            {
+                IsReadOnly = true,
+                LoadoutItemGroup = new LoadoutItemGroup.New(tx, id)
+                {
+                    IsGroup = true,
+                    LoadoutItem = new LoadoutItem.New(tx, id) { Name = name, LoadoutId = loadout },
+                },
+            };
+        }
+        else
+        {
+            _ = new LoadoutItemGroup.New(tx, out id)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, id)
+                {
+                    Name = name,
+                    LoadoutId = loadout,
+                    ParentId = parent is { } p ? p.Value : default,
+                },
+            };
+        }
+
+        foreach (var path in files)
+        {
+            var hash = path.Path.ToString().xxHash3AsUtf8();
+            _ = new LoadoutFile.New(tx, out var fileId)
+            {
+                LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, fileId)
+                {
+                    LoadoutItem = new LoadoutItem.New(tx, fileId) { LoadoutId = loadout, ParentId = id, Name = path.Path },
+                    TargetPath = path.ToGamePathParentTuple(loadout),
+                },
+                Hash = hash,
+                Size = Size.FromLong(1),
+            };
+        }
+
+        var result = await tx.Commit();
+        return LoadoutItemGroupId.From(result[id].Value);
     }
 
     protected VMWrapper<T> GetActivatedViewModel<T>()

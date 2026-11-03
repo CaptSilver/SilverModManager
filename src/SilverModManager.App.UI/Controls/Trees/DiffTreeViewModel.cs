@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Avalonia.Controls;
+using Avalonia.Controls.Selection;
 using DynamicData;
 using Humanizer.Bytes;
 using SilverModManager.Abstractions.Loadouts;
@@ -13,10 +14,11 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Trees;
 using SilverModManager.UI.Sdk;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.Trees;
 
-public class DiffTreeViewModel : AViewModel<IFileTreeViewModel>, IFileTreeViewModel
+public partial class DiffTreeViewModel : AViewModel<IFileTreeViewModel>, IFileTreeViewModel
 {
     private readonly LoadoutId _loadoutId;
     private readonly ISynchronizerService _syncService;
@@ -32,6 +34,16 @@ public class DiffTreeViewModel : AViewModel<IFileTreeViewModel>, IFileTreeViewMo
         node.Item.Value ?? throw new InvalidOperationException($"`{node.GamePath()}` has no diff entry");
 
     public ITreeDataGridSource<IFileTreeNodeViewModel> TreeSource { get; }
+
+    /// <inheritdoc />
+    [Reactive] public partial IReadOnlyList<IFileTreeNodeViewModel> SelectedNodes { get; set; } = [];
+
+    /// <summary>
+    /// True for a node the Delete command may act on: not a root (the whole game folder), and not a file the app is
+    /// already deleting, which has no loadout row behind it.
+    /// </summary>
+    public static bool CanRemove(IFileTreeNodeViewModel node) =>
+        node.ParentKey != IFileTreeViewModel.RootParentGamePath && node.ChangeType != FileChangeType.Removed;
     public ReadOnlyObservableCollection<string> StatusBarStrings => _statusBarStrings;
 
 
@@ -56,7 +68,12 @@ public class DiffTreeViewModel : AViewModel<IFileTreeViewModel>, IFileTreeViewMo
             .Bind(out _statusBarStrings)
             .Subscribe();
 
-        TreeSource = CreateTreeSource(_items);
+        var source = CreateTreeSource(_items);
+        var selection = new TreeDataGridRowSelectionModel<IFileTreeNodeViewModel>(source) { SingleSelect = false };
+        source.Selection = selection;
+        selection.SelectionChanged += (_, _) => SelectedNodes = selection.SelectedItems.OfType<IFileTreeNodeViewModel>().ToArray();
+        selection.SourceReset += (_, _) => SelectedNodes = [];
+        TreeSource = source;
     }
 
     public void Refresh()
@@ -180,6 +197,9 @@ public class DiffTreeViewModel : AViewModel<IFileTreeViewModel>, IFileTreeViewMo
                 innerList.AddOrUpdate(fileViewModelNodes);
             }
         );
+
+        // The nodes just built are new instances, so nothing that was selected is still in the tree.
+        SelectedNodes = [];
 
         _statusBarSourceList.Edit(innerList =>
             {

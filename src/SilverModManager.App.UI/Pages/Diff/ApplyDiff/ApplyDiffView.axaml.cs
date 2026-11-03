@@ -20,6 +20,16 @@ public partial class ApplyDiffView : ReactiveUserControl<IApplyDiffViewModel>
 
                 this.BindCommand(ViewModel, vm => vm.RefreshCommand, v => v.RefreshButton)
                     .DisposeWith(d);
+
+                this.BindCommand(ViewModel, vm => vm.RemoveSelectedCommand, v => v.RemoveButton)
+                    .DisposeWith(d);
+
+                this.BindCommand(ViewModel, vm => vm.RemoveSelectedCommand, v => v.MenuItemRemove)
+                    .DisposeWith(d);
+
+                // The Delete key reaches this grid from anywhere inside the tree.
+                if (ViewModel is { } viewModel)
+                    RootGrid.KeyBindings[0].Command = viewModel.RemoveSelectedCommand;
             }
         );
     }

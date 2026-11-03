@@ -43,6 +43,23 @@ public sealed record FileRemovalPlan(FileRemovalRequest Request, IReadOnlyList<F
 
     /// <summary>Rows that never go through this service.</summary>
     public IEnumerable<FileRemovalRow> Blocked => Rows.Where(r => r.Blocker is not null);
+
+    /// <summary>Whether <see cref="ILoadoutFileRemover.Remove"/> would delete anything for this plan.</summary>
+    public bool HasAnythingToRemove(bool includeLocked) => Removable.Any() || (includeLocked && Locked.Any());
+
+    /// <summary>
+    /// What <see cref="ILoadoutFileRemover.Remove"/> says when <see cref="HasAnythingToRemove"/> is false: one
+    /// sentence per distinct blocker, per locked collection, or, when no row was found, per requested path.
+    /// </summary>
+    public string RefusalMessage()
+    {
+        var lines = new List<string>();
+        lines.AddRange(Blocked.Select(r => r.Blocker).OfType<string>().Distinct());
+        lines.AddRange(Locked.Select(r => $"`{r.Path.Path}` belongs to {r.CollectionName}, which stays as it is unless locked files are included.").Distinct());
+        if (lines.Count == 0)
+            lines.AddRange(Request.Paths.Distinct().Select(p => $"Nothing in the loadout provides `{p.Path}`."));
+        return string.Join('\n', lines);
+    }
 }
 
 /// <summary>
