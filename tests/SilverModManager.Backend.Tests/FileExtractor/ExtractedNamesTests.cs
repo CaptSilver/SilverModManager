@@ -127,6 +127,32 @@ public partial class ExtractedNamesTests : IDisposable
         Tree().Should().Equal("y\u00EF");
     }
 
+    // 7z places "a/b/../c" at a/b/c, but the cleaned path is a/c. The folder a/b is still the archive's own.
+    [Fact]
+    public void AFolderThatHoldsAnotherEntryIsNotRemovedWhenADotDotNameLeavesIt()
+    {
+        MakeFolder(Bytes("a"));
+        MakeFolder(Bytes("a/b"));
+        MakeFile(Bytes("a/b/keep.txt"), "kept");
+        MakeFile(Bytes("a/b/c\u008B "), "data");
+
+        Repair(File("a/b/keep.txt", 0), File("a/b/../c\u008B ", 1));
+
+        Tree().Should().Equal("a", "a/b", "a/b/keep.txt", "a/c\u00EF");
+    }
+
+    [Fact]
+    public void AFolderEntryIsNotRemovedWhenADotDotNameLeavesIt()
+    {
+        MakeFolder(Bytes("a"));
+        MakeFolder(Bytes("a/b"));
+        MakeFile(Bytes("a/b/c\u008B "), "data");
+
+        Repair(Folder("a/b/", 0), File("a/b/../c\u008B ", 1));
+
+        Tree().Should().Equal("a", "a/b", "a/c\u00EF");
+    }
+
     [Fact]
     public void AnEntryWhoseFolderIsALinkIsNotRenamedThroughIt()
     {

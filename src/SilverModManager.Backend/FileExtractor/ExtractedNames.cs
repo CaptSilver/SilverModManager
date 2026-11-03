@@ -71,6 +71,15 @@ internal static partial class ExtractedNames
         var winners = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var p in prepared.Where(p => !p.Entry.IsDirectory && !p.Entry.IsSymlink)) winners[p.FinalPath] = Math.Max(winners.GetValueOrDefault(p.FinalPath, -1), p.Entry.Index);
 
+        // Folders that some entry still lives in or is, at their final path: never emptied-out leftovers.
+        var livingFolders = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var p in prepared)
+        {
+            var finalSegments = p.Segments.Select(Encoding.UTF8.GetBytes).ToArray();
+            var folderCount = p.Entry.IsDirectory ? finalSegments.Length : finalSegments.Length - 1;
+            for (var depth = 1; depth <= folderCount; depth++) livingFolders.Add(PathKey(finalSegments, depth));
+        }
+
         var oldFolders = new Dictionary<string, (int Depth, byte[] Path)>(StringComparer.Ordinal);
         var report = new List<string>();
 
@@ -108,6 +117,8 @@ internal static partial class ExtractedNames
             var folderDepth = p.Entry.IsDirectory ? p.RawSegments.Length : p.RawSegments.Length - 1;
             for (var depth = p.FirstChange + 1; depth <= folderDepth; depth++)
             {
+                // "a/b/../c" is placed at a/b/c but cleaned to a/c; a/b is then still a folder of the archive.
+                if (livingFolders.Contains(PathKey(p.RawSegments, depth))) continue;
                 var folder = Join(rootBytes, p.RawSegments, depth);
                 oldFolders[Convert.ToHexString(folder)] = (depth, folder);
             }
@@ -265,6 +276,10 @@ internal static partial class ExtractedNames
         path.Add(0);
         return [.. path];
     }
+
+    /// <summary>The first <paramref name="count"/> segments joined by <c>/</c>, one character per byte so any name is a valid key.</summary>
+    private static string PathKey(byte[][] segments, int count) =>
+        string.Join('/', segments.Take(count).Select(segment => Encoding.Latin1.GetString(segment)));
 
     private static byte[] NullTerminated(byte[] bytes) => [.. bytes, 0];
 
