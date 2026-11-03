@@ -44,22 +44,22 @@ public record LibraryFilter(LoadoutId LoadoutId, IGameData Game);
 public static class LibraryDataProviderHelper
 {
     /// <summary>
-    /// Whether the Mods tab lists the library file under <paramref name="game"/>. One the app fetched for a Wabbajack
-    /// modlist of that game is that list's own download and stays out of the way until the user installs it into a
-    /// loadout of the game, which makes it theirs. A list for another game does not hide it here: a file held for
-    /// Skyrim SE that a Skyrim VR list adopts stays visible under Skyrim SE.
+    /// Whether the library file is one the app fetched for a Wabbajack modlist. Such a file is listed on the Mods tab
+    /// like any other, with Wabbajack as its source when nothing more specific (a Nexus page) says where it came from.
     /// </summary>
-    public static IObservable<bool> IsShownInMods(IConnection connection, EntityId libraryFile, GameId game)
+    public static IObservable<bool> ObserveFetchedForModlist(IConnection connection, EntityId libraryFile)
     {
         // FetchedFiles is a collection, so it has no reference-attribute overload; the back-reference slice works for any reference.
         var fetchedFiles = connection.AttributeCache.GetAttributeId(WabbajackModlistArchive.FetchedFiles.Id);
-        var fetched = connection.ObserveDatoms(SliceDescriptor.Create(fetchedFiles, libraryFile))
+        return connection.ObserveDatoms(SliceDescriptor.Create(fetchedFiles, libraryFile))
             .AsEntityIds()
-            .FilterImmutable(row => IsRowOfListFor(connection.Db, row.E, game))
-            .IsNotEmpty();
-        var installed = ObserveInstalledForGame(connection, libraryFile, game);
-        return fetched.CombineLatest(installed, static (isFetched, isInstalled) => !isFetched || isInstalled).DistinctUntilChanged();
+            .IsNotEmpty()
+            .DistinctUntilChanged();
     }
+
+    /// <inheritdoc cref="ObserveFetchedForModlist"/>
+    public static bool IsFetchedForModlist(IDb db, EntityId libraryFile)
+        => db.Datoms(WabbajackModlistArchive.FetchedFiles, libraryFile).Any();
 
     /// <summary>
     /// Whether a loadout of <paramref name="game"/> has the library item installed. Any loadout of the game counts, not one
@@ -75,14 +75,6 @@ public static class LibraryDataProviderHelper
     public static bool IsInstalledForGame(IDb db, EntityId libraryItem, GameId game)
         => LibraryLinkedLoadoutItem.FindByLibraryItem(db, libraryItem)
             .Any(link => new LoadoutAcquisition(link.AsLoadoutItem().LoadoutId).Destination(db).Games.Contains(game));
-
-    // A list for a game the app has no title for belongs to no game in particular, so it counts for whichever game is
-    // asked. So does a row whose list is gone: the file was fetched for a list, and hiding it is the old behaviour.
-    private static bool IsRowOfListFor(IDb db, EntityId archiveRow, GameId game)
-    {
-        var list = WabbajackModlistLibraryFile.Load(db, WabbajackModlistArchive.Load(db, archiveRow).ModlistId);
-        return !list.IsValid() || WabbajackGames.GameIdFor(list.GameType) is not { } listGame || listGame == game;
-    }
 
     private static bool IsInLoadoutOf(IDb db, EntityId link, GameId game)
         => new LoadoutAcquisition(LoadoutItem.Load(db, link).LoadoutId).Destination(db).Games.Contains(game);

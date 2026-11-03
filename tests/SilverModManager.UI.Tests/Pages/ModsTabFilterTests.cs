@@ -28,8 +28,8 @@ using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 namespace SilverModManager.UI.Tests.Pages;
 
 /// <summary>
-/// The Mods tab leaves out what the app fetched for a Wabbajack modlist, until the user installs it themselves, and
-/// no longer lists the modlist file itself (it is on the Collections tab).
+/// The Mods tab lists what the app fetched for a Wabbajack modlist like any other library file, for the list's game
+/// only, and does not list the modlist file itself (it is on the Collections tab).
 /// </summary>
 public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
 {
@@ -142,38 +142,15 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
         return (page is null ? existingPage!.Value : result.Remap(page).Id, result.Remap(item).Id);
     }
 
-    /// <summary>What installing the library item into a loadout leaves: a group linked to it.</summary>
-    private async Task Install(Loadout.ReadOnly loadout, EntityId libraryItem)
-    {
-        using var tx = Connection.BeginTransaction();
-        var group = new LoadoutItemGroup.New(tx, out var id)
-        {
-            IsGroup = true,
-            LoadoutItem = new LoadoutItem.New(tx, id) { LoadoutId = loadout.LoadoutId, Name = "installed" },
-        };
-        _ = new LibraryLinkedLoadoutItem.New(tx, id) { LibraryItemId = libraryItem, LoadoutItemGroup = group };
-        LibraryDestinations.Add(tx, libraryItem, new LoadoutAcquisition(loadout.LoadoutId).Destination(Connection.Db));
-        await tx.Commit();
-    }
-
     [Fact]
-    public async Task ANexusFileTheAppFetchedForAModlistIsNotInTheModsTabUntilTheUserInstallsIt()
+    public async Task ANexusFileTheAppFetchedForAModlistIsInTheModsTab()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Main");
-        var filter = Filter(loadout);
         var provider = new NexusModsDataProvider(Provider);
-        using var rows = provider.ObserveLibraryItems(filter).AsObservableCache();
+        using var rows = provider.ObserveLibraryItems(Filter(loadout)).AsObservableCache();
 
         var (page, item) = await AddNexusFile(7001, 8001, "Fetched.zip");
         await AddArchiveRow(await AddModlist(), "Fetched.zip", fetched: item);
-        // Changes reach the view in commit order, so once this page shows, the fetched file's page (written
-        // first, and hidden by the archive row) has been dealt with; no fixed delay stands in for that.
-        var (ownPage, _) = await AddNexusFile(7002, 8002, "Own.zip");
-        await Eventually(() => rows.Lookup(ownPage).HasValue.Should().BeTrue());
-
-        rows.Lookup(page).HasValue.Should().BeFalse();
-
-        await Install(loadout, item);
 
         await Eventually(() => rows.Lookup(page).HasValue.Should().BeTrue());
     }
@@ -191,7 +168,7 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Fact]
-    public async Task AModPageWithOneFetchedAndOneOwnFileShowsTheOwnFileOnly()
+    public async Task AModPageWithOneFetchedAndOneOwnFileShowsBoth()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Main");
         var provider = new NexusModsDataProvider(Provider);
@@ -202,34 +179,28 @@ public class ModsTabFilterTests(IServiceProvider provider) : AUiTest(provider)
 
         await Eventually(() => rows.Lookup(page).HasValue.Should().BeTrue());
         using var children = rows.Lookup(page).Value.ChildrenObservable.AsObservableCache();
-        await Eventually(() => children.Keys.Should().BeEquivalentTo([own]));
+        await Eventually(() => children.Keys.Should().BeEquivalentTo([fetched, own]));
     }
 
     [Fact]
-    public async Task ALocalFileFromTheInboxIsHiddenOnlyWhileItIsFetchedAndNotInstalled()
+    public async Task ALocalFileTheAppFetchedForAModlistIsInTheModsTabWithSourceWabbajack()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Main");
         var provider = new LocalFileDataProvider(Provider);
         using var rows = provider.ObserveLibraryItems(Filter(loadout)).AsObservableCache();
 
-        // Every test that adds files for this game writes into the same slice, so the files this test writes are
-        // checked by id.
-        var bystander = await AddLocalFile("bystander.7z");
-        var fetched = await AddLocalFile("fetched.7z");
         var own = await AddLocalFile("own.7z");
+        var fetched = await AddLocalFile("fetched.7z");
         await AddArchiveRow(await AddModlist(), "fetched.7z", fetched: fetched);
-        // Changes reach the view in commit order, so once this file shows, the archive row above has been applied.
-        var last = await AddLocalFile("last.7z");
-
-        await Eventually(() => rows.Lookup(last).HasValue.Should().BeTrue());
-        rows.Lookup(own).HasValue.Should().BeTrue();
-        rows.Lookup(bystander).HasValue.Should().BeTrue();
-        rows.Lookup(fetched).HasValue.Should().BeFalse();
-
-        await Install(loadout, fetched);
 
         await Eventually(() => rows.Lookup(fetched).HasValue.Should().BeTrue());
+        await Eventually(() => SourceOf(rows.Lookup(fetched).Value).Should().Be(ModSources.Wabbajack));
+        await Eventually(() => rows.Lookup(own).HasValue.Should().BeTrue());
+        SourceOf(rows.Lookup(own).Value).Should().Be(ModSources.LocalFile);
     }
+
+    private static string SourceOf(CompositeItemModel<EntityId> row)
+        => row.Get<StringComponent>(SharedColumns.Source.ComponentKey).Value.Value;
 
     [Fact]
     public async Task TheModlistFileItselfIsInNeitherProviderAndIsStillOfferedForGameRemoval()

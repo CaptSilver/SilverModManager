@@ -365,7 +365,7 @@ public class WabbajackModlistCardViewModelTests(IServiceProvider provider) : AUi
     }
 
     [Fact]
-    public async Task RemovingAListLeavesAnArchiveAnotherListNamesOutOfTheModsTab()
+    public async Task RemovingAListLeavesTheFetchedMarkOnAnArchiveAnotherListNames()
     {
         var (list, _) = await AddList("Removed first");
         var (other, _) = await AddList("Still installed");
@@ -379,9 +379,6 @@ public class WabbajackModlistCardViewModelTests(IServiceProvider provider) : AUi
 
         LibraryFile.Load(Connection.Db, shared).IsValid().Should().BeTrue();
         WabbajackModlistArchive.FindByModlist(Connection.Db, other).Single().FetchedFiles.Select(f => f.Id).Should().Equal(shared);
-        var shown = new List<bool>();
-        using var subscription = LibraryDataProviderHelper.IsShownInMods(Connection, shared, GameId.From("CreationEngine.SkyrimSE")).Subscribe(value => { lock (shown) shown.Add(value); });
-        await Eventually(() => { lock (shown) shown.Should().NotBeEmpty().And.EndWith(false); });
     }
 
     [Fact]

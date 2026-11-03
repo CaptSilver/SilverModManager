@@ -179,7 +179,7 @@ public class LibraryNewItemsTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Fact]
-    public async Task AFetchedHiddenModlistArchive_DoesNotCount()
+    public async Task AFetchedModlistArchive_Counts()
     {
         var game = NewGame("game");
         var list = await AddModlist("A list " + Guid.NewGuid().ToString("N"), "NoSuchGame", Destination.Of(game));
@@ -187,13 +187,11 @@ public class LibraryNewItemsTests(IServiceProvider provider) : AUiTest(provider)
         using var counts = new Counts(newItems.ObserveNewCount(NewLoadout(), game));
         await Task.Delay(Settle);
 
-        // The list's own download: the Mods tab keeps it out of the way, so the badge does too.
+        // The list's own download is a Mods tab row, so the badge counts it.
         await AddLocalFile("fetched.7z", Destination.Of(game), fetchedForList: list);
         await AddLocalFile("marker.7z", Destination.Of(game));
 
-        await Eventually(() => counts.Last.Should().Be(1), delay: Poll);
-        await Task.Delay(300);
-        counts.Last.Should().Be(1);
+        await Eventually(() => counts.Last.Should().Be(2), delay: Poll);
     }
 
     [Fact]

@@ -350,7 +350,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     }
 
     [Fact]
-    public async Task IsShownInMods_HeldFileAdoptedByTheSiblingsList_StaysVisibleUnderTheGame()
+    public async Task AFileHeldForOneGameAndFetchedForTheSiblingsList_ShowsUnderBothGames()
     {
         // The two games a modlist can name that share a Nexus id; the list is the sibling's, the file is for both.
         var game = new TestGame(WabbajackGames.GameIdFor("SkyrimSpecialEdition")!.Value, NexusModsGameId.From(1704));
@@ -380,9 +380,38 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
 
         await Eventually(() => siblingRows.Lookup(marker).HasValue.Should().BeTrue());
         await Eventually(() => rows.Lookup(gameMarker).HasValue.Should().BeTrue());
-        await Task.Delay(300);
-        rows.Lookup(held).HasValue.Should().BeTrue("no list for this game fetched it");
-        siblingRows.Lookup(held).HasValue.Should().BeFalse("the sibling's own list fetched it");
+        rows.Lookup(held).HasValue.Should().BeTrue("the file is held for this game");
+        siblingRows.Lookup(held).HasValue.Should().BeTrue("the sibling's own list fetched it, and the Mods tab lists it");
+    }
+
+    [Fact]
+    public async Task AFileFetchedForASkyrimVrList_ShowsUnderSkyrimVrAndNotUnderAnUnrelatedGame()
+    {
+        var vr = new TestGame(WabbajackGames.GameIdFor("SkyrimVR")!.Value, NexusModsGameId.From(1704));
+        var (unrelated, _) = TestGame.NewPair();
+        var fetched = await AddLocalFile("fetched.7z", Destination.Of(vr.GameId));
+        var list = await AddModlist("Yggdrasil VR " + Guid.NewGuid().ToString("N"), "SkyrimVR", Destination.Of(vr.GameId));
+        using (var tx = Connection.BeginTransaction())
+        {
+            var row = new WabbajackModlistArchive.New(tx)
+            {
+                ModlistId = list,
+                Identity = FileIdentity.XxHash64(Hash.From((ulong)Guid.NewGuid().GetHashCode())),
+                Size = Size.Zero,
+                Name = "fetched.7z",
+            };
+            tx.Add(row.Id, WabbajackModlistArchive.FetchedFiles, fetched);
+            await tx.Commit();
+        }
+        var provider = new LocalFileDataProvider(Provider);
+
+        using var vrRows = Rows(provider.ObserveLibraryItems(Filter(vr)));
+        using var otherRows = Rows(provider.ObserveLibraryItems(Filter(unrelated)));
+        var marker = await AddLocalFile("unrelated marker.7z", Destination.Of(unrelated.GameId));
+
+        await Eventually(() => vrRows.Lookup(fetched).HasValue.Should().BeTrue());
+        await Eventually(() => otherRows.Lookup(marker).HasValue.Should().BeTrue());
+        otherRows.Lookup(fetched).HasValue.Should().BeFalse();
     }
 
     [Fact]

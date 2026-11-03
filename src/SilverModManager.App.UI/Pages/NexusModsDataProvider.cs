@@ -51,14 +51,14 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
 
     /// <summary>
     /// The game's mod pages, each with the files of it the Mods tab lists (the ones the app fetched for a Wabbajack
-    /// modlist are held back). A page with no listed file has no group, so no row. The pages come from the
+    /// modlist included). A page with no listed file has no group, so no row. The pages come from the
     /// game's items, not from the Nexus id: two games can share one id.
     /// </summary>
     private IObservable<IChangeSet<IGroup<NexusModsLibraryItem.ReadOnly, EntityId, EntityId>, EntityId>> ObserveShownPages(LibraryFilter libraryFilter)
         => ObserveShownFiles(libraryFilter.Game.GameId).Group(PageOf);
 
     private IObservable<IChangeSet<NexusModsLibraryItem.ReadOnly, EntityId>> ObserveShownFiles(GameId game)
-        => ObserveOwnItems(game).FilterOnObservable((_, id) => LibraryDataProviderHelper.IsShownInMods(_connection, id, game));
+        => ObserveOwnItems(game);
 
     public override IObservable<IChangeSet<EntityId, EntityId>> ObserveModsTabItems(GameId game)
         => ObserveShownFiles(game).Transform(static (_, id) => id);

@@ -51,6 +51,12 @@ public static class SharedColumns
             itemModel.Add(ComponentKey, new StringComponent(value: source));
         }
 
+        /// <summary>Gives the row its source and keeps it current as <paramref name="sourceChanges"/> emits.</summary>
+        public static void Add<TKey>(CompositeItemModel<TKey> itemModel, string source, IObservable<string> sourceChanges) where TKey : notnull
+        {
+            itemModel.Add(ComponentKey, new StringComponent(source, sourceChanges, subscribeWhenCreated: true));
+        }
+
         public static string GetColumnHeader() => "Source";
         public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
     }

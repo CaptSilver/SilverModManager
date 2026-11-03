@@ -44,8 +44,7 @@ internal class LocalFileDataProvider : ALibraryDataProvider<LocalFile.ReadOnly>,
     private IObservable<IChangeSet<LocalFile.ReadOnly, EntityId>> ObserveShown(GameId game)
     {
         return ObserveOwnItems(game)
-            .FilterImmutable(static localFile => !IsModlist(localFile))
-            .FilterOnObservable((_, id) => LibraryDataProviderHelper.IsShownInMods(_connection, id, game));
+            .FilterImmutable(static localFile => !IsModlist(localFile));
     }
 
     public override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
@@ -97,7 +96,10 @@ internal class LocalFileDataProvider : ALibraryDataProvider<LocalFile.ReadOnly>,
         IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedLoadoutItemsObservable)
     {
         itemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: localFile.AsLibraryFile().AsLibraryItem().Name));
-        SharedColumns.Source.Add(itemModel, ModSources.LocalFile);
+        // A file the app fetched for a Wabbajack modlist came from that list, not from the user's disk.
+        SharedColumns.Source.Add(itemModel,
+            LibraryDataProviderHelper.IsFetchedForModlist(_connection.Db, localFile.Id) ? ModSources.Wabbajack : ModSources.LocalFile,
+            LibraryDataProviderHelper.ObserveFetchedForModlist(_connection, localFile.Id).Select(static fetched => fetched ? ModSources.Wabbajack : ModSources.LocalFile));
         itemModel.Add(LibraryColumns.DownloadedDate.ComponentKey, new DateComponent(value: localFile.GetCreatedAt()));
         itemModel.Add(SharedColumns.ItemSize.ComponentKey, new SizeComponent(value: localFile.AsLibraryFile().Size));
         itemModel.Add(LibraryColumns.Actions.LibraryItemIdsComponentKey, new LibraryComponents.LibraryItemIds(localFile.AsLibraryFile().AsLibraryItem()));
