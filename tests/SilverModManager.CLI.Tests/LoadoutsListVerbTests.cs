@@ -1,4 +1,5 @@
 using FluentAssertions;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
@@ -69,5 +70,22 @@ public class LoadoutsListVerbTests(IServiceProvider provider)
         var row = renderer.LastCellsAsStrings().Select(r => r.ToArray()).Single(cells => cells[1] == name);
         row[5].Should().Be("3");
         row[5].Should().NotContain("Entities<");
+    }
+
+    [Fact]
+    public async Task Json_ListsTheLoadoutWithItsItemCount()
+    {
+        var name = await SeedLoadoutWithItems(2);
+
+        var renderer = new LoggingRenderer();
+        var exitCode = await provider.GetRequiredService<CommandLineConfigurator>()
+            .RunAsync(["loadouts", "list", "--json"], renderer, CancellationToken.None);
+
+        exitCode.Should().Be(0);
+        var rows = JsonNode.Parse(string.Concat(renderer.Logs.OfType<Text>().Select(t => t.Template)))!.AsArray();
+        var row = rows.Select(n => n!.AsObject()).Single(r => (string?)r["name"] == name);
+        ((int)row["items"]!).Should().Be(2);
+        ((string?)row["game"]).Should().Be("Items Count Game");
+        ((string?)row["id"]).Should().StartWith("LoadoutId:");
     }
 }

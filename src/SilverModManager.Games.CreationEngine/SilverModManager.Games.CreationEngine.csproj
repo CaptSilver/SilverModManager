@@ -17,6 +17,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="SilverModManager.Games.CreationEngine.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Games.CreationEngine.TestHelpers" />
     </ItemGroup>
 
 </Project>

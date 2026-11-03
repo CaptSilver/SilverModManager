@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileSystemGlobbing;
 using SilverModManager.Abstractions.Cli;
@@ -5,6 +6,7 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
@@ -44,6 +46,9 @@ public static class LoadoutManagementVerbs
             .AddModule("loadout group", "Commands for managing a specific group of files in a loadout")
             .AddModule("loadout files", "Commands for the files a loadout provides")
             .AddModule("loadout group items", "Commands for managing the items in a group of files in a loadout")
+            .AddModule("loadout group priority", "Commands for a group's place in the mod priority order")
+            .AddModule("loadout priority", "Commands for the mod priority order of a loadout")
+            .AddModule("loadout plugins", "Commands for the plugin load order of a loadout")
             .AddModule("loadout version", "Commands for managing the version of a loadout")
             .AddVerb(() => SetVersion)
             .AddVerb(() => Synchronize)
@@ -57,7 +62,10 @@ public static class LoadoutManagementVerbs
             .AddVerb(() => DeleteGroupItems)
             .AddVerb(() => RemoveLoadoutFiles)
             .AddVerb(() => ListRevisions)
-            .AddVerb(() => Revert);
+            .AddVerb(() => Revert)
+            .AddVerb(() => EnableGroup)
+            .AddVerb(() => DisableGroup)
+            .AddLoadoutOrderVerbs();
 
     [Verb("loadout version set", "Sets the game version for a loadout")]
     private static async Task<int> SetVersion([Injected] IRenderer renderer,
@@ -196,39 +204,56 @@ public static class LoadoutManagementVerbs
         return 0;
     }
 
+    private sealed record LoadoutRow(string Id, string Name, string Game, string Version, string Store, int Items);
+
     [Verb("loadouts list", "Lists all the loadouts")]
     private static async Task<int> ListLoadouts([Injected] IRenderer renderer,
         [Injected] IConnection conn,
+        [Option("j", "json", "Print the loadouts as JSON", true)] bool json,
         [Injected] CancellationToken token)
     {
         var db = conn.Db;
-        await Loadout.All(db)
+        var rows = Loadout.All(db)
             .Where(x => x.IsVisible())
-            .Select(list => (list.LoadoutId, list.Name, list.Installation.Name, list.GameVersion, list.Installation.Store, LoadoutItem.FindByLoadout(db, list.Id).Count))
+            .Select(list => new LoadoutRow(list.LoadoutId.ToString(), list.Name, list.Installation.Name, list.GameVersion.ToString(), list.Installation.Store.ToString(), LoadoutItem.FindByLoadout(db, list.Id).Count))
+            .ToArray();
+
+        if (json)
+        {
+            await renderer.TextLine(JsonSerializer.Serialize(rows, CliJson.Options));
+            return 0;
+        }
+
+        await rows
+            .Select(row => (row.Id, row.Name, row.Game, row.Version, row.Store, row.Items))
             .RenderTable(renderer, "Id", "Name", "Game", "Version", "Store", "Items");
         return 0;
     }
+
+    private sealed record GroupFileRow(string Folder, string File, string? Hash);
 
     [Verb("loadout group list", "Lists the contents of a loadout group")]
     private static async Task<int> ListGroupContents([Injected] IRenderer renderer,
         [Option("l", "loadout", "Loadout to load")] Loadout.ReadOnly loadout,
         [Option("g", "group", "Name of the group to list")] string groupName,
         [Option("f", "filterFiles", "Filter files by the given glob", true)] Matcher? filterFiles,
+        [Option("j", "json", "Print the files as JSON", true)] bool json,
         [Injected] CancellationToken token)
     {
-        var mod = LoadoutItem.FindByLoadout(loadout.Db, loadout)
+        var found = LoadoutItem.FindByLoadout(loadout.Db, loadout)
             .OfTypeLoadoutItemGroup()
-            .First(m => m.AsLoadoutItem().Name == groupName);
+            .FirstOrOptional(m => m.AsLoadoutItem().Name == groupName);
 
-        if (!mod.IsValid())
+        if (!found.HasValue)
             return await renderer.InputError("Group {0} not found", groupName);
-        
+        var mod = found.Value;
+
         Func<string, bool> filter = _ => true;
 
         if (filterFiles != null) 
             filter = s => filterFiles.Match(s).HasMatches;
         
-        await mod.Children
+        var files = mod.Children
             .Select(c =>
                 {
                     var hasPath = c.TryGetAsLoadoutItemWithTargetPath(out var withPath);
@@ -247,7 +272,16 @@ public static class LoadoutManagementVerbs
             .Where(f => filter(f.Item2.ToString()))
             .OrderBy(v => v.Item1)
             .ThenBy(v => v.Item2)
-            .RenderTable(renderer, "Folder", "File", "Hash");
+            .ToArray();
+
+        if (json)
+        {
+            var rows = files.Select(f => new GroupFileRow(f.Item1.ToString(), f.Item2.ToString(), f.Item3 == "<none>" ? null : f.Item3));
+            await renderer.TextLine(JsonSerializer.Serialize(rows, CliJson.Options));
+            return 0;
+        }
+
+        await files.RenderTable(renderer, "Folder", "File", "Hash");
         return 0;
     }
 
@@ -312,32 +346,94 @@ public static class LoadoutManagementVerbs
         return 0;
     }
 
+    private sealed record GroupRow(string Id, string Name, int Items, bool IsEnabled, string? Parent);
+
     [Verb("loadout groups list", "Lists the groups in a loadout")]
     private static async Task<int> ListGroups([Injected] IRenderer renderer,
         [Option("l", "loadout", "Loadout to load")] Loadout.ReadOnly loadout,
+        [Option("j", "json", "Print the groups as JSON, with the ids the -g options accept", true)] bool json,
         [Injected] CancellationToken token)
     {
-        await LoadoutItem.FindByLoadout(loadout.Db, loadout)
+        var groups = LoadoutItem.FindByLoadout(loadout.Db, loadout)
             .OfTypeLoadoutItemGroup()
+            .ToArray();
+
+        if (json)
+        {
+            var rows = groups.Select(group =>
+            {
+                var item = group.AsLoadoutItem();
+                return new GroupRow(group.Id.ToString(), item.Name, group.Children.Count, item.IsEnabled(), item.HasParent() ? item.Parent.AsLoadoutItem().Name : null);
+            });
+            await renderer.TextLine(JsonSerializer.Serialize(rows, CliJson.Options));
+            return 0;
+        }
+
+        await groups
             .Select(mod => (mod.AsLoadoutItem().Name, mod.Children.Count))
             .RenderTable(renderer, "Name", "Items");
 
         return 0;
     }
 
+    private sealed record RevisionRow(int Number, DateTimeOffset Timestamp, string Tx, int ModCount);
+
     [Verb("loadout revisions", "Lists revisions for a loadout")]
     private static async Task<int> ListRevisions([Injected] IRenderer renderer,
         [Option("l", "loadout", "Loadout to load")] Loadout.ReadOnly loadout,
+        [Option("j", "json", "Print the revisions as JSON; the number is what 'loadout revert -r' takes", true)] bool json,
         [Injected] IConnection connection,
         [Injected] UndoService undoService,
         [Injected] CancellationToken token)
     {
-        var revisions = undoService.RevisionsFor(loadout);
+        var revisions = undoService.RevisionsFor(loadout)
+            .OrderBy(r => r.Revision.Timestamp)
+            .Select((r, idx) => new RevisionRow(idx, r.Revision.Timestamp, r.Revision.TxEntity.ToString(), r.ModCount))
+            .ToArray();
 
-        await revisions.OrderBy(r => r.Revision.Timestamp)
-            .Select((r, idx) => (idx, r.Revision.Timestamp, r.Revision.TxEntity, r.ModCount))
+        if (json)
+        {
+            await renderer.TextLine(JsonSerializer.Serialize(revisions, CliJson.Options));
+            return 0;
+        }
+
+        await revisions
+            .Select(r => (r.Number, r.Timestamp, r.Tx, r.ModCount))
             .RenderTable(renderer, "Rev #", "Timestamp", "Tx", "ModCount");
 
+        return 0;
+    }
+
+    [Verb("loadout group enable", "Switches a group on. Groups a collection or the game's install controls are left alone and named. A restore point is written first, see 'loadout revisions'.")]
+    private static Task<int> EnableGroup([Injected] IRenderer renderer,
+        [Option("l", "loadout", "Loadout the group is in")] Loadout.ReadOnly loadout,
+        [Option("g", "group", "The group's name, or its id from 'loadout groups list --json' when two share a name")] string group,
+        [Injected] ILoadoutManager loadoutManager) => SetGroupSwitch(renderer, loadout, group, enabled: true, loadoutManager);
+
+    [Verb("loadout group disable", "Switches a group off; its files stay in the loadout. Groups a collection or the game's install controls are left alone and named. A restore point is written first, see 'loadout revisions'.")]
+    private static Task<int> DisableGroup([Injected] IRenderer renderer,
+        [Option("l", "loadout", "Loadout the group is in")] Loadout.ReadOnly loadout,
+        [Option("g", "group", "The group's name, or its id from 'loadout groups list --json' when two share a name")] string group,
+        [Injected] ILoadoutManager loadoutManager) => SetGroupSwitch(renderer, loadout, group, enabled: false, loadoutManager);
+
+    private static async Task<int> SetGroupSwitch(IRenderer renderer, Loadout.ReadOnly loadout, string groupName, bool enabled, ILoadoutManager loadoutManager)
+    {
+        var group = LoadoutGroupLookup.Find(loadout, groupName);
+        var name = group.AsLoadoutItem().Name;
+        var result = await loadoutManager.SetGroupsEnabled(loadout.LoadoutId, [LoadoutItemId.From(group.Id)], enabled);
+
+        foreach (var (_, reason) in result.Skipped)
+            await renderer.TextLine("{0}", $"{name} was left alone: {reason}.");
+
+        if (result.Changed.Count > 0)
+        {
+            await renderer.TextLine("{0}", $"{name} is switched {(enabled ? "on" : "off")}. 'loadout revisions' lists the restore point; 'loadout revert' undoes it.");
+            return 0;
+        }
+
+        if (result.Skipped.Count > 0) return 1;
+
+        await renderer.TextLine("{0}", $"{name} is already switched {(enabled ? "on" : "off")}.");
         return 0;
     }
 

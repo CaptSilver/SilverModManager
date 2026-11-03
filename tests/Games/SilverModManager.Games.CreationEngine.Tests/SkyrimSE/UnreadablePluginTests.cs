@@ -1,4 +1,5 @@
 using SilverModManager.Sdk.Hashes;
+using SilverModManager.Games.CreationEngine.TestHelpers;
 using System.Collections.Frozen;
 using System.Text;
 using FluentAssertions;

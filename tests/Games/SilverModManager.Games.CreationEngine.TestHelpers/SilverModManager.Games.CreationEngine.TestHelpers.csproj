@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\SilverModManager.Games.CreationEngine\SilverModManager.Games.CreationEngine.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />
+        <PackageReference Include="Mutagen.Bethesda.Skyrim" />
+    </ItemGroup>
+</Project>

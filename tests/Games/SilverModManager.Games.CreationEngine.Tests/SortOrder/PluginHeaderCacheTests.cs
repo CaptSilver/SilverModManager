@@ -1,4 +1,5 @@
 using SilverModManager.Sdk.Hashes;
+using SilverModManager.Games.CreationEngine.TestHelpers;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;

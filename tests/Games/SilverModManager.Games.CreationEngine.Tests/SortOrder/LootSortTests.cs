@@ -8,6 +8,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
 using SilverModManager.Games.CreationEngine.Loot;
 using SilverModManager.Games.CreationEngine.SortOrder;
+using SilverModManager.Games.CreationEngine.TestHelpers;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
@@ -31,9 +32,6 @@ public class LootSortTests(ITestOutputHelper helper)
 {
     private const string DataFolder = "Data";
 
-    // The prelude defines the default group every plugin belongs to, so a test list only needs its own entries.
-    private static readonly string Prelude = new BundledMasterlistStore().PreludeText();
-
     private const string BAfterA = """
         plugins:
           - name: 'A.esp'
@@ -48,72 +46,17 @@ public class LootSortTests(ITestOutputHelper helper)
             after: [ 'A.esp' ]
         """;
 
-    /// <summary>Serves the masterlist a test sets, so no test reads the bundled lists or the user's cache.</summary>
-    private sealed class FixtureMasterlistStore : IMasterlistStore
-    {
-        public string Masterlist { get; set; } = "plugins: []\n";
-        public string Revision { get; set; } = "fixture 1";
-        public LootGame? LastGame { get; private set; }
-
-        public MasterlistContent Current(LootGame game)
-        {
-            LastGame = game;
-            return new MasterlistContent(Masterlist, Prelude, Revision);
-        }
-    }
-
-    protected override IServiceCollection AddServices(IServiceCollection services) => base.AddServices(services)
-        .AddCreationEngine()
-        .AddUniversalGameLocator<CreationEngine.SkyrimSE.SkyrimSE>(new Version("1.6.1170"), locationsFileSystem: IsolatedKnownFolders.Create)
-        .AddSingleton<FixtureMasterlistStore>()
-        .AddSingleton<IMasterlistStore>(s => s.GetRequiredService<FixtureMasterlistStore>())
-        // Without this the variety would look for a userlist in the user's real data folder.
-        .AddSingleton(s => new LootDataDirectory(s.GetRequiredService<TemporaryFileManager>().CreateFolder().Path));
+    // The fixture goes in last, so it replaces the masterlist store the game registers.
+    protected override IServiceCollection AddServices(IServiceCollection services) => FixtureMasterlistStore.AddFixtureMasterlist(
+        base.AddServices(services)
+            .AddCreationEngine()
+            .AddUniversalGameLocator<CreationEngine.SkyrimSE.SkyrimSE>(new Version("1.6.1170"), locationsFileSystem: IsolatedKnownFolders.Create));
 
     private FixtureMasterlistStore Store => ServiceProvider.GetRequiredService<FixtureMasterlistStore>();
 
     private IDb Db => Connection.Db;
 
     private static SortItemKey<string> Key(string name) => new(name.ToLowerInvariant());
-
-    private async Task SeedSkyrimEsm(Loadout.ReadOnly loadout)
-    {
-        var local = ((StubbedFileHasherService)ServiceProvider.GetRequiredService<IFileHashesService>()).Local.Connection;
-        var install = loadout.Installation;
-
-        var bytes = SkyrimPluginFile.Bytes("Skyrim.esm");
-        var hashes = await MultiHasher.HashStream(new MemoryStream(bytes));
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("Skyrim.esm", new MemoryStream(bytes)), FileIdentity.XxHash3(hashes.XxHash3), Size.FromLong(bytes.Length))]);
-
-        using var tx = local.BeginTransaction();
-        var relation = new HashRelation.New(tx)
-        {
-            MinimalHash = hashes.MinimalHash,
-            XxHash3 = hashes.XxHash3,
-            Sha1 = hashes.Sha1,
-            XxHash64 = hashes.XxHash64,
-            Md5 = hashes.Md5,
-            Size = hashes.Size,
-            Crc32 = hashes.Crc32,
-        };
-        var path = new PathHashRelation.New(tx)
-        {
-            Path = RelativePath.FromUnsanitizedInput($"{DataFolder}/Skyrim.esm"),
-            HashId = relation,
-        };
-        _ = new LocalBaseline.New(tx)
-        {
-            Store = install.Store,
-            GamePath = install.Path,
-            // A baseline counts only for the locator ids it was built for.
-            LocatorIds = loadout.LocatorIds.Select(id => id.Value).ToArray(),
-            Kind = LocalBaselineKind.Snapshot,
-            VersionName = "",
-            BuiltAt = DateTimeOffset.UnixEpoch,
-            FilesIds = [path.Id],
-        };
-        await tx.Commit();
-    }
 
     private async Task AddPlugins(Loadout.ReadOnly loadout, params string[] plugins)
     {
@@ -129,7 +72,7 @@ public class LootSortTests(ITestOutputHelper helper)
     {
         // Created before the plugins are stored: creating a loadout runs the garbage collector.
         var loadout = await CreateLoadout();
-        await SeedSkyrimEsm(loadout);
+        await SkyrimBaseline.SeedSkyrimEsm(ServiceProvider, loadout);
         await AddPlugins(loadout, "A.esp", "B.esp", "C.esp");
         var variety = new PluginSortOrderVariety(ServiceProvider, Game);
         var id = await variety.GetOrCreateSortOrderFor(loadout.LoadoutId, loadout.LoadoutId);

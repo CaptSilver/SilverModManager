@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Games.CreationEngine.TestHelpers;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Games;

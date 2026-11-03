@@ -3,10 +3,10 @@ using Mutagen.Bethesda.Plugins.Binary.Parameters;
 using Mutagen.Bethesda.Plugins.Records;
 using Mutagen.Bethesda.Skyrim;
 
-namespace SilverModManager.Games.CreationEngine.Tests.SkyrimSE;
+namespace SilverModManager.Games.CreationEngine.TestHelpers;
 
 /// <summary>Small real Skyrim SE plugins: an empty mod with a header that lists its masters.</summary>
-internal static class SkyrimPluginFile
+public static class SkyrimPluginFile
 {
     public static byte[] Bytes(string fileName, params string[] masters)
     {

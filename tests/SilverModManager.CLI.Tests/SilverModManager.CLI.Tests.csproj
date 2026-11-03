@@ -12,6 +12,7 @@
         <ProjectReference Include="..\..\src\SilverModManager.Games.CreationEngine\SilverModManager.Games.CreationEngine.csproj" />
         <ProjectReference Include="..\..\src\SilverModManager.SingleProcess\SilverModManager.SingleProcess.csproj" />
         <ProjectReference Include="..\Games\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />
+        <ProjectReference Include="..\Games\SilverModManager.Games.CreationEngine.TestHelpers\SilverModManager.Games.CreationEngine.TestHelpers.csproj" />
         <ProjectReference Include="..\Networking\SilverModManager.Networking.HttpDownloader.Tests\SilverModManager.Networking.HttpDownloader.Tests.csproj" />
         <ProjectReference Include="..\SilverModManager.StandardGameLocators.TestHelpers\SilverModManager.StandardGameLocators.TestHelpers.csproj" />
     </ItemGroup>

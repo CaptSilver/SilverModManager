@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Games.CreationEngine.TestHelpers;
 using DynamicData;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
