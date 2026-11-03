@@ -1,3 +1,4 @@
+using FluentAssertions;
 using SilverModManager.Sdk.Native;
 
 namespace SilverModManager.Sdk.Tests.Native;
@@ -98,5 +99,177 @@ public class PeFileVersionTests
         using var stream = new MemoryStream(struc[..12]);
 
         Assert.Null(PeFileVersion.Read(stream));
+    }
+
+    // --- VS_VERSIONINFO ---
+
+    private static int Align4(int value) => (value + 3) & ~3;
+
+    /// <summary>One node of a version resource: header, UTF-16 key, padding, value, then children. Lengths exclude trailing padding, as the format has it.</summary>
+    private static byte[] Node(string key, byte[] value, int valueLength, short type, params byte[][] children)
+    {
+        var bytes = new List<byte>([0, 0]);
+        bytes.AddRange(BitConverter.GetBytes((ushort)valueLength));
+        bytes.AddRange(BitConverter.GetBytes(type));
+        bytes.AddRange(System.Text.Encoding.Unicode.GetBytes(key + "\0"));
+        while (bytes.Count % 4 != 0) bytes.Add(0);
+        bytes.AddRange(value);
+        foreach (var child in children)
+        {
+            while (bytes.Count % 4 != 0) bytes.Add(0);
+            bytes.AddRange(child);
+        }
+
+        var all = bytes.ToArray();
+        BitConverter.TryWriteBytes(all.AsSpan(0), (ushort)all.Length);
+        return all;
+    }
+
+    private static byte[] StringValue(string key, string value) =>
+        Node(key, System.Text.Encoding.Unicode.GetBytes(value + "\0"), value.Length + 1, 1);
+
+    private static byte[] StringFileInfo(params byte[][] strings) =>
+        Node("StringFileInfo", [], 0, 1, Node("040904B0", [], 0, 1, strings));
+
+    /// <summary>A VS_VERSIONINFO as a resource holds it: fixed info (0x34 bytes) then the given children.</summary>
+    private static byte[] FakeVersionInfo(uint fileVersionMs, uint fileVersionLs, params byte[][] children) =>
+        Node("VS_VERSION_INFO", FixedFileInfo(StrucVersion, fileVersionMs, fileVersionLs)[..0x34], 0x34, 0, children);
+
+    [Fact]
+    public void ReadVersion_OrdersWordsMajorMinorBuildRevision()
+    {
+        // Four different words, so a swapped pair shows: major 1, minor 2, then the low word's halves 3 and 4.
+        using var stream = Around(FixedFileInfo(StrucVersion, 0x0001_0002, 0x0003_0004));
+
+        PeFileVersion.ReadVersion(stream).Should().Be(new Version(1, 2, 3, 4));
+    }
+
+    [Fact]
+    public void ReadProductVersion_FindsTheStringTableValue()
+    {
+        var info = FakeVersionInfo(0x0001_0002, 0x0003_0004,
+            StringFileInfo(StringValue("FileVersion", "9.9.9.9"), StringValue("ProductVersion", "1, 6, 1170, 0")));
+        using var stream = Around(info);
+
+        PeFileVersion.ReadProductVersion(stream).Should().Be("1, 6, 1170, 0");
+    }
+
+    [Fact]
+    public void ReadProductVersion_FindsTheValueAfterAnotherChild()
+    {
+        var info = FakeVersionInfo(0x0001_0002, 0x0003_0004,
+            Node("VarFileInfo", [], 0, 1, Node("Translation", [9, 4, 0xB0, 4], 4, 0)),
+            StringFileInfo(StringValue("ProductVersion", "2.0")));
+        using var stream = Around(info);
+
+        PeFileVersion.ReadProductVersion(stream).Should().Be("2.0");
+    }
+
+    [Fact]
+    public void ReadProductVersion_AtTheStartOfTheStream_Works()
+    {
+        var info = FakeVersionInfo(1, 1, StringFileInfo(StringValue("ProductVersion", "3.1")));
+        using var stream = new MemoryStream(info);
+
+        // The struct starts 40 bytes in, so a stream of just the resource has it at offset 40.
+        PeFileVersion.ReadProductVersion(stream).Should().Be("3.1");
+    }
+
+    [Fact]
+    public void ReadProductVersion_NullWithoutStringFileInfo()
+    {
+        using var stream = Around(FakeVersionInfo(0x0001_0002, 0x0003_0004));
+
+        PeFileVersion.ReadProductVersion(stream).Should().BeNull();
+    }
+
+    [Fact]
+    public void ReadProductVersion_NullWithoutAProductVersionString()
+    {
+        using var stream = Around(FakeVersionInfo(1, 1, StringFileInfo(StringValue("FileVersion", "1.0"))));
+
+        PeFileVersion.ReadProductVersion(stream).Should().BeNull();
+    }
+
+    [Fact]
+    public void ReadProductVersion_NullWithNoFixedFileInfo()
+    {
+        using var stream = new MemoryStream(new byte[4096]);
+
+        PeFileVersion.ReadProductVersion(stream).Should().BeNull();
+    }
+
+    [Fact]
+    public void ReadProductVersion_NullWhenTheStructIsNotInsideAVersionResource()
+    {
+        using var stream = Around(FixedFileInfo(StrucVersion, 1, 1));
+
+        PeFileVersion.ReadProductVersion(stream).Should().BeNull();
+    }
+
+    [Fact]
+    public void ReadProductVersion_NullWhenTheResourceIsTruncated()
+    {
+        var info = FakeVersionInfo(1, 1, StringFileInfo(StringValue("ProductVersion", "3.1")));
+        using var stream = new MemoryStream(info[..(info.Length - 10)]);
+
+        PeFileVersion.ReadProductVersion(stream).Should().BeNull();
+    }
+
+    /// <summary>MZ header, e_lfanew, PE signature, COFF header and an optional header that starts with <paramref name="magic"/>.</summary>
+    private static byte[] FakePe(ushort magic, bool peSignature = true)
+    {
+        var bytes = new byte[0x200];
+        bytes[0] = (byte)'M';
+        bytes[1] = (byte)'Z';
+        BitConverter.TryWriteBytes(bytes.AsSpan(0x3C), 0x80);
+        if (peSignature) "PE\0\0"u8.CopyTo(bytes.AsSpan(0x80));
+        BitConverter.TryWriteBytes(bytes.AsSpan(0x80 + 4 + 16), (ushort)0xE0);
+        BitConverter.TryWriteBytes(bytes.AsSpan(0x80 + 4 + 20), magic);
+        return bytes;
+    }
+
+    [Theory]
+    [InlineData((ushort)0x10b)]
+    [InlineData((ushort)0x20b)]
+    public void IsPortableExecutable_TrueForBothOptionalHeaderMagics(ushort magic)
+    {
+        using var stream = new MemoryStream(FakePe(magic));
+
+        PeFileVersion.IsPortableExecutable(stream).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsPortableExecutable_FalseForAnUnknownOptionalHeaderMagic()
+    {
+        using var stream = new MemoryStream(FakePe(0x107));
+
+        PeFileVersion.IsPortableExecutable(stream).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsPortableExecutable_FalseWithoutThePeSignature()
+    {
+        using var stream = new MemoryStream(FakePe(0x10b, peSignature: false));
+
+        PeFileVersion.IsPortableExecutable(stream).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsPortableExecutable_FalseWithoutTheDosMagic()
+    {
+        var bytes = FakePe(0x10b);
+        bytes[0] = 0;
+        using var stream = new MemoryStream(bytes);
+
+        PeFileVersion.IsPortableExecutable(stream).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsPortableExecutable_FalseForAShortStream()
+    {
+        using var stream = new MemoryStream("MZ"u8.ToArray());
+
+        PeFileVersion.IsPortableExecutable(stream).Should().BeFalse();
     }
 }
