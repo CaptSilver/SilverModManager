@@ -166,6 +166,16 @@ public class ConditionEvaluatorTests : IDisposable
             Eval("file_size(\"thing.bin\", 1235)").Should().BeFalse();
             Eval("file_size(\"missing.bin\", 0)").Should().BeFalse();
         }
+
+        [Fact]
+        public void FileSize_MatchesAFileTheUserCannotRead()
+        {
+            var file = _data.Write("Locked.bin", new byte[77]);
+            System.IO.File.SetUnixFileMode(file, UnixFileMode.None);
+
+            Eval("file_size(\"locked.bin\", 77)").Should().BeTrue();
+            Eval("file_size(\"locked.bin\", 78)").Should().BeFalse();
+        }
     }
 
     public class ActivePlugins : ConditionEvaluatorTests

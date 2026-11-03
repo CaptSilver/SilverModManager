@@ -150,12 +150,10 @@ public sealed class ConditionEvaluator : IConditionEvaluator
 
     private bool FileSize(ConditionFunction.FileSize function)
     {
-        // The stream's length is that of the file behind the handle, which for a deployed symbolic link is its target.
-        return TryRead(function.Path, () =>
-        {
-            using var stream = OpenRegularFile(function.Path);
-            return stream is not null && stream.Length == (long)function.Size;
-        });
+        // The size of the file a deployed symbolic link ends at, taken without needing to read it (as libloot does).
+        return Resolve(function.Path) is { } resolved
+               && ConditionPaths.SizeOfRegularFile(resolved) is { } size
+               && size == (long)function.Size;
     }
 
     private bool IsReadable(string path)

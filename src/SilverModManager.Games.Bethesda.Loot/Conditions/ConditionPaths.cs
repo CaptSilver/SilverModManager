@@ -65,6 +65,12 @@ public static class ConditionPaths
     public static FileStream? OpenRegularFile(string path) => RegularFiles.Open(path);
 
     /// <summary>
+    /// The size of the regular file <paramref name="path"/> ends at, or null when it is missing or not a regular file.
+    /// Needs no permission to read the file, as a stat does not.
+    /// </summary>
+    public static long? SizeOfRegularFile(string path) => RegularFiles.SizeOf(path);
+
+    /// <summary>
     /// The names in the folder <paramref name="parent"/> of <paramref name="dataDirectory"/> (files and folders),
     /// with <c>.ghost</c> taken off plugin names. Empty when the folder does not exist or cannot be read.
     /// </summary>

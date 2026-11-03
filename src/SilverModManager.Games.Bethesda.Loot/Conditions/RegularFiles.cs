@@ -12,6 +12,9 @@ internal static partial class RegularFiles
     private const int AtFdcwd = -100;
     private const int AtEmptyPath = 0x1000;
     private const uint StatxType = 0x1;
+    private const uint StatxSizeField = 0x200;
+    private const int SizeOffset = 40; // stx_size
+    private const int PathOnly = 0x200000; // O_PATH
     private const int ModeOffset = 28; // stx_mode, the same on every architecture, unlike struct stat
     private const int StatxSize = 256;
     private const uint TypeMask = 0xF000;
@@ -54,6 +57,42 @@ internal static partial class RegularFiles
         }
 
         return new FileStream(handle, FileAccess.Read, bufferSize: 0);
+    }
+
+    /// <summary>
+    /// The size of <paramref name="path"/> when it is a regular file once every symbolic link on it is followed, and
+    /// null when it is missing or anything else. Like a stat, this needs no permission to read the file: it opens an
+    /// <c>O_PATH</c> handle (which neither blocks on a pipe nor needs read access) and takes the type and the size
+    /// from that one handle with <c>statx</c>.
+    /// </summary>
+    public static long? SizeOf(string path)
+    {
+        if (path.Contains('\0')) return null;
+
+        using var handle = Open(path, PathOnly | CloseOnExec);
+        if (handle.IsInvalid) return null;
+
+        var added = false;
+        try
+        {
+            handle.DangerousAddRef(ref added);
+            Span<byte> buffer = stackalloc byte[StatxSize];
+            int result;
+            unsafe
+            {
+                fixed (byte* pointer = buffer)
+                    result = StatX((int)handle.DangerousGetHandle(), string.Empty, AtEmptyPath, StatxType | StatxSizeField, pointer);
+            }
+
+            if (result != 0) return null;
+            if ((BitConverter.ToUInt16(buffer[ModeOffset..]) & TypeMask) != TypeRegular) return null;
+
+            return (long)BitConverter.ToUInt64(buffer[SizeOffset..]);
+        }
+        finally
+        {
+            if (added) handle.DangerousRelease();
+        }
     }
 
     private static uint TypeOf(SafeHandle directory, string path, int flags)

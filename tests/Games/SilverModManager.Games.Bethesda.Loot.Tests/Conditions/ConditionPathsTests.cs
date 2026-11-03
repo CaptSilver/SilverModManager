@@ -96,6 +96,14 @@ public class ConditionPathsTests : IDisposable
         return stream is not null;
     }
 
+    // A pipe must not make the opener block, so the call runs on another thread and the test fails rather than hangs.
+    private static bool OpensWithoutBlocking(string path)
+    {
+        var task = Task.Run(() => Opens(path));
+        task.Wait(TimeSpan.FromSeconds(10)).Should().BeTrue("opening {0} must not block", path);
+        return task.Result;
+    }
+
     [Fact]
     public void OpenRegularFile_ReadsTheBytesOfAFileAndOfASymlinkToIt()
     {
@@ -120,9 +128,9 @@ public class ConditionPathsTests : IDisposable
         var file = _data.Write("a.esp");
         var folder = _data.CreateDirectory("Meshes");
 
-        Opens(file).Should().BeTrue();
-        Opens(folder).Should().BeFalse();
-        Opens(Path.Combine(_data.Path, "missing.esp")).Should().BeFalse();
+        OpensWithoutBlocking(file).Should().BeTrue();
+        OpensWithoutBlocking(folder).Should().BeFalse();
+        OpensWithoutBlocking(Path.Combine(_data.Path, "missing.esp")).Should().BeFalse();
     }
 
     [Fact]
@@ -130,7 +138,7 @@ public class ConditionPathsTests : IDisposable
     {
         var fifo = _data.CreateFifo("pipe.esp");
 
-        Opens(fifo).Should().BeFalse();
+        OpensWithoutBlocking(fifo).Should().BeFalse();
     }
 
     [Fact]
@@ -153,9 +161,7 @@ public class ConditionPathsTests : IDisposable
         var fifo = elsewhere.CreateFifo("pipe");
         System.IO.File.CreateSymbolicLink(Path.Combine(data, "link.esp"), fifo);
 
-        var task = Task.Run(() => Opens(Path.Combine(data, "link.esp")));
-        task.Wait(TimeSpan.FromSeconds(10)).Should().BeTrue("a pipe must not make the check block");
-        task.Result.Should().BeFalse();
+        OpensWithoutBlocking(Path.Combine(data, "link.esp")).Should().BeFalse();
     }
 
     [Fact]
