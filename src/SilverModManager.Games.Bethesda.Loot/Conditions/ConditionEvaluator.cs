@@ -118,7 +118,7 @@ public sealed class ConditionEvaluator : IConditionEvaluator
 
     /// <summary>The regular file a condition path names, or null when it is missing, refused, or a pipe, device or the like.</summary>
     private string? ResolveRegularFile(string path) =>
-        Resolve(path) is { } resolved && ConditionPaths.IsRegularFile(resolved, _context.DataDirectory) ? resolved : null;
+        Resolve(path) is { } resolved && ConditionPaths.IsRegularFile(resolved) ? resolved : null;
 
     /// <summary>The name the context knows a plugin by: the path as written, without a <c>.ghost</c> suffix.</summary>
     private string PluginName(string path) => ConditionPaths.NormaliseFileName(_context.Game, path);
@@ -151,7 +151,14 @@ public sealed class ConditionEvaluator : IConditionEvaluator
     private bool FileSize(ConditionFunction.FileSize function)
     {
         var path = ResolveRegularFile(function.Path);
-        return path is not null && TryRead(function.Path, () => new FileInfo(path).Length) == (long)function.Size;
+        return path is not null && TryRead(function.Path, () => LengthOfTarget(path)) == (long)function.Size;
+    }
+
+    // A deployed file may be a symbolic link, and FileInfo.Length on a link is the length of the link itself.
+    private static long LengthOfTarget(string path)
+    {
+        var file = new FileInfo(path);
+        return (file.ResolveLinkTarget(returnFinalTarget: true) as FileInfo ?? file).Length;
     }
 
     private bool IsReadable(string path)
@@ -165,7 +172,7 @@ public sealed class ConditionEvaluator : IConditionEvaluator
                 return true;
             }
 
-            if (!ConditionPaths.IsRegularFile(path, _context.DataDirectory)) return false;
+            if (!ConditionPaths.IsRegularFile(path)) return false;
             using var stream = System.IO.File.OpenRead(path);
             return true;
         }

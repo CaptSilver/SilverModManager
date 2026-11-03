@@ -659,19 +659,47 @@ public class ConditionEvaluatorTests : IDisposable
             evaluator.Evaluate("version(\"../skse64_loader.exe\", \"2.2.6\", ==)").Should().BeTrue();
         }
 
+        // The game root is <scratch>/Game, so "../../secret" from Data lands on <scratch>/secret, a real file that
+        // only the containment check keeps out of reach.
         [Theory]
-        [InlineData("file(\"../../etc/passwd\")")]
+        [InlineData("file(\"../../secret\")")]
+        [InlineData("readable(\"../../secret\")")]
+        [InlineData("checksum(\"../../secret\", {crc})")]
+        [InlineData("file_size(\"../../secret\", {size})")]
+        [InlineData("is_executable(\"../../secret\")")]
+        [InlineData("version(\"../../secret\", \"1.2.3\", ==)")]
         [InlineData("file(\"/etc/passwd\")")]
         [InlineData("readable(\"/etc/passwd\")")]
-        [InlineData("checksum(\"/etc/passwd\", 00000000)")]
-        [InlineData("is_executable(\"/etc/passwd\")")]
-        [InlineData("file_size(\"/etc/passwd\", 1)")]
         public void FunctionsRefuseAPathOutsideTheGameRoot(string condition)
         {
-            var evaluator = InDataFolder(out _, out _);
+            var secret = FakePe.WithVersion(new Version(1, 2, 3, 0));
+            _data.Write("secret", secret);
+            var data = _data.CreateDirectory("Game/Data");
+            var evaluator = new ConditionEvaluator(new FakeConditionContext(data));
+            condition = condition
+                .Replace("{crc}", System.IO.Hashing.Crc32.HashToUInt32(secret).ToString("X8"))
+                .Replace("{size}", secret.Length.ToString());
 
             evaluator.Evaluate(condition).Should().BeFalse();
             evaluator.Evaluate("not " + condition).Should().BeTrue();
+        }
+
+        [Fact]
+        public void FunctionsHoldForTheSecretFileWhenItIsInsideTheGameRoot()
+        {
+            // The same conditions as the refusal test, pointed at a file that is reachable, so the refusals above
+            // are known to come from containment and not from wrong expected values.
+            var secret = FakePe.WithVersion(new Version(1, 2, 3, 0));
+            var data = _data.CreateDirectory("Game/Data");
+            _data.Write("Game/secret", secret);
+            var evaluator = new ConditionEvaluator(new FakeConditionContext(data));
+            var crc = System.IO.Hashing.Crc32.HashToUInt32(secret);
+
+            evaluator.Evaluate("file(\"../secret\")").Should().BeTrue();
+            evaluator.Evaluate($"checksum(\"../secret\", {crc:X8})").Should().BeTrue();
+            evaluator.Evaluate($"file_size(\"../secret\", {secret.Length})").Should().BeTrue();
+            evaluator.Evaluate("is_executable(\"../secret\")").Should().BeTrue();
+            evaluator.Evaluate("version(\"../secret\", \"1.2.3\", ==)").Should().BeTrue();
         }
 
         [Theory]
@@ -708,15 +736,49 @@ public class ConditionEvaluatorTests : IDisposable
         }
 
         [Fact]
-        public void ChecksumDoesNotFollowASymlinkOutOfTheGameRoot()
+        public void FunctionsFollowASymlinkIntoAStoreFolder()
         {
             var evaluator = InDataFolder(out _, out var data);
-            using var outside = new TempDirectory();
-            var secret = outside.Write("secret.bin", [1, 2, 3]);
-            System.IO.File.CreateSymbolicLink(Path.Combine(data, "link.bin"), secret);
-            var crc = System.IO.Hashing.Crc32.HashToUInt32([1, 2, 3]);
+            using var store = new TempDirectory();
+            var pe = FakePe.WithVersion(new Version(2, 2, 6, 0));
+            System.IO.File.CreateSymbolicLink(Path.Combine(data, "link.exe"), store.Write("mod/real.exe", pe));
+            var crc = System.IO.Hashing.Crc32.HashToUInt32(pe);
 
-            evaluator.Evaluate($"checksum(\"link.bin\", {crc:X8})").Should().BeFalse();
+            evaluator.Evaluate($"checksum(\"link.exe\", {crc:X8})").Should().BeTrue();
+            evaluator.Evaluate("version(\"link.exe\", \"2.2.6\", ==)").Should().BeTrue();
+            evaluator.Evaluate($"file_size(\"link.exe\", {pe.Length})").Should().BeTrue();
+            evaluator.Evaluate("readable(\"link.exe\")").Should().BeTrue();
+            evaluator.Evaluate("is_executable(\"link.exe\")").Should().BeTrue();
+        }
+
+        [Theory]
+        [InlineData("checksum(\"link.exe\", 00000000)")]
+        [InlineData("version(\"link.exe\", \"1\", ==)")]
+        [InlineData("readable(\"link.exe\")")]
+        [InlineData("is_executable(\"link.exe\")")]
+        [InlineData("file_size(\"link.exe\", 0)")]
+        public void FunctionsTreatASymlinkToAPipeAsAbsent(string condition)
+        {
+            var evaluator = InDataFolder(out _, out var data);
+            using var elsewhere = new TempDirectory();
+            System.IO.File.CreateSymbolicLink(Path.Combine(data, "link.exe"), elsewhere.CreateFifo("pipe"));
+
+            EvalWithin(evaluator, condition).Should().BeFalse();
+        }
+
+        [Theory]
+        [InlineData("checksum(\"../x.exe\\0\", 00000000)")]
+        [InlineData("file(\"../x.exe\\0\")")]
+        [InlineData("readable(\"../x.exe\\0\")")]
+        [InlineData("is_executable(\"../x.exe\\0\")")]
+        [InlineData("version(\"../x.exe\\0\", \"1\", ==)")]
+        [InlineData("file_size(\"../x.exe\\0\", 0)")]
+        public void AConditionPathHoldingANulDoesNotHoldAndDoesNotThrow(string condition)
+        {
+            var evaluator = InDataFolder(out _, out _);
+            _data.Write("x.exe");
+
+            evaluator.Evaluate(condition.Replace("\\0", "\0")).Should().BeFalse();
         }
 
         [Fact]

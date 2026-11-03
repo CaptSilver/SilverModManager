@@ -50,19 +50,19 @@ public static class ConditionPaths
         Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(Path.GetFullPath(dataDirectory))) ?? Path.GetFullPath(dataDirectory);
 
     /// <summary>
-    /// Whether <paramref name="name"/> is a bare file name: not empty, no separator, not rooted, not <c>.</c> or
+    /// Whether <paramref name="name"/> is a bare file name: not empty, no separator, not rooted, no NUL, not <c>.</c> or
     /// <c>..</c>. Plugin lookups take nothing else.
     /// </summary>
     public static bool IsPlainFileName(string name) =>
-        name.Length > 0 && name is not ("." or "..") && name.AsSpan().IndexOfAny('/', '\\') < 0;
+        name.Length > 0 && name is not ("." or "..") && name.AsSpan().IndexOfAny('/', '\\', '\0') < 0;
 
     /// <summary>
     /// Whether <paramref name="path"/> is a regular file that is safe to open. A pipe, socket or device is not, since
-    /// opening one can block; a symbolic link counts only when it ends at a regular file inside the game root of
-    /// <paramref name="dataDirectory"/>. Callers test this before every <c>OpenRead</c> of a path a condition named.
+    /// opening one can block; a symbolic link counts when it ends at a regular file, wherever that is (the symlink
+    /// deployment backend links into the staging store). Callers test this before every <c>OpenRead</c> of a path a
+    /// condition named.
     /// </summary>
-    public static bool IsRegularFile(string path, string dataDirectory) =>
-        RegularFiles.IsRegular(path, GameRoot(dataDirectory));
+    public static bool IsRegularFile(string path) => RegularFiles.IsRegular(path);
 
     /// <summary>
     /// The names in the folder <paramref name="parent"/> of <paramref name="dataDirectory"/> (files and folders),
@@ -127,11 +127,13 @@ public static class ConditionPaths
 
     /// <summary>
     /// The folder to walk from and the segments to follow, with <c>.</c> and <c>..</c> folded away. Null when the path
-    /// is rooted or leaves the game root. The folder is the Data folder, or the game root when the path climbed out
+    /// is rooted, holds a NUL or leaves the game root. The folder is the Data folder, or the game root when the path climbed out
     /// of Data.
     /// </summary>
     private static (string Start, string[] Segments)? Normalise(string dataDirectory, string relativePath)
     {
+        if (relativePath.Contains('\0')) return null;
+
         // Masterlist paths come from Windows, where "..\\TESV.exe" names the game's executable.
         relativePath = relativePath.Replace('\\', '/');
         if (relativePath.StartsWith('/') || (relativePath.Length >= 2 && relativePath[1] == ':' && char.IsAsciiLetter(relativePath[0])))

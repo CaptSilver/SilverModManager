@@ -626,6 +626,25 @@ public class LootDatabaseTests
         }
 
         [Fact]
+        public void ShouldNotLetAPluginNameThatParsesAsMoreConditionsPassTheChecksum()
+        {
+            using var root = new TempDirectory();
+            var data = root.CreateDirectory("Data");
+            root.Write("Data/x");
+            var database = new LootDatabase(new ConditionEvaluator(new FakeConditionContext(data)));
+            const string name = "A\", 0000002A) or file(\"x\") or checksum(\"B";
+            database.LoadMasterlist($$"""
+                plugins:
+                  - name: '{{name}}'
+                    dirty: [{crc: 0x2A, util: TES4Edit}]
+                """);
+
+            var (metadata, _) = database.PluginMetadata(name, MergeMode.WithUserMetadata, EvalMode.Evaluate);
+
+            metadata.Should().BeNull();
+        }
+
+        [Fact]
         public void EvaluateShouldReportNullWithoutAnEvaluator()
         {
             new LootDatabase().Evaluate("file(\"a\")").Should().BeNull();

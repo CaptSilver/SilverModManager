@@ -86,6 +86,7 @@ public class ConditionPathsTests : IDisposable
     [InlineData("..", false)]
     [InlineData(".", false)]
     [InlineData("", false)]
+    [InlineData("A\0.esp", false)]
     public void IsPlainFileName_AcceptsOnlyANameWithNoSeparator(string name, bool expected) =>
         ConditionPaths.IsPlainFileName(name).Should().Be(expected);
 
@@ -95,9 +96,9 @@ public class ConditionPathsTests : IDisposable
         var file = _data.Write("a.esp");
         var folder = _data.CreateDirectory("Meshes");
 
-        ConditionPaths.IsRegularFile(file, _data.Path).Should().BeTrue();
-        ConditionPaths.IsRegularFile(folder, _data.Path).Should().BeFalse();
-        ConditionPaths.IsRegularFile(Path.Combine(_data.Path, "missing.esp"), _data.Path).Should().BeFalse();
+        ConditionPaths.IsRegularFile(file).Should().BeTrue();
+        ConditionPaths.IsRegularFile(folder).Should().BeFalse();
+        ConditionPaths.IsRegularFile(Path.Combine(_data.Path, "missing.esp")).Should().BeFalse();
     }
 
     [Fact]
@@ -105,21 +106,49 @@ public class ConditionPathsTests : IDisposable
     {
         var fifo = _data.CreateFifo("pipe.esp");
 
-        ConditionPaths.IsRegularFile(fifo, _data.Path).Should().BeFalse();
+        ConditionPaths.IsRegularFile(fifo).Should().BeFalse();
     }
 
     [Fact]
-    public void IsRegularFile_FollowsASymlinkOnlyWhileItStaysInTheGameRoot()
+    public void IsRegularFile_FollowsASymlinkIntoAFolderOutsideTheGameRoot()
+    {
+        // The symlink deployment backend links each file to its copy in the staging store.
+        var data = _data.CreateDirectory("Game/Data");
+        using var store = new TempDirectory();
+        var staged = store.Write("mod/plugin.esp", [1, 2, 3]);
+        System.IO.File.CreateSymbolicLink(Path.Combine(data, "plugin.esp"), staged);
+
+        ConditionPaths.IsRegularFile(Path.Combine(data, "plugin.esp")).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsRegularFile_FalseForASymlinkToAFifo()
     {
         var data = _data.CreateDirectory("Data");
-        var inside = _data.Write("real.exe");
-        using var outside = new TempDirectory();
-        var elsewhere = outside.Write("secret");
-        System.IO.File.CreateSymbolicLink(Path.Combine(data, "in.exe"), inside);
-        System.IO.File.CreateSymbolicLink(Path.Combine(data, "out"), elsewhere);
+        using var elsewhere = new TempDirectory();
+        var fifo = elsewhere.CreateFifo("pipe");
+        System.IO.File.CreateSymbolicLink(Path.Combine(data, "link.esp"), fifo);
 
-        ConditionPaths.IsRegularFile(Path.Combine(data, "in.exe"), data).Should().BeTrue();
-        ConditionPaths.IsRegularFile(Path.Combine(data, "out"), data).Should().BeFalse();
+        var task = Task.Run(() => ConditionPaths.IsRegularFile(Path.Combine(data, "link.esp")));
+        task.Wait(TimeSpan.FromSeconds(10)).Should().BeTrue("a pipe must not make the check block");
+        task.Result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsRegularFile_FalseForAPathHoldingANul()
+    {
+        var file = _data.Write("x.exe");
+
+        ConditionPaths.IsRegularFile(file + "\0").Should().BeFalse();
+    }
+
+    [Fact]
+    public void Resolve_RefusesAPathHoldingANul()
+    {
+        _data.Write("x.exe");
+
+        ConditionPaths.Resolve(_data.Path, "../x.exe\0", tryGhost: false).Should().BeNull();
+        ConditionPaths.Resolve(_data.Path, "x.exe\0", tryGhost: false).Should().BeNull();
     }
 
     [Fact]
