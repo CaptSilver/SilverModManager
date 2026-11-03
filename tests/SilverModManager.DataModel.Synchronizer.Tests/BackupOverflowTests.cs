@@ -987,14 +987,14 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         (GameDir / "ext0.bin").Delete();
         var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
         Synchronizer.ProcessSyncTree(tree);
-        tree[path].ProvidedByOverrides.Should().BeTrue("the Overrides row is the winner");
+        tree[path].PlayerDeleted.Should().BeTrue("the Overrides row is the winner");
         tree[path].Actions.Should().Be(Actions.AddReifiedDelete, "the Overrides row is dropped, whatever lies under it");
 
         loadout = await Synchronizer.Synchronize(Refresh(loadout));
 
         var next = await Synchronizer.BuildSyncTree(Refresh(loadout));
         Synchronizer.ProcessSyncTree(next);
-        next[path].ProvidedByOverrides.Should().BeFalse();
+        next[path].PlayerDeleted.Should().BeFalse();
         next[path].Actions.Should().Be(Actions.ExtractToDisk, "the mod's copy is deployed again");
     }
 

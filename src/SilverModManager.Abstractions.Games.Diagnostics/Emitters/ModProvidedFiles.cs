@@ -12,7 +12,7 @@ namespace SilverModManager.Abstractions.Diagnostics.Emitters;
 /// something the user installed, so it does not count as provided.
 /// </summary>
 /// <remarks>
-/// <see cref="SyncNode.ProvidedByOverrides"/> is only set for a node whose file is missing from disk, so the group
+/// <see cref="SyncNode.PlayerDeleted"/> is only set for a node whose file is missing from disk, so the group
 /// is looked up here through the item the node's loadout side points at.
 /// </remarks>
 public sealed class ModProvidedFiles

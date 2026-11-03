@@ -797,6 +797,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         node.HaveDisk.Should().BeFalse();
         node.IdentityUnresolved.Should().BeTrue("the previous state and the loadout name it by kinds no relation joins");
         node.Actions.Should().HaveFlag(Actions.WarnOfUnableToExtract);
+        node.PlayerDeleted.Should().BeFalse("the store's file list names the path, so Steam can put it back");
 
         var diagnostic = (await WhatTheMissingGameFilesEmitterSays(loadout, tree)).Should().ContainSingle().Subject;
 

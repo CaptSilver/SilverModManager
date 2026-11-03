@@ -133,11 +133,11 @@ public record struct SyncNode
     public Actions Actions { get; set; }
 
     /// <summary>
-    /// True when the loadout side of this node is a row of the Overrides group: a file adopted from the game
-    /// folder or kept from an edit, not a mod's. Only set for a node that is missing from disk but was applied
-    /// before.
+    /// True when the file was applied before, is gone from disk, and the row that provides it is the player's, not a
+    /// mod's: an Overrides row, or a Game row of an install the store's file list does not cover. Only set for a
+    /// node that is missing from disk but has a previous entry.
     /// </summary>
-    public bool ProvidedByOverrides { get; set; }
+    public bool PlayerDeleted { get; set; }
 
     /// <summary>
     /// True when two present parts carry identities of different kinds and no recorded digest converts one into the

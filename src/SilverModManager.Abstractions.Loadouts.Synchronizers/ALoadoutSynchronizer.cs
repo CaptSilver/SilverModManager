@@ -232,7 +232,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         MergeStates(latestDiskState, previousDiskState, syncTree);
-        MarkMissingOverridesFiles(syncTree, loadout);
+        MarkPlayerDeletions(syncTree, loadout);
         NameTheSameBytesByOneKind(syncTree, _identityResolver.Scoped(IdentitiesToResolve(syncTree)));
         AdoptGameInstalledFiles(syncTree, loadout);
         LeaveUserProtectedFilesAlone(syncTree, loadout);
@@ -240,34 +240,64 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <summary>
-    /// Flags the nodes whose winning loadout row is in the Overrides group and whose file is gone from disk after
-    /// an earlier apply. Those are the player's deletions to take in: the row came from the game folder (or an
-    /// edit), so it is not a mod to re-deploy, and its bytes may never have been copied into the store (adopted in
-    /// place), which leaves nothing to restore it from. A mod that provides the same path underneath is not
-    /// consulted: the Overrides row is dropped and the mod's copy comes back on the next sync.
+    /// Flags the nodes the player deleted from disk after an earlier apply, when the row that provides the file is
+    /// the player's and not a mod's, so there is nothing to restore it from and nothing to re-deploy:
+    /// <list type="bullet">
+    /// <item>An Overrides row: adopted from the game folder (its bytes may never have been copied into the store) or
+    /// kept from an edit. A mod that provides the same path underneath is not consulted: the Overrides row is dropped
+    /// and the mod's copy comes back on the next sync.</item>
+    /// <item>A Game row the store's file list does not name. With no depot manifest for the install, the baseline
+    /// recorded whatever was on disk, old mod files included, and only the disk vouched for them. A path the list
+    /// does name stays a warning: Steam can put it back.</item>
+    /// </list>
     /// </summary>
-    private static void MarkMissingOverridesFiles(Dictionary<GamePath, SyncNode> tree, Loadout.ReadOnly loadout)
+    private void MarkPlayerDeletions(Dictionary<GamePath, SyncNode> tree, Loadout.ReadOnly loadout)
     {
         EntityId? overridesId = null;
+        Dictionary<string, GameFileRecord>? listed = null;
         foreach (var path in tree.Keys.ToArray())
         {
             ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(tree, path);
-            if (node.SourceItemType != LoadoutSourceItemType.Loadout || node.HaveDisk || !node.HavePrevious || !node.Loadout.HaveEntityId) continue;
+            if (node.HaveDisk || !node.HavePrevious) continue;
 
-            overridesId ??= OverridesGroupLookup.Find(loadout);
-            if (overridesId.Value.Value == 0) return;
-            node.ProvidedByOverrides = OverridesGroupLookup.IsInGroup(loadout.Db, node.Loadout.EntityId, overridesId.Value);
+            switch (node.SourceItemType)
+            {
+                case LoadoutSourceItemType.Loadout when node.Loadout.HaveEntityId:
+                    overridesId ??= OverridesGroupLookup.Find(loadout);
+                    if (overridesId.Value.Value == 0) continue;
+                    node.PlayerDeleted = OverridesGroupLookup.IsInGroup(loadout.Db, node.Loadout.EntityId, overridesId.Value);
+                    break;
+                case LoadoutSourceItemType.Game:
+                    listed ??= ListedGameFiles(loadout.InstallationInstance);
+                    node.PlayerDeleted = !listed.ContainsKey(path.Path.ToString());
+                    break;
+            }
         }
     }
 
     /// <summary>
-    /// A file a loadout row names but the store holds no copy of cannot be written to disk. When the row is the
-    /// Overrides' and the file is gone from disk, that is the player deleting it, so the row is dropped instead of
-    /// waiting for an archive that never existed. A mod's file stays a warning: its archive is the library's to restore.
+    /// The store's file list for the installed build (depot manifests of its locator ids plus the baseline's attested
+    /// rows), by path. A Snapshot baseline contributes nothing to it.
     /// </summary>
-    private static void TakeInMissingOverridesFile(ref SyncNode node)
+    private Dictionary<string, GameFileRecord> ListedGameFiles(GameInstallation installation)
     {
-        if (node.ProvidedByOverrides && node.Actions == Actions.WarnOfUnableToExtract)
+        var listed = new Dictionary<string, GameFileRecord>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in _fileHashService.GetGameFiles(installation))
+        {
+            if (file.Path.LocationId == LocationId.Game) listed[file.Path.Path.ToString()] = file;
+        }
+        return listed;
+    }
+
+    /// <summary>
+    /// A file a loadout row names but the store holds no copy of cannot be written to disk. When the file is gone
+    /// from disk and the row is the player's (see <see cref="MarkPlayerDeletions"/>), that is the player deleting it,
+    /// so the row is dropped instead of waiting for an archive that never existed. A mod's file stays a warning: its
+    /// archive is the library's to restore.
+    /// </summary>
+    private static void TakePlayerDeletion(ref SyncNode node)
+    {
+        if (node.PlayerDeleted && node.Actions == Actions.WarnOfUnableToExtract)
             node.Actions = Actions.AddReifiedDelete;
     }
 
@@ -704,7 +734,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         item.Signature = signature;
         item.Actions = ActionMapping.MapActions(signature);
-        TakeInMissingOverridesFile(ref item);
+        TakePlayerDeletion(ref item);
 
         // A deployed file on a protected path that no longer matches what the last sync wrote has been
         // rewritten by the game. It is the player's now: whether or not the loadout still provides it, the
@@ -814,7 +844,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
                 case Actions.AddReifiedDelete:
                     job?.SetStatus(SyncPhases.UpdatingDeletedFiles);
-                    foreach (var group in groups) group.Backend.AddReifiedDeletes(context, group.Nodes);
+                    foreach (var group in groups)
+                    {
+                        foreach (var (path, node) in group.Nodes.Where(n => n.Value.PlayerDeleted))
+                            Logger.LogInformation("Recording the player's deletion of {Path}: it is gone from the game folder and no mod provides it", path);
+                        group.Backend.AddReifiedDeletes(context, group.Nodes);
+                    }
                     break;
 
                 case Actions.WarnOfUnableToExtract:
@@ -1383,11 +1418,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var all = measured.ToArray();
         if (!all.Any(c => c.Kind == BackupOverflowKind.Appeared && c.Path.LocationId == LocationId.Game)) return all;
 
-        var listed = new Dictionary<string, GameFileRecord>(StringComparer.OrdinalIgnoreCase);
-        foreach (var file in _fileHashService.GetGameFiles(installation))
-        {
-            if (file.Path.LocationId == LocationId.Game) listed[file.Path.Path.ToString()] = file;
-        }
+        var listed = ListedGameFiles(installation);
 
         return all.Select(c => c.Kind == BackupOverflowKind.Appeared && IsListed(listed, c.Path, c.Size, c.Identity) ? c with { Kind = BackupOverflowKind.GameFileChanged } : c).ToArray();
     }
@@ -1955,10 +1986,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         loadout = loadout.Rebase();
         if (!LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id).TryGetFirst(out var overrides)) return;
 
-        // A sync would put these on its delete path too, but it would also deploy the loadout. Needing a previous
+        // A sync would put these on its delete path too, but it would also deploy the loadout. Only Overrides rows
+        // are dropped here: a Game row has no entity of its own. Needing a previous
         // entry keeps a file that was never on disk, such as one still waiting to be deployed, in the list.
         var gone = BuildSyncTreeFromIndex(loadout, metadata).Values
-            .Where(node => node.ProvidedByOverrides)
+            .Where(node => node.PlayerDeleted && node.Loadout.HaveEntityId)
             .Select(node => node.Loadout.EntityId)
             .ToArray();
         if (gone.Length == 0) return;
