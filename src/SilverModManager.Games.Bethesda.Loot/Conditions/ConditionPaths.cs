@@ -14,21 +14,22 @@ public static class ConditionPaths
     private const string GhostSuffix = ".ghost";
 
     /// <summary>
-    /// The path on disk for <paramref name="relativePath"/> under <paramref name="dataDirectory"/>. The exact
-    /// spelling wins; otherwise each segment is matched against its folder's entries ignoring case, and with
-    /// <paramref name="tryGhost"/> the same is repeated for <c>&lt;path&gt;.ghost</c>. When nothing exists the
-    /// result is the exact join (the ghosted one with <paramref name="tryGhost"/>), so callers can test it as
-    /// they would any other path.
+    /// The path on disk for <paramref name="relativePath"/> under <paramref name="dataDirectory"/>, or null when the
+    /// path is refused. <c>..</c> is resolved lexically, so a masterlist can reach the game's own files from Data
+    /// (<c>..\\TESV.exe</c>), but the result has to stay inside the game root, the parent of the Data folder; a
+    /// rooted path or one that climbs above that root is refused. The exact spelling wins; otherwise each segment is
+    /// matched against its folder's entries ignoring case, and with <paramref name="tryGhost"/> the same is repeated
+    /// for <c>&lt;path&gt;.ghost</c>. When nothing exists the result is the exact join (the ghosted one with
+    /// <paramref name="tryGhost"/>), so callers can test it as they would any other path.
     /// </summary>
-    public static string Resolve(string dataDirectory, string relativePath, bool tryGhost)
+    public static string? Resolve(string dataDirectory, string relativePath, bool tryGhost)
     {
-        // Masterlist paths come from Windows, where "..\\TESV.exe" names the game's executable.
-        relativePath = relativePath.Replace('\\', '/');
-        var exact = Path.Combine(dataDirectory, relativePath);
+        if (Normalise(dataDirectory, relativePath) is not var (start, segments)) return null;
+
+        var exact = segments.Length == 0 ? start : Path.Combine([start, .. segments]);
         if (Exists(exact)) return exact;
 
-        var segments = Segments(relativePath);
-        if (FindIgnoringCase(dataDirectory, segments) is { } found) return found;
+        if (FindIgnoringCase(start, segments) is { } found) return found;
         if (!tryGhost) return exact;
 
         var ghosted = exact + GhostSuffix;
@@ -36,12 +37,32 @@ public static class ConditionPaths
 
         if (segments.Length > 0)
         {
-            segments[^1] += GhostSuffix;
-            if (FindIgnoringCase(dataDirectory, segments) is { } foundGhost) return foundGhost;
+            var ghostSegments = (string[])segments.Clone();
+            ghostSegments[^1] += GhostSuffix;
+            if (FindIgnoringCase(start, ghostSegments) is { } foundGhost) return foundGhost;
         }
 
         return ghosted;
     }
+
+    /// <summary>The game's folder, the parent of <paramref name="dataDirectory"/>, which no condition path may leave.</summary>
+    public static string GameRoot(string dataDirectory) =>
+        Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(Path.GetFullPath(dataDirectory))) ?? Path.GetFullPath(dataDirectory);
+
+    /// <summary>
+    /// Whether <paramref name="name"/> is a bare file name: not empty, no separator, not rooted, not <c>.</c> or
+    /// <c>..</c>. Plugin lookups take nothing else.
+    /// </summary>
+    public static bool IsPlainFileName(string name) =>
+        name.Length > 0 && name is not ("." or "..") && name.AsSpan().IndexOfAny('/', '\\') < 0;
+
+    /// <summary>
+    /// Whether <paramref name="path"/> is a regular file that is safe to open. A pipe, socket or device is not, since
+    /// opening one can block; a symbolic link counts only when it ends at a regular file inside the game root of
+    /// <paramref name="dataDirectory"/>. Callers test this before every <c>OpenRead</c> of a path a condition named.
+    /// </summary>
+    public static bool IsRegularFile(string path, string dataDirectory) =>
+        RegularFiles.IsRegular(path, GameRoot(dataDirectory));
 
     /// <summary>
     /// The names in the folder <paramref name="parent"/> of <paramref name="dataDirectory"/> (files and folders),
@@ -50,7 +71,7 @@ public static class ConditionPaths
     public static IReadOnlyList<string> ListDirectory(string dataDirectory, string parent, LootGame game)
     {
         var directory = Resolve(dataDirectory, parent, tryGhost: false);
-        if (!Directory.Exists(directory)) return [];
+        if (directory is null || !Directory.Exists(directory)) return [];
 
         try
         {
@@ -104,8 +125,31 @@ public static class ConditionPaths
 
     private static bool Exists(string path) => File.Exists(path) || Directory.Exists(path);
 
-    private static string[] Segments(string relativePath) =>
-        relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries).Where(s => s != ".").ToArray();
+    /// <summary>
+    /// The folder to walk from and the segments to follow, with <c>.</c> and <c>..</c> folded away. Null when the path
+    /// is rooted or leaves the game root. The folder is the Data folder, or the game root when the path climbed out
+    /// of Data.
+    /// </summary>
+    private static (string Start, string[] Segments)? Normalise(string dataDirectory, string relativePath)
+    {
+        // Masterlist paths come from Windows, where "..\\TESV.exe" names the game's executable.
+        relativePath = relativePath.Replace('\\', '/');
+        if (relativePath.StartsWith('/') || (relativePath.Length >= 2 && relativePath[1] == ':' && char.IsAsciiLetter(relativePath[0])))
+            return null;
+
+        var kept = new List<string>();
+        var climbed = 0;
+        foreach (var segment in relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (segment == ".") continue;
+            if (segment != "..") kept.Add(segment);
+            else if (kept.Count > 0) kept.RemoveAt(kept.Count - 1);
+            else if (++climbed > 1) return null;
+        }
+
+        var start = climbed == 0 ? dataDirectory : GameRoot(dataDirectory);
+        return (start, kept.ToArray());
+    }
 
     /// <summary>Walks the segments from <paramref name="root"/>, taking the exact name when present and else the first entry that matches ignoring case.</summary>
     private static string? FindIgnoringCase(string root, string[] segments)

@@ -61,10 +61,13 @@ internal sealed class LootConditionContext : IConditionContext
 
     private PluginFacts ReadFromDisk(string name)
     {
+        // A plugin is a bare file name in the Data folder; a path, or a pipe or device in its place, is not one.
+        if (!ConditionPaths.IsPlainFileName(name)) return default;
+
         var path = ConditionPaths.Resolve(DataDirectory, name, ConditionPaths.ShouldTryGhost(Game, name));
         try
         {
-            if (!System.IO.File.Exists(path)) return default;
+            if (path is null || !ConditionPaths.IsRegularFile(path, DataDirectory)) return default;
 
             using var stream = System.IO.File.OpenRead(path);
             var header = PluginHeaderReader.Read(stream, _game.HeaderFormat, name);

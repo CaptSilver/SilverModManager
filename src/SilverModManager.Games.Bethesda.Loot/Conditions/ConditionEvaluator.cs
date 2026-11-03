@@ -1,5 +1,6 @@
 using System.IO.Hashing;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Games.Bethesda.Loot.Database;
 using NexusMods.Paths;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
@@ -25,9 +26,13 @@ public sealed class ConditionEvaluator : IConditionEvaluator
     private readonly Dictionary<string, uint> _checksums = [];
     private readonly Dictionary<ConditionFunction, bool> _results = [];
 
-    public ConditionEvaluator(IConditionContext context)
+    private readonly ILogger? _logger;
+    private readonly HashSet<string> _refused = [];
+
+    public ConditionEvaluator(IConditionContext context, ILogger? logger = null)
     {
         _context = context;
+        _logger = logger;
         _active = new HashSet<string>(context.ActivePlugins.Select(name => name.ToLowerInvariant()));
     }
 
@@ -39,7 +44,7 @@ public sealed class ConditionEvaluator : IConditionEvaluator
         return Evaluate(expression);
     }
 
-    private bool Evaluate(ConditionExpression expression)
+    public bool Evaluate(ConditionExpression expression)
     {
         foreach (var compound in expression.Alternatives)
         {
@@ -70,13 +75,13 @@ public sealed class ConditionEvaluator : IConditionEvaluator
 
     private bool Compute(ConditionFunction function) => function switch
     {
-        ConditionFunction.FilePath f => Exists(Resolve(f.Path)),
+        ConditionFunction.FilePath f => Resolve(f.Path) is { } path && Exists(path),
         ConditionFunction.FileRegex f => Entries(f.ParentPath).Any(IsMatch(f.Pattern)),
         ConditionFunction.Many f => Entries(f.ParentPath).Where(IsMatch(f.Pattern)).Take(2).Count() == 2,
         ConditionFunction.FileSize f => FileSize(f),
-        ConditionFunction.Readable f => IsReadable(Resolve(f.Path)),
+        ConditionFunction.Readable f => Resolve(f.Path) is { } path && IsReadable(path),
         ConditionFunction.IsExecutable f => IsExecutable(f),
-        ConditionFunction.ActivePath f => _active.Contains(f.Path.ToLowerInvariant()),
+        ConditionFunction.ActivePath f => IsPluginName(f.Path) && _active.Contains(f.Path.ToLowerInvariant()),
         ConditionFunction.ActiveRegex f => _active.Any(IsMatch(f.Pattern)),
         ConditionFunction.ManyActive f => _active.Where(IsMatch(f.Pattern)).Take(2).Count() == 2,
         ConditionFunction.IsMaster f => _context.Game != LootGame.OpenMW && PluginOnDisk(f.Path) && _context.IsMaster(PluginName(f.Path)),
@@ -89,8 +94,31 @@ public sealed class ConditionEvaluator : IConditionEvaluator
         _ => throw new ArgumentOutOfRangeException(nameof(function), function, null),
     };
 
-    private string Resolve(string path) =>
-        ConditionPaths.Resolve(_context.DataDirectory, path, ConditionPaths.ShouldTryGhost(_context.Game, path));
+    /// <summary>The file a condition path names, or null (after a log line, once per path) when the path leaves the game folder.</summary>
+    private string? Resolve(string path)
+    {
+        var resolved = ConditionPaths.Resolve(_context.DataDirectory, path, ConditionPaths.ShouldTryGhost(_context.Game, path));
+        if (resolved is null) Refuse(path, "is rooted or leaves the game folder");
+        return resolved;
+    }
+
+    /// <summary>Plugin lookups take a bare file name, never a path.</summary>
+    private bool IsPluginName(string path)
+    {
+        if (ConditionPaths.IsPlainFileName(path)) return true;
+
+        Refuse(path, "is not a plain plugin file name");
+        return false;
+    }
+
+    private void Refuse(string path, string reason)
+    {
+        if (_refused.Add(path)) _logger?.LogInformation("Condition path \"{Path}\" {Reason}; the condition does not hold", path, reason);
+    }
+
+    /// <summary>The regular file a condition path names, or null when it is missing, refused, or a pipe, device or the like.</summary>
+    private string? ResolveRegularFile(string path) =>
+        Resolve(path) is { } resolved && ConditionPaths.IsRegularFile(resolved, _context.DataDirectory) ? resolved : null;
 
     /// <summary>The name the context knows a plugin by: the path as written, without a <c>.ghost</c> suffix.</summary>
     private string PluginName(string path) => ConditionPaths.NormaliseFileName(_context.Game, path);
@@ -99,7 +127,7 @@ public sealed class ConditionEvaluator : IConditionEvaluator
     /// Like the interpreter, a plugin that is not on disk has no master flag, description or version, whatever the
     /// context knows about it from the loadout.
     /// </summary>
-    private bool PluginOnDisk(string path) => Exists(Resolve(path));
+    private bool PluginOnDisk(string path) => IsPluginName(path) && Resolve(path) is { } resolved && Exists(resolved);
 
     private IReadOnlyList<string> Entries(string parent) =>
         ConditionPaths.ListDirectory(_context.DataDirectory, parent, _context.Game);
@@ -122,11 +150,11 @@ public sealed class ConditionEvaluator : IConditionEvaluator
 
     private bool FileSize(ConditionFunction.FileSize function)
     {
-        var path = Resolve(function.Path);
-        return System.IO.File.Exists(path) && TryRead(function.Path, () => new FileInfo(path).Length) == (long)function.Size;
+        var path = ResolveRegularFile(function.Path);
+        return path is not null && TryRead(function.Path, () => new FileInfo(path).Length) == (long)function.Size;
     }
 
-    private static bool IsReadable(string path)
+    private bool IsReadable(string path)
     {
         try
         {
@@ -137,7 +165,7 @@ public sealed class ConditionEvaluator : IConditionEvaluator
                 return true;
             }
 
-            if (!System.IO.File.Exists(path)) return false;
+            if (!ConditionPaths.IsRegularFile(path, _context.DataDirectory)) return false;
             using var stream = System.IO.File.OpenRead(path);
             return true;
         }
@@ -149,16 +177,16 @@ public sealed class ConditionEvaluator : IConditionEvaluator
 
     private bool IsExecutable(ConditionFunction.IsExecutable function)
     {
-        return ReadFile(Resolve(function.Path), PeFileVersion.IsPortableExecutable);
+        return ReadFile(function.Path, PeFileVersion.IsPortableExecutable);
     }
 
     private bool Checksum(ConditionFunction.Checksum function)
     {
-        var path = Resolve(function.Path);
+        var path = ResolveRegularFile(function.Path);
+        if (path is null) return false;
+
         var key = path.ToLowerInvariant();
         if (_checksums.TryGetValue(key, out var known)) return known == function.Crc;
-
-        if (!System.IO.File.Exists(path)) return false;
 
         var crc = TryRead(function.Path, () => Crc32OfFile(path));
 
@@ -192,23 +220,23 @@ public sealed class ConditionEvaluator : IConditionEvaluator
                 : null;
         }
 
-        return ReadFile(Resolve(path), PeFileVersion.Read) is { } text ? LootVersion.Parse(text) : null;
+        return ReadFile(path, PeFileVersion.Read) is { } text ? LootVersion.Parse(text) : null;
     }
 
     private LootVersion? ReadProductVersion(string path)
     {
-        return ReadFile(Resolve(path), PeFileVersion.ReadProductVersion) is { } text ? LootVersion.Parse(text) : null;
+        return ReadFile(path, PeFileVersion.ReadProductVersion) is { } text ? LootVersion.Parse(text) : null;
     }
 
     /// <summary>
     /// Reads a file's version data. A file that is missing, cannot be opened or fails mid-read yields the default,
     /// which a version condition treats as not holding rather than as an error.
     /// </summary>
-    private static T? ReadFile<T>(string path, Func<Stream, T?> read)
+    private T? ReadFile<T>(string conditionPath, Func<Stream, T?> read)
     {
         try
         {
-            if (!System.IO.File.Exists(path)) return default;
+            if (ResolveRegularFile(conditionPath) is not { } path) return default;
 
             using var stream = System.IO.File.OpenRead(path);
             return read(stream);

@@ -604,6 +604,28 @@ public class LootDatabaseTests
         }
 
         [Fact]
+        public void ShouldOnlyEvaluateTheChecksumWhenAPluginNameHoldsConditionSyntax()
+        {
+            using var root = new TempDirectory();
+            root.Write("x");
+            var data = root.CreateDirectory("Data");
+            var database = new LootDatabase(new ConditionEvaluator(new FakeConditionContext(data)));
+            database.LoadMasterlist("""
+                plugins:
+                  - name: 'A") or file("../x'
+                    dirty: [{crc: 0x2A, util: TES4Edit}]
+                """);
+
+            var (unevaluatedEntry, _) = database.PluginMetadata("A\") or file(\"../x", MergeMode.WithUserMetadata, EvalMode.DoNotEvaluate);
+            unevaluatedEntry!.DirtyInfo.Should().ContainSingle();
+
+            var (metadata, unevaluated) = database.PluginMetadata("A\") or file(\"../x", MergeMode.WithUserMetadata, EvalMode.Evaluate);
+
+            metadata.Should().BeNull();
+            unevaluated.Should().Be(0);
+        }
+
+        [Fact]
         public void EvaluateShouldReportNullWithoutAnEvaluator()
         {
             new LootDatabase().Evaluate("file(\"a\")").Should().BeNull();

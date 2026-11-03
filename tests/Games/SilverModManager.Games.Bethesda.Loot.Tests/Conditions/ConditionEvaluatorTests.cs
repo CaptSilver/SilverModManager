@@ -623,4 +623,127 @@ public class ConditionEvaluatorTests : IDisposable
             for (var i = 0; i < 3; i++) Eval("file(\"a.esp\") and not file(\"b.esp\")").Should().BeTrue();
         }
     }
+
+    public class Containment : ConditionEvaluatorTests
+    {
+        private ConditionEvaluator InDataFolder(out string root, out string data)
+        {
+            root = _data.Path;
+            data = _data.CreateDirectory("Data");
+            return new ConditionEvaluator(new FakeConditionContext(data));
+        }
+
+        // A condition that would block forever on a pipe has to fail the test rather than hang it.
+        private static bool EvalWithin(ConditionEvaluator evaluator, string condition)
+        {
+            var task = Task.Factory.StartNew(() => evaluator.Evaluate(condition), TaskCreationOptions.LongRunning);
+            task.Wait(TimeSpan.FromSeconds(10)).Should().BeTrue("a pipe must not make the condition block");
+            return task.Result;
+        }
+
+        [Fact]
+        public void File_ReachesTheGameRootThroughAParentSegment()
+        {
+            var evaluator = InDataFolder(out _, out _);
+            _data.Write("skse64_loader.exe");
+
+            evaluator.Evaluate("file(\"../skse64_loader.exe\")").Should().BeTrue();
+        }
+
+        [Fact]
+        public void Version_ReadsAFileInTheGameRoot()
+        {
+            var evaluator = InDataFolder(out _, out _);
+            _data.Write("skse64_loader.exe", FakePe.WithVersion(new Version(2, 2, 6, 0)));
+
+            evaluator.Evaluate("version(\"../skse64_loader.exe\", \"2.2.6\", ==)").Should().BeTrue();
+        }
+
+        [Theory]
+        [InlineData("file(\"../../etc/passwd\")")]
+        [InlineData("file(\"/etc/passwd\")")]
+        [InlineData("readable(\"/etc/passwd\")")]
+        [InlineData("checksum(\"/etc/passwd\", 00000000)")]
+        [InlineData("is_executable(\"/etc/passwd\")")]
+        [InlineData("file_size(\"/etc/passwd\", 1)")]
+        public void FunctionsRefuseAPathOutsideTheGameRoot(string condition)
+        {
+            var evaluator = InDataFolder(out _, out _);
+
+            evaluator.Evaluate(condition).Should().BeFalse();
+            evaluator.Evaluate("not " + condition).Should().BeTrue();
+        }
+
+        [Theory]
+        [InlineData("checksum(\"pipe.esp\", 00000000)")]
+        [InlineData("version(\"pipe.exe\", \"1\", ==)")]
+        [InlineData("product_version(\"pipe.exe\", \"1\", ==)")]
+        [InlineData("readable(\"pipe.exe\")")]
+        [InlineData("is_executable(\"pipe.exe\")")]
+        public void FunctionsTreatAPipeInTheDataFolderAsAbsent(string condition)
+        {
+            var evaluator = InDataFolder(out _, out _);
+            _data.CreateFifo("Data/pipe.esp");
+            _data.CreateFifo("Data/pipe.exe");
+
+            EvalWithin(evaluator, condition).Should().BeFalse();
+        }
+
+        [Fact]
+        public void FileSizeTreatsAPipeAsAbsent()
+        {
+            var evaluator = InDataFolder(out _, out _);
+            _data.CreateFifo("Data/pipe.bin");
+
+            EvalWithin(evaluator, "file_size(\"pipe.bin\", 0)").Should().BeFalse();
+        }
+
+        [Fact]
+        public void ChecksumTreatsAPipeInTheGameRootAsAbsent()
+        {
+            var evaluator = InDataFolder(out _, out _);
+            _data.CreateFifo("pipe.exe");
+
+            EvalWithin(evaluator, "checksum(\"../pipe.exe\", 00000000)").Should().BeFalse();
+        }
+
+        [Fact]
+        public void ChecksumDoesNotFollowASymlinkOutOfTheGameRoot()
+        {
+            var evaluator = InDataFolder(out _, out var data);
+            using var outside = new TempDirectory();
+            var secret = outside.Write("secret.bin", [1, 2, 3]);
+            System.IO.File.CreateSymbolicLink(Path.Combine(data, "link.bin"), secret);
+            var crc = System.IO.Hashing.Crc32.HashToUInt32([1, 2, 3]);
+
+            evaluator.Evaluate($"checksum(\"link.bin\", {crc:X8})").Should().BeFalse();
+        }
+
+        [Fact]
+        public void ActiveRefusesAPathEvenWhenTheContextListsIt()
+        {
+            _context.Active.Add("../x.esp");
+            var evaluator = new ConditionEvaluator(_context);
+
+            evaluator.Evaluate("active(\"../x.esp\")").Should().BeFalse();
+        }
+
+        [Fact]
+        public void PluginLookupsRefuseAPathWithASeparator()
+        {
+            _data.Write("x.esp");
+            var data = _data.CreateDirectory("Data");
+            _data.Write("Data/sub/y.esp");
+            var context = new FakeConditionContext(data);
+            context.Plugins["../x.esp"] = (true, "Version: 1.0");
+            context.Plugins["sub/y.esp"] = (true, "Version: 1.0");
+            var evaluator = new ConditionEvaluator(context);
+
+            evaluator.Evaluate("is_master(\"../x.esp\")").Should().BeFalse();
+            evaluator.Evaluate("is_master(\"sub/y.esp\")").Should().BeFalse();
+            evaluator.Evaluate("version(\"../x.esp\", \"1.0\", ==)").Should().BeFalse();
+            evaluator.Evaluate("description_contains(\"../x.esp\", \"Version\")").Should().BeFalse();
+            context.IsMasterCalls.Should().Be(0);
+        }
+    }
 }

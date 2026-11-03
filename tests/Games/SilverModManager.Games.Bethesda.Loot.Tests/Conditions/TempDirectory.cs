@@ -29,6 +29,17 @@ internal sealed class TempDirectory : IDisposable
         return full;
     }
 
+    /// <summary>A named pipe at <paramref name="relativePath"/>; opening it for reading blocks until something opens it for writing.</summary>
+    public string CreateFifo(string relativePath)
+    {
+        var full = System.IO.Path.Combine(Path, relativePath);
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(full) ?? Path);
+        using var process = System.Diagnostics.Process.Start("mkfifo", full) ?? throw new InvalidOperationException("mkfifo did not start");
+        process.WaitForExit();
+        if (process.ExitCode != 0) throw new InvalidOperationException($"mkfifo exited with {process.ExitCode}");
+        return full;
+    }
+
     public void Dispose()
     {
         try

@@ -39,8 +39,87 @@ public class ConditionPathsTests : IDisposable
         _data.Write("TESV.exe");
         var data = _data.CreateDirectory("Data");
 
-        ConditionPaths.Resolve(data, "..\\tesv.exe", tryGhost: false).Should().Be(Path.Combine(data, "..", "TESV.exe"));
-        System.IO.File.Exists(ConditionPaths.Resolve(data, "..\\tesv.exe", tryGhost: false)).Should().BeTrue();
+        ConditionPaths.Resolve(data, "..\\tesv.exe", tryGhost: false).Should().Be(Path.Combine(_data.Path, "TESV.exe"));
+    }
+
+    [Fact]
+    public void Resolve_ReachesTheGameRootThroughAParentSegmentWithoutDroppingTheGhostRetry()
+    {
+        var ghost = _data.Write("Data/Mod.esp.ghost");
+        var data = Path.Combine(_data.Path, "Data");
+
+        ConditionPaths.Resolve(data, "../data/mod.esp", tryGhost: true).Should().Be(ghost);
+    }
+
+    [Fact]
+    public void Resolve_ResolvesParentSegmentsInTheMiddleOfAPath()
+    {
+        var file = _data.Write("skse64_loader.exe");
+        var data = _data.CreateDirectory("Data");
+
+        ConditionPaths.Resolve(data, "skse/../../skse64_loader.exe", tryGhost: false).Should().Be(file);
+    }
+
+    [Theory]
+    [InlineData("../../etc/passwd")]
+    [InlineData("..\\..\\etc\\passwd")]
+    [InlineData("skse/../../../x")]
+    [InlineData("../Data/../../x")]
+    [InlineData("/etc/passwd")]
+    [InlineData("\\etc\\passwd")]
+    [InlineData("C:\\Windows\\x")]
+    public void Resolve_RefusesAPathAboveTheGameRootOrOutsideIt(string path)
+    {
+        _data.Write("x");
+        var data = _data.CreateDirectory("Data");
+
+        ConditionPaths.Resolve(data, path, tryGhost: true).Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("A.esp", true)]
+    [InlineData("A B.esp", true)]
+    [InlineData("../A.esp", false)]
+    [InlineData("sub/A.esp", false)]
+    [InlineData("sub\\A.esp", false)]
+    [InlineData("/A.esp", false)]
+    [InlineData("..", false)]
+    [InlineData(".", false)]
+    [InlineData("", false)]
+    public void IsPlainFileName_AcceptsOnlyANameWithNoSeparator(string name, bool expected) =>
+        ConditionPaths.IsPlainFileName(name).Should().Be(expected);
+
+    [Fact]
+    public void IsRegularFile_TrueForAFileAndFalseForAFolderAndAMissingPath()
+    {
+        var file = _data.Write("a.esp");
+        var folder = _data.CreateDirectory("Meshes");
+
+        ConditionPaths.IsRegularFile(file, _data.Path).Should().BeTrue();
+        ConditionPaths.IsRegularFile(folder, _data.Path).Should().BeFalse();
+        ConditionPaths.IsRegularFile(Path.Combine(_data.Path, "missing.esp"), _data.Path).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsRegularFile_FalseForAFifo()
+    {
+        var fifo = _data.CreateFifo("pipe.esp");
+
+        ConditionPaths.IsRegularFile(fifo, _data.Path).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsRegularFile_FollowsASymlinkOnlyWhileItStaysInTheGameRoot()
+    {
+        var data = _data.CreateDirectory("Data");
+        var inside = _data.Write("real.exe");
+        using var outside = new TempDirectory();
+        var elsewhere = outside.Write("secret");
+        System.IO.File.CreateSymbolicLink(Path.Combine(data, "in.exe"), inside);
+        System.IO.File.CreateSymbolicLink(Path.Combine(data, "out"), elsewhere);
+
+        ConditionPaths.IsRegularFile(Path.Combine(data, "in.exe"), data).Should().BeTrue();
+        ConditionPaths.IsRegularFile(Path.Combine(data, "out"), data).Should().BeFalse();
     }
 
     [Fact]

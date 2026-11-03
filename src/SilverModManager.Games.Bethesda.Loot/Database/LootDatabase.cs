@@ -135,13 +135,15 @@ public sealed class LootDatabase(IConditionEvaluator? evaluator = null)
     /// Whether <paramref name="condition"/> holds, or null when it cannot be told: there is no evaluator, the
     /// text is not a condition, or a file it needs could not be read.
     /// </summary>
-    public bool? Evaluate(string condition)
+    public bool? Evaluate(string condition) => Evaluate(ev => ev.Evaluate(condition));
+
+    private bool? Evaluate(Func<IConditionEvaluator, bool> evaluate)
     {
         if (evaluator is null) return null;
 
         try
         {
-            return evaluator.Evaluate(condition);
+            return evaluate(evaluator);
         }
         catch (Exception e) when (e is ConditionEvaluationException or ConditionParseException)
         {
@@ -164,13 +166,21 @@ public sealed class LootDatabase(IConditionEvaluator? evaluator = null)
             return false;
         }
 
+        bool HoldsCleaning(string name, PluginCleaningData item)
+        {
+            if (Evaluate(ev => ev.Evaluate(CleaningCondition(name, item))) is { } holds) return holds;
+
+            dropped++;
+            return false;
+        }
+
         EquatableArray<T> Keep<T>(EquatableArray<T> items, Func<T, string?> condition) =>
             items.Where(item => Holds(condition(item))).ToArray();
 
         // LOOT wraps every cleaning entry in checksum(<plugin>, <crc>) and keeps it only when the plugin's
         // CRC matches, and the entry's own condition has to hold as well.
         EquatableArray<PluginCleaningData> KeepCleaning(EquatableArray<PluginCleaningData> items) =>
-            items.Where(item => Holds(CleaningCondition(pluginName, item))).ToArray();
+            items.Where(item => HoldsCleaning(pluginName, item)).ToArray();
 
         var evaluated = metadata with
         {
@@ -186,10 +196,19 @@ public sealed class LootDatabase(IConditionEvaluator? evaluator = null)
         return (evaluated.HasNameOnly ? null : evaluated, dropped);
     }
 
-    private static string CleaningCondition(string pluginName, PluginCleaningData data)
+    /// <summary>
+    /// <c>checksum(name, crc) and (entry condition)</c> as a tree. Built from the parts rather than parsed from
+    /// text so that a plugin name holding a quote or a bracket stays a name.
+    /// </summary>
+    /// <exception cref="ConditionParseException">The entry's own condition is not a condition.</exception>
+    private static ConditionExpression CleaningCondition(string pluginName, PluginCleaningData data)
     {
-        var checksum = $"checksum(\"{pluginName}\", {data.Crc:X8})";
-        return data.Condition is null ? checksum : $"{checksum} and ({data.Condition})";
+        var checksum = new ConditionTerm.OfFunction(new ConditionFunction.Checksum(pluginName, data.Crc), false);
+        List<ConditionTerm> terms = [checksum];
+        if (data.Condition is not null)
+            terms.Add(new ConditionTerm.OfGroup(ConditionExpression.Parse(data.Condition), false));
+
+        return new ConditionExpression([new ConditionCompound(terms)]);
     }
 
     private (IReadOnlyList<Message> Messages, int UnevaluatedConditions) FilterMessages(IEnumerable<Message> messages, EvalMode evalMode)

@@ -86,7 +86,7 @@ internal sealed class LootSortService(
             loadoutData);
 
         var content = store.Current(lootGame);
-        var database = new LootDatabase(new ConditionEvaluator(context));
+        var database = new LootDatabase(new ConditionEvaluator(context, logger));
         database.LoadMasterlistWithPrelude(content.Masterlist, content.Prelude);
         var userlist = dataDirectory / "loot" / lootGame.MasterlistRepository() / "userlist.yaml";
         if (userlist.FileExists)
