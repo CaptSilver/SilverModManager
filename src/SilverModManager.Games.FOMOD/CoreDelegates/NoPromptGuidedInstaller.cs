@@ -27,8 +27,8 @@ internal sealed class NoPromptGuidedInstaller(string modName) : IGuidedInstaller
     public void CleanupInstaller() { }
 
     /// <remarks>
-    /// Deliberately not async: the throw must reach the caller before any task exists, because
-    /// <c>UiDelegates</c> records only a synchronous throw as the run's failure.
+    /// Not async, so <c>UiDelegates.AskStep</c> catches the throw and records the failure before it
+    /// schedules a continuation, and the executor cannot move on to the next step first.
     /// </remarks>
     public Task<UserChoice> RequestUserChoice(GuidedInstallationStep installationStep, Percent progress, CancellationToken cancellationToken)
         => throw new ReviewRequiredException(ReviewKind.NeedsChoices, modName, "the installer has choices to make");

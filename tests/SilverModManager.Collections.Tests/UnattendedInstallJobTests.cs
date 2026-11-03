@@ -2,6 +2,8 @@ using System.IO.Compression;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Paths;
+using SilverModManager.Abstractions.GuidedInstallers;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Games.AdvancedInstaller;
 using SilverModManager.Games.TestFramework;
@@ -16,11 +18,13 @@ namespace SilverModManager.Collections.Tests;
 public class UnattendedInstallJobTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameTest<UnattendedInstallJobTests>(helper)
 {
     private readonly CountingAdvancedInstallerHandler _manualInstaller = new();
+    private readonly ScriptedGuidedInstallerState _guidedInstaller = new();
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         return base.AddServices(services)
-            .AddSingleton<IAdvancedInstallerHandler>(_manualInstaller);
+            .AddSingleton<IAdvancedInstallerHandler>(_manualInstaller)
+            .AddTransient<IGuidedInstaller>(_ => _guidedInstaller.Create());
     }
 
     private async Task<LibraryItem.ReadOnly> DocsOnlyArchive()
@@ -51,6 +55,20 @@ public class UnattendedInstallJobTests(ITestOutputHelper helper) : ACyberpunkIso
         var exception = (await act.Should().ThrowAsync<ReviewRequiredException>()).Which;
         exception.Kind.Should().Be(ReviewKind.NoInstaller);
         exception.Reason.Should().Be("Archive contains no matching files");
+        _manualInstaller.Calls.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Unattended_FomodWithSteps_ThrowsNeedsChoicesWithoutOpeningAnyInstaller()
+    {
+        var loadout = await CreateLoadout();
+        var archive = await RegisterLocalArchive(FileSystem.GetKnownPath(KnownPath.EntryDirectory).Combine("TestCasesPacked/ComplexInstaller.fomod"));
+        var item = archive.AsLibraryFile().AsLibraryItem();
+
+        var act = async () => await LoadoutManager.InstallItem(item, loadout, unattended: true);
+
+        (await act.Should().ThrowAsync<ReviewRequiredException>()).Which.Kind.Should().Be(ReviewKind.NeedsChoices);
+        _guidedInstaller.Prompts.SelectMany(p => p.Steps).Should().BeEmpty();
         _manualInstaller.Calls.Should().Be(0);
     }
 

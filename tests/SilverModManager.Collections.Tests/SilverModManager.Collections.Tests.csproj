@@ -19,6 +19,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <None Include="..\Games\SilverModManager.Games.FOMOD.Tests\TestCasesPacked\ComplexInstaller.fomod" Link="TestCasesPacked\ComplexInstaller.fomod" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <ItemGroup>
       <None Remove="CollectionInstallTests.CanInstallCollections.verified.txt" />
     </ItemGroup>
 
