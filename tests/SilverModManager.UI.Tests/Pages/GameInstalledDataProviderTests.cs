@@ -241,7 +241,7 @@ public class GameInstalledDataProviderTests(IServiceProvider provider) : AUiTest
         using var active = toggle.Activate();
         toggle.Value.Value.Value.Should().BeTrue();
 
-        await LoadoutViewModel.HandleToggleItemEnabledState([LoadoutItemId.From(group)], Connection);
+        await LoadoutViewModel.HandleToggleItemEnabledState([LoadoutItemId.From(group)], Connection, Provider.GetRequiredService<ILoadoutManager>());
 
         LoadoutItem.Load(Connection.Db, group).IsDisabled.Should().BeTrue();
         await EventuallyOnUi(() => toggle.Value.Value.Value.Should().BeFalse());
@@ -386,7 +386,7 @@ public class GameInstalledDataProviderTests(IServiceProvider provider) : AUiTest
         var windows = Substitute.For<SilverModManager.App.UI.Windows.IWindowManager>();
 
         await LoadoutViewModel.HandleUninstallItem([LoadoutItemId.From(group), LoadoutItemId.From(itemId)], windows, Connection);
-        await LoadoutViewModel.HandleToggleItemEnabledState([LoadoutItemId.From(itemId)], Connection);
+        await LoadoutViewModel.HandleToggleItemEnabledState([LoadoutItemId.From(itemId)], Connection, Provider.GetRequiredService<ILoadoutManager>());
 
         GameInstalledGroup.Load(Connection.Db, group).IsValid().Should().BeTrue();
         GameInstalledItem.Load(Connection.Db, itemId).IsValid().Should().BeTrue();

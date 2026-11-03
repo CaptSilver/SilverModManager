@@ -62,9 +62,7 @@ internal sealed class LoadoutFileRemover(
         var toRemove = (includeLocked ? plan.Removable.Concat(plan.Locked) : plan.Removable).ToArray();
 
         // The marker has to precede the removal: reverting restores the state as of the marked transaction.
-        using var mark = connection.BeginTransaction();
-        LoadoutSnapshot.Mark(mark, request.LoadoutId);
-        var restorePoint = (await mark.Commit()).NewTx;
+        var restorePoint = await LoadoutSnapshot.WriteRestorePoint(connection, request.LoadoutId);
 
         using var tx = connection.BeginTransaction();
         foreach (var row in toRemove)

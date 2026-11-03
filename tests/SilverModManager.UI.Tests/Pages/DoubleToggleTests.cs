@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
@@ -67,7 +68,7 @@ public class DoubleToggleTests(IServiceProvider provider) : AUiTest(provider)
     {
         var id = await AddItem(LoadoutItem.Disabled);
 
-        await TwiceOnOneSnapshot(() => LoadoutViewModel.HandleToggleItemEnabledState([id], Connection));
+        await TwiceOnOneSnapshot(() => LoadoutViewModel.HandleToggleItemEnabledState([id], Connection, Provider.GetRequiredService<ILoadoutManager>()));
 
         LoadoutItem.Load(Connection.Db, id).IsDisabled.Should().BeFalse();
     }

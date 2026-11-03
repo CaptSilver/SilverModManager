@@ -551,7 +551,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
                     {
                         await message.Match<Task>(
                             toggleEnableStateMessage => 
-                                HandleToggleItemEnabledState(toggleEnableStateMessage.Ids, _connection),
+                                HandleToggleItemEnabledState(toggleEnableStateMessage.Ids, _connection, _serviceProvider.GetRequiredService<ILoadoutManager>()),
                             openCollectionMessage =>
                             {
                                 HandleOpenItemCollectionPage(openCollectionMessage.Ids, 
@@ -717,7 +717,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         return uri;
     }
 
-    internal static async Task HandleToggleItemEnabledState(LoadoutItemId[] ids, IConnection connection)
+    internal static async Task HandleToggleItemEnabledState(LoadoutItemId[] ids, IConnection connection, ILoadoutManager loadoutManager)
     {
         var toggleableItems = ids
             .Select(loadoutItemId => LoadoutItem.Load(connection.Db, loadoutItemId))
@@ -734,21 +734,9 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         // We only enable if all items are disabled, otherwise we disable
         var shouldEnable = toggleableItems.All(loadoutItem => loadoutItem.IsDisabled);
 
-        using var tx = connection.BeginTransaction();
-
-        foreach (var id in toggleableItems)
-        {
-            if (shouldEnable)
-            {
-                tx.RetractCurrent(id, LoadoutItem.Disabled);
-            }
-            else
-            {
-                tx.Add(id, LoadoutItem.Disabled, Null.Instance);
-            }
-        }
-
-        await tx.Commit();
+        // The service writes a restore point first and applies the same skip rules again.
+        foreach (var inLoadout in toggleableItems.GroupBy(item => item.LoadoutId))
+            await loadoutManager.SetGroupsEnabled(inLoadout.Key, inLoadout.Select(item => item.LoadoutItemId).ToArray(), shouldEnable);
     }
 
     internal static void HandleOpenItemCollectionPage(

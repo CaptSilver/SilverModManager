@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Library;
 using System.Reactive.Linq;
 using Avalonia.Media.Imaging;
@@ -71,12 +72,9 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
                 if (_group.HasValue is false) return;
                 var group = _group.Value;
 
-                using var tx = _connection.BeginTransaction();
-                if (IsCollectionEnabled)
-                    tx.Add(group, LoadoutItem.Disabled, Null.Instance);
-                else
-                    tx.RetractCurrent(group, LoadoutItem.Disabled);
-                await tx.Commit();
+                var item = LoadoutItem.Load(_connection.Db, group.Value);
+                await _services.GetRequiredService<ILoadoutManager>()
+                    .SetGroupsEnabled(item.LoadoutId, [item.LoadoutItemId], enabled: !IsCollectionEnabled);
             },
             awaitOperation: AwaitOperation.Drop,
             configureAwait: false
@@ -215,7 +213,7 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
         {
             await message.Match<Task>(
                 toggleEnableStateMessage =>
-                    LoadoutViewModel.HandleToggleItemEnabledState(toggleEnableStateMessage.Ids, _connection),
+                    LoadoutViewModel.HandleToggleItemEnabledState(toggleEnableStateMessage.Ids, _connection, _services.GetRequiredService<ILoadoutManager>()),
                 openCollectionMessage =>
                 {
                     LoadoutViewModel.HandleOpenItemCollectionPage(openCollectionMessage.Ids,

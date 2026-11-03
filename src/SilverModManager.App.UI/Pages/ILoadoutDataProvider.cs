@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Kernel;
@@ -408,7 +409,7 @@ public static class LoadoutDataProviderHelper
     /// </summary>
     public static bool IsToggleLocked<T>(T entity) where T : struct, IReadOnlyModel<T>
     {
-        return IsRequiredCollectionItem(entity) || GameInstalledGroup.IsInstalledContent(entity);
+        return LoadoutItemToggle.IsToggleLocked(entity);
     }
 
     /// <summary>
@@ -418,10 +419,5 @@ public static class LoadoutDataProviderHelper
     public static bool CannotRemove<T>(T entity) where T : struct, IReadOnlyModel<T>
     {
         return IsToggleLocked(entity) || GameInstalledGroup.InstalledFor.TryGetValue(entity, out _);
-    }
-
-    private static bool IsRequiredCollectionItem<T>(T entity) where T : struct, IReadOnlyModel<T>
-    {
-        return NexusCollectionItemLoadoutGroup.IsRequired.GetOptional(entity).ValueOr(false);
     }
 }

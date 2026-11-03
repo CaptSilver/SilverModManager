@@ -215,4 +215,17 @@ public interface ILoadoutManager
     /// has no pin.
     /// </summary>
     ValueTask ClearFileWinner(LoadoutId loadoutId, GamePath path);
+
+    /// <summary>
+    /// Switches the groups on or off. Groups the user cannot toggle (required collection items, game-installed
+    /// content, items inside a disabled collection) are left alone and returned with the reason. A restore point
+    /// is written first so <c>loadout revert</c> and the undo history can bring the old switches back. A request
+    /// that changes nothing writes nothing.
+    /// </summary>
+    ValueTask<ToggleResult> SetGroupsEnabled(LoadoutId loadoutId, IReadOnlyList<LoadoutItemId> groups, bool enabled);
 }
+
+/// <summary>What <see cref="ILoadoutManager.SetGroupsEnabled"/> did.</summary>
+/// <param name="Changed">The groups whose switch was written.</param>
+/// <param name="Skipped">The groups left alone, with why.</param>
+public record ToggleResult(IReadOnlyList<LoadoutItemId> Changed, IReadOnlyList<(LoadoutItemId Id, string Reason)> Skipped);

@@ -56,6 +56,7 @@ public partial class CollectionLeftMenuItemViewModel : LeftMenuItemViewModel, IL
         Action<CollectionGroupId, int>? moveBy = null) : base(workspaceController, workspaceId, source.InstalledPage(collectionGroupId))
     {
         _connection = serviceProvider.GetRequiredService<IConnection>();
+        var loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
 
         CollectionGroupId = collectionGroupId;
         // Read-only collections get a target too, so a drag over them says why they refuse.
@@ -71,17 +72,8 @@ public partial class CollectionLeftMenuItemViewModel : LeftMenuItemViewModel, IL
         
         ToggleIsEnabledCommand = ReactiveCommand.CreateFromTask(async () =>
         {
-            using var tx = _connection.BeginTransaction();
-            
-            if (IsEnabled)
-            {
-                tx.RetractCurrent(CollectionGroupId.Value, LoadoutItem.Disabled);
-            } else
-            {
-                tx.Add(CollectionGroupId.Value, LoadoutItem.Disabled, Null.Instance);
-            }
-            
-            await tx.Commit();
+            var item = LoadoutItem.Load(_connection.Db, CollectionGroupId.Value);
+            await loadoutManager.SetGroupsEnabled(item.LoadoutId, [item.LoadoutItemId], enabled: !IsEnabled);
         });
         
         // Set additional context menu items

@@ -28,4 +28,15 @@ public partial class LoadoutSnapshot : IModelDefinition
     {
         tx.Add(EntityId.From(TxId.Tmp.Value), Snapshot, loadoutId);
     }
+
+    /// <summary>
+    /// Commits a transaction that holds nothing but the marker, and returns it. Call it before the change it should
+    /// be able to undo; the change goes in a transaction of its own afterwards.
+    /// </summary>
+    public static async Task<TxId> WriteRestorePoint(IConnection connection, LoadoutId loadoutId)
+    {
+        using var tx = connection.BeginTransaction();
+        Mark(tx, loadoutId);
+        return (await tx.Commit()).NewTx;
+    }
 }

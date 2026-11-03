@@ -1287,6 +1287,47 @@ internal partial class LoadoutManager : ILoadoutManager
         .Select(static p => (LoadoutFileWinner.ReadOnly?)p)
         .FirstOrDefault();
 
+    public async ValueTask<ToggleResult> SetGroupsEnabled(LoadoutId loadoutId, IReadOnlyList<LoadoutItemId> groups, bool enabled)
+    {
+        var db = _connection.Db;
+        var changed = new List<LoadoutItemId>();
+        var skipped = new List<(LoadoutItemId Id, string Reason)>();
+        foreach (var id in groups.Distinct())
+        {
+            var item = LoadoutItem.Load(db, id);
+            if (!item.IsValid() || item.LoadoutId != loadoutId)
+            {
+                skipped.Add((id, "it is not in this loadout"));
+                continue;
+            }
+
+            if (LoadoutItemToggle.SkipReason(item) is { } reason)
+            {
+                skipped.Add((id, reason));
+                continue;
+            }
+
+            if (item.IsDisabled == !enabled) continue; // already in the requested state
+            changed.Add(id);
+        }
+
+        if (changed.Count == 0) return new ToggleResult(changed, skipped);
+
+        // The marker has to precede the change: reverting restores the state as of the marked transaction.
+        await LoadoutSnapshot.WriteRestorePoint(_connection, loadoutId);
+
+        using var tx = _connection.BeginTransaction();
+        foreach (var id in changed)
+        {
+            if (enabled) tx.RetractCurrent(id, LoadoutItem.Disabled);
+            else tx.Add(id, LoadoutItem.Disabled, Null.Instance);
+        }
+        await tx.Commit();
+
+        _logger.LogInformation("Switched {Count} groups {State} in loadout {Loadout}; {Skipped} left alone", changed.Count, enabled ? "on" : "off", loadoutId, skipped.Count);
+        return new ToggleResult(changed, skipped);
+    }
+
     public async ValueTask RemoveGroupRule(LoadoutGroupRuleId ruleId)
     {
         using var tx = _connection.BeginTransaction();

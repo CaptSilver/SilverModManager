@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
@@ -48,9 +49,8 @@ public sealed class DisableModsActionHandler(IServiceProvider serviceProvider, I
 
         if (!await Confirm(ConfirmationText(disabling.Select(m => m.Name).ToArray(), left.Select(m => m.Name).ToArray()))) return;
 
-        using var tx = connection.BeginTransaction();
-        foreach (var mod in disabling) tx.Add(mod.Id, LoadoutItem.Disabled, Null.Instance);
-        await tx.Commit();
+        await serviceProvider.GetRequiredService<ILoadoutManager>()
+            .SetGroupsEnabled(loadoutId, disabling.Select(mod => mod.LoadoutItemId).ToArray(), enabled: false);
 
         await diagnosticManager.RefreshAsync(loadoutId);
     }
