@@ -9,7 +9,7 @@ namespace SilverModManager.Backend.FileExtractor;
 /// name, so such entries are extracted on their own and moved to the cleaned path. Every other entry,
 /// rewritten or not, is left to the bulk run: each separate run decompresses the archive again. A name
 /// 7z places in the right shape but with a trailing space or an undecoded byte stays in the bulk run
-/// too, and <see cref="ExtractedNames"/> renames it afterwards.
+/// too, and <see cref="ExtractedNames"/> renames it afterwards. A link among those is removed there instead.
 /// </summary>
 internal sealed class ArchiveEntryPlan
 {
@@ -150,11 +150,11 @@ internal sealed class ArchiveEntryPlan
         var linkPrefixes = entries.Where(e => e.IsSymlink).Select(e => e.Name.TrimEnd('/') + "/").ToArray();
         var droppedHardLinks = new List<(string, string)>();
 
-        void Keep(int i)
+        void Keep(int i, bool drop = false)
         {
             kept.Add(Key(_raws[i]));
             keptNames.Add(entries[i].Name);
-            keptEntries.Add(new ExtractedNames.Kept(_raws[i], i, entries[i].IsDirectory, entries[i].IsSymlink));
+            keptEntries.Add(new ExtractedNames.Kept(_raws[i], i, entries[i].IsDirectory, entries[i].IsSymlink, drop));
         }
 
         for (var i = 0; i < entries.Count; i++)
@@ -166,7 +166,10 @@ internal sealed class ArchiveEntryPlan
             if (!addressable[i])
             {
                 UnaddressableCount++;
-                Keep(i);
+
+                // Such a link cannot be left out of the run, so 7z creates it under whatever its name says; it
+                // is removed again before anything else reads the folder (see ExtractedNames.Repair).
+                Keep(i, drop: IsLink(entries[i]));
                 continue;
             }
 

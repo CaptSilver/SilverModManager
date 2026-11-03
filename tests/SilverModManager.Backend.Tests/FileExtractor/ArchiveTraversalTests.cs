@@ -601,6 +601,132 @@ public class ArchiveTraversalTests : AFileExtractorTest
         Directory.GetFileSystemEntries(folder.Path.ToString()).Should().BeEmpty();
     }
 
+    private async Task<Outcome> ExtractZipInto(AbsolutePath container, AbsolutePath destination, params Entry[] entries)
+    {
+        var archive = container.Combine("Traversal Mod-1-0.zip");
+        await using (var stream = archive.Create())
+        await using (var output = new ZipOutputStream(stream))
+        {
+            foreach (var entry in entries) await WriteEntry(output, entry);
+        }
+
+        return await Extract(container, archive, Extractor.SevenZip, destination);
+    }
+
+    // A moved entry is written by the extractor itself, so a folder link on its way (here planted before
+    // extraction, as in a destination that is not fresh) must not carry the write out of the destination.
+    [Fact]
+    public async Task AMovedEntryIsNotWrittenThroughAFolderLink()
+    {
+        await using var container = TemporaryFileManager.CreateFolder();
+        var outside = container.Path.Combine("outside");
+        outside.CreateDirectory();
+        var destination = container.Path.Combine("a/b/extracted");
+        destination.CreateDirectory();
+        Directory.CreateSymbolicLink(destination.Combine("dir").ToString(), outside.ToString());
+
+        var outcome = await ExtractZipInto(container.Path, destination, new Entry("x/../dir/evil.txt", "evil"), new Entry("ok.txt"));
+
+        Directory.EnumerateFileSystemEntries(outside.ToString()).Should().BeEmpty();
+        outcome.Files.Keys.Should().Contain("ok.txt");
+        outcome.Warnings.Should().Contain(w => w.Contains("dir/evil.txt"));
+    }
+
+    [Fact]
+    public async Task AMovedEntryReplacesALinkAtItsPathInsteadOfFollowingIt()
+    {
+        await using var container = TemporaryFileManager.CreateFolder();
+        var secret = container.Path.Combine("secret.txt");
+        await secret.WriteAllTextAsync("private", TestContext.Current.CancellationToken);
+        File.SetUnixFileMode(secret.ToString(), UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        var destination = container.Path.Combine("a/b/extracted");
+        destination.CreateDirectory();
+        File.CreateSymbolicLink(destination.Combine("x.txt").ToString(), secret.ToString());
+
+        await ExtractZipInto(container.Path, destination, new Entry("sub/../x.txt", "from archive"));
+
+        File.ReadAllText(secret.ToString()).Should().Be("private");
+        File.GetUnixFileMode(secret.ToString()).Should().Be(UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        new FileInfo(destination.Combine("x.txt").ToString()).LinkTarget.Should().BeNull();
+        File.ReadAllText(destination.Combine("x.txt").ToString()).Should().Be("from archive");
+    }
+
+    [Fact]
+    public async Task ARepeatedMovedEntryReplacesALinkAtItsPathInsteadOfFollowingIt()
+    {
+        await using var container = TemporaryFileManager.CreateFolder();
+        var secret = container.Path.Combine("secret.txt");
+        await secret.WriteAllTextAsync("private", TestContext.Current.CancellationToken);
+        var destination = container.Path.Combine("a/b/extracted");
+        destination.CreateDirectory();
+        File.CreateSymbolicLink(destination.Combine("x.txt").ToString(), secret.ToString());
+
+        await ExtractZipInto(container.Path, destination, new Entry("sub/../x.txt", "first"), new Entry("sub/../x.txt", "second"));
+
+        File.ReadAllText(secret.ToString()).Should().Be("private");
+        new FileInfo(destination.Combine("x.txt").ToString()).LinkTarget.Should().BeNull();
+        File.ReadAllText(destination.Combine("x.txt").ToString()).Should().Be("second");
+    }
+
+    // A name stored once as a file and again as a link has no single answer, so it is dropped. The scratch
+    // result is a link then, and moving and chmodding it would follow it to the file it names.
+    [Fact]
+    public async Task ARepeatedNameWhoseLastCopyIsALinkToAnOutsideFileLeavesThatFileAlone()
+    {
+        await using var container = TemporaryFileManager.CreateFolder();
+        var secret = container.Path.Combine("secret.txt");
+        await secret.WriteAllTextAsync("private", TestContext.Current.CancellationToken);
+        var mode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        File.SetUnixFileMode(secret.ToString(), mode);
+        var destination = container.Path.Combine("a/b/extracted");
+        destination.CreateDirectory();
+
+        var outcome = await ExtractZipInto(container.Path, destination,
+            new Entry("sub/../x.txt", "first"), new Entry("sub/../x.txt", secret.ToString(), UnixSymlink: true), new Entry("ok.txt"));
+
+        File.GetUnixFileMode(secret.ToString()).Should().Be(mode);
+        File.ReadAllText(secret.ToString()).Should().Be("private");
+        outcome.Files.Keys.Should().BeEquivalentTo("ok.txt");
+        Directory.EnumerateFileSystemEntries(destination.ToString(), "*", SearchOption.AllDirectories)
+            .Where(p => new FileInfo(p).LinkTarget is not null).Should().BeEmpty();
+        outcome.Warnings.Should().Contain(w => w.Contains("x.txt"));
+    }
+
+    [Fact]
+    public async Task ARepeatedLinkNameIsReadFromItsDataAndNeverFollowed()
+    {
+        await using var container = TemporaryFileManager.CreateFolder();
+        var secret = container.Path.Combine("secret.txt");
+        await secret.WriteAllTextAsync("private", TestContext.Current.CancellationToken);
+        var destination = container.Path.Combine("a/b/extracted");
+        destination.CreateDirectory();
+
+        var outcome = await ExtractZipInto(container.Path, destination,
+            new Entry("l", "ok.txt", UnixSymlink: true), new Entry("l", secret.ToString(), UnixSymlink: true), new Entry("ok.txt", "real"));
+
+        outcome.Files.Should().Equal(new Dictionary<string, string> { ["ok.txt"] = "real" });
+        File.ReadAllText(secret.ToString()).Should().Be("private");
+    }
+
+    // The link is created before the entry that goes through it, and a link entry is only ever turned into a
+    // copy at the end, so nothing can be written through it.
+    [Fact]
+    public async Task AFileStoredAfterAFolderLinkEntryIsNotWrittenThroughIt()
+    {
+        await using var container = TemporaryFileManager.CreateFolder();
+        var outside = container.Path.Combine("outside");
+        outside.CreateDirectory();
+
+        var outcome = await ExtractTar(writer =>
+        {
+            writer.WriteEntry(new GnuTarEntry(TarEntryType.SymbolicLink, "dir") { LinkName = outside.ToString() });
+            AddFile(writer, "dir/evil.txt");
+        });
+
+        Directory.EnumerateFileSystemEntries(outside.ToString()).Should().BeEmpty();
+        outcome.Outside.Should().BeEmpty();
+    }
+
     private sealed class ListLogger<T>(List<string> warnings) : ILogger<T>
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;

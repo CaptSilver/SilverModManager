@@ -16,7 +16,8 @@ internal static partial class ExtractedNames
     /// <param name="Raw">The name as stored in the archive.</param>
     /// <param name="Index">Position in the archive; of two entries that end up at one path, the higher one stays.</param>
     /// <param name="IsSymlink">True for a symbolic link entry. 7z leaves a 0-byte file where it refused to create one.</param>
-    internal readonly record struct Kept(byte[] Raw, int Index, bool IsDirectory, bool IsSymlink = false);
+    /// <param name="Drop">True for a link entry that could not be kept out of the run: whatever 7z made of it is removed.</param>
+    internal readonly record struct Kept(byte[] Raw, int Index, bool IsDirectory, bool IsSymlink = false, bool Drop = false);
 
     private const int NoSuchFile = 2;
     private const int DirectoryNotEmpty = 39;
@@ -48,11 +49,20 @@ internal static partial class ExtractedNames
         // A link 7z refused to create is a 0-byte regular file under its name. Importing it would pass an
         // empty file off as the link's content, so it goes before anything is renamed.
         var placeholders = new HashSet<Prepared>();
-        foreach (var p in prepared.Where(p => p.Entry.IsSymlink && IsRegularFile(Join(rootBytes, p.RawSegments, p.RawSegments.Length))))
+        foreach (var p in prepared.Where(p => p.Entry.IsSymlink && !p.Entry.Drop && IsRegularFile(Join(rootBytes, p.RawSegments, p.RawSegments.Length))))
         {
             Check(Unlink(Join(rootBytes, p.RawSegments, p.RawSegments.Length)), p, "removing the placeholder 7z left for a refused link");
             placeholders.Add(p);
             logger.LogWarning("Dropping symlink `{Entry}` from archive `{Archive}`: 7z refused to create it", EntryNames.Printable(Encoding.UTF8.GetString(p.Entry.Raw)), archive);
+        }
+
+        // A link whose name 7z cannot be given is created wherever its name says, which no rule has judged;
+        // it goes, link or hard link alike (unlink removes a link itself and never follows it).
+        foreach (var p in prepared.Where(p => p.Entry.Drop))
+        {
+            Check(Unlink(Join(rootBytes, p.RawSegments, p.RawSegments.Length)), p, "removing the link that 7z could not be told to leave out");
+            placeholders.Add(p);
+            logger.LogWarning("Dropping link `{Entry}` from archive `{Archive}`: its name cannot be given to 7z, so it could not be left out of the extraction", EntryNames.Printable(Encoding.UTF8.GetString(p.Entry.Raw)), archive);
         }
 
         prepared = prepared.Where(p => !placeholders.Contains(p)).ToArray();
@@ -75,7 +85,7 @@ internal static partial class ExtractedNames
 
             if (p.Entry.IsDirectory)
             {
-                Directory.CreateDirectory(finalFull);
+                if (!SafeExtraction.TryCreateFolder(root, finalFull)) WarnLinkOnTheWay(logger, p, archive);
             }
             else if (p.Entry.IsSymlink ? winners.ContainsKey(p.FinalPath) || linkWinners[p.FinalPath] != p.Entry.Index : winners[p.FinalPath] != p.Entry.Index)
             {
@@ -84,11 +94,18 @@ internal static partial class ExtractedNames
             }
             else
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(finalFull) ?? root);
-                Check(Rename(oldPath, NullTerminated(Encoding.UTF8.GetBytes(finalFull))), p, "renaming");
+                if (SafeExtraction.TryCreateFolder(root, Path.GetDirectoryName(finalFull) ?? root))
+                {
+                    Check(Rename(oldPath, NullTerminated(Encoding.UTF8.GetBytes(finalFull))), p, "renaming");
+                }
+                else
+                {
+                    Check(Unlink(oldPath), p, "removing the entry whose folder is a link");
+                    WarnLinkOnTheWay(logger, p, archive);
+                }
             }
 
-            var folderDepth = p.Entry.IsDirectory ? p.Segments.Length : p.Segments.Length - 1;
+            var folderDepth = p.Entry.IsDirectory ? p.RawSegments.Length : p.RawSegments.Length - 1;
             for (var depth = p.FirstChange + 1; depth <= folderDepth; depth++)
             {
                 var folder = Join(rootBytes, p.RawSegments, depth);
@@ -107,6 +124,9 @@ internal static partial class ExtractedNames
 
         if (report.Count > 0) logger.LogWarning("Renamed {Count} entry name(s) in archive `{Archive}` to names that work on every platform: {Entries}", report.Count, archive, string.Join("; ", report));
     }
+
+    private static void WarnLinkOnTheWay(ILogger logger, Prepared p, string archive) =>
+        logger.LogWarning("Dropping `{Entry}` from archive `{Archive}`: a folder on the way to `{Path}` is a symbolic link", EntryNames.Printable(Encoding.UTF8.GetString(p.Entry.Raw)), archive, p.FinalPath);
 
     /// <summary>True when the path exists and is not a symbolic link (readlink fails with EINVAL on anything else).</summary>
     private static bool IsRegularFile(byte[] path) =>
@@ -198,8 +218,10 @@ internal static partial class ExtractedNames
     private static Prepared Prepare(Kept entry)
     {
         var rawSegments = SplitPlacedBy7z(entry.Raw);
-        var decoded = EntryNames.Decode(entry.Raw).Split('/').Where(s => s is not ("" or "." or "..")).ToArray();
-        var segments = decoded.Select(EntryNames.FixSegment).ToArray();
+
+        // The path the rest of the extraction gives the entry, so a backslash, a drive letter or a ".." that
+        // 7z left in the name is resolved the same way (see ArchiveEntryPlan).
+        var segments = EntryNames.FixPath(ArchiveEntryPath.Clean(EntryNames.Decode(entry.Raw))).Split('/', StringSplitOptions.RemoveEmptyEntries);
 
         var firstChange = -1;
         for (var i = 0; i < segments.Length && i < rawSegments.Length; i++)
@@ -208,6 +230,9 @@ internal static partial class ExtractedNames
             firstChange = i;
             break;
         }
+
+        // Fewer cleaned segments than placed ones ("a/b/.." is "a" on disk as a/b) changes the first extra one.
+        if (firstChange < 0 && segments.Length != rawSegments.Length) firstChange = Math.Min(segments.Length, rawSegments.Length);
 
         return new Prepared(entry, rawSegments, segments, firstChange);
     }

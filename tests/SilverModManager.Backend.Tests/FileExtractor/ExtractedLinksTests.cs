@@ -211,6 +211,47 @@ public class ExtractedLinksTests : IDisposable
         }
     }
 
+    // Whatever already sits at the path, a dangling link included, wins over the entry; the copy never
+    // writes to the file the link names.
+    [Fact]
+    public void PlaceAllNeverWritesThroughADanglingLinkAtTheEntrysPath()
+    {
+        File.WriteAllText(InRoot("real.txt"), "real content");
+        var beyond = Path.Combine(_outside, "created-by-copy.txt");
+        File.CreateSymbolicLink(InRoot("l"), beyond);
+
+        ExtractedLinks.PlaceAll(_root, Archive, [("l", "l", "real.txt")], new ListLogger(_log));
+
+        File.Exists(beyond).Should().BeFalse();
+        _log.Should().Contain(m => m.Contains("`l`"));
+    }
+
+    [Fact]
+    public void PlaceAllDropsAnEntryWhoseFolderIsALink()
+    {
+        File.WriteAllText(InRoot("real.txt"), "real content");
+        File.CreateSymbolicLink(InRoot("d"), _outside);
+
+        ExtractedLinks.PlaceAll(_root, Archive, [("d/l", "d/l", "real.txt")], new ListLogger(_log));
+
+        File.Exists(Path.Combine(_outside, "l")).Should().BeFalse();
+        AssertSecretUntouched();
+        _log.Should().Contain(m => m.Contains("d/l"));
+    }
+
+    [Fact]
+    public void ASweptLinkIsReplacedByACopyWithoutTouchingWhatItPointedAt()
+    {
+        File.WriteAllText(InRoot("real.txt"), "real content");
+        Link("l", "real.txt");
+
+        Sanitize();
+
+        new FileInfo(InRoot("l")).LinkTarget.Should().BeNull();
+        File.ReadAllText(InRoot("real.txt")).Should().Be("real content");
+        Directory.GetFileSystemEntries(_root).Should().BeEquivalentTo(InRoot("l"), InRoot("real.txt"));
+    }
+
     private sealed class ListLogger(List<string> messages) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;

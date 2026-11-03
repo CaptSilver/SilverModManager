@@ -206,6 +206,20 @@ public class ArchiveEntryPlanTests
     }
 
     [Fact]
+    public void AnUnaddressableSymlinkOrHardLinkIsMarkedToBeDropped()
+    {
+        byte[] symlinkName = [(byte)'s', 0x8B, (byte)' '];
+        byte[] hardName = [(byte)'h', 0x8B, (byte)' '];
+        byte[] fileName = [(byte)'f', 0x8B, (byte)' '];
+        var plan = Plan(
+            new ArchiveEntryPlan.Entry(EntryNames.Decode(symlinkName), false, SymlinkTarget: "x", IsSymlink: true, RawName: symlinkName),
+            new ArchiveEntryPlan.Entry(EntryNames.Decode(hardName), false, HardLinkTarget: "f", RawName: hardName),
+            Raw(fileName));
+
+        plan.Kept.Select(k => k.Drop).Should().Equal(true, true, false);
+    }
+
+    [Fact]
     public void ARepeatedNameIsReportedAsRepeated()
     {
         var plan = Plan("a\\x.txt", "a\\x.txt", "y.txt");

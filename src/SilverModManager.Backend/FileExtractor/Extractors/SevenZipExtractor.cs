@@ -71,12 +71,9 @@ public class SevenZipExtractor : IExtractor
             await ExtractArchive(innerTar.Value.Path, streamFactory.FileName.ToString(), destination, cancellationToken: cancellationToken);
         }
 
-        // Modes first, since the link sweep has to list every folder and copy link targets that the archive
-        // may have stored at 000; NormalizeModes never touches a link. Then the links go, before anything
-        // else reads the result.
-        var root = destination.ToNativeSeparators(_osInformation);
-        NormalizeModes(root);
-        ExtractedLinks.Sanitize(root, streamFactory.FileName.ToString(), _logger);
+        // Links are swept inside ExtractArchive, before any entry is written by hand; this only settles the
+        // modes of what the last run left. NormalizeModes never touches a link.
+        NormalizeModes(destination.ToNativeSeparators(_osInformation));
     }
 
     /// <summary>
@@ -90,7 +87,7 @@ public class SevenZipExtractor : IExtractor
         if (!await HasBytesAt(source, offset: 0, GzipMagic, cancellationToken)) return null;
 
         var entries = Directory.GetFileSystemEntries(destination.ToNativeSeparators(_osInformation));
-        if (entries.Length != 1 || !File.Exists(entries[0])) return null;
+        if (entries.Length != 1 || SafeExtraction.IsLink(entries[0]) || !File.Exists(entries[0])) return null;
 
         var tar = destination.Combine(Path.GetFileName(entries[0]));
         if (!await HasBytesAt(tar, TarMagicOffset, TarMagic, cancellationToken)) return null;
@@ -224,13 +221,22 @@ public class SevenZipExtractor : IExtractor
         // Before anything lists the folder with .NET, which cannot see a name that is not valid UTF-8.
         ExtractedNames.Repair(root, plan.Kept, _logger, archiveName);
 
+        // Every link 7z left is gone before the first entry is written by hand: one of those writes could
+        // otherwise go through a folder link. The archive may store a file at mode 000, which a copy could not read.
+        NormalizeModes(root);
+        ExtractedLinks.Sanitize(root, archiveName, _logger);
+
         if (plan.IsPlain)
         {
             plan.Rewrites.Log(_logger, archiveName);
             return;
         }
 
-        foreach (var folder in plan.Folders) Directory.CreateDirectory(Path.Combine(root, folder));
+        foreach (var folder in plan.Folders)
+        {
+            if (!SafeExtraction.TryCreateFolder(root, Path.Combine(root, folder))) _logger.LogWarning("Skipping folder `{Entry}` of archive `{Archive}`: a folder on its way is a symbolic link", folder, archiveName);
+        }
+
         foreach (var (name, reason) in plan.DroppedHardLinks) _logger.LogWarning("Dropping hard link `{Entry}` from archive `{Archive}`: {Reason}", name, archiveName, reason);
 
         for (var m = 0; m < plan.Moved.Count; m++)
@@ -243,12 +249,16 @@ public class SevenZipExtractor : IExtractor
                 throw new FileExtractionException($"Cleaned path `{cleaned}` of entry `{name}` in `{archiveName}` is outside the extraction folder");
             }
 
-            Directory.CreateDirectory(Path.GetDirectoryName(target) ?? throw new InvalidOperationException($"`{target}` has no parent folder"));
-            var errors = await ExtractEntryToFile(source, plan, index, target, cancellationToken);
-            if (errors is not null) throw new FileExtractionException($"7z failed extracting `{name}` from `{archiveName}`: {errors}");
+            if (!SafeExtraction.TryCreateFolder(root, Path.GetDirectoryName(target) ?? throw new InvalidOperationException($"`{target}` has no parent folder")))
+            {
+                _logger.LogWarning("Skipping `{Entry}` from archive `{Archive}`: a folder on the way to `{Path}` is a symbolic link", name, archiveName, cleaned);
+                continue;
+            }
 
             // The stream or the scratch copy is not given the stored mode, so the execute bit is set from the listing.
-            File.SetUnixFileMode(target, plan.IsExecutable(index) ? Executable : RegularFile);
+            var outcome = await ExtractEntryToFile(source, plan, index, target, plan.IsExecutable(index) ? Executable : RegularFile, cancellationToken);
+            if (outcome.Error is not null) throw new FileExtractionException($"7z failed extracting `{name}` from `{archiveName}`: {outcome.Error}");
+            if (outcome.LinkTarget is not null) _logger.LogWarning("Dropping `{Entry}` from archive `{Archive}`: it is stored both as a file and as a symbolic link, and the last copy is the link", name, archiveName);
         }
 
         var placeable = new List<(string Name, string Path, string Target)>();
@@ -260,8 +270,6 @@ public class SevenZipExtractor : IExtractor
             else placeable.Add((name, cleaned, target));
         }
 
-        // The archive may store a file at mode 000, which the copy could not read.
-        if (placeable.Count > 0) NormalizeModes(root);
         ExtractedLinks.PlaceAll(root, archiveName, placeable, _logger);
 
         plan.Rewrites.Log(_logger, archiveName);
@@ -278,7 +286,13 @@ public class SevenZipExtractor : IExtractor
         {
             await using var scratch = _temporaryFileManager.CreateFile(ext: new Extension(".link"));
             var path = scratch.Path.ToNativeSeparators(_osInformation);
-            if (await ExtractRepeatedEntryTo(source, plan, index, path, cancellationToken) is not null) return null;
+
+            // The scratch folder holds a link when the entry is one; the target 7z wrote is the link's own text, and
+            // reading the path would follow it. 7z roots a target that is absolute in the scratch folder, so only a
+            // relative one is the text the archive stored.
+            var outcome = await ExtractRepeatedEntryTo(source, plan, index, path, mode: null, cancellationToken);
+            if (outcome.Error is not null) return null;
+            if (outcome.LinkTarget is { } linkTarget) return Path.IsPathRooted(linkTarget) ? null : linkTarget;
             var data = new byte[MaxLinkTargetBytes + 1];
             await using var stream = File.OpenRead(path);
             var read = await stream.ReadAtLeastAsync(data, data.Length, throwOnEndOfStream: false, cancellationToken);
@@ -341,13 +355,31 @@ public class SevenZipExtractor : IExtractor
     /// stored more than once is extracted into a scratch folder, where 7z overwrites in archive order, so the
     /// last copy is the one kept. Returns null on success and the reason otherwise.
     /// </summary>
-    private async ValueTask<string?> ExtractEntryToFile(AbsolutePath source, ArchiveEntryPlan plan, int index, string target, CancellationToken cancellationToken)
+    private async ValueTask<EntryOutcome> ExtractEntryToFile(AbsolutePath source, ArchiveEntryPlan plan, int index, string target, UnixFileMode mode, CancellationToken cancellationToken)
     {
-        if (plan.IsRepeated(index)) return await ExtractRepeatedEntryTo(source, plan, index, target, cancellationToken);
+        if (plan.IsRepeated(index)) return await ExtractRepeatedEntryTo(source, plan, index, target, mode, cancellationToken);
 
-        await using var output = File.Create(target);
-        return await ExtractEntryChecked(source, plan, index, output, cancellationToken);
+        // Written beside the target and renamed over it: File.Create(target) would follow a link at the target.
+        var temp = SafeExtraction.SiblingTemp(target);
+        try
+        {
+            await using (var output = new FileStream(temp, FileMode.CreateNew, FileAccess.ReadWrite))
+            {
+                var errors = await ExtractEntryChecked(source, plan, index, output, cancellationToken);
+                if (errors is not null) return new EntryOutcome(errors);
+            }
+
+            SafeExtraction.Commit(temp, target, mode);
+            return new EntryOutcome();
+        }
+        finally
+        {
+            File.Delete(temp);
+        }
     }
+
+    /// <summary>How writing one entry went: <see cref="Error"/> when it failed, <see cref="LinkTarget"/> when the entry is a link and nothing was written.</summary>
+    private readonly record struct EntryOutcome(string? Error = null, string? LinkTarget = null);
 
     /// <summary>
     /// Streams one entry and checks it against the listing. The listing prints a newline in a name as an
@@ -370,7 +402,7 @@ public class SevenZipExtractor : IExtractor
         }
     }
 
-    private async ValueTask<string?> ExtractRepeatedEntryTo(AbsolutePath source, ArchiveEntryPlan plan, int index, string target, CancellationToken cancellationToken)
+    private async ValueTask<EntryOutcome> ExtractRepeatedEntryTo(AbsolutePath source, ArchiveEntryPlan plan, int index, string target, UnixFileMode? mode, CancellationToken cancellationToken)
     {
         var name = Encoding.UTF8.GetString(plan.RawName(index));
         await using var scratch = _temporaryFileManager.CreateFolder();
@@ -379,21 +411,25 @@ public class SevenZipExtractor : IExtractor
         {
             foreach (var leftover in Directory.EnumerateFileSystemEntries(folder).ToArray())
             {
-                if (Directory.Exists(leftover)) Directory.Delete(leftover, recursive: true);
+                if (!SafeExtraction.IsLink(leftover) && Directory.Exists(leftover)) Directory.Delete(leftover, recursive: true);
                 else File.Delete(leftover);
             }
 
             var errors = await RunEntrySelection(source, plan, index, wildcard, ["-o" + folder], cancellationToken);
-            if (errors is not null) return errors;
+            if (errors is not null) return new EntryOutcome(errors);
 
-            var files = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).ToArray();
-            if (files.Length == 1 && (plan.Size(index) is not { } size || new FileInfo(files[0]).Length == size))
+            // A link is looked at, never opened, moved or chmodded: it can point anywhere. Only a regular file
+            // is copied out, and it is copied to a fresh sibling of the target, which the rename replaces.
+            var found = Directory.EnumerateFileSystemEntries(folder, "*", SearchOption.AllDirectories).Where(p => !Directory.Exists(p) || SafeExtraction.IsLink(p)).ToArray();
+            if (found.Length == 1 && new FileInfo(found[0]).LinkTarget is { } linkTarget) return new EntryOutcome(LinkTarget: linkTarget);
+
+            if (found.Length == 1 && (plan.Size(index) is not { } size || new FileInfo(found[0]).Length == size))
             {
-                File.Move(files[0], target, overwrite: true);
-                return null;
+                SafeExtraction.CopyReplacing(found[0], target, mode);
+                return new EntryOutcome();
             }
 
-            if (wildcard || !MayHideNewline(plan.RawName(index))) return files.Length == 1 ? $"7z wrote a file of the wrong size for `{name}`" : $"7z extracted {files.Length} files for `{name}`, expected one";
+            if (wildcard || !MayHideNewline(plan.RawName(index))) return new EntryOutcome(found.Length == 1 ? $"7z wrote a file of the wrong size for `{name}`" : $"7z extracted {found.Length} files for `{name}`, expected one");
         }
     }
 

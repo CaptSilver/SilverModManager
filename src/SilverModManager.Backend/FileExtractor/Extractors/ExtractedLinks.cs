@@ -28,15 +28,15 @@ internal static class ExtractedLinks
         foreach (var (link, decision) in decisions)
         {
             var entry = Path.GetRelativePath(root, link);
-            File.Delete(link);
 
             if (decision.CopyFrom is { } source)
             {
                 logger.LogWarning("Replacing symlink `{Entry}` in archive `{Archive}` with a copy of `{Target}`", entry, archive, Path.GetRelativePath(root, source));
-                File.Copy(source, link);
+                SafeExtraction.CopyReplacing(source, link);
             }
             else
             {
+                File.Delete(link);
                 logger.LogWarning("Dropping symlink `{Entry}` from archive `{Archive}`: {Reason}", entry, archive, decision.Reason);
             }
         }
@@ -119,8 +119,13 @@ internal static class ExtractedLinks
         }
 
         logger.LogWarning("Replacing symlink `{Entry}` in archive `{Archive}` with a copy of `{Target}`", entry, archive, Path.GetRelativePath(root, source));
-        Directory.CreateDirectory(parent);
-        File.Copy(source, linkPath);
+        if (!SafeExtraction.TryCreateFolder(root, parent))
+        {
+            logger.LogWarning("Dropping symlink `{Entry}` from archive `{Archive}`: a folder on the way to it is a symbolic link", entry, archive);
+            return PlaceOutcome.Dropped;
+        }
+
+        SafeExtraction.CopyReplacing(source, linkPath);
         return PlaceOutcome.Placed;
     }
 

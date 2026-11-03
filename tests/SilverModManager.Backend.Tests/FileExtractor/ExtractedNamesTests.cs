@@ -95,6 +95,60 @@ public partial class ExtractedNamesTests : IDisposable
     }
 
     [Fact]
+    public void AnUnaddressableLinkIsRemovedWhateverItPointsAt()
+    {
+        Symlink("elsewhere"u8.ToArray().Append((byte)0).ToArray(), RawPath(Bytes("s\u008B "))).Should().Be(0);
+        MakeFile(Bytes("keep.txt"), "kept");
+
+        Repair(new ExtractedNames.Kept(Bytes("s\u008B "), 0, IsDirectory: false, IsSymlink: true, Drop: true));
+
+        Tree().Should().Equal("keep.txt");
+        _warnings.Should().ContainSingle(w => w.Contains("test.zip"));
+    }
+
+    // 7z keeps a backslash in a name as part of the file name; the entry goes where ArchiveEntryPath puts it.
+    [Fact]
+    public void ABackslashNameIsRenamedToTheCleanedPath()
+    {
+        MakeFile(Bytes("a\\b\u008B"), "data");
+
+        Repair(File("a\\b\u008B", 0));
+
+        Tree().Should().Equal("a", "a/b\u00EF");
+    }
+
+    [Fact]
+    public void ANameWithADotDotSegmentIsRenamedToTheCleanedPath()
+    {
+        MakeFile(Bytes("x\\..\\y\u008B"), "data");
+
+        Repair(File("x\\..\\y\u008B", 0));
+
+        Tree().Should().Equal("y\u00EF");
+    }
+
+    [Fact]
+    public void AnEntryWhoseFolderIsALinkIsNotRenamedThroughIt()
+    {
+        var outside = Path.Combine(_root, "..", $"outside-{Guid.NewGuid()}");
+        Directory.CreateDirectory(outside);
+        try
+        {
+            System.IO.File.CreateSymbolicLink(Path.Combine(_root, "d"), outside);
+            MakeFile(Bytes("d\\f\u008B"), "data");
+
+            Repair(File("d\\f\u008B", 0));
+
+            Directory.GetFileSystemEntries(outside).Should().BeEmpty();
+            Tree().Should().Equal("d");
+        }
+        finally
+        {
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
     public void ACodePage437FileNameIsRenamedToItsDecodedName()
     {
         MakeFile(Bytes("a_b\u008B\u0094.txt"), "data");
