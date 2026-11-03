@@ -42,9 +42,10 @@ public class ManagedZipExtractorTests
     }
 
     // A zip entry can be marked as a Unix symlink, its data being the link target. The managed extractor
-    // writes entry data to a regular file and never creates links, so the target is just file content.
+    // never creates links and never writes the target text as a file: a link to somewhere outside the
+    // destination is dropped.
     [Fact]
-    public async Task SymlinkEntriesAreWrittenAsRegularFiles()
+    public async Task ASymlinkEntryPointingOutsideTheDestinationIsDropped()
     {
         using var temporaryFileManager = CreateTemporaryFileManager();
         await using var outside = temporaryFileManager.CreateFolder();
@@ -70,7 +71,7 @@ public class ManagedZipExtractorTests
 
         var extracted = destination.Combine("link").ToString();
         new FileInfo(extracted).LinkTarget.Should().BeNull();
-        File.ReadAllText(extracted).Should().Be(secret.ToString());
+        File.Exists(extracted).Should().BeFalse();
         File.ReadAllText(secret.ToString()).Should().Be("private");
     }
 

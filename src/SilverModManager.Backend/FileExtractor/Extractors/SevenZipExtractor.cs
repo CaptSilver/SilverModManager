@@ -313,6 +313,7 @@ public class SevenZipExtractor : IExtractor
 
         var root = destination.ToNativeSeparators(_osInformation);
         foreach (var folder in plan.Folders) Directory.CreateDirectory(Path.Combine(root, folder));
+        foreach (var (name, reason) in plan.DroppedHardLinks) _logger.LogWarning("Dropping hard link `{Entry}` from archive `{Archive}`: {Reason}", name, archiveName, reason);
 
         foreach (var (name, cleaned) in plan.Moved)
         {
@@ -336,8 +337,42 @@ public class SevenZipExtractor : IExtractor
             File.Move(extracted[0], target, overwrite: true);
         }
 
+        var placeable = new List<(string Name, string Path, string Target)>();
+        foreach (var (name, cleaned, listedTarget) in plan.Links)
+        {
+            var target = listedTarget ?? await ReadLinkTarget(source, archiveName, name, cancellationToken);
+            if (target is null) _logger.LogWarning("Dropping symlink `{Entry}` from archive `{Archive}`: 7z would not extract it", name, archiveName);
+            else placeable.Add((name, cleaned, target));
+        }
+
+        // The archive may store a file at mode 000, which the copy could not read.
+        if (placeable.Count > 0) NormalizeModes(root);
+        ExtractedLinks.PlaceAll(root, archiveName, placeable, _logger);
+
         plan.Rewrites.Log(_logger, archiveName);
     }
+
+    /// <summary>
+    /// The listing of some formats (.7z, .zip) does not show a link's target, so the entry is extracted on
+    /// its own into a scratch folder and read there. 7z either creates the link or, when it considers the
+    /// target dangerous, nothing. A format that stores the target as the entry's data may come out as a
+    /// regular file holding the target text. Returns null when nothing came out.
+    /// </summary>
+    private async ValueTask<string?> ReadLinkTarget(AbsolutePath source, string archiveName, string name, CancellationToken cancellationToken)
+    {
+        await using var scratch = _temporaryFileManager.CreateFolder();
+        await RunExtract(source, archiveName, scratch.Path, ["-spd", $"-i!{name}"], cancellationToken);
+
+        var extracted = FindExtractedEntries(scratch.Path.ToNativeSeparators(_osInformation));
+        if (extracted.Count == 0) return null;
+
+        var info = new FileInfo(extracted[0]);
+        if (info.LinkTarget is { } target) return target;
+        if (!info.Exists || info.Length > MaxLinkTargetBytes) return null;
+        return (await File.ReadAllTextAsync(info.FullName, Encoding.UTF8, cancellationToken)).TrimEnd('\0');
+    }
+
+    private const int MaxLinkTargetBytes = 4096;
 
     /// <summary>
     /// Everything 7z extracted into a folder that held no other entry, links included and never followed.
@@ -368,12 +403,27 @@ public class SevenZipExtractor : IExtractor
         var entries = new List<ArchiveEntryPlan.Entry>();
         string? name = null;
         var isDirectory = false;
+        string? symlinkTarget = null;
+        string? hardLinkTarget = null;
+        var isSymlink = false;
 
         void Flush()
         {
-            if (name is not null) entries.Add(new ArchiveEntryPlan.Entry(name, isDirectory));
+            if (name is not null) entries.Add(new ArchiveEntryPlan.Entry(name, isDirectory, symlinkTarget, hardLinkTarget, isSymlink));
             name = null;
             isDirectory = false;
+            symlinkTarget = null;
+            hardLinkTarget = null;
+            isSymlink = false;
+        }
+
+        // tar prints the target and the mode; .7z, .zip (and presumably rar) print only the mode string, whose
+        // first character is `l` for a symbolic link.
+        static string? NonEmpty(string value) => value.Length == 0 ? null : value;
+        static bool IsLinkMode(string value)
+        {
+            var mode = value.Split(' ', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+            return mode is { Length: 10 } && mode[0] == 'l';
         }
 
         var process = Cli
@@ -389,6 +439,23 @@ public class SevenZipExtractor : IExtractor
                 else if (line.StartsWith("Folder = ", StringComparison.Ordinal))
                 {
                     isDirectory = line["Folder = ".Length..] == "+";
+                }
+                else if (line.StartsWith("Symbolic Link = ", StringComparison.Ordinal))
+                {
+                    symlinkTarget = NonEmpty(line["Symbolic Link = ".Length..]);
+                    isSymlink |= symlinkTarget is not null;
+                }
+                else if (line.StartsWith("Hard Link = ", StringComparison.Ordinal))
+                {
+                    hardLinkTarget = NonEmpty(line["Hard Link = ".Length..]);
+                }
+                else if (line.StartsWith("Mode = ", StringComparison.Ordinal))
+                {
+                    isSymlink |= IsLinkMode(line["Mode = ".Length..]);
+                }
+                else if (line.StartsWith("Attributes = ", StringComparison.Ordinal))
+                {
+                    isSymlink |= IsLinkMode(line["Attributes = ".Length..]);
                 }
             }))
             .WithValidation(CommandResultValidation.ZeroExitCode);

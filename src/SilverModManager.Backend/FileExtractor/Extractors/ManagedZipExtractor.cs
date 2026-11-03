@@ -84,6 +84,8 @@ internal class ManagedZipExtractor : IExtractor
         var rewrites = new ArchiveEntryPath.Rewrites();
         var written = new Dictionary<string, string>(StringComparer.Ordinal);
         var replacedNames = new List<string>();
+        var links = new List<(string Name, string Path, string Target)>();
+        var archiveName = source.FileName.ToString();
         for (var i = 0; i < zipFile.Count; i++)
         {
             var zipEntry = zipFile[i];
@@ -92,6 +94,14 @@ internal class ManagedZipExtractor : IExtractor
             var cleaned = ArchiveEntryPath.Clean(originalName);
             if (ArchiveEntryPath.IsRewritten(originalName, cleaned)) rewrites.Add(originalName, cleaned);
             if (cleaned.Length == 0) continue;
+
+            // A symlink is never created: its target text is judged once every other entry is on disk.
+            if (IsUnixSymlink(zipEntry))
+            {
+                if (await ReadLinkTarget(zipFile, zipEntry, cancellationToken) is { } linkTarget) links.Add((originalName, cleaned, linkTarget));
+                else _logger.LogWarning("Dropping symlink `{Entry}` from archive `{Archive}`: its target is unreadable or too long", originalName, archiveName);
+                continue;
+            }
 
             // The later entry wins, as it does for two entries with the same plain name. Different raw names
             // that clean to one path are reported, since the author probably didn't mean to overwrite.
@@ -121,12 +131,31 @@ internal class ManagedZipExtractor : IExtractor
             await inputStream.CopyToAsync(outputStream, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
-        rewrites.Log(_logger, source.FileName.ToString());
+        var root = destination.ToString();
+        ExtractedLinks.PlaceAll(root, archiveName, links, _logger);
+
+        rewrites.Log(_logger, archiveName);
         if (replacedNames.Count > 0)
         {
             _logger.LogWarning("Replaced control or undecodable characters with `_` in {Count} entry name(s) of archive `{Archive}`: {Entries}",
                 replacedNames.Count, source.FileName.ToString(), string.Join("; ", replacedNames));
         }
+    }
+
+    private const int MaxLinkTargetBytes = 4096;
+
+    private static bool IsUnixSymlink(ZipEntry entry) =>
+        entry.HostSystem == (int)HostSystemID.Unix && ((entry.ExternalFileAttributes >> 16) & 0xF000) == 0xA000;
+
+    /// <summary>The target a zip symlink stores as its data, or null when it is too long to be one.</summary>
+    private static async Task<string?> ReadLinkTarget(ZipFile zipFile, ZipEntry entry, CancellationToken cancellationToken)
+    {
+        if (entry.Size is < 0 or > MaxLinkTargetBytes) return null;
+
+        await using var input = zipFile.GetInputStream(entry);
+        using var buffer = new MemoryStream();
+        await input.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+        return Encoding.UTF8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length).TrimEnd('\0');
     }
 
     /// <summary>

@@ -24,7 +24,7 @@ public class ArchiveTraversalTests : AFileExtractorTest
 {
     public enum Extractor { ManagedZip, SevenZip }
 
-    private sealed record Entry(string Name, string Content = "payload");
+    private sealed record Entry(string Name, string Content = "payload", bool UnixSymlink = false);
 
     private sealed record Outcome(Dictionary<string, string> Files, string[] Folders, string[] Outside, List<string> Warnings);
 
@@ -35,15 +35,25 @@ public class ArchiveTraversalTests : AFileExtractorTest
         await using (var stream = archive.Create())
         await using (var output = new ZipOutputStream(stream))
         {
-            foreach (var entry in entries)
-            {
-                await output.PutNextEntryAsync(new ZipEntry(entry.Name), TestContext.Current.CancellationToken);
-                if (!entry.Name.EndsWith('/')) await output.WriteAsync(Encoding.UTF8.GetBytes(entry.Content), TestContext.Current.CancellationToken);
-                await output.CloseEntryAsync(TestContext.Current.CancellationToken);
-            }
+            foreach (var entry in entries) await WriteEntry(output, entry);
         }
 
         return await Extract(container.Path, archive, extractor);
+    }
+
+    private static async Task WriteEntry(ZipOutputStream output, Entry entry)
+    {
+        var zipEntry = new ZipEntry(entry.Name);
+        if (entry.UnixSymlink)
+        {
+            // Unix mode 120777 in the high half of the external attributes marks a symlink whose data is the target.
+            zipEntry.HostSystem = (int)HostSystemID.Unix;
+            zipEntry.ExternalFileAttributes = unchecked((int)0xA1FF0000);
+        }
+
+        await output.PutNextEntryAsync(zipEntry, TestContext.Current.CancellationToken);
+        if (!entry.Name.EndsWith('/')) await output.WriteAsync(Encoding.UTF8.GetBytes(entry.Content), TestContext.Current.CancellationToken);
+        await output.CloseEntryAsync(TestContext.Current.CancellationToken);
     }
 
     private async Task<Outcome> ExtractTar(Action<TarWriter> write)
@@ -306,20 +316,22 @@ public class ArchiveTraversalTests : AFileExtractorTest
         outcome.Warnings.Should().ContainSingle(w => w.Contains("`a/../x.txt` -> `x.txt`"));
     }
 
-    // An archive can create a link and then write through it. 7z drops the link, and the entry that goes
-    // through it has nowhere to land: the extraction fails, and nothing reaches the link target.
+    // An archive can name a link and then write through it. The link entry never reaches 7z, so the
+    // entry that goes through it creates a real folder and nothing lands at the link target.
     [Fact]
-    public async Task AFileWrittenThroughAnArchiveSymlinkNeverReachesTheLinkTarget()
+    public async Task AFileWrittenThroughAnOutsideSymlinkLandsInARealFolder()
     {
         await using var outside = TemporaryFileManager.CreateFolder();
-        var extraction = ExtractTar(writer =>
+        var outcome = await ExtractTar(writer =>
         {
             writer.WriteEntry(new GnuTarEntry(TarEntryType.SymbolicLink, "link") { LinkName = outside.Path.ToString() });
             AddFile(writer, "link/escaped.txt");
         });
 
-        await extraction.Awaiting(e => e).Should().ThrowAsync<FileExtractionException>();
+        outcome.Files.Keys.Should().BeEquivalentTo("link/escaped.txt");
+        outcome.Outside.Should().BeEmpty();
         outside.Path.EnumerateFiles().Should().BeEmpty();
+        outcome.Warnings.Should().Contain(w => w.Contains("`link`"));
     }
 
     // A relative link that climbs out of the destination is dropped and 7z writes a real folder in its place.
@@ -336,22 +348,117 @@ public class ArchiveTraversalTests : AFileExtractorTest
         outcome.Outside.Should().BeEmpty();
     }
 
-    // 7z resolves a hard link target inside the destination, so a target path outside it finds nothing to link.
+    // 7z resolves a hard link target inside the destination and fails the run when nothing is there, so
+    // the entry is dropped before 7z sees it.
     [Fact]
-    public async Task AHardLinkEntryNeverExposesAFileOutsideTheDestination()
+    public async Task AHardLinkToAnOutsideFileIsDroppedAndTheRestExtracts()
     {
         await using var outside = TemporaryFileManager.CreateFolder();
         var secret = outside.Path.Combine("secret.txt");
         await secret.WriteAllTextAsync("private", TestContext.Current.CancellationToken);
 
-        var extraction = ExtractTar(writer =>
+        var outcome = await ExtractTar(writer =>
         {
             writer.WriteEntry(new GnuTarEntry(TarEntryType.HardLink, "stolen.txt") { LinkName = secret.ToString() });
             AddFile(writer, "ok.txt");
         });
 
-        await extraction.Awaiting(e => e).Should().ThrowAsync<FileExtractionException>();
+        outcome.Files.Keys.Should().BeEquivalentTo("ok.txt");
+        outcome.Outside.Should().BeEmpty();
         File.ReadAllText(secret.ToString()).Should().Be("private");
+        outcome.Warnings.Should().Contain(w => w.Contains("stolen.txt"));
+    }
+
+    [Fact]
+    public async Task AHardLinkToAnEarlierEntryStillExtracts()
+    {
+        var outcome = await ExtractTar(writer =>
+        {
+            AddFile(writer, "sub/ok.txt", "shared");
+            writer.WriteEntry(new GnuTarEntry(TarEntryType.HardLink, "hard.txt") { LinkName = "sub/ok.txt" });
+        });
+
+        outcome.Files.Should().Equal(new Dictionary<string, string> { ["sub/ok.txt"] = "shared", ["hard.txt"] = "shared" });
+        outcome.Warnings.Should().BeEmpty();
+    }
+
+    public enum LinkArchive { ManagedZip, SevenZipZip, Tar }
+
+    private sealed record Item(string Name, string? LinkTarget = null, string Content = "payload");
+
+    private async Task<Outcome> ExtractItems(LinkArchive kind, params Item[] items)
+    {
+        if (kind == LinkArchive.Tar)
+        {
+            return await ExtractTar(writer =>
+            {
+                foreach (var item in items)
+                {
+                    if (item.LinkTarget is null) AddFile(writer, item.Name, item.Content);
+                    else writer.WriteEntry(new GnuTarEntry(TarEntryType.SymbolicLink, item.Name) { LinkName = item.LinkTarget });
+                }
+            });
+        }
+
+        return await ExtractZip(kind == LinkArchive.ManagedZip ? Extractor.ManagedZip : Extractor.SevenZip,
+            items.Select(i => i.LinkTarget is null ? new Entry(i.Name, i.Content) : new Entry(i.Name, i.LinkTarget, UnixSymlink: true)).ToArray());
+    }
+
+    [Theory]
+    [InlineData(LinkArchive.ManagedZip)]
+    [InlineData(LinkArchive.SevenZipZip)]
+    [InlineData(LinkArchive.Tar)]
+    public async Task AnAbsoluteSymlinkEntryIsDroppedWithAWarning(LinkArchive kind)
+    {
+        var outcome = await ExtractItems(kind, new Item("link", "/etc/passwd"), new Item("ok.txt"));
+
+        outcome.Files.Keys.Should().BeEquivalentTo("ok.txt");
+        outcome.Outside.Should().BeEmpty();
+        outcome.Warnings.Should().Contain(w => w.Contains("`link`"));
+    }
+
+    [Theory]
+    [InlineData(LinkArchive.ManagedZip)]
+    [InlineData(LinkArchive.SevenZipZip)]
+    [InlineData(LinkArchive.Tar)]
+    public async Task AnInternalFileSymlinkEntryBecomesACopy(LinkArchive kind)
+    {
+        var outcome = await ExtractItems(kind, new Item("sub/ok.txt", Content: "shared"), new Item("inlink", "sub/ok.txt"));
+
+        outcome.Files.Should().Equal(new Dictionary<string, string> { ["sub/ok.txt"] = "shared", ["inlink"] = "shared" });
+    }
+
+    [Theory]
+    [InlineData(LinkArchive.ManagedZip, "a.txt")]
+    [InlineData(LinkArchive.SevenZipZip, "./a.txt")]
+    public async Task ASymlinkEntryWhoseCleanedPathIsAlreadyAFileIsDropped(LinkArchive kind, string linkName)
+    {
+        var outcome = await ExtractItems(kind, new Item("a.txt", Content: "real"), new Item("sub/ok.txt", Content: "other"), new Item(linkName, "sub/ok.txt"));
+
+        outcome.Files["a.txt"].Should().Be("real");
+        outcome.Warnings.Should().Contain(w => w.Contains("a.txt"));
+    }
+
+    [Theory]
+    [InlineData(LinkArchive.ManagedZip)]
+    [InlineData(LinkArchive.SevenZipZip)]
+    public async Task AZipSymlinkEntryNeverBecomesALinkOnDisk(LinkArchive kind)
+    {
+        await using var container = TemporaryFileManager.CreateFolder();
+        var archive = container.Path.Combine("Traversal Mod-1-0.zip");
+        await using (var stream = archive.Create())
+        await using (var output = new ZipOutputStream(stream))
+        {
+            await WriteEntry(output, new Entry("ok.txt", "x"));
+            await WriteEntry(output, new Entry("inlink", "ok.txt", UnixSymlink: true));
+        }
+
+        var destination = container.Path.Combine("a/b/extracted");
+        await Extract(container.Path, archive, kind == LinkArchive.ManagedZip ? Extractor.ManagedZip : Extractor.SevenZip, destination);
+
+        Directory.EnumerateFileSystemEntries(destination.ToString(), "*", SearchOption.AllDirectories)
+            .Where(p => new FileInfo(p).LinkTarget is not null)
+            .Should().BeEmpty();
     }
 
     [Fact]

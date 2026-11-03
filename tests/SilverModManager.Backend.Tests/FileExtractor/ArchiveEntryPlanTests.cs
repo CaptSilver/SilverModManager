@@ -61,4 +61,81 @@ public class ArchiveEntryPlanTests
         plan.Moved.Should().BeEmpty();
         plan.Rewrites.IsEmpty.Should().BeFalse();
     }
+
+    private static ArchiveEntryPlan Plan(params ArchiveEntryPlan.Entry[] entries) => new(entries);
+
+    private static ArchiveEntryPlan.Entry File(string name) => new(name, IsDirectory: false);
+    private static ArchiveEntryPlan.Entry Symlink(string name, string? target = null) => new(name, IsDirectory: false, SymlinkTarget: target, IsSymlink: true);
+    private static ArchiveEntryPlan.Entry HardLink(string name, string target) => new(name, IsDirectory: false, HardLinkTarget: target);
+
+    [Fact]
+    public void ASymlinkEntryIsExcludedFromTheBulkRunAndListedAsALink()
+    {
+        var plan = Plan(File("sub/ok.txt"), Symlink("../up/link", "sub/ok.txt"));
+
+        plan.IsPlain.Should().BeFalse();
+        plan.Excluded.Should().BeEquivalentTo("../up/link");
+        plan.Links.Should().Equal(("../up/link", "up/link", "sub/ok.txt"));
+        plan.Moved.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ASymlinkDoesNotSupersedeAFileAtItsCleanedPath()
+    {
+        var plan = Plan(File("a.txt"), Symlink("./a.txt", "b.txt"));
+
+        plan.Excluded.Should().BeEquivalentTo("./a.txt");
+        plan.Links.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void AnEntryBelowASymlinkIsExtractedAloneBecauseExcludingTheLinkWouldExcludeIt()
+    {
+        var plan = Plan(Symlink("link", "/outside"), File("link/escaped.txt"));
+
+        plan.Moved.Should().Equal(("link/escaped.txt", "link/escaped.txt"));
+    }
+
+    [Fact]
+    public void AHardLinkWithoutAKeptTargetIsExcluded()
+    {
+        var plan = Plan(HardLink("stolen.txt", "/outside/secret.txt"), File("ok.txt"));
+
+        plan.Excluded.Should().BeEquivalentTo("stolen.txt");
+        plan.DroppedHardLinks.Should().ContainSingle(d => d.Name == "stolen.txt");
+    }
+
+    [Fact]
+    public void AHardLinkToAKeptEntryIsLeftToTheBulkRun()
+    {
+        var plan = Plan(File("sub/ok.txt"), HardLink("hard.txt", "sub/ok.txt"));
+
+        plan.IsPlain.Should().BeTrue();
+        plan.DroppedHardLinks.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AHardLinkToAMovedEntryIsDropped()
+    {
+        var plan = Plan(File("a/../x.txt"), HardLink("hard.txt", "a/../x.txt"));
+
+        plan.Excluded.Should().Contain("hard.txt");
+        plan.DroppedHardLinks.Should().ContainSingle(d => d.Name == "hard.txt");
+    }
+
+    [Fact]
+    public void AHardLinkToALaterEntryIsDropped()
+    {
+        var plan = Plan(HardLink("hard.txt", "ok.txt"), File("ok.txt"));
+
+        plan.DroppedHardLinks.Should().ContainSingle(d => d.Name == "hard.txt");
+    }
+
+    [Fact]
+    public void AHardLinkWithARewrittenNameIsDropped()
+    {
+        var plan = Plan(File("ok.txt"), HardLink("a\\hard.txt", "ok.txt"));
+
+        plan.DroppedHardLinks.Should().ContainSingle(d => d.Name == "a\\hard.txt");
+    }
 }

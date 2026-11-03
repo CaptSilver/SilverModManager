@@ -181,6 +181,36 @@ public class ExtractedLinksTests : IDisposable
         SilverModManager.Sdk.IO.LinkResolution.RealPath(InRoot("l/../x")).Should().Be(InRoot("a/x"));
     }
 
+    // The extractors judge a link from the target in the listing, before anything is on disk; the sweep
+    // judges what 7z left on disk. Both must reach the same decision for the same target.
+    [Theory]
+    [InlineData("/etc/passwd")]
+    [InlineData("../outside/secret.txt")]
+    [InlineData("real.txt")]
+    [InlineData("sub")]
+    [InlineData("missing.txt")]
+    [InlineData("sub/../real.txt")]
+    public void JudgeWithAnExplicitTargetMatchesTheOnDiskSweep(string target)
+    {
+        File.WriteAllText(InRoot("real.txt"), "real content");
+        Directory.CreateDirectory(InRoot("sub"));
+
+        var judged = ExtractedLinks.Judge(_root, InRoot("link"), target);
+        Link("link", target);
+        Sanitize();
+
+        if (judged.CopyFrom is null)
+        {
+            Exists("link").Should().BeFalse();
+            judged.Reason.Should().NotBeNullOrEmpty();
+        }
+        else
+        {
+            File.ReadAllText(InRoot("link")).Should().Be("real content");
+            judged.CopyFrom.Should().Be(InRoot("real.txt"));
+        }
+    }
+
     private sealed class ListLogger(List<string> messages) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
