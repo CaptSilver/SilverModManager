@@ -15,16 +15,21 @@ internal static partial class ExtractedNames
 {
     /// <param name="Raw">The name as stored in the archive.</param>
     /// <param name="Index">Position in the archive; of two entries that end up at one path, the higher one stays.</param>
-    internal readonly record struct Kept(byte[] Raw, int Index, bool IsDirectory);
+    /// <param name="IsSymlink">True for a symbolic link entry. 7z leaves a 0-byte file where it refused to create one.</param>
+    internal readonly record struct Kept(byte[] Raw, int Index, bool IsDirectory, bool IsSymlink = false);
 
     private const int NoSuchFile = 2;
     private const int DirectoryNotEmpty = 39;
+    private const int NotALink = 22;
 
     [LibraryImport("libc", EntryPoint = "rename", SetLastError = true)]
     private static partial int Rename(byte[] oldPath, byte[] newPath);
 
     [LibraryImport("libc", EntryPoint = "unlink", SetLastError = true)]
     private static partial int Unlink(byte[] path);
+
+    [LibraryImport("libc", EntryPoint = "readlink", SetLastError = true)]
+    private static partial nint ReadLink(byte[] path, byte[] buffer, nuint size);
 
     [LibraryImport("libc", EntryPoint = "rmdir", SetLastError = true)]
     private static partial int RemoveDirectory(byte[] path);
@@ -38,12 +43,29 @@ internal static partial class ExtractedNames
         var entries = Distinct(RestoreNewlines(root, kept));
         var prepared = entries.Select(entry => Prepare(entry)).Where(p => p.Segments.Length > 0).ToArray();
 
-        var winners = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var p in prepared.Where(p => !p.Entry.IsDirectory)) winners[p.FinalPath] = Math.Max(winners.GetValueOrDefault(p.FinalPath, -1), p.Entry.Index);
-
         var rootBytes = Encoding.UTF8.GetBytes(root.TrimEnd('/'));
+
+        // A link 7z refused to create is a 0-byte regular file under its name. Importing it would pass an
+        // empty file off as the link's content, so it goes before anything is renamed.
+        var placeholders = new HashSet<Prepared>();
+        foreach (var p in prepared.Where(p => p.Entry.IsSymlink && IsRegularFile(Join(rootBytes, p.RawSegments, p.RawSegments.Length))))
+        {
+            Check(Unlink(Join(rootBytes, p.RawSegments, p.RawSegments.Length)), p, "removing the placeholder 7z left for a refused link");
+            placeholders.Add(p);
+            logger.LogWarning("Dropping symlink `{Entry}` from archive `{Archive}`: 7z refused to create it", EntryNames.Printable(Encoding.UTF8.GetString(p.Entry.Raw)), archive);
+        }
+
+        prepared = prepared.Where(p => !placeholders.Contains(p)).ToArray();
+
+        // A link never beats a file at the same path (see ExtractedLinks.Place), whatever order they are stored in.
+        var winners = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var p in prepared.Where(p => !p.Entry.IsDirectory && !p.Entry.IsSymlink)) winners[p.FinalPath] = Math.Max(winners.GetValueOrDefault(p.FinalPath, -1), p.Entry.Index);
+
         var oldFolders = new Dictionary<string, (int Depth, byte[] Path)>(StringComparer.Ordinal);
         var report = new List<string>();
+
+        var linkWinners = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var p in prepared.Where(p => p.Entry.IsSymlink)) linkWinners[p.FinalPath] = Math.Max(linkWinners.GetValueOrDefault(p.FinalPath, -1), p.Entry.Index);
 
         foreach (var p in prepared.Where(p => p.FirstChange >= 0))
         {
@@ -55,7 +77,7 @@ internal static partial class ExtractedNames
             {
                 Directory.CreateDirectory(finalFull);
             }
-            else if (winners[p.FinalPath] != p.Entry.Index)
+            else if (p.Entry.IsSymlink ? winners.ContainsKey(p.FinalPath) || linkWinners[p.FinalPath] != p.Entry.Index : winners[p.FinalPath] != p.Entry.Index)
             {
                 Check(Unlink(oldPath), p, "removing the entry a later one replaces");
                 logger.LogWarning("Dropping `{Entry}` from archive `{Archive}`: a later entry also extracts to `{Path}`", EntryNames.Printable(Encoding.UTF8.GetString(p.Entry.Raw)), archive, p.FinalPath);
@@ -85,6 +107,10 @@ internal static partial class ExtractedNames
 
         if (report.Count > 0) logger.LogWarning("Renamed {Count} entry name(s) in archive `{Archive}` to names that work on every platform: {Entries}", report.Count, archive, string.Join("; ", report));
     }
+
+    /// <summary>True when the path exists and is not a symbolic link (readlink fails with EINVAL on anything else).</summary>
+    private static bool IsRegularFile(byte[] path) =>
+        ReadLink(path, new byte[1], 1) == -1 && Marshal.GetLastPInvokeError() == NotALink;
 
     /// <summary>
     /// 7z's listing prints a newline in a name as an underscore (no other control byte is rewritten), while

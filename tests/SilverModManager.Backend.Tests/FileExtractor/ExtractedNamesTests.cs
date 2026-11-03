@@ -37,6 +37,9 @@ public partial class ExtractedNamesTests : IDisposable
     [LibraryImport("libc", EntryPoint = "write")]
     private static partial nint Write(int fd, byte[] data, nint count);
 
+    [LibraryImport("libc", EntryPoint = "symlink", SetLastError = true)]
+    private static partial int Symlink(byte[] target, byte[] path);
+
     private byte[] RawPath(byte[] name) => [.. Encoding.UTF8.GetBytes(_root), (byte)'/', .. name, 0];
 
     // .NET cannot create a name that is not valid UTF-8, so the tree 7z would leave is built with libc.
@@ -65,6 +68,31 @@ public partial class ExtractedNamesTests : IDisposable
 
     private static ExtractedNames.Kept File(string rawLatin1, int index) => new(Bytes(rawLatin1), index, IsDirectory: false);
     private static ExtractedNames.Kept Folder(string rawLatin1, int index) => new(Bytes(rawLatin1), index, IsDirectory: true);
+
+    private static ExtractedNames.Kept Link(string rawLatin1, int index) => new(Bytes(rawLatin1), index, IsDirectory: false, IsSymlink: true);
+
+    // 7z leaves a 0-byte file where it refused to create a link; it must not be renamed into the result.
+    [Fact]
+    public void AnEmptyFileLeftForARefusedLinkIsRemoved()
+    {
+        MakeFile(Bytes("via\u008B "), "");
+
+        Repair(Link("via\u008B ", 0));
+
+        Tree().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ALinkStoredAfterAFileAtTheSamePathDoesNotReplaceIt()
+    {
+        MakeFile(Bytes("same\u008B"), "real");
+        Symlink("elsewhere"u8.ToArray().Append((byte)0).ToArray(), RawPath(Bytes("same\u008B "))).Should().Be(0);
+
+        Repair(File("same\u008B", 0), Link("same\u008B ", 1));
+
+        Tree().Should().Equal("sameï");
+        Read("sameï").Should().Be("real");
+    }
 
     [Fact]
     public void ACodePage437FileNameIsRenamedToItsDecodedName()

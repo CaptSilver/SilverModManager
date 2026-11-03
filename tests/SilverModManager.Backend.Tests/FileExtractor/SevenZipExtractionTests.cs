@@ -121,8 +121,8 @@ public class SevenZipExtractionTests : AFileExtractorTest
         ]).Should().BeFalse();
     }
 
-    // A link whose target runs through another link is refused by 7z; the archive still extracts with the
-    // link dropped and nothing written outside the destination.
+    // hop/evil.txt is extracted on its own into a real hop/ folder and viahop is dropped when the links are
+    // placed (7z is never asked to create either link); the archive extracts and nothing is written outside.
     [Fact]
     public async Task LinkThroughAnotherLinkIsDroppedAndTheRestExtracts()
     {
@@ -157,6 +157,72 @@ public class SevenZipExtractionTests : AFileExtractorTest
         File.ReadAllText(Path.Combine(root, "d", "inner.txt")).Should().Be("inner content");
         Directory.EnumerateFileSystemEntries(outside.Path.ToString()).Select(Path.GetFileName).Order()
             .Should().Equal("extracted", "through-link.zip");
+    }
+
+    // Both link names are non-UTF-8 and end in a space, so 7z cannot select them by name and they stay in the
+    // main run. There 7z creates "hop\xff " but refuses "via\xfe " (its target runs through another link),
+    // prints "Dangerous link via another link was ignored" and leaves a 0-byte regular file in its place.
+    // That file must not be imported as the link's content: the result is a copy of d/inner.txt or nothing.
+    [Fact]
+    public async Task ARefusedLinkThatCannotBeNamedDoesNotLeaveAnEmptyFile()
+    {
+        await using var outside = TemporaryFileManager.CreateFolder();
+        var archive = outside.Path.Combine("unnameable-links.tar.gz");
+        await File.WriteAllBytesAsync(archive.ToString(), Gzip(BuildTar(
+            (Name: "d/inner.txt"u8.ToArray(), Content: "inner content"u8.ToArray(), LinkTarget: (byte[]?)null),
+            (Name: [(byte)'h', (byte)'o', (byte)'p', 0xFF, (byte)' '], Content: [], LinkTarget: "d"u8.ToArray()),
+            (Name: [(byte)'v', (byte)'i', (byte)'a', 0xFE, (byte)' '], Content: [], LinkTarget: [(byte)'h', (byte)'o', (byte)'p', 0xFF, (byte)' ', .. "/inner.txt"u8]),
+            (Name: "ok.txt"u8.ToArray(), Content: "fine"u8.ToArray(), LinkTarget: null))), TestContext.Current.CancellationToken);
+
+        var destination = outside.Path.Combine("extracted");
+        destination.CreateDirectory();
+        await FileExtractor.ExtractAllAsync(archive, destination, TestContext.Current.CancellationToken);
+
+        var root = destination.ToString();
+        var files = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).ToArray();
+        files.Where(f => new FileInfo(f).LinkTarget is not null).Should().BeEmpty();
+        File.ReadAllText(Path.Combine(root, "ok.txt")).Should().Be("fine");
+        File.ReadAllText(Path.Combine(root, "d", "inner.txt")).Should().Be("inner content");
+        foreach (var file in files.Where(f => Path.GetFileName(f).StartsWith("via", StringComparison.Ordinal)))
+        {
+            File.ReadAllText(file).Should().Be("inner content", "an empty placeholder must not stand in for the link");
+        }
+    }
+
+    private static byte[] Gzip(byte[] bytes)
+    {
+        using var output = new MemoryStream();
+        using (var gzip = new GZipStream(output, CompressionLevel.Fastest)) gzip.Write(bytes);
+        return output.ToArray();
+    }
+
+    // A minimal ustar writer, because TarWriter can only write names that are valid UTF-8.
+    private static byte[] BuildTar(params (byte[] Name, byte[] Content, byte[]? LinkTarget)[] entries)
+    {
+        using var output = new MemoryStream();
+        foreach (var (name, content, linkTarget) in entries)
+        {
+            var header = new byte[512];
+            void Put(int offset, ReadOnlySpan<byte> bytes) => bytes.CopyTo(header.AsSpan(offset));
+            Put(0, name);
+            Put(100, System.Text.Encoding.ASCII.GetBytes(linkTarget is null ? "0000644" : "0000777"));
+            Put(108, "0000000"u8);
+            Put(116, "0000000"u8);
+            Put(124, System.Text.Encoding.ASCII.GetBytes(Convert.ToString(content.Length, 8).PadLeft(11, '0')));
+            Put(136, "00000000000"u8);
+            header.AsSpan(148, 8).Fill((byte)' ');
+            header[156] = linkTarget is null ? (byte)'0' : (byte)'2';
+            if (linkTarget is not null) Put(157, linkTarget);
+            Put(257, "ustar\0"u8);
+            Put(263, "00"u8);
+            Put(148, System.Text.Encoding.ASCII.GetBytes(Convert.ToString(header.Sum(b => b), 8).PadLeft(6, '0') + "\0 "));
+            output.Write(header);
+            output.Write(content);
+            output.Write(new byte[(512 - content.Length % 512) % 512]);
+        }
+
+        output.Write(new byte[1024]);
+        return output.ToArray();
     }
 
     // 7z-with-unreadable-link-target.7z stores hidden.txt and the folder locked at mode 000 and link-hidden, a

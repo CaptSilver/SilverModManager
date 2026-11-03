@@ -262,9 +262,8 @@ public class ArchiveTraversalTests : AFileExtractorTest
         outcome.Warnings.Should().BeEmpty();
     }
 
-    // 7z refuses a link whose target climbs with "..", and words the refusal differently ("Dangerous
-    // symbolic link path") when the target climbs back down inside the archive. Either way the link is
-    // dropped and the rest of the archive extracts.
+    // A link whose target climbs with ".." is left out of the 7z run and dropped when the links are placed,
+    // including one whose target climbs back down inside the archive. The rest of the archive extracts.
     [Fact]
     public async Task ANestedLinkThatClimbsIsDroppedAndTheRestExtracts()
     {
