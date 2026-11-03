@@ -84,6 +84,12 @@ public interface ICreationEngineGame : IBethesdaGame
     public IReadOnlyList<string> EarlyLoadingPlugins(GameInstallation installation);
 
     /// <summary>
+    /// The plugins of <see cref="EarlyLoadingPlugins"/> whose files are in the Data folder. A listed plugin that is
+    /// not installed (an uninstalled Creation Club item or DLC) is not loaded, so it is not active either.
+    /// </summary>
+    public IReadOnlyList<string> InstalledEarlyLoadingPlugins(GameInstallation installation);
+
+    /// <summary>
     /// Parse a plugin file. Reads only the header record of the file: its masters, flags and version
     /// </summary>
     /// <returns>

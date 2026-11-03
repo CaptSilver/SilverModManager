@@ -9,6 +9,7 @@ using SilverModManager.Games.CreationEngine.Abstractions;
 using SilverModManager.Games.CreationEngine.SortOrder;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using LoadoutSortOrder = SilverModManager.Abstractions.Loadouts.SortOrder;
 
@@ -58,13 +59,31 @@ internal sealed class LootSortService(
         var plugins = items.Select(i => new LootSortPlugin(i.Data)).ToList();
 
         var earlyLoading = game.EarlyLoadingPlugins(installation);
+        var activeNames = items.Where(i => i.Item.IsActive).Select(i => i.Data.Name).ToList();
+        var loadoutData = items.Select(i => i.Data).ToList();
+
+        // Hashing cleaned plugins and reading headers is synchronous disk I/O, and the command that calls this
+        // starts on the UI thread.
+        return await Task.Run(() => SortPlugins(sortOrderId, installation, lootGame, activeNames, loadoutData, plugins, earlyLoading, token), token);
+    }
+
+    private async Task<LootSortOutcome> SortPlugins(
+        SortOrderId sortOrderId,
+        GameInstallation installation,
+        LootGame lootGame,
+        List<string> activeNames,
+        List<PluginLoadoutData> loadoutData,
+        List<LootSortPlugin> plugins,
+        IReadOnlyList<string> earlyLoading,
+        CancellationToken token)
+    {
         var context = new LootConditionContext(
             game,
             installation,
             lootGame,
             installation.Locations.ToAbsolutePath(game.DataPath).ToString(),
-            items.Where(i => i.Item.IsActive).Select(i => i.Data.Name).Concat(earlyLoading),
-            items.Select(i => i.Data));
+            activeNames.Concat(game.InstalledEarlyLoadingPlugins(installation)),
+            loadoutData);
 
         var content = store.Current(lootGame);
         var database = new LootDatabase(new ConditionEvaluator(context));

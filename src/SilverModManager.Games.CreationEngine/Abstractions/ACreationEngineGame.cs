@@ -80,7 +80,7 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
     /// they are the plugins people clean most.
     /// </summary>
     public IReadOnlyList<string> PluginNames(Loadout.ReadOnly loadout) => LoadoutPluginNames(loadout)
-        .Concat(InstalledGamePluginNames(loadout.InstallationInstance))
+        .Concat(InstalledEarlyLoadingPlugins(loadout.InstallationInstance))
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .Order(StringComparer.OrdinalIgnoreCase)
         .ToList();
@@ -94,9 +94,10 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
         .Select(path => path.FileName.ToString());
 
     // Read from disk: the game's files are not loadout items, and an uninstalled DLC must not be offered.
-    private IEnumerable<string> InstalledGamePluginNames(GameInstallation installation) => EarlyLoadingPlugins(installation)
+    public IReadOnlyList<string> InstalledEarlyLoadingPlugins(GameInstallation installation) => EarlyLoadingPlugins(installation)
         .Where(name => PluginExtensions.Contains((DataPath / name).Extension)
-                       && installation.Locations.ToAbsolutePath(DataPath / name).FileExists);
+                       && installation.Locations.ToAbsolutePath(DataPath / name).FileExists)
+        .ToList();
 
     public abstract PluginFormat HeaderFormat { get; }
 

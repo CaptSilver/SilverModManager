@@ -326,18 +326,26 @@ public class LootSortTests(ITestOutputHelper helper)
     }
 
     [Fact]
-    public async Task AnActiveCondition_CountsTheGamesEarlyLoadingPlugins()
+    public async Task AnActiveCondition_CountsAnEarlyLoadingPluginThatIsInstalled()
     {
-        // Dawnguard.esm is not in this loadout, but the game always loads it.
-        var (order, _) = await SortWith("active(\"Dawnguard.esm\")");
+        // Dawnguard.esm is not in this loadout, but the game always loads it when it is installed.
+        var (order, _) = await SortWith("active(\"Dawnguard.esm\")", (_, _) => PutInDataFolder("Dawnguard.esm", SkyrimPluginFile.Bytes("Dawnguard.esm")));
 
         order.Should().Equal("Skyrim.esm", "B.esp", "A.esp", "C.esp");
     }
 
     [Fact]
+    public async Task AnActiveCondition_IsFalseForAnEarlyLoadingPluginThatIsNotInstalled()
+    {
+        var (order, _) = await SortWith("active(\"Dawnguard.esm\")");
+
+        order.Should().Equal("Skyrim.esm", "A.esp", "B.esp", "C.esp");
+    }
+
+    [Fact]
     public async Task AnIsMasterCondition_ReadsTheMasterFlagOfALoadoutPlugin()
     {
-        var (masterKept, _) = await SortWith("is_master(\"Skyrim.esm\")");
+        var (masterKept, _) = await SortWith("is_master(\"Skyrim.esm\")", (_, _) => PutInDataFolder("Skyrim.esm", SkyrimPluginFile.Bytes("Skyrim.esm")));
         masterKept.Should().Equal("Skyrim.esm", "B.esp", "A.esp", "C.esp");
     }
 
