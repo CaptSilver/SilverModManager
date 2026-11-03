@@ -25,7 +25,9 @@ export QT_QPA_PLATFORM=offscreen
 xdg_root="$(mktemp -d)"
 scratch_root=""
 reflink_root=""
-trap 'rm -rf "$xdg_root" "$scratch_root" "$reflink_root"' EXIT
+dump_dir=""
+# The dump folder is kept only while it holds a crash; rmdir leaves a folder with dumps in it alone.
+trap 'rm -rf "$xdg_root" "$scratch_root" "$reflink_root"; [[ -z "$dump_dir" ]] || rmdir "$dump_dir" 2>/dev/null || true' EXIT
 export XDG_DATA_HOME="$xdg_root/data" XDG_CONFIG_HOME="$xdg_root/config" \
        XDG_STATE_HOME="$xdg_root/state" XDG_CACHE_HOME="$xdg_root/cache"
 unset DISPLAY WAYLAND_DISPLAY
@@ -87,6 +89,8 @@ if [[ -L "$dump_dir" || ! -O "$dump_dir" ]]; then
     exit 1
 fi
 chmod 700 "$dump_dir"
+# Each dump is the size of a test host's heap, and nobody reads one a day later.
+find "$dump_dir" -maxdepth 1 -type f -name 'core.*' -mtime +0 -delete
 export DOTNET_DbgEnableMiniDump=1 DOTNET_DbgMiniDumpType=2 DOTNET_EnableCrashReport=1 \
        DOTNET_DbgMiniDumpName="$dump_dir/core.%p"
 
