@@ -24,6 +24,9 @@ public sealed record PluginLoadoutData(
     /// <summary>Short text for the header flags ("ESM, light"), or null when it has none.</summary>
     public string? Flags { get; init; }
 
+    /// <summary>The description in the plugin's header, or null when it has none or the header could not be read.</summary>
+    public string? Description { get; init; }
+
     /// <summary>Where the game loads the plugin among the early loaders, or null when it is not one of them.</summary>
     public int? EarlyLoaderIndex { get; init; }
 

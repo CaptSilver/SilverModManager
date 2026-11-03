@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Bethesda.Loot.Conditions;
 using SilverModManager.Games.Bethesda.Loot.Database;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
 using SilverModManager.Games.Bethesda.Loot.Sorting;
@@ -48,8 +49,25 @@ internal sealed class LootSortService(
 
         await RefreshAsync(lootGame, token);
 
+        // The rows come in stored order, which is the current load order the sorter's tie-breaks start from.
+        var items = variety.GetSortOrderItems(sortOrderId, db)
+            .Cast<PluginReactiveSortItem>()
+            .Select(item => (Item: item, Data: item.LoadoutData as PluginLoadoutData
+                ?? throw new InvalidOperationException($"The plugin row '{item.DisplayName}' has no plugin data to sort by")))
+            .ToList();
+        var plugins = items.Select(i => new LootSortPlugin(i.Data)).ToList();
+
+        var earlyLoading = game.EarlyLoadingPlugins(installation);
+        var context = new LootConditionContext(
+            game,
+            installation,
+            lootGame,
+            installation.Locations.ToAbsolutePath(game.DataPath).ToString(),
+            items.Where(i => i.Item.IsActive).Select(i => i.Data.Name).Concat(earlyLoading),
+            items.Select(i => i.Data));
+
         var content = store.Current(lootGame);
-        var database = new LootDatabase();
+        var database = new LootDatabase(new ConditionEvaluator(context));
         database.LoadMasterlistWithPrelude(content.Masterlist, content.Prelude);
         var userlist = dataDirectory / "loot" / lootGame.MasterlistRepository() / "userlist.yaml";
         if (userlist.FileExists)
@@ -57,16 +75,9 @@ internal sealed class LootSortService(
 
         token.ThrowIfCancellationRequested();
 
-        // The rows come in stored order, which is the current load order the sorter's tie-breaks start from.
-        var plugins = variety.GetSortOrderItems(sortOrderId, db)
-            .Cast<PluginReactiveSortItem>()
-            .Select(item => new LootSortPlugin(item.LoadoutData as PluginLoadoutData
-                ?? throw new InvalidOperationException($"The plugin row '{item.DisplayName}' has no plugin data to sort by")))
-            .ToList();
-
         try
         {
-            var result = PluginSorter.Sort(plugins, database, game.EarlyLoadingPlugins(installation));
+            var result = PluginSorter.Sort(plugins, database, earlyLoading);
 
             using var tx = connection.BeginTransaction();
             variety.StageOrder(sortOrderId, result.Order, tx);

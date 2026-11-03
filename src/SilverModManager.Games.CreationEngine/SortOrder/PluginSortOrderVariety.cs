@@ -510,6 +510,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         var isMaster = false;
         IReadOnlyList<string> masters = [];
         string? flags = null;
+        string? description = null;
         var isBlueprint = false;
 
         if (_headers.TryGet(identity, name, out var header))
@@ -526,6 +527,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
                 isMaster = _game.IsMaster(named, installation);
                 masters = named.Masters;
                 flags = FlagsOf(named, isMaster);
+                description = named.Description;
                 isBlueprint = _game.IsBlueprint(named);
             }
         }
@@ -533,6 +535,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         return new PluginLoadoutData(name, identity, isEnabled, modName, modGroupId, isMaster, masters)
         {
             Flags = flags,
+            Description = description,
             IsBlueprint = isBlueprint,
             IsGameInstalled = isGameInstalled,
             EarlyLoaderIndex = early.TryGetValue(name, out var index) ? index : null,

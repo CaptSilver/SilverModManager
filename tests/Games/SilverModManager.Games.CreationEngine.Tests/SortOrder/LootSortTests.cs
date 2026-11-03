@@ -182,49 +182,188 @@ public class LootSortTests(ITestOutputHelper helper)
         StoredNames(id).Should().Equal(before);
     }
 
+    private const string LockedFile = "Locked.esp";
+
+    /// <summary>A file in the game's Data folder that cannot be opened, so a condition that reads it cannot be decided.</summary>
+    private AbsolutePath LockFile()
+    {
+        var path = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, $"{DataFolder}/{LockedFile}"));
+        path.Parent.CreateDirectory();
+        File.WriteAllText(path.ToString(), "locked");
+        File.SetUnixFileMode(path.ToString(), UnixFileMode.None);
+        return path;
+    }
+
+    private static void Unlock(AbsolutePath path) => File.SetUnixFileMode(path.ToString(), UnixFileMode.UserRead | UnixFileMode.UserWrite);
+
+    private static void SkipWhenPermissionsDoNotApply() =>
+        Assert.SkipWhen(!OperatingSystem.IsLinux() || Environment.UserName == "root", "Needs permission bits that apply to this user");
+
     [Fact]
     public async Task SortAsync_ReportsThatOverlapEdgesWereSkippedAndHowManyConditionsWereNotEvaluated()
     {
+        SkipWhenPermissionsDoNotApply();
         var (variety, id) = await Loadout_SkyrimThenABC();
-        Store.Masterlist = """
-            plugins:
-              - name: 'C.esp'
-                after:
-                  - name: 'A.esp'
-                    condition: 'file("Z.esp")'
-                tag:
-                  - name: 'Relev'
-                    condition: 'file("Y.esp")'
-            """;
-        Store.Revision = "fixture 7";
+        var locked = LockFile();
+        try
+        {
+            Store.Masterlist = $"""
+                plugins:
+                  - name: 'C.esp'
+                    after:
+                      - name: 'A.esp'
+                        condition: 'checksum("{LockedFile}", 00000001)'
+                    tag:
+                      - name: 'Relev'
+                        condition: 'checksum("{LockedFile}", 00000002)'
+                """;
+            Store.Revision = "fixture 7";
 
-        var outcome = await ((ILootSortSource)variety).SortAsync(id);
+            var outcome = await ((ILootSortSource)variety).SortAsync(id);
 
-        outcome.Succeeded.Should().BeTrue();
-        outcome.OverlapEdgesSkipped.Should().BeTrue();
-        outcome.UnevaluatedConditions.Should().Be(2);
-        outcome.MasterlistRevision.Should().Be("fixture 7");
+            outcome.Succeeded.Should().BeTrue();
+            outcome.OverlapEdgesSkipped.Should().BeTrue();
+            outcome.UnevaluatedConditions.Should().Be(2);
+            outcome.MasterlistRevision.Should().Be("fixture 7");
+        }
+        finally
+        {
+            Unlock(locked);
+        }
     }
 
     [Fact]
     public async Task SortAsync_OnACycle_StillReportsTheDivergencesAndTheRevision()
     {
+        SkipWhenPermissionsDoNotApply();
         var (variety, id) = await Loadout_SkyrimThenABC();
-        Store.Masterlist = Cycle + """
+        var locked = LockFile();
+        try
+        {
+            Store.Masterlist = Cycle + $"""
 
-              - name: 'C.esp'
-                after:
-                  - name: 'A.esp'
-                    condition: 'file("Z.esp")'
-            """;
-        Store.Revision = "fixture 9";
+                  - name: 'C.esp'
+                    after:
+                      - name: 'A.esp'
+                        condition: 'checksum("{LockedFile}", 00000001)'
+                """;
+            Store.Revision = "fixture 9";
+
+            var outcome = await ((ILootSortSource)variety).SortAsync(id);
+
+            outcome.Succeeded.Should().BeFalse();
+            outcome.OverlapEdgesSkipped.Should().BeTrue();
+            outcome.UnevaluatedConditions.Should().Be(1);
+            outcome.MasterlistRevision.Should().Be("fixture 9");
+        }
+        finally
+        {
+            Unlock(locked);
+        }
+    }
+
+    /// <summary>Writes a file into the game's Data folder. Done after the loadout exists, so the loadout does not take it in.</summary>
+    private async Task PutInDataFolder(string name, byte[] bytes)
+    {
+        var path = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, $"{DataFolder}/{name}"));
+        path.Parent.CreateDirectory();
+        await path.WriteAllBytesAsync(bytes);
+    }
+
+    private const string BAfterAWhen = """
+        plugins:
+          - name: 'A.esp'
+            after:
+              - name: 'B.esp'
+                condition: '{0}'
+        """;
+
+    private async Task<(string[] Order, int Unevaluated)> SortWith(string condition, Func<PluginSortOrderVariety, SortOrderId, Task>? arrange = null)
+    {
+        var (variety, id) = await Loadout_SkyrimThenABC();
+        if (arrange is not null) await arrange(variety, id);
+        // A.esp loads first today, so B.esp ahead of it shows the rule was kept.
+        Store.Masterlist = string.Format(BAfterAWhen, condition);
 
         var outcome = await ((ILootSortSource)variety).SortAsync(id);
+        outcome.Succeeded.Should().BeTrue();
+        return (StoredNames(id), outcome.UnevaluatedConditions);
+    }
 
-        outcome.Succeeded.Should().BeFalse();
-        outcome.OverlapEdgesSkipped.Should().BeTrue();
-        outcome.UnevaluatedConditions.Should().Be(1);
-        outcome.MasterlistRevision.Should().Be("fixture 9");
+    [Fact]
+    public async Task AConditionalLoadAfter_IsKeptWhenTheFileIsInTheGamesDataFolder()
+    {
+        var (order, unevaluated) = await SortWith("file(\"marker.TXT\")", (_, _) => PutInDataFolder("Marker.txt", "here"u8.ToArray()));
+
+        order.Should().Equal("Skyrim.esm", "B.esp", "A.esp", "C.esp");
+        unevaluated.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AConditionalLoadAfter_IsDroppedWhenTheFileIsNotThere()
+    {
+        var (order, unevaluated) = await SortWith("file(\"Marker.txt\")");
+
+        order.Should().Equal("Skyrim.esm", "A.esp", "B.esp", "C.esp");
+        unevaluated.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AnActiveCondition_FollowsThePluginsSwitch()
+    {
+        var (withSwitchOn, _) = await SortWith("active(\"B.esp\")");
+        withSwitchOn.Should().Equal("Skyrim.esm", "B.esp", "A.esp", "C.esp");
+    }
+
+    [Fact]
+    public async Task AnActiveCondition_IsFalseWhenThePluginIsSwitchedOff()
+    {
+        var (order, unevaluated) = await SortWith("active(\"B.esp\")",
+            async (variety, id) => await variety.SetEnabled(id, Key("B.esp"), false));
+
+        order.Should().Equal("Skyrim.esm", "A.esp", "B.esp", "C.esp");
+        unevaluated.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AnActiveCondition_CountsTheGamesEarlyLoadingPlugins()
+    {
+        // Dawnguard.esm is not in this loadout, but the game always loads it.
+        var (order, _) = await SortWith("active(\"Dawnguard.esm\")");
+
+        order.Should().Equal("Skyrim.esm", "B.esp", "A.esp", "C.esp");
+    }
+
+    [Fact]
+    public async Task AnIsMasterCondition_ReadsTheMasterFlagOfALoadoutPlugin()
+    {
+        var (masterKept, _) = await SortWith("is_master(\"Skyrim.esm\")");
+        masterKept.Should().Equal("Skyrim.esm", "B.esp", "A.esp", "C.esp");
+    }
+
+    [Fact]
+    public async Task AnIsMasterCondition_ReadsTheHeaderOfAPluginOnlyTheDataFolderHas()
+    {
+        var (order, _) = await SortWith("is_master(\"other.esm\")", (_, _) => PutInDataFolder("Other.esm", SkyrimPluginFile.Bytes("Other.esm")));
+
+        order.Should().Equal("Skyrim.esm", "B.esp", "A.esp", "C.esp");
+    }
+
+    [Fact]
+    public async Task AnIsMasterCondition_IsFalseForADataFolderFileThatIsNotAPlugin()
+    {
+        var (order, unevaluated) = await SortWith("is_master(\"Junk.esm\")", (_, _) => PutInDataFolder("Junk.esm", [1, 2, 3]));
+
+        order.Should().Equal("Skyrim.esm", "A.esp", "B.esp", "C.esp");
+        unevaluated.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AnIsMasterCondition_IsFalseForANonMaster()
+    {
+        var (order, _) = await SortWith("is_master(\"C.esp\")");
+
+        order.Should().Equal("Skyrim.esm", "A.esp", "B.esp", "C.esp");
     }
 
     [Fact]
