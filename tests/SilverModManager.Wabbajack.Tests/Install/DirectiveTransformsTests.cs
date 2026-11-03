@@ -12,13 +12,16 @@ namespace SilverModManager.Wabbajack.Tests.Install;
 
 public class DirectiveTransformsTests : IDisposable
 {
-    private readonly TemporaryFileManager _temp = new(
-        FileSystem.Shared,
-        FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine($"Wabbajack.Tests-{Guid.NewGuid()}")));
+    private readonly AbsolutePath _tempRoot = FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine($"Wabbajack.Tests-{Guid.NewGuid()}"));
+    private readonly TemporaryFileManager _temp;
 
     private readonly IDirectiveTransforms _transforms;
 
-    public DirectiveTransformsTests() => _transforms = new DirectiveTransforms(_temp);
+    public DirectiveTransformsTests()
+    {
+        _temp = new TemporaryFileManager(FileSystem.Shared, _tempRoot);
+        _transforms = new DirectiveTransforms(_temp);
+    }
 
     public void Dispose() => _temp.Dispose();
 
@@ -34,6 +37,52 @@ public class DirectiveTransformsTests : IDisposable
         await _transforms.Patch(new MemoryStream(basis), new MemoryStream(ListBuilder.Delta(basis, result)), output, CancellationToken.None);
 
         output.ToArray().Should().Equal(result);
+    }
+
+    [Fact]
+    public async Task PatchingABasisThatCannotSeekSpoolsUnderTheAppsTempFolder()
+    {
+        byte[] basis = [1, 2, 3];
+        byte[] result = [1, 2, 3, 4, 5];
+        var appTemp = _tempRoot.ToString();
+        using var output = new SpoolWatchingStream(appTemp);
+
+        await _transforms.Patch(new NonSeekableStream(basis), new MemoryStream(ListBuilder.Delta(basis, result)), output, CancellationToken.None);
+
+        output.ToArray().Should().Equal(result);
+        output.SpoolFilesSeen.Should().NotBeEmpty("the basis was copied to disk before patching");
+        // The scratch root can itself sit inside the system temp folder, so what must not happen is a spool file directly in it.
+        output.SpoolFilesSeen.Should().OnlyContain(file => Path.GetDirectoryName(file)!.StartsWith(appTemp, StringComparison.Ordinal)
+            && Path.GetFullPath(Path.GetDirectoryName(file)!) != Path.GetFullPath(Path.GetTempPath()));
+    }
+
+    private sealed class NonSeekableStream(byte[] bytes) : MemoryStream(bytes)
+    {
+        public override bool CanSeek => false;
+    }
+
+    /// <summary>Notes the patcher's spool files when the first byte of output arrives, while they still exist.</summary>
+    private sealed class SpoolWatchingStream(string root) : MemoryStream
+    {
+        public List<string> SpoolFilesSeen { get; } = [];
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            Look();
+            base.Write(buffer, offset, count);
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            Look();
+            base.Write(buffer);
+        }
+
+        private void Look()
+        {
+            if (SpoolFilesSeen.Count == 0)
+                SpoolFilesSeen.AddRange(Directory.EnumerateFiles(root, "silvermod-patch-*.tmp", SearchOption.AllDirectories));
+        }
     }
 
     [Fact]
