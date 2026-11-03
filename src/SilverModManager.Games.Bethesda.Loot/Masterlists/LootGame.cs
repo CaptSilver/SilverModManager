@@ -50,4 +50,18 @@ public static class LootGameExtensions
         LootGame.Enderal or LootGame.EnderalSE => "enderal",
         _ => throw new ArgumentOutOfRangeException(nameof(game), game, null),
     };
+
+    /// <summary>
+    /// Whether the game loads <c>.esl</c> files as plugins. Follows loot-condition-interpreter's
+    /// <c>GameType::supports_light_plugins</c>.
+    /// </summary>
+    public static bool SupportsLightPlugins(this LootGame game) =>
+        game is LootGame.SkyrimSE or LootGame.SkyrimVR or LootGame.Fallout4 or LootGame.Fallout4VR
+            or LootGame.Starfield or LootGame.EnderalSE;
+
+    /// <summary>
+    /// Whether a plugin may be stored with a <c>.ghost</c> suffix, which makes the game ignore it. Every
+    /// game but OpenMW, which has no such mechanism.
+    /// </summary>
+    public static bool AllowsGhostedPlugins(this LootGame game) => game != LootGame.OpenMW;
 }
