@@ -27,18 +27,49 @@ public sealed class WabbajackGalleryClient(HttpClient client, AbsolutePath cache
     public static readonly TimeSpan CacheLifetime = TimeSpan.FromHours(6);
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
 
+    private readonly Lock _flightLock = new();
+    private Task<GalleryListing>? _inFlight;
+
+    /// <summary>
+    /// Callers that ask while a fetch is running share it instead of starting their own: the repositories are hit once
+    /// and two writers never race on the cache file. The shared fetch is not tied to any one caller's token, which only
+    /// stops that caller from waiting; every request in it has its own timeout.
+    /// </summary>
     /// <param name="refresh">Fetch even when the cache is still fresh.</param>
     /// <exception cref="GalleryUnavailableException">The network failed and there is no cached copy to fall back on.</exception>
-    public async Task<GalleryListing> Get(bool refresh = false, CancellationToken cancellationToken = default)
+    public Task<GalleryListing> Get(bool refresh = false, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Task<GalleryListing> flight;
+        lock (_flightLock)
+        {
+            flight = _inFlight ??= Task.Run(() => GetShared(refresh));
+        }
+        return flight.WaitAsync(cancellationToken);
+    }
+
+    private async Task<GalleryListing> GetShared(bool refresh)
+    {
+        try
+        {
+            return await Load(refresh);
+        }
+        finally
+        {
+            lock (_flightLock) _inFlight = null;
+        }
+    }
+
+    private async Task<GalleryListing> Load(bool refresh)
     {
         var cached = LoadCache();
         if (!refresh && cached is not null && time.GetUtcNow() - cached.FetchedAt < CacheLifetime) return cached;
 
         try
         {
-            return await Fetch(cancellationToken);
+            return await Fetch(CancellationToken.None);
         }
-        catch (Exception e) when (!cancellationToken.IsCancellationRequested && e is GalleryUnavailableException or GalleryFormatException or HttpRequestException or TaskCanceledException)
+        catch (Exception e) when (e is GalleryUnavailableException or GalleryFormatException or HttpRequestException or TaskCanceledException)
         {
             if (cached is null) throw e as GalleryUnavailableException ?? new GalleryUnavailableException("The Wabbajack gallery could not be reached", e);
             logger.LogWarning(e, "The Wabbajack gallery could not be refreshed, using the copy from {FetchedAt}", cached.FetchedAt);

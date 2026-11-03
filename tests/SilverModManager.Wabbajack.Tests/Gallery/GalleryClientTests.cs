@@ -98,6 +98,50 @@ public class GalleryClientTests(TemporaryFileManager temporaryFileManager)
     }
 
     [Fact]
+    public async Task CallersThatAskWhileAFetchIsRunningShareIt()
+    {
+        var handler = GalleryHandler.WithFixtures();
+        handler.Delay = TimeSpan.FromMilliseconds(100);
+        await using var rig = new Rig(temporaryFileManager, handler);
+
+        var listings = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => rig.Client.Get(cancellationToken: TestContext.Current.CancellationToken)));
+
+        handler.Requests.Count(u => u == GalleryFixtureFiles.Repositories).Should().Be(1, "one fetch served every caller");
+        listings.Select(l => l.FetchedAt).Distinct().Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task ACallerThatStopsWaitingDoesNotCancelTheFetchOthersAreWaitingOn()
+    {
+        var handler = GalleryHandler.WithFixtures();
+        handler.Delay = TimeSpan.FromMilliseconds(100);
+        await using var rig = new Rig(temporaryFileManager, handler);
+        using var impatient = new CancellationTokenSource();
+
+        var leaving = rig.Client.Get(cancellationToken: impatient.Token);
+        var staying = rig.Client.Get(cancellationToken: TestContext.Current.CancellationToken);
+        await impatient.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => leaving);
+        var listing = await staying;
+        listing.Entries.Should().NotBeEmpty();
+        handler.Requests.Count(u => u == GalleryFixtureFiles.Repositories).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AFetchThatFailedDoesNotStickToTheNextCall()
+    {
+        await using var rig = new Rig(temporaryFileManager);
+        rig.Handler.Offline = true;
+        await Assert.ThrowsAsync<GalleryUnavailableException>(() => rig.Client.Get(cancellationToken: TestContext.Current.CancellationToken));
+
+        rig.Handler.Offline = false;
+        var listing = await rig.Client.Get(cancellationToken: TestContext.Current.CancellationToken);
+
+        listing.Entries.Should().NotBeEmpty();
+    }
+
+    [Fact]
     public async Task AFreshCacheIsServedWithoutTheNetwork()
     {
         await using var rig = new Rig(temporaryFileManager);
