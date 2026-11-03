@@ -480,20 +480,32 @@ public class SevenZipExtractor : IExtractor
     /// The entries of the bulk run that 7z would write through a symbolic link already in the destination: those below
     /// a folder link, and a folder entry that is one. 7z follows such a link, so these are left out of the run and
     /// skipped, as a moved entry is. A file entry at a file link is not here: 7z replaces the link with the file and
-    /// never writes into its target. An entry whose name 7z cannot be told is not listed, as it cannot be left out.
+    /// never writes into its target. A hard link whose target is left out is left out too: 7z would make it an empty
+    /// file. An entry whose name 7z cannot be told is not listed, as it cannot be left out.
     /// </summary>
     private List<byte[]> EntriesBelowLinks(string root, ArchiveEntryPlan plan, string archiveName)
     {
         var blocked = new List<byte[]>();
+        var blockedNames = new List<string>();
         foreach (var kept in plan.Kept)
         {
             if (!EntryNames.IsAddressable(kept.Raw) || blocked.Any(b => b.AsSpan().SequenceEqual(kept.Raw))) continue;
 
             var name = Encoding.UTF8.GetString(kept.Raw);
+            if (kept.HardLinkTarget is { } target
+                && blockedNames.Any(b => target == b || target.StartsWith(b.TrimEnd('/') + "/", StringComparison.Ordinal)))
+            {
+                blocked.Add(kept.Raw);
+                blockedNames.Add(name);
+                _logger.LogWarning("Skipping `{Entry}` from archive `{Archive}`: its target `{Target}` is skipped because 7z would write it through a symbolic link in the destination", name, archiveName, target);
+                continue;
+            }
+
             var segments = ArchiveEntryPlan.PlacedBy7z(name).Split('/', StringSplitOptions.RemoveEmptyEntries);
             if (FirstLink(root, kept.IsDirectory ? segments : segments[..Math.Max(0, segments.Length - 1)]) is not { } link) continue;
 
             blocked.Add(kept.Raw);
+            blockedNames.Add(name);
             _logger.LogWarning("Skipping `{Entry}` from archive `{Archive}`: `{Link}` in the destination is a symbolic link, and 7z would write through it", name, archiveName, link);
         }
 

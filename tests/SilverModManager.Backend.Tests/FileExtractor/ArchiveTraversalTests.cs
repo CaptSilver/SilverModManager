@@ -749,6 +749,34 @@ public class ArchiveTraversalTests : AFileExtractorTest
         outcome.Warnings.Should().Contain(w => w.Contains("dir/evil.txt") && w.Contains("symbolic link"));
     }
 
+    // The hard link's target is left out of the run because it is below a folder link; 7z would then
+    // leave the link as an empty file, which must not stay in the mod as if it were the content.
+    [Fact]
+    public async Task AHardLinkToAnEntryBelowAFolderLinkAlreadyInTheDestinationIsLeftOutToo()
+    {
+        await using var container = TemporaryFileManager.CreateFolder();
+        var outside = container.Path.Combine("outside");
+        outside.CreateDirectory();
+        var destination = container.Path.Combine("a/b/extracted");
+        destination.CreateDirectory();
+        Directory.CreateSymbolicLink(destination.Combine("dir").ToString(), outside.ToString());
+        var archive = container.Path.Combine("Traversal Mod-1-0.tar");
+        await using (var stream = archive.Create())
+        using (var writer = new TarWriter(stream, TarEntryFormat.Gnu))
+        {
+            AddFile(writer, "dir/t", "target");
+            writer.WriteEntry(new GnuTarEntry(TarEntryType.HardLink, "h") { LinkName = "dir/t" });
+            AddFile(writer, "ok.txt", "fine");
+        }
+
+        var outcome = await Extract(container.Path, archive, Extractor.SevenZip, destination);
+
+        Directory.EnumerateFileSystemEntries(outside.ToString()).Should().BeEmpty();
+        outcome.Files.Keys.Should().BeEquivalentTo("ok.txt");
+        outcome.Warnings.Should().Contain(w => w.Contains("`h`") && w.Contains("dir/t"));
+        outcome.Warnings.Should().NotContain(w => w.Contains("Dropped a symlink"));
+    }
+
     [Fact]
     public async Task AFolderEntryAtAFolderLinkAlreadyInTheDestinationIsLeftOutWithItsContents()
     {

@@ -17,7 +17,8 @@ internal static partial class ExtractedNames
     /// <param name="Index">Position in the archive; of two entries that end up at one path, the higher one stays.</param>
     /// <param name="IsSymlink">True for a symbolic link entry. 7z leaves a 0-byte file where it refused to create one.</param>
     /// <param name="Drop">True for a link entry that could not be kept out of the run: whatever 7z made of it is removed.</param>
-    internal readonly record struct Kept(byte[] Raw, int Index, bool IsDirectory, bool IsSymlink = false, bool Drop = false);
+    /// <param name="HardLinkTarget">The archive path a hard link entry points at, or null for any other entry.</param>
+    internal readonly record struct Kept(byte[] Raw, int Index, bool IsDirectory, bool IsSymlink = false, bool Drop = false, string? HardLinkTarget = null);
 
     private const int NoSuchFile = 2;
     private const int DirectoryNotEmpty = 39;

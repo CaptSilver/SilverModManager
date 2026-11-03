@@ -172,7 +172,7 @@ internal sealed class ArchiveEntryPlan
         {
             kept.Add(Key(_raws[i]));
             keptNames.Add(entries[i].Name);
-            keptEntries.Add(new ExtractedNames.Kept(_raws[i], i, entries[i].IsDirectory, entries[i].IsSymlink, drop));
+            keptEntries.Add(new ExtractedNames.Kept(_raws[i], i, entries[i].IsDirectory, entries[i].IsSymlink, drop, entries[i].HardLinkTarget));
         }
 
         for (var i = 0; i < entries.Count; i++)
