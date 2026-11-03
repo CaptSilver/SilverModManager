@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Library;
 using NexusMods.Hashing.xxHash3;
@@ -33,6 +34,8 @@ public sealed class ArchiveInbox(
     private readonly SemaphoreSlim _scanning = new(1);
     // Only touched inside Scan, which _scanning serialises.
     private readonly Dictionary<string, ((long Length, DateTime WrittenUtc) Stamp, FileIdentity Hash)> _hashed = new();
+    // Files this app put in the inbox itself, with the size and write time they had then. Only these are removed after a scan.
+    private readonly ConcurrentDictionary<string, (long Length, DateTime WrittenUtc)> _staged = new();
     private readonly Lock _watchLock = new();
     private FileSystemWatcher? _watcher;
     private Timer? _debounce;
@@ -45,9 +48,10 @@ public sealed class ArchiveInbox(
     public IReadOnlyList<UnmatchedInbox> Unmatched { get; private set; } = [];
 
     /// <summary>
-    /// Adds every file in the inbox to the library and checks the plan against it. Every file stays where it is,
-    /// the ones the plan wanted included: the user dropped it, and the library holds its own copy. The files that
-    /// matched nothing are returned.
+    /// Adds every file in the inbox to the library and checks the plan against it. A file the user dropped stays
+    /// where it is, the ones the plan wanted included: the library holds its own copy. A file this app staged itself
+    /// (<see cref="StageCopy"/>) is a third copy nobody asked for, so it is removed once the plan has it, unless it
+    /// changed since. The files that matched nothing are returned.
     /// </summary>
     public async Task<IReadOnlyList<UnmatchedInbox>> Scan(CancellationToken cancellationToken)
     {
@@ -104,6 +108,7 @@ public sealed class ArchiveInbox(
                     // Only a file this scan added came for the list; one the library already held was the user's.
                     if (plan.Modlist is not null && addedHere.Contains(hash) && locator.FindTopLevelByXxHash64(connection.Db, hash) is { } held)
                         await FetchedArchives.Mark(connection, hash, held);
+                    RemoveIfStagedByUs(file);
                 }
                 else unmatched.Add(new UnmatchedInbox(file.FileName, hash));
             }
@@ -130,6 +135,40 @@ public sealed class ArchiveInbox(
         var hash = FileIdentity.XxHash64(await FileHashing.XxHash64(file, cancellationToken));
         _hashed[file.ToString()] = (stamp, hash);
         return hash;
+    }
+
+    private void RemoveIfStagedByUs(AbsolutePath file)
+    {
+        if (!_staged.TryGetValue(file.ToString(), out var stamp)) return;
+        try
+        {
+            var info = new FileInfo(file.ToString());
+            if (info.Exists && (info.Length, info.LastWriteTimeUtc) == stamp)
+            {
+                file.Delete();
+                _hashed.Remove(file.ToString());
+                logger.LogDebug("Removed the staged copy '{File}' from the inbox, the library holds it", file.FileName);
+            }
+            _staged.TryRemove(file.ToString(), out _);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            logger.LogWarning(e, "Could not remove the staged copy '{File}' from the inbox", file.FileName);
+        }
+    }
+
+    /// <summary>
+    /// <see cref="Stage"/> into this inbox, remembering the file so a scan can remove it once the library has it.
+    /// Use this for files the app copies in on the user's behalf; a file the user drops in by hand is never removed.
+    /// </summary>
+    public async Task StageCopy(AbsolutePath source, Func<string, string, int>? link = null, CancellationToken cancellationToken = default)
+    {
+        await Stage(source, paths.Inbox, link, cancellationToken);
+        var destination = paths.Inbox.Combine(source.FileName);
+        // Dropped from the inbox onto itself: that file is the user's, not a copy of ours.
+        if (Path.GetFullPath(source.ToString()) == Path.GetFullPath(destination.ToString())) return;
+        var info = new FileInfo(destination.ToString());
+        _staged[destination.ToString()] = (info.Length, info.LastWriteTimeUtc);
     }
 
     private IAcquisitionContext AcquisitionFor(ArchivePlan plan, FileIdentity hash)

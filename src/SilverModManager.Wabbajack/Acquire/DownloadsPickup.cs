@@ -64,8 +64,8 @@ public sealed class DownloadsPickup(
     internal Func<AbsolutePath, bool> IsPlainFile { get; set; } = ArchiveInbox.IsPlainFile;
 
     /// <summary>How a matched file reaches the inbox; tests swap it to make staging fail.</summary>
-    internal Func<AbsolutePath, AbsolutePath, Func<string, string, int>, CancellationToken, Task> Stage { get; set; }
-        = (source, inbox, link, token) => ArchiveInbox.Stage(source, inbox, link, token);
+    internal Func<AbsolutePath, Func<string, string, int>, CancellationToken, Task> Stage { get; set; }
+        = (source, link, token) => inbox.StageCopy(source, link, token);
 
     /// <summary>The folder a scan reads: the configured one, or the XDG download folder when none is set.</summary>
     public AbsolutePath Folder
@@ -98,7 +98,6 @@ public sealed class DownloadsPickup(
             if (!FolderExists(folder)) return;
 
             var epoch = MismatchEpoch();
-            var inboxFolder = paths.Inbox;
             var staged = false;
             var waiting = false;
             foreach (var entry in folder.EnumerateFiles(recursive: false).ToArray())
@@ -125,7 +124,7 @@ public sealed class DownloadsPickup(
                     case Outcome.Match:
                         try
                         {
-                            await Stage(file, inboxFolder, Link, cancellationToken);
+                            await Stage(file, Link, cancellationToken);
                             staged = true;
                         }
                         catch (Exception e) when (e is IOException or UnauthorizedAccessException or UserFacingException)

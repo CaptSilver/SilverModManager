@@ -108,7 +108,7 @@ public class DownloadsPickupTests(ITestOutputHelper helper) : AcquireTestBase<Do
 
         Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Have);
         DownloadsFolder.Combine("wanted.txt").FileExists.Should().BeTrue("nothing in Downloads is deleted or moved");
-        InboxFolder.Combine("wanted.txt").FileExists.Should().BeTrue("the inbox scan never deletes what is in the inbox");
+        InboxFolder.EnumerateFiles().Should().BeEmpty("the inbox scan removes the copy the app staged once it is in the library");
     }
 
     [Fact]
@@ -350,7 +350,7 @@ public class DownloadsPickupTests(ITestOutputHelper helper) : AcquireTestBase<Do
         var (pickup, log) = NewPickup();
         var attempts = 0;
         pickup.Link = (_, _) => LibcLinks.EXDEV;
-        pickup.Stage = (_, _, _, _) =>
+        pickup.Stage = (_, _, _) =>
         {
             attempts++;
             throw new IOException("No space left on device");
@@ -373,7 +373,7 @@ public class DownloadsPickupTests(ITestOutputHelper helper) : AcquireTestBase<Do
         await Drop(DownloadsFolder, "wanted.txt", Wanted);
         var (pickup, log) = NewPickup(TimeSpan.FromMilliseconds(100));
         var attempts = 0;
-        pickup.Stage = (_, _, _, _) =>
+        pickup.Stage = (_, _, _) =>
         {
             attempts++;
             throw new IOException("No space left on device");
@@ -395,7 +395,7 @@ public class DownloadsPickupTests(ITestOutputHelper helper) : AcquireTestBase<Do
         await Drop(DownloadsFolder, "wanted.txt", Wanted);
         var (pickup, _) = NewPickup();
         var fail = true;
-        pickup.Stage = (source, inbox, link, token) => fail ? throw new IOException("No space left on device") : ArchiveInbox.Stage(source, inbox, link, token);
+        pickup.Stage = (source, link, token) => fail ? throw new IOException("No space left on device") : ServiceProvider.GetRequiredService<ArchiveInbox>().StageCopy(source, link, token);
         await pickup.Scan(CancellationToken.None);
 
         fail = false;

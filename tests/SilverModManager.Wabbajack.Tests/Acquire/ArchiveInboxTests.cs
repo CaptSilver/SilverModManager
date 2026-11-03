@@ -57,6 +57,68 @@ public class ArchiveInboxTests(ITestOutputHelper helper) : AcquireTestBase<Archi
     }
 
     [Fact]
+    public async Task AFileTheAppStagedIsRemovedOnceTheLibraryHasItAndTheSourceStays()
+    {
+        using var page = Acquirer.Attach();
+        await RunWithManualRowFor(Wanted);
+        var source = NewFolder("elsewhere").Combine("picked.txt");
+        await source.WriteAllBytesAsync(Wanted);
+
+        await Inbox.StageCopy(source);
+        var unmatched = await Inbox.Scan(CancellationToken.None);
+
+        unmatched.Should().BeEmpty();
+        InboxFolder.Combine("picked.txt").FileExists.Should().BeFalse("the app made this copy itself and the library holds its own");
+        source.FileExists.Should().BeTrue("the user's original is never touched");
+        Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Have);
+    }
+
+    [Fact]
+    public async Task AFileTheAppStagedThatNoListWantsStaysInTheInbox()
+    {
+        using var page = Acquirer.Attach();
+        await RunWithManualRowFor(Wanted);
+        var source = NewFolder("elsewhere").Combine("stray.txt");
+        await source.WriteAllBytesAsync(Stray);
+
+        await Inbox.StageCopy(source);
+        var unmatched = await Inbox.Scan(CancellationToken.None);
+
+        unmatched.Should().ContainSingle();
+        InboxFolder.Combine("stray.txt").FileExists.Should().BeTrue("it is listed as unmatched, so the user can still see it");
+    }
+
+    [Fact]
+    public async Task AFileTheUserDroppedOnTheInboxFolderItselfIsNotTreatedAsOurCopy()
+    {
+        using var page = Acquirer.Attach();
+        await RunWithManualRowFor(Wanted);
+        var dropped = InboxFolder.Combine("mine.txt");
+        await dropped.WriteAllBytesAsync(Wanted);
+
+        await Inbox.StageCopy(dropped);
+        await Inbox.Scan(CancellationToken.None);
+
+        dropped.FileExists.Should().BeTrue("it was already in the inbox, so it is the user's");
+    }
+
+    [Fact]
+    public async Task AStagedNameTheUserReplacedWithTheirOwnFileIsLeftAlone()
+    {
+        using var page = Acquirer.Attach();
+        await RunWithManualRowFor(Wanted);
+        var source = NewFolder("elsewhere").Combine("picked.txt");
+        await source.WriteAllBytesAsync(Stray);
+        await Inbox.StageCopy(source);
+        var inInbox = InboxFolder.Combine("picked.txt");
+        await inInbox.WriteAllBytesAsync(Wanted);
+
+        await Inbox.Scan(CancellationToken.None);
+
+        inInbox.FileExists.Should().BeTrue("the file there is no longer the one the app staged");
+    }
+
+    [Fact]
     public async Task AWantedFileKeptInTheInboxIsNotAddedAgainByTheNextScan()
     {
         using var page = Acquirer.Attach();

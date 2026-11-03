@@ -216,11 +216,11 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
 
     public async Task<IReadOnlyList<UnmatchedInbox>> AddToInbox(IReadOnlyList<AbsolutePath> files, CancellationToken cancellationToken)
     {
-        var inbox = provider.GetRequiredService<WabbajackPaths>().Inbox;
+        var inbox = provider.GetRequiredService<ArchiveInbox>();
         foreach (var source in files)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await ArchiveInbox.Stage(source, inbox, cancellationToken: cancellationToken);
+            await inbox.StageCopy(source, cancellationToken: cancellationToken);
         }
         return await CheckInbox(cancellationToken);
     }
