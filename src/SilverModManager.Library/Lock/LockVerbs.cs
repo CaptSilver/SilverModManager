@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.Loadouts;
@@ -57,18 +58,29 @@ internal static class LockVerbs
         return report.ExitCode;
     }
 
+    private sealed record ExportReport(string Path, string[] Entries);
+
+    private sealed record ImportReport(string[] Verified, string[] Skipped, string[] Failed, string[] Installed);
+
     [Verb("library export-lock", "Writes the Nexus Mods, GitHub release and Thunderstore files of a loadout to a lock file; source = \"thunderstore\" entries are new to erm and it will not read them")]
     private static async Task<int> ExportLock(
         [Injected] IRenderer renderer,
         [Injected] LockExport export,
         [Injected] CancellationToken token,
         [Option("l", "loadout", "The loadout whose mods to pin")] Loadout.ReadOnly loadout,
-        [Option("o", "out", "The lock file to write")] AbsolutePath output)
+        [Option("o", "out", "The lock file to write")] AbsolutePath output,
+        [Option("j", "json", "Print the written entries as JSON", true)] bool json)
     {
         try
         {
             var lockFile = await export.FromLoadout(loadout, token);
             await File.WriteAllTextAsync(output.ToString(), lockFile.Write(), token);
+            if (json)
+            {
+                await renderer.TextLine(JsonSerializer.Serialize(new ExportReport(output.ToString(), lockFile.Entries.Select(e => e.Id).ToArray()), CliJson.Options));
+                return 0;
+            }
+
             await renderer.TextLine($"Wrote {lockFile.Entries.Count} entries to {output}.");
             return 0;
         }
@@ -86,7 +98,8 @@ internal static class LockVerbs
         [Injected] IConnection connection,
         [Injected] CancellationToken token,
         [Option("l", "loadout", "The loadout to install into; its game says which Nexus Mods game the file ids belong to")] Loadout.ReadOnly loadout,
-        [Option("f", "file", "The lock file to import")] AbsolutePath lockPath)
+        [Option("f", "file", "The lock file to import")] AbsolutePath lockPath,
+        [Option("j", "json", "Print what was verified, skipped, failed and installed as JSON", true)] bool json)
     {
         LockFile lockFile;
         try
@@ -105,13 +118,17 @@ internal static class LockVerbs
         var import = provider.GetRequiredService<LockImport>();
         var summary = await import.Apply(await import.Plan(lockFile, game, token, gameData), token);
 
-        foreach (var outcome in summary.Verified) await renderer.TextLine($"[verified] {outcome.Message}");
-        foreach (var outcome in summary.Skipped) await renderer.TextLine($"[skipped] {outcome.Message}");
-        foreach (var outcome in summary.Failed) await renderer.TextLine($"[failed] {outcome.Message}");
-        await renderer.TextLine($"{summary.Verified.Count} verified, {summary.Skipped.Count} already in the library, {summary.Failed.Count} failed.");
+        if (!json)
+        {
+            foreach (var outcome in summary.Verified) await renderer.TextLine($"[verified] {outcome.Message}");
+            foreach (var outcome in summary.Skipped) await renderer.TextLine($"[skipped] {outcome.Message}");
+            foreach (var outcome in summary.Failed) await renderer.TextLine($"[failed] {outcome.Message}");
+            await renderer.TextLine($"{summary.Verified.Count} verified, {summary.Skipped.Count} already in the library, {summary.Failed.Count} failed.");
+        }
 
         // The verified files and the ones that were already there belong in the loadout; a failed entry never does.
         var loadoutManager = provider.GetRequiredService<ILoadoutManager>();
+        var installed = new List<string>();
         foreach (var outcome in summary.Verified.Concat(summary.Skipped))
         {
             if (outcome.File is not { } file) continue;
@@ -120,7 +137,17 @@ internal static class LockVerbs
             if (linked) continue;
 
             await loadoutManager.InstallItem(item, loadout.LoadoutId);
-            await renderer.TextLine($"[installed] {outcome.Entry.Id}");
+            installed.Add(outcome.Entry.Id);
+            if (!json) await renderer.TextLine($"[installed] {outcome.Entry.Id}");
+        }
+
+        if (json)
+        {
+            await renderer.TextLine(JsonSerializer.Serialize(new ImportReport(
+                summary.Verified.Select(o => o.Message).ToArray(),
+                summary.Skipped.Select(o => o.Message).ToArray(),
+                summary.Failed.Select(o => o.Message).ToArray(),
+                installed.ToArray()), CliJson.Options));
         }
 
         return summary.Failed.Count == 0 ? 0 : 1;

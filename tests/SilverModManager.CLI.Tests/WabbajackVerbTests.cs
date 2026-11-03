@@ -1,4 +1,5 @@
 using FluentAssertions;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 using SilverModManager.Sdk.ProxyConsole;
@@ -85,5 +86,22 @@ public class WabbajackVerbTests(IServiceProvider provider, TemporaryFileManager 
 
         exitCode.Should().NotBe(0);
         Lines(renderer).Should().ContainSingle(l => l.Contains("does not exist"));
+    }
+
+    private static string RawText(LoggingRenderer renderer) => string.Concat(renderer.Logs.OfType<Text>().Select(t => t.Template));
+
+    [Fact]
+    public async Task Inspect_Json_CarriesTheHeaderCountsAndArchives()
+    {
+        var (exitCode, renderer) = await Run("wabbajack", "inspect", "-f", Fixture, "--json");
+
+        exitCode.Should().Be(0);
+        var list = JsonNode.Parse(RawText(renderer))!.AsObject();
+        ((string?)list["name"]).Should().Be("MO2AndSKSETest");
+        ((string?)list["gameType"]).Should().Be("SkyrimSpecialEdition");
+        ((int)list["directiveCount"]!).Should().Be(1409);
+        list["directives"]!.AsArray().Select(n => (string?)n!["kind"]).Should().Contain("FromArchive");
+        list["archives"]!.AsArray().Select(n => (string?)n!["source"]).Should().OnlyContain(source => source == "Http");
+        renderer.Logs.OfType<Table>().Should().BeEmpty("the JSON replaces the tables");
     }
 }

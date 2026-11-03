@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Hashing.xxHash3;
@@ -314,5 +315,53 @@ public class LibraryLockVerbTests(IServiceProvider provider) : IDisposable
 
         exitCode.Should().Be(0, output);
         output.Should().Contain("[skipped] present-mod").And.Contain("1 already in the library").And.NotContain("[installed]");
+    }
+
+    [Fact]
+    public async Task ExportLock_Json_ListsThePathAndTheEntryIds()
+    {
+        var loadout = await CreateLoadout();
+        var asset = UniqueName("tool");
+        var digest = DigestOf("tool bytes");
+        var file = await AddFile(asset, "tool bytes", digest, (tx, lf) =>
+        {
+            _ = new GitHubReleaseLibraryFile.New(tx, lf.Id) { LibraryFile = lf, Tag = "v0.13.0", AssetName = asset, PinnedSha256 = digest };
+            tx.Add(lf.Id, GitHubReleaseLibraryFile.Organization, "garden-of-eyes");
+            tx.Add(lf.Id, GitHubReleaseLibraryFile.Repository, "me3");
+        });
+        using (var tx = Connection.BeginTransaction())
+        {
+            var group = new LoadoutItemGroup.New(tx, out var id)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, id) { Name = "Me3 Host", LoadoutId = loadout.LoadoutId },
+            };
+            _ = new LibraryLinkedLoadoutItem.New(tx, id) { LibraryItemId = file.Id, LoadoutItemGroup = group };
+            await tx.Commit();
+        }
+
+        var output = InRoot("out.lock.toml");
+        var (exitCode, text) = await Run("library", "export-lock", "--loadout", loadout.Name, "--out", output.ToString(), "--json");
+
+        exitCode.Should().Be(0, text);
+        var report = JsonNode.Parse(text)!.AsObject();
+        ((string?)report["path"]).Should().Be(output.ToString());
+        report["entries"]!.AsArray().Select(n => (string?)n).Should().Equal("me3-host");
+    }
+
+    [Fact]
+    public async Task ImportLock_Json_ListsEachOutcomeAndKeepsTheExitCode()
+    {
+        var loadout = await CreateLoadout();
+        var path = await WriteLock(LockText(("no-digest", UniqueName("nd"), "")));
+
+        var (exitCode, output) = await Run("library", "import-lock", "--loadout", loadout.Name, "--file", path.ToString(), "--json");
+
+        exitCode.Should().Be(1, output);
+        var report = JsonNode.Parse(output)!.AsObject();
+        report["failed"]!.AsArray().Select(n => (string?)n).Should().ContainSingle().Which.Should().Contain("no-digest");
+        report["verified"]!.AsArray().Should().BeEmpty();
+        report["skipped"]!.AsArray().Should().BeEmpty();
+        report["installed"]!.AsArray().Should().BeEmpty();
     }
 }

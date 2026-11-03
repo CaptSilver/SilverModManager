@@ -1,4 +1,5 @@
 using FluentAssertions;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using SilverModManager.Abstractions.Cli;
@@ -251,5 +252,54 @@ public class WabbajackBatchVerbTests(IServiceProvider provider)
 
         Acquirer.DidNotReceive().Cancel();
         Lines(renderer).Should().ContainSingle().Which.Should().Contain("No modlist download is running");
+    }
+
+    private static string RawText(LoggingRenderer renderer) => string.Concat(renderer.Logs.OfType<Text>().Select(t => t.Template));
+
+    [Fact]
+    public async Task List_Json_CarriesTheIdAndTheDownloadingFlag()
+    {
+        Arrange(status: new AcquireStatus(Skyrim.Id, true, 1, 2, 0, TimeSpan.Zero, []));
+
+        var (exitCode, renderer) = await Run("wabbajack", "list", "--json");
+
+        exitCode.Should().Be(0);
+        var rows = JsonNode.Parse(RawText(renderer))!.AsArray().Select(n => n!.AsObject()).ToArray();
+        rows.Select(r => (string?)r["id"]).Should().Equal(Skyrim.HexId, Fallout.HexId);
+        rows.Select(r => (bool)r["downloading"]!).Should().Equal(true, false);
+        ((int)rows[0]["archives"]!).Should().Be(40);
+    }
+
+    [Fact]
+    public async Task Status_Json_CarriesTheProgressAndTheFailures()
+    {
+        var failed = new[] { new DownloadFailure("bad.7z", "connection reset") };
+        Arrange(
+            status: new AcquireStatus(Skyrim.Id, true, 3, 10, 5_000_000, TimeSpan.FromSeconds(5), failed),
+            plan: MixedPlan() with { Modlist = Skyrim.Id });
+
+        var (exitCode, renderer) = await Run("wabbajack", "status", "--json");
+
+        exitCode.Should().Be(0);
+        var status = JsonNode.Parse(RawText(renderer))!.AsObject();
+        ((bool)status["running"]!).Should().BeTrue();
+        ((string?)status["modlist"]).Should().Be("Skyrim list");
+        ((int)status["finished"]!).Should().Be(3);
+        ((int)status["total"]!).Should().Be(10);
+        ((int)status["waitingOnBrowser"]!).Should().Be(1);
+        ((int)status["waitingByHand"]!).Should().Be(1);
+        ((string?)status["failures"]![0]!["archive"]).Should().Be("bad.7z");
+    }
+
+    [Fact]
+    public async Task Status_Json_BeforeAnyBatchSaysNotRunning()
+    {
+        Arrange();
+
+        var (exitCode, renderer) = await Run("wabbajack", "status", "--json");
+
+        exitCode.Should().Be(0);
+        var status = JsonNode.Parse(RawText(renderer))!.AsObject();
+        ((bool)status["running"]!).Should().BeFalse();
     }
 }
