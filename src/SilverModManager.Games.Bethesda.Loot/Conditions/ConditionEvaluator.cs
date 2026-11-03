@@ -184,6 +184,9 @@ public sealed class ConditionEvaluator : IConditionEvaluator
     {
         if (ConditionPaths.HasPluginExtension(_context.Game, path))
         {
+            // Like the interpreter, a plugin that is not on disk has no version, whatever the context knows about it.
+            if (!Exists(Resolve(path))) return null;
+
             return PluginDescriptionVersion.Extract(_context.PluginDescription(PluginName(path))) is { } version
                 ? LootVersion.Parse(version)
                 : null;

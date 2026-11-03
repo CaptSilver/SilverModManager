@@ -300,7 +300,7 @@ public class ConditionEvaluatorTests : IDisposable
         }
 
         [Fact]
-        public void Checksum_ReadsTheFileAgainWhenAskedAgainForADifferentCrc()
+        public void Checksum_ComparesTheKnownCrcAgainstEachLiteral()
         {
             _data.Write("check.bin", "123456789");
 
@@ -323,8 +323,17 @@ public class ConditionEvaluatorTests : IDisposable
         }
 
         [Fact]
+        public void Version_FalseForAPluginThatIsNotOnDisk()
+        {
+            _context.Plugins["Mod.esp"] = (false, "Version: 2.1");
+
+            Eval("version(\"Mod.esp\", \"0\", >=)").Should().BeFalse();
+        }
+
+        [Fact]
         public void Version_FalseWhenNoDescriptionVersion()
         {
+            _data.Write("Mod.esp");
             _context.Plugins["Mod.esp"] = (false, "No numbers here");
 
             Eval("version(\"Mod.esp\", \"0\", >=)").Should().BeFalse();
@@ -334,6 +343,7 @@ public class ConditionEvaluatorTests : IDisposable
         [Fact]
         public void Version_OfAGhostedPluginUsesTheDescription()
         {
+            _data.Write("Mod.esp.ghost");
             _context.Plugins["Mod.esp"] = (false, "v3.0");
 
             Eval("version(\"Mod.esp.ghost\", \"3.0\", ==)").Should().BeTrue();

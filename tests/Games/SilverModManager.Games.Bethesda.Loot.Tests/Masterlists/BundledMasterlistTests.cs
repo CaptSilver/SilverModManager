@@ -94,6 +94,31 @@ public class BundledMasterlistTests(ITestOutputHelper output)
     public void EveryConditionEvaluatesAgainstAnEmptyDataFolder(string repo) =>
         AssertConditionsEvaluate(repo, GameFor(repo), Store.MasterlistText(repo));
 
+    // The acceptance check for the evaluator: through the real parser, the conditions that LootDatabase builds for
+    // cleaning entries included, nothing in a bundled list is left undecided.
+    [Theory]
+    [MemberData(nameof(Repositories))]
+    public void NoBundledEntryIsCountedAsUnevaluatedAgainstAnEmptyDataFolder(string repo)
+    {
+        using var data = new TempDirectory();
+        var database = new LootDatabase(new ConditionEvaluator(new FakeConditionContext(data.Path, GameFor(repo))));
+        database.LoadMasterlistWithPrelude(Store.MasterlistText(repo), Store.PreludeText());
+        var document = MetadataDocument.LoadWithPrelude(Store.MasterlistText(repo), Store.PreludeText());
+
+        var (_, general) = database.GeneralMessages(MergeMode.WithoutUserMetadata, EvalMode.Evaluate);
+        var unevaluated = general;
+        var plugins = 0;
+        foreach (var plugin in document.Plugins.Values)
+        {
+            plugins++;
+            unevaluated += database.PluginMetadata(plugin.Name, MergeMode.WithoutUserMetadata, EvalMode.Evaluate).UnevaluatedConditions;
+        }
+
+        output.WriteLine($"{repo}: {plugins} plugins evaluated");
+        unevaluated.Should().Be(0);
+        plugins.Should().BeGreaterThan(0);
+    }
+
     [Theory]
     [InlineData(LootGame.SkyrimSE)]
     [InlineData(LootGame.Morrowind)]
