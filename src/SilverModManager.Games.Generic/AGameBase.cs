@@ -94,6 +94,8 @@ public abstract class AGameBase : IGame
         new NoWayToSourceFilesOnDisk(),
         new UndeployableLoadoutDueToMissingGameFiles(provider),
         provider.GetRequiredService<ProtonPrefixEmitter>(),
+        provider.GetRequiredService<OldVcRuntimeEmitter>(),
+        provider.GetRequiredService<OpenXrRuntimeEmitter>(),
     ];
 
     public abstract ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult);

@@ -60,14 +60,16 @@ public class AGameTests(ITestOutputHelper helper) : AStubbedGameIsolatedTest<AGa
     }
 
     [Fact]
-    public void DiagnosticEmitters_DefaultToTheBaselineThree()
+    public void DiagnosticEmitters_DefaultToTheBaseline()
     {
         var game = new FakeGame(ServiceProvider);
 
         game.DiagnosticEmitters.Select(e => e.GetType()).Should().Equal(
             typeof(NoWayToSourceFilesOnDisk),
             typeof(UndeployableLoadoutDueToMissingGameFiles),
-            typeof(ProtonPrefixEmitter));
+            typeof(ProtonPrefixEmitter),
+            typeof(OldVcRuntimeEmitter),
+            typeof(OpenXrRuntimeEmitter));
     }
 
     [Fact]

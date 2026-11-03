@@ -158,6 +158,8 @@ public abstract class ABethesdaGame<TSelf> : IBethesdaGame, IGameIdentifyingFile
     protected virtual IEnumerable<IDiagnosticEmitter> CreateEmitters(IServiceProvider provider) =>
     [
         provider.GetRequiredService<ProtonPrefixEmitter>(),
+        provider.GetRequiredService<OldVcRuntimeEmitter>(),
+        provider.GetRequiredService<OpenXrRuntimeEmitter>(),
     ];
 
     protected virtual ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new BethesdaSynchronizer(provider, this);

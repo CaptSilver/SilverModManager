@@ -9,7 +9,7 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.CreationEngine.Fallout4VR;
 
-public class Fallout4VR(IServiceProvider provider) : ACreationEngineGame<Fallout4VR>(provider), IGameData<Fallout4VR>, IHasIniFiles
+public class Fallout4VR(IServiceProvider provider) : ACreationEngineGame<Fallout4VR>(provider), IGameData<Fallout4VR>, IHasIniFiles, IVirtualRealityGame
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.Fallout4VR");
     public static string DisplayName => "Fallout 4 VR";

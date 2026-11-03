@@ -9,7 +9,7 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.CreationEngine.SkyrimVR;
 
-public class SkyrimVR(IServiceProvider provider) : ACreationEngineGame<SkyrimVR>(provider), IGameData<SkyrimVR>, IHasIniFiles
+public class SkyrimVR(IServiceProvider provider) : ACreationEngineGame<SkyrimVR>(provider), IGameData<SkyrimVR>, IHasIniFiles, IVirtualRealityGame
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.SkyrimVR");
     public static string DisplayName => "Skyrim VR";

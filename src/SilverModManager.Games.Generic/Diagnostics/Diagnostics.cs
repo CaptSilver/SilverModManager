@@ -203,4 +203,74 @@ Remove the files from the mod if they are not meant to be there.
             .AddValue<string>("Paths")
         )
         .Finish();
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate OldVisualCppRuntime = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 9))
+        .WithTitle("Old Visual C++ runtime in the prefix")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{GameName}'s prefix has an old Visual C++ runtime that its mods can crash on")
+        .WithDetails("""
+Mods in the loadout deploy files that need the Visual C++ 2015-2022 runtime (`msvcp140.dll` or `vcruntime140.dll`):
+
+{Files}
+
+The prefix's `msvcp140.dll` is {Found}, and these mods need version 14.40 or newer. With an older runtime a mod's DLL
+can crash the game while it loads, before any error shows.
+
+### How to Resolve
+Use "Set up prefix" to install the runtime with the app's own installer, or do it by hand:
+
+{Instructions}
+
+### Technical Details
+The check reads the prefix's `drive_c/windows/system32/msvcp140.dll` file version and the import tables of the DLLs and
+executables the loadout provides. Nothing is run.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("GameName")
+            .AddValue<string>("Files")
+            .AddValue<string>("Found")
+            .AddValue<string>("Instructions")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate OpenXrRuntimeNotRegistered = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 10))
+        .WithTitle("No OpenXR runtime registered")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{GameName} uses OpenComposite, but no OpenXR runtime is registered")
+        .WithDetails("""
+The loadout replaces `openvr_api.dll` with OpenComposite, which runs the game through OpenXR instead of OpenVR. OpenXR
+finds the headset's software through `{ConfigFile}`, and {Problem}.
+
+Without a runtime the game starts, finds no headset and can crash or show nothing in VR.
+
+### How to Resolve
+Make SteamVR the OpenXR runtime, either way works:
+
+* In SteamVR open Settings, turn on "Advanced settings", go to Developer and press "Set SteamVR as OpenXR Runtime".
+* Or link the file by hand to SteamVR's manifest:
+
+```
+mkdir -p ~/.config/openxr/1
+ln -sf <SteamVR folder>/steamxr_linux64.json ~/.config/openxr/1/active_runtime.json
+```
+
+Another runtime, such as Monado or WiVRn, works the same way once its manifest is linked there.
+
+### Technical Details
+OpenXR reads `$XDG_CONFIG_HOME/openxr/1/active_runtime.json` (`~/.config` when the variable is unset) and loads the library
+its `runtime.library_path` names.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("GameName")
+            .AddValue<string>("ConfigFile")
+            .AddValue<string>("Problem")
+        )
+        .Finish();
 }

@@ -81,7 +81,7 @@ public class BethesdaBaseTests(ITestOutputHelper helper)
         (await InstallLayout("readme.txt", "loader.exe")).Should().Equal("Game/Data Files/loader.exe", "Game/Data Files/readme.txt");
 
     [Fact]
-    public void OnlyTheProtonPrefixCheckIsEmitted() => Game.DiagnosticEmitters.Select(e => e.GetType()).Should().Equal(typeof(ProtonPrefixEmitter));
+    public void OnlyTheProtonPrefixAndNativeRuntimeChecksAreEmitted() => Game.DiagnosticEmitters.Select(e => e.GetType()).Should().Equal(typeof(ProtonPrefixEmitter), typeof(OldVcRuntimeEmitter), typeof(OpenXrRuntimeEmitter));
 
     [Fact]
     public void NoIntrinsicFilesAreOffered() => ((ALoadoutSynchronizer)Game.Synchronizer).IntrinsicFiles(default).Should().BeEmpty();
