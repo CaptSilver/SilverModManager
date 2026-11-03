@@ -59,6 +59,21 @@ public abstract record Filter
     public sealed record TextFilter(string SearchText, bool CaseSensitive = false) : Filter;
 
     /// <summary>
+    /// Matches the rows whose key is in a set worked out beforehand, so the cost of finding them is paid where the set
+    /// is built (off the UI thread) and a row costs one lookup here.
+    /// </summary>
+    public sealed record KeySetFilter<TKey>(IReadOnlySet<TKey> Keys) : Filter
+    {
+        public override bool MatchesRow<TModelKey>(CompositeItemModel<TModelKey> itemModel)
+        {
+            if (itemModel.Key is TKey key && Keys.Contains(key))
+                return true;
+
+            return this.MatchesChildren(itemModel);
+        }
+    }
+
+    /// <summary>
     /// Filter by installation status.
     /// </summary>
     public sealed record InstalledFilter(bool ShowInstalled = true, bool ShowNotInstalled = true) : Filter;

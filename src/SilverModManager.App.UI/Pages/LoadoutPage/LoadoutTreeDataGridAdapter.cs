@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.Filters;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.MnemonicDB.Abstractions;
 using OneOf;
@@ -28,10 +29,35 @@ public class LoadoutTreeDataGridAdapter :
     private readonly ILoadoutDataProvider[] _loadoutDataProviders;
     private readonly LoadoutFilter _loadoutFilter;
 
-    public LoadoutTreeDataGridAdapter(IServiceProvider serviceProvider, LoadoutFilter loadoutFilter) : base(serviceProvider)
+    private readonly IModFileSearch? _fileSearch;
+
+    /// <param name="fileSearch">
+    /// What a search also matches by: the files each mod deploys. Left out, it reads the loadout's files from the database
+    /// when one is available, and a page without a database (the designer) searches names only.
+    /// </param>
+    public LoadoutTreeDataGridAdapter(IServiceProvider serviceProvider, LoadoutFilter loadoutFilter, IModFileSearch? fileSearch = null) : base(serviceProvider)
     {
         _loadoutDataProviders = serviceProvider.GetServices<ILoadoutDataProvider>().ToArray();
         _loadoutFilter = loadoutFilter;
+        _fileSearch = fileSearch ?? (serviceProvider.GetService<IConnection>() is { } connection
+            ? new LoadoutFileSearch(connection, loadoutFilter.LoadoutId)
+            : null);
+    }
+
+    /// <summary>
+    /// A search text matches a row by what the row shows, or by a file it deploys. Finding the files is a scan of up to
+    /// hundreds of thousands of paths, so it runs on the thread pool and the tree is given the matching rows as a set.
+    /// </summary>
+    protected override Observable<Filter> ResolveFilter(Filter requested)
+    {
+        if (_fileSearch is null || requested is not Filter.TextFilter text)
+            return base.ResolveFilter(requested);
+
+        var search = _fileSearch;
+        return Observable
+            .FromAsync(async cancellationToken => await Task.Run(() => search.ItemsWithFileMatching(text.SearchText), cancellationToken))
+            .Select(text, static (items, text) => (Filter)new Filter.OrFilter(text, new Filter.KeySetFilter<EntityId>(items)))
+            .ObserveOnUIThreadDispatcher();
     }
 
     protected override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> GetRootsObservable(bool viewHierarchical)

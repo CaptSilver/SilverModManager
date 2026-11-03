@@ -7,6 +7,7 @@ using ObservableCollections;
 using R3;
 using System.Reactive.Linq;
 using Avalonia.Input;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,6 +40,12 @@ public abstract class TreeDataGridAdapter<TModel, TKey> : ReactiveR3Object, ISea
     public BindableReactiveProperty<IComparer<TModel>?> CustomSortComparer { get; } = new(value: null);
     public ObservableHashSet<TModel> SelectedModels { get; } = [];
     public ReactiveProperty<Filter> Filter { get; } = new(value: NoFilter.Instance);
+
+    /// <summary>The roots the current filter lets through, in the order the tree shows them.</summary>
+    public IReadOnlyList<TModel> VisibleRoots => RootsCollectionChangedView;
+
+    /// <summary>True while a filter is on and hides every root there is.</summary>
+    public BindableReactiveProperty<bool> HasNoMatches { get; } = new(value: false);
     public TreeDataGridSortingOptions SortingOptions { get; }
     protected ObservableList<TModel> Roots { get; } = [];
     protected ISettingsManager SettingsManager { get; }
@@ -59,11 +66,21 @@ public abstract class TreeDataGridAdapter<TModel, TKey> : ReactiveR3Object, ISea
         _activationDisposable = this.WhenActivated(static (self, disposables) =>
         {
             // Set up reactive filtering on RootsView
+            // A later filter replaces one still being resolved, so typing faster than a search finishes shows the last text.
             self.Filter
+                .Select(self, static (filter, self) => self.ResolveFilter(filter))
+                .Switch()
                 .Subscribe(self, static (filter, self) =>
                 {
                     self.ApplyFilter(filter);
+                    self.UpdateHasNoMatches();
                 })
+                .AddTo(disposables);
+
+            // Rows arriving or leaving while a filter is on can empty or fill the view without the filter changing.
+            NotifyCollectionChangedEventHandler onVisibleRootsChanged = (_, _) => self.UpdateHasNoMatches();
+            self.RootsCollectionChangedView.CollectionChanged += onVisibleRootsChanged;
+            Disposable.Create((self, onVisibleRootsChanged), static state => state.self.RootsCollectionChangedView.CollectionChanged -= state.onVisibleRootsChanged)
                 .AddTo(disposables);
 
             self.Roots
@@ -434,6 +451,18 @@ public abstract class TreeDataGridAdapter<TModel, TKey> : ReactiveR3Object, ISea
         }
     }
     
+    /// <summary>
+    /// Turns the filter the user set into the one to apply. The default applies it as it is. An adapter whose matching
+    /// needs more than the rows can answer cheaply (a search through files, say) does that work here, off the UI
+    /// thread, and emits the filter to apply once it is ready.
+    /// </summary>
+    protected virtual R3.Observable<Filter> ResolveFilter(Filter requested) => R3.Observable.Return(requested);
+
+    private void UpdateHasNoMatches()
+    {
+        HasNoMatches.Value = Filter.Value is not NoFilter && Roots.Count > 0 && VisibleRoots.Count == 0;
+    }
+
     /// <summary>
     /// Applies the given filter to the <see cref="RootsView"/>.
     /// </summary>
