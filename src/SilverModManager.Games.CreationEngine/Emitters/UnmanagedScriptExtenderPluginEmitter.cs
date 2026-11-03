@@ -2,10 +2,12 @@ using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
@@ -35,14 +37,26 @@ public class UnmanagedScriptExtenderPluginEmitter(ICreationEngineGame game) : AS
         var leftovers = syncTree
             .Where(pair => NativeCodePaths.IsLibraryBelow(pair.Key, folder))
             .Where(pair => IsUnmanaged(pair.Key, pair.Value, provided, gameInstalled))
-            .Select(pair => pair.Key)
-            .OrderBy(path => path.ToString(), StringComparer.Ordinal);
+            .OrderBy(pair => pair.Key.ToString(), StringComparer.Ordinal);
 
-        foreach (var path in leftovers)
+        foreach (var (path, node) in leftovers)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            yield return Diagnostics.CreateUnmanagedScriptExtenderPlugin(game.DisplayName, path.Path.ToString(), folder.Path.ToString());
+            var diagnostic = Diagnostics.CreateUnmanagedScriptExtenderPlugin(game.DisplayName, path.Path.ToString(), folder.Path.ToString());
+            yield return OverridesGroupOf(loadout.Db, node) is { } group
+                ? diagnostic with { Actions = [DiagnosticActions.RemoveLoadoutFile(path, group)] }
+                : diagnostic;
         }
+    }
+
+    // The row the node's loadout side points at, which is an Overrides row for a node IsUnmanaged lets through; a
+    // disk-only file has none and so nothing to remove. The action is scoped to that group so a mod placing the
+    // same file keeps its row.
+    private static EntityId? OverridesGroupOf(IDb db, SyncNode node)
+    {
+        if (!node.HaveLoadout || !node.Loadout.HaveEntityId) return null;
+        var item = LoadoutItem.Load(db, node.Loadout.EntityId);
+        return item.IsValid() && item.HasParent() ? item.ParentId : null;
     }
 
     private static bool IsUnmanaged(GamePath path, SyncNode node, ModProvidedFiles provided, IReadOnlyDictionary<GamePath, (FileIdentity Identity, Size Size)> gameInstalled)

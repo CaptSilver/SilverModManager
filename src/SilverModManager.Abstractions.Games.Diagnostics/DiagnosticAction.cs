@@ -1,5 +1,9 @@
 using System.Collections.Immutable;
 using JetBrains.Annotations;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Abstractions.Diagnostics;
 
@@ -119,4 +123,27 @@ public static class DiagnosticActions
     public static DiagnosticAction VerifyGameFilesInSteam(string appId)
         => new(VerifyGameFilesInSteamId, "Verify the game's files in Steam", [appId],
             "Steam checks every file against its own and downloads the ones that differ.");
+
+    /// <summary>
+    /// Id of the action that takes a file's row out of one group of the loadout.
+    /// </summary>
+    public const string RemoveLoadoutFileId = "remove-loadout-file";
+
+    /// <summary>
+    /// Removes the row at <paramref name="path"/> from the group with the entity id <paramref name="group"/>, and from no other
+    /// group: a mod that places the same file keeps its row. The arguments are the location id, the relative path and the
+    /// group id; <see cref="ParseRemoveLoadoutFile"/> reads them back.
+    /// </summary>
+    public static DiagnosticAction RemoveLoadoutFile(GamePath path, EntityId group)
+        => new(RemoveLoadoutFileId, "Delete", [path.LocationId.ToString(), path.Path.ToString(), group.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+
+    /// <summary>
+    /// Reads the arguments <see cref="RemoveLoadoutFile"/> wrote.
+    /// </summary>
+    public static (GamePath Path, LoadoutItemGroupId Group) ParseRemoveLoadoutFile(ImmutableArray<string> arguments)
+    {
+        if (arguments.Length != 3 || !ulong.TryParse(arguments[2], System.Globalization.CultureInfo.InvariantCulture, out var group))
+            throw new ArgumentException("The action names no file and group to remove", nameof(arguments));
+        return (new GamePath(LocationId.From(arguments[0]), arguments[1]), LoadoutItemGroupId.From(EntityId.From(group)));
+    }
 }

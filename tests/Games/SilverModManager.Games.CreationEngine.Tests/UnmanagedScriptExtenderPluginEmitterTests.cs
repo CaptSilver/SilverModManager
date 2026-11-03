@@ -121,6 +121,48 @@ public class UnmanagedScriptExtenderPluginEmitterTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task AnOverridesRowOffersRemoval()
+    {
+        var loadout = await CreateLoadout();
+        await AddToOverrides(loadout, "Data/SKSE/Plugins/adopted.dll");
+        await WriteOnDisk("Data/SKSE/Plugins/adopted.dll");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        var action = diagnostic.Actions.Should().ContainSingle(a => a.Id == DiagnosticActions.RemoveLoadoutFileId).Subject;
+        var (path, group) = DiagnosticActions.ParseRemoveLoadoutFile(action.Arguments);
+        path.Should().Be(new GamePath(LocationId.Game, "Data/SKSE/Plugins/adopted.dll"));
+        group.Value.Should().Be(OverridesGroupLookup.Find(Refresh(loadout)));
+    }
+
+    [Fact]
+    public async Task ADiskOnlyDllOffersNoRemoval()
+    {
+        var loadout = await CreateLoadout();
+        await WriteOnDisk("Data/SKSE/Plugins/dropped.dll");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        diagnostic.Actions.Should().BeEmpty("there is no loadout row to remove");
+    }
+
+    [Fact]
+    public async Task AnOverridesRowShadowingAModIsStillReported()
+    {
+        var loadout = await CreateLoadout();
+        var mod = await AddMod(loadout, "Plugin mod", "Data/SKSE/Plugins/both.dll");
+        await AddToOverrides(loadout, "Data/SKSE/Plugins/both.dll");
+        await WriteOnDisk("Data/SKSE/Plugins/both.dll");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        var action = diagnostic.Actions.Should().ContainSingle(a => a.Id == DiagnosticActions.RemoveLoadoutFileId).Subject;
+        var (_, group) = DiagnosticActions.ParseRemoveLoadoutFile(action.Arguments);
+        group.Value.Should().Be(OverridesGroupLookup.Find(Refresh(loadout)));
+        group.Should().NotBe(mod);
+    }
+
+    [Fact]
     public async Task EachDllGetsItsOwnDiagnostic()
     {
         var loadout = await CreateLoadout();
