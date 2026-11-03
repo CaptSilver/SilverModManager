@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using SilverModManager.Games.Bethesda.Loot.Conditions;
 using SilverModManager.Games.Bethesda.Loot.Database;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
 using SilverModManager.Games.Bethesda.Loot.Metadata;
 using SilverModManager.Games.Bethesda.Loot.Sorting;
+using SilverModManager.Games.Bethesda.Loot.Tests.Conditions;
 using YamlDotNet.RepresentationModel;
 
 namespace SilverModManager.Games.Bethesda.Loot.Tests.Masterlists;
@@ -89,6 +91,17 @@ public class BundledMasterlistTests(ITestOutputHelper output)
 
     [Theory]
     [MemberData(nameof(Repositories))]
+    public void EveryConditionEvaluatesAgainstAnEmptyDataFolder(string repo) =>
+        AssertConditionsEvaluate(repo, GameFor(repo), Store.MasterlistText(repo));
+
+    [Theory]
+    [InlineData(LootGame.SkyrimSE)]
+    [InlineData(LootGame.Morrowind)]
+    public void EveryPreludeConditionEvaluatesAgainstAnEmptyDataFolder(LootGame game) =>
+        AssertConditionsEvaluate("prelude", game, Store.PreludeText());
+
+    [Theory]
+    [MemberData(nameof(Repositories))]
     public void GroupsGraphBuildsWithoutACycle(string repo)
     {
         var document = MetadataDocument.LoadWithPrelude(Store.MasterlistText(repo), Store.PreludeText());
@@ -97,6 +110,46 @@ public class BundledMasterlistTests(ITestOutputHelper output)
 
         graph.NodeCount.Should().BeGreaterThan(0);
         graph.SortedGroupNodes().Should().HaveCount(graph.NodeCount);
+    }
+
+    // A game the repository's masterlist applies to; the VR and Enderal variants share their sibling's.
+    private static LootGame GameFor(string repo) => repo switch
+    {
+        "morrowind" => LootGame.Morrowind,
+        "oblivion" => LootGame.Oblivion,
+        "oblivion-remastered" => LootGame.OblivionRemastered,
+        "skyrim" => LootGame.Skyrim,
+        "skyrimse" => LootGame.SkyrimSE,
+        "fallout3" => LootGame.Fallout3,
+        "falloutnv" => LootGame.FalloutNV,
+        "fallout4" => LootGame.Fallout4,
+        "starfield" => LootGame.Starfield,
+        "enderal" => LootGame.Enderal,
+        _ => throw new ArgumentOutOfRangeException(nameof(repo), repo, null),
+    };
+
+    private void AssertConditionsEvaluate(string label, LootGame game, string yaml)
+    {
+        using var data = new TempDirectory();
+        var evaluator = new ConditionEvaluator(new FakeConditionContext(data.Path, game));
+        var failures = new List<string>();
+        var count = 0;
+        var sw = Stopwatch.StartNew();
+        foreach (var (condition, line) in Conditions(yaml))
+        {
+            count++;
+            try
+            {
+                evaluator.Evaluate(condition);
+            }
+            catch (Exception e)
+            {
+                failures.Add($"{label}:{line}: {condition} ({e.GetType().Name}: {e.Message})");
+            }
+        }
+
+        output.WriteLine($"{label}: {count} conditions evaluated in {sw.ElapsedMilliseconds} ms");
+        Assert.True(failures.Count == 0, $"{failures.Count} of {count} conditions threw:\n" + string.Join("\n", failures));
     }
 
     private static void AssertConditionsParse(string label, string yaml)
@@ -123,7 +176,7 @@ public class BundledMasterlistTests(ITestOutputHelper output)
     {
         foreach (var (key, value, line) in Scalars(yaml))
         {
-            if (key == "condition") yield return (value, line);
+            if (key is "condition" or "constraint") yield return (value, line);
         }
     }
 

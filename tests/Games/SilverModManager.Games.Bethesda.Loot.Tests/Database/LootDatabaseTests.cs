@@ -1,4 +1,6 @@
+using SilverModManager.Games.Bethesda.Loot.Conditions;
 using SilverModManager.Games.Bethesda.Loot.Database;
+using SilverModManager.Games.Bethesda.Loot.Tests.Conditions;
 using SilverModManager.Games.Bethesda.Loot.Metadata;
 using SilverModManager.Games.Bethesda.Loot.Sorting;
 
@@ -453,6 +455,185 @@ public class LootDatabaseTests
             metadata!.Messages.Should().BeEmpty();
             metadata.Tags.Should().ContainSingle();
             unevaluated.Should().Be(1);
+        }
+    }
+
+    public class WithAnEvaluator
+    {
+        private static LootDatabase Database(FakeConditionEvaluator evaluator, string masterlist, string? userlist = null)
+        {
+            var database = new LootDatabase(evaluator);
+            database.LoadMasterlist(masterlist);
+            if (userlist is not null) database.LoadUserlist(userlist);
+            return database;
+        }
+
+        private const string Conditioned = """
+            plugins:
+              - name: A.esp
+                after:
+                  - {name: B.esp, condition: 'file("B.esp")'}
+                  - {name: C.esp, condition: 'file("C.esp")'}
+                  - {name: D.esp, condition: 'file("D.esp")'}
+                req:
+                  - {name: E.esp, condition: 'file("E.esp")'}
+                inc:
+                  - {name: F.esp, condition: 'file("F.esp")'}
+                tag:
+                  - {name: Relev, condition: 'file("Relev")'}
+                  - Delev
+                msg:
+                  - {type: say, content: hi, condition: 'file("msg")'}
+            """;
+
+        [Fact]
+        public void ShouldKeepWhatHoldsDropWhatDoesNotAndCountOnlyWhatCannotBeEvaluated()
+        {
+            var evaluator = new FakeConditionEvaluator(new Dictionary<string, bool>
+            {
+                ["file(\"B.esp\")"] = true,
+                ["file(\"C.esp\")"] = false,
+                ["file(\"E.esp\")"] = true,
+                ["file(\"F.esp\")"] = false,
+                ["file(\"Relev\")"] = false,
+                ["file(\"msg\")"] = true,
+            });
+            evaluator.Failing.Add("file(\"D.esp\")");
+
+            var (metadata, unevaluated) = Database(evaluator, Conditioned)
+                .PluginMetadata("A.esp", MergeMode.WithUserMetadata, EvalMode.Evaluate);
+
+            metadata!.LoadAfter.Select(f => f.Name.Value).Should().Equal("B.esp");
+            metadata.Requirements.Select(f => f.Name.Value).Should().Equal("E.esp");
+            metadata.Incompatibilities.Should().BeEmpty();
+            metadata.Tags.Select(t => t.Name).Should().Equal("Delev");
+            metadata.Messages.Should().ContainSingle();
+            unevaluated.Should().Be(1);
+        }
+
+        [Fact]
+        public void ShouldNotAskWhenNotEvaluating()
+        {
+            var evaluator = new FakeConditionEvaluator();
+
+            var (metadata, unevaluated) = Database(evaluator, Conditioned)
+                .PluginMetadata("A.esp", MergeMode.WithUserMetadata, EvalMode.DoNotEvaluate);
+
+            metadata!.LoadAfter.Should().HaveCount(3);
+            unevaluated.Should().Be(0);
+            evaluator.Asked.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void ShouldEvaluateUserMetadataAndGeneralMessages()
+        {
+            var evaluator = new FakeConditionEvaluator(new Dictionary<string, bool>
+            {
+                ["file(\"a\")"] = true,
+                ["file(\"b\")"] = false,
+            });
+            var database = Database(evaluator,
+                "globals: [{type: say, content: kept, condition: 'file(\"a\")'}, {type: say, content: dropped, condition: 'file(\"b\")'}]",
+                "globals: [{type: say, content: user, condition: 'file(\"a\")'}]");
+
+            var (messages, unevaluated) = database.GeneralMessages(MergeMode.WithUserMetadata, EvalMode.Evaluate);
+            var (userMessages, _) = database.UserGeneralMessages(EvalMode.Evaluate);
+
+            messages.Should().HaveCount(2);
+            userMessages.Should().ContainSingle();
+            unevaluated.Should().Be(0);
+        }
+
+        [Fact]
+        public void ShouldKeepACleaningEntryWhenThePluginsChecksumMatches()
+        {
+            var evaluator = new FakeConditionEvaluator(new Dictionary<string, bool>
+            {
+                ["checksum(\"A.esp\", 0000002A)"] = true,
+                ["checksum(\"A.esp\", 000000FF)"] = false,
+            });
+            var database = Database(evaluator, """
+                plugins:
+                  - name: A.esp
+                    dirty:
+                      - {crc: 0x2A, util: TES4Edit, itm: 3}
+                      - {crc: 0xFF, util: TES4Edit}
+                    clean:
+                      - {crc: 0x2A, util: TES4Edit}
+                """);
+
+            var (metadata, unevaluated) = database.PluginMetadata("A.esp", MergeMode.WithUserMetadata, EvalMode.Evaluate);
+
+            metadata!.DirtyInfo.Select(d => d.Crc).Should().Equal(0x2Au);
+            metadata.CleanInfo.Select(d => d.Crc).Should().Equal(0x2Au);
+            unevaluated.Should().Be(0);
+        }
+
+        [Fact]
+        public void ShouldRequireTheCleaningEntrysOwnConditionAsWell()
+        {
+            var evaluator = new FakeConditionEvaluator(new Dictionary<string, bool>
+            {
+                ["checksum(\"A.esp\", 0000002A) and (file(\"x\"))"] = false,
+            });
+            evaluator.Answers["checksum(\"A.esp\", 0000002A) and (file(\"y\"))"] = true;
+            var database = Database(evaluator, """
+                plugins:
+                  - name: A.esp
+                    dirty:
+                      - {crc: 0x2A, util: TES4Edit, condition: 'file("x")'}
+                      - {crc: 0x2A, util: Other, condition: 'file("y")'}
+                """);
+
+            var (metadata, _) = database.PluginMetadata("A.esp", MergeMode.WithUserMetadata, EvalMode.Evaluate);
+
+            metadata!.DirtyInfo.Select(d => d.CleaningUtility).Should().Equal("Other");
+        }
+
+        [Fact]
+        public void ShouldCountACleaningEntryWhoseChecksumCannotBeRead()
+        {
+            var evaluator = new FakeConditionEvaluator();
+            evaluator.Failing.Add("checksum(\"A.esp\", 0000002A)");
+            var database = Database(evaluator, "plugins: [{name: A.esp, dirty: [{crc: 0x2A, util: TES4Edit}]}]");
+
+            var (metadata, unevaluated) = database.PluginMetadata("A.esp", MergeMode.WithUserMetadata, EvalMode.Evaluate);
+
+            metadata.Should().BeNull();
+            unevaluated.Should().Be(1);
+        }
+
+        [Fact]
+        public void EvaluateShouldReportNullWithoutAnEvaluator()
+        {
+            new LootDatabase().Evaluate("file(\"a\")").Should().BeNull();
+        }
+
+        [Fact]
+        public void EvaluateShouldAnswerTrueAndFalseFromTheEvaluator()
+        {
+            var evaluator = new FakeConditionEvaluator(new Dictionary<string, bool> { ["file(\"a\")"] = true, ["file(\"b\")"] = false });
+            var database = new LootDatabase(evaluator);
+
+            database.Evaluate("file(\"a\")").Should().BeTrue();
+            database.Evaluate("file(\"b\")").Should().BeFalse();
+        }
+
+        [Fact]
+        public void EvaluateShouldReportNullWhenTheEvaluatorThrows()
+        {
+            var evaluator = new FakeConditionEvaluator();
+            evaluator.Failing.Add("file(\"a\")");
+
+            new LootDatabase(evaluator).Evaluate("file(\"a\")").Should().BeNull();
+        }
+
+        [Fact]
+        public void EvaluateShouldReportNullWhenTheTextDoesNotParse()
+        {
+            var evaluator = new ConditionEvaluator(new FakeConditionContext("/nonexistent"));
+
+            new LootDatabase(evaluator).Evaluate("file(").Should().BeNull();
         }
     }
 }

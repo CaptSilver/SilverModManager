@@ -1,3 +1,4 @@
+using SilverModManager.Games.Bethesda.Loot.Conditions;
 using SilverModManager.Games.Bethesda.Loot.Metadata;
 using SilverModManager.Games.Bethesda.Loot.Sorting;
 
@@ -18,10 +19,10 @@ public enum EvalMode
     DoNotEvaluate,
 
     /// <summary>
-    /// Drops every entry that has a condition. There is no condition evaluator yet, so an entry
-    /// that LOOT might have kept is treated as not applying, and each one dropped is counted in the
-    /// lookup's result. Dropping a conditional load-after can only lose an edge, where keeping it
-    /// could add a cycle LOOT would not see.
+    /// Keeps the entries whose condition holds. An entry whose condition is false is dropped, and
+    /// one that cannot be evaluated is dropped and counted in the lookup's result. Without a condition
+    /// evaluator every entry that has a condition is in the second group: dropping a conditional
+    /// load-after can only lose an edge, where keeping it could add a cycle LOOT would not see.
     /// </summary>
     Evaluate,
 }
@@ -29,10 +30,11 @@ public enum EvalMode
 /// <summary>
 /// The loaded masterlist and userlist, and lookups that merge them the way LOOT does.
 /// </summary>
+/// <param name="evaluator">Decides conditions. Without one, <see cref="EvalMode.Evaluate"/> treats every condition as unevaluable.</param>
 /// <remarks>
 /// Not thread-safe: load, then read from one thread, or lock around both.
 /// </remarks>
-public sealed class LootDatabase
+public sealed class LootDatabase(IConditionEvaluator? evaluator = null)
 {
     private MetadataDocument _masterlist = MetadataDocument.Empty;
     private MetadataDocument _userlist = MetadataDocument.Empty;
@@ -82,13 +84,13 @@ public sealed class LootDatabase
             metadata = metadata is null ? user : user.MergeMetadata(metadata);
         }
 
-        return Evaluate(metadata, evalMode);
+        return EvaluateMetadata(pluginName, metadata, evalMode);
     }
 
     /// <summary>The metadata the userlist alone holds for a plugin.</summary>
     /// <exception cref="InvalidPluginNameException">The plugin name contains regex characters and is not a valid regex.</exception>
     public (PluginMetadata? Metadata, int UnevaluatedConditions) PluginUserMetadata(string pluginName, EvalMode evalMode) =>
-        Evaluate(_userlist.FindPlugin(pluginName), evalMode);
+        EvaluateMetadata(pluginName, _userlist.FindPlugin(pluginName), evalMode);
 
     /// <summary>The messages that apply to the whole load order, the masterlist's first.</summary>
     public (IReadOnlyList<Message> Messages, int UnevaluatedConditions) GeneralMessages(MergeMode mergeMode, EvalMode evalMode)
@@ -129,47 +131,85 @@ public sealed class LootDatabase
     public IReadOnlyList<Vertex> GroupsPath(string fromGroupName, string toGroupName) =>
         GroupsGraph.Build(_masterlist.Groups, _userlist.Groups).FindPath(fromGroupName, toGroupName);
 
-    private static (PluginMetadata? Metadata, int UnevaluatedConditions) Evaluate(PluginMetadata? metadata, EvalMode evalMode)
+    /// <summary>
+    /// Whether <paramref name="condition"/> holds, or null when it cannot be told: there is no evaluator, the
+    /// text is not a condition, or a file it needs could not be read.
+    /// </summary>
+    public bool? Evaluate(string condition)
+    {
+        if (evaluator is null) return null;
+
+        try
+        {
+            return evaluator.Evaluate(condition);
+        }
+        catch (Exception e) when (e is ConditionEvaluationException or ConditionParseException)
+        {
+            return null;
+        }
+    }
+
+    private (PluginMetadata? Metadata, int UnevaluatedConditions) EvaluateMetadata(
+        string pluginName, PluginMetadata? metadata, EvalMode evalMode)
     {
         if (metadata is null || evalMode == EvalMode.DoNotEvaluate) return (metadata, 0);
 
         var dropped = 0;
-        EquatableArray<T> KeepUnconditioned<T>(EquatableArray<T> items, Func<T, string?> condition)
+        bool Holds(string? condition)
         {
-            var kept = items.Where(item => condition(item) is null).ToArray();
-            dropped += items.Count - kept.Length;
-            return kept;
+            if (condition is null) return true;
+            if (Evaluate(condition) is { } holds) return holds;
+
+            dropped++;
+            return false;
         }
 
-        EquatableArray<T> DropAll<T>(EquatableArray<T> items)
-        {
-            dropped += items.Count;
-            return [];
-        }
+        EquatableArray<T> Keep<T>(EquatableArray<T> items, Func<T, string?> condition) =>
+            items.Where(item => Holds(condition(item))).ToArray();
 
         // LOOT wraps every cleaning entry in checksum(<plugin>, <crc>) and keeps it only when the plugin's
-        // CRC matches. That needs the plugin's bytes, so none can be kept, with or without a condition of their own.
+        // CRC matches, and the entry's own condition has to hold as well.
+        EquatableArray<PluginCleaningData> KeepCleaning(EquatableArray<PluginCleaningData> items) =>
+            items.Where(item => Holds(CleaningCondition(pluginName, item))).ToArray();
+
         var evaluated = metadata with
         {
-            LoadAfter = KeepUnconditioned(metadata.LoadAfter, f => f.Condition),
-            Requirements = KeepUnconditioned(metadata.Requirements, f => f.Condition),
-            Incompatibilities = KeepUnconditioned(metadata.Incompatibilities, f => f.Condition),
-            Messages = KeepUnconditioned(metadata.Messages, m => m.Condition),
-            Tags = KeepUnconditioned(metadata.Tags, t => t.Condition),
-            DirtyInfo = DropAll(metadata.DirtyInfo),
-            CleanInfo = DropAll(metadata.CleanInfo),
+            LoadAfter = Keep(metadata.LoadAfter, f => f.Condition),
+            Requirements = Keep(metadata.Requirements, f => f.Condition),
+            Incompatibilities = Keep(metadata.Incompatibilities, f => f.Condition),
+            Messages = Keep(metadata.Messages, m => m.Condition),
+            Tags = Keep(metadata.Tags, t => t.Condition),
+            DirtyInfo = KeepCleaning(metadata.DirtyInfo),
+            CleanInfo = KeepCleaning(metadata.CleanInfo),
         };
 
         return (evaluated.HasNameOnly ? null : evaluated, dropped);
     }
 
-    private static (IReadOnlyList<Message> Messages, int UnevaluatedConditions) FilterMessages(IEnumerable<Message> messages, EvalMode evalMode)
+    private static string CleaningCondition(string pluginName, PluginCleaningData data)
+    {
+        var checksum = $"checksum(\"{pluginName}\", {data.Crc:X8})";
+        return data.Condition is null ? checksum : $"{checksum} and ({data.Condition})";
+    }
+
+    private (IReadOnlyList<Message> Messages, int UnevaluatedConditions) FilterMessages(IEnumerable<Message> messages, EvalMode evalMode)
     {
         var all = messages.ToList();
         if (evalMode == EvalMode.DoNotEvaluate) return (all, 0);
 
-        var kept = all.Where(m => m.Condition is null).ToList();
-        return (kept, all.Count - kept.Count);
+        var kept = new List<Message>();
+        var dropped = 0;
+        foreach (var message in all)
+        {
+            if (message.Condition is null) kept.Add(message);
+            else if (Evaluate(message.Condition) is { } holds)
+            {
+                if (holds) kept.Add(message);
+            }
+            else dropped++;
+        }
+
+        return (kept, dropped);
     }
 
     private static List<Group> MergeGroups(IReadOnlyList<Group> masterlist, IReadOnlyList<Group> userlist)

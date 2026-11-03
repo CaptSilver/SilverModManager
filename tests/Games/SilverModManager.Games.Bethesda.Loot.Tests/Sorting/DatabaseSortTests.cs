@@ -1,4 +1,5 @@
 using SilverModManager.Games.Bethesda.Loot.Database;
+using SilverModManager.Games.Bethesda.Loot.Tests.Database;
 using SilverModManager.Games.Bethesda.Loot.Metadata;
 using SilverModManager.Games.Bethesda.Loot.Sorting;
 
@@ -199,5 +200,56 @@ public class DatabaseSortTests
 
         result.Order.Should().BeEmpty();
         result.Divergences.Should().Be(new KnownDivergences(false, 0));
+    }
+
+    [Fact]
+    public void ConstraintsShouldBeEvaluatedAndOnlyTheUnevaluableOnesCounted()
+    {
+        var evaluator = new FakeConditionEvaluator(new Dictionary<string, bool>
+        {
+            ["file(\"B.esp\")"] = true,
+            ["file(\"C.esp\")"] = false,
+        });
+        evaluator.Failing.Add("file(\"D.esp\")");
+        var database = new LootDatabase(evaluator);
+        database.LoadMasterlist("""
+            plugins:
+              - name: A.esp
+                after:
+                  - {name: B.esp, constraint: 'file("B.esp")'}
+                  - {name: C.esp, constraint: 'file("C.esp")'}
+                  - {name: D.esp, constraint: 'file("D.esp")'}
+                  - E.esp
+            """);
+
+        var (data, unevaluated) = PluginSorter.ToPluginSortingData(database, new TestPlugin("A.esp"), 0);
+
+        data.MasterlistLoadAfter.Should().Equal("B.esp", "E.esp");
+        unevaluated.Should().Be(1);
+    }
+
+    [Fact]
+    public void ASortWithAnEvaluatorShouldFollowTheConditionsThatHold()
+    {
+        var evaluator = new FakeConditionEvaluator(new Dictionary<string, bool>
+        {
+            ["file(\"B.esp\")"] = true,
+            ["file(\"C.esp\")"] = false,
+        });
+        var database = new LootDatabase(evaluator);
+        database.LoadMasterlist("""
+            plugins:
+              - name: A.esp
+                after:
+                  - {name: B.esp, condition: 'file("B.esp")'}
+                  - {name: C.esp, condition: 'file("C.esp")'}
+            """);
+
+        var result = PluginSorter.Sort<ISortingPlugin>(
+            [new TestPlugin("A.esp"), new TestPlugin("B.esp"), new TestPlugin("C.esp")], database, []);
+
+        result.Divergences.UnevaluatedConditions.Should().Be(0);
+        var order = result.Order.ToList();
+        order.IndexOf("B.esp").Should().BeLessThan(order.IndexOf("A.esp"));
     }
 }

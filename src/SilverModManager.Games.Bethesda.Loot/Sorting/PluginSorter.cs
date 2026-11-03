@@ -67,7 +67,8 @@ public static class PluginSorter
     /// <summary>
     /// Sorts plugins using the masterlist and userlist metadata in <paramref name="database"/>. The
     /// current order is the order of <paramref name="pluginsInCurrentOrder"/>. Conditioned metadata
-    /// is dropped, which the result's divergences count. <paramref name="recordEdges"/> fills
+    /// whose condition is false is dropped; metadata the database cannot evaluate is dropped too, and
+    /// the result's divergences count it. <paramref name="recordEdges"/> fills
     /// <see cref="SortResult.Edges"/>.
     /// </summary>
     /// <exception cref="BuildGroupsGraphException">The database's groups do not form a valid graph.</exception>
@@ -102,8 +103,9 @@ public static class PluginSorter
 
     /// <summary>
     /// A plugin with its masterlist and user metadata from <paramref name="database"/>. Entries with
-    /// a condition, and load-after and requirement files with a constraint, are dropped because
-    /// neither can be evaluated; <c>UnevaluatedConditions</c> counts them.
+    /// a condition, and load-after and requirement files with a constraint, are kept when the
+    /// database evaluates them to true and dropped otherwise; <c>UnevaluatedConditions</c> counts the
+    /// ones it could not evaluate.
     /// </summary>
     public static (PluginSortingData<T> Data, int UnevaluatedConditions) ToPluginSortingData<T>(
         LootDatabase database, T plugin, int loadOrderIndex)
@@ -113,8 +115,10 @@ public static class PluginSorter
 
         PluginMetadata? DropConstrained(PluginMetadata? metadata)
         {
-            return metadata?.FilterByConstraints(_ =>
+            return metadata?.FilterByConstraints(constraint =>
             {
+                if (database.Evaluate(constraint) is { } holds) return holds;
+
                 unevaluated++;
                 return false;
             });
