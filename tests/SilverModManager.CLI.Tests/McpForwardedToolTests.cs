@@ -28,7 +28,7 @@ public sealed class McpForwardedToolTests : IAsyncDisposable
         var result = await McpTestHost.CallAsync(await ToolsAsync(), "loadouts_list");
 
         result.IsError.Should().BeFalse();
-        result.Text.Should().Be("Id Name\n1a2b Elden Ring\n");
+        result.Text.Should().Be("Id Name\n1a2b Elden Ring\njson=True\n");
     }
 
     [Fact(Timeout = TimeoutMs)]
@@ -57,10 +57,10 @@ public sealed class McpForwardedToolTests : IAsyncDisposable
     {
         var tools = await ToolsAsync();
 
-        (await McpTestHost.CallAsync(tools, "wabbajack_list")).Text.Trim().Should().Be("wabbajack list");
+        (await McpTestHost.CallAsync(tools, "wabbajack_list")).Text.Trim().Should().Be("wabbajack list json=True");
         (await McpTestHost.CallAsync(tools, "wabbajack_download", new JsonObject { ["modlist"] = "Skyrim list" })).Text.Trim().Should().Be("download modlist=[Skyrim list]");
-        (await McpTestHost.CallAsync(tools, "wabbajack_status")).Text.Trim().Should().Be("status modlist=[]");
-        (await McpTestHost.CallAsync(tools, "wabbajack_status", new JsonObject { ["modlist"] = "Skyrim list" })).Text.Trim().Should().Be("status modlist=[Skyrim list]");
+        (await McpTestHost.CallAsync(tools, "wabbajack_status")).Text.Trim().Should().Be("status modlist=[] json=True");
+        (await McpTestHost.CallAsync(tools, "wabbajack_status", new JsonObject { ["modlist"] = "Skyrim list" })).Text.Trim().Should().Be("status modlist=[Skyrim list] json=True");
         (await McpTestHost.CallAsync(tools, "wabbajack_cancel")).Text.Trim().Should().Be("cancel");
     }
 
@@ -250,5 +250,41 @@ public sealed class McpForwardedToolTests : IAsyncDisposable
 
         Path.GetFullPath(_host.Directory).Should().StartWith(Path.GetTempPath());
         if (!string.IsNullOrEmpty(home) && !Path.GetTempPath().StartsWith(home)) _host.Directory.Should().NotStartWith(home);
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task TheLoadoutOrderTools_PassTheirArgumentsAsOptions()
+    {
+        var tools = await ToolsAsync();
+        var group = new JsonObject { ["loadout"] = "elden-ring/main", ["group"] = "Plain Mod" };
+
+        (await McpTestHost.CallAsync(tools, "loadout_group_enable", group)).Text.Trim().Should().Be("enable loadout=elden-ring/main group=[Plain Mod]");
+        (await McpTestHost.CallAsync(tools, "loadout_group_disable", group)).Text.Trim().Should().Be("disable loadout=elden-ring/main group=[Plain Mod]");
+        (await McpTestHost.CallAsync(tools, "loadout_group_priority_set", new JsonObject { ["loadout"] = "elden-ring/main", ["group"] = "Plain Mod", ["index"] = 3 })).Text.Trim()
+            .Should().Be("priority set loadout=elden-ring/main group=[Plain Mod] index=3");
+        (await McpTestHost.CallAsync(tools, "loadout_priority_list", Loadout("elden-ring/main"))).Text.Trim().Should().Be("priority list loadout=elden-ring/main json=True");
+        (await McpTestHost.CallAsync(tools, "loadout_plugins_list", Loadout("elden-ring/main"))).Text.Trim().Should().Be("plugins list loadout=elden-ring/main json=True");
+        (await McpTestHost.CallAsync(tools, "loadout_plugins_set", new JsonObject { ["loadout"] = "elden-ring/main", ["order"] = "a.esp;b.esp" })).Text.Trim()
+            .Should().Be("plugins set loadout=elden-ring/main order=[a.esp;b.esp]");
+        (await McpTestHost.CallAsync(tools, "loadout_plugins_sort", Loadout("elden-ring/main"))).Text.Trim().Should().Be("plugins sort loadout=elden-ring/main");
+        (await McpTestHost.CallAsync(tools, "loadout_revisions", Loadout("elden-ring/main"))).Text.Trim().Should().Be("revisions loadout=elden-ring/main json=True");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task LoadoutRevert_PassesTheRevisionUnderTheVerbsOptionName()
+    {
+        var result = await McpTestHost.CallAsync(await ToolsAsync(), "loadout_revert", new JsonObject { ["loadout"] = "elden-ring/main", ["revision"] = 4 });
+
+        result.IsError.Should().BeFalse();
+        result.Text.Trim().Should().Be("revert loadout=elden-ring/main revisionNumber=4");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task LoadoutPluginsList_OnAGameWithoutPlugins_IsAnAnswerNotAFailure()
+    {
+        var result = await McpTestHost.CallAsync(await ToolsAsync(), "loadout_plugins_list", Loadout("no-plugins"));
+
+        result.IsError.Should().BeFalse();
+        result.Text.Should().Contain("This game has no plugin order.");
     }
 }

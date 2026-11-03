@@ -19,8 +19,20 @@ public static class ReadOnlyTools
         AppStatus(context),
         AppLogErrors(context),
         VerbTool.Create(context, "loadouts_list",
-            "Lists the loadouts with their id, name, game, version, store and item count.",
-            readOnly: true, ["loadouts", "list"], takesLoadout: false, context.Limits.ReadTimeout),
+            "Lists, as JSON, the loadouts with their id, name, game, version, store and item count.",
+            readOnly: true, ["loadouts", "list"], takesLoadout: false, context.Limits.ReadTimeout, flags: ["--json"]),
+        VerbTool.Create(context, "loadout_revisions",
+            "Lists, as JSON, a loadout's restore points: the number loadout_revert takes, when it was written and how many mods it held. " +
+            "Find the loadout with loadouts_list.",
+            readOnly: true, ["loadout", "revisions"], takesLoadout: true, context.Limits.ReadTimeout, flags: ["--json"]),
+        VerbTool.Create(context, "loadout_priority_list",
+            "Lists, as JSON, a loadout's mods in priority order with each one's index, group id, name and whether it is switched on. " +
+            "Index 0 loses and the last index wins when two mods ship the same file. Find the loadout with loadouts_list.",
+            readOnly: true, ["loadout", "priority", "list"], takesLoadout: true, context.Limits.ReadTimeout, flags: ["--json"]),
+        VerbTool.Create(context, "loadout_plugins_list",
+            "Lists, as JSON, a Creation Engine loadout's plugins in load order with each one's switch, flags, masters, lock and mod. " +
+            "The last plugin wins. A game with no plugin order answers that it has none (exit code 1). Find the loadout with loadouts_list.",
+            readOnly: true, ["loadout", "plugins", "list"], takesLoadout: true, context.Limits.ReadTimeout, flags: ["--json"], reportsExitOne: true),
         VerbTool.Create(context, "loadout_merge_report",
             "Reports the files the app merges for a FromSoft loadout, which mods feed each one, and whether an apply would be refused, as JSON. " +
             "Find the loadout with loadouts_list.",
@@ -46,13 +58,13 @@ public static class ReadOnlyTools
             "Reads one app setting. Find the keys with settings_list.",
             readOnly: true, ["settings", "get"], takesLoadout: false, context.Limits.ReadTimeout, options: [SettingKeyParam]),
         VerbTool.Create(context, "wabbajack_list",
-            "Lists the Wabbajack modlists in the library with their id, name, version, game and archive count, and marks the one that is downloading.",
-            readOnly: true, ["wabbajack", "list"], takesLoadout: false, context.Limits.ReadTimeout),
+            "Lists, as JSON, the Wabbajack modlists in the library with their id, name, version, game and archive count, and marks the one that is downloading.",
+            readOnly: true, ["wabbajack", "list"], takesLoadout: false, context.Limits.ReadTimeout, flags: ["--json"]),
         VerbTool.Create(context, "wabbajack_status",
-            "Reports how a Wabbajack modlist download is going: archives done, bytes fetched, how many wait on the browser or on hand work, and the latest failures with their reasons. " +
+            "Reports, as JSON, how a Wabbajack modlist download is going: archives done, bytes fetched, how many wait on the browser or on hand work, and the latest failures with their reasons. " +
             "Find the modlists with wabbajack_list.",
             readOnly: true, ["wabbajack", "status"], takesLoadout: false, context.Limits.ReadTimeout,
-            options: [MutatingTools.WabbajackModlistParam(required: false)]),
+            options: [MutatingTools.WabbajackModlistParam(required: false)], flags: ["--json"]),
         VerbTool.Create(context, "doctor",
             "Reports, as JSON, how each managed game would launch: prefix, Proton, tool runner, Steam launch options and launch lock.",
             readOnly: true, ["doctor"], takesLoadout: false, context.Limits.ReadTimeout, flags: ["--json"], reportsExitOne: true),

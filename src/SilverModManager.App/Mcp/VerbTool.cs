@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace SilverModManager.App.Mcp;
 
 /// <summary>Builds a tool that runs one verb in the app.</summary>
@@ -23,12 +25,16 @@ internal static class VerbTool
             [
                 .. verb,
                 .. takesLoadout ? new[] { "--loadout", args.RequiredString("loadout") } : [],
-                .. (options ?? []).SelectMany(o => o.Required
-                    ? new[] { $"--{o.Name}", args.RequiredString(o.Name) }
-                    : args.String(o.Name) is { } value ? new[] { $"--{o.Name}", value } : []),
+                .. (options ?? []).SelectMany(o => ValueOf(args, o) is { } value
+                    ? new[] { $"--{o.OptionName}", value }
+                    : o.Required ? throw new InvalidOperationException($"The tool was called without its required '{o.Name}' argument.") : []),
                 .. flags ?? [],
             ];
             return context.Verbs.RunAsync(argv, new VerbCall(timeout, reportsExitOne, context.Limits.MaxOutputChars, emptyText?.Invoke(args)), token);
         });
     }
+
+    private static string? ValueOf(ToolArgs args, ToolParam option) => option.Type == "integer"
+        ? args.Int(option.Name)?.ToString(CultureInfo.InvariantCulture)
+        : args.String(option.Name);
 }

@@ -18,7 +18,9 @@ public sealed class McpToolListTests : IAsyncDisposable
     {
         Tools(readOnly: false).Select(t => t.Name).Should().BeEquivalentTo(
             "app_status", "app_log_errors", "loadouts_list", "loadout_merge_report", "loadout_vanilla_list", "loadout_heal_plan", "doctor", "games_list", "loadout_health_check", "settings_list", "settings_get", "settings_set", "loadout_apply", "game_launch",
-            "wabbajack_list", "wabbajack_status", "wabbajack_download", "wabbajack_cancel");
+            "wabbajack_list", "wabbajack_status", "wabbajack_download", "wabbajack_cancel",
+            "loadout_revisions", "loadout_priority_list", "loadout_plugins_list",
+            "loadout_group_enable", "loadout_group_disable", "loadout_group_priority_set", "loadout_plugins_set", "loadout_plugins_sort", "loadout_revert");
     }
 
     [Fact]
@@ -29,7 +31,15 @@ public sealed class McpToolListTests : IAsyncDisposable
         names.Should().NotContain("loadout_apply").And.NotContain("game_launch").And.NotContain("settings_set")
             .And.NotContain("wabbajack_download").And.NotContain("wabbajack_cancel");
         names.Should().Contain(["wabbajack_list", "wabbajack_status"]);
+        names.Should().Contain(["loadout_revisions", "loadout_priority_list", "loadout_plugins_list"]);
         Tools(readOnly: true).Should().OnlyContain(t => t.ReadOnly);
+    }
+
+    [Fact]
+    public void AReadOnlyServer_LeavesOutTheLoadoutOrderToolsThatWrite()
+    {
+        Tools(readOnly: true).Select(t => t.Name).Should().NotContain(
+            ["loadout_group_enable", "loadout_group_disable", "loadout_group_priority_set", "loadout_plugins_set", "loadout_plugins_sort", "loadout_revert"]);
     }
 
     [Fact]
@@ -37,7 +47,9 @@ public sealed class McpToolListTests : IAsyncDisposable
     {
         var all = Tools(readOnly: false);
 
-        all.Where(t => !t.ReadOnly).Select(t => t.Name).Should().BeEquivalentTo("settings_set", "loadout_apply", "game_launch", "wabbajack_download", "wabbajack_cancel");
+        all.Where(t => !t.ReadOnly).Select(t => t.Name).Should().BeEquivalentTo(
+            "settings_set", "loadout_apply", "game_launch", "wabbajack_download", "wabbajack_cancel",
+            "loadout_group_enable", "loadout_group_disable", "loadout_group_priority_set", "loadout_plugins_set", "loadout_plugins_sort", "loadout_revert");
     }
 
     [Fact]

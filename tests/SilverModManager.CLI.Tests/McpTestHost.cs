@@ -33,8 +33,13 @@ public sealed class McpTestHost : IAsyncDisposable
             .AddLogging()
             .AddDefaultRenderers()
             .AddOptionParser<string>(s => (s, null))
+            .AddOptionParser<int>(s => (int.Parse(s), null))
             .AddModule("loadout", "Loadout verbs")
             .AddModule("loadouts", "Loadouts verbs")
+            .AddModule("loadout group", "Group verbs")
+            .AddModule("loadout group priority", "Group priority verbs")
+            .AddModule("loadout priority", "Priority verbs")
+            .AddModule("loadout plugins", "Plugin verbs")
             .AddModule("games", "Games verbs")
             .AddModule("settings", "Settings verbs")
             .AddModule("wabbajack", "Wabbajack verbs")
@@ -57,6 +62,15 @@ public sealed class McpTestHost : IAsyncDisposable
             .AddVerb(() => Verbs.WabbajackStatus)
             .AddVerb(() => Verbs.WabbajackCancel)
             .AddVerb(() => Verbs.Launch)
+            .AddVerb(() => Verbs.Revisions)
+            .AddVerb(() => Verbs.Revert)
+            .AddVerb(() => Verbs.GroupEnable)
+            .AddVerb(() => Verbs.GroupDisable)
+            .AddVerb(() => Verbs.GroupPrioritySet)
+            .AddVerb(() => Verbs.PriorityList)
+            .AddVerb(() => Verbs.PluginsList)
+            .AddVerb(() => Verbs.PluginsSet)
+            .AddVerb(() => Verbs.PluginsSort)
             .AddVerb(() => Verbs.Heartbeat)
             .AddSingleton<CommandLineConfigurator>();
         if (withVersionVerb) services.AddVerb(() => Verbs.Version);
@@ -118,10 +132,11 @@ public sealed class McpTestHost : IAsyncDisposable
         }
 
         [Verb("loadouts list", "Stand-in for the loadouts list")]
-        public static async Task<int> ListLoadouts([Injected] IRenderer renderer)
+        public static async Task<int> ListLoadouts([Injected] IRenderer renderer, [Option("j", "json", "Json", true)] bool json)
         {
             await renderer.TextLine("Id Name");
             await renderer.TextLine("1a2b Elden Ring");
+            await renderer.TextLine($"json={json}");
             return 0;
         }
 
@@ -185,9 +200,9 @@ public sealed class McpTestHost : IAsyncDisposable
         }
 
         [Verb("wabbajack list", "Stand-in for the modlist list")]
-        public static async Task<int> WabbajackList([Injected] IRenderer renderer)
+        public static async Task<int> WabbajackList([Injected] IRenderer renderer, [Option("j", "json", "Json", true)] bool json)
         {
-            await renderer.TextLine("wabbajack list");
+            await renderer.TextLine($"wabbajack list json={json}");
             return 0;
         }
 
@@ -199,9 +214,9 @@ public sealed class McpTestHost : IAsyncDisposable
         }
 
         [Verb("wabbajack status", "Stand-in for the modlist status")]
-        public static async Task<int> WabbajackStatus([Injected] IRenderer renderer, [Option("m", "modlist", "Modlist", true)] string? modlist)
+        public static async Task<int> WabbajackStatus([Injected] IRenderer renderer, [Option("m", "modlist", "Modlist", true)] string? modlist, [Option("j", "json", "Json", true)] bool json)
         {
-            await renderer.TextLine($"status modlist=[{modlist}]");
+            await renderer.TextLine($"status modlist=[{modlist}] json={json}");
             return 0;
         }
 
@@ -217,6 +232,75 @@ public sealed class McpTestHost : IAsyncDisposable
             [Option("r", "refresh", "Refresh", true)] bool refresh, [Option("j", "json", "Json", true)] bool json)
         {
             await renderer.TextLine($"{{\"loadout\":\"{loadout}\",\"refresh\":{(refresh ? "true" : "false")},\"json\":{(json ? "true" : "false")}}}");
+            return 0;
+        }
+
+        [Verb("loadout revisions", "Stand-in for the revision list")]
+        public static async Task<int> Revisions([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout, [Option("j", "json", "Json", true)] bool json)
+        {
+            await renderer.TextLine($"revisions loadout={loadout} json={json}");
+            return 0;
+        }
+
+        [Verb("loadout revert", "Stand-in for the revert verb")]
+        public static async Task<int> Revert([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout, [Option("r", "revisionNumber", "Revision")] int revisionNumber)
+        {
+            await renderer.TextLine($"revert loadout={loadout} revisionNumber={revisionNumber}");
+            return 0;
+        }
+
+        [Verb("loadout group enable", "Stand-in for the group switch")]
+        public static async Task<int> GroupEnable([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout, [Option("g", "group", "Group")] string group)
+        {
+            await renderer.TextLine($"enable loadout={loadout} group=[{group}]");
+            return 0;
+        }
+
+        [Verb("loadout group disable", "Stand-in for the group switch")]
+        public static async Task<int> GroupDisable([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout, [Option("g", "group", "Group")] string group)
+        {
+            await renderer.TextLine($"disable loadout={loadout} group=[{group}]");
+            return 0;
+        }
+
+        [Verb("loadout group priority set", "Stand-in for the priority move")]
+        public static async Task<int> GroupPrioritySet([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout, [Option("g", "group", "Group")] string group, [Option("i", "index", "Index")] int index)
+        {
+            await renderer.TextLine($"priority set loadout={loadout} group=[{group}] index={index}");
+            return 0;
+        }
+
+        [Verb("loadout priority list", "Stand-in for the priority list")]
+        public static async Task<int> PriorityList([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout, [Option("j", "json", "Json", true)] bool json)
+        {
+            await renderer.TextLine($"priority list loadout={loadout} json={json}");
+            return 0;
+        }
+
+        [Verb("loadout plugins list", "Stand-in for the plugin list")]
+        public static async Task<int> PluginsList([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout, [Option("j", "json", "Json", true)] bool json)
+        {
+            if (loadout == "no-plugins")
+            {
+                await renderer.TextLine("This game has no plugin order.");
+                return 1;
+            }
+
+            await renderer.TextLine($"plugins list loadout={loadout} json={json}");
+            return 0;
+        }
+
+        [Verb("loadout plugins set", "Stand-in for the plugin move")]
+        public static async Task<int> PluginsSet([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout, [Option("o", "order", "Order")] string order)
+        {
+            await renderer.TextLine($"plugins set loadout={loadout} order=[{order}]");
+            return 0;
+        }
+
+        [Verb("loadout plugins sort", "Stand-in for the LOOT sort")]
+        public static async Task<int> PluginsSort([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout)
+        {
+            await renderer.TextLine($"plugins sort loadout={loadout}");
             return 0;
         }
 

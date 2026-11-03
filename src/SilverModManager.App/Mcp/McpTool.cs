@@ -4,7 +4,12 @@ namespace SilverModManager.App.Mcp;
 
 /// <summary>One argument a tool accepts, as the client sees it in the tool's input schema.</summary>
 /// <param name="Type">The JSON schema type: <c>string</c> or <c>integer</c>.</param>
-public sealed record ToolParam(string Name, string Description, bool Required = false, string Type = "string");
+/// <param name="CliName">The verb's long option when it differs from <paramref name="Name"/>.</param>
+public sealed record ToolParam(string Name, string Description, bool Required = false, string Type = "string", string? CliName = null)
+{
+    /// <summary>The option the verb is given, without the dashes.</summary>
+    public string OptionName => CliName ?? Name;
+}
 
 /// <summary>What a tool call returns: the text for the model, and whether it is a failure.</summary>
 public sealed record ToolResult(string Text, bool IsError);
