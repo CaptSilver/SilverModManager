@@ -74,7 +74,8 @@ public static class PendingInstalls
         return db.GetBackRefs(NexusCollectionPendingInstall.CollectionGroup, group)
             .AsModels<NexusCollectionPendingInstall.ReadOnly>(db)
             .Where(static row => row.IsValid())
-            .Where(row => row.Download.CollectionRevision.Id == revision)
+            // DeleteRevision leaves rows behind that point at the download entities it removed.
+            .Where(row => CollectionDownload.CollectionRevision.TryGetValue(row.Download, out var rowRevision) && rowRevision == revision)
             .GroupBy(static row => row.DownloadId)
             .Select(static rows => rows.First())
             .ToArray();
@@ -102,9 +103,16 @@ public static class PendingInstalls
     /// </summary>
     public static async ValueTask Dismiss(IConnection connection, EntityId row)
     {
-        using var tx = connection.BeginTransaction();
+        // Cheap pre-check so a dead row doesn't commit an empty transaction.
         if (!NexusCollectionPendingInstall.Load(connection.Db, row).IsValid()) return;
-        tx.Add(row, NexusCollectionPendingInstall.Dismissed, true);
+
+        using var tx = connection.BeginTransaction();
+        // Re-checked against the committing database: an install job may retract the row between the pre-check
+        // and the commit, and a Dismissed datom on a dead entity would linger.
+        tx.Add(row, static (t, db, id) =>
+        {
+            if (NexusCollectionPendingInstall.Load(db, id).IsValid()) t.Add(id, NexusCollectionPendingInstall.Dismissed, true);
+        });
         await tx.Commit();
     }
 

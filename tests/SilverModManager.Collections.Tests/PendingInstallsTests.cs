@@ -13,6 +13,7 @@ using SilverModManager.Abstractions.Collections.Json;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace SilverModManager.Collections.Tests;
@@ -152,6 +153,32 @@ public class PendingInstallsTests(ITestOutputHelper helper) : ACyberpunkIsolated
             };
             await tx.Commit();
         }
+
+        var rows = PendingInstalls.For(Connection.Db, group);
+        rows.Should().ContainSingle();
+        rows[0].DownloadId.Should().Be(IdOf(items[0]));
+    }
+
+    [Fact]
+    public async Task For_SkipsARowWhoseDownloadWasDeleted()
+    {
+        var (group, items) = await InstallTwoMods();
+        var (_, _, otherItems) = await Offline().Create(OtherRevisionManifest(), revisionNumber: 2);
+        await PendingInstalls.Record(Connection, group, items[0], ReviewKind.NoInstaller, "mine");
+        using (var tx = Connection.BeginTransaction())
+        {
+            _ = new NexusCollectionPendingInstall.New(tx)
+            {
+                CollectionGroupId = NexusCollectionLoadoutGroupId.From(group),
+                DownloadId = IdOf(otherItems[0]),
+                Kind = ReviewKind.NoInstaller,
+                Reason = "foreign",
+            };
+            await tx.Commit();
+        }
+
+        await ServiceProvider.GetRequiredService<CollectionDownloader>()
+            .DeleteRevision(CollectionRevisionMetadataId.From(otherItems[0].CollectionRevision.Id));
 
         var rows = PendingInstalls.For(Connection.Db, group);
         rows.Should().ContainSingle();
