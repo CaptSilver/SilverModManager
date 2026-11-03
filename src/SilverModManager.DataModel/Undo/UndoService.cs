@@ -80,7 +80,7 @@ public class UndoService
         tx.Add(new RevertOwnedEntitiesTxFunc(loadoutId, owned.ToArray(), revertDb));
 
         // Mark the transaction as a snapshot
-        tx.Add(EntityId.From(TxId.Tmp.Value), LoadoutSnapshot.Snapshot, loadoutId);
+        LoadoutSnapshot.Mark(tx, loadoutId);
 
         var commitResult = await tx.Commit();
 

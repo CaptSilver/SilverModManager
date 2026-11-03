@@ -5,7 +5,9 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
+using DynamicData.Kernel;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.DataModel.Undo;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -40,6 +42,7 @@ public static class LoadoutManagementVerbs
             .AddModule("loadout", "Commands for managing a specific loadout")
             .AddModule("loadout groups", "Commands for managing the file groups in a loadout")
             .AddModule("loadout group", "Commands for managing a specific group of files in a loadout")
+            .AddModule("loadout files", "Commands for the files a loadout provides")
             .AddModule("loadout group items", "Commands for managing the items in a group of files in a loadout")
             .AddModule("loadout version", "Commands for managing the version of a loadout")
             .AddVerb(() => SetVersion)
@@ -52,6 +55,7 @@ public static class LoadoutManagementVerbs
             .AddVerb(() => ListGroupContents)
             .AddVerb(() => ListGroups)
             .AddVerb(() => DeleteGroupItems)
+            .AddVerb(() => RemoveLoadoutFiles)
             .AddVerb(() => ListRevisions)
             .AddVerb(() => Revert);
 
@@ -253,30 +257,58 @@ public static class LoadoutManagementVerbs
         [Option("l", "loadout", "Loadout to load")] Loadout.ReadOnly loadout,
         [Option("g", "group", "Name of the group to list")] string groupName,
         [Option("f", "filterFiles", "Filter files by the given glob")] Matcher filterFiles,
+        [Injected] ILoadoutFileRemover remover,
         [Injected] CancellationToken token)
     {
         var mod = LoadoutItem.FindByLoadout(loadout.Db, loadout)
             .OfTypeLoadoutItemGroup()
-            .First(m => m.AsLoadoutItem().Name == groupName);
-        
-        if (!mod.IsValid())
+            .FirstOrOptional(m => m.AsLoadoutItem().Name == groupName);
+
+        if (!mod.HasValue)
             return await renderer.InputError("Group {0} not found", groupName);
 
-        var ids = mod.Children
+        var paths = mod.Value.Children
             .OfTypeLoadoutItemWithTargetPath()
             .Where(t => filterFiles.Match(t.TargetPath.Item3.ToString()).HasMatches)
-            .Select(f => f.Id)
+            .Select(t => (GamePath)t.TargetPath)
+            .Distinct()
             .ToArray();
-        
-        await renderer.Text("Deleting {0} items", ids.Length);
-        
-        using var tx = loadout.Db.Connection.BeginTransaction();
-        foreach (var id in ids)
-            tx.Delete(id, false);
-        await tx.Commit();
-        
-        await renderer.Text("Complete", ids.Length);
-        
+
+        await renderer.Text("Deleting {0} items", paths.Length);
+        if (paths.Length > 0)
+        {
+            var request = new FileRemovalRequest(loadout.LoadoutId, paths, [LoadoutItemGroupId.From(mod.Value.Id)]);
+            await remover.Remove(request, includeLocked: true);
+        }
+
+        await renderer.Text("Complete");
+
+        return 0;
+    }
+
+    [Verb("loadout files remove", "Removes files, or whole folders, from every mod in a loadout, as the Delete button of the Apply preview does. Files inside a Nexus collection or Wabbajack modlist are skipped unless --include-locked is given. The next apply deletes them from the game folder; a restore point is written first, see 'loadout revisions'.")]
+    private static async Task<int> RemoveLoadoutFiles(
+        [Injected] IRenderer renderer,
+        [Option("l", "loadout", "Loadout to remove the files from")] Loadout.ReadOnly loadout,
+        [Option("p", "paths", "Files or folders in the game folder, separated by ';', for example 'Data/Foo.dll;Data/SKSE/Plugins/Bar'")] string pathList,
+        [Option("include-locked", "include-locked", "Also remove files inside a collection or modlist that decides what it contains", true)] bool includeLocked,
+        [Injected] ILoadoutFileRemover remover,
+        [Injected] CancellationToken token)
+    {
+        var paths = pathList
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(p => new GamePath(LocationId.Game, p))
+            .ToArray();
+        var request = new FileRemovalRequest(loadout.LoadoutId, paths);
+
+        if (!includeLocked)
+        {
+            foreach (var row in remover.Plan(request).Locked)
+                await renderer.Text("Skipping {0}: {1}", row.Path.Path.ToString(), row.LockReason ?? "");
+        }
+
+        var result = await remover.Remove(request, includeLocked);
+        await renderer.Text("Removed {0} files. Run 'loadout synchronize' to apply; 'loadout revisions' lists the restore point.", result.Removed.Count);
         return 0;
     }
 

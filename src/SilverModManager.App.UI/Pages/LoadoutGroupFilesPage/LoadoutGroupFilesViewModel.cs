@@ -164,7 +164,7 @@ public partial class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFi
                     // Unselect last item.
                     SelectedItem = null;
 
-                    var result = await LoadoutItemGroupHelpers.RemoveFileOrFolder(connection, context.GroupIds, gamePath, requireAllGroups: false);
+                    var result = await LoadoutItemGroupHelpers.RemoveFileOrFolder(connection, provider.GetRequiredService<ILoadoutFileRemover>(), context.GroupIds, gamePath, requireAllGroups: false);
                     if (result == LoadoutItemGroupHelpers.GroupOperationStatus.NoItemsDeleted)
                         logger.LogError("Unable to find Loadout files with path `{Path}` in groups: {Groups}",
                             gamePath, string.Join(", ", context.GroupIds));

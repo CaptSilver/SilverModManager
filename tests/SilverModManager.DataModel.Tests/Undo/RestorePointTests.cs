@@ -50,6 +50,21 @@ public class RestorePointTests(ITestOutputHelper helper) : ANexusCollectionTest<
         IsSnapshotOf(after[^1].Revision.TxEntity, loadoutId).Should().BeTrue("a revert is recorded as a snapshot of the loadout");
     }
 
+    [Fact]
+    public async Task RevertToStillMarksItsTransactionAsASnapshot()
+    {
+        var undoService = ServiceProvider.GetRequiredService<UndoService>();
+        var loadout = await CreateLoadout();
+        await AddNexusCollection(loadout, "Collection", collectionId: 1, revisionId: 11, childCount: 1);
+        await StampRevision(loadout.Id);
+        var revision = undoService.RevisionsFor(loadout.Id).OrderBy(r => r.Revision.TxEntity).Last().Revision;
+
+        await undoService.RevertTo(revision);
+
+        var last = undoService.RevisionsFor(loadout.Id).OrderBy(r => r.Revision.TxEntity).Last();
+        IsSnapshotOf(last.Revision.TxEntity, loadout.Id).Should().BeTrue();
+    }
+
     private int LinkedItemCount(EntityId loadout)
     {
         var db = Connection.Db;

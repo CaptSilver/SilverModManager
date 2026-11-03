@@ -15,6 +15,7 @@ using SilverModManager.DataModel.CommandLine.Verbs;
 using SilverModManager.DataModel.Diagnostics;
 using SilverModManager.DataModel.GameInstalled;
 using SilverModManager.DataModel.JsonConverters;
+using SilverModManager.DataModel.Loadouts;
 using SilverModManager.DataModel.Overrides;
 using SilverModManager.DataModel.SchemaVersions;
 using SilverModManager.DataModel.Sorting;
@@ -133,6 +134,7 @@ public static class Services
         coll.TryAddSingleton<ICollectionOwnership, CollectionOwnership>();
         coll.AddSingleton<ILoadoutManager, LoadoutManager>();
         coll.AddSingleton<IOverridesMover>(sp => new OverridesMover(sp.GetRequiredService<IConnection>()));
+        coll.AddSingleton<ILoadoutFileRemover, LoadoutFileRemover>();
         coll.AddSingleton<IHostedService, InstallNexusIdBackfill>();
         coll.AddSingleton<IHostedService, ImportedIniFilesPass>();
         coll.AddSingleton<IHostedService, LoadoutSwitchLog>();

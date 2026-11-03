@@ -1,6 +1,6 @@
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.MnemonicDB.Abstractions;
-using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.App.UI.Pages.LoadoutGroupFilesPage;
@@ -16,66 +16,34 @@ namespace SilverModManager.App.UI.Pages.LoadoutGroupFilesPage;
 public static class LoadoutItemGroupHelpers
 {
     /// <summary>
-    /// Removes files from a loadout item group matching the specified game path.
-    /// The file path can represent either a file or a folder; for folders, all
-    /// files starting with the path are removed.
+    /// Removes files from loadout item groups through <see cref="ILoadoutFileRemover"/>. The path can name a file or
+    /// a folder; for a folder, every file inside it goes. Only rows in the given groups are touched.
     /// </summary>
     /// <param name="connection">The connection used to MnemonicDB.</param>
+    /// <param name="remover">What deletes the rows and writes the restore point.</param>
     /// <param name="groupIds">The <see cref="LoadoutItemGroup"/> IDs (usually mod) to remove files from</param>
-    /// <param name="gamePath">The game path to match. Every file starting with this path is removed.</param>
+    /// <param name="gamePath">The file or folder to remove.</param>
     /// <param name="requireAllGroups">If true, throws InvalidOperationException when any group is missing. If false, continues with available groups.</param>
     /// <returns>A task that completes with the operation status when the files are removed.</returns>
     /// <exception cref="InvalidOperationException">Thrown when requireAllGroups is true and any group is missing</exception>
-    public static async Task<GroupOperationStatus> RemoveFileOrFolder(IConnection connection, LoadoutItemGroupId[] groupIds, GamePath gamePath, bool requireAllGroups = true)
+    public static async Task<GroupOperationStatus> RemoveFileOrFolder(IConnection connection, ILoadoutFileRemover remover, LoadoutItemGroupId[] groupIds, GamePath gamePath, bool requireAllGroups = true)
     {
         var (validGroups, missingGroups) = LoadAllGroups(connection, groupIds, requireAllGroups);
-        
+
         if (validGroups.Length == 0)
             return GroupOperationStatus.NoItemsDeleted;
-            
-        var loadoutItemsToDelete = validGroups
-            .SelectMany(group => group
-                .Children
-                .OfTypeLoadoutItemWithTargetPath()
-                .Where(item => PathMatches(item, gamePath)))
-            .ToArray();
 
-        if (loadoutItemsToDelete.Length == 0)
+        // The page already refuses what the user may not delete, so what it could delete before it still can.
+        var request = new FileRemovalRequest(validGroups[0].AsLoadoutItem().LoadoutId, [gamePath], groupIds);
+        try
+        {
+            await remover.Remove(request, includeLocked: true);
+        }
+        catch (FileRemovalRefusedException)
+        {
             return GroupOperationStatus.NoItemsDeleted;
+        }
 
-        await DeleteFiles(connection, loadoutItemsToDelete);
-        return missingGroups.Length > 0 ? GroupOperationStatus.MissingGroups : GroupOperationStatus.Success;
-    }
-
-    /// <summary>
-    /// Removes files from a loadout item group matching the specified game paths.
-    /// Every file path can represent either a file or a folder; for folders, all
-    /// files starting with the path are removed.
-    /// </summary>
-    /// <param name="connection">The connection used to MnemonicDB.</param>
-    /// <param name="groupIds">The <see cref="LoadoutItemGroup"/> IDs (usually mod) to remove files from</param>
-    /// <param name="gamePaths">The game path to match. All files starting with any of these paths are removed.</param>
-    /// <param name="requireAllGroups">If true, throws InvalidOperationException when any group is missing. If false, continues with available groups.</param>
-    /// <returns>A task that completes with the operation status when the files are removed.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when requireAllGroups is true and any group is missing</exception>
-    public static async Task<GroupOperationStatus> RemoveFilesOrFolders(IConnection connection, LoadoutItemGroupId[] groupIds, GamePath[] gamePaths, bool requireAllGroups = true)
-    {
-        var (validGroups, missingGroups) = LoadAllGroups(connection, groupIds, requireAllGroups);
-        
-        if (validGroups.Length == 0)
-            return GroupOperationStatus.NoItemsDeleted;
-            
-        var loadoutItemsToDelete = validGroups
-            .SelectMany(group => group
-                .Children
-                .OfTypeLoadoutItemWithTargetPath()
-                .Where(item => PathMatchesAny(item, gamePaths)))
-            .ToArray();
-
-        if (loadoutItemsToDelete.Length == 0)
-            return GroupOperationStatus.NoItemsDeleted;
-
-        await DeleteFiles(connection, loadoutItemsToDelete);
         return missingGroups.Length > 0 ? GroupOperationStatus.MissingGroups : GroupOperationStatus.Success;
     }
 
@@ -124,21 +92,6 @@ public static class LoadoutItemGroupHelpers
             .ToArray();
     }
 
-    private static bool PathMatches(LoadoutItemWithTargetPath.ReadOnly item, GamePath path)
-    {
-        return item.TargetPath.Item2.Equals(path.LocationId) && item.TargetPath.Item3.StartsWith(path.Path);
-    }
-
-    private static bool PathMatchesAny(LoadoutItemWithTargetPath.ReadOnly item, GamePath[] paths)
-    {
-        foreach (var path in paths)
-        {
-            if (PathMatches(item, path))
-                return true;
-        }
-        return false;
-    }
-
     /// <summary>
     /// Loads all specified <see cref="LoadoutItemGroup"/>(s) from the database.
     /// </summary>
@@ -166,15 +119,6 @@ public static class LoadoutItemGroupHelpers
         return (validGroups.ToArray(), missingGroups.ToArray());
     }
 
-    private static async Task DeleteFiles(IConnection connection, LoadoutItemWithTargetPath.ReadOnly[] loadoutItemsToDelete)
-    {
-        using var tx = connection.BeginTransaction();
-        foreach (var loadoutItem in loadoutItemsToDelete)
-            tx.Delete(loadoutItem, recursive: false);
-
-        await tx.Commit();
-    }
-    
     /// <summary>
     /// Gets the first valid <see cref="LoadoutItemGroup"/> from the specified group IDs.
     /// </summary>

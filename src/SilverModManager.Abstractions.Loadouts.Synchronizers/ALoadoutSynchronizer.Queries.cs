@@ -33,6 +33,18 @@ public partial class ALoadoutSynchronizer
     }
 
     /// <summary>
+    /// The ids of the loadout rows that currently win their path, from the same query the sync tree reads. A row
+    /// missing from the set is disabled, overridden, or sits under a disabled group.
+    /// </summary>
+    public static IReadOnlySet<EntityId> WinningRowIds(Loadout.ReadOnly loadout)
+    {
+        return WinningFilesQuery(loadout.Db, loadout)
+            .Where(static row => row.ItemType == "Loadout" || row.ItemType == "Deleted")
+            .Select(static row => row.Id)
+            .ToHashSet();
+    }
+
+    /// <summary>
     /// The paths whose winning loadout item is a delete. <see cref="BuildSyncTree{T}"/> leaves these out of
     /// the tree (and a winning delete also replaces the game file under it), so the tree alone cannot say
     /// which paths the loadout wants gone. Both read the same query, so they cannot disagree about who won.

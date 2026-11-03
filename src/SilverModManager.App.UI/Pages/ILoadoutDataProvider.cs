@@ -165,7 +165,7 @@ public static class LoadoutDataProviderHelper
     {
         if (IsToggleLocked(loadoutItem))
         {
-            var toolTip = IsGameInstalledContent(loadoutItem) ? Language.GameInstalled_LockedToolTip : null;
+            var toolTip = GameInstalledGroup.IsInstalledContent(loadoutItem) ? Language.GameInstalled_LockedToolTip : null;
             itemModel.Add(LoadoutColumns.EnabledState.LockedEnabledStateComponentKey, new LoadoutComponents.LockedEnabledState(toolTip));
         }
     }
@@ -408,7 +408,7 @@ public static class LoadoutDataProviderHelper
     /// </summary>
     public static bool IsToggleLocked<T>(T entity) where T : struct, IReadOnlyModel<T>
     {
-        return IsRequiredCollectionItem(entity) || IsGameInstalledContent(entity);
+        return IsRequiredCollectionItem(entity) || GameInstalledGroup.IsInstalledContent(entity);
     }
 
     /// <summary>
@@ -423,10 +423,5 @@ public static class LoadoutDataProviderHelper
     private static bool IsRequiredCollectionItem<T>(T entity) where T : struct, IReadOnlyModel<T>
     {
         return NexusCollectionItemLoadoutGroup.IsRequired.GetOptional(entity).ValueOr(false);
-    }
-
-    private static bool IsGameInstalledContent<T>(T entity) where T : struct, IReadOnlyModel<T>
-    {
-        return GameInstalledItem.SourceId.TryGetValue(entity, out _) || GameInstalledFile.Hash.TryGetValue(entity, out _);
     }
 }
