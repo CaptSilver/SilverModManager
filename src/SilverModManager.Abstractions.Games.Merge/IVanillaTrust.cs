@@ -50,6 +50,9 @@ public static class VanillaTrustReasons
     /// <summary>The baseline lists the file with another size than the store's copy.</summary>
     public const string ListedAsSizeDiffers = "listed as a different size from the store's copy";
 
+    /// <summary>The baseline has no store file list and left the file out of the game's files because it looks like a mod loader or mod.</summary>
+    public const string ListedAsLooksLikeAMod = "listed as a mod loader or mod file the store did not install";
+
     /// <summary>The file was changed after the baseline was built.</summary>
     public const string DiffersFromBaseline = "the game's copy differs from the checked baseline";
 }

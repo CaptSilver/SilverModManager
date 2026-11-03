@@ -438,8 +438,96 @@ public sealed class LocalVanillaBaselineTests : IDisposable
         LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().BeEmpty();
     }
 
+    private static bool SkyrimShapedMod(GamePath path)
+    {
+        var text = path.Path.ToString().Replace('\\', '/');
+        return text is "sksevr_loader.exe" or "DINPUT8.dll"
+            || text.StartsWith("Data/SKSE/Plugins/", StringComparison.Ordinal)
+            || text.StartsWith("src/", StringComparison.Ordinal);
+    }
+
+    private void WriteSkyrimFolderWithOldMods()
+    {
+        WriteFile("SkyrimVR.exe", "exe"); WriteFile("Data/Skyrim.esm", "esm");
+        WriteFile("sksevr_loader.exe", "loader"); WriteFile("DINPUT8.dll", "proxy");
+        WriteFile("Data/SKSE/Plugins/SkyrimUpscaler.dll", "upscaler"); WriteFile("src/main.cpp", "int main");
+    }
+
+    [Fact]
+    public async Task Snapshot_LeavesFilesThatLookLikeModsOutOfTheVanillaList()
+    {
+        WriteSkyrimFolderWithOldMods();
+
+        var result = await Build([], allCovered: false, looksLikeAMod: SkyrimShapedMod);
+
+        var files = LocalBaseline.Load(_store.Db, result.BaselineId).Files.Select(f => f.Path.ToString()).ToList();
+        files.Should().BeEquivalentTo(["SkyrimVR.exe", "Data/Skyrim.esm"]);
+        result.NonVanilla.Select(e => e.Path.ToString()).Should().BeEquivalentTo(
+            ["sksevr_loader.exe", "DINPUT8.dll", "Data/SKSE/Plugins/SkyrimUpscaler.dll", "src/main.cpp"]);
+        _opened.Should().OnlyContain(p => p.EndsWith("SkyrimVR.exe") || p.EndsWith("Skyrim.esm"));
+    }
+
+    [Fact]
+    public async Task Snapshot_RecordsFlaggedFilesWithTheirOwnReasonAndSize()
+    {
+        WriteFile("a.esm", "one"); WriteFile("DINPUT8.dll", "proxy");
+
+        var result = await Build([], allCovered: false, looksLikeAMod: SkyrimShapedMod);
+
+        var row = NonVanillaFile.FindByBaseline(_store.Db, result.BaselineId).Should().ContainSingle().Subject;
+        row.Reason.Should().Be(NonVanillaReason.LooksLikeAMod);
+        row.Size.Should().Be(Size.FromLong(5));
+        row.Path.ToString().Should().Be("DINPUT8.dll");
+        result.Count(NonVanillaReason.LooksLikeAMod).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Snapshot_WithoutARule_TakesEverythingAsVanilla()
+    {
+        WriteSkyrimFolderWithOldMods();
+
+        var result = await Build([], allCovered: false);
+
+        result.NonVanilla.Should().BeEmpty();
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().HaveCount(6);
+    }
+
+    [Fact]
+    public async Task DepotManifestBaseline_DoesNotApplyTheModShapeRule()
+    {
+        WriteFile("Data/SKSE/Plugins/listed.dll", "listed"); WriteFile("Data/SKSE/Plugins/extra.dll", "extra");
+
+        var result = await Build([Manifest(1, ("Data/SKSE/Plugins/listed.dll", "listed"))], looksLikeAMod: _ => true);
+
+        result.Count(NonVanillaReason.LooksLikeAMod).Should().Be(0);
+        result.NonVanilla.Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.NotInManifest);
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().ContainSingle().Which.Path.ToString().Should().Be("Data/SKSE/Plugins/listed.dll");
+    }
+
+    [Fact]
+    public async Task PartialBaseline_DoesNotApplyTheModShapeRule()
+    {
+        WriteFile("a.esm", "vanilla"); WriteFile("src/other-depot.bin", "x");
+
+        var result = await Build([Manifest(1, ("a.esm", "vanilla"))], allCovered: false, looksLikeAMod: _ => true);
+
+        result.NonVanilla.Should().BeEmpty();
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Select(f => f.Path.ToString()).Should().BeEquivalentTo(["a.esm", "src/other-depot.bin"]);
+    }
+
+    [Fact]
+    public async Task Snapshot_FlaggedFilesCountAsClassified()
+    {
+        WriteFile("DINPUT8.dll", "proxy"); WriteFile("src/a.c", "a"); WriteFile("src/b.c", "b");
+
+        var result = await Build([], allCovered: false, looksLikeAMod: SkyrimShapedMod);
+
+        result.Count(NonVanillaReason.LooksLikeAMod).Should().Be(3);
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().BeEmpty();
+    }
+
     private Task<BaselineBuild> Build(Manifest[] manifests, bool allCovered = true, string? versionName = "1000",
-        Func<GamePath, bool>? isIgnored = null, IConnection? connection = null)
+        Func<GamePath, bool>? isIgnored = null, IConnection? connection = null, Func<GamePath, bool>? looksLikeAMod = null)
     {
         var baseline = new LocalVanillaBaseline(FileSystem.Shared, NullLogger<LocalVanillaBaseline>.Instance, p =>
         {
@@ -457,6 +545,7 @@ public sealed class LocalVanillaBaselineTests : IDisposable
             Manifests = manifests,
             AllInstalledDepotsCovered = allCovered,
             IsIgnored = isIgnored ?? (_ => false),
+            LooksLikeAMod = looksLikeAMod ?? (_ => false),
             Game = HashRows.OwnGameId,
             NexusGameId = HashRows.GameId,
             OperatingSystem = OperatingSystem.Windows,

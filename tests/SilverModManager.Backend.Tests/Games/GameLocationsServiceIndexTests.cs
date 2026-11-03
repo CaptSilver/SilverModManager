@@ -368,6 +368,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
             Manifests = [manifest],
             AllInstalledDepotsCovered = true,
             IsIgnored = _ => false,
+            LooksLikeAMod = _ => false,
             Game = GameId.From("IndexFixture"),
             NexusGameId = NexusModsGameId.From(1234),
             OperatingSystem = SilverModManager.Abstractions.Games.FileHashes.Values.OperatingSystem.Windows,

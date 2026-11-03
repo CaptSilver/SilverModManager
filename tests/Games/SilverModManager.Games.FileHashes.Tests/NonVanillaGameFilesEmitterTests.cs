@@ -173,6 +173,20 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     }
 
     [Fact]
+    public async Task LooksLikeAModRow_IsListedWithItsReason()
+    {
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.Snapshot, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("sksevr_loader.exe", NonVanillaReason.LooksLikeAMod));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
+        data.Files.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Should().Equal(
+            "* `sksevr_loader.exe` (looks like a mod loader or mod; no store file list was available to check)");
+    }
+
+    [Fact]
     public async Task FilesTheLoadoutDeploys_AreLeftOut()
     {
         var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);

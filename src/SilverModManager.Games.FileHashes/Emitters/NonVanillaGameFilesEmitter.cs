@@ -200,6 +200,7 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         NonVanillaReason.NotInManifest => "not in the store's manifest",
         NonVanillaReason.SizeDiffers => "size differs",
         NonVanillaReason.HashDiffers => "content differs",
+        NonVanillaReason.LooksLikeAMod => "looks like a mod loader or mod; no store file list was available to check",
         _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, null),
     };
 }

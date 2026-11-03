@@ -186,6 +186,7 @@ internal sealed class LocalBaselineCoordinator : IDisposable
             // backing up (all of Baldur's Gate 3's install folder, the archives of the Creation Engine games), and
             // those files are the game's own, which the baseline has to know about.
             IsIgnored = path => synchronizer.GamePathFilter.ShouldFilter(path),
+            LooksLikeAMod = path => ModLoaderPaths.LooksLikeAMod(installation.GetGame(), installation, path),
             Game = installation.Game.GameId,
             NexusGameId = installation.Game.NexusModsGameId,
             OperatingSystem = OperatingSystemOf(locator),
@@ -193,9 +194,13 @@ internal sealed class LocalBaselineCoordinator : IDisposable
 
         var build = await _baseline.Build(request, store, cancellationToken);
         var built = LocalBaseline.Load(_localStore().Db, build.BaselineId);
-        _logger.LogInformation("Built the {Kind} baseline for {Game}: {NotInManifest} files the manifests do not list, {SizeDiffers} of another size, {HashDiffers} with other content",
-            built.Kind, installation.Game.DisplayName,
-            build.Count(NonVanillaReason.NotInManifest), build.Count(NonVanillaReason.SizeDiffers), build.Count(NonVanillaReason.HashDiffers));
+        if (built.Kind == LocalBaselineKind.Snapshot)
+            _logger.LogInformation("Built the {Kind} baseline for {Game} from the folder as it stands: {LooksLikeAMod} files that look like a mod loader or mod were left out of the game's files",
+                built.Kind, installation.Game.DisplayName, build.Count(NonVanillaReason.LooksLikeAMod));
+        else
+            _logger.LogInformation("Built the {Kind} baseline for {Game}: {NotInManifest} files the manifests do not list, {SizeDiffers} of another size, {HashDiffers} with other content",
+                built.Kind, installation.Game.DisplayName,
+                build.Count(NonVanillaReason.NotInManifest), build.Count(NonVanillaReason.SizeDiffers), build.Count(NonVanillaReason.HashDiffers));
         return new LocalBaselineResult(built.Kind, Rebuilt: true, build.NonVanilla.Count);
     }
 

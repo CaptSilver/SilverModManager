@@ -182,7 +182,7 @@ public interface IFileHashesService
 /// </summary>
 /// <param name="Kind">Where the baseline's file list came from.</param>
 /// <param name="Rebuilt">False when the existing baseline was kept, or when nothing was built because the store is mid-update.</param>
-/// <param name="NonVanillaCount">Files that differ from, or are missing in, the depot manifests.</param>
+/// <param name="NonVanillaCount">Files that differ from, or are missing in, the depot manifests, plus the files a snapshot left out because they look like a mod loader or mod.</param>
 public sealed record LocalBaselineResult(LocalBaselineKind Kind, bool Rebuilt, int NonVanillaCount);
 
 /// <summary>

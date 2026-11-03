@@ -65,6 +65,19 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     }
 
     [Fact]
+    public async Task Snapshot_LogsTheCountOfFilesThatLookLikeMods()
+    {
+        WriteGameFile("src/x.c", "x");
+        WriteGameFile("src/y.h", "y");
+
+        var result = await _coordinator.Ensure(Installation("102"));
+
+        result.Kind.Should().Be(LocalBaselineKind.Snapshot);
+        result.NonVanillaCount.Should().Be(2);
+        _coordinatorLog.Lines.Should().ContainSingle(l => l.Contains("2 files that look like a mod loader or mod") && !l.Contains("manifests do not list"));
+    }
+
+    [Fact]
     public async Task FirstCall_BuildsABaselineFromTheManifests()
     {
         WriteGameFile("a.esm", "vanilla");

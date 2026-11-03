@@ -63,6 +63,7 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotMa
             {
                 NonVanillaReason.NotInManifest => $"listed as {Describe(listed)}",
                 NonVanillaReason.SizeDiffers => VanillaTrustReasons.ListedAsSizeDiffers,
+                NonVanillaReason.LooksLikeAMod => VanillaTrustReasons.ListedAsLooksLikeAMod,
                 _ => VanillaTrustReasons.ListedAsModified,
             };
             return false;
@@ -242,6 +243,7 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes, IDepotMa
     {
         NonVanillaReason.NotInManifest => "not a file the store installed",
         NonVanillaReason.SizeDiffers => "a different size from the store's copy",
+        NonVanillaReason.LooksLikeAMod => "a mod loader or mod file the store did not install",
         _ => "modified",
     };
 }

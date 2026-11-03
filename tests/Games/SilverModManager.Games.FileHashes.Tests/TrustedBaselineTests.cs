@@ -302,6 +302,7 @@ public sealed class TrustedBaselineTests : IDisposable
             Manifests = manifests,
             AllInstalledDepotsCovered = true,
             IsIgnored = _ => false,
+            LooksLikeAMod = _ => false,
             Game = HashRows.OwnGameId,
             NexusGameId = HashRows.GameId,
             OperatingSystem = OperatingSystem.Windows,

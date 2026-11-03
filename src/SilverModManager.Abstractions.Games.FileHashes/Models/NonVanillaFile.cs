@@ -16,7 +16,8 @@ public partial class NonVanillaFile : IModelDefinition
     public static readonly ReferenceAttribute<LocalBaseline> Baseline = new(Namespace, nameof(Baseline)) { IsIndexed = true };
 
     /// <summary>
-    /// The path of the file, in the spelling the baseline's manifests use.
+    /// The path of the file, in the spelling the baseline's manifests use. A snapshot has no manifest, so
+    /// the spelling on disk is recorded.
     /// </summary>
     public static readonly RelativePathAttribute Path = new(Namespace, nameof(Path)) { IsIndexed = true };
 
@@ -44,4 +45,7 @@ public enum NonVanillaReason : byte
 
     /// <summary>The manifests list the file with the same size and a different hash.</summary>
     HashDiffers = 2,
+
+    /// <summary>The file has the shape of a mod loader or mod, and no manifest was there to say otherwise.</summary>
+    LooksLikeAMod = 3,
 }

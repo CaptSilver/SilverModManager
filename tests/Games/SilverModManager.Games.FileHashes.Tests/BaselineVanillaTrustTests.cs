@@ -71,6 +71,16 @@ public sealed class BaselineVanillaTrustTests : IDisposable
     }
 
     [Fact]
+    public async Task ListedAsLooksLikeAMod_IsNotTrusted_WithThatReason()
+    {
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.Snapshot, [("a.esm", "vanilla")]);
+        await AddReport(baseline, "DINPUT8.dll", NonVanillaReason.LooksLikeAMod);
+
+        IsTrusted("DINPUT8.dll", out var reason).Should().BeFalse();
+        reason.Should().Be(VanillaTrustReasons.ListedAsLooksLikeAMod);
+    }
+
+    [Fact]
     public async Task AListedFileWhoseHashMatchesIsTrusted()
     {
         await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("content/content0/scripts/x.ws", "vanilla")]);

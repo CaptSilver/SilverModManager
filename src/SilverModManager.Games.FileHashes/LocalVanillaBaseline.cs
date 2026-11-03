@@ -52,6 +52,12 @@ internal sealed record BaselineRequest
     public required Func<GamePath, bool> IsIgnored { get; init; }
 
     /// <summary>
+    /// True for a file shaped like a mod loader or mod (see <c>ModLoaderPaths</c>). Only a snapshot, which has no
+    /// store file list to say what is vanilla, consults it: such files are recorded as non-vanilla and never hashed.
+    /// </summary>
+    public required Func<GamePath, bool> LooksLikeAMod { get; init; }
+
+    /// <summary>
     /// The store reports the install as settled (Steam: fully installed, no update pending). Files are only
     /// taken as vanilla without being read when this is true.
     /// </summary>
@@ -93,7 +99,8 @@ internal sealed record BaselineBuild(EntityId BaselineId, IReadOnlyList<NonVanil
 /// The size is compared before anything is read, because a size that differs from the manifest already
 /// settles the file and game directories hold gigabytes; only files whose size matches are hashed, in
 /// one pass that yields every hash a <see cref="HashRelation"/> needs. With no manifests at all the
-/// directory is taken as it stands (a snapshot), and with only some depots covered, files no manifest
+/// directory is taken as it stands (a snapshot) except for files shaped like a mod loader or mod, which are
+/// recorded as non-vanilla, and with only some depots covered, files no manifest
 /// lists are taken as vanilla without a report, since they may belong to the uncovered depots.
 /// </para>
 /// </summary>
@@ -107,7 +114,9 @@ internal sealed class LocalVanillaBaseline
     /// Gate 3), which left those files in neither list and showed them as external changes. Version 2 filters
     /// the Creation Engine games' own Creations records (the content catalog and the Creations folder), which
     /// an older baseline reports as non-vanilla. The ignore rule is the synchronizer's path filter, so the
-    /// bump has to land with the filter: a baseline built in between would never be rebuilt.
+    /// bump has to land with the filter: a baseline built in between would never be rebuilt. Snapshot rules (the
+    /// mod-shape rule) are not versioned: a snapshot is never rebuilt for a version, since a managed folder's
+    /// deployed mods would be taken as vanilla, so a bump would only rebuild manifest baselines for nothing.
     /// </summary>
     internal const int ClassificationVersion = 2;
 
@@ -320,6 +329,8 @@ internal sealed class LocalVanillaBaseline
                 {
                     // Without full coverage a file no manifest lists may belong to an uncovered depot.
                     if (kind == LocalBaselineKind.DepotManifests) nonVanilla.Add(new NonVanillaEntry(path, NonVanillaReason.NotInManifest, size));
+                    // With no manifest at all, the file name is the only evidence there is.
+                    else if (kind == LocalBaselineKind.Snapshot && request.LooksLikeAMod(new GamePath(LocationId.Game, path))) nonVanilla.Add(new NonVanillaEntry(path, NonVanillaReason.LooksLikeAMod, size));
                     else candidates.Add(new Candidate(file.FullName, path, null, size, file.LastWriteTimeUtc));
                     continue;
                 }
