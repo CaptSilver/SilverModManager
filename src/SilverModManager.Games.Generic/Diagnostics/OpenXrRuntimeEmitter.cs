@@ -58,7 +58,8 @@ public class OpenXrRuntimeEmitter(IOpenXrConfig config, ILogger<OpenXrRuntimeEmi
         string? library;
         try
         {
-            using var document = JsonDocument.Parse(manifest.Read());
+            using var stream = manifest.Read();
+            using var document = JsonDocument.Parse(stream);
             library = document.RootElement.TryGetProperty("runtime", out var runtime) && runtime.TryGetProperty("library_path", out var path)
                 ? path.GetString()
                 : null;
