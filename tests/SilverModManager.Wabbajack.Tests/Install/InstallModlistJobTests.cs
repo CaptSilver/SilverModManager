@@ -698,6 +698,23 @@ public class InstallModlistTransformTests(ITestOutputHelper helper) : InstallTes
     }
 
     [Fact]
+    public async Task AGameFileThatDiffersIsNotAMissingDownloadSoTheInstallIsNotRefusedForIt()
+    {
+        var other = "another version"u8.ToArray();
+        var exe = new ArchiveEntry(Hash64(other), other.Length, "SkyrimSE.exe", "",
+            new GameFileSourceState("SkyrimSpecialEdition", P("SkyrimSE.exe"), Hash64(other), "1.5.97"));
+        var list = new ListBuilder();
+        list.Archives.Add(exe);
+        list.Directives.Add(new FromArchive(P("Stock Game/SkyrimSE.exe"), Hash64(other), other.Length, new ArchiveHashPath(exe.XxHash64, [])));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(SkipMissingArchives: false, new HashSet<RelativePath>()));
+
+        SkipsOf(group).Should().ContainSingle().Which.Kind.Should().Be(SkipKind.GameFileVersion, "the file is reported as a differing game file, not as a download to fetch");
+    }
+
+    [Fact]
     public async Task APlainGameRootFileThatAlreadyMatchesTheGameIsLeftAloneSilently()
     {
         var exe = GameExeArchive();

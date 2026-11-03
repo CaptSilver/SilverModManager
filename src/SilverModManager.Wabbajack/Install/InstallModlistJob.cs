@@ -208,7 +208,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         placements = DropProgramFiles(placements, program, context.GameRootFolders);
         var gameFiles = Inventory.GameFilesFor(loadout);
         var plan = await Inventory.Build(list, Connection.Db, gameFiles, cancellationToken, program: program);
-        var missing = plan.Rows.Where(r => r.State is not (ArchiveState.Have or ArchiveState.GameFile or ArchiveState.NotNeeded)).ToArray();
+        // A game file of another version is not a download to fetch: its directives are skipped with that reason instead.
+        var missing = plan.Rows.Where(r => r.State is not (ArchiveState.Have or ArchiveState.GameFile or ArchiveState.GameFileVersion or ArchiveState.NotNeeded)).ToArray();
         if (missing.Length > 0 && !Options.SkipMissingArchives) throw new ArchivesMissingException(missing);
 
         var (estimate, isLowerBound) = EstimateExtractedSize(plan);
