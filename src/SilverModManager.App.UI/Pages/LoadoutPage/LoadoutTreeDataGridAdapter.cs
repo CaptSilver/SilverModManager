@@ -32,21 +32,20 @@ public class LoadoutTreeDataGridAdapter :
     private readonly IModFileSearch? _fileSearch;
 
     /// <param name="fileSearch">
-    /// What a search also matches by: the files each mod deploys. Left out, it reads the loadout's files from the database
-    /// when one is available, and a page without a database (the designer) searches names only.
+    /// What a search also matches by: the files each mod deploys. Left out, it uses the loadout's shared file search
+    /// when one is registered, and a page without a database (the designer) searches names only.
     /// </param>
     public LoadoutTreeDataGridAdapter(IServiceProvider serviceProvider, LoadoutFilter loadoutFilter, IModFileSearch? fileSearch = null) : base(serviceProvider)
     {
         _loadoutDataProviders = serviceProvider.GetServices<ILoadoutDataProvider>().ToArray();
         _loadoutFilter = loadoutFilter;
-        _fileSearch = fileSearch ?? (serviceProvider.GetService<IConnection>() is { } connection
-            ? new LoadoutFileSearch(connection, loadoutFilter.LoadoutId)
-            : null);
+        _fileSearch = fileSearch ?? serviceProvider.GetService<LoadoutFileSearches>()?.For(loadoutFilter.LoadoutId);
     }
 
     /// <summary>
     /// A search text matches a row by what the row shows, or by a file it deploys. Finding the files is a scan of up to
     /// hundreds of thousands of paths, so it runs on the thread pool and the tree is given the matching rows as a set.
+    /// A newer text cancels the scan of an older one.
     /// </summary>
     protected override Observable<Filter> ResolveFilter(Filter requested)
     {
@@ -55,8 +54,8 @@ public class LoadoutTreeDataGridAdapter :
 
         var search = _fileSearch;
         return Observable
-            .FromAsync(async cancellationToken => await Task.Run(() => search.ItemsWithFileMatching(text.SearchText), cancellationToken))
-            .Select(text, static (items, text) => (Filter)new Filter.OrFilter(text, new Filter.KeySetFilter<EntityId>(items)))
+            .FromAsync(async cancellationToken => await Task.Run(() => search.ItemsWithFileMatching(text.SearchText, cancellationToken), cancellationToken))
+            .Select(text, static (items, text) => (Filter)new Filter.TextOrKeySetFilter<EntityId>(text, items))
             .ObserveOnUIThreadDispatcher();
     }
 

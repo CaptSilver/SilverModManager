@@ -27,7 +27,7 @@ public static class LoadoutFilePaths
         // Rows come out in entity order, which is the order the parent attribute is scanned in.
         foreach (var row in rows)
         {
-            if (!parents.FastForwardTo(row.Row)) continue;
+            if (parents.FastForwardTo(row.Row) is false) continue;
             owned.Add(new OwnedFilePath(MemoryMarshal.Read<EntityId>(parents.ValueSpan), row.Path));
         }
 

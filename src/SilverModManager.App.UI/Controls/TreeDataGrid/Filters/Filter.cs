@@ -74,6 +74,27 @@ public abstract record Filter
     }
 
     /// <summary>
+    /// A <see cref="TextFilter"/> that also keeps the rows whose key is in a set worked out beforehand. It is the
+    /// <see cref="OrFilter"/> of the two, except that the children of a row are visited once rather than once per part.
+    /// </summary>
+    public sealed record TextOrKeySetFilter<TKey>(TextFilter Text, IReadOnlySet<TKey> Keys) : Filter
+    {
+        public override bool MatchesRow<TModelKey>(CompositeItemModel<TModelKey> itemModel)
+        {
+            foreach (var (_, component) in itemModel.Components)
+            {
+                if (component.MatchesFilter(Text) == FilterResult.Pass)
+                    return true;
+            }
+
+            if (itemModel.Key is TKey key && Keys.Contains(key))
+                return true;
+
+            return this.MatchesChildren(itemModel);
+        }
+    }
+
+    /// <summary>
     /// Filter by installation status.
     /// </summary>
     public sealed record InstalledFilter(bool ShowInstalled = true, bool ShowNotInstalled = true) : Filter;

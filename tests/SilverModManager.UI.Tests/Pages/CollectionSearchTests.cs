@@ -28,20 +28,36 @@ public class CollectionSearchTests(IServiceProvider provider) : AUiTest(provider
         CollectionGroupId = Optional<LoadoutItemGroupId>.None,
     };
 
+    /// <summary>A row of the probe tree. A row with children is a parent, keyed like the Nexus pages key theirs.</summary>
+    private sealed record Row(EntityId Key, string Name, params Row[] Children)
+    {
+        public static implicit operator Row((EntityId Key, string Name) row) => new(row.Key, row.Name);
+
+        public CompositeItemModel<EntityId> Build()
+        {
+            var children = Children.Select(child => child.Build()).ToArray();
+            var model = Children.Length == 0
+                ? new CompositeItemModel<EntityId>(Key)
+                : new CompositeItemModel<EntityId>(Key)
+                {
+                    HasChildrenObservable = System.Reactive.Linq.Observable.Return(true),
+                    ChildrenObservable = System.Reactive.Linq.Observable.Return<IChangeSet<CompositeItemModel<EntityId>, EntityId>>(new ChangeSet<CompositeItemModel<EntityId>, EntityId>(
+                        children.Select(child => new Change<CompositeItemModel<EntityId>, EntityId>(ChangeReason.Add, child.Key, child)))),
+                };
+            model.Add(SharedColumns.Name.NameComponentKey, new NameComponent(Name));
+            return model;
+        }
+    }
+
     /// <summary>A tree whose rows are whatever the test hands it, searched through the given file search.</summary>
     private sealed class Probe : LoadoutTreeDataGridAdapter
     {
         private readonly SourceCache<CompositeItemModel<EntityId>, EntityId> _rows = new(static row => row.Key);
 
-        public Probe(IServiceProvider provider, LoadoutFilter filter, IModFileSearch? fileSearch, params (EntityId Key, string Name)[] rows)
+        public Probe(IServiceProvider provider, LoadoutFilter filter, IModFileSearch? fileSearch, params Row[] rows)
             : base(provider, filter, fileSearch ?? new NoFiles())
         {
-            _rows.AddOrUpdate(rows.Select(row =>
-            {
-                var model = new CompositeItemModel<EntityId>(row.Key);
-                model.Add(SharedColumns.Name.NameComponentKey, new NameComponent(row.Name));
-                return model;
-            }));
+            _rows.AddOrUpdate(rows.Select(row => row.Build()));
         }
 
         protected override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> GetRootsObservable(bool viewHierarchical) => _rows.Connect();
@@ -53,7 +69,7 @@ public class CollectionSearchTests(IServiceProvider provider) : AUiTest(provider
 
     private sealed class NoFiles : IModFileSearch
     {
-        public IReadOnlySet<EntityId> ItemsWithFileMatching(string text) => new HashSet<EntityId>();
+        public IReadOnlySet<EntityId> ItemsWithFileMatching(string text, CancellationToken cancellationToken) => new HashSet<EntityId>();
     }
 
     private sealed class FakeFiles(Func<string, IEnumerable<EntityId>> find) : IModFileSearch
@@ -61,17 +77,27 @@ public class CollectionSearchTests(IServiceProvider provider) : AUiTest(provider
         public int Searches;
         public readonly List<bool> RanOnUiThread = [];
 
-        public IReadOnlySet<EntityId> ItemsWithFileMatching(string text)
+        /// <summary>When set, a search for this text waits until its token is cancelled, like a scan still in progress.</summary>
+        public string? HangOn;
+        public readonly List<CancellationToken> Tokens = [];
+
+        public IReadOnlySet<EntityId> ItemsWithFileMatching(string text, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref Searches);
             lock (RanOnUiThread) RanOnUiThread.Add(Dispatcher.UIThread.CheckAccess());
+            lock (Tokens) Tokens.Add(cancellationToken);
+            if (text == HangOn)
+            {
+                cancellationToken.WaitHandle.WaitOne(TimeSpan.FromSeconds(30));
+                cancellationToken.ThrowIfCancellationRequested();
+            }
             return find(text).ToHashSet();
         }
     }
 
     private static EntityId Id(int n) => EntityId.From((ulong)(0x5000 + n));
 
-    private async Task<(Probe Adapter, IDisposable Activation)> Open(IModFileSearch? files, params (EntityId, string)[] rows)
+    private async Task<(Probe Adapter, IDisposable Activation)> Open(IModFileSearch? files, params Row[] rows)
     {
         var (adapter, activation) = await OnUi(() =>
         {
@@ -122,14 +148,55 @@ public class CollectionSearchTests(IServiceProvider provider) : AUiTest(provider
     [Fact]
     public async Task AParentStaysWhenOnlyAFileOfItsChildMatches()
     {
-        // The search reports the groups above a matching mod too.
-        var files = new FakeFiles(_ => [Id(2), Id(1)]);
-        var (adapter, activation) = await Open(files, (Id(1), "Wabbajack list"), (Id(2), "Upscaler"), (Id(3), "Unrelated"));
+        // A parent row is keyed by something the file search never reports (the Nexus pages key it by the mod page),
+        // so it can only stay because a child's key is in the set.
+        var list = new Row(Id(100), "Wabbajack list", new Row(Id(2), "Upscaler"), new Row(Id(3), "Unrelated"));
+        var files = new FakeFiles(_ => [Id(2)]);
+        var (adapter, activation) = await Open(files, list, new Row(Id(4), "Elsewhere"));
         using var _ = activation;
 
         await Search(adapter, "dll");
 
-        await EventuallyOnUi(() => adapter.VisibleNames().Should().BeEquivalentTo(["Wabbajack list", "Upscaler"]));
+        await EventuallyOnUi(() => adapter.VisibleNames().Should().BeEquivalentTo(["Wabbajack list"]));
+    }
+
+    [Fact]
+    public async Task AParentStaysWhenOnlyTheNameOfItsChildMatches()
+    {
+        var list = new Row(Id(100), "Wabbajack list", new Row(Id(2), "Upscaler"), new Row(Id(3), "Unrelated"));
+        var (adapter, activation) = await Open(null, list, new Row(Id(4), "Elsewhere"));
+        using var _ = activation;
+
+        await Search(adapter, "upscaler");
+
+        await EventuallyOnUi(() => adapter.VisibleNames().Should().BeEquivalentTo(["Wabbajack list"]));
+    }
+
+    [Fact]
+    public async Task AParentWhoseChildrenDoNotMatchGoesAway()
+    {
+        var list = new Row(Id(100), "Wabbajack list", new Row(Id(2), "Upscaler"));
+        var (adapter, activation) = await Open(null, list, new Row(Id(4), "SkyUI"));
+        using var _ = activation;
+
+        await Search(adapter, "skyui");
+
+        await EventuallyOnUi(() => adapter.VisibleNames().Should().BeEquivalentTo(["SkyUI"]));
+    }
+
+    [Fact]
+    public async Task ANewerSearchCancelsTheOlderOneStillScanning()
+    {
+        var files = new FakeFiles(text => text == "newer" ? [Id(2)] : []) { HangOn = "older" };
+        var (adapter, activation) = await Open(files, (Id(1), "SkyUI"), (Id(2), "USSEP"));
+        using var _ = activation;
+        await Search(adapter, "older");
+        await EventuallyOnUi(() => files.Tokens.Should().HaveCount(1, "the older scan has started and is still running"));
+
+        await Search(adapter, "newer");
+
+        await EventuallyOnUi(() => adapter.VisibleNames().Should().BeEquivalentTo(["USSEP"]));
+        files.Tokens[0].IsCancellationRequested.Should().BeTrue("the older scan is told to stop, not just ignored");
     }
 
     [Fact]
@@ -176,7 +243,7 @@ public class CollectionSearchTests(IServiceProvider provider) : AUiTest(provider
     [Fact]
     public async Task TheFilesAreSearchedOnceAndOffTheUiThreadHoweverManyRowsThereAre()
     {
-        var rows = Enumerable.Range(1, 900).Select(n => (Id(n), $"Mod {n}")).ToArray();
+        var rows = Enumerable.Range(1, 900).Select(n => new Row(Id(n), $"Mod {n}")).ToArray();
         var files = new FakeFiles(_ => [Id(417)]);
         var (adapter, activation) = await Open(files, rows);
         using var _ = activation;
@@ -224,10 +291,10 @@ public class CollectionSearchTests(IServiceProvider provider) : AUiTest(provider
 
         var search = new LoadoutFileSearch(Connection, loadout.LoadoutId);
 
-        search.ItemsWithFileMatching("skyrimupscaler.dll").Should().BeEquivalentTo([upscaler, list]);
-        search.ItemsWithFileMatching("UpscalerBasePlugin").Should().BeEquivalentTo([upscaler, list]);
-        search.ItemsWithFileMatching("skyui.swf").Should().BeEquivalentTo([skyui, list]);
-        search.ItemsWithFileMatching("missing.dll").Should().BeEmpty();
+        search.ItemsWithFileMatching("skyrimupscaler.dll", default).Should().BeEquivalentTo([upscaler, list]);
+        search.ItemsWithFileMatching("UpscalerBasePlugin", default).Should().BeEquivalentTo([upscaler, list]);
+        search.ItemsWithFileMatching("skyui.swf", default).Should().BeEquivalentTo([skyui, list]);
+        search.ItemsWithFileMatching("missing.dll", default).Should().BeEmpty();
     }
 
     [Fact]
@@ -236,11 +303,51 @@ public class CollectionSearchTests(IServiceProvider provider) : AUiTest(provider
         var loadout = await SeedLoadoutRow(GameStore.Steam, "search-grow-" + Guid.NewGuid().ToString("N"));
         var list = (await CollectionSeed.AddLocalGroup(Connection, loadout.LoadoutId, "List")).Id;
         _ = await AddMod(loadout.LoadoutId, list, "First", "a/first.dll");
-        var search = new LoadoutFileSearch(Connection, loadout.LoadoutId);
-        search.ItemsWithFileMatching("late.dll").Should().BeEmpty();
+        var search = new LoadoutFileSearch(Connection, loadout.LoadoutId, TimeSpan.Zero);
+        search.ItemsWithFileMatching("late.dll", default).Should().BeEmpty();
 
         var late = await AddMod(loadout.LoadoutId, list, "Late", "a/late.dll");
 
-        search.ItemsWithFileMatching("late.dll").Should().BeEquivalentTo([late, list]);
+        search.ItemsWithFileMatching("late.dll", default).Should().BeEquivalentTo([late, list]);
+    }
+
+    [Fact]
+    public async Task AnIndexJustBuiltIsReusedWhileTheDatabaseKeepsChanging()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "search-busy-" + Guid.NewGuid().ToString("N"));
+        var list = (await CollectionSeed.AddLocalGroup(Connection, loadout.LoadoutId, "List")).Id;
+        _ = await AddMod(loadout.LoadoutId, list, "First", "a/first.dll");
+        var search = new LoadoutFileSearch(Connection, loadout.LoadoutId, TimeSpan.FromHours(1));
+        search.ItemsWithFileMatching("first.dll", default).Should().NotBeEmpty();
+
+        _ = await AddMod(loadout.LoadoutId, list, "Late", "a/late.dll");
+
+        search.ItemsWithFileMatching("late.dll", default).Should().BeEmpty("a commit during an install does not queue another rebuild");
+    }
+
+    [Fact]
+    public async Task ASearchThatIsAlreadyCancelledDoesNotBuildTheIndex()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "search-cancel-" + Guid.NewGuid().ToString("N"));
+        var list = (await CollectionSeed.AddLocalGroup(Connection, loadout.LoadoutId, "List")).Id;
+        _ = await AddMod(loadout.LoadoutId, list, "First", "a/first.dll");
+        var search = new LoadoutFileSearch(Connection, loadout.LoadoutId, TimeSpan.Zero);
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        var act = () => search.ItemsWithFileMatching("first.dll", cancelled.Token);
+
+        act.Should().Throw<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task EveryPageOnALoadoutSharesOneFileSearch()
+    {
+        var searches = new LoadoutFileSearches(Connection);
+        var one = await SeedLoadoutRow(GameStore.Steam, "search-share-" + Guid.NewGuid().ToString("N"));
+        var other = await SeedLoadoutRow(GameStore.Steam, "search-share-other-" + Guid.NewGuid().ToString("N"));
+
+        searches.For(one.LoadoutId).Should().BeSameAs(searches.For(one.LoadoutId));
+        searches.For(one.LoadoutId).Should().NotBeSameAs(searches.For(other.LoadoutId));
     }
 }

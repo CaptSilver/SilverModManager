@@ -22,8 +22,8 @@ public class ModFileSearchIndexTests
     {
         var index = Index(files: [(Skyui, "Data/Interface/skyui.swf"), (Upscaler, "Data/SKSE/Plugins/SkyrimUpscaler.dll")]);
 
-        index.ItemsWithFileMatching("SkyrimUpscaler.dll").Should().BeEquivalentTo([Upscaler]);
-        index.ItemsWithFileMatching("Data/").Should().BeEquivalentTo([Skyui, Upscaler]);
+        index.ItemsWithFileMatching("SkyrimUpscaler.dll", default).Should().BeEquivalentTo([Upscaler]);
+        index.ItemsWithFileMatching("Data/", default).Should().BeEquivalentTo([Skyui, Upscaler]);
     }
 
     [Fact]
@@ -31,8 +31,8 @@ public class ModFileSearchIndexTests
     {
         var index = Index(files: [(Upscaler, "Data/SKSE/Plugins/UpscalerBasePlugin.dll")]);
 
-        index.ItemsWithFileMatching("upscalerbaseplugin").Should().BeEquivalentTo([Upscaler]);
-        index.ItemsWithFileMatching("UPSCALERBASEPLUGIN").Should().BeEquivalentTo([Upscaler]);
+        index.ItemsWithFileMatching("upscalerbaseplugin", default).Should().BeEquivalentTo([Upscaler]);
+        index.ItemsWithFileMatching("UPSCALERBASEPLUGIN", default).Should().BeEquivalentTo([Upscaler]);
     }
 
     [Fact]
@@ -40,7 +40,7 @@ public class ModFileSearchIndexTests
     {
         var index = Index(new Dictionary<EntityId, EntityId> { [Upscaler] = Group }, (Upscaler, "a/b.dll"));
 
-        index.ItemsWithFileMatching("b.dll").Should().BeEquivalentTo([Upscaler, Group]);
+        index.ItemsWithFileMatching("b.dll", default).Should().BeEquivalentTo([Upscaler, Group]);
     }
 
     [Fact]
@@ -48,8 +48,8 @@ public class ModFileSearchIndexTests
     {
         var index = Index(files: [(Skyui, "a/b.dll")]);
 
-        index.ItemsWithFileMatching("zzz").Should().BeEmpty();
-        index.ItemsWithFileMatching("").Should().BeEmpty();
+        index.ItemsWithFileMatching("zzz", default).Should().BeEmpty();
+        index.ItemsWithFileMatching("", default).Should().BeEmpty();
     }
 
     [Fact]
@@ -57,27 +57,55 @@ public class ModFileSearchIndexTests
     {
         var index = Index(files: [(Skyui, "a/one.dll"), (Skyui, "b/two.dll")]);
 
-        index.ItemsWithFileMatching("one.dll\nb/two").Should().BeEmpty();
+        index.ItemsWithFileMatching("one.dll\nb/two", default).Should().BeEmpty();
     }
 
     [Fact]
-    public void AListOfAboutTwoHundredAndEightyThousandFilesIsSearchedInOneScanPerMod()
+    public void ASearchThatIsCancelledStopsScanning()
     {
-        const int mods = 900;
-        const int filesPerMod = 311;
-        var files = new List<OwnedFilePath>(mods * filesPerMod);
+        var index = Index(files: [(Skyui, "a/b.dll")]);
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+
+        var act = () => index.ItemsWithFileMatching("b.dll", cancelled.Token);
+
+        act.Should().Throw<OperationCanceledException>();
+    }
+
+    private static List<OwnedFilePath> ManyFiles(int mods, int filesPerMod, EntityId needle)
+    {
+        var files = new List<OwnedFilePath>(mods * filesPerMod + 1);
         for (var mod = 0; mod < mods; mod++)
         for (var file = 0; file < filesPerMod; file++)
             files.Add(new OwnedFilePath(EntityId.From((ulong)(0x10_0000 + mod)), $"Data/Meshes/mod{mod}/part{file}.nif"));
-        var needle = EntityId.From(0x10_0000 + 417);
         files.Add(new OwnedFilePath(needle, "Data/SKSE/Plugins/SkyrimUpscaler.dll"));
+        return files;
+    }
+
+    [Fact]
+    public void AListOfAboutTwoHundredAndEightyThousandFilesIsKeptAsOneTextPerMod()
+    {
+        var needle = EntityId.From(0x10_0000 + 417);
+        var index = new ModFileSearchIndex(ManyFiles(mods: 900, filesPerMod: 311, needle), _ => null);
+
+        index.OwnerCount.Should().Be(900, "a search scans one text per mod, not one string per file");
+        index.ItemsWithFileMatching("skyrimupscaler.dll", default).Should().BeEquivalentTo([needle]);
+    }
+
+    [Fact]
+    public void BuildingTheIndexOfAboutTwoHundredAndEightyThousandFilesAllocatesAFewTimesTheirText()
+    {
+        var needle = EntityId.From(0x10_0000 + 417);
+        var files = ManyFiles(mods: 900, filesPerMod: 311, needle);
+        var characters = files.Sum(file => (long)file.Path.Length + 1);
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
         var index = new ModFileSearchIndex(files, _ => null);
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
-        var started = System.Diagnostics.Stopwatch.StartNew();
-        var found = index.ItemsWithFileMatching("skyrimupscaler.dll");
-        started.Stop();
-
-        found.Should().BeEquivalentTo([needle]);
-        started.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(2), "a search is one substring scan per mod, not a pass over each file");
+        index.OwnerCount.Should().Be(900);
+        // Chars are two bytes. Gathering the text and turning it into a string costs a small multiple of it; a
+        // per-file object or string would push the total well past this.
+        allocated.Should().BeLessThan(characters * 2 * 4, "the build copies each path once into its mod's text");
     }
 }

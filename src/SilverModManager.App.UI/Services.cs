@@ -380,6 +380,8 @@ public static class Services
 
             // Workspace Attachments
             .AddSingleton<IWorkspaceAttachmentsFactoryManager, WorkspaceAttachmentsFactoryManager>()
+            // one file index per loadout, shared by the loadout page and its collection pages
+            .AddSingleton<LoadoutFileSearches>()
             .AddSingleton<IWorkspaceAttachmentsFactory, DownloadsAttachmentsFactory>()
             .AddSingleton<IWorkspaceAttachmentsFactory, HomeAttachmentsFactory>()
             .AddSingleton<IWorkspaceAttachmentsFactory, LoadoutAttachmentsFactory>()
