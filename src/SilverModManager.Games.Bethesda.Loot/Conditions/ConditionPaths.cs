@@ -6,7 +6,8 @@ namespace SilverModManager.Games.Bethesda.Loot.Conditions;
 // masterlists spell paths the way Windows would find them.
 
 /// <summary>
-/// Finds the files a condition names inside a game's Data folder, and lists its folders.
+/// Finds the files a condition names inside a game's Data folder, and lists its folders. Both <c>/</c> and
+/// <c>\\</c> separate path segments.
 /// </summary>
 public static class ConditionPaths
 {
@@ -21,6 +22,8 @@ public static class ConditionPaths
     /// </summary>
     public static string Resolve(string dataDirectory, string relativePath, bool tryGhost)
     {
+        // Masterlist paths come from Windows, where "..\\TESV.exe" names the game's executable.
+        relativePath = relativePath.Replace('\\', '/');
         var exact = Path.Combine(dataDirectory, relativePath);
         if (Exists(exact)) return exact;
 

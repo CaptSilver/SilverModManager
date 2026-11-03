@@ -34,6 +34,16 @@ public class ConditionPathsTests : IDisposable
     }
 
     [Fact]
+    public void Resolve_ReadsBackslashesAsSeparatorsAndFollowsParentSegments()
+    {
+        _data.Write("TESV.exe");
+        var data = _data.CreateDirectory("Data");
+
+        ConditionPaths.Resolve(data, "..\\tesv.exe", tryGhost: false).Should().Be(Path.Combine(data, "..", "TESV.exe"));
+        System.IO.File.Exists(ConditionPaths.Resolve(data, "..\\tesv.exe", tryGhost: false)).Should().BeTrue();
+    }
+
+    [Fact]
     public void Resolve_PrefersTheExactNameWhenTwoDifferOnlyInCase()
     {
         _data.Write("a.esp");
