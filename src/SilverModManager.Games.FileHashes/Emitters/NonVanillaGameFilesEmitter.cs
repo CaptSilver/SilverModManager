@@ -57,9 +57,7 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         var baseline = FindBaseline(db, loadout);
         if (baseline is null) yield break;
 
-        var overridesGroup = LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id).TryGetFirst(out var found)
-            ? found.Id
-            : default(EntityId);
+        var overridesGroup = OverridesGroupLookup.Find(loadout);
 
         var gameInstalled = GameInstalledPaths.For(loadout.Db, loadout.LoadoutId);
 
@@ -156,7 +154,7 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
 
         if (node.SourceItemType == LoadoutSourceItemType.Intrinsic) return true;
 
-        if (node.SourceItemType == LoadoutSourceItemType.Loadout && node.HaveLoadout && IsInGroup(loadoutDb, node.Loadout.EntityId, overridesGroup))
+        if (node.SourceItemType == LoadoutSourceItemType.Loadout && node.HaveLoadout && OverridesGroupLookup.IsInGroup(loadoutDb, node.Loadout.EntityId, overridesGroup))
         {
             logger?.LogTrace("`{Path}` is not managed: the loadout holds it in its overrides group", path);
             return false;
@@ -168,12 +166,6 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         var managed = node.SourceItemType == LoadoutSourceItemType.Loadout && node.HaveLoadout;
         if (!managed) logger?.LogTrace("`{Path}` is not managed: source {Source}, loadout identity {HaveLoadout}, previous state {HavePrevious}", path, node.SourceItemType, node.HaveLoadout, node.HavePrevious);
         return managed;
-    }
-
-    private static bool IsInGroup(IDb db, EntityId itemId, EntityId groupId)
-    {
-        var item = LoadoutItem.Load(db, itemId);
-        return item.IsValid() && item.HasParent() && item.ParentId.Value == groupId;
     }
 
     private bool HasNode(FrozenDictionary<GamePath, SyncNode> syncTree, RelativePath path)

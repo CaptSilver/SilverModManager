@@ -254,9 +254,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(tree, path);
             if (node.SourceItemType != LoadoutSourceItemType.Loadout || node.HaveDisk || !node.HavePrevious || !node.Loadout.HaveEntityId) continue;
 
-            overridesId ??= LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id).TryGetFirst(out var found) ? found.Id : EntityId.From(0);
+            overridesId ??= OverridesGroupLookup.Find(loadout);
             if (overridesId.Value.Value == 0) return;
-            node.ProvidedByOverrides = IsInGroup(loadout.Db, node.Loadout.EntityId, overridesId.Value);
+            node.ProvidedByOverrides = OverridesGroupLookup.IsInGroup(loadout.Db, node.Loadout.EntityId, overridesId.Value);
         }
     }
 
@@ -2523,9 +2523,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var loadout = Loadout.Load(metadata.Db, lastSynced);
         if (!loadout.IsValid()) return result;
 
-        var overridesGroup = LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id).TryGetFirst(out var found)
-            ? found.Id
-            : default(EntityId);
+        var overridesGroup = OverridesGroupLookup.Find(loadout);
 
         // The tree is only read for what the loadout provides, so the disk state doubles as the previous state.
         foreach (var (path, node) in BuildSyncTree(diskState, diskState, loadout))
@@ -2537,7 +2535,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 LoadoutSourceItemType.Intrinsic => true,
                 // A save on a protected path that the game rewrote is no longer what the loadout deployed.
                 LoadoutSourceItemType.Loadout => node.Loadout.HaveEntityId
-                    && !IsInGroup(loadout.Db, node.Loadout.EntityId, overridesGroup)
+                    && !OverridesGroupLookup.IsInGroup(loadout.Db, node.Loadout.EntityId, overridesGroup)
                     && !(GamePathFilter.ShouldFilter(path) && node.Disk.Identity.MatchSameKind(node.Loadout.Identity) != IdentityMatch.Same),
                 _ => false,
             };
@@ -2546,12 +2544,6 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         return result;
-    }
-
-    private static bool IsInGroup(IDb db, EntityId itemId, EntityId groupId)
-    {
-        var item = LoadoutItem.Load(db, itemId);
-        return item.IsValid() && item.HasParent() && item.ParentId.Value == groupId;
     }
 }
 

@@ -31,10 +31,7 @@ public sealed class ModProvidedFiles
     /// </summary>
     public static ModProvidedFiles For(Loadout.ReadOnly loadout)
     {
-        var overrides = LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id).TryGetFirst(out var found)
-            ? found.Id
-            : default(EntityId);
-        return new ModProvidedFiles(loadout.Db, overrides);
+        return new ModProvidedFiles(loadout.Db, OverridesGroupLookup.Find(loadout));
     }
 
     /// <summary>
@@ -52,8 +49,6 @@ public sealed class ModProvidedFiles
     /// </summary>
     public bool IsInOverrides(EntityId item)
     {
-        if (_overridesGroup.Value == 0) return false;
-        var loaded = LoadoutItem.Load(_db, item);
-        return loaded.IsValid() && loaded.HasParent() && loaded.ParentId.Value == _overridesGroup.Value;
+        return OverridesGroupLookup.IsInGroup(_db, item, _overridesGroup);
     }
 }
