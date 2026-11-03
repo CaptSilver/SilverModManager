@@ -236,12 +236,23 @@ public class ConditionEvaluatorTests : IDisposable
         [Fact]
         public void IsMaster_AsksTheContext()
         {
+            _data.Write("Base.esm");
+            _data.Write("Patch.esp");
             _context.Plugins["Base.esm"] = (true, null);
             _context.Plugins["Patch.esp"] = (false, null);
 
             Eval("is_master(\"Base.esm\")").Should().BeTrue();
             Eval("is_master(\"Patch.esp\")").Should().BeFalse();
             Eval("is_master(\"Unknown.esp\")").Should().BeFalse();
+        }
+
+        [Fact]
+        public void IsMaster_FalseForAPluginTheContextKnowsButThatIsNotOnDisk()
+        {
+            _context.Plugins["Base.esm"] = (true, null);
+
+            Eval("is_master(\"Base.esm\")").Should().BeFalse();
+            Eval("file(\"Base.esm\")").Should().BeFalse();
         }
 
         [Fact]
@@ -469,10 +480,30 @@ public class ConditionEvaluatorTests : IDisposable
         [Fact]
         public void DescriptionContains_SearchesTheDescription()
         {
+            _data.Write("Mod.esp");
             _context.Plugins["Mod.esp"] = (false, "A mod for Skyrim. Requires SKSE.");
 
             Eval("description_contains(\"Mod.esp\", \"requires skse\")").Should().BeTrue();
             Eval("description_contains(\"Mod.esp\", \"^Requires\")").Should().BeFalse();
+        }
+
+        [Fact]
+        public void DescriptionContains_FalseForAPluginTheContextKnowsButThatIsNotOnDisk()
+        {
+            _context.Plugins["Mod.esp"] = (false, "Requires SKSE.");
+
+            Eval("description_contains(\"Mod.esp\", \"skse\")").Should().BeFalse();
+        }
+
+        [Fact]
+        public void PeFunctions_TreatAReadErrorAsNoVersionAndNotExecutable()
+        {
+            // Opens fine and fails on the first read with EIO.
+            System.IO.File.CreateSymbolicLink(System.IO.Path.Combine(_data.Path, "Broken.exe"), "/proc/self/mem");
+
+            Eval("version(\"Broken.exe\", \"0\", >=)").Should().BeFalse();
+            Eval("product_version(\"Broken.exe\", \"0\", >=)").Should().BeFalse();
+            Eval("is_executable(\"Broken.exe\")").Should().BeFalse();
         }
 
         [Fact]
@@ -524,6 +555,7 @@ public class ConditionEvaluatorTests : IDisposable
         [Fact]
         public void Or_ReachesLaterAlternativesWhenEarlierOnesFail()
         {
+            _data.Write("Base.esm");
             Eval("file(\"a.esp\") or is_master(\"Base.esm\")").Should().BeFalse();
 
             _context.IsMasterCalls.Should().Be(1);

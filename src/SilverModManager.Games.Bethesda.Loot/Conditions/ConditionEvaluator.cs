@@ -1,7 +1,9 @@
 using System.IO.Hashing;
 using System.Text.RegularExpressions;
 using SilverModManager.Games.Bethesda.Loot.Database;
+using NexusMods.Paths;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Native;
 
 namespace SilverModManager.Games.Bethesda.Loot.Conditions;
@@ -77,13 +79,13 @@ public sealed class ConditionEvaluator : IConditionEvaluator
         ConditionFunction.ActivePath f => _active.Contains(f.Path.ToLowerInvariant()),
         ConditionFunction.ActiveRegex f => _active.Any(IsMatch(f.Pattern)),
         ConditionFunction.ManyActive f => _active.Where(IsMatch(f.Pattern)).Take(2).Count() == 2,
-        ConditionFunction.IsMaster f => _context.Game != LootGame.OpenMW && _context.IsMaster(PluginName(f.Path)),
+        ConditionFunction.IsMaster f => _context.Game != LootGame.OpenMW && PluginOnDisk(f.Path) && _context.IsMaster(PluginName(f.Path)),
         ConditionFunction.Checksum f => Checksum(f),
         ConditionFunction.Version f => Compare(ReadVersion(f.Path), f.Comparator, f.Value),
         ConditionFunction.ProductVersion f => Compare(ReadProductVersion(f.Path), f.Comparator, f.Value),
         ConditionFunction.FilenameVersion f => FilenameVersion(f),
         ConditionFunction.DescriptionContains f =>
-            _context.PluginDescription(PluginName(f.Path)) is { } description && Pattern(f.Pattern).IsMatch(description),
+            PluginOnDisk(f.Path) && _context.PluginDescription(PluginName(f.Path)) is { } description && Pattern(f.Pattern).IsMatch(description),
         _ => throw new ArgumentOutOfRangeException(nameof(function), function, null),
     };
 
@@ -92,6 +94,12 @@ public sealed class ConditionEvaluator : IConditionEvaluator
 
     /// <summary>The name the context knows a plugin by: the path as written, without a <c>.ghost</c> suffix.</summary>
     private string PluginName(string path) => ConditionPaths.NormaliseFileName(_context.Game, path);
+
+    /// <summary>
+    /// Like the interpreter, a plugin that is not on disk has no master flag, description or version, whatever the
+    /// context knows about it from the loadout.
+    /// </summary>
+    private bool PluginOnDisk(string path) => Exists(Resolve(path));
 
     private IReadOnlyList<string> Entries(string parent) =>
         ConditionPaths.ListDirectory(_context.DataDirectory, parent, _context.Game);
@@ -141,8 +149,7 @@ public sealed class ConditionEvaluator : IConditionEvaluator
 
     private bool IsExecutable(ConditionFunction.IsExecutable function)
     {
-        using var stream = OpenForVersion(Resolve(function.Path));
-        return stream is not null && PeFileVersion.IsPortableExecutable(stream);
+        return ReadFile(Resolve(function.Path), PeFileVersion.IsPortableExecutable);
     }
 
     private bool Checksum(ConditionFunction.Checksum function)
@@ -159,20 +166,13 @@ public sealed class ConditionEvaluator : IConditionEvaluator
         return crc == function.Crc;
     }
 
-    // Sequential 1 MB reads, as the rest of the app hashes files; a stream handed to the hasher reads in small blocks.
+    // The app's sequential-read open and block size; a stream handed to the hasher reads in small blocks.
     private static uint Crc32OfFile(string path)
     {
-        using var stream = new FileStream(path, new FileStreamOptions
-        {
-            Mode = FileMode.Open,
-            Access = FileAccess.Read,
-            Share = FileShare.ReadWrite | FileShare.Delete,
-            Options = FileOptions.SequentialScan,
-            BufferSize = 0,
-        });
+        using var stream = SequentialFileRead.Open(FileSystem.Shared.FromUnsanitizedFullPath(path));
 
         var hash = new Crc32();
-        var buffer = new byte[1024 * 1024];
+        var buffer = new byte[HashingLimits.ReadBlockSize];
         int read;
         while ((read = stream.Read(buffer)) > 0) hash.Append(buffer.AsSpan(0, read));
 
@@ -185,36 +185,37 @@ public sealed class ConditionEvaluator : IConditionEvaluator
         if (ConditionPaths.HasPluginExtension(_context.Game, path))
         {
             // Like the interpreter, a plugin that is not on disk has no version, whatever the context knows about it.
-            if (!Exists(Resolve(path))) return null;
+            if (!PluginOnDisk(path)) return null;
 
             return PluginDescriptionVersion.Extract(_context.PluginDescription(PluginName(path))) is { } version
                 ? LootVersion.Parse(version)
                 : null;
         }
 
-        using var stream = OpenForVersion(Resolve(path));
-        return stream is not null && PeFileVersion.Read(stream) is { } text ? LootVersion.Parse(text) : null;
+        return ReadFile(Resolve(path), PeFileVersion.Read) is { } text ? LootVersion.Parse(text) : null;
     }
 
     private LootVersion? ReadProductVersion(string path)
     {
-        using var stream = OpenForVersion(Resolve(path));
-        return stream is not null && PeFileVersion.ReadProductVersion(stream) is { } text ? LootVersion.Parse(text) : null;
+        return ReadFile(Resolve(path), PeFileVersion.ReadProductVersion) is { } text ? LootVersion.Parse(text) : null;
     }
 
     /// <summary>
-    /// Opens a file to read its version. A file that is missing or cannot be opened has no version, which a
-    /// version condition treats as not holding rather than as an error.
+    /// Reads a file's version data. A file that is missing, cannot be opened or fails mid-read yields the default,
+    /// which a version condition treats as not holding rather than as an error.
     /// </summary>
-    private static FileStream? OpenForVersion(string path)
+    private static T? ReadFile<T>(string path, Func<Stream, T?> read)
     {
         try
         {
-            return System.IO.File.Exists(path) ? System.IO.File.OpenRead(path) : null;
+            if (!System.IO.File.Exists(path)) return default;
+
+            using var stream = System.IO.File.OpenRead(path);
+            return read(stream);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            return null;
+            return default;
         }
     }
 
