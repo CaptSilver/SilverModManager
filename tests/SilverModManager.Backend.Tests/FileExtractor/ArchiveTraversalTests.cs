@@ -316,19 +316,68 @@ public class ArchiveTraversalTests : AFileExtractorTest
         outcome.Warnings.Should().ContainSingle(w => w.Contains("`a/../x.txt` -> `x.txt`"));
     }
 
+    public enum WrittenThrough { Tar, Zip, SevenZ }
+
+    // Builds a .7z with `7zz a -snl` holding sub/ok.txt, a link, and a real file below the link's path. The
+    // file cannot sit under a link on disk, so it goes in with a second run that adds to the archive.
+    private async Task<Outcome> ExtractSevenZWithLink(string linkTarget)
+    {
+        await using var container = TemporaryFileManager.CreateFolder();
+        await using var sources = TemporaryFileManager.CreateFolder();
+        var first = sources.Path.Combine("first");
+        var second = sources.Path.Combine("second");
+        first.Combine("sub").CreateDirectory();
+        second.Combine("link").CreateDirectory();
+        await first.Combine("sub/ok.txt").WriteAllTextAsync("shared", TestContext.Current.CancellationToken);
+        await second.Combine("link/escaped.txt").WriteAllTextAsync("payload", TestContext.Current.CancellationToken);
+        File.CreateSymbolicLink(first.Combine("link").ToString(), linkTarget);
+
+        var archive = container.Path.Combine("Traversal Mod-1-0.7z");
+        await Run7z(first, "a", "-snl", archive.ToString(), "sub", "link");
+        await Run7z(second, "a", "-snl", archive.ToString(), "link/escaped.txt");
+
+        return await Extract(container.Path, archive, Extractor.SevenZip);
+    }
+
+    private async Task Run7z(AbsolutePath workingDirectory, params string[] arguments)
+    {
+        var sevenZip = FileSystem.GetKnownPath(KnownPath.EntryDirectory).Combine("runtimes/linux-x64/native/7zz").ToString();
+        var startInfo = new ProcessStartInfo(sevenZip) { WorkingDirectory = workingDirectory.ToString(), RedirectStandardOutput = true };
+        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
+        using var process = System.Diagnostics.Process.Start(startInfo) ?? throw new InvalidOperationException("7zz did not start");
+        await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
+        await process.WaitForExitAsync(TestContext.Current.CancellationToken);
+        process.ExitCode.Should().Be(0);
+    }
+
     // An archive can name a link and then write through it. The link entry never reaches 7z, so the
-    // entry that goes through it creates a real folder and nothing lands at the link target.
-    [Fact]
-    public async Task AFileWrittenThroughAnOutsideSymlinkLandsInARealFolder()
+    // entry that goes through it creates a real folder and nothing lands at the link target. This holds
+    // whether the link points inside the archive or outside it, and for formats whose listing shows no target.
+    [Theory]
+    [InlineData(WrittenThrough.Tar, false)]
+    [InlineData(WrittenThrough.Tar, true)]
+    [InlineData(WrittenThrough.Zip, false)]
+    [InlineData(WrittenThrough.Zip, true)]
+    [InlineData(WrittenThrough.SevenZ, false)]
+    [InlineData(WrittenThrough.SevenZ, true)]
+    public async Task AFileWrittenThroughASymlinkLandsInARealFolder(WrittenThrough format, bool outsideTarget)
     {
         await using var outside = TemporaryFileManager.CreateFolder();
-        var outcome = await ExtractTar(writer =>
-        {
-            writer.WriteEntry(new GnuTarEntry(TarEntryType.SymbolicLink, "link") { LinkName = outside.Path.ToString() });
-            AddFile(writer, "link/escaped.txt");
-        });
+        var linkTarget = outsideTarget ? outside.Path.ToString() : "sub";
 
-        outcome.Files.Keys.Should().BeEquivalentTo("link/escaped.txt");
+        var outcome = format switch
+        {
+            WrittenThrough.Tar => await ExtractTar(writer =>
+            {
+                AddFile(writer, "sub/ok.txt", "shared");
+                writer.WriteEntry(new GnuTarEntry(TarEntryType.SymbolicLink, "link") { LinkName = linkTarget });
+                AddFile(writer, "link/escaped.txt");
+            }),
+            WrittenThrough.Zip => await ExtractItems(LinkArchive.SevenZipZip, new Item("sub/ok.txt", Content: "shared"), new Item("link", linkTarget), new Item("link/escaped.txt")),
+            _ => await ExtractSevenZWithLink(linkTarget),
+        };
+
+        outcome.Files.Should().Equal(new Dictionary<string, string> { ["sub/ok.txt"] = "shared", ["link/escaped.txt"] = "payload" });
         outcome.Outside.Should().BeEmpty();
         outside.Path.EnumerateFiles().Should().BeEmpty();
         outcome.Warnings.Should().Contain(w => w.Contains("`link`"));
@@ -426,6 +475,21 @@ public class ArchiveTraversalTests : AFileExtractorTest
         var outcome = await ExtractItems(kind, new Item("sub/ok.txt", Content: "shared"), new Item("inlink", "sub/ok.txt"));
 
         outcome.Files.Should().Equal(new Dictionary<string, string> { ["sub/ok.txt"] = "shared", ["inlink"] = "shared" });
+    }
+
+    // Two entries that clean to one path: the later wins, links included.
+    [Theory]
+    [InlineData(LinkArchive.ManagedZip)]
+    [InlineData(LinkArchive.SevenZipZip)]
+    [InlineData(LinkArchive.Tar)]
+    public async Task TheLastOfTwoSymlinkEntriesWithTheSameCleanedPathWins(LinkArchive kind)
+    {
+        var outcome = await ExtractItems(kind,
+            new Item("a.txt", Content: "first"), new Item("b.txt", Content: "second"),
+            new Item("x", "a.txt"), new Item("./x", "b.txt"));
+
+        outcome.Files.Should().Equal(new Dictionary<string, string> { ["a.txt"] = "first", ["b.txt"] = "second", ["x"] = "second" });
+        outcome.Warnings.Should().Contain(w => w.Contains("`x`") && w.Contains("later"));
     }
 
     [Theory]

@@ -48,13 +48,27 @@ internal static class ExtractedLinks
     /// Handles the link entries an extractor read from the archive and did not create: each becomes a copy of
     /// its target when the target is a file inside <paramref name="root"/>, and is dropped with a Warning
     /// naming the entry otherwise. A file or folder already at an entry's path (an entry written through the
-    /// link, or an earlier entry with the same cleaned name) is kept and the link dropped. Call it after every
+    /// link, is kept and the link dropped. Of several links with the same cleaned name, the last one wins. Call it after every
     /// other entry is extracted, so a target that comes later in the archive exists. A link whose target is
     /// another link entry is retried until no further link can be placed, so chains resolve in any order.
     /// </summary>
     internal static void PlaceAll(string root, string archive, IEnumerable<(string Name, string Path, string Target)> links, ILogger logger)
     {
-        var pending = links.ToList();
+        // Two entries that clean to one path: the later one wins.
+        var all = links.ToList();
+        var pending = new List<(string Name, string Path, string Target)>();
+        for (var i = 0; i < all.Count; i++)
+        {
+            if (all.Skip(i + 1).Any(later => later.Path == all[i].Path))
+            {
+                logger.LogWarning("Dropping symlink `{Entry}` from archive `{Archive}`: a later entry also extracts to `{Path}`", all[i].Name, archive, all[i].Path);
+            }
+            else
+            {
+                pending.Add(all[i]);
+            }
+        }
+
         bool progressed;
         do
         {

@@ -340,7 +340,7 @@ public class SevenZipExtractor : IExtractor
         var placeable = new List<(string Name, string Path, string Target)>();
         foreach (var (name, cleaned, listedTarget) in plan.Links)
         {
-            var target = listedTarget ?? await ReadLinkTarget(source, archiveName, name, cancellationToken);
+            var target = listedTarget ?? await ReadLinkTarget(source, archiveName, name, plan.NamesBelow(name), cancellationToken);
             if (target is null) _logger.LogWarning("Dropping symlink `{Entry}` from archive `{Archive}`: 7z would not extract it", name, archiveName);
             else placeable.Add((name, cleaned, target));
         }
@@ -358,15 +358,31 @@ public class SevenZipExtractor : IExtractor
     /// target dangerous, nothing. A format that stores the target as the entry's data may come out as a
     /// regular file holding the target text. Returns null when nothing came out.
     /// </summary>
-    private async ValueTask<string?> ReadLinkTarget(AbsolutePath source, string archiveName, string name, CancellationToken cancellationToken)
+    /// <param name="below">
+    /// Entries stored below the link. A name given to 7z also selects everything under it, and one that goes
+    /// through the link cannot be written (the run fails) or lands in a real folder of the same name.
+    /// </param>
+    private async ValueTask<string?> ReadLinkTarget(AbsolutePath source, string archiveName, string name, IEnumerable<string> below, CancellationToken cancellationToken)
     {
         await using var scratch = _temporaryFileManager.CreateFolder();
-        await RunExtract(source, archiveName, scratch.Path, ["-spd", $"-i!{name}"], cancellationToken);
+        var belowNames = below.ToArray();
+        await using var excludeList = _temporaryFileManager.CreateFile(ext: new Extension(".txt"));
+        var listPath = excludeList.Path.ToNativeSeparators(_osInformation);
+        string[] arguments = ["-spd", $"-i!{name}"];
+        if (belowNames.Length > 0)
+        {
+            await File.WriteAllLinesAsync(listPath, belowNames, new UTF8Encoding(false), cancellationToken);
+            arguments = [.. arguments, "-scsUTF-8", $"-x@{listPath}"];
+        }
 
-        var extracted = FindExtractedEntries(scratch.Path.ToNativeSeparators(_osInformation));
-        if (extracted.Count == 0) return null;
+        await RunExtract(source, archiveName, scratch.Path, arguments, cancellationToken);
 
-        var info = new FileInfo(extracted[0]);
+        var folder = scratch.Path.ToNativeSeparators(_osInformation);
+        var placed = Path.Combine(folder, ArchiveEntryPlan.PlacedBy7z(name));
+        var extracted = FindExtractedEntries(folder).FirstOrDefault(path => path == placed);
+        if (extracted is null) return null;
+
+        var info = new FileInfo(extracted);
         if (info.LinkTarget is { } target) return target;
         if (!info.Exists || info.Length > MaxLinkTargetBytes) return null;
         return (await File.ReadAllTextAsync(info.FullName, Encoding.UTF8, cancellationToken)).TrimEnd('\0');

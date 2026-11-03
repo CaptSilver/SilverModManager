@@ -44,8 +44,18 @@ internal sealed class ArchiveEntryPlan
     internal static string PlacedBy7z(string rawName) =>
         string.Join('/', rawName.Split('/').Where(segment => segment is not ("" or "." or "..")));
 
+    private readonly string[] _names;
+
+    /// <summary>
+    /// Raw names of the entries stored below <paramref name="name"/>. 7z treats a name given with
+    /// <c>-i!</c> like <c>-x</c>, so these come along unless they are excluded too.
+    /// </summary>
+    internal IEnumerable<string> NamesBelow(string name) =>
+        _names.Where(other => other.StartsWith(name.TrimEnd('/') + "/", StringComparison.Ordinal));
+
     internal ArchiveEntryPlan(IReadOnlyList<Entry> entries)
     {
+        _names = entries.Select(e => e.Name).ToArray();
         Rewrites = new ArchiveEntryPath.Rewrites();
         var cleaned = entries.Select(e => ArchiveEntryPath.Clean(e.Name)).ToArray();
 
