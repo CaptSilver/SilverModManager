@@ -1099,7 +1099,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         await Synchronizer.Synchronize(Refresh(loadout));
 
         Refresh(loadout).LocatorIds.Select(id => id.Value).Should().Contain(NewGameManifestId.ToString());
-        File.Exists((GameFolder / Vanilla).ToString()).Should().BeFalse("the rebuilt list has no row for a path a mod overwrote, so removing the mod leaves nothing to restore there");
+        (await ReadGameFile(Vanilla)).Should().Be(VanillaText, "the store describes the new build now, and disabling the mod restores the vanilla bytes it lists");
         Overrides(Refresh(loadout)).Should().NotContain(Vanilla);
         foreach (var file in CyberpunkSteamInstall.GameFiles.Concat(CyberpunkSteamInstall.ExpansionFiles).Where(f => f.Path != Vanilla))
             (await ReadGameFile(file.Path)).Should().Be(System.Text.Encoding.UTF8.GetString(file.Content), $"`{file.Path}` is the game's own");
@@ -1148,13 +1148,15 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         SteamUpdatesTheGame(cachesTheNewManifests: false);
         await Synchronizer.Synchronize(Refresh(loadout));
         BaselineOfTheNewBuild();
-        var calls = _settle.BaselineBuildCalls;
+        var built = BaselineOfTheNewBuild();
 
         await Synchronizer.Synchronize(Refresh(loadout));
+        await Synchronizer.Synchronize(Refresh(loadout));
 
-        BaselineOfTheNewBuild();
+        var after = BaselineOfTheNewBuild();
+        after.Id.Should().Be(built.Id, "the baseline of the installed build is found, not built again");
+        after.BuiltAt.Should().Be(built.BuiltAt);
         NonVanillaFile.All(Hashes.Local).Should().ContainSingle(r => r.Path.ToString() == Vanilla);
-        _settle.BaselineBuildCalls.Should().BeLessThanOrEqualTo(calls + 1, "the baseline of the installed build is found, not built again");
     }
 
     [Fact]

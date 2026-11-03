@@ -132,6 +132,32 @@ public sealed class LoadoutFilesQueryTests : IDisposable
     }
 
     [Fact]
+    public async Task LoadoutFiles_PathADeploymentPutThere_KeepsTheStoresVanillaRow()
+    {
+        await HashRows.AddSteamManifest(_central, 1001, ("x.esm", "vanilla x"), ("y.esm", "vanilla y"));
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.Snapshot,
+            [("y.esm", "vanilla y")]);
+        using (var tx = _local.BeginTransaction())
+        {
+            _ = new NonVanillaFile.New(tx)
+            {
+                BaselineId = LocalBaseline.FindByGamePath(_local.Db, "/games/test").Single().Id,
+                Path = RelativePath.FromUnsanitizedInput("x.esm"),
+                Reason = NonVanillaReason.DeployedByLoadout,
+                Size = Size.From(1),
+            };
+            await tx.Commit();
+        }
+        await HashRows.BuiltForLocatorIds(_local, "/games/test", "1001");
+        var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001");
+
+        var rows = LoadoutFiles(loadout);
+
+        rows.Select(r => r.Path.ToString()).Should().BeEquivalentTo(["x.esm", "y.esm"], "a deployed file says nothing about what the game shipped there");
+        rows.Single(r => r.Path.ToString() == "x.esm").Identity.Should().Be(FileIdentity.XxHash3(await HashOf("vanilla x")));
+    }
+
+    [Fact]
     public async Task LoadoutFiles_PathInASnapshotBaseline_TakesTheLocalHashOverTheCentralOne()
     {
         await HashRows.AddSteamManifest(_central, 1001, ("y.esm", "central y"));

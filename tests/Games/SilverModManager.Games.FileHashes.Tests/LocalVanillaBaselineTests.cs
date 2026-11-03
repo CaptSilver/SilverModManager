@@ -561,6 +561,47 @@ public sealed class LocalVanillaBaselineTests : IDisposable
     }
 
     [Fact]
+    public async Task Snapshot_RebuiltForTheSameBuild_KeepsTheVanillaRowOfAPathAModOverwrote()
+    {
+        WriteFile("a.esm", "vanilla"); WriteFile("b.esm", "other");
+        await Build([], allCovered: false);
+        WriteFile("a.esm", "cleaned copy from a mod");
+
+        var result = await Build([], allCovered: false, deployed: ["a.esm"]);
+
+        result.NonVanilla.Should().BeEmpty("the earlier snapshot saw the game's own bytes, which a mod overwriting them does not change");
+        var files = LocalBaseline.Load(_store.Db, result.BaselineId).Files.ToDictionary(f => f.Path.ToString());
+        files.Keys.Should().BeEquivalentTo(["a.esm", "b.esm"]);
+        files["a.esm"].Hash.Sha1.Should().Be((await Hash("vanilla")).Sha1);
+        NonVanillaFile.All(_store.Db).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Snapshot_RebuiltForTheSameBuild_StillFlagsADeployedPathTheEarlierSnapshotNeverSaw()
+    {
+        WriteFile("a.esm", "vanilla");
+        await Build([], allCovered: false);
+        WriteFile("mod.esp", "mod");
+
+        var result = await Build([], allCovered: false, deployed: ["mod.esp"]);
+
+        result.NonVanilla.Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.DeployedByLoadout);
+    }
+
+    [Fact]
+    public async Task PartialManifests_RebuiltForAnotherBuild_DoesNotCarryTheEarlierRowOfADeployedPath()
+    {
+        WriteFile("a.esm", "vanilla"); WriteFile("c.esm", "old c");
+        await Build([Manifest(1, ("a.esm", "vanilla"))], allCovered: false);
+        WriteFile("c.esm", "mod bytes");
+
+        var result = await Build([Manifest(2, ("a.esm", "vanilla"))], allCovered: false, deployed: ["c.esm"]);
+
+        result.NonVanilla.Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.DeployedByLoadout);
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Select(f => f.Path.ToString()).Should().NotContain("c.esm");
+    }
+
+    [Fact]
     public async Task DepotManifests_IgnoresTheDeployedSet()
     {
         WriteFile("a.esm", "vanilla"); WriteFile("mod.esp", "mod");

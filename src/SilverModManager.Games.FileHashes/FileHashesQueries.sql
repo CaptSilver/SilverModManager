@@ -134,7 +134,8 @@ FROM file_hashes.loadout_baselines(db) baselines
          INNER JOIN MDB_ATTESTEDFILE(DbName=>'local_hashes') attested ON attested.Baseline = baselines.BaselineId;
 
 -- the paths a loadout's local baseline has an opinion on: the ones it found vanilla, the ones it recorded from the
--- manifest and the ones it found modified
+-- manifest and the ones it found modified. A path it only knows a loadout put there (NonVanillaReason.DeployedByLoadout,
+-- 4) is no opinion: it says nothing about what the game shipped there, so the store's row for it stays.
 CREATE OR REPLACE MACRO file_hashes.local_baseline_paths(db) AS TABLE
 SELECT files.Loadout, relations.Path
 FROM (SELECT Loadout, unnest(baseline.Files) PathId
@@ -146,7 +147,8 @@ SELECT Loadout, Path FROM file_hashes.local_baseline_attested(db)
 UNION
 SELECT baselines.Loadout, nonVanilla.Path
 FROM file_hashes.loadout_baselines(db) baselines
-         INNER JOIN MDB_NONVANILLAFILE(DbName=>'local_hashes') nonVanilla ON nonVanilla.Baseline = baselines.BaselineId;
+         INNER JOIN MDB_NONVANILLAFILE(DbName=>'local_hashes') nonVanilla ON nonVanilla.Baseline = baselines.BaselineId
+WHERE nonVanilla.Reason <> 4;
 
 -- gets all the paths and hashes for game files in loadouts, from the downloaded hash store, the local one
 -- and the loadout's local baseline (the files it hashed and the ones it recorded from the manifest). Where the baseline classified a path, only its own row survives, so a

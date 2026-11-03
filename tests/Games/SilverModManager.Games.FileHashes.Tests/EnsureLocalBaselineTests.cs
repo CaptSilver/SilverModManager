@@ -377,6 +377,22 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     }
 
     [Fact]
+    public async Task ManagedFolder_ManifestThatNeedsAKeyAppearingAfterASnapshot_KeepsTheVanillaRowOfAPathAModOverwrote()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        (await _coordinator.Ensure(Installation("101"))).Kind.Should().Be(LocalBaselineKind.Snapshot);
+        WriteGameFile("a.esm", "cleaned copy from a mod");
+
+        await Task.Delay(50);
+        _source.AddNeedingKey(101);
+        var result = await ManagedCoordinator("a.esm").Ensure(Installation("101"));
+
+        result.Rebuilt.Should().BeTrue();
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Files.Select(f => f.Path.ToString()).Should().Equal("a.esm");
+        NonVanillaFile.All(_store.Db).Should().BeEmpty("no update happened, so the snapshot's row for the game's own bytes is still right");
+    }
+
+    [Fact]
     public async Task ManagedFolder_ManifestAppearingLater_UpgradesASnapshot()
     {
         WriteGameFile("a.esm", "vanilla");

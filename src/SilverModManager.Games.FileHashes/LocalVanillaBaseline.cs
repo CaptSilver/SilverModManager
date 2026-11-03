@@ -161,8 +161,9 @@ internal sealed class LocalVanillaBaseline
 
         var index = BuildIndex(request.Manifests);
         var nonVanilla = new List<NonVanillaEntry>();
-        var (candidates, walk) = Classify(request, kind, index, nonVanilla);
-        EnsurePlausible(request, walk, candidates.Count + nonVanilla.Count);
+        var carry = CarriedRows.Of(request, localStore.Db);
+        var (candidates, walk) = Classify(request, kind, index, nonVanilla, carry);
+        EnsurePlausible(request, walk, candidates.Count + nonVanilla.Count + carry.Claimed.Count);
 
         var stopwatch = Stopwatch.StartNew();
         var stats = new RebuildStats();
@@ -219,6 +220,9 @@ internal sealed class LocalVanillaBaseline
             pathIds.Add(pathRelation.Id);
             if (candidate.Entry is { } matched) pathIdsByManifest[matched.ManifestIndex].Add(pathRelation.Id);
         }
+
+        foreach (var (path, hashId) in carry.Claimed)
+            pathIds.Add(new PathHashRelation.New(tx) { Path = path, HashId = hashId }.Id);
 
         // A partial baseline writes them too: the version is the install's build id whatever the coverage,
         // and the readable manifests describe their depots exactly.
@@ -304,7 +308,7 @@ internal sealed class LocalVanillaBaseline
             $"Only {classified} of the {walk.Files} files under {request.GameRoot} were classified, which cannot be a complete picture of the installation");
     }
 
-    private (List<Candidate> Candidates, WalkCounts Walk) Classify(BaselineRequest request, LocalBaselineKind kind, Dictionary<RelativePath, IndexEntry> index, List<NonVanillaEntry> nonVanilla)
+    private (List<Candidate> Candidates, WalkCounts Walk) Classify(BaselineRequest request, LocalBaselineKind kind, Dictionary<RelativePath, IndexEntry> index, List<NonVanillaEntry> nonVanilla, CarriedRows carry)
     {
         var candidates = new List<Candidate>();
         var entries = 0;
@@ -339,7 +343,13 @@ internal sealed class LocalVanillaBaseline
                     if (kind == LocalBaselineKind.DepotManifests) nonVanilla.Add(new NonVanillaEntry(path, NonVanillaReason.NotInManifest, size));
                     // Without full coverage a file no manifest lists may belong to an uncovered depot, unless a
                     // loadout is known to have put it there. Checked before the mod shape: the more specific reason.
-                    else if (request.DeployedByLoadout.Contains(gamePath)) nonVanilla.Add(new NonVanillaEntry(path, NonVanillaReason.DeployedByLoadout, size));
+                    // A path the previous baseline of this same build already described keeps that row: the bytes on
+                    // disk are the mod's, but the row says what the game shipped there, which a later removal restores.
+                    else if (request.DeployedByLoadout.Contains(gamePath))
+                    {
+                        if (carry.Claim(path)) _logger.LogTrace("Carrying the previous baseline's row for {Path}, which a loadout overwrote", path);
+                        else nonVanilla.Add(new NonVanillaEntry(path, NonVanillaReason.DeployedByLoadout, size));
+                    }
                     // With no manifest at all, the file name is the only evidence there is.
                     else if (kind == LocalBaselineKind.Snapshot && request.LooksLikeAMod(gamePath)) nonVanilla.Add(new NonVanillaEntry(path, NonVanillaReason.LooksLikeAMod, size));
                     else candidates.Add(new Candidate(file.FullName, path, null, size, file.LastWriteTimeUtc));
@@ -357,6 +367,40 @@ internal sealed class LocalVanillaBaseline
         }
 
         return (candidates, new WalkCounts(entries, files));
+    }
+
+    /// <summary>
+    /// The vanilla file rows of the previous baseline at the same path and for the same locator ids, which a rebuild for
+    /// the same build keeps for a file a loadout has overwritten since: the hash is of the game's own bytes, read before
+    /// the mod was deployed. Only paths no manifest lists can be carried (a listed one is classified against its manifest),
+    /// so manifest rows and attested rows never are. After an update the old rows describe other files, so nothing is carried.
+    /// </summary>
+    private sealed class CarriedRows
+    {
+        private readonly Dictionary<RelativePath, HashRelationId> _rows;
+
+        private CarriedRows(Dictionary<RelativePath, HashRelationId> rows) => _rows = rows;
+
+        /// <summary>The paths taken from the previous baseline, with the hash row each keeps.</summary>
+        public Dictionary<RelativePath, HashRelationId> Claimed { get; } = new();
+
+        public bool Claim(RelativePath path)
+        {
+            if (!_rows.TryGetValue(path, out var hashId)) return false;
+            Claimed[path] = hashId;
+            return true;
+        }
+
+        public static CarriedRows Of(BaselineRequest request, IDb db)
+        {
+            var rows = new Dictionary<RelativePath, HashRelationId>();
+            if (LocalBaselineCoordinator.FindBaseline(db, request.Store, request.GamePath, request.LocatorIds) is { } previous)
+            {
+                foreach (var file in previous.Files) rows.TryAdd(file.Path, file.HashId);
+            }
+
+            return new CarriedRows(rows);
+        }
     }
 
     /// <summary>
