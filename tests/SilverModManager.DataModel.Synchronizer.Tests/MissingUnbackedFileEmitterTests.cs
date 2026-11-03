@@ -44,21 +44,6 @@ public class MissingUnbackedFileEmitterTests(ITestOutputHelper helper) : AStubbe
         return await emitter.Diagnose(Loadout.Load(Connection.Db, loadout.LoadoutId), CancellationToken.None).ToListAsync();
     }
 
-    /// <summary>Moves the adopted file's row out of the Overrides into a mod group, where a deletion is not the player's to take in.</summary>
-    private async Task MoveIntoAMod(Loadout.ReadOnly loadout, string fileName)
-    {
-        var row = LoadoutItem.FindByLoadout(Connection.Db, loadout).OfTypeLoadoutItemWithTargetPath()
-            .Single(f => ((GamePath)f.TargetPath).Path.FileName.ToString() == fileName);
-        using var tx = Connection.BeginTransaction();
-        var group = new LoadoutItemGroup.New(tx, out var groupId)
-        {
-            IsGroup = true,
-            LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = "Some mod", LoadoutId = loadout.Id },
-        };
-        tx.Add(row.Id, LoadoutItem.Parent, groupId);
-        await tx.Commit();
-    }
-
     [Fact]
     public async Task ModFileWithoutACopyDeletedOutsideTheApp_GetsADiagnosticNamingIt()
     {

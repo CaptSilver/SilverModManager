@@ -972,6 +972,33 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
     }
 
     [Fact]
+    public async Task AdoptedFileDeletedOnDisk_WithAModProvidingThePathUnderneath_PlansTheModsCopyOnTheNextSync()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        var loadout = await CreateLoadout();
+        var path = new GamePath(LocationId.Game, "ext0.bin");
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, [(RelativePath)"ext0.bin"], loadout.LoadoutId, "Mod under the Overrides");
+            await tx.Commit();
+        }
+
+        (GameDir / "ext0.bin").Delete();
+        var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
+        Synchronizer.ProcessSyncTree(tree);
+        tree[path].ProvidedByOverrides.Should().BeTrue("the Overrides row is the winner");
+        tree[path].Actions.Should().Be(Actions.AddReifiedDelete, "the Overrides row is dropped, whatever lies under it");
+
+        loadout = await Synchronizer.Synchronize(Refresh(loadout));
+
+        var next = await Synchronizer.BuildSyncTree(Refresh(loadout));
+        Synchronizer.ProcessSyncTree(next);
+        next[path].ProvidedByOverrides.Should().BeFalse();
+        next[path].Actions.Should().Be(Actions.ExtractToDisk, "the mod's copy is deployed again");
+    }
+
+    [Fact]
     public async Task ModFileWithoutArchive_DeletedOnDisk_IsStillReportedAsUnextractable()
     {
         WriteExternalFiles(4, 4096);
@@ -979,18 +1006,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         var loadout = await CreateLoadout();
         var path = new GamePath(LocationId.Game, "ext0.bin");
 
-        // Move the unbacked row out of the Overrides group, which makes it a mod's file as far as the sync can tell.
-        var row = LoadoutItem.FindByLoadout(Connection.Db, loadout).OfTypeLoadoutItemWithTargetPath().Single(f => (GamePath)f.TargetPath == path);
-        using (var tx = Connection.BeginTransaction())
-        {
-            var group = new LoadoutItemGroup.New(tx, out var groupId)
-            {
-                IsGroup = true,
-                LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = "Some mod", LoadoutId = loadout.Id },
-            };
-            tx.Add(row.Id, LoadoutItem.Parent, groupId);
-            await tx.Commit();
-        }
+        await MoveIntoAMod(loadout, "ext0.bin");
 
         (GameDir / "ext0.bin").Delete();
         var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));

@@ -10,9 +10,9 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.DataModel.Diagnostics;
 
 /// <summary>
-/// Warns about a loadout file the app holds no copy of and that is no longer in the game folder. Files kept where
-/// they were (over the backup cap) end up like this when something outside the app deletes them, such as a mod
-/// manager purging its hardlinks; the synchronizer only logs that on every sync.
+/// Warns about a loadout file the app holds no copy of and that is no longer in the game folder. A sync drops such
+/// a file from the Overrides, so this now names a mod's file with no stored copy (the sync can only warn about
+/// it), or an Overrides file that was deleted since the last sync.
 /// </summary>
 public class MissingUnbackedFileEmitter(IFileStore fileStore) : ILoadoutDiagnosticEmitter
 {

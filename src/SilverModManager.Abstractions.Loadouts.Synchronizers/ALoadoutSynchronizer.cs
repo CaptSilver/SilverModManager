@@ -240,10 +240,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <summary>
-    /// Flags the nodes whose only provider is a row of the Overrides group and whose file is gone from disk after
+    /// Flags the nodes whose winning loadout row is in the Overrides group and whose file is gone from disk after
     /// an earlier apply. Those are the player's deletions to take in: the row came from the game folder (or an
     /// edit), so it is not a mod to re-deploy, and its bytes may never have been copied into the store (adopted in
-    /// place), which leaves nothing to restore it from.
+    /// place), which leaves nothing to restore it from. A mod that provides the same path underneath is not
+    /// consulted: the Overrides row is dropped and the mod's copy comes back on the next sync.
     /// </summary>
     private static void MarkMissingOverridesFiles(Dictionary<GamePath, SyncNode> tree, Loadout.ReadOnly loadout)
     {
@@ -1957,7 +1958,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // A sync would put these on its delete path too, but it would also deploy the loadout. Needing a previous
         // entry keeps a file that was never on disk, such as one still waiting to be deployed, in the list.
         var gone = BuildSyncTreeFromIndex(loadout, metadata).Values
-            .Where(node => !node.HaveDisk && node.HavePrevious && node.Loadout.HaveEntityId && IsInGroup(loadout.Db, node.Loadout.EntityId, overrides.Id))
+            .Where(node => node.ProvidedByOverrides)
             .Select(node => node.Loadout.EntityId)
             .ToArray();
         if (gone.Length == 0) return;
