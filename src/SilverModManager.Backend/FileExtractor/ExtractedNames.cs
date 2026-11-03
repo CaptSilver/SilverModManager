@@ -35,7 +35,7 @@ internal static partial class ExtractedNames
     /// </summary>
     internal static void Repair(string root, IReadOnlyList<Kept> kept, ILogger logger, string archive)
     {
-        var entries = Distinct(kept);
+        var entries = Distinct(RestoreNewlines(root, kept));
         var prepared = entries.Select(entry => Prepare(entry)).Where(p => p.Segments.Length > 0).ToArray();
 
         var winners = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -85,6 +85,71 @@ internal static partial class ExtractedNames
 
         if (report.Count > 0) logger.LogWarning("Renamed {Count} entry name(s) in archive `{Archive}` to names that work on every platform: {Entries}", report.Count, archive, string.Join("; ", report));
     }
+
+    /// <summary>
+    /// 7z's listing prints a newline in a name as an underscore (no other control byte is rewritten), while
+    /// extraction writes the real newline to disk. A listed name with an underscore that is not on disk is
+    /// matched against the folder's entries with the newline put back, so the rename below finds the file.
+    /// </summary>
+    private static List<Kept> RestoreNewlines(string root, IReadOnlyList<Kept> kept)
+    {
+        var strict = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+        var restored = new List<Kept>(kept.Count);
+        foreach (var entry in kept)
+        {
+            restored.Add(entry.Raw.Contains((byte)'_') ? entry with { Raw = RestoreNewlines(root, entry.Raw, strict) } : entry);
+        }
+
+        return restored;
+    }
+
+    private static byte[] RestoreNewlines(string root, byte[] raw, UTF8Encoding strict)
+    {
+        var segments = SplitPlacedBy7z(raw);
+        var directory = root;
+        var changed = false;
+        for (var i = 0; i < segments.Length; i++)
+        {
+            string name;
+            try
+            {
+                name = strict.GetString(segments[i]);
+            }
+            catch (DecoderFallbackException)
+            {
+                // A name that is not UTF-8 can't be walked with .NET; the rename below copes with it as it is.
+                break;
+            }
+
+            var path = Path.Combine(directory, name);
+            if (name.Contains('_') && !Present(path))
+            {
+                var candidates = Directory.Exists(directory)
+                    ? Directory.EnumerateFileSystemEntries(directory).Select(Path.GetFileName).Where(n => n is not null && n != name && n.Replace('\n', '_') == name).ToArray()
+                    : [];
+                if (candidates.Length == 1 && candidates[0] is { } real)
+                {
+                    segments[i] = Encoding.UTF8.GetBytes(real);
+                    path = Path.Combine(directory, real);
+                    changed = true;
+                }
+            }
+
+            directory = path;
+        }
+
+        if (!changed) return raw;
+        var joined = new List<byte>();
+        foreach (var segment in segments)
+        {
+            if (joined.Count > 0) joined.Add((byte)'/');
+            joined.AddRange(segment);
+        }
+
+        return [.. joined];
+    }
+
+    private static bool Present(string path) => Path.Exists(path) || new FileInfo(path).LinkTarget is not null;
 
     private sealed record Prepared(Kept Entry, byte[][] RawSegments, string[] Segments, int FirstChange)
     {

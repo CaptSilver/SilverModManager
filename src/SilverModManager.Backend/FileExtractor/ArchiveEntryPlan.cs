@@ -18,7 +18,9 @@ internal sealed class ArchiveEntryPlan
     /// <param name="HardLinkTarget">The archive path a hard link points at.</param>
     /// <param name="IsSymlink">True for a symbolic link, whether or not the listing shows its target.</param>
     /// <param name="RawName">The name as 7z lists it, byte for byte; the UTF-8 of <paramref name="Name"/> when not given.</param>
-    internal readonly record struct Entry(string Name, bool IsDirectory, string? SymlinkTarget = null, string? HardLinkTarget = null, bool IsSymlink = false, byte[]? RawName = null)
+    /// <param name="Size">The uncompressed size in bytes, when the listing gives one.</param>
+    /// <param name="IsExecutable">True when the stored Unix mode has the owner execute bit.</param>
+    internal readonly record struct Entry(string Name, bool IsDirectory, string? SymlinkTarget = null, string? HardLinkTarget = null, bool IsSymlink = false, byte[]? RawName = null, long? Size = null, bool IsExecutable = false)
     {
         internal byte[] Raw => RawName ?? Encoding.UTF8.GetBytes(Name);
     }
@@ -72,7 +74,19 @@ internal sealed class ArchiveEntryPlan
         string.Join('/', rawName.Split('/').Where(segment => segment is not ("" or "." or "..")));
 
     private readonly byte[][] _raws;
+    private readonly long?[] _sizes;
+    private readonly bool[] _executable;
+    private readonly Dictionary<string, int> _lastWithName = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _nameCounts;
+
+    /// <summary>The number of entries the listing gave.</summary>
+    internal int Count => _raws.Length;
+
+    /// <summary>The size the listing gives an entry, if any. Of a name stored more than once, the last entry's.</summary>
+    internal long? Size(int index) => _sizes[_lastWithName[Key(_raws[index])]];
+
+    /// <summary>Whether the archive stores an entry with the owner execute bit. Of a name stored more than once, the last entry's.</summary>
+    internal bool IsExecutable(int index) => _executable[_lastWithName[Key(_raws[index])]];
 
     /// <summary>The stored name of an entry, byte for byte.</summary>
     internal byte[] RawName(int index) => _raws[index];
@@ -102,6 +116,9 @@ internal sealed class ArchiveEntryPlan
     internal ArchiveEntryPlan(IReadOnlyList<Entry> entries)
     {
         _raws = entries.Select(e => e.Raw).ToArray();
+        _sizes = entries.Select(e => e.Size).ToArray();
+        _executable = entries.Select(e => e.IsExecutable).ToArray();
+        for (var i = 0; i < _raws.Length; i++) _lastWithName[Key(_raws[i])] = i;
         _nameCounts = _raws.GroupBy(Key).ToDictionary(g => g.Key, g => g.Count());
         Rewrites = new ArchiveEntryPath.Rewrites();
         var cleaned = entries.Select(e => ArchiveEntryPath.Clean(e.Name)).ToArray();

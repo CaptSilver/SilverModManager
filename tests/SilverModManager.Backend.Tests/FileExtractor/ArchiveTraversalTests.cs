@@ -23,7 +23,7 @@ public class ArchiveTraversalTests : AFileExtractorTest
 {
     public enum Extractor { SevenZip }
 
-    private sealed record Entry(string Name, string Content = "payload", bool UnixSymlink = false);
+    private sealed record Entry(string Name, string Content = "payload", bool UnixSymlink = false, bool Executable = false);
 
     private sealed record Outcome(Dictionary<string, string> Files, string[] Folders, string[] Outside, List<string> Warnings);
 
@@ -48,6 +48,12 @@ public class ArchiveTraversalTests : AFileExtractorTest
             // Unix mode 120777 in the high half of the external attributes marks a symlink whose data is the target.
             zipEntry.HostSystem = (int)HostSystemID.Unix;
             zipEntry.ExternalFileAttributes = unchecked((int)0xA1FF0000);
+        }
+
+        if (entry.Executable)
+        {
+            zipEntry.HostSystem = (int)HostSystemID.Unix;
+            zipEntry.ExternalFileAttributes = 0x81ED << 16;
         }
 
         await output.PutNextEntryAsync(zipEntry, TestContext.Current.CancellationToken);
@@ -487,6 +493,15 @@ public class ArchiveTraversalTests : AFileExtractorTest
 
     // The target is read from the entry's data, and only the first MaxLinkTargetBytes of it are kept.
     [Fact]
+    public async Task AZipSymlinkWhoseTargetIsOneByteOverTheLimitIsDropped()
+    {
+        var outcome = await ExtractItems(LinkArchive.SevenZipZip, new Item("long", new string('a', 4097)), new Item("ok.txt"));
+
+        outcome.Files.Keys.Should().BeEquivalentTo("ok.txt");
+        outcome.Warnings.Should().Contain(w => w.Contains("`long`") && w.Contains("too long"));
+    }
+
+    [Fact]
     public async Task AZipSymlinkWhoseTargetIsLongerThanAnyPathIsDroppedWithAWarning()
     {
         var outcome = await ExtractItems(LinkArchive.SevenZipZip, new Item("long", new string('a', 5000)), new Item("ok.txt"));
@@ -496,14 +511,50 @@ public class ArchiveTraversalTests : AFileExtractorTest
     }
 
     // Writing one entry to a stream writes every entry of that name, so a repeated name that has to be
-    // extracted on its own is left out loudly instead of coming out as the entries' data run together.
+    // extracted on its own goes through a scratch folder, where 7z overwrites in archive order.
     [Fact]
-    public async Task AMovedNameThatTheArchiveStoresTwiceIsDroppedWithAWarning()
+    public async Task AMovedNameThatTheArchiveStoresTwiceKeepsTheLastCopy()
     {
         var outcome = await ExtractZip(Extractor.SevenZip, new Entry("sub/../x.txt", "first"), new Entry("sub/../x.txt", "second"), new Entry("ok.txt"));
 
-        outcome.Files.Keys.Should().BeEquivalentTo("ok.txt");
-        outcome.Warnings.Should().Contain(w => w.Contains("more than once"));
+        outcome.Files.Should().Equal(new Dictionary<string, string> { ["x.txt"] = "second", ["ok.txt"] = "payload" });
+    }
+
+    // 7z prints a newline in a name as an underscore in its listing, so the listed name is not the stored one.
+    [Fact]
+    public async Task ANewlineInAFileNameBecomesAnUnderscore()
+    {
+        var outcome = await ExtractZip(Extractor.SevenZip, new Entry("a\nb.txt", "nl"), new Entry("d\ne/f.txt", "in"), new Entry("ok.txt"));
+
+        outcome.Files.Should().Equal(new Dictionary<string, string> { ["a_b.txt"] = "nl", ["d_e/f.txt"] = "in", ["ok.txt"] = "payload" });
+    }
+
+    [Fact]
+    public async Task ANewlineInAMovedNameKeepsTheEntrysContent()
+    {
+        var outcome = await ExtractZip(Extractor.SevenZip, new Entry("sub/../m\nv.txt", "moved"), new Entry("ok.txt"));
+
+        outcome.Files.Should().Equal(new Dictionary<string, string> { ["m_v.txt"] = "moved", ["ok.txt"] = "payload" });
+    }
+
+    [Fact]
+    public async Task AMovedEntryStoredExecutableStaysExecutable()
+    {
+        await using var container = TemporaryFileManager.CreateFolder();
+        var archive = container.Path.Combine("Traversal Mod-1-0.zip");
+        await using (var stream = archive.Create())
+        await using (var output = new ZipOutputStream(stream))
+        {
+            await WriteEntry(output, new Entry("sub/../tool.sh", "#!/bin/sh", Executable: true));
+            await WriteEntry(output, new Entry("sub/../data.txt", "d"));
+        }
+
+        var outcome = await Extract(container.Path, archive, Extractor.SevenZip);
+
+        var root = container.Path.Combine("a/b/extracted").ToString();
+        File.GetUnixFileMode(Path.Combine(root, "tool.sh")).Should().HaveFlag(UnixFileMode.UserExecute);
+        File.GetUnixFileMode(Path.Combine(root, "data.txt")).Should().NotHaveFlag(UnixFileMode.UserExecute);
+        outcome.Files.Keys.Should().BeEquivalentTo("tool.sh", "data.txt");
     }
 
     [Theory]

@@ -196,8 +196,19 @@ public class SevenZipExtractor : IExtractor
         }
         else
         {
-            await using var exclude = await CreateNameArguments(plan.ExcludedIndices.Select(plan.RawName), 'x', cancellationToken);
-            await RunExtract(source, archiveName, destination, ["-spd", .. exclude.Arguments], cancellationToken);
+            // The listing shows a newline in a name as an underscore, which a literal exclusion would not
+            // match, so such an entry would be extracted in place as well as moved. The names then go as
+            // patterns where an underscore matches any character.
+            var excludedNames = plan.ExcludedIndices.Select(plan.RawName).ToList();
+            var wildcard = excludedNames.Any(MayHideNewline);
+            if (wildcard && ClashingEntry(plan, excludedNames) is { } clash)
+            {
+                _logger.LogWarning("Archive `{Archive}` stores `{Entry}`, which an excluded name with an underscore would also match; the excluded names are matched literally, so a newline in one of them is not recognised", archiveName, clash);
+                wildcard = false;
+            }
+
+            await using var exclude = await CreateNameArguments(excludedNames, 'x', wildcard, cancellationToken);
+            await RunExtract(source, archiveName, destination, [.. wildcard ? Array.Empty<string>() : ["-spd"], .. exclude.Arguments], cancellationToken);
         }
 
         // Before anything lists the folder with .NET, which cannot see a name that is not valid UTF-8.
@@ -216,12 +227,6 @@ public class SevenZipExtractor : IExtractor
         {
             var (name, cleaned) = plan.Moved[m];
             var index = plan.MovedIndices[m];
-            if (plan.IsRepeated(index))
-            {
-                _logger.LogWarning("Dropping `{Entry}` from archive `{Archive}`: the archive stores that name more than once and 7z cannot extract one of them", name, archiveName);
-                continue;
-            }
-
             var target = Path.GetFullPath(Path.Combine(root, cleaned));
             if (!target.StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar, StringComparison.Ordinal))
             {
@@ -229,11 +234,11 @@ public class SevenZipExtractor : IExtractor
             }
 
             Directory.CreateDirectory(Path.GetDirectoryName(target) ?? throw new InvalidOperationException($"`{target}` has no parent folder"));
-            await using (var output = File.Create(target))
-            {
-                var errors = await ExtractEntryTo(source, plan, index, output, cancellationToken);
-                if (errors is not null) throw new FileExtractionException($"7z failed extracting `{name}` from `{archiveName}`: {errors}");
-            }
+            var errors = await ExtractEntryToFile(source, plan, index, target, cancellationToken);
+            if (errors is not null) throw new FileExtractionException($"7z failed extracting `{name}` from `{archiveName}`: {errors}");
+
+            // The stream or the scratch copy is not given the stored mode, so the execute bit is set from the listing.
+            File.SetUnixFileMode(target, plan.IsExecutable(index) ? Executable : RegularFile);
         }
 
         var placeable = new List<(string Name, string Path, string Target)>();
@@ -254,16 +259,26 @@ public class SevenZipExtractor : IExtractor
 
     /// <summary>
     /// The target a link entry stores as its data (.7z and .zip list only the mode). Null when the entry
-    /// cannot be read, is stored more than once, or holds more than <see cref="MaxLinkTargetBytes"/> bytes.
+    /// cannot be read or holds more than <see cref="MaxLinkTargetBytes"/> bytes. Of a name stored more than
+    /// once, the last entry counts.
     /// </summary>
     private async ValueTask<string?> ReadLinkTarget(AbsolutePath source, ArchiveEntryPlan plan, int index, CancellationToken cancellationToken)
     {
-        if (plan.IsRepeated(index)) return null;
+        if (plan.IsRepeated(index))
+        {
+            await using var scratch = _temporaryFileManager.CreateFile(ext: new Extension(".link"));
+            var path = scratch.Path.ToNativeSeparators(_osInformation);
+            if (await ExtractRepeatedEntryTo(source, plan, index, path, cancellationToken) is not null) return null;
+            var data = new byte[MaxLinkTargetBytes + 1];
+            await using var stream = File.OpenRead(path);
+            var read = await stream.ReadAtLeastAsync(data, data.Length, throwOnEndOfStream: false, cancellationToken);
+            return read > MaxLinkTargetBytes ? null : Encoding.UTF8.GetString(data.AsSpan(0, read)).TrimEnd('\0');
+        }
 
         // One byte more than the longest target tells "exactly that long" from "longer".
         await using var buffer = new CappedStream(MaxLinkTargetBytes + 1);
-        var errors = await ExtractEntryTo(source, plan, index, buffer, cancellationToken);
-        if (errors is not null || buffer.Overflowed) return null;
+        var errors = await ExtractEntryChecked(source, plan, index, buffer, cancellationToken);
+        if (errors is not null || buffer.Overflowed || buffer.WrittenSpan.Length > MaxLinkTargetBytes) return null;
         return Encoding.UTF8.GetString(buffer.WrittenSpan).TrimEnd('\0');
     }
 
@@ -303,26 +318,117 @@ public class SevenZipExtractor : IExtractor
         public override void Flush() { }
         public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void SetLength(long value)
+        {
+            if (value != 0) throw new NotSupportedException();
+            _length = 0;
+            Overflowed = false;
+        }
     }
 
     /// <summary>
-    /// Streams the data of one entry into <paramref name="output"/> (<c>x -so</c>), leaving out what is stored
-    /// below it. Returns null on success and 7z's error text otherwise.
+    /// Writes one entry to <paramref name="target"/>. A name stored once is streamed (<c>x -so</c>); a name
+    /// stored more than once is extracted into a scratch folder, where 7z overwrites in archive order, so the
+    /// last copy is the one kept. Returns null on success and the reason otherwise.
     /// </summary>
-    private async ValueTask<string?> ExtractEntryTo(AbsolutePath source, ArchiveEntryPlan plan, int index, Stream output, CancellationToken cancellationToken)
+    private async ValueTask<string?> ExtractEntryToFile(AbsolutePath source, ArchiveEntryPlan plan, int index, string target, CancellationToken cancellationToken)
     {
-        await using var include = await CreateNameArguments([plan.RawName(index)], 'i', cancellationToken);
-        await using var exclude = await CreateNameArguments(plan.IndicesBelow(index).Select(plan.RawName), 'x', cancellationToken);
+        if (plan.IsRepeated(index)) return await ExtractRepeatedEntryTo(source, plan, index, target, cancellationToken);
+
+        await using var output = File.Create(target);
+        return await ExtractEntryChecked(source, plan, index, output, cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams one entry and checks it against the listing. The listing prints a newline in a name as an
+    /// underscore, so a name that selects nothing is tried again with every underscore as a wildcard. What
+    /// 7z writes must be as long as the listed size: a selection that matches nothing still exits 0, and one
+    /// that matches several entries writes them one after the other.
+    /// </summary>
+    private async ValueTask<string?> ExtractEntryChecked(AbsolutePath source, ArchiveEntryPlan plan, int index, Stream output, CancellationToken cancellationToken)
+    {
+        var name = Encoding.UTF8.GetString(plan.RawName(index));
+        for (var wildcard = false; ; wildcard = true)
+        {
+            var errors = await ExtractEntryTo(source, plan, index, output, wildcard, cancellationToken);
+            if (errors is not null) return errors;
+
+            await output.FlushAsync(cancellationToken);
+            if (plan.Size(index) is not { } size || output.Length == size || output is CappedStream { Overflowed: true }) return null;
+            if (wildcard || !MayHideNewline(plan.RawName(index))) return $"7z wrote {output.Length} bytes for `{name}` but the listing gives {size}";
+            output.SetLength(0);
+        }
+    }
+
+    private async ValueTask<string?> ExtractRepeatedEntryTo(AbsolutePath source, ArchiveEntryPlan plan, int index, string target, CancellationToken cancellationToken)
+    {
+        var name = Encoding.UTF8.GetString(plan.RawName(index));
+        await using var scratch = _temporaryFileManager.CreateFolder();
+        var folder = scratch.Path.ToNativeSeparators(_osInformation);
+        for (var wildcard = false; ; wildcard = true)
+        {
+            foreach (var leftover in Directory.EnumerateFileSystemEntries(folder).ToArray())
+            {
+                if (Directory.Exists(leftover)) Directory.Delete(leftover, recursive: true);
+                else File.Delete(leftover);
+            }
+
+            var errors = await RunEntrySelection(source, plan, index, wildcard, ["-o" + folder], cancellationToken);
+            if (errors is not null) return errors;
+
+            var files = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).ToArray();
+            if (files.Length == 1 && (plan.Size(index) is not { } size || new FileInfo(files[0]).Length == size))
+            {
+                File.Move(files[0], target, overwrite: true);
+                return null;
+            }
+
+            if (wildcard || !MayHideNewline(plan.RawName(index))) return files.Length == 1 ? $"7z wrote a file of the wrong size for `{name}`" : $"7z extracted {files.Length} files for `{name}`, expected one";
+        }
+    }
+
+    /// <summary>A stored name that is not excluded but matches the pattern of an excluded one, if there is one.</summary>
+    private static string? ClashingEntry(ArchiveEntryPlan plan, List<byte[]> excluded)
+    {
+        var patterns = excluded.Select(WildcardPattern).Distinct().ToList();
+        for (var i = 0; i < plan.Count; i++)
+        {
+            var raw = plan.RawName(i);
+            if (excluded.Any(e => e.AsSpan().SequenceEqual(raw))) continue;
+            var name = Encoding.UTF8.GetString(raw);
+            if (patterns.Any(p => p.Length == name.Length && p.Zip(name).All(pair => pair.First == '?' || pair.First == pair.Second))) return name;
+        }
+
+        return null;
+    }
+
+    private static string WildcardPattern(byte[] raw) => Encoding.UTF8.GetString(WildcardBytes(raw));
+
+    private static byte[] WildcardBytes(byte[] name) => name.Select(b => b is (byte)'_' or (byte)'*' or (byte)'?' ? (byte)'?' : b).ToArray();
+
+    private static bool MayHideNewline(byte[] raw) => raw.Contains((byte)'_');
+
+    private ValueTask<string?> ExtractEntryTo(AbsolutePath source, ArchiveEntryPlan plan, int index, Stream output, bool wildcard, CancellationToken cancellationToken) =>
+        RunEntrySelection(source, plan, index, wildcard, ["-so"], cancellationToken, output);
+
+    /// <summary>
+    /// Runs 7z on the one entry (<c>-i</c>), leaving out what is stored below it. With <paramref name="wildcard"/>
+    /// the names are patterns in which every underscore matches any character. Returns null on success and 7z's
+    /// error text otherwise.
+    /// </summary>
+    private async ValueTask<string?> RunEntrySelection(AbsolutePath source, ArchiveEntryPlan plan, int index, bool wildcard, string[] destination, CancellationToken cancellationToken, Stream? output = null)
+    {
+        await using var include = await CreateNameArguments([plan.RawName(index)], 'i', wildcard, cancellationToken);
+        await using var exclude = await CreateNameArguments(plan.IndicesBelow(index).Select(plan.RawName), 'x', wildcard, cancellationToken);
 
         var errors = new List<string>();
-        var command = SevenZip(["x", "-so", "-bso0", "-bsp0", "-y", "-spd", .. include.Arguments.Concat(exclude.Arguments).Distinct(), source.ToNativeSeparators(_osInformation)])
-            .WithStandardOutputPipe(PipeTarget.ToStream(output))
+        var command = SevenZip(["x", .. destination, "-bso0", "-bsp0", "-y", .. wildcard ? Array.Empty<string>() : ["-spd"], .. include.Arguments.Concat(exclude.Arguments).Distinct(), source.ToNativeSeparators(_osInformation)])
             .WithStandardErrorPipe(PipeTarget.ToDelegate(line =>
             {
                 if (!string.IsNullOrWhiteSpace(line)) errors.Add(line);
             }))
             .WithValidation(CommandResultValidation.None);
+        if (output is not null) command = command.WithStandardOutputPipe(PipeTarget.ToStream(output));
 
         var result = await _processRunner.RunAsync(command, logOutput: false, cancellationToken: cancellationToken);
         return result.ExitCode == 0 ? null : $"7z exited with code {result.ExitCode}: {string.Join(" | ", errors)}";
@@ -346,12 +452,17 @@ public class SevenZipExtractor : IExtractor
     /// goes on the command line instead, where it must be valid UTF-8. <c>-spd</c> (set by the caller)
     /// makes every name literal.
     /// </summary>
-    private async ValueTask<NameArguments> CreateNameArguments(IEnumerable<byte[]> names, char kind, CancellationToken cancellationToken)
+    private async ValueTask<NameArguments> CreateNameArguments(IEnumerable<byte[]> names, char kind, CancellationToken cancellationToken) =>
+        await CreateNameArguments(names, kind, wildcard: false, cancellationToken);
+
+    /// <param name="wildcard">Turn each name into a pattern where an underscore (what the listing shows for a newline) and any wildcard character match one character.</param>
+    private async ValueTask<NameArguments> CreateNameArguments(IEnumerable<byte[]> names, char kind, bool wildcard, CancellationToken cancellationToken)
     {
         var arguments = new List<string>();
         var listed = new List<byte>();
-        foreach (var name in names)
+        foreach (var stored in names)
         {
+            var name = wildcard ? WildcardBytes(stored) : stored;
             if (EntryNames.EndsInWhitespace(name))
             {
                 arguments.Add($"-{kind}!{Encoding.UTF8.GetString(name)}");
@@ -394,6 +505,8 @@ public class SevenZipExtractor : IExtractor
         byte[]? symlinkTarget = null;
         byte[]? hardLinkTarget = null;
         var isSymlink = false;
+        long? size = null;
+        var isExecutable = false;
 
         void Flush()
         {
@@ -403,7 +516,7 @@ public class SevenZipExtractor : IExtractor
                     EntryNames.Decode(name), isDirectory,
                     symlinkTarget is null ? null : EntryNames.Decode(symlinkTarget),
                     hardLinkTarget is null ? null : EntryNames.Decode(hardLinkTarget),
-                    isSymlink, name));
+                    isSymlink, name, size, isExecutable));
             }
 
             name = null;
@@ -411,15 +524,17 @@ public class SevenZipExtractor : IExtractor
             symlinkTarget = null;
             hardLinkTarget = null;
             isSymlink = false;
+            size = null;
+            isExecutable = false;
         }
 
         // tar prints the target and the mode; .7z, .zip (and presumably rar) print only the mode string, whose
         // first character is `l` for a symbolic link.
         static byte[]? NonEmpty(ReadOnlySpan<byte> value) => value.Length == 0 ? null : value.ToArray();
-        static bool IsLinkMode(ReadOnlySpan<byte> value)
+        static string? UnixMode(ReadOnlySpan<byte> value)
         {
             var mode = Encoding.UTF8.GetString(value).Split(' ', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
-            return mode is { Length: 10 } && mode[0] == 'l';
+            return mode is { Length: 10 } ? mode : null;
         }
 
         static bool TryField(ReadOnlySpan<byte> line, ReadOnlySpan<byte> prefix, out ReadOnlySpan<byte> value)
@@ -452,9 +567,15 @@ public class SevenZipExtractor : IExtractor
             {
                 hardLinkTarget = NonEmpty(value);
             }
+            else if (TryField(line, "Size = "u8, out value))
+            {
+                size = long.TryParse(Encoding.ASCII.GetString(value), NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) ? parsed : null;
+            }
             else if (TryField(line, "Mode = "u8, out value) || TryField(line, "Attributes = "u8, out value))
             {
-                isSymlink |= IsLinkMode(value);
+                var mode = UnixMode(value);
+                isSymlink |= mode is not null && mode[0] == 'l';
+                isExecutable |= mode is not null && mode[3] is 'x' or 's';
             }
         }
 
