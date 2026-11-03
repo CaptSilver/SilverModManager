@@ -721,12 +721,8 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
     {
         var toggleableItems = ids
             .Select(loadoutItemId => LoadoutItem.Load(connection.Db, loadoutItemId))
-            // Exclude collection required items and game-installed items, which follow their group's switch
-            .Where(item => !IsToggleLocked(item.Id, connection))
-            // Exclude items that are part of a collection that is disabled (the game-installed group has no parent)
-            .Where(item => !(item.HasParent() && item.Parent.TryGetAsCollectionGroup(out var collectionGroup)
-                             && collectionGroup.AsLoadoutItemGroup().AsLoadoutItem().IsDisabled)
-            )
+            // Items the service would skip (required collection items, game-installed content, items of a switched-off collection)
+            .Where(item => LoadoutItemToggle.SkipReason(item) is null)
             .ToArray();
 
         if (toggleableItems.Length == 0) return;

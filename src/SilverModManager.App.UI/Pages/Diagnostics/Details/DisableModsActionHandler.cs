@@ -37,7 +37,7 @@ public sealed class DisableModsActionHandler(IServiceProvider serviceProvider, I
         var connection = serviceProvider.GetRequiredService<IConnection>();
 
         var present = ids.Select(id => LoadoutItem.Load(connection.Db, id)).Where(item => item.IsValid() && !item.IsDisabled).ToArray();
-        var left = present.Where(LoadoutDataProviderHelper.IsToggleLocked).ToArray();
+        var left = present.Where(item => LoadoutItemToggle.SkipReason(item) is not null).ToArray();
         var disabling = present.Except(left).ToArray();
 
         if (disabling.Length == 0)
@@ -49,8 +49,14 @@ public sealed class DisableModsActionHandler(IServiceProvider serviceProvider, I
 
         if (!await Confirm(ConfirmationText(disabling.Select(m => m.Name).ToArray(), left.Select(m => m.Name).ToArray()))) return;
 
-        await serviceProvider.GetRequiredService<ILoadoutManager>()
+        var result = await serviceProvider.GetRequiredService<ILoadoutManager>()
             .SetGroupsEnabled(loadoutId, disabling.Select(mod => mod.LoadoutItemId).ToArray(), enabled: false);
+
+        if (result.Skipped.Count > 0)
+        {
+            var skippedNames = result.Skipped.Select(s => disabling.Where(m => m.LoadoutItemId == s.Id).Select(m => m.Name).FirstOrDefault() ?? s.Id.ToString()).ToArray();
+            await MessageBoxOkViewModel.Show(serviceProvider, "Some mods stayed on", ConfirmationText([], skippedNames));
+        }
 
         await diagnosticManager.RefreshAsync(loadoutId);
     }
