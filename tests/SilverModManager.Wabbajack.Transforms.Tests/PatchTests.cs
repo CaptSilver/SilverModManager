@@ -1,3 +1,4 @@
+using FluentAssertions;
 using System.Security.Cryptography;
 using SilverModManager.Wabbajack.Transforms;
 using Octodiff.Core;
@@ -54,6 +55,77 @@ public class PatchTests
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
         public override void SetLength(long value) => throw new NotSupportedException();
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    /// <summary>Reports which files sit in a folder at the moment its bytes are read, which is while a spool for it exists.</summary>
+    private sealed class WatchingStream(Stream inner, string folder, List<string> seen) : Stream
+    {
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            seen.AddRange(Directory.GetFiles(folder));
+            return inner.Read(buffer, offset, count);
+        }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    [Fact]
+    public async Task Apply_SpoolsAForwardOnlyBasisToTheFolderItIsGiven()
+    {
+        var basis = Random(4096, 7);
+        var target = Edit(basis);
+        var delta = BuildDelta(basis, target);
+        var folder = Directory.CreateTempSubdirectory("spool-test-");
+        try
+        {
+            var seen = new List<string>();
+            var output = new MemoryStream();
+
+            await OctodiffPatch.Apply(new WatchingStream(new MemoryStream(basis), folder.FullName, seen), new MemoryStream(delta), output, CancellationToken.None, folder.FullName);
+
+            seen.Should().NotBeEmpty("the basis was copied to a file in the folder before it was read back");
+            seen.Should().OnlyContain(path => Path.GetDirectoryName(path) == folder.FullName);
+            output.ToArray().Should().Equal(target);
+            folder.GetFiles().Should().BeEmpty("the spool is deleted when the patch is done");
+        }
+        finally
+        {
+            folder.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task MergedPatch_SpoolsTheConcatenationToTheFolderItIsGiven()
+    {
+        var sources = new[] { Random(3000, 3), Random(2000, 4) };
+        var joined = sources.SelectMany(s => s).ToArray();
+        var target = Edit(joined);
+        var delta = BuildDelta(joined, target);
+        var folder = Directory.CreateTempSubdirectory("spool-test-");
+        try
+        {
+            var seen = new List<string>();
+            var output = new MemoryStream();
+            // The delta is the forward-only stream here: it is read while the concatenation spool is still open.
+            var watched = new WatchingStream(new MemoryStream(delta), folder.FullName, seen);
+
+            await MergedPatch.Apply(sources.Select(s => (Stream)new MemoryStream(s)).ToList(), watched, output, CancellationToken.None, folder.FullName);
+
+            seen.Should().NotBeEmpty();
+            output.ToArray().Should().Equal(target);
+            folder.GetFiles().Should().BeEmpty();
+        }
+        finally
+        {
+            folder.Delete(recursive: true);
+        }
     }
 
     [Theory]

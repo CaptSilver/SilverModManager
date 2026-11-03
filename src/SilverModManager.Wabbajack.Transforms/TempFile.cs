@@ -10,18 +10,19 @@ internal sealed class TempFile : IDisposable
 
     public FileStream Stream { get; }
 
-    private TempFile()
+    private TempFile(string directory)
     {
-        _path = Path.Combine(Path.GetTempPath(), $"silvermod-patch-{Guid.NewGuid():N}.tmp");
+        _path = Path.Combine(directory, $"silvermod-patch-{Guid.NewGuid():N}.tmp");
         Stream = new FileStream(_path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 81920, FileOptions.DeleteOnClose);
     }
 
     /// <summary>
-    /// Copies <paramref name="source"/> to a new temp file and leaves the file positioned at the start.
+    /// Copies <paramref name="source"/> to a new file in <paramref name="directory"/> and leaves the file positioned at the start.
+    /// The directory is the caller's to choose: bases run to gigabytes, and the system temp folder is often a RAM disk.
     /// </summary>
-    public static async Task<TempFile> CopyOf(Stream source, CancellationToken token)
+    public static async Task<TempFile> CopyOf(Stream source, string directory, CancellationToken token)
     {
-        var file = new TempFile();
+        var file = new TempFile(directory);
         try
         {
             await source.CopyToAsync(file.Stream, token);
@@ -36,11 +37,11 @@ internal sealed class TempFile : IDisposable
     }
 
     /// <summary>
-    /// Copies each source in order into one new temp file, positioned at the start.
+    /// Copies each source in order into one new file in <paramref name="directory"/>, positioned at the start.
     /// </summary>
-    public static async Task<TempFile> Concatenation(IEnumerable<Stream> sources, CancellationToken token)
+    public static async Task<TempFile> Concatenation(IEnumerable<Stream> sources, string directory, CancellationToken token)
     {
-        var file = new TempFile();
+        var file = new TempFile(directory);
         try
         {
             foreach (var source in sources)

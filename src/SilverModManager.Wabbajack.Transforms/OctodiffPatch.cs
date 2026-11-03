@@ -12,20 +12,22 @@ public static class OctodiffPatch
     /// <summary>
     /// Writes <paramref name="basis"/> patched with <paramref name="delta"/> to <paramref name="output"/>.
     /// Octodiff seeks in both the basis and the delta, so either one that cannot seek is spooled to a
-    /// temp file first.
+    /// temp file first, in <paramref name="spoolDirectory"/> (the system temp folder when null). Callers with a
+    /// configured scratch folder pass it: a basis can be gigabytes, and the system temp folder may be memory.
     /// <paramref name="output"/> must be readable and seekable: Octodiff re-reads it to check the result's hash.
     /// </summary>
     /// <exception cref="PatchException">The delta is corrupt or does not fit the basis.</exception>
-    public static async Task Apply(Stream basis, Stream delta, Stream output, CancellationToken token)
+    public static async Task Apply(Stream basis, Stream delta, Stream output, CancellationToken token, string? spoolDirectory = null)
     {
         token.ThrowIfCancellationRequested();
+        var spool = spoolDirectory ?? Path.GetTempPath();
 
         TempFile? basisSpool = null;
         TempFile? deltaSpool = null;
         try
         {
-            if (!basis.CanSeek) basisSpool = await TempFile.CopyOf(basis, token);
-            if (!delta.CanSeek) deltaSpool = await TempFile.CopyOf(delta, token);
+            if (!basis.CanSeek) basisSpool = await TempFile.CopyOf(basis, spool, token);
+            if (!delta.CanSeek) deltaSpool = await TempFile.CopyOf(delta, spool, token);
 
             token.ThrowIfCancellationRequested();
             ApplySeekable(basisSpool?.Stream ?? basis, deltaSpool?.Stream ?? delta, output, token);

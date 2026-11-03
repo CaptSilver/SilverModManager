@@ -13,8 +13,18 @@ namespace SilverModManager.Wabbajack.Install;
 /// </summary>
 public sealed class DirectiveTransforms(TemporaryFileManager temporaryFiles) : IDirectiveTransforms
 {
-    public Task Patch(Stream basis, Stream delta, Stream output, CancellationToken cancellationToken)
-        => OctodiffPatch.Apply(basis, delta, output, cancellationToken);
+    public async Task Patch(Stream basis, Stream delta, Stream output, CancellationToken cancellationToken)
+    {
+        if (basis.CanSeek && delta.CanSeek)
+        {
+            await OctodiffPatch.Apply(basis, delta, output, cancellationToken);
+            return;
+        }
+
+        // A stream that cannot seek is spooled to disk, in the app's temp folder rather than the system's, which is memory on many machines.
+        await using var spool = temporaryFiles.CreateFolder();
+        await OctodiffPatch.Apply(basis, delta, output, cancellationToken, spool.Path.ToString());
+    }
 
     public Task Recompress(Stream dds, ImageState target, Stream output, CancellationToken cancellationToken)
         => DdsRecompressor.Recompress(dds, ToTarget(target), output, cancellationToken);
