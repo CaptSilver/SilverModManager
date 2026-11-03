@@ -121,10 +121,8 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
     }
 
     /// <summary>
-    /// Plans from the current selection, asks, removes, refreshes. Plans at the click rather than on selection: the
-    /// database moves between a selection and a click, and the tree's nodes are rebuilt on refresh. Every failure,
-    /// a refusal included, goes to the error presenter; nothing is rethrown, since an exception out of a command
-    /// lands in a stream nobody listens to.
+    /// Removes the selected rows through <see cref="LoadoutFileRemovalFlow"/> and refreshes the tree. Plans at the click
+    /// rather than on selection: the tree's nodes are rebuilt on refresh, so a selection can be stale.
     /// </summary>
     private async Task RemoveSelectedAsync()
     {
@@ -133,26 +131,11 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
         if (paths.Length == 0) return;
 
         var request = new FileRemovalRequest(_loadoutId, paths);
-        var remover = _serviceProvider.GetRequiredService<ILoadoutFileRemover>();
+        if (!await LoadoutFileRemovalFlow.Run(_serviceProvider, WindowManager, request, Language.ApplyDiff_Remove_Activity)) return;
+
         try
         {
-            var plan = await Task.Run(() => remover.Plan(request));
-            if (!plan.HasAnythingToRemove(includeLocked: true))
-                throw new FileRemovalRefusedException(plan.RefusalMessage());
-
-            var dialog = DialogFactory.CreateStandardDialog(
-                Language.ApplyDiff_Remove_Title,
-                new StandardDialogParameters { Text = FileRemovalText.For(plan) },
-                [
-                    DialogStandardButtons.Cancel,
-                    new DialogButtonDefinition(Language.ApplyDiff_Remove_Confirm, ButtonDefinitionId.Accept, ButtonAction.Accept, ButtonStyling.Destructive),
-                ]);
-            var answer = await WindowManager.ShowDialog(dialog, DialogWindowType.Modal);
-            if (answer.ButtonId != ButtonDefinitionId.Accept) return;
-
-            await Task.Run(() => remover.Remove(request, includeLocked: true));
             await RefreshAsync(tree);
-            _serviceProvider.GetRequiredService<IWindowNotificationService>().ShowToast(Language.ApplyDiff_Remove_Toast);
         }
         catch (Exception e)
         {

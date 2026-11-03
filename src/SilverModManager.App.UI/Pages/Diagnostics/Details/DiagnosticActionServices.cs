@@ -26,6 +26,7 @@ public static class DiagnosticActionServices
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, DisableModsActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, SetUpPrefixActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, ReapplyCollectionOrderActionHandler>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, RemoveLoadoutFileActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, MoveHostFolderIntoGameActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, RestoreRegulationActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, VerifyGameFilesInSteamActionHandler>());

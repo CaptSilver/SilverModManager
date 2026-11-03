@@ -2070,6 +2070,12 @@ Use it for {0}?</value>
     <data name="ToastNotification_Collection_update_interrupted" xml:space="preserve">
         <value>Update to revision {0} stopped early: {1}</value>
     </data>
+    <data name="DiagnosticAction_RemoveLoadoutFile" xml:space="preserve">
+        <value>Delete</value>
+    </data>
+    <data name="ApplyDiff_Stray_Header" xml:space="preserve">
+        <value>Files in the game folder that no mod provides. Apply keeps them; delete them if nothing you installed needs them.</value>
+    </data>
     <data name="DiagnosticAction_ReapplyCollectionOrder" xml:space="preserve">
         <value>Apply the collection's load order again</value>
     </data>

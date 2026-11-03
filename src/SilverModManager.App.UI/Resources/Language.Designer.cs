@@ -6001,6 +6001,24 @@ namespace SilverModManager.App.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Delete.
+        /// </summary>
+        public static string DiagnosticAction_RemoveLoadoutFile {
+            get {
+                return ResourceManager.GetString("DiagnosticAction_RemoveLoadoutFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Files in the game folder that no mod provides. Apply keeps them; delete them if nothing you installed needs them.
+        /// </summary>
+        public static string ApplyDiff_Stray_Header {
+            get {
+                return ResourceManager.GetString("ApplyDiff_Stray_Header", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Apply the collection's load order again.
         /// </summary>
         public static string DiagnosticAction_ReapplyCollectionOrder {
