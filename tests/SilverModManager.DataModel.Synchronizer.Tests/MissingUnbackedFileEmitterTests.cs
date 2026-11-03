@@ -44,8 +44,39 @@ public class MissingUnbackedFileEmitterTests(ITestOutputHelper helper) : AStubbe
         return await emitter.Diagnose(Loadout.Load(Connection.Db, loadout.LoadoutId), CancellationToken.None).ToListAsync();
     }
 
+    /// <summary>Moves the adopted file's row out of the Overrides into a mod group, where a deletion is not the player's to take in.</summary>
+    private async Task MoveIntoAMod(Loadout.ReadOnly loadout, string fileName)
+    {
+        var row = LoadoutItem.FindByLoadout(Connection.Db, loadout).OfTypeLoadoutItemWithTargetPath()
+            .Single(f => ((GamePath)f.TargetPath).Path.FileName.ToString() == fileName);
+        using var tx = Connection.BeginTransaction();
+        var group = new LoadoutItemGroup.New(tx, out var groupId)
+        {
+            IsGroup = true,
+            LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = "Some mod", LoadoutId = loadout.Id },
+        };
+        tx.Add(row.Id, LoadoutItem.Parent, groupId);
+        await tx.Commit();
+    }
+
     [Fact]
-    public async Task AdoptedFileDeletedOutsideTheApp_GetsADiagnosticNamingIt()
+    public async Task ModFileWithoutACopyDeletedOutsideTheApp_GetsADiagnosticNamingIt()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        var loadout = await CreateLoadout();
+        await MoveIntoAMod(loadout, "ext0.bin");
+        File.Delete((GameDir / "ext0.bin").ToString());
+        await SynchronizerService.Synchronize(loadout.LoadoutId);
+
+        var diagnostics = await Diagnose(loadout);
+
+        diagnostics.Should().ContainSingle().Which.Title.Should().Contain("ext0.bin");
+        (GameDir / "ext1.bin").FileExists.Should().BeTrue("the other files are untouched");
+    }
+
+    [Fact]
+    public async Task AdoptedFileDeletedOutsideTheApp_IsDroppedFromTheOverridesAndNeedsNoDiagnostic()
     {
         WriteExternalFiles(4, 4096);
         _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
@@ -53,9 +84,8 @@ public class MissingUnbackedFileEmitterTests(ITestOutputHelper helper) : AStubbe
         File.Delete((GameDir / "ext0.bin").ToString());
         await SynchronizerService.Synchronize(loadout.LoadoutId);
 
-        var diagnostics = await Diagnose(loadout);
-
-        diagnostics.Should().ContainSingle().Which.Title.Should().Contain("ext0.bin");
+        (await Diagnose(loadout)).Should().BeEmpty("the sync took the deletion in");
+        (GameDir / "ext0.bin").FileExists.Should().BeFalse();
         (GameDir / "ext1.bin").FileExists.Should().BeTrue("the other files are untouched");
     }
 

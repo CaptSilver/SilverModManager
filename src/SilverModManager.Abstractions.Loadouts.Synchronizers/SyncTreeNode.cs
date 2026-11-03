@@ -133,6 +133,13 @@ public record struct SyncNode
     public Actions Actions { get; set; }
 
     /// <summary>
+    /// True when the loadout side of this node is a row of the Overrides group: a file adopted from the game
+    /// folder or kept from an edit, not a mod's. Only set for a node that is missing from disk but was applied
+    /// before,.
+    /// </summary>
+    public bool ProvidedByOverrides { get; set; }
+
+    /// <summary>
     /// True when two present parts carry identities of different kinds and no recorded digest converts one into the
     /// other, so whether they name the same bytes is not known until the file is read.
     /// </summary>

@@ -232,10 +232,42 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         MergeStates(latestDiskState, previousDiskState, syncTree);
+        MarkMissingOverridesFiles(syncTree, loadout);
         NameTheSameBytesByOneKind(syncTree, _identityResolver.Scoped(IdentitiesToResolve(syncTree)));
         AdoptGameInstalledFiles(syncTree, loadout);
         LeaveUserProtectedFilesAlone(syncTree, loadout);
         return syncTree;
+    }
+
+    /// <summary>
+    /// Flags the nodes whose only provider is a row of the Overrides group and whose file is gone from disk after
+    /// an earlier apply. Those are the player's deletions to take in: the row came from the game folder (or an
+    /// edit), so it is not a mod to re-deploy, and its bytes may never have been copied into the store (adopted in
+    /// place), which leaves nothing to restore it from.
+    /// </summary>
+    private static void MarkMissingOverridesFiles(Dictionary<GamePath, SyncNode> tree, Loadout.ReadOnly loadout)
+    {
+        EntityId? overridesId = null;
+        foreach (var path in tree.Keys.ToArray())
+        {
+            ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(tree, path);
+            if (node.SourceItemType != LoadoutSourceItemType.Loadout || node.HaveDisk || !node.HavePrevious || !node.Loadout.HaveEntityId) continue;
+
+            overridesId ??= LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id).TryGetFirst(out var found) ? found.Id : EntityId.From(0);
+            if (overridesId.Value.Value == 0) return;
+            node.ProvidedByOverrides = IsInGroup(loadout.Db, node.Loadout.EntityId, overridesId.Value);
+        }
+    }
+
+    /// <summary>
+    /// A file a loadout row names but the store holds no copy of cannot be written to disk. When the row is the
+    /// Overrides' and the file is gone from disk, that is the player deleting it, so the row is dropped instead of
+    /// waiting for an archive that never existed. A mod's file stays a warning: its archive is the library's to restore.
+    /// </summary>
+    private static void TakeInMissingOverridesFile(ref SyncNode node)
+    {
+        if (node.ProvidedByOverrides && node.Actions == Actions.WarnOfUnableToExtract)
+            node.Actions = Actions.AddReifiedDelete;
     }
 
     /// <summary>
@@ -671,6 +703,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         item.Signature = signature;
         item.Actions = ActionMapping.MapActions(signature);
+        TakeInMissingOverridesFile(ref item);
 
         // A deployed file on a protected path that no longer matches what the last sync wrote has been
         // rewritten by the game. It is the player's now: whether or not the loadout still provides it, the
@@ -708,6 +741,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         RefuseTraversalPaths(syncTree);
         KeepNeverWrittenPathsOffDisk(syncTree);
         await PreflightActions(syncTree, loadout);
+        await RefuseExtractionsWithoutBytes(syncTree);
         ProbeWritableRoots(syncTree, loadout.InstallationInstance.Locations);
         ApplyBackupOverflowChoice(syncTree, choice);
 
@@ -1491,6 +1525,25 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 continue;
             Logger.LogWarning("Conflict in {Path}", path);
         }
+    }
+
+    /// <summary>
+    /// Refuses, before anything is written, an apply that has to write a file whose bytes the store does not hold.
+    /// The extraction would fail halfway with the store's own error; this names the files instead.
+    /// </summary>
+    private async ValueTask RefuseExtractionsWithoutBytes(Dictionary<GamePath, SyncNode> syncTree)
+    {
+        List<GamePath>? missing = null;
+        foreach (var (path, node) in syncTree)
+        {
+            if (!node.Actions.HasFlag(Actions.ExtractToDisk) || node.Loadout.Identity.IsNone) continue;
+            if (await HaveArchiveAsync(node.Loadout.Identity, node.Loadout.Size)) continue;
+            (missing ??= []).Add(path);
+        }
+
+        if (missing is null) return;
+        Logger.LogInformation("{Count} file(s) to write are not in the file store: {Paths}", missing.Count, string.Join(", ", missing.Take(20)));
+        throw new MissingFileBytesException(missing);
     }
 
     private void WarnOfUnableToExtract(Dictionary<GamePath, SyncNode> groupings)

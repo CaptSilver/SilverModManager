@@ -950,6 +950,77 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
     }
 
     [Fact]
+    public async Task AdoptedFileDeletedOnDisk_IsRemovedFromTheOverridesNotWrittenBack()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        var loadout = await CreateLoadout();
+        ExternalChanges(loadout).Should().HaveCount(4);
+
+        (GameDir / "ext0.bin").Delete();
+        var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
+        Synchronizer.ProcessSyncTree(tree);
+        tree[new GamePath(LocationId.Game, "ext0.bin")].Actions.Should().Be(Actions.AddReifiedDelete, "nothing but the Overrides provides the file and its bytes are not in the store");
+
+        loadout = await Synchronizer.Synchronize(loadout);
+
+        ExternalChanges(Refresh(loadout)).Should().BeEquivalentTo("ext1.bin", "ext2.bin", "ext3.bin");
+        OnDisk("ext0.bin").Should().BeFalse("a deleted file is not recreated");
+        var again = await Synchronizer.BuildSyncTree(Refresh(loadout));
+        Synchronizer.ProcessSyncTree(again);
+        again.Values.Should().OnlyContain(n => n.Actions == Actions.DoNothing);
+    }
+
+    [Fact]
+    public async Task ModFileWithoutArchive_DeletedOnDisk_IsStillReportedAsUnextractable()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        var loadout = await CreateLoadout();
+        var path = new GamePath(LocationId.Game, "ext0.bin");
+
+        // Move the unbacked row out of the Overrides group, which makes it a mod's file as far as the sync can tell.
+        var row = LoadoutItem.FindByLoadout(Connection.Db, loadout).OfTypeLoadoutItemWithTargetPath().Single(f => (GamePath)f.TargetPath == path);
+        using (var tx = Connection.BeginTransaction())
+        {
+            var group = new LoadoutItemGroup.New(tx, out var groupId)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = "Some mod", LoadoutId = loadout.Id },
+            };
+            tx.Add(row.Id, LoadoutItem.Parent, groupId);
+            await tx.Commit();
+        }
+
+        (GameDir / "ext0.bin").Delete();
+        var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
+        Synchronizer.ProcessSyncTree(tree);
+
+        tree[path].Actions.Should().Be(Actions.WarnOfUnableToExtract);
+    }
+
+    [Fact]
+    public async Task ExtractWithoutBytesInTheStore_IsAReadableRefusalNamingTheFile()
+    {
+        WriteExternalFiles(4, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
+        var loadout = await CreateLoadout();
+        var path = new GamePath(LocationId.Game, "ext0.bin");
+        (GameDir / "ext0.bin").Delete();
+        var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
+        Synchronizer.ProcessSyncTree(tree);
+        var node = tree[path];
+        node.Actions = Actions.ExtractToDisk;
+        tree[path] = node;
+
+        var act = async () => await ((ALoadoutSynchronizer)Synchronizer).RunActions(tree, Refresh(loadout));
+
+        var refusal = (await act.Should().ThrowAsync<SilverModManager.Sdk.Errors.UserFacingException>()).Which;
+        refusal.Message.Should().Contain("ext0.bin");
+        OnDisk("ext0.bin").Should().BeFalse();
+    }
+
+    [Fact]
     public async Task RefusedLoadoutSwitch_LeavesTheFolderAndTheLastSyncedLoadoutUntouched()
     {
         WriteExternalFiles(4, 4096);
