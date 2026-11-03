@@ -138,4 +138,88 @@ public class ArchiveEntryPlanTests
 
         plan.DroppedHardLinks.Should().ContainSingle(d => d.Name == "a\\hard.txt");
     }
+
+    private static ArchiveEntryPlan.Entry Raw(byte[] raw, bool isDirectory = false) => new(EntryNames.Decode(raw), isDirectory, RawName: raw);
+
+    // 7z places "trailing space /f.txt" in the right shape and only the trailing space is wrong, so the
+    // entry is left in the bulk run and renamed afterwards.
+    [Fact]
+    public void ATrailingSpaceDoesNotTakeAnEntryOutOfTheBulkRun()
+    {
+        var plan = Plan("trailing space /file.txt", "end.txt ");
+
+        plan.IsPlain.Should().BeTrue();
+        plan.Kept.Select(k => k.Index).Should().Equal(0, 1);
+    }
+
+    [Fact]
+    public void ATrailingSpaceEntryThatNeedsAnotherFixIsMoved()
+    {
+        var plan = Plan("a\\y ", "../x.txt ");
+
+        plan.Moved.Should().Equal(("a\\y ", "a/y"));
+        plan.Excluded.Should().BeEquivalentTo("a\\y ");
+    }
+
+    [Fact]
+    public void TwoNamesThatTrimToOnePathKeepTheLaterOne()
+    {
+        var plan = Plan("a ", "a");
+
+        plan.Excluded.Should().BeEquivalentTo("a ");
+        plan.Rewrites.IsEmpty.Should().BeFalse();
+        plan.Kept.Select(k => k.Index).Should().Equal(1);
+    }
+
+    [Fact]
+    public void ACodePage437NameIsDecodedForThePathButKeptAsStoredForExtraction()
+    {
+        byte[] raw = [(byte)'a', 0x8B, (byte)'/', (byte)'f'];
+        var plan = Plan(Raw(raw), Raw("sub\\x"u8.ToArray()));
+
+        plan.Kept.Should().ContainSingle(k => k.Index == 0).Which.Raw.Should().Equal(raw);
+        plan.Moved.Should().Equal(("sub\\x", "sub/x"));
+        plan.RawName(plan.MovedIndices.Single()).Should().Equal("sub\\x"u8.ToArray());
+    }
+
+    [Fact]
+    public void ANameThatCannotBeSelectedStaysInTheBulkRunWhateverElseIsTrueOfIt()
+    {
+        byte[] raw = [(byte)'.', (byte)'.', (byte)'/', 0x8B, (byte)' '];
+        var plan = Plan(Raw(raw), Symlink("link", "/etc/passwd"), File("ok.txt"));
+
+        plan.UnaddressableCount.Should().Be(1);
+        plan.Kept.Should().Contain(k => k.Index == 0);
+        plan.Excluded.Should().BeEquivalentTo("link");
+        plan.Moved.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AnUnaddressableSymlinkIsNotListedAsALink()
+    {
+        byte[] raw = [(byte)'l', 0x8B, (byte)' '];
+        var plan = Plan(new ArchiveEntryPlan.Entry(EntryNames.Decode(raw), false, SymlinkTarget: "/etc/passwd", IsSymlink: true, RawName: raw));
+
+        plan.Links.Should().BeEmpty();
+        plan.Excluded.Should().BeEmpty();
+        plan.Kept.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void ARepeatedNameIsReportedAsRepeated()
+    {
+        var plan = Plan("a\\x.txt", "a\\x.txt", "y.txt");
+
+        plan.IsRepeated(0).Should().BeTrue();
+        plan.IsRepeated(2).Should().BeFalse();
+        plan.Moved.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void TheEntriesBelowAFolderAreFoundByTheirStoredBytes()
+    {
+        var plan = Plan("link", "link/a", "linked", "link/b/c");
+
+        plan.IndicesBelow(0).Should().Equal(1, 3);
+    }
 }

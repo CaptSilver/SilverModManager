@@ -7,6 +7,7 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
         <PackageReference Include="NexusMods.Hashing.xxHash3.Paths" />
+        <PackageReference Include="SharpZipLib" />
         <PackageReference Include="Verify.XunitV3" />
     </ItemGroup>
 

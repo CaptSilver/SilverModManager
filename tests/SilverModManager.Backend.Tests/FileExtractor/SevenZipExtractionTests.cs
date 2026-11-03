@@ -20,7 +20,9 @@ public class SevenZipExtractionTests : AFileExtractorTest
         await using var destination = TemporaryFileManager.CreateFolder();
         await FileExtractor.ExtractAllAsync(archivePath, destination, TestContext.Current.CancellationToken);
 
+        // The archive stores "bar/foo /bar.txt"; the space after foo can't stay.
         var files = destination.Path.EnumerateFiles().ToArray();
+        files.Select(f => f.RelativeTo(destination.Path).ToString()).Should().Equal("bar/foo/bar.txt");
         files.Should().OnlyContain(x => x.FileExists);
     }
 
@@ -207,20 +209,20 @@ public class SevenZipExtractionTests : AFileExtractorTest
 
     private AbsolutePath UnixModesArchive => FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources/7z-with-unix-modes.7z");
 
-    [Theory]
-    [InlineData("2024-04-16 06:10:44 D....            0            0  .", false, null, true)]
-    [InlineData("2024-04-16 06:10:44 D....            0            0  ..", false, null, true)]
-    [InlineData("2024-04-16 06:10:44 D....            0            0  foo ", true, "foo ", true)]
-    [InlineData("2024-04-16 06:10:44 .....            0            0  foo ", true, "foo ", false)]
-    [InlineData("2024-04-16 06:10:44 .....            0            0  foo", false, null, false)]
-    [InlineData("2024-04-16 06:10:44 D....            0            0  foo", false, null, true)]
-    public void Test_TryParseListCommandOutput(string input, bool expected, string? expectedFileName, bool expectedIsDirectory)
+    // The 7zz that ships with the app has no pin anywhere else: the hash beside the binary is what a
+    // reviewer compares with the one 7-zip.org publishes for the release.
+    [Fact]
+    public void BundledSevenZipMatchesItsPin()
     {
-        var actual = SevenZipExtractor.TryParseListCommandOutput(input, out var fileName, out var isDirectory);
-        actual.Should().Be(expected);
+        var folder = FileSystem.GetKnownPath(KnownPath.EntryDirectory).Combine("runtimes/linux-x64/native");
+        var binary = folder.Combine("7zz");
+        var pin = folder.Combine("7zz.sha256");
+        Assert.SkipUnless(binary.FileExists, "the system 7zz is used and nothing is bundled");
 
-        fileName.Should().Be(expectedFileName);
-        isDirectory.Should().Be(expectedIsDirectory);
+        pin.FileExists.Should().BeTrue("the bundled binary is pinned");
+        var expected = File.ReadAllText(pin.ToString()).Split(' ', StringSplitOptions.RemoveEmptyEntries)[0].Trim();
+        var actual = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(binary.ToString())));
+        actual.Should().Be(expected.ToLowerInvariant());
     }
 
     [Fact]

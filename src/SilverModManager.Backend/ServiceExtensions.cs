@@ -164,7 +164,6 @@ public static class ServiceExtensions
         coll.AddFileExtractorVerbs();
         coll.AddSingleton<IFileExtractor, FileExtractor.FileExtractor>();
         coll.AddSingleton<IExtractor, SevenZipExtractor>();
-        coll.AddSingleton<IExtractor, ManagedZipExtractor>();
         coll.TryAddSingleton<TemporaryFileManager, TemporaryFileManagerEx>();
         return coll;
     }

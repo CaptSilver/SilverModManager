@@ -17,12 +17,11 @@ namespace SilverModManager.Backend.Tests.FileExtractor;
 /// <summary>
 /// An archive is never refused over an entry path: names are resolved against the archive root, so a
 /// ".." that would climb out of it is discarded and the file lands where a well-formed archive would put
-/// it. Nothing is written outside the destination. Every case runs through both extractors that handle
-/// zips, plus the 7z path for tarballs.
+/// it. Nothing is written outside the destination. Every case runs through 7z, zips and tarballs alike.
 /// </summary>
 public class ArchiveTraversalTests : AFileExtractorTest
 {
-    public enum Extractor { ManagedZip, SevenZip }
+    public enum Extractor { SevenZip }
 
     private sealed record Entry(string Name, string Content = "payload", bool UnixSymlink = false);
 
@@ -76,16 +75,12 @@ public class ArchiveTraversalTests : AFileExtractorTest
         destination.Value.CreateDirectory();
 
         var warnings = new List<string>();
-        IExtractor extractor = which switch
-        {
-            Extractor.ManagedZip => new ManagedZipExtractor(new ListLogger<ManagedZipExtractor>(warnings)),
-            _ => new SevenZipExtractor(
-                new ListLogger<SevenZipExtractor>(warnings),
-                TemporaryFileManager,
-                FileSystem,
-                ServiceProvider.GetRequiredService<IProcessRunner>(),
-                ServiceProvider.GetRequiredService<IOSInformation>()),
-        };
+        IExtractor extractor = new SevenZipExtractor(
+            new ListLogger<SevenZipExtractor>(warnings),
+            TemporaryFileManager,
+            FileSystem,
+            ServiceProvider.GetRequiredService<IProcessRunner>(),
+            ServiceProvider.GetRequiredService<IOSInformation>());
 
         await extractor.ExtractAllAsync(new NativeFileStreamFactory(archive), destination.Value, TestContext.Current.CancellationToken);
         return Describe(container, archive, destination.Value, warnings);
@@ -139,7 +134,6 @@ public class ArchiveTraversalTests : AFileExtractorTest
     }
 
     [Theory]
-    [InlineData(Extractor.ManagedZip)]
     [InlineData(Extractor.SevenZip)]
     public async Task RewrittenEntriesAreReportedInOneWarningNamingTheArchive(Extractor extractor)
     {
@@ -152,7 +146,6 @@ public class ArchiveTraversalTests : AFileExtractorTest
     }
 
     [Theory]
-    [InlineData(Extractor.ManagedZip)]
     [InlineData(Extractor.SevenZip)]
     public async Task AnArchiveWithOnlyWellFormedNamesRaisesNoWarning(Extractor extractor)
     {
@@ -164,9 +157,7 @@ public class ArchiveTraversalTests : AFileExtractorTest
     }
 
     [Theory]
-    [InlineData(Extractor.ManagedZip, "..")]
-    [InlineData(Extractor.ManagedZip, "../")]
-    [InlineData(Extractor.ManagedZip, "C:\\")]
+    [InlineData(Extractor.SevenZip, "..")]
     [InlineData(Extractor.SevenZip, "../")]
     [InlineData(Extractor.SevenZip, "C:\\")]
     public async Task AnEntryThatResolvesToNothingIsSkippedWithAWarning(Extractor extractor, string entryName)
@@ -179,7 +170,6 @@ public class ArchiveTraversalTests : AFileExtractorTest
     }
 
     [Theory]
-    [InlineData(Extractor.ManagedZip)]
     [InlineData(Extractor.SevenZip)]
     public async Task ARewrittenFolderEntryCreatesTheCleanedFolder(Extractor extractor)
     {
@@ -190,7 +180,6 @@ public class ArchiveTraversalTests : AFileExtractorTest
     }
 
     [Theory]
-    [InlineData(Extractor.ManagedZip)]
     [InlineData(Extractor.SevenZip)]
     public async Task PlainDuplicateEntriesKeepTheLastOne(Extractor extractor)
     {
@@ -200,7 +189,6 @@ public class ArchiveTraversalTests : AFileExtractorTest
     }
 
     [Theory]
-    [InlineData(Extractor.ManagedZip)]
     [InlineData(Extractor.SevenZip)]
     public async Task EntriesThatCleanToTheSamePathKeepTheLastOneWithAWarning(Extractor extractor)
     {
@@ -211,7 +199,6 @@ public class ArchiveTraversalTests : AFileExtractorTest
     }
 
     [Theory]
-    [InlineData(Extractor.ManagedZip)]
     [InlineData(Extractor.SevenZip)]
     public async Task ALaterPlainEntryBeatsAnEarlierRewrittenOne(Extractor extractor)
     {
@@ -222,7 +209,6 @@ public class ArchiveTraversalTests : AFileExtractorTest
     }
 
     [Theory]
-    [InlineData(Extractor.ManagedZip)]
     [InlineData(Extractor.SevenZip)]
     public async Task UnicodeNamesSurviveTheRewrite(Extractor extractor)
     {
@@ -431,7 +417,7 @@ public class ArchiveTraversalTests : AFileExtractorTest
         outcome.Warnings.Should().BeEmpty();
     }
 
-    public enum LinkArchive { ManagedZip, SevenZipZip, Tar }
+    public enum LinkArchive { SevenZipZip, Tar }
 
     private sealed record Item(string Name, string? LinkTarget = null, string Content = "payload");
 
@@ -449,12 +435,11 @@ public class ArchiveTraversalTests : AFileExtractorTest
             });
         }
 
-        return await ExtractZip(kind == LinkArchive.ManagedZip ? Extractor.ManagedZip : Extractor.SevenZip,
+        return await ExtractZip(Extractor.SevenZip,
             items.Select(i => i.LinkTarget is null ? new Entry(i.Name, i.Content) : new Entry(i.Name, i.LinkTarget, UnixSymlink: true)).ToArray());
     }
 
     [Theory]
-    [InlineData(LinkArchive.ManagedZip)]
     [InlineData(LinkArchive.SevenZipZip)]
     [InlineData(LinkArchive.Tar)]
     public async Task AnAbsoluteSymlinkEntryIsDroppedWithAWarning(LinkArchive kind)
@@ -467,7 +452,6 @@ public class ArchiveTraversalTests : AFileExtractorTest
     }
 
     [Theory]
-    [InlineData(LinkArchive.ManagedZip)]
     [InlineData(LinkArchive.SevenZipZip)]
     [InlineData(LinkArchive.Tar)]
     public async Task AnInternalFileSymlinkEntryBecomesACopy(LinkArchive kind)
@@ -479,7 +463,6 @@ public class ArchiveTraversalTests : AFileExtractorTest
 
     // Two entries that clean to one path: the later wins, links included.
     [Theory]
-    [InlineData(LinkArchive.ManagedZip)]
     [InlineData(LinkArchive.SevenZipZip)]
     [InlineData(LinkArchive.Tar)]
     public async Task TheLastOfTwoSymlinkEntriesWithTheSameCleanedPathWins(LinkArchive kind)
@@ -493,7 +476,6 @@ public class ArchiveTraversalTests : AFileExtractorTest
     }
 
     [Theory]
-    [InlineData(LinkArchive.ManagedZip, "a.txt")]
     [InlineData(LinkArchive.SevenZipZip, "./a.txt")]
     public async Task ASymlinkEntryWhoseCleanedPathIsAlreadyAFileIsDropped(LinkArchive kind, string linkName)
     {
@@ -503,8 +485,28 @@ public class ArchiveTraversalTests : AFileExtractorTest
         outcome.Warnings.Should().Contain(w => w.Contains("a.txt"));
     }
 
+    // The target is read from the entry's data, and only the first MaxLinkTargetBytes of it are kept.
+    [Fact]
+    public async Task AZipSymlinkWhoseTargetIsLongerThanAnyPathIsDroppedWithAWarning()
+    {
+        var outcome = await ExtractItems(LinkArchive.SevenZipZip, new Item("long", new string('a', 5000)), new Item("ok.txt"));
+
+        outcome.Files.Keys.Should().BeEquivalentTo("ok.txt");
+        outcome.Warnings.Should().Contain(w => w.Contains("`long`") && w.Contains("too long"));
+    }
+
+    // Writing one entry to a stream writes every entry of that name, so a repeated name that has to be
+    // extracted on its own is left out loudly instead of coming out as the entries' data run together.
+    [Fact]
+    public async Task AMovedNameThatTheArchiveStoresTwiceIsDroppedWithAWarning()
+    {
+        var outcome = await ExtractZip(Extractor.SevenZip, new Entry("sub/../x.txt", "first"), new Entry("sub/../x.txt", "second"), new Entry("ok.txt"));
+
+        outcome.Files.Keys.Should().BeEquivalentTo("ok.txt");
+        outcome.Warnings.Should().Contain(w => w.Contains("more than once"));
+    }
+
     [Theory]
-    [InlineData(LinkArchive.ManagedZip)]
     [InlineData(LinkArchive.SevenZipZip)]
     public async Task AZipSymlinkEntryNeverBecomesALinkOnDisk(LinkArchive kind)
     {
@@ -518,7 +520,7 @@ public class ArchiveTraversalTests : AFileExtractorTest
         }
 
         var destination = container.Path.Combine("a/b/extracted");
-        await Extract(container.Path, archive, kind == LinkArchive.ManagedZip ? Extractor.ManagedZip : Extractor.SevenZip, destination);
+        await Extract(container.Path, archive, Extractor.SevenZip, destination);
 
         Directory.EnumerateFileSystemEntries(destination.ToString(), "*", SearchOption.AllDirectories)
             .Where(p => new FileInfo(p).LinkTarget is not null)

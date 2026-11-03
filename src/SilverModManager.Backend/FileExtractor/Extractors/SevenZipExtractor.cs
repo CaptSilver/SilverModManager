@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reactive.Disposables;
 using System.Text;
@@ -65,13 +63,11 @@ public class SevenZipExtractor : IExtractor
         var (source, sourceDisposable) = await GetSource(streamFactory, cancellationToken: cancellationToken);
         using var _ = sourceDisposable;
 
-        var trimmablePathsInArchive = await GetTrimmablePathsInArchive(source, cancellationToken: cancellationToken);
         await ExtractArchive(source, streamFactory.FileName.ToString(), destination, cancellationToken: cancellationToken);
 
         using var innerTar = await TakeInnerTar(source, destination, cancellationToken);
         if (innerTar is not null)
         {
-            trimmablePathsInArchive = await GetTrimmablePathsInArchive(innerTar.Value.Path, cancellationToken: cancellationToken);
             await ExtractArchive(innerTar.Value.Path, streamFactory.FileName.ToString(), destination, cancellationToken: cancellationToken);
         }
 
@@ -81,9 +77,6 @@ public class SevenZipExtractor : IExtractor
         var root = destination.ToNativeSeparators(_osInformation);
         NormalizeModes(root);
         ExtractedLinks.Sanitize(root, streamFactory.FileName.ToString(), _logger);
-
-        if (trimmablePathsInArchive.Count == 0) return;
-        FixPaths(trimmablePathsInArchive, destination);
     }
 
     /// <summary>
@@ -157,123 +150,6 @@ public class SevenZipExtractor : IExtractor
         }
     }
 
-    [SuppressMessage("ReSharper", "RedundantNameQualifier")]
-    private void FixPaths(
-        IReadOnlyList<(string fileName, bool isDirectory)> trimmablePathsInArchive,
-        AbsolutePath destinationPath)
-    {
-        // NOTE(erri120): We need to fix paths that end in whitespace as they cause a lot of issues.
-        // 7z extracts "foo/bar " to "foo/bar " properly, but our path sanitization will trim the path and the app won't find the file on disk
-
-        var nativePath = destinationPath.ToNativeSeparators(_osInformation);
-
-        foreach (var tuple in trimmablePathsInArchive)
-        {
-            var (fileName, isDirectory) = tuple;
-
-            var fixedFileName = PathsHelper.FixFileName(fileName);
-            Debug.Assert(fixedFileName.All(c => !PathsHelper.IsInvalidChar(c)), message: $"`{fixedFileName}` should be fixed");
-
-            var source = System.IO.Path.Combine(nativePath, fileName);
-            var destination = System.IO.Path.Combine(nativePath, fixedFileName);
-
-            if (isDirectory)
-            {
-                try
-                {
-                    _logger.LogWarning("Fixing path by moving directory from `{From}` to `{To}`", source, destination);
-                    if (System.IO.Directory.Exists(destination))
-                    {
-                        _logger.LogWarning("Destination directory `{Destination}` already exists, deleting source instead", destination);
-                        System.IO.Directory.Delete(source, recursive: true);
-                    }
-                    else
-                    {
-                        System.IO.Directory.Move(source, destination);
-                    }
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, "Failed to fix path by moving directory from `{From}` to `{To}`", source, destination);
-                }
-            }
-            else
-            {
-                try
-                {
-                    _logger.LogWarning("Fixing path by moving file from `{From}` to `{To}`", source, destination);
-                    if (System.IO.File.Exists(destination))
-                    {
-                        _logger.LogWarning("Destination file `{Destination}` already exists, deleting source instead", destination);
-                        System.IO.File.Delete(source);
-                    }
-                    else
-                    {
-                        System.IO.File.Move(source, destination);
-                    }
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, "Failed to fix path by moving file from `{From}` to `{To}`", source, destination);
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Returns a list of all paths in the archive that need to be trimmed.
-    /// </summary>
-    private async ValueTask<IReadOnlyList<(string fileName, bool isDirectory)>> GetTrimmablePathsInArchive(AbsolutePath source, CancellationToken cancellationToken)
-    {
-        var pathsWithInvalidCharacters = new List<(string fileName, bool isDirectory)>();
-
-        // NOTE(erri120): "l -ba" is an undocumented command that skips the table header and footer
-        var process = Cli
-            .Wrap(_exePath)
-            .WithArguments(["l", "-ba", $"{source.ToNativeSeparators(_osInformation)}"])
-            .WithStandardOutputPipe(PipeTarget.ToDelegate(line =>
-            {
-                if (!TryParseListCommandOutput(line, out var fileName, out var isDirectory)) return;
-                pathsWithInvalidCharacters.Add((fileName, isDirectory));
-            }))
-            .WithValidation(CommandResultValidation.ZeroExitCode);
-
-        await _processRunner.RunAsync(process, logOutput: true, cancellationToken: cancellationToken);
-        return pathsWithInvalidCharacters;
-    }
-
-    /// <summary>
-    /// Parses a table row returned by the 7z list command.
-    /// </summary>
-    internal static bool TryParseListCommandOutput(ReadOnlySpan<char> line, [NotNullWhen(true)] out string? fileName, out bool isDirectory)
-    {
-        // The table that gets printed has a fixed minimum width:
-        // https://github.com/btolab/p7zip/blob/f30c859433af90937723dd4e808a24c3bb836711/CPP/7zip/UI/Console/List.cpp#L186-L193
-        const int fixedLengthBeforeAttributes = 20;
-        const int fixedLengthBeforeFileName = 53;
-
-        fileName = null;
-        isDirectory = false;
-
-        if (line.Length < fixedLengthBeforeFileName) return false;
-
-        var attributesSlice = line.SliceFast(start: fixedLengthBeforeAttributes);
-        isDirectory = attributesSlice[0] == 'D';
-
-        var fileNameSlice = line.SliceFast(start: fixedLengthBeforeFileName);
-
-        // NOTE(erri120): "." and ".." can for some reason end up in the archive
-        // 7z doesn't extract them so we should just ignore them
-        if (fileNameSlice.Length == 1 && fileNameSlice[0] == '.') return false;
-        if (fileNameSlice.Length == 2 && fileNameSlice[0] == '.' && fileNameSlice[1] == '.') return false;
-
-        var lastChar = fileNameSlice[^1];
-        if (!PathsHelper.IsInvalidChar(lastChar)) return false;
-
-        fileName = fileNameSlice.ToString();
-        return true;
-    }
-
     private async ValueTask<(AbsolutePath, IDisposable)> GetSource(IStreamFactory streamFactory, CancellationToken cancellationToken)
     {
         if (streamFactory is NativeFileStreamFactory nativeFileStreamFactory) return (nativeFileStreamFactory.Path, Disposable.Empty);
@@ -292,38 +168,57 @@ public class SevenZipExtractor : IExtractor
     private static readonly string[] DangerousLinkErrors = ["ERROR: Dangerous link path was ignored", "ERROR: Dangerous symbolic link path was ignored"];
 
     /// <summary>
-    /// Extracts with 7z, then makes the result match <see cref="ArchiveEntryPath.Clean"/>. Only entries whose
-    /// names 7z would place differently are handled separately, so an archive with well-formed names is a
-    /// single 7z run.
+    /// A 7z command. The locale is pinned so that what 7z prints and how it reads a list file never depend on
+    /// the user's LANG; the probed results are the same under C and C.UTF-8.
+    /// </summary>
+    private Command SevenZip(params string[] arguments) => Cli
+        .Wrap(_exePath)
+        .WithArguments(arguments)
+        .WithEnvironmentVariables(environment => environment.Set("LC_ALL", "C.UTF-8"));
+
+    /// <summary>
+    /// Extracts with 7z, then makes the result match <see cref="ArchiveEntryPath.Clean"/> and
+    /// <see cref="EntryNames"/>. Only entries whose names 7z would place differently are handled
+    /// separately, so an archive with well-formed names is a single 7z run.
     /// </summary>
     private async ValueTask ExtractArchive(AbsolutePath source, string archiveName, AbsolutePath destination, CancellationToken cancellationToken)
     {
         var plan = new ArchiveEntryPlan(await ListEntries(source, cancellationToken));
-        if (plan.IsPlain)
+        if (plan.UnaddressableCount > 0)
+        {
+            _logger.LogWarning("Archive `{Archive}` stores names that are not valid UTF-8 and end in whitespace, which 7z cannot select by name; they are extracted with the rest and renamed afterwards", archiveName);
+        }
+
+        var root = destination.ToNativeSeparators(_osInformation);
+        if (plan.ExcludedIndices.Count == 0)
         {
             await RunExtract(source, archiveName, destination, extraArguments: [], cancellationToken);
+        }
+        else
+        {
+            await using var exclude = await CreateNameArguments(plan.ExcludedIndices.Select(plan.RawName), 'x', cancellationToken);
+            await RunExtract(source, archiveName, destination, ["-spd", .. exclude.Arguments], cancellationToken);
+        }
+
+        // Before anything lists the folder with .NET, which cannot see a name that is not valid UTF-8.
+        ExtractedNames.Repair(root, plan.Kept, _logger, archiveName);
+
+        if (plan.IsPlain)
+        {
             plan.Rewrites.Log(_logger, archiveName);
             return;
         }
 
-        // 7z reads the list as UTF-8 and, with -spd, takes each line as a literal name and not a pattern.
-        await using var excludeList = _temporaryFileManager.CreateFile(ext: new Extension(".txt"));
-        await File.WriteAllLinesAsync(excludeList.Path.ToNativeSeparators(_osInformation), plan.Excluded, new UTF8Encoding(false), cancellationToken);
-        await RunExtract(source, archiveName, destination, ["-spd", "-scsUTF-8", $"-x@{excludeList.Path.ToNativeSeparators(_osInformation)}"], cancellationToken);
-
-        var root = destination.ToNativeSeparators(_osInformation);
         foreach (var folder in plan.Folders) Directory.CreateDirectory(Path.Combine(root, folder));
         foreach (var (name, reason) in plan.DroppedHardLinks) _logger.LogWarning("Dropping hard link `{Entry}` from archive `{Archive}`: {Reason}", name, archiveName, reason);
 
-        foreach (var (name, cleaned) in plan.Moved)
+        for (var m = 0; m < plan.Moved.Count; m++)
         {
-            await using var scratch = _temporaryFileManager.CreateFolder();
-            await RunExtract(source, archiveName, scratch.Path, ["-spd", $"-i!{name}"], cancellationToken);
-
-            var extracted = FindExtractedEntries(scratch.Path.ToNativeSeparators(_osInformation));
-            if (extracted.Count == 0)
+            var (name, cleaned) = plan.Moved[m];
+            var index = plan.MovedIndices[m];
+            if (plan.IsRepeated(index))
             {
-                _logger.LogWarning("7z produced nothing for entry `{Entry}` of archive `{Archive}`", name, archiveName);
+                _logger.LogWarning("Dropping `{Entry}` from archive `{Archive}`: the archive stores that name more than once and 7z cannot extract one of them", name, archiveName);
                 continue;
             }
 
@@ -334,14 +229,19 @@ public class SevenZipExtractor : IExtractor
             }
 
             Directory.CreateDirectory(Path.GetDirectoryName(target) ?? throw new InvalidOperationException($"`{target}` has no parent folder"));
-            File.Move(extracted[0], target, overwrite: true);
+            await using (var output = File.Create(target))
+            {
+                var errors = await ExtractEntryTo(source, plan, index, output, cancellationToken);
+                if (errors is not null) throw new FileExtractionException($"7z failed extracting `{name}` from `{archiveName}`: {errors}");
+            }
         }
 
         var placeable = new List<(string Name, string Path, string Target)>();
-        foreach (var (name, cleaned, listedTarget) in plan.Links)
+        for (var l = 0; l < plan.Links.Count; l++)
         {
-            var target = listedTarget ?? await ReadLinkTarget(source, archiveName, name, plan.NamesBelow(name), cancellationToken);
-            if (target is null) _logger.LogWarning("Dropping symlink `{Entry}` from archive `{Archive}`: 7z would not extract it", name, archiveName);
+            var (name, cleaned, listedTarget) = plan.Links[l];
+            var target = listedTarget ?? await ReadLinkTarget(source, plan, plan.LinkIndices[l], cancellationToken);
+            if (target is null) _logger.LogWarning("Dropping symlink `{Entry}` from archive `{Archive}`: its target is unreadable or too long", name, archiveName);
             else placeable.Add((name, cleaned, target));
         }
 
@@ -353,79 +253,159 @@ public class SevenZipExtractor : IExtractor
     }
 
     /// <summary>
-    /// The listing of some formats (.7z, .zip) does not show a link's target, so the entry is extracted on
-    /// its own into a scratch folder and read there. 7z either creates the link or, when it considers the
-    /// target dangerous, nothing. A format that stores the target as the entry's data may come out as a
-    /// regular file holding the target text. Returns null when nothing came out.
+    /// The target a link entry stores as its data (.7z and .zip list only the mode). Null when the entry
+    /// cannot be read, is stored more than once, or holds more than <see cref="MaxLinkTargetBytes"/> bytes.
     /// </summary>
-    /// <param name="below">
-    /// Entries stored below the link. A name given to 7z also selects everything under it, and one that goes
-    /// through the link cannot be written (the run fails) or lands in a real folder of the same name.
-    /// </param>
-    private async ValueTask<string?> ReadLinkTarget(AbsolutePath source, string archiveName, string name, IEnumerable<string> below, CancellationToken cancellationToken)
+    private async ValueTask<string?> ReadLinkTarget(AbsolutePath source, ArchiveEntryPlan plan, int index, CancellationToken cancellationToken)
     {
-        await using var scratch = _temporaryFileManager.CreateFolder();
-        var belowNames = below.ToArray();
-        await using var excludeList = _temporaryFileManager.CreateFile(ext: new Extension(".txt"));
-        var listPath = excludeList.Path.ToNativeSeparators(_osInformation);
-        string[] arguments = ["-spd", $"-i!{name}"];
-        if (belowNames.Length > 0)
-        {
-            await File.WriteAllLinesAsync(listPath, belowNames, new UTF8Encoding(false), cancellationToken);
-            arguments = [.. arguments, "-scsUTF-8", $"-x@{listPath}"];
-        }
+        if (plan.IsRepeated(index)) return null;
 
-        await RunExtract(source, archiveName, scratch.Path, arguments, cancellationToken);
-
-        var folder = scratch.Path.ToNativeSeparators(_osInformation);
-        var placed = Path.Combine(folder, ArchiveEntryPlan.PlacedBy7z(name));
-        var extracted = FindExtractedEntries(folder).FirstOrDefault(path => path == placed);
-        if (extracted is null) return null;
-
-        var info = new FileInfo(extracted);
-        if (info.LinkTarget is { } target) return target;
-        if (!info.Exists || info.Length > MaxLinkTargetBytes) return null;
-        return (await File.ReadAllTextAsync(info.FullName, Encoding.UTF8, cancellationToken)).TrimEnd('\0');
+        // One byte more than the longest target tells "exactly that long" from "longer".
+        await using var buffer = new CappedStream(MaxLinkTargetBytes + 1);
+        var errors = await ExtractEntryTo(source, plan, index, buffer, cancellationToken);
+        if (errors is not null || buffer.Overflowed) return null;
+        return Encoding.UTF8.GetString(buffer.WrittenSpan).TrimEnd('\0');
     }
 
     private const int MaxLinkTargetBytes = 4096;
 
-    /// <summary>
-    /// Everything 7z extracted into a folder that held no other entry, links included and never followed.
-    /// </summary>
-    private static List<string> FindExtractedEntries(string folder)
+    /// <summary>A write-only stream that keeps the first bytes written and only notes that there were more.</summary>
+    private sealed class CappedStream(int capacity) : Stream
     {
-        var result = new List<string>();
-        var pending = new Stack<string>();
-        pending.Push(folder);
-        while (pending.TryPop(out var directory))
+        private readonly byte[] _buffer = new byte[capacity];
+        private int _length;
+
+        internal bool Overflowed { get; private set; }
+
+        internal ReadOnlySpan<byte> WrittenSpan => _buffer.AsSpan(0, _length);
+
+        public override void Write(ReadOnlySpan<byte> buffer)
         {
-            foreach (var info in new DirectoryInfo(directory).EnumerateFileSystemInfos())
-            {
-                if (info is DirectoryInfo && info.LinkTarget is null) pending.Push(info.FullName);
-                else result.Add(info.FullName);
-            }
+            var kept = Math.Min(capacity - _length, buffer.Length);
+            buffer[..kept].CopyTo(_buffer.AsSpan(_length));
+            _length += kept;
+            if (kept < buffer.Length) Overflowed = true;
         }
 
-        return result;
+        public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            Write(buffer.Span);
+            return ValueTask.CompletedTask;
+        }
+
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => _length;
+        public override long Position { get => _length; set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// Streams the data of one entry into <paramref name="output"/> (<c>x -so</c>), leaving out what is stored
+    /// below it. Returns null on success and 7z's error text otherwise.
+    /// </summary>
+    private async ValueTask<string?> ExtractEntryTo(AbsolutePath source, ArchiveEntryPlan plan, int index, Stream output, CancellationToken cancellationToken)
+    {
+        await using var include = await CreateNameArguments([plan.RawName(index)], 'i', cancellationToken);
+        await using var exclude = await CreateNameArguments(plan.IndicesBelow(index).Select(plan.RawName), 'x', cancellationToken);
+
+        var errors = new List<string>();
+        var command = SevenZip(["x", "-so", "-bso0", "-bsp0", "-y", "-spd", .. include.Arguments.Concat(exclude.Arguments).Distinct(), source.ToNativeSeparators(_osInformation)])
+            .WithStandardOutputPipe(PipeTarget.ToStream(output))
+            .WithStandardErrorPipe(PipeTarget.ToDelegate(line =>
+            {
+                if (!string.IsNullOrWhiteSpace(line)) errors.Add(line);
+            }))
+            .WithValidation(CommandResultValidation.None);
+
+        var result = await _processRunner.RunAsync(command, logOutput: false, cancellationToken: cancellationToken);
+        return result.ExitCode == 0 ? null : $"7z exited with code {result.ExitCode}: {string.Join(" | ", errors)}";
+    }
+
+    /// <summary>The arguments that select (<c>i</c>) or leave out (<c>x</c>) some entries, and the list file they use.</summary>
+    private sealed class NameArguments(string[] arguments, TemporaryPath? listFile) : IAsyncDisposable
+    {
+        internal string[] Arguments => arguments;
+
+        public async ValueTask DisposeAsync()
+        {
+            if (listFile is { } file) await file.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// Names go to 7z as the bytes the listing printed, one per line in a list file read as code page
+    /// 437 (<c>-scsDOS</c>), which carries every byte through unchanged and so matches raw and UTF-8
+    /// names alike. 7z trims whitespace from the end of a list line, so a name that ends in whitespace
+    /// goes on the command line instead, where it must be valid UTF-8. <c>-spd</c> (set by the caller)
+    /// makes every name literal.
+    /// </summary>
+    private async ValueTask<NameArguments> CreateNameArguments(IEnumerable<byte[]> names, char kind, CancellationToken cancellationToken)
+    {
+        var arguments = new List<string>();
+        var listed = new List<byte>();
+        foreach (var name in names)
+        {
+            if (EntryNames.EndsInWhitespace(name))
+            {
+                arguments.Add($"-{kind}!{Encoding.UTF8.GetString(name)}");
+                continue;
+            }
+
+            listed.AddRange(name);
+            listed.Add((byte)'\n');
+        }
+
+        if (listed.Count == 0) return new NameArguments([.. arguments], listFile: null);
+
+        var file = _temporaryFileManager.CreateFile(ext: new Extension(".txt"));
+        var path = file.Path.ToNativeSeparators(_osInformation);
+        await File.WriteAllBytesAsync(path, listed.ToArray(), cancellationToken);
+        return new NameArguments(["-scsDOS", $"-{kind}@{path}", .. arguments], file);
     }
 
     /// <summary>
     /// Lists the entries with their names as stored. <c>-slt</c> prints one "Path = " block per entry, and
-    /// the plain table would hide a leading "../" behind column alignment.
+    /// the plain table would hide a leading "../" behind column alignment. The output is kept as bytes:
+    /// a name that is not valid UTF-8 is printed as it is stored and would not survive a string.
     /// </summary>
     private async ValueTask<List<ArchiveEntryPlan.Entry>> ListEntries(AbsolutePath source, CancellationToken cancellationToken)
     {
+        using var output = new MemoryStream();
+        var command = SevenZip("l", "-slt", "-ba", "-sccUTF-8", source.ToNativeSeparators(_osInformation))
+            .WithStandardOutputPipe(PipeTarget.ToStream(output))
+            .WithValidation(CommandResultValidation.ZeroExitCode);
+
+        await _processRunner.RunAsync(command, logOutput: false, cancellationToken: cancellationToken);
+        return ParseListing(output.GetBuffer().AsSpan(0, (int)output.Length));
+    }
+
+    internal static List<ArchiveEntryPlan.Entry> ParseListing(ReadOnlySpan<byte> listing)
+    {
         var entries = new List<ArchiveEntryPlan.Entry>();
-        string? name = null;
+        byte[]? name = null;
         var isDirectory = false;
-        string? symlinkTarget = null;
-        string? hardLinkTarget = null;
+        byte[]? symlinkTarget = null;
+        byte[]? hardLinkTarget = null;
         var isSymlink = false;
 
         void Flush()
         {
-            if (name is not null) entries.Add(new ArchiveEntryPlan.Entry(name, isDirectory, symlinkTarget, hardLinkTarget, isSymlink));
+            if (name is not null)
+            {
+                entries.Add(new ArchiveEntryPlan.Entry(
+                    EntryNames.Decode(name), isDirectory,
+                    symlinkTarget is null ? null : EntryNames.Decode(symlinkTarget),
+                    hardLinkTarget is null ? null : EntryNames.Decode(hardLinkTarget),
+                    isSymlink, name));
+            }
+
             name = null;
             isDirectory = false;
             symlinkTarget = null;
@@ -435,48 +415,49 @@ public class SevenZipExtractor : IExtractor
 
         // tar prints the target and the mode; .7z, .zip (and presumably rar) print only the mode string, whose
         // first character is `l` for a symbolic link.
-        static string? NonEmpty(string value) => value.Length == 0 ? null : value;
-        static bool IsLinkMode(string value)
+        static byte[]? NonEmpty(ReadOnlySpan<byte> value) => value.Length == 0 ? null : value.ToArray();
+        static bool IsLinkMode(ReadOnlySpan<byte> value)
         {
-            var mode = value.Split(' ', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+            var mode = Encoding.UTF8.GetString(value).Split(' ', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
             return mode is { Length: 10 } && mode[0] == 'l';
         }
 
-        var process = Cli
-            .Wrap(_exePath)
-            .WithArguments(["l", "-slt", "-ba", "-sccUTF-8", $"{source.ToNativeSeparators(_osInformation)}"])
-            .WithStandardOutputPipe(PipeTarget.ToDelegate(line =>
-            {
-                if (line.StartsWith("Path = ", StringComparison.Ordinal))
-                {
-                    Flush();
-                    name = line["Path = ".Length..];
-                }
-                else if (line.StartsWith("Folder = ", StringComparison.Ordinal))
-                {
-                    isDirectory = line["Folder = ".Length..] == "+";
-                }
-                else if (line.StartsWith("Symbolic Link = ", StringComparison.Ordinal))
-                {
-                    symlinkTarget = NonEmpty(line["Symbolic Link = ".Length..]);
-                    isSymlink |= symlinkTarget is not null;
-                }
-                else if (line.StartsWith("Hard Link = ", StringComparison.Ordinal))
-                {
-                    hardLinkTarget = NonEmpty(line["Hard Link = ".Length..]);
-                }
-                else if (line.StartsWith("Mode = ", StringComparison.Ordinal))
-                {
-                    isSymlink |= IsLinkMode(line["Mode = ".Length..]);
-                }
-                else if (line.StartsWith("Attributes = ", StringComparison.Ordinal))
-                {
-                    isSymlink |= IsLinkMode(line["Attributes = ".Length..]);
-                }
-            }))
-            .WithValidation(CommandResultValidation.ZeroExitCode);
+        static bool TryField(ReadOnlySpan<byte> line, ReadOnlySpan<byte> prefix, out ReadOnlySpan<byte> value)
+        {
+            value = line.StartsWith(prefix) ? line[prefix.Length..] : default;
+            return line.StartsWith(prefix);
+        }
 
-        await _processRunner.RunAsync(process, logOutput: false, cancellationToken: cancellationToken);
+        while (!listing.IsEmpty)
+        {
+            var end = listing.IndexOf((byte)'\n');
+            var line = end < 0 ? listing : listing[..end];
+            listing = end < 0 ? default : listing[(end + 1)..];
+
+            if (TryField(line, "Path = "u8, out var value))
+            {
+                Flush();
+                name = value.ToArray();
+            }
+            else if (TryField(line, "Folder = "u8, out value))
+            {
+                isDirectory = value.SequenceEqual("+"u8);
+            }
+            else if (TryField(line, "Symbolic Link = "u8, out value))
+            {
+                symlinkTarget = NonEmpty(value);
+                isSymlink |= symlinkTarget is not null;
+            }
+            else if (TryField(line, "Hard Link = "u8, out value))
+            {
+                hardLinkTarget = NonEmpty(value);
+            }
+            else if (TryField(line, "Mode = "u8, out value) || TryField(line, "Attributes = "u8, out value))
+            {
+                isSymlink |= IsLinkMode(value);
+            }
+        }
+
         Flush();
         return entries;
     }
@@ -486,9 +467,7 @@ public class SevenZipExtractor : IExtractor
         var errors = new List<string>();
 
         // NOTE(erri120): Using "-bsp1" to redirect the progress line to stdout
-        var process = Cli
-            .Wrap(_exePath)
-            .WithArguments(["x", "-bsp1", "-y", .. extraArguments, $"-o{destination.ToNativeSeparators(_osInformation)}", $"{source.ToNativeSeparators(_osInformation)}"])
+        var process = SevenZip(["x", "-bsp1", "-y", .. extraArguments, $"-o{destination.ToNativeSeparators(_osInformation)}", $"{source.ToNativeSeparators(_osInformation)}"])
             .WithStandardOutputPipe(PipeTarget.ToDelegate(line =>
             {
                 // TODO: progress reporting
