@@ -23,7 +23,13 @@ internal class InstallLoadoutItemJob : IJobDefinitionWithStart<InstallLoadoutIte
     public LibraryItem.ReadOnly LibraryItem { get; init; }
     public Optional<LoadoutItemGroupId> ParentGroupId { get; set; }
     public LoadoutId LoadoutId { get; init; }
-    
+
+    /// <summary>
+    /// Never asks anyone: a mod no installer claims, or a FOMOD with choices to make, ends the job with
+    /// <see cref="ReviewRequiredException"/> instead of opening the Advanced Manual Installer or a guided installer.
+    /// </summary>
+    public bool Unattended { get; init; }
+
     public required ITransaction Transaction { get; init; }
     internal required IConnection Connection { get; init; }
     internal required IServiceProvider ServiceProvider { get; init; }
@@ -41,7 +47,8 @@ internal class InstallLoadoutItemJob : IJobDefinitionWithStart<InstallLoadoutIte
         ITransaction transaction,
         Optional<LoadoutItemGroupId> groupId = default,
         ILibraryItemInstaller? installer = null,
-        ILibraryItemInstaller? fallbackInstaller = null)
+        ILibraryItemInstaller? fallbackInstaller = null,
+        bool unattended = false)
     {
         var connection = serviceProvider.GetRequiredService<IConnection>();
         var job = new InstallLoadoutItemJob
@@ -49,6 +56,7 @@ internal class InstallLoadoutItemJob : IJobDefinitionWithStart<InstallLoadoutIte
             Logger = serviceProvider.GetRequiredService<ILogger<InstallLoadoutItemJob>>(),
             Installer = installer,
             FallbackInstaller = fallbackInstaller,
+            Unattended = unattended,
             LibraryItem = libraryItem,
             LoadoutId = targetLoadout,
             ParentGroupId = groupId,
@@ -86,8 +94,13 @@ internal class InstallLoadoutItemJob : IJobDefinitionWithStart<InstallLoadoutIte
                 throw new InvalidOperationException($"Advanced installer did not succeed for `{LibraryItem.Name}` (`{LibraryItem.Id}`)");
             }
 
-            var fallbackInstaller = FallbackInstaller ?? AdvancedManualInstaller.Create(ServiceProvider);
-            result = await ExecuteInstallersAsync([fallbackInstaller], loadout, context);
+            if (FallbackInstaller is not null)
+                result = await ExecuteInstallersAsync([FallbackInstaller], loadout, context);
+
+            if (result == null && Unattended)
+                throw new ReviewRequiredException(ReviewKind.NoInstaller, LibraryItem.Name, _lastDeclineReason);
+
+            result ??= await ExecuteInstallersAsync([AdvancedManualInstaller.Create(ServiceProvider)], loadout, context);
 
             if (result == null)
             {
@@ -108,6 +121,9 @@ internal class InstallLoadoutItemJob : IJobDefinitionWithStart<InstallLoadoutIte
 
         return new InstallLoadoutItemJobResult(null, loadoutGroup);
     }
+
+    // The reason the last installer that took a look at the item and declined gave; empty when it gave none.
+    private string _lastDeclineReason = string.Empty;
 
     private async ValueTask<LoadoutItemGroup.New?> ExecuteInstallersAsync(
         ILibraryItemInstaller[] installers,
@@ -135,9 +151,12 @@ internal class InstallLoadoutItemJob : IJobDefinitionWithStart<InstallLoadoutIte
             // TODO(erri120): add safeguards to only allow groups to be added to the parent groups
             try
             {
-                var result = await installer.ExecuteAsync(LibraryItem, loadoutGroup, subTransaction, loadout, context.CancellationToken);
+                var result = Unattended && installer is IUnattendedInstaller unattendedInstaller
+                    ? await unattendedInstaller.ExecuteUnattendedAsync(LibraryItem, loadoutGroup, subTransaction, loadout, context.CancellationToken)
+                    : await installer.ExecuteAsync(LibraryItem, loadoutGroup, subTransaction, loadout, context.CancellationToken);
                 if (result.IsNotSupported(out var reason))
                 {
+                    _lastDeclineReason = reason ?? string.Empty;
                     if (Logger.IsEnabled(LogLevel.Trace) && !string.IsNullOrEmpty(reason))
                         Logger.LogTrace("Installer doesn't support library item `{LibraryItem}` because \"{Reason}\"", LibraryItem.Name, reason);
                     continue;

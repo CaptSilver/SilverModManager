@@ -296,7 +296,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         var loadout = new Loadout.ReadOnly(Connection.Db, TargetLoadout);
 
         var options = choices.Options;
-        await fomodInstaller.ExecuteWithSavedChoicesAsync(libraryArchive, loadoutItemGroup, tx, loadout, options, CollectionMod.Name, cancellationToken);
+        await fomodInstaller.ExecuteWithSavedChoicesAsync(libraryArchive, loadoutItemGroup, tx, loadout, options, CollectionMod.Name, allowPrompt: true, cancellationToken);
 
         return loadoutItemGroup;
     });

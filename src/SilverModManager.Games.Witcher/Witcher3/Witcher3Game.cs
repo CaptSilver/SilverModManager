@@ -8,6 +8,7 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
+using SilverModManager.Games.FOMOD;
 using SilverModManager.Games.Witcher.Witcher3.Diagnostics;
 using SilverModManager.Games.Witcher.Witcher3.Installers;
 using SilverModManager.Games.Witcher.Witcher3.Merge;
@@ -57,9 +58,12 @@ public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witch
     protected override RelativePath PrimaryExe => Dx12Exe;
     protected override string? DocumentsFolderName => "The Witcher 3";
 
-    // Script Merger first: its archive also contains files the mod rules could claim.
+    // FOMOD first, like Cyberpunk: its install paths are relative to the game folder, and the mod rules would
+    // otherwise try to place a FOMOD's source layout. Script Merger next: its archive also contains files the
+    // mod rules could claim.
     protected override ILibraryItemInstaller[] CreateInstallers(IServiceProvider provider) =>
     [
+        FomodXmlInstaller.Create(provider, new GamePath(LocationId.Game, "")),
         new ScriptMergerArchiveInstaller(provider),
         new Witcher3ModInstaller(provider),
     ];

@@ -621,9 +621,10 @@ internal partial class LoadoutManager : ILoadoutManager
         LoadoutId targetLoadout,
         Optional<LoadoutItemGroupId> parent = default,
         ILibraryItemInstaller? installer = null,
-        ILibraryItemInstaller? fallbackInstaller = null)
+        ILibraryItemInstaller? fallbackInstaller = null,
+        bool unattended = false)
     {
-        return InstallItem(libraryItem, targetLoadout, inputTx: null, newGroups: null, parent: parent, installer: installer, fallbackInstaller: fallbackInstaller);
+        return InstallItem(libraryItem, targetLoadout, inputTx: null, newGroups: null, parent: parent, installer: installer, fallbackInstaller: fallbackInstaller, unattended: unattended);
     }
 
     /// <param name="inputTx">A transaction the caller owns and commits, or null to use one of its own.</param>
@@ -639,7 +640,8 @@ internal partial class LoadoutManager : ILoadoutManager
         List<LoadoutItemGroupId>? newGroups,
         Optional<LoadoutItemGroupId> parent = default,
         ILibraryItemInstaller? installer = null,
-        ILibraryItemInstaller? fallbackInstaller = null)
+        ILibraryItemInstaller? fallbackInstaller = null,
+        bool unattended = false)
     {
         // Only a transaction opened here is committed and disposed here.
         ITransaction tx;
@@ -655,7 +657,7 @@ internal partial class LoadoutManager : ILoadoutManager
             tx = inputTx;
         }
 
-        var job = InstallLoadoutItemJob.Create(_serviceProvider, libraryItem, targetLoadout, tx, groupId: parent, installer: installer, fallbackInstaller: fallbackInstaller);
+        var job = InstallLoadoutItemJob.Create(_serviceProvider, libraryItem, targetLoadout, tx, groupId: parent, installer: installer, fallbackInstaller: fallbackInstaller, unattended: unattended);
         return _jobMonitor.Begin(job, async context =>
         {
             var result = await job.StartAsync(context);

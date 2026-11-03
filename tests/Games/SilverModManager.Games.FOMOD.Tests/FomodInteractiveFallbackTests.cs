@@ -70,7 +70,7 @@ public class FomodInteractiveFallbackTests(ITestOutputHelper outputHelper) : ALi
             LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = "Complex", LoadoutId = loadout },
         };
 
-        var result = await installer.ExecuteWithSavedChoicesAsync(archive, loadoutGroup, tx, loadout, options, "Complex mod", CancellationToken.None).AsTask().WaitAsync(Timeout);
+        var result = await installer.ExecuteWithSavedChoicesAsync(archive, loadoutGroup, tx, loadout, options, "Complex mod", allowPrompt: true, CancellationToken.None).AsTask().WaitAsync(Timeout);
         result.IsSuccess.Should().BeTrue();
 
         var dbResult = await tx.Commit();

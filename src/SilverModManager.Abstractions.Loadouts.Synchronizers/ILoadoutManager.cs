@@ -102,6 +102,10 @@ public interface ILoadoutManager
     /// <param name="parent">If specified the installed item will be placed in this group, otherwise it will default to the user's local collection</param>
     /// <param name="installer">The Library will use this installer to install the item</param>
     /// <param name="fallbackInstaller">The installer to use if the default installer fails</param>
+    /// <param name="unattended">
+    /// Never ask anyone: a mod no installer claims, or a FOMOD with choices to make, throws
+    /// <see cref="ReviewRequiredException"/> instead of opening an installer window.
+    /// </param>
     /// <remarks>
     /// Job returns a result with null <see cref="LoadoutItemGroup.ReadOnly"/> after
     /// if supplied an external transaction via <paramref name="transaction"/>,
@@ -112,7 +116,8 @@ public interface ILoadoutManager
         LoadoutId targetLoadout,
         Optional<LoadoutItemGroupId> parent = default,
         ILibraryItemInstaller? installer = null,
-        ILibraryItemInstaller? fallbackInstaller = null);
+        ILibraryItemInstaller? fallbackInstaller = null,
+        bool unattended = false);
 
     /// <summary>
     /// Installs several library items into one group in one transaction, in the order given, so they land together at

@@ -28,8 +28,13 @@ using CollectionResult = (NexusModsCollectionLibraryFile.ReadOnly File, Collecti
 /// Builds a collection that is already in the database: the collection.json is written as a library file, the downloads are
 /// entities, and nothing touches the network. The mods are zips on disk, or (from a manifest) files the library already holds.
 /// </summary>
-public sealed class OfflineCollections(IServiceProvider serviceProvider, IConnection connection, ILibraryService libraryService, TemporaryFileManager temporaryFileManager)
+/// <param name="gameDomain">The Nexus game domain of the collection and its mods; Cyberpunk 2077 when omitted.</param>
+public sealed class OfflineCollections(
+    IServiceProvider serviceProvider, IConnection connection, ILibraryService libraryService, TemporaryFileManager temporaryFileManager,
+    GameDomain? gameDomain = null)
 {
+    private readonly GameDomain _gameDomain = gameDomain ?? GameDomain.From("cyberpunk2077");
+
     private const string ModuleConfig = """
         <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
             <moduleName>Mod {0}</moduleName>
@@ -115,7 +120,7 @@ public sealed class OfflineCollections(IServiceProvider serviceProvider, IConnec
             mods.Add(new Mod
             {
                 Name = fomodMods[i].Name,
-                DomainName = GameDomain.From("cyberpunk2077"),
+                DomainName = _gameDomain,
                 Source = new ModSource
                 {
                     Type = ModSourceType.Direct,
@@ -130,7 +135,7 @@ public sealed class OfflineCollections(IServiceProvider serviceProvider, IConnec
 
         var root = new CollectionRoot
         {
-            Info = new CollectionInfo { Name = "Offline", DomainName = GameDomain.From("cyberpunk2077") },
+            Info = new CollectionInfo { Name = "Offline", DomainName = _gameDomain },
             Mods = mods.ToArray(),
             SilverLoadOrder = silverLoadOrder?.Invoke(mods),
         };
@@ -218,7 +223,7 @@ public sealed class OfflineCollections(IServiceProvider serviceProvider, IConnec
             {
                 Uid = modUid,
                 Name = name,
-                GameDomain = GameDomain.From("cyberpunk2077"),
+                GameDomain = _gameDomain,
                 UpdatedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
                 DataUpdatedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
             }.Id;

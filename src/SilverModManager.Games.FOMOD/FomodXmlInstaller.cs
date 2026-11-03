@@ -25,7 +25,7 @@ using FomodMod = FomodInstaller.Interface.Mod;
 
 namespace SilverModManager.Games.FOMOD;
 
-public class FomodXmlInstaller : ALibraryArchiveInstaller
+public class FomodXmlInstaller : ALibraryArchiveInstaller, IUnattendedInstaller
 {
     private readonly ICoreDelegates _delegates;
     private readonly XmlScriptType _scriptType = new();
@@ -70,6 +70,21 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         return await ExecuteAsync(libraryArchive, loadoutGroup, transaction, loadout, null, cancellationToken);
     }
 
+    /// <inheritdoc/>
+    public ValueTask<InstallerResult> ExecuteUnattendedAsync(
+        LibraryItem.ReadOnly libraryItem,
+        LoadoutItemGroup.New loadoutGroup,
+        ITransaction transaction,
+        Loadout.ReadOnly loadout,
+        CancellationToken cancellationToken)
+    {
+        if (!libraryItem.TryGetAsLibraryFile(out var libraryFile) || !libraryFile.TryGetAsLibraryArchive(out var libraryArchive))
+            return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "The provided library item is not a library archive"));
+
+        // A FOMOD without steps never reaches the guided installer and installs as it is.
+        return ExecuteCoreAsync(libraryArchive, loadoutGroup, transaction, loadout, new NoPromptGuidedInstaller(libraryItem.Name), cancellationToken);
+    }
+
     /// <summary>
     /// Only one guided installer window can be open at a time, so the mods of a collection that need one
     /// take turns.
@@ -82,6 +97,9 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
     /// supports user interaction; otherwise <see cref="SavedChoicesDoNotApplyException"/> is thrown.
     /// </summary>
     /// <param name="modName">Name of the mod in the collection, shown to the user.</param>
+    /// <param name="allowPrompt">
+    /// <c>false</c> never asks anyone: choices that don't fit end the install with <see cref="ReviewRequiredException"/>.
+    /// </param>
     /// <exception cref="FomodInstallCancelledException">The user cancelled the guided installer.</exception>
     public async ValueTask<InstallerResult> ExecuteWithSavedChoicesAsync(
         LibraryArchive.ReadOnly libraryArchive,
@@ -90,11 +108,16 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         Loadout.ReadOnly loadout,
         FomodOption[] options,
         string modName,
+        bool allowPrompt,
         CancellationToken cancellationToken)
     {
         try
         {
             return await ExecuteAsync(libraryArchive, loadoutGroup, transaction, loadout, options, cancellationToken);
+        }
+        catch (SavedChoicesDoNotApplyException savedChoicesFailure) when (!allowPrompt)
+        {
+            throw new ReviewRequiredException(ReviewKind.NeedsChoices, modName, savedChoicesFailure.Details, savedChoicesFailure);
         }
         catch (SavedChoicesDoNotApplyException savedChoicesFailure)
         {
@@ -244,9 +267,10 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
                 throw;
             }
 
-            // Cancelling may end the run without the executor throwing; that must not install what was gathered so far.
-            if (presetUiDelegates?.Failure is FomodInstallCancelledException cancelled)
-                ExceptionDispatchInfo.Capture(cancelled).Throw();
+            // A failure may end the run without the executor throwing (a cancelled run, a step that needs a person);
+            // that must not install what was gathered so far.
+            if (presetUiDelegates?.Failure is { } failure)
+                ExceptionDispatchInfo.Capture(failure).Throw();
         }
 
         var errors = instructions.Where(instruction => instruction.type == "error").ToArray();
