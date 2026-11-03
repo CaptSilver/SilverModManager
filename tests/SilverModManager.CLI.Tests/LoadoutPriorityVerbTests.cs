@@ -107,6 +107,23 @@ public class LoadoutPriorityVerbTests(ITestOutputHelper helper) : EldenRingVerbT
     }
 
     [Fact]
+    public async Task GroupWithoutAPriorityRow_IsRefusedByGetAndSet()
+    {
+        var loadout = await LoadoutWithMods("Alpha");
+        await AddMod(loadout, "Unranked");
+        var before = StoredOrder(loadout);
+
+        var (getExit, getOutput) = await Run("loadout", "group", "priority", "get", "-l", loadout.ToString(), "-g", "Unranked");
+        var (setExit, setOutput) = await Run("loadout", "group", "priority", "set", "-l", loadout.ToString(), "-g", "Unranked", "-i", "0");
+
+        getExit.Should().Be(1, getOutput);
+        getOutput.Should().Contain("Unranked").And.Contain("not in the priority order");
+        setExit.Should().Be(1, setOutput);
+        setOutput.Should().Contain("not in the priority order");
+        StoredOrder(loadout).Should().Equal(before);
+    }
+
+    [Fact]
     public async Task Json_RowsCarryIndexIdNameEnabled()
     {
         var loadout = await LoadoutWithMods("Alpha", "Beta");

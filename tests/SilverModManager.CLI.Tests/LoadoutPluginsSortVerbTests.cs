@@ -42,6 +42,7 @@ public class LoadoutPluginsSortVerbTests(ITestOutputHelper helper) : SkyrimPlugi
     {
         var loadout = await LoadoutWithABC();
         var before = await PluginOrder(loadout);
+        var revisionsBefore = LatestRevisionNumber(loadout);
         Masterlists.Masterlist = Cycle;
 
         var (exit, output) = await Run("loadout", "plugins", "sort", "-l", loadout.ToString());
@@ -49,6 +50,8 @@ public class LoadoutPluginsSortVerbTests(ITestOutputHelper helper) : SkyrimPlugi
         exit.Should().Be(1, output);
         output.Should().Contain("A.esp").And.Contain("B.esp").And.Contain("Cycle");
         (await PluginOrder(loadout)).Should().Equal(before);
+        // The restore point is written before LOOT runs, so a cycle still leaves one (documented in the verb help).
+        LatestRevisionNumber(loadout).Should().Be(revisionsBefore + 1);
     }
 
     [Fact]

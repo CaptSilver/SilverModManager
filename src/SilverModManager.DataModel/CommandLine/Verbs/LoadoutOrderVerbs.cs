@@ -63,7 +63,7 @@ internal static class LoadoutOrderVerbs
         var group = LoadoutGroupLookup.Find(loadout, groupName);
         var rows = PriorityRows(variety, loadout);
         var row = rows.FirstOrDefault(r => r.GroupId == group.Id.ToString())
-                  ?? throw new LoadoutVerbRefusedException($"{group.AsLoadoutItem().Name} has no place in the priority order yet. It gets one when the loadout is next applied.");
+                  ?? throw new LoadoutVerbRefusedException($"{group.AsLoadoutItem().Name} is not in the priority order. A group is added to it when it is installed or its rules change.");
 
         if (json)
         {
@@ -95,7 +95,7 @@ internal static class LoadoutOrderVerbs
         var items = variety.GetSortOrderItems(sortOrder);
         var from = IndexOf(items, groupId);
         if (from < 0)
-            throw new LoadoutVerbRefusedException($"{name} has no place in the priority order yet. It gets one when the loadout is next applied.");
+            throw new LoadoutVerbRefusedException($"{name} is not in the priority order. A group is added to it when it is installed or its rules change.");
 
         var to = Math.Clamp(index, 0, items.Count - 1);
         var clamped = to != index ? $" (clamped from {index}; the list has indexes 0 to {items.Count - 1})" : "";
@@ -194,7 +194,7 @@ internal static class LoadoutOrderVerbs
         return 0;
     }
 
-    [Verb("loadout plugins sort", "Sorts the plugins with LOOT's masterlist, as the Sort with LOOT button does. Exits 1 when LOOT finds no valid order, and then leaves the order alone. A restore point is written first, see 'loadout revisions'.")]
+    [Verb("loadout plugins sort", "Sorts the plugins with LOOT's masterlist, as the Sort with LOOT button does. Exits 1 when LOOT finds no valid order, and then leaves the order alone. A restore point is written first, even when LOOT finds no valid order; see 'loadout revisions'.")]
     private static async Task<int> SortPlugins([Injected] IRenderer renderer,
         [Option("l", "loadout", "Loadout to sort")] Loadout.ReadOnly loadout,
         [Option("variety", "variety", "Which order to sort when the game keeps more than one; its name as the Load Order page shows it", true)] string? varietyName,
