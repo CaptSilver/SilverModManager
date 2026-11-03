@@ -34,7 +34,7 @@ public static class McpServerRunner
             Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR"));
 
         var server = new JsonRpcStdioServer(
-            McpToolTable.Create(context, startupMode.McpReadOnly),
+            McpToolTable.Create(context, readOnly: !startupMode.McpAllowWrites),
             services.GetRequiredService<ILogger<JsonRpcStdioServer>>(),
             "silvermodmanager",
             ApplicationConstants.Version.ToString());

@@ -76,9 +76,10 @@ public class StartupMode
     public bool IsMcp { get; set; } = false;
 
     /// <summary>
-    /// True for <c>mcp --read-only</c>: the server leaves out the tools that change anything.
+    /// True for <c>mcp --allow-writes</c>: the server also offers the tools that change things. Without it the server
+    /// is read-only. <c>--read-only</c> is the old spelling of the default and wins over <c>--allow-writes</c> if both are given.
     /// </summary>
-    public bool McpReadOnly { get; set; } = false;
+    public bool McpAllowWrites { get; set; } = false;
 
     /// <summary>
     /// The usage line for an <c>mcp</c> start with an argument it does not know, or null. It is reported before any
@@ -86,7 +87,9 @@ public class StartupMode
     /// </summary>
     public string? McpUsageError { get; set; }
 
-    public const string McpUsage = "Usage: silvermodmanager mcp [--read-only]";
+    public const string McpUsage =
+        "Usage: silvermodmanager mcp [--allow-writes] [--read-only]. The server is read-only by default; " +
+        "--allow-writes also offers the tools that change things. --read-only is accepted as a no-op alias of the default.";
 
     /// <summary>
     /// True for <c>run --help</c> / <c>run -h</c> with the flag before any <c>--</c>: it prints the usage and exits,
@@ -199,15 +202,19 @@ public class StartupMode
 
     private static void ReadMcpOptions(StartupMode mode, string[] options)
     {
+        var allowWrites = false;
+        var readOnly = false;
         foreach (var option in options)
         {
-            if (option == "--read-only") mode.McpReadOnly = true;
+            if (option == "--allow-writes") allowWrites = true;
+            else if (option == "--read-only") readOnly = true;
             else
             {
                 mode.McpUsageError = $"Unknown argument '{option}'. {McpUsage}";
                 return;
             }
         }
+        mode.McpAllowWrites = allowWrites && !readOnly;
     }
 
     private static readonly string[] CredentialVerbs = ["nexus-whoami", "secrets-status"];

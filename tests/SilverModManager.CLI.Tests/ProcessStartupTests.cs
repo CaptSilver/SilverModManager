@@ -222,7 +222,7 @@ public class ProcessStartupTests
         recorder.Calls.Should().NotContain("can-connect")
             .And.NotContain("cli-remote").And.NotContain("claim").And.NotContain("open-database").And.NotContain("ui");
         recorder.Calls.Should().Contain("run-mcp");
-        recorder.McpModes.Single().McpReadOnly.Should().BeTrue();
+        recorder.McpModes.Single().McpAllowWrites.Should().BeFalse();
     }
 
     [Fact]
@@ -245,7 +245,7 @@ public class ProcessStartupTests
         Run(recorder, "mcp", "--bogus").Should().Be(1);
 
         recorder.Calls.Should().BeEmpty();
-        recorder.Errors.Should().ContainSingle().Which.Should().Contain("--bogus").And.Contain("mcp [--read-only]");
+        recorder.Errors.Should().ContainSingle().Which.Should().Contain("--bogus").And.Contain("mcp [--allow-writes]");
     }
 
     [Fact]

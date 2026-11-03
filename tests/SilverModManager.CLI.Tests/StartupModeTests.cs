@@ -210,13 +210,16 @@ public class StartupModeTests
     [Theory]
     [InlineData("mcp", false)]
     [InlineData("MCP", false)]
-    [InlineData("mcp --read-only", true)]
-    public void McpIsAClientModeThatConsumesItsOwnOptions(string input, bool readOnly)
+    [InlineData("mcp --allow-writes", true)]
+    [InlineData("mcp --read-only", false)]
+    [InlineData("mcp --allow-writes --read-only", false)]
+    [InlineData("mcp --read-only --allow-writes", false)]
+    public void McpIsAClientModeThatConsumesItsOwnOptions(string input, bool allowWrites)
     {
         var mode = StartupMode.Parse(input.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
         mode.IsMcp.Should().BeTrue();
-        mode.McpReadOnly.Should().Be(readOnly);
+        mode.McpAllowWrites.Should().Be(allowWrites);
         mode.McpUsageError.Should().BeNull();
         mode.RunAsMain.Should().BeFalse();
         mode.ShowUI.Should().BeFalse();
@@ -230,13 +233,20 @@ public class StartupModeTests
     [InlineData("mcp --readonly")]
     [InlineData("mcp list-games")]
     [InlineData("mcp --read-only extra")]
+    [InlineData("mcp --allow-writes extra")]
     public void McpWithAnArgumentItDoesNotKnowIsAUsageError(string input)
     {
         var mode = StartupMode.Parse(input.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
         mode.IsMcp.Should().BeTrue();
-        mode.McpUsageError.Should().Contain("Usage: ").And.Contain("mcp [--read-only]");
+        mode.McpUsageError.Should().Contain("Usage: ").And.Contain("mcp [--allow-writes]");
         mode.McpUsageError.Should().Contain(input.Split(' ')[^1]);
+    }
+
+    [Fact]
+    public void McpUsageDocumentsAllowWritesAndTheReadOnlyAlias()
+    {
+        StartupMode.McpUsage.Should().Contain("--allow-writes").And.Contain("--read-only").And.Contain("read-only by default");
     }
 
     [Theory]

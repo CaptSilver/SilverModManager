@@ -71,7 +71,7 @@ public sealed class McpProcessTests : IDisposable
     [Fact(Timeout = TimeoutMs)]
     public async Task StdoutCarriesOnlyProtocolFrames_AndAppStatusSaysTheAppIsNotRunning()
     {
-        var (stdout, stderr, exitCode) = await RunAsync([ "mcp" ],
+        var (stdout, stderr, exitCode) = await RunAsync([ "mcp", "--allow-writes" ],
             Frame(1, "initialize", new { protocolVersion = "2025-06-18", capabilities = new { }, clientInfo = new { name = "test", version = "1" } }),
             """{"jsonrpc":"2.0","method":"notifications/initialized"}""",
             Frame(2, "tools/list"),
@@ -91,6 +91,26 @@ public sealed class McpProcessTests : IDisposable
         var list = ById(frames, 4)["result"]!;
         list["isError"]!.GetValue<bool>().Should().BeTrue();
         list["content"]![0]!["text"]!.GetValue<string>().Should().Contain("SilverModManager is not running");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task ServerStartedWithoutFlags_DoesNotListTheMutatingTools()
+    {
+        var (stdout, stderr, exitCode) = await RunAsync(["mcp"], Frame(1, "tools/list"));
+
+        exitCode.Should().Be(0, stderr);
+        var names = JsonNode.Parse(stdout.Single())!["result"]!["tools"]!.AsArray().Select(t => t!["name"]!.GetValue<string>()).ToList();
+        names.Should().Contain("app_status").And.NotContain("loadout_apply");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task AllowWritesServer_ListsTheMutatingTools()
+    {
+        var (stdout, stderr, exitCode) = await RunAsync(["mcp", "--allow-writes"], Frame(1, "tools/list"));
+
+        exitCode.Should().Be(0, stderr);
+        var names = JsonNode.Parse(stdout.Single())!["result"]!["tools"]!.AsArray().Select(t => t!["name"]!.GetValue<string>()).ToList();
+        names.Should().Contain(["app_status", "loadout_apply"]);
     }
 
     [Fact(Timeout = TimeoutMs)]
