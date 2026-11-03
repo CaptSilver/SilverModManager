@@ -1,6 +1,7 @@
 using System.Collections.Frozen;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -31,8 +32,10 @@ public class SnapshotBaselineDeletionsTests(ITestOutputHelper helper) : ASteamIn
     private const string Vanilla = "bin/x64/Cyberpunk2077.exe";
     private static readonly GamePath ExtraPath = new(LocationId.Game, Extra);
 
+    private readonly CapturedLogs _logs = new();
+
     protected override IServiceCollection AddServices(IServiceCollection services)
-        => base.AddServices(services).AddRedEngineGames();
+        => _logs.AddTo(base.AddServices(services).AddRedEngineGames());
 
     protected override SteamInstall InstallGame(SteamLibraryFixture library)
     {
@@ -87,9 +90,26 @@ public class SnapshotBaselineDeletionsTests(ITestOutputHelper helper) : ASteamIn
 
         (GameFolder / Extra).FileExists.Should().BeFalse("a deleted file is not recreated");
         var again = await Tree(loadout);
+        _logs.Lines.Where(l => l.Level == LogLevel.Information && l.Message.Contains(Extra)).Should().ContainSingle("the deletion is logged once, on the apply that records it");
         again.Values.Should().OnlyContain(n => n.Actions == Actions.DoNothing);
         (await Synchronizer.ShouldSynchronize(Refresh(loadout), Synchronizer.GetLastScannedDiskState(GameRegistry.ForceGetMetadata(GameInstallation)), Synchronizer.GetDiskStateForGame(GameRegistry.ForceGetMetadata(GameInstallation))))
             .Should().BeFalse("nothing is left to apply");
+    }
+
+    // With no hash store knowing the build, a real vanilla file is as unvouched-for as a snapshot mod file, so the
+    // same rule applies: the delete is recorded and the missing-game-files card stays quiet.
+    [Fact]
+    public async Task SnapshotVanillaFileDeletedOnDisk_IsRecordedAsADeleteToo()
+    {
+        var loadout = await CreateLoadout();
+        DeleteFromDisk(Vanilla);
+
+        var tree = await Tree(loadout);
+
+        var node = tree[new GamePath(LocationId.Game, Vanilla)];
+        node.PlayerDeleted.Should().BeTrue();
+        node.Actions.Should().Be(Actions.AddReifiedDelete);
+        (await WhatTheMissingGameFilesEmitterSays(loadout, tree)).Should().BeEmpty();
     }
 
     // The rule only touches a node already at WarnOfUnableToExtract. With the bytes in the store the table gives
@@ -115,6 +135,9 @@ public class SnapshotBaselineDeletionsTests(ITestOutputHelper helper) : ASteamIn
         DeleteFromDisk(Extra);
         var node = (await Tree(loadout))[ExtraPath];
 
+        node.SourceItemType.Should().Be(LoadoutSourceItemType.Game);
+        node.HaveDisk.Should().BeFalse();
+        node.HavePrevious.Should().BeTrue();
         node.Signature.Should().HaveFlag(Signature.LoadoutArchived);
         node.Actions.Should().Be(ActionMapping.MapActions(node.Signature));
         node.Actions.Should().NotHaveFlag(Actions.WarnOfUnableToExtract);

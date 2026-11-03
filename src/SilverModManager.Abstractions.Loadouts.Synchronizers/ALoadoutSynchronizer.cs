@@ -847,7 +847,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                     foreach (var group in groups)
                     {
                         foreach (var (path, node) in group.Nodes.Where(n => n.Value.PlayerDeleted))
-                            Logger.LogInformation("Recording the player's deletion of {Path}: it is gone from the game folder and no mod provides it", path);
+                            Logger.LogInformation("Recording the player's deletion of {Path}: it is gone from the game folder and the row providing it was the player's, not a mod's", path);
                         group.Backend.AddReifiedDeletes(context, group.Nodes);
                     }
                     break;
