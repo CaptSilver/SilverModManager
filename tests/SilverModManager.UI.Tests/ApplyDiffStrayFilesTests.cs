@@ -31,6 +31,20 @@ public class ApplyDiffStrayFilesTests(IServiceProvider provider) : AUiTest(provi
     private static readonly GamePath Dll = new(LocationId.Game, "Data/SKSE/Plugins/old.dll");
     private static readonly GamePath OtherDll = new(LocationId.Game, "Data/SKSE/Plugins/other.dll");
 
+    private static readonly KeyValuePair<GamePath, DiskDiffEntry> Entry = new(Dll, new DiskDiffEntry
+    {
+        GamePath = Dll, Size = NexusMods.Paths.Size.From(1), Identity = SilverModManager.Sdk.Hashes.FileIdentity.XxHash3(NexusMods.Hashing.xxHash3.Hash.From(1)), ChangeType = FileChangeType.Added,
+    });
+
+    private readonly List<IDisposable> _activations = [];
+
+    public override async ValueTask DisposeAsync()
+    {
+        // A page left active keeps following its diagnostics and status after the test is over.
+        await Dispatcher.UIThread.InvokeAsync(() => _activations.ForEach(a => a.Dispose()));
+        await base.DisposeAsync();
+    }
+
     private sealed class Harness
     {
         public required ApplyDiffViewModel Page { get; init; }
@@ -62,7 +76,7 @@ public class ApplyDiffStrayFilesTests(IServiceProvider provider) : AUiTest(provi
         var diagnostics = new BehaviorSubject<Diagnostic[]>(initial);
         var status = new BehaviorSubject<LoadoutSynchronizerState>(LoadoutSynchronizerState.NeedsSync);
         var sync = Substitute.For<ISynchronizerService>();
-        sync.GetApplyDiffTree(Arg.Any<LoadoutId>()).Returns(_ => FileDiffTree.Create([]));
+        sync.GetApplyDiffTree(Arg.Any<LoadoutId>()).Returns(_ => FileDiffTree.Create([Entry]));
         sync.StatusForLoadout(Arg.Any<LoadoutId>()).Returns(Task.FromResult<IObservable<LoadoutSynchronizerState>>(status));
         var manager = Substitute.For<IDiagnosticManager>();
         manager.GetLoadoutDiagnostics(Arg.Any<LoadoutId>()).Returns(diagnostics);
@@ -89,6 +103,7 @@ public class ApplyDiffStrayFilesTests(IServiceProvider provider) : AUiTest(provi
             return vm;
         });
         var activation = await Dispatcher.UIThread.InvokeAsync(() => page.Activator.Activate());
+        _activations.Add(activation);
         harness = new Harness
         {
             Page = page, Loadout = loadout, Diagnostics = diagnostics, Status = status, Remover = remover, Toasts = toasts,
