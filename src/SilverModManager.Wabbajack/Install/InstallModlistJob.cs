@@ -1173,7 +1173,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             Kind = kind,
         };
 
-        Logger.LogTrace("Skipped '{To}' of '{List}' ({Kind}): {Reason}", placement.To, check.List.Name, kind, reason);
+        LogSkip(check, placement, kind, reason);
         if (!state.Skipped.TryGetValue(kind, out var skippedOfKind)) state.Skipped[kind] = skippedOfKind = new List<string>();
         skippedOfKind.Add(placement.To.ToString());
 
@@ -1185,6 +1185,17 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             Logger.LogWarning("Dropped {Count} input file(s) of '{To}' in '{List}' because the archive was not built ({Reason}): {Inputs}",
                 inputs.Count, placement.To, check.List.Name, reason, string.Join(", ", inputs.Values.Take(SkipExamplesLogged).Select(i => i.To.ToString())));
         }
+    }
+
+    /// <summary>
+    /// Every skip passes through here, so the log names each one with its destination, kind and reason. A file left out
+    /// on purpose (a kept original, an archive a tool folder cannot hold) is Information; anything the run failed to
+    /// produce is a Warning, since the list stays disabled over it.
+    /// </summary>
+    private void LogSkip(Checked check, Placement placement, SkipKind kind, string reason)
+    {
+        var byDesign = kind == SkipKind.KeptOriginal || placement.Target is Mo2Target.Extra && placement.Directive is MergedPatch or CreateBsa;
+        Logger.Log(byDesign ? LogLevel.Information : LogLevel.Warning, "Skipped '{To}' of '{List}' ({Kind}): {Reason}", placement.To, check.List.Name, kind, reason);
     }
 
     /// <summary>

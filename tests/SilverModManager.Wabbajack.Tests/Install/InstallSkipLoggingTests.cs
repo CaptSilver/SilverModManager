@@ -20,7 +20,7 @@ public class InstallSkipLoggingTests(ITestOutputHelper helper) : InstallTestBase
         => base.AddServices(services).AddSingleton<ILogger<InstallModlistJob>>(_log);
 
     [Fact]
-    public async Task EachSkipIsTracedOnceWithTheListTheTargetTheKindAndTheReason()
+    public async Task AByDesignSkipIsLoggedOnceAtInformationWithTheListTheTargetTheKindAndTheReason()
     {
         var archive = await AddZip("a.zip", new() { ["t.dds"] = Bc1Dds(8) });
         var list = new ListBuilder();
@@ -30,8 +30,66 @@ public class InstallSkipLoggingTests(ITestOutputHelper helper) : InstallTestBase
 
         await Install(loadout, await AddModlist(list.ToList("My List"), list.Blobs), Defaults);
 
-        var traced = _log.Messages(LogLevel.Trace).Where(m => m.Contains("mods/A/t.dds")).Should().ContainSingle().Subject;
+        var traced = _log.Messages(LogLevel.Information).Where(m => m.Contains("Skipped '") && m.Contains("mods/A/t.dds")).Should().ContainSingle().Subject;
         traced.Should().Contain("My List").And.Contain("KeptOriginal").And.Contain("kept the original");
+    }
+
+    [Fact]
+    public async Task ARealFailureIsLoggedOnceAtWarningWithItsPathKindAndReason()
+    {
+        var list = new ListBuilder();
+        list.Directives.Add(list.Bsa("mods/A/pack.bsa", "pack", "meshes/absent.nif"));
+        var loadout = await CreateLoadout();
+
+        await Install(loadout, await AddModlist(list.ToList("My List"), list.Blobs), Defaults);
+
+        var logged = _log.Messages(LogLevel.Warning).Where(m => m.Contains("Skipped '")).Should().ContainSingle().Subject;
+        logged.Should().Contain("mods/A/pack.bsa").And.Contain("MemberNotFound").And.Contain("meshes/absent.nif").And.Contain("My List");
+    }
+
+    [Fact]
+    public async Task AnArchiveAimedAtAToolFolderIsLoggedAtInformationAsLeftOutByDesign()
+    {
+        var list = new ListBuilder();
+        list.Directives.Add(list.Inline("TEMP_BSA_FILES/pack/one.txt", "1"));
+        list.Directives.Add(list.Bsa("tools/X/pack.bsa", "pack", "one.txt"));
+        var loadout = await CreateLoadout();
+
+        await Install(loadout, await AddModlist(list.ToList("My List"), list.Blobs), Defaults);
+
+        _log.Messages(LogLevel.Warning).Where(m => m.Contains("Skipped '")).Should().BeEmpty();
+        var logged = _log.Messages(LogLevel.Information).Where(m => m.Contains("Skipped '") && m.Contains("tools/X/pack.bsa")).Should().ContainSingle().Subject;
+        logged.Should().Contain("Transform").And.Contain("tool folder");
+    }
+
+    [Fact]
+    public async Task ARunWithSkipsOfTwoKindsLogsOneSummaryPerKind()
+    {
+        var archive = await AddZip("a.zip", new() { ["t.dds"] = Bc1Dds(8) });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(UnwritableTexture("mods/A/t.dds", archive, "t.dds"));
+        list.Directives.Add(list.Bsa("mods/A/pack.bsa", "pack", "meshes/absent.nif"));
+        var loadout = await CreateLoadout();
+
+        await Install(loadout, await AddModlist(list.ToList("My List"), list.Blobs), Defaults);
+
+        var summaries = _log.Messages(LogLevel.Warning).Where(m => m.Contains("were skipped as")).ToArray();
+        summaries.Should().HaveCount(2);
+        summaries.Should().ContainSingle(m => m.Contains("KeptOriginal") && m.Contains("1 file(s)"));
+        summaries.Should().ContainSingle(m => m.Contains("MemberNotFound") && m.Contains("1 file(s)"));
+    }
+
+    [Fact]
+    public async Task ARunWithoutSkipsLogsNoSkipLines()
+    {
+        var list = new ListBuilder();
+        list.Directives.Add(list.Inline("mods/A/a.txt", "a"));
+        var loadout = await CreateLoadout();
+
+        await Install(loadout, await AddModlist(list.ToList("My List"), list.Blobs), Defaults);
+
+        _log.Entries.Should().NotContain(e => e.Message.Contains("were skipped as") || e.Message.Contains("Skipped '"));
     }
 
     [Fact]
