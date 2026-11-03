@@ -40,6 +40,20 @@ public class ExtractedLinksTests : IDisposable
     private void AssertSecretUntouched() => File.ReadAllText(Path.Combine(_outside, "secret.txt")).Should().Be("private");
 
     [Fact]
+    public void ALinkThatWasInTheFolderBeforeExtractionIsLeftAsItIs()
+    {
+        Link("old-escape", Path.Combine(_outside, "secret.txt"));
+        Link("new-escape", Path.Combine(_outside, "secret.txt"));
+        var existing = new HashSet<string> { InRoot("old-escape") };
+
+        ExtractedLinks.Sanitize(_root, Archive, new ListLogger(_log), existing);
+
+        new FileInfo(InRoot("old-escape")).LinkTarget.Should().Be(Path.Combine(_outside, "secret.txt"));
+        Exists("new-escape").Should().BeFalse();
+        AssertSecretUntouched();
+    }
+
+    [Fact]
     public void AbsoluteLinkOutsideIsDropped()
     {
         Link("abs", Path.Combine(_outside, "secret.txt"));

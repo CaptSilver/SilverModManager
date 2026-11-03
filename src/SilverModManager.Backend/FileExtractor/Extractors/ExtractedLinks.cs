@@ -12,11 +12,16 @@ namespace SilverModManager.Backend.FileExtractor.Extractors;
 /// </summary>
 internal static class ExtractedLinks
 {
-    internal static void Sanitize(string root, string archive, ILogger logger)
+    /// <param name="root">The extraction folder.</param>
+    /// <param name="archive">The archive's name, for the warnings.</param>
+    /// <param name="logger">Where the warnings go.</param>
+    /// <param name="existing">Links that were in the folder before the archive was extracted (see <see cref="FindLinks"/>). They are not the
+    /// archive's, so they are left exactly as they are.</param>
+    internal static void Sanitize(string root, string archive, ILogger logger, IReadOnlySet<string>? existing = null)
     {
         if (!Directory.Exists(root)) return;
 
-        var links = FindLinks(root);
+        var links = FindLinks(root).Where(link => existing?.Contains(link) != true).ToList();
         if (links.Count == 0) return;
 
         var lexicalRoot = TrimSeparator(Path.GetFullPath(root));
@@ -156,9 +161,12 @@ internal static class ExtractedLinks
         return new Decision(null, $"`{target}` is not a file inside the archive", TargetMissing: !Directory.Exists(real));
     }
 
-    private static List<string> FindLinks(string root)
+    /// <summary>The symbolic links in <paramref name="root"/> and the folders below it, without entering any link. Empty when the folder is missing.</summary>
+    internal static List<string> FindLinks(string root)
     {
         var links = new List<string>();
+        if (!Directory.Exists(root)) return links;
+
         var pending = new Stack<string>();
         pending.Push(root);
         while (pending.TryPop(out var directory))

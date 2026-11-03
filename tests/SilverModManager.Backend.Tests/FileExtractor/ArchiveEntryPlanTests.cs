@@ -104,6 +104,20 @@ public class ArchiveEntryPlanTests
         plan.MixedLinkNames.Should().Equal("sub/../x.txt");
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ANameStoredAsBothAFileAndAHardLinkIsDroppedWhicheverComesLast(bool linkLast)
+    {
+        ArchiveEntryPlan.Entry[] pair = linkLast ? [File("sub/../x.txt"), HardLink("sub/../x.txt", "ok.txt")] : [HardLink("sub/../x.txt", "ok.txt"), File("sub/../x.txt")];
+        var plan = Plan([File("ok.txt"), .. pair]);
+
+        plan.Moved.Should().BeEmpty();
+        plan.DroppedHardLinks.Should().BeEmpty();
+        plan.Excluded.Should().BeEquivalentTo("sub/../x.txt");
+        plan.MixedLinkNames.Should().Equal("sub/../x.txt");
+    }
+
     [Fact]
     public void ADroppedMixedNameDoesNotSupersedeAnotherEntryAtItsPath()
     {

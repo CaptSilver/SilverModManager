@@ -197,7 +197,11 @@ public class SevenZipExtractor : IExtractor
         }
 
         var root = destination.ToNativeSeparators(_osInformation);
-        if (plan.ExcludedIndices.Count == 0)
+
+        // Links the folder already holds are not the archive's: the sweep below leaves them alone.
+        var existingLinks = ExtractedLinks.FindLinks(root).ToHashSet(StringComparer.Ordinal);
+        var belowLinks = EntriesBelowLinks(root, plan, archiveName);
+        if (plan.ExcludedIndices.Count == 0 && belowLinks.Count == 0)
         {
             await RunExtract(source, archiveName, destination, extraArguments: [], cancellationToken);
         }
@@ -206,7 +210,7 @@ public class SevenZipExtractor : IExtractor
             // The listing shows a newline in a name as an underscore, which a literal exclusion would not
             // match, so such an entry would be extracted in place as well as moved. The names then go as
             // patterns where an underscore matches any character.
-            var excludedNames = plan.ExcludedIndices.Select(plan.RawName).ToList();
+            var excludedNames = plan.ExcludedIndices.Select(plan.RawName).Concat(belowLinks).ToList();
             var wildcard = excludedNames.Any(MayHideNewline);
             if (wildcard && ClashingEntry(plan, excludedNames) is { } clash)
             {
@@ -224,7 +228,7 @@ public class SevenZipExtractor : IExtractor
         // Every link 7z left is gone before the first entry is written by hand: one of those writes could
         // otherwise go through a folder link. The archive may store a file at mode 000, which a copy could not read.
         NormalizeModes(root);
-        ExtractedLinks.Sanitize(root, archiveName, _logger);
+        ExtractedLinks.Sanitize(root, archiveName, _logger, existingLinks);
 
         if (plan.IsPlain)
         {
@@ -237,7 +241,7 @@ public class SevenZipExtractor : IExtractor
             if (!SafeExtraction.TryCreateFolder(root, Path.Combine(root, folder))) _logger.LogWarning("Skipping folder `{Entry}` of archive `{Archive}`: a folder on its way is a symbolic link", folder, archiveName);
         }
 
-        foreach (var name in plan.MixedLinkNames) _logger.LogWarning("Dropping `{Entry}` from archive `{Archive}`: it is stored both as a symbolic link and as something else, and which one wins depends on the format", name, archiveName);
+        foreach (var name in plan.MixedLinkNames) _logger.LogWarning("Dropping `{Entry}` from archive `{Archive}`: it is stored as more than one kind of entry (symbolic link, hard link or something else), and which one wins depends on the format", name, archiveName);
 
         foreach (var (name, reason) in plan.DroppedHardLinks) _logger.LogWarning("Dropping hard link `{Entry}` from archive `{Archive}`: {Reason}", name, archiveName, reason);
 
@@ -288,12 +292,10 @@ public class SevenZipExtractor : IExtractor
             await using var scratch = _temporaryFileManager.CreateFile(ext: new Extension(".link"));
             var path = scratch.Path.ToNativeSeparators(_osInformation);
 
-            // The scratch folder holds a link when the entry is one; the target 7z wrote is the link's own text, and
-            // reading the path would follow it. 7z roots a target that is absolute in the scratch folder, so only a
-            // relative one is the text the archive stored.
+            // 7z refuses a second link of one name, so a repeated link name fails here; a link it did write is
+            // never read, since reading the path would follow it.
             var outcome = await ExtractRepeatedEntryTo(source, plan, index, path, mode: null, cancellationToken);
             if (outcome.Error is not null) return null;
-            if (outcome.LinkTarget is { } linkTarget) return Path.IsPathRooted(linkTarget) ? null : linkTarget;
             var data = new byte[MaxLinkTargetBytes + 1];
             await using var stream = File.OpenRead(path);
             var read = await stream.ReadAtLeastAsync(data, data.Length, throwOnEndOfStream: false, cancellationToken);
@@ -379,8 +381,8 @@ public class SevenZipExtractor : IExtractor
         }
     }
 
-    /// <summary>How writing one entry went: <see cref="Error"/> when it failed, <see cref="LinkTarget"/> when the entry is a link and nothing was written.</summary>
-    private readonly record struct EntryOutcome(string? Error = null, string? LinkTarget = null);
+    /// <summary>How writing one entry went: <see cref="Error"/> when it failed.</summary>
+    private readonly record struct EntryOutcome(string? Error = null);
 
     /// <summary>
     /// Streams one entry and checks it against the listing. The listing prints a newline in a name as an
@@ -421,17 +423,42 @@ public class SevenZipExtractor : IExtractor
 
             // A link is looked at, never opened, moved or chmodded: it can point anywhere. Only a regular file
             // is copied out, and it is copied to a fresh sibling of the target, which the rename replaces.
-            var found = Directory.EnumerateFileSystemEntries(folder, "*", SearchOption.AllDirectories).Where(p => !Directory.Exists(p) || SafeExtraction.IsLink(p)).ToArray();
-            if (found.Length == 1 && new FileInfo(found[0]).LinkTarget is { } linkTarget) return new EntryOutcome(LinkTarget: linkTarget);
-
-            if (found.Length == 1 && (plan.Size(index) is not { } size || new FileInfo(found[0]).Length == size))
+            var (files, links) = ListExtracted(folder);
+            if (files.Length == 1 && links.Length == 0 && (plan.Size(index) is not { } size || new FileInfo(files[0]).Length == size))
             {
-                SafeExtraction.CopyReplacing(found[0], target, mode);
+                SafeExtraction.CopyReplacing(files[0], target, mode);
                 return new EntryOutcome();
             }
 
-            if (wildcard || !MayHideNewline(plan.RawName(index))) return new EntryOutcome(found.Length == 1 ? $"7z wrote a file of the wrong size for `{name}`" : $"7z extracted {found.Length} files for `{name}`, expected one");
+            if (wildcard || !MayHideNewline(plan.RawName(index)))
+            {
+                if (links.Length > 0) return new EntryOutcome($"7z wrote a link for `{name}`, which is never followed");
+                return new EntryOutcome(files.Length == 1 ? $"7z wrote a file of the wrong size for `{name}`" : $"7z extracted {files.Length} files for `{name}`, expected one");
+            }
         }
+    }
+
+    /// <summary>
+    /// What 7z left in a scratch folder: its regular files and its links. A link is listed and never entered, so a
+    /// link to a folder outside does not bring that folder's files into the count.
+    /// </summary>
+    internal static (string[] Files, string[] Links) ListExtracted(string folder)
+    {
+        var files = new List<string>();
+        var links = new List<string>();
+        var pending = new Stack<string>();
+        pending.Push(folder);
+        while (pending.TryPop(out var directory))
+        {
+            foreach (var entry in Directory.EnumerateFileSystemEntries(directory))
+            {
+                if (SafeExtraction.IsLink(entry)) links.Add(entry);
+                else if (Directory.Exists(entry)) pending.Push(entry);
+                else files.Add(entry);
+            }
+        }
+
+        return (files.ToArray(), links.ToArray());
     }
 
     /// <summary>A stored name that is not excluded but matches the pattern of an excluded one, if there is one.</summary>
@@ -444,6 +471,44 @@ public class SevenZipExtractor : IExtractor
             if (excluded.Any(e => e.AsSpan().SequenceEqual(raw))) continue;
             var name = Encoding.UTF8.GetString(raw);
             if (patterns.Any(p => p.Length == name.Length && p.Zip(name).All(pair => pair.First == '?' || pair.First == pair.Second))) return name;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The entries of the bulk run that 7z would write through a symbolic link already in the destination: those below
+    /// a folder link, and a folder entry that is one. 7z follows such a link, so these are left out of the run and
+    /// skipped, as a moved entry is. A file entry at a file link is not here: 7z replaces the link with the file and
+    /// never writes into its target. An entry whose name 7z cannot be told is not listed, as it cannot be left out.
+    /// </summary>
+    private List<byte[]> EntriesBelowLinks(string root, ArchiveEntryPlan plan, string archiveName)
+    {
+        var blocked = new List<byte[]>();
+        foreach (var kept in plan.Kept)
+        {
+            if (!EntryNames.IsAddressable(kept.Raw) || blocked.Any(b => b.AsSpan().SequenceEqual(kept.Raw))) continue;
+
+            var name = Encoding.UTF8.GetString(kept.Raw);
+            var segments = ArchiveEntryPlan.PlacedBy7z(name).Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (FirstLink(root, kept.IsDirectory ? segments : segments[..Math.Max(0, segments.Length - 1)]) is not { } link) continue;
+
+            blocked.Add(kept.Raw);
+            _logger.LogWarning("Skipping `{Entry}` from archive `{Archive}`: `{Link}` in the destination is a symbolic link, and 7z would write through it", name, archiveName, link);
+        }
+
+        return blocked;
+    }
+
+    /// <summary>The first existing component of <paramref name="segments"/> below <paramref name="root"/> that is a symbolic link, or null.</summary>
+    private static string? FirstLink(string root, string[] segments)
+    {
+        var current = root;
+        foreach (var segment in segments)
+        {
+            current = Path.Combine(current, segment);
+            if (SafeExtraction.IsLink(current)) return current;
+            if (!Directory.Exists(current)) return null;
         }
 
         return null;
@@ -620,6 +685,9 @@ public class SevenZipExtractor : IExtractor
             }
             else if (TryField(line, "Mode = "u8, out value) || TryField(line, "Attributes = "u8, out value))
             {
+                // A .7z entry carries no Folder line, only the letters 7z gives its attributes, D among them for a folder.
+                var letters = value.IndexOf((byte)' ') is >= 0 and var space ? value[..space] : value;
+                isDirectory |= letters.Contains((byte)'D');
                 var mode = UnixMode(value);
                 isSymlink |= mode is not null && mode[0] == 'l';
                 isExecutable |= mode is not null && mode[3] is 'x' or 's';

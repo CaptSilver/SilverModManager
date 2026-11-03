@@ -53,8 +53,9 @@ internal sealed class ArchiveEntryPlan
     internal IReadOnlyList<(string Name, string Reason)> DroppedHardLinks { get; }
 
     /// <summary>
-    /// Stored names (decoded) that appear both as a symbolic link and as something else. Which copy 7z leaves
-    /// on disk depends on its order, and a link read from the data may differ from the one it wrote, so such
+    /// Stored names (decoded) that appear as more than one kind of entry among symbolic link, hard link and
+    /// anything else. Which copy 7z leaves on disk depends on its order (a hard link also fails a run of its own,
+    /// since its target is not in it), and a link read from the data may differ from the one it wrote, so such
     /// a name is left out of the bulk run, of <see cref="Moved"/> and of <see cref="Links"/>.
     /// </summary>
     internal IReadOnlyList<string> MixedLinkNames { get; }
@@ -140,7 +141,7 @@ internal sealed class ArchiveEntryPlan
         var mixedKeys = Enumerable.Range(0, entries.Count)
             .Where(i => addressable[i])
             .GroupBy(i => Key(_raws[i]))
-            .Where(g => g.Any(i => entries[i].IsSymlink) && g.Any(i => !entries[i].IsSymlink))
+            .Where(g => g.Select(i => entries[i].IsSymlink ? 1 : entries[i].HardLinkTarget is not null ? 2 : 0).Distinct().Count() > 1)
             .Select(g => g.Key)
             .ToHashSet(StringComparer.Ordinal);
         var mixedNames = new List<string>();

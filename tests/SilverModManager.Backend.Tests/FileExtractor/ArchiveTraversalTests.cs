@@ -709,6 +709,80 @@ public class ArchiveTraversalTests : AFileExtractorTest
         outcome.Warnings.Should().Contain(w => w.Contains("Dropping symlink `l`"));
     }
 
+    // 7z fails a scratch run whose entry is a hard link (the target is not in the run), and in the bulk run a
+    // hard link and a file of one name overwrite each other depending on their order, so such a name is dropped.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ARepeatedNameStoredAsAFileAndAHardLinkIsDroppedWhicheverComesLast(bool linkLast)
+    {
+        var outcome = await ExtractTar(writer =>
+        {
+            AddFile(writer, "ok.txt", "real");
+            if (linkLast) AddFile(writer, "sub/../x.txt", "first");
+            writer.WriteEntry(new GnuTarEntry(TarEntryType.HardLink, "sub/../x.txt") { LinkName = "ok.txt" });
+            if (!linkLast) AddFile(writer, "sub/../x.txt", "last");
+        });
+
+        outcome.Files.Should().Equal(new Dictionary<string, string> { ["ok.txt"] = "real" });
+        outcome.Outside.Should().BeEmpty();
+        outcome.Warnings.Should().ContainSingle(w => w.Contains("sub/../x.txt") && w.Contains("Dropping"));
+    }
+
+    // 7z writes through a folder link that is already in the destination, so what would go below it is
+    // left out of the 7z run and skipped, as a moved entry is.
+    [Fact]
+    public async Task ABulkEntryBelowAFolderLinkAlreadyInTheDestinationIsNotWrittenThroughIt()
+    {
+        await using var container = TemporaryFileManager.CreateFolder();
+        var outside = container.Path.Combine("outside");
+        outside.CreateDirectory();
+        var destination = container.Path.Combine("a/b/extracted");
+        destination.CreateDirectory();
+        Directory.CreateSymbolicLink(destination.Combine("dir").ToString(), outside.ToString());
+
+        var outcome = await ExtractZipInto(container.Path, destination, new Entry("dir/evil.txt", "evil"), new Entry("ok.txt"));
+
+        Directory.EnumerateFileSystemEntries(outside.ToString()).Should().BeEmpty();
+        new FileInfo(destination.Combine("dir").ToString()).LinkTarget.Should().Be(outside.ToString());
+        outcome.Files.Keys.Should().BeEquivalentTo("ok.txt");
+        outcome.Warnings.Should().Contain(w => w.Contains("dir/evil.txt") && w.Contains("symbolic link"));
+    }
+
+    [Fact]
+    public async Task AFolderEntryAtAFolderLinkAlreadyInTheDestinationIsLeftOutWithItsContents()
+    {
+        await using var container = TemporaryFileManager.CreateFolder();
+        var outside = container.Path.Combine("outside");
+        outside.CreateDirectory();
+        var destination = container.Path.Combine("a/b/extracted");
+        destination.CreateDirectory();
+        Directory.CreateSymbolicLink(destination.Combine("dir").ToString(), outside.ToString());
+
+        var outcome = await ExtractZipInto(container.Path, destination, new Entry("dir/", ""), new Entry("dir/evil.txt", "evil"), new Entry("ok.txt"));
+
+        Directory.EnumerateFileSystemEntries(outside.ToString()).Should().BeEmpty();
+        outcome.Files.Keys.Should().BeEquivalentTo("ok.txt");
+    }
+
+    // 7z puts a new file where a link to a file was, so the link's target is left alone.
+    [Fact]
+    public async Task ABulkFileAtAFileLinkAlreadyInTheDestinationReplacesTheLink()
+    {
+        await using var container = TemporaryFileManager.CreateFolder();
+        var secret = container.Path.Combine("secret.txt");
+        await secret.WriteAllTextAsync("private", TestContext.Current.CancellationToken);
+        var destination = container.Path.Combine("a/b/extracted");
+        destination.CreateDirectory();
+        File.CreateSymbolicLink(destination.Combine("x.txt").ToString(), secret.ToString());
+
+        await ExtractZipInto(container.Path, destination, new Entry("x.txt", "from archive"), new Entry("ok.txt"));
+
+        File.ReadAllText(secret.ToString()).Should().Be("private");
+        new FileInfo(destination.Combine("x.txt").ToString()).LinkTarget.Should().BeNull();
+        File.ReadAllText(destination.Combine("x.txt").ToString()).Should().Be("from archive");
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

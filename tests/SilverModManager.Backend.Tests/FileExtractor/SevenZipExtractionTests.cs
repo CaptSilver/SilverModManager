@@ -69,6 +69,40 @@ public class SevenZipExtractionTests : AFileExtractorTest
         File.GetUnixFileMode(secretDir.ToString()).Should().Be(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
     }
 
+    // 7z 26.05 prints no "Folder" line for a .7z entry; the D in its attributes is the only sign of a folder.
+    [Theory]
+    [InlineData("Attributes = D", true)]
+    [InlineData("Attributes = D drwxr-xr-x", true)]
+    [InlineData("Attributes = A -rwxr-xr-x", false)]
+    [InlineData("Attributes = A", false)]
+    [InlineData("Folder = +\nAttributes = A", true)]
+    public void ParsingAListingTakesAFolderFromItsAttributes(string fields, bool isFolder)
+    {
+        var listing = System.Text.Encoding.UTF8.GetBytes($"Path = f\n{fields}\n");
+
+        var entries = SevenZipExtractor.ParseListing(listing);
+
+        entries.Should().ContainSingle().Which.IsDirectory.Should().Be(isFolder);
+    }
+
+    // The scratch folder of a repeated name can hold a link, and listing it must not walk into the folder it names.
+    [Fact]
+    public async Task ListingScratchContentsDoesNotFollowALinkToAFolderOutside()
+    {
+        await using var outside = TemporaryFileManager.CreateFolder();
+        await outside.Path.Combine("secret.txt").WriteAllTextAsync("private", TestContext.Current.CancellationToken);
+        await using var scratch = TemporaryFileManager.CreateFolder();
+        scratch.Path.Combine("d").CreateDirectory();
+        await scratch.Path.Combine("d/b.txt").WriteAllTextAsync("b", TestContext.Current.CancellationToken);
+        Directory.CreateSymbolicLink(scratch.Path.Combine("folder-link").ToString(), outside.Path.ToString());
+        File.CreateSymbolicLink(scratch.Path.Combine("file-link").ToString(), outside.Path.Combine("secret.txt").ToString());
+
+        var (files, links) = SevenZipExtractor.ListExtracted(scratch.Path.ToString());
+
+        files.Select(f => Path.GetRelativePath(scratch.Path.ToString(), f)).Should().BeEquivalentTo("d/b.txt");
+        links.Select(f => Path.GetFileName(f)).Should().BeEquivalentTo("folder-link", "file-link");
+    }
+
     // 7z-with-symlinks.7z holds link-abs (absolute), link-escape and link-dotdot (../ out of the root) and
     // sub/deep-escape (../../ out of sub), all aimed outside the extraction folder, plus link-file, link-chain
     // and link-sub-file (links to files inside it) and link-dir (a link to the folder sub). Nothing that
