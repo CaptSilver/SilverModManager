@@ -88,6 +88,40 @@ public class ArchiveEntryPlanTests
         plan.Links.Should().ContainSingle();
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ANameStoredAsBothAFileAndALinkIsDroppedWhicheverComesLast(bool linkLast)
+    {
+        ArchiveEntryPlan.Entry[] pair = linkLast ? [File("sub/../x.txt"), Symlink("sub/../x.txt", "ok.txt")] : [Symlink("sub/../x.txt", "ok.txt"), File("sub/../x.txt")];
+        var plan = Plan([.. pair, File("ok.txt")]);
+
+        plan.Moved.Should().BeEmpty();
+        plan.MovedIndices.Should().BeEmpty();
+        plan.Links.Should().BeEmpty();
+        plan.LinkIndices.Should().BeEmpty();
+        plan.Excluded.Should().BeEquivalentTo("sub/../x.txt");
+        plan.MixedLinkNames.Should().Equal("sub/../x.txt");
+    }
+
+    [Fact]
+    public void ADroppedMixedNameDoesNotSupersedeAnotherEntryAtItsPath()
+    {
+        var plan = Plan(File("x.txt"), File("a/../x.txt"), Symlink("a/../x.txt", "ok.txt"));
+
+        plan.Excluded.Should().BeEquivalentTo("a/../x.txt");
+        plan.Kept.Should().ContainSingle(k => k.Index == 0);
+    }
+
+    [Fact]
+    public void ARepeatedLinkNameAloneIsNotMixed()
+    {
+        var plan = Plan(Symlink("a/../l", "x"), Symlink("a/../l", "y"));
+
+        plan.Links.Should().HaveCount(2);
+        plan.MixedLinkNames.Should().BeEmpty();
+    }
+
     [Fact]
     public void AnEntryBelowASymlinkIsExtractedAloneBecauseExcludingTheLinkWouldExcludeIt()
     {

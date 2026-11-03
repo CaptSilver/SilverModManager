@@ -237,6 +237,8 @@ public class SevenZipExtractor : IExtractor
             if (!SafeExtraction.TryCreateFolder(root, Path.Combine(root, folder))) _logger.LogWarning("Skipping folder `{Entry}` of archive `{Archive}`: a folder on its way is a symbolic link", folder, archiveName);
         }
 
+        foreach (var name in plan.MixedLinkNames) _logger.LogWarning("Dropping `{Entry}` from archive `{Archive}`: it is stored both as a symbolic link and as something else, and which one wins depends on the format", name, archiveName);
+
         foreach (var (name, reason) in plan.DroppedHardLinks) _logger.LogWarning("Dropping hard link `{Entry}` from archive `{Archive}`: {Reason}", name, archiveName, reason);
 
         for (var m = 0; m < plan.Moved.Count; m++)
@@ -258,7 +260,6 @@ public class SevenZipExtractor : IExtractor
             // The stream or the scratch copy is not given the stored mode, so the execute bit is set from the listing.
             var outcome = await ExtractEntryToFile(source, plan, index, target, plan.IsExecutable(index) ? Executable : RegularFile, cancellationToken);
             if (outcome.Error is not null) throw new FileExtractionException($"7z failed extracting `{name}` from `{archiveName}`: {outcome.Error}");
-            if (outcome.LinkTarget is not null) _logger.LogWarning("Dropping `{Entry}` from archive `{Archive}`: it is stored both as a file and as a symbolic link, and the last copy is the link", name, archiveName);
         }
 
         var placeable = new List<(string Name, string Path, string Target)>();

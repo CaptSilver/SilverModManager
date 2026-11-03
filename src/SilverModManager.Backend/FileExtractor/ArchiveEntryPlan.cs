@@ -52,6 +52,13 @@ internal sealed class ArchiveEntryPlan
     /// <summary>Hard links left out of the bulk run, as decoded name and why.</summary>
     internal IReadOnlyList<(string Name, string Reason)> DroppedHardLinks { get; }
 
+    /// <summary>
+    /// Stored names (decoded) that appear both as a symbolic link and as something else. Which copy 7z leaves
+    /// on disk depends on its order, and a link read from the data may differ from the one it wrote, so such
+    /// a name is left out of the bulk run, of <see cref="Moved"/> and of <see cref="Links"/>.
+    /// </summary>
+    internal IReadOnlyList<string> MixedLinkNames { get; }
+
     /// <summary>The entries the bulk run extracts, for <see cref="ExtractedNames.Repair"/>.</summary>
     internal IReadOnlyList<ExtractedNames.Kept> Kept { get; }
 
@@ -128,13 +135,23 @@ internal sealed class ArchiveEntryPlan
         var final = cleaned.Select(EntryNames.FixPath).ToArray();
         var addressable = _raws.Select(raw => EntryNames.IsAddressable(raw)).ToArray();
 
+        // Only a name 7z can be told about can be left out; an unaddressable one stays in the bulk run, where
+        // ExtractedNames settles a file against a link.
+        var mixedKeys = Enumerable.Range(0, entries.Count)
+            .Where(i => addressable[i])
+            .GroupBy(i => Key(_raws[i]))
+            .Where(g => g.Any(i => entries[i].IsSymlink) && g.Any(i => !entries[i].IsSymlink))
+            .Select(g => g.Key)
+            .ToHashSet(StringComparer.Ordinal);
+        var mixedNames = new List<string>();
+
         // The last file written to a path wins, as it does for plain duplicates. Entries that merely repeat
         // a raw name are left to 7z, which overwrites in archive order.
         var lastForPath = new Dictionary<string, int>(StringComparer.Ordinal);
         for (var i = 0; i < entries.Count; i++)
         {
             // Links never supersede a file: the file at a link's path wins (see ExtractedLinks.Place).
-            if (addressable[i] && !entries[i].IsDirectory && !IsLink(entries[i]) && final[i].Length > 0) lastForPath[final[i]] = i;
+            if (addressable[i] && !mixedKeys.Contains(Key(_raws[i])) && !entries[i].IsDirectory && !IsLink(entries[i]) && final[i].Length > 0) lastForPath[final[i]] = i;
         }
 
         var excluded = new HashSet<string>(StringComparer.Ordinal);
@@ -178,6 +195,13 @@ internal sealed class ArchiveEntryPlan
             var underLink = linkPrefixes.Any(prefix => name.StartsWith(prefix, StringComparison.Ordinal));
             var placedRight = EntryNames.FixPath(PlacedBy7z(name)) == final[i] && !underLink;
             var key = Key(_raws[i]);
+
+            if (mixedKeys.Contains(key))
+            {
+                excluded.Add(key);
+                if (mixedNames.Count == 0 || mixedNames[^1] != name) mixedNames.Add(name);
+                continue;
+            }
 
             if (final[i].Length == 0)
             {
@@ -262,6 +286,7 @@ internal sealed class ArchiveEntryPlan
         MovedIndices = movedIndices;
         Folders = folders;
         Links = links;
+        MixedLinkNames = mixedNames.Distinct(StringComparer.Ordinal).ToList();
         LinkIndices = linkIndices;
         DroppedHardLinks = droppedHardLinks;
         Kept = keptEntries;

@@ -692,20 +692,36 @@ public class ArchiveTraversalTests : AFileExtractorTest
         outcome.Warnings.Should().Contain(w => w.Contains("x.txt"));
     }
 
+    // 7z refuses to write a second link over the first of the same name ("via another link"), so the
+    // scratch extraction that would read the last copy fails and the name is dropped. decoy.txt holds the
+    // text "ok.txt": a link that was followed, or read from either copy, would leave an "l" here.
     [Fact]
-    public async Task ARepeatedLinkNameIsReadFromItsDataAndNeverFollowed()
+    public async Task ARepeatedLinkNameIsDroppedAndNeverFollowed()
     {
         await using var container = TemporaryFileManager.CreateFolder();
-        var secret = container.Path.Combine("secret.txt");
-        await secret.WriteAllTextAsync("private", TestContext.Current.CancellationToken);
         var destination = container.Path.Combine("a/b/extracted");
         destination.CreateDirectory();
 
         var outcome = await ExtractZipInto(container.Path, destination,
-            new Entry("l", "ok.txt", UnixSymlink: true), new Entry("l", secret.ToString(), UnixSymlink: true), new Entry("ok.txt", "real"));
+            new Entry("l", "ok.txt", UnixSymlink: true), new Entry("l", "decoy.txt", UnixSymlink: true), new Entry("ok.txt", "real"), new Entry("decoy.txt", "ok.txt"));
+
+        outcome.Files.Should().Equal(new Dictionary<string, string> { ["ok.txt"] = "real", ["decoy.txt"] = "ok.txt" });
+        outcome.Warnings.Should().Contain(w => w.Contains("Dropping symlink `l`"));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ANameStoredAsBothAFileAndALinkIsNotExtracted(bool linkLast)
+    {
+        Entry[] pair = linkLast
+            ? [new Entry("sub/../x.txt", "file"), new Entry("sub/../x.txt", "ok.txt", UnixSymlink: true)]
+            : [new Entry("sub/../x.txt", "ok.txt", UnixSymlink: true), new Entry("sub/../x.txt", "file")];
+
+        var outcome = await ExtractZip(Extractor.SevenZip, [.. pair, new Entry("ok.txt", "real")]);
 
         outcome.Files.Should().Equal(new Dictionary<string, string> { ["ok.txt"] = "real" });
-        File.ReadAllText(secret.ToString()).Should().Be("private");
+        outcome.Warnings.Should().ContainSingle(w => w.Contains("sub/../x.txt") && w.Contains("Dropping"));
     }
 
     // The link is created before the entry that goes through it, and a link entry is only ever turned into a
