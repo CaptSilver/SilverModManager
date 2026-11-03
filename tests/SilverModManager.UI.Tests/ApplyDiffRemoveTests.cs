@@ -90,6 +90,7 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
             .AddSingleton(Connection)
             .AddSingleton(presenter)
             .AddSingleton(toasts)
+            .AddSingleton(Substitute.For<SilverModManager.Abstractions.Diagnostics.IDiagnosticManager>())
             .AddSingleton(remover ?? Provider.GetRequiredService<ILoadoutFileRemover>())
             .AddLogging()
             .BuildServiceProvider();
@@ -411,6 +412,8 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
         public ReactiveCommand<Unit, Unit> RemoveSelectedCommand { get; }
         public IViewModelInterface? BodyViewModel { get; set; }
         public bool LoadFailed => false;
+        public IReadOnlyList<StrayFileNotice> StrayFiles { get; } = [];
+        public ReactiveCommand<Unit, Unit> RemoveStrayFilesCommand { get; } = ReactiveCommand.Create(() => { });
     }
 
     [Fact]

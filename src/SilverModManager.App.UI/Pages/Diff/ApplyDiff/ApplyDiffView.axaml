@@ -14,7 +14,7 @@
         <applyDiff:ApplyDiffDesignViewModel />
     </Design.DataContext>
 
-    <Grid x:Name="RootGrid" RowDefinitions="Auto, *">
+    <Grid x:Name="RootGrid" RowDefinitions="Auto, Auto, *">
         <Grid.KeyBindings>
             <KeyBinding Gesture="Delete" />
         </Grid.KeyBindings>
@@ -36,7 +36,27 @@
             </StackPanel>
         </Border>
 
-        <reactiveUi:ViewModelViewHost Grid.Row="1" x:Name="TreeViewHost">
+        <Border Grid.Row="1" x:Name="StrayNotice" IsVisible="False" Padding="16,8" Margin="0,0,0,8">
+            <StackPanel Spacing="6">
+                <TextBlock Text="{x:Static resources:Language.ApplyDiff_Stray_Header}" TextWrapping="Wrap" />
+                <ItemsControl x:Name="StrayList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="applyDiff:StrayFileNotice">
+                            <TextBlock Text="{Binding FileName}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <controls:StandardButton x:Name="RemoveStrayButton"
+                                         LeftIcon="{x:Static icons:IconValues.DeleteForever}"
+                                         Text="{x:Static resources:Language.ApplyDiff_Remove}"
+                                         ShowIcon="Left"
+                                         Size="Small"
+                                         Fill="WeakAlt"
+                                         HorizontalAlignment="Left" />
+            </StackPanel>
+        </Border>
+
+        <reactiveUi:ViewModelViewHost Grid.Row="2" x:Name="TreeViewHost">
             <reactiveUi:ViewModelViewHost.ContextFlyout>
                 <MenuFlyout>
                     <MenuItem x:Name="MenuItemRemove" Classes="Critical" Header="{x:Static resources:Language.ApplyDiff_Remove}">
@@ -47,7 +67,7 @@
                 </MenuFlyout>
             </reactiveUi:ViewModelViewHost.ContextFlyout>
         </reactiveUi:ViewModelViewHost>
-        <TextBlock Grid.Row="1" x:Name="FailedText"
+        <TextBlock Grid.Row="2" x:Name="FailedText"
                    Text="{x:Static resources:Language.ApplyDiff_LoadFailed}"
                    IsVisible="False"
                    TextWrapping="Wrap"

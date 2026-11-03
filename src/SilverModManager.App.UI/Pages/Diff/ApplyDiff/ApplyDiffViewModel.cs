@@ -4,6 +4,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.App.UI.Controls.Trees.Files;
@@ -41,6 +42,12 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
     /// <inheritdoc />
     public ReactiveCommand<Unit, Unit> RemoveSelectedCommand { get; }
 
+    /// <inheritdoc />
+    [Reactive] public partial IReadOnlyList<StrayFileNotice> StrayFiles { get; private set; } = [];
+
+    /// <inheritdoc />
+    public ReactiveCommand<Unit, Unit> RemoveStrayFilesCommand { get; }
+
     // True while an apply is running, which is the synchronizer's Pending state. NeedsSync is the normal state
     // whenever the preview has something to show, so it must not disable the command.
     private readonly BehaviorSubject<bool> _applyRunning = new(false);
@@ -72,6 +79,10 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
         var canRemove = selectionCanBeRemoved.CombineLatest(_applyRunning, (selected, running) => selected && !running);
         RemoveSelectedCommand = ReactiveCommand.CreateFromTask(RemoveSelectedAsync, canRemove);
 
+        var strayFilesPresent = this.WhenAnyValue(vm => vm.StrayFiles).Select(files => files.Count > 0);
+        RemoveStrayFilesCommand = ReactiveCommand.CreateFromTask(RemoveStrayFilesAsync,
+            strayFilesPresent.CombineLatest(_applyRunning, (present, running) => present && !running));
+
         // The status only matters while the page is on screen, so it is followed from activation to deactivation.
         this.WhenActivated(disposables =>
         {
@@ -81,6 +92,13 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
                 .OnUI()
                 .Subscribe(state => _applyRunning.OnNext(state == LoadoutSynchronizerState.Pending))
                 ?.DisposeWith(disposables);
+
+            // Any diagnostic that offers to remove a loadout file lands in the notice, whichever emitter it came from.
+            _serviceProvider.GetRequiredService<IDiagnosticManager>().GetLoadoutDiagnostics(_loadoutId)
+                .Select(StrayFilesOf)
+                .OnUI()
+                .Subscribe(files => StrayFiles = files)
+                .DisposeWith(disposables);
         });
     }
 
@@ -120,6 +138,27 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
         BodyViewModel = diffTreeViewModel;
     }
 
+    private static IReadOnlyList<StrayFileNotice> StrayFilesOf(IEnumerable<Diagnostic> diagnostics) => diagnostics
+        .SelectMany(d => d.Actions)
+        .Where(a => a.Id == DiagnosticActions.RemoveLoadoutFileId)
+        .Select(a => DiagnosticActions.ParseRemoveLoadoutFile(a.Arguments))
+        .Select(parsed => new StrayFileNotice(parsed.Path, parsed.Group))
+        .Distinct()
+        .OrderBy(notice => notice.Path.ToString(), StringComparer.Ordinal)
+        .ToArray();
+
+    // One request over every listed file, scoped to the groups the diagnostics named. The diagnostics refresh by
+    // themselves once the removal is a revision of the loadout, which empties the notice.
+    private async Task RemoveStrayFilesAsync()
+    {
+        var strays = StrayFiles;
+        if (strays.Count == 0) return;
+
+        var request = new FileRemovalRequest(_loadoutId, strays.Select(s => s.Path).Distinct().ToArray(), strays.Select(s => s.Group).Distinct().ToArray());
+        if (!await LoadoutFileRemovalFlow.Run(_serviceProvider, WindowManager, request, Language.ApplyDiff_Remove_Activity)) return;
+        if (_fileTreeViewModel is { } tree) await RefreshAfterRemovalAsync(tree);
+    }
+
     /// <summary>
     /// Removes the selected rows through <see cref="LoadoutFileRemovalFlow"/> and refreshes the tree. Plans at the click
     /// rather than on selection: the tree's nodes are rebuilt on refresh, so a selection can be stale.
@@ -133,6 +172,12 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
         var request = new FileRemovalRequest(_loadoutId, paths);
         if (!await LoadoutFileRemovalFlow.Run(_serviceProvider, WindowManager, request, Language.ApplyDiff_Remove_Activity)) return;
 
+        await RefreshAfterRemovalAsync(tree);
+    }
+
+    // The removal already happened, so a failed refresh is reported like any other failure of the flow.
+    private async Task RefreshAfterRemovalAsync(DiffTreeViewModel tree)
+    {
         try
         {
             await RefreshAsync(tree);

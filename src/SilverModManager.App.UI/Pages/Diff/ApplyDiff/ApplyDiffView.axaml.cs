@@ -18,6 +18,15 @@ public partial class ApplyDiffView : ReactiveUserControl<IApplyDiffViewModel>
                 this.OneWayBind(ViewModel, vm => vm.LoadFailed, v => v.FailedText.IsVisible)
                     .DisposeWith(d);
 
+                this.OneWayBind(ViewModel, vm => vm.StrayFiles, v => v.StrayList.ItemsSource)
+                    .DisposeWith(d);
+
+                this.OneWayBind(ViewModel, vm => vm.StrayFiles, v => v.StrayNotice.IsVisible, files => files.Count > 0)
+                    .DisposeWith(d);
+
+                this.BindCommand(ViewModel, vm => vm.RemoveStrayFilesCommand, v => v.RemoveStrayButton)
+                    .DisposeWith(d);
+
                 this.BindCommand(ViewModel, vm => vm.RefreshCommand, v => v.RefreshButton)
                     .DisposeWith(d);
 
