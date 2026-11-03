@@ -48,4 +48,7 @@ public enum NonVanillaReason : byte
 
     /// <summary>The file has the shape of a mod loader or mod, and no manifest was there to say otherwise.</summary>
     LooksLikeAMod = 3,
+
+    /// <summary>A loadout put the file there (a mod's or an intrinsic file), and no manifest was there to say otherwise.</summary>
+    DeployedByLoadout = 4,
 }

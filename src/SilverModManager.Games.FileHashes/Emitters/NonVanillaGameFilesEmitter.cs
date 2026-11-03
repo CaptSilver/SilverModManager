@@ -201,6 +201,7 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         NonVanillaReason.SizeDiffers => "size differs",
         NonVanillaReason.HashDiffers => "content differs",
         NonVanillaReason.LooksLikeAMod => "looks like a mod loader or mod; no store file list was available to check",
+        NonVanillaReason.DeployedByLoadout => "put there by a loadout, which no longer provides it",
         _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, null),
     };
 }

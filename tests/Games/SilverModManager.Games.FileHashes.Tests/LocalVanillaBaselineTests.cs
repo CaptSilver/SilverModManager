@@ -526,8 +526,54 @@ public sealed class LocalVanillaBaselineTests : IDisposable
         LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Snapshot_RecordsDeployedPathsAsNonVanilla()
+    {
+        WriteFile("a.esm", "vanilla"); WriteFile("Data/mod.esp", "mod");
+
+        var result = await Build([], allCovered: false, deployed: ["Data/mod.esp"]);
+
+        var row = result.NonVanilla.Should().ContainSingle().Subject;
+        row.Path.ToString().Should().Be("Data/mod.esp");
+        row.Reason.Should().Be(NonVanillaReason.DeployedByLoadout);
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Select(f => f.Path.ToString()).Should().Equal("a.esm");
+    }
+
+    [Fact]
+    public async Task Snapshot_DeployedPathWinsOverModShape()
+    {
+        WriteFile("a.esm", "vanilla"); WriteFile("DINPUT8.dll", "proxy");
+
+        var result = await Build([], allCovered: false, looksLikeAMod: SkyrimShapedMod, deployed: ["DINPUT8.dll"]);
+
+        result.NonVanilla.Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.DeployedByLoadout);
+    }
+
+    [Fact]
+    public async Task PartialManifests_DeployedPathNoManifestLists_IsNonVanilla()
+    {
+        WriteFile("a.esm", "vanilla"); WriteFile("mod.esp", "mod"); WriteFile("other-depot.bin", "x");
+
+        var result = await Build([Manifest(1, ("a.esm", "vanilla"))], allCovered: false, deployed: ["mod.esp"]);
+
+        result.NonVanilla.Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.DeployedByLoadout);
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Select(f => f.Path.ToString()).Should().BeEquivalentTo(["a.esm", "other-depot.bin"]);
+    }
+
+    [Fact]
+    public async Task DepotManifests_IgnoresTheDeployedSet()
+    {
+        WriteFile("a.esm", "vanilla"); WriteFile("mod.esp", "mod");
+
+        var result = await Build([Manifest(1, ("a.esm", "vanilla"))], deployed: ["a.esm", "mod.esp"]);
+
+        result.NonVanilla.Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.NotInManifest);
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().ContainSingle().Which.Path.ToString().Should().Be("a.esm");
+    }
+
     private Task<BaselineBuild> Build(Manifest[] manifests, bool allCovered = true, string? versionName = "1000",
-        Func<GamePath, bool>? isIgnored = null, IConnection? connection = null, Func<GamePath, bool>? looksLikeAMod = null)
+        Func<GamePath, bool>? isIgnored = null, IConnection? connection = null, Func<GamePath, bool>? looksLikeAMod = null,
+        string[]? deployed = null)
     {
         var baseline = new LocalVanillaBaseline(FileSystem.Shared, NullLogger<LocalVanillaBaseline>.Instance, p =>
         {
@@ -546,6 +592,7 @@ public sealed class LocalVanillaBaselineTests : IDisposable
             AllInstalledDepotsCovered = allCovered,
             IsIgnored = isIgnored ?? (_ => false),
             LooksLikeAMod = looksLikeAMod ?? (_ => false),
+            DeployedByLoadout = (deployed ?? []).Select(d => new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(d))).ToHashSet(),
             Game = HashRows.OwnGameId,
             NexusGameId = HashRows.GameId,
             OperatingSystem = OperatingSystem.Windows,

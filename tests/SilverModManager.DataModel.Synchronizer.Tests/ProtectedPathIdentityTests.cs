@@ -2,6 +2,7 @@ using FluentAssertions;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Games;
@@ -71,5 +72,77 @@ public class ProtectedPathIdentityTests(ITestOutputHelper helper) : AStubbedGame
 
         Sync.GetFilesDeployedByLastSyncedLoadout(metadata, DiskState(p => p)).Should().Contain(ModSavePath);
         Sync.GetFilesDeployedByLastSyncedLoadout(metadata, DiskState(NamedBySha1)).Should().NotContain(ModSavePath);
+    }
+
+    private static readonly GamePath ModGamePath = new(LocationId.Game, "mods/deployed.bin");
+
+    private EntityId _modGroup;
+
+    private async Task<Loadout.ReadOnly> DeployAGameFolderMod()
+    {
+        var loadout = await CreateLoadout();
+        await using var archiveFile = await CreateTestArchive(new Dictionary<RelativePath, byte[]>
+        {
+            { "mods/deployed.bin", "a file a mod put in the game folder"u8.ToArray() },
+            { "saves/mod.sav", "a save shipped by a mod"u8.ToArray() },
+        });
+        var archive = await RegisterLocalArchive(archiveFile.Path);
+        var result = await LoadoutManager.InstallItem(archive.AsLibraryFile().AsLibraryItem(), loadout, installer: new StubbedGameInstaller(ServiceProvider));
+        _modGroup = result.LoadoutItemGroup!.Value.Id;
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(_modGroup, LoadoutItem.ProtectedPathsAllowed, Null.Instance);
+            await tx.Commit();
+        }
+        return await Synchronizer.Synchronize(Refresh(loadout));
+    }
+
+    [Fact]
+    public async Task FilesDeployedByLastSyncedLoadout_IncludesGameFolderModFiles_NotOverridesOrGameRows()
+    {
+        var gameFolder = GameInstallation.Locations[LocationId.Game].Path;
+        gameFolder.CreateDirectory();
+        File.WriteAllText((gameFolder / "player.txt").ToString(), "the player's own file");
+        await DeployAGameFolderMod();
+
+        var deployed = Synchronizer.GetFilesDeployedByLastSyncedLoadout(GameRegistry.ForceGetMetadata(GameInstallation));
+
+        deployed.Should().Contain([ModGamePath, ModSavePath]);
+        deployed.Should().NotContain(new GamePath(LocationId.Game, "player.txt"));
+        deployed.Where(p => p.LocationId == LocationId.Game).Should().OnlyContain(p => p.Path == ModGamePath.Path, "no row of the game's own files is a deployed one");
+    }
+
+    [Fact]
+    public async Task FilesDeployedByLastSyncedLoadout_StillIncludesAFileOfAModRemovedSinceTheApply()
+    {
+        await DeployAGameFolderMod();
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Delete(_modGroup, recursive: true);
+            await tx.Commit();
+        }
+
+        var deployed = Synchronizer.GetFilesDeployedByLastSyncedLoadout(GameRegistry.ForceGetMetadata(GameInstallation));
+
+        deployed.Should().Contain(ModGamePath, "the file is still on disk from the last apply, whatever the loadout says now");
+    }
+
+    [Fact]
+    public async Task FilesDeployedByLastSyncedLoadout_ThrowsWhenTheLoadoutIsGone()
+    {
+        var loadout = await DeployAGameFolderMod();
+        var metadataId = GameRegistry.ForceGetMetadata(GameInstallation).Id;
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Delete(loadout.Id, recursive: false);
+            await tx.Commit();
+        }
+        var metadata = GameInstallMetadata.Load(Connection.Db, metadataId);
+        GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out _).Should().BeTrue("the metadata still points at the loadout that was applied");
+
+        var act = () => Synchronizer.GetFilesDeployedByLastSyncedLoadout(metadata);
+
+        act.Should().Throw<InvalidOperationException>();
+        Sync.GetFilesDeployedByLastSyncedLoadout(metadata, Synchronizer.GetPreviouslyAppliedDiskState(metadata)).Should().BeEmpty("the helper the other callers use keeps answering with an empty set");
     }
 }

@@ -888,17 +888,16 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
     }
 
     [Fact]
-    public async Task AGameUpdatedToABuildNoStoreCovers_RefusesTheApplyAndLeavesEveryVanillaFileAlone()
+    public async Task AGameUpdatedToABuildNoStoreCovers_SnapshotsTheFolderAndLeavesEveryVanillaFileAlone()
     {
         var loadout = await CreateLoadout();
         SteamUpdatesTheGame(cachesTheNewManifests: false);
 
-        var act = () => Synchronizer.Synchronize(Refresh(loadout));
+        await Synchronizer.Synchronize(Refresh(loadout));
 
-        var refusal = await act.Should().ThrowAsync<UserFacingException>();
-        refusal.Which.Message.Should().Contain("Let Steam finish updating", "the block lifts once Steam has cached the new build's manifests");
+        BaselineOfTheNewBuild().Kind.Should().Be(LocalBaselineKind.Snapshot);
         await EveryVanillaFileIsOnDiskAndNoneWasBackedUp();
-        Refresh(loadout).LocatorIds.Select(id => id.Value).Should().NotContain(NewGameManifestId.ToString(), "a refused apply writes nothing");
+        Refresh(loadout).LocatorIds.Select(id => id.Value).Should().Contain(NewGameManifestId.ToString());
     }
 
     [Fact]
@@ -1074,6 +1073,13 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         await EveryVanillaFileIsOnDiskAndNoneWasBackedUp();
     }
 
+    private LocalBaseline.ReadOnly BaselineOfTheNewBuild()
+    {
+        var baseline = LocalBaseline.All(Hashes.Local).Should().ContainSingle().Subject;
+        baseline.LocatorIds.Should().Contain(NewGameManifestId.ToString());
+        return baseline;
+    }
+
     [Fact]
     public async Task AGameUpdatedToABuildOnlyTheStoreLaterDescribes_NeverTakesTheDeployedModForTheGamesOwnFile()
     {
@@ -1082,23 +1088,25 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         await Synchronizer.Synchronize(Refresh(loadout));
         SteamUpdatesTheGame(cachesTheNewManifests: false);
 
-        var refused = () => Synchronizer.Synchronize(Refresh(loadout));
+        await Synchronizer.Synchronize(Refresh(loadout));
 
-        await refused.Should().ThrowAsync<UserFacingException>();
-        LocalBaseline.All(Hashes.Local).Single().LocatorIds.Should().NotContain(NewGameManifestId.ToString(),
-            "a snapshot of a folder with a mod deployed is not the vanilla list of the new build");
+        var baseline = BaselineOfTheNewBuild();
+        baseline.Files.Select(f => f.Path.ToString()).Should().NotContain(Vanilla, "the deployed mod's file is not the game's own");
+        NonVanillaFile.FindByBaseline(Hashes.Local, baseline.Id).Should().ContainSingle(r => r.Path.ToString() == Vanilla).Which.Reason.Should().Be(NonVanillaReason.DeployedByLoadout);
 
         await TheDownloadedStoreLearnsTheNewBuild();
         await RemoveMod(loadout);
         await Synchronizer.Synchronize(Refresh(loadout));
 
         Refresh(loadout).LocatorIds.Select(id => id.Value).Should().Contain(NewGameManifestId.ToString());
-        (await ReadGameFile(Vanilla)).Should().Be(VanillaText, "disabling the mod restores the vanilla bytes");
+        File.Exists((GameFolder / Vanilla).ToString()).Should().BeFalse("the rebuilt list has no row for a path a mod overwrote, so removing the mod leaves nothing to restore there");
         Overrides(Refresh(loadout)).Should().NotContain(Vanilla);
+        foreach (var file in CyberpunkSteamInstall.GameFiles.Concat(CyberpunkSteamInstall.ExpansionFiles).Where(f => f.Path != Vanilla))
+            (await ReadGameFile(file.Path)).Should().Be(System.Text.Encoding.UTF8.GetString(file.Content), $"`{file.Path}` is the game's own");
     }
 
     [Fact]
-    public async Task AGameUpdatedToABuildNoStoreCovers_WhenNoBaselineExists_RefusesTheApplyAndWritesNoBaseline()
+    public async Task AGameUpdatedToABuildNoStoreCovers_WhenNoBaselineExists_SnapshotsWithoutTheDeployedModAndApplies()
     {
         var loadout = await CreateLoadout();
         await AddMod(loadout, Vanilla);
@@ -1106,34 +1114,70 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         await Hashes.RemoveLocalBaseline(GameInstallation.LocatorResult.Store, GameFolder.ToString());
         SteamUpdatesTheGame(cachesTheNewManifests: false);
 
-        var refused = () => Synchronizer.Synchronize(Refresh(loadout));
+        await Synchronizer.Synchronize(Refresh(loadout));
 
-        var refusal = await refused.Should().ThrowAsync<UserFacingException>();
-        refusal.Which.Message.Should().Contain("Let Steam finish updating");
-        LocalBaseline.All(Hashes.Local).Should().BeEmpty("a snapshot of a folder with a mod deployed would call the mod vanilla");
-        Refresh(loadout).LocatorIds.Select(id => id.Value).Should().NotContain(NewGameManifestId.ToString());
+        var baseline = BaselineOfTheNewBuild();
+        baseline.Files.Select(f => f.Path.ToString()).Should().NotContain(Vanilla, "a snapshot of a folder with a mod deployed must not call the mod vanilla");
+        NonVanillaFile.FindByBaseline(Hashes.Local, baseline.Id).Select(r => r.Reason).Should().Contain(NonVanillaReason.DeployedByLoadout);
+        Refresh(loadout).LocatorIds.Select(id => id.Value).Should().Contain(NewGameManifestId.ToString());
     }
 
     [Fact]
-    public async Task AKeptBaselineOfAnOlderBuild_IsNotAskedToRebuildOnEveryApplyOnceTheStoreCoversTheBuild()
+    public async Task AGameUpdatedToABuildNoStoreCovers_WhenNoBaselineCanBeBuilt_RefusesTheApplyAndKeepsTheOldBaseline()
     {
         var loadout = await CreateLoadout();
         await AddMod(loadout, Vanilla);
         await Synchronizer.Synchronize(Refresh(loadout));
         SteamUpdatesTheGame(cachesTheNewManifests: false);
+        _settle.FailBaselineBuild = true;
+
         var refused = () => Synchronizer.Synchronize(Refresh(loadout));
-        await refused.Should().ThrowAsync<UserFacingException>();
-        await TheDownloadedStoreLearnsTheNewBuild();
+
+        var refusal = await refused.Should().ThrowAsync<UserFacingException>();
+        refusal.Which.Message.Should().Contain("Let Steam finish updating");
+        LocalBaseline.All(Hashes.Local).Should().ContainSingle().Which.LocatorIds.Should().NotContain(NewGameManifestId.ToString());
+        Refresh(loadout).LocatorIds.Select(id => id.Value).Should().NotContain(NewGameManifestId.ToString());
+    }
+
+    [Fact]
+    public async Task ASnapshotOfAnUncoveredBuild_IsNotRebuiltOnEveryApply()
+    {
+        var loadout = await CreateLoadout();
+        await AddMod(loadout, Vanilla);
         await Synchronizer.Synchronize(Refresh(loadout));
-        LocalBaseline.All(Hashes.Local).Single().LocatorIds.Should().NotContain(NewGameManifestId.ToString(), "the deployed mod keeps the old baseline in place");
+        SteamUpdatesTheGame(cachesTheNewManifests: false);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        BaselineOfTheNewBuild();
         var calls = _settle.BaselineBuildCalls;
 
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        _settle.BaselineBuildCalls.Should().Be(calls, "the coordinator would refuse again and read the depotcache for nothing");
+        BaselineOfTheNewBuild();
+        NonVanillaFile.All(Hashes.Local).Should().ContainSingle(r => r.Path.ToString() == Vanilla);
+        _settle.BaselineBuildCalls.Should().BeLessThanOrEqualTo(calls + 1, "the baseline of the installed build is found, not built again");
     }
 
-    // The store's own data: a newer downloaded database on disk, which the service connects when it checks for one.
+    [Fact]
+    public async Task SnapshotRebuildAfterApply_LeavesDeployedFilesOutAndKeepsVanilla()
+    {
+        const string deployed = "mods/deployed.bin";
+        var loadout = await CreateLoadout();
+        await AddMod(loadout, deployed);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        SteamUpdatesTheGame(cachesTheNewManifests: false);
+        GameInstallation.LocatorResult.Locator.TryLocate(GameInstallation.Game, out var result).Should().BeTrue();
+        var located = new GameInstallation(result, GameInstallation.Locations);
+
+        var rebuilt = await Hashes.EnsureLocalBaseline(located);
+
+        rebuilt.Rebuilt.Should().BeTrue();
+        rebuilt.Kind.Should().Be(LocalBaselineKind.Snapshot);
+        var baseline = BaselineOfTheNewBuild();
+        baseline.Files.Select(f => f.Path.ToString()).Should().Contain(Vanilla).And.NotContain(deployed);
+        NonVanillaFile.FindByBaseline(Hashes.Local, baseline.Id).Should().ContainSingle(r => r.Path.ToString() == deployed)
+            .Which.Reason.Should().Be(NonVanillaReason.DeployedByLoadout);
+    }
+
     private async Task TheDownloadedStoreLearnsTheNewBuild()
     {
         var location = ServiceProvider.GetRequiredService<ISettingsManager>().Get<FileHashesServiceSettings>()

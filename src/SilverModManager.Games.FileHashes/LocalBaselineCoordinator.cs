@@ -28,7 +28,7 @@ internal sealed class LocalBaselineCoordinator : IDisposable
     private readonly Func<IConnection> _localStore;
     private readonly LocalVanillaBaseline _baseline;
     private readonly IDepotManifestSource? _manifestSource;
-    private readonly Func<GameInstallation, bool> _isManaged;
+    private readonly Func<GameInstallation, IReadOnlySet<GamePath>?> _deployedFiles;
     private readonly ILogger<LocalBaselineCoordinator> _logger;
     private readonly ConcurrentDictionary<(GameStore Store, string Path), Lazy<Task<LocalBaselineResult>>> _inFlight = new();
 
@@ -40,10 +40,14 @@ internal sealed class LocalBaselineCoordinator : IDisposable
 
     /// <param name="localStore">The connection the baseline rows are written to, read on each call so it is never held across a replacement.</param>
     /// <param name="manifestSource">Null when no Steam services are registered; every baseline is then a snapshot.</param>
-    /// <param name="isManaged">Whether a loadout has been applied to the installation's folder. Null counts every folder as unmanaged.</param>
-    public LocalBaselineCoordinator(Func<IConnection> localStore, LocalVanillaBaseline baseline, IDepotManifestSource? manifestSource, ILogger<LocalBaselineCoordinator> logger, Func<GameInstallation, bool>? isManaged = null)
+    /// <param name="deployedFiles">
+    /// The game-folder paths the last applied loadout deployed: null when no loadout was applied to the folder, which is
+    /// then built as it stands. It throws <see cref="InvalidOperationException"/> when a loadout was applied but the
+    /// deployed paths cannot be told, and no baseline is built from the folder then. Null counts every folder as unmanaged.
+    /// </param>
+    public LocalBaselineCoordinator(Func<IConnection> localStore, LocalVanillaBaseline baseline, IDepotManifestSource? manifestSource, ILogger<LocalBaselineCoordinator> logger, Func<GameInstallation, IReadOnlySet<GamePath>?>? deployedFiles = null)
     {
-        _isManaged = isManaged ?? (_ => false);
+        _deployedFiles = deployedFiles ?? (_ => null);
         _localStore = localStore;
         _baseline = baseline;
         _manifestSource = manifestSource;
@@ -159,13 +163,21 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         var (manifests, allCovered) = ResolveManifests(installation);
 
         // A folder a loadout was applied to has mods in it. A baseline not built from complete depot manifests
-        // takes the folder as it is, so it would call those mods vanilla. Only complete manifests replace what is
-        // there (or make the first baseline), whatever the locator ids are; until then the old baseline stays.
-        if (_isManaged(installation) && (manifests.Count == 0 || !allCovered))
+        // takes the folder as it is, so the paths the loadout deployed are told to the build, which leaves them
+        // out of the game's files. Asked only when manifests will not decide: it builds a sync tree.
+        IReadOnlySet<GamePath>? deployed = null;
+        if (manifests.Count == 0 || !allCovered)
         {
-            _logger.LogInformation("Not building a baseline of {Game}: no complete set of manifests covers its build and the folder has mods deployed, so a baseline taken from it would count them as the game's own files{Kept}",
-                installation.Game.DisplayName, existing is null ? "" : "; keeping the one it has");
-            return existing is { } old ? Describe(store.Db, old, rebuilt: false) : new LocalBaselineResult(LocalBaselineKind.Snapshot, false, 0);
+            try
+            {
+                deployed = _deployedFiles(installation);
+            }
+            catch (InvalidOperationException e)
+            {
+                _logger.LogInformation(e, "Not building a baseline of {Game}: no complete set of manifests covers its build and the paths its loadout deployed are not known, so a baseline taken from the folder could count mods as the game's own files{Kept}",
+                    installation.Game.DisplayName, existing is null ? "" : "; keeping the one it has");
+                return existing is { } old ? Describe(store.Db, old, rebuilt: false) : new LocalBaselineResult(LocalBaselineKind.Snapshot, false, 0);
+            }
         }
 
         var synchronizer = installation.GetGame().Synchronizer;
@@ -187,6 +199,7 @@ internal sealed class LocalBaselineCoordinator : IDisposable
             // those files are the game's own, which the baseline has to know about.
             IsIgnored = path => synchronizer.GamePathFilter.ShouldFilter(path),
             LooksLikeAMod = path => ModLoaderPaths.LooksLikeAMod(installation.GetGame(), installation, path),
+            DeployedByLoadout = deployed ?? new HashSet<GamePath>(),
             Game = installation.Game.GameId,
             NexusGameId = installation.Game.NexusModsGameId,
             OperatingSystem = OperatingSystemOf(locator),
@@ -195,8 +208,8 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         var build = await _baseline.Build(request, store, cancellationToken);
         var built = LocalBaseline.Load(_localStore().Db, build.BaselineId);
         if (built.Kind == LocalBaselineKind.Snapshot)
-            _logger.LogInformation("Built the {Kind} baseline for {Game} from the folder as it stands: {LooksLikeAMod} files that look like a mod loader or mod were left out of the game's files",
-                built.Kind, installation.Game.DisplayName, build.Count(NonVanillaReason.LooksLikeAMod));
+            _logger.LogInformation("Built the {Kind} baseline for {Game} from the folder as it stands: {LooksLikeAMod} files that look like a mod loader or mod and {Deployed} files a loadout deployed were left out of the game's files",
+                built.Kind, installation.Game.DisplayName, build.Count(NonVanillaReason.LooksLikeAMod), build.Count(NonVanillaReason.DeployedByLoadout));
         else
             _logger.LogInformation("Built the {Kind} baseline for {Game}: {NotInManifest} files the manifests do not list, {SizeDiffers} of another size, {HashDiffers} with other content",
                 built.Kind, installation.Game.DisplayName,

@@ -965,14 +965,14 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var covered = (gameLocatorResult.Store, newLocatorIds);
         if (baseline is not null || managed)
         {
-            // A managed folder whose build the store data already covers needs no baseline of its own, and the
-            // coordinator would only refuse to build one from the deployed folder again.
+            // A managed folder whose build the store data already covers needs no baseline of its own.
             if (!managed || !_fileHashService.CoversInstalledBuild(covered))
                 await RebuildBaselineForUpdatedBuild(located, cancellationToken);
 
-            // Only a build the store describes can tell the game's own files from a mod's. A baseline taken from
-            // whatever is in the folder now would call the deployed mods vanilla.
-            if (managed && !_fileHashService.CoversInstalledBuild(covered))
+            // The build has to be described by something: the store's file list, or a baseline taken from the folder
+            // that leaves out what the loadout deployed. When the rebuild could not produce one (the loadout that
+            // was applied is gone, so what it deployed is unknown), the deployed mods would pass for the game's own.
+            if (managed && !_fileHashService.CoversInstalledBuild(covered) && !HasBaselineFor(located, newLocatorIds))
             {
                 var howToLift = gameLocatorResult.Store == GameStore.Steam
                     ? "Let Steam finish updating the game (it keeps the file list for a build in its depotcache), then apply again."
@@ -1039,6 +1039,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         return null;
     }
+
+    private bool HasBaselineFor(GameInstallation installation, LocatorId[] locatorIds)
+        => FindLocalBaseline(installation) is { } baseline
+           && locatorIds.Select(id => id.Value).ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(baseline.LocatorIds);
 
     private async ValueTask RebuildBaselineForUpdatedBuild(GameInstallation located, CancellationToken cancellationToken)
     {
@@ -2543,9 +2547,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <summary>
-    /// The indexed files outside <see cref="LocationId.Game"/> that the last synced loadout put on disk from a
-    /// mod or an intrinsic file. Files that came from the loadout's overrides were ingested from the user's own
-    /// files, so they are not included.
+    /// The indexed files, in any location, that the last synced loadout put on disk from a mod or an intrinsic
+    /// file. Files that came from the loadout's overrides were ingested from the user's own files, so they are
+    /// not included. A loadout that no longer exists yields an empty set.
     /// </summary>
     internal HashSet<GamePath> GetFilesDeployedByLastSyncedLoadout(GameInstallMetadata.ReadOnly metadata, List<PathPartPair> diskState)
     {
@@ -2560,7 +2564,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // The tree is only read for what the loadout provides, so the disk state doubles as the previous state.
         foreach (var (path, node) in BuildSyncTree(diskState, diskState, loadout))
         {
-            if (path.LocationId == LocationId.Game || !node.HaveDisk) continue;
+            if (!node.HaveDisk) continue;
 
             var isDeployed = node.SourceItemType switch
             {
@@ -2576,6 +2580,22 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         return result;
+    }
+
+    /// <inheritdoc />
+    public IReadOnlySet<GamePath> GetFilesDeployedByLastSyncedLoadout(GameInstallMetadata.ReadOnly metadata)
+    {
+        if (!GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastSynced)
+            || !Loadout.Load(metadata.Db, lastSynced).IsValid())
+        {
+            // The helper would answer with an empty set, which a baseline build reads as "nothing deployed".
+            throw new InvalidOperationException("The loadout last applied to this installation is gone, so the files it deployed are not known");
+        }
+
+        // The loadout as of the apply, not as it is now: a mod removed or disabled since still has its files on disk.
+        var txId = GameInstallMetadata.LastSyncedLoadoutTransactionId.Get(metadata);
+        var asOfApply = GameInstallMetadata.Load(metadata.Db.Connection.AsOf(TxId.From(txId.Value)), metadata.Id);
+        return GetFilesDeployedByLastSyncedLoadout(asOfApply, GetDiskStateForGame(asOfApply));
     }
 }
 

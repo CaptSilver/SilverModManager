@@ -90,6 +90,13 @@ public interface ILoadoutSynchronizer
     }
 
     /// <summary>
+    /// The paths, in any location, that the last applied loadout put on disk from a mod or an intrinsic file, as of
+    /// that apply. Files from the loadout's overrides are the player's own and are not included.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The loadout last applied is gone, so what it deployed is not known.</exception>
+    IReadOnlySet<GamePath> GetFilesDeployedByLastSyncedLoadout(Sdk.Games.GameInstallMetadata.ReadOnly metadata);
+
+    /// <summary>
     /// Gets the previously applied disk state for a game.
     /// </summary>
     public List<PathPartPair> GetPreviouslyAppliedDiskState(Sdk.Games.GameInstallMetadata.ReadOnly metadata)

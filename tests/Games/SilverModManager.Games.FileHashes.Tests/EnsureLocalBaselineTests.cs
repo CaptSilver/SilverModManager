@@ -223,15 +223,21 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         NonVanillaFile.All(_store.Db).Should().BeEmpty();
     }
 
-    private LocalBaselineCoordinator ManagedCoordinator() => new(
+    private static GamePath Deployed(string path) => new(LocationId.Game, RelativePath.FromUnsanitizedInput(path));
+
+    /// <summary>A coordinator whose installations have a loadout applied that deployed <paramref name="deployed"/> (mod.esp by default).</summary>
+    private LocalBaselineCoordinator ManagedCoordinator(params string[] deployed) => ManagedCoordinator(
+        _ => (deployed.Length == 0 ? ["mod.esp"] : deployed).Select(Deployed).ToHashSet());
+
+    private LocalBaselineCoordinator ManagedCoordinator(Func<GameInstallation, IReadOnlySet<GamePath>?> deployedFiles) => new(
         () => _store,
         new LocalVanillaBaseline(FileSystem.Shared, NullLogger<LocalVanillaBaseline>.Instance),
         _source,
         _coordinatorLog,
-        _ => true);
+        deployedFiles);
 
     [Fact]
-    public async Task ManagedFolder_ChangedLocatorIdsWithoutAManifest_KeepTheOldBaseline()
+    public async Task ManagedFolder_ChangedLocatorIdsWithoutAManifest_RebuildsASnapshotWithoutTheDeployedFiles()
     {
         WriteGameFile("a.esm", "vanilla");
         var coordinator = ManagedCoordinator();
@@ -240,6 +246,45 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         WriteGameFile("mod.esp", "deployed mod");
 
         var result = await coordinator.Ensure(Installation("102"));
+
+        result.Rebuilt.Should().BeTrue();
+        result.Kind.Should().Be(LocalBaselineKind.Snapshot);
+        var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        baseline.LocatorIds.Should().Equal("102");
+        baseline.Files.Select(f => f.Path.ToString()).Should().Equal("a.esm");
+        NonVanillaFile.All(_store.Db).Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.DeployedByLoadout);
+        _coordinatorLog.Lines.Should().Contain(l => l.Contains("1 files a loadout deployed"));
+    }
+
+    [Fact]
+    public async Task ManagedFolder_ChangedLocatorIdsWithAPartlyCoveredBuild_LeavesDeployedFilesOutOfThePartialBaseline()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        var coordinator = ManagedCoordinator();
+        _source.Add(101, ("a.esm", "vanilla"));
+        await coordinator.Ensure(Installation("101"));
+        WriteGameFile("mod.esp", "deployed mod");
+        _source.Add(102, ("a.esm", "vanilla"));
+
+        var result = await coordinator.Ensure(Installation("102", "103"));
+
+        result.Rebuilt.Should().BeTrue();
+        result.Kind.Should().Be(LocalBaselineKind.PartialDepotManifests);
+        var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        baseline.LocatorIds.Should().BeEquivalentTo("102", "103");
+        baseline.Files.Select(f => f.Path.ToString()).Should().NotContain("mod.esp");
+        NonVanillaFile.All(_store.Db).Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.DeployedByLoadout);
+    }
+
+    [Fact]
+    public async Task ManagedFolder_WhoseDeployedFilesAreUnknown_KeepsTheOldBaseline()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        _source.Add(101, ("a.esm", "vanilla"));
+        await ManagedCoordinator().Ensure(Installation("101"));
+        WriteGameFile("mod.esp", "deployed mod");
+
+        var result = await ManagedCoordinator(_ => throw new InvalidOperationException("the loadout is gone")).Ensure(Installation("102"));
 
         result.Rebuilt.Should().BeFalse();
         result.Kind.Should().Be(LocalBaselineKind.DepotManifests);
@@ -250,18 +295,17 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     }
 
     [Fact]
-    public async Task ManagedFolder_ChangedLocatorIdsWithAPartlyCoveredBuild_KeepTheOldBaseline()
+    public async Task ManagedFolder_ManyDeployedFilesOnASmallGame_StillRecordsABaseline()
     {
         WriteGameFile("a.esm", "vanilla");
-        var coordinator = ManagedCoordinator();
-        _source.Add(101, ("a.esm", "vanilla"));
-        await coordinator.Ensure(Installation("101"));
-        _source.Add(102, ("a.esm", "vanilla"));
+        var deployed = Enumerable.Range(0, 200).Select(i => $"mods/m{i}.bin").ToArray();
+        foreach (var path in deployed) WriteGameFile(path, "mod");
 
-        var result = await coordinator.Ensure(Installation("102", "103"));
+        var result = await ManagedCoordinator(deployed).Ensure(Installation("101"));
 
-        result.Rebuilt.Should().BeFalse();
-        LocalBaseline.All(_store.Db).Single().LocatorIds.Should().Equal("101");
+        result.Rebuilt.Should().BeTrue();
+        result.NonVanillaCount.Should().Be(deployed.Length);
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Files.Select(f => f.Path.ToString()).Should().Equal("a.esm");
     }
 
     [Fact]
@@ -281,7 +325,7 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     }
 
     [Fact]
-    public async Task ManagedFolder_ManifestThatStillNeedsAKey_KeepsAPartialBaselineOfTheSameIds()
+    public async Task ManagedFolder_ManifestThatStillNeedsAKey_RebuildsAPartialBaselineWithoutTheDeployedFiles()
     {
         WriteGameFile("a.esm", "vanilla");
         WriteGameFile("b.esm", "other");
@@ -293,9 +337,10 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         _source.AddNeedingKey(102);
         var result = await ManagedCoordinator().Ensure(Installation("101", "102"));
 
-        result.Rebuilt.Should().BeFalse();
+        result.Rebuilt.Should().BeTrue();
         result.Kind.Should().Be(LocalBaselineKind.PartialDepotManifests);
         LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Files.Select(f => f.Path.ToString()).Should().NotContain("mod.esp");
+        NonVanillaFile.All(_store.Db).Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.DeployedByLoadout);
     }
 
     [Fact]
@@ -315,7 +360,7 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     }
 
     [Fact]
-    public async Task ManagedFolder_ManifestThatNeedsAKeyAppearingAfterASnapshot_KeepsTheSnapshot()
+    public async Task ManagedFolder_ManifestThatNeedsAKeyAppearingAfterASnapshot_RebuildsWithoutTheDeployedFiles()
     {
         WriteGameFile("a.esm", "vanilla");
         (await _coordinator.Ensure(Installation("101"))).Kind.Should().Be(LocalBaselineKind.Snapshot);
@@ -325,9 +370,10 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         _source.AddNeedingKey(101);
         var result = await ManagedCoordinator().Ensure(Installation("101"));
 
-        result.Rebuilt.Should().BeFalse();
+        result.Rebuilt.Should().BeTrue();
         result.Kind.Should().Be(LocalBaselineKind.Snapshot);
-        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Files.Select(f => f.Path.ToString()).Should().NotContain("mod.esp");
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Files.Select(f => f.Path.ToString()).Should().Equal("a.esm");
+        NonVanillaFile.All(_store.Db).Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.DeployedByLoadout);
     }
 
     [Fact]
@@ -345,16 +391,17 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     }
 
     [Fact]
-    public async Task ManagedFolder_WithNoBaselineAndNoManifest_BuildsNone()
+    public async Task ManagedFolder_WithNoBaselineAndNoManifest_BuildsASnapshotWithoutTheDeployedFiles()
     {
         WriteGameFile("a.esm", "vanilla");
         WriteGameFile("mod.esp", "deployed mod");
 
         var result = await ManagedCoordinator().Ensure(Installation("101"));
 
-        result.Rebuilt.Should().BeFalse();
-        LocalBaseline.All(_store.Db).Should().BeEmpty();
-        _coordinatorLog.Lines.Should().ContainSingle(l => l.Contains("Not building a baseline") && !l.Contains("keeping"));
+        result.Rebuilt.Should().BeTrue();
+        result.Kind.Should().Be(LocalBaselineKind.Snapshot);
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Files.Select(f => f.Path.ToString()).Should().Equal("a.esm");
+        NonVanillaFile.All(_store.Db).Should().ContainSingle().Which.Path.ToString().Should().Be("mod.esp");
     }
 
     [Fact]

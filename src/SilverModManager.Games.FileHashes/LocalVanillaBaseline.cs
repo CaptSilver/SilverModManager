@@ -58,6 +58,13 @@ internal sealed record BaselineRequest
     public required Func<GamePath, bool> LooksLikeAMod { get; init; }
 
     /// <summary>
+    /// The game-folder paths the last applied loadout deployed from a mod or an intrinsic file. A snapshot or
+    /// partial baseline records those as non-vanilla instead of taking them for the game's own files. Empty for a
+    /// folder no loadout was applied to; a complete set of depot manifests decides by itself and ignores it.
+    /// </summary>
+    public IReadOnlySet<GamePath> DeployedByLoadout { get; init; } = new HashSet<GamePath>();
+
+    /// <summary>
     /// The store reports the install as settled (Steam: fully installed, no update pending). Files are only
     /// taken as vanilla without being read when this is true.
     /// </summary>
@@ -115,8 +122,8 @@ internal sealed class LocalVanillaBaseline
     /// the Creation Engine games' own Creations records (the content catalog and the Creations folder), which
     /// an older baseline reports as non-vanilla. The ignore rule is the synchronizer's path filter, so the
     /// bump has to land with the filter: a baseline built in between would never be rebuilt. Snapshot rules (the
-    /// mod-shape rule) are not versioned: a snapshot is never rebuilt for a version, since a managed folder's
-    /// deployed mods would be taken as vanilla, so a bump would only rebuild manifest baselines for nothing.
+    /// mod-shape rule, the deployed-by-loadout exclusion) are not versioned: a snapshot is only rebuilt when
+    /// the locator ids change or a manifest appears, so a bump would rebuild manifest baselines for nothing.
     /// </summary>
     internal const int ClassificationVersion = 2;
 
@@ -327,10 +334,14 @@ internal sealed class LocalVanillaBaseline
                 var size = Size.FromLong(file.Length);
                 if (!index.TryGetValue(path, out var entry))
                 {
-                    // Without full coverage a file no manifest lists may belong to an uncovered depot.
+                    var gamePath = new GamePath(LocationId.Game, path);
+                    // A complete set of manifests decides by itself; the loadout's deployed set is not consulted.
                     if (kind == LocalBaselineKind.DepotManifests) nonVanilla.Add(new NonVanillaEntry(path, NonVanillaReason.NotInManifest, size));
+                    // Without full coverage a file no manifest lists may belong to an uncovered depot, unless a
+                    // loadout is known to have put it there. Checked before the mod shape: the more specific reason.
+                    else if (request.DeployedByLoadout.Contains(gamePath)) nonVanilla.Add(new NonVanillaEntry(path, NonVanillaReason.DeployedByLoadout, size));
                     // With no manifest at all, the file name is the only evidence there is.
-                    else if (kind == LocalBaselineKind.Snapshot && request.LooksLikeAMod(new GamePath(LocationId.Game, path))) nonVanilla.Add(new NonVanillaEntry(path, NonVanillaReason.LooksLikeAMod, size));
+                    else if (kind == LocalBaselineKind.Snapshot && request.LooksLikeAMod(gamePath)) nonVanilla.Add(new NonVanillaEntry(path, NonVanillaReason.LooksLikeAMod, size));
                     else candidates.Add(new Candidate(file.FullName, path, null, size, file.LastWriteTimeUtc));
                     continue;
                 }

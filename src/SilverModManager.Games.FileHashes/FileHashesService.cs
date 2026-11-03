@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.EpicGameStore.Values;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.Abstractions.Steam;
@@ -104,17 +105,19 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             new LocalVanillaBaseline(_fileSystem, provider.GetRequiredService<ILogger<LocalVanillaBaseline>>(), provider.GetService<IBaselineFileOpener>() is { } opener ? opener.OpenRead : null, () => Databases),
             provider.GetService<IDepotManifestSource>(),
             provider.GetRequiredService<ILogger<LocalBaselineCoordinator>>(),
-            IsManaged);
+            DeployedFiles);
 
         // Only when nothing is on disk: with a database there, opening it is what registers the name.
         if (!ExistingDBs().Any()) EnsureHashesNameResolves();
     }
 
     // The registry is resolved on use: it depends on this service.
-    private bool IsManaged(GameInstallation installation)
+    private IReadOnlySet<GamePath>? DeployedFiles(GameInstallation installation)
         => _provider.GetService<IGameRegistry>() is { } registry
             && registry.TryGetMetadata(installation, out var metadata)
-            && GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out _);
+            && GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out _)
+                ? installation.GetGame().Synchronizer.GetFilesDeployedByLastSyncedLoadout(metadata)
+                : null;
 
     private void EnsureHashesNameResolves()
     {
