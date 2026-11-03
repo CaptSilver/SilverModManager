@@ -100,6 +100,9 @@ public abstract class ABethesdaGame<TSelf> : IBethesdaGame, IGameIdentifyingFile
     /// </summary>
     protected virtual GamePath? NativePluginFolder => null;
 
+    /// <inheritdoc cref="ICreationEngineGame.ScriptExtenderPluginFolder"/>
+    public GamePath? ScriptExtenderPluginFolder => NativePluginFolder;
+
     private Regex? _engineFilesRegex;
 
     // Whole-name match, as the installers do: the pattern "skse64_.*\.dll" must not match "myskse64_x.dll".

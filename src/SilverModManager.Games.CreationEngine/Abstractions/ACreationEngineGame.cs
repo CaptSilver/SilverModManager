@@ -243,6 +243,8 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
         if (TestFileIniFiles.Count > 0)
             yield return new TestFileEntriesEmitter(this);
         yield return provider.GetRequiredService<WinePrefixComponentsEmitter>();
+        if (ScriptExtenderPluginFolder is not null)
+            yield return new UnmanagedScriptExtenderPluginEmitter(this);
         foreach (var emitter in base.CreateEmitters(provider))
             yield return emitter;
     }

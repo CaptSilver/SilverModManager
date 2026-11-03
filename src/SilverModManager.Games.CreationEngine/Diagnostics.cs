@@ -191,4 +191,31 @@ loadout adopts them into its own copy of the file.
             .AddValue<string>("Settings")
         )
         .Finish();
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate UnmanagedScriptExtenderPlugin = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 9))
+        .WithTitle("Plugin DLL No Mod Provides")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{File} is in {GameName}'s plugin folder but no mod provides it")
+        .WithDetails("""
+**{File}** is in `{Folder}`, but no enabled mod in the loadout provides it. The loadout does not manage it, so
+switching loadouts or turning mods off will not take it out, and {GameName} loads it anyway.
+
+A plugin DLL is built for one game version and one script extender build. A leftover from a mod you removed, or from
+an older install, can crash the game on startup or when it loads a save.
+
+If you do not know where it came from, delete the file. If a mod you still use needs it, install that mod through the
+app so the loadout owns the file.
+
+Files that were adopted into the loadout's Overrides group count as not provided by a mod: they are leftovers from
+the game folder, not something you installed.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("GameName")
+            .AddValue<string>("File")
+            .AddValue<string>("Folder")
+        )
+        .Finish();
 }

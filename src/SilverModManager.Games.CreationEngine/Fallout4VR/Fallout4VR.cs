@@ -24,6 +24,8 @@ public class Fallout4VR(IServiceProvider provider) : ACreationEngineGame<Fallout
 
     protected override RelativePath PrimaryExe => "Fallout4VR.exe";
 
+    protected override GamePath? NativePluginFolder => DataPath / "F4SE/Plugins";
+
     /// <inheritdoc />
     protected override string[] SaveExtensions => [".fos", ".f4se"];
     public override PluginFormat HeaderFormat => PluginFormat.Tes4;

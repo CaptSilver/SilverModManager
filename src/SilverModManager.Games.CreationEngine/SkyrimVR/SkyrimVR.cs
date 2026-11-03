@@ -40,5 +40,6 @@ public class SkyrimVR(IServiceProvider provider) : ACreationEngineGame<SkyrimVR>
 
     protected override string[] GameAliases => ["Skyrim VR", "SkyrimVR"];
     protected override string[] StopPatterns => ["(^|/)skse(/|$)"];
+    protected override GamePath? NativePluginFolder => DataPath / "SKSE/Plugins";
     protected override string[] EngineFiles => [@"sksevr_loader\.exe", @"sksevr_.*\.dll"];
 }

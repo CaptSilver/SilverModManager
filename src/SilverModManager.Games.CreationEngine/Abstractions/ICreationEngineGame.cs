@@ -19,6 +19,11 @@ public interface ICreationEngineGame : IBethesdaGame
 {
     public GamePath PluginsFile { get; }
 
+    /// <summary>
+    /// The folder the script extender loads plugin DLLs from (Data/SKSE/Plugins and its equivalents), or null for a game without one.
+    /// </summary>
+    public GamePath? ScriptExtenderPluginFolder { get; }
+
     /// <summary>The header layout this game's plugins use.</summary>
     public PluginFormat HeaderFormat { get; }
 
