@@ -140,12 +140,15 @@ public class LoadoutGroupFilesViewModelTests(IServiceProvider provider) : AUiTes
             OverridesGroupItems.AddReifiedDelete(tx, Loadout.Load(Connection.Db, loadout.Id), LoadoutOverridesGroupId.From(overrides.Value), SomeFile);
             await tx.Commit();
         }
-        synchronizer.DeletedWinners(Loadout.Load(Connection.Db, loadout.Id)).Should().Contain(SomeFile);
+        RowsAt(loadout, SomeFile).Should().Be(1, "the delete marker is recorded");
         var viewModel = await OnUi(() => Task.FromResult(CreateViewModel(Provider)));
 
         await PressRemove(viewModel, [overrides], SomeFile);
 
+        // The winning-files query cannot be asked here: it runs over every loadout in the shared database, and other
+        // tests leave some behind whose game is not installed. The delete marker row is what makes a path a winning delete.
         await Eventually(() => RowsAt(loadout, SomeFile).Should().Be(0));
-        synchronizer.DeletedWinners(Loadout.Load(Connection.Db, loadout.Id)).Should().NotContain(SomeFile);
+        LoadoutItem.FindByLoadout(Connection.Db, loadout.LoadoutId).OfTypeLoadoutItemWithTargetPath()
+            .Where(r => r.TargetPath == SomeFile && r.TryGetAsDeletedFile(out _)).Should().BeEmpty();
     }
 }

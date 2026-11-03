@@ -21,11 +21,14 @@ using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Pages.Diff.ApplyDiff;
 using SilverModManager.App.UI.Windows;
+using SilverModManager.DataModel.Undo;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.UI.Sdk;
+using ReactiveUI;
 using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.UI.Sdk.Dialog.Enums;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
@@ -107,6 +110,9 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
         };
         page.RemoveSelectedCommand.CanExecute.Subscribe(can => harness.CanRun = can);
         await Eventually(() => page.BodyViewModel.Should().NotBeNull());
+        // The tree binds its rows on the UI thread after the refresh; a selection made before that is reset by it.
+        if (entries.Length > 0)
+            await Eventually(() => harness.Tree.TreeSource.Items.Should().NotBeEmpty());
         return harness;
     }
 
@@ -124,6 +130,10 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
 
     private static string DialogText(IDialog dialog) =>
         ((SilverModManager.App.UI.Dialog.Dialog)dialog).ViewModel.ContentViewModel.Should().BeAssignableTo<IDialogStandardContentViewModel>().Subject.Text;
+
+    // The database is shared with every other test in the host, so a transaction count says nothing; a loadout's own
+    // revisions do.
+    private int RestorePoints(Loadout.ReadOnly loadout) => Provider.GetRequiredService<UndoService>().RevisionsFor(loadout.Id).Count;
 
     private int RowsAt(Loadout.ReadOnly loadout, GamePath path) =>
         LoadoutItemWithTargetPath.FindByTargetPath(Connection.Db, path.ToGamePathParentTuple(loadout.Id)).Count;
@@ -213,7 +223,7 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
     public async Task AVanillaRowIsRefusedThroughTheErrorPresenter()
     {
         var h = await Open("Remove Vanilla", entries: (ModFile, FileChangeType.None));
-        var basis = Connection.Db.BasisTxId;
+        var restorePoints = RestorePoints(h.Loadout);
         await Select(h, Node(ModFile, FileChangeType.None));
         await Eventually(() => h.CanRun.Should().BeTrue());
 
@@ -221,7 +231,7 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
 
         await Eventually(() => _ = h.Presenter.Received(1).Report(Arg.Is<Exception>(e => e is FileRemovalRefusedException), Arg.Any<string>()));
         h.Dialogs.Should().BeEmpty("a dialog with a Remove button over nothing helps nobody");
-        Connection.Db.BasisTxId.Should().Be(basis);
+        RestorePoints(h.Loadout).Should().Be(restorePoints, "nothing was written");
         h.Thrown.Should().BeEmpty();
     }
 
@@ -283,7 +293,7 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
         await SeedGroup(h.Loadout.LoadoutId, "Mod", files: [ModFile]);
         await Select(h, Node(ModFile));
         await Eventually(() => h.CanRun.Should().BeTrue());
-        var basis = Connection.Db.BasisTxId;
+        var restorePoints = RestorePoints(h.Loadout);
         h.Answer = new StandardDialogResult { ButtonId = ButtonDefinitionId.Cancel };
 
         await Press(h);
@@ -291,7 +301,7 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
         await Eventually(() => h.Dialogs.Should().ContainSingle());
         await Task.Delay(300, TestContext.Current.CancellationToken);
         RowsAt(h.Loadout, ModFile).Should().Be(1);
-        Connection.Db.BasisTxId.Should().Be(basis);
+        RestorePoints(h.Loadout).Should().Be(restorePoints, "no restore point is written for a cancelled removal");
         h.Sync.Received(1).GetApplyDiffTree(Arg.Any<LoadoutId>());
         h.Toasts.DidNotReceiveWithAnyArgs().ShowToast(default!);
     }
@@ -338,21 +348,35 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
     [Fact]
     public async Task TheDeleteKeyRunsTheCommand()
     {
-        var h = await Open("Remove Delete Key", entries: (ModFile, FileChangeType.Added));
-        await SeedGroup(h.Loadout.LoadoutId, "Mod", files: [ModFile]);
-        await Select(h, Node(ModFile));
-        await Eventually(() => h.CanRun.Should().BeTrue());
+        // A page with no tree body: rendering a real tree grid in a headless window keeps the shared UI thread busy
+        // for the other tests, and what this checks is only that the view wires the key to the view model's command.
+        var runs = 0;
+        var page = new KeyProbeViewModel(() => runs++);
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            var view = new ApplyDiffView { ViewModel = h.Page };
-            var window = Track(new Window { Content = view, Width = 800, Height = 600 });
+            var view = new ApplyDiffView { ViewModel = page };
+            var window = Track(new Window { Content = view, Width = 400, Height = 300 });
             ShowRendered(window);
             view.FindControl<Control>("RefreshButton")?.Focus();
             window.KeyPress(Key.Delete, RawInputModifiers.None, PhysicalKey.Delete, null);
         });
 
-        await Eventually(() => h.Dialogs.Should().ContainSingle());
+        await Eventually(() => runs.Should().Be(1));
+    }
+
+    private sealed class KeyProbeViewModel : APageViewModel<IApplyDiffViewModel>, IApplyDiffViewModel
+    {
+        public KeyProbeViewModel(Action onRemove) : base(Substitute.For<IWindowManager>())
+        {
+            RemoveSelectedCommand = ReactiveCommand.Create(onRemove);
+        }
+
+        public void Initialize(LoadoutId loadoutId) => throw new NotSupportedException();
+        public ReactiveCommand<Unit, Unit> RefreshCommand { get; } = ReactiveCommand.Create(() => { });
+        public ReactiveCommand<Unit, Unit> RemoveSelectedCommand { get; }
+        public IViewModelInterface? BodyViewModel { get; set; }
+        public bool LoadFailed => false;
     }
 
     [Fact]

@@ -9,6 +9,7 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -159,6 +160,8 @@ public class AUiTest : IAsyncDisposable
         return result.Remap(loadout);
     }
 
+    private static long _seededPriority = 1_000_000;
+
     /// <summary>
     /// A group in the loadout, with one file row per path (a collection group, read-only, when <paramref name="collection"/>).
     /// Only rows are written: the file store has no bytes for them.
@@ -192,6 +195,10 @@ public class AUiTest : IAsyncDisposable
                 },
             };
         }
+
+        // Every mod group the app writes has a priority row, and queries that span the shared database expect it.
+        if (!collection)
+            _ = new LoadoutItemGroupPriority.New(tx) { LoadoutId = loadout, TargetId = LoadoutItemGroupId.From(id), Priority = ConflictPriority.From((ulong)Interlocked.Increment(ref _seededPriority)) };
 
         foreach (var path in files)
         {
