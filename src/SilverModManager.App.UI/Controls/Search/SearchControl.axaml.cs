@@ -98,7 +98,7 @@ public partial class SearchControl : UserControl
 
     private static void ApplySearchFilter(string? searchText, ISearchableTreeDataGridAdapter? adapter)
     {
-        if (adapter?.Filter != null)
+        if (adapter?.Filter is not null)
         {
             adapter.Filter.Value = string.IsNullOrWhiteSpace(searchText)
                 ? NoFilter.Instance
