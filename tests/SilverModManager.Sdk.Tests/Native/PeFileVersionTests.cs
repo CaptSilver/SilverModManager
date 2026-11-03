@@ -35,6 +35,22 @@ public class PeFileVersionTests
     }
 
     [Fact]
+    public void ReadVersion_ReturnsTheSameVersionAsAVersionValue()
+    {
+        using var stream = Around(FixedFileInfo(StrucVersion, 0x0002_0007, 0x0001_0000));
+
+        Assert.Equal(new Version(2, 7, 1, 0), PeFileVersion.ReadVersion(stream));
+    }
+
+    [Fact]
+    public void ReadVersion_WithNoSignature_ReturnsNull()
+    {
+        using var stream = new MemoryStream(new byte[4096]);
+
+        Assert.Null(PeFileVersion.ReadVersion(stream));
+    }
+
+    [Fact]
     public void Read_WithNoSignature_ReturnsNull()
     {
         using var stream = new MemoryStream(new byte[4096]);

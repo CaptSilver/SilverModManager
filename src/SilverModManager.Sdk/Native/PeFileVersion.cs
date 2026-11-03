@@ -23,7 +23,12 @@ public static class PeFileVersion
     /// <summary>
     /// The file version as <c>major.minor.build.revision</c>, or null when the stream holds no version struct.
     /// </summary>
-    public static string? Read(Stream stream)
+    public static string? Read(Stream stream) => ReadVersion(stream)?.ToString();
+
+    /// <summary>
+    /// The same version as <see cref="Read"/>, as a <see cref="Version"/>.
+    /// </summary>
+    public static Version? ReadVersion(Stream stream)
     {
         Span<byte> signature = stackalloc byte[4];
         BinaryPrimitives.WriteUInt32LittleEndian(signature, Signature);
@@ -57,7 +62,7 @@ public static class PeFileVersion
                 {
                     var ms = BinaryPrimitives.ReadUInt32LittleEndian(buffer.AsSpan(at + 8));
                     var ls = BinaryPrimitives.ReadUInt32LittleEndian(buffer.AsSpan(at + 12));
-                    return $"{ms >> 16}.{ms & 0xFFFF}.{ls >> 16}.{ls & 0xFFFF}";
+                    return new Version((int)(ms >> 16), (int)(ms & 0xFFFF), (int)(ls >> 16), (int)(ls & 0xFFFF));
                 }
 
                 from = at + 1;

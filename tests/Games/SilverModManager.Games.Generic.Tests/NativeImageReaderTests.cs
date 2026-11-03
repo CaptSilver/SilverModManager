@@ -27,13 +27,38 @@ public sealed class NativeImageReaderTests : IDisposable
     {
         var file = Write("openvr_api.dll", SyntheticPe.Build(["MSVCP140.dll", "KERNEL32.dll", "VCRUNTIME140.dll"]));
 
-        _reader.ImportedLibraries(file).Should().Equal("MSVCP140.dll", "KERNEL32.dll", "VCRUNTIME140.dll");
+        _reader.ReadImports(file).Libraries.Should().Equal("MSVCP140.dll", "KERNEL32.dll", "VCRUNTIME140.dll");
+    }
+
+    [Fact]
+    public void A64BitImageIsReportedAs64Bit()
+    {
+        _reader.ReadImports(Write("x64.dll", SyntheticPe.Build(["KERNEL32.dll"]))).Is64Bit.Should().BeTrue();
+    }
+
+    [Fact]
+    public void A32BitImageIsReportedAs32BitWithItsImports()
+    {
+        var file = Write("x86.dll", SyntheticPe.Build(["MSVCP140.dll", "KERNEL32.dll"], is64Bit: false));
+
+        var imports = _reader.ReadImports(file);
+
+        imports.Is64Bit.Should().BeFalse();
+        imports.Libraries.Should().Equal("MSVCP140.dll", "KERNEL32.dll");
+    }
+
+    [Fact]
+    public void A32BitImageHasAVersion()
+    {
+        var file = Write("x86.dll", SyntheticPe.Build([], new Version(14, 0, 24215, 1), is64Bit: false));
+
+        _reader.FileVersion(file).Should().Be(new Version(14, 0, 24215, 1));
     }
 
     [Fact]
     public void AnImageWithoutImportsHasNone()
     {
-        _reader.ImportedLibraries(Write("empty.dll", SyntheticPe.Build([]))).Should().BeEmpty();
+        _reader.ReadImports(Write("empty.dll", SyntheticPe.Build([]))).Libraries.Should().BeEmpty();
     }
 
     [Fact]
@@ -55,7 +80,7 @@ public sealed class NativeImageReaderTests : IDisposable
     {
         var file = Write("notes.dll", "not a dll"u8.ToArray());
 
-        _reader.ImportedLibraries(file).Should().BeEmpty();
+        _reader.ReadImports(file).Libraries.Should().BeEmpty();
         _reader.FileVersion(file).Should().BeNull();
     }
 }

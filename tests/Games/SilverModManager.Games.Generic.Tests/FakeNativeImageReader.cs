@@ -10,13 +10,18 @@ internal sealed class FakeNativeImageReader : INativeImageReader
 {
     public Dictionary<string, string[]> Imports { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, Version> Versions { get; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Versions keyed by full path, for files of the same name in different folders; they win over <see cref="Versions"/>.</summary>
+    public Dictionary<string, Version> VersionsByPath { get; } = new();
+    /// <summary>Names of the images that are 32-bit; every other image is 64-bit.</summary>
+    public HashSet<string> ThirtyTwoBit { get; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> ImportReads { get; } = [];
 
-    public IReadOnlyList<string> ImportedLibraries(AbsolutePath file)
+    public NativeImageImports ReadImports(AbsolutePath file)
     {
         ImportReads.Add(file.FileName);
-        return Imports.GetValueOrDefault(file.FileName) ?? [];
+        return new NativeImageImports(Imports.GetValueOrDefault(file.FileName) ?? [], Is64Bit: !ThirtyTwoBit.Contains(file.FileName));
     }
 
-    public Version? FileVersion(AbsolutePath file) => Versions.GetValueOrDefault(file.FileName);
+    public Version? FileVersion(AbsolutePath file)
+        => VersionsByPath.GetValueOrDefault(file.GetFullPath()) ?? Versions.GetValueOrDefault(file.FileName);
 }

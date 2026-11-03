@@ -18,9 +18,11 @@ namespace SilverModManager.Games.Generic.Diagnostics;
 /// </summary>
 /// <remarks>
 /// Only files the loadout provides are read, and only their import tables, so the cost follows the size of the
-/// loadout and not of the game folder. A runtime file whose version cannot be read, such as Wine's own placeholder,
-/// is not reported: it says nothing about an installed Microsoft runtime. The separate components check covers a
-/// game that declares the runtime as a requirement; this one follows what the loadout actually deploys.
+/// loadout and not of the game folder. A 32-bit file loads the runtime from the prefix's <c>syswow64</c> folder and a
+/// 64-bit one from <c>system32</c>, so each is judged by its own copy; a prefix without <c>syswow64</c> is a 32-bit
+/// prefix and keeps its 32-bit runtime in <c>system32</c>. A runtime file whose version cannot be read, such as Wine's
+/// own placeholder, is not reported: it says nothing about an installed Microsoft runtime. The separate components
+/// check covers a game that declares the runtime as a requirement; this one follows what the loadout actually deploys.
 /// </remarks>
 public class OldVcRuntimeEmitter(IPrefixResolver prefixResolver, INativeImageReader imageReader, ILogger<OldVcRuntimeEmitter>? logger = null) : ASyncTreeEmitter
 {
@@ -34,6 +36,12 @@ public class OldVcRuntimeEmitter(IPrefixResolver prefixResolver, INativeImageRea
     private static readonly string[] ImportedRuntimePrefixes = ["msvcp140", "vcruntime140"];
     private static readonly Extension[] ImageExtensions = [new(".dll"), new(".exe")];
 
+    /// <summary>A file that imports the runtime, and which runtime it loads.</summary>
+    private readonly record struct Importer(GamePath Path, bool Is64Bit);
+
+    /// <summary>The importers of one bitness whose runtime in the prefix is old or missing.</summary>
+    private sealed record OldRuntime(bool Is64Bit, List<Importer> Importers, AbsolutePath Runtime, string Found);
+
     /// <inheritdoc />
     protected override async IAsyncEnumerable<Diagnostic> DiagnoseTree(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -43,58 +51,82 @@ public class OldVcRuntimeEmitter(IPrefixResolver prefixResolver, INativeImageRea
         var resolution = prefixResolver.Resolve(installation);
         if (!resolution.IsResolved) yield break;
 
-        var importing = FilesImportingTheRuntime(installation, syncTree, cancellationToken);
+        var importing = FilesImportingTheRuntime(loadout, installation, syncTree, cancellationToken);
         if (importing.Count == 0) yield break;
 
-        var runtime = resolution.Prefix.Path / "drive_c/windows/system32" / RuntimeLibrary;
-        string found;
-        if (!runtime.FileExists)
+        var old = new List<OldRuntime>();
+        foreach (var is64Bit in new[] { false, true })
         {
-            found = "missing";
-        }
-        else
-        {
-            var version = ReadVersion(runtime);
-            if (version is null)
-            {
-                logger?.LogTrace("`{File}` has no readable version, so the runtime is not judged old", runtime);
-                yield break;
-            }
-            if (version >= MinimumVersion) yield break;
-            found = $"version {version}";
-        }
+            var importers = importing.Where(i => i.Is64Bit == is64Bit).ToList();
+            if (importers.Count == 0) continue;
 
-        logger?.LogTrace("{Count} deployed files import the Visual C++ runtime and the prefix's {File} is {Found}", importing.Count, RuntimeLibrary, found);
-        yield return Diagnostics.CreateOldVisualCppRuntime(installation.Game.DisplayName, FormatFiles(importing), found, Instructions(installation, resolution.Prefix))
+            var runtime = RuntimeFor(resolution.Prefix, is64Bit);
+            var found = FindProblem(runtime);
+            if (found is not null) old.Add(new OldRuntime(is64Bit, importers, runtime, found));
+        }
+        if (old.Count == 0) yield break;
+
+        var files = old.SelectMany(o => o.Importers).Select(i => i.Path).ToList();
+        logger?.LogTrace("{Count} deployed files import the Visual C++ runtime and the prefix's runtime is old or missing for them", files.Count);
+        yield return Diagnostics.CreateOldVisualCppRuntime(installation.Game.DisplayName, FormatFiles(files), FormatRuntimes(resolution.Prefix, old), Instructions(installation, resolution.Prefix))
             with { Actions = [DiagnosticActions.SetUpPrefix([FixComponent])] };
     }
 
-    private List<GamePath> FilesImportingTheRuntime(GameInstallation installation, FrozenDictionary<GamePath, SyncNode> syncTree, CancellationToken cancellationToken)
+    /// <summary>
+    /// The runtime a process of the given bitness loads. A prefix has <c>syswow64</c> only when it is 64-bit.
+    /// </summary>
+    private static AbsolutePath RuntimeFor(ResolvedPrefix prefix, bool is64Bit)
     {
-        var found = new List<GamePath>();
+        var windows = prefix.Path / "drive_c/windows";
+        var folder = !is64Bit && (windows / "syswow64").DirectoryExists() ? "syswow64" : "system32";
+        return windows / folder / RuntimeLibrary;
+    }
+
+    /// <summary>
+    /// What is wrong with the runtime file, as it reads after "is", or null when it is recent enough or cannot be judged.
+    /// </summary>
+    private string? FindProblem(AbsolutePath runtime)
+    {
+        if (!runtime.FileExists) return "missing";
+
+        var version = ReadVersion(runtime);
+        if (version is null)
+        {
+            logger?.LogTrace("`{File}` has no readable version, so the runtime is not judged old", runtime);
+            return null;
+        }
+        return version >= MinimumVersion ? null : $"version {version}";
+    }
+
+    private List<Importer> FilesImportingTheRuntime(Loadout.ReadOnly loadout, GameInstallation installation, FrozenDictionary<GamePath, SyncNode> syncTree, CancellationToken cancellationToken)
+    {
+        var provided = ModProvidedFiles.For(loadout);
+        var found = new List<Importer>();
         foreach (var (path, node) in syncTree.OrderBy(p => p.Key.ToString(), StringComparer.Ordinal))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             // A file of the game's own is not the loadout's doing, and one that is not on disk cannot be read.
+            // A file adopted into the Overrides group is a leftover, not something a mod deploys.
             if (path.LocationId != LocationId.Game || !ImageExtensions.Contains(path.Extension)) continue;
-            if (node.SourceItemType != LoadoutSourceItemType.Loadout || !node.HaveLoadout || !node.HaveDisk) continue;
+            if (!node.HaveDisk || !provided.IsProvidedByMod(node)) continue;
 
-            if (ImportsTheRuntime(installation.Locations.ToAbsolutePath(path))) found.Add(path);
+            if (ReadImports(installation.Locations.ToAbsolutePath(path)) is { } imports && imports.Libraries.Any(IsRuntimeLibrary))
+                found.Add(new Importer(path, imports.Is64Bit));
         }
         return found;
     }
 
-    private bool ImportsTheRuntime(AbsolutePath file)
+    private NativeImageImports? ReadImports(AbsolutePath file)
     {
         try
         {
-            return imageReader.ImportedLibraries(file).Any(IsRuntimeLibrary);
+            return imageReader.ReadImports(file);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             logger?.LogTrace(e, "Could not read the imports of `{File}`", file);
-            return false;
+            return null;
         }
     }
 
@@ -113,6 +145,17 @@ public class OldVcRuntimeEmitter(IPrefixResolver prefixResolver, INativeImageRea
 
     private static bool IsRuntimeLibrary(string name)
         => ImportedRuntimePrefixes.Any(prefix => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+
+    private static string FormatRuntimes(ResolvedPrefix prefix, List<OldRuntime> old)
+    {
+        var sb = new StringBuilder();
+        foreach (var o in old)
+        {
+            var bits = o.Is64Bit ? "64-bit" : "32-bit";
+            sb.Append("* `").Append(o.Runtime.RelativeTo(prefix.Path)).Append("`, for ").Append(bits).Append(" files, is ").AppendLine(o.Found);
+        }
+        return sb.ToString();
+    }
 
     private static string FormatFiles(List<GamePath> files)
     {

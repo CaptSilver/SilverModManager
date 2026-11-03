@@ -3,7 +3,7 @@ using System.Text;
 namespace SilverModManager.Games.Generic.Tests;
 
 /// <summary>
-/// Builds the smallest 64-bit Windows image the readers accept: an import section naming the given libraries and a
+/// Builds the smallest Windows image the readers accept, 64-bit unless asked for 32-bit: an import section naming the given libraries and a
 /// resource section that holds a <c>VS_FIXEDFILEINFO</c> for the given version. Fixtures in code, so no test needs a
 /// real DLL.
 /// </summary>
@@ -17,7 +17,7 @@ internal static class SyntheticPe
     private const int ResourceRaw = 0x600;
     private const int SectionSize = 0x200;
 
-    public static byte[] Build(string[] imports, Version? version = null)
+    public static byte[] Build(string[] imports, Version? version = null, bool is64Bit = true)
     {
         var image = new byte[ResourceRaw + SectionSize];
         using var stream = new MemoryStream(image);
@@ -30,18 +30,20 @@ internal static class SyntheticPe
 
         stream.Position = 0x40;
         w.Write(0x00004550u); // "PE\0\0"
-        w.Write((ushort)0x8664); // x64
+        w.Write(is64Bit ? (ushort)0x8664 : (ushort)0x14C); // x64 or x86
         w.Write((ushort)2); // sections
         w.Write(0u); w.Write(0u); w.Write(0u); // time stamp, symbol table, symbol count
-        w.Write((ushort)240); // optional header size
+        w.Write(is64Bit ? (ushort)240 : (ushort)224); // optional header size
         w.Write((ushort)0x2022); // executable, large address aware, DLL
 
-        // Optional header (PE32+).
-        w.Write((ushort)0x20B);
+        // Optional header: PE32+ for 64-bit, PE32 for 32-bit, which adds a base-of-data field and narrows the
+        // image base and the stack and heap sizes.
+        w.Write(is64Bit ? (ushort)0x20B : (ushort)0x10B);
         w.Write((ushort)0); // linker version
         w.Write(0u); w.Write(0u); w.Write(0u); // sizes of code, data, bss
         w.Write(0u); w.Write(0u); // entry point, base of code
-        w.Write(0x180000000UL); // image base
+        if (is64Bit) w.Write(0x180000000UL); // image base
+        else { w.Write(0u); w.Write(0x10000000u); } // base of data, image base
         w.Write(SectionAlignment);
         w.Write(FileAlignment);
         w.Write(new byte[8]); // OS version, image version
@@ -52,7 +54,8 @@ internal static class SyntheticPe
         w.Write(0u); // checksum
         w.Write((ushort)3); // console subsystem
         w.Write((ushort)0); // DLL characteristics
-        w.Write(0x100000UL); w.Write(0x1000UL); w.Write(0x100000UL); w.Write(0x1000UL); // stack and heap sizes
+        if (is64Bit) { w.Write(0x100000UL); w.Write(0x1000UL); w.Write(0x100000UL); w.Write(0x1000UL); } // stack and heap sizes
+        else { w.Write(0x100000u); w.Write(0x1000u); w.Write(0x100000u); w.Write(0x1000u); }
         w.Write(0u); // loader flags
         w.Write(16); // data directory count
         for (var i = 0; i < 16; i++)

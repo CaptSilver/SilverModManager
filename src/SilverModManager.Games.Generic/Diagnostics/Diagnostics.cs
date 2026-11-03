@@ -216,8 +216,11 @@ Mods in the loadout deploy files that need the Visual C++ 2015-2022 runtime (`ms
 
 {Files}
 
-The prefix's `msvcp140.dll` is {Found}, and these mods need version 14.40 or newer. With an older runtime a mod's DLL
-can crash the game while it loads, before any error shows.
+These mods need version 14.40 or newer of the runtime, and the prefix's copy is old or missing:
+
+{Runtimes}
+
+With an older runtime a mod's DLL can crash the game while it loads, before any error shows.
 
 ### How to Resolve
 Use "Set up prefix" to install the runtime with the app's own installer, or do it by hand:
@@ -225,13 +228,13 @@ Use "Set up prefix" to install the runtime with the app's own installer, or do i
 {Instructions}
 
 ### Technical Details
-The check reads the prefix's `drive_c/windows/system32/msvcp140.dll` file version and the import tables of the DLLs and
-executables the loadout provides. Nothing is run.
+The check reads the file version of the prefix's `msvcp140.dll`, the 32-bit copy for 32-bit files and the 64-bit copy
+for 64-bit ones, and the import tables of the DLLs and executables the loadout provides. Nothing is run.
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("GameName")
             .AddValue<string>("Files")
-            .AddValue<string>("Found")
+            .AddValue<string>("Runtimes")
             .AddValue<string>("Instructions")
         )
         .Finish();

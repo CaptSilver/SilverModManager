@@ -49,6 +49,8 @@ public class OldVcRuntimeEmitterTests(ITestOutputHelper helper)
 
     private AbsolutePath RuntimeInPrefix => Resolver.DefaultPrefix.Path / "drive_c/windows/system32/msvcp140.dll";
 
+    private AbsolutePath Runtime32InPrefix => Resolver.DefaultPrefix.Path / "drive_c/windows/syswow64/msvcp140.dll";
+
     /// <summary>A mod that deploys <paramref name="path"/> into the game folder, with the file on disk as a deploy leaves it.</summary>
     private async Task DeployMod(Loadout.ReadOnly loadout, string path)
     {
@@ -69,6 +71,13 @@ public class OldVcRuntimeEmitterTests(ITestOutputHelper helper)
         RuntimeInPrefix.Parent.CreateDirectory();
         await RuntimeInPrefix.WriteAllTextAsync("fake");
         if (version is not null) _images.Versions["msvcp140.dll"] = version;
+    }
+
+    /// <summary>Installs a runtime DLL at <paramref name="file"/>; the fake reader gives every <c>msvcp140.dll</c> the version set last.</summary>
+    private static async Task Install(AbsolutePath file)
+    {
+        file.Parent.CreateDirectory();
+        await file.WriteAllTextAsync("fake");
     }
 
     [Fact]
@@ -180,5 +189,102 @@ public class OldVcRuntimeEmitterTests(ITestOutputHelper helper)
         var diagnostic = await GetSingleDiagnostic(loadout);
 
         Details(diagnostic).Should().Contain("winetricks").And.Contain("vcrun2022").And.NotContain("protontricks 611670");
+    }
+
+    [Fact]
+    public async Task AFileInTheOverridesGroupIsNotRead()
+    {
+        var loadout = await CreateLoadout();
+        await AddToOverrides(loadout, "leftover.dll");
+        var file = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, "leftover.dll"));
+        file.Parent.CreateDirectory();
+        await file.WriteAllTextAsync("leftover");
+        _images.Imports["leftover.dll"] = ["MSVCP140.dll"];
+        await InstallRuntime(new Version(14, 0, 24215, 1));
+
+        await ShouldHaveNoDiagnostics(loadout);
+        _images.ImportReads.Should().NotContain("leftover.dll");
+    }
+
+    [Fact]
+    public async Task A32BitFileIsJudgedByTheRuntimeInSyswow64()
+    {
+        var loadout = await CreateLoadout();
+        await DeployMod(loadout, "plugin.dll");
+        _images.Imports["plugin.dll"] = ["MSVCP140.dll"];
+        _images.ThirtyTwoBit.Add("plugin.dll");
+        await Install(Runtime32InPrefix);
+        await Install(RuntimeInPrefix);
+        _images.VersionsByPath[Runtime32InPrefix.GetFullPath()] = new Version(14, 0, 24215, 1);
+        _images.VersionsByPath[RuntimeInPrefix.GetFullPath()] = new Version(14, 40, 33816, 0);
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        Details(diagnostic).Should().Contain("syswow64/msvcp140.dll").And.Contain("version 14.0.24215.1").And.NotContain("system32");
+    }
+
+    [Fact]
+    public async Task A32BitFileIsNotJudgedByTheOldRuntimeInSystem32()
+    {
+        var loadout = await CreateLoadout();
+        await DeployMod(loadout, "plugin.dll");
+        _images.Imports["plugin.dll"] = ["MSVCP140.dll"];
+        _images.ThirtyTwoBit.Add("plugin.dll");
+        await Install(Runtime32InPrefix);
+        await Install(RuntimeInPrefix);
+        _images.VersionsByPath[Runtime32InPrefix.GetFullPath()] = new Version(14, 40, 33816, 0);
+        _images.VersionsByPath[RuntimeInPrefix.GetFullPath()] = new Version(14, 0, 24215, 1);
+
+        await ShouldHaveNoDiagnostics(loadout);
+    }
+
+    [Fact]
+    public async Task A64BitFileIsJudgedByTheRuntimeInSystem32()
+    {
+        var loadout = await CreateLoadout();
+        await DeployMod(loadout, "plugin.dll");
+        _images.Imports["plugin.dll"] = ["MSVCP140.dll"];
+        await Install(Runtime32InPrefix);
+        await Install(RuntimeInPrefix);
+        _images.VersionsByPath[Runtime32InPrefix.GetFullPath()] = new Version(14, 40, 33816, 0);
+        _images.VersionsByPath[RuntimeInPrefix.GetFullPath()] = new Version(14, 0, 24215, 1);
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        Details(diagnostic).Should().Contain("system32/msvcp140.dll").And.Contain("version 14.0.24215.1").And.NotContain("syswow64");
+    }
+
+    [Fact]
+    public async Task OnlyTheFilesOfTheBitnessWithAnOldRuntimeAreListed()
+    {
+        var loadout = await CreateLoadout();
+        await DeployMod(loadout, "old32.dll");
+        await DeployMod(loadout, "fine64.dll");
+        _images.Imports["old32.dll"] = ["MSVCP140.dll"];
+        _images.Imports["fine64.dll"] = ["MSVCP140.dll"];
+        _images.ThirtyTwoBit.Add("old32.dll");
+        await Install(Runtime32InPrefix);
+        await Install(RuntimeInPrefix);
+        _images.VersionsByPath[Runtime32InPrefix.GetFullPath()] = new Version(14, 0, 24215, 1);
+        _images.VersionsByPath[RuntimeInPrefix.GetFullPath()] = new Version(14, 40, 33816, 0);
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        Details(diagnostic).Should().Contain("old32.dll").And.NotContain("fine64.dll");
+    }
+
+    [Fact]
+    public async Task A32BitFileInAPrefixWithoutSyswow64IsJudgedBySystem32()
+    {
+        // A 32-bit prefix keeps its 32-bit runtime in system32.
+        var loadout = await CreateLoadout();
+        await DeployMod(loadout, "plugin.dll");
+        _images.Imports["plugin.dll"] = ["MSVCP140.dll"];
+        _images.ThirtyTwoBit.Add("plugin.dll");
+        await InstallRuntime(new Version(14, 0, 24215, 1));
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        Details(diagnostic).Should().Contain("system32/msvcp140.dll").And.Contain("version 14.0.24215.1");
     }
 }

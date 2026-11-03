@@ -73,31 +73,6 @@ public class UnmanagedScriptExtenderPluginEmitterTests(ITestOutputHelper helper)
         return group;
     }
 
-    /// <summary>Puts the file in the loadout's Overrides group, the way an adopted game-folder file is.</summary>
-    private async Task AddToOverrides(Loadout.ReadOnly loadout, string path)
-    {
-        using var tx = Connection.BeginTransaction();
-        var overridesId = LoadoutOverridesGroup.FindByOverridesFor(Connection.Db, loadout.Id).TryGetFirst(out var existing)
-            ? LoadoutItemGroupId.From(existing.Id)
-            : NewOverridesGroup(tx, loadout);
-        AddFile(tx, loadout, overridesId, new GamePath(LocationId.Game, path), content: path);
-        await tx.Commit();
-    }
-
-    private static LoadoutItemGroupId NewOverridesGroup(ITransaction tx, Loadout.ReadOnly loadout)
-    {
-        _ = new LoadoutOverridesGroup.New(tx, out var id)
-        {
-            OverridesForId = loadout.Id,
-            LoadoutItemGroup = new LoadoutItemGroup.New(tx, id)
-            {
-                IsGroup = true,
-                LoadoutItem = new LoadoutItem.New(tx, id) { Name = "Overrides", LoadoutId = loadout.Id },
-            },
-        };
-        return LoadoutItemGroupId.From(id);
-    }
-
     [Fact]
     public async Task ADllNoModProvidesIsReported()
     {

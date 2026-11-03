@@ -2,31 +2,34 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection.PortableExecutable;
 using System.Text;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Native;
 
 namespace SilverModManager.Games.Generic.Diagnostics;
 
 /// <summary>
-/// Reads a PE file's import table and its <c>VS_FIXEDFILEINFO</c> directly. .NET's own version reader only knows
-/// managed assemblies on Linux, so it cannot be used for a native DLL in a Wine prefix.
+/// Reads a PE file's import table and bitness with <see cref="PEReader"/>, and its version through
+/// <see cref="PeFileVersion"/>.
 /// </summary>
 public sealed class NativeImageReader : INativeImageReader
 {
     private const int ImportDescriptorSize = 20;
     private const int MaxLibraryNameLength = 260;
-    private const uint FixedFileInfoSignature = 0xFEEF04BD;
 
     /// <inheritdoc />
-    public IReadOnlyList<string> ImportedLibraries(AbsolutePath file)
+    public NativeImageImports ReadImports(AbsolutePath file)
     {
         using var stream = file.Read();
-        if (!TryOpen(stream, out var pe)) return [];
+        if (!TryOpen(stream, out var pe)) return NativeImageImports.None;
         using (pe)
         {
-            var directory = pe.PEHeaders.PEHeader?.ImportTableDirectory;
-            if (directory is not { Size: > 0 }) return [];
+            if (pe.PEHeaders.PEHeader is not { } header) return NativeImageImports.None;
+            var is64Bit = header.Magic == PEMagic.PE32Plus;
 
-            var table = pe.GetSectionData(directory.Value.RelativeVirtualAddress);
-            if (table.Length == 0) return [];
+            var directory = header.ImportTableDirectory;
+            if (directory is not { Size: > 0 }) return new NativeImageImports([], is64Bit);
+
+            var table = pe.GetSectionData(directory.RelativeVirtualAddress);
+            if (table.Length == 0) return new NativeImageImports([], is64Bit);
 
             var names = new List<string>();
             var reader = table.GetReader();
@@ -41,7 +44,7 @@ public sealed class NativeImageReader : INativeImageReader
 
                 names.Add(ReadName(pe, nameRva));
             }
-            return names;
+            return new NativeImageImports(names, is64Bit);
         }
     }
 
@@ -49,34 +52,7 @@ public sealed class NativeImageReader : INativeImageReader
     public Version? FileVersion(AbsolutePath file)
     {
         using var stream = file.Read();
-        if (!TryOpen(stream, out var pe)) return null;
-        using (pe)
-        {
-            var resources = pe.PEHeaders.PEHeader?.ResourceTableDirectory;
-            if (resources is not { Size: > 0 }) return null;
-
-            // The version block sits inside the resource section; its fixed part starts with a known signature.
-            var section = pe.GetSectionData(resources.Value.RelativeVirtualAddress);
-            if (section.Length == 0) return null;
-
-            var bytes = section.GetContent().AsSpan();
-            var signature = BitConverter.GetBytes(FixedFileInfoSignature);
-            var offset = 0;
-            while (offset <= bytes.Length - 16)
-            {
-                var found = bytes[offset..].IndexOf(signature);
-                if (found < 0 || offset + found + 16 > bytes.Length) return null;
-
-                var at = offset + found;
-                offset = at + 1;
-                if (BitConverter.ToUInt32(bytes[(at + 4)..]) != 0x00010000) continue; // dwStrucVersion
-
-                var ms = BitConverter.ToUInt32(bytes[(at + 8)..]);
-                var ls = BitConverter.ToUInt32(bytes[(at + 12)..]);
-                return new Version((int)(ms >> 16), (int)(ms & 0xFFFF), (int)(ls >> 16), (int)(ls & 0xFFFF));
-            }
-            return null;
-        }
+        return PeFileVersion.ReadVersion(stream);
     }
 
     private static bool TryOpen(Stream stream, [NotNullWhen(true)] out PEReader? reader)

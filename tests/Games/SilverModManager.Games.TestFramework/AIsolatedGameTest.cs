@@ -268,6 +268,34 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
         size = Size.FromLong(contentArray.Length);
         return AddFileInternal(tx, loadoutId, groupId, path, hash, size).Id;
     }
+    /// <summary>
+    /// Puts a file in the loadout's Overrides group, creating the group if needed, the way an adopted game-folder
+    /// file is held.
+    /// </summary>
+    protected async Task AddToOverrides(Loadout.ReadOnly loadout, string path)
+    {
+        using var tx = Connection.BeginTransaction();
+        var overridesId = LoadoutOverridesGroup.FindByOverridesFor(Connection.Db, loadout.Id).TryGetFirst(out var existing)
+            ? LoadoutItemGroupId.From(existing.Id)
+            : NewOverridesGroup(tx, loadout);
+        AddFile(tx, loadout, overridesId, new GamePath(LocationId.Game, path), content: path);
+        await tx.Commit();
+    }
+
+    private static LoadoutItemGroupId NewOverridesGroup(ITransaction tx, Loadout.ReadOnly loadout)
+    {
+        _ = new LoadoutOverridesGroup.New(tx, out var id)
+        {
+            OverridesForId = loadout.Id,
+            LoadoutItemGroup = new LoadoutItemGroup.New(tx, id)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, id) { Name = "Overrides", LoadoutId = loadout.Id },
+            },
+        };
+        return LoadoutItemGroupId.From(id);
+    }
+
     private static LoadoutFile.New AddFileInternal(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path, Hash hash, Size size) => new(tx, out var id)
     {
         LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, id)
