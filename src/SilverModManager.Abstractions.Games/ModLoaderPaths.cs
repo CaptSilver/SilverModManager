@@ -19,7 +19,7 @@ public static class ModLoaderPaths
 
     /// <summary>
     /// True when <paramref name="path"/> is code that hooks the game (<see cref="IGameNativeCode"/>), a proxy
-    /// DLL in the folder of the game's executable, or anything under a top-level <c>src</c> folder.
+    /// DLL in one of the game's executable folders, or anything under a top-level <c>src</c> folder.
     /// Names compare without regard to case: the proxy a player kept was spelled <c>DINPUT8.dll</c>.
     /// </summary>
     public static bool LooksLikeAMod(IGame game, GameInstallation installation, GamePath path)
@@ -40,6 +40,6 @@ public static class ModLoaderPaths
     {
         var name = path.FileName.ToString();
         if (!ProxyDllNames.Contains(name, StringComparer.OrdinalIgnoreCase)) return false;
-        return path.Parent == game.GetPrimaryFile(installation).Parent;
+        return game.ExecutableFolders(installation).Contains(path.Parent);
     }
 }

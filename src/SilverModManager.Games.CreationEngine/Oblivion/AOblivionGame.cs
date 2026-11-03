@@ -49,4 +49,5 @@ public abstract class AOblivionGame<TSelf>(IServiceProvider provider) : ACreatio
         @"obse_steam_loader\.dll",
         @"obse_editor_1_2\.dll",
     ];
+    protected override GamePath? NativePluginFolder => DataPath / "OBSE/Plugins";
 }

@@ -71,6 +71,9 @@ public class OblivionRemastered(IServiceProvider provider) : ACreationEngineGame
     // plugins under OBSE/Plugins beside it.
     protected override GamePath EnginePath => new(LocationId.Game, $"{ProjectFolder}/Binaries/Win64");
 
+    // The root launcher and the engine binary's folder both take a proxy DLL.
+    public override IReadOnlyList<GamePath> ExecutableFolders(GameInstallation installation) => [GetPrimaryFile(installation).Parent, EnginePath];
+
     protected override string[] EngineFiles => [@"obse64_loader\.exe", @"obse64_.*\.dll"];
     protected override GamePath? NativePluginFolder => EnginePath / "OBSE/Plugins";
     protected override string[] GameAliases => ["Oblivion Remastered", "OblivionRemastered", "TES4R"];

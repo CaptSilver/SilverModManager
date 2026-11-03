@@ -41,4 +41,5 @@ public class SkyrimLE(IServiceProvider provider) : ACreationEngineGame<SkyrimLE>
     protected override string[] GameAliases => ["Skyrim", "TESV", "Skyrim Legendary Edition"];
     protected override string[] StopPatterns => ["(^|/)skse(/|$)"];
     protected override string[] EngineFiles => [@"skse_loader\.exe", @"skse_.*\.dll", @"skse_steam_loader\.dll"];
+    protected override GamePath? NativePluginFolder => DataPath / "SKSE/Plugins";
 }

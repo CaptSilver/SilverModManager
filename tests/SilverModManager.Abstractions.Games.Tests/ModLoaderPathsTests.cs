@@ -16,6 +16,7 @@ public class ModLoaderPathsTests
         var game = Substitute.For<INativeCodeGame>();
         game.HooksGameCode(Arg.Any<GamePath>()).Returns(call => hooks?.Invoke(call.Arg<GamePath>()) ?? false);
         game.GetPrimaryFile(Arg.Any<GameInstallation>()).Returns(P(primary));
+        game.ExecutableFolders(Arg.Any<GameInstallation>()).Returns([P(primary).Parent]);
         return (game, default!);
     }
 
@@ -29,6 +30,17 @@ public class ModLoaderPathsTests
     [Fact] public void ProxyDll_InTheRoot_IsAMod() => Looks("version.dll").Should().BeTrue();
     [Fact] public void ProxyDll_Elsewhere_IsNot() => Looks("Data/dinput8.dll").Should().BeFalse();
     [Fact] public void ProxyDll_MatchesAnyCase() => Looks("DINPUT8.dll").Should().BeTrue();
+
+    [Fact]
+    public void ProxyDll_InAnExecutableFolderTheGameNames_IsAMod()
+    {
+        var (game, installation) = Make("Launcher.exe");
+        game.ExecutableFolders(Arg.Any<GameInstallation>()).Returns([P("Launcher.exe").Parent, P("bin/x.exe").Parent]);
+
+        ModLoaderPaths.LooksLikeAMod(game, installation, P("bin/dxgi.dll")).Should().BeTrue();
+        ModLoaderPaths.LooksLikeAMod(game, installation, P("lib/dxgi.dll")).Should().BeFalse();
+    }
+
     [Fact] public void TopLevelSrc_IsAMod() => Looks("src/main.cpp").Should().BeTrue();
     [Fact] public void NestedSrc_IsNot() => Looks("Data/src/main.cpp").Should().BeFalse();
     [Fact] public void HooksGameCode_IsConsulted() => Looks("Data/SKSE/Plugins/x.dll", hooks: p => p.Path.ToString().EndsWith("x.dll")).Should().BeTrue();
@@ -39,6 +51,7 @@ public class ModLoaderPathsTests
     {
         var game = Substitute.For<IGame>();
         game.GetPrimaryFile(Arg.Any<GameInstallation>()).Returns(P("Game.exe"));
+        game.ExecutableFolders(Arg.Any<GameInstallation>()).Returns([P("Game.exe").Parent]);
 
         ModLoaderPaths.LooksLikeAMod(game, default!, P("dxgi.dll")).Should().BeTrue();
         ModLoaderPaths.LooksLikeAMod(game, default!, P("Data/a.dll")).Should().BeFalse();

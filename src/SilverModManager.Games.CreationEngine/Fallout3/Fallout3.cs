@@ -53,4 +53,5 @@ public class Fallout3(IServiceProvider provider) : ACreationEngineGame<Fallout3>
     protected override string[] GameAliases => ["Fallout 3", "Fallout3", "FO3"];
     protected override string[] StopPatterns => ["(^|/)fose(/|$)"];
     protected override string[] EngineFiles => [@"fose_loader\.exe", @"fose_.*\.dll"];
+    protected override GamePath? NativePluginFolder => DataPath / "FOSE/Plugins";
 }

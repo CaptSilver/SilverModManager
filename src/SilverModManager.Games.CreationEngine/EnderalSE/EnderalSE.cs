@@ -53,4 +53,5 @@ public class EnderalSE(IServiceProvider provider) : ACreationEngineGame<EnderalS
     protected override string[] GameAliases => ["Enderal Special Edition", "EnderalSE", "Enderal SE"];
     protected override string[] StopPatterns => ["(^|/)skse(/|$)"];
     protected override string[] EngineFiles => [@"skse64_loader\.exe", @"skse64_.*\.dll"];
+    protected override GamePath? NativePluginFolder => DataPath / "SKSE/Plugins";
 }

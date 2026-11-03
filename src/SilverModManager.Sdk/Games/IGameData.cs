@@ -94,6 +94,12 @@ public interface IGameData
     GamePath GetPrimaryFile(GameInstallation installation);
 
     /// <summary>
+    /// Folders that hold the game's engine binaries, where a proxy DLL such as <c>dxgi.dll</c> is picked up.
+    /// Defaults to the folder of the primary file; a game whose primary file is a launcher names the real ones.
+    /// </summary>
+    IReadOnlyList<GamePath> ExecutableFolders(GameInstallation installation) => [GetPrimaryFile(installation).Parent];
+
+    /// <summary>
     /// Returns a game specific version.
     /// </summary>
     Optional<Version> GetLocalVersion(GameInstallation installation)

@@ -181,6 +181,9 @@ public abstract class ABethesdaGame<TSelf> : IBethesdaGame, IGameIdentifyingFile
 
     public GamePath GetPrimaryFile(GameInstallation installation) => new(LocationId.Game, PrimaryExe);
 
+    /// <inheritdoc cref="IGameData.ExecutableFolders"/>
+    public virtual IReadOnlyList<GamePath> ExecutableFolders(GameInstallation installation) => [GetPrimaryFile(installation).Parent];
+
     // Declared here because a default interface member can't be overridden by a subclass that doesn't
     // list the interface itself, and a title may need a different version source.
     public virtual Optional<Version> GetLocalVersion(GameInstallation installation)

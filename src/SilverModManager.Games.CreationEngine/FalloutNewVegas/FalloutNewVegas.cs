@@ -62,4 +62,5 @@ public class FalloutNewVegas(IServiceProvider provider) : ACreationEngineGame<Fa
     protected override string[] GameAliases => ["Fallout New Vegas", "Fallout: New Vegas", "FalloutNV", "FNV"];
     protected override string[] StopPatterns => ["(^|/)nvse(/|$)"];
     protected override string[] EngineFiles => [@"nvse_loader\.exe", @"nvse_.*\.dll", @"nvse_steam_loader\.dll"];
+    protected override GamePath? NativePluginFolder => DataPath / "NVSE/Plugins";
 }

@@ -83,6 +83,16 @@ public class NativeBuildTests(IServiceProvider serviceProvider)
         Game.GetPrimaryFile(InstallationOf(NativeResult(OSPlatform.Windows))).Should().Be(new GamePath(LocationId.Game, "Launcher/LariLauncher.exe"));
     }
 
+    [Fact]
+    public void ExecutableFolders_OnWindowsAreTheLauncherAndBin_SoBinProxiesCount()
+    {
+        var installation = InstallationOf(NativeResult(OSPlatform.Windows));
+
+        Game.ExecutableFolders(installation).Should().BeEquivalentTo([new GamePath(LocationId.Game, "Launcher"), new GamePath(LocationId.Game, "bin")]);
+        ModLoaderPaths.LooksLikeAMod(Game, installation, new GamePath(LocationId.Game, "bin/dxgi.dll")).Should().BeTrue();
+        ModLoaderPaths.LooksLikeAMod(Game, installation, new GamePath(LocationId.Game, "Data/dxgi.dll")).Should().BeFalse();
+    }
+
     private static GameLocatorResult NativeResult(OSPlatform platform = default)
     {
         return new GameLocatorResult

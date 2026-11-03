@@ -46,4 +46,5 @@ public class Enderal(IServiceProvider provider) : ACreationEngineGame<Enderal>(p
     protected override string[] GameAliases => ["Enderal", "Enderal Forgotten Stories"];
     protected override string[] StopPatterns => ["(^|/)skse(/|$)"];
     protected override string[] EngineFiles => [@"skse_loader\.exe", @"skse_.*\.dll", @"skse_steam_loader\.dll"];
+    protected override GamePath? NativePluginFolder => DataPath / "SKSE/Plugins";
 }

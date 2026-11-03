@@ -149,6 +149,10 @@ public class BaldursGate3 : IGame, IGameData<BaldursGate3>, IWineDllOverrideRequ
         return new GamePath(LocationId.Game, "Launcher/LariLauncher.exe");
     }
 
+    // The Windows build's primary file is the launcher; the engine binaries (and BG3SE's DWrite.dll) are in bin.
+    public IReadOnlyList<GamePath> ExecutableFolders(GameInstallation installation) =>
+        [GetPrimaryFile(installation).Parent, new GamePath(LocationId.Game, NativeExecutable.Parent)];
+
     // BG3SE ships bin/DWrite.dll, which replaces a system DLL that Wine would otherwise load itself.
     // It is Wine that needs the override, so it applies to every store.
     public IReadOnlyList<WineDllOverride> RequiredWineDllOverrides(Loadout.ReadOnly loadout)
