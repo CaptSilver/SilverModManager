@@ -246,7 +246,8 @@ public class StartupModeTests
     [Fact]
     public void McpUsageDocumentsAllowWritesAndTheReadOnlyAlias()
     {
-        StartupMode.McpUsage.Should().Contain("--allow-writes").And.Contain("--read-only").And.Contain("read-only by default");
+        StartupMode.McpUsage.Should().Contain("--allow-writes").And.Contain("--read-only").And.Contain("read-only by default")
+            .And.Contain("overrides --allow-writes");
     }
 
     [Theory]

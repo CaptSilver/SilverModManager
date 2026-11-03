@@ -89,7 +89,7 @@ public class StartupMode
 
     public const string McpUsage =
         "Usage: silvermodmanager mcp [--allow-writes] [--read-only]. The server is read-only by default; " +
-        "--allow-writes also offers the tools that change things. --read-only is accepted as a no-op alias of the default.";
+        "--allow-writes also offers the tools that change things. --read-only is accepted for compatibility and overrides --allow-writes.";
 
     /// <summary>
     /// True for <c>run --help</c> / <c>run -h</c> with the flag before any <c>--</c>: it prints the usage and exits,
