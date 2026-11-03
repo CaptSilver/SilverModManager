@@ -56,10 +56,16 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
     public required AbsolutePath Destination { get; init; }
     
     /// <summary>
-    /// Only exists for extension by derived classes.
+    /// Records where the file came from, so the library has a model to list it by. A derived class that adds a model
+    /// of its own replaces this.
     /// </summary>
     public virtual ValueTask AddMetadata(ITransaction transaction, LibraryFile.New libraryFile)
     {
+        _ = new DownloadedFile.New(transaction, libraryFile.Id)
+        {
+            DownloadPageUri = DownloadPageUri,
+            LibraryFile = libraryFile,
+        };
         return ValueTask.CompletedTask;
     }
 

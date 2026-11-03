@@ -409,6 +409,8 @@ public static class Services
             .AddSingleton<CollectionDataProvider>()
             .AddSingleton<ILibraryDataProvider, LocalFileDataProvider>()
             .AddSingleton<ILoadoutDataProvider, LocalFileDataProvider>()
+            .AddSingleton<ILibraryDataProvider, DownloadedFileDataProvider>()
+            .AddSingleton<ILoadoutDataProvider, DownloadedFileDataProvider>()
             .AddSingleton<ILibraryDataProvider, ManuallyCreatedArchiveDataProvider>()
             .AddSingleton<ILoadoutDataProvider, ManuallyCreatedArchiveDataProvider>()
             .AddSingleton<ILibraryDataProvider, NexusModsDataProvider>()

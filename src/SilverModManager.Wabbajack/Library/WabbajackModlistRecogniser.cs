@@ -67,7 +67,7 @@ public sealed class WabbajackModlistRecogniser(ILogger<WabbajackModlistRecognise
                 Name = archive.Name,
             };
 
-            // Another list already had the app fetch this file. It stays out of the Mods tab for as long as any list names it.
+            // Another list already had the app fetch this file, so this list shares the mark and its game.
             var fetched = WabbajackModlistArchive.FindByIdentity(connection.Db, archive.XxHash64)
                 .SelectMany(other => other.FetchedFiles)
                 .Select(file => (EntityId?)file.Id)

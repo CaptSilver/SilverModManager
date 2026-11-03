@@ -11,8 +11,9 @@ namespace SilverModManager.Wabbajack.Acquire;
 /// <see cref="WabbajackModlistArchive.FetchedFiles"/> of the row for that archive, and adds the list's game to the file.
 /// </summary>
 /// <remarks>
-/// Every list that names the archive gets the mark, not just the one that fetched it. The file has to stay out of the
-/// Mods tab while any of those lists still wants it, so removing the first list must not strip the link.
+/// Every list that names the archive gets the mark, not just the one that fetched it. The mark records which lists
+/// the file was fetched for, and that drives its Source column and the games it is destined for. It does not hide the
+/// file: a fetched file is listed on the Mods tab like any other.
 /// </remarks>
 internal static class FetchedArchives
 {

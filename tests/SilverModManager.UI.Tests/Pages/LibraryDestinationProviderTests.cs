@@ -21,6 +21,7 @@ using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Wabbajack;
+using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Models;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
@@ -384,25 +385,52 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
         siblingRows.Lookup(held).HasValue.Should().BeTrue("the sibling's own list fetched it, and the Mods tab lists it");
     }
 
+    /// <summary>A list naming one archive, and the identity of that archive so the acquirer's mark can find the row.</summary>
+    private async Task<FileIdentity> AddListNamingAnArchive(string gameType, string archiveName)
+    {
+        var identity = FileIdentity.XxHash64(Hash.From((ulong)Guid.NewGuid().GetHashCode()));
+        var list = await AddModlist("A list " + Guid.NewGuid().ToString("N"), gameType, Destination.Unknown);
+        using var tx = Connection.BeginTransaction();
+        _ = new WabbajackModlistArchive.New(tx)
+        {
+            ModlistId = list,
+            Identity = identity,
+            Size = Size.Zero,
+            Name = archiveName,
+        };
+        await tx.Commit();
+        return identity;
+    }
+
+    /// <summary>The library file a host job leaves behind: a <see cref="DownloadedFile"/> and nothing else, as AddMetadata writes it.</summary>
+    private async Task<EntityId> AddHostDownloadedFile(string name, Uri downloadPage, Destination? destination = null)
+    {
+        using var tx = Connection.BeginTransaction();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(name + Guid.NewGuid());
+        var file = new LibraryFile.New(tx, out var id)
+        {
+            FileName = name,
+            Hash = bytes.xxHash3(),
+            Size = Size.From((ulong)bytes.Length),
+            LibraryItem = new LibraryItem.New(tx, id) { Name = name },
+        };
+        _ = new DownloadedFile.New(tx, id) { DownloadPageUri = downloadPage, LibraryFile = file };
+        LibraryDestinations.Write(tx, id, destination ?? Destination.Unknown);
+        var result = await tx.Commit();
+        return result.Remap(file).Id;
+    }
+
+    private static string SourceOf(CompositeItemModel<EntityId> row) => row.Get<StringComponent>(SharedColumns.Source.ComponentKey).Value.Value;
+
     [Fact]
     public async Task AFileFetchedForASkyrimVrList_ShowsUnderSkyrimVrAndNotUnderAnUnrelatedGame()
     {
         var vr = new TestGame(WabbajackGames.GameIdFor("SkyrimVR")!.Value, NexusModsGameId.From(1704));
         var (unrelated, _) = TestGame.NewPair();
-        var fetched = await AddLocalFile("fetched.7z", Destination.Of(vr.GameId));
-        var list = await AddModlist("Yggdrasil VR " + Guid.NewGuid().ToString("N"), "SkyrimVR", Destination.Of(vr.GameId));
-        using (var tx = Connection.BeginTransaction())
-        {
-            var row = new WabbajackModlistArchive.New(tx)
-            {
-                ModlistId = list,
-                Identity = FileIdentity.XxHash64(Hash.From((ulong)Guid.NewGuid().GetHashCode())),
-                Size = Size.Zero,
-                Name = "fetched.7z",
-            };
-            tx.Add(row.Id, WabbajackModlistArchive.FetchedFiles, fetched);
-            await tx.Commit();
-        }
+        var fetched = await AddLocalFile("fetched.7z", Destination.Unknown);
+        var archive = await AddListNamingAnArchive("SkyrimVR", "fetched.7z");
+        // The acquirer's own write: marks the list's row and gives the file the list's game.
+        await FetchedArchives.Mark(Connection, archive, LibraryFile.Load(Connection.Db, fetched));
         var provider = new LocalFileDataProvider(Provider);
 
         using var vrRows = Rows(provider.ObserveLibraryItems(Filter(vr)));
@@ -412,6 +440,58 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
         await Eventually(() => vrRows.Lookup(fetched).HasValue.Should().BeTrue());
         await Eventually(() => otherRows.Lookup(marker).HasValue.Should().BeTrue());
         otherRows.Lookup(fetched).HasValue.Should().BeFalse();
+        SourceOf(vrRows.Lookup(fetched).Value).Should().Be(ModSources.Wabbajack);
+    }
+
+    [Fact]
+    public async Task AHostDownloadFetchedForASkyrimVrList_ShowsUnderSkyrimVrAsWabbajack()
+    {
+        var vr = new TestGame(WabbajackGames.GameIdFor("SkyrimVR")!.Value, NexusModsGameId.From(1704));
+        var (unrelated, _) = TestGame.NewPair();
+        var fetched = await AddHostDownloadedFile("from mediafire.7z", new Uri("https://www.mediafire.com/file/abc/from_mediafire.7z"));
+        var archive = await AddListNamingAnArchive("SkyrimVR", "from mediafire.7z");
+        await FetchedArchives.Mark(Connection, archive, LibraryFile.Load(Connection.Db, fetched));
+        var provider = new DownloadedFileDataProvider(Provider);
+
+        using var vrRows = Rows(provider.ObserveLibraryItems(Filter(vr)));
+        using var otherRows = Rows(provider.ObserveLibraryItems(Filter(unrelated)));
+        using var badge = provider.ObserveModsTabItems(vr.GameId).AsObservableCache();
+        var marker = await AddHostDownloadedFile("marker.7z", new Uri("https://example.com/m"), Destination.Of(unrelated.GameId));
+
+        await Eventually(() => vrRows.Lookup(fetched).HasValue.Should().BeTrue());
+        await Eventually(() => badge.Keys.Should().Contain(fetched));
+        await Eventually(() => otherRows.Lookup(marker).HasValue.Should().BeTrue());
+        otherRows.Lookup(fetched).HasValue.Should().BeFalse();
+        SourceOf(vrRows.Lookup(fetched).Value).Should().Be(ModSources.Wabbajack);
+        provider.GetAllFiles(vr.GameId).Select(file => file.Id).Should().Contain(fetched);
+    }
+
+    [Fact]
+    public async Task AHostDownloadNoListFetched_IsFromItsSite_AndNexusAndLocalFilesAreLeftToTheirOwnProviders()
+    {
+        var vr = new TestGame(WabbajackGames.GameIdFor("SkyrimVR")!.Value, NexusModsGameId.From(1704));
+        var plain = await AddHostDownloadedFile("plain.7z", new Uri("https://www.moddb.com/downloads/plain"), Destination.Of(vr.GameId));
+        // A file that is a DownloadedFile and a LocalFile belongs to the local file provider.
+        using var addTx = Connection.BeginTransaction();
+        var bytes = System.Text.Encoding.UTF8.GetBytes("local" + Guid.NewGuid());
+        var localFile = new LibraryFile.New(addTx, out var localId)
+        {
+            FileName = "local.7z",
+            Hash = bytes.xxHash3(),
+            Size = Size.From((ulong)bytes.Length),
+            LibraryItem = new LibraryItem.New(addTx, localId) { Name = "local.7z" },
+        };
+        _ = new LocalFile.New(addTx, localId) { LibraryFile = localFile, OriginalPath = "/x/local.7z" };
+        _ = new DownloadedFile.New(addTx, localId) { DownloadPageUri = new Uri("https://example.com/l"), LibraryFile = localFile };
+        LibraryDestinations.Write(addTx, localId, Destination.Of(vr.GameId));
+        var local = (await addTx.Commit()).Remap(localFile).Id;
+        var provider = new DownloadedFileDataProvider(Provider);
+
+        using var rows = Rows(provider.ObserveLibraryItems(Filter(vr)));
+
+        await Eventually(() => rows.Lookup(plain).HasValue.Should().BeTrue());
+        SourceOf(rows.Lookup(plain).Value).Should().Be("moddb.com");
+        rows.Lookup(local).HasValue.Should().BeFalse();
     }
 
     [Fact]

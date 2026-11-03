@@ -1,201 +1,26 @@
-using System.Reactive.Linq;
-using DynamicData;
-using DynamicData.Aggregation;
-using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using SilverModManager.Abstractions.Loadouts;
-using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.App.UI.Controls;
-using SilverModManager.App.UI.Pages.LibraryPage;
 using SilverModManager.MnemonicDB.Abstractions;
-using SilverModManager.MnemonicDB.Abstractions.Query;
-using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.App.UI.Pages.LibraryPage;
 using SilverModManager.Sdk.Games;
-using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Wabbajack.Models;
-using UIObservableExtensions = SilverModManager.App.UI.Extensions.ObservableExtensions;
 
 namespace SilverModManager.App.UI.Pages;
 
 [UsedImplicitly]
-internal class LocalFileDataProvider : ALibraryDataProvider<LocalFile.ReadOnly>, ILoadoutDataProvider
+internal class LocalFileDataProvider : ALibraryFileDataProvider<LocalFile.ReadOnly>
 {
-    private readonly IConnection _connection;
-    private readonly GameNames _gameNames;
-
     public LocalFileDataProvider(IServiceProvider serviceProvider) : this(serviceProvider.GetRequiredService<IConnection>(), new GameNames(serviceProvider.GetServices<IGameData>())) { }
 
-    private LocalFileDataProvider(IConnection connection, GameNames gameNames) : base(connection)
-    {
-        _connection = connection;
-        _gameNames = gameNames;
-    }
+    private LocalFileDataProvider(IConnection connection, GameNames gameNames) : base(connection, gameNames) { }
 
-    // A Wabbajack modlist is added as a local file too; the Collections tab shows it.
-    private static bool IsModlist(LocalFile.ReadOnly localFile) => localFile.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out _);
+    protected override LibraryFile.ReadOnly FileOf(LocalFile.ReadOnly model) => model.AsLibraryFile();
 
-    // The modlist file is a local file too, but game removal gets it from WabbajackModlistDataProvider; listing it here
-    // as well would delete it twice.
-    protected override Optional<LibraryFile.ReadOnly> AsLibraryFile(LocalFile.ReadOnly model)
-        => IsModlist(model) ? Optional<LibraryFile.ReadOnly>.None : model.AsLibraryFile();
+    // A Wabbajack modlist is added as a local file too; the Collections tab shows it, and game removal gets it from
+    // WabbajackModlistDataProvider, so listing it here as well would delete it twice.
+    protected override bool IsListed(LocalFile.ReadOnly model) => !model.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out _);
 
-    private IObservable<IChangeSet<LocalFile.ReadOnly, EntityId>> ObserveShown(GameId game)
-    {
-        return ObserveOwnItems(game)
-            .FilterImmutable(static localFile => !IsModlist(localFile));
-    }
-
-    public override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
-    {
-        return ObserveShown(libraryFilter.Game.GameId).Transform(localFile => ToLibraryItemModel(libraryFilter, localFile));
-    }
-
-    public override IObservable<IChangeSet<EntityId, EntityId>> ObserveModsTabItems(GameId game)
-        => ObserveShown(game).Transform(static (_, id) => id);
-
-    private CompositeItemModel<EntityId> ToLibraryItemModel(LibraryFilter libraryFilter, LocalFile.ReadOnly localFile)
-    {
-        var linkedLoadoutItemsObservable = LibraryDataProviderHelper
-            .GetLinkedLoadoutItems(_connection, libraryFilter, localFile.Id)
-            .RefCount();
-
-        var childrenObservable = UIObservableExtensions.ReturnFactory(() =>
-        {
-            var itemModel = new CompositeItemModel<EntityId>(localFile.Id);
-            SetupLibraryItemModel(itemModel, localFile, libraryFilter, linkedLoadoutItemsObservable);
-
-            return new ChangeSet<CompositeItemModel<EntityId>, EntityId>([
-                new Change<CompositeItemModel<EntityId>, EntityId>(
-                    reason: ChangeReason.Add,
-                    key: localFile.Id,
-                    current: itemModel
-                )]
-            );
-        });
-        
-        var hasChildrenObservable = childrenObservable.IsNotEmpty();
-
-        var parentItemModel = new CompositeItemModel<EntityId>(localFile.Id)
-        {
-            HasChildrenObservable = hasChildrenObservable,
-            ChildrenObservable = childrenObservable,
-        };
-
-        SetupLibraryItemModel(parentItemModel, localFile, libraryFilter, linkedLoadoutItemsObservable);
-
-        parentItemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
-        return parentItemModel;
-    }
-
-    private void SetupLibraryItemModel(
-        CompositeItemModel<EntityId> itemModel,
-        LocalFile.ReadOnly localFile,
-        LibraryFilter libraryFilter,
-        IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedLoadoutItemsObservable)
-    {
-        itemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: localFile.AsLibraryFile().AsLibraryItem().Name));
-        // A file the app fetched for a Wabbajack modlist came from that list, not from the user's disk.
-        SharedColumns.Source.Add(itemModel,
-            LibraryDataProviderHelper.IsFetchedForModlist(_connection.Db, localFile.Id) ? ModSources.Wabbajack : ModSources.LocalFile,
-            LibraryDataProviderHelper.ObserveFetchedForModlist(_connection, localFile.Id).Select(static fetched => fetched ? ModSources.Wabbajack : ModSources.LocalFile));
-        itemModel.Add(LibraryColumns.DownloadedDate.ComponentKey, new DateComponent(value: localFile.GetCreatedAt()));
-        itemModel.Add(SharedColumns.ItemSize.ComponentKey, new SizeComponent(value: localFile.AsLibraryFile().Size));
-        itemModel.Add(LibraryColumns.Actions.LibraryItemIdsComponentKey, new LibraryComponents.LibraryItemIds(localFile.AsLibraryFile().AsLibraryItem()));
-
-        LibraryDataProviderHelper.AddInstalledDateComponent(itemModel, linkedLoadoutItemsObservable);
-        LibraryDataProviderHelper.AddInstallActionComponent(itemModel, linkedLoadoutItemsObservable);
-        LibraryDataProviderHelper.AddViewChangelogActionComponent(itemModel, isEnabled: false);
-        LibraryDataProviderHelper.AddViewModPageActionComponent(itemModel, isEnabled: false);
-        LibraryDataProviderHelper.AddHideUpdatesActionComponent(itemModel, isEnabled: false, isVisible: false);
-        LibraryDataProviderHelper.AddDestinationComponents(itemModel, _connection, libraryFilter.Game.GameId, _gameNames);
-        
-        // Get related collections
-        var md5 = localFile.AsLibraryFile().Md5;
-        if (!md5.HasValue)
-        {
-            LibraryDataProviderHelper.AddRelatedCollectionsComponent(itemModel, linkedLoadoutItemsObservable);
-        }
-        else
-        {
-            var conn = localFile.Db.Connection;
-
-            var relatedDownloadedCollectionsObservable = conn
-                .ObserveDatoms(CollectionDownloadExternal.Md5)
-                .FilterImmutable(datom => Md5Value.From(UInt128Serializer.Read(datom.ValueSpan)) == md5.Value)
-                .AsEntityIds()
-                .Distinct()
-                .Transform(datom => SilverModManager.Abstractions.NexusModsLibrary.Models.CollectionDownload.Load(conn.Db, datom.E).CollectionRevision.Collection)
-                .ChangeKey(collection => collection.Id);
-            
-            LibraryDataProviderHelper.AddRelatedCollectionsComponent(itemModel, linkedLoadoutItemsObservable, relatedDownloadedCollectionsObservable );
-        }
-        
-    }
-
-    private IObservable<IChangeSet<LocalFile.ReadOnly, EntityId>> FilterLoadoutItems(LoadoutFilter loadoutFilter)
-    {
-        return ObserveOwnItemsForLoadout(loadoutFilter.LoadoutId)
-            .FilterOnObservable((_, entityId) => _connection
-                .ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItemId, entityId)
-                .AsEntityIds()
-                .FilterInStaticLoadout(_connection, loadoutFilter)
-                .IsNotEmpty()
-            );
-    }
-
-    public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLoadoutItems(LoadoutFilter loadoutFilter)
-    {
-        return FilterLoadoutItems(loadoutFilter).Transform(localFile => ToLoadoutItemModel(loadoutFilter, localFile));
-    }
-
-    public IObservable<int> CountLoadoutItems(LoadoutFilter loadoutFilter)
-    {
-        return FilterLoadoutItems(loadoutFilter).QueryWhenChanged(static query => query.Count).Prepend(0);
-    }
-
-    private CompositeItemModel<EntityId> ToLoadoutItemModel(LoadoutFilter loadoutFilter, LocalFile.ReadOnly localFile)
-    {
-        var linkedItemsObservable = _connection.ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItem, localFile)
-            .AsEntityIds()
-            .FilterInStaticLoadout(_connection, loadoutFilter)
-            .Transform(datom => LoadoutItem.Load(_connection.Db, datom.E))
-            .RefCount();
-
-        var hasChildrenObservable = linkedItemsObservable.IsNotEmpty();
-        var childrenObservable = linkedItemsObservable.Transform(loadoutItem => ToLocalChildLoadoutItemModel(_connection, loadoutItem));
-
-        var parentItemModel = new CompositeItemModel<EntityId>(localFile.Id)
-        {
-            HasChildrenObservable = hasChildrenObservable,
-            ChildrenObservable = childrenObservable,
-        };
-
-        parentItemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: localFile.AsLibraryFile().AsLibraryItem().Name));
-        SharedColumns.Source.Add(parentItemModel, ModSources.LocalFile);
-        parentItemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
-
-        LoadoutDataProviderHelper.AddDateComponent(parentItemModel, localFile.GetCreatedAt(), linkedItemsObservable);
-        LoadoutDataProviderHelper.AddCollections(parentItemModel, linkedItemsObservable);
-        LoadoutDataProviderHelper.AddParentCollectionsDisabled(_connection, parentItemModel, linkedItemsObservable);
-        LoadoutDataProviderHelper.AddMixLockedAndParentDisabled(_connection, parentItemModel, linkedItemsObservable);
-        LoadoutDataProviderHelper.AddLockedEnabledStates(parentItemModel, linkedItemsObservable);
-        LoadoutDataProviderHelper.AddEnabledStateToggle(_connection, parentItemModel, linkedItemsObservable);
-        LoadoutDataProviderHelper.AddLoadoutItemIds(parentItemModel, linkedItemsObservable);
-        LoadoutDataProviderHelper.AddViewModPageActionComponent(parentItemModel, isEnabled: false);
-        LoadoutDataProviderHelper.AddViewModFilesActionComponent(parentItemModel, linkedItemsObservable);
-        LoadoutDataProviderHelper.AddUninstallItemComponent(parentItemModel, linkedItemsObservable);
-        LoadoutDataProviderHelper.AddAllowProtectedPathsAction(_connection, parentItemModel, linkedItemsObservable);
-
-        return parentItemModel;
-    }
-    
-    private static CompositeItemModel<EntityId> ToLocalChildLoadoutItemModel(IConnection connection, LoadoutItem.ReadOnly loadoutItem)
-    {
-        var childModel = LoadoutDataProviderHelper.ToChildItemModel(connection, loadoutItem);
-        SharedColumns.Source.Add(childModel, ModSources.LocalFile);
-        LoadoutDataProviderHelper.AddViewModPageActionComponent(childModel, isEnabled: false);
-        return childModel;
-    }
+    protected override string SourceOf(LocalFile.ReadOnly model) => ModSources.LocalFile;
 }

@@ -167,6 +167,7 @@ public static class ModSources
     public const string Thunderstore = "Thunderstore";
     public const string LocalFile = "Local file";
     public const string Wabbajack = "Wabbajack";
+    public const string Download = "Download";
     public const string Bundled = "Bundled";
     public const string Game = "Game";
 }

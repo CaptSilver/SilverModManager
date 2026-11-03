@@ -25,5 +25,6 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="SilverModManager.Wabbajack.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.UI.Tests" />
     </ItemGroup>
 </Project>
