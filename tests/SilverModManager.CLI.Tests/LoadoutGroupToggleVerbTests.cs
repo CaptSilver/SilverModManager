@@ -110,13 +110,34 @@ public class LoadoutGroupToggleVerbTests(ITestOutputHelper helper) : EldenRingVe
     {
         var loadout = await CreateLoadout();
         var mod = await AddMod(loadout.LoadoutId, "Plain Mod");
+        var revisionsBefore = LatestRevisionNumber(loadout.LoadoutId);
         await Run("loadout", "group", "disable", "-l", loadout.LoadoutId.ToString(), "-g", "Plain Mod");
         IsDisabled(mod).Should().BeTrue();
+        LatestRevisionNumber(loadout.LoadoutId).Should().Be(revisionsBefore + 1, "the verb writes one restore point");
 
         var (exit, output) = await Run("loadout", "revert", "-l", loadout.LoadoutId.ToString(), "-r", LatestRevisionNumber(loadout.LoadoutId).ToString());
 
         exit.Should().Be(0, output);
+        LoadoutItem.Load(Connection.Db, LoadoutItemId.From(mod.Value)).IsValid().Should().BeTrue("the restore point was taken with the mod present");
         IsDisabled(mod).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Enable_ThenRevert_RestoresTheSwitch()
+    {
+        var loadout = await CreateLoadout();
+        var mod = await AddMod(loadout.LoadoutId, "Plain Mod");
+        await Run("loadout", "group", "disable", "-l", loadout.LoadoutId.ToString(), "-g", "Plain Mod");
+        var revisionsBefore = LatestRevisionNumber(loadout.LoadoutId);
+        await Run("loadout", "group", "enable", "-l", loadout.LoadoutId.ToString(), "-g", "Plain Mod");
+        IsDisabled(mod).Should().BeFalse();
+        LatestRevisionNumber(loadout.LoadoutId).Should().Be(revisionsBefore + 1, "the verb writes one restore point");
+
+        var (exit, output) = await Run("loadout", "revert", "-l", loadout.LoadoutId.ToString(), "-r", LatestRevisionNumber(loadout.LoadoutId).ToString());
+
+        exit.Should().Be(0, output);
+        LoadoutItem.Load(Connection.Db, LoadoutItemId.From(mod.Value)).IsValid().Should().BeTrue();
+        IsDisabled(mod).Should().BeTrue();
     }
 
     [Fact]
