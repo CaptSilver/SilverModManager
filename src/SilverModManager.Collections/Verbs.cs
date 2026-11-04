@@ -65,9 +65,7 @@ internal static class Verbs
             }
         }
 
-        var items = CollectionDownloader.GetItems(revisionMetadata, CollectionDownloader.ItemType.Required);
-        await InstallCollectionJob.Create(serviceProvider, loadout, collectionFile, revisionMetadata, items);
-        return 0;
+        return await CollectionInstallReport.Run(renderer, serviceProvider, loadout, collectionFile, revisionMetadata, token);
     }
 
     [Verb("collection repair", "Makes each Nexus collection in the loadout hold exactly the mods of the revision it is on: removes old versions an update left behind and moves mods the revision doesn't list to My Mods")]
