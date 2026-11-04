@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.NexusWebApi;
@@ -80,24 +81,49 @@ internal static class LoginVerbs
 
     [Verb("nexus-api-key", "Stores the key used in Nexus API calls; reads the key from stdin")]
     private static async Task<int> SetApiKey([Injected] ApiKeyMessageFactory apiKeyMessageFactory,
+        [Injected] INexusApiClient nexusApiClient,
         [Injected] IRenderer renderer,
         [Injected] CancellationToken token)
     {
         // Never an option: a value on the command line ends up in shell history, `ps` and the log.
-        return await StoreApiKeyAsync(apiKeyMessageFactory, renderer, Console.In, token);
+        return await StoreApiKeyAsync(apiKeyMessageFactory, nexusApiClient, renderer, Console.In, token);
     }
 
     /// <summary>
-    /// Reads one line from <paramref name="input"/> and stores it as the API key.
+    /// Reads one line from <paramref name="input"/>, checks it with Nexus Mods and stores it as the API key.
     /// </summary>
-    /// <returns>0 once stored; 1 when there is no key, the key is supplied from outside, or the store refused it.</returns>
-    internal static async Task<int> StoreApiKeyAsync(ApiKeyMessageFactory apiKeyMessageFactory, IRenderer renderer, TextReader input, CancellationToken token)
+    /// <returns>0 once stored; 1 when there is no key, the key is supplied from outside, Nexus Mods could not be asked, or the store refused it.</returns>
+    /// <exception cref="NexusApiKeyRejectedException">Nexus Mods rejected the key; nothing was stored.</exception>
+    internal static async Task<int> StoreApiKeyAsync(ApiKeyMessageFactory apiKeyMessageFactory, INexusApiClient nexusApiClient, IRenderer renderer, TextReader input, CancellationToken token)
     {
         var key = (await input.ReadLineAsync(token))?.Trim();
         if (string.IsNullOrEmpty(key))
         {
             // With the app open the verb runs in the app's process, which never sees this terminal's stdin.
             await renderer.TextLine("No API key on stdin. Pipe it in, e.g. `silvermod nexus-api-key < key.txt`, with the app closed.");
+            return 1;
+        }
+
+        // A key supplied from outside wins over any stored one, so a typed key would silently do nothing.
+        if (await apiKeyMessageFactory.GetPinnedSource(token) is { } pinned)
+        {
+            await renderer.TextLine("{0}", LoginManager.PinnedKeyMessage(pinned));
+            return 1;
+        }
+
+        // Stored only once Nexus accepts it: a mistyped key would otherwise sign every later call in with a credential that fails.
+        try
+        {
+            await nexusApiClient.Validate(key, token);
+        }
+        catch (HttpRequestException e) when (e.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            throw new NexusApiKeyRejectedException();
+        }
+        catch (Exception e) when (e is not OperationCanceledException || !token.IsCancellationRequested)
+        {
+            // The key may be fine and the network not, so it is neither stored nor called wrong.
+            await renderer.TextLine("The API key was not stored: could not check it with Nexus Mods: {0}", e.Message);
             return 1;
         }
 

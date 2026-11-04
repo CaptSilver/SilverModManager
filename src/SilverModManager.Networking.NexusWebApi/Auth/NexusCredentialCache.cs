@@ -36,6 +36,18 @@ public sealed class NexusCredentialCache : ISecretPrimable, INexusCredentialSumm
 {
     private sealed record Held<T>(T Value, CredentialSource Source, string? Pin);
 
+    /// <summary>
+    /// Serialises the reads of one key. <see cref="Requested"/> counts reload requests and <see cref="Covered"/>
+    /// is the highest request a finished read began after, so a request that a later read already covers returns
+    /// without reading again.
+    /// </summary>
+    private sealed class ReadGate
+    {
+        public readonly SemaphoreSlim Turn = new(1, 1);
+        public long Requested;
+        public long Covered;
+    }
+
     private readonly ISecretStore _store;
     private readonly ILogger<NexusCredentialCache> _logger;
     private readonly Lazy<Task> _loaded;
@@ -43,6 +55,8 @@ public sealed class NexusCredentialCache : ISecretPrimable, INexusCredentialSumm
     private readonly object _publishLock = new();
     private readonly ReactiveProperty<bool> _hasCredential = new(false);
     private readonly IDisposable _subscriptions;
+
+    private readonly Dictionary<SecretKey, ReadGate> _readGates = NexusSecretKeys.All.ToDictionary(key => key, _ => new ReadGate());
 
     private Held<string>? _apiKey;
     private Held<NexusOAuthToken>? _token;
@@ -286,7 +300,33 @@ public sealed class NexusCredentialCache : ISecretPrimable, INexusCredentialSumm
         foreach (var key in NexusSecretKeys.All) await ReadAsync(key, cancellationToken);
     }
 
+    /// <summary>
+    /// Reads the key from the store and keeps what it says. Reads of one key run one at a time, and a read that
+    /// began after a request answers that request too, so concurrent reloads cost at most one follow-up read and
+    /// the cache ends up with what the store held when the last of them asked. Without that, a slow reply
+    /// that arrived after a newer one replaced the newer value with a stale one.
+    /// </summary>
     private async Task ReadAsync(SecretKey key, CancellationToken cancellationToken)
+    {
+        var gate = _readGates[key];
+        var ticket = Interlocked.Increment(ref gate.Requested);
+        await gate.Turn.WaitAsync(cancellationToken);
+        try
+        {
+            if (Volatile.Read(ref gate.Covered) >= ticket) return;
+
+            // Every request up to this count was made before this read starts, so it answers all of them.
+            var covers = Volatile.Read(ref gate.Requested);
+            await ReadFromStoreAsync(key, cancellationToken);
+            Volatile.Write(ref gate.Covered, covers);
+        }
+        finally
+        {
+            gate.Turn.Release();
+        }
+    }
+
+    private async Task ReadFromStoreAsync(SecretKey key, CancellationToken cancellationToken)
     {
         var result = await _store.GetAsync(key, cancellationToken);
         switch (result)

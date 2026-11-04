@@ -14,6 +14,11 @@ public record SecretsSettings : ISettings
     /// </summary>
     public SecretBackendChoice Backend { get; init; } = SecretBackendChoice.Auto;
 
+    /// <summary>
+    /// The choices settings offer, and so the only ones a stored setting may hold.
+    /// </summary>
+    internal static readonly SecretBackendChoice[] OfferedBackends = [SecretBackendChoice.Auto, SecretBackendChoice.FileOnly];
+
     public static string SettingsId => "SilverModManager.Secrets.SecretsSettings";
 
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
@@ -31,7 +36,7 @@ public record SecretsSettings : ISettings
                 },
                 SingleValueMultipleChoiceContainerOptions.Create<SecretBackendChoice>(
                     valueComparer: EqualityComparer<SecretBackendChoice>.Default,
-                    allowedValues: [SecretBackendChoice.Auto, SecretBackendChoice.FileOnly],
+                    allowedValues: OfferedBackends,
                     valueToDisplayString: static choice => choice switch
                     {
                         SecretBackendChoice.Auto => "Keyring, then file",

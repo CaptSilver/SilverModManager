@@ -19,13 +19,6 @@ public static class Services
     /// </summary>
     public const string SecretsFileEnvironmentVariable = "SILVERMM_SECRETS_FILE";
 
-    // The key classes that own these names live in projects this one cannot reference.
-    private static readonly IReadOnlyDictionary<SecretKey, string> Aliases = new Dictionary<SecretKey, string>
-    {
-        [new SecretKey("nexus.api-key")] = "NEXUS_API_KEY",
-        [new SecretKey("github.token")] = "GITHUB_TOKEN",
-    };
-
     /// <summary>
     /// Registers the secret store: the environment and secrets file overlay over the keyring-then-file chain,
     /// the file alone, or memory (the test host choice), depending on <paramref name="options"/> and the user's setting.
@@ -50,7 +43,7 @@ public static class Services
 
     private static ISecretStore BuildInner(IServiceProvider sp, SecretStoreOptions options)
     {
-        var backend = options.Backend ?? sp.GetRequiredService<ISettingsManager>().Get<SecretsSettings>().Backend;
+        var backend = ResolveBackend(options, () => sp.GetRequiredService<ISettingsManager>().Get<SecretsSettings>().Backend);
         return backend switch
         {
             SecretBackendChoice.Memory => new InMemorySecretStore(),
@@ -60,8 +53,25 @@ public static class Services
                 sp.GetRequiredService<FileSecretStore>(),
                 options.Mode,
                 sp.GetRequiredService<ILogger<FallbackSecretStore>>()),
-            _ => throw new ArgumentOutOfRangeException(nameof(options), backend, "Unknown secret backend."),
+            _ => throw SecretBackendRefusedException.Unknown(backend),
         };
+    }
+
+    /// <summary>
+    /// The options override wins and may name any backend, the test hosts' memory store included. The user's setting
+    /// may only name what settings offer: a settings file that says Memory would drop every credential at exit.
+    /// </summary>
+    private static SecretBackendChoice ResolveBackend(SecretStoreOptions options, Func<SecretBackendChoice> setting)
+    {
+        if (options.Backend is { } overridden)
+        {
+            if (!Enum.IsDefined(overridden)) throw SecretBackendRefusedException.Unknown(overridden);
+            return overridden;
+        }
+
+        var configured = setting();
+        if (!SecretsSettings.OfferedBackends.Contains(configured)) throw SecretBackendRefusedException.NotOffered(configured);
+        return configured;
     }
 
     private static OverlaySecretStore BuildOverlay(IServiceProvider sp, SecretStoreOptions options)
@@ -75,7 +85,7 @@ public static class Services
             sp.GetRequiredService<InnerChain>().Store,
             environment,
             file,
-            Aliases,
+            WellKnownSecrets.EnvironmentAliases,
             sp.GetRequiredService<ISecretKeyRegistry>().Keys);
     }
 

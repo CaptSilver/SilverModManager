@@ -10,7 +10,7 @@ public static class NexusSecretKeys
     /// <summary>
     /// A personal API key.
     /// </summary>
-    public static readonly SecretKey ApiKey = new("nexus.api-key");
+    public static readonly SecretKey ApiKey = WellKnownSecrets.NexusApiKey;
 
     /// <summary>
     /// The OAuth token, as the JSON of <see cref="NexusOAuthToken"/>.
@@ -23,5 +23,5 @@ public static class NexusSecretKeys
     /// The conventional environment variable that supplies <see cref="ApiKey"/>; the secret overlay
     /// registers it as an alias.
     /// </summary>
-    public const string ApiKeyEnvironmentVariable = "NEXUS_API_KEY";
+    public const string ApiKeyEnvironmentVariable = WellKnownSecrets.NexusApiKeyVariable;
 }

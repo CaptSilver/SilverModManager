@@ -71,6 +71,37 @@ public class AddSecretsTests : IDisposable
     }
 
     [Fact]
+    public async Task Memory_from_the_users_setting_is_refused_with_a_readable_message()
+    {
+        // Memory is the test hosts' override; a settings file that names it would silently drop every credential at exit.
+        await using var provider = Build(Options(), setting: SecretBackendChoice.Memory);
+
+        var act = () => provider.GetRequiredService<ISecretStore>();
+
+        act.Should().Throw<SecretBackendRefusedException>().Which.Message.Should().Contain("Memory").And.Contain("Keyring, then file").And.Contain("File only").And.Contain("settings set -k SecretsSettings.Backend -v Auto");
+    }
+
+    [Fact]
+    public async Task An_unknown_backend_in_the_users_setting_is_refused_with_a_readable_message()
+    {
+        await using var provider = Build(Options(), setting: (SecretBackendChoice)99);
+
+        var act = () => provider.GetRequiredService<ISecretStore>();
+
+        act.Should().Throw<SecretBackendRefusedException>().Which.Message.Should().Contain("99").And.Contain("settings set -k SecretsSettings.Backend -v Auto");
+    }
+
+    [Fact]
+    public async Task An_unknown_backend_in_the_options_is_refused_with_a_readable_message()
+    {
+        await using var provider = Build(Options((SecretBackendChoice)99));
+
+        var act = () => provider.GetRequiredService<ISecretStore>();
+
+        act.Should().Throw<SecretBackendRefusedException>().Which.Message.Should().Contain("99").And.Contain("settings set -k SecretsSettings.Backend -v Auto");
+    }
+
+    [Fact]
     public async Task The_options_instance_is_registered_for_other_projects_to_read()
     {
         var options = Options(SecretBackendChoice.Memory, mode: SecretStoreMode.Interactive);

@@ -46,6 +46,16 @@ public class ApiKeyMessageFactory(NexusCredentialCache cache) : BaseHttpMessageF
     public override async ValueTask<bool> IsAuthenticated() => await HasApiKey();
 
     /// <summary>
+    /// Where the key comes from when something outside the secret store pins it (e.g.
+    /// <c>environment variable NEXUS_API_KEY</c>), so a typed key could not replace it; null when it can be changed.
+    /// </summary>
+    public async ValueTask<string?> GetPinnedSource(CancellationToken cancellationToken = default)
+    {
+        await cache.EnsureLoadedAsync(cancellationToken);
+        return cache.PinnedApiKeySource;
+    }
+
+    /// <summary>
     /// Sets the API key used for future requests.
     /// </summary>
     /// <param name="apiKey">The new API key set.</param>

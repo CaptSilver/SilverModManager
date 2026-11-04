@@ -92,7 +92,7 @@ public class FileSecretStoreTests : IDisposable
         await Set(_store, ApiKey, "changed");
 
         System.IO.File.GetUnixFileMode(_secretsPath).Should().Be(OwnerOnly);
-        Directory.GetFiles(_appDirectory).Should().Equal(_secretsPath);
+        Directory.GetFiles(_appDirectory).Where(f => !f.EndsWith(FileSecretStore.LockFileName)).Should().Equal(_secretsPath);
         (await _store.GetAsync(ApiKey, CancellationToken.None)).Should().Be(new SecretResult.Found("changed"));
         (await _store.GetAsync(Token, CancellationToken.None)).Should().Be(new SecretResult.Found("def"));
     }
@@ -191,7 +191,7 @@ public class FileSecretStoreTests : IDisposable
             state.Should().Contain("nexus.api-key", $"a-{round}");
             state.Should().Contain("github.token", $"b-{round}");
             System.IO.File.GetUnixFileMode(_secretsPath).Should().Be(OwnerOnly);
-            Directory.GetFiles(_appDirectory).Should().Equal(_secretsPath);
+            Directory.GetFiles(_appDirectory).Where(f => !f.EndsWith(FileSecretStore.LockFileName)).Should().Equal(_secretsPath);
         }
     }
 
@@ -212,8 +212,54 @@ public class FileSecretStoreTests : IDisposable
             var expectedB = state.TryGetValue("github.token", out var bv) && bv == $"b-{round}";
             (expectedA || expectedB).Should().BeTrue("the file is one writer's complete state");
             state.Keys.Should().OnlyContain(k => k == "nexus.api-key" || k == "github.token");
-            Directory.GetFiles(_appDirectory).Should().Equal(_secretsPath);
+            Directory.GetFiles(_appDirectory).Where(f => !f.EndsWith(FileSecretStore.LockFileName)).Should().Equal(_secretsPath);
         }
+    }
+
+    [Fact]
+    public async Task Concurrent_writes_through_separate_store_instances_keep_both_keys()
+    {
+        for (var round = 0; round < 100; round++)
+        {
+            using var first = CreateStore();
+            using var second = CreateStore();
+            await Task.WhenAll(
+                Task.Run(() => Set(first, ApiKey, $"a-{round}")),
+                Task.Run(() => Set(second, Token, $"b-{round}")));
+
+            var state = JsonSerializer.Deserialize<Dictionary<string, string>>(await System.IO.File.ReadAllTextAsync(_secretsPath))!;
+            state.Should().Contain("nexus.api-key", $"a-{round}");
+            state.Should().Contain("github.token", $"b-{round}");
+        }
+    }
+
+    [Fact]
+    public async Task A_write_waits_while_another_process_holds_the_lock()
+    {
+        Directory.CreateDirectory(_appDirectory);
+        var held = new FileStream(Path.Combine(_appDirectory, FileSecretStore.LockFileName), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        var write = Set(_store, ApiKey, "abc");
+
+        await Task.Delay(300);
+        write.IsCompleted.Should().BeFalse("the lock is held, so the read-modify-write must not start");
+        System.IO.File.Exists(_secretsPath).Should().BeFalse();
+
+        await held.DisposeAsync();
+        (await write.WaitAsync(TimeSpan.FromSeconds(10))).Should().BeOfType<SecretWriteResult.Written>();
+        (await _store.GetAsync(ApiKey, CancellationToken.None)).Should().Be(new SecretResult.Found("abc"));
+    }
+
+    [Fact]
+    public async Task A_write_gives_up_with_a_reason_when_the_lock_is_never_released()
+    {
+        Directory.CreateDirectory(_appDirectory);
+        await using var held = new FileStream(Path.Combine(_appDirectory, FileSecretStore.LockFileName), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        using var store = new FileSecretStore(CreateFileSystem(), NullLogger<FileSecretStore>.Instance, UnixFileOwner.EffectiveUid(), lockTimeout: TimeSpan.FromMilliseconds(200));
+
+        var result = await Set(store, ApiKey, "abc");
+
+        result.Should().BeOfType<SecretWriteResult.Unavailable>().Which.Reason.Should().Contain("another");
+        System.IO.File.Exists(_secretsPath).Should().BeFalse();
     }
 
     [Fact]
@@ -242,6 +288,26 @@ public class FileSecretStoreTests : IDisposable
     public async Task Deleting_an_absent_key_succeeds()
     {
         (await _store.DeleteAsync(ApiKey, CancellationToken.None)).Should().BeOfType<SecretWriteResult.Written>();
+
+        Directory.Exists(_appDirectory).Should().BeFalse("a delete with nothing to delete from creates neither the directory nor the lock file");
+    }
+
+    [Fact]
+    public async Task An_unusable_lock_file_makes_the_store_report_not_writable_and_set_unavailable()
+    {
+        Directory.CreateDirectory(_appDirectory);
+        var lockPath = Path.Combine(_appDirectory, FileSecretStore.LockFileName);
+        System.IO.File.WriteAllText(lockPath, "");
+        System.IO.File.SetUnixFileMode(lockPath, UnixFileMode.UserRead);
+        try
+        {
+            (await _store.DescribeAsync(CancellationToken.None)).Writable.Should().BeFalse();
+            (await Set(_store, ApiKey, "abc")).Should().BeOfType<SecretWriteResult.Unavailable>();
+        }
+        finally
+        {
+            System.IO.File.SetUnixFileMode(lockPath, OwnerOnly);
+        }
     }
 
     [Fact]
@@ -286,6 +352,40 @@ public class FileSecretStoreTests : IDisposable
             status.Locked.Should().BeFalse();
             status.OverriddenKeys.Should().BeEmpty();
         }
+    }
+
+    [Fact]
+    public async Task Describe_reports_not_writable_when_the_app_directory_cannot_be_written()
+    {
+        CreateAppDirectory(UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        try
+        {
+            (await _store.DescribeAsync(CancellationToken.None)).Writable.Should().BeFalse();
+            (await Set(_store, ApiKey, "abc")).Should().BeOfType<SecretWriteResult.Unavailable>();
+        }
+        finally
+        {
+            System.IO.File.SetUnixFileMode(_appDirectory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+    }
+
+    [Fact]
+    public async Task Describe_reports_not_writable_when_the_file_is_refused()
+    {
+        CreateAppDirectory(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        await System.IO.File.WriteAllTextAsync(_secretsPath, "{}");
+        System.IO.File.SetUnixFileMode(_secretsPath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead);
+
+        (await _store.DescribeAsync(CancellationToken.None)).Writable.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Describe_reports_writable_when_the_app_directory_does_not_exist_yet_but_its_parent_can_be_written()
+    {
+        Directory.Exists(_appDirectory).Should().BeFalse();
+        Directory.CreateDirectory(_dataHome);
+
+        (await _store.DescribeAsync(CancellationToken.None)).Writable.Should().BeTrue();
     }
 
     [Fact]

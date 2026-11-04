@@ -271,4 +271,102 @@ public class NexusCredentialCacheTests : IDisposable
         (await _cache.GetTokenAsync(CancellationToken.None)).Should().BeNull();
         _cache.HasCredential.CurrentValue.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task ConcurrentReloadsLeaveTheNewestStoredToken()
+    {
+        var inner = new InMemorySecretStore();
+        await AuthTestSupport.StoreToken(inner, "first", TimeSpan.FromHours(1));
+        var store = new HoldingSecretStore(inner);
+        using var cache = AuthTestSupport.CreateCache(store);
+        await cache.EnsureLoadedAsync(CancellationToken.None);
+
+        // The first reload reads "first" and is then held up on its way back to the cache.
+        var release = store.HoldNextTokenRead();
+        var slow = cache.ReloadTokenAsync(CancellationToken.None).AsTask();
+        await store.HeldRead.WaitAsync(TimeSpan.FromSeconds(10));
+
+        // Another process stores a newer token and a second reload picks it up while the first is still held.
+        await AuthTestSupport.StoreToken(inner, "second", TimeSpan.FromHours(1));
+        var fast = cache.ReloadTokenAsync(CancellationToken.None).AsTask();
+        await Task.Delay(200);
+        release();
+
+        await Task.WhenAll(slow, fast).WaitAsync(TimeSpan.FromSeconds(10));
+
+        (await cache.GetTokenAsync(CancellationToken.None))!.AccessToken.Should().Be("second");
+    }
+
+    [Fact]
+    public async Task ReloadsRequestedWhileOneIsRunningShareASingleFollowUpRead()
+    {
+        var inner = new InMemorySecretStore();
+        await AuthTestSupport.StoreToken(inner, "first", TimeSpan.FromHours(1));
+        var store = new HoldingSecretStore(inner);
+        using var cache = AuthTestSupport.CreateCache(store);
+        await cache.EnsureLoadedAsync(CancellationToken.None);
+        var readsBefore = store.TokenReads;
+
+        var release = store.HoldNextTokenRead();
+        var running = cache.ReloadTokenAsync(CancellationToken.None).AsTask();
+        await store.HeldRead.WaitAsync(TimeSpan.FromSeconds(10));
+        var waiting = Enumerable.Range(0, 5).Select(_ => cache.ReloadTokenAsync(CancellationToken.None).AsTask()).ToArray();
+        await Task.Delay(200);
+        release();
+
+        await Task.WhenAll(waiting.Append(running)).WaitAsync(TimeSpan.FromSeconds(10));
+
+        store.TokenReads.Should().Be(readsBefore + 2, "the held read, then one read that serves every reload requested meanwhile");
+    }
+
+    /// <summary>
+    /// Reads the token at once but can hold the answer back, the way a slow keyring reply arrives after a later one.
+    /// Never reports changes, so only explicit reloads reach the cache.
+    /// </summary>
+    private sealed class HoldingSecretStore(InMemorySecretStore inner) : ISecretStore
+    {
+        private TaskCompletionSource? _gate;
+        private readonly TaskCompletionSource _held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _tokenReads;
+
+        public Task HeldRead => _held.Task;
+
+        public int TokenReads => Volatile.Read(ref _tokenReads);
+
+        public Action HoldNextTokenRead()
+        {
+            var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            Volatile.Write(ref _gate, gate);
+            return () => gate.TrySetResult();
+        }
+
+        public Observable<SecretKey> Changed => Observable.Never<SecretKey>();
+
+        public Observable<SecretStoreStatus> StatusChanged => Observable.Never<SecretStoreStatus>();
+
+        public async ValueTask<SecretResult> GetAsync(SecretKey key, CancellationToken cancellationToken)
+        {
+            var result = await inner.GetAsync(key, cancellationToken);
+            if (key != NexusSecretKeys.OAuth) return result;
+
+            Interlocked.Increment(ref _tokenReads);
+            if (Interlocked.Exchange(ref _gate, null) is { } gate)
+            {
+                _held.TrySetResult();
+                await gate.Task;
+            }
+
+            return result;
+        }
+
+        public ValueTask<SecretWriteResult> SetAsync(SecretKey key, string value, CancellationToken cancellationToken) => inner.SetAsync(key, value, cancellationToken);
+
+        public ValueTask<SecretWriteResult> DeleteAsync(SecretKey key, CancellationToken cancellationToken) => inner.DeleteAsync(key, cancellationToken);
+
+        public ValueTask<IReadOnlyList<SecretKey>> ListAsync(CancellationToken cancellationToken) => inner.ListAsync(cancellationToken);
+
+        public ValueTask<SecretStoreStatus> DescribeAsync(CancellationToken cancellationToken) => inner.DescribeAsync(cancellationToken);
+
+        public ValueTask<SecretStoreStatus> UnlockAsync(CancellationToken cancellationToken) => inner.UnlockAsync(cancellationToken);
+    }
 }

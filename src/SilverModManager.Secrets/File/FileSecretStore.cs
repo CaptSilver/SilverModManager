@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Secrets;
@@ -19,23 +20,36 @@ public sealed class FileSecretStore : ISecretStore, IDisposable
     private const UnixFileMode GroupAndOther = UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute
         | UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute;
 
+    private static readonly TimeSpan LockPollInterval = TimeSpan.FromMilliseconds(20);
+    private static readonly TimeSpan DefaultLockTimeout = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// The file next to <c>secrets.json</c> that processes lock while they read, change and replace it. It holds
+    /// nothing and is never deleted: removing a lock file lets two processes lock two different files.
+    /// </summary>
+    internal const string LockFileName = "secrets.json.lock";
+
     private readonly ILogger<FileSecretStore> _logger;
+    private readonly TimeSpan _lockTimeout;
     private readonly uint _effectiveUid;
     private readonly string _directory;
     private readonly string _path;
+    private readonly string _lockPath;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly Subject<SecretKey> _changed = new();
 
     public FileSecretStore(IFileSystem fileSystem, ILogger<FileSecretStore> logger) : this(fileSystem, logger, UnixFileOwner.EffectiveUid()) { }
 
     // The uid is a parameter so tests can stand in for a file owned by someone else, which needs root to set up.
-    internal FileSecretStore(IFileSystem fileSystem, ILogger<FileSecretStore> logger, uint effectiveUid)
+    internal FileSecretStore(IFileSystem fileSystem, ILogger<FileSecretStore> logger, uint effectiveUid, TimeSpan? lockTimeout = null)
     {
         _logger = logger;
         _effectiveUid = effectiveUid;
+        _lockTimeout = lockTimeout ?? DefaultLockTimeout;
         var directory = fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine(ApplicationConstants.DataDirectoryName);
         _directory = directory.ToString();
         _path = directory.Combine("secrets.json").ToString();
+        _lockPath = directory.Combine(LockFileName).ToString();
     }
 
     public Observable<SecretKey> Changed => _changed;
@@ -63,11 +77,16 @@ public sealed class FileSecretStore : ISecretStore, IDisposable
         await _lock.WaitAsync(cancellationToken);
         try
         {
-            var (entries, unavailable) = Read();
-            if (unavailable is not null) return new SecretWriteResult.Unavailable(unavailable.Kind, unavailable.Reason);
+            var (processLock, lockFailure) = await AcquireProcessLockAsync(cancellationToken);
+            if (lockFailure is not null) return lockFailure;
+            using (processLock)
+            {
+                var (entries, unavailable) = Read();
+                if (unavailable is not null) return new SecretWriteResult.Unavailable(unavailable.Kind, unavailable.Reason);
 
-            entries[key.Name] = value;
-            if (Write(entries) is { } failure) return failure;
+                entries[key.Name] = value;
+                if (Write(entries) is { } failure) return failure;
+            }
         }
         finally
         {
@@ -83,11 +102,19 @@ public sealed class FileSecretStore : ISecretStore, IDisposable
         await _lock.WaitAsync(cancellationToken);
         try
         {
-            var (entries, unavailable) = Read();
-            if (unavailable is not null) return new SecretWriteResult.Unavailable(unavailable.Kind, unavailable.Reason);
-            if (!entries.Remove(key.Name)) return new SecretWriteResult.Written();
+            // Nothing to delete from, and nothing worth creating the directory and lock file for.
+            if (!Directory.Exists(_directory)) return new SecretWriteResult.Written();
 
-            if (Write(entries) is { } failure) return failure;
+            var (processLock, lockFailure) = await AcquireProcessLockAsync(cancellationToken);
+            if (lockFailure is not null) return lockFailure;
+            using (processLock)
+            {
+                var (entries, unavailable) = Read();
+                if (unavailable is not null) return new SecretWriteResult.Unavailable(unavailable.Kind, unavailable.Reason);
+                if (!entries.Remove(key.Name)) return new SecretWriteResult.Written();
+
+                if (Write(entries) is { } failure) return failure;
+            }
         }
         finally
         {
@@ -136,7 +163,64 @@ public sealed class FileSecretStore : ISecretStore, IDisposable
     // The file has nothing to unlock.
     public ValueTask<SecretStoreStatus> UnlockAsync(CancellationToken cancellationToken) => new(Describe());
 
-    private SecretStoreStatus Describe() => new(SecretBackendKind.File, _path, Locked: false, Unencrypted: true, Writable: true, []);
+    private SecretStoreStatus Describe() => new(SecretBackendKind.File, _path, Locked: false, Unencrypted: true, Writable: CanWrite(), []);
+
+    /// <summary>
+    /// Whether a Set would get as far as writing: the file passes the checks a read makes, and the nearest
+    /// directory that exists lets this user create files in it, and the lock file, when there is one, can be
+    /// opened for reading and writing.
+    /// </summary>
+    private bool CanWrite()
+    {
+        if (Read().Unavailable is not null) return false;
+        if (System.IO.File.Exists(_lockPath) && !UnixFileAccess.CanReadWrite(_lockPath)) return false;
+
+        var directory = _directory;
+        while (!Directory.Exists(directory))
+        {
+            if (Path.GetDirectoryName(directory) is not { Length: > 0 } parent) return false;
+            directory = parent;
+        }
+
+        return UnixFileAccess.CanCreateIn(directory);
+    }
+
+    /// <summary>
+    /// Takes the cross-process lock, creating the app directory and the lock file when they are missing. The
+    /// in-process semaphore is not enough: the app and the CLI each run their own store over the same file, and
+    /// without this their read-modify-write cycles interleave and the later rename drops the earlier write.
+    /// </summary>
+    /// <remarks>
+    /// .NET maps <see cref="FileShare.None"/> on Unix to an advisory flock, so the open fails while any other
+    /// open file description holds it, in this process or another, and the kernel drops it if the holder dies.
+    /// </remarks>
+    private async ValueTask<(FileStream? Lock, SecretWriteResult.Unavailable? Failure)> AcquireProcessLockAsync(CancellationToken cancellationToken)
+    {
+        var deadline = Stopwatch.StartNew();
+        try
+        {
+            Directory.CreateDirectory(_directory);
+            var options = new FileStreamOptions { Mode = FileMode.OpenOrCreate, Access = FileAccess.ReadWrite, Share = FileShare.None, UnixCreateMode = OwnerOnly };
+            while (true)
+            {
+                try
+                {
+                    return (new FileStream(_lockPath, options), null);
+                }
+                catch (IOException) when (deadline.Elapsed < _lockTimeout && System.IO.File.Exists(_lockPath))
+                {
+                    // Held by someone else (an unrelated IO failure would not leave the file in place and also time out below).
+                    await Task.Delay(LockPollInterval, cancellationToken);
+                }
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogError(e, "Could not lock {Path}", _lockPath);
+            return (null, new SecretWriteResult.Unavailable(SecretUnavailableKind.Faulted,
+                $"Could not write {_path} because another Silver Mod Manager process is using it or {_lockPath} cannot be locked: {e.Message}"));
+        }
+    }
 
     public void Dispose()
     {
