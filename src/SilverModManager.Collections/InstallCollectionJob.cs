@@ -204,6 +204,13 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         var game = RequireGame(loadout.InstallationInstance.Game);
         var fallbackInstaller = FallbackCollectionDownloadInstaller.Create(ServiceProvider, loadout, game);
 
+        // Read before the installs retract the rows: a stamp says which older version a mod takes the place of.
+        var db = Connection.Db;
+        var replacements = PendingInstalls.For(db, collectionGroup.Id)
+            .Select(row => PendingInstalls.ReplacementOf(db, row))
+            .OfType<ReplacedSlot>()
+            .ToArray();
+
         await Parallel.ForEachAsync(modsAndDownloads, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = context.CancellationToken }, async (modAndDownload, _) =>
         {
             try
@@ -269,6 +276,8 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             var result = await tx.Commit();
             collectionGroup = NexusCollectionLoadoutGroup.Load(result.Db, collectionGroup.Id);
         }
+
+        await CollectionUpdater.FinishReplacements(ServiceProvider, Connection, TargetLoadout, collectionGroup.Id, replacements);
 
         var leftDisabled = PreserveEnabledState ? LoadoutItem.Load(Connection.Db, collectionGroup.Id).IsDisabled : !allRequiredItemsSatisfied;
         Progress.Finish(leftDisabled: leftDisabled);

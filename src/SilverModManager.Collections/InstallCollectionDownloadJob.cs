@@ -51,6 +51,12 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
     public required ILoadoutManager LoadoutManager { get; init; }
 
     public ILibraryItemInstaller? FallbackInstaller { get; init; }
+
+    /// <summary>
+    /// Installs the download with this installer instead of the ones the game offers: the review of a mod no installer claimed
+    /// runs the manual installer here.
+    /// </summary>
+    public ILibraryItemInstaller? Installer { get; init; }
     public Optional<GamePath> FallbackCollectionInstallDirectory { get; init; }
 
     /// <summary>
@@ -70,7 +76,8 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         LoadoutId targetLoadout,
         CollectionDownload.ReadOnly download,
         CancellationToken cancellationToken,
-        bool unattended = false)
+        bool unattended = false,
+        ILibraryItemInstaller? installer = null)
     {
         var connection = serviceProvider.GetRequiredService<IConnection>();
 
@@ -94,6 +101,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             SourceCollection = sourceCollection,
             OrderManifest = root,
             Unattended = unattended,
+            Installer = installer,
 
             ServiceProvider = serviceProvider,
             Connection = connection,
@@ -106,6 +114,9 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
     /// <inheritdoc/>
     public async ValueTask<LoadoutItemGroup.ReadOnly> StartAsync(IJobContext<InstallCollectionDownloadJob> context)
     {
+        // Read before the install: finishing it retracts the row, and the row carries the stamp of the version it replaces.
+        var pending = PendingInstalls.Find(Connection.Db, Group.Id, CollectionDownloadId.From(Item.Id));
+
         var (group, patchedFiles) = await Install(context);
 
         using var tx = Connection.BeginTransaction();
@@ -134,7 +145,13 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         var result = await tx.Commit();
         if (OrderManifest is not { } root) return new LoadoutItemGroup.ReadOnly(result.Db, group.Id);
 
-        return await PlaceInOrder(root, group.LoadoutItemGroupId);
+        var placed = await PlaceInOrder(root, group.LoadoutItemGroupId);
+
+        // Installed on its own, so no whole-collection run is around to finish the update this mod was part of.
+        if (PendingInstalls.ReplacementOf(Connection.Db, pending) is { } slot)
+            await CollectionUpdater.FinishReplacement(ServiceProvider, Connection, TargetLoadout, Group.Id, slot);
+
+        return placed;
     }
 
     /// <summary>Puts the one download in its listed slot of the collection's order, leaving the rest of the collection as the user has it.</summary>
@@ -162,6 +179,9 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
         PatchedFile[] patchedFiles = [];
 
+        // GetLibraryFile below would throw NotSupportedException for an archive that left the library.
+        if (CollectionDownloader.GetStatus(Item, Connection.Db).IsNotDownloaded()) throw new CollectionArchiveMissingException(Item.Name);
+
         var libraryFile = GetLibraryFile(Item, Connection.Db);
         if (CollectionMod.Patches.Count > 0)
         {
@@ -185,6 +205,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
                 libraryFile.AsLibraryItem(),
                 TargetLoadout,
                 parent: Group.AsLoadoutItemGroup().LoadoutItemGroupId,
+                installer: Installer,
                 // NOTE(erri120): https://github.com/Nexus-Mods/NexusMods.App/issues/2553
                 // The advanced installer shouldn't appear when installing collections,
                 // the decision was made that the app should behave similar to Vortex,

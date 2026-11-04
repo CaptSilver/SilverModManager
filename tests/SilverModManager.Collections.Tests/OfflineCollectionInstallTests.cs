@@ -27,6 +27,8 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.GC;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Jobs;
@@ -1224,6 +1226,163 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
             },
         ],
     };
+
+    private sealed class CancellingInstaller : ILibraryItemInstaller
+    {
+        public bool IsSupportedLibraryItem(LibraryItem.ReadOnly libraryItem) => true;
+
+        public ValueTask<InstallerResult> ExecuteAsync(
+            LibraryItem.ReadOnly libraryItem, LoadoutItemGroup.New loadoutGroup, ITransaction transaction,
+            Loadout.ReadOnly loadout, CancellationToken cancellationToken) => throw new OperationCanceledException();
+    }
+
+    [Fact]
+    public async Task Reviewing_APendingMod_InstallsItAndRetractsTheRow()
+    {
+        var (group, loadout, job, _, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+        var pending = job.PendingItems.Should().ContainSingle().Which;
+
+        var review = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, pending.Download, CancellationToken.None, unattended: false, installer: new ClaimingInstaller("mod1.zip"));
+        await RunDownload(review);
+
+        PendingRow(group, pending.Download).HasValue.Should().BeFalse();
+        var installed = Child(NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id), "mod1.zip");
+        var stamped = NexusCollectionItemLoadoutGroup.Load(Connection.Db, installed.Id);
+        stamped.IsValid().Should().BeTrue();
+        stamped.Download.Id.Should().Be(pending.Download.Id);
+        LoadoutItemGroupPriority.FindByLoadout(Connection.Db, loadout).Any(row => row.TargetId == installed.LoadoutItemGroupId).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Reviewing_ThenCancelling_KeepsTheRow()
+    {
+        var (group, loadout, job, _, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+        var pending = job.PendingItems.Should().ContainSingle().Which;
+
+        var review = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, pending.Download, CancellationToken.None, unattended: false, installer: new CancellingInstaller());
+        var act = () => RunDownload(review);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        PendingRow(group, pending.Download).HasValue.Should().BeTrue();
+        InstalledFileNames(NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id), loadout).Should().NotContain("mod1.zip");
+    }
+
+    private async Task RemoveFromLibrary(NexusCollectionLoadoutGroup.ReadOnly group, CollectionDownload.ReadOnly download)
+    {
+        CollectionDownloader.GetStatus(download, group.AsCollectionGroup(), Connection.Db).IsInLibrary(out var item).Should().BeTrue();
+        await LibraryService.RemoveLibraryItems([item], GarbageCollectorRunMode.DoNotRun);
+        CollectionDownloader.GetStatus(download, Connection.Db).IsNotDownloaded().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Reviewing_WhenTheArchiveIsGone_RefusesWithAUserFacingMessage()
+    {
+        var (group, loadout, job, _, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+        var pending = job.PendingItems.Should().ContainSingle().Which;
+        await RemoveFromLibrary(group, pending.Download);
+
+        var review = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, pending.Download, CancellationToken.None, unattended: false, installer: new ClaimingInstaller("mod1.zip"));
+        var act = () => RunDownload(review);
+
+        var thrown = await act.Should().ThrowAsync<UserFacingException>();
+        thrown.Which.Should().BeOfType<CollectionArchiveMissingException>();
+        thrown.Which.Message.Should().Contain("Unknown mod").And.Contain("Download it again");
+        PendingRow(group, pending.Download).HasValue.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TryAgain_RunsOverPendingOptionalRowsToo()
+    {
+        var (group, loadout, _, revision, file, _) = await InstallWith(
+            [(null, "Unknown required"), (null, "Unknown optional")], [ModShape.Unknown, ModShape.Unknown], optionalIndexes: [1]);
+        var optional = CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional).Single();
+        await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, [optional]));
+        PendingInstalls.For(Connection.Db, group.Id).Should().HaveCount(2);
+        var stamped = PendingRow(group, optional).Value;
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(stamped.Id, NexusCollectionPendingInstall.ReplacesGroup, group.Id.Value);
+            await tx.Commit();
+        }
+
+        var retry = PendingInstalls.RetryItems(Connection.Db, group.Id);
+        retry.Select(static item => item.ArrayIndex).Should().BeEquivalentTo([0, 1]);
+
+        var again = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, retry);
+        await AwaitJob(again);
+
+        again.JobDefinition.PendingItems.Should().HaveCount(2);
+        PendingInstalls.For(Connection.Db, group.Id).Should().HaveCount(2);
+        NexusCollectionPendingInstall.ReplacesGroup.TryGetValue(PendingRow(group, optional).Value, out var replaces).Should().BeTrue();
+        replaces.Should().Be(group.Id.Value);
+    }
+
+    [Fact]
+    public async Task TryAgain_SkipsRowsWhoseArchiveIsGone()
+    {
+        var (group, loadout, _, revision, file, items) = await InstallWith(
+            [(null, "Unknown 0"), (null, "Unknown 1")], [ModShape.Unknown, ModShape.Unknown]);
+        var gone = items.Single(item => item.ArrayIndex == 0);
+        await RemoveFromLibrary(group, gone);
+
+        var retry = PendingInstalls.RetryItems(Connection.Db, group.Id);
+        retry.Select(static item => item.ArrayIndex).Should().Equal(1);
+
+        var again = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, retry);
+        await AwaitJob(again);
+
+        again.JobDefinition.FailedItems.Should().BeEmpty();
+        again.JobDefinition.PendingItems.Should().ContainSingle().Which.Download.ArrayIndex.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AWholeCollectionRun_FinishesAStampedReplacement_InItsOldSlot()
+    {
+        var (group, loadout, job, revision, file, items) = await InstallWith(
+            [(null, "Unknown 0"), (null, "Unknown 1")], [ModShape.Unknown, ModShape.Unknown]);
+        job.PendingItems.Should().HaveCount(2);
+
+        // The old versions: the user's own mods installed from the same archives, each stamped on its pending row.
+        var oldOf = new Dictionary<CollectionDownloadId, LoadoutItemGroupId>();
+        foreach (var item in items.OrderBy(static item => item.ArrayIndex))
+        {
+            CollectionDownloader.GetStatus(item, group.AsCollectionGroup(), Connection.Db).IsInLibrary(out var libraryItem).Should().BeTrue();
+            var old = await LoadoutManager.InstallItem(libraryItem, loadout, installer: new ClaimingInstaller($"mod{item.ArrayIndex}.zip"));
+            oldOf[CollectionDownloadId.From(item.Id)] = old.LoadoutItemGroup!.Value.LoadoutItemGroupId;
+        }
+        using (var tx = Connection.BeginTransaction())
+        {
+            foreach (var (download, old) in oldOf)
+                tx.Add(PendingInstalls.Find(Connection.Db, group.Id, download).Value.Id, NexusCollectionPendingInstall.ReplacesGroup, old.Value.Value);
+            await tx.Commit();
+        }
+
+        List<LoadoutItemGroupId> Order(IReadOnlySet<LoadoutItemGroupId> among) => LoadoutItemGroupPriority.FindByLoadout(Connection.Db, loadout)
+            .Where(static row => row.Target.IsValid()).OrderByDescending(static row => row.Priority).Select(static row => row.TargetId).Where(among.Contains).ToList();
+        var before = Order(oldOf.Values.ToHashSet());
+        before.Should().HaveCount(2, "each old version has a priority row");
+
+        var installers = Game.LibraryItemInstallers;
+        var original = installers[1];
+        installers[1] = new ClaimingInstaller("mod0.zip", "mod1.zip");
+        try
+        {
+            var run = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, PendingInstalls.RetryItems(Connection.Db, group.Id));
+            await AwaitJob(run);
+            run.JobDefinition.PendingItems.Should().BeEmpty();
+            run.JobDefinition.FailedItems.Should().BeEmpty();
+        }
+        finally
+        {
+            installers[1] = original;
+        }
+
+        var collection = NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id);
+        var newOf = items.ToDictionary(static item => CollectionDownloadId.From(item.Id), item => Child(collection, $"mod{item.ArrayIndex}.zip").LoadoutItemGroupId);
+        foreach (var old in oldOf.Values) LoadoutItemGroup.Load(Connection.Db, old).IsValid().Should().BeFalse("the replacement removed the old version");
+        var oldToNew = oldOf.ToDictionary(static pair => pair.Value, pair => newOf[pair.Key]);
+        Order(newOf.Values.ToHashSet()).Should().Equal(before.Select(old => oldToNew[old]));
+    }
 
     [Fact]
     public async Task TouchesCollection_MatchesBothJobTypes_ByCollectionAndLoadout()

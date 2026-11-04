@@ -392,7 +392,7 @@ public static partial class CollectionUpdater
     /// The removal comes before the reorder on purpose: a crash in between leaves every mod once but not yet in its slot, where
     /// the other way round it would leave both versions of a mod switched on.
     /// </remarks>
-    private static async ValueTask<(int Kept, IReadOnlyList<string> SkippedRules)> FinishReplacements(
+    internal static async ValueTask<(int Kept, IReadOnlyList<string> SkippedRules)> FinishReplacements(
         IServiceProvider serviceProvider, IConnection connection, LoadoutId loadoutId,
         EntityId group, IReadOnlyList<ReplacedSlot> slots)
     {
@@ -450,6 +450,12 @@ public static partial class CollectionUpdater
 
         return (slots.Count - newOf.Count, skipped);
     }
+
+    /// <summary>
+    /// <see cref="FinishReplacements"/> for one slot: a mod that was installed on its own after the update left it pending.
+    /// </summary>
+    public static async ValueTask FinishReplacement(IServiceProvider serviceProvider, IConnection connection, LoadoutId loadoutId, EntityId group, ReplacedSlot slot) =>
+        await FinishReplacements(serviceProvider, connection, loadoutId, group, [slot]);
 
     /// <summary>
     /// Re-creates the rules that name an old version on its replacement. Removing a group deletes the rules that name it, and

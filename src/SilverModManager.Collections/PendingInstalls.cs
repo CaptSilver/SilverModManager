@@ -83,6 +83,32 @@ public static class PendingInstalls
     }
 
     /// <summary>
+    /// The update <paramref name="row"/> was part of, if it carries a stamp and the older version it replaces is still in
+    /// the loadout. Null otherwise.
+    /// </summary>
+    public static ReplacedSlot? ReplacementOf(IDb db, Optional<NexusCollectionPendingInstall.ReadOnly> row)
+    {
+        if (!row.HasValue || !row.Value.ReplacesGroup.HasValue) return null;
+
+        var old = EntityId.From(row.Value.ReplacesGroup.Value);
+        if (!LoadoutItemGroup.Load(db, old).IsValid()) return null;
+
+        var wasDisabled = row.Value.ReplacedWasDisabled.HasValue && row.Value.ReplacedWasDisabled.Value;
+        return new ReplacedSlot(row.Value.DownloadId, LoadoutItemGroupId.From(old), wasDisabled);
+    }
+
+    /// <summary>
+    /// The downloads "Try again" runs over: every undismissed row, optional ones included, whose archive is still in the
+    /// library. An archive that is gone has to be downloaded again first.
+    /// </summary>
+    public static CollectionDownload.ReadOnly[] RetryItems(IDb db, EntityId group) =>
+        For(db, group)
+            .Where(static row => !IsDismissed(row))
+            .Select(static row => row.Download)
+            .Where(download => !CollectionDownloader.GetStatus(download, db).IsNotDownloaded())
+            .ToArray();
+
+    /// <summary>
     /// The optional mods "Install optional" should install: those that are not installed in the group and have no row,
     /// dismissed or not. A pending or dismissed optional mod only comes back through the grid's per-item Install.
     /// </summary>
