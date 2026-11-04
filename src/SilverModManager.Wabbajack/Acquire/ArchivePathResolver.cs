@@ -1,10 +1,12 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Library;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Library;
@@ -104,6 +106,7 @@ public sealed class ArchivePathResolver(
     private readonly ConcurrentDictionary<EntityId, FileIdentity> _hashed = new();
     private readonly List<(EntityId File, FileIdentity XxHash64)> _unrecorded = [];
     private readonly SemaphoreSlim _recordLock = new(1, 1);
+    private readonly SemaphoreSlim _rootLock = new(1, 1);
     private readonly List<IDisposable> _pins = [];
     private readonly CancellationTokenSource _lifetime = new();
     private readonly NestedArchiveCache _openArchives = new(OpenArchivesKept);
@@ -277,7 +280,48 @@ public sealed class ArchivePathResolver(
             }
         }
 
-        return Store($"game:{Fold(state.GameFile)}", OpenGameFile, cancellationToken);
+        return StoreAndRoot($"game:{Fold(state.GameFile)}", OpenGameFile, cancellationToken);
+    }
+
+    /// <summary>
+    /// <see cref="Store"/> for a game file, then records the stored copy as one of the game's backed-up originals. The
+    /// pin <see cref="Store"/> takes ends with the job, and nothing else refers to these bytes afterwards, yet the
+    /// install may have been the only thing that kept a copy of a file a later Apply replaces.
+    /// </summary>
+    private async Task<ResolvedMember> StoreAndRoot(string key, Func<CancellationToken, Task<Stream>> open, CancellationToken cancellationToken)
+    {
+        var member = await Store(key, open, cancellationToken);
+        await RootGameFile(member.StoreIdentity);
+        return member;
+    }
+
+    private async Task RootGameFile(FileIdentity stored)
+    {
+        if (gameFiles.InstallationId is not { } owner)
+        {
+            logger.LogInformation("Not rooting the stored game file {Key}: the installation is not managed, so it has no backups to add it to", stored);
+            return;
+        }
+
+        await _rootLock.WaitAsync();
+        try
+        {
+            var hash = stored.XxHash3();
+            var connection = gameFiles.Connection;
+            if (GameBackedUpFile.All(connection.Db).Any(f => f.Hash == hash && f.GameInstallId.Value == owner)) return;
+
+            using var tx = connection.BeginTransaction();
+            _ = new GameBackedUpFile.New(tx)
+            {
+                Hash = hash,
+                GameInstallId = GameInstallMetadataId.From(owner),
+            };
+            await tx.Commit();
+        }
+        finally
+        {
+            _rootLock.Release();
+        }
     }
 
     /// <summary>

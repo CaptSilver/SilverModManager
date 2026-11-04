@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.Attributes;
 using SilverModManager.MnemonicDB.Abstractions.Models;
 using SilverModManager.Sdk.Hashes;
@@ -45,5 +46,28 @@ public partial class GameBackedUpFile : IModelDefinition
     {
         /// <summary>The backed-up file's store key as an identity.</summary>
         public FileIdentity Identity => FileIdentity.XxHash3(GameBackedUpFile.Hash.Get(this));
+    }
+
+    /// <summary>
+    /// Roots the stored copies of <paramref name="files"/> for <paramref name="install"/> in a transaction of its own,
+    /// skipping any the install already roots. It commits before it returns, so a caller that goes on to delete the
+    /// files from disk can rely on the roots surviving a failure later in the same apply.
+    /// </summary>
+    /// <param name="files">Store keys (xxHash3 identities).</param>
+    public static async Task Root(IConnection connection, Sdk.Games.GameInstallMetadataId install, IEnumerable<FileIdentity> files)
+    {
+        using var tx = connection.BeginTransaction();
+        var alreadyRooted = All(connection.Db).Where(f => f.GameInstallId == install).Select(f => f.Hash).ToHashSet();
+        foreach (var file in files)
+        {
+            var hash = file.XxHash3();
+            if (!alreadyRooted.Add(hash)) continue;
+            _ = new New(tx)
+            {
+                GameInstallId = install,
+                Hash = hash,
+            };
+        }
+        await tx.Commit();
     }
 }

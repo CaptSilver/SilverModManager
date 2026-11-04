@@ -2,6 +2,9 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.GC;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Sdk.Loadouts;
 using NexusMods.Hashing.xxHash3;
@@ -120,6 +123,25 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
         member.StoreIdentity.Should().Be(added.AsLibraryFile().Identity);
         member.XxHash64.Should().Be(Hash64(bytes));
         (await ReadAll(member)).Should().Equal(bytes);
+    }
+
+    [Fact]
+    public async Task AGameFileSourceStoredByTheResolverSurvivesACollectionAfterTheResolverIsGone()
+    {
+        var loadout = await CreateLoadout();
+        var gameHash = Hash64(GameBsaBytes);
+        var state = new GameFileSourceState("SkyrimSpecialEdition", GameBsa, gameHash, GameVersion);
+        var plan = new ArchivePlan([new ArchivePlanRow(Entry(state, gameHash, GameBsaBytes.Length), ArchiveState.GameFile, null, null, null)]);
+        var resolver = Resolver(plan, loadout);
+        await resolver.Resolve(new ArchiveHashPath(gameHash, []), CancellationToken.None);
+
+        // The job ended: its pins are released and nothing but a durable reference can keep the bytes.
+        resolver.Dispose();
+        await ServiceProvider.GetRequiredService<IGarbageCollectorRunner>().RunAsync();
+
+        var key = FileIdentity.XxHash3(GameBsaBytes.xxHash3());
+        (await FileStore.HaveFile(key)).Should().BeTrue("the game's own original is not something the install may let the collector take");
+        GameBackedUpFile.All(Connection.Db).Should().ContainSingle(f => f.Hash == GameBsaBytes.xxHash3() && f.GameInstallId.Value == (EntityId)loadout.InstallationId);
     }
 
     [Fact]

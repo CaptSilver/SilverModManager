@@ -821,6 +821,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 case Actions.BackupFile:
                     job?.SetStatus(SyncPhases.BackingUp);
                     foreach (var group in groups) await group.Backend.Backup(context, group.Nodes);
+                    await RootStoredFilesBeingReplaced(context);
                     break;
 
                 case Actions.IngestFromDisk:
@@ -1182,6 +1183,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
                 case Actions.BackupFile:
                     foreach (var group in groups) await group.Backend.Backup(context, group.Nodes);
+                    await RootStoredFilesBeingReplaced(context);
                     break;
                 
                 case Actions.AdaptLoadout:
@@ -1750,6 +1752,73 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // Make sure the file hashes are up to date
         await _fileHashService.GetFileHashesDb();
         return await ReindexState(gameInstallation, cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// A game file the apply deletes or overwrites while the store already holds its bytes gets no <see cref="Actions.BackupFile"/>,
+    /// so the backup's record of it is never made, and what keeps those bytes in the store is whatever happened to refer to
+    /// them (a job's pin, a loadout row that is about to go). Once nothing does, the garbage collector takes them and
+    /// the file cannot be put back. This records the same <see cref="GameBackedUpFile"/> a backup would for every
+    /// such file, in a transaction of its own that commits before the delete step runs, as the backup's does.
+    /// Only the game's own bytes are rooted: a mod file that an apply removes is in the store because the mod put it
+    /// there, and it must stay collectable once the mod is gone.
+    /// </summary>
+    private async Task RootStoredFilesBeingReplaced(DeploymentContext context)
+    {
+        List<FileIdentity>? toRoot = null;
+        Dictionary<GamePath, SyncNodePart>? initial = null;
+        Dictionary<string, GameFileRecord>? listed = null;
+        foreach (var (path, node) in context.SyncTree)
+        {
+            if (!node.HaveDisk || !node.Actions.HasFlag(Actions.DeleteFromDisk) || node.Actions.HasFlag(Actions.BackupFile)) continue;
+            if (!node.Signature.HasFlag(Signature.DiskArchived)) continue;
+
+            initial ??= InitialDiskState(context.MetadataId);
+            if (!IsGameOwnBytes(context, path, node, initial, ref listed)) continue;
+
+            var key = node.Disk.Identity.Kind == HashKind.XxHash3
+                ? node.Disk.Identity
+                : await _identityResolver.StoreKeyAsync(_fileStore, node.Disk.Identity, node.Disk.Size);
+            if (key is not { } storeKey) continue;
+
+            Logger.LogInformation("Rooting the stored copy {Key} of {Path}: the apply replaces it without a backup because the store already holds the bytes", storeKey, path);
+            (toRoot ??= []).Add(storeKey);
+        }
+
+        if (toRoot is not null) await GameBackedUpFile.Root(Connection, context.MetadataId, toRoot);
+    }
+
+    private Dictionary<GamePath, SyncNodePart> InitialDiskState(GameInstallMetadataId metadataId)
+    {
+        var metadata = GameInstallMetadata.Load(Connection.Db, metadataId);
+        return GameInstallMetadata.InitialDiskStateTransaction.TryGetValue(metadata, out var initialTx)
+            ? ((ILoadoutSynchronizer)this).GetDiskStateForGameAsOf(metadata, TxId.From(initialTx.Value)).ToDictionary(p => p.Path, p => p.Part)
+            : [];
+    }
+
+    /// <summary>
+    /// Whether the bytes on disk at <paramref name="path"/> are the game's own: what the install was first indexed
+    /// with, or what the store's file list names for that path. A file whose bytes a mod deployed is neither, so it
+    /// is not the game's to keep. A list that names the file by path and size but cannot be joined to the disk's
+    /// digest counts when the disk is not what an earlier apply wrote.
+    /// </summary>
+    private bool IsGameOwnBytes(DeploymentContext context, GamePath path, SyncNode node, Dictionary<GamePath, SyncNodePart> initial, ref Dictionary<string, GameFileRecord>? listed)
+    {
+        if (initial.TryGetValue(path, out var original)
+            && original.Size == node.Disk.Size
+            && _identityResolver.Resolve(original.Identity, node.Disk.Identity, node.Disk.Size) == IdentityMatch.Same)
+            return true;
+
+        if (path.LocationId != LocationId.Game) return false;
+        listed ??= ListedGameFiles(context.Installation);
+        if (!listed.TryGetValue(path.Path.ToString(), out var record) || record.Size != node.Disk.Size) return false;
+
+        return _identityResolver.Resolve(record.Identity, node.Disk.Identity, node.Disk.Size) switch
+        {
+            IdentityMatch.Same => true,
+            IdentityMatch.Unknown => !node.Signature.HasFlag(Signature.DiskEqualsPrev),
+            _ => false,
+        };
     }
 
     /// <summary>

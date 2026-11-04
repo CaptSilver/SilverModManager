@@ -41,6 +41,12 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
     /// <summary>The installation whose game files this reads.</summary>
     public GameInstallation Installation => installation;
 
+    /// <summary>The installation's metadata entity, or null for one the app has not managed yet.</summary>
+    public EntityId? InstallationId => installationId;
+
+    /// <summary>The connection the lookup's backups are recorded in.</summary>
+    public IConnection Connection => connection;
+
     private readonly record struct Backup(FileIdentity Key, FileIdentity Original, Size Size);
 
     /// <summary>The bytes a lookup reads: the live file with the fingerprint it had, or the store's copy of the original.</summary>

@@ -94,6 +94,9 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
                 var diskIdentity = node.Disk.Identity;
                 if (await _fileStore.HaveFile(diskIdentity))
                 {
+                    // Already stored, but possibly only because something else referred to it for a while; the
+                    // backup's pin is what keeps it once that goes.
+                    pinnedFileHashes.Add(diskIdentity);
                     context.Job?.ReportProgress(SyncPhases.BackingUp, Interlocked.Increment(ref filesChecked), totalFiles, Interlocked.Add(ref bytesAccountedFor, (long)node.Disk.Size.Value), totalBytes);
                     return;
                 }
@@ -124,16 +127,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
         context.Job?.ReportProgress(SyncPhases.BackingUp, totalFiles, totalFiles, totalBytes, totalBytes);
 
         // Pin the files to avoid garbage collection.
-        using var tx = _connection.BeginTransaction();
-        foreach (var hash in pinnedFileHashes)
-        {
-            _ = new GameBackedUpFile.New(tx)
-            {
-                GameInstallId = installMetadataId,
-                Hash = hash.XxHash3(),
-            };
-        }
-        await tx.Commit();
+        await GameBackedUpFile.Root(_connection, installMetadataId, pinnedFileHashes);
     }
 
     /// <inheritdoc />

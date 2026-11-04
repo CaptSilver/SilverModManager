@@ -9,6 +9,7 @@ using SilverModManager.Games.FileHashes.Emitters;
 using SilverModManager.MnemonicDB.Storage;
 using SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 using SilverModManager.Sdk.Settings;
+using SilverModManager.Abstractions.GC;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games.FileHashes;
@@ -18,6 +19,7 @@ using SilverModManager.Abstractions.Loadouts.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.Backend;
+using SilverModManager.DataModel;
 using SilverModManager.CrossPlatform;
 using SilverModManager.Games.Generic;
 using SilverModManager.Games.RedEngine;
@@ -28,6 +30,8 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Errors;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
@@ -135,11 +139,12 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
     private DiskStateEntry.ReadOnly DiskEntry(string path)
         => DiskStateEntry.FindByGame(Connection.Db, Metadata).Single(e => ((GamePath)e.Path).Path.ToString() == path);
 
-    private async Task AddMod(Loadout.ReadOnly loadout, params string[] paths)
+    private async Task<AbsolutePath> AddMod(Loadout.ReadOnly loadout, params string[] paths)
     {
         using var tx = Connection.BeginTransaction();
-        await AddModAsync(tx, paths.Select(p => (RelativePath)p), loadout.LoadoutId, "Mod over vanilla");
+        var (archivePath, _) = await AddModAsync(tx, paths.Select(p => (RelativePath)p), loadout.LoadoutId, "Mod over vanilla");
         await tx.Commit();
+        return archivePath;
     }
 
     [Fact]
@@ -220,6 +225,77 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         await Synchronizer.Synchronize(Refresh(loadout));
         FullHashes.Paths.Should().BeEmpty();
         (await ReadGameFile(Vanilla)).Should().Be(VanillaText);
+    }
+
+    private async Task StoreWithoutAnyReference(string text)
+    {
+        var bytes = Encoding.UTF8.GetBytes(text);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("vanilla", new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length))]);
+    }
+
+    [Fact]
+    public async Task ApplyingAModOverAVanillaFileTheStoreAlreadyHolds_RootsTheBytesItReliedOnInsteadOfBackingThemUp()
+    {
+        var loadout = await CreateLoadout();
+        await StoreWithoutAnyReference(VanillaText);
+        GameBackedUpFile.All(Connection.Db).Select(f => f.Hash).Should().NotContain(VanillaText.xxHash3AsUtf8(), "nothing refers to the stored copy yet");
+        await AddMod(loadout, Vanilla);
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await ReadGameFile(Vanilla)).Should().Be(Vanilla, "the mod replaced the vanilla file");
+        GameBackedUpFile.All(Connection.Db).Where(f => f.GameInstallId.Value == Metadata).Select(f => f.Hash).Should()
+            .Contain(VanillaText.xxHash3AsUtf8(), "a collection must not take the only copy of the file the apply overwrote");
+    }
+
+    [Fact]
+    public async Task RemovingTheModAfterItReplacedAVanillaFileTheStoreAlreadyHeld_RestoresTheOriginalByteForByte()
+    {
+        var loadout = await CreateLoadout();
+        await StoreWithoutAnyReference(VanillaText);
+        await AddMod(loadout, Vanilla);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        GameBackedUpFile.All(Connection.Db).Select(f => f.Hash).Should().Contain(VanillaText.xxHash3AsUtf8());
+
+        await RemoveMod(loadout);
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await ReadGameFile(Vanilla)).Should().Be(VanillaText);
+        (await FileStore.HaveFile(FileIdentity.XxHash3(VanillaText.xxHash3AsUtf8()))).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ApplyingAModOverAVanillaFileTheStoreAlreadyHolds_KeepsTheOriginalWhenTheExtractFailsAfterTheDelete()
+    {
+        var loadout = await CreateLoadout();
+        await StoreWithoutAnyReference(VanillaText);
+        var modArchive = await AddMod(loadout, Vanilla);
+        // The store still lists the mod's file, but its archive is gone, so the extract that follows the delete throws.
+        modArchive.Delete();
+
+        var apply = async () => await Synchronizer.Synchronize(Refresh(loadout));
+
+        await apply.Should().ThrowAsync<Exception>();
+        (GameFolder / Vanilla).FileExists.Should().BeFalse("the delete ran before the extract that failed");
+        await ServiceProvider.GetRequiredService<IGarbageCollectorRunner>().RunAsync();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(VanillaText.xxHash3AsUtf8()))).Should().BeTrue("the collection must not take the only copy of a file the failed apply already deleted");
+    }
+
+    [Fact]
+    public async Task ApplyingThenRemovingAMod_RootsNoneOfTheModsBytesAndACollectionTakesThem()
+    {
+        const string modFile = "archive/pc/mod/only_in_the_mod.archive";
+        var loadout = await CreateLoadout();
+        await AddMod(loadout, modFile);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        (await ReadGameFile(modFile)).Should().Be(modFile);
+        await RemoveMod(loadout);
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (GameFolder / modFile).FileExists.Should().BeFalse("removing the mod deletes its file");
+        GameBackedUpFile.All(Connection.Db).Select(f => f.Hash).Should().NotContain(modFile.xxHash3AsUtf8(), "the bytes are the mod's, not the game's");
+        (await FileStore.HaveFile(FileIdentity.XxHash3(modFile.xxHash3AsUtf8()))).Should().BeFalse("nothing refers to them once the mod is gone");
     }
 
     [Fact]
