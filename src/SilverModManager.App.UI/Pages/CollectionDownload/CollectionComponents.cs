@@ -204,20 +204,21 @@ public static class CollectionComponents
         public InstallAction(
             CollectionDownloadEntity.ReadOnly downloadEntity,
             Observable<bool> isInstalledObservable,
-            Observable<JobStatus> installJobStatusObservable)
+            Observable<JobStatus> installJobStatusObservable,
+            Observable<bool> isBusyObservable)
         {
             CommandInstall = _canInstall
                 .ToReactiveCommand<Unit, CollectionDownloadEntity.ReadOnly>(_ => downloadEntity);
 
-            _activationDisposable = this.WhenActivated((downloadEntity, isInstalledObservable, installJobStatusObservable), static (self, state, disposables) =>
+            _activationDisposable = this.WhenActivated((downloadEntity, isInstalledObservable, installJobStatusObservable, isBusyObservable), static (self, state, disposables) =>
             {
-                var (_, isInstalledObservable, installJobStatusObservable) = state;
+                var (_, isInstalledObservable, installJobStatusObservable, isBusyObservable) = state;
 
-                isInstalledObservable.CombineLatest(installJobStatusObservable, static (isInstalled, status) => (isInstalled, isInstalling: status == JobStatus.Running))
+                isInstalledObservable.CombineLatest(installJobStatusObservable, isBusyObservable, static (isInstalled, status, isBusy) => (isInstalled, isInstalling: status == JobStatus.Running, isBusy))
                     .ObserveOnUIThreadDispatcher().Subscribe(self, static (tuple, self) =>
                 {
-                    var (isInstalled, isInstalling) = tuple;
-                    self._canInstall.OnNext(!isInstalled && !isInstalling);
+                    var (isInstalled, isInstalling, isBusy) = tuple;
+                    self._canInstall.OnNext(!isInstalled && !isInstalling && !isBusy);
                     self._isInstalled.Value = isInstalled;
                     self._buttonText.Value = isInstalling && !isInstalled
                         ? Language.CollectionComponents_InstallAction_ButtonText_Installing

@@ -357,8 +357,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
             {
                 TreeDataGridAdapter.Activate().AddTo(disposables);
 
-                jobMonitor
-                    .HasActiveJob<InstallCollectionJob>(job => job.RevisionMetadata.Id == _revision.Id)
+                CollectionJobs.ObserveBusy(jobMonitor, _collection.Id, _targetLoadout)
                     .OnUI()
                     .Subscribe(isInstalling =>
                     {
@@ -584,6 +583,12 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
         if (WillUpdateInstalledRevision.Value || IsOlderThanInstalledRevision.Value)
         {
             _notificationService.ShowToast(Language.ToastNotification_Update_collection_first, ToastNotificationVariant.Failure);
+            return;
+        }
+
+        if (IsInstalling.Value)
+        {
+            _notificationService.ShowToast(Language.ToastNotification_Collection_is_busy, ToastNotificationVariant.Failure);
             return;
         }
 

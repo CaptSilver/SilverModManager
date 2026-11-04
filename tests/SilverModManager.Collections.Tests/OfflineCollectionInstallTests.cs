@@ -951,4 +951,96 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         last.Pending.Should().ContainSingle().Which.Name.Should().Be("Unknown mod");
         last.Failed.Should().ContainSingle().Which.Name.Should().Be("Broken mod");
     }
+
+    private static async Task WaitUntil(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow + Timeout;
+        while (!condition())
+        {
+            DateTime.UtcNow.Should().BeBefore(deadline, "the condition should hold soon");
+            await Task.Delay(20);
+        }
+    }
+
+    /// <summary>A second, empty collection with its own slug, so job matching has a collection to tell apart from the installed one.</summary>
+    private async Task<CollectionRevisionMetadata.ReadOnly> CreateOtherCollection()
+    {
+        var manifest = new CollectionRoot { Info = new CollectionInfo { Name = "Other", DomainName = GameDomain.From("cyberpunk2077") }, Mods = [] };
+        return (await new OfflineCollections(ServiceProvider, Connection, LibraryService, TemporaryFileManager).Create(manifest, slug: "other")).Revision;
+    }
+
+    [Fact]
+    public async Task ARunningReview_CountsAsBusyForItsCollection_AndNotForAnother()
+    {
+        var (group, loadout, job, revision, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+        var pending = job.PendingItems.Should().ContainSingle().Which;
+        var monitor = ServiceProvider.GetRequiredService<IJobMonitor>();
+        var collectionId = revision.Collection.Id;
+        var otherCollectionId = (await CreateOtherCollection()).Collection.Id;
+        CollectionJobs.IsBusy(monitor, collectionId, loadout).Should().BeFalse();
+
+        var emitted = new System.Collections.Concurrent.ConcurrentQueue<bool>();
+        using var watch = CollectionJobs.ObserveBusy(monitor, collectionId, loadout).Subscribe(emitted.Enqueue);
+
+        using var gate = ArchiveGate.Install(Game.LibraryItemInstallers, 1, "mod1.zip");
+        var review = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, pending.Download, CancellationToken.None, unattended: false);
+        var running = monitor.Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(review);
+        await gate.Entered.WaitAsync(Timeout);
+
+        CollectionJobs.IsBusy(monitor, collectionId, loadout).Should().BeTrue();
+        CollectionJobs.IsBusy(monitor, otherCollectionId, loadout).Should().BeFalse();
+        await WaitUntil(() => emitted.Contains(true));
+
+        gate.Fail(new OperationCanceledException());
+        var act = async () => await running;
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        CollectionJobs.IsBusy(monitor, collectionId, loadout).Should().BeFalse();
+        await WaitUntil(() => emitted.Last() == false);
+    }
+
+    [Fact]
+    public async Task Reinstall_WhileAReviewIsOpen_RefusesAndKeepsTheGroup()
+    {
+        var (group, loadout, job, _, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+        var pending = job.PendingItems.Should().ContainSingle().Which;
+        var monitor = ServiceProvider.GetRequiredService<IJobMonitor>();
+
+        using var gate = ArchiveGate.Install(Game.LibraryItemInstallers, 1, "mod1.zip");
+        var review = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, pending.Download, CancellationToken.None, unattended: false);
+        var running = monitor.Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(review);
+        try
+        {
+            await gate.Entered.WaitAsync(Timeout);
+
+            var act = async () => await CollectionReinstaller.Reinstall(ServiceProvider, group);
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*still being installed*");
+            NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id).IsValid().Should().BeTrue();
+        }
+        finally
+        {
+            gate.Fail(new OperationCanceledException());
+        }
+
+        var wait = async () => await running;
+        await wait.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task TouchesCollection_MatchesBothJobTypes_ByCollectionAndLoadout()
+    {
+        var (_, loadout, installJob, revision, _, items) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+        var otherLoadout = await CreateLoadout();
+        var collection = revision.Collection.Id;
+        var otherCollection = (await CreateOtherCollection()).Collection.Id;
+
+        var download = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, items[0], CancellationToken.None);
+
+        foreach (IJobDefinition job in new IJobDefinition[] { installJob, download })
+        {
+            CollectionJobs.TouchesCollection(job, collection, loadout).Should().BeTrue(job.GetType().Name);
+            CollectionJobs.TouchesCollection(job, collection, otherLoadout).Should().BeFalse(job.GetType().Name);
+            CollectionJobs.TouchesCollection(job, otherCollection, loadout).Should().BeFalse(job.GetType().Name);
+        }
+    }
 }

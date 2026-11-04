@@ -53,7 +53,7 @@ public static class CollectionReinstaller
             var libraryFile = current.LibraryFile;
 
             // An install still running would keep adding mods to the group after it is removed.
-            if (HasUnfinishedInstall(jobMonitor, revision, loadoutId))
+            if (CollectionJobs.IsBusy(jobMonitor, current.Collection.Id, loadoutId))
                 throw new InvalidOperationException("The collection is still being installed. Wait for it to finish, or cancel it, then try again.");
 
             // Which optional items count as installed is only knowable while the old group still exists.
@@ -86,10 +86,4 @@ public static class CollectionReinstaller
         }
     }
 
-    private static bool HasUnfinishedInstall(IJobMonitor jobMonitor, CollectionRevisionMetadata.ReadOnly revision, LoadoutId loadoutId) =>
-        jobMonitor.Jobs.Any(job =>
-            job.Status is JobStatus.Created or JobStatus.Running or JobStatus.Paused &&
-            job.Definition is InstallCollectionJob install &&
-            install.RevisionMetadata.Id == revision.Id &&
-            install.TargetLoadout == loadoutId);
 }

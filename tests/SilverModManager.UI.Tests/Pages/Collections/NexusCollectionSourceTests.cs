@@ -373,6 +373,9 @@ public class NexusCollectionSourceTests(IServiceProvider provider) : AUiTest(pro
         public FakeInstallJobs()
         {
             Monitor.GetObservableChangeSet<InstallCollectionJob>().Returns(_jobs.Connect());
+
+            // The busy predicate also watches single-mod installs; none run in these tests.
+            Monitor.GetObservableChangeSet<InstallCollectionDownloadJob>().Returns(new SourceCache<IJob, JobId>(job => job.Id).Connect());
         }
 
         public BehaviorSubject<JobStatus> Add(CollectionRevisionMetadata.ReadOnly revision, LoadoutId target, JobStatus initial)

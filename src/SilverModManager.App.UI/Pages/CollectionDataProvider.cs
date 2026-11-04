@@ -62,17 +62,17 @@ public class CollectionDataProvider
             {
                 if (downloadEntity.TryGetAsCollectionDownloadNexusMods(out var nexusModsDownload))
                 {
-                    return ToItemModel(nexusModsDownload, collectionGroupObservable);
+                    return ToItemModel(nexusModsDownload, collectionGroupObservable, loadoutId);
                 }
 
                 if (downloadEntity.TryGetAsCollectionDownloadExternal(out var externalDownload))
                 {
-                    return ToItemModel(externalDownload, collectionGroupObservable);
+                    return ToItemModel(externalDownload, collectionGroupObservable, loadoutId);
                 }
 
                 if (downloadEntity.TryGetAsCollectionDownloadBundled(out var bundledDownload))
                 {
-                    return ToItemModel(bundledDownload, collectionGroupObservable);
+                    return ToItemModel(bundledDownload, collectionGroupObservable, loadoutId);
                 }
 
                 throw new UnreachableException();
@@ -95,7 +95,8 @@ public class CollectionDataProvider
 
     private CompositeItemModel<EntityId> ToItemModel(
         CollectionDownloadNexusMods.ReadOnly download,
-        IObservable<Optional<CollectionGroup.ReadOnly>> groupObservable)
+        IObservable<Optional<CollectionGroup.ReadOnly>> groupObservable,
+        LoadoutId loadoutId)
     {
         var itemModel = new CompositeItemModel<EntityId>(download.Id);
 
@@ -122,14 +123,15 @@ public class CollectionDataProvider
             )
         );
 
-        AddInstallAction(itemModel, download.AsCollectionDownload(), statusObservable, groupObservable.ToObservable());
+        AddInstallAction(itemModel, download.AsCollectionDownload(), statusObservable, groupObservable.ToObservable(), loadoutId);
 
         return itemModel;
     }
 
     private CompositeItemModel<EntityId> ToItemModel(
         CollectionDownloadExternal.ReadOnly download,
-        IObservable<Optional<CollectionGroup.ReadOnly>> groupObservable)
+        IObservable<Optional<CollectionGroup.ReadOnly>> groupObservable,
+        LoadoutId loadoutId)
     {
         var itemModel = new CompositeItemModel<EntityId>(download.Id);
 
@@ -175,14 +177,15 @@ public class CollectionDataProvider
             )
         );
 
-        AddInstallAction(itemModel, download.AsCollectionDownload(), statusObservable, groupObservable.ToObservable());
+        AddInstallAction(itemModel, download.AsCollectionDownload(), statusObservable, groupObservable.ToObservable(), loadoutId);
 
         return itemModel;
     }
 
     private CompositeItemModel<EntityId> ToItemModel(
         CollectionDownloadBundled.ReadOnly download,
-        IObservable<Optional<CollectionGroup.ReadOnly>> groupObservable)
+        IObservable<Optional<CollectionGroup.ReadOnly>> groupObservable,
+        LoadoutId loadoutId)
     {
         var itemModel = new CompositeItemModel<EntityId>(download.Id);
 
@@ -190,7 +193,7 @@ public class CollectionDataProvider
         itemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
 
         var statusObservable = _collectionDownloader.GetStatusObservable(download.AsCollectionDownload(), groupObservable).ToObservable();
-        AddInstallAction(itemModel, download.AsCollectionDownload(), statusObservable, groupObservable.ToObservable());
+        AddInstallAction(itemModel, download.AsCollectionDownload(), statusObservable, groupObservable.ToObservable(), loadoutId);
 
         return itemModel;
     }
@@ -218,15 +221,22 @@ public class CollectionDataProvider
         CompositeItemModel<EntityId> itemModel,
         CollectionDownloadEntity.ReadOnly downloadEntity,
         Observable<CollectionDownloadStatus> statusObservable,
-        Observable<Optional<CollectionGroup.ReadOnly>> groupObservable)
+        Observable<Optional<CollectionGroup.ReadOnly>> groupObservable,
+        LoadoutId loadoutId)
     {
+        // A review or a whole-collection install owns the collection while it runs; installing a single mod alongside it would race it.
+        var isBusyObservable = CollectionJobs
+            .ObserveBusy(_jobMonitor, downloadEntity.CollectionRevision.Collection.Id, loadoutId)
+            .ToObservable();
+
         itemModel.AddObservable(
             key: CollectionColumns.Actions.InstallComponentKey,
             shouldAddObservable: ShouldAddObservable(downloadEntity, statusObservable, groupObservable),
             componentFactory: () => new CollectionComponents.InstallAction(
                 downloadEntity: downloadEntity,
                 isInstalledObservable: statusObservable.Select(status => status.IsInstalled(out _)),
-                installJobStatusObservable: GetJobStatusObservable<InstallCollectionDownloadJob>(job => job.Item.Id == downloadEntity.Id).Prepend(JobStatus.None)
+                installJobStatusObservable: GetJobStatusObservable<InstallCollectionDownloadJob>(job => job.Item.Id == downloadEntity.Id).Prepend(JobStatus.None),
+                isBusyObservable: isBusyObservable
             )
         );
     }

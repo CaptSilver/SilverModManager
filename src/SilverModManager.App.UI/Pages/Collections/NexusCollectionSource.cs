@@ -259,15 +259,13 @@ public sealed class NexusCollectionSource : CollectionSource
 
     private IContextMenuItem Reinstall(NexusCollectionLoadoutGroup.ReadOnly group, ICollectionPageHost host)
     {
-        var revisionId = _revision.Id;
         var loadout = _loadout;
         var notifications = Services.GetRequiredService<IWindowNotificationService>();
         var groupName = group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().Name;
 
         // Reinstalling while an install of this collection runs would remove the group under it. The running state
         // starts out false so the item is usable before the job monitor says anything.
-        var canReinstall = Services.GetRequiredService<IJobMonitor>()
-            .HasActiveJob<InstallCollectionJob>(job => job.RevisionMetadata.Id == revisionId && job.TargetLoadout == loadout)
+        var canReinstall = CollectionJobs.ObserveBusy(Services.GetRequiredService<IJobMonitor>(), group.Collection.Id, loadout)
             .Select(isInstalling => isInstalling is false && IsReadOnly)
             .ObserveOn(RxApp.MainThreadScheduler)
             .StartWith(IsReadOnly)
