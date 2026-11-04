@@ -60,7 +60,11 @@ public class Startup
                 .RemoveLauncherShimRefresher()
                 .ReplaceGameArtSource()
                 .RemoveRuntimeDependencyChecker()
-                .AddLogging(builder => builder.AddXunitOutput().SetMinimumLevel(LogLevel.Debug))
+                .AddLogging(builder => builder
+                    .AddXunitOutput()
+                    .SetMinimumLevel(LogLevel.Debug)
+                    // The library providers trace which tx a row's Source was built from; the flaky Source failure needs it in the test output.
+                    .AddFilter("SilverModManager.App.UI.Pages", LogLevel.Trace))
                 .Validate();
     }
 }

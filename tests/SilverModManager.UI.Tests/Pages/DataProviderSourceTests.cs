@@ -15,6 +15,9 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Wabbajack.Models;
+using Microsoft.Extensions.Logging;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.UI.Tests.Windows.Xdnd;
 
 namespace SilverModManager.UI.Tests.Pages;
 
@@ -80,6 +83,39 @@ public class DataProviderSourceTests(IServiceProvider provider) : AUiTest(provid
         var result = await tx.Commit();
 
         await ShouldBeFrom(new ManuallyCreatedArchiveDataProvider(Provider).ObserveLibraryItems(Filter()), result.Remap(file).Id, ModSources.LocalFile);
+    }
+
+    /// <summary>Hands out the given logger for the local-file provider and everything else from the real container.</summary>
+    private sealed class LoggerOverride(IServiceProvider inner, ILogger<LocalFileDataProvider> logger) : IServiceProvider
+    {
+        public object? GetService(Type serviceType) =>
+            serviceType == typeof(ILogger<LocalFileDataProvider>) ? logger : inner.GetService(serviceType);
+    }
+
+    [Fact]
+    public async Task ARowForAFetchedFile_TracesItsId_AndThatItWasFetchedForAModlist()
+    {
+        using var tx = Connection.BeginTransaction();
+        var file = NewLibraryFile(tx, out var id, "fetched.7z");
+        _ = new LocalFile.New(tx, id) { LibraryFile = file, OriginalPath = "/somewhere/fetched.7z" };
+        var row = new WabbajackModlistArchive.New(tx)
+        {
+            ModlistId = id,
+            Identity = FileIdentity.XxHash64(Hash.From(0xFEEDUL)),
+            Size = Size.Zero,
+            Name = "fetched.7z",
+        };
+        tx.Add(row.Id, WabbajackModlistArchive.FetchedFiles, id);
+        var result = await tx.Commit();
+        var fileId = result.Remap(file).Id;
+
+        var logger = new RecordingLoggerOf<LocalFileDataProvider>();
+        var provider = new LocalFileDataProvider(new LoggerOverride(Provider, logger));
+
+        await ShouldBeFrom(provider.ObserveLibraryItems(Filter()), fileId, ModSources.Wabbajack);
+
+        logger.Entries.Should().Contain(e => e.Level == LogLevel.Trace
+            && e.Message.Contains(fileId.ToString()) && e.Message.Contains("fetchedForModlist=True"));
     }
 
     private async Task<WabbajackModlistCardViewModel> ModlistCard(string fileName, string? galleryUrl)
