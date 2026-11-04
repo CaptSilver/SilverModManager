@@ -26,9 +26,12 @@ internal static partial class RawSymlink
 
     private static byte[] Terminated(ReadOnlySpan<byte> bytes) => [.. bytes, 0];
 
+    /// <summary>The NUL-terminated path of <paramref name="rawName"/> inside <paramref name="folder"/>.</summary>
+    internal static byte[] RawPath(string folder, ReadOnlySpan<byte> rawName) => Terminated([.. Encoding.UTF8.GetBytes(folder), (byte)'/', .. rawName]);
+
     internal static void Create(string folder, byte[] rawName, string target)
     {
-        var path = Terminated([.. Encoding.UTF8.GetBytes(folder), (byte)'/', .. rawName]);
+        var path = RawPath(folder, rawName);
         if (Symlink(Terminated(Encoding.UTF8.GetBytes(target)), path) != 0)
         {
             throw new IOException($"symlink failed with errno {Marshal.GetLastPInvokeError()}");
@@ -41,7 +44,7 @@ internal static partial class RawSymlink
     /// <summary>Removes every symbolic link directly in <paramref name="folder"/>, so the folder can be deleted by a .NET cleanup.</summary>
     internal static void RemoveAll(string folder)
     {
-        foreach (var (name, _) in Links(folder)) Unlink(Terminated([.. Encoding.UTF8.GetBytes(folder), (byte)'/', .. name]));
+        foreach (var (name, _) in Links(folder)) Unlink(RawPath(folder, name));
     }
 
     private static List<(byte[] Name, string Target)> Links(string folder)
@@ -58,7 +61,7 @@ internal static partial class RawSymlink
                 var name = new List<byte>();
                 for (var i = 19; Marshal.ReadByte(entry, i) is var b && b != 0; i++) name.Add(b);
                 var buffer = new byte[4096];
-                var length = ReadLink(Terminated([.. Encoding.UTF8.GetBytes(folder), (byte)'/', .. name]), buffer, (nuint)buffer.Length - 1);
+                var length = ReadLink(RawPath(folder, name.ToArray()), buffer, (nuint)buffer.Length - 1);
                 if (length > 0) targets.Add(([.. name], Encoding.UTF8.GetString(buffer, 0, (int)length)));
             }
         }

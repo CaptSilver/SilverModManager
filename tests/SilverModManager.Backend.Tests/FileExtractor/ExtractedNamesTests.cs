@@ -37,10 +37,7 @@ public partial class ExtractedNamesTests : IDisposable
     [LibraryImport("libc", EntryPoint = "write")]
     private static partial nint Write(int fd, byte[] data, nint count);
 
-    [LibraryImport("libc", EntryPoint = "symlink", SetLastError = true)]
-    private static partial int Symlink(byte[] target, byte[] path);
-
-    private byte[] RawPath(byte[] name) => [.. Encoding.UTF8.GetBytes(_root), (byte)'/', .. name, 0];
+    private byte[] RawPath(byte[] name) => RawSymlink.RawPath(_root, name);
 
     // .NET cannot create a name that is not valid UTF-8, so the tree 7z would leave is built with libc.
     private void MakeFolder(byte[] rawName) => Mkdir(RawPath(rawName), 0x1ED).Should().Be(0);
@@ -86,7 +83,7 @@ public partial class ExtractedNamesTests : IDisposable
     public void ALinkStoredAfterAFileAtTheSamePathDoesNotReplaceIt()
     {
         MakeFile(Bytes("same\u008B"), "real");
-        Symlink("elsewhere"u8.ToArray().Append((byte)0).ToArray(), RawPath(Bytes("same\u008B "))).Should().Be(0);
+        RawSymlink.Create(_root, Bytes("same\u008B "), "elsewhere");
 
         Repair(File("same\u008B", 0), Link("same\u008B ", 1));
 
@@ -97,7 +94,7 @@ public partial class ExtractedNamesTests : IDisposable
     [Fact]
     public void AnUnaddressableLinkIsRemovedWhateverItPointsAt()
     {
-        Symlink("elsewhere"u8.ToArray().Append((byte)0).ToArray(), RawPath(Bytes("s\u008B "))).Should().Be(0);
+        RawSymlink.Create(_root, Bytes("s\u008B "), "elsewhere");
         MakeFile(Bytes("keep.txt"), "kept");
 
         Repair(new ExtractedNames.Kept(Bytes("s\u008B "), 0, IsDirectory: false, IsSymlink: true, Drop: true));

@@ -224,8 +224,9 @@ public class SevenZipExtractionTests : AFileExtractorTest
     }
 
     // The link's name is not UTF-8 and ends in a space, so 7z cannot be told to leave it out and writes it itself, over
-    // the link the destination already holds at that name. ExtractedNames.Repair unlinks it at once; this pins that
-    // nothing is left pointing outside however the two layers share the work (the sweep alone is covered in ExtractedLinksTests).
+    // the link the destination already holds at that name. ExtractedNames.Repair unlinks it at once. 7z rewrites an
+    // absolute target to sit under the destination, so no target here can start with the outside folder; what is pinned is
+    // that no link from the archive survives at all (the sweep alone is covered in ExtractedLinksTests).
     [Fact]
     public async Task AnUnaddressableSymlinkOverAnExistingLinkDoesNotLeaveALinkOutside()
     {
@@ -250,7 +251,7 @@ public class SevenZipExtractionTests : AFileExtractorTest
             await FileExtractor.ExtractAllAsync(archive, destination, TestContext.Current.CancellationToken);
 
             File.ReadAllText(Path.Combine(destination.ToString(), "ok.txt")).Should().Be("fine");
-            RawSymlink.Targets(destination.ToString()).Should().NotContain(t => t.StartsWith(outside.ToString(), StringComparison.Ordinal), "nothing in the destination may point outside it");
+            RawSymlink.Targets(destination.ToString()).Should().BeEmpty("a link whose name cannot be addressed is dropped, not left pointing anywhere");
             File.ReadAllText(secret.ToString()).Should().Be("private");
         }
         finally
