@@ -31,7 +31,7 @@ public class KrakenTests
     [Fact]
     public void ARefusalNamesTheScriptThatBuildsTheLibrary()
     {
-        LibOozResolver.NotFoundMessage.Should().Contain("scripts/build-ooz.sh");
+        LibOozResolver.NotFoundMessage(["/app/runtimes/linux-x64/native/libooz.so"]).Should().Contain("scripts/build-ooz.sh").And.Contain("/app/runtimes/linux-x64/native/libooz.so");
     }
 
     [Fact]
