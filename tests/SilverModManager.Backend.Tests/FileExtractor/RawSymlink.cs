@@ -24,6 +24,22 @@ internal static partial class RawSymlink
     [LibraryImport("libc", EntryPoint = "unlink", SetLastError = true)]
     private static partial int Unlink(byte[] path);
 
+    [LibraryImport("libc", EntryPoint = "open", SetLastError = true)]
+    private static partial int Open(byte[] path, int flags, uint mode);
+
+    [LibraryImport("libc", EntryPoint = "close")]
+    private static partial int Close(int fd);
+
+    [LibraryImport("libc", EntryPoint = "mkdir", SetLastError = true)]
+    private static partial int MkDir(byte[] path, uint mode);
+
+    [LibraryImport("libc", EntryPoint = "rmdir", SetLastError = true)]
+    private static partial int RmDir(byte[] path);
+
+    // statx has the same struct layout on every Linux architecture, unlike stat.
+    [LibraryImport("libc", EntryPoint = "statx", SetLastError = true)]
+    private static partial int StatX(int dirFd, byte[] path, int flags, uint mask, byte[] buffer);
+
     private static byte[] Terminated(ReadOnlySpan<byte> bytes) => [.. bytes, 0];
 
     /// <summary>The NUL-terminated path of <paramref name="rawName"/> inside <paramref name="folder"/>.</summary>
@@ -36,6 +52,38 @@ internal static partial class RawSymlink
         {
             throw new IOException($"symlink failed with errno {Marshal.GetLastPInvokeError()}");
         }
+    }
+
+    /// <summary>Creates an empty file named <paramref name="rawName"/> with <paramref name="mode"/>; the umask can only remove bits, so tests pass modes it keeps.</summary>
+    internal static void CreateFile(string folder, byte[] rawName, UnixFileMode mode)
+    {
+        const int createExclusive = 0x40 | 0x80; // O_CREAT | O_EXCL
+        var fd = Open(RawPath(folder, rawName), createExclusive | 1, (uint)mode); // O_WRONLY
+        if (fd < 0) throw new IOException($"open failed with errno {Marshal.GetLastPInvokeError()}");
+        Close(fd);
+    }
+
+    /// <summary>Creates a folder named <paramref name="rawName"/> with <paramref name="mode"/>.</summary>
+    internal static void CreateFolder(string folder, byte[] rawName, UnixFileMode mode)
+    {
+        if (MkDir(RawPath(folder, rawName), (uint)mode) != 0) throw new IOException($"mkdir failed with errno {Marshal.GetLastPInvokeError()}");
+    }
+
+    /// <summary>Removes the file, link or empty folder <paramref name="rawName"/>; the name may hold <c>/</c> to reach into raw-named folders.</summary>
+    internal static void Remove(string folder, byte[] rawName)
+    {
+        var path = RawPath(folder, rawName);
+        if (Unlink(path) != 0) RmDir(path);
+    }
+
+    /// <summary>The permission bits of <paramref name="rawName"/> itself, never of what it links to.</summary>
+    internal static UnixFileMode ModeOf(string folder, byte[] rawName)
+    {
+        const int noFollow = 0x100; // AT_SYMLINK_NOFOLLOW
+        const uint basicStats = 0x7ff;
+        var buffer = new byte[256];
+        if (StatX(-100, RawPath(folder, rawName), noFollow, basicStats, buffer) != 0) throw new IOException($"statx failed with errno {Marshal.GetLastPInvokeError()}");
+        return (UnixFileMode)(BitConverter.ToUInt16(buffer, 28) & 0xFFF);
     }
 
     /// <summary>The target text of every symbolic link directly in <paramref name="folder"/>, whatever its name's bytes.</summary>

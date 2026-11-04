@@ -69,6 +69,54 @@ public class SevenZipExtractionTests : AFileExtractorTest
         File.GetUnixFileMode(secretDir.ToString()).Should().Be(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
     }
 
+    // .NET lists a name that is not valid UTF-8 with replacement characters, so the path it hands back names nothing.
+    // Normalising must still reach those entries, and still leave a link with such a name alone.
+    [Fact]
+    public async Task NormalizingModesReachesEntriesWhoseNamesAreNotUtf8()
+    {
+        await using var outside = TemporaryFileManager.CreateFolder();
+        var secret = outside.Path.Combine("secret.txt");
+        await secret.WriteAllTextAsync("private", TestContext.Current.CancellationToken);
+        File.SetUnixFileMode(secret.ToString(), UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        var secretDir = outside.Path.Combine("secret-dir");
+        secretDir.CreateDirectory();
+        File.SetUnixFileMode(secretDir.ToString(), UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+        await using var extracted = TemporaryFileManager.CreateFolder();
+        var root = extracted.Path.ToString();
+        byte[] file = [(byte)'f', 0xFF, (byte)'a'];
+        byte[] script = [(byte)'s', 0xFE];
+        byte[] folder = [(byte)'d', 0xFD];
+        byte[] fileLink = [(byte)'l', 0xFC];
+        byte[] folderLink = [(byte)'m', 0xFB];
+        RawSymlink.CreateFile(root, file, 0);
+        RawSymlink.CreateFile(root, script, UnixFileMode.UserExecute);
+        RawSymlink.CreateFolder(root, folder, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        RawSymlink.CreateFile(root, [.. folder, (byte)'/', .. "inner.txt"u8], 0);
+        RawSymlink.Create(root, fileLink, secret.ToString());
+        RawSymlink.Create(root, folderLink, secretDir.ToString());
+
+        try
+        {
+            SevenZipExtractor.NormalizeModes(root);
+
+            var regular = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
+            var executable = regular | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
+            RawSymlink.ModeOf(root, file).Should().Be(regular);
+            RawSymlink.ModeOf(root, script).Should().Be(executable);
+            RawSymlink.ModeOf(root, folder).Should().Be(executable);
+            RawSymlink.ModeOf(root, [.. folder, (byte)'/', .. "inner.txt"u8]).Should().Be(regular, "a folder whose name is not UTF-8 is entered");
+            File.GetUnixFileMode(secret.ToString()).Should().Be(UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            File.GetUnixFileMode(secretDir.ToString()).Should().Be(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+        finally
+        {
+            // A name that is not UTF-8 cannot be deleted by the temporary folder's cleanup.
+            RawSymlink.Remove(root, [.. folder, (byte)'/', .. "inner.txt"u8]);
+            foreach (var name in new[] { file, script, fileLink, folderLink, folder }) RawSymlink.Remove(root, name);
+        }
+    }
+
     // 7z 26.05 prints no "Folder" line for a .7z entry; the D in its attributes is the only sign of a folder.
     [Theory]
     [InlineData("Attributes = D", true)]

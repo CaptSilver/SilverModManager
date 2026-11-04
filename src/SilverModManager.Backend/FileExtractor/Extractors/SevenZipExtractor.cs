@@ -137,25 +137,28 @@ public class SevenZipExtractor : IExtractor
     {
         if (!Directory.Exists(root)) return;
 
-        var pending = new Stack<string>();
-        pending.Push(root);
+        // Walked by name bytes: .NET cannot spell a name that is not valid UTF-8, and its chmod follows links.
+        // An archive can carry symlinks, so a link is never touched: its target may be outside the extraction folder.
+        File.SetUnixFileMode(root, Executable);
+        var pending = new Stack<byte[]>();
+        pending.Push(RawFolderWalk.Terminated(root));
         while (pending.TryPop(out var directory))
         {
-            // A directory has to be fixed before it can be listed.
-            File.SetUnixFileMode(directory, Executable);
-            foreach (var file in Directory.EnumerateFiles(directory))
+            foreach (var entry in RawFolderWalk.Children(directory))
             {
-                // An archive can carry symlinks and chmod follows them, so a link is never touched:
-                // its target may be outside the extraction folder.
-                if (new FileInfo(file).LinkTarget is not null) continue;
-                var executable = File.GetUnixFileMode(file).HasFlag(UnixFileMode.UserExecute);
-                File.SetUnixFileMode(file, executable ? Executable : RegularFile);
-            }
-
-            foreach (var child in Directory.EnumerateDirectories(directory))
-            {
-                if (new DirectoryInfo(child).LinkTarget is not null) continue;
-                pending.Push(child);
+                switch (entry.Kind)
+                {
+                    case RawFolderWalk.Kind.Link:
+                        continue;
+                    case RawFolderWalk.Kind.Folder:
+                        // A directory has to be fixed before it can be listed.
+                        RawFolderWalk.Chmod(entry.Path, Executable);
+                        pending.Push(entry.Path);
+                        break;
+                    default:
+                        RawFolderWalk.Chmod(entry.Path, entry.Mode.HasFlag(UnixFileMode.UserExecute) ? Executable : RegularFile);
+                        break;
+                }
             }
         }
     }
