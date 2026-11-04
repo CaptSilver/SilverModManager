@@ -115,7 +115,7 @@ public sealed class SteamLaunchOptionEmitter(IToolManager tools, IConnection con
         var skipped = DescribeSkipped(overrides, launcherSkipArguments, spec, primaryExe, needsApp);
         // With nothing else to list, the other manager is the whole reason for the warning.
         if (skipped.Length == 0 && finding.OtherManager is { } manager)
-            skipped = $"* {manager} may change the game folder on its own.{Environment.NewLine}";
+            skipped = $"* {MarkdownText.Inline(manager)} may change the game folder on its own.{Environment.NewLine}";
         return Create(installation, loadoutName, finding, skipped, lineToWrite);
     }
 

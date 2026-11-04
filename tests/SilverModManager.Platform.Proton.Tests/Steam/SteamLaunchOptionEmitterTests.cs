@@ -346,6 +346,16 @@ public class SteamLaunchOptionDecisionTests
     }
 
     [Fact]
+    public void AnOtherManagerNamedByTheLaunchLineIsEscapedInTheMoreDetails()
+    {
+        const string Hostile = "[x](file:///etc/passwd)";
+        var diagnostic = Evaluate(new SteamLaunchOptionEmitter.Finding(Hostile, $"\"{Hostile}\" # %command%"), LinkPlan, null);
+
+        diagnostic.Should().NotBeNull();
+        SkippedOf(diagnostic!).Should().Contain($"* {MarkdownText.Inline(Hostile)} may change the game folder");
+    }
+
+    [Fact]
     public void LinkedFilesWithoutARunToolSayNothing()
     {
         Evaluate(NotOurs, LinkPlan, null).Should().BeNull();

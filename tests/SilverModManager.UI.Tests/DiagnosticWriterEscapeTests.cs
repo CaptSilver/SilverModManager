@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Values;
 using SilverModManager.App.UI.DiagnosticSystem;
+using SilverModManager.Games.FromSoft;
+using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.UI.Tests;
@@ -91,8 +93,27 @@ public class DiagnosticWriterEscapeTests
 
         Fill(DiagnosticWriterMode.Markdown, "List:\n", (writer, state) => writer.WriteValueType(ref state, new MarkdownFragment(fragment)))
             .Should().Be("List:\n" + fragment);
-        Fill(DiagnosticWriterMode.PlainText, "List:\n", (writer, state) => writer.WriteValueType(ref state, new MarkdownFragment(fragment)))
-            .Should().Be("List:\n" + fragment);
+    }
+
+    [Fact]
+    public void Test_AMarkdownFragmentInPlainText_ShowsItsTextWithoutTheMarkup()
+    {
+        var fragment = MarkdownText.Inline("chr/c0000_a.anibnd.dcx") + " and `a_b`";
+
+        Fill(DiagnosticWriterMode.PlainText, "List: ", (writer, state) => writer.WriteValueType(ref state, new MarkdownFragment(fragment)))
+            .Should().Be("List: chr/c0000_a.anibnd.dcx and a_b");
+    }
+
+    [Fact]
+    public void Test_AMergeRefusalThroughTheRealWriter_ShowsItsEscapesOnceInMarkdownAndNotAtAllInPlainText()
+    {
+        const string path = "chr/c0000_a.anibnd.dcx";
+        var message = new MergeRefusedException(new MergeRefusal(path, MergeStrategy.ParamRows, "why")).Message;
+        var diagnostic = FromSoftDiagnostics.CreateMergeRefused(new MarkdownFragment(message), path, "param-rows");
+
+        var details = diagnostic.FormatDetails(Writer, DiagnosticWriterMode.Markdown);
+        details.Should().Contain("c0000\\_a").And.NotContain("c0000\\\\\\_a");
+        diagnostic.FormatSummary(Writer, DiagnosticWriterMode.PlainText).Should().Contain(path).And.NotContain("\\");
     }
 
     [Fact]
