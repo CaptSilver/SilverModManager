@@ -12,6 +12,22 @@ internal static class SrgbTransfer
     /// <summary>sRGB-encoded value to linear value.</summary>
     public static readonly byte[] ToLinear = Build(Decode);
 
+    /// <summary>The linear value, in 0..1, of each sRGB-encoded byte.</summary>
+    public static readonly double[] LinearValues = Enumerable.Range(0, 256).Select(i => Decode(i / 255.0)).ToArray();
+
+    // Linear values where the nearest sRGB byte changes: byte v owns [Boundaries[v - 1], Boundaries[v]).
+    private static readonly double[] Boundaries = Enumerable.Range(0, 255).Select(i => Decode((i + 0.5) / 255.0)).ToArray();
+
+    /// <summary>
+    /// The sRGB byte nearest to a linear value in 0..1 (clamped), found by searching the byte boundaries so it agrees
+    /// exactly with rounding the encoded value, without a <c>Math.Pow</c> per channel.
+    /// </summary>
+    public static byte EncodeLinear(double linear)
+    {
+        var at = Array.BinarySearch(Boundaries, linear);
+        return (byte)(at >= 0 ? at + 1 : ~at);
+    }
+
     /// <summary>Maps the colour channels of tightly packed RGBA pixels through <paramref name="table"/>, in place.</summary>
     public static void Apply(Span<byte> rgba, byte[] table)
     {

@@ -721,4 +721,118 @@ public class DdsRecompressorTests(ITestOutputHelper output)
 
         Assert.True(Enumerable.SequenceEqual(expected, actual), $"{name}: {string.Join(',', actual)}");
     }
+
+    private static double Linear(double encoded)
+    {
+        var c = encoded / 255.0;
+        return c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
+    }
+
+    private static int Srgb(double linear)
+    {
+        var c = linear <= 0.0031308 ? linear * 12.92 : 1.055 * Math.Pow(linear, 1 / 2.4) - 0.055;
+        return (int)Math.Round(c * 255);
+    }
+
+    private static byte[] CheckerSource(DxgiFormat format, byte dark, byte light)
+    {
+        var pixels = new byte[4 * 4 * 4];
+        for (var i = 0; i < 16; i++)
+        {
+            var value = (i % 4 + i / 4) % 2 == 0 ? dark : light;
+            pixels[i * 4] = pixels[i * 4 + 1] = pixels[i * 4 + 2] = value;
+            pixels[i * 4 + 3] = 255;
+        }
+        return Dx10Source(format, 4, 4, pixels);
+    }
+
+    private static ColorRgba32[] Level(byte[] dds, int level, int width, int height)
+    {
+        var header = DdsHeader.Read(dds);
+        var data = dds.AsSpan((int)header.LevelOffset(0, level), (int)header.LevelSize(level)).ToArray();
+        return header.IsBlockCompressed
+            ? new BcDecoder().DecodeRaw(data, Math.Max(width, 4), Math.Max(height, 4), CompressionFormat.Bc7)
+            : header.Reader!.Unpack(data, width, height);
+    }
+
+    public static TheoryData<DxgiFormat, DxgiFormat> UncompressedMipPairs => new()
+    {
+        { DxgiFormat.R8G8B8A8_UNORM, DxgiFormat.R8G8B8A8_UNORM },
+        { DxgiFormat.R8G8B8A8_UNORM_SRGB, DxgiFormat.R8G8B8A8_UNORM_SRGB },
+        { DxgiFormat.R8G8B8A8_UNORM, DxgiFormat.R8G8B8A8_UNORM_SRGB },
+        { DxgiFormat.R8G8B8A8_UNORM_SRGB, DxgiFormat.R8G8B8A8_UNORM },
+    };
+
+    [Theory]
+    [MemberData(nameof(UncompressedMipPairs))]
+    public async Task Recompress_UncompressedTarget_FiltersMipsInTheTargetsSpace(DxgiFormat source, DxgiFormat target)
+    {
+        var result = await Recompress(CheckerSource(source, 64, 192), new DdsTarget(4, 4, 0, target));
+
+        // texconv converts first and filters after, so an uncompressed target averages in its own space.
+        double dark = 64, light = 192;
+        if (source.IsSrgb() && !target.IsSrgb()) { dark = Math.Round(255 * Linear(64)); light = Math.Round(255 * Linear(192)); }
+        // The unorm -> srgb transfer reads the stored byte as a linear value and encodes it.
+        if (!source.IsSrgb() && target.IsSrgb()) { dark = Srgb(64 / 255.0); light = Srgb(192 / 255.0); }
+        var expected = target.IsSrgb()
+            ? Srgb((Linear(dark) + Linear(light)) / 2)
+            : (int)Math.Floor((dark + light) / 2 + 0.5);
+
+        var level = Level(result, 1, 2, 2);
+        Assert.All(level, p =>
+        {
+            Assert.Equal(expected, p.r);
+            Assert.Equal(expected, p.g);
+            Assert.Equal(expected, p.b);
+        });
+    }
+
+    [Theory]
+    [InlineData(DxgiFormat.R8G8B8A8_UNORM, DxgiFormat.BC7_UNORM_SRGB)]
+    [InlineData(DxgiFormat.R8G8B8A8_UNORM_SRGB, DxgiFormat.BC7_UNORM)]
+    [InlineData(DxgiFormat.R8G8B8A8_UNORM_SRGB, DxgiFormat.BC7_UNORM_SRGB)]
+    public async Task Recompress_BlockTarget_FiltersMipsInTheSourcesSpaceThenConverts(DxgiFormat source, DxgiFormat target)
+    {
+        var result = await Recompress(CheckerSource(source, 64, 192), new DdsTarget(4, 4, 0, target));
+
+        // texconv filters in the source's space and converts when it compresses.
+        var mean = source.IsSrgb() ? Srgb((Linear(64) + Linear(192)) / 2) : 128;
+        var expected = source.IsSrgb() == target.IsSrgb() ? mean
+            : target.IsSrgb() ? Srgb(mean / 255.0)
+            : (int)Math.Round(255 * Linear(mean));
+
+        var level = Level(result, 1, 2, 2);
+        Assert.InRange(level[0].r, expected - 3, expected + 3);
+        Assert.InRange(level[0].g, expected - 3, expected + 3);
+    }
+
+    [Theory]
+    [InlineData(DxgiFormat.R8G8B8A8_UNORM, 128)]
+    [InlineData(DxgiFormat.R8G8B8A8_UNORM_SRGB, 188)]
+    public async Task Recompress_TopLevelResize_AveragesAnSrgbSourceInLinearLight(DxgiFormat format, int expected)
+    {
+        byte[] pixels = [0, 0, 0, 255, 255, 255, 255, 255];
+
+        var result = await Recompress(Dx10Source(format, 2, 1, pixels), new DdsTarget(1, 1, 1, format));
+
+        var pixel = Level(result, 0, 1, 1).Single();
+        Assert.InRange(pixel.r, expected - 1, expected + 1);
+        Assert.InRange(pixel.b, expected - 1, expected + 1);
+        Assert.Equal(255, pixel.a);
+    }
+
+    [Fact]
+    public async Task Recompress_NonMultipleOfFourBlockTarget_KeepsColourAtTheEdges()
+    {
+        var pixels = new byte[3 * 5 * 4];
+        for (var i = 0; i < 15; i++) { pixels[i * 4] = 220; pixels[i * 4 + 1] = 40; pixels[i * 4 + 2] = 90; pixels[i * 4 + 3] = 255; }
+
+        var result = await Recompress(Dx10Source(DxgiFormat.R8G8B8A8_UNORM, 3, 5, pixels), new DdsTarget(3, 5, 0, DxgiFormat.BC7_UNORM));
+
+        var header = DdsHeader.Read(result);
+        Assert.Equal((3, 5, 3), (header.Width, header.Height, header.MipLevels));
+        var top = Level(result, 0, 3, 5);
+        Assert.InRange(top[2 * 4 + 2].r, 217, 223);
+        Assert.InRange(top[2 * 4 + 2].g, 37, 43);
+    }
 }

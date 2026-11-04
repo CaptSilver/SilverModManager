@@ -58,28 +58,21 @@ public static class DdsRecompressor
             token.ThrowIfCancellationRequested();
             var data = dds.Slice((int)header.TopLevelOffset(face), (int)header.LevelSize(0));
             var pixels = DecodeFace(header, decoder, decodeFormat, data);
-            faces.Add(Resize(pixels, header.Width, header.Height, target.Width, target.Height));
+            faces.Add(Resize(pixels, header.Width, header.Height, target.Width, target.Height, header.IsSrgb));
         }
 
-        // BCnEncoder builds the mip chain and hands back one level at a time as RGBA. Each level then takes the
-        // sRGB transfer if the source and target disagree about it, and is packed by UncompressedWriter or sent
-        // through a second encoder with mip generation off. The transfer runs after the filtering, so block targets
-        // match texconv, which filters in the source's space and converts at compress time.
-        var mipSource = new BcEncoder
-        {
-            OutputOptions =
-            {
-                GenerateMipMaps = true,
-                Format = CompressionFormat.Rgba,
-                MaxMipMapLevel = target.MipLevels != 0 ? target.MipLevels : -1,
-            },
-        };
+        // MipChain builds the levels from the previous one. A block target filters in the source's colour space and
+        // takes the sRGB transfer per level afterwards, as texconv does when it compresses. An uncompressed target
+        // takes the transfer first and filters in its own space, as texconv does when it converts. Each level is then
+        // packed by UncompressedWriter, or padded to whole blocks and sent through a second encoder with mip
+        // generation off.
         var levelEncoder = new BcEncoder
         {
             OutputOptions = { Quality = CompressionQuality.Balanced, GenerateMipMaps = false, Format = targetFormat },
         };
         var transfer = header.IsSrgb == target.Format.IsSrgb() ? null : target.Format.IsSrgb() ? SrgbTransfer.ToSrgb : SrgbTransfer.ToLinear;
-        var levels = mipSource.CalculateNumberOfMipLevels(target.Width, target.Height);
+        var filterInLinear = packed ? target.Format.IsSrgb() : header.IsSrgb;
+        var levels = MipChain.FullLength(target.Width, target.Height);
         if (target.MipLevels != 0) levels = Math.Min(levels, target.MipLevels);
 
         // Every level of every face is encoded before the first byte goes to the output, so a failure here
@@ -87,15 +80,29 @@ public static class DdsRecompressor
         var encoded = new List<byte[][]>(faces.Count);
         foreach (var face in faces)
         {
+            var top = Bytes(face).ToArray();
+            if (packed && transfer is not null) SrgbTransfer.Apply(top, transfer);
+
             var faceLevels = new byte[levels][];
-            for (var level = 0; level < levels; level++)
+            var index = 0;
+            foreach (var level in MipChain.Build(new RgbaLevel(target.Width, target.Height, top), filterInLinear, levels))
             {
                 token.ThrowIfCancellationRequested();
-                var rgba = mipSource.EncodeToRawBytes(Bytes(face), target.Width, target.Height, PixelFormat.Rgba32, level, out var width, out var height);
-                if (transfer is not null) SrgbTransfer.Apply(rgba, transfer);
-                faceLevels[level] = packed
-                    ? UncompressedWriter.Pack(rgba, target.Format)
-                    : levelEncoder.EncodeToRawBytes(rgba, width, height, PixelFormat.Rgba32, 0, out _, out _);
+                if (packed)
+                {
+                    faceLevels[index++] = UncompressedWriter.Pack(level.Pixels, target.Format);
+                    continue;
+                }
+
+                // The filter's output stays untouched: the next level is built from it, not from the converted copy.
+                var pixels = level.Pixels;
+                if (transfer is not null)
+                {
+                    pixels = (byte[])pixels.Clone();
+                    SrgbTransfer.Apply(pixels, transfer);
+                }
+                var padded = MipChain.Pad(level with { Pixels = pixels });
+                faceLevels[index++] = levelEncoder.EncodeToRawBytes(padded.Pixels, padded.Width, padded.Height, PixelFormat.Rgba32, 0, out _, out _);
             }
             encoded.Add(faceLevels);
         }
@@ -131,9 +138,14 @@ public static class DdsRecompressor
 
     private static ReadOnlySpan<byte> Bytes(ColorRgba32[] pixels) => MemoryMarshal.AsBytes(pixels.AsSpan());
 
-    private static ColorRgba32[] Resize(ColorRgba32[] pixels, int width, int height, int newWidth, int newHeight)
+    private static ColorRgba32[] Resize(ColorRgba32[] pixels, int width, int height, int newWidth, int newHeight, bool srgb)
     {
         if (width == newWidth && height == newHeight) return pixels;
+
+        // An sRGB source is resized in linear light on float pixels, so a 0/255 edge averages to 188 and not 128.
+        // Skia accepts RgbaF32 in SKBitmap.Resize; if a future version stops, resize the stored bytes (gamma space)
+        // instead of failing, since the mips, the bulk of the filtering, are linear regardless.
+        if (srgb && TryResizeLinear(pixels, width, height, newWidth, newHeight) is { } linear) return linear;
 
         using var source = new SKBitmap(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul));
         MemoryMarshal.AsBytes(pixels.AsSpan()).CopyTo(source.GetPixelSpan());
@@ -143,6 +155,32 @@ public static class DdsRecompressor
         using var resized = source.Resize(targetInfo, new SKSamplingOptions(SKCubicResampler.Mitchell))
                             ?? throw new InvalidOperationException($"Could not resize a {width}x{height} texture to {newWidth}x{newHeight}");
         return MemoryMarshal.Cast<byte, ColorRgba32>(resized.GetPixelSpan()).ToArray();
+    }
+
+    private static ColorRgba32[]? TryResizeLinear(ColorRgba32[] pixels, int width, int height, int newWidth, int newHeight)
+    {
+        using var source = new SKBitmap(new SKImageInfo(width, height, SKColorType.RgbaF32, SKAlphaType.Unpremul));
+        var floats = MemoryMarshal.Cast<byte, float>(source.GetPixelSpan());
+        var table = SrgbTransfer.LinearValues;
+        for (var i = 0; i < pixels.Length; i++)
+        {
+            floats[i * 4] = (float)table[pixels[i].r];
+            floats[i * 4 + 1] = (float)table[pixels[i].g];
+            floats[i * 4 + 2] = (float)table[pixels[i].b];
+            floats[i * 4 + 3] = pixels[i].a / 255f;
+        }
+
+        using var resized = source.Resize(new SKImageInfo(newWidth, newHeight, SKColorType.RgbaF32, SKAlphaType.Unpremul),
+            new SKSamplingOptions(SKCubicResampler.Mitchell));
+        if (resized is null) return null;
+
+        var result = new ColorRgba32[newWidth * newHeight];
+        var back = MemoryMarshal.Cast<byte, float>(resized.GetPixelSpan());
+        for (var i = 0; i < result.Length; i++)
+            result[i] = new ColorRgba32(
+                SrgbTransfer.EncodeLinear(back[i * 4]), SrgbTransfer.EncodeLinear(back[i * 4 + 1]), SrgbTransfer.EncodeLinear(back[i * 4 + 2]),
+                (byte)Math.Clamp(Math.Round(back[i * 4 + 3] * 255f), 0, 255));
+        return result;
     }
 
     /// <summary>The decoder for the stored pixels of a source; every layout <see cref="DdsHeader"/> accepts has one.</summary>
