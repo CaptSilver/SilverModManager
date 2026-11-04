@@ -310,6 +310,7 @@ public static partial class CollectionUpdater
                 change.Available.Download,
                 change.Installed.Group,
                 LoadoutItem.Load(db, change.Installed.Group).IsDisabled))
+            .Concat(CarriedReplacements(db, group, plan))
             .ToArray();
 
         using (var tx = connection.BeginTransaction())
@@ -354,6 +355,28 @@ public static partial class CollectionUpdater
 
         var dropped = plan.Dropped.Select(mod => new DroppedMod(mod.Group, mod.Name)).ToArray();
         return new CollectionSwitch(NexusCollectionLoadoutGroup.Load(connection.Db, group.Id), newRevision, newLibraryFile, plan, itemsToInstall, dropped, replaced);
+    }
+
+    /// <summary>
+    /// The replacements the old revision's pending rows still carry, matched to the download the new revision lists for the
+    /// same mod. The switch deletes those rows, and without this a mod that is still pending would lose the stamp that says
+    /// which older version it replaces. A row whose mod the new revision no longer lists has nothing to carry to.
+    /// </summary>
+    private static IEnumerable<ReplacedSlot> CarriedReplacements(IDb db, NexusCollectionLoadoutGroup.ReadOnly group, CollectionUpdatePlan plan)
+    {
+        // A pending mod is not installed, so the planner sees it as new.
+        var candidates = plan.Added.ToList();
+        foreach (var row in PendingInstalls.For(db, group.Id))
+        {
+            if (PendingInstalls.ReplacementOf(db, row) is not { } slot) continue;
+
+            var (file, mod) = Identify(row.Download, group.LibraryFile);
+            var match = candidates.FirstOrDefault(next => next.File == file) ?? candidates.FirstOrDefault(next => next.Mod == mod);
+            if (match is null) continue;
+
+            candidates.Remove(match);
+            yield return slot with { NewDownload = match.Download };
+        }
     }
 
     /// <summary>

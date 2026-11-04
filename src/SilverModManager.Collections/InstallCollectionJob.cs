@@ -49,6 +49,12 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
     /// </summary>
     public bool PreserveEnabledState { get; init; }
 
+    /// <summary>
+    /// Replacements an earlier group of this collection carried on its pending rows. A reinstall removes that group and with it
+    /// the rows, so the job stamps them again on whichever of these mods go pending, and finishes the ones that install.
+    /// </summary>
+    public IReadOnlyList<ReplacedSlot> CarriedReplacements { get; init; } = [];
+
     public required IServiceProvider ServiceProvider { get; init; }
     public required IFileStore FileStore { get; init; }
     public required ILibraryService LibraryService { get; init; }
@@ -110,7 +116,8 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         NexusModsCollectionLibraryFile.ReadOnly source,
         CollectionRevisionMetadata.ReadOnly revisionMetadata,
         CollectionDownload.ReadOnly[] items,
-        bool preserveEnabledState = false)
+        bool preserveEnabledState = false,
+        IReadOnlyList<ReplacedSlot>? carriedReplacements = null)
     {
         var connection = provider.GetRequiredService<IConnection>();
         var group = CollectionDownloader.GetCollectionGroup(revisionMetadata, target, connection.Db);
@@ -122,6 +129,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             Group = group,
             Items = items,
             PreserveEnabledState = preserveEnabledState,
+            CarriedReplacements = carriedReplacements ?? [],
             TargetLoadout = target,
             SourceCollection = source,
             RevisionMetadata = revisionMetadata,
@@ -209,6 +217,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         var replacements = PendingInstalls.For(db, collectionGroup.Id)
             .Select(row => PendingInstalls.ReplacementOf(db, row))
             .OfType<ReplacedSlot>()
+            .Concat(CarriedReplacements)
             .ToArray();
 
         // Each mod's install retracts its pending row and with it the stamp, so a cancel or a failure in any step from here on
@@ -288,6 +297,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         }
         finally
         {
+            await PendingInstalls.StampReplacements(Connection, collectionGroup.Id, CarriedReplacements);
             await CollectionUpdater.FinishReplacements(ServiceProvider, Connection, TargetLoadout, collectionGroup.Id, replacements);
         }
     }

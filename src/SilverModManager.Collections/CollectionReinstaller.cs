@@ -80,12 +80,18 @@ public static class CollectionReinstaller
             if (missing.Length > 0)
                 throw new InvalidOperationException($"These mods are no longer in the library: {string.Join(", ", missing)}. Download them again from the collection page first.");
 
+            // The rows go with the group, and the new group's mods are installed from scratch, so what they say is read now.
+            var carried = PendingInstalls.For(connection.Db, current.Id)
+                .Select(row => PendingInstalls.ReplacementOf(connection.Db, row))
+                .OfType<ReplacedSlot>()
+                .ToArray();
+
             if (beforeRemove is not null) await beforeRemove();
 
             await serviceProvider.GetRequiredService<ILoadoutManager>().RemoveCollection(CollectionGroupId.From(current.Id));
 
             // The job reads the group from the database, finds none, and creates a new one.
-            return InstallCollectionJob.Create(serviceProvider, loadoutId, libraryFile, revision, items);
+            return InstallCollectionJob.Create(serviceProvider, loadoutId, libraryFile, revision, items, carriedReplacements: carried);
         }
         finally
         {

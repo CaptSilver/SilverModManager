@@ -263,6 +263,13 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
     }
 
     [Fact]
+    public void ResultText_JoinsThePendingCountAndTheKeptOldVersionSentence()
+    {
+        CollectionUpdateFlow.ResultText(ResultWith(0, 1, pending: 1))
+            .Should().Be("Collection updated. 1 mod needs review. An older version was kept in My Mods for mods that failed or still need review.");
+    }
+
+    [Fact]
     public void TheToastCountsTheRulesThatCouldNotBeCarriedOver()
     {
         CollectionUpdateFlow.ResultText(ResultWith(0, 0, skippedRules: ["a wins over b", "c wins over d"]))
