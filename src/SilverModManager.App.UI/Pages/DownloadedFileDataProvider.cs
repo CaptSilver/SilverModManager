@@ -1,5 +1,7 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -18,9 +20,10 @@ namespace SilverModManager.App.UI.Pages;
 [UsedImplicitly]
 internal class DownloadedFileDataProvider : ALibraryFileDataProvider<DownloadedFile.ReadOnly>
 {
-    public DownloadedFileDataProvider(IServiceProvider serviceProvider) : this(serviceProvider.GetRequiredService<IConnection>(), new GameNames(serviceProvider.GetServices<IGameData>())) { }
+    public DownloadedFileDataProvider(IServiceProvider serviceProvider) : this(serviceProvider.GetRequiredService<IConnection>(), new GameNames(serviceProvider.GetServices<IGameData>()),
+        serviceProvider.GetService<ILogger<DownloadedFileDataProvider>>() ?? NullLogger<DownloadedFileDataProvider>.Instance) { }
 
-    private DownloadedFileDataProvider(IConnection connection, GameNames gameNames) : base(connection, gameNames) { }
+    private DownloadedFileDataProvider(IConnection connection, GameNames gameNames, ILogger logger) : base(connection, gameNames, logger) { }
 
     protected override LibraryFile.ReadOnly FileOf(DownloadedFile.ReadOnly model) => model.AsLibraryFile();
 

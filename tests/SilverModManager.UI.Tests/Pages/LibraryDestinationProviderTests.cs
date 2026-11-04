@@ -363,7 +363,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
             var row = new WabbajackModlistArchive.New(tx)
             {
                 ModlistId = list,
-                Identity = FileIdentity.XxHash64(Hash.From((ulong)Guid.NewGuid().GetHashCode())),
+                Identity = FileIdentity.XxHash64(RandomHash()),
                 Size = Size.Zero,
                 Name = "held.7z",
             };
@@ -388,7 +388,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     /// <summary>A list naming one archive, and the identity of that archive so the acquirer's mark can find the row.</summary>
     private async Task<FileIdentity> AddListNamingAnArchive(string gameType, string archiveName)
     {
-        var identity = FileIdentity.XxHash64(Hash.From((ulong)Guid.NewGuid().GetHashCode()));
+        var identity = FileIdentity.XxHash64(RandomHash());
         var list = await AddModlist("A list " + Guid.NewGuid().ToString("N"), gameType, Destination.Unknown);
         using var tx = Connection.BeginTransaction();
         _ = new WabbajackModlistArchive.New(tx)
@@ -420,6 +420,24 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
         return result.Remap(file).Id;
     }
 
+    /// <summary>A full 64-bit random hash, so two tests sharing one database cannot collide on an archive identity.</summary>
+    private static Hash RandomHash() => Hash.From(BitConverter.ToUInt64(Guid.NewGuid().ToByteArray(), 0));
+
+    /// <summary>
+    /// What the shared connection holds about a file's Wabbajack mark right now, read when an assertion fails so a rare
+    /// miss says whether the mark was missing from the database or only from the row the provider built.
+    /// </summary>
+    private string WabbajackMarkState(EntityId file, FileIdentity archive)
+    {
+        var db = Connection.Db;
+        var rows = WabbajackModlistArchive.FindByIdentity(db, archive).ToArray();
+        var markedByArchive = rows.Count(a => a.FetchedFiles.Any(fetched => fetched.Id == file));
+        return $"file {file} has FetchedFiles mark: {LibraryDataProviderHelper.IsFetchedForModlist(db, file)}; "
+            + $"WabbajackModlistArchive rows for identity {archive}: {rows.Length} ({markedByArchive} marking this file); "
+            + $"file is a member of an archive (Mark skips those): {LibraryArchiveFileEntry.IsMember(db, file)}; "
+            + $"Db basis tx now: {db.BasisTxId}";
+    }
+
     private static string SourceOf(CompositeItemModel<EntityId> row) => row.Get<StringComponent>(SharedColumns.Source.ComponentKey).Value.Value;
 
     [Fact]
@@ -440,7 +458,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
         await Eventually(() => vrRows.Lookup(fetched).HasValue.Should().BeTrue());
         await Eventually(() => otherRows.Lookup(marker).HasValue.Should().BeTrue());
         otherRows.Lookup(fetched).HasValue.Should().BeFalse();
-        SourceOf(vrRows.Lookup(fetched).Value).Should().Be(ModSources.Wabbajack);
+        SourceOf(vrRows.Lookup(fetched).Value).Should().Be(ModSources.Wabbajack, "{0}", WabbajackMarkState(fetched, archive));
     }
 
     [Fact]
@@ -462,7 +480,7 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
         await Eventually(() => badge.Keys.Should().Contain(fetched));
         await Eventually(() => otherRows.Lookup(marker).HasValue.Should().BeTrue());
         otherRows.Lookup(fetched).HasValue.Should().BeFalse();
-        SourceOf(vrRows.Lookup(fetched).Value).Should().Be(ModSources.Wabbajack);
+        SourceOf(vrRows.Lookup(fetched).Value).Should().Be(ModSources.Wabbajack, "{0}", WabbajackMarkState(fetched, archive));
         provider.GetAllFiles(vr.GameId).Select(file => file.Id).Should().Contain(fetched);
     }
 

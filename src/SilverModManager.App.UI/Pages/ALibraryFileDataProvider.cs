@@ -4,6 +4,7 @@ using DynamicData.Aggregation;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.App.UI.Controls;
@@ -31,9 +32,11 @@ internal abstract class ALibraryFileDataProvider<TModel> : ALibraryDataProvider<
 {
     private readonly IConnection _connection;
     private readonly GameNames _gameNames;
+    private readonly ILogger _logger;
 
-    protected ALibraryFileDataProvider(IConnection connection, GameNames gameNames) : base(connection)
+    protected ALibraryFileDataProvider(IConnection connection, GameNames gameNames, ILogger logger) : base(connection)
     {
+        _logger = logger;
         _connection = connection;
         _gameNames = gameNames;
     }
@@ -103,8 +106,11 @@ internal abstract class ALibraryFileDataProvider<TModel> : ALibraryDataProvider<
     {
         itemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: FileOf(model).AsLibraryItem().Name));
         // A file the app fetched for a Wabbajack modlist came from that list, not from the user's disk.
+        var db = _connection.Db;
+        var fetchedForModlist = LibraryDataProviderHelper.IsFetchedForModlist(db, model.Id);
+        _logger.LogTrace("Source of library file {FileId}: fetchedForModlist={FetchedForModlist}, db basis tx {BasisTx}", model.Id, fetchedForModlist, db.BasisTxId);
         SharedColumns.Source.Add(itemModel,
-            LibraryDataProviderHelper.IsFetchedForModlist(_connection.Db, model.Id) ? ModSources.Wabbajack : SourceOf(model),
+            fetchedForModlist ? ModSources.Wabbajack : SourceOf(model),
             LibraryDataProviderHelper.ObserveFetchedForModlist(_connection, model.Id).Select(fetched => fetched ? ModSources.Wabbajack : SourceOf(model)));
         itemModel.Add(LibraryColumns.DownloadedDate.ComponentKey, new DateComponent(value: FileOf(model).AsLibraryItem().GetCreatedAt()));
         itemModel.Add(SharedColumns.ItemSize.ComponentKey, new SizeComponent(value: FileOf(model).Size));
