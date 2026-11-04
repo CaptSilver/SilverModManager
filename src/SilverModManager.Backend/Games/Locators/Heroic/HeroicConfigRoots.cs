@@ -50,7 +50,7 @@ internal sealed record HeroicConfigRoot(AbsolutePath Path, bool IsFlatpak)
                 // The key is the app name; the entry repeats it, and the key wins if they ever disagree.
                 var installPath = entry.TryGetProperty("install_path", out var path) && path.ValueKind == JsonValueKind.String ? path.GetString() : null;
                 var platform = entry.TryGetProperty("platform", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
-                if (installPath is null) continue;
+                if (installPath is null || !InstallFolderExists("Legendary", property.Name, installPath, logger)) continue;
                 games.Add(new EpicInstall(property.Name, installPath, platform));
             }
 
@@ -111,7 +111,7 @@ internal sealed record HeroicConfigRoot(AbsolutePath Path, bool IsFlatpak)
                 var id = entry.TryGetProperty("id", out var i) && i.ValueKind == JsonValueKind.String ? i.GetString() : null;
                 var installPath = entry.TryGetProperty("path", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
                 var version = entry.TryGetProperty("version", out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
-                if (id is null || installPath is null) continue;
+                if (id is null || installPath is null || !InstallFolderExists("Nile", id, installPath, logger)) continue;
                 games.Add(new AmazonInstall(id, installPath, version));
             }
 
@@ -122,6 +122,18 @@ internal sealed record HeroicConfigRoot(AbsolutePath Path, bool IsFlatpak)
             logger.LogWarning(e, "Skipping Nile's installed Amazon games list at {Path}", file);
             return [];
         }
+    }
+
+    /// <summary>
+    /// Whether the install folder a Heroic list names is on disk. Heroic keeps listing a game after its folder is
+    /// deleted or its drive unmounted, and a game reported from a folder that is gone fails later, far from here.
+    /// </summary>
+    private bool InstallFolderExists(string source, string name, string installPath, ILogger logger)
+    {
+        if (System.IO.Path.IsPathRooted(installPath) && Path.FileSystem.FromUnsanitizedFullPath(installPath).DirectoryExists()) return true;
+
+        logger.LogInformation("{Source} lists {Name} as installed in {InstallPath}, which is not a folder on disk; skipping it", source, name, installPath);
+        return false;
     }
 
     public AbsolutePath GameSettingsFile(string appName) => Path.Combine($"GamesConfig/{appName}.json");
@@ -147,7 +159,7 @@ internal sealed record HeroicConfigRoot(AbsolutePath Path, bool IsFlatpak)
                 if (entry.ValueKind != JsonValueKind.Object) continue;
                 var appName = entry.TryGetProperty("appName", out var name) && name.ValueKind == JsonValueKind.String ? name.GetString() : null;
                 var installPath = entry.TryGetProperty("install_path", out var path) && path.ValueKind == JsonValueKind.String ? path.GetString() : null;
-                if (appName is null || installPath is null) continue;
+                if (appName is null || installPath is null || !InstallFolderExists("Heroic's GOG list", appName, installPath, logger)) continue;
                 games.Add(new KeyValuePair<string, string>(appName, installPath));
             }
 

@@ -54,6 +54,12 @@ internal class HeroicGOGLocator : IGameLocator
             var storeIdentifier = gameFinderGame.Id.Value;
             _logger.LogDebug("Found game '{GameName}' with store identifier '{StoreIdentifier}'", gameFinderGame.Name, storeIdentifier);
 
+            if (!gameFinderGame.Path.DirectoryExists())
+            {
+                _logger.LogInformation("Heroic lists GOG product {StoreIdentifier} in {Path}, which is not a folder on disk; skipping it", storeIdentifier, gameFinderGame.Path);
+                continue;
+            }
+
             var game = _registeredGames.Resolve(storeIdentifier, gameFinderGame.Path, problems);
             if (game is null) continue;
 

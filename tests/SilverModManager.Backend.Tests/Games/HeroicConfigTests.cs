@@ -76,11 +76,26 @@ public class HeroicConfigTests
     {
         var (fileSystem, _) = NewHome();
         var root = HeroicConfigRoots.All(fileSystem)[0];
+        fileSystem.CreateDirectory(fileSystem.FromUnsanitizedFullPath("/a"));
+        fileSystem.CreateDirectory(fileSystem.FromUnsanitizedFullPath("/b"));
         Write(fileSystem, root.Path.Combine("gog_store/installed.json"), """
             { "installed": [ { "appName": "1", "install_path": "/a" }, { "appName": "2", "install_path": "/b" } ] }
             """);
 
         root.InstalledGogGames(NullLogger.Instance).Should().Equal(new KeyValuePair<string, string>("1", "/a"), new KeyValuePair<string, string>("2", "/b"));
+    }
+
+    [Fact]
+    public void InstalledGogGames_SkipsAnInstallFolderThatIsNotOnDisk()
+    {
+        var (fileSystem, _) = NewHome();
+        var root = HeroicConfigRoots.All(fileSystem)[0];
+        fileSystem.CreateDirectory(fileSystem.FromUnsanitizedFullPath("/present"));
+        Write(fileSystem, root.Path.Combine("gog_store/installed.json"), """
+            { "installed": [ { "appName": "1", "install_path": "/present" }, { "appName": "2", "install_path": "/gone" }, { "appName": "3", "install_path": "relative/dir" } ] }
+            """);
+
+        root.InstalledGogGames(NullLogger.Instance).Select(game => game.Key).Should().Equal("1");
     }
 
     [Fact]

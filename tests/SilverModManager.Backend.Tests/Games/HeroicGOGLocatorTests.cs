@@ -32,6 +32,20 @@ public class HeroicGOGLocatorTests
     }
 
     [Fact]
+    public void Locate_InstallFolderMissing_FindsNothing()
+    {
+        var (fileSystem, home) = NewHome();
+        var installPath = home.Combine("Games/Heroic/Game");
+        var root = fileSystem.GetKnownPath(KnownPath.XDG_CONFIG_HOME).Combine("heroic");
+        WriteHeroicConfig(fileSystem, root, installPath, home.Combine("p"), root.Combine("wine"));
+        fileSystem.DeleteDirectory(installPath, recursive: true);
+
+        var locator = new HeroicGOGLocator([GogGame("Game")], NullLoggerFactory.Instance, fileSystem);
+
+        locator.Locate().Should().BeEmpty();
+    }
+
+    [Fact]
     public void Locate_LeavesStoreRootUnset()
     {
         var (fileSystem, home) = NewHome();

@@ -85,6 +85,32 @@ public class HeroicEpicLocatorTests
     }
 
     [Fact]
+    public void Locate_InstallFolderMissing_FindsNothingAndLogsIt()
+    {
+        var (fileSystem, home) = NewHome();
+        var installPath = home.Combine("Games/Heroic/Game");
+        WriteInstall(fileSystem, NativeRoot(fileSystem), installPath, home.Combine("p"), home.Combine("wine"));
+        fileSystem.DeleteDirectory(installPath, recursive: true);
+        var logger = new RecordingLogger<HeroicEpicLocator>();
+
+        NewLocator(fileSystem, logger, Game("Game", CatalogItemId)).Locate().Should().BeEmpty();
+        logger.Count(LogLevel.Information).Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void Locate_InstallFolderMissingUnderOneRoot_LocatesTheCopyThatExists()
+    {
+        var (fileSystem, home) = NewHome();
+        var stale = home.Combine("Games/Stale/Game");
+        var live = home.Combine("Games/Heroic/Game");
+        WriteInstall(fileSystem, NativeRoot(fileSystem), stale, home.Combine("p"), home.Combine("wine"));
+        fileSystem.DeleteDirectory(stale, recursive: true);
+        WriteInstall(fileSystem, home.Combine(FlatpakConfigRoot), live, home.Combine("p"), home.Combine("wine"));
+
+        Locate(fileSystem, Game("Game", CatalogItemId)).Path.Should().Be(live);
+    }
+
+    [Fact]
     public void Locate_DlcEntry_IsIgnored()
     {
         var (fileSystem, home) = NewHome();
