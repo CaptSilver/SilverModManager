@@ -17,7 +17,7 @@ public class PendingReviewRowTests(IServiceProvider provider) : AUiTest(provider
 
     /// <summary>A pending row and the download it is for, written straight to the database.</summary>
     internal static async Task<(NexusCollectionPendingInstall.ReadOnly Row, CollectionDownload.ReadOnly Download)> CreateRow(
-        IConnection connection, ReviewKind kind, string reason, bool isOptional = false, string name = "Some mod")
+        IConnection connection, ReviewKind kind, string? reason, bool isOptional = false, string name = "Some mod")
     {
         var id = (ulong)Interlocked.Increment(ref _nextId);
         using var tx = connection.BeginTransaction();
@@ -43,8 +43,9 @@ public class PendingReviewRowTests(IServiceProvider provider) : AUiTest(provider
             CollectionGroupId = NexusCollectionLoadoutGroupId.From(EntityId.From(0xABCDEF)),
             DownloadId = CollectionDownloadId.From(download.Id),
             Kind = kind,
-            Reason = reason,
         };
+        // A row recorded without a reason has no Reason datom at all, which is not the same as an empty one.
+        if (reason is not null) row.Reason = reason;
         var result = await tx.Commit();
         return (NexusCollectionPendingInstall.Load(result.Db, result[row.Id]), CollectionDownload.Load(result.Db, result[download.Id]));
     }
@@ -69,7 +70,8 @@ public class PendingReviewRowTests(IServiceProvider provider) : AUiTest(provider
     [Theory]
     [InlineData("Archive contains no matching files", "Archive contains no matching files")]
     [InlineData("", "")]
-    public async Task Detail_IsTheReasonOrEmpty(string reason, string expected)
+    [InlineData(null, "")]
+    public async Task Detail_IsTheReasonOrEmpty(string? reason, string expected)
     {
         var (row, download) = await CreateRow(Connection, ReviewKind.NoInstaller, reason);
 
