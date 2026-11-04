@@ -47,10 +47,17 @@ public abstract class ALibraryDataProvider<TModel>(IConnection connection) : ILi
             : ObserveOwnItemsFor(games.First());
     }
 
+    /// <summary>
+    /// Whether this provider is the one that lists the model. A model another provider also matches (a Nexus download
+    /// is a DownloadedFile too) is left to its owner, on every path: the library tab, the loadout page, its count and
+    /// game removal. Every query goes through here, so no path can claim an item the others have given away.
+    /// </summary>
+    protected virtual bool IsListed(TModel model) => true;
+
     private IObservable<IChangeSet<TModel, EntityId>> Narrow(IObservable<IChangeSet<Datom, EntityId>> slice)
         => slice
             .Transform(datom => TModel.Create(connection.Db, datom.E))
-            .FilterImmutable(static model => model.IsValid());
+            .FilterImmutable(model => model.IsValid() && IsListed(model));
 
     /// <inheritdoc />
     public LibraryFile.ReadOnly[] GetAllFiles(GameId game, IDb? db = null)
@@ -58,7 +65,7 @@ public abstract class ALibraryDataProvider<TModel>(IConnection connection) : ILi
         db ??= connection.Db;
         return LibraryDestinations.ItemsFor(db, game)
             .Select(item => TModel.Create(db, item.Id))
-            .Where(static model => model.IsValid())
+            .Where(model => model.IsValid() && IsListed(model))
             .Select(AsLibraryFile)
             .Where(static file => file.HasValue)
             .Select(static file => file.Value)

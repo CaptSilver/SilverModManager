@@ -44,25 +44,18 @@ internal abstract class ALibraryFileDataProvider<TModel> : ALibraryDataProvider<
     /// <summary>The file the model's row stands for.</summary>
     protected abstract LibraryFile.ReadOnly FileOf(TModel model);
 
-    /// <summary>Whether this provider lists the model. A model another provider owns is left out here.</summary>
-    protected abstract bool IsListed(TModel model);
-
     /// <summary>The Source column of a file that no Wabbajack list fetched.</summary>
     protected abstract string SourceOf(TModel model);
 
-    protected override Optional<LibraryFile.ReadOnly> AsLibraryFile(TModel model)
-        => IsListed(model) ? FileOf(model) : Optional<LibraryFile.ReadOnly>.None;
-
-    private IObservable<IChangeSet<TModel, EntityId>> ObserveShown(GameId game)
-        => ObserveOwnItems(game).FilterImmutable(IsListed);
+    protected override Optional<LibraryFile.ReadOnly> AsLibraryFile(TModel model) => FileOf(model);
 
     public override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
     {
-        return ObserveShown(libraryFilter.Game.GameId).Transform(model => ToLibraryItemModel(libraryFilter, model));
+        return ObserveOwnItems(libraryFilter).Transform(model => ToLibraryItemModel(libraryFilter, model));
     }
 
     public override IObservable<IChangeSet<EntityId, EntityId>> ObserveModsTabItems(GameId game)
-        => ObserveShown(game).Transform(static (_, id) => id);
+        => ObserveOwnItems(game).Transform(static (_, id) => id);
 
     private CompositeItemModel<EntityId> ToLibraryItemModel(LibraryFilter libraryFilter, TModel model)
     {

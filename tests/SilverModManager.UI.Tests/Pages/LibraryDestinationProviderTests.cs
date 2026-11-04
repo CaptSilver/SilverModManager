@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Microsoft.Extensions.DependencyInjection;
 using DynamicData;
 using DynamicData.Kernel;
 using FluentAssertions;
@@ -510,6 +511,142 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
         await Eventually(() => rows.Lookup(plain).HasValue.Should().BeTrue());
         SourceOf(rows.Lookup(plain).Value).Should().Be("moddb.com");
         rows.Lookup(local).HasValue.Should().BeFalse();
+    }
+
+    /// <summary>What a Nexus download leaves: the Nexus item, its library file, and the DownloadedFile every download carries.</summary>
+    private async Task<(EntityId Page, EntityId Item)> AddNexusDownload(NexusModsGameId nexus, uint modId, string name, Destination destination)
+    {
+        using var tx = Connection.BeginTransaction();
+        var page = new NexusModsModPageMetadata.New(tx)
+        {
+            Uid = new ModUid(ModId.From(modId), nexus),
+            Name = "Some mod " + name,
+            GameDomain = GameDomain.From("cyberpunk2077"),
+            UpdatedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+            DataUpdatedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+        };
+        var metadata = new NexusModsFileMetadata.New(tx)
+        {
+            Uid = new FileUid(FileId.From(modId), nexus),
+            Name = name,
+            Version = "1",
+            UploadedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+            ModPageId = page.Id,
+        };
+        var item = new NexusModsLibraryItem.New(tx, out var id)
+        {
+            LibraryItem = new LibraryItem.New(tx, id) { Name = name },
+            FileMetadataId = metadata.Id,
+            ModPageMetadataId = page.Id,
+        };
+        var bytes = System.Text.Encoding.UTF8.GetBytes($"{name}-{Guid.NewGuid()}");
+        var file = new LibraryFile.New(tx, id)
+        {
+            FileName = name,
+            Hash = bytes.xxHash3(),
+            Size = Size.FromLong(bytes.Length),
+            LibraryItem = new LibraryItem.New(tx, id) { Name = name },
+        };
+        _ = new DownloadedFile.New(tx, id) { DownloadPageUri = new Uri("https://www.nexusmods.com/cyberpunk2077/mods/" + modId), LibraryFile = file };
+        LibraryDestinations.Write(tx, id, destination);
+        var result = await tx.Commit();
+        return (result.Remap(page).Id, result.Remap(item).Id);
+    }
+
+    private static IObservableCache<CompositeItemModel<EntityId>, EntityId> LoadoutRows(ILoadoutDataProvider provider, LoadoutId loadout)
+        => provider.ObserveLoadoutItems(WholeLoadout(loadout)).AsObservableCache();
+
+    /// <summary>The settled count: the observable starts at 0 and then reports what it found, so wait for it to go quiet.</summary>
+    private async Task<int> LoadoutCount(ILoadoutDataProvider provider, LoadoutId loadout)
+    {
+        var count = 0;
+        using var subscription = provider.CountLoadoutItems(WholeLoadout(loadout)).Subscribe(value => count = value);
+        await Task.Delay(500);
+        return count;
+    }
+
+    [Fact]
+    public async Task ANexusDownloadInALoadout_IsListedOnceAndCountedOnce_AsNexusMods()
+    {
+        var (game, _) = TestGame.NewPair();
+        var loadout = await TestGame.AddLoadout(Connection, game);
+        var (page, item) = await AddNexusDownload(game.NexusModsGameId.Value, 31, "nexus.zip", Destination.Of(game.GameId));
+        await Install(loadout, item);
+
+        using var nexus = LoadoutRows(new NexusModsDataProvider(Provider), loadout);
+        using var downloaded = LoadoutRows(new DownloadedFileDataProvider(Provider), loadout);
+
+        await Eventually(() => nexus.Keys.Should().Contain(page));
+        SourceOf(nexus.Lookup(page).Value).Should().Be(ModSources.Nexus);
+        downloaded.Keys.Should().NotContain(item, "the Nexus provider owns a Nexus download");
+        downloaded.Count.Should().Be(0);
+        (await LoadoutCount(new DownloadedFileDataProvider(Provider), loadout)).Should().Be(0);
+        (await LoadoutCount(new NexusModsDataProvider(Provider), loadout)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AHostDownloadInALoadout_IsListedOnce_WithItsHost()
+    {
+        var (game, _) = TestGame.NewPair();
+        var loadout = await TestGame.AddLoadout(Connection, game);
+        var file = await AddHostDownloadedFile("host.7z", new Uri("https://www.mediafire.com/file/abc/host.7z"), Destination.Of(game.GameId));
+        await Install(loadout, file);
+
+        using var downloaded = LoadoutRows(new DownloadedFileDataProvider(Provider), loadout);
+
+        await Eventually(() => downloaded.Keys.Should().Contain(file));
+        SourceOf(downloaded.Lookup(file).Value).Should().Be("mediafire.com");
+        (await LoadoutCount(new DownloadedFileDataProvider(Provider), loadout)).Should().Be(1);
+        (await LoadoutCount(new LocalFileDataProvider(Provider), loadout)).Should().Be(0);
+        (await LoadoutCount(new NexusModsDataProvider(Provider), loadout)).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ALocalFileInALoadout_IsListedOnce_AsALocalFile()
+    {
+        var (game, _) = TestGame.NewPair();
+        var loadout = await TestGame.AddLoadout(Connection, game);
+        var file = await AddLocalFile("local.7z", Destination.Of(game.GameId));
+        await Install(loadout, file);
+
+        using var local = LoadoutRows(new LocalFileDataProvider(Provider), loadout);
+
+        await Eventually(() => local.Keys.Should().Contain(file));
+        SourceOf(local.Lookup(file).Value).Should().Be(ModSources.LocalFile);
+        (await LoadoutCount(new LocalFileDataProvider(Provider), loadout)).Should().Be(1);
+        (await LoadoutCount(new DownloadedFileDataProvider(Provider), loadout)).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task EachLinkedLibraryItemInALoadout_IsCountedByExactlyOneProvider()
+    {
+        var (game, _) = TestGame.NewPair();
+        var loadout = await TestGame.AddLoadout(Connection, game);
+        var destination = Destination.Of(game.GameId);
+        var (_, nexus) = await AddNexusDownload(game.NexusModsGameId.Value, 32, "kind-nexus.zip", destination);
+        var host = await AddHostDownloadedFile("kind-host.7z", new Uri("https://www.moddb.com/downloads/kind"), destination);
+        var local = await AddLocalFile("kind-local.7z", destination);
+        var archive = await AddArchive("kind-archive", destination);
+        EntityId[] linked = [nexus, host, local, archive];
+        foreach (var item in linked) await Install(loadout, item);
+
+        var counts = new Dictionary<string, int>();
+        var subscriptions = Provider.GetServices<ILoadoutDataProvider>()
+            .Select(provider => provider.CountLoadoutItems(WholeLoadout(loadout)).Subscribe(count => { lock (counts) counts[provider.GetType().Name] = count; }))
+            .ToArray();
+        try
+        {
+            string Describe() { lock (counts) return string.Join(", ", counts.Select(pair => $"{pair.Key}={pair.Value}")); }
+            int Total() { lock (counts) return counts.Values.Sum(); }
+
+            await Eventually(() => Total().Should().BeGreaterThanOrEqualTo(linked.Length, Describe()));
+            await Task.Delay(500); // an item a second provider claims shows up as an extra count after the first
+            Total().Should().Be(linked.Length, $"every linked library item is claimed by one provider, so the page's All count adds up ({Describe()})");
+        }
+        finally
+        {
+            foreach (var subscription in subscriptions) subscription.Dispose();
+        }
     }
 
     [Fact]
