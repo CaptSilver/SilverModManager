@@ -40,14 +40,14 @@ public sealed class SkyrimPrecombinesCache(IReadOnlyCollection<GameId> games, IL
         foreach (var folder in OwnedFolders(installation))
         {
             if (!folder.DirectoryExists()) continue;
-            if (!IsSafeToEmpty(installation, folder))
+            if (!IsSafeToEmpty(installation, folder) || !IsInsidePrefix(installation, folder))
             {
-                Logger.LogWarning("Not clearing {Folder}: it is, holds or sits inside a game folder", folder);
+                Logger.LogWarning("Not clearing {Folder}: it is not inside the game's prefix, or it is, holds or sits inside a game folder", folder);
                 continue;
             }
 
-            // Only what the plugin made: a folder per game setup holding meshes or a runtime bake. Anything else in a
-            // folder the ini names is not the plugin's.
+            // Only what the plugin made: a folder per game setup, named by a 16-digit hex hash, holding nothing but its
+            // meshes and runtime bake. Anything else in a folder the ini names is not the plugin's.
             stale.AddRange(folder.EnumerateDirectories(recursive: false).Where(IsBakeFolder));
         }
 
@@ -55,8 +55,15 @@ public sealed class SkyrimPrecombinesCache(IReadOnlyCollection<GameId> games, IL
     }
 
     private static bool IsBakeFolder(AbsolutePath folder)
-        => folder.EnumerateDirectories(recursive: false).Any(child => child.FileName.Equals("meshes", StringComparison.OrdinalIgnoreCase)
+    {
+        var name = folder.FileName.ToString();
+        if (name.Length != 16 || !name.All(char.IsAsciiHexDigitLower)) return false;
+        if (folder.EnumerateFiles(recursive: false).Any()) return false;
+
+        var children = folder.EnumerateDirectories(recursive: false).ToArray();
+        return children.Length > 0 && children.All(child => child.FileName.Equals("meshes", StringComparison.OrdinalIgnoreCase)
             || child.FileName.Equals("RuntimeBake", StringComparison.OrdinalIgnoreCase));
+    }
 
     private static bool IsBakedFrom(GamePath path)
     {

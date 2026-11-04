@@ -103,6 +103,24 @@ public abstract class ASksePluginCache(IReadOnlyCollection<GameId> games, ILogge
         return installation.Locations.ToAbsolutePath(DllPath).FileSystem.FromUnsanitizedFullPath(host);
     }
 
+    /// <summary>
+    /// Whether the folder sits inside the game's own Wine prefix, compared after following links. An ini is a file a mod
+    /// archive brings, so a folder it names is only cleared when it is in the prefix the game already owns.
+    /// </summary>
+    protected bool IsInsidePrefix(GameInstallation installation, AbsolutePath folder)
+    {
+        string driveC;
+        if (installation.LocatorResult.WinePrefixPath is { } winePrefix) driveC = (winePrefix / "drive_c").ToString();
+        else if (installation.Locations.TryGetValue(LocationId.AppData, out var appData)
+                 && appData.Path.ToString() is var appDataPath && appDataPath.IndexOf("/drive_c/", StringComparison.Ordinal) is var at and >= 0)
+            driveC = appDataPath[..(at + "/drive_c".Length)];
+        else return false;
+
+        var real = HostPaths.RealPath(folder.ToString()).TrimEnd('/');
+        var prefix = HostPaths.RealPath(driveC).TrimEnd('/');
+        return real.StartsWith(prefix + "/", StringComparison.Ordinal);
+    }
+
     private string? PrefixDriveC(GameInstallation installation)
     {
         if (installation.LocatorResult.WinePrefixPath is { } prefix) return (prefix / "drive_c").ToString();

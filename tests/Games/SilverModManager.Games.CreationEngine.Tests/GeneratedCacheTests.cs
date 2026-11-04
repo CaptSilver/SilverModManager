@@ -89,7 +89,7 @@ public class GeneratedCacheTests(ITestOutputHelper helper) : AIsolatedGameTest<G
         await Put(OnDisk(FileCopyCache) / "Foo.bsa.decomp");
         FileCopy.AppliesTo(GameInstallation, []).Should().BeTrue();
 
-        await Put(Prefixed("FasterObjects") / "1234abcd/meshes/a.nif");
+        await Put(Prefixed("FasterObjects") / "1234abcd1234abcd/meshes/a.nif");
         Precombines.AppliesTo(GameInstallation, []).Should().BeTrue();
     }
 
@@ -203,14 +203,14 @@ public class GeneratedCacheTests(ITestOutputHelper helper) : AIsolatedGameTest<G
     {
         await WithPrecombines();
         var cache = Prefixed("FasterObjects");
-        await Put(cache / "1234abcd/meshes/a.nif");
-        await Put(cache / "1234abcd/RuntimeBake/b.bin");
+        await Put(cache / "1234abcd1234abcd/meshes/a.nif");
+        await Put(cache / "1234abcd1234abcd/RuntimeBake/b.bin");
         await Put(cache / "loose.dat");
         await Put(cache / "notes/readme.txt");
 
         var stale = Precombines.StaleItems(GameInstallation, Changed(changed));
 
-        Names(stale).Should().Equal("1234abcd");
+        Names(stale).Should().Equal("1234abcd1234abcd");
     }
 
     [Theory]
@@ -221,9 +221,44 @@ public class GeneratedCacheTests(ITestOutputHelper helper) : AIsolatedGameTest<G
     public async Task PrecombinesKeepsItsCacheForAChangeThatCannotAffectTheBake(string changed)
     {
         await WithPrecombines();
-        await Put(Prefixed("FasterObjects") / "1234abcd/meshes/a.nif");
+        await Put(Prefixed("FasterObjects") / "1234abcd1234abcd/meshes/a.nif");
 
         Precombines.StaleItems(GameInstallation, Changed(changed)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task PrecombinesOnlyClearsFoldersShapedLikeItsOwnBakes()
+    {
+        await WithPrecombines();
+        var cache = Prefixed("FasterObjects");
+        await Put(cache / "1234abcd1234abcd/meshes/a.nif");
+        await Put(cache / "Fallout 4/meshes/a.nif");
+        await Put(cache / "abcdabcdabcdabcd/meshes/a.nif");
+        await Put(cache / "abcdabcdabcdabcd/save.ess");
+        await Put(cache / "0123456789abcdef/Data/meshes/a.nif");
+
+        var stale = Precombines.StaleItems(GameInstallation, Changed("Data/Some.esp"));
+
+        Names(stale).Should().Equal("1234abcd1234abcd");
+    }
+
+    [Fact]
+    public async Task PrecombinesNeverClearsAnIniFolderOutsideTheGamesPrefix()
+    {
+        var outside = Directory.CreateTempSubdirectory("sdm-precombines-outside-");
+        try
+        {
+            var bake = Path.Combine(outside.FullName, "1234abcd1234abcd", "meshes");
+            Directory.CreateDirectory(bake);
+            await File.WriteAllTextAsync(Path.Combine(bake, "a.nif"), "x");
+            await WithPrecombines($"[General]\r\nsCacheFolder=Z:{outside.FullName.Replace('/', '\\')}\r\n");
+
+            Precombines.StaleItems(GameInstallation, Changed("Data/Some.esp")).Should().BeEmpty();
+        }
+        finally
+        {
+            outside.Delete(recursive: true);
+        }
     }
 
     [Fact]
@@ -244,11 +279,11 @@ public class GeneratedCacheTests(ITestOutputHelper helper) : AIsolatedGameTest<G
         Directory.CreateSymbolicLink(link.ToString(), GameInstallation.Locations[LocationId.Game].Path.ToString());
         try
         {
-            await Put(OnDisk("Data/1234abcd/meshes/a.nif"));
+            await Put(OnDisk("Data/1234abcd1234abcd/meshes/a.nif"));
             await WithPrecombines($"[General]\r\nsCacheFolder=Z:{(link / "Data").ToString().Replace('/', '\\')}\r\n");
 
             Precombines.StaleItems(GameInstallation, Changed("Data/a.esp")).Should().BeEmpty();
-            OnDisk("Data/1234abcd/meshes/a.nif").FileExists.Should().BeTrue();
+            OnDisk("Data/1234abcd1234abcd/meshes/a.nif").FileExists.Should().BeTrue();
         }
         finally
         {
@@ -259,7 +294,7 @@ public class GeneratedCacheTests(ITestOutputHelper helper) : AIsolatedGameTest<G
     [Fact]
     public async Task PrecombinesNeverEmptiesAFolderInsideTheGameFolder()
     {
-        await Put(OnDisk("Data/1234abcd/meshes/a.nif"));
+        await Put(OnDisk("Data/1234abcd1234abcd/meshes/a.nif"));
         await WithPrecombines($"[General]\r\nsCacheFolder=Z:{OnDisk("Data").ToString().Replace('/', '\\')}\r\n");
 
         Precombines.StaleItems(GameInstallation, Changed("Data/a.esp")).Should().BeEmpty();
@@ -314,7 +349,7 @@ public class GeneratedCacheTests(ITestOutputHelper helper) : AIsolatedGameTest<G
     {
         await WithPrecombines();
         var cache = Prefixed("FasterObjects");
-        await Put(cache / "1234abcd/meshes/a.nif");
+        await Put(cache / "1234abcd1234abcd/meshes/a.nif");
 
         await ApplyMod(changed);
 
@@ -327,12 +362,12 @@ public class GeneratedCacheTests(ITestOutputHelper helper) : AIsolatedGameTest<G
         await WithFasterFileCopy();
         await WithPrecombines();
         await Put(OnDisk(FileCopyCache) / "A.bsa.decomp");
-        await Put(Prefixed("FasterObjects") / "1234abcd/a.nif");
+        await Put(Prefixed("FasterObjects") / "1234abcd1234abcd/a.nif");
 
         await ApplyMod("Data/textures/a.dds");
 
         OnDisk(FileCopyCache + "/A.bsa.decomp").FileExists.Should().BeTrue();
-        (Prefixed("FasterObjects") / "1234abcd/a.nif").FileExists.Should().BeTrue();
+        (Prefixed("FasterObjects") / "1234abcd1234abcd/a.nif").FileExists.Should().BeTrue();
     }
 
     [Fact]
