@@ -104,12 +104,12 @@ public class Mo2LayoutTests
     }
 
     [Fact]
-    public void TheProfilesInitweaks_IsTheLoadoutsTweakOfTheMainIniNotThePrefsFile()
+    public void TheProfilesInitweaks_IsTheListsTweakOfTheMainIniNotThePrefsFile()
     {
         var tweak = Classify("profiles/main/INITWEAKS.ini").Should().BeOfType<Mo2Target.ProfileTweak>().Subject;
 
         tweak.Path.LocationId.Should().Be(LocationId.Game);
-        tweak.Path.Path.ToString().Should().Be("INI Tweaks/Loadout [Skyrim.ini].ini");
+        tweak.Path.Path.ToString().Should().Be("INI Tweaks/Modlist [Skyrim.ini].ini");
     }
 
     [Fact]

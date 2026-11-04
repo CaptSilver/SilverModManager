@@ -29,7 +29,7 @@ public abstract record Mo2Target
     /// <summary>One of the profile's ini files, at the place the game reads it from.</summary>
     public sealed record ProfileSetting(GamePath Path) : Mo2Target;
 
-    /// <summary>The profile's own INI tweaks, as the loadout's tweak of one INI.</summary>
+    /// <summary>The profile's own INI tweaks, as the list's tweak of one INI (not the loadout's, which is the user's).</summary>
     public sealed record ProfileTweak(GamePath Path) : Mo2Target;
 
     /// <summary>A file of a game-root folder, at <paramref name="Path"/> inside the game folder.</summary>
@@ -60,6 +60,12 @@ public static class Mo2Layout
 
     /// <summary>What a new game settings group is called. The user may rename it.</summary>
     public const string GameSettingsGroupName = "Game settings";
+    /// <summary>
+    /// The name of the INI tweak the list's initweaks.ini becomes. It is not <see cref="IniTweakLayers.LoadoutTweakName"/>:
+    /// that tweak is the user's, the INI editor changes it in place, and the list's install never writes it.
+    /// </summary>
+    public const string ListTweakName = "Modlist";
+
     public const string GameFolderFilesGroup = "Game Folder Files";
 
     private static readonly HashSet<string> ModOrganizerFolders = new(StringComparer.OrdinalIgnoreCase)
@@ -158,7 +164,7 @@ public static class Mo2Layout
 
         // MO2 writes the tweaks the profile has switched on to initweaks.ini, to be laid over the main INI.
         if (name.Equals("initweaks.ini", StringComparison.OrdinalIgnoreCase) && GameInis.MainIni(context.ProfileSettingsFiles) is { } main)
-            return new Mo2Target.ProfileTweak(IniTweakLayers.LoadoutTweakPath(main.FileName.ToString()));
+            return new Mo2Target.ProfileTweak(IniTweakLayers.TweakPath(ListTweakName, main.FileName.ToString()));
 
         foreach (var setting in context.ProfileSettingsFiles)
         {

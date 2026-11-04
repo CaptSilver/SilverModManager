@@ -64,7 +64,7 @@ public static class IniEdits
         }
         else
         {
-            var group = GameSettingsGroupOf(connection, loadout) ?? NewGameSettingsGroup(tx, loadout);
+            var group = UserSettingsGroup(connection.Db, tx, loadout);
             _ = new LoadoutFile.New(tx, out var fileId)
             {
                 LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, fileId)
@@ -93,9 +93,20 @@ public static class IniEdits
         await tx.Commit();
     }
 
-    private static LoadoutItemGroupId? GameSettingsGroupOf(IConnection connection, Loadout.ReadOnly loadout)
+    /// <summary>
+    /// The group that holds the user's own tweaks: the loadout's game settings group, made in <paramref name="tx"/> when
+    /// there is none. A settings group inside another group (the one a modlist install keeps its own tweak in) belongs to
+    /// that group's installer, which deletes what it did not write, so it never counts.
+    /// </summary>
+    public static LoadoutItemGroupId UserSettingsGroup(IDb db, ITransaction tx, Loadout.ReadOnly loadout) =>
+        GameSettingsGroupOf(db, loadout) ?? NewGameSettingsGroup(tx, loadout);
+
+    /// <summary>The loadout's own game settings group, or null when it has none.</summary>
+    public static LoadoutItemGroupId? GameSettingsGroupOf(IDb db, Loadout.ReadOnly loadout)
     {
-        var groups = LoadoutItem.FindByLoadout(connection.Db, loadout.LoadoutId).OfTypeLoadoutItemGroup().Where(g => g.IsGameSettingsGroup).ToList();
+        var groups = LoadoutItem.FindByLoadout(db, loadout.LoadoutId).OfTypeLoadoutItemGroup()
+            .Where(g => g.IsGameSettingsGroup && !g.AsLoadoutItem().HasParent())
+            .ToList();
         return groups.Count > 0 ? groups[0].LoadoutItemGroupId : null;
     }
 
@@ -114,8 +125,11 @@ public static class IniEdits
         return group.LoadoutItemGroupId;
     }
 
-    // The pin keeps the file store's collector from dropping the bytes between storing them and the commit that references them.
-    private static async Task<IDisposable> Store(IFileStore fileStore, GamePath path, byte[] bytes)
+    /// <summary>
+    /// Puts <paramref name="bytes"/> in the file store. The pin keeps the store's collector from dropping them between
+    /// storing and the commit that references them; dispose it after that commit.
+    /// </summary>
+    public static async Task<IDisposable> Store(IFileStore fileStore, GamePath path, byte[] bytes)
     {
         var hash = bytes.xxHash3();
         var pin = FileStorePins.Pin(FileIdentity.XxHash3(hash));

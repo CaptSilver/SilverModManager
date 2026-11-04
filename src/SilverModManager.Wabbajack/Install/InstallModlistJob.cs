@@ -20,6 +20,7 @@ using NexusMods.Paths;
 using SilverModManager.Platform.Proton.ToolRunner;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Ini;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -772,6 +773,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             await DiscardPending(state);
         }
 
+        await KeepUserTweaksOfEarlierInstalls(state);
         await RemoveStaleFiles(state);
         LogSkipSummary(check, state);
     }
@@ -1008,6 +1010,91 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             }
         }
         if (any) await tx.Commit();
+    }
+
+    /// <summary>
+    /// An earlier version installed the list's initweaks.ini as the loadout's own tweak, and the INI editor wrote the
+    /// user's tweaks into the list's settings group, so rows at the loadout's tweak paths in that group may hold
+    /// the user's edits. They move to the loadout's own settings group instead of being deleted as rows the list did not
+    /// ask for. A row whose bytes are still what the list wrote (this run's text, or the xxHash64 the row recorded when
+    /// it was written) is redundant next to the list's tweak and is left to be deleted. When the user's group already
+    /// has a tweak for the same INI, the row is merged under it, so the user's own keys win, and then deleted.
+    /// </summary>
+    private async Task KeepUserTweaksOfEarlierInstalls(WriteState state)
+    {
+        if (!state.Files.TryGetValue(Mo2Layout.ProfileSettingsGroup, out var files)) return;
+
+        var db = Connection.Db;
+        var loadout = Loadout.Load(db, TargetLoadout);
+        var userRows = UserTweakRows(db, loadout);
+        using var tx = Connection.BeginTransaction();
+        var pins = new List<IDisposable>();
+        try
+        {
+            LoadoutItemGroupId? userGroup = null;
+            var changed = false;
+            foreach (var path in files.Paths.ToList())
+            {
+                if (!IniTweakLayers.IsLoadoutTweakPath(path, out var target)) continue;
+
+                var listPath = IniTweakLayers.TweakPath(Mo2Layout.ListTweakName, target);
+                foreach (var (identity, known) in files.AtPath(path))
+                {
+                    if (known.Wanted || known.Ids.Count == 0 || files.TryGet(listPath, identity, out _)) continue;
+                    if (await IsListOutput(known, identity)) continue;
+
+                    if (userRows.TryGetValue(target, out var user))
+                    {
+                        var under = IniDocument.Parse(await FileStore.Load(identity));
+                        under.Merge(IniDocument.Parse(await FileStore.Load(user.Identity)));
+                        var bytes = under.ToBytes();
+                        pins.Add(await IniEdits.Store(FileStore, path, bytes));
+                        var merged = FileIdentity.XxHash3(bytes.xxHash3());
+                        tx.Add(user.Id, LoadoutFile.Hash, bytes.xxHash3());
+                        tx.Add(user.Id, LoadoutFile.Size, Size.FromLong(bytes.Length));
+                        userRows[target] = (user.Id, merged);
+                        // The stale-file pass deletes the legacy rows once this commit has folded them in.
+                        Logger.LogInformation("Merged the loadout tweak of '{Target}' from an earlier install under the user's own", target);
+                    }
+                    else
+                    {
+                        userGroup ??= IniEdits.UserSettingsGroup(db, tx, loadout);
+                        tx.Add(known.Ids[0], LoadoutItem.ParentId, userGroup.Value);
+                        userRows[target] = (known.Ids[0], identity);
+                        // Further rows at this path are duplicates of the first; the stale-file pass deletes them.
+                        known.Ids.RemoveAt(0);
+                        Logger.LogInformation("Kept the loadout tweak of '{Target}' as the user's: an earlier install had put it in the list's settings group", target);
+                    }
+                    changed = true;
+                }
+            }
+            if (changed) await tx.Commit();
+        }
+        finally
+        {
+            foreach (var pin in pins) pin.Dispose();
+        }
+    }
+
+    /// <summary>Whether a legacy row still holds what the list wrote: the xxHash64 of its bytes is the one recorded with the row.</summary>
+    private async Task<bool> IsListOutput(KnownFile known, FileIdentity identity)
+    {
+        if (known.ListHash is not { } recorded) return false;
+        return FileIdentity.XxHash64(Xx64Hasher.Hash(await FileStore.Load(identity))).Equals(recorded);
+    }
+
+    /// <summary>The loadout's own tweak rows in its top-level settings group, by the INI each one changes.</summary>
+    private static Dictionary<string, (EntityId Id, FileIdentity Identity)> UserTweakRows(IDb db, Loadout.ReadOnly loadout)
+    {
+        var rows = new Dictionary<string, (EntityId, FileIdentity)>(StringComparer.OrdinalIgnoreCase);
+        if (IniEdits.GameSettingsGroupOf(db, loadout) is not { } group) return rows;
+
+        foreach (var file in LoadoutItem.FindByParent(db, group).OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile())
+        {
+            var path = (GamePath)file.AsLoadoutItemWithTargetPath().TargetPath;
+            if (IniTweakLayers.IsLoadoutTweakPath(path, out var target)) rows.TryAdd(target, (file.Id, file.Identity));
+        }
+        return rows;
     }
 
     private WriteState LoadExisting(LoadoutItemGroupId groupId)

@@ -1,5 +1,6 @@
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Ini;
 using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
@@ -19,6 +20,7 @@ using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Install;
+using SilverModManager.Wabbajack.Mapping;
 using SilverModManager.Wabbajack.Models;
 using SilverModManager.Wabbajack.Tests.Fixtures;
 
@@ -102,7 +104,7 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         tree["A"]["Game/root.dll"].Should().Be(RootDll.xxHash3());
         tree["B"].Keys.Should().BeEquivalentTo("Game/Data/B.esp");
         tree["Overwrite"].Keys.Should().BeEquivalentTo("Game/Data/over.txt");
-        tree["Game settings"].Keys.Should().BeEquivalentTo(["Game/INI Tweaks/Loadout [Skyrim.ini].ini"], "the profile INIs are the loadout's baselines and only the tweak is a file");
+        tree["Game settings"].Keys.Should().BeEquivalentTo(["Game/INI Tweaks/Modlist [Skyrim.ini].ini"], "the profile INIs are the loadout's baselines and only the tweak is a file");
         tree["Stock Game"].Keys.Should().BeEquivalentTo("Game/d3d11.dll");
 
         WabbajackSkippedFile.All(Connection.Db).Should().BeEmpty();
@@ -151,7 +153,7 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
     }
 
     [Fact]
-    public async Task TheProfilesInitweaksIsTheLoadoutsOwnTweakOfTheMainIni()
+    public async Task TheProfilesInitweaksIsTheListsOwnTweakOfTheMainIni()
     {
         var (fixture, _, _, _) = await FixtureList();
         var loadout = await CreateLoadout();
@@ -161,9 +163,163 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
 
         var layers = IniTweakLayers.For(Loadout.Load(Connection.Db, loadout.LoadoutId), new GamePath(LocationId.Preferences, "Skyrim.ini"));
         var layer = layers.Should().ContainSingle().Subject;
-        layer.Name.Should().Be(IniTweakLayers.LoadoutTweakName);
+        layer.Name.Should().Be(Mo2Layout.ListTweakName, "the loadout's own tweak is the user's, and the list never writes it");
         layer.Identity.Should().Be(FileIdentity.XxHash3(Encoding.UTF8.GetBytes(InitTweaks).xxHash3()));
         IniTweakLayers.For(Loadout.Load(Connection.Db, loadout.LoadoutId), new GamePath(LocationId.Preferences, "SkyrimPrefs.ini")).Should().BeEmpty();
+    }
+
+    private const string UserMainTweak = "[Display]\nfMaxTime=0.5\n";
+    private const string UserPrefsTweak = "[Display]\niSize W=2560\n";
+
+    private static GamePath MainIni => new(LocationId.Preferences, "Skyrim.ini");
+    private static GamePath PrefsIni => new(LocationId.Preferences, "SkyrimPrefs.ini");
+
+    private static FileIdentity IdentityOf(string text) => FileIdentity.XxHash3(Encoding.UTF8.GetBytes(text).xxHash3());
+
+    private IReadOnlyList<IniTweakLayer> Layers(Loadout.ReadOnly loadout, GamePath ini) =>
+        IniTweakLayers.For(Loadout.Load(Connection.Db, loadout.LoadoutId), ini);
+
+    private async Task UserEdits(Loadout.ReadOnly loadout, GamePath ini, string text) =>
+        await IniEdits.SetLoadoutTweak(Connection, FileStore, Loadout.Load(Connection.Db, loadout.LoadoutId), ini, Encoding.UTF8.GetBytes(text));
+
+    [Fact]
+    public async Task AUserEditToTheMainIniSurvivesInstallingTheListAgain()
+    {
+        var (fixture, _, _, _) = await FixtureList();
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(fixture.ToList(), fixture.Blobs);
+        var options = new InstallOptions(false, new HashSet<RelativePath>());
+        await Install(loadout, modlist, options);
+        await UserEdits(loadout, MainIni, UserMainTweak);
+
+        var (_, group) = await Install(loadout, modlist, options);
+        await Install(loadout, modlist, options);
+
+        var layers = Layers(loadout, MainIni);
+        layers.Select(l => (l.Name, l.Identity)).Should().Equal(
+            (Mo2Layout.ListTweakName, IdentityOf(InitTweaks)),
+            (IniTweakLayers.LoadoutTweakName, IdentityOf(UserMainTweak)));
+        TreeOf(group)["Game settings"].Keys.Should().BeEquivalentTo(["Game/INI Tweaks/Modlist [Skyrim.ini].ini"], "the user's tweak is not a row of the list");
+    }
+
+    [Fact]
+    public async Task AUserTweakToAnotherIniSurvivesInstallingTheListAgain()
+    {
+        var (fixture, _, _, _) = await FixtureList();
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(fixture.ToList(), fixture.Blobs);
+        var options = new InstallOptions(false, new HashSet<RelativePath>());
+        await Install(loadout, modlist, options);
+        await UserEdits(loadout, PrefsIni, UserPrefsTweak);
+
+        await Install(loadout, modlist, options);
+
+        Layers(loadout, PrefsIni).Select(l => (l.Name, l.Identity)).Should().Equal((IniTweakLayers.LoadoutTweakName, IdentityOf(UserPrefsTweak)));
+        Layers(loadout, MainIni).Select(l => l.Identity).Should().Equal([IdentityOf(InitTweaks)]);
+    }
+
+    [Fact]
+    public async Task EditsMixedIntoTheListsSettingsGroupByAnEarlierVersionAreKeptAsTheUsers()
+    {
+        var (fixture, _, _, _) = await FixtureList();
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(fixture.ToList(), fixture.Blobs);
+        var options = new InstallOptions(false, new HashSet<RelativePath>());
+        var (_, group) = await Install(loadout, modlist, options);
+        await UserEdits(loadout, MainIni, UserMainTweak);
+        await UserEdits(loadout, PrefsIni, UserPrefsTweak);
+        var settings = LoadoutItem.FindByParent(Connection.Db, group.Id).OfTypeLoadoutItemGroup().Single(g => g.IsGameSettingsGroup);
+        var edits = LoadoutItem.FindByLoadout(Connection.Db, loadout.LoadoutId).OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile()
+            .Where(f => ((GamePath)f.AsLoadoutItemWithTargetPath().TargetPath).FileName.ToString().StartsWith("Loadout ["))
+            .ToArray();
+        edits.Should().HaveCount(2);
+        using (var tx = Connection.BeginTransaction())
+        {
+            foreach (var edit in edits) tx.Add(edit.Id, LoadoutItem.ParentId, settings.LoadoutItemGroupId);
+            await tx.Commit();
+        }
+
+        (_, group) = await Install(loadout, modlist, options);
+
+        Layers(loadout, MainIni).Select(l => (l.Name, l.Identity)).Should().Equal(
+            (Mo2Layout.ListTweakName, IdentityOf(InitTweaks)),
+            (IniTweakLayers.LoadoutTweakName, IdentityOf(UserMainTweak)));
+        Layers(loadout, PrefsIni).Select(l => l.Identity).Should().Equal(IdentityOf(UserPrefsTweak));
+        TreeOf(group)["Game settings"].Keys.Should().BeEquivalentTo(["Game/INI Tweaks/Modlist [Skyrim.ini].ini"]);
+    }
+
+    [Fact]
+    public async Task ALoadoutTweakThatIsStillTheListsOwnTextIsNotKeptAsTheUsers()
+    {
+        var (fixture, _, _, _) = await FixtureList();
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(fixture.ToList(), fixture.Blobs);
+        var options = new InstallOptions(false, new HashSet<RelativePath>());
+        await Install(loadout, modlist, options);
+        var listRow = LoadoutItem.FindByLoadout(Connection.Db, loadout.LoadoutId).OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile()
+            .Single(f => ((GamePath)f.AsLoadoutItemWithTargetPath().TargetPath).FileName.ToString().StartsWith("Modlist ["));
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(listRow.Id, LoadoutItemWithTargetPath.TargetPath, IniTweakLayers.LoadoutTweakPath("Skyrim.ini").ToGamePathParentTuple(loadout.LoadoutId));
+            await tx.Commit();
+        }
+
+        await Install(loadout, modlist, options);
+
+        Layers(loadout, MainIni).Select(l => (l.Name, l.Identity)).Should().Equal((Mo2Layout.ListTweakName, IdentityOf(InitTweaks)));
+    }
+
+    // Rewrites the list's tweak row the way an earlier version left it: at the loadout's own tweak path, holding `text`,
+    // with the xxHash64 of what the list wrote (`listText`, else `text` itself) recorded beside it.
+    private async Task MakeLegacyLoadoutRow(Loadout.ReadOnly loadout, string text, string? listText = null)
+    {
+        var listRow = LoadoutItem.FindByLoadout(Connection.Db, loadout.LoadoutId).OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile()
+            .Single(f => ((GamePath)f.AsLoadoutItemWithTargetPath().TargetPath).FileName.ToString().StartsWith("Modlist ["));
+        var bytes = Encoding.UTF8.GetBytes(text);
+        using var pin = await IniEdits.Store(FileStore, IniTweakLayers.LoadoutTweakPath("Skyrim.ini"), bytes);
+        using var tx = Connection.BeginTransaction();
+        tx.Add(listRow.Id, LoadoutItemWithTargetPath.TargetPath, IniTweakLayers.LoadoutTweakPath("Skyrim.ini").ToGamePathParentTuple(loadout.LoadoutId));
+        tx.Add(listRow.Id, LoadoutFile.Hash, bytes.xxHash3());
+        tx.Add(listRow.Id, WabbajackInstalledFile.ListHash, FileIdentity.XxHash64(Xx64Hasher.Hash(Encoding.UTF8.GetBytes(listText ?? text))));
+        await tx.Commit();
+    }
+
+    [Fact]
+    public async Task ALoadoutTweakHoldingAnOlderVersionOfTheListsTextIsNotKeptAsTheUsers()
+    {
+        var (fixture, _, _, _) = await FixtureList();
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(fixture.ToList(), fixture.Blobs);
+        var options = new InstallOptions(false, new HashSet<RelativePath>());
+        await Install(loadout, modlist, options);
+        await MakeLegacyLoadoutRow(loadout, "[Display]\nfMaxTime=0.9\nfOld=1\n");
+
+        await Install(loadout, modlist, options);
+
+        Layers(loadout, MainIni).Select(l => (l.Name, l.Identity)).Should().Equal((Mo2Layout.ListTweakName, IdentityOf(InitTweaks)));
+    }
+
+    [Fact]
+    public async Task AnEarlierInstallsTweakIsMergedUnderTheUsersExistingTweakOfTheSameIni()
+    {
+        var (fixture, _, _, _) = await FixtureList();
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(fixture.ToList(), fixture.Blobs);
+        var options = new InstallOptions(false, new HashSet<RelativePath>());
+        await Install(loadout, modlist, options);
+        await UserEdits(loadout, MainIni, UserMainTweak);
+        // The recorded list text differs from the row's bytes, so the row is the user's edit of an earlier install.
+        await MakeLegacyLoadoutRow(loadout, "[Display]\nfMaxTime=0.9\nfOld=1\n", InitTweaks);
+
+        await Install(loadout, modlist, options);
+
+        var tweaks = IniTweakLayers.All(Loadout.Load(Connection.Db, loadout.LoadoutId), MainIni);
+        tweaks.Where(t => t.IsLoadoutTweak).Should().ContainSingle("the editor must have exactly one row to edit");
+        var layers = Layers(loadout, MainIni);
+        layers.Select(l => l.Name).Should().Equal(Mo2Layout.ListTweakName, IniTweakLayers.LoadoutTweakName);
+        var user = IniDocument.Parse(await FileStore.Load(layers[1].Identity));
+        user.Get("Display", "fMaxTime").Should().Be("0.5", "the user's own value wins");
+        user.Get("Display", "fOld").Should().Be("1", "keys only the earlier install set are kept");
     }
 
     [Fact]

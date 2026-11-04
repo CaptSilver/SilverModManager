@@ -16,7 +16,8 @@ public readonly record struct IniTweakLayer(string Name, FileIdentity Identity);
 /// <summary>
 /// Finds the tweaks that apply to one INI: <c>INI Tweaks/&lt;Name&gt; [&lt;Target.ini&gt;].ini</c> files in the
 /// loadout. A mod's tweak counts while the mod is enabled; the loadout's own tweak, <c>INI Tweaks/Loadout
-/// [&lt;Target.ini&gt;].ini</c> in the game settings group, comes last.
+/// [&lt;Target.ini&gt;].ini</c> in the game settings group, comes last. The loadout's own tweak is the user's: the INI
+/// editor writes it, so it wins over every mod's and every modlist's tweak, and an install never writes it.
 /// </summary>
 public static partial class IniTweakLayers
 {
@@ -26,8 +27,20 @@ public static partial class IniTweakLayers
     private const string Folder = "INI Tweaks";
 
     /// <summary>Where the loadout's own tweak of the INI called <paramref name="targetFileName"/> lives.</summary>
-    public static GamePath LoadoutTweakPath(string targetFileName) =>
-        new(LocationId.Game, $"{Folder}/{LoadoutTweakName} [{targetFileName}].ini");
+    public static GamePath LoadoutTweakPath(string targetFileName) => TweakPath(LoadoutTweakName, targetFileName);
+
+    /// <summary>Where a tweak called <paramref name="name"/> of the INI called <paramref name="targetFileName"/> lives.</summary>
+    public static GamePath TweakPath(string name, string targetFileName) =>
+        new(LocationId.Game, $"{Folder}/{name} [{targetFileName}].ini");
+
+    /// <summary>Whether <paramref name="path"/> is a loadout's own tweak; <paramref name="targetFileName"/> is the INI it changes.</summary>
+    public static bool IsLoadoutTweakPath(GamePath path, out string targetFileName)
+    {
+        targetFileName = "";
+        return IsTweakPath(path)
+               && TryParse(path.Path, out var name, out targetFileName)
+               && name.Equals(LoadoutTweakName, StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>
     /// Whether <paramref name="path"/> is inside the tweak folder of the game location. The game ignores the

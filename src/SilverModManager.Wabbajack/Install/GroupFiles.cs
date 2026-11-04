@@ -28,6 +28,8 @@ internal sealed class GroupFiles
 
     public IEnumerable<KnownFile> Known => _byKey.Values;
 
+    public IEnumerable<GamePath> Paths => _byPath.Keys;
+
     public KnownFile Add(GamePath path, FileIdentity identity, KnownFile known)
     {
         _byKey[(path, identity)] = known;
