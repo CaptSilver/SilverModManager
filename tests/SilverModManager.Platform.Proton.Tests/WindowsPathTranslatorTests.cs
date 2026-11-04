@@ -93,4 +93,49 @@ public class WindowsPathTranslatorTests
         WindowsPathTranslator.Translate("-D:data", Prefix).Should().Be("-D:data");
         WindowsPathTranslator.Translate("\"two words\"", Prefix).Should().Be("\"two words\"");
     }
+
+    [Theory]
+    [InlineData("{P}/drive_c/Games/Old/../Tool/tool.exe", @"C:\Games\Tool\tool.exe")]
+    [InlineData("{P}/drive_c/Games/./Tool/", @"C:\Games\Tool\")]
+    [InlineData("{P}/drive_c/Games/..", @"C:\")]
+    [InlineData("{P}/drive_c/../../../x.txt", @"C:\x.txt")]
+    [InlineData("{P}/drive_c/a/../../../b", @"C:\b")]
+    public void Test_DotSegmentsUnderDriveCResolveAndStopAtTheDriveRoot(string argument, string expected)
+    {
+        WindowsPathTranslator.Translate(argument.Replace("{P}", Prefix), Prefix).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("/tmp/a/../b", @"Z:\tmp\b")]
+    [InlineData("/tmp/./a", @"Z:\tmp\a")]
+    [InlineData("/tmp/../../../x", @"Z:\x")]
+    [InlineData("/tmp/a/..", @"Z:\tmp")]
+    [InlineData("/..", @"Z:\")]
+    public void Test_DotSegmentsInAHostPathResolveAndStopAtTheHostRoot(string argument, string expected)
+    {
+        WindowsPathTranslator.Translate(argument, Prefix).Should().Be(expected);
+    }
+
+    [Fact]
+    public void Test_DotSegmentsAreResolvedAfterAFlagPrefixAndInsideQuotes()
+    {
+        WindowsPathTranslator.Translate("-D:/game/data/../mods", Prefix).Should().Be(@"-D:Z:\game\mods");
+        WindowsPathTranslator.Translate($"-O:\"{Prefix}/drive_c/out/../../..\" -q", Prefix).Should().Be("-O:\"C:\\\" -q");
+    }
+
+    [Fact]
+    public void Test_SlashCDirectoryIsAnOrdinaryHostPath()
+    {
+        // Only a path under the prefix's drive_c is a C: path; /c/... is a folder named c on the host.
+        WindowsPathTranslator.Translate("/c/Users/me", Prefix).Should().Be(@"Z:\c\Users\me");
+    }
+
+    [Theory]
+    [InlineData("C:/Games/tool.exe")]
+    [InlineData(@"c:\Games\tool.exe")]
+    [InlineData(@"C:\Games\..\tool.exe")]
+    public void Test_ArgumentAlreadyInWindowsFormIsLeftAlone(string argument)
+    {
+        WindowsPathTranslator.Translate(argument, Prefix).Should().Be(argument);
+    }
 }
