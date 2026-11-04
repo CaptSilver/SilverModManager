@@ -667,7 +667,11 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
     {
         await WriteGameFiles(3);
         using var socket = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.Unix, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Unspecified);
-        socket.Bind(new System.Net.Sockets.UnixDomainSocketEndPoint(_gameDir.Combine("s.sock").GetFullPath()));
+        // A socket path is capped at 108 bytes and the game folder sits deep in the run's temp folder, so bind it at a
+        // short path and rename it in; the renamed file is still a socket, which is all the indexer meets.
+        var shortPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"s{Guid.NewGuid():N}"[..9] + ".sock");
+        socket.Bind(new System.Net.Sockets.UnixDomainSocketEndPoint(shortPath));
+        File.Move(shortPath, _gameDir.Combine("s.sock").GetFullPath());
         var service = CreateService();
 
         var result = await service.IndexGame(_installation, NoDiskState, GamePathFilters.Empty);
