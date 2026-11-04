@@ -98,9 +98,17 @@ public class WindowsPathTranslatorTests
     [InlineData("{P}/drive_c/Games/Old/../Tool/tool.exe", @"C:\Games\Tool\tool.exe")]
     [InlineData("{P}/drive_c/Games/./Tool/", @"C:\Games\Tool\")]
     [InlineData("{P}/drive_c/Games/..", @"C:\")]
-    [InlineData("{P}/drive_c/../../../x.txt", @"C:\x.txt")]
-    [InlineData("{P}/drive_c/a/../../../b", @"C:\b")]
-    public void Test_DotSegmentsUnderDriveCResolveAndStopAtTheDriveRoot(string argument, string expected)
+    [InlineData("{P}/x/../drive_c/f", @"C:\f")]
+    public void Test_DotSegmentsUnderDriveCResolveOnTheHostPath(string argument, string expected)
+    {
+        WindowsPathTranslator.Translate(argument.Replace("{P}", Prefix), Prefix).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("{P}/drive_c/..", @"Z:\home\user\.steam\steam\steamapps\compatdata\1091500\pfx")]
+    [InlineData("{P}/drive_c/../user.reg", @"Z:\home\user\.steam\steam\steamapps\compatdata\1091500\pfx\user.reg")]
+    [InlineData("{P}/drive_c/a/../../../b", @"Z:\home\user\.steam\steam\steamapps\compatdata\1091500\b")]
+    public void Test_DotSegmentsClimbingOutOfDriveCLandOnTheHostFile(string argument, string expected)
     {
         WindowsPathTranslator.Translate(argument.Replace("{P}", Prefix), Prefix).Should().Be(expected);
     }
@@ -120,7 +128,7 @@ public class WindowsPathTranslatorTests
     public void Test_DotSegmentsAreResolvedAfterAFlagPrefixAndInsideQuotes()
     {
         WindowsPathTranslator.Translate("-D:/game/data/../mods", Prefix).Should().Be(@"-D:Z:\game\mods");
-        WindowsPathTranslator.Translate($"-O:\"{Prefix}/drive_c/out/../../..\" -q", Prefix).Should().Be("-O:\"C:\\\" -q");
+        WindowsPathTranslator.Translate($"-O:\"{Prefix}/drive_c/out/../../..\" -q", Prefix).Should().Be("-O:\"Z:\\home\\user\\.steam\\steam\\steamapps\\compatdata\\1091500\" -q");
     }
 
     [Fact]
