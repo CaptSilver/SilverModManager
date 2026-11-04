@@ -48,6 +48,15 @@ public class CollectionDataProvider
         IObservable<CollectionDownloadsFilter> filterObservable,
         LoadoutId loadoutId)
     {
+        // Every row asks the same question, so one shared subscription answers them all. An update that has not reached its
+        // install job yet also keeps the per-mod buttons off.
+        var isBusyObservable = CollectionJobs
+            .ObserveBusy(_jobMonitor, revisionMetadata.Collection.Id, loadoutId)
+            .CombineLatest(CollectionUpdater.ObserveIsUpdating(revisionMetadata.Collection, loadoutId), static (installing, updating) => installing || updating)
+            .DistinctUntilChanged()
+            .Replay(bufferSize: 1)
+            .RefCount();
+
         var collectionGroupObservable = _collectionDownloader
             .GetCollectionGroupObservable(revisionMetadata, loadoutId)
             .Replay(bufferSize: 1)
@@ -62,17 +71,17 @@ public class CollectionDataProvider
             {
                 if (downloadEntity.TryGetAsCollectionDownloadNexusMods(out var nexusModsDownload))
                 {
-                    return ToItemModel(nexusModsDownload, collectionGroupObservable, loadoutId);
+                    return ToItemModel(nexusModsDownload, collectionGroupObservable, isBusyObservable, loadoutId);
                 }
 
                 if (downloadEntity.TryGetAsCollectionDownloadExternal(out var externalDownload))
                 {
-                    return ToItemModel(externalDownload, collectionGroupObservable, loadoutId);
+                    return ToItemModel(externalDownload, collectionGroupObservable, isBusyObservable, loadoutId);
                 }
 
                 if (downloadEntity.TryGetAsCollectionDownloadBundled(out var bundledDownload))
                 {
-                    return ToItemModel(bundledDownload, collectionGroupObservable, loadoutId);
+                    return ToItemModel(bundledDownload, collectionGroupObservable, isBusyObservable, loadoutId);
                 }
 
                 throw new UnreachableException();
@@ -96,6 +105,7 @@ public class CollectionDataProvider
     private CompositeItemModel<EntityId> ToItemModel(
         CollectionDownloadNexusMods.ReadOnly download,
         IObservable<Optional<CollectionGroup.ReadOnly>> groupObservable,
+        IObservable<bool> isBusyObservable,
         LoadoutId loadoutId)
     {
         var itemModel = new CompositeItemModel<EntityId>(download.Id);
@@ -123,7 +133,7 @@ public class CollectionDataProvider
             )
         );
 
-        AddInstallAction(itemModel, download.AsCollectionDownload(), statusObservable, groupObservable.ToObservable(), loadoutId);
+        AddInstallAction(itemModel, download.AsCollectionDownload(), statusObservable, groupObservable.ToObservable(), isBusyObservable);
 
         return itemModel;
     }
@@ -131,6 +141,7 @@ public class CollectionDataProvider
     private CompositeItemModel<EntityId> ToItemModel(
         CollectionDownloadExternal.ReadOnly download,
         IObservable<Optional<CollectionGroup.ReadOnly>> groupObservable,
+        IObservable<bool> isBusyObservable,
         LoadoutId loadoutId)
     {
         var itemModel = new CompositeItemModel<EntityId>(download.Id);
@@ -177,7 +188,7 @@ public class CollectionDataProvider
             )
         );
 
-        AddInstallAction(itemModel, download.AsCollectionDownload(), statusObservable, groupObservable.ToObservable(), loadoutId);
+        AddInstallAction(itemModel, download.AsCollectionDownload(), statusObservable, groupObservable.ToObservable(), isBusyObservable);
 
         return itemModel;
     }
@@ -185,6 +196,7 @@ public class CollectionDataProvider
     private CompositeItemModel<EntityId> ToItemModel(
         CollectionDownloadBundled.ReadOnly download,
         IObservable<Optional<CollectionGroup.ReadOnly>> groupObservable,
+        IObservable<bool> isBusyObservable,
         LoadoutId loadoutId)
     {
         var itemModel = new CompositeItemModel<EntityId>(download.Id);
@@ -193,7 +205,7 @@ public class CollectionDataProvider
         itemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
 
         var statusObservable = _collectionDownloader.GetStatusObservable(download.AsCollectionDownload(), groupObservable).ToObservable();
-        AddInstallAction(itemModel, download.AsCollectionDownload(), statusObservable, groupObservable.ToObservable(), loadoutId);
+        AddInstallAction(itemModel, download.AsCollectionDownload(), statusObservable, groupObservable.ToObservable(), isBusyObservable);
 
         return itemModel;
     }
@@ -222,12 +234,9 @@ public class CollectionDataProvider
         CollectionDownloadEntity.ReadOnly downloadEntity,
         Observable<CollectionDownloadStatus> statusObservable,
         Observable<Optional<CollectionGroup.ReadOnly>> groupObservable,
-        LoadoutId loadoutId)
+        IObservable<bool> isBusyObservable)
     {
-        // A review or a whole-collection install owns the collection while it runs; installing a single mod alongside it would race it.
-        var isBusyObservable = CollectionJobs
-            .ObserveBusy(_jobMonitor, downloadEntity.CollectionRevision.Collection.Id, loadoutId)
-            .ToObservable();
+        // A review, an update or a whole-collection install owns the collection while it runs; installing a single mod alongside it would race it.
 
         itemModel.AddObservable(
             key: CollectionColumns.Actions.InstallComponentKey,
@@ -236,7 +245,7 @@ public class CollectionDataProvider
                 downloadEntity: downloadEntity,
                 isInstalledObservable: statusObservable.Select(status => status.IsInstalled(out _)),
                 installJobStatusObservable: GetJobStatusObservable<InstallCollectionDownloadJob>(job => job.Item.Id == downloadEntity.Id).Prepend(JobStatus.None),
-                isBusyObservable: isBusyObservable
+                isBusyObservable: isBusyObservable.ToObservable()
             )
         );
     }

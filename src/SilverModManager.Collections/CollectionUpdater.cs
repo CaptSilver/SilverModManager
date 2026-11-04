@@ -150,13 +150,6 @@ public static partial class CollectionUpdater
     }
 
     /// <summary>
-    /// Whether a running job is installing into the group, so an update must not start: one installing the whole collection
-    /// (any revision of it) in the group's loadout, or one installing a single mod into the group.
-    /// </summary>
-    public static bool Blocks(IJobDefinition job, NexusCollectionLoadoutGroup.ReadOnly group) =>
-        CollectionJobs.TouchesCollection(job, group.Collection.Id, group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId);
-
-    /// <summary>
     /// Switches the group to <paramref name="newRevision"/>, installs what the new revision adds or changes, and puts
     /// replaced mods where the old ones stood.
     /// </summary>

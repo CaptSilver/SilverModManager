@@ -3,6 +3,9 @@ using System.Text.Json;
 using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.FileStore;
 using SilverModManager.Abstractions.GuidedInstallers;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Library.Installers;
@@ -1026,6 +1029,28 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         await wait.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    /// <summary>A second revision of the "offline" collection that <see cref="PlainAndUnknown"/> creates, with one mod of its own.</summary>
+    private static CollectionRoot LaterRevisionManifest() => new()
+    {
+        Info = new CollectionInfo { Name = "Offline", DomainName = GameDomain.From("cyberpunk2077") },
+        Mods =
+        [
+            new Mod
+            {
+                Name = "Later revision mod",
+                DomainName = GameDomain.From("cyberpunk2077"),
+                Source = new ModSource
+                {
+                    Type = ModSourceType.Direct,
+                    Md5 = Md5Value.From((UInt128)778),
+                    Url = new Uri("https://example.invalid/later.zip"),
+                    LogicalFilename = "later.zip",
+                    FileSize = Size.From(1UL),
+                },
+            },
+        ],
+    };
+
     [Fact]
     public async Task TouchesCollection_MatchesBothJobTypes_ByCollectionAndLoadout()
     {
@@ -1036,7 +1061,44 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
 
         var download = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, items[0], CancellationToken.None);
 
-        foreach (IJobDefinition job in new IJobDefinition[] { installJob, download })
+        // Another revision of the same collection: a different revision id, the same collection.
+        var (laterFile, laterRevision, laterItems) = await new OfflineCollections(ServiceProvider, Connection, LibraryService, TemporaryFileManager)
+            .Create(LaterRevisionManifest(), revisionNumber: 2);
+        laterRevision.Id.Should().NotBe(revision.Id);
+        laterRevision.Collection.Id.Should().Be(collection);
+        // Built without starting it: only its definition is asked about.
+        var laterInstall = new InstallCollectionJob
+        {
+            Group = Optional<NexusCollectionLoadoutGroup.ReadOnly>.None,
+            Items = laterItems,
+            TargetLoadout = loadout,
+            SourceCollection = laterFile,
+            RevisionMetadata = laterRevision,
+            ServiceProvider = ServiceProvider,
+            Connection = Connection,
+            FileStore = ServiceProvider.GetRequiredService<IFileStore>(),
+            LibraryService = LibraryService,
+            LoadoutManager = ServiceProvider.GetRequiredService<ILoadoutManager>(),
+            NexusModsLibrary = ServiceProvider.GetRequiredService<SilverModManager.Networking.NexusWebApi.NexusModsLibrary>(),
+            Logger = ServiceProvider.GetRequiredService<ILogger<InstallCollectionJob>>(),
+        };
+        // The later revision has no group in the loadout yet, so Create would refuse it; borrow the installed one's wiring.
+        var laterDownload = new InstallCollectionDownloadJob
+        {
+            Logger = download.Logger,
+            Item = laterItems[0],
+            Group = download.Group,
+            TargetLoadout = loadout,
+            CollectionMod = download.CollectionMod,
+            SourceCollection = laterFile,
+            ServiceProvider = ServiceProvider,
+            Connection = Connection,
+            FileStore = download.FileStore,
+            LibraryService = LibraryService,
+            LoadoutManager = download.LoadoutManager,
+        };
+
+        foreach (IJobDefinition job in new IJobDefinition[] { installJob, download, laterInstall, laterDownload })
         {
             CollectionJobs.TouchesCollection(job, collection, loadout).Should().BeTrue(job.GetType().Name);
             CollectionJobs.TouchesCollection(job, collection, otherLoadout).Should().BeFalse(job.GetType().Name);

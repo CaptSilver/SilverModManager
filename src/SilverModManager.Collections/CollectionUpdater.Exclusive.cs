@@ -28,7 +28,7 @@ public static partial class CollectionUpdater
         {
             var current = NexusCollectionLoadoutGroup.Load(serviceProvider.GetRequiredService<IConnection>().Db, group.Id);
             if (!current.IsValid()) throw refuse("The collection is no longer installed in this loadout.");
-            if (serviceProvider.GetRequiredService<IJobMonitor>().Jobs.Any(job => job.Status is JobStatus.Created or JobStatus.Running or JobStatus.Paused && Blocks(job.Definition, current)))
+            if (CollectionJobs.IsBusy(serviceProvider.GetRequiredService<IJobMonitor>(), current.Collection.Id, current.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId))
                 throw refuse("The collection is still being installed. Wait for it to finish, or cancel it, then try again.");
 
             await work();

@@ -114,7 +114,7 @@ public static partial class CollectionUpdater
 
     private static void ThrowIfInstalling(IJobMonitor jobMonitor, NexusCollectionLoadoutGroup.ReadOnly group)
     {
-        if (jobMonitor.Jobs.Any(job => job.Status is JobStatus.Created or JobStatus.Running or JobStatus.Paused && Blocks(job.Definition, group)))
+        if (CollectionJobs.IsBusy(jobMonitor, group.Collection.Id, group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId))
             throw new InvalidOperationException("The collection is still being installed. Wait for it to finish, or cancel it, then try again.");
     }
 

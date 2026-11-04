@@ -26,11 +26,12 @@ public static class CollectionJobs
     /// Whether a job that has not finished touches the collection in the loadout right now.
     /// </summary>
     public static bool IsBusy(IJobMonitor jobMonitor, EntityId collection, LoadoutId loadout) =>
-        jobMonitor.Jobs.Any(job => job.Status is JobStatus.Created or JobStatus.Running or JobStatus.Paused && TouchesCollection(job.Definition, collection, loadout));
+        jobMonitor.Snapshot().Any(job => job.Status.IsUnfinished() && TouchesCollection(job.Definition, collection, loadout));
 
     /// <summary>
-    /// <see cref="IsBusy"/> as an observable. Starts with false, so a subscriber has a value before the job monitor reports,
-    /// and emits when the answer changes.
+    /// <see cref="IsBusy"/> as an observable, except that it ignores a job that is created and not yet running: it follows
+    /// running and paused jobs only. Starts with false, so a subscriber has a value before the job monitor reports, and
+    /// emits when the answer changes.
     /// </summary>
     public static IObservable<bool> ObserveBusy(IJobMonitor jobMonitor, EntityId collection, LoadoutId loadout) =>
         jobMonitor.HasActiveJob<InstallCollectionJob>(job => TouchesCollection(job, collection, loadout)).StartWith(false)

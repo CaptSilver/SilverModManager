@@ -5938,7 +5938,7 @@ namespace SilverModManager.App.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The collection is being installed or reviewed. Install this mod when that finishes..
+        ///   Looks up a localized string similar to The collection is being installed, updated or reviewed. Install this mod when that finishes..
         /// </summary>
         public static string ToastNotification_Collection_is_busy {
             get {

@@ -435,7 +435,7 @@ public class CollectionUpdateTests(ITestOutputHelper helper) : ACyberpunkIsolate
         var s = await InstalledFirstRevision();
         var job = await InstallCollectionDownloadJob.Create(ServiceProvider, s.Loadout, s.First.Items[0], CancellationToken.None);
 
-        CollectionUpdater.Blocks(job, s.Group).Should().BeTrue();
+        CollectionJobs.TouchesCollection(job, s.Group.Collection.Id, s.Loadout).Should().BeTrue();
     }
 
     [Fact]
