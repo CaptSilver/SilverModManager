@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Security.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
 using DynamicData;
 using DynamicData.Kernel;
@@ -513,6 +514,32 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
         rows.Lookup(local).HasValue.Should().BeFalse();
     }
 
+    private async Task<EntityId> AddThunderstoreFile(Destination destination)
+    {
+        var fileName = $"Team-Pack-{Guid.NewGuid():N}.zip";
+        var bytes = System.Text.Encoding.UTF8.GetBytes(fileName);
+        using var tx = Connection.BeginTransaction();
+        var file = new LibraryFile.New(tx, out var id)
+        {
+            FileName = fileName,
+            Hash = bytes.xxHash3(),
+            Size = Size.From((ulong)bytes.Length),
+            LibraryItem = new LibraryItem.New(tx, id) { Name = fileName },
+        };
+        _ = new ThunderstoreLibraryFile.New(tx, id)
+        {
+            LibraryFile = file,
+            Namespace = "Team",
+            Name = "Pack",
+            VersionNumber = "1.0.0",
+            Community = "test-community",
+            PinnedSha256 = Sha256Value.From(SHA256.HashData(bytes)),
+        };
+        LibraryDestinations.Write(tx, id, destination);
+        var result = await tx.Commit();
+        return result[id];
+    }
+
     /// <summary>What a Nexus download leaves: the Nexus item, its library file, and the DownloadedFile every download carries.</summary>
     private async Task<(EntityId Page, EntityId Item)> AddNexusDownload(NexusModsGameId nexus, uint modId, string name, Destination destination)
     {
@@ -556,13 +583,28 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
     private static IObservableCache<CompositeItemModel<EntityId>, EntityId> LoadoutRows(ILoadoutDataProvider provider, LoadoutId loadout)
         => provider.ObserveLoadoutItems(WholeLoadout(loadout)).AsObservableCache();
 
-    /// <summary>The settled count: the observable starts at 0 and then reports what it found, so wait for it to go quiet.</summary>
-    private async Task<int> LoadoutCount(ILoadoutDataProvider provider, LoadoutId loadout)
+    /// <summary>
+    /// A loadout's count once it reaches <paramref name="expected"/>. The observable starts with a prepended 0, so a
+    /// wait on a positive count proves the query ran; a fixed pause would not.
+    /// </summary>
+    private async Task WaitForLoadoutCount(ILoadoutDataProvider provider, LoadoutId loadout, int expected)
+    {
+        var count = -1;
+        using var subscription = provider.CountLoadoutItems(WholeLoadout(loadout)).Subscribe(value => Volatile.Write(ref count, value));
+        await Eventually(() => Volatile.Read(ref count).Should().Be(expected, "{0} should count {1} item(s)", provider.GetType().Name, expected));
+    }
+
+    /// <summary>
+    /// Zero is also what the observable reports before it has computed anything, so a zero only means something once
+    /// the loadout's owning provider has counted the item (call this after <see cref="WaitForLoadoutCount"/> for it).
+    /// A query that finds nothing may never emit past that 0, so this reads what the subscription holds right away.
+    /// </summary>
+    private static async Task<int> ReadLoadoutCount(ILoadoutDataProvider provider, LoadoutId loadout)
     {
         var count = 0;
-        using var subscription = provider.CountLoadoutItems(WholeLoadout(loadout)).Subscribe(value => count = value);
-        await Task.Delay(500);
-        return count;
+        using var subscription = provider.CountLoadoutItems(WholeLoadout(loadout)).Subscribe(value => Volatile.Write(ref count, value));
+        await Task.Yield();
+        return Volatile.Read(ref count);
     }
 
     [Fact]
@@ -572,16 +614,20 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
         var loadout = await TestGame.AddLoadout(Connection, game);
         var (page, item) = await AddNexusDownload(game.NexusModsGameId.Value, 31, "nexus.zip", Destination.Of(game.GameId));
         await Install(loadout, item);
+        // A host download in the same loadout tells us the downloaded-file cache has filled before we look for the Nexus item in it.
+        var host = await AddHostDownloadedFile("alongside.7z", new Uri("https://www.moddb.com/downloads/alongside"), Destination.Of(game.GameId));
+        await Install(loadout, host);
 
         using var nexus = LoadoutRows(new NexusModsDataProvider(Provider), loadout);
         using var downloaded = LoadoutRows(new DownloadedFileDataProvider(Provider), loadout);
 
         await Eventually(() => nexus.Keys.Should().Contain(page));
+        await Eventually(() => downloaded.Keys.Should().Contain(host));
         SourceOf(nexus.Lookup(page).Value).Should().Be(ModSources.Nexus);
         downloaded.Keys.Should().NotContain(item, "the Nexus provider owns a Nexus download");
-        downloaded.Count.Should().Be(0);
-        (await LoadoutCount(new DownloadedFileDataProvider(Provider), loadout)).Should().Be(0);
-        (await LoadoutCount(new NexusModsDataProvider(Provider), loadout)).Should().Be(1);
+        downloaded.Count.Should().Be(1, "only the host download");
+        await WaitForLoadoutCount(new NexusModsDataProvider(Provider), loadout, 1);
+        await WaitForLoadoutCount(new DownloadedFileDataProvider(Provider), loadout, 1);
     }
 
     [Fact]
@@ -596,9 +642,9 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
 
         await Eventually(() => downloaded.Keys.Should().Contain(file));
         SourceOf(downloaded.Lookup(file).Value).Should().Be("mediafire.com");
-        (await LoadoutCount(new DownloadedFileDataProvider(Provider), loadout)).Should().Be(1);
-        (await LoadoutCount(new LocalFileDataProvider(Provider), loadout)).Should().Be(0);
-        (await LoadoutCount(new NexusModsDataProvider(Provider), loadout)).Should().Be(0);
+        await WaitForLoadoutCount(new DownloadedFileDataProvider(Provider), loadout, 1);
+        (await ReadLoadoutCount(new LocalFileDataProvider(Provider), loadout)).Should().Be(0);
+        (await ReadLoadoutCount(new NexusModsDataProvider(Provider), loadout)).Should().Be(0);
     }
 
     [Fact]
@@ -613,8 +659,8 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
 
         await Eventually(() => local.Keys.Should().Contain(file));
         SourceOf(local.Lookup(file).Value).Should().Be(ModSources.LocalFile);
-        (await LoadoutCount(new LocalFileDataProvider(Provider), loadout)).Should().Be(1);
-        (await LoadoutCount(new DownloadedFileDataProvider(Provider), loadout)).Should().Be(0);
+        await WaitForLoadoutCount(new LocalFileDataProvider(Provider), loadout, 1);
+        (await ReadLoadoutCount(new DownloadedFileDataProvider(Provider), loadout)).Should().Be(0);
     }
 
     [Fact]
@@ -627,7 +673,8 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
         var host = await AddHostDownloadedFile("kind-host.7z", new Uri("https://www.moddb.com/downloads/kind"), destination);
         var local = await AddLocalFile("kind-local.7z", destination);
         var archive = await AddArchive("kind-archive", destination);
-        EntityId[] linked = [nexus, host, local, archive];
+        var thunderstore = await AddThunderstoreFile(destination);
+        EntityId[] linked = [nexus, host, local, archive, thunderstore];
         foreach (var item in linked) await Install(loadout, item);
 
         var counts = new Dictionary<string, int>();
@@ -639,8 +686,14 @@ public class LibraryDestinationProviderTests(IServiceProvider provider) : AUiTes
             string Describe() { lock (counts) return string.Join(", ", counts.Select(pair => $"{pair.Key}={pair.Value}")); }
             int Total() { lock (counts) return counts.Values.Sum(); }
 
-            await Eventually(() => Total().Should().BeGreaterThanOrEqualTo(linked.Length, Describe()));
-            await Task.Delay(500); // an item a second provider claims shows up as an extra count after the first
+            // Each kind's owner has counted its item; an item a second provider also claimed would add to the total.
+            await Eventually(() =>
+            {
+                foreach (var owner in new[] { nameof(NexusModsDataProvider), nameof(DownloadedFileDataProvider), nameof(LocalFileDataProvider), nameof(ManuallyCreatedArchiveDataProvider), nameof(ThunderstoreDataProvider) })
+                {
+                    lock (counts) counts.GetValueOrDefault(owner).Should().Be(1, Describe());
+                }
+            });
             Total().Should().Be(linked.Length, $"every linked library item is claimed by one provider, so the page's All count adds up ({Describe()})");
         }
         finally
