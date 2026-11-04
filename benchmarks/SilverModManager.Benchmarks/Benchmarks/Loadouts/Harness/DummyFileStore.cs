@@ -50,4 +50,11 @@ public class DummyFileStore : IFileStore
     {
         
     }
+
+    // This store never changes, so there is nothing to raise and nothing to hold on to.
+    public event Action? ArchivesChanged
+    {
+        add { }
+        remove { }
+    }
 }
