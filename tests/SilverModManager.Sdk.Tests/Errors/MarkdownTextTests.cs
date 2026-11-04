@@ -14,7 +14,8 @@ public class MarkdownTextTests
     [InlineData("# heading", Z + "# heading")]
     [InlineData("- item", Z + "- item")]
     [InlineData("> quote", Z + "> quote")]
-    [InlineData("```fence", Z + "```fence")]
+    [InlineData("```fence", "\u02CB\u02CB\u02CBfence")]
+    [InlineData("a`b", "a\u02CBb")]
     [InlineData("a - b # c > d", "a - b # c > d")]
     [InlineData("**bold**", "\\*\\*bold\\*\\*")]
     [InlineData("a_b_c", "a\\_b\\_c")]
@@ -26,6 +27,19 @@ public class MarkdownTextTests
     public void Test_Inline_DefusesLinksImagesEmphasisAndBlockMarkers(string input, string expected)
     {
         MarkdownText.Inline(input).Should().Be(expected);
+    }
+
+    [Fact]
+    public void Test_Inline_LeavesNoBacktickToPairWithTheNextCodeSpan()
+    {
+        // The renderer matches code spans over the whole paragraph, so a lone backtick in escaped text pairs with the
+        // fence of a later Code(...) and leaves that span's content outside, where it is read as Markdown.
+        MarkdownText.Inline("'/g/a`b'").Should().NotContain("`");
+
+        var paragraph = $"{MarkdownText.Inline("'/g/a`b'")}\n{MarkdownText.Code("[x](https://evil.example)")}";
+        var spans = System.Text.RegularExpressions.Regex.Matches(paragraph, @"(?<!\\)(`+)(.+?)(?<!`)\1(?!`)", System.Text.RegularExpressions.RegexOptions.Singleline);
+
+        spans.Should().ContainSingle().Which.Groups[2].Value.Should().Be("[x](https://evil.example)");
     }
 
     [Fact]
@@ -97,5 +111,76 @@ public class MarkdownTextTests
     public void Test_CodeBlock_FenceIsLongerThanAnyBacktickRun(string input, string expected)
     {
         MarkdownText.CodeBlock(input).Should().Be(expected);
+    }
+
+    private sealed class Refusal(string message) : UserFacingException(message)
+    {
+        public override string Title => "Refused";
+    }
+
+    [Fact]
+    public void Test_Message_LeavesARefusalAloneAndEscapesAnythingElse()
+    {
+        var refusal = new Refusal($"Couldn't read {MarkdownText.Code("my_mod")}");
+
+        MarkdownText.Message(refusal).Should().Be("Couldn't read `my_mod`");
+        MarkdownText.Message(new IOException("my_mod [x](http://e)")).Should().Be("my\\_mod [x]" + Z + "(http://e)");
+    }
+
+    [Fact]
+    public void Test_Message_EscapingAMessageTwiceIsAvoided()
+    {
+        var once = MarkdownText.Message(new IOException("a_b"));
+
+        MarkdownText.Message(new Refusal(once)).Should().Be(once);
+    }
+
+    [Theory]
+    [InlineData("my_mod")]
+    [InlineData("**bold** ~~x~~")]
+    [InlineData("C:\\mods\\x")]
+    [InlineData("[x](file:///etc/passwd)")]
+    [InlineData("# heading")]
+    [InlineData("a`b")]
+    public void Test_ToPlain_UndoesInlineExceptForBackticks(string text)
+    {
+        MarkdownText.ToPlain(MarkdownText.Inline(text)).Should().Be(text.Replace('`', '\u02CB'));
+    }
+
+    [Theory]
+    [InlineData("my_mod")]
+    [InlineData("`lead")]
+    [InlineData("trail`")]
+    [InlineData("a``b")]
+    [InlineData("C:\\x\\_y")]
+    public void Test_ToPlain_ShowsACodeSpanAsItsText(string name)
+    {
+        MarkdownText.ToPlain($"{MarkdownText.Code(name)} is still running: {MarkdownText.Inline("a_b")}")
+            .Should().Be($"{name} is still running: a_b");
+    }
+
+    [Fact]
+    public void Test_Inline_ATrailingBackslashDoesNotHideTheNextCodeSpan()
+    {
+        // The renderer does not open a span right after a backslash.
+        var paragraph = MarkdownText.Inline("C:\\mods\\") + MarkdownText.Code("[x](https://evil.example)");
+        var spans = System.Text.RegularExpressions.Regex.Matches(paragraph, @"(?<!\\)(`+)(.+?)(?<!`)\1(?!`)", System.Text.RegularExpressions.RegexOptions.Singleline);
+
+        spans.Should().ContainSingle();
+        MarkdownText.ToPlain(paragraph).Should().Be("C:\\mods\\[x](https://evil.example)");
+    }
+
+    [Fact]
+    public void Test_InlineKeepingCode_EscapesOutsideTextAndShowsSpansExactly()
+    {
+        var text = "The provided library item `my_mod` is bad_ [x](http://e) `a_b`";
+
+        MarkdownText.InlineKeepingCode(text).Should().Be("The provided library item `my_mod` is bad\\_ [x]" + Z + "(http://e) `a_b`");
+    }
+
+    [Fact]
+    public void Test_InlineKeepingCode_AStrayBacktickIsNeutralised()
+    {
+        MarkdownText.InlineKeepingCode("a `b` c` d").Should().Be("a `b` c\u02CB d");
     }
 }

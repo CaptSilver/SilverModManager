@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using JetBrains.Annotations;
 
 namespace SilverModManager.Sdk.Errors;
@@ -10,20 +11,26 @@ namespace SilverModManager.Sdk.Errors;
 /// such a name goes through here, because the renderer opens links, loads images and draws emphasis.
 /// </summary>
 [PublicAPI]
-public static class MarkdownText
+public static partial class MarkdownText
 {
     // The renderer unescapes a backslash before these four and shows the backslash before any other punctuation,
     // so they are the only ones escaped that way.
     private const string BackslashEscaped = "\\*_~";
-    private const string BlockMarkers = "#+->`";
+    private const string BlockMarkers = "#+->";
     private const char ZeroWidthSpace = '\u200B';
+
+    // MODIFIER LETTER GRAVE ACCENT: looks like a backtick and is not one.
+    private const char BacktickLookalike = '\u02CB';
 
     /// <summary>
     /// Plain text for a sentence: line breaks and tabs become spaces, other control and format characters (bidi
     /// overrides, zero-width marks) are dropped, emphasis markers get a backslash, and a zero-width space after each
     /// <c>]</c> keeps <c>[text](target)</c> from ever being a link or image. A block marker at the start (heading,
-    /// list, quote, fence) is defused the same way. Backticks, angle brackets and the rest are left alone: the
-    /// renderer shows raw HTML as text, makes no autolinks and no reference links. For a name, prefer
+    /// list, quote) is defused the same way. A backtick becomes U+02CB, because the renderer pairs backticks over the
+    /// whole paragraph: a stray one here would pair with the fence of a later <see cref="Code(string?)"/> and leave
+    /// that span's text outside, as live Markdown. A trailing backslash gets a zero-width space so it cannot hide a
+    /// following span either. Angle brackets and the rest are left alone: the renderer shows raw HTML as text, makes
+    /// no autolinks and no reference links. For a name, prefer
     /// <see cref="Code(string?)"/>, which shows it exactly.
     /// </summary>
     public static string Inline(string? text)
@@ -36,11 +43,69 @@ public static class MarkdownText
         foreach (var c in clean)
         {
             if (BackslashEscaped.Contains(c)) builder.Append('\\');
-            builder.Append(c);
+            builder.Append(c == '`' ? BacktickLookalike : c);
             if (c == ']') builder.Append(ZeroWidthSpace);
         }
+        // The renderer does not open a code span right after a backslash, escaped or not.
+        if (clean.Length > 0 && clean[^1] == '\\') builder.Append(ZeroWidthSpace);
         return builder.ToString();
     }
+
+    /// <summary>
+    /// The message of <paramref name="exception"/> for a sentence. A refusal's message is Markdown already and stays
+    /// as it is; escaping it again would show the backslashes. Anything else (an I/O error, a parser message) is
+    /// outside text and goes through <see cref="Inline(string?)"/>.
+    /// </summary>
+    public static string Message(Exception exception) => exception is UserFacingException ? exception.Message : Inline(exception.Message);
+
+    /// <summary>
+    /// <see cref="Inline(string?)"/> for a finished sentence that already has code spans, such as a rendered log
+    /// message that quotes names in backticks. Spans are kept and shown exactly; only the text between them is escaped.
+    /// </summary>
+    public static string InlineKeepingCode(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+
+        var builder = new StringBuilder(text.Length + 8);
+        var position = 0;
+        foreach (var span in CodeSpan().EnumerateMatches(text))
+        {
+            builder.Append(Inline(text[position..span.Index]));
+            builder.Append(Sanitise(text.Substring(span.Index, span.Length)));
+            position = span.Index + span.Length;
+        }
+        builder.Append(Inline(text[position..]));
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// The text of a Markdown message for a place that does not render Markdown (a toast, the command line, a plain
+    /// text block): code spans show their content, and the escapes <see cref="Inline(string?)"/> added are removed.
+    /// Backticks that <see cref="Inline(string?)"/> replaced stay replaced.
+    /// </summary>
+    public static string ToPlain(string? markdown)
+    {
+        if (string.IsNullOrEmpty(markdown)) return string.Empty;
+
+        return PlainPart().Replace(markdown, match =>
+        {
+            if (match.Groups["escaped"].Success) return match.Groups["escaped"].Value;
+            if (match.Groups["code"].Success)
+            {
+                var code = match.Groups["code"].Value;
+                // The renderer strips one space from each end when both are there.
+                return code.Length > 2 && code[0] == ' ' && code[^1] == ' ' && code.Trim().Length > 0 ? code[1..^1] : code;
+            }
+            return string.Empty;
+        });
+    }
+
+    // The renderer's own pattern for a code span, which it applies to a whole paragraph before it looks for links.
+    [GeneratedRegex(@"(?<!\\)(`+)(.+?)(?<!`)\1(?!`)", RegexOptions.Singleline)]
+    private static partial Regex CodeSpan();
+
+    [GeneratedRegex(@"(?<!\\)(`+)(?<code>.+?)(?<!`)\1(?!`)|\\(?<escaped>[\\*_~])|\u200B", RegexOptions.Singleline)]
+    private static partial Regex PlainPart();
 
     private static bool StartsBlock(string clean)
     {

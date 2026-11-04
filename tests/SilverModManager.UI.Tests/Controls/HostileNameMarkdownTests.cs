@@ -29,11 +29,13 @@ public class HostileNameMarkdownTests(IServiceProvider provider) : AUiTest(provi
         "```\n[x](http://evil.example)\n```",
         "line one\n[y](nxm://skyrim/mods/1/files/2)",
         "<a href=\"http://evil.example\">z</a> <http://evil.example>",
+        "'/g/a`b'",
+        "lone ` backtick",
     ];
 
-    private async Task<(int Links, int Images, int Blocks, string Seen)> Render(IEnumerable<string> paragraphs)
+    private async Task<(int Links, int Images, int Blocks, string Seen)> Render(IEnumerable<string> paragraphs, string separator = "\n\n")
     {
-        var contents = string.Join("\n\n", paragraphs);
+        var contents = string.Join(separator, paragraphs);
         var window = await Dispatcher.UIThread.InvokeAsync(() =>
         {
             var viewModel = new MarkdownRendererViewModel(
@@ -89,6 +91,31 @@ public class HostileNameMarkdownTests(IServiceProvider provider) : AUiTest(provi
     }
 
     [Fact]
+    public async Task Test_ALoneBacktickInEscapedText_DoesNotExposeTheNextCodeSpan()
+    {
+        // One paragraph, as UserFacingErrors.Find makes by joining refusals with a single line break.
+        var paragraph = new[] { MarkdownText.Inline("'/g/a`b'"), MarkdownText.Code("[x](https://evil.example)") };
+
+        var (links, images, blocks, seen) = await Render(paragraph, "\n");
+
+        blocks.Should().BeGreaterThan(0);
+        links.Should().Be(0, seen);
+        images.Should().Be(0, seen);
+    }
+
+    [Fact]
+    public async Task Test_RefusalsWithDifferentPayloadsJoinedBySingleLineBreaks_RenderNoLinkOrImage()
+    {
+        var messages = RefusalMessages(out _, rotatePayloads: true);
+
+        var (links, images, blocks, seen) = await Render(messages, Environment.NewLine);
+
+        blocks.Should().BeGreaterThan(0);
+        links.Should().Be(0, "a payload in one refusal must not change how the next one reads: " + seen);
+        images.Should().Be(0, seen);
+    }
+
+    [Fact]
     public async Task Test_EveryRefusalWithNamedParameters_RendersNoLinkOrImage()
     {
         var messages = RefusalMessages(out var exercised);
@@ -106,7 +133,7 @@ public class HostileNameMarkdownTests(IServiceProvider provider) : AUiTest(provi
     /// The message of every refusal that is built from names handed to its constructor, once per hostile payload.
     /// Refusals that take a finished <c>message</c> are not here: the code that throws them composes the text.
     /// </summary>
-    private static List<string> RefusalMessages(out int exercised)
+    private static List<string> RefusalMessages(out int exercised, bool rotatePayloads = false)
     {
         LoadReferencedAssemblies();
         var messages = new List<string>();
@@ -125,11 +152,16 @@ public class HostileNameMarkdownTests(IServiceProvider provider) : AUiTest(provi
                 if (parameters.Length == 0 || parameters.Any(p => p.Name is "message" or "what" or "title")) continue;
                 if (!parameters.All(p => p.ParameterType == typeof(string) || p.ParameterType == typeof(Exception) || p.ParameterType == typeof(IReadOnlyList<string>))) continue;
 
-                foreach (var payload in Payloads)
+                // Rotating gives each parameter of a refusal a different payload, and the next refusal another start.
+                for (var start = 0; start < Payloads.Length; start++)
                 {
-                    var arguments = parameters.Select(p => p.ParameterType == typeof(string) ? (object)payload
-                        : p.ParameterType == typeof(Exception) ? new InvalidOperationException(payload)
-                        : new[] { payload }).ToArray();
+                    var arguments = parameters.Select((p, index) =>
+                    {
+                        var payload = Payloads[rotatePayloads ? (start + index) % Payloads.Length : start];
+                        return p.ParameterType == typeof(string) ? (object)payload
+                            : p.ParameterType == typeof(Exception) ? new InvalidOperationException(payload)
+                            : new[] { payload };
+                    }).ToArray();
                     try
                     {
                         var exception = (UserFacingException)ctor.Invoke(arguments);
