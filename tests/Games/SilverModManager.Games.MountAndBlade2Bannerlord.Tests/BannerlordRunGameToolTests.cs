@@ -141,6 +141,18 @@ public class BannerlordRunGameToolTests(ITestOutputHelper helper) : AIsolatedGam
     }
 
     [Fact]
+    public async Task Execute_CancelledWhileTheGameRuns_EndsAsCancelled()
+    {
+        var loadout = await CreateLoadout();
+        using var cts = new CancellationTokenSource();
+        ToolRunner.OnRun = () => cts.Cancel();
+
+        var act = async () => await Tool.Execute(loadout, cts.Token, null);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
     public async Task Execute_ToolRunnerCannotRun_Throws()
     {
         var loadout = await CreateLoadout();

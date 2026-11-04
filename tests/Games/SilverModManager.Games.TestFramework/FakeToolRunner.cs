@@ -47,7 +47,7 @@ public class FakeToolRunner : IToolRunner
 
     /// <summary>
     /// Called at the start of every <see cref="RunWindowsTool"/>, so a test can look at its surroundings while
-    /// the program is "running".
+    /// the program is "running". A cancellation it causes ends the run as cancelled, like the real runner.
     /// </summary>
     public Action? OnRun { get; set; }
 
@@ -75,6 +75,8 @@ public class FakeToolRunner : IToolRunner
         if (!CanRunTools) throw new InvalidOperationException(Diagnostic);
 
         OnRun?.Invoke();
+        // The real runner interrupts the program and throws once the token is cancelled.
+        cancellationToken.ThrowIfCancellationRequested();
         var contents = exe.FileExists ? await exe.ReadAllTextAsync(cancellationToken) : null;
         lock (_calls) _calls.Add(new Call(installation, exe, args.ToArray(), env, logOutput, contents, via));
         return new ToolRunResult(ExitCode);
