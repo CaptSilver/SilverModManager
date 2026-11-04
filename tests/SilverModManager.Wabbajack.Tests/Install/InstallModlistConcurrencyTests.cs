@@ -28,7 +28,7 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
         var configured = base.AddServices(services);
         // The first opener that can open a path is used, so this one goes ahead of the real one.
         configured.Insert(0, ServiceDescriptor.Singleton<INestedArchiveOpener>(_opener));
-        return configured.AddSingleton<IDirectiveTransforms>(provider => _transforms.Over(new DirectiveTransforms(provider.GetRequiredService<TemporaryFileManager>())));
+        return configured.AddSingleton<IDirectiveTransforms>(provider => _transforms.Over(DirectiveTransforms.Default(provider.GetRequiredService<TemporaryFileManager>())));
     }
 
     private static async Task<bool> FinishesWithin(Task task, TimeSpan time) => await Task.WhenAny(task, Task.Delay(time)) == task;
@@ -176,6 +176,37 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
         SkipsOf(group).Should().BeEmpty();
         TreeOf(group)["A"].Should().HaveCount(6);
         _transforms.MaxConcurrentRecompress.Should().Be(1, "each build can be encoding a texture that fills most of the budget");
+    }
+
+    [Fact]
+    public async Task ALooseTextureIsEncodedOnItsOwnThread()
+    {
+        var (list, _) = await TextureList(3);
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var group = await Run(NewJob(loadout, modlist, Defaults, parallelism: 4));
+
+        SkipsOf(group).Should().BeEmpty();
+        _transforms.Parallelisms.Should().HaveCount(3).And.OnlyContain(p => p == 1, "each worker already encodes a texture of its own");
+    }
+
+    [Fact]
+    public async Task ATextureInAnArchiveIsEncodedOnAsManyThreadsAsTheInstallHasWorkers()
+    {
+        var archive = await AddZip("t.zip", new() { ["t.dds"] = Bc1Dds(64) });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(new TransformedTexture(P("TEMP_BSA_FILES/pack/textures/t.dds"), Xx64.From(7), 1,
+            new ArchiveHashPath(archive.XxHash64, [P("t.dds")]), new ImageState(32, 32, 1, "BC7_UNORM")));
+        list.Directives.Add(list.Bsa("mods/A/pack.bsa", "pack", "textures/t.dds"));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var group = await Run(NewJob(loadout, modlist, Defaults, parallelism: 3));
+
+        SkipsOf(group).Should().BeEmpty();
+        _transforms.Parallelisms.Should().Equal(3);
     }
 
     [Fact]
@@ -404,6 +435,9 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
         /// <summary>Counts an encode without doing it, for a test that declares sizes it could not afford to encode.</summary>
         public bool SkipEncoding { get; set; }
         public int MaxConcurrentRecompress => Volatile.Read(ref _maxRecompress);
+
+        /// <summary>The parallelism every Recompress call was given.</summary>
+        public System.Collections.Concurrent.ConcurrentQueue<int> Parallelisms { get; } = new();
         public int MaxConcurrentPatch => Volatile.Read(ref _maxPatch);
 
         public TrackingTransforms Over(IDirectiveTransforms inner)
@@ -436,8 +470,9 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
             }
         }
 
-        public async Task Recompress(Stream dds, ImageState target, Stream output, CancellationToken cancellationToken)
+        public async Task Recompress(Stream dds, ImageState target, Stream output, int parallelism, CancellationToken cancellationToken)
         {
+            Parallelisms.Enqueue(parallelism);
             var now = Interlocked.Increment(ref _recompressing);
             int seen;
             while ((seen = Volatile.Read(ref _maxRecompress)) < now && Interlocked.CompareExchange(ref _maxRecompress, now, seen) != seen) { }
@@ -453,7 +488,7 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
                     await Task.Delay(30, cancellationToken); // long enough for a second one to start if the budget lets it
                 }
                 if (SkipEncoding) await output.WriteAsync(new byte[] { 1, 2, 3, 4 }, cancellationToken);
-                else await _inner.Recompress(dds, target, output, cancellationToken);
+                else await _inner.Recompress(dds, target, output, parallelism, cancellationToken);
             }
             finally
             {
@@ -570,7 +605,7 @@ public class InstallModlistCancelTests(ITestOutputHelper helper) : InstallTestBa
 
         public Task Patch(Stream basis, Stream delta, Stream output, CancellationToken cancellationToken) => throw new InvalidOperationException("no patch here");
 
-        public async Task Recompress(Stream dds, ImageState target, Stream output, CancellationToken cancellationToken)
+        public async Task Recompress(Stream dds, ImageState target, Stream output, int parallelism, CancellationToken cancellationToken)
         {
             if (Hang)
             {

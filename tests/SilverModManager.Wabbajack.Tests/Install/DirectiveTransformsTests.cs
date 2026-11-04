@@ -20,7 +20,7 @@ public class DirectiveTransformsTests : IDisposable
     public DirectiveTransformsTests()
     {
         _temp = new TemporaryFileManager(FileSystem.Shared, _tempRoot);
-        _transforms = new DirectiveTransforms(_temp);
+        _transforms = DirectiveTransforms.Default(_temp);
     }
 
     public void Dispose() => _temp.Dispose();
@@ -93,7 +93,7 @@ public class DirectiveTransformsTests : IDisposable
         source.Position = 0;
         using var output = new MemoryStream();
 
-        await _transforms.Recompress(source, new ImageState(32, 32, 3, "BC7_UNORM"), output, CancellationToken.None);
+        await _transforms.Recompress(source, new ImageState(32, 32, 3, "BC7_UNORM"), output, 1, CancellationToken.None);
 
         var dds = DdsHeader.Read(output.ToArray());
         dds.Should().Be(new DdsHeader(32, 32, 3, Bc7: true));
@@ -106,7 +106,7 @@ public class DirectiveTransformsTests : IDisposable
         TestTextures.WriteBc1(source, 8);
         source.Position = 0;
 
-        var failure = await Record.ExceptionAsync(() => _transforms.Recompress(source, new ImageState(4, 4, 1, "BC6H_UF16"), Stream.Null, CancellationToken.None));
+        var failure = await Record.ExceptionAsync(() => _transforms.Recompress(source, new ImageState(4, 4, 1, "BC6H_UF16"), Stream.Null, 1, CancellationToken.None));
 
         failure.Should().BeOfType<UnsupportedTextureFormatException>().Which.Message.Should().Contain("BC6H_UF16");
     }
@@ -114,7 +114,7 @@ public class DirectiveTransformsTests : IDisposable
     [Fact]
     public async Task RecompressingToAnUnknownFormatNameThrowsUnsupportedTextureFormat()
     {
-        var failure = await Record.ExceptionAsync(() => _transforms.Recompress(Stream.Null, new ImageState(4, 4, 1, "NOT_A_FORMAT"), Stream.Null, CancellationToken.None));
+        var failure = await Record.ExceptionAsync(() => _transforms.Recompress(Stream.Null, new ImageState(4, 4, 1, "NOT_A_FORMAT"), Stream.Null, 1, CancellationToken.None));
 
         failure.Should().BeOfType<UnsupportedTextureFormatException>().Which.Message.Should().Contain("NOT_A_FORMAT");
     }
@@ -129,7 +129,7 @@ public class DirectiveTransformsTests : IDisposable
         TestTextures.WriteBc1(source, 8);
         source.Position = 0;
 
-        var failure = await Record.ExceptionAsync(() => _transforms.Recompress(source, new ImageState(width, height, 1, "BC1_UNORM"), Stream.Null, CancellationToken.None));
+        var failure = await Record.ExceptionAsync(() => _transforms.Recompress(source, new ImageState(width, height, 1, "BC1_UNORM"), Stream.Null, 1, CancellationToken.None));
 
         failure.Should().BeOfType<UnsupportedTextureFormatException>().Which.Message
             .Should().Be($"cannot write: the list records a {width}x{height} texture");
@@ -143,7 +143,7 @@ public class DirectiveTransformsTests : IDisposable
         source.Position = 0;
         using var output = new MemoryStream();
 
-        await _transforms.Recompress(source, new ImageState(32, 32, 1, "UNKNOWN"), output, CancellationToken.None);
+        await _transforms.Recompress(source, new ImageState(32, 32, 1, "UNKNOWN"), output, 1, CancellationToken.None);
 
         System.Text.Encoding.ASCII.GetString(output.ToArray(), 84, 4).Should().Be("DXT1");
         BitConverter.ToInt32(output.ToArray(), 16).Should().Be(32);

@@ -1161,7 +1161,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         destination.Parent.CreateDirectory();
         await using var output = destination.Create();
         // A tool file has no rows to hold a note, so a kept original there is silent.
-        await WriteBytes(check, extras, item.Placement, item.Member, output, keepOriginalIfUnsupported: true, notes: [], cancellationToken);
+        await WriteBytes(check, extras, item.Placement, item.Member, output, parallelism: 1, keepOriginalIfUnsupported: true, notes: [], cancellationToken);
     }
 
     private void AddSkip(ITransaction tx, LoadoutItemGroupId group, WriteState state, Placement placement, SkipKind kind, string reason, Checked check)
@@ -1519,7 +1519,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 var exempt = directive is RemappedInlineFile or TransformedTexture || IsHashUnchecked(directive);
                 // Loose files keep the original bytes when the texture cannot be re-encoded; the notes say which did.
                 var notes = new List<string>();
-                var file = await Generated(state, directive, output => WriteBytes(check, extras, item.Placement, item.Member, output, keepOriginalIfUnsupported: true, notes, cancellationToken), checkHash: !exempt, cancellationToken);
+                var file = await Generated(state, directive, output => WriteBytes(check, extras, item.Placement, item.Member, output, parallelism: 1, keepOriginalIfUnsupported: true, notes, cancellationToken), checkHash: !exempt, cancellationToken);
                 return WithNotes(file, notes);
         }
     }
@@ -1565,7 +1565,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     /// is the path that line uses when the directive's own path is a temp folder name, as it is for an archive's input.
     /// </summary>
     private async Task WriteBytes(Checked check, ExtrasFolder extras, Placement placement, ResolvedMember? member, Stream output,
-        bool keepOriginalIfUnsupported, List<string> notes, CancellationToken cancellationToken, RelativePath? named = null)
+        int parallelism, bool keepOriginalIfUnsupported, List<string> notes, CancellationToken cancellationToken, RelativePath? named = null)
     {
         switch (placement.Directive)
         {
@@ -1581,7 +1581,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 try
                 {
                     await using var dds = await RequireMember(placement, member).Open();
-                    await Transforms.Recompress(dds, texture.Image, output, cancellationToken);
+                    await Transforms.Recompress(dds, texture.Image, output, parallelism, cancellationToken);
                 }
                 catch (UnreadableTextureException unreadable) when (keepOriginalIfUnsupported)
                 {
@@ -1719,7 +1719,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 var canKeepOriginal = fileState is not Ba2Dx10FileState;
                 try
                 {
-                    temporary = await Writer.WriteTemporary(file => WriteBytes(check, extras, input, member, file, canKeepOriginal, notes, cancellationToken, named: path));
+                    temporary = await Writer.WriteTemporary(file => WriteBytes(check, extras, input, member, file, Workers, canKeepOriginal, notes, cancellationToken, named: path));
                 }
                 catch (UnsupportedTextureFormatException unsupported)
                 {

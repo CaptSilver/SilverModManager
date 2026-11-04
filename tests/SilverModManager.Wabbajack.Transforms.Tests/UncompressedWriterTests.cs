@@ -23,7 +23,7 @@ public class UncompressedWriterTests
     private static async Task<byte[]> Recompress(byte[] source, DdsTarget target)
     {
         var result = new MemoryStream();
-        await DdsRecompressor.Recompress(new MemoryStream(source), target, result, CancellationToken.None);
+        await DdsRecompressor.Managed().Recompress(new MemoryStream(source), target, result, 1, CancellationToken.None);
         return result.ToArray();
     }
 

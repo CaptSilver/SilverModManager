@@ -20,7 +20,7 @@ public class DdsWriterTests
         if (cubeSource) TestTextures.WriteBc1CubeMap(source);
         else TestTextures.WriteBc1(source);
         var result = new MemoryStream();
-        await DdsRecompressor.Recompress(new MemoryStream(source.ToArray()), target, result, CancellationToken.None);
+        await DdsRecompressor.Managed().Recompress(new MemoryStream(source.ToArray()), target, result, 1, CancellationToken.None);
         return result.ToArray();
     }
 

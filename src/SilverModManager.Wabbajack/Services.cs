@@ -22,6 +22,7 @@ using SilverModManager.Wabbajack.Install;
 using SilverModManager.Wabbajack.Library;
 using SilverModManager.Wabbajack.Migrations;
 using SilverModManager.Wabbajack.Models;
+using SilverModManager.Wabbajack.Transforms;
 
 namespace SilverModManager.Wabbajack;
 
@@ -49,6 +50,8 @@ public static class Services
             .AddSingleton<ILibraryArchiveLocator, LibraryArchiveLocator>()
             .AddSingleton<IModlistCatalog, ModlistCatalog>()
             .AddSingleton<ArchiveInventory>()
+            .AddSingleton<ITextureEncoder, ManagedTextureEncoder>()
+            .AddSingleton<DdsRecompressor>()
             .AddSingleton<IDirectiveTransforms, DirectiveTransforms>()
             .AddSingleton<ModlistInstallRuns>()
             .AddSingleton<ILoadoutInstallActivity>(sp => sp.GetRequiredService<ModlistInstallRuns>())

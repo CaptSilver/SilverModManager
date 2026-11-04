@@ -13,7 +13,11 @@ public interface IDirectiveTransforms
 {
     Task Patch(Stream basis, Stream delta, Stream output, CancellationToken cancellationToken);
 
-    Task Recompress(Stream dds, ImageState target, Stream output, CancellationToken cancellationToken);
+    /// <summary>
+    /// <paramref name="parallelism"/> is how many threads the encoder may spread one texture over: 1 when the caller
+    /// already runs one texture per worker, the worker count when it feeds them one at a time.
+    /// </summary>
+    Task Recompress(Stream dds, ImageState target, Stream output, int parallelism, CancellationToken cancellationToken);
 
     /// <summary>
     /// <paramref name="openInput"/> gets the parsed state of the file it opens next to its path, so the caller can treat

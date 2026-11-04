@@ -11,8 +11,11 @@ namespace SilverModManager.Wabbajack.Install;
 /// <summary>
 /// The transforms this build has: Octodiff patching, texture re-encoding and Bethesda archive building.
 /// </summary>
-public sealed class DirectiveTransforms(TemporaryFileManager temporaryFiles) : IDirectiveTransforms
+public sealed class DirectiveTransforms(TemporaryFileManager temporaryFiles, DdsRecompressor recompressor) : IDirectiveTransforms
 {
+    /// <summary>The transforms over a recompressor that uses BCnEncoder alone, for tests and tools that have no service container.</summary>
+    public static DirectiveTransforms Default(TemporaryFileManager temporaryFiles) => new(temporaryFiles, DdsRecompressor.Managed());
+
     public async Task Patch(Stream basis, Stream delta, Stream output, CancellationToken cancellationToken)
     {
         if (basis.CanSeek && delta.CanSeek)
@@ -26,8 +29,8 @@ public sealed class DirectiveTransforms(TemporaryFileManager temporaryFiles) : I
         await OctodiffPatch.Apply(basis, delta, output, cancellationToken, spool.Path.ToString());
     }
 
-    public Task Recompress(Stream dds, ImageState target, Stream output, CancellationToken cancellationToken)
-        => DdsRecompressor.Recompress(dds, ToTarget(target), output, cancellationToken);
+    public Task Recompress(Stream dds, ImageState target, Stream output, int parallelism, CancellationToken cancellationToken)
+        => recompressor.Recompress(dds, ToTarget(target), output, parallelism, cancellationToken);
 
     /// <summary>The list names the format as a DXGI_FORMAT; a name this build does not know cannot be written either.
     /// <c>UNKNOWN</c> passes through: the recompressor resolves it to the source texture's format.</summary>

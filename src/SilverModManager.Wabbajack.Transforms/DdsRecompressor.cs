@@ -10,22 +10,40 @@ namespace SilverModManager.Wabbajack.Transforms;
 /// <summary>
 /// Re-encodes a DDS texture to the size, mip count and format a modlist recorded for it.
 /// </summary>
-public static class DdsRecompressor
+public sealed class DdsRecompressor
 {
+    private readonly ITextureEncoder[] _encoders;
+
+    /// <summary>The encoders in order of preference: the first that can encode a <see cref="BlockFormat"/> is used for it.</summary>
+    public DdsRecompressor(IEnumerable<ITextureEncoder> encoders)
+    {
+        _encoders = [.. encoders];
+        if (_encoders.Length == 0) throw new ArgumentException("A recompressor needs at least one encoder", nameof(encoders));
+    }
+
+    /// <summary>A recompressor over BCnEncoder alone.</summary>
+    public static DdsRecompressor Managed() => new([new ManagedTextureEncoder()]);
+
     /// <summary>
     /// Decodes the top mip of every face of <paramref name="dds"/>, resizes it to the target and writes
     /// a new DDS with the target format and mip chain to <paramref name="output"/>. Neither stream is closed.
-    /// The CPU-bound decode and encode run on a thread-pool thread.
+    /// The CPU-bound decode and encode run on a thread-pool thread. <paramref name="parallelism"/> is how many threads
+    /// one level may be encoded on: 1 when the caller already runs one texture per worker.
     /// </summary>
     /// <exception cref="UnsupportedTextureFormatException">The source or target format, or the face count, cannot be handled,
     /// or the source is truncated or corrupt (<see cref="UnreadableTextureException"/>). Nothing has been written to <paramref name="output"/> when it is thrown.</exception>
-    public static Task Recompress(Stream dds, DdsTarget target, Stream output, CancellationToken token)
+    public Task Recompress(Stream dds, DdsTarget target, Stream output, int parallelism, CancellationToken token)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(parallelism, 1);
         token.ThrowIfCancellationRequested();
-        return Task.Run(() => RecompressCore(dds, target, output, token), token);
+        return Task.Run(() => RecompressCore(dds, target, output, parallelism, token), token);
     }
 
-    private static void RecompressCore(Stream input, DdsTarget target, Stream output, CancellationToken token)
+    private ITextureEncoder EncoderFor(BlockFormat format, DxgiFormat target)
+        => _encoders.FirstOrDefault(e => e.CanEncode(format))
+           ?? throw new UnsupportedTextureFormatException($"cannot write {target}: no encoder takes {format}");
+
+    private void RecompressCore(Stream input, DdsTarget target, Stream output, int parallelism, CancellationToken token)
     {
         using var buffer = new MemoryStream();
         input.CopyTo(buffer);
@@ -45,7 +63,8 @@ public static class DdsRecompressor
 
         // Check the target before the expensive decode.
         var packed = UncompressedWriter.Handles(target.Format);
-        var targetFormat = packed ? CompressionFormat.Rgba : ToCompressionFormat(target.Format);
+        var blockFormat = packed ? default : ToBlockFormat(target.Format);
+        var encoder = packed ? _encoders[0] : EncoderFor(blockFormat, target.Format);
 
         var decodeFormat = header.IsBlockCompressed && header.Format is not (DxgiFormat.BC4_SNORM or DxgiFormat.BC5_SNORM)
             ? ToDecodeFormat(header)
@@ -61,15 +80,20 @@ public static class DdsRecompressor
             faces.Add(Resize(pixels, header.Width, header.Height, target.Width, target.Height, header.IsSrgb));
         }
 
+        // BC1 stores 1-bit alpha in its 3-colour blocks. Opaque BC1 would drop a cut-out (foliage), so any pixel under 128
+        // anywhere on the top level makes the whole texture a punch-through one. Every level of every face then shares one
+        // block format, and the header is the same DXT1 either way.
+        if (blockFormat == BlockFormat.Bc1 && faces.Any(HasCutOut))
+        {
+            blockFormat = BlockFormat.Bc1PunchThrough;
+            encoder = EncoderFor(blockFormat, target.Format);
+        }
+
         // MipChain builds the levels from the previous one. A block target filters in the source's colour space and
         // takes the sRGB transfer per level afterwards, as texconv does when it compresses. An uncompressed target
         // takes the transfer first and filters in its own space, as texconv does when it converts. Each level is then
-        // packed by UncompressedWriter, or padded to whole blocks and sent through a second encoder with mip
-        // generation off.
-        var levelEncoder = new BcEncoder
-        {
-            OutputOptions = { Quality = CompressionQuality.Balanced, GenerateMipMaps = false, Format = targetFormat },
-        };
+        // packed by UncompressedWriter, or padded to whole blocks and handed to the block encoder, which makes no mip
+        // levels of its own.
         var transfer = header.IsSrgb == target.Format.IsSrgb() ? null : target.Format.IsSrgb() ? SrgbTransfer.ToSrgb : SrgbTransfer.ToLinear;
         var filterInLinear = packed ? target.Format.IsSrgb() : header.IsSrgb;
         var levels = MipChain.FullLength(target.Width, target.Height);
@@ -102,7 +126,9 @@ public static class DdsRecompressor
                     SrgbTransfer.Apply(pixels, transfer);
                 }
                 var padded = MipChain.Pad(level with { Pixels = pixels });
-                faceLevels[index++] = levelEncoder.EncodeToRawBytes(padded.Pixels, padded.Width, padded.Height, PixelFormat.Rgba32, 0, out _, out _);
+                var blocks = new byte[blockFormat.BlockBytes(padded.Width, padded.Height)];
+                encoder.Encode(padded.Pixels, padded.Width, padded.Height, blockFormat, blocks, parallelism, token);
+                faceLevels[index++] = blocks;
             }
             encoded.Add(faceLevels);
         }
@@ -135,6 +161,8 @@ public static class DdsRecompressor
     private static bool IsBlockTarget(DxgiFormat format) => format.UnormTwin() is
         DxgiFormat.BC1_UNORM or DxgiFormat.BC2_UNORM or DxgiFormat.BC3_UNORM or DxgiFormat.BC4_UNORM
         or DxgiFormat.BC5_UNORM or DxgiFormat.BC7_UNORM;
+
+    private static bool HasCutOut(ColorRgba32[] pixels) => pixels.Any(p => p.a < 128);
 
     private static ReadOnlySpan<byte> Bytes(ColorRgba32[] pixels) => MemoryMarshal.AsBytes(pixels.AsSpan());
 
@@ -182,6 +210,18 @@ public static class DdsRecompressor
                 (byte)Math.Clamp(Math.Round(back[i * 4 + 3] * 255f), 0, 255));
         return result;
     }
+
+    private static BlockFormat ToBlockFormat(DxgiFormat format) => format.UnormTwin() switch
+    {
+        DxgiFormat.BC1_UNORM => BlockFormat.Bc1,
+        DxgiFormat.BC2_UNORM => BlockFormat.Bc2,
+        DxgiFormat.BC3_UNORM => BlockFormat.Bc3,
+        DxgiFormat.BC4_UNORM => BlockFormat.Bc4,
+        DxgiFormat.BC5_UNORM => BlockFormat.Bc5,
+        DxgiFormat.BC7_UNORM => BlockFormat.Bc7,
+        _ => throw new UnsupportedTextureFormatException(
+            $"cannot write {(Enum.IsDefined(format) ? format.ToString() : $"DXGI {(uint)format}")}"),
+    };
 
     /// <summary>The decoder for the stored pixels of a source; every layout <see cref="DdsHeader"/> accepts has one.</summary>
     private static CompressionFormat ToDecodeFormat(DdsHeader header) => header.Format == DxgiFormat.BC1_UNORM && header.AlphaPixels

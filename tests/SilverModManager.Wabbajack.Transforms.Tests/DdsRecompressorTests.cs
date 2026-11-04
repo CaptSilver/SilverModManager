@@ -18,7 +18,7 @@ public class DdsRecompressorTests(ITestOutputHelper output)
     private static async Task<byte[]> Recompress(byte[] dds, DdsTarget target)
     {
         var result = new MemoryStream();
-        await DdsRecompressor.Recompress(new MemoryStream(dds), target, result, CancellationToken.None);
+        await DdsRecompressor.Managed().Recompress(new MemoryStream(dds), target, result, 1, CancellationToken.None);
         return result.ToArray();
     }
 
@@ -342,7 +342,7 @@ public class DdsRecompressorTests(ITestOutputHelper output)
         var output = new CountingStream();
 
         var ex = await Assert.ThrowsAsync<UnreadableTextureException>(() =>
-            DdsRecompressor.Recompress(new MemoryStream(Malformed(kind)), new DdsTarget(32, 32, 1, DxgiFormat.BC7_UNORM), output, CancellationToken.None));
+            DdsRecompressor.Managed().Recompress(new MemoryStream(Malformed(kind)), new DdsTarget(32, 32, 1, DxgiFormat.BC7_UNORM), output, 1, CancellationToken.None));
 
         Assert.NotEmpty(ex.Message);
         Assert.Equal(0, output.BytesWritten);
@@ -394,7 +394,7 @@ public class DdsRecompressorTests(ITestOutputHelper output)
         var output = new CountingStream();
 
         await Assert.ThrowsAsync<UnsupportedTextureFormatException>(() =>
-            DdsRecompressor.Recompress(new MemoryStream(source.ToArray()), new DdsTarget(32, 32, 1, DxgiFormat.BC1_UNORM), output, CancellationToken.None));
+            DdsRecompressor.Managed().Recompress(new MemoryStream(source.ToArray()), new DdsTarget(32, 32, 1, DxgiFormat.BC1_UNORM), output, 1, CancellationToken.None));
 
         Assert.Equal(0, output.BytesWritten);
     }
@@ -405,7 +405,7 @@ public class DdsRecompressorTests(ITestOutputHelper output)
         var output = new CountingStream();
 
         await Assert.ThrowsAsync<UnsupportedTextureFormatException>(() =>
-            DdsRecompressor.Recompress(new MemoryStream(Bc1Fixture()), new DdsTarget(32, 32, 1, DxgiFormat.BC6H_UF16), output, CancellationToken.None));
+            DdsRecompressor.Managed().Recompress(new MemoryStream(Bc1Fixture()), new DdsTarget(32, 32, 1, DxgiFormat.BC6H_UF16), output, 1, CancellationToken.None));
 
         Assert.Equal(0, output.BytesWritten);
     }
@@ -433,8 +433,8 @@ public class DdsRecompressorTests(ITestOutputHelper output)
         using var cts = new CancellationTokenSource();
         cts.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            DdsRecompressor.Recompress(new MemoryStream(Bc1Fixture()), new DdsTarget(32, 32, 1, DxgiFormat.BC1_UNORM),
-                new MemoryStream(), cts.Token));
+            DdsRecompressor.Managed().Recompress(new MemoryStream(Bc1Fixture()), new DdsTarget(32, 32, 1, DxgiFormat.BC1_UNORM),
+                new MemoryStream(), 1, cts.Token));
     }
 
     [Fact]
