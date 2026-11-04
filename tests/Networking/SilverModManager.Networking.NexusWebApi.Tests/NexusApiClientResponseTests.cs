@@ -30,7 +30,8 @@ public class NexusApiClientResponseTests
 
         var thrown = await Assert.ThrowsAnyAsync<UserFacingException>(() => client.ModFilesAsync("skyrim", ModId.From(12), TestContext.Current.CancellationToken));
 
-        thrown.Message.Should().Contain("skyrim/mods/12/files.json").And.Contain("file_id");
+        // The message is Markdown with the server's text escaped; what the reader sees names the field.
+        MarkdownText.ToPlain(thrown.Message).Should().Contain("skyrim/mods/12/files.json").And.Contain("file_id");
     }
 
     [Fact]
@@ -40,6 +41,6 @@ public class NexusApiClientResponseTests
 
         var thrown = await Assert.ThrowsAnyAsync<UserFacingException>(() => client.DownloadLinksAsync("skyrim", ModId.From(12), FileId.From(7), TestContext.Current.CancellationToken));
 
-        thrown.Message.Should().Contain("download_link.json").And.Contain("URI");
+        MarkdownText.ToPlain(thrown.Message).Should().Contain("download_link.json").And.Contain("URI");
     }
 }
