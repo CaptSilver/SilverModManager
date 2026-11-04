@@ -7,6 +7,7 @@ using SilverModManager.Abstractions.Steam;
 using SilverModManager.Abstractions.Steam.DTOs;
 using SilverModManager.Abstractions.Steam.Values;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.ForeignDeployments;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.NexusModsApi;
 using OperatingSystem = SilverModManager.Abstractions.Games.FileHashes.Values.OperatingSystem;
@@ -29,6 +30,7 @@ internal sealed class LocalBaselineCoordinator : IDisposable
     private readonly LocalVanillaBaseline _baseline;
     private readonly IDepotManifestSource? _manifestSource;
     private readonly Func<GameInstallation, IReadOnlySet<GamePath>?> _deployedFiles;
+    private readonly Func<GameInstallation, IReadOnlySet<GamePath>> _foreignDeployedFiles;
     private readonly ILogger<LocalBaselineCoordinator> _logger;
     private readonly ConcurrentDictionary<(GameStore Store, string Path), Lazy<Task<LocalBaselineResult>>> _inFlight = new();
 
@@ -45,22 +47,34 @@ internal sealed class LocalBaselineCoordinator : IDisposable
     /// then built as it stands. It throws <see cref="InvalidOperationException"/> when a loadout was applied but the
     /// deployed paths cannot be told, and no baseline is built from the folder then. Null counts every folder as unmanaged.
     /// </param>
-    public LocalBaselineCoordinator(Func<IConnection> localStore, LocalVanillaBaseline baseline, IDepotManifestSource? manifestSource, ILogger<LocalBaselineCoordinator> logger, Func<GameInstallation, IReadOnlySet<GamePath>?>? deployedFiles = null)
+    /// <param name="foreignDeployedFiles">
+    /// The game-folder paths another mod manager's records say it deployed. Left out of a snapshot or partial baseline's game
+    /// files, so mods adopted from that manager never count as vanilla. It may throw <see cref="ForeignDeploymentRefusedException"/>
+    /// for a record that names a file outside the game folder; the baseline is then built without them and creating a loadout refuses.
+    /// </param>
+    public LocalBaselineCoordinator(Func<IConnection> localStore, LocalVanillaBaseline baseline, IDepotManifestSource? manifestSource, ILogger<LocalBaselineCoordinator> logger, Func<GameInstallation, IReadOnlySet<GamePath>?>? deployedFiles = null, Func<GameInstallation, IReadOnlySet<GamePath>>? foreignDeployedFiles = null)
     {
         _deployedFiles = deployedFiles ?? (_ => null);
+        _foreignDeployedFiles = foreignDeployedFiles ?? (_ => new HashSet<GamePath>());
         _localStore = localStore;
         _baseline = baseline;
         _manifestSource = manifestSource;
         _logger = logger;
     }
 
-    public async Task<LocalBaselineResult> Ensure(GameInstallation installation, CancellationToken cancellationToken = default)
+    /// <param name="installation">The installation to ensure a baseline for.</param>
+    /// <param name="cancellationToken">Cancels the wait, not a build another caller started.</param>
+    /// <param name="foreignFiles">
+    /// The files another mod manager deployed, when the caller has just read them. Only a build this call starts uses it;
+    /// null makes that build read the records itself.
+    /// </param>
+    public async Task<LocalBaselineResult> Ensure(GameInstallation installation, CancellationToken cancellationToken = default, IReadOnlySet<GamePath>? foreignFiles = null)
     {
         var key = (installation.LocatorResult.Store, GamePathOf(installation));
 
         // The whole decision is shared, not only the build: two callers that both find no baseline would
         // otherwise each start one.
-        var shared = _inFlight.GetOrAdd(key, k => new Lazy<Task<LocalBaselineResult>>(() => Run(k, installation)));
+        var shared = _inFlight.GetOrAdd(key, k => new Lazy<Task<LocalBaselineResult>>(() => Run(k, installation, foreignFiles)));
         return await shared.Value.WaitAsync(cancellationToken);
     }
 
@@ -127,13 +141,13 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         }
     }
 
-    private async Task<LocalBaselineResult> Run((GameStore Store, string Path) key, GameInstallation installation)
+    private async Task<LocalBaselineResult> Run((GameStore Store, string Path) key, GameInstallation installation, IReadOnlySet<GamePath>? foreignFiles)
     {
         try
         {
             // Everything below reads the disk synchronously until the first await; keep that off the caller's thread.
             await Task.Yield();
-            return await EnsureCore(installation, _shutdown.Token);
+            return await EnsureCore(installation, foreignFiles, _shutdown.Token);
         }
         finally
         {
@@ -141,7 +155,7 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         }
     }
 
-    private async Task<LocalBaselineResult> EnsureCore(GameInstallation installation, CancellationToken cancellationToken)
+    private async Task<LocalBaselineResult> EnsureCore(GameInstallation installation, IReadOnlySet<GamePath>? foreignFiles, CancellationToken cancellationToken)
     {
         var locator = installation.LocatorResult;
         var gamePath = GamePathOf(installation);
@@ -166,8 +180,10 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         // takes the folder as it is, so the paths the loadout deployed are told to the build, which leaves them
         // out of the game's files. Asked only when manifests will not decide: it builds a sync tree.
         IReadOnlySet<GamePath>? deployed = null;
+        IReadOnlySet<GamePath> byAnotherManager = new HashSet<GamePath>();
         if (manifests.Count == 0 || !allCovered)
         {
+            byAnotherManager = foreignFiles ?? FilesOfOtherManagers(installation);
             try
             {
                 deployed = _deployedFiles(installation);
@@ -200,6 +216,7 @@ internal sealed class LocalBaselineCoordinator : IDisposable
             IsIgnored = path => synchronizer.GamePathFilter.ShouldFilter(path),
             LooksLikeAMod = path => ModLoaderPaths.LooksLikeAMod(installation.GetGame(), installation, path),
             DeployedByLoadout = deployed ?? new HashSet<GamePath>(),
+            DeployedByAnotherManager = byAnotherManager,
             Game = installation.Game.GameId,
             NexusGameId = installation.Game.NexusModsGameId,
             OperatingSystem = OperatingSystemOf(locator),
@@ -208,13 +225,27 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         var build = await _baseline.Build(request, store, cancellationToken);
         var built = LocalBaseline.Load(_localStore().Db, build.BaselineId);
         if (built.Kind == LocalBaselineKind.Snapshot)
-            _logger.LogInformation("Built the {Kind} baseline for {Game} from the folder as it stands: {LooksLikeAMod} files that look like a mod loader or mod and {Deployed} files a loadout deployed were left out of the game's files",
-                built.Kind, installation.Game.DisplayName, build.Count(NonVanillaReason.LooksLikeAMod), build.Count(NonVanillaReason.DeployedByLoadout));
+            _logger.LogInformation("Built the {Kind} baseline for {Game} from the folder as it stands: {LooksLikeAMod} files that look like a mod loader or mod, {Deployed} files a loadout deployed and {Foreign} files another mod manager deployed were left out of the game's files",
+                built.Kind, installation.Game.DisplayName, build.Count(NonVanillaReason.LooksLikeAMod), build.Count(NonVanillaReason.DeployedByLoadout), build.Count(NonVanillaReason.DeployedByAnotherManager));
         else
             _logger.LogInformation("Built the {Kind} baseline for {Game}: {NotInManifest} files the manifests do not list, {SizeDiffers} of another size, {HashDiffers} with other content",
                 built.Kind, installation.Game.DisplayName,
                 build.Count(NonVanillaReason.NotInManifest), build.Count(NonVanillaReason.SizeDiffers), build.Count(NonVanillaReason.HashDiffers));
         return new LocalBaselineResult(built.Kind, Rebuilt: true, build.NonVanilla.Count);
+    }
+
+    private IReadOnlySet<GamePath> FilesOfOtherManagers(GameInstallation installation)
+    {
+        try
+        {
+            return _foreignDeployedFiles(installation);
+        }
+        catch (ForeignDeploymentRefusedException e)
+        {
+            // Creating a loadout shows the player this refusal; a baseline of the folder as it stands is still better than none.
+            _logger.LogWarning(e, "Another mod manager's records of {Game} are refused, building its baseline without leaving their files out", installation.Game.DisplayName);
+            return new HashSet<GamePath>();
+        }
     }
 
     /// <summary>

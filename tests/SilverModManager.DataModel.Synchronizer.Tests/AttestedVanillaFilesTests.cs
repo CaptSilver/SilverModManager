@@ -1284,12 +1284,12 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         public bool TryGetVanityVersion(LocatorIdsWithGameStore locatorIdsWithGameStore, out VanityVersion version) => inner.TryGetVanityVersion(locatorIdsWithGameStore, out version);
         public bool TryGetLocatorIdsForVanityVersion(GameStore gameStore, VanityVersion version, out LocatorId[] locatorIds) => inner.TryGetLocatorIdsForVanityVersion(gameStore, version, out locatorIds);
         public LocatorId[] GetLocatorIdsForVersionDefinition(GameStore gameStore, VersionDefinition.ReadOnly versionDefinition) => inner.GetLocatorIdsForVersionDefinition(gameStore, versionDefinition);
-        public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default)
-            => CountedEnsure(installation, cancellationToken);
-        private Task<LocalBaselineResult> CountedEnsure(GameInstallation installation, CancellationToken cancellationToken)
+        public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default, IReadOnlySet<GamePath>? foreignFiles = null)
+            => CountedEnsure(installation, cancellationToken, foreignFiles);
+        private Task<LocalBaselineResult> CountedEnsure(GameInstallation installation, CancellationToken cancellationToken, IReadOnlySet<GamePath>? foreignFiles)
         {
             gate.BaselineBuildCalls++;
-            return gate.FailBaselineBuild ? throw new InvalidOperationException("the baseline build failed") : inner.EnsureLocalBaseline(installation, cancellationToken);
+            return gate.FailBaselineBuild ? throw new InvalidOperationException("the baseline build failed") : inner.EnsureLocalBaseline(installation, cancellationToken, foreignFiles);
         }
         public Task MoveLocalBaseline(GameStore store, string oldPath, string newPath, CancellationToken cancellationToken = default) => inner.MoveLocalBaseline(store, oldPath, newPath, cancellationToken);
         public Task RemoveLocalBaseline(GameStore store, string gamePath, CancellationToken cancellationToken = default) => inner.RemoveLocalBaseline(store, gamePath, cancellationToken);

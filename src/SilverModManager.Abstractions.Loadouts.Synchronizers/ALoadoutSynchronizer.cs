@@ -26,6 +26,7 @@ using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.ForeignDeployments;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.IO;
@@ -77,6 +78,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private readonly IMassRemovalPrompt _massRemovalPrompt;
     private readonly MassRemovalThreshold _massRemovalThreshold;
     private readonly IFullFileHasher _fullHasher;
+    private readonly IForeignDeploymentSource[] _foreignDeploymentSources;
 
     /// <summary>
     /// Loadout synchronizer base constructor.
@@ -107,6 +109,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         _massRemovalPrompt = serviceProvider.GetRequiredService<IMassRemovalPrompt>();
         _massRemovalThreshold = serviceProvider.GetRequiredService<MassRemovalThreshold>();
         _fullHasher = serviceProvider.GetService<IFullFileHasher>() ?? MultiHashFileHasher.Instance;
+        _foreignDeploymentSources = serviceProvider.GetServices<IForeignDeploymentSource>().ToArray();
 
         _fileHashService = fileHashService;
         _identityResolver = serviceProvider.GetRequiredService<IFileIdentityResolver>();
@@ -2171,12 +2174,27 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
     private IGamePathFilter? _composedFilter;
 
+    /// <summary>
+    /// Whether the path is a record another mod manager (Vortex's deployment manifests and folder markers) keeps in the
+    /// game folder. They stay on disk and are never indexed, so they are not ingested as a mod file, backed up or
+    /// deleted when a mod is switched off.
+    /// </summary>
+    private bool IsForeignManagerRecord(GamePath path)
+    {
+        foreach (var source in _foreignDeploymentSources)
+        {
+            if (source.IsRecordFile(path)) return true;
+        }
+
+        return false;
+    }
+
     /// <inheritdoc />
     /// <remarks>
     /// The base rule joined with <see cref="GameSpecificPathFilter"/>. It is composed on first use rather than in
     /// an initializer because an initializer cannot call the virtual member.
     /// </remarks>
-    public IGamePathFilter GamePathFilter => _composedFilter ??= Synchronizers.GamePathFilters.Any(BaseGamePathFilter, GameSpecificPathFilter);
+    public IGamePathFilter GamePathFilter => _composedFilter ??= Synchronizers.GamePathFilters.Any(BaseGamePathFilter, GameSpecificPathFilter, Synchronizers.GamePathFilters.Create(IsForeignManagerRecord));
 
     /// <summary>
     /// The rule every game gets: save files are never indexed, backed up, overwritten or deleted, whichever

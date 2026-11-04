@@ -22,6 +22,7 @@ using SilverModManager.MnemonicDB.Storage;
 using SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.ForeignDeployments;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
@@ -105,7 +106,8 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             new LocalVanillaBaseline(_fileSystem, provider.GetRequiredService<ILogger<LocalVanillaBaseline>>(), provider.GetService<IBaselineFileOpener>() is { } opener ? opener.OpenRead : null, () => Databases),
             provider.GetService<IDepotManifestSource>(),
             provider.GetRequiredService<ILogger<LocalBaselineCoordinator>>(),
-            DeployedFiles);
+            DeployedFiles,
+            FilesOfOtherManagers);
 
         // Only when nothing is on disk: with a database there, opening it is what registers the name.
         if (!ExistingDBs().Any()) EnsureHashesNameResolves();
@@ -118,6 +120,14 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             && GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out _)
                 ? installation.GetGame().Synchronizer.GetFilesDeployedByLastSyncedLoadout(metadata)
                 : null;
+
+    // Resolved on use for the same reason: the sources are registered by assemblies this one does not reference.
+    private IReadOnlySet<GamePath> FilesOfOtherManagers(GameInstallation installation)
+        => _provider.GetServices<IForeignDeploymentSource>()
+            .Select(source => source.Detect(installation))
+            .OfType<ForeignDeployment>()
+            .SelectMany(deployment => deployment.Files)
+            .ToHashSet();
 
     private void EnsureHashesNameResolves()
     {
@@ -737,8 +747,8 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     }
 
     /// <inheritdoc />
-    public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default)
-        => _baselineCoordinator.Ensure(installation, cancellationToken);
+    public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default, IReadOnlySet<GamePath>? foreignFiles = null)
+        => _baselineCoordinator.Ensure(installation, cancellationToken, foreignFiles);
 
     /// <inheritdoc />
     public Task MoveLocalBaseline(GameStore store, string oldPath, string newPath, CancellationToken cancellationToken = default)

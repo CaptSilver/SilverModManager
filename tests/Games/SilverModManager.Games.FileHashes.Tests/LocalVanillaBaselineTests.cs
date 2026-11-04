@@ -612,9 +612,53 @@ public sealed class LocalVanillaBaselineTests : IDisposable
         LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().ContainSingle().Which.Path.ToString().Should().Be("a.esm");
     }
 
+    [Fact]
+    public async Task Snapshot_RecordsPathsAnotherManagerDeployedAsNonVanilla()
+    {
+        WriteFile("a.esm", "vanilla"); WriteFile("Merged/hook.dll", "vortex mod");
+
+        var result = await Build([], allCovered: false, byAnotherManager: ["Merged/hook.dll"]);
+
+        var row = result.NonVanilla.Should().ContainSingle().Subject;
+        row.Path.ToString().Should().Be("Merged/hook.dll");
+        row.Reason.Should().Be(NonVanillaReason.DeployedByAnotherManager);
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Select(f => f.Path.ToString()).Should().Equal("a.esm");
+    }
+
+    [Fact]
+    public async Task PartialManifests_PathAnotherManagerDeployedIsNotTakenForAnUncoveredDepotFile()
+    {
+        WriteFile("a.esm", "vanilla"); WriteFile("mod.pak", "mod"); WriteFile("other-depot.bin", "x");
+
+        var result = await Build([Manifest(1, ("a.esm", "vanilla"))], allCovered: false, byAnotherManager: ["mod.pak"]);
+
+        result.NonVanilla.Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.DeployedByAnotherManager);
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Select(f => f.Path.ToString()).Should().BeEquivalentTo(["a.esm", "other-depot.bin"]);
+    }
+
+    [Fact]
+    public async Task Snapshot_PathALoadoutDeployedKeepsItsOwnReasonOverAnotherManagers()
+    {
+        WriteFile("a.esm", "vanilla"); WriteFile("mod.pak", "mod");
+
+        var result = await Build([], allCovered: false, deployed: ["mod.pak"], byAnotherManager: ["mod.pak"]);
+
+        result.NonVanilla.Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.DeployedByLoadout);
+    }
+
+    [Fact]
+    public async Task DepotManifests_DecidesByItselfAndIgnoresAnotherManagersPaths()
+    {
+        WriteFile("a.esm", "vanilla"); WriteFile("mod.pak", "mod");
+
+        var result = await Build([Manifest(1, ("a.esm", "vanilla"))], byAnotherManager: ["mod.pak"]);
+
+        result.NonVanilla.Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.NotInManifest);
+    }
+
     private Task<BaselineBuild> Build(Manifest[] manifests, bool allCovered = true, string? versionName = "1000",
         Func<GamePath, bool>? isIgnored = null, IConnection? connection = null, Func<GamePath, bool>? looksLikeAMod = null,
-        string[]? deployed = null)
+        string[]? deployed = null, string[]? byAnotherManager = null)
     {
         var baseline = new LocalVanillaBaseline(FileSystem.Shared, NullLogger<LocalVanillaBaseline>.Instance, p =>
         {
@@ -634,6 +678,7 @@ public sealed class LocalVanillaBaselineTests : IDisposable
             IsIgnored = isIgnored ?? (_ => false),
             LooksLikeAMod = looksLikeAMod ?? (_ => false),
             DeployedByLoadout = (deployed ?? []).Select(d => new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(d))).ToHashSet(),
+            DeployedByAnotherManager = (byAnotherManager ?? []).Select(d => new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(d))).ToHashSet(),
             Game = HashRows.OwnGameId,
             NexusGameId = HashRows.GameId,
             OperatingSystem = OperatingSystem.Windows,

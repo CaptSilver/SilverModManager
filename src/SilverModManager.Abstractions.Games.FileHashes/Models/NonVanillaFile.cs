@@ -51,4 +51,7 @@ public enum NonVanillaReason : byte
 
     /// <summary>A loadout put the file there (a mod's or an intrinsic file), and no manifest was there to say otherwise.</summary>
     DeployedByLoadout = 4,
+
+    /// <summary>Another mod manager (Vortex) put the file there, and no manifest was there to say otherwise.</summary>
+    DeployedByAnotherManager = 5,
 }

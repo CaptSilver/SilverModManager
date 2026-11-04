@@ -13,6 +13,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Abstractions.Serialization.ExpressionGenerator;
 using SilverModManager.DataModel.CommandLine.Verbs;
 using SilverModManager.DataModel.Diagnostics;
+using SilverModManager.DataModel.ForeignDeployments;
 using SilverModManager.DataModel.GameInstalled;
 using SilverModManager.DataModel.JsonConverters;
 using SilverModManager.DataModel.Loadouts;
@@ -33,6 +34,7 @@ using SilverModManager.MnemonicDB.Storage.Abstractions;
 using SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.ForeignDeployments;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Resources;
 
@@ -139,6 +141,7 @@ public static class Services
         coll.AddSingleton<IHostedService, ImportedIniFilesPass>();
         coll.AddSingleton<IHostedService, LoadoutSwitchLog>();
         coll.AddSingleton<IGameInstalledContentService, GameInstalledContentService>();
+        coll.TryAddEnumerable(ServiceDescriptor.Singleton<IForeignDeploymentSource, VortexDeploymentSource>());
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, GameInstalledGroupDisabledEmitter>());
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, MissingUnbackedFileEmitter>());
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, CaseVariantFolderEmitter>());

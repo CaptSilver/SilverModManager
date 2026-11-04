@@ -13,6 +13,7 @@ using SilverModManager.Abstractions.Steam.Values;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.ForeignDeployments;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.NexusModsApi;
@@ -235,6 +236,57 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         _source,
         _coordinatorLog,
         deployedFiles);
+
+    private LocalBaselineCoordinator CoordinatorWithForeignFiles(Func<GameInstallation, IReadOnlySet<GamePath>> foreignDeployedFiles) => new(
+        () => _store,
+        new LocalVanillaBaseline(FileSystem.Shared, NullLogger<LocalVanillaBaseline>.Instance),
+        _source,
+        _coordinatorLog,
+        foreignDeployedFiles: foreignDeployedFiles);
+
+    [Fact]
+    public async Task Snapshot_LeavesFilesAnotherManagerDeployedOutOfTheGameFiles()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        WriteGameFile("Merged/hook.dll", "vortex mod");
+        var coordinator = CoordinatorWithForeignFiles(_ => new HashSet<GamePath> { Deployed("Merged/hook.dll") });
+
+        var result = await coordinator.Ensure(Installation("102"));
+
+        result.Kind.Should().Be(LocalBaselineKind.Snapshot);
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Files.Select(f => f.Path.ToString()).Should().Equal("a.esm");
+        NonVanillaFile.All(_store.Db).Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.DeployedByAnotherManager);
+    }
+
+    [Fact]
+    public async Task Snapshot_UsesTheFilesTheCallerAlreadyDetectedInsteadOfDetectingAgain()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        WriteGameFile("Merged/hook.dll", "vortex mod");
+        var detections = 0;
+        var coordinator = CoordinatorWithForeignFiles(_ =>
+        {
+            detections++;
+            return new HashSet<GamePath>();
+        });
+
+        await coordinator.Ensure(Installation("102"), foreignFiles: new HashSet<GamePath> { Deployed("Merged/hook.dll") });
+
+        detections.Should().Be(0);
+        NonVanillaFile.All(_store.Db).Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.DeployedByAnotherManager);
+    }
+
+    [Fact]
+    public async Task Snapshot_StillBuildsWhenAnotherManagersRecordsAreRefused()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        var coordinator = CoordinatorWithForeignFiles(_ => throw new ForeignDeploymentRefusedException("outside the game folder"));
+
+        var result = await coordinator.Ensure(Installation("102"));
+
+        result.Kind.Should().Be(LocalBaselineKind.Snapshot);
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Files.Select(f => f.Path.ToString()).Should().Equal("a.esm");
+    }
 
     [Fact]
     public async Task ManagedFolder_ChangedLocatorIdsWithoutAManifest_RebuildsASnapshotWithoutTheDeployedFiles()

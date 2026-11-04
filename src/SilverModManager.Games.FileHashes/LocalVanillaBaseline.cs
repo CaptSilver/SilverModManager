@@ -65,6 +65,13 @@ internal sealed record BaselineRequest
     public IReadOnlySet<GamePath> DeployedByLoadout { get; init; } = new HashSet<GamePath>();
 
     /// <summary>
+    /// The game-folder paths another mod manager's records say it deployed (Vortex's manifests). A snapshot or partial
+    /// baseline records those as non-vanilla instead of taking them for the game's own files, so adopting them as
+    /// mods does not leave a copy in the vanilla list. A complete set of depot manifests decides by itself and ignores it.
+    /// </summary>
+    public IReadOnlySet<GamePath> DeployedByAnotherManager { get; init; } = new HashSet<GamePath>();
+
+    /// <summary>
     /// The store reports the install as settled (Steam: fully installed, no update pending). Files are only
     /// taken as vanilla without being read when this is true.
     /// </summary>
@@ -350,6 +357,7 @@ internal sealed class LocalVanillaBaseline
                         if (carry.Claim(path)) _logger.LogTrace("Carrying the previous baseline's row for {Path}, which a loadout overwrote", path);
                         else nonVanilla.Add(new NonVanillaEntry(path, NonVanillaReason.DeployedByLoadout, size));
                     }
+                    else if (request.DeployedByAnotherManager.Contains(gamePath)) nonVanilla.Add(new NonVanillaEntry(path, NonVanillaReason.DeployedByAnotherManager, size));
                     // With no manifest at all, the file name is the only evidence there is.
                     else if (kind == LocalBaselineKind.Snapshot && request.LooksLikeAMod(gamePath)) nonVanilla.Add(new NonVanillaEntry(path, NonVanillaReason.LooksLikeAMod, size));
                     else candidates.Add(new Candidate(file.FullName, path, null, size, file.LastWriteTimeUtc));

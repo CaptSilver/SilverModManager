@@ -99,7 +99,13 @@ public interface IFileHashesService
     /// rebuilt only when the installation's locator ids changed, or when a depot manifest that was
     /// missing at the last build has been cached since.
     /// </summary>
-    public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default);
+    /// <param name="installation">The installation to ensure a baseline for.</param>
+    /// <param name="cancellationToken">Cancels the wait, not a build another caller started.</param>
+    /// <param name="foreignFiles">
+    /// The game-folder paths another mod manager's records say it deployed, when the caller has just read them. They are left
+    /// out of a snapshot baseline's game files without the records being read again. Null makes a build read them itself.
+    /// </param>
+    public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default, IReadOnlySet<GamePath>? foreignFiles = null);
 
     /// <summary>
     /// Re-keys the baseline at <paramref name="oldPath"/> to <paramref name="newPath"/>, for a managed game the

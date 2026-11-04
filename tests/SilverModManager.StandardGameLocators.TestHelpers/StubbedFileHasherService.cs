@@ -248,13 +248,25 @@ public class StubbedFileHasherService : IFileHashesService, IDisposable
     /// </summary>
     public List<(GameInstallation Installation, int LoadoutCount)> BaselineRequests { get; } = [];
 
-    // EnsureLocalBaseline writes no rows here, so there is never a baseline to remove.
+    /// <summary>The <c>foreignFiles</c> of each <see cref="EnsureLocalBaseline"/> call; null where the caller passed none.</summary>
+    public List<IReadOnlySet<GamePath>?> ForeignFilesPassed { get; } = [];
+
+    /// <summary>The baselines <see cref="RemoveLocalBaseline"/> was asked to remove.</summary>
+    public List<(GameStore Store, string GamePath)> RemovedBaselines { get; } = [];
+
+    // EnsureLocalBaseline writes no rows here, so there is never a baseline to remove; the request is only recorded.
     public Task MoveLocalBaseline(GameStore store, string oldPath, string newPath, CancellationToken cancellationToken = default) => Task.CompletedTask;
-    public Task RemoveLocalBaseline(GameStore store, string gamePath, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task RemoveLocalBaseline(GameStore store, string gamePath, CancellationToken cancellationToken = default)
+    {
+        lock (RemovedBaselines) RemovedBaselines.Add((store, gamePath));
+        return Task.CompletedTask;
+    }
 
     // Nothing is hashed: the stubbed state stands in for the whole vanilla file list.
-    public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default)
+    public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default, IReadOnlySet<GamePath>? foreignFiles = null)
     {
+        lock (ForeignFilesPassed) ForeignFilesPassed.Add(foreignFiles);
         var loadoutCount = Loadout.All(_provider.GetRequiredService<IConnection>().Db).Count();
         lock (BaselineRequests) BaselineRequests.Add((installation, loadoutCount));
         return Task.FromResult(new LocalBaselineResult(LocalBaselineKind.Snapshot, Rebuilt: false, NonVanillaCount: 0));

@@ -108,8 +108,12 @@ internal partial class LoadoutManager : ILoadoutManager
             // than one that was never added.
             await installation.GetGame().Synchronizer.Preflight(installation);
 
+            // What another mod manager left in the folder is read before any row exists too: a record that names a file
+            // outside the game folder is refused here, and the baseline below leaves these files out of the game's own.
+            var foreign = WillFirstSync(installation) ? DetectForeignDeployments(installation) : null;
+
             // The first synchronize reads the vanilla file list, so it has to exist before the loadout does.
-            await _fileHashesService.EnsureLocalBaseline(installation, ctx.CancellationToken);
+            await EnsureLocalBaselineWithoutForeignFiles(installation, foreign, ctx.CancellationToken);
 
             // Prime the hash database to make sure it's loaded
             await _fileHashesService.GetFileHashesDb();
@@ -156,7 +160,7 @@ internal partial class LoadoutManager : ILoadoutManager
             if (!GameInstallMetadata.LastSyncedLoadout.TryGetValue(remappedLoadout.Installation, out var lastSyncedLoadoutId))
             {
                 await FirstSync(remappedLoadout, largeFiles, ctx.CancellationToken);
-                remappedLoadout = remappedLoadout.Rebase();
+                remappedLoadout = await AdoptForeignDeployments(remappedLoadout.Rebase(), foreign ?? []);
             }
             else
             {
@@ -165,7 +169,7 @@ internal partial class LoadoutManager : ILoadoutManager
                 if (!lastSyncedLoadout.IsValid())
                 {
                     await FirstSync(remappedLoadout, largeFiles, ctx.CancellationToken);
-                    remappedLoadout = remappedLoadout.Rebase();
+                    remappedLoadout = await AdoptForeignDeployments(remappedLoadout.Rebase(), foreign ?? []);
                 }
             }
 
