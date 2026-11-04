@@ -18,6 +18,7 @@ pupnet_commit=dabed0cc2063c5a2d2c4f780bb6718f4b90cfd16
 pupnet_version=0.0.0-nma
 
 export_dotnet_env
+scratch_tmpdir
 export PATH="$HOME/.dotnet/tools:$PATH"
 
 # appimagetool is itself an AppImage. Unpack it instead of mounting it, so packaging
@@ -28,7 +29,7 @@ if ! dotnet tool list --global | grep -qi "kuiperzone.pupnet.*$pupnet_version"; 
     # PupNet is built from a throwaway clone, not in-tree: this repo's central package
     # management breaks its build.
     src="$(mktemp -d)"
-    trap 'rm -rf "$src"' EXIT
+    trap 'rm -rf "$src" "$scratch_tmp"' EXIT
     git clone "$pupnet_repo" "$src"
     git -C "$src" checkout "$pupnet_commit"
     (cd "$src" && dotnet pack -c Release -o . -p:Version="$pupnet_version")

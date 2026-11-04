@@ -54,17 +54,25 @@ public class LoadoutInstallVerbTests(ITestOutputHelper helper) : AIsolatedGameTe
         await GenerateGameFiles();
         var loadout = await ServiceProvider.GetRequiredService<ILoadoutManager>()
             .CreateLoadout(GameInstallation, "install target", BackupOverflowChoice.Refuse);
-        var path = Path.Combine(Directory.CreateTempSubdirectory("verb-install-").FullName, "verb-mod.zip");
-        using (var zip = ZipFile.Open(path, ZipArchiveMode.Create))
+        var folder = Directory.CreateTempSubdirectory("verb-install-");
+        try
         {
-            using var writer = new StreamWriter(zip.CreateEntry("verb-mod.txt").Open());
-            writer.Write("verb-mod");
+            var path = Path.Combine(folder.FullName, "verb-mod.zip");
+            using (var zip = ZipFile.Open(path, ZipArchiveMode.Create))
+            {
+                using var writer = new StreamWriter(zip.CreateEntry("verb-mod.txt").Open());
+                writer.Write("verb-mod");
+            }
+
+            var (_, output) = await Run("loadout", "install", "-l", loadout.LoadoutId.ToString(), "-f", path, "-n", "Verb mod");
+
+            // The library add happens before the install, so the recorded game does not depend on the install succeeding.
+            LibraryDestinations.ItemsFor(Connection.Db, EldenRingGame.GameId).Should().ContainSingle(item => item.Name == "verb-mod.zip", output);
+            LibraryDestinations.Unassigned(Connection.Db).Should().NotContain(item => item.Name == "verb-mod.zip");
         }
-
-        var (_, output) = await Run("loadout", "install", "-l", loadout.LoadoutId.ToString(), "-f", path, "-n", "Verb mod");
-
-        // The library add happens before the install, so the recorded game does not depend on the install succeeding.
-        LibraryDestinations.ItemsFor(Connection.Db, EldenRingGame.GameId).Should().ContainSingle(item => item.Name == "verb-mod.zip", output);
-        LibraryDestinations.Unassigned(Connection.Db).Should().NotContain(item => item.Name == "verb-mod.zip");
+        finally
+        {
+            folder.Delete(recursive: true);
+        }
     }
 }

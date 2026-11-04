@@ -43,4 +43,5 @@ cd "$root"
 git submodule update --init --recursive
 
 export_dotnet_env
+scratch_tmpdir
 dotnet restore SilverModManager.App.sln

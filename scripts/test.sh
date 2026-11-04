@@ -22,12 +22,19 @@ export QT_QPA_PLATFORM=offscreen
 # .desktop files and mimeapps entries under XDG_DATA_HOME/XDG_CONFIG_HOME and can reach
 # the compositor. Point every XDG dir at a throwaway directory and drop the display
 # variables so a test run can never change the user's file associations or open windows.
-xdg_root="$(mktemp -d)"
+# Everything this run creates in the temp directory goes under one per-run folder (host_tmp_run) that the EXIT trap
+# deletes: MSBuild, the test hosts and the tests all leave folders in TMPDIR, and on a tmpfs /tmp those pile up in
+# RAM. It stays on the same filesystem as the original temp directory, so scripts the tests write can still run and
+# the cross-device tests still see a device other than /dev/shm. The XDG dirs live inside it too, so they count as
+# the test host's own temp folders. TMPDIR is set before the build below, so MSBuildTemp lands there as well.
+host_tmp="${TMPDIR:-/tmp}"
+host_tmp_run="$(mktemp -d "${host_tmp%/}/silvermod-host-tmp.XXXXXX")"
+xdg_root="$(mktemp -d "$host_tmp_run/xdg.XXXXXX")"
 scratch_root=""
 reflink_root=""
 dump_dir=""
 # The dump folder is kept only while it holds a crash; rmdir leaves a folder with dumps in it alone.
-trap 'rm -rf "$xdg_root" "$scratch_root" "$reflink_root"; [[ -z "$dump_dir" ]] || rmdir "$dump_dir" 2>/dev/null || true' EXIT
+trap 'rm -rf "$xdg_root" "$scratch_root" "$host_tmp_run" "$reflink_root"; [[ -z "$dump_dir" ]] || rmdir "$dump_dir" 2>/dev/null || true' EXIT
 export XDG_DATA_HOME="$xdg_root/data" XDG_CONFIG_HOME="$xdg_root/config" \
        XDG_STATE_HOME="$xdg_root/state" XDG_CACHE_HOME="$xdg_root/cache"
 unset DISPLAY WAYLAND_DISPLAY
@@ -43,17 +50,19 @@ export DBUS_SESSION_BUS_ADDRESS="unix:path=$xdg_root/no-bus"
 # which is tmpfs on this machine. TMPDIR moves to /dev/shm only when the temp directory is a real disk and
 # /dev/shm can run programs. Tests that need a second device read the original temp directory from
 # SILVER_TEST_HOST_TMPDIR.
-export SILVER_TEST_HOST_TMPDIR="${TMPDIR:-/tmp}"
+#
+# The original temp directory is never used directly; see host_tmp_run above.
+export SILVER_TEST_HOST_TMPDIR="$host_tmp_run" TMPDIR="$host_tmp_run"
 if [[ -d /dev/shm && "$(stat -f -c %T /dev/shm)" == tmpfs ]]; then
     scratch_root="$(mktemp -d /dev/shm/silvermod-tests.XXXXXX)"
     export SILVER_TEST_SCRATCH="$scratch_root"
-    if [[ "$(stat -f -c %T "$SILVER_TEST_HOST_TMPDIR")" != tmpfs ]]; then
+    if [[ "$(stat -f -c %T "$host_tmp_run")" != tmpfs ]]; then
         printf '#!/bin/sh\n' > "$scratch_root/exec-probe"
         chmod +x "$scratch_root/exec-probe"
         if "$scratch_root/exec-probe" 2>/dev/null; then
             export TMPDIR="$scratch_root"
         else
-            echo "warning: $SILVER_TEST_HOST_TMPDIR is not tmpfs and /dev/shm is noexec; temp files stay on disk" >&2
+            echo "warning: $host_tmp is not tmpfs and /dev/shm is noexec; temp files stay on disk" >&2
         fi
         rm -f "$scratch_root/exec-probe"
     fi
@@ -125,9 +134,9 @@ if (( ${#build_target[@]} )); then
     fi
     started=$SECONDS
     build_status=0
-    # The lock stays with this script: a compiler server the build leaves running must not inherit it, or it holds the
-    # lock long after the build ends.
-    dotnet build "${build_target[@]}" -nodeReuse:false 9>&- || build_status=$?
+    # UseSharedCompilation=false keeps the build from leaving a compiler server running: this run's TMPDIR is its own, so
+    # no later build could reuse the server's socket. 9>&- still keeps the lock out of anything the build does start.
+    dotnet build "${build_target[@]}" -nodeReuse:false -p:UseSharedCompilation=false 9>&- || build_status=$?
     # One line per build, to see how long runs queue for the lock against how long they build.
     printf '%s\twaited %ds\tbuilt %ds\texit %d\t%s\n' "$(date -Is)" $((started - asked)) $((SECONDS - started)) \
         "$build_status" "${build_target[*]}" >> "$git_dir/silvermod-build.log"

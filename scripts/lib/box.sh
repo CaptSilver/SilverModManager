@@ -53,4 +53,18 @@ run_low_priority() {
 export_dotnet_env() {
     export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
     export MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0
+    # The Roslyn compiler server (VBCSCompiler) outlives the build and is found again through a socket in
+    # $TMPDIR. These scripts give every run its own TMPDIR, so no later build could find it: each build would
+    # start a new server that idles for ten minutes, and concurrent runs would stack them up in memory.
+    # Compile in-process instead.
+    export UseSharedCompilation=false
+}
+
+# MSBuild and the build tools leave folders (MSBuildTemp*, compiler scratch) in TMPDIR, and on a tmpfs /tmp they
+# pile up in RAM. Point TMPDIR at a per-run folder; callers delete $scratch_tmp from their EXIT trap, or use
+# scratch_tmpdir to get a trap that does only that.
+scratch_tmpdir() {
+    scratch_tmp="$(mktemp -d "${TMPDIR:-/tmp}/silvermod-script-tmp.XXXXXX")"
+    export TMPDIR="$scratch_tmp"
+    trap 'rm -rf "$scratch_tmp"' EXIT
 }

@@ -12,9 +12,9 @@ public class Startup
 {
     public void ConfigureServices(IServiceCollection services)
     {
-        var stagingDirectory = FileSystem.Shared
-            .GetKnownPath(KnownPath.TempDirectory)
-            .Combine($"loose-staging-tests-{Guid.NewGuid():N}");
+        // Under TestScratch rather than the temp directory: scripts/test.sh deletes that root, and outside the script
+        // it sits beside the test binaries instead of piling up in /tmp.
+        var stagingDirectory = FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine($"loose-staging-tests-{Guid.NewGuid():N}"));
 
         services
             .AddFileSystem()

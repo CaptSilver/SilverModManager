@@ -20,17 +20,25 @@ public class LibraryAddFromDiskTests(IServiceProvider provider) : AUiTest(provid
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Add from disk");
         var game = loadout.InstallationInstance.Game.GameId;
-        var path = Path.Combine(Directory.CreateTempSubdirectory("add-from-disk-").FullName, "from-disk.zip");
-        using (var zip = ZipFile.Open(path, ZipArchiveMode.Create))
+        var folder = Directory.CreateTempSubdirectory("add-from-disk-");
+        try
         {
-            using var writer = new StreamWriter(zip.CreateEntry("from-disk.txt").Open());
-            writer.Write("from-disk");
+            var path = Path.Combine(folder.FullName, "from-disk.zip");
+            using (var zip = ZipFile.Open(path, ZipArchiveMode.Create))
+            {
+                using var writer = new StreamWriter(zip.CreateEntry("from-disk.txt").Open());
+                writer.Write("from-disk");
+            }
+            var vm = new LibraryViewModel(
+                Substitute.For<IWindowManager>(), Provider, Provider.GetRequiredService<IGameDomainToGameIdMappingCache>(), loadout.LoadoutId);
+
+            await vm.AddFilesToLibrary([FileSystem.Shared.FromUnsanitizedFullPath(path)], CancellationToken.None);
+
+            LibraryDestinations.ItemsFor(Connection.Db, game).Should().ContainSingle(item => item.Name == "from-disk.zip");
         }
-        var vm = new LibraryViewModel(
-            Substitute.For<IWindowManager>(), Provider, Provider.GetRequiredService<IGameDomainToGameIdMappingCache>(), loadout.LoadoutId);
-
-        await vm.AddFilesToLibrary([FileSystem.Shared.FromUnsanitizedFullPath(path)], CancellationToken.None);
-
-        LibraryDestinations.ItemsFor(Connection.Db, game).Should().ContainSingle(item => item.Name == "from-disk.zip");
+        finally
+        {
+            folder.Delete(recursive: true);
+        }
     }
 }

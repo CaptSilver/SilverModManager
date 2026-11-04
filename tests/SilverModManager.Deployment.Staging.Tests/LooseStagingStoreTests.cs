@@ -16,7 +16,7 @@ using NSubstitute;
 
 namespace SilverModManager.Deployment.Staging.Tests;
 
-public class LooseStagingStoreTests
+public class LooseStagingStoreTests : IDisposable
 {
     private static readonly GameInstallMetadataId InstallA = GameInstallMetadataId.From(EntityId.From(0xA1));
     private static readonly GameInstallMetadataId InstallB = GameInstallMetadataId.From(EntityId.From(0xB2));
@@ -25,6 +25,7 @@ public class LooseStagingStoreTests
     private readonly FakeFileStoreContents _contents;
     private readonly IFileStore _fileStore;
     private readonly IServiceProvider _serviceProvider;
+    private readonly AbsolutePath _location;
     private ISettingsManager Settings { get; }
 
     // Each test gets its own store over a fresh directory, so tests stay independent of one another.
@@ -34,13 +35,18 @@ public class LooseStagingStoreTests
         _contents = new FakeFileStoreContents();
         _fileStore = FakeFileStoreContents.CreateFileStore(_contents);
         var fileSystem = serviceProvider.GetRequiredService<IFileSystem>();
-        var location = fileSystem.GetKnownPath(KnownPath.TempDirectory).Combine($"loose-staging-{Guid.NewGuid():N}");
+        _location = fileSystem.FromUnsanitizedFullPath(TestScratch.Combine($"loose-staging-{Guid.NewGuid():N}"));
         Settings = Substitute.For<ISettingsManager>();
         Settings.Get<LooseStagingStoreSettings>().Returns(new LooseStagingStoreSettings
         {
-            Location = new ConfigurablePath(null, location.ToString()),
+            Location = new ConfigurablePath(null, _location.ToString()),
         });
         _store = new LooseStagingStore(Settings, _fileStore, fileSystem, new StatFilesystemLocator(), Microsoft.Extensions.Logging.Abstractions.NullLogger<LooseStagingStore>.Instance);
+    }
+
+    public void Dispose()
+    {
+        if (_location.DirectoryExists()) _location.DeleteDirectory(recursive: true);
     }
 
     // The first byte of the hash picks the two-character directory the file lands in.

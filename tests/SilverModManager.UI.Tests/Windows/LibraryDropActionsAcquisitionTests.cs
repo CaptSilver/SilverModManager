@@ -15,9 +15,18 @@ namespace SilverModManager.UI.Tests.Windows;
 /// <summary>Which game a dropped mod is recorded for: the loadout the drop landed on, or none.</summary>
 public class LibraryDropActionsAcquisitionTests(IServiceProvider provider) : AUiTest(provider)
 {
+    private readonly List<string> _archiveFolders = [];
+
+    public override async ValueTask DisposeAsync()
+    {
+        foreach (var folder in _archiveFolders) Directory.Delete(folder, recursive: true);
+        await base.DisposeAsync();
+    }
+
     private AbsolutePath Archive(string entryName)
     {
         var root = Directory.CreateTempSubdirectory("drop-acquisition-").FullName;
+        _archiveFolders.Add(root);
         var path = Path.Combine(root, entryName + ".zip");
         using (var zip = ZipFile.Open(path, ZipArchiveMode.Create))
         {

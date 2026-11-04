@@ -10,4 +10,5 @@ box_reexec "${BASH_SOURCE[0]}" "$@"
 cd "$root"
 run_low_priority
 export_dotnet_env
-dotnet build SilverModManager.App.sln "$@"
+scratch_tmpdir
+dotnet build SilverModManager.App.sln -p:UseSharedCompilation=false "$@"
