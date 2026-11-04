@@ -513,6 +513,9 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     }
 
                     rowSubscriptions.Clear();
+                    // The cache outlives an activation; a row left in it would come back on the next one even if it was retracted meanwhile.
+                    _pendingRows.Clear();
+                    _canRetryPendingItems.OnNext(false);
                 }));
                 _pendingRows.Connect().Bind(_pendingItems).Subscribe().AddTo(disposables);
 
