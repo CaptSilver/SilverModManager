@@ -61,6 +61,24 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
         progress.Reports.Last().Should().Be(1.0);
     }
 
+    /// <summary>
+    /// Bytes the calling thread allocated while <paramref name="work"/> ran. The per-thread counter only means
+    /// something if the work finishes on the thread that took the first reading, so that is checked, not assumed:
+    /// a continuation that hopped to a pool thread would subtract two different threads' counters, and the
+    /// minimum-of-samples logic would then pick the bogus small delta and hide a regression.
+    /// </summary>
+    private static async Task<long> AllocatedOnThisThread(Func<Task> work)
+    {
+        var thread = Environment.CurrentManagedThreadId;
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        await work();
+        var after = GC.GetAllocatedBytesForCurrentThread();
+        var finishedOn = Environment.CurrentManagedThreadId;
+        finishedOn.Should().Be(thread, "the per-thread allocation counter is only comparable on the thread that took the first reading");
+        (after - before).Should().BeGreaterThan(0, "a backup allocates something on its calling thread; zero or less means the readings came from different threads");
+        return after - before;
+    }
+
     [Fact]
     public async Task BackingUpOneFile_AllocatesNoMoreWhenTheStoreAlreadyHoldsManyFiles()
     {
@@ -75,9 +93,7 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
             for (var sample = 0; sample < 5; sample++)
             {
                 var entry = RandomEntry(seed++, 2048, out _);
-                var before = GC.GetAllocatedBytesForCurrentThread();
-                await _fileStore.BackupFiles([entry], token: token);
-                least = Math.Min(least, GC.GetAllocatedBytesForCurrentThread() - before);
+                least = Math.Min(least, await AllocatedOnThisThread(() => _fileStore.BackupFiles([entry], token: token)));
             }
             return least;
         }
@@ -109,10 +125,13 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
         var perBackup = long.MaxValue;
         for (var sample = 0; sample < 5; sample++)
         {
-            var before = GC.GetAllocatedBytesForCurrentThread();
-            for (var i = 0; i < 4; i++)
-                await _fileStore.BackupFiles([RandomEntry(seed++, 2048, out _)], token: TestContext.Current.CancellationToken);
-            perBackup = Math.Min(perBackup, (GC.GetAllocatedBytesForCurrentThread() - before) / 4);
+            var entries = Enumerable.Range(0, 4).Select(n => RandomEntry(seed++, 2048, out _)).ToList();
+            var allocated = await AllocatedOnThisThread(async () =>
+            {
+                foreach (var entry in entries)
+                    await _fileStore.BackupFiles([entry], token: TestContext.Current.CancellationToken);
+            });
+            perBackup = Math.Min(perBackup, allocated / 4);
         }
 
         perBackup.Should().BeLessThan(4 * 1024 * 1024);
