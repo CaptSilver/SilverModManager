@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Sdk;
@@ -10,7 +11,7 @@ namespace SilverModManager.Platform.Proton;
 /// <summary>
 /// Finds Proton builds the way Steam does and applies the per-app compat tool choice from <c>config.vdf</c>.
 /// </summary>
-public sealed partial class ProtonResolver(IEnvironmentReader environment) : IProtonResolver
+public sealed partial class ProtonResolver(IEnvironmentReader environment, ILogger<ProtonResolver>? logger = null) : IProtonResolver
 {
     private const string ExtraToolPathsVariable = "STEAM_EXTRA_COMPAT_TOOLS_PATHS";
 
@@ -81,17 +82,33 @@ public sealed partial class ProtonResolver(IEnvironmentReader environment) : IPr
         => build.Name.Contains("experimental", StringComparison.OrdinalIgnoreCase)
            || build.Name.Contains("hotfix", StringComparison.OrdinalIgnoreCase);
 
-    private static void AddCustom(AbsolutePath dir, Action<ProtonBuild, bool> add)
+    // Steam lists a custom tool only when its folder has a compatibilitytool.vdf, and runs one of Valve's
+    // builds through its toolmanifest.vdf. A folder with just a proton script is a half-copied or leftover install.
+    private void AddCustom(AbsolutePath dir, Action<ProtonBuild, bool> add)
     {
         if (!dir.Combine("proton").FileExists) return;
 
-        var name = ReadInternalToolName(dir.Combine("compatibilitytool.vdf")) ?? dir.FileName;
+        var manifest = dir.Combine("compatibilitytool.vdf");
+        if (!manifest.FileExists)
+        {
+            logger?.LogInformation("Skipping {Directory}: it has a proton script but no compatibilitytool.vdf", dir);
+            return;
+        }
+
+        var name = ReadInternalToolName(manifest) ?? dir.FileName;
         add(new ProtonBuild(name, dir), false);
     }
 
-    private static void AddOfficial(AbsolutePath dir, Action<ProtonBuild, bool> add)
+    private void AddOfficial(AbsolutePath dir, Action<ProtonBuild, bool> add)
     {
         if (!dir.Combine("proton").FileExists) return;
+
+        if (!dir.Combine("toolmanifest.vdf").FileExists)
+        {
+            logger?.LogInformation("Skipping {Directory}: it has a proton script but no toolmanifest.vdf", dir);
+            return;
+        }
+
         add(new ProtonBuild(OfficialMappingName(dir.FileName), dir), true);
     }
 

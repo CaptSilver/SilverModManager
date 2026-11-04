@@ -34,6 +34,7 @@ public class ProtontricksStrategyTests
 
         _fs.CreateDirectory(_protonDir);
         _fs.WriteAllText(_protonDir.Combine("proton"), "#!/usr/bin/env python3");
+        _fs.WriteAllText(_protonDir.Combine("toolmanifest.vdf"), "");
         _fs.CreateDirectory(_prefix);
         _fs.WriteAllText(_prefix.Combine("system.reg"), "");
 

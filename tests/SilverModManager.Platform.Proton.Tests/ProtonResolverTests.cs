@@ -1,5 +1,7 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
+using NSubstitute;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 
@@ -19,7 +21,12 @@ public class ProtonResolverTests
         Write(_steam.Combine("steam.sh"), "");
     }
 
-    private ProtonResolver Resolver => new(new FakeEnvironment(_env));
+    private readonly ILogger<ProtonResolver> _logger = Substitute.For<ILogger<ProtonResolver>>();
+
+    private ProtonResolver Resolver => new(new FakeEnvironment(_env), _logger);
+
+    private int InformationLogs() => _logger.ReceivedCalls()
+        .Count(call => call.GetMethodInfo().Name == nameof(ILogger.Log) && (LogLevel)call.GetArguments()[0]! == LogLevel.Information);
 
     private void Write(AbsolutePath path, string contents)
     {
@@ -31,6 +38,7 @@ public class ProtonResolverTests
     {
         var dir = (library ?? _steam).Combine("steamapps/common").Combine(directoryName);
         Write(dir.Combine("proton"), "#!/usr/bin/env python3");
+        Write(dir.Combine("toolmanifest.vdf"), "\"manifest\"\n{\n  \"version\" \"2\"\n}");
         return dir;
     }
 
@@ -137,6 +145,35 @@ public class ProtonResolverTests
         Write(_steam.Combine("steamapps/common/Proton Leftover/readme.txt"), "");
 
         Resolver.ListBuilds(_steam).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ListBuilds_CustomToolWithoutCompatibilityToolVdf_IsSkippedAndLogged()
+    {
+        AddCustom("Half-Installed", internalName: null);
+
+        Resolver.ListBuilds(_steam).Should().BeEmpty();
+        InformationLogs().Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void ListBuilds_OfficialBuildWithoutToolManifest_IsSkippedAndLogged()
+    {
+        var dir = AddOfficial("Proton 9.0");
+        _fs.DeleteFile(dir.Combine("toolmanifest.vdf"));
+
+        Resolver.ListBuilds(_steam).Should().BeEmpty();
+        InformationLogs().Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void ListBuilds_CompleteBuilds_AreKeptWithoutLogging()
+    {
+        AddOfficial("Proton 9.0");
+        AddCustom("GE-Proton9-27", "GE-Proton9-27");
+
+        Resolver.ListBuilds(_steam).Should().HaveCount(2);
+        InformationLogs().Should().Be(0);
     }
 
     [Fact]
