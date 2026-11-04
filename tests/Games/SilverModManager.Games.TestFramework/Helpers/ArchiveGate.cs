@@ -29,7 +29,7 @@ public sealed class ArchiveGate : ILibraryItemInstaller, IDisposable
 
     /// <summary>
     /// Puts a gate for <paramref name="archiveName"/> in <paramref name="installers"/> at <paramref name="slot"/>; disposing it puts the
-    /// original installer back. Slot 1 keeps the FOMOD installer, which the collection install looks up by type, where it is.
+    /// original installer back. Gate slot 1, not 0: the collection install finds the FOMOD installer in slot 0 by type, and a gate there would hide it.
     /// </summary>
     public static ArchiveGate Install(ILibraryItemInstaller[] installers, int slot, string archiveName)
     {

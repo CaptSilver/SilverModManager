@@ -1,5 +1,3 @@
-using System.IO.Compression;
-using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
@@ -27,19 +25,11 @@ public class UnattendedInstallJobTests(ITestOutputHelper helper) : ACyberpunkIso
             .AddTransient<IGuidedInstaller>(_ => _guidedInstaller.Create());
     }
 
+    private OfflineCollections Offline => new(ServiceProvider, Connection, LibraryService, TemporaryFileManager);
+
     private async Task<LibraryItem.ReadOnly> DocsOnlyArchive()
     {
-        var path = TemporaryFileManager.CreateFolder().Path.Combine("docs-only.zip");
-        await using (var stream = path.Create())
-        using (var zip = new ZipArchive(stream, ZipArchiveMode.Create))
-        {
-            foreach (var entry in new[] { "readme.txt", "docs/guide.md" })
-            {
-                await using var entryStream = zip.CreateEntry(entry).Open();
-                await entryStream.WriteAsync(Encoding.UTF8.GetBytes(entry));
-            }
-        }
-
+        var (path, _) = await Offline.CreateMod(TemporaryFileManager.CreateFolder().Path, 0, ModShape.Unknown);
         var archive = await RegisterLocalArchive(path);
         return archive.AsLibraryFile().AsLibraryItem();
     }

@@ -73,6 +73,19 @@ public class ArchiveGateTests(ITestOutputHelper helper) : ACyberpunkIsolatedGame
     }
 
     [Fact]
+    public async Task AReleasedArchiveTheInnerInstallerDeclines_IsDeclined()
+    {
+        var item = await ModItem(1);
+        var installers = new ILibraryItemInstaller[] { new ClaimingInstaller("mod2.zip") };
+        using var gate = ArchiveGate.Install(installers, 0, "mod1.zip");
+        gate.Release();
+
+        var result = await Run(gate, item).AsTask().WaitAsync(Timeout);
+
+        result.IsNotSupported(out _).Should().BeTrue("the gate lets the install job go on to the next installer instead of running one that declined");
+    }
+
+    [Fact]
     public async Task Fail_MakesTheHeldCallThrowThatException()
     {
         var item = await ModItem(1);
