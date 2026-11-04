@@ -61,4 +61,60 @@ public class UpperdirAuditEmitterTests(ITestOutputHelper helper) : AModdedEldenR
 
         (await Diagnose(loadout)).Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task TheDiscardActionRemovesTheStrayFileItNamesAndTheDiagnosticGoesAway()
+    {
+        var loadout = await CreateModdedLoadout();
+        var layout = LayoutOf(loadout);
+        await Gate.Prepare(ContextOf(loadout), CancellationToken.None);
+        await File.WriteAllTextAsync(Path.Combine(layout.Upper.GetFullPath(), "stray.txt"), "x");
+        await File.WriteAllTextAsync(Path.Combine(layout.Upper.GetFullPath(), "other.txt"), "x");
+        await Gate.Finish(ContextOf(loadout));
+        var action = (await Diagnose(loadout)).SelectMany(d => d.Actions).Single(a => a.Arguments[2] == "stray.txt");
+
+        Emitter.Discard(loadout, action.Arguments);
+
+        File.Exists(Path.Combine(layout.Upper.GetFullPath(), "stray.txt")).Should().BeFalse();
+        File.Exists(Path.Combine(layout.Upper.GetFullPath(), "other.txt")).Should().BeTrue();
+        (await Diagnose(loadout)).Should().ContainSingle().Which.Actions.Single().Arguments[2].Should().Be("other.txt");
+    }
+
+    [Fact]
+    public async Task TheDiscardActionForAGameFolderChangeOnlyClearsTheFinding()
+    {
+        var loadout = await CreateModdedLoadout();
+        await Gate.Prepare(ContextOf(loadout), CancellationToken.None);
+        await File.WriteAllTextAsync(Path.Combine(RealGameFolder.GetFullPath(), "leaked.dll"), "x");
+        await Gate.Finish(ContextOf(loadout));
+        var action = (await Diagnose(loadout)).Single().Actions.Single();
+
+        Emitter.Discard(loadout, action.Arguments);
+
+        File.Exists(Path.Combine(RealGameFolder.GetFullPath(), "leaked.dll")).Should().BeTrue();
+        (await Diagnose(loadout)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task TheDiscardActionIgnoresAFindingThatIsNoLongerPendingAndNeverDeletesAnUnlistedFile()
+    {
+        var loadout = await CreateModdedLoadout();
+        var layout = LayoutOf(loadout);
+        Directory.CreateDirectory(layout.Upper.GetFullPath());
+        await File.WriteAllTextAsync(Path.Combine(layout.Upper.GetFullPath(), "unlisted.txt"), "x");
+
+        Emitter.Discard(loadout, [loadout.LoadoutId.Value.Value.ToString(), "Unexpected", "unlisted.txt"]);
+
+        File.Exists(Path.Combine(layout.Upper.GetFullPath(), "unlisted.txt")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TheDiscardActionRefusesArgumentsItCannotRead()
+    {
+        var loadout = await CreateModdedLoadout();
+
+        var act = () => Emitter.Discard(loadout, ["only-one"]);
+
+        act.Should().Throw<ArgumentException>();
+    }
 }

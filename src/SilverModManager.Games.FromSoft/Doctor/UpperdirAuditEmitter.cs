@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
@@ -42,6 +43,21 @@ public class UpperdirAuditEmitter(ISettingsManager settings, IFileSystem fileSys
 
     public static DiagnosticAction DiscardAction(LoadoutId loadoutId, AuditFinding finding)
         => new(DiscardActionId, "Discard", [loadoutId.Value.Value.ToString(), finding.Kind.ToString(), finding.Path]);
+
+    /// <summary>
+    /// Runs <see cref="DiscardActionId"/>: deletes the upper-folder file the finding names (a game-folder finding has
+    /// none) and drops the finding. Only a finding that is still pending is acted on, so a stale or hand-made action
+    /// can never delete a file the audit did not list.
+    /// </summary>
+    public void Discard(Loadout.ReadOnly loadout, ImmutableArray<string> arguments)
+    {
+        if (arguments.Length != 3 || !Enum.TryParse<AuditFindingKind>(arguments[1], out var kind))
+            throw new ArgumentException("Expected the loadout id, the finding's kind and its path.", nameof(arguments));
+
+        var layout = OverlayLayout.For(settings.Get<FromSoftSettings>(), fileSystem, loadout.InstallationInstance, loadout.LoadoutId);
+        var pending = UpperdirAudit.PendingFindings(layout).FirstOrDefault(f => f.Kind == kind && f.Path == arguments[2]);
+        if (pending is not null) UpperdirAudit.Discard(layout, pending);
+    }
 
     private static string Reason(AuditFinding finding) => finding.Kind == AuditFindingKind.ShadowedGameFile
         ? "The game folder has a file at the same path, so this one replaces it, or hides it if it marks a deletion."

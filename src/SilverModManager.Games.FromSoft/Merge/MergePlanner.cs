@@ -159,9 +159,12 @@ public static class MergePlanner
             var ancestor = ancestors[step + 1 - (takesGameBase ? 1 : 0)];
             try
             {
+                var before = notes.Count;
                 result = fold(
                     result, blobs[step + 1], ancestor, needsVanilla, baseIsGame,
                     baseIsGame ? MergeNames.Game : leader, owners[step + 1], notes, traits, game);
+                if (!baseIsGame)
+                    NameRealWinners(notes, before, leader, owners, blobs, step, takesGameBase, ancestor, needsVanilla, fold, traits, game);
             }
             catch (RemovedRowEditsException removed)
             {
@@ -186,6 +189,54 @@ public static class MergePlanner
         }
 
         return new MergedPath(path, strategy, candidate.Contributors, result, notes, VanillaSourceOf(strategy));
+    }
+
+    /// <summary>
+    /// Past the second contributor the accumulated side is a merge, and a fold names the mod that leads it as the owner of
+    /// whatever stayed. The change that stayed may be a lower mod's, when the leader never touched it. This finds the
+    /// highest-priority earlier mod that conflicts with the next one the same way (the first mod to hold the
+    /// disputed item) and names that mod instead.
+    /// </summary>
+    private static void NameRealWinners(
+        List<IMergeNote> notes, int from, string leader, List<string> owners, List<byte[]> blobs, int step, bool takesGameBase,
+        byte[] ancestor, bool needsVanilla, MergeFold fold, FromSoftFormatTraits traits, GameOrigin? game)
+    {
+        var offset = takesGameBase ? 1 : 0;
+        var earlier = step + 1 - offset; // contributors before the one this step folds in
+        if (earlier < 2) return;
+
+        // Each pairwise fold decodes, merges and re-encodes the whole file, so it runs at most once per earlier mod
+        // however many notes ask about it, and only when a note needs it.
+        var pairwise = new HashSet<IMergeNote>?[earlier];
+        HashSet<IMergeNote> NotesOf(int k)
+        {
+            if (pairwise[k] is { } cached) return cached;
+
+            var scratch = new List<IMergeNote>();
+            try
+            {
+                fold(blobs[k + offset], blobs[step + 1], ancestor, needsVanilla, false, leader, owners[step + 1], scratch, traits, game);
+            }
+            catch (Exception e) when (MergeFailures.IsInputProblem(e) || e is RemovedRowEditsException)
+            {
+                scratch.Clear();
+            }
+            return pairwise[k] = [..scratch];
+        }
+
+        for (var i = from; i < notes.Count; i++)
+        {
+            if (notes[i] is not IWinnerNote { Winner: var winner } note || winner != leader) continue;
+
+            // The leader (k = 0) is asked too: when it is the real winner the note stays as it is.
+            for (var k = 0; k < earlier; k++)
+            {
+                if (!NotesOf(k).Contains(note)) continue;
+
+                if (k > 0) notes[i] = note.WithWinner(owners[k + offset]);
+                break;
+            }
+        }
     }
 
     private static string VanillaSourceOf(MergeStrategy strategy)

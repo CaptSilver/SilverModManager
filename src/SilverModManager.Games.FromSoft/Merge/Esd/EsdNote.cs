@@ -47,8 +47,12 @@ public enum EsdNoteReason
 /// <param name="OtherMod">The mod whose changes were laid on top.</param>
 public sealed record EsdNote(
     long Group, long? State, EsdNoteReason Reason, long? Target = null,
-    string PreferredMod = MergeNames.PreferredMod, string OtherMod = MergeNames.OtherMod) : IMergeNote
+    string PreferredMod = MergeNames.PreferredMod, string OtherMod = MergeNames.OtherMod) : IWinnerNote
 {
+    string IWinnerNote.Winner => PreferredMod;
+
+    IMergeNote IWinnerNote.WithWinner(string winner) => this with { PreferredMod = winner };
+
     public string Summary() => Reason switch
     {
         EsdNoteReason.UnresolvedInOther =>

@@ -20,6 +20,11 @@ using SilverModManager.App.UI.Pages.SteamLaunchOption;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Games.FromSoft;
+using SilverModManager.Games.FromSoft.Doctor;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Overlay;
+using SilverModManager.Sdk.Settings;
 using SilverModManager.Games.FromSoft.Build;
 using SilverModManager.Games.FromSoft.Cleanup;
 using SilverModManager.Games.FromSoft.Heal;
@@ -308,6 +313,113 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
 
     #endregion
 
+    #region Discard an overlay finding
+
+    /// <summary>One pending audit finding, a stray file in the upper folder of the loadout's overlay under a scratch data root.</summary>
+    private sealed class OverlayFindingFixture : IDisposable
+    {
+        public string Root { get; } = Directory.CreateTempSubdirectory("discard-overlay-action").FullName;
+        public FromSoftSettings Settings { get; }
+        public OverlayLayout Layout { get; }
+        public string Stray => Path.Combine(Layout.Upper.GetFullPath(), "stray.txt");
+
+        public OverlayFindingFixture(Loadout.ReadOnly loadout)
+        {
+            Settings = new FromSoftSettings { DataRoot = new ConfigurablePath(null, Root) };
+            Layout = OverlayLayout.For(Settings, FileSystem.Shared, loadout.InstallationInstance, loadout.LoadoutId);
+            Directory.CreateDirectory(Layout.Upper.GetFullPath());
+            File.WriteAllText(Stray, "x");
+            UpperdirAudit.Run(Layout, OverlayAllowlist.Default).GetAwaiter().GetResult()
+                .Should().ContainSingle().Which.Path.Should().Be("stray.txt");
+        }
+
+        public ImmutableArray<string> Arguments(LoadoutId loadoutId) => [loadoutId.Value.Value.ToString(), nameof(AuditFindingKind.Unexpected), "stray.txt"];
+
+        public void Dispose() => Directory.Delete(Root, recursive: true);
+    }
+
+    private DiscardOverlayFindingActionHandler DiscardHandler(OverlayFindingFixture fixture, IWindowManager windows, IDiagnosticManager manager, IGameLaunchSession session)
+    {
+        var settings = Substitute.For<ISettingsManager>();
+        settings.Get<FromSoftSettings>().Returns(fixture.Settings);
+        var emitter = new UpperdirAuditEmitter(settings, FileSystem.Shared);
+        return new DiscardOverlayFindingActionHandler(new ServicesWith(Provider, (typeof(IGameLaunchSession), session)), windows, emitter, manager);
+    }
+
+    private DiscardOverlayFindingActionHandler DiscardHandler(OverlayFindingFixture fixture, IWindowManager windows, IDiagnosticManager manager, bool gameRunning = false)
+    {
+        var session = Substitute.For<IGameLaunchSession>();
+        session.IsRunning(Arg.Any<GameInstallation>()).Returns(gameRunning);
+        return DiscardHandler(fixture, windows, manager, session);
+    }
+
+    [Fact]
+    public async Task Test_DiscardAsksFirst_ThenDeletesTheFileAndRefreshes()
+    {
+        var seeded = await SeedLoadoutRow<EldenRingGame>(GameStore.Steam, "Discard");
+        using var fixture = new OverlayFindingFixture(seeded);
+        var manager = Substitute.For<IDiagnosticManager>();
+        var windows = Answering(ButtonDefinitionId.Accept);
+        var handler = DiscardHandler(fixture, windows, manager);
+
+        await handler.ExecuteAsync(seeded.LoadoutId, fixture.Arguments(seeded.LoadoutId)).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await windows.Received(1).ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
+        File.Exists(fixture.Stray).Should().BeFalse();
+        UpperdirAudit.PendingFindings(fixture.Layout).Should().BeEmpty();
+        await manager.Received(1).RefreshAsync(seeded.LoadoutId);
+    }
+
+    [Fact]
+    public async Task Test_DiscardDoesNothingWhenTheUserDeclines()
+    {
+        var seeded = await SeedLoadoutRow<EldenRingGame>(GameStore.Steam, "Discard");
+        using var fixture = new OverlayFindingFixture(seeded);
+        var manager = Substitute.For<IDiagnosticManager>();
+        var handler = DiscardHandler(fixture, Answering(ButtonDefinitionId.Cancel), manager);
+
+        await handler.ExecuteAsync(seeded.LoadoutId, fixture.Arguments(seeded.LoadoutId)).WaitAsync(TimeSpan.FromSeconds(30));
+
+        File.Exists(fixture.Stray).Should().BeTrue();
+        UpperdirAudit.PendingFindings(fixture.Layout).Should().ContainSingle();
+        await manager.DidNotReceive().RefreshAsync(Arg.Any<LoadoutId>());
+    }
+
+    [Fact]
+    public async Task Test_DiscardRefusesWhileTheGameRunsWithoutAsking()
+    {
+        var seeded = await SeedLoadoutRow<EldenRingGame>(GameStore.Steam, "Discard");
+        using var fixture = new OverlayFindingFixture(seeded);
+        var windows = Answering(ButtonDefinitionId.Accept);
+        var manager = Substitute.For<IDiagnosticManager>();
+        var handler = DiscardHandler(fixture, windows, manager, gameRunning: true);
+
+        await handler.ExecuteAsync(seeded.LoadoutId, fixture.Arguments(seeded.LoadoutId)).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await windows.DidNotReceive().ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
+        File.Exists(fixture.Stray).Should().BeTrue();
+        await manager.DidNotReceive().RefreshAsync(Arg.Any<LoadoutId>());
+    }
+
+    [Fact]
+    public async Task Test_DiscardRefusesWhenTheGameStartedWhileTheDialogWasOpen()
+    {
+        var seeded = await SeedLoadoutRow<EldenRingGame>(GameStore.Steam, "Discard");
+        using var fixture = new OverlayFindingFixture(seeded);
+        var session = Substitute.For<IGameLaunchSession>();
+        session.IsRunning(Arg.Any<GameInstallation>()).Returns(false, true);
+        var manager = Substitute.For<IDiagnosticManager>();
+        var handler = DiscardHandler(fixture, Answering(ButtonDefinitionId.Accept), manager, session);
+
+        await handler.ExecuteAsync(seeded.LoadoutId, fixture.Arguments(seeded.LoadoutId)).WaitAsync(TimeSpan.FromSeconds(30));
+
+        File.Exists(fixture.Stray).Should().BeTrue();
+        UpperdirAudit.PendingFindings(fixture.Layout).Should().ContainSingle();
+        await manager.DidNotReceive().RefreshAsync(Arg.Any<LoadoutId>());
+    }
+
+    #endregion
+
     #region Move the host copy into the game's folder
 
     private sealed class HostCopyFixture : IDisposable
@@ -332,6 +444,12 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         var session = Substitute.For<IGameLaunchSession>();
         session.IsRunning(Arg.Any<GameInstallation>()).Returns(gameRunning);
         return new MoveHostFolderIntoGameActionHandler(new ServicesWith(Provider, (typeof(IGameLaunchSession), session)), new FreedesktopTrash(fixture.DataHome), manager);
+    }
+
+    [Fact]
+    public void Test_TheOverlayFindingDiscardActionHasAHandlerInTheApp()
+    {
+        Provider.GetServices<IDiagnosticActionHandler>().Select(h => h.ActionId).Should().Contain(SilverModManager.Games.FromSoft.Doctor.UpperdirAuditEmitter.DiscardActionId);
     }
 
     [Fact]

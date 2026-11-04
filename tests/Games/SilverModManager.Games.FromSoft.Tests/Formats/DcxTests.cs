@@ -322,6 +322,57 @@ public class DcxTests
         act.Should().Throw<DcxException>();
     }
 
+    [Theory]
+    [InlineData(9)]
+    [InlineData(28)]
+    [InlineData(31)]
+    public void AZstdWindowLogOutsideWhatTheGameLoadsIsRefusedBeforeCompressing(int windowLog)
+    {
+        var act = () => Dcx.Write("payload"u8, Zstd with { WindowLog = windowLog });
+        act.Should().Throw<DcxException>().WithMessage("*window*");
+    }
+
+    [Fact]
+    public void AZstdFrameAskingForAnAbsurdWindowIsRefusedBeforeAnythingIsAllocated()
+    {
+        var frame = Dcx.Write(WindowPayload(), Zstd)[Dcx.HeaderSize..];
+        frame[5] = 20 << 3; // window log 30
+
+        // The limit would allocate a 2 GB buffer if the header were not looked at first.
+        var act = () => ZstdFrames.Decompress(frame, int.MaxValue - 64);
+        act.Should().Throw<InvalidDataException>().WithMessage("*window*");
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    public void AZstdFrameWhoseWindowMantissaPushesItPastTheCeilingIsRefused(int mantissa)
+    {
+        var frame = Dcx.Write(WindowPayload(), Zstd)[Dcx.HeaderSize..];
+        frame[5] = (byte)((17 << 3) | mantissa); // window log 27 plus eighths: larger than libzstd decodes by default
+
+        var act = () => ZstdFrames.Decompress(frame, 1024);
+        act.Should().Throw<InvalidDataException>().WithMessage("*window*");
+    }
+
+    [Fact]
+    public void AContainerWhoseZstdFrameAsksForAnAbsurdWindowIsRefusedAsMalformed()
+    {
+        var blob = Dcx.Write(WindowPayload(), Zstd);
+        blob[Dcx.HeaderSize + 5] = 20 << 3;
+        var act = () => Dcx.Read(blob, EldenRing);
+        act.Should().Throw<DcxException>().WithMessage("*window*");
+    }
+
+    [Fact]
+    public void ASingleSegmentZstdFrameAskingForAnAbsurdContentSizeIsRefused()
+    {
+        // magic, descriptor with single-segment set and an 8-byte content size field, then a 16 GB size.
+        byte[] frame = [0x28, 0xB5, 0x2F, 0xFD, 0xE0, 0, 0, 0, 0, 4, 0, 0, 0];
+        var act = () => ZstdFrames.Decompress(frame, 1024);
+        act.Should().Throw<InvalidDataException>().WithMessage("*window*");
+    }
+
     [Fact]
     public void TheDfltGoldenHasTheHeaderTheWriterBuildsAndDecodesToItsPayload()
     {

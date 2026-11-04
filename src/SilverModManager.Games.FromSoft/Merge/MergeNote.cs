@@ -27,8 +27,12 @@ public sealed record UnreadableParam(int EntryId) : IMergeNote
 /// <param name="KeptMod">Who owned the row that stayed: the higher-priority mod, or the game on the first step of a fold.</param>
 /// <param name="DroppedMod">Whose edits to the row were dropped.</param>
 /// <param name="KeptIsGame">The row that stayed is the game's own, so the conflict is a mod against the game rather than two mods.</param>
-public sealed record RowConflict(int EntryId, int RowId, string KeptMod, string DroppedMod, bool KeptIsGame = false) : IMergeNote
+public sealed record RowConflict(int EntryId, int RowId, string KeptMod, string DroppedMod, bool KeptIsGame = false) : IWinnerNote
 {
+    string IWinnerNote.Winner => KeptMod;
+
+    IMergeNote IWinnerNote.WithWinner(string winner) => this with { KeptMod = winner };
+
     public string Describe() => KeptIsGame
         ? $"entry {EntryId} row {RowId}: {DroppedMod} changed it differently from the game's own row; kept the game's row and dropped {DroppedMod}'s edits to it"
         : $"entry {EntryId} row {RowId}: both mods changed it differently; kept {KeptMod}'s row and dropped {DroppedMod}'s edits to it";
@@ -49,8 +53,12 @@ public sealed record CrossBuildRow(int EntryId, int RowId, string ModVersion, st
 /// <summary>Both mods ship a message under one id with different text; the winner's text was kept.</summary>
 /// <param name="KeptMod">Whose text stayed: the higher-priority mod.</param>
 /// <param name="DroppedMod">Whose text was dropped.</param>
-public sealed record TextKept(int EntryId, int TextId, string KeptMod, string DroppedMod) : IMergeNote
+public sealed record TextKept(int EntryId, int TextId, string KeptMod, string DroppedMod) : IWinnerNote
 {
+    string IWinnerNote.Winner => KeptMod;
+
+    IMergeNote IWinnerNote.WithWinner(string winner) => this with { KeptMod = winner };
+
     public string Describe() =>
         $"entry {EntryId} text {TextId}: both mods ship it and differ; kept {KeptMod}'s";
 
@@ -60,8 +68,12 @@ public sealed record TextKept(int EntryId, int TextId, string KeptMod, string Dr
 }
 
 /// <summary>Both mods ship a texture under one name with different bytes; the winner's copy was kept.</summary>
-public sealed record TextureKept(string Name, string KeptMod, string DroppedMod) : IMergeNote
+public sealed record TextureKept(string Name, string KeptMod, string DroppedMod) : IWinnerNote
 {
+    string IWinnerNote.Winner => KeptMod;
+
+    IMergeNote IWinnerNote.WithWinner(string winner) => this with { KeptMod = winner };
+
     public string Describe() =>
         $"texture {Name}: both mods ship it and differ; kept {KeptMod}'s";
 
@@ -72,8 +84,12 @@ public sealed record TextureKept(string Name, string KeptMod, string DroppedMod)
 
 /// <summary>One mod deleted a texture from the archive and the other changed it; the accumulated side's choice stood.</summary>
 /// <param name="KeptDeleted">True when the kept mod is the one that deleted it, so the texture is absent from the result.</param>
-public sealed record TextureDeletionConflict(string Name, string KeptMod, string DroppedMod, bool KeptDeleted) : IMergeNote
+public sealed record TextureDeletionConflict(string Name, string KeptMod, string DroppedMod, bool KeptDeleted) : IWinnerNote
 {
+    string IWinnerNote.Winner => KeptMod;
+
+    IMergeNote IWinnerNote.WithWinner(string winner) => this with { KeptMod = winner };
+
     public string Describe() => KeptDeleted
         ? $"texture {Name}: {KeptMod} deleted it and {DroppedMod} changed it; left out"
         : $"texture {Name}: {DroppedMod} deleted it and {KeptMod} changed it; kept {KeptMod}'s";
@@ -88,8 +104,12 @@ public sealed record TextureDeletionConflict(string Name, string KeptMod, string
 /// <summary>A binder member both mods changed; the winner's copy was kept whole.</summary>
 /// <param name="Member">The member's name inside the binder.</param>
 /// <param name="Details">The reader's message when the member could not be merged more finely; null when it was simply kept.</param>
-public sealed record MemberKept(string Member, string KeptMod, string DroppedMod, string? Details = null) : IMergeNote
+public sealed record MemberKept(string Member, string KeptMod, string DroppedMod, string? Details = null) : IWinnerNote
 {
+    string IWinnerNote.Winner => KeptMod;
+
+    IMergeNote IWinnerNote.WithWinner(string winner) => this with { KeptMod = winner };
+
     public string Describe() => $"member {Member}: both mods changed it; kept {KeptMod}'s";
 
     public string Summary() => $"both {KeptMod} and {DroppedMod} change {MemberPolicy.Noun(Member)} {Member}; {KeptMod}'s is used.";
@@ -103,8 +123,12 @@ public sealed record MemberKept(string Member, string KeptMod, string DroppedMod
 /// </summary>
 /// <param name="Member">The member's name inside the binder.</param>
 /// <param name="KeptDeletion">True when base deleted the member and the other's change is dropped; false when the other deleted it and base's copy stays.</param>
-public sealed record MemberDeletionKept(string Member, string KeptMod, string DroppedMod, bool KeptDeletion) : IMergeNote
+public sealed record MemberDeletionKept(string Member, string KeptMod, string DroppedMod, bool KeptDeletion) : IWinnerNote
 {
+    string IWinnerNote.Winner => KeptMod;
+
+    IMergeNote IWinnerNote.WithWinner(string winner) => this with { KeptMod = winner };
+
     public string Describe() => KeptDeletion
         ? $"member {Member}: {KeptMod} deleted it and {DroppedMod} changed it; it stays deleted"
         : $"member {Member}: {DroppedMod} deleted it and {KeptMod} changed it; kept {KeptMod}'s";

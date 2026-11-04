@@ -93,6 +93,8 @@ public static class Dcx
             case DcxCompression.Zstd:
                 if (format.Level is < MinZstdLevel or > MaxZstdLevel)
                     throw new DcxException($"Zstandard level {format.Level} is outside {MinZstdLevel}-{MaxZstdLevel}");
+                if (format.WindowLog is < ZstdFrames.MinWindowLog or > ZstdFrames.MaxWindowLog)
+                    throw new DcxException($"Zstandard window log {format.WindowLog} is outside {ZstdFrames.MinWindowLog}-{ZstdFrames.MaxWindowLog}; the game cannot load a window that size");
                 body = ZstdFrames.Compress(payload, format.Level, format.WindowLog);
                 break;
             case DcxCompression.Kraken:

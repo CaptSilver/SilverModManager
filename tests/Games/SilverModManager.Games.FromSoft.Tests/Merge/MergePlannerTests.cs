@@ -204,6 +204,33 @@ public class MergePlannerTests
         plan.Merged.Single().Contributors.Select(c => c.PackageId).Should().Equal("high", "mid", "low");
     }
 
+    private sealed record Dispute(string Item, string Winner) : IWinnerNote
+    {
+        public string Describe() => $"{Item} kept from {Winner}";
+        public IMergeNote WithWinner(string winner) => this with { Winner = winner };
+    }
+
+    [Fact]
+    public void Naming_the_real_winners_folds_each_earlier_mod_at_most_once_however_many_notes_there_are()
+    {
+        var index = Index(null, File("low", "one.tpf.dcx", 1), File("high", "one.tpf.dcx", 3), File("mid", "one.tpf.dcx", 2));
+        var pairwise = 0;
+        // Only the middle mod holds the disputed rows: the fold over it (alone, or inside the accumulated merge) reports them.
+        MergeFold fold = (acc, next, _, _, _, accName, _, notes, _, _) =>
+        {
+            if (S(next) == "low" && (S(acc) is "mid" or "high")) pairwise++;
+            if (S(acc) is "mid" or "high+mid")
+                for (var row = 0; row < 6; row++) notes!.Add(new Dispute($"row {row}", accName));
+            return B(S(acc) + "+" + S(next));
+        };
+
+        var plan = Plan(index, fold);
+
+        var notes = plan.Merged.Single().Notes.OfType<Dispute>().ToArray();
+        notes.Should().HaveCount(6).And.OnlyContain(n => n.Winner == "mid");
+        pairwise.Should().BeLessThanOrEqualTo(2, "the folds that name the winner run once per earlier mod, not once per note");
+    }
+
     [Fact]
     public void A_three_way_strategy_gets_vanilla_on_every_fold_step()
     {
@@ -387,6 +414,61 @@ public class MergePlannerTests
         rows[3].Should().Equal(Enumerable.Repeat((byte)0xdd, 8));
         plan.Notes.Should().Contain(new PathNote(path, new RowConflict(1, 1, "high", "low")));
         plan.Merged.Single().VanillaSource.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void Three_regulations_name_the_mod_whose_row_actually_won_not_the_top_priority_mod()
+    {
+        const string path = "regulation.bin";
+        var vanilla = Regulation((1, 0), (2, 0));
+        var contents = new Dictionary<string, byte[]>
+        {
+            ["high:" + path] = Regulation((1, 0), (2, 0xdd)),
+            ["mid:" + path] = Regulation((1, 0xaa), (2, 0)),
+            ["low:" + path] = Regulation((1, 0xbb), (2, 0)),
+        };
+
+        var plan = RealPlan(contents, NoVanilla, _ => vanilla, _ => vanilla, Real("low", path, 1), Real("mid", path, 2), Real("high", path, 3));
+
+        plan.Refusal.Should().BeNull();
+        RowsOf(plan.Merged.Single().Bytes)[1].Should().Equal(Enumerable.Repeat((byte)0xaa, 8), "mid edited row 1 and high never touched it");
+        plan.Notes.Select(n => n.Note).OfType<RowConflict>().Should().Equal(new RowConflict(1, 1, "mid", "low"));
+    }
+
+    [Fact]
+    public void Three_message_archives_name_the_mod_whose_text_actually_won()
+    {
+        const string path = "msg/engus/item.msgbnd.dcx";
+        var contents = new Dictionary<string, byte[]>
+        {
+            ["high:" + path] = Msgbnd((1, [(101, "only high")])),
+            ["mid:" + path] = Msgbnd((1, [(100, "mid's text")])),
+            ["low:" + path] = Msgbnd((1, [(100, "low's text")])),
+        };
+
+        var plan = RealPlan(contents, NoVanilla, _ => null, NoBase, Real("low", path, 1), Real("mid", path, 2), Real("high", path, 3));
+
+        MsgbndFixture.ReadBack(plan.Merged.Single().Bytes, ER)[1][100].Should().Be("mid's text");
+        plan.Notes.Should().ContainSingle().Which.Should().Be(new PathNote(path, new TextKept(1, 100, "mid", "low")));
+    }
+
+    [Fact]
+    public void Three_texture_archives_name_the_mod_whose_texture_actually_won()
+    {
+        const string path = "menu/hi/01_common.tpf.dcx";
+        byte[] Tpf(params (string Name, string Data)[] textures) =>
+            Dcx.Write(FormatTpf.Write(new TpfArchive(
+                [.. textures.Select(t => new Texture(t.Name, Encoding.ASCII.GetBytes(t.Data), 102, 0, 1, 0))], Platform: 0, Flag2: 3, Encoding: 1)), ER.PackedWrite);
+        var contents = new Dictionary<string, byte[]>
+        {
+            ["high:" + path] = Tpf(("Z", "high-z")),
+            ["mid:" + path] = Tpf(("A", "mid-a")),
+            ["low:" + path] = Tpf(("A", "low-a")),
+        };
+
+        var plan = RealPlan(contents, NoVanilla, _ => null, NoBase, Real("low", path, 1), Real("mid", path, 2), Real("high", path, 3));
+
+        plan.Notes.Single().Note.Should().Be(new TextureKept("A", "mid", "low"));
     }
 
     [Fact]

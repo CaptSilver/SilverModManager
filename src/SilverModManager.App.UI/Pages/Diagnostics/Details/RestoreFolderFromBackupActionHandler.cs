@@ -39,13 +39,13 @@ public sealed class RestoreFolderFromBackupActionHandler(IServiceProvider servic
         if (!loadout.IsValid()) throw new InvalidOperationException($"The loadout {loadoutId} no longer exists.");
 
         var installation = loadout.InstallationInstance;
-        if (await RefuseIfRunning(installation)) return;
+        if (await GameRunningRefusal.RefuseIfRunning(serviceProvider, installation, "restoring the backup folder")) return;
 
         if (!await Confirm(linkPath, backupPath)) return;
 
         // Everything is checked again after the answer, the folders inside Restore as the last thing before the
         // file system changes: the dialog can sit open while the game starts or another tool touches the folders.
-        if (await RefuseIfRunning(installation)) return;
+        if (await GameRunningRefusal.RefuseIfRunning(serviceProvider, installation, "restoring the backup folder")) return;
 
         try
         {
@@ -59,15 +59,6 @@ public sealed class RestoreFolderFromBackupActionHandler(IServiceProvider servic
         }
 
         await diagnosticManager.RefreshAsync(loadoutId);
-    }
-
-    private async Task<bool> RefuseIfRunning(GameInstallation installation)
-    {
-        if (!serviceProvider.GetRequiredService<IGameLaunchSession>().IsRunning(installation)) return false;
-
-        var refusal = new ExecutableInUseException(string.Format(Language.ErrorGameAlreadyRunning_Description, installation.Game.DisplayName));
-        await serviceProvider.GetRequiredService<IErrorPresenter>().Report(refusal, "restoring the backup folder");
-        return true;
     }
 
     private async Task<bool> Confirm(string linkPath, string backupPath)

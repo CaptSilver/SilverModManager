@@ -32,6 +32,19 @@ public sealed record MergeLoss(string DroppedMod, string KeptMod)
             : new MergeLoss(droppedMod, keptMod);
 }
 
+/// <summary>
+/// A note that says which mod's change a merge kept. A fold that merges three or more mods names the mod that leads
+/// it, which is not always the one whose change is in the output; the planner uses this to name the right one.
+/// </summary>
+public interface IWinnerNote : IMergeNote
+{
+    /// <summary>The mod whose change the merge kept.</summary>
+    string Winner { get; }
+
+    /// <summary>The same note with <paramref name="winner"/> as the mod whose change was kept.</summary>
+    IMergeNote WithWinner(string winner);
+}
+
 /// <summary>What a merge did without choosing between mods. Reports list it; Health Check raises no card for it.</summary>
 public interface IMergeDetailNote : IMergeNote;
 
