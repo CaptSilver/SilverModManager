@@ -23,8 +23,15 @@ public sealed class TextureEncoderSelector
 
     private static NativeTextureEncoder? TryNative(INativeLibraryLoader loader, ILogger logger, string fallbackName)
     {
-        if (!loader.TryLoad(LibraryFileName, out var library, out var tried))
+        if (!loader.TryLoad(LibraryFileName, out var library, out var tried, out var loadFailures))
         {
+            if (loadFailures.Count > 0)
+            {
+                logger.LogWarning("Texture encoder: {Library} was found but failed to load, using {Encoder}. {Failures}. Looked in: {Paths}",
+                    LibraryFileName, fallbackName, string.Join("; ", loadFailures), string.Join(", ", tried));
+                return null;
+            }
+
             logger.LogInformation("Texture encoder: {Library} was not found, using {Encoder}. Looked in: {Paths}",
                 LibraryFileName, fallbackName, string.Join(", ", tried));
             return null;

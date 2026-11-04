@@ -55,8 +55,8 @@ public class TextureEncoderTests
     [Fact]
     public void TheNativeEncoderLoadsWhenItsLibraryIsBesideTheTests()
     {
-        var present = BundledNativeLibrary.CandidatePaths(TextureEncoderSelector.LibraryFileName, typeof(NativeTextureEncoder).Assembly.Location, AppContext.BaseDirectory).Any(File.Exists);
-        Assert.Equal(present, Native.Value is not null);
+        Assert.SkipUnless(NativeTexenc.LibraryIsBundledForThisPlatform, "no library is bundled for this platform");
+        Assert.NotNull(Native.Value);
     }
 
     [Theory]
@@ -82,6 +82,7 @@ public class TextureEncoderTests
 
         Encoder(which).Encode(Level(8, 12), 8, 12, format, dst, 1, CancellationToken.None);
 
+        Assert.NotEqual(new byte[dst.Length], dst);
         Assert.NotEqual(Enumerable.Repeat((byte)0xAA, dst.Length).ToArray(), dst);
     }
 
@@ -119,13 +120,13 @@ public class TextureEncoderTests
         Assert.Throws<ArgumentException>(() => Encoder(which).Encode(rgba, 8, 8, BlockFormat.Bc1, new byte[BlockFormat.Bc7.BlockBytes(8, 8)], 1, CancellationToken.None));
     }
 
+    public static TheoryData<string, int, int> NotWholeBlocks => new(
+        EncoderNames.SelectMany(name => new[] { (6, 8), (8, 5), (0, 8) }.Select(size => (name, size.Item1, size.Item2))));
+
     [Theory]
-    [MemberData(nameof(Encoders))]
-    public void ALevelThatIsNotWholeBlocksThrows(string which)
-    {
-        Assert.Throws<ArgumentException>(() => Encoder(which).Encode(new byte[6 * 8 * 4], 6, 8, BlockFormat.Bc1, new byte[16], 1, CancellationToken.None));
-        Assert.Throws<ArgumentException>(() => Encoder(which).Encode(new byte[8 * 5 * 4], 8, 5, BlockFormat.Bc1, new byte[16], 1, CancellationToken.None));
-    }
+    [MemberData(nameof(NotWholeBlocks))]
+    public void ALevelThatIsNotWholeBlocksThrows(string which, int width, int height)
+        => Assert.Throws<ArgumentException>(() => Encoder(which).Encode(new byte[width * height * 4], width, height, BlockFormat.Bc1, new byte[width / 4 * (height / 4) * 8], 1, CancellationToken.None));
 
     [Theory]
     [MemberData(nameof(Encoders))]
@@ -146,7 +147,8 @@ public class TextureEncoderTests
     [Fact]
     public void TheNativeEncoderRefusesWhatItDeclines()
     {
-        if (Native.Value is not { } native) return;
+        Assert.SkipUnless(Native.Value is not null, "the native encoder did not load on this platform");
+        var native = Encoder("native");
 
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             native.Encode(Level(8, 8), 8, 8, BlockFormat.Bc2, new byte[BlockFormat.Bc2.BlockBytes(8, 8)], 1, CancellationToken.None));

@@ -49,23 +49,49 @@ public static class BundledNativeLibrary
     /// lists every place looked, in order, whether or not it loaded.
     /// </summary>
     public static bool TryLoad(string fileName, Assembly assembly, DllImportSearchPath? searchPath, out nint handle, out IReadOnlyList<string> pathsTried)
-        => TryLoad(fileName, assembly, searchPath, RuntimeIdentifiers(), out handle, out pathsTried);
+        => TryLoad(fileName, assembly, searchPath, RuntimeIdentifiers(), out handle, out pathsTried, out _);
+
+    public static bool TryLoad(string fileName, Assembly assembly, DllImportSearchPath? searchPath, out nint handle, out IReadOnlyList<string> pathsTried,
+        out IReadOnlyList<string> loadFailures)
+        => TryLoad(fileName, assembly, searchPath, RuntimeIdentifiers(), out handle, out pathsTried, out loadFailures);
 
     public static bool TryLoad(string fileName, Assembly assembly, DllImportSearchPath? searchPath, IReadOnlyList<string> runtimeIdentifiers,
         out nint handle, out IReadOnlyList<string> pathsTried)
+        => TryLoad(fileName, assembly, searchPath, runtimeIdentifiers, out handle, out pathsTried, out _);
+
+    /// <summary>
+    /// As above, and <paramref name="loadFailures"/> holds one "path: reason" entry for each bundled file that exists but
+    /// would not load (a glibc too old for it, the wrong architecture, a corrupt file), so a caller can tell that apart
+    /// from a library that is simply not there.
+    /// </summary>
+    public static bool TryLoad(string fileName, Assembly assembly, DllImportSearchPath? searchPath, IReadOnlyList<string> runtimeIdentifiers,
+        out nint handle, out IReadOnlyList<string> pathsTried, out IReadOnlyList<string> loadFailures)
     {
         var tried = new List<string>();
+        var failures = new List<string>();
         pathsTried = tried;
+        loadFailures = failures;
         foreach (var candidate in CandidatePaths(fileName, assembly.Location, AppContext.BaseDirectory, runtimeIdentifiers))
         {
             tried.Add(candidate);
-            if (NativeLibrary.TryLoad(candidate, out handle)) return true;
+            if (!File.Exists(candidate)) continue;
+            try
+            {
+                handle = NativeLibrary.Load(candidate);
+                return true;
+            }
+            catch (Exception failure) when (failure is DllNotFoundException or BadImageFormatException)
+            {
+                failures.Add($"{candidate}: {failure.Message}");
+            }
         }
 
         tried.Add(fileName);
         return NativeLibrary.TryLoad(fileName, assembly, searchPath, out handle);
     }
 
-    public static string NotFoundMessage(string fileName, string buildScript, IReadOnlyList<string> pathsTried)
-        => $"{fileName} was not found. Tried: {string.Join(", ", pathsTried)}. It is built by {buildScript} and committed under the owning project's runtimes/<rid>/native folder.";
+    public static string NotFoundMessage(string fileName, string buildScript, IReadOnlyList<string> pathsTried, IReadOnlyList<string>? loadFailures = null)
+        => (loadFailures is { Count: > 0 }
+            ? $"{fileName} was found but failed to load: {string.Join("; ", loadFailures)}. Tried: {string.Join(", ", pathsTried)}."
+            : $"{fileName} was not found. Tried: {string.Join(", ", pathsTried)}.") + $" It is built by {buildScript} and committed under the owning project's runtimes/<rid>/native folder.";
 }

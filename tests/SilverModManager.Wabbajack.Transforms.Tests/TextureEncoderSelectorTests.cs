@@ -31,14 +31,15 @@ public sealed unsafe class TextureEncoderSelectorTests
     [UnmanagedCallersOnly]
     private static int FailingEncode(byte* rgba, uint width, uint rows, byte* dst, uint level) => 7;
 
-    private sealed class FakeLoader(IEnumerable<string>? missing = null, bool found = true, bool failing = false) : INativeLibraryLoader
+    private sealed class FakeLoader(IEnumerable<string>? missing = null, bool found = true, bool failing = false, string? loadFailure = null) : INativeLibraryLoader
     {
         private readonly HashSet<string> _missing = [.. missing ?? []];
         public int Loads { get; private set; }
 
-        public bool TryLoad(string fileName, out nint handle, out IReadOnlyList<string> pathsTried)
+        public bool TryLoad(string fileName, out nint handle, out IReadOnlyList<string> pathsTried, out IReadOnlyList<string> loadFailures)
         {
             Loads++;
+            loadFailures = loadFailure is null ? [] : ["/app/runtimes/linux-arm64/native/" + fileName + ": " + loadFailure];
             handle = found ? 1 : 0;
             pathsTried = ["/app/runtimes/linux-arm64/native/" + fileName, fileName];
             return found;
@@ -58,6 +59,7 @@ public sealed unsafe class TextureEncoderSelectorTests
 
     private static void Reset()
     {
+        NativeTextureEncoder.ForgetInitialisedLibraries();
         s_inits = 0;
         s_initsBeforeFirstEncode = -1;
         lock (s_lock) s_calls.Clear();
@@ -79,6 +81,18 @@ public sealed unsafe class TextureEncoderSelectorTests
         Assert.Equal(LogLevel.Information, entry.Level);
         Assert.Contains("/app/runtimes/linux-arm64/native/libsmmtexenc.so", entry.Message);
         Assert.Contains("BCnEncoder.Net", entry.Message);
+    }
+
+    [Fact]
+    public void ALibraryThatIsThereButWillNotLoad_LogsTheLoaderReasonNotThatItWasNotFound()
+    {
+        var selector = Select(new FakeLoader(found: false, loadFailure: "version `GLIBC_2.38' not found"), out var logger);
+
+        Assert.Equal(["BCnEncoder.Net"], selector.Encoders.Select(e => e.Name));
+        var entry = Assert.Single(logger.Entries);
+        Assert.Contains("failed to load", entry.Message);
+        Assert.Contains("GLIBC_2.38", entry.Message);
+        Assert.DoesNotContain("was not found", entry.Message);
     }
 
     [Fact]
@@ -127,6 +141,28 @@ public sealed unsafe class TextureEncoderSelectorTests
         Assert.Equal(1, loader.Loads);
         Assert.Equal(1, s_inits);
         Assert.Single(logger.Entries);
+    }
+
+    [Fact]
+    public void TheLibraryIsInitialisedOncePerProcessHoweverManySelectorsAreBuilt()
+    {
+        Reset();
+
+        Select(new FakeLoader(), out _);
+        Select(new FakeLoader(), out _);
+        Assert.True(NativeTextureEncoder.TryBind(new FakeLoader(), 1, NativeEncoderLevels.Default, out _, out _));
+
+        Assert.Equal(1, s_inits);
+    }
+
+    [Fact]
+    public void ConcurrentSelectorsInitialiseTheLibraryOnce()
+    {
+        Reset();
+
+        Parallel.For(0, 16, i => Select(new FakeLoader(), out _));
+
+        Assert.Equal(1, s_inits);
     }
 
     [Fact]
@@ -226,9 +262,9 @@ public sealed unsafe class TextureEncoderSelectorTests
         var logger = new ListLogger<TextureEncoderSelector>();
         var selector = new TextureEncoderSelector(new BundledNativeLibraryLoader(typeof(NativeTextureEncoder).Assembly), logger);
 
-        var expected = BundledNativeLibrary.CandidatePaths(TextureEncoderSelector.LibraryFileName, typeof(NativeTextureEncoder).Assembly.Location, AppContext.BaseDirectory).Any(File.Exists)
-            ? "libsmmtexenc"
-            : "BCnEncoder.Net";
+        // linux-x64 is the RID the library is committed for, so there it must be native; a missing file fails here
+        // instead of quietly selecting managed. Other platforms bundle nothing and take the managed encoder.
+        var expected = NativeTexenc.LibraryIsBundledForThisPlatform ? "libsmmtexenc" : "BCnEncoder.Net";
         Assert.Equal(expected, selector.Encoders[0].Name);
         Assert.Equal("BCnEncoder.Net", selector.Encoders[^1].Name);
     }
@@ -239,7 +275,7 @@ public sealed unsafe class TextureEncoderSelectorTests
         var loader = new BundledNativeLibraryLoader(typeof(NativeTextureEncoder).Assembly, ["linux-riscv64"]);
 
         // Not asserted to fail: the library path fallback may still find a copy the process already holds.
-        loader.TryLoad("libsmm-no-such-texenc.so", out _, out var tried);
+        loader.TryLoad("libsmm-no-such-texenc.so", out _, out var tried, out _);
 
         Assert.Contains(tried, path => path.EndsWith("runtimes/linux-riscv64/native/libsmm-no-such-texenc.so"));
         Assert.DoesNotContain(tried, path => path.Contains("linux-x64"));

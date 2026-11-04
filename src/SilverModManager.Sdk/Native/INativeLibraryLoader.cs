@@ -8,8 +8,11 @@ namespace SilverModManager.Sdk.Native;
 /// </summary>
 public interface INativeLibraryLoader
 {
-    /// <summary>Loads <paramref name="fileName"/>. <paramref name="pathsTried"/> lists every place looked, loaded or not.</summary>
-    bool TryLoad(string fileName, out nint handle, out IReadOnlyList<string> pathsTried);
+    /// <summary>
+    /// Loads <paramref name="fileName"/>. <paramref name="pathsTried"/> lists every place looked, loaded or not;
+    /// <paramref name="loadFailures"/> gives "path: reason" for each file that exists but would not load.
+    /// </summary>
+    bool TryLoad(string fileName, out nint handle, out IReadOnlyList<string> pathsTried, out IReadOnlyList<string> loadFailures);
 
     bool TryGetExport(nint handle, string name, out nint address);
 }
@@ -19,8 +22,8 @@ public interface INativeLibraryLoader
 /// <param name="runtimeIdentifiers">The runtime identifiers to look under; the running platform's when omitted.</param>
 public sealed class BundledNativeLibraryLoader(Assembly assembly, IReadOnlyList<string>? runtimeIdentifiers = null) : INativeLibraryLoader
 {
-    public bool TryLoad(string fileName, out nint handle, out IReadOnlyList<string> pathsTried)
-        => BundledNativeLibrary.TryLoad(fileName, assembly, null, runtimeIdentifiers ?? BundledNativeLibrary.RuntimeIdentifiers(), out handle, out pathsTried);
+    public bool TryLoad(string fileName, out nint handle, out IReadOnlyList<string> pathsTried, out IReadOnlyList<string> loadFailures)
+        => BundledNativeLibrary.TryLoad(fileName, assembly, null, runtimeIdentifiers ?? BundledNativeLibrary.RuntimeIdentifiers(), out handle, out pathsTried, out loadFailures);
 
     public bool TryGetExport(nint handle, string name, out nint address)
         => System.Runtime.InteropServices.NativeLibrary.TryGetExport(handle, name, out address) && address != 0;

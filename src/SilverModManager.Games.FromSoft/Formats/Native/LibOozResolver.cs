@@ -19,7 +19,8 @@ internal static class LibOozResolver
         return true;
     });
 
-    internal static string NotFoundMessage(IReadOnlyList<string> pathsTried) => BundledNativeLibrary.NotFoundMessage(FileName, BuildScript, pathsTried);
+    internal static string NotFoundMessage(IReadOnlyList<string> pathsTried, IReadOnlyList<string>? loadFailures = null)
+        => BundledNativeLibrary.NotFoundMessage(FileName, BuildScript, pathsTried, loadFailures);
 
     internal static void Install() => _ = Installed.Value;
 
@@ -27,9 +28,9 @@ internal static class LibOozResolver
     {
         if (libraryName != LibOoz.LibraryName) return IntPtr.Zero;
 
-        if (BundledNativeLibrary.TryLoad(FileName, assembly, searchPath, out var handle, out var tried))
+        if (BundledNativeLibrary.TryLoad(FileName, assembly, searchPath, out var handle, out var tried, out var loadFailures))
             return handle;
 
-        throw new DllNotFoundException(NotFoundMessage(tried));
+        throw new DllNotFoundException(NotFoundMessage(tried, loadFailures));
     }
 }

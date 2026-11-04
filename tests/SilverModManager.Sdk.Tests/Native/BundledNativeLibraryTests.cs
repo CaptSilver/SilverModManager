@@ -67,10 +67,50 @@ public class BundledNativeLibraryTests
     }
 
     [Fact]
+    public void ALibraryThatExistsButWillNotLoad_IsReportedWithThePathAndTheLoaderMessage()
+    {
+        var name = $"libsmm-corrupt-{Guid.NewGuid():N}.so";
+        var folder = Path.Combine(AppContext.BaseDirectory, "runtimes", BundledNativeLibrary.RuntimeIdentifiers()[0], "native");
+        var path = Path.Combine(folder, name);
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(path, "this is not an ELF file");
+        try
+        {
+            var loaded = BundledNativeLibrary.TryLoad(name, typeof(BundledNativeLibraryTests).Assembly, null, BundledNativeLibrary.RuntimeIdentifiers(),
+                out _, out _, out var failures);
+
+            loaded.Should().BeFalse();
+            var failure = failures.Should().ContainSingle().Subject;
+            failure.Should().StartWith(path).And.Contain(":").And.NotBe(path);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void ALibraryThatIsNowhere_HasNoLoadFailures()
+    {
+        BundledNativeLibrary.TryLoad("libsmm-no-such-library.so", typeof(BundledNativeLibraryTests).Assembly, null, BundledNativeLibrary.RuntimeIdentifiers(),
+            out _, out _, out var failures);
+
+        failures.Should().BeEmpty();
+    }
+
+    [Fact]
     public void TheNotFoundMessageNamesEveryPathTriedAndTheScriptThatBuildsTheLibrary()
     {
         var message = BundledNativeLibrary.NotFoundMessage("libooz.so", "scripts/build-ooz.sh", ["/a/runtimes/linux-x64/native/libooz.so", "libooz.so"]);
 
         message.Should().Contain("libooz.so").And.Contain("/a/runtimes/linux-x64/native/libooz.so").And.Contain("scripts/build-ooz.sh");
+    }
+
+    [Fact]
+    public void TheNotFoundMessageSaysFoundButFailedToLoadWhenAFileWasThereAndRefused()
+    {
+        var message = BundledNativeLibrary.NotFoundMessage("libooz.so", "scripts/build-ooz.sh", ["/a/libooz.so"], ["/a/libooz.so: GLIBC_2.38 not found"]);
+
+        message.Should().Contain("found but failed to load").And.Contain("GLIBC_2.38").And.NotContain("was not found");
     }
 }

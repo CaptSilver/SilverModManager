@@ -60,8 +60,8 @@ public sealed unsafe class NativeTextureEncoder : ITextureEncoder
     public bool CanEncode(BlockFormat format) => (int)format < _encode.Length && _encode[(int)format] != 0;
 
     /// <summary>
-    /// Looks up every export of the loaded library and, when all are there, calls <c>smm_texenc_init</c> once. The library's
-    /// tables are filled without a lock, so this must run once per process before any encode and not concurrently.
+    /// Looks up every export of the loaded library and, when all are there, calls <c>smm_texenc_init</c>, which runs once per
+    /// process however often this is called, and has finished before this returns.
     /// </summary>
     internal static bool TryBind(INativeLibraryLoader loader, nint library, NativeEncoderLevels levels, out NativeTextureEncoder encoder, out IReadOnlyList<string> missing)
     {
@@ -79,8 +79,27 @@ public sealed unsafe class NativeTextureEncoder : ITextureEncoder
         encoder = new NativeTextureEncoder(encode, levels);
         if (lost.Count > 0) return false;
 
-        ((delegate* unmanaged<void>)init)();
+        InitialiseOnce(init);
         return true;
+    }
+
+    // rgbcx::init fills its tables without a lock and a second run rewrites entries an encode may be reading, so the
+    // call is made once per process however many selectors (one per service provider, one per test class) bind the library.
+    private static readonly Lock s_initLock = new();
+    private static readonly HashSet<nint> s_initialised = [];
+
+    private static void InitialiseOnce(nint init)
+    {
+        lock (s_initLock)
+        {
+            if (s_initialised.Add(init)) ((delegate* unmanaged<void>)init)();
+        }
+    }
+
+    /// <summary>Lets a test that counts <c>smm_texenc_init</c> calls start from a process that has not run it.</summary>
+    internal static void ForgetInitialisedLibraries()
+    {
+        lock (s_initLock) s_initialised.Clear();
     }
 
     private uint Level(BlockFormat format) => format switch

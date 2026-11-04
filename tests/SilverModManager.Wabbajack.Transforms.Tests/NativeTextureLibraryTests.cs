@@ -37,7 +37,12 @@ public sealed unsafe class NativeTextureLibraryTests : IDisposable
         if (_library != 0) NativeLibrary.Free(_library);
     }
 
-    private void RequireLibrary() => Assert.SkipUnless(_library != 0, $"{LibraryPath} is not bundled for this platform");
+    // Only a platform with no bundled library may skip; on linux-x64 a missing file is a failure.
+    private void RequireLibrary()
+    {
+        if (NativeTexenc.LibraryIsBundledForThisPlatform) Assert.True(_library != 0, $"{LibraryPath} is missing from the test output");
+        else Assert.SkipUnless(_library != 0, $"{LibraryPath} is not bundled for this platform");
+    }
 
     private nint Export(string name) => NativeLibrary.GetExport(_library, name);
 
