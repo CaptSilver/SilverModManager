@@ -32,9 +32,11 @@ host_tmp_run="$(mktemp -d "${host_tmp%/}/silvermod-host-tmp.XXXXXX")"
 xdg_root="$(mktemp -d "$host_tmp_run/xdg.XXXXXX")"
 scratch_root=""
 reflink_root=""
+dump_parent=""
 dump_dir=""
-# The dump folder is kept only while it holds a crash; rmdir leaves a folder with dumps in it alone.
-trap 'rm -rf "$xdg_root" "$scratch_root" "$host_tmp_run" "$reflink_root"; [[ -z "$dump_dir" ]] || rmdir "$dump_dir" 2>/dev/null || true' EXIT
+# A run's dump folder is kept only while it holds a crash, and the shared parent only while some run still has a
+# folder in it; rmdir leaves a folder with anything in it alone.
+trap 'rm -rf "$xdg_root" "$scratch_root" "$host_tmp_run" "$reflink_root"; [[ -z "$dump_dir" ]] || rmdir "$dump_dir" "$dump_parent" 2>/dev/null || true' EXIT
 export XDG_DATA_HOME="$xdg_root/data" XDG_CONFIG_HOME="$xdg_root/config" \
        XDG_STATE_HOME="$xdg_root/state" XDG_CACHE_HOME="$xdg_root/cache"
 unset DISPLAY WAYLAND_DISPLAY
@@ -91,15 +93,20 @@ fi
 # dotnet-dump analyze; the .crashreport.json beside it already has the faulting thread's stack.
 # A dump holds the whole test host's memory, so the folder is per user and owner-only, and a path someone else
 # created or pointed elsewhere is refused rather than written into.
-dump_dir="${SILVER_TEST_DUMPS:-/var/tmp/silvermod-test-dumps-$(id -u)}"
-(umask 077; mkdir -p "$dump_dir")
-if [[ -L "$dump_dir" || ! -O "$dump_dir" ]]; then
-    echo "Refusing the test dump folder $dump_dir: it is a symlink or not owned by $(id -un)" >&2
+# Each run writes into a folder of its own under the shared parent, so one run removing its empty folder at exit can't
+# pull the folder out from under another run that is still testing.
+dump_parent="${SILVER_TEST_DUMPS:-/var/tmp/silvermod-test-dumps-$(id -u)}"
+dump_dir="$dump_parent/run.$$"
+# Another run's exit may remove the parent between creating it and creating this run's folder, so try again.
+for _ in 1 2 3; do (umask 077; mkdir -p "$dump_dir") 2>/dev/null && break; done
+if [[ -L "$dump_parent" || ! -O "$dump_parent" || ! -d "$dump_dir" ]]; then
+    echo "Refusing the test dump folder $dump_parent: it is a symlink, not owned by $(id -un), or could not be created" >&2
     exit 1
 fi
-chmod 700 "$dump_dir"
+chmod 700 "$dump_parent" "$dump_dir"
 # Each dump is the size of a test host's heap, and nobody reads one a day later.
-find "$dump_dir" -maxdepth 1 -type f -name 'core.*' -mtime +0 -delete
+find "$dump_parent" -mindepth 1 -maxdepth 2 -type f -name 'core.*' -mtime +0 -delete 2>/dev/null || true
+find "$dump_parent" -mindepth 1 -maxdepth 1 -type d -name 'run.*' -empty -mmin +60 -delete 2>/dev/null || true
 export DOTNET_DbgEnableMiniDump=1 DOTNET_DbgMiniDumpType=2 DOTNET_EnableCrashReport=1 \
        DOTNET_DbgMiniDumpName="$dump_dir/core.%p"
 
@@ -150,14 +157,14 @@ fi
 
 # Left alone, the whole suite starts one test host per project at once, on top of the build.
 # SILVER_TEST_MODULES caps how many run together (default 8).
-before_dumps=$(find "$dump_dir" -maxdepth 1 -name 'core.*' 2>/dev/null | wc -l)
+before_dumps=$(find "$dump_dir" -maxdepth 1 -name 'core.*' 2>/dev/null | wc -l || true)
 status=0
 dotnet test "${target[@]}" "${no_build[@]}" --ignore-exit-code 8 \
     --max-parallel-test-modules "${SILVER_TEST_MODULES:-8}" \
     -p:XunitArgs="--filter-not-trait RequiresNetworking=True --filter-not-trait RequiresApiKey=True --filter-not-trait RequiresProton=True --filter-not-trait RequiresSecretService=True --filter-not-trait FlakeyTest=True --filter-not-trait Benchmark=True" \
     "$@" || status=$?
 
-after_dumps=$(find "$dump_dir" -maxdepth 1 -name 'core.*' 2>/dev/null | wc -l)
+after_dumps=$(find "$dump_dir" -maxdepth 1 -name 'core.*' 2>/dev/null | wc -l || true)
 if (( after_dumps > before_dumps )); then
     echo "A test host crashed; its dump and crash report are in $dump_dir" >&2
 fi
