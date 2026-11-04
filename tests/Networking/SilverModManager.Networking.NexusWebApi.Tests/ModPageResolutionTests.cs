@@ -32,12 +32,15 @@ public class ModPageResolutionTests(IServiceProvider serviceProvider)
     /// </summary>
     private static IGraphQlClient SlowClient(ModUid uid, TimeSpan delay)
     {
-        var domain = Substitute.For<ICreateCollection_CreateCollection_Revision_ModFiles_File_Mod_Game>();
-        domain.DomainName.Returns("skyrimspecialedition");
+        // The code generator names the type of IMod.Game after whichever operation it meets first, so the name changes
+        // from one generation to the next; take the type from the property instead of spelling it.
+        var gameProperty = typeof(IMod).GetProperty(nameof(IMod.Game))!;
+        var domain = Substitute.For([gameProperty.PropertyType], []);
+        gameProperty.PropertyType.GetProperty("DomainName")!.GetValue(domain).Returns("skyrimspecialedition");
         var mod = Substitute.For<IMod>();
         mod.Uid.Returns(uid.ToV2Api());
         mod.Name.Returns("A mod");
-        mod.Game.Returns(domain);
+        gameProperty.GetValue(mod).Returns(domain);
         mod.UpdatedAt.Returns(DateTimeOffset.UnixEpoch);
 
         IModFile[] noFiles = [];
