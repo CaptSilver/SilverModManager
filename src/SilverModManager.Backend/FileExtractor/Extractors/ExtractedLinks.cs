@@ -15,13 +15,14 @@ internal static class ExtractedLinks
     /// <param name="root">The extraction folder.</param>
     /// <param name="archive">The archive's name, for the warnings.</param>
     /// <param name="logger">Where the warnings go.</param>
-    /// <param name="existing">Links that were in the folder before the archive was extracted (see <see cref="FindLinks"/>). They are not the
-    /// archive's, so they are left exactly as they are.</param>
-    internal static void Sanitize(string root, string archive, ILogger logger, IReadOnlySet<string>? existing = null)
+    /// <param name="existing">The links that were in the folder before the archive was extracted (see <see cref="Snapshot"/>). A link
+    /// that is still the same one is not the archive's and is left exactly as it is; a link at one of those paths that the run
+    /// replaced is the archive's and is judged like any other.</param>
+    internal static void Sanitize(string root, string archive, ILogger logger, IReadOnlyDictionary<string, LinkIdentity>? existing = null)
     {
         if (!Directory.Exists(root)) return;
 
-        var links = FindLinks(root).Where(link => existing?.Contains(link) != true).ToList();
+        var links = FindLinks(root).Where(link => existing is null || !existing.TryGetValue(link, out var before) || before != IdentityOf(link)).ToList();
         if (links.Count == 0) return;
 
         var lexicalRoot = TrimSeparator(Path.GetFullPath(root));
@@ -45,6 +46,22 @@ internal static class ExtractedLinks
                 logger.LogWarning("Dropping symlink `{Entry}` from archive `{Archive}`: {Reason}", entry, archive, decision.Reason);
             }
         }
+    }
+
+    /// <summary>
+    /// What makes a link the same link later: where it points and which file it is. The target text alone is not enough, because
+    /// an extractor can write a new link over an old one with the same text; the device and inode are null when they could not be read.
+    /// </summary>
+    internal readonly record struct LinkIdentity(string? Target, ulong? Device, ulong? Inode);
+
+    /// <summary>The links in <paramref name="root"/> (see <see cref="FindLinks"/>) with their identity, taken before an archive is extracted.</summary>
+    internal static Dictionary<string, LinkIdentity> Snapshot(string root) =>
+        FindLinks(root).ToDictionary(link => link, IdentityOf, StringComparer.Ordinal);
+
+    private static LinkIdentity IdentityOf(string link)
+    {
+        var (device, inode) = LinkInode.Read(link);
+        return new LinkIdentity(new FileInfo(link).LinkTarget, device, inode);
     }
 
     internal readonly record struct Decision(string? CopyFrom, string? Reason, bool TargetMissing = false);

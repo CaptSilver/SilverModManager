@@ -43,13 +43,46 @@ public class ExtractedLinksTests : IDisposable
     public void ALinkThatWasInTheFolderBeforeExtractionIsLeftAsItIs()
     {
         Link("old-escape", Path.Combine(_outside, "secret.txt"));
+        var existing = ExtractedLinks.Snapshot(_root);
         Link("new-escape", Path.Combine(_outside, "secret.txt"));
-        var existing = new HashSet<string> { InRoot("old-escape") };
 
         ExtractedLinks.Sanitize(_root, Archive, new ListLogger(_log), existing);
 
         new FileInfo(InRoot("old-escape")).LinkTarget.Should().Be(Path.Combine(_outside, "secret.txt"));
         Exists("new-escape").Should().BeFalse();
+        AssertSecretUntouched();
+    }
+
+    [Fact]
+    public void AExistingLinkThatTheRunReplacedWithAnotherTargetIsSanitized()
+    {
+        Link("swapped", Path.Combine(_root, "keep.txt"));
+        File.WriteAllText(InRoot("keep.txt"), "kept");
+        var existing = ExtractedLinks.Snapshot(_root);
+
+        File.Delete(InRoot("swapped"));
+        Link("swapped", Path.Combine(_outside, "secret.txt"));
+        ExtractedLinks.Sanitize(_root, Archive, new ListLogger(_log), existing);
+
+        Exists("swapped").Should().BeFalse("the link at that path now points outside, so it came from the archive");
+        AssertSecretUntouched();
+    }
+
+    [Fact]
+    public void AExistingLinkThatTheRunReplacedWithAnotherLinkOfTheSameTargetIsStillSanitizedWhenItsIdentityChanged()
+    {
+        Link("swapped", Path.Combine(_outside, "secret.txt"));
+        var existing = ExtractedLinks.Snapshot(_root);
+        var first = existing[InRoot("swapped")];
+
+        // The replacement is created while the old link still exists, so it cannot reuse the old inode.
+        Link("replacement", Path.Combine(_outside, "secret.txt"));
+        File.Move(InRoot("replacement"), InRoot("swapped"), overwrite: true);
+        ExtractedLinks.Snapshot(_root)[InRoot("swapped")].Should().NotBe(first, "the replacement is a different file");
+
+        ExtractedLinks.Sanitize(_root, Archive, new ListLogger(_log), existing);
+
+        Exists("swapped").Should().BeFalse();
         AssertSecretUntouched();
     }
 

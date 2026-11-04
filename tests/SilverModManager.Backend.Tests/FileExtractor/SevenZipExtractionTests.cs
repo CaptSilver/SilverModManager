@@ -223,6 +223,43 @@ public class SevenZipExtractionTests : AFileExtractorTest
         }
     }
 
+    // The link's name is not UTF-8 and ends in a space, so 7z cannot be told to leave it out and writes it itself, over
+    // the link the destination already holds at that name. ExtractedNames.Repair unlinks it at once; this pins that
+    // nothing is left pointing outside however the two layers share the work (the sweep alone is covered in ExtractedLinksTests).
+    [Fact]
+    public async Task AnUnaddressableSymlinkOverAnExistingLinkDoesNotLeaveALinkOutside()
+    {
+        await using var scratch = TemporaryFileManager.CreateFolder();
+        var outside = scratch.Path.Combine("outside");
+        outside.CreateDirectory();
+        var secret = outside.Combine("secret.txt");
+        await secret.WriteAllTextAsync("private", TestContext.Current.CancellationToken);
+
+        byte[] linkName = [(byte)'h', (byte)'o', (byte)'p', 0xFF, (byte)' '];
+        var archive = scratch.Path.Combine("unaddressable.tar.gz");
+        await File.WriteAllBytesAsync(archive.ToString(), Gzip(BuildTar(
+            (Name: linkName, Content: [], LinkTarget: System.Text.Encoding.UTF8.GetBytes(secret.ToString())),
+            (Name: "ok.txt"u8.ToArray(), Content: "fine"u8.ToArray(), LinkTarget: null))), TestContext.Current.CancellationToken);
+
+        var destination = scratch.Path.Combine("extracted");
+        destination.CreateDirectory();
+        RawSymlink.Create(destination.ToString(), linkName, "harmless-target");
+
+        try
+        {
+            await FileExtractor.ExtractAllAsync(archive, destination, TestContext.Current.CancellationToken);
+
+            File.ReadAllText(Path.Combine(destination.ToString(), "ok.txt")).Should().Be("fine");
+            RawSymlink.Targets(destination.ToString()).Should().NotContain(t => t.StartsWith(outside.ToString(), StringComparison.Ordinal), "nothing in the destination may point outside it");
+            File.ReadAllText(secret.ToString()).Should().Be("private");
+        }
+        finally
+        {
+            // A name that is not UTF-8 cannot be deleted by the temporary folder's cleanup.
+            RawSymlink.RemoveAll(destination.ToString());
+        }
+    }
+
     private static byte[] Gzip(byte[] bytes)
     {
         using var output = new MemoryStream();
@@ -328,6 +365,31 @@ public class SevenZipExtractionTests : AFileExtractorTest
         destination.EnumerateFiles().Select(f => f.RelativeTo(destination).ToString()).Order()
             .Should().Equal("bin/me3", "release.tar");
         File.ReadAllText(destination.Combine("release.tar").ToString()).Should().Be("release.tar");
+    }
+
+    // The inner tar is found by what the gzip layer produced, not by what the destination holds, so a destination that
+    // already has files in it is no different from an empty one.
+    [Fact]
+    public async Task ATarGzIntoAFolderThatAlreadyHoldsEntriesExtractsItsMembersAndLeavesThoseAlone()
+    {
+        await using var scratch = TemporaryFileManager.CreateFolder();
+        var archive = scratch.Path.Combine("release.tar.gz");
+        WriteTarGz(archive, ("bin/me3", UnixFileMode.UserRead | UnixFileMode.UserWrite), ("readme.txt", UnixFileMode.UserRead | UnixFileMode.UserWrite));
+
+        var destination = scratch.Path.Combine("extracted");
+        destination.CreateDirectory();
+        var oldFile = destination.Combine("old.txt").ToString();
+        File.WriteAllText(oldFile, "old content");
+        var oldLink = destination.Combine("old-link").ToString();
+        File.CreateSymbolicLink(oldLink, "old.txt");
+
+        await FileExtractor.ExtractAllAsync(archive, destination, TestContext.Current.CancellationToken);
+
+        File.ReadAllText(destination.Combine("bin/me3").ToString()).Should().Be("bin/me3");
+        File.ReadAllText(destination.Combine("readme.txt").ToString()).Should().Be("readme.txt");
+        File.Exists(destination.Combine("release.tar").ToString()).Should().BeFalse("the inner tar is not a result");
+        File.ReadAllText(oldFile).Should().Be("old content");
+        new FileInfo(oldLink).LinkTarget.Should().Be("old.txt");
     }
 
     // A gzip of one ordinary file has no tar inside it, so the file itself is the result.

@@ -63,12 +63,13 @@ public class SevenZipExtractor : IExtractor
         var (source, sourceDisposable) = await GetSource(streamFactory, cancellationToken: cancellationToken);
         using var _ = sourceDisposable;
 
-        await ExtractArchive(source, streamFactory.FileName.ToString(), destination, cancellationToken: cancellationToken);
-
-        using var innerTar = await TakeInnerTar(source, destination, cancellationToken);
-        if (innerTar is not null)
+        if (await HasBytesAt(source, offset: 0, GzipMagic, cancellationToken))
         {
-            await ExtractArchive(innerTar.Value.Path, streamFactory.FileName.ToString(), destination, cancellationToken: cancellationToken);
+            await ExtractGzip(source, streamFactory.FileName.ToString(), destination, cancellationToken);
+        }
+        else
+        {
+            await ExtractArchive(source, streamFactory.FileName.ToString(), destination, cancellationToken: cancellationToken);
         }
 
         // Links are swept inside ExtractArchive, before any entry is written by hand; this only settles the
@@ -77,24 +78,36 @@ public class SevenZipExtractor : IExtractor
     }
 
     /// <summary>
-    /// 7z strips one layer at a time, so a .tar.gz comes out as a single tar file and not its members. When a
-    /// gzip source produced nothing but a tar, the tar is moved out of the destination and returned for
-    /// extracting in its place. It is recognised by its header, not its name: 7z names it after the archive,
-    /// and a download saved without the .tar.gz suffix gives a tar with some other name.
+    /// 7z strips one layer at a time, so a .tar.gz comes out as a single tar file and not its members. The gzip
+    /// layer is extracted into a scratch folder of its own, which holds nothing but what that run produced. When
+    /// that is one tar, the tar is extracted into <paramref name="destination"/> in its place; when it is one
+    /// other file, the file is the result. The tar is recognised by its header, not its name: 7z names it after
+    /// the archive, and a download saved without the .tar.gz suffix gives a tar with some other name.
     /// </summary>
-    private async ValueTask<TemporaryPath?> TakeInnerTar(AbsolutePath source, AbsolutePath destination, CancellationToken cancellationToken)
+    private async ValueTask ExtractGzip(AbsolutePath source, string archiveName, AbsolutePath destination, CancellationToken cancellationToken)
     {
-        if (!await HasBytesAt(source, offset: 0, GzipMagic, cancellationToken)) return null;
+        using var layer = _temporaryFileManager.CreateFolder();
+        await ExtractArchive(source, archiveName, layer.Path, cancellationToken: cancellationToken);
 
-        var entries = Directory.GetFileSystemEntries(destination.ToNativeSeparators(_osInformation));
-        if (entries.Length != 1 || SafeExtraction.IsLink(entries[0]) || !File.Exists(entries[0])) return null;
+        var produced = Directory.GetFileSystemEntries(layer.Path.ToNativeSeparators(_osInformation));
+        if (produced.Length != 1 || SafeExtraction.IsLink(produced[0]) || !File.Exists(produced[0]))
+        {
+            // Not the shape of a gzip: take the archive as it comes.
+            await ExtractArchive(source, archiveName, destination, cancellationToken: cancellationToken);
+            return;
+        }
 
-        var tar = destination.Combine(Path.GetFileName(entries[0]));
-        if (!await HasBytesAt(tar, TarMagicOffset, TarMagic, cancellationToken)) return null;
+        var file = layer.Path.Combine(Path.GetFileName(produced[0]));
+        if (await HasBytesAt(file, TarMagicOffset, TarMagic, cancellationToken))
+        {
+            await ExtractArchive(file, archiveName, destination, cancellationToken: cancellationToken);
+            return;
+        }
 
-        var moved = _temporaryFileManager.CreateFile(ext: new Extension(".tar"));
-        File.Move(entries[0], moved.Path.ToNativeSeparators(_osInformation), overwrite: true);
-        return moved;
+        // The temporary copy and rename put the file in place without following a link already at its name.
+        var root = destination.ToNativeSeparators(_osInformation);
+        Directory.CreateDirectory(root);
+        SafeExtraction.CopyReplacing(produced[0], Path.Combine(root, Path.GetFileName(produced[0])));
     }
 
     private static readonly byte[] GzipMagic = [0x1F, 0x8B];
@@ -199,7 +212,7 @@ public class SevenZipExtractor : IExtractor
         var root = destination.ToNativeSeparators(_osInformation);
 
         // Links the folder already holds are not the archive's: the sweep below leaves them alone.
-        var existingLinks = ExtractedLinks.FindLinks(root).ToHashSet(StringComparer.Ordinal);
+        var existingLinks = ExtractedLinks.Snapshot(root);
         var belowLinks = EntriesBelowLinks(root, plan, archiveName);
         if (plan.ExcludedIndices.Count == 0 && belowLinks.Count == 0)
         {
