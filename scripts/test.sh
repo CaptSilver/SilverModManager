@@ -125,7 +125,9 @@ if (( ${#build_target[@]} )); then
     fi
     started=$SECONDS
     build_status=0
-    dotnet build "${build_target[@]}" -nodeReuse:false || build_status=$?
+    # The lock stays with this script: a compiler server the build leaves running must not inherit it, or it holds the
+    # lock long after the build ends.
+    dotnet build "${build_target[@]}" -nodeReuse:false 9>&- || build_status=$?
     # One line per build, to see how long runs queue for the lock against how long they build.
     printf '%s\twaited %ds\tbuilt %ds\texit %d\t%s\n' "$(date -Is)" $((started - asked)) $((SECONDS - started)) \
         "$build_status" "${build_target[*]}" >> "$git_dir/silvermod-build.log"
