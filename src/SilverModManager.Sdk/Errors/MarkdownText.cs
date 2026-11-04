@@ -143,9 +143,10 @@ public static partial class MarkdownText
     public static string CodeBlock(string? text)
     {
         var body = new StringBuilder();
-        foreach (var c in (text ?? string.Empty).ReplaceLineEndings("\n"))
+        // By rune, so a format character above U+FFFF (a tag character, say) is dropped like PlainText drops it.
+        foreach (var rune in (text ?? string.Empty).ReplaceLineEndings("\n").EnumerateRunes())
         {
-            if (c == '\n' || (!char.IsControl(c) && CharUnicodeInfo.GetUnicodeCategory(c) is not UnicodeCategory.Format)) body.Append(c);
+            if (rune.Value == '\n' || (!Rune.IsControl(rune) && Rune.GetUnicodeCategory(rune) is not UnicodeCategory.Format)) body.Append(rune.ToString());
         }
 
         var clean = body.ToString();

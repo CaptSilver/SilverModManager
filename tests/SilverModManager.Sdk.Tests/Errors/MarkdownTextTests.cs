@@ -113,6 +113,13 @@ public class MarkdownTextTests
         MarkdownText.CodeBlock(input).Should().Be(expected);
     }
 
+    [Fact]
+    public void Test_CodeBlock_DropsFormatCharactersAboveTheBasicPlane()
+    {
+        // U+E0041 is a tag character: invisible, a surrogate pair in UTF-16, category Format.
+        MarkdownText.CodeBlock("a\U000E0041b").Should().Be("```\nab\n```");
+    }
+
     private sealed class Refusal(string message) : UserFacingException(message)
     {
         public override string Title => "Refused";
