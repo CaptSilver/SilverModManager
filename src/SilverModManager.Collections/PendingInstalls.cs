@@ -161,6 +161,17 @@ public static class PendingInstalls
             : CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional);
 
     /// <summary>
+    /// Whether Review should start a job for <paramref name="download"/>: its row is still there and the mod is not
+    /// installed in <paramref name="group"/>. A finishing job may have retracted the row between the click and the command.
+    /// </summary>
+    public static bool ShouldReview(IDb db, CollectionDownload.ReadOnly download, Optional<CollectionGroup.ReadOnly> group)
+    {
+        if (!group.HasValue) return false;
+        if (!Find(db, group.Value.Id, CollectionDownloadId.From(download.Id)).HasValue) return false;
+        return !CollectionDownloader.GetStatus(download, group, db).IsInstalled(out _);
+    }
+
+    /// <summary>
     /// How many rows still wait for a person: dismissed rows are left out.
     /// </summary>
     public static int CountUndismissed(IEnumerable<NexusCollectionPendingInstall.ReadOnly> rows) => rows.Count(static row => !IsDismissed(row));

@@ -111,6 +111,25 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         };
     }
 
+    /// <summary>
+    /// The job Review runs for a pending mod of <paramref name="kind"/>: attended, with the advanced manual installer for a mod
+    /// no installer claimed, and also for a saved-choices mod in a game that has no FOMOD installer, where the player can still
+    /// place the files. Any other mod goes through the game's own installers and its FOMOD window.
+    /// </summary>
+    public static ValueTask<InstallCollectionDownloadJob> CreateForReview(
+        IServiceProvider serviceProvider,
+        LoadoutId targetLoadout,
+        CollectionDownload.ReadOnly download,
+        ReviewKind kind,
+        CancellationToken cancellationToken)
+    {
+        var connection = serviceProvider.GetRequiredService<IConnection>();
+        var game = Loadout.Load(connection.Db, targetLoadout).InstallationInstance.GetGame();
+        var needsManual = kind == ReviewKind.NoInstaller || !game.LibraryItemInstallers.OfType<FomodXmlInstaller>().Any();
+        var installer = needsManual ? serviceProvider.GetRequiredKeyedService<ILibraryItemInstaller>("AdvancedManualInstaller_Direct") : null;
+        return Create(serviceProvider, targetLoadout, download, cancellationToken, unattended: false, installer: installer);
+    }
+
     /// <inheritdoc/>
     public async ValueTask<LoadoutItemGroup.ReadOnly> StartAsync(IJobContext<InstallCollectionDownloadJob> context)
     {
@@ -201,7 +220,8 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
         try
         {
-            if (CollectionMod.Choices is { Type: ChoicesType.fomod } choices)
+            // An installer handed in by Review replaces the game's installers, the FOMOD one with the saved choices included.
+            if (CollectionMod.Choices is { Type: ChoicesType.fomod } choices && Installer is null)
             {
                 return (await InstallFomodWithPredefinedChoices(choices, context.CancellationToken), patchedFiles);
             }

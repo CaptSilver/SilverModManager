@@ -58,6 +58,8 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         return base.AddServices(services)
             .AddSingleton(_window)
             .AddSingleton<IAdvancedInstallerHandler>(_manualInstaller)
+            // The app registers this in AddAdvancedInstaller; Review asks for it by key.
+            .AddKeyedTransient<ILibraryItemInstaller>("AdvancedManualInstaller_Direct", (provider, _) => new AdvancedManualInstaller(provider, isDirect: true))
             .AddTransient<IGuidedInstaller>(_ => _window.Create());
     }
 
@@ -1296,6 +1298,65 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         await act.Should().ThrowAsync<OperationCanceledException>();
         PendingRow(group, pending.Download).HasValue.Should().BeTrue();
         InstalledFileNames(NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id), loadout).Should().NotContain("mod1.zip");
+    }
+
+    [Fact]
+    public async Task ShouldReview_IsFalseOnceTheDownloadIsInstalled()
+    {
+        var (group, loadout, job, _, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+        var pending = job.PendingItems.Should().ContainSingle().Which;
+        var collectionGroup = Optional<CollectionGroup.ReadOnly>.Create(group.AsCollectionGroup());
+
+        PendingInstalls.ShouldReview(Connection.Db, pending.Download, collectionGroup).Should().BeTrue("the row is pending and the mod is not installed");
+
+        var review = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, pending.Download, CancellationToken.None, unattended: false, installer: new ClaimingInstaller("mod1.zip"));
+        await RunDownload(review);
+        PendingInstalls.ShouldReview(Connection.Db, pending.Download, collectionGroup).Should().BeFalse("the finishing job retracted the row");
+
+        // A row that outlived the install it was waiting for does not start a second copy either.
+        await PendingInstalls.Record(Connection, group.Id, pending.Download, ReviewKind.NoInstaller, "left behind");
+        CollectionDownloader.GetStatus(pending.Download, collectionGroup, Connection.Db).IsInstalled(out _).Should().BeTrue();
+        PendingInstalls.ShouldReview(Connection.Db, pending.Download, collectionGroup).Should().BeFalse();
+    }
+
+    [Fact]
+    public void ShouldReview_IsFalseWithoutAGroup()
+    {
+        // Nothing to review in a collection that is not in the loadout; the download only needs to exist for the call.
+        PendingInstalls.ShouldReview(Connection.Db, default, Optional<CollectionGroup.ReadOnly>.None).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ReviewingANoInstallerMod_OpensTheManualInstallerOnce()
+    {
+        var (_, loadout, job, _, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+        var pending = job.PendingItems.Should().ContainSingle().Which;
+        _manualInstaller.Calls.Should().Be(0);
+
+        var review = await InstallCollectionDownloadJob.CreateForReview(ServiceProvider, loadout, pending.Download, pending.Kind, CancellationToken.None);
+        var act = () => RunDownload(review);
+
+        await act.Should().ThrowAsync<Exception>("the counting handler declines");
+        _manualInstaller.Calls.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ReviewingASavedChoicesMod_InAGameWithoutAFomodInstaller_OpensTheManualInstallerOnce()
+    {
+        var (file, revision, items) = await CreateCollection([(Choices(), "Fomod mod")]);
+        var loadout = await CreateLoadout();
+        using var gate = ArchiveGate.Install(Game.LibraryItemInstallers, 0, "none.zip"); // hides FomodXmlInstaller from OfType
+        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        await AwaitJob(job);
+        var pending = job.JobDefinition.PendingItems.Should().ContainSingle().Which;
+        pending.Kind.Should().Be(ReviewKind.NeedsChoices);
+
+        var review = await InstallCollectionDownloadJob.CreateForReview(ServiceProvider, loadout, pending.Download, pending.Kind, CancellationToken.None);
+        var act = () => RunDownload(review);
+
+        var thrown = await act.Should().ThrowAsync<Exception>("the counting handler declines");
+        thrown.Which.Message.Should().NotContain("FomodXmlInstaller not found");
+        _manualInstaller.Calls.Should().Be(1);
     }
 
     private async Task RemoveFromLibrary(NexusCollectionLoadoutGroup.ReadOnly group, CollectionDownload.ReadOnly download)
