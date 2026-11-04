@@ -37,6 +37,11 @@ Licenses below are the SPDX expressions in each package's nuspec at the pinned v
 | Avalonia and its Skia/Svg/Markdown add-ons | MIT |
 | Bannerlord.LauncherManager (BUTR Team) | MIT |
 | ooz (Powzix, https://github.com/powzix/ooz, `extern/ooz`) | GPL-3.0-or-later, built from source into `libooz.so` for Kraken decompression |
+| bc7e.ispc (Binomial LLC, https://github.com/richgel999/bc7enc_rdo, `extern/texenc`) | Apache-2.0, built into `libsmmtexenc.so` for BC7 encoding |
+| rgbcx, bc7decomp (Richard Geldreich, https://github.com/richgel999/bc7enc_rdo, `extern/texenc`) | MIT, chosen from the MIT-or-Unlicense offer; rgbcx is built into `libsmmtexenc.so` for BC1/BC3/BC4/BC5 encoding, bc7decomp is vendored but not built |
+| ISPC standard library (Intel, https://github.com/ispc/ispc) | BSD 3-clause, compiled into the ISPC objects of `libsmmtexenc.so` |
+| BCnEncoder.Net (Nomi Lakkala, https://github.com/Nominom/BCnEncoder.NET) | MIT, chosen from the nuspec's MIT-or-Unlicense |
+| SkiaSharp (Microsoft, Xamarin) | MIT |
 | SoulsFormats (JKAnderson, https://github.com/JKAnderson/SoulsFormats) | GPL-3.0; used as the description of the BND3 layout, no code taken |
 | SMAPI (Pathoschild, `extern/SMAPI`) | LGPL-3.0, see `extern/SMAPI/LICENSE.txt` |
 | 7-Zip 26.05 (Igor Pavlov, `src/SilverModManager.Backend/runtimes/linux-x64/native/7zz`) | LGPL-2.1-or-later with the unRAR restriction for some code, BSD 3-clause and 2-clause for other code; the unmodified official Linux build, license text in `7zz.License.txt` next to it |
@@ -135,7 +140,7 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 
-### Apache License 2.0 (Roboto Mono, Material Design Icons)
+### Apache License 2.0 (Roboto Mono, Material Design Icons, bc7e.ispc)
 
                                  Apache License
                            Version 2.0, January 2004
@@ -338,3 +343,80 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+
+Apache 2.0 notice for bc7e.ispc: Copyright (C) 2018-2021 Binomial LLC (the file's own header says 2018-2020; the
+repository's LICENSE says 2018-2021). The text above applies.
+
+### MIT License (rgbcx, bc7decomp)
+
+Copyright(c) 2020-2021 Richard Geldreich, Jr.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+### MIT License (BCnEncoder.Net)
+
+Copyright 2020 Nomi Lakkala
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+### MIT License (SkiaSharp)
+
+Copyright (c) 2015-2016 Xamarin, Inc.
+Copyright (c) 2017-2018 Microsoft Corporation.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+### BSD 3-clause License (ISPC)
+
+Copyright Intel Corporation
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+
+    * Neither the name of Intel Corporation nor the names of its
+      contributors may be used to endorse or promote products derived from
+      this software without specific prior written permission.
+
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.

@@ -11,6 +11,15 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- Built from extern/texenc by scripts/build-texenc.sh. -->
+        <None Include="runtimes\linux-x64\native\libsmmtexenc.so">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <Pack>true</Pack>
+            <PackagePath>runtimes/linux-x64/native</PackagePath>
+        </None>
+    </ItemGroup>
+
+    <ItemGroup>
         <InternalsVisibleTo Include="SilverModManager.Wabbajack.Transforms.Tests" />
         <InternalsVisibleTo Include="SilverModManager.Wabbajack.Tests" />
     </ItemGroup>
