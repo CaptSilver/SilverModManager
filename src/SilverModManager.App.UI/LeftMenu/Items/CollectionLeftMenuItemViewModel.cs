@@ -57,6 +57,7 @@ public partial class CollectionLeftMenuItemViewModel : LeftMenuItemViewModel, IL
     {
         _connection = serviceProvider.GetRequiredService<IConnection>();
         var loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
+        var notifications = serviceProvider.GetRequiredService<IWindowNotificationService>();
 
         CollectionGroupId = collectionGroupId;
         // Read-only collections get a target too, so a drag over them says why they refuse.
@@ -72,10 +73,10 @@ public partial class CollectionLeftMenuItemViewModel : LeftMenuItemViewModel, IL
         
         ToggleIsEnabledCommand = ReactiveCommand.CreateFromTask(async () =>
         {
-            var item = LoadoutItem.Load(_connection.Db, CollectionGroupId.Value);
-            await loadoutManager.SetGroupsEnabled(item.LoadoutId, [item.LoadoutItemId], enabled: !IsEnabled);
+            if (await CollectionSwitch.Flip(_connection, loadoutManager, notifications, CollectionGroupId) is false)
+                PutSwitchBack();
         });
-        
+
         // Set additional context menu items
         AdditionalContextMenuItems = isDefaultCollection || moveBy is null
             ? [deleteContextMenuItem]
@@ -93,6 +94,18 @@ public partial class CollectionLeftMenuItemViewModel : LeftMenuItemViewModel, IL
 
     }
     
+    /// <summary>
+    /// The switch moves itself when clicked. A refused toggle writes nothing, so IsEnabled keeps its value, and
+    /// neither a PropertyChanged for it nor setting it to the same value reaches the binding: the switch
+    /// ignores a value it was last given. Passing through the opposite value is what makes it read the real one again.
+    /// </summary>
+    private void PutSwitchBack()
+    {
+        var actual = IsEnabled;
+        IsEnabled = !actual;
+        IsEnabled = actual;
+    }
+
     private static IContextMenuItem CreateMoveContextMenuItem(string header, IconValue icon, Action move) => new ContextMenuItem
     {
         Header = header,

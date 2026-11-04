@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.App.UI.Pages.Collections;
 using SilverModManager.App.UI.Resources;
@@ -21,6 +22,7 @@ using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
 using R3;
 using ReactiveUI;
@@ -43,6 +45,7 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
     private readonly IServiceProvider _services;
     private readonly IConnection _connection;
     private readonly IReadOnlyList<IContextMenuItem> _sourceMenuItems;
+    private readonly Subject<R3.Unit> _toggleRefused = new();
 
     // Only read and written on the UI thread.
     private Optional<CollectionGroupId> _group = Optional<CollectionGroupId>.None;
@@ -72,9 +75,9 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
                 if (_group.HasValue is false) return;
                 var group = _group.Value;
 
-                var item = LoadoutItem.Load(_connection.Db, group.Value);
-                await _services.GetRequiredService<ILoadoutManager>()
-                    .SetGroupsEnabled(item.LoadoutId, [item.LoadoutItemId], enabled: !IsCollectionEnabled);
+                if (await CollectionSwitch.Flip(_connection, _services.GetRequiredService<ILoadoutManager>(),
+                        _services.GetRequiredService<IWindowNotificationService>(), group) is false)
+                    _toggleRefused.OnNext(R3.Unit.Default);
             },
             awaitOperation: AwaitOperation.Drop,
             configureAwait: false
@@ -270,4 +273,6 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
     [Reactive] public partial CollectionPageTab SelectedTab { get; set; }
 
     public ReactiveCommand<Unit> CommandToggle { get; }
+
+    public Observable<Unit> ToggleRefused => _toggleRefused;
 }

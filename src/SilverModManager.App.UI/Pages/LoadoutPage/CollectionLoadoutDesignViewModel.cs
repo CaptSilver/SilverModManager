@@ -67,6 +67,7 @@ public class CollectionLoadoutDesignViewModel : APageViewModel<ICollectionLoadou
         new ContextMenuItem { Header = "Uninstall collection", Icon = IconValues.PlaylistRemove, Command = ReactiveUI.ReactiveCommand.Create(() => { }) },
     ];
     public ReactiveCommand<Unit> CommandToggle { get; } = new ReactiveCommand();
+    public Observable<Unit> ToggleRefused { get; } = Observable.Empty<Unit>();
     public CollectionPageTab SelectedTab { get; set; } = CollectionPageTab.Installed;
     public IPageViewModelInterface? Downloads { get; } = new CollectionDownloadDesignViewModel();
     public CollectionInstructions Instructions { get; } = new(

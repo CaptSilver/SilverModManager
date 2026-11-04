@@ -1596,6 +1596,9 @@ Use it for {0}?</value>
     <data name="GameInstalled_TreatAsMine_ToolTip" xml:space="preserve">
         <value>Move these files to External Changes and stop managing them as game-installed content.</value>
     </data>
+    <data name="CollectionLeftMenu_ToggleRefused" xml:space="preserve">
+        <value>Could not switch this collection because {0}.</value>
+    </data>
     <data name="GameInstalled_TreatAsMine_Failed" xml:space="preserve">
         <value>Could not treat these files as yours: {0}</value>
     </data>

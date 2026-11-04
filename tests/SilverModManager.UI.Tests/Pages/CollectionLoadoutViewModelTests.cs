@@ -16,6 +16,10 @@ using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Dialog;
+using R3;
 using SilverModManager.UI.Sdk.Icons;
 using SilverModManager.UI.Tests.Pages.Collections;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
@@ -47,14 +51,37 @@ public class CollectionLoadoutViewModelTests(IServiceProvider provider) : AUiTes
         return (page, activation);
     }
 
-    private sealed record NexusFixture(Loadout.ReadOnly Loadout, NexusCollectionSource Source);
+    private sealed record NexusFixture(Loadout.ReadOnly Loadout, NexusCollectionSource Source, EntityId Group);
 
     private async Task<NexusFixture> NexusSource(string name = "Quality of Life")
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, $"Nexus page {Guid.NewGuid()}");
         var revision = await CollectionSeed.AddRevision(Connection, loadout.InstallationInstance.Game.NexusModsGameId.Value, name, 7);
         var group = await CollectionSeed.AddInstalledGroup(Connection, loadout.LoadoutId, $"{name} (group)", revision);
-        return new NexusFixture(loadout, NexusCollectionSource.Installed(Provider, loadout.LoadoutId, group));
+        return new NexusFixture(loadout, NexusCollectionSource.Installed(Provider, loadout.LoadoutId, group), group.Id);
+    }
+
+    [Fact]
+    public async Task AToggleTheServiceRefusesShowsItsReasonAndTellsTheSwitchToGoBack()
+    {
+        var f = await NexusSource();
+        var item = LoadoutItem.Load(Connection.Db, f.Group);
+        var manager = Substitute.For<ILoadoutManager>();
+        manager.SetGroupsEnabled(Arg.Any<LoadoutId>(), Arg.Any<IReadOnlyList<LoadoutItemId>>(), Arg.Any<bool>())
+            .Returns(new ValueTask<ToggleResult>(new ToggleResult([], [(item.LoadoutItemId, "it is a required item of a collection")])));
+        var toasts = Substitute.For<IWindowNotificationService>();
+        var services = new ServicesWithSources(Provider).With(manager).With(toasts);
+        var page = await Dispatcher.UIThread.InvokeAsync(() => new CollectionLoadoutViewModel(_windowManager, services, f.Source));
+        using var activation = await Dispatcher.UIThread.InvokeAsync(() => page.Activator.Activate());
+        await EventuallyOnUi(() => page.HasInstalledTab.Should().BeTrue());
+        var refused = 0;
+        using var _ = page.ToggleRefused.Subscribe(_ => Interlocked.Increment(ref refused));
+
+        page.CommandToggle.Execute(R3.Unit.Default);
+
+        await Eventually(() => refused.Should().Be(1));
+        toasts.Received(1).ShowToast(Arg.Is<string>(message => message.Contains("it is a required item of a collection")),
+            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
     }
 
     [Fact]

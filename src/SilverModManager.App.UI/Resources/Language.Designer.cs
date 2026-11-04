@@ -4759,6 +4759,15 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Could not switch this collection because {0}..
+        /// </summary>
+        public static string CollectionLeftMenu_ToggleRefused {
+            get {
+                return ResourceManager.GetString("CollectionLeftMenu_ToggleRefused", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Could not treat these files as yours: {0}.
         /// </summary>
         public static string GameInstalled_TreatAsMine_Failed {

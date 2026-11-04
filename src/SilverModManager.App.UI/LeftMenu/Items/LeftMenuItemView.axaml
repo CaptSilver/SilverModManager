@@ -26,7 +26,7 @@
                                       OnContent="{x:Null}"
                                       OffContent="{x:Null}"
                                       IsVisible="{CompiledBinding IsToggleVisible}"
-                                      IsChecked="{CompiledBinding IsEnabled}"
+                                      IsChecked="{CompiledBinding IsEnabled, Mode=OneWay}"
                                       Command="{CompiledBinding ToggleIsEnabledCommand}"
                                       ToolTip.Tip="{x:Static resources:Language.CollectionDownloadViewModel_Toggle_ToolTip}"/>
                     </DataTemplate>

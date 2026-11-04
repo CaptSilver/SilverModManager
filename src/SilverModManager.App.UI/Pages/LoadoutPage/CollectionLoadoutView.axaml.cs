@@ -126,6 +126,12 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
                 )
                 .DisposeWith(disposables);
 
+            // A refused toggle changes nothing, so IsCollectionEnabled stays put and says nothing; put the switch back.
+            this.WhenViewModel(vm => vm.ToggleRefused.AsSystemObservable())
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .SubscribeWithErrorLogging(_ => CollectionToggle.IsChecked = ViewModel?.IsCollectionEnabled)
+                .DisposeWith(disposables);
+
             this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.BackgroundImage))
                 .WhereNotNull()
                 .SubscribeWithErrorLogging(image => HeaderImageBorder.Background = new ImageBrush { Source = image, Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Top})

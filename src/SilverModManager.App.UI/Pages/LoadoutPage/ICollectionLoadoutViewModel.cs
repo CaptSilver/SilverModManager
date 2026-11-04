@@ -71,6 +71,9 @@ public interface ICollectionLoadoutViewModel : IPageViewModelInterface
 
     R3.ReactiveCommand<R3.Unit> CommandToggle { get; }
 
+    /// <summary>Emits when the service refused a toggle: nothing changed, so the switch has to go back to the state it shows.</summary>
+    R3.Observable<R3.Unit> ToggleRefused { get; }
+
     /// <summary>
     /// The tab being shown.
     /// </summary>
