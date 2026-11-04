@@ -202,7 +202,7 @@ public sealed class RegulationBaselines(Func<AbsolutePath> root, IManifestVouchi
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            throw new HealException($"can't read {MarkdownText.Code(source)}: {MarkdownText.Inline(exception.Message)}");
+            throw new HealException($"can't read {MarkdownText.Code(source)}: {MarkdownText.Message(exception)}");
         }
 
         var got = Regulation.Sha256Hex(blob);
@@ -264,7 +264,7 @@ public sealed class RegulationBaselines(Func<AbsolutePath> root, IManifestVouchi
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            throw new HealException($"can't read {MarkdownText.Code(file)}: {MarkdownText.Inline(exception.Message)}");
+            throw new HealException($"can't read {MarkdownText.Code(file)}: {MarkdownText.Message(exception)}");
         }
 
         var sha1 = Sha1Value.From(SHA1.HashData(blob));
@@ -281,7 +281,7 @@ public sealed class RegulationBaselines(Func<AbsolutePath> root, IManifestVouchi
         }
         catch (Exception exception) when (exception is RegulationException or AesException or DcxException or KrakenException)
         {
-            throw new HealException($"{MarkdownText.Code(file)} is not a regulation this game's key opens: {MarkdownText.Inline(exception.Message)}");
+            throw new HealException($"{MarkdownText.Code(file)} is not a regulation this game's key opens: {MarkdownText.Message(exception)}");
         }
         if (expectedVersion is not null && !version.Equals(expectedVersion, StringComparison.Ordinal))
             throw new HealException($"{MarkdownText.Code(file)} is regulation build {version}, not {expectedVersion}.");
@@ -407,7 +407,7 @@ public sealed class RegulationBaselines(Func<AbsolutePath> root, IManifestVouchi
             }
             catch (JsonException exception)
             {
-                throw new HealException($"{MarkdownText.Code(sidecar)} can't be read ({MarkdownText.Inline(exception.Message)}); the baseline is not used until that is fixed.");
+                throw new HealException($"{MarkdownText.Code(sidecar)} can't be read ({MarkdownText.Message(exception)}); the baseline is not used until that is fixed.");
             }
         }
 

@@ -13,7 +13,7 @@ public sealed class NexusApiResponseException : UserFacingException
     /// Creates the refusal for the request to <paramref name="requestUri"/> whose reply could not be read.
     /// </summary>
     public NexusApiResponseException(Uri? requestUri, JsonException inner)
-        : base($"Nexus Mods sent a reply to {MarkdownText.Code(requestUri?.ToString())} that the app cannot read: {MarkdownText.Inline(inner.Message)}", inner)
+        : base($"Nexus Mods sent a reply to {MarkdownText.Code(requestUri?.ToString())} that the app cannot read: {MarkdownText.Message(inner)}", inner)
     {
     }
 

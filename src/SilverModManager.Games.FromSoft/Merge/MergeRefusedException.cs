@@ -16,6 +16,9 @@ public class MergeRefusedException : SynchronizerPreflightException
     public MergeRefusedException(string reason) : base($"Can't apply the loadout's merges: {MarkdownText.Inline(reason)}") { }
 
     /// <summary>The refusal for a plan that could not be made at all; the apply and Health Check say it in the same words.</summary>
-    public static MergeRefusedException PlanFailed(Exception cause)
-        => new($"the files the mods provide could not be merged: {cause.Message}");
+    public static MergeRefusedException PlanFailed(Exception cause) => new(cause);
+
+    // The cause's message is escaped here, once; going through the string constructor would escape a refusal's Markdown again.
+    private MergeRefusedException(Exception cause)
+        : base($"Can't apply the loadout's merges: the files the mods provide could not be merged: {MarkdownText.Message(cause)}") { }
 }

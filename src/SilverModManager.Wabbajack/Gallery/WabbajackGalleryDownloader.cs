@@ -38,7 +38,7 @@ public sealed class WabbajackGalleryDownloader(
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {
-                throw new GalleryDownloadException($"Downloading {MarkdownText.Code(entry.Title)} failed: {MarkdownText.Inline(e.Message)}", e);
+                throw new GalleryDownloadException($"Downloading {MarkdownText.Code(entry.Title)} failed: {MarkdownText.Message(e)}", e);
             }
 
             await Verify(entry, file, expectedHash, expectedSize, cancellationToken);

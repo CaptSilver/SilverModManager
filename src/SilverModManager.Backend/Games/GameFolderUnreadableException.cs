@@ -19,7 +19,7 @@ public sealed class GameFolderUnreadableException : UserFacingException
 
     /// <summary><paramref name="whatFailed"/> names the step in a sentence start, such as "Listing the files in X".</summary>
     public GameFolderUnreadableException(GameInstallation installation, string whatFailed, IOException cause)
-        : base($"{whatFailed} failed: {MarkdownText.Inline(cause.Message)}. Check the drive and try again; nothing was changed.", cause)
+        : base($"{whatFailed} failed: {MarkdownText.Message(cause)}. Check the drive and try again; nothing was changed.", cause)
     {
         _installation = installation;
     }

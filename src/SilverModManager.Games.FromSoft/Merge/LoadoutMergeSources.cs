@@ -606,7 +606,7 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or RegulationException or AesException or DcxException or KrakenException)
         {
-            throw new HealException($"{MarkdownText.Code(file)} is not a regulation this game's key opens: {MarkdownText.Inline(exception.Message)}");
+            throw new HealException($"{MarkdownText.Code(file)} is not a regulation this game's key opens: {MarkdownText.Message(exception)}");
         }
         if (expectedVersion is not null && !version.Equals(expectedVersion, StringComparison.Ordinal))
             throw new HealException($"{MarkdownText.Code(file)} is regulation build {version}, not {expectedVersion}.");

@@ -31,7 +31,7 @@ public static class HostFolderMove
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            throw new HostFolderMoveRefusedException($"The files in {MarkdownText.Code(hostFolder)} could not be copied into {MarkdownText.Code(prefixFolder)} ({MarkdownText.Inline(e.Message)}), so the folder was left where it is.", e);
+            throw new HostFolderMoveRefusedException($"The files in {MarkdownText.Code(hostFolder)} could not be copied into {MarkdownText.Code(prefixFolder)} ({MarkdownText.Message(e)}), so the folder was left where it is.", e);
         }
 
         trash.MoveToTrash(hostFolder);
@@ -55,7 +55,7 @@ public static class HostFolderMove
         }
         catch (IOException e)
         {
-            throw new HostFolderMoveRefusedException($"The links on the way to {MarkdownText.Code(prefixFolder)} could not be followed ({MarkdownText.Inline(e.Message)}), so nothing was moved.", e);
+            throw new HostFolderMoveRefusedException($"The links on the way to {MarkdownText.Code(prefixFolder)} could not be followed ({MarkdownText.Message(e)}), so nothing was moved.", e);
         }
 
         if (IsSameOrInside(host, prefix) || IsSameOrInside(prefix, host))

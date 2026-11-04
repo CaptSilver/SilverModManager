@@ -108,7 +108,7 @@ public sealed class RegulationRestore(RegulationBaselines baselines, IManifestVo
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            throw new RegulationRestoreRefusedException($"{MarkdownText.Code(target)} could not be replaced: {MarkdownText.Inline(exception.Message)}", exception);
+            throw new RegulationRestoreRefusedException($"{MarkdownText.Code(target)} could not be replaced: {MarkdownText.Message(exception)}", exception);
         }
     }
 

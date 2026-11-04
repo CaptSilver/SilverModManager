@@ -25,11 +25,11 @@ public static class ModListReader
         }
         catch (JsonException e)
         {
-            throw new UnsupportedModlistException($"The modlist is not valid JSON: {MarkdownText.Inline(e.Message)}");
+            throw new UnsupportedModlistException($"The modlist is not valid JSON: {MarkdownText.Message(e)}");
         }
         catch (Exception e) when (e is InvalidOperationException or OverflowException or FormatException)
         {
-            throw new UnsupportedModlistException($"The modlist is malformed: {MarkdownText.Inline(e.Message)}");
+            throw new UnsupportedModlistException($"The modlist is malformed: {MarkdownText.Message(e)}");
         }
     }
 

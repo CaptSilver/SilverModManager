@@ -99,7 +99,7 @@ internal sealed class AppImageUpdateInstaller(ILogger logger, UpdateDownload dow
         }
         catch (Exception e) when (e is UnauthorizedAccessException or IOException)
         {
-            throw new AppImageUpdateException($"The folder {MarkdownText.Code(directory)} is not writable, so {MarkdownText.Code(Path.GetFileName(appImagePath))} cannot be replaced: {MarkdownText.Inline(e.Message)}");
+            throw new AppImageUpdateException($"The folder {MarkdownText.Code(directory)} is not writable, so {MarkdownText.Code(Path.GetFileName(appImagePath))} cannot be replaced: {MarkdownText.Message(e)}");
         }
     }
 

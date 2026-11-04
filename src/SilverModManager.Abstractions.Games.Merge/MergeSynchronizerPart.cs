@@ -29,7 +29,7 @@ public sealed class MergeApplyRefusedException : SynchronizerPreflightException
     public static MergeApplyRefusedException Unchecked(string relPath)
         => new($"{MarkdownText.Code(relPath)} is merged from several mods, but the merge was not checked before this apply wrote it, so it is not written. Apply again.");
 
-    public static MergeApplyRefusedException PlanFailed(Exception cause) => new($"The files the mods provide could not be merged: {MarkdownText.Inline(cause.Message)}");
+    public static MergeApplyRefusedException PlanFailed(Exception cause) => new($"The files the mods provide could not be merged: {MarkdownText.Message(cause)}");
 
     public static MergeApplyRefusedException ListingFailed(string reason) => new($"The files the mods provide could not be listed: {MarkdownText.Inline(reason)}");
 }

@@ -58,7 +58,7 @@ public static class GalleryReader
         }
         catch (JsonException e)
         {
-            throw new GalleryFormatException($"not valid JSON: {MarkdownText.Inline(e.Message)}");
+            throw new GalleryFormatException($"not valid JSON: {MarkdownText.Message(e)}");
         }
     }
 

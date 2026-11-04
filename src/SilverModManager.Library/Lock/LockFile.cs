@@ -33,7 +33,7 @@ public sealed class LockFile(IReadOnlyList<LockEntry> entries)
         }
         catch (TomlException exception)
         {
-            throw new LockException($"The lock file is not valid TOML: {MarkdownText.Inline(exception.Message)}");
+            throw new LockException($"The lock file is not valid TOML: {MarkdownText.Message(exception)}");
         }
 
         var entries = new List<LockEntry>();
