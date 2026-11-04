@@ -25,7 +25,7 @@ public static class LibraryItemDeleteConfirmationDesignViewModels
             new LibraryItemUsedLoadoutInfo
             {
                 GameName = "Stardew Valley",
-                LoadoutName = "Loadout A",
+                LoadoutName = "Stardew Valley",
                 IsOnlyLoadoutForGame = true,
             },
         ],
@@ -43,14 +43,14 @@ public static class LibraryItemDeleteConfirmationDesignViewModels
             new LibraryItemUsedLoadoutInfo
             {
                 GameName = "Stardew Valley",
-                LoadoutName = "Loadout A",
+                LoadoutName = "Stardew Valley",
                 IsOnlyLoadoutForGame = false,
             },
 
             new LibraryItemUsedLoadoutInfo
             {
                 GameName = "Stardew Valley",
-                LoadoutName = "Loadout B",
+                LoadoutName = "Stardew Valley 2",
                 IsOnlyLoadoutForGame = false,
             },
         ],

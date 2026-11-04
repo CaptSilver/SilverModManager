@@ -44,7 +44,7 @@ public class DuplicateInstallMigrationTests
         moved.ShortName.Should().NotBe(kept.ShortName, "loadouts of one install are told apart by short name");
         moved.Name.Should().NotBeEquivalentTo(kept.Name);
         moved.ShortName.Should().Be("a", "the loadout on disk keeps its names, which is what launching by name finds");
-        moved.Name.Should().Be("Loadout A");
+        moved.Name.Should().Be("Main");
 
         var canonical = GameInstallMetadata.Load(db, seed.Canonical);
         canonical.LastSyncedLoadout.Id.Should().Be(seed.DuplicateLoadout, "the duplicate row was applied last");
@@ -184,7 +184,7 @@ public class DuplicateInstallMigrationTests
 
         var loadouts = new[] { oldestLoadout, middleLoadout, youngestLoadout }.Select(id => Loadout.Load(db, id)).ToArray();
         loadouts[1].ShortName.Should().Be("a", "the loadout on disk keeps its short name");
-        loadouts[1].Name.Should().Be("Loadout A");
+        loadouts[1].Name.Should().Be("Main");
         loadouts.Select(l => l.ShortName).Should().OnlyHaveUniqueItems();
         loadouts.Select(l => l.Name).Should().OnlyHaveUniqueItems();
     }
@@ -376,7 +376,7 @@ public class DuplicateInstallMigrationTests
     // Every concurrent CreateLoadout picked its short name from its own row, so each started at "a".
     private static Loadout.New NewLoadout(ITransaction tx, GameInstallMetadata.New installation) => new(tx)
     {
-        Name = "Loadout A",
+        Name = "Main",
         ShortName = "a",
         InstallationId = installation,
         LoadoutKind = LoadoutKind.Default,

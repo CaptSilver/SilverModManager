@@ -141,7 +141,9 @@ internal partial class LoadoutManager : ILoadoutManager
 
             var loadout = new Loadout.New(tx)
             {
-                Name = EnsureUniqueName(_connection.Db, metadata, suggestedName ?? "Loadout " + shortName, self: null),
+                Name = suggestedName is null
+                    ? LoadoutNameProvider.GetDefaultName(installation.Game.DisplayName, TakenNames(_connection.Db, metadata, self: null))
+                    : EnsureUniqueName(_connection.Db, metadata, suggestedName, self: null),
                 ShortName = shortName,
                 InstallationId = metadata,
                 Revision = 0,
@@ -305,7 +307,7 @@ internal partial class LoadoutManager : ILoadoutManager
 
         // NOTE(erri120): using latest DB to prevent duplicate short names
         var newShortName = GetNewShortName(_connection.Db, loadout.InstallationId);
-        var newName = EnsureUniqueName(_connection.Db, loadout.InstallationId, "Loadout " + newShortName, self: null);
+        var newName = LoadoutNameProvider.GetDefaultName(GameNameOf(loadout), TakenNames(_connection.Db, loadout.InstallationId, self: null));
 
         tx.Add(newLoadoutId, Loadout.Name, newName);
         tx.Add(newLoadoutId, Loadout.ShortName, newShortName);
@@ -337,6 +339,16 @@ internal partial class LoadoutManager : ILoadoutManager
         return Loadout.Load(result.Db, loadoutId);
     }
 
+    // The names of the other visible loadouts of the installation.
+    private static IEnumerable<string> TakenNames(IDb db, GameInstallMetadataId installationId, LoadoutId? self)
+        => Loadout.All(db)
+            .Where(l => l.IsVisible() && l.InstallationId == installationId && l.LoadoutId != self)
+            .Select(l => l.Name.Trim());
+
+    // A game this build does not know still has the name it was added under.
+    private static string GameNameOf(Loadout.ReadOnly loadout)
+        => loadout.TryGetGame(out var game) ? game.DisplayName : GameInstallMetadata.Load(loadout.Db, loadout.InstallationId).Name;
+
     /// <summary>
     /// Returns <paramref name="candidate"/> trimmed, with " (2)", " (3)", ... appended until no other visible loadout
     /// of the installation has the same name (compared ignoring case). Existing duplicates are left alone.
@@ -344,10 +356,7 @@ internal partial class LoadoutManager : ILoadoutManager
     private static string EnsureUniqueName(IDb db, GameInstallMetadataId installationId, string candidate, LoadoutId? self)
     {
         var trimmed = candidate.Trim();
-        var taken = Loadout.All(db)
-            .Where(l => l.IsVisible() && l.InstallationId == installationId && l.LoadoutId != self)
-            .Select(l => l.Name.Trim())
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var taken = TakenNames(db, installationId, self).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var result = trimmed;
         for (var i = 2; taken.Contains(result); i++)

@@ -1,9 +1,11 @@
+using System.Text.RegularExpressions;
+
 namespace SilverModManager.Abstractions.Loadouts;
 
 /// <summary>
 /// Static class for providing new Loadout names.
 /// </summary>
-public static class LoadoutNameProvider
+public static partial class LoadoutNameProvider
 {
     /// <summary>
     /// Returns a capital one or two letter short name for a loadout.
@@ -48,5 +50,32 @@ public static class LoadoutNameProvider
 
         return "ZZ";
     }
-    
+
+    /// <summary>
+    /// The name a new loadout gets when the user does not pick one: the game's name, or "&lt;game&gt; 2",
+    /// "&lt;game&gt; 3", ... (the first free number) when that is taken. Taken names are compared ignoring case
+    /// and outer whitespace.
+    /// </summary>
+    public static string GetDefaultName(string gameName, IEnumerable<string> existingLoadoutNames)
+    {
+        var baseName = gameName.Trim();
+        var taken = existingLoadoutNames.Select(name => name.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var result = baseName;
+        for (var i = 2; taken.Contains(result); i++)
+        {
+            result = $"{baseName} {i}";
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="name"/> is one an older build gave a loadout automatically: "Loadout " and a one or
+    /// two letter short name, with the " (2)" style suffix a clash with another loadout added.
+    /// </summary>
+    public static bool IsLegacyDefaultName(string name) => LegacyDefaultName().IsMatch(name);
+
+    [GeneratedRegex(@"^Loadout [A-Z]{1,2}( \([0-9]+\))?$")]
+    private static partial Regex LegacyDefaultName();
 }

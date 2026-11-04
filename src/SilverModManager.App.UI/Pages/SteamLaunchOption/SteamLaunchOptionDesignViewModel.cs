@@ -6,8 +6,8 @@ namespace SilverModManager.App.UI.Pages.SteamLaunchOption;
 
 public class SteamLaunchOptionDesignViewModel : AOverlayViewModel<ISteamLaunchOptionViewModel, Unit>, ISteamLaunchOptionViewModel
 {
-    public string LoadoutName => "Loadout A";
-    public string Line => "'/home/user/.local/share/silvermod/bin/silvermod' run 'Loadout A' -- %command%";
+    public string LoadoutName => "Cyberpunk 2077";
+    public string Line => "'/home/user/.local/share/silvermod/bin/silvermod' run 'Cyberpunk 2077' -- %command%";
     public string Warning => "";
     public string CopyNote => "Copying changes nothing in Steam. Paste the line into the game's Properties > Launch Options yourself.";
     public bool IsSteamRunning => true;

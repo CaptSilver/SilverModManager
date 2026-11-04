@@ -30,7 +30,7 @@ public partial class LoadoutCardDesignViewModel : AViewModel<ILoadoutCardViewMod
     }
     
     public ILoadoutBadgeViewModel LoadoutBadgeViewModel { get; } = new LoadoutBadgeDesignViewModel();
-    public string LoadoutName { get; } = "Loadout B";
+    public string LoadoutName { get; } = "Cyberpunk 2077 2";
     public IImage LoadoutImage { get; } = Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/DesignTime/thumbnail.webp")), (int) ImageSizes.GameThumbnail.Width);
 
     public bool IsLoadoutApplied { get; } = false;

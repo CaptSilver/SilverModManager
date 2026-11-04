@@ -25,7 +25,7 @@ public partial class TopBarDesignViewModel : AViewModel<ITopBarViewModel>, ITopB
     [Reactive] public partial string AccountTooltip { get; set; } = "Logged in to Nexus Mods as insomnious";
     [Reactive] public partial IImage Avatar { get; set; } = new Bitmap(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/DesignTime/cyberpunk_game.png")));
     [Reactive] public partial string ActiveWorkspaceTitle { get; set; } = "Home";
-    [Reactive] public partial string ActiveWorkspaceSubtitle { get; set; } = "Loadout A";
+    [Reactive] public partial string ActiveWorkspaceSubtitle { get; set; } = "Cyberpunk 2077";
     [Reactive] public partial IAddPanelDropDownViewModel? AddPanelDropDownViewModel { get; set; } = new AddPanelDropDownDesignViewModel();
 
     public ILogger Logger { get; set; } = NullLogger.Instance;

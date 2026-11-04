@@ -24,7 +24,7 @@ public class LibraryItemUsedLoadoutInfo
     public required bool IsOnlyLoadoutForGame { get; init; }
     
     /// <summary>
-    /// Returns a string like 'Used in Loadout: Stardew Valley - Loadout A'.
+    /// Returns a string like 'Used in Loadout: Stardew Valley - Stardew Valley'.
     /// </summary>
     public string UsedInLoadoutString => IsOnlyLoadoutForGame 
         ? string.Format(Language.LibraryItemDeleteConfirmation_UsedBy, GameName) 

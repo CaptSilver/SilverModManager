@@ -46,17 +46,55 @@ public class LoadoutNameUniquenessTests(ITestOutputHelper helper) : ACyberpunkIs
     }
 
     [Fact]
-    public async Task CopyLoadout_NamesCopyAfterItsShortName()
+    public async Task CopyLoadout_NamesCopyAfterTheGame()
     {
         var original = await LoadoutManager.CreateLoadout(GameInstallation, "Copy Source");
 
         var copy = await LoadoutManager.CopyLoadout(original.LoadoutId);
 
-        copy.Name.Should().Be("Loadout " + copy.ShortName);
+        copy.Name.Should().Be(GameInstallation.Game.DisplayName);
     }
 
     [Fact]
-    public async Task CopyLoadout_AppendsSuffixWhenDefaultNameIsTaken()
+    public async Task CopyLoadout_NamesCopyAfterTheGameWhenSourceTookTheGameName()
+    {
+        var original = await LoadoutManager.CreateLoadout(GameInstallation);
+
+        var copy = await LoadoutManager.CopyLoadout(original.LoadoutId);
+
+        original.Name.Should().Be(GameInstallation.Game.DisplayName);
+        copy.Name.Should().Be(GameInstallation.Game.DisplayName + " 2");
+    }
+
+    [Fact]
+    public async Task CreateLoadout_WithoutASuggestedName_IsNamedAfterTheGame()
+    {
+        var first = await LoadoutManager.CreateLoadout(GameInstallation);
+
+        first.Name.Should().Be(GameInstallation.Game.DisplayName);
+    }
+
+    [Fact]
+    public async Task CreateLoadout_SecondDefaultNamedLoadout_GetsANumber()
+    {
+        await LoadoutManager.CreateLoadout(GameInstallation);
+        var second = await LoadoutManager.CreateLoadout(GameInstallation);
+        var third = await LoadoutManager.CreateLoadout(GameInstallation);
+
+        second.Name.Should().Be(GameInstallation.Game.DisplayName + " 2");
+        third.Name.Should().Be(GameInstallation.Game.DisplayName + " 3");
+    }
+
+    [Fact]
+    public async Task CreateLoadout_SuggestedNameStillWinsOverTheGameName()
+    {
+        var created = await LoadoutManager.CreateLoadout(GameInstallation, "My Own Name");
+
+        created.Name.Should().Be("My Own Name");
+    }
+
+    [Fact]
+    public async Task CopyLoadout_NumbersTheCopyWhenTheGameNameIsTaken()
     {
         var original = await LoadoutManager.CreateLoadout(GameInstallation, "Copy Taken Source");
         var probe = await LoadoutManager.CopyLoadout(original.LoadoutId);
@@ -64,11 +102,12 @@ public class LoadoutNameUniquenessTests(ITestOutputHelper helper) : ACyberpunkIs
         await LoadoutManager.DeleteLoadout(probe.LoadoutId);
 
         // The next copy gets the freed short name, so take the name that copy would use.
-        await LoadoutManager.RenameLoadout(original.LoadoutId, "Loadout " + shortName);
+        var gameName = GameInstallation.Game.DisplayName;
+        await LoadoutManager.RenameLoadout(original.LoadoutId, gameName);
         var copy = await LoadoutManager.CopyLoadout(original.LoadoutId);
 
         copy.ShortName.Should().Be(shortName);
-        copy.Name.Should().Be($"Loadout {shortName} (2)");
+        copy.Name.Should().Be($"{gameName} 2");
     }
 
     [Fact]

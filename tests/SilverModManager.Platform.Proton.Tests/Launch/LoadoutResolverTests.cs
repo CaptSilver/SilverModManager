@@ -146,6 +146,27 @@ public class LoadoutResolverTests(IConnection connection)
     }
 
     [Fact]
+    public async Task OldDefaultNameFromASteamLaunchOption_FindsTheRenamedLoadoutByItsShortName()
+    {
+        // Short names are generated A, B: a launch option written as `run 'Loadout B'` before the loadouts were named after the game.
+        var seeded = await Install("100", "Alpha", (Name("Alpha"), LoadoutKind.Default), (Name("Alpha 2"), LoadoutKind.Default));
+
+        var resolution = Resolver().Resolve(Args("Loadout B"));
+
+        resolution.IsResolved.Should().BeTrue(resolution.Error);
+        resolution.Loadout!.Value.Name.Should().Be(Name("Alpha 2"));
+        resolution.Installation.Should().BeSameAs(seeded.Installation);
+    }
+
+    [Fact]
+    public async Task OldDefaultNameWithNoLoadoutOfThatShortName_StillFails()
+    {
+        await Install("100", "Alpha", (Name("Alpha"), LoadoutKind.Default));
+
+        Resolver().Resolve(Args("Loadout Z")).IsResolved.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task MatchesTrimmedAndIgnoringCase()
     {
         await Install("100", "Alpha", (Name("Main"), LoadoutKind.Default));

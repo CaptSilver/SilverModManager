@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -52,6 +53,7 @@ public sealed class LoadoutResolver(IConnection connection, IGameRegistry regist
         var db = connection.Db;
         var matches = new List<(GameInstallation Installation, Loadout.ReadOnly Loadout)>();
         var names = new List<(GameInstallation Installation, string Name)>();
+        var visibleByInstallation = new List<(GameInstallation Installation, Loadout.ReadOnly[] Visible)>();
         foreach (var installation in scoped)
         {
             if (!registry.TryGetMetadata(installation, out var metadata)) continue;
@@ -68,7 +70,10 @@ public sealed class LoadoutResolver(IConnection connection, IGameRegistry regist
 
             if (named.Length == 1) matches.Add((installation, named[0]));
             names.AddRange(visible.Select(l => (installation, l.Name)));
+            visibleByInstallation.Add((installation, visible));
         }
+
+        if (matches.Count == 0) matches.AddRange(MatchLegacyDefaultName(wanted, visibleByInstallation));
 
         switch (matches.Count)
         {
@@ -81,6 +86,25 @@ public sealed class LoadoutResolver(IConnection connection, IGameRegistry regist
                 return LoadoutResolution.Failed(
                     $"More than one game has a loadout named '{wanted}':\n{listing}\n" +
                     "Pick one with --game <appid|name>, for example: silvermod run '" + wanted + "' --game <appid|name> -- <command>");
+        }
+    }
+
+    /// <summary>
+    /// Launch options written before loadouts were named after their game still say <c>run 'Loadout A'</c>. The
+    /// badge in that name is the loadout's short name, which a rename leaves alone, so it still finds the loadout.
+    /// </summary>
+    private static IEnumerable<(GameInstallation Installation, Loadout.ReadOnly Loadout)> MatchLegacyDefaultName(
+        string wanted,
+        IEnumerable<(GameInstallation Installation, Loadout.ReadOnly[] Visible)> visibleByInstallation)
+    {
+        if (!LoadoutNameProvider.IsLegacyDefaultName(wanted)) yield break;
+
+        // "Loadout AB (2)" -> "AB": the badge is the word after the prefix.
+        var shortName = wanted["Loadout ".Length..].Split(' ')[0];
+        foreach (var (installation, visible) in visibleByInstallation)
+        {
+            var byBadge = visible.Where(l => string.Equals(l.ShortName, shortName, StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (byBadge.Length == 1) yield return (installation, byBadge[0]);
         }
     }
 
