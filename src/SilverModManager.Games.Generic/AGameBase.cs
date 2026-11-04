@@ -35,8 +35,8 @@ public abstract class AGameBase : IGame
     protected AGameBase(IServiceProvider provider)
     {
         Provider = provider;
-        _icon = new Lazy<IStreamFactory>(() => provider.GetRequiredService<IGameArtSource>().Icon(StoreIdentifiers.SteamAppIds));
-        _tile = new Lazy<IStreamFactory>(() => provider.GetRequiredService<IGameArtSource>().Tile(StoreIdentifiers.SteamAppIds));
+        _icon = new Lazy<IStreamFactory>(() => provider.GetRequiredService<IGameArtSource>().Icon(ArtRequest()));
+        _tile = new Lazy<IStreamFactory>(() => provider.GetRequiredService<IGameArtSource>().Tile(ArtRequest()));
         _installers = new Lazy<ILibraryItemInstaller[]>(() => CreateInstallers(provider));
         _emitters = new Lazy<IDiagnosticEmitter[]>(() => CreateEmitters(provider).ToArray());
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => CreateSynchronizer(provider));
@@ -49,6 +49,8 @@ public abstract class AGameBase : IGame
     }
 
     protected IServiceProvider Provider { get; }
+
+    private GameArtRequest ArtRequest() => new(GameIdValue, DisplayNameValue, StoreIdentifiers.SteamAppIds);
 
     // Explicit, and behind differently named members, because a hand-written game declares static members named
     // GameId, DisplayName and NexusModsGameId, which would hide public instance ones of the same name.

@@ -11,18 +11,15 @@ namespace SilverModManager.Backend.Games;
 /// <summary>
 /// Reads cover art out of Steam's own <c>appcache/librarycache</c> folder. Steam fills it
 /// when the library is browsed, so it only ever holds art the user's client already
-/// downloaded; nothing is fetched here and nothing is bundled.
+/// downloaded. Answers null for a game Steam has not cached.
 /// </summary>
-internal sealed class SteamLibraryCacheArtSource : IGameArtSource
+internal sealed class SteamLibraryCacheArtSource : IGameArtProvider
 {
     private const string TileFileName = "library_600x900.jpg";
 
     // Newer clients name the portrait cover library_capsule.jpg instead; same aspect, so it
     // fills the tile just as well. Listed in order of preference.
     private static readonly string[] CoverFileNames = [TileFileName, "library_capsule.jpg"];
-
-    private static readonly EmbeddedResourceStreamFactory<SteamLibraryCacheArtSource> TilePlaceholder = new("SilverModManager.Backend.Resources.game-tile-placeholder.png");
-    private static readonly EmbeddedResourceStreamFactory<SteamLibraryCacheArtSource> IconPlaceholder = new("SilverModManager.Backend.Resources.game-icon-placeholder.png");
 
     // Besides the covers, Steam keeps these named files in an app folder. The one remaining
     // .jpg at the top level, named by a hash, is the 32x32 client icon.
@@ -35,40 +32,35 @@ internal sealed class SteamLibraryCacheArtSource : IGameArtSource
 
     public SteamLibraryCacheArtSource(Func<IEnumerable<AbsolutePath>> steamRoots) => _steamRoots = steamRoots;
 
-    public IStreamFactory Tile(ImmutableArray<uint> steamAppIds) => new LazyStreamFactory(() => ResolveTile(steamAppIds));
-
-    public IStreamFactory Icon(ImmutableArray<uint> steamAppIds) => new LazyStreamFactory(() => ResolveIcon(steamAppIds));
-
-    private static IEnumerable<AbsolutePath> FindSteamRoots(IFileSystem fileSystem)
+    public ValueTask<IStreamFactory?> FindTileAsync(GameArtRequest request)
     {
-        // No registry on Linux; GameFinder looks in the known XDG and Flatpak locations.
-        return SteamLocationFinder.TryFindSteam(fileSystem, registry: null, NullLogger.Instance, out var steam) ? [steam] : [];
+        var cover = FindCover(_steamRoots().ToArray(), request.SteamAppIds);
+        return ValueTask.FromResult<IStreamFactory?>(cover.HasValue ? new NativeFileStreamFactory(cover.Value) : null);
     }
 
-    private IStreamFactory ResolveTile(ImmutableArray<uint> steamAppIds)
-    {
-        var roots = _steamRoots().ToArray();
-        var cover = FindCover(roots, steamAppIds);
-        return cover.HasValue ? new NativeFileStreamFactory(cover.Value) : TilePlaceholder;
-    }
-
-    private IStreamFactory ResolveIcon(ImmutableArray<uint> steamAppIds)
+    public ValueTask<IStreamFactory?> FindIconAsync(GameArtRequest request)
     {
         var roots = _steamRoots().ToArray();
 
         // A real icon from any id beats a cover from an earlier one: the cover is the
         // fallback, not a peer, because a portrait picture in a square slot is the worse result.
-        foreach (var appId in steamAppIds)
+        foreach (var appId in request.SteamAppIds)
         {
             foreach (var folder in CacheFolders(roots, appId))
             {
                 var icon = FindClientIcon(folder);
-                if (icon.HasValue) return new NativeFileStreamFactory(icon.Value);
+                if (icon.HasValue) return ValueTask.FromResult<IStreamFactory?>(new NativeFileStreamFactory(icon.Value));
             }
         }
 
-        var cover = FindCover(roots, steamAppIds);
-        return cover.HasValue ? new NativeFileStreamFactory(cover.Value) : IconPlaceholder;
+        var cover = FindCover(roots, request.SteamAppIds);
+        return ValueTask.FromResult<IStreamFactory?>(cover.HasValue ? new NativeFileStreamFactory(cover.Value) : null);
+    }
+
+    private static IEnumerable<AbsolutePath> FindSteamRoots(IFileSystem fileSystem)
+    {
+        // No registry on Linux; GameFinder looks in the known XDG and Flatpak locations.
+        return SteamLocationFinder.TryFindSteam(fileSystem, registry: null, NullLogger.Instance, out var steam) ? [steam] : [];
     }
 
     private static Optional<AbsolutePath> FindCover(AbsolutePath[] roots, ImmutableArray<uint> steamAppIds)
@@ -111,15 +103,5 @@ internal sealed class SteamLibraryCacheArtSource : IGameArtSource
         // More than one unexplained .jpg means the layout is not what this rule was written
         // for, so use the cover instead of guessing which is the icon.
         return candidates.Length == 1 ? candidates[0] : Optional<AbsolutePath>.None;
-    }
-
-    /// <summary>
-    /// Defers the lookup to each read: the game classes build their factories in a
-    /// constructor, which should not touch the disk, and Steam may cache art later.
-    /// </summary>
-    private sealed class LazyStreamFactory(Func<IStreamFactory> resolve) : IStreamFactory
-    {
-        public RelativePath FileName => RelativePath.Empty;
-        public ValueTask<Stream> GetStreamAsync() => resolve().GetStreamAsync();
     }
 }

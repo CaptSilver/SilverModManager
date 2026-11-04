@@ -67,6 +67,20 @@ public class DefinedGameTests
     }
 
     [Fact]
+    public void Art_IsAskedForWithTheGamesIdAndNameSoItCanDrawItsOwnPicture()
+    {
+        var (game, art) = Create(Definition());
+
+        _ = game.IconImage;
+        _ = game.TileImage;
+
+        art.IconRequest!.GameId.Should().Be(Id);
+        art.IconRequest.DisplayName.Should().Be("Defined Game");
+        art.TileRequest!.GameId.Should().Be(Id);
+        art.TileRequest.DisplayName.Should().Be("Defined Game");
+    }
+
+    [Fact]
     public void Installers_AreBuiltLazilyAndOnce()
     {
         var (game, _) = Create(Definition());
@@ -146,20 +160,22 @@ public class DefinedGameTests
 
     private sealed class RecordingArtSource : IGameArtSource
     {
-        public ImmutableArray<uint> IconIds { get; private set; }
-        public ImmutableArray<uint> TileIds { get; private set; }
+        public GameArtRequest? IconRequest { get; private set; }
+        public GameArtRequest? TileRequest { get; private set; }
+        public ImmutableArray<uint> IconIds => IconRequest?.SteamAppIds ?? default;
+        public ImmutableArray<uint> TileIds => TileRequest?.SteamAppIds ?? default;
         private readonly IStreamFactory _icon = new MemoryStreamFactory("icon.png", new MemoryStream());
         private readonly IStreamFactory _tile = new MemoryStreamFactory("tile.png", new MemoryStream());
 
-        public IStreamFactory Icon(ImmutableArray<uint> steamAppIds)
+        public IStreamFactory Icon(GameArtRequest request)
         {
-            IconIds = steamAppIds;
+            IconRequest = request;
             return _icon;
         }
 
-        public IStreamFactory Tile(ImmutableArray<uint> steamAppIds)
+        public IStreamFactory Tile(GameArtRequest request)
         {
-            TileIds = steamAppIds;
+            TileRequest = request;
             return _tile;
         }
     }

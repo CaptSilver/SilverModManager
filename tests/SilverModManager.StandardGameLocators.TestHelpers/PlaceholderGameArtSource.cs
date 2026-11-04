@@ -16,9 +16,9 @@ public sealed class PlaceholderGameArtSource : IGameArtSource
     private static readonly EmbeddedResourceStreamFactory<StubbedGame> Picture =
         new("SilverModManager.StandardGameLocators.TestHelpers.Resources.question_mark_game.png");
 
-    public IStreamFactory Tile(ImmutableArray<uint> steamAppIds) => Picture;
+    public IStreamFactory Tile(GameArtRequest request) => Picture;
 
-    public IStreamFactory Icon(ImmutableArray<uint> steamAppIds) => Picture;
+    public IStreamFactory Icon(GameArtRequest request) => Picture;
 }
 
 public static class PlaceholderGameArtSourceExtensions

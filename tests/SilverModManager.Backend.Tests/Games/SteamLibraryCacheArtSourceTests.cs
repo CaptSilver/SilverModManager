@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using FluentAssertions;
 using SilverModManager.Backend.Games;
+using SilverModManager.Sdk.Games;
 using NexusMods.Paths;
 using SilverModManager.Sdk.IO;
 
@@ -21,7 +22,17 @@ public class SteamLibraryCacheArtSourceTests
 
     private AbsolutePath Root => _fileSystem.FromUnsanitizedFullPath("/steam");
 
-    private SteamLibraryCacheArtSource CreateSource(params AbsolutePath[] roots) => new(() => roots);
+    private static Probe CreateSource(params AbsolutePath[] roots) => new(new SteamLibraryCacheArtSource(() => roots));
+
+    /// <summary>Asks the source the way the chain does, naming a game that nobody else cares about.</summary>
+    private sealed class Probe(SteamLibraryCacheArtSource source)
+    {
+        private static GameArtRequest Request(ImmutableArray<uint> ids) => new(GameId.From("Test.Game"), "Test Game", ids);
+
+        public Task<IStreamFactory?> Tile(ImmutableArray<uint> ids) => source.FindTileAsync(Request(ids)).AsTask();
+
+        public Task<IStreamFactory?> Icon(ImmutableArray<uint> ids) => source.FindIconAsync(Request(ids)).AsTask();
+    }
 
     private async Task WriteCacheFile(uint appId, string fileName, byte[] bytes, AbsolutePath? root = null)
     {
@@ -30,19 +41,14 @@ public class SteamLibraryCacheArtSourceTests
         await file.WriteAllBytesAsync(bytes);
     }
 
-    private static async Task<byte[]> ReadAll(IStreamFactory factory)
+    private static async Task<byte[]> ReadAll(Task<IStreamFactory?> lookup)
     {
-        await using var stream = await factory.GetStreamAsync();
+        var factory = await lookup;
+        factory.Should().NotBeNull();
+        await using var stream = await factory!.GetStreamAsync();
         using var memory = new MemoryStream();
         await stream.CopyToAsync(memory);
         return memory.ToArray();
-    }
-
-    private static (int Width, int Height) PngSize(byte[] png)
-    {
-        // The IHDR chunk starts at byte 16: width then height, big-endian.
-        png[..8].Should().Equal(0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A);
-        return (System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16)), System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(20)));
     }
 
     [Fact]
@@ -56,11 +62,9 @@ public class SteamLibraryCacheArtSourceTests
     }
 
     [Fact]
-    public async Task Tile_NoCacheFolder_IsThePortraitPlaceholder()
+    public async Task Tile_NoCacheFolder_HasNoAnswer()
     {
-        var bytes = await ReadAll(CreateSource(Root).Tile([413150]));
-
-        PngSize(bytes).Should().Be((600, 900));
+        (await CreateSource(Root).Tile([413150])).Should().BeNull();
     }
 
     [Fact]
@@ -85,19 +89,15 @@ public class SteamLibraryCacheArtSourceTests
     }
 
     [Fact]
-    public async Task Tile_NoSteamRoot_IsThePortraitPlaceholder()
+    public async Task Tile_NoSteamRoot_HasNoAnswer()
     {
-        var bytes = await ReadAll(CreateSource().Tile([413150]));
-
-        PngSize(bytes).Should().Be((600, 900));
+        (await CreateSource().Tile([413150])).Should().BeNull();
     }
 
     [Fact]
-    public async Task Tile_NoAppIds_IsThePortraitPlaceholder()
+    public async Task Tile_NoAppIds_HasNoAnswer()
     {
-        var bytes = await ReadAll(CreateSource(Root).Tile([]));
-
-        PngSize(bytes).Should().Be((600, 900));
+        (await CreateSource(Root).Tile([])).Should().BeNull();
     }
 
     [Fact]
@@ -157,15 +157,6 @@ public class SteamLibraryCacheArtSourceTests
     }
 
     [Fact]
-    public async Task Tile_ArtAppearsAfterTheFactoryWasCreated_IsReadOnDemand()
-    {
-        var factory = CreateSource(Root).Tile([413150]);
-        await WriteCacheFile(413150, TileFile, TileBytes);
-
-        (await ReadAll(factory)).Should().Equal(TileBytes);
-    }
-
-    [Fact]
     public async Task Icon_ClientIconPresent_StreamsTheHashNamedFile()
     {
         await WriteCacheFile(413150, ClientIconFile, IconBytes);
@@ -191,11 +182,9 @@ public class SteamLibraryCacheArtSourceTests
     }
 
     [Fact]
-    public async Task Icon_NothingCached_IsTheSquarePlaceholder()
+    public async Task Icon_NothingCached_HasNoAnswer()
     {
-        var bytes = await ReadAll(CreateSource(Root).Icon([413150]));
-
-        PngSize(bytes).Should().Be((144, 144));
+        (await CreateSource(Root).Icon([413150])).Should().BeNull();
     }
 
     [Fact]
@@ -207,16 +196,5 @@ public class SteamLibraryCacheArtSourceTests
         var bytes = await ReadAll(CreateSource(Root).Icon([1, 2]));
 
         bytes.Should().Equal(IconBytes);
-    }
-
-    [Fact]
-    public void Tile_DoesNotTouchTheFileSystemUntilStreamed()
-    {
-        var rootCalls = 0;
-        var source = new SteamLibraryCacheArtSource(() => { rootCalls++; return []; });
-
-        _ = source.Tile(ImmutableArray.Create(1u));
-
-        rootCalls.Should().Be(0);
     }
 }

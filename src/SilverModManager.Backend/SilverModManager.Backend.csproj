@@ -27,8 +27,6 @@
     
     <ItemGroup>
         <EmbeddedResource Include="../SilverModManager.App/io.github.CaptSilver.SilverModManager.desktop" />
-        <EmbeddedResource Include="Resources/game-tile-placeholder.png" />
-        <EmbeddedResource Include="Resources/game-icon-placeholder.png" />
     </ItemGroup>
 
     <ItemGroup>

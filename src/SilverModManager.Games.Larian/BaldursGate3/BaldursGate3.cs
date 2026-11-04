@@ -48,8 +48,9 @@ public class BaldursGate3 : IGame, IGameData<BaldursGate3>, IWineDllOverrideRequ
     public BaldursGate3(IServiceProvider provider)
     {
         var art = provider.GetRequiredService<IGameArtSource>();
-        IconImage = art.Icon(StoreIdentifiers.SteamAppIds);
-        TileImage = art.Tile(StoreIdentifiers.SteamAppIds);
+        var artRequest = new GameArtRequest(GameId, DisplayName, StoreIdentifiers.SteamAppIds);
+        IconImage = art.Icon(artRequest);
+        TileImage = art.Tile(artRequest);
         // One instance, so the synchronizer and the diagnostic read each pak from disk once between them.
         var modules = new Bg3PakModules(provider);
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new BaldursGate3Synchronizer(provider, this, modules));

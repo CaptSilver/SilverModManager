@@ -71,8 +71,9 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOv
     public Cyberpunk2077Game(IServiceProvider provider)
     {
         var art = provider.GetRequiredService<IGameArtSource>();
-        IconImage = art.Icon(StoreIdentifiers.SteamAppIds);
-        TileImage = art.Tile(StoreIdentifiers.SteamAppIds);
+        var artRequest = new GameArtRequest(GameId, DisplayName, StoreIdentifiers.SteamAppIds);
+        IconImage = art.Icon(artRequest);
+        TileImage = art.Tile(artRequest);
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new Cyberpunk2077Synchronizer(provider));
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
         {

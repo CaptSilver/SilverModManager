@@ -62,8 +62,9 @@ public abstract class AFromSoftGame<TSelf> : IFromSoftGame
         StoreIdentifiers = new StoreIdentifiers(TSelf.GameId) { SteamAppIds = [definition.Layout.SteamAppId] };
 
         var art = provider.GetRequiredService<IGameArtSource>();
-        IconImage = art.Icon(StoreIdentifiers.SteamAppIds);
-        TileImage = art.Tile(StoreIdentifiers.SteamAppIds);
+        var artRequest = new GameArtRequest(TSelf.GameId, TSelf.DisplayName, StoreIdentifiers.SteamAppIds);
+        IconImage = art.Icon(artRequest);
+        TileImage = art.Tile(artRequest);
 
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => CreateSynchronizer(provider));
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>

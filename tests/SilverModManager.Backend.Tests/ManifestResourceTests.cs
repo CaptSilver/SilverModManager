@@ -1,6 +1,5 @@
 using System.Reflection;
 using FluentAssertions;
-using SilverModManager.Backend.Games;
 using SilverModManager.Backend.OS;
 using SilverModManager.Sdk;
 
@@ -26,31 +25,12 @@ public class ManifestResourceTests
 
     [Fact]
     public void Test_MissingNameIsNotFound()
-        => Backend.GetManifestResourceStream(Name("Resources.game-tile-placeholder.png.missing")).Should().BeNull();
+        => Backend.GetManifestResourceStream(Name("Resources.no-such-resource")).Should().BeNull();
 
     [Fact]
     public void Test_DesktopFileConstantMatchesTheManifest()
     {
         LinuxInterop.DesktopFileResourceName.Should().Be(Name($"{ApplicationConstants.ApplicationId}.desktop"));
         Length(LinuxInterop.DesktopFileResourceName).Should().BeGreaterThan(0);
-    }
-
-    [Theory]
-    [InlineData("Resources.game-tile-placeholder.png")]
-    [InlineData("Resources.game-icon-placeholder.png")]
-    public void Test_GamePlaceholdersAreEmbedded(string suffix)
-        => Length(Name(suffix)).Should().BeGreaterThan(0);
-
-    [Fact]
-    public async Task Test_SteamArtSourceOpensItsPlaceholders()
-    {
-        // With no Steam folder to look in, both lookups fall back to the embedded placeholders, which the
-        // source names by string literal.
-        var source = new SteamLibraryCacheArtSource(() => []);
-        foreach (var factory in new[] { source.Tile([]), source.Icon([]) })
-        {
-            await using var stream = await factory.GetStreamAsync();
-            stream.Length.Should().BeGreaterThan(0);
-        }
     }
 }

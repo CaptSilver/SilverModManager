@@ -54,8 +54,9 @@ public sealed class Bannerlord : IGame, IGameData<Bannerlord>, IGameUpdateSensit
     public Bannerlord(IServiceProvider serviceProvider)
     {
         var art = serviceProvider.GetRequiredService<IGameArtSource>();
-        IconImage = art.Icon(StoreIdentifiers.SteamAppIds);
-        TileImage = art.Tile(StoreIdentifiers.SteamAppIds);
+        var artRequest = new GameArtRequest(GameId, DisplayName, StoreIdentifiers.SteamAppIds);
+        IconImage = art.Icon(artRequest);
+        TileImage = art.Tile(artRequest);
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new BannerlordLoadoutSynchronizer(serviceProvider));
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
         {

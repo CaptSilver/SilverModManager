@@ -39,10 +39,12 @@ public abstract class ABethesdaGame<TSelf> : IBethesdaGame, IGameIdentifyingFile
     private readonly Lazy<ILoadoutSynchronizer> _synchronizer;
     private readonly Lazy<ISortOrderManager> _sortOrderManager;
 
+    private GameArtRequest ArtRequest() => new(TSelf.GameId, TSelf.DisplayName, StoreIdentifiers.SteamAppIds);
+
     protected ABethesdaGame(IServiceProvider provider)
     {
-        _icon = new Lazy<IStreamFactory>(() => provider.GetRequiredService<IGameArtSource>().Icon(StoreIdentifiers.SteamAppIds));
-        _tile = new Lazy<IStreamFactory>(() => provider.GetRequiredService<IGameArtSource>().Tile(StoreIdentifiers.SteamAppIds));
+        _icon = new Lazy<IStreamFactory>(() => provider.GetRequiredService<IGameArtSource>().Icon(ArtRequest()));
+        _tile = new Lazy<IStreamFactory>(() => provider.GetRequiredService<IGameArtSource>().Tile(ArtRequest()));
         _installers = new Lazy<ILibraryItemInstaller[]>(() => CreateInstallers(provider));
         _emitters = new Lazy<IDiagnosticEmitter[]>(() => CreateEmitters(provider).ToArray());
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => CreateSynchronizer(provider));

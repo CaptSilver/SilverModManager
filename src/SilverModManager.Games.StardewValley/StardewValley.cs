@@ -43,8 +43,9 @@ public class StardewValley : IGame, IGameData<StardewValley>
     public StardewValley(IServiceProvider serviceProvider)
     {
         var art = serviceProvider.GetRequiredService<IGameArtSource>();
-        IconImage = art.Icon(StoreIdentifiers.SteamAppIds);
-        TileImage = art.Tile(StoreIdentifiers.SteamAppIds);
+        var artRequest = new GameArtRequest(GameId, DisplayName, StoreIdentifiers.SteamAppIds);
+        IconImage = art.Icon(artRequest);
+        TileImage = art.Tile(artRequest);
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new StardewValleyLoadoutSynchronizer(serviceProvider));
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
         {
