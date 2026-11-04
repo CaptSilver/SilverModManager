@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Library.Sources;
+using SilverModManager.Library.Verbs;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
@@ -26,7 +27,8 @@ internal static class LockVerbs
         .AddModule("library", "Commands for the files in the library")
         .AddVerb(() => Verify)
         .AddVerb(() => ExportLock)
-        .AddVerb(() => ImportLock);
+        .AddVerb(() => ImportLock)
+        .AddVerb(() => LibraryListVerbs.List);
 
     [Verb("library verify", "Checks that the library holds every file of a lock with the locked sha256; exits 1 if any does not")]
     private static async Task<int> Verify(
@@ -58,11 +60,11 @@ internal static class LockVerbs
         return report.ExitCode;
     }
 
-    private sealed record ExportReport(string Path, string[] Entries);
+    private sealed record ExportReport(string Path, string[] Entries, string[] Skipped);
 
     private sealed record ImportReport(string[] Verified, string[] Skipped, string[] Failed, string[] Installed);
 
-    [Verb("library export-lock", "Writes the Nexus Mods, GitHub release and Thunderstore files of a loadout to a lock file; source = \"thunderstore\" entries are new to erm and it will not read them")]
+    [Verb("library export-lock", "Writes the Nexus Mods, GitHub release and Thunderstore files of a loadout to a lock file, skipping and reporting a file with no SHA-256 and no bytes in the file store; source = \"thunderstore\" entries are new to erm and it will not read them")]
     private static async Task<int> ExportLock(
         [Injected] IRenderer renderer,
         [Injected] LockExport export,
@@ -73,14 +75,16 @@ internal static class LockVerbs
     {
         try
         {
-            var lockFile = await export.FromLoadout(loadout, token);
+            var skipped = new List<string>();
+            var lockFile = await export.FromLoadout(loadout, token, skipped);
             await File.WriteAllTextAsync(output.ToString(), lockFile.Write(), token);
             if (json)
             {
-                await renderer.TextLine(JsonSerializer.Serialize(new ExportReport(output.ToString(), lockFile.Entries.Select(e => e.Id).ToArray()), CliJson.Options));
+                await renderer.TextLine(JsonSerializer.Serialize(new ExportReport(output.ToString(), lockFile.Entries.Select(e => e.Id).ToArray(), skipped.ToArray()), CliJson.Options));
                 return 0;
             }
 
+            foreach (var message in skipped) await renderer.TextLine($"[skipped] {message}");
             await renderer.TextLine($"Wrote {lockFile.Entries.Count} entries to {output}.");
             return 0;
         }

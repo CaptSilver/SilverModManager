@@ -39,6 +39,25 @@ public sealed class LibraryFileDigests(IFileStore fileStore, IConnection connect
     }
 
     /// <summary>
+    /// Whether the file store holds the file's bytes.
+    /// </summary>
+    public ValueTask<bool> HasBytes(LibraryFile.ReadOnly file) => fileStore.HaveFile(file.Identity);
+
+    /// <summary>
+    /// True for a row that has no SHA-256 and whose bytes are not in the file store, such as the record of a download
+    /// that never finished. Nothing can pin or verify it, and unlike <see cref="EnsureSha256"/> this never writes.
+    /// </summary>
+    public async ValueTask<bool> IsDangling(LibraryFile.ReadOnly file)
+    {
+        if (file.Sha256.HasValue) return false;
+
+        var current = LibraryFile.Load(connection.Db, file.Id);
+        if (current.IsValid() && current.Sha256.HasValue) return false;
+
+        return !await HasBytes(file);
+    }
+
+    /// <summary>
     /// Returns the recorded xxHash64, or hashes the bytes from the file store, writes the value back and returns
     /// it. Returns null when the store holds no bytes for the file, and always for an archive: the store never
     /// holds an archive's own bytes, so a row from before the value was recorded cannot be back-filled.

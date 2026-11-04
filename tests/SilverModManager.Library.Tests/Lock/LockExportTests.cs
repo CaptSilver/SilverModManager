@@ -18,11 +18,15 @@ public class LockExportTests(IConnection connection)
 {
     private readonly LockFixtures _fixtures = new(connection);
 
-    private LockExport Export() => new([
-        new NexusLibrarySource(new ServiceCollection().BuildServiceProvider(), new LibraryFileDigests(Substitute.For<IFileStore>(), connection)),
-        new GitHubLibrarySource(new ServiceCollection().BuildServiceProvider()),
-        new ThunderstoreLibrarySource(new ServiceCollection().BuildServiceProvider()),
-    ]);
+    private LockExport Export()
+    {
+        var digests = new LibraryFileDigests(Substitute.For<IFileStore>(), connection);
+        return new LockExport([
+            new NexusLibrarySource(new ServiceCollection().BuildServiceProvider(), digests),
+            new GitHubLibrarySource(new ServiceCollection().BuildServiceProvider()),
+            new ThunderstoreLibrarySource(new ServiceCollection().BuildServiceProvider()),
+        ], digests);
+    }
 
     [Fact]
     public async Task ANexusItemAndAGitHubItemExportInErmsShape()
@@ -117,15 +121,31 @@ public class LockExportTests(IConnection connection)
     }
 
     [Fact]
-    public async Task AFileWithoutADigestThatTheStoreCannotSupplyFailsTheExportNamingTheFile()
+    public async Task AFileWithoutADigestThatTheStoreCannotSupplyIsSkippedAndReportedNamingTheFile()
     {
         var loadout = await _fixtures.CreateLoadout();
         var file = await _fixtures.AddNexusFile("NoDigest-1-0.zip", "bytes", sha256: null, "No Digest", "1.0", modId: 1, fileId: 2);
         await _fixtures.Link(loadout, file, "No Digest");
+        var skipped = new List<string>();
 
-        var act = async () => await Export().FromLoadout(loadout, TestContext.Current.CancellationToken);
+        var lockFile = await Export().FromLoadout(loadout, TestContext.Current.CancellationToken, skipped);
 
-        (await act.Should().ThrowAsync<LockException>()).Which.Message.Should().Contain("NoDigest-1-0.zip");
+        lockFile.Entries.Should().BeEmpty();
+        skipped.Should().ContainSingle().Which.Should().Contain("NoDigest-1-0.zip").And.Contain("No Digest");
+    }
+
+    [Fact]
+    public async Task ADanglingFileNoSourceOwnsIsSkippedToo()
+    {
+        var loadout = await _fixtures.CreateLoadout();
+        var file = await _fixtures.AddLibraryFile("unfinished.tmp", "bytes", sha256: null);
+        await _fixtures.Link(loadout, file, "Unfinished");
+        var skipped = new List<string>();
+
+        var lockFile = await Export().FromLoadout(loadout, TestContext.Current.CancellationToken, skipped);
+
+        lockFile.Entries.Should().BeEmpty();
+        skipped.Should().ContainSingle().Which.Should().Contain("unfinished.tmp");
     }
 
     [Fact]

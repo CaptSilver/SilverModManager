@@ -25,6 +25,7 @@ using NSubstitute;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Cli;
 using SilverModManager.Wabbajack.Library;
+using SilverModManager.Wabbajack.Models;
 using Xunit.DependencyInjection.Logging;
 
 namespace SilverModManager.CLI.Tests;
@@ -56,6 +57,9 @@ public class Startup
                 .AddFileHashes()
                 .AddCLI()
                 .AddWabbajackVerbs()
+                // The modlist model and kind are what `library list` needs to tell a modlist from other library files.
+                .AddWabbajackModlistLibraryFileModel()
+                .AddSingleton<SilverModManager.Library.Listing.ILibraryItemKind, WabbajackModlistKind>()
                 .AddSingleton<INestedArchiveOpener, BsaMemberOpener>()
                 // The verbs run against doubles; WabbajackBatchVerbTests sets them up.
                 .AddSingleton(Substitute.For<IModlistCatalog>())

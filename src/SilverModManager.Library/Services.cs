@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Library;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SilverModManager.DataModel.SchemaVersions;
 using SilverModManager.Library.Inference;
+using SilverModManager.Library.Listing;
 using SilverModManager.Library.Lock;
 using SilverModManager.Library.Migrations;
 using SilverModManager.Library.Verbs;
@@ -30,6 +31,7 @@ public static class Services
             .AddSingleton<ILibraryService, LibraryService>()
             .AddSingleton<IDownloadsService, DownloadsService>()
             .AddSingleton<LibraryFileDigests>()
+            .AddTransient<LibraryListing>()
             .AddSingleton<IGitHubReleaseAssetSource, GitHubReleaseAssetSource>()
             .AddSingleton<IThunderstoreSource, ThunderstoreSource>()
             .AddSingleton<IThunderstoreInstaller, ThunderstoreInstaller>()

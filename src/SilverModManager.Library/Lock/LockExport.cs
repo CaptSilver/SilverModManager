@@ -13,14 +13,15 @@ namespace SilverModManager.Library.Lock;
 /// Turns the mods of a loadout into a <see cref="LockFile"/>.
 /// </summary>
 [PublicAPI]
-public sealed class LockExport(IEnumerable<ILibrarySource> sources)
+public sealed class LockExport(IEnumerable<ILibrarySource> sources, LibraryFileDigests digests)
 {
     /// <summary>
-    /// Exports every enabled group that links a file one of the library sources owns. A group that links anything else, or
-    /// a file whose digest cannot be established, fails the export: a lock that quietly left a mod out, or pinned it
-    /// without a digest, would be worse than none.
+    /// Exports every enabled group that links a file one of the library sources owns. A group that links anything else
+    /// fails the export: a lock that quietly left a mod out would be worse than none. The exception is a dangling
+    /// file (no SHA-256 and no bytes in the file store, such as an unfinished download's record): nothing can pin it,
+    /// so it is left out and its message added to <paramref name="skipped"/>.
     /// </summary>
-    public async ValueTask<LockFile> FromLoadout(Loadout.ReadOnly loadout, CancellationToken cancellationToken = default)
+    public async ValueTask<LockFile> FromLoadout(Loadout.ReadOnly loadout, CancellationToken cancellationToken = default, ICollection<string>? skipped = null)
     {
         var entries = new Dictionary<string, LockEntry>(StringComparer.Ordinal);
 
@@ -35,7 +36,19 @@ public sealed class LockExport(IEnumerable<ILibrarySource> sources)
             if (!libraryItem.TryGetAsLibraryFile(out var file))
                 throw new LockException($"{MarkdownText.Code(groupName)} is not linked to a downloaded file, so there is nothing to pin.");
 
-            var entry = await ToEntry(groupName, libraryItem, file, cancellationToken);
+            LockEntry entry;
+            try
+            {
+                entry = await ToEntry(groupName, libraryItem, file, cancellationToken);
+            }
+            catch (LockException)
+            {
+                if (!await digests.IsDangling(file)) throw;
+
+                skipped?.Add($"{MarkdownText.Code(groupName)} ({MarkdownText.Code(file.FileName)}) has no SHA-256 and its bytes are not in the file store, so it cannot be pinned.");
+                continue;
+            }
+
             if (!entries.TryAdd(entry.Id, entry))
                 throw new LockException($"{MarkdownText.Code(groupName)} ({MarkdownText.Code(file.FileName)}) and {MarkdownText.Code(entries[entry.Id].Asset)} both become the lock id {MarkdownText.Code(entry.Id)}.");
         }
