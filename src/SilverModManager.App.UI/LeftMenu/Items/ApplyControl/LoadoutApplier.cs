@@ -28,7 +28,12 @@ public static class LoadoutApplier
         {
             using var origin = SyncOrigin.Begin(trigger);
             await Task.Run(() => syncService.Synchronize(loadoutId));
-            notificationService.ShowToast(Language.ToastNotification_Applied__0__successfully, ToastNotificationVariant.Success);
+            // Builds the whole sync tree, so it stays off the UI thread.
+            var unwritable = await Task.Run(() => syncService.GetUnwritableFiles(loadoutId));
+            if (unwritable.Count > 0)
+                notificationService.ShowToast(string.Format(Language.ToastNotification_Applied_With_Unrestorable, unwritable.Count), ToastNotificationVariant.Neutral, TimeSpan.FromSeconds(12));
+            else
+                notificationService.ShowToast(Language.ToastNotification_Applied__0__successfully, ToastNotificationVariant.Success);
             return true;
         }
         catch (Exception e) when (e is not OperationCanceledException)

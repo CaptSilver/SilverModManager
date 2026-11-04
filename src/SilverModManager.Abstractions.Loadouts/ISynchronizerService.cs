@@ -62,6 +62,22 @@ public interface ISynchronizerService
     public FileDiffTree GetApplyDiffTree(LoadoutId loadout);
     
     /// <summary>
+    /// The files the loadout names that an Apply cannot write: their bytes are not in the file store and the game
+    /// folder does not hold them. They are not pending work. Read from the same disk states as <see cref="GetApplyDiffTree"/>.
+    /// </summary>
+    public IReadOnlyList<UnwritableFile> GetUnwritableFiles(LoadoutId loadout);
+
+    /// <summary>
+    /// Settles unwritable files without applying anything else, waiting its turn like <see cref="Synchronize"/>.
+    /// <see cref="UnwritableResolution.KeepDiskFile"/> backs up the file on disk and makes it the loadout's version of
+    /// the path; <see cref="UnwritableResolution.Forget"/> records a deletion for a file that is not on disk. Either
+    /// way the file stops showing as unwritable.
+    /// </summary>
+    /// <param name="paths">The files to settle; null settles every one the resolution fits.</param>
+    /// <throws cref="UnwritableResolutionRefusedException">Thrown when no file fits, with the reason for each.</throws>
+    public Task<UnwritableResolutionResult> ResolveUnwritableFiles(LoadoutId loadout, IReadOnlyCollection<GamePath>? paths, UnwritableResolution resolution, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Returns the last applied loadout for a given game installation.
     /// </summary>
     public bool TryGetLastAppliedLoadout(GameInstallation gameInstallation, out Loadout.ReadOnly loadout);

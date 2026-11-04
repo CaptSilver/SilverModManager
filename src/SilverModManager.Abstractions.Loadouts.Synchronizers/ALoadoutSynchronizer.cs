@@ -885,6 +885,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         job?.SetStatus(SyncPhases.RecordingChanges);
+        if (job is not null) job.UnwritableFiles = UnwritableFiles.Of(syncTree);
         
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastSyncedLoadout, loadout.Id);
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastSyncedLoadoutTransaction, EntityId.From(tx.ThisTxId.Value));
@@ -1605,7 +1606,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         {
             if (!node.Actions.HasFlag(Actions.WarnOfUnableToExtract))
                 continue;
-            Logger.LogWarning("Unable to extract {Path}", path);
+            Logger.LogWarning("Unable to extract {Path}: no copy of it is kept and it is {Why}", path, UnwritableFiles.ReasonOf(node) == UnwritableReason.NotOnDisk ? "not on disk" : "on disk with different contents");
         }
     }
 
@@ -1873,6 +1874,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // A file with no archive to extract it from is only a warning to an apply, so it is not work until the
         // archive is back and the same node maps to an extraction.
         var pending = syncTree.Where(n => n.Value.Actions != Actions.DoNothing && n.Value.Actions != Actions.WarnOfUnableToExtract).ToList();
+        if (Logger.IsEnabled(LogLevel.Trace))
+        {
+            foreach (var (path, node) in pending)
+                Logger.LogTrace("Pending in loadout {LoadoutId}: {Path} ({Actions})", loadout.LoadoutId, path, node.Actions);
+        }
+
         if (pending.Count == 0) return new SynchronizeEvaluation(false, waitsForArchive);
         if (!pending.All(n => IsIntrinsicWriteOfAnUntouchedFile(n.Value))) return new SynchronizeEvaluation(true, waitsForArchive);
 
@@ -1943,11 +1950,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             }
             else if (actions.HasFlag(Actions.WarnOfUnableToExtract))
             {
+                // Nothing can be written for it, so the preview does not offer it as an addition.
                 entry = new DiskDiffEntry
                 {
                     Identity = node.Loadout.Identity,
                     Size = node.Loadout.Size,
-                    ChangeType = FileChangeType.Added,
+                    ChangeType = FileChangeType.Unrestorable,
                     GamePath = path,
                 };
             }

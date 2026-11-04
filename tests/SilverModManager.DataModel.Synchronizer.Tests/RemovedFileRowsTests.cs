@@ -110,7 +110,7 @@ public class RemovedFileRowsTests(ITestOutputHelper helper) : AStubbedGameTest<R
     {
         var loadout = await CreateLoadout();
         await AddModFile(loadout, "Hollow", ModFile, "no bytes in the store", storeBytes: false);
-        ChangeOf(loadout, ModFile).Should().Be(FileChangeType.Added);
+        ChangeOf(loadout, ModFile).Should().Be(FileChangeType.Unrestorable, "no apply can write it, so it is listed but not as an addition");
 
         await Remover.Remove(Request(loadout, ModFile), includeLocked: true);
 

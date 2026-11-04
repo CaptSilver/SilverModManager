@@ -27,4 +27,10 @@ public enum FileChangeType : byte
     /// This file path was added and was not present before
     /// </summary>
     Added,
+
+    /// <summary>
+    /// The loadout names a file at this path that no Apply can write, because its bytes are not in the file store and
+    /// not on disk (or the disk holds other bytes). It is not pending work: nothing will change when the loadout is applied.
+    /// </summary>
+    Unrestorable,
 }

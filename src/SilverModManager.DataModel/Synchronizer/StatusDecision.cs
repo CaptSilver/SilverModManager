@@ -26,14 +26,16 @@ internal static class StatusDecision
     /// Decides without a sync tree. The loadout is current while the newest of its inputs is no later than the apply,
     /// it has as many input datoms as right after the apply, and the disk index has not been rescanned since: the
     /// same inputs and the same disk render the same tree, so the apply would find nothing to do.
-    /// While a file is known to wait for an archive (the last apply left it out, or the last comparison found
-    /// one) the answer is never current on this evidence: the archive coming back changes nothing in the loadout,
-    /// and only a comparison can see it.
+    /// When the file store has changed since a file was last known to wait for an archive, the answer is never
+    /// current on this evidence: the archive coming back changes nothing in the loadout, and only a comparison can
+    /// see it. A file still waiting with no change to the file store since the last look is covered by the inputs
+    /// like any other state of the loadout, so an apply that could write nothing reads current.
     /// The database head is deliberately not consulted: commits to anything else (diagnostics, the library, another
     /// game) move it without changing what an apply writes.
     /// </summary>
     /// <param name="inputsNow">The loadout's inputs now; read only when the answer depends on them.</param>
     /// <param name="inputsAtApply">The loadout's inputs as of the apply; read only when the answer depends on them.</param>
+    /// <param name="archiveMayHaveReturned">A file waits for an archive and the file store has changed since it was last looked at.</param>
     public static StatusVerdict Decide(
         bool busy,
         bool loadoutExists,
@@ -42,14 +44,14 @@ internal static class StatusDecision
         TxId lastScanTx,
         Func<SyncInputs> inputsNow,
         Func<SyncInputs> inputsAtApply,
-        bool waitsForArchive = false)
+        bool archiveMayHaveReturned = false)
     {
         if (!loadoutExists) return StatusVerdict.OtherLoadoutSynced;
         if (busy) return StatusVerdict.Pending;
         if (lastApplied.Id != loadoutId && lastApplied != default(LoadoutWithTxId)) return StatusVerdict.OtherLoadoutSynced;
         if (lastApplied.Id != loadoutId) return StatusVerdict.Compare;
 
-        if (waitsForArchive) return StatusVerdict.Compare;
+        if (archiveMayHaveReturned) return StatusVerdict.Compare;
         if (lastScanTx > lastApplied.Tx) return StatusVerdict.Compare;
 
         var now = inputsNow();

@@ -25,8 +25,10 @@ namespace SilverModManager.Games.CreationEngine;
 /// on/off switches from the loadout's plugin sort order; this only renders them and never writes to the database.
 /// A game can have several such files (plugins.txt beside loadorder.txt), each in its own <see cref="IPluginListCodec"/>.
 /// A codec that rewrites an existing file (Morrowind.ini, openmw.cfg) gets the current file to work on.
+/// The Apply button's status renders it to see whether the last apply's bytes would change; a render that fails
+/// (a plugin header nobody can read) counts as pending.
 /// </summary>
-public class PluginsFile : IIntrinsicFileWithReset
+public class PluginsFile : IIntrinsicFileWithReset, IIntrinsicFileRenderedFromLoadout
 {
     private readonly ICreationEngineGame _game;
     private readonly IPluginListCodec _codec;

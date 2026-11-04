@@ -61,6 +61,7 @@ public partial class FileTreeNodeView : ReactiveUserControl<IFileTreeNodeViewMod
                 EntryIcon.Classes.Add("Critical");
                 FileNameTextBlock.TextDecorations = TextDecorations.Strikethrough;
                 break;
+            case FileChangeType.Unrestorable:
             case FileChangeType.None:
                 break;
             default:

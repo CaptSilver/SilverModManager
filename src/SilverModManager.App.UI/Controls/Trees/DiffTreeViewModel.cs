@@ -95,6 +95,7 @@ public partial class DiffTreeViewModel : AViewModel<IFileTreeViewModel>, IFileTr
         uint addedFileCount = 0;
         uint modifiedFileCount = 0;
         uint deletedFileCount = 0;
+        uint unrestorableFileCount = 0;
         ulong operationSize = 0;
 
         var locations = loadout.InstallationInstance.Locations;
@@ -159,8 +160,8 @@ public partial class DiffTreeViewModel : AViewModel<IFileTreeViewModel>, IFileTr
                 parentNode.FileSize += fileSize;
                 parentNode.FileCount++;
 
-                // If file is changed and parent is not changed, mark parent as modified
-                if (changeType == FileChangeType.None || parentNode.ChangeType != FileChangeType.None)
+                // If file is changed and parent is not changed, mark parent as modified. A file nothing can write is no change.
+                if (changeType is FileChangeType.None or FileChangeType.Unrestorable || parentNode.ChangeType != FileChangeType.None)
                     continue;
                 parentNode.ChangeType = FileChangeType.Modified;
                 parentNode.IsExpanded = true;
@@ -174,19 +175,20 @@ public partial class DiffTreeViewModel : AViewModel<IFileTreeViewModel>, IFileTr
                 loadoutFileSize += fileSize;
             }
 
-            if (changeType != FileChangeType.Added)
+            if (changeType is not (FileChangeType.Added or FileChangeType.Unrestorable))
             {
                 // File is part of disk
                 diskFileCount++;
                 diskFileSize += fileSize;
             }
 
-            if (changeType != FileChangeType.None)
+            if (changeType is not (FileChangeType.None or FileChangeType.Unrestorable))
                 operationSize += fileSize;
 
             addedFileCount += changeType == FileChangeType.Added ? 1u : 0u;
             modifiedFileCount += changeType == FileChangeType.Modified ? 1u : 0u;
             deletedFileCount += changeType == FileChangeType.Removed ? 1u : 0u;
+            unrestorableFileCount += changeType == FileChangeType.Unrestorable ? 1u : 0u;
 
             fileViewModelNodes.Add(gamePath, model);
         }
@@ -214,6 +216,8 @@ public partial class DiffTreeViewModel : AViewModel<IFileTreeViewModel>, IFileTr
                         deletedFileCount
                     )
                 );
+                if (unrestorableFileCount > 0)
+                    innerList.Add(string.Format(Language.DiffTreeViewModel_StatusBar__Unrestorable, unrestorableFileCount));
                 innerList.Add(string.Format(Language.DiffTreeViewModel_StatusBar__Data_to_process___0_,
                         ByteSize.FromBytes(operationSize).ToString()
                     )

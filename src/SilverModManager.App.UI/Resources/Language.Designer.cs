@@ -6188,5 +6188,104 @@ namespace SilverModManager.App.UI.Resources {
                 return ResourceManager.GetString("DiagnosticAction_ReapplyCollectionOrder", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No copy kept.
+        /// </summary>
+        public static string IFileTreeNodeViewModel_ToFormattedChangeState_Unrestorable {
+            get {
+                return ResourceManager.GetString("IFileTreeNodeViewModel_ToFormattedChangeState_Unrestorable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot be restored: no copy of this file is kept, so Apply leaves it alone.
+        /// </summary>
+        public static string IFileTreeNodeViewModel_FormattedChangeStateToolTip_Unrestorable {
+            get {
+                return ResourceManager.GetString("IFileTreeNodeViewModel_FormattedChangeStateToolTip_Unrestorable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot be restored (no copy kept): {0}.
+        /// </summary>
+        public static string DiffTreeViewModel_StatusBar__Unrestorable {
+            get {
+                return ResourceManager.GetString("DiffTreeViewModel_StatusBar__Unrestorable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to These files cannot be restored: no copy of them is kept, so Apply leaves them alone..
+        /// </summary>
+        public static string ApplyDiff_Unwritable_Header {
+            get {
+                return ResourceManager.GetString("ApplyDiff_Unwritable_Header", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} (not in the game folder).
+        /// </summary>
+        public static string ApplyDiff_Unwritable_NotOnDisk {
+            get {
+                return ResourceManager.GetString("ApplyDiff_Unwritable_NotOnDisk", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} (the game folder has a different file).
+        /// </summary>
+        public static string ApplyDiff_Unwritable_DifferentOnDisk {
+            get {
+                return ResourceManager.GetString("ApplyDiff_Unwritable_DifferentOnDisk", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Keep the file on disk.
+        /// </summary>
+        public static string ApplyDiff_Unwritable_Keep {
+            get {
+                return ResourceManager.GetString("ApplyDiff_Unwritable_Keep", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Forget it.
+        /// </summary>
+        public static string ApplyDiff_Unwritable_Forget {
+            get {
+                return ResourceManager.GetString("ApplyDiff_Unwritable_Forget", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The files are settled..
+        /// </summary>
+        public static string ApplyDiff_Unwritable_Toast {
+            get {
+                return ResourceManager.GetString("ApplyDiff_Unwritable_Toast", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to settling files with no kept copy.
+        /// </summary>
+        public static string ApplyDiff_Unwritable_Activity {
+            get {
+                return ResourceManager.GetString("ApplyDiff_Unwritable_Activity", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Applied, but {0} files cannot be restored because no copy of them is kept. The Apply preview lists them..
+        /// </summary>
+        public static string ToastNotification_Applied_With_Unrestorable {
+            get {
+                return ResourceManager.GetString("ToastNotification_Applied_With_Unrestorable", resourceCulture);
+            }
+        }
     }
 }

@@ -153,6 +153,20 @@ public interface ILoadoutSynchronizer
     /// in the loadout shows.
     /// </summary>
     public ValueTask<SynchronizeEvaluation> EvaluateSynchronize(Loadout.ReadOnly loadout, IEnumerable<PathPartPair> previousState, IEnumerable<PathPartPair> lastScannedState);
+
+    /// <summary>
+    /// The files the loadout names that an apply cannot write: their bytes are not in the file store and the game
+    /// folder does not hold them. They are not pending work, and the player settles them with
+    /// <see cref="ResolveUnwritableFiles"/>.
+    /// </summary>
+    public IReadOnlyList<UnwritableFile> FindUnwritableFiles(Loadout.ReadOnly loadout, IEnumerable<PathPartPair> previousState, IEnumerable<PathPartPair> lastScannedState);
+
+    /// <summary>
+    /// Settles unwritable files in place, without applying the rest of the loadout. Reads the game folder as it is now.
+    /// </summary>
+    /// <param name="paths">The files to settle; null settles every one the resolution fits.</param>
+    /// <param name="resolution">What to do with them. A file the resolution does not fit is skipped and reported.</param>
+    public Task<UnwritableResolutionResult> ResolveUnwritableFiles(Loadout.ReadOnly loadout, IReadOnlyCollection<GamePath>? paths, UnwritableResolution resolution, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Computes the difference between a loadout and a disk state, assuming the loadout to be the newer state.

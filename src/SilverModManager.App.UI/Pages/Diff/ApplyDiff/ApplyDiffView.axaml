@@ -14,7 +14,7 @@
         <applyDiff:ApplyDiffDesignViewModel />
     </Design.DataContext>
 
-    <Grid x:Name="RootGrid" RowDefinitions="Auto, Auto, *">
+    <Grid x:Name="RootGrid" RowDefinitions="Auto, Auto, Auto, *">
         <Grid.KeyBindings>
             <KeyBinding Gesture="Delete" />
         </Grid.KeyBindings>
@@ -56,7 +56,30 @@
             </StackPanel>
         </Border>
 
-        <reactiveUi:ViewModelViewHost Grid.Row="2" x:Name="TreeViewHost">
+        <Border Grid.Row="2" x:Name="UnwritableNotice" IsVisible="False" Padding="16,8" Margin="0,0,0,8">
+            <StackPanel Spacing="6">
+                <TextBlock Text="{x:Static resources:Language.ApplyDiff_Unwritable_Header}" TextWrapping="Wrap" />
+                <ItemsControl x:Name="UnwritableList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="applyDiff:UnwritableFileNotice">
+                            <TextBlock Text="{Binding Text}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <controls:StandardButton x:Name="KeepDiskFilesButton"
+                                             Text="{x:Static resources:Language.ApplyDiff_Unwritable_Keep}"
+                                             Size="Small"
+                                             Fill="WeakAlt" />
+                    <controls:StandardButton x:Name="ForgetFilesButton"
+                                             Text="{x:Static resources:Language.ApplyDiff_Unwritable_Forget}"
+                                             Size="Small"
+                                             Fill="WeakAlt" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <reactiveUi:ViewModelViewHost Grid.Row="3" x:Name="TreeViewHost">
             <reactiveUi:ViewModelViewHost.ContextFlyout>
                 <MenuFlyout>
                     <MenuItem x:Name="MenuItemRemove" Classes="Critical" Header="{x:Static resources:Language.ApplyDiff_Remove}">
@@ -67,7 +90,7 @@
                 </MenuFlyout>
             </reactiveUi:ViewModelViewHost.ContextFlyout>
         </reactiveUi:ViewModelViewHost>
-        <TextBlock Grid.Row="2" x:Name="FailedText"
+        <TextBlock Grid.Row="3" x:Name="FailedText"
                    Text="{x:Static resources:Language.ApplyDiff_LoadFailed}"
                    IsVisible="False"
                    TextWrapping="Wrap"

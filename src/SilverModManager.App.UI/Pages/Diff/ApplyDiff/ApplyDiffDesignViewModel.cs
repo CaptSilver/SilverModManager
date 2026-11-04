@@ -1,5 +1,6 @@
 using System.Reactive;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk.Games;
@@ -36,4 +37,13 @@ public class ApplyDiffDesignViewModel : APageViewModel<IApplyDiffViewModel>, IAp
     ];
 
     public ReactiveCommand<Unit, Unit> RemoveStrayFilesCommand { get; } = ReactiveCommand.Create(() => { });
+
+    public IReadOnlyList<UnwritableFileNotice> UnwritableFiles { get; } =
+    [
+        new(new UnwritableFile(new GamePath(LocationId.Game, "Data/Textures/old.dds"), UnwritableReason.NotOnDisk)),
+        new(new UnwritableFile(new GamePath(LocationId.Game, "Data/Meshes/body.nif"), UnwritableReason.DifferentOnDisk)),
+    ];
+
+    public ReactiveCommand<Unit, Unit> KeepDiskFilesCommand { get; } = ReactiveCommand.Create(() => { });
+    public ReactiveCommand<Unit, Unit> ForgetFilesCommand { get; } = ReactiveCommand.Create(() => { });
 }

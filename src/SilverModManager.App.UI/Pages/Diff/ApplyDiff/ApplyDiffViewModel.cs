@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.App.UI.Controls.Trees.Files;
 using SilverModManager.App.UI.Dialog;
@@ -48,6 +49,15 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
     /// <inheritdoc />
     public ReactiveCommand<Unit, Unit> RemoveStrayFilesCommand { get; }
 
+    /// <inheritdoc />
+    [Reactive] public partial IReadOnlyList<UnwritableFileNotice> UnwritableFiles { get; private set; } = [];
+
+    /// <inheritdoc />
+    public ReactiveCommand<Unit, Unit> KeepDiskFilesCommand { get; }
+
+    /// <inheritdoc />
+    public ReactiveCommand<Unit, Unit> ForgetFilesCommand { get; }
+
     // True while an apply is running, which is the synchronizer's Pending state. NeedsSync is the normal state
     // whenever the preview has something to show, so it must not disable the command.
     private readonly BehaviorSubject<bool> _applyRunning = new(false);
@@ -82,6 +92,13 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
         var strayFilesPresent = this.WhenAnyValue(vm => vm.StrayFiles).Select(files => files.Count > 0);
         RemoveStrayFilesCommand = ReactiveCommand.CreateFromTask(RemoveStrayFilesAsync,
             strayFilesPresent.CombineLatest(_applyRunning, (present, running) => present && !running));
+
+        var anyOnDisk = this.WhenAnyValue(vm => vm.UnwritableFiles).Select(files => files.Any(f => f.File.Reason == UnwritableReason.DifferentOnDisk));
+        var anyMissing = this.WhenAnyValue(vm => vm.UnwritableFiles).Select(files => files.Any(f => f.File.Reason == UnwritableReason.NotOnDisk));
+        KeepDiskFilesCommand = ReactiveCommand.CreateFromTask(() => ResolveAsync(UnwritableResolution.KeepDiskFile),
+            anyOnDisk.CombineLatest(_applyRunning, (present, running) => present && !running));
+        ForgetFilesCommand = ReactiveCommand.CreateFromTask(() => ResolveAsync(UnwritableResolution.Forget),
+            anyMissing.CombineLatest(_applyRunning, (present, running) => present && !running));
 
         // The status only matters while the page is on screen, so it is followed from activation to deactivation.
         this.WhenActivated(disposables =>
@@ -134,8 +151,29 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
         // The rebuilt tree holds new node instances, so nothing selected before is still in it. Cleared here rather
         // than in Refresh: the selection feeds the Delete button's can-execute, which has to tick on the UI thread.
         diffTreeViewModel.SelectedNodes = [];
+        UnwritableFiles = (await Task.Run(() => _serviceProvider.GetRequiredService<ISynchronizerService>().GetUnwritableFiles(_loadoutId)))
+            .Select(file => new UnwritableFileNotice(file))
+            .ToArray();
         LoadFailed = false;
         BodyViewModel = diffTreeViewModel;
+    }
+
+    // Settles every unwritable file the resolution fits, then rebuilds the tree: the rows leave it with the notice.
+    // Every failure, a refusal included, goes to the error presenter, since an exception out of a command lands in a
+    // stream nobody listens to.
+    private async Task ResolveAsync(UnwritableResolution resolution)
+    {
+        try
+        {
+            var service = _serviceProvider.GetRequiredService<ISynchronizerService>();
+            await Task.Run(() => service.ResolveUnwritableFiles(_loadoutId, null, resolution));
+            _serviceProvider.GetRequiredService<IWindowNotificationService>().ShowToast(Language.ApplyDiff_Unwritable_Toast);
+            if (_fileTreeViewModel is { } tree) await RefreshAsync(tree);
+        }
+        catch (Exception e)
+        {
+            await _serviceProvider.GetRequiredService<IErrorPresenter>().Report(e, Language.ApplyDiff_Unwritable_Activity);
+        }
     }
 
     private static IReadOnlyList<StrayFileNotice> StrayFilesOf(IEnumerable<Diagnostic> diagnostics) => diagnostics

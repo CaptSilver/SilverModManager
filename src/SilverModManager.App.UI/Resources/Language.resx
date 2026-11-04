@@ -2133,4 +2133,37 @@ Use it for {0}?</value>
     <data name="DiagnosticAction_ReapplyCollectionOrder" xml:space="preserve">
         <value>Apply the collection's load order again</value>
     </data>
+    <data name="IFileTreeNodeViewModel_ToFormattedChangeState_Unrestorable" xml:space="preserve">
+        <value>No copy kept</value>
+    </data>
+    <data name="IFileTreeNodeViewModel_FormattedChangeStateToolTip_Unrestorable" xml:space="preserve">
+        <value>Cannot be restored: no copy of this file is kept, so Apply leaves it alone</value>
+    </data>
+    <data name="DiffTreeViewModel_StatusBar__Unrestorable" xml:space="preserve">
+        <value>Cannot be restored (no copy kept): {0}</value>
+    </data>
+    <data name="ApplyDiff_Unwritable_Header" xml:space="preserve">
+        <value>These files cannot be restored: no copy of them is kept, so Apply leaves them alone.</value>
+    </data>
+    <data name="ApplyDiff_Unwritable_NotOnDisk" xml:space="preserve">
+        <value>{0} (not in the game folder)</value>
+    </data>
+    <data name="ApplyDiff_Unwritable_DifferentOnDisk" xml:space="preserve">
+        <value>{0} (the game folder has a different file)</value>
+    </data>
+    <data name="ApplyDiff_Unwritable_Keep" xml:space="preserve">
+        <value>Keep the file on disk</value>
+    </data>
+    <data name="ApplyDiff_Unwritable_Forget" xml:space="preserve">
+        <value>Forget it</value>
+    </data>
+    <data name="ApplyDiff_Unwritable_Toast" xml:space="preserve">
+        <value>The files are settled.</value>
+    </data>
+    <data name="ApplyDiff_Unwritable_Activity" xml:space="preserve">
+        <value>settling files with no kept copy</value>
+    </data>
+    <data name="ToastNotification_Applied_With_Unrestorable" xml:space="preserve">
+        <value>Applied, but {0} files cannot be restored because no copy of them is kept. The Apply preview lists them.</value>
+    </data>
 </root>

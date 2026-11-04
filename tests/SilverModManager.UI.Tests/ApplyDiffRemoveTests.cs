@@ -414,6 +414,9 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
         public bool LoadFailed => false;
         public IReadOnlyList<StrayFileNotice> StrayFiles { get; } = [];
         public ReactiveCommand<Unit, Unit> RemoveStrayFilesCommand { get; } = ReactiveCommand.Create(() => { });
+        public IReadOnlyList<UnwritableFileNotice> UnwritableFiles { get; } = [];
+        public ReactiveCommand<Unit, Unit> KeepDiskFilesCommand { get; } = ReactiveCommand.Create(() => { });
+        public ReactiveCommand<Unit, Unit> ForgetFilesCommand { get; } = ReactiveCommand.Create(() => { });
     }
 
     [Fact]

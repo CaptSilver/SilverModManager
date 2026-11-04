@@ -103,6 +103,12 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
             .Select(f => ((GamePath)f.TargetPath).Path.FileName.ToString())
             .Where(n => n.StartsWith("ext") || n.StartsWith("late"));
 
+    private IEnumerable<string> FilesIn(Loadout.ReadOnly loadout, Func<string, bool> parentName) =>
+        LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemWithTargetPath()
+            .Where(f => f.AsLoadoutItem().HasParent() && parentName(f.AsLoadoutItem().Parent.AsLoadoutItem().Name))
+            .Select(f => ((GamePath)f.TargetPath).Path.FileName.ToString())
+            .Where(n => n.StartsWith("ext") || n.StartsWith("late"));
+
     private int VisibleLoadouts => Loadout.All(Connection.Db).Count(l => l.IsVisible());
 
     [Fact]
@@ -422,6 +428,8 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
 
         (await act.Should().ThrowAsync<BackupOverflowException>()).Which.Declined.Should().BeTrue();
         ExternalChanges(Refresh(loadout)).Should().HaveCount(4);
+        FilesIn(Refresh(loadout), name => name == "Overrides").Should().HaveCount(4, "a declined clean puts the files back in External Changes");
+        LoadoutItem.FindByLoadout(Refresh(loadout).Db, loadout).Should().NotContain(item => item.Name == DefaultCollection.FoundInGameFolderName);
         for (var i = 0; i < 4; i++) OnDisk($"ext{i}.bin").Should().BeTrue();
         (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("ext0.bin")))).Should().BeFalse();
     }
@@ -438,6 +446,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
 
         await act.Should().ThrowAsync<GameFolderUnreadableException>();
         ExternalChanges(Refresh(loadout)).Should().HaveCount(4, "the clean never got to change the folder");
+        FilesIn(Refresh(loadout), name => name == "Overrides").Should().HaveCount(4);
         for (var i = 0; i < 4; i++) OnDisk($"ext{i}.bin").Should().BeTrue();
     }
 
@@ -454,11 +463,12 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
 
         await act.Should().ThrowAsync<GameFileChangedWhileReadException>();
         ExternalChanges(Refresh(loadout)).Should().HaveCount(4, "the read stopped the apply before it archived or deleted anything");
+        FilesIn(Refresh(loadout), name => name == "Overrides").Should().HaveCount(4);
         for (var i = 0; i < 4; i++) OnDisk($"ext{i}.bin").Should().BeTrue();
     }
 
     [Fact]
-    public async Task CleaningAfterAdopt_AndBackingUp_DeletesTheExternalChangesAfterTheCopiesExist()
+    public async Task CleaningAfterAdopt_AndBackingUp_MovesTheExternalChangesToASwitchedOffGroupAfterTheCopiesExist()
     {
         WriteExternalFiles(4, 4096);
         _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
@@ -469,7 +479,8 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         await LoadoutManager.CleanGameFolder(Refresh(loadout));
 
         prompt.Asked.Should().ContainSingle().Which.Operation.Should().Be(BackupOverflowOperation.Reset);
-        ExternalChanges(Refresh(loadout)).Should().BeEmpty();
+        FilesIn(Refresh(loadout), name => name == "Overrides").Should().BeEmpty();
+        FilesIn(Refresh(loadout), name => name == DefaultCollection.FoundInGameFolderName).Should().HaveCount(4, "the files are kept in a switched-off group, not deleted");
         OnDisk("ext0.bin").Should().BeFalse();
         (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("ext0.bin")))).Should().BeTrue();
     }

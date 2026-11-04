@@ -61,6 +61,9 @@ public static class LoadoutManagementVerbs
             .AddVerb(() => ListGroups)
             .AddVerb(() => DeleteGroupItems)
             .AddVerb(() => RemoveLoadoutFiles)
+            .AddVerb(() => ListUnwritableFiles)
+            .AddVerb(() => KeepDiskFiles)
+            .AddVerb(() => ForgetUnwritableFiles)
             .AddVerb(() => ListRevisions)
             .AddVerb(() => Revert)
             .AddVerb(() => EnableGroup)
@@ -117,6 +120,8 @@ public static class LoadoutManagementVerbs
         using var origin = SyncOrigin.Begin(SyncTrigger.CommandLine);
         using var removal = confirmRemoval ? MassRemovalConsent.Confirmed() : MassRemovalConsent.Refused();
         await syncService.Synchronize(loadout.LoadoutId, BackupOverflowChoices.Parse(largeFiles));
+        foreach (var file in syncService.GetUnwritableFiles(loadout.LoadoutId))
+            await renderer.Text("Not written: {0}. See 'loadout files unwritable'.", file.Describe());
         return 0;
     }
 
@@ -331,7 +336,7 @@ public static class LoadoutManagementVerbs
     {
         var paths = pathList
             .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(p => new GamePath(LocationId.Game, p))
+            .Select(UnwritableFile.ParsePath)
             .ToArray();
         var request = new FileRemovalRequest(loadout.LoadoutId, paths);
 
@@ -343,6 +348,53 @@ public static class LoadoutManagementVerbs
 
         var result = await remover.Remove(request, includeLocked);
         await renderer.Text("Removed {0} files. Run 'loadout synchronize' to apply; 'loadout revisions' lists the restore point.", result.Removed.Count);
+        return 0;
+    }
+
+    [Verb("loadout files unwritable", "Lists the files the loadout names that an apply cannot write, because no copy of them is kept: the Apply preview marks them 'No copy kept'. Settle them with 'loadout files accept-disk' or 'loadout files forget'.")]
+    private static async Task<int> ListUnwritableFiles(
+        [Injected] IRenderer renderer,
+        [Option("l", "loadout", "Loadout to list the files of")] Loadout.ReadOnly loadout,
+        [Injected] ISynchronizerService syncService)
+    {
+        var files = syncService.GetUnwritableFiles(loadout.LoadoutId);
+        if (files.Count == 0)
+        {
+            await renderer.Text("No file is waiting on a copy that was never kept.");
+            return 0;
+        }
+
+        foreach (var file in files) await renderer.Text("{0}", file.Describe());
+        return 0;
+    }
+
+    [Verb("loadout files accept-disk", "Settles files an apply cannot write, for which the game folder has another version: the file on disk is backed up and becomes the loadout's version of the path, so the next apply has nothing to do for it. Files that are not in the game folder are skipped; see 'loadout files forget'.")]
+    private static Task<int> KeepDiskFiles(
+        [Injected] IRenderer renderer,
+        [Option("l", "loadout", "Loadout to settle the files of")] Loadout.ReadOnly loadout,
+        [Option("p", "paths", "Files separated by ';', as 'loadout files unwritable' lists them: a game folder path as is, another location as {Location}/path. Every file that fits when left out", true)] string? pathList,
+        [Injected] ISynchronizerService syncService,
+        [Injected] CancellationToken token)
+        => ResolveUnwritable(renderer, syncService, loadout, pathList, UnwritableResolution.KeepDiskFile, token);
+
+    [Verb("loadout files forget", "Settles files an apply cannot write that are not in the game folder: the loadout stops asking for them by recording a deletion. Files the game folder has a version of are skipped; see 'loadout files accept-disk'.")]
+    private static Task<int> ForgetUnwritableFiles(
+        [Injected] IRenderer renderer,
+        [Option("l", "loadout", "Loadout to settle the files of")] Loadout.ReadOnly loadout,
+        [Option("p", "paths", "Files separated by ';', as 'loadout files unwritable' lists them: a game folder path as is, another location as {Location}/path. Every file that fits when left out", true)] string? pathList,
+        [Injected] ISynchronizerService syncService,
+        [Injected] CancellationToken token)
+        => ResolveUnwritable(renderer, syncService, loadout, pathList, UnwritableResolution.Forget, token);
+
+    private static async Task<int> ResolveUnwritable(IRenderer renderer, ISynchronizerService syncService, Loadout.ReadOnly loadout, string? pathList, UnwritableResolution resolution, CancellationToken token)
+    {
+        var paths = pathList?
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(UnwritableFile.ParsePath)
+            .ToArray();
+        var result = await syncService.ResolveUnwritableFiles(loadout.LoadoutId, paths, resolution, token);
+        foreach (var (path, why) in result.Skipped) await renderer.Text("Skipping {0}: {1}", UnwritableFile.Name(path), why);
+        await renderer.Text("Settled {0} files. The next apply has nothing to do for them.", result.Resolved.Count);
         return 0;
     }
 

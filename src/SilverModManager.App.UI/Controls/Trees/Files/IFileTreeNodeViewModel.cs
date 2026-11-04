@@ -86,6 +86,7 @@ public interface IFileTreeNodeViewModel : IViewModelInterface, IExpandableItem, 
                 ? Language.IFileTreeNodeViewModel_ToFormattedChangeState_Modified
                 : Language.IFileTreeNodeViewModel_ToFormattedChangeState_Contents_modified,
             FileChangeType.Removed => Language.IFileTreeNodeViewModel_ToFormattedChangeState_Removed,
+            FileChangeType.Unrestorable => Language.IFileTreeNodeViewModel_ToFormattedChangeState_Unrestorable,
             FileChangeType.None => string.Empty,
         };
     }
@@ -99,6 +100,7 @@ public interface IFileTreeNodeViewModel : IViewModelInterface, IExpandableItem, 
                 ? Language.IFileTreeNodeViewModel_FormattedChangeStateToolTip_ModifiedFile
                 : Language.IFileTreeNodeViewModel_FormattedChangeStateToolTip_ModifiedFolder,
             FileChangeType.Removed => Language.IFileTreeNodeViewModel_FormattedChangeStateToolTip_Removed,
+            FileChangeType.Unrestorable => Language.IFileTreeNodeViewModel_FormattedChangeStateToolTip_Unrestorable,
             FileChangeType.None => string.Empty,
         };
     }

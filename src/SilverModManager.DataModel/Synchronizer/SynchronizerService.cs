@@ -61,16 +61,48 @@ public class SynchronizerService : ISynchronizerService, IDisposable
     /// <inheritdoc />
     public FileDiffTree GetApplyDiffTree(LoadoutId loadoutId)
     {
+        var (loadout, synchronizer, previousDiskState, lastScannedDiskState) = ApplyDiffInputs(loadoutId);
+        return synchronizer.LoadoutToDiskDiff(loadout, previousDiskState, lastScannedDiskState);
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<UnwritableFile> GetUnwritableFiles(LoadoutId loadoutId)
+    {
+        var (loadout, synchronizer, previousDiskState, lastScannedDiskState) = ApplyDiffInputs(loadoutId);
+        return synchronizer.FindUnwritableFiles(loadout, previousDiskState, lastScannedDiskState);
+    }
+
+    /// <inheritdoc />
+    public async Task<UnwritableResolutionResult> ResolveUnwritableFiles(LoadoutId loadoutId, IReadOnlyCollection<GamePath>? paths, UnwritableResolution resolution, CancellationToken cancellationToken = default)
+    {
+        await _semaphore.WaitAsync(cancellationToken);
+        try
+        {
+            var loadout = Loadout.Load(_conn.Db, loadoutId);
+            if (!loadout.IsValid()) throw new KeyNotFoundException($"Loadout with ID {loadoutId} not found.");
+
+            using var _ = GetOrAddLoadoutState(loadoutId).WithLock();
+            using var _2 = GetOrAddGameState(loadout.InstallationId).WithLock();
+            return await loadout.InstallationInstance.GetGame().Synchronizer.ResolveUnwritableFiles(loadout, paths, resolution, cancellationToken);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    // The disk states the Apply preview compares: what the folder looked like at the last scan, and what the last apply left.
+    private (Loadout.ReadOnly Loadout, ILoadoutSynchronizer Synchronizer, List<PathPartPair> Previous, List<PathPartPair> LastScanned) ApplyDiffInputs(LoadoutId loadoutId)
+    {
         var db = _conn.Db;
         var loadout = Loadout.Load(db, loadoutId);
         var synchronizer = ((IGame)loadout.Game).Synchronizer;
         var metaData = loadout.Installation;
-        var hasPreviousLoadout = GameInstallMetadata.LastSyncedLoadoutTransaction.TryGetValue(metaData, out var lastId);
+        var hasPreviousLoadout = GameInstallMetadata.LastSyncedLoadoutTransaction.TryGetValue(metaData, out _);
 
         var lastScannedDiskState = synchronizer.GetLastScannedDiskState(metaData);
         var previousDiskState = hasPreviousLoadout ? synchronizer.GetPreviouslyAppliedDiskState(metaData) : lastScannedDiskState;
-        
-        return synchronizer.LoadoutToDiskDiff(loadout, previousDiskState, lastScannedDiskState);
+        return (loadout, synchronizer, previousDiskState, lastScannedDiskState);
     }
 
     public IJobTask<ProcessLoadoutChangesJob, bool> GetShouldSynchronize(LoadoutId loadoutId)
@@ -598,7 +630,12 @@ public class SynchronizerService : ISynchronizerService, IDisposable
         // Only here to make each emission different from the last, so DistinctUntilChanged lets it through.
         var revisions = inputRevisions.Merge(archiveChanges);
 
+        // A file is known to wait for an archive when the last apply left one out (recorded in the database) or the
+        // last comparison found one. Only a change to the file store can make it writable, so it forces a comparison
+        // once per change (the store is not asked about changes from before the status began); otherwise the recorded inputs answer, and an apply that found nothing it could write
+        // reads Current instead of re-comparing, and finding the same generated files pending, on every look.
         var waitsForArchive = 0;
+        var epochAtLastLook = 0L; // the epoch's start: the file store has not changed since this status began
         var statusFailureLogged = 0;
         var statusObservable = isBusy.CombineLatest(appliedState,
                 revisions,
@@ -638,20 +675,24 @@ public class SynchronizerService : ISynchronizerService, IDisposable
             var db = _conn.Db;
             var rev = Loadout.Load(db, loadoutId);
             var (last, scanTx, leftUnextracted) = AppliedStateOf(GameInstallMetadata.Load(db, metadataId));
+            var epochNow = Volatile.Read(ref archiveEpoch);
+            var archiveMayHaveReturned = (leftUnextracted || Volatile.Read(ref waitsForArchive) == 1)
+                                         && epochNow != Volatile.Read(ref epochAtLastLook);
 
             var verdict = StatusDecision.Decide(
                 busy, rev.IsValid(), loadoutId, last, scanTx,
                 () => SyncInputRevision.Read(db, loadoutId),
                 () => _inputsAtApply.GetOrAdd((loadoutId, last.Tx), static (key, conn) => SyncInputRevision.Read(conn.AsOf(key.Tx), key.Id), _conn),
-                leftUnextracted || Volatile.Read(ref waitsForArchive) == 1);
+                archiveMayHaveReturned);
             switch (verdict)
             {
                 case StatusVerdict.Pending: return LoadoutSynchronizerState.Pending;
                 case StatusVerdict.OtherLoadoutSynced:
                     Volatile.Write(ref waitsForArchive, 0);
+                    Volatile.Write(ref epochAtLastLook, epochNow);
                     return LoadoutSynchronizerState.OtherLoadoutSynced;
                 case StatusVerdict.Current:
-                    Volatile.Write(ref waitsForArchive, 0);
+                    Volatile.Write(ref epochAtLastLook, epochNow);
                     return LoadoutSynchronizerState.Current;
             }
 
@@ -689,6 +730,8 @@ public class SynchronizerService : ISynchronizerService, IDisposable
             }
 
             Volatile.Write(ref waitsForArchive, evaluation.WaitsForArchive ? 1 : 0);
+            // The epoch is read before the comparison, so an archive that lands during it is looked at again.
+            Volatile.Write(ref epochAtLastLook, epochNow);
             return evaluation.Needed ? LoadoutSynchronizerState.NeedsSync : LoadoutSynchronizerState.Current;
         }
     }

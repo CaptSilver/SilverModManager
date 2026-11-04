@@ -36,6 +36,12 @@ public record SynchronizeLoadoutJob(LoadoutId LoadoutId, BindableReactivePropert
     public BindableReactiveProperty<SyncProgress> Progress { get; } = new();
 
     /// <summary>
+    /// The files the apply could not write, and why. Set by the synchronizer when it records the apply; empty
+    /// until then and for an apply that left nothing out.
+    /// </summary>
+    public IReadOnlyList<UnwritableFile> UnwritableFiles { get; set; } = [];
+
+    /// <summary>
     /// Starts a phase that has no counts to report.
     /// </summary>
     public void SetStatus(string message)
