@@ -15,6 +15,13 @@ public interface IMarkdownRendererViewModel : IViewModelInterface
     [LanguageInjection(injectedLanguage: "markdown")]
     public string Contents { get; set; }
 
+    /// <summary>
+    /// Whether <c>https</c> images in the contents are fetched. Dialogs and message boxes turn it off: they show
+    /// refusals and prompts that carry names from mod pages and collections, and a fetched image tells its host that
+    /// the dialog was opened.
+    /// </summary>
+    public bool AllowRemoteImages { get; set; }
+
     public IMdAvPlugin ImageResolverPlugin { get; }
     public IPathResolver PathResolver { get; }
     public ReactiveCommand<string, Unit> OpenLinkCommand { get; }

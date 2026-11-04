@@ -26,6 +26,8 @@ public partial class DialogStandardContentViewModel : AViewModel<IDialogStandard
         Heading = standardDialogParameters.Heading;
         Icon = standardDialogParameters.Icon;
         MarkdownRenderer = standardDialogParameters.Markdown;
+        // Dialogs carry refusals and prompts with names from mod pages and collections; none of them needs a picture.
+        if (MarkdownRenderer is not null) MarkdownRenderer.AllowRemoteImages = false;
         InputLabel = standardDialogParameters.InputLabel;
         InputText = standardDialogParameters.InputText;
         InputWatermark = standardDialogParameters.InputWatermark;

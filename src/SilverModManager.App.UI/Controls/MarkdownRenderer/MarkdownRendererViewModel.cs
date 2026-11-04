@@ -25,6 +25,8 @@ public partial class MarkdownRendererViewModel : AViewModel<IMarkdownRendererVie
     [LanguageInjection("markdown")]
     public partial string Contents { get; set; } = string.Empty;
 
+    public bool AllowRemoteImages { get; set; } = true;
+
     public IMdAvPlugin ImageResolverPlugin { get; }
     public IPathResolver PathResolver { get; }
     public ReactiveCommand<string, Unit> OpenLinkCommand { get; }
@@ -57,6 +59,15 @@ public partial class MarkdownRendererViewModel : AViewModel<IMarkdownRendererVie
         OpenLinkCommand = ReactiveCommand.Create<string>(url =>
         {
             if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return;
+
+            // xdg-open follows file://, smb:// and any registered scheme, and the text behind a link can come from a
+            // mod page or a collection, so only web pages are handed over.
+            if (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp)
+            {
+                logger.LogWarning("Refused to open a Markdown link with scheme {Scheme}: {Uri}", uri.Scheme, uri);
+                return;
+            }
+
             osInterop.OpenUri(uri);
         });
 
@@ -110,6 +121,12 @@ public partial class MarkdownRendererViewModel : AViewModel<IMarkdownRendererVie
                 if (uri.Scheme != "https")
                 {
                     _parent._logger.LogWarning("Unknown URI schema: {Uri}", uri);
+                    return null;
+                }
+
+                if (!_parent.AllowRemoteImages)
+                {
+                    _parent._logger.LogInformation("Skip loading remote image, this renderer does not allow them: {Uri}", uri);
                     return null;
                 }
 

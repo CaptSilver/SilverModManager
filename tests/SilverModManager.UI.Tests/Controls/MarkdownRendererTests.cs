@@ -1,3 +1,4 @@
+using System.Reactive.Linq;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -9,6 +10,7 @@ using SilverModManager.App.UI;
 using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using SilverModManager.Sdk;
 using NSubstitute;
+using System.Reflection;
 
 namespace SilverModManager.UI.Tests.Controls;
 
@@ -150,5 +152,83 @@ public class MarkdownRendererTests(IServiceProvider provider) : AUiTest(provider
         await Press(buttons[0]);
 
         await rendered.Interop.Received(1).SetClipboardTextAsync("```\ninner\n```");
+    }
+
+    [Theory]
+    [InlineData("https://example.com/page")]
+    [InlineData("http://example.com/page")]
+    public async Task Test_OpenLink_OpensWebLinks(string link)
+    {
+        var osInterop = Substitute.For<IOSInterop>();
+        var viewModel = NewViewModel(osInterop);
+
+        await viewModel.OpenLinkCommand.Execute(link);
+
+        osInterop.Received(1).OpenUri(new Uri(link));
+    }
+
+    [Theory]
+    [InlineData("file:///etc/passwd")]
+    [InlineData("smb://host/share")]
+    [InlineData("nxm://skyrim/mods/1/files/2")]
+    [InlineData("ftp://example.com/a")]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("steam://rungameid/1")]
+    public async Task Test_OpenLink_RefusesEverythingButWebLinks(string link)
+    {
+        var osInterop = Substitute.For<IOSInterop>();
+        var viewModel = NewViewModel(osInterop);
+
+        await viewModel.OpenLinkCommand.Execute(link);
+
+        osInterop.DidNotReceive().OpenUri(Arg.Any<Uri>());
+    }
+
+    [Fact]
+    public async Task Test_OpenLink_LogsRefusedLinkAtWarning()
+    {
+        var osInterop = Substitute.For<IOSInterop>();
+        var logger = Substitute.For<ILogger<MarkdownRendererViewModel>>();
+        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        var viewModel = new MarkdownRendererViewModel(Provider, logger, osInterop, Substitute.For<IAvaloniaInterop>());
+
+        await viewModel.OpenLinkCommand.Execute("file:///etc/passwd");
+
+        logger.ReceivedCalls().Should().Contain(call => call.GetMethodInfo().Name == "Log" && (LogLevel)call.GetArguments()[0]! == LogLevel.Warning);
+    }
+
+    private MarkdownRendererViewModel NewViewModel(IOSInterop osInterop) => new(
+        Provider,
+        Provider.GetRequiredService<ILogger<MarkdownRendererViewModel>>(),
+        osInterop,
+        Substitute.For<IAvaloniaInterop>());
+
+    [Fact]
+    public void Test_RemoteImages_AreResolvedByDefault()
+    {
+        var viewModel = NewViewModel(Substitute.For<IOSInterop>());
+
+        viewModel.PathResolver.ResolveImageResource("https://example.com/a.png").Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Test_RemoteImages_AreSkippedWhenTheRendererForbidsThem()
+    {
+        var viewModel = NewViewModel(Substitute.For<IOSInterop>());
+        viewModel.AllowRemoteImages = false;
+
+        viewModel.PathResolver.ResolveImageResource("https://example.com/a.png").Should().BeNull();
+    }
+
+    [Fact]
+    public void Test_StandardDialogMarkdown_DoesNotLoadRemoteImages()
+    {
+        var viewModel = NewViewModel(Substitute.For<IOSInterop>());
+
+        _ = new SilverModManager.App.UI.Dialog.DialogStandardContentViewModel(
+            new SilverModManager.App.UI.Dialog.StandardDialogParameters { Markdown = viewModel });
+
+        viewModel.AllowRemoteImages.Should().BeFalse("a dialog body carries names from mod pages and collections");
+        viewModel.PathResolver.ResolveImageResource("https://evil.example/a.png").Should().BeNull();
     }
 }

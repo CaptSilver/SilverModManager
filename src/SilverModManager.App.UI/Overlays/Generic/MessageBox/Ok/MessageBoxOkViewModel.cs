@@ -45,6 +45,7 @@ public partial class MessageBoxOkViewModel : AOverlayViewModel<IMessageBoxOkView
         if (markdown != null)
         {
             markdownRenderer = serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
+            markdownRenderer.AllowRemoteImages = false;
             markdownRenderer.Contents = markdown;
         }
         
