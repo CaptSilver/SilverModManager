@@ -280,7 +280,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
     }
 
     [Fact]
-    public async Task ModWithSavedChoicesThatDoNotApply_FailsWithAReasonAndTheRestInstall()
+    public async Task ModWithSavedChoicesThatDoNotApply_LeavesItPendingWithAReasonAndTheRestInstall()
     {
         var mods = new[]
         {
@@ -300,6 +300,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         pending.Name.Should().Be("Broken mod");
         pending.Kind.Should().Be(ReviewKind.NeedsChoices);
         pending.Reason.Should().Contain("No such option");
+        CollectionDownloader.GetStatus(pending.Download, group.AsCollectionGroup(), Connection.Db).IsInLibrary(out _).Should().BeTrue("a pending mod leaves no group behind, so the next run retries it");
 
         var installedNames = LoadoutItem.FindByLoadout(group.Db, loadout)
             .OfTypeLoadoutItemWithTargetPath()
@@ -727,6 +728,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         var pending = job.JobDefinition.PendingItems.Should().ContainSingle().Which;
         pending.Kind.Should().Be(ReviewKind.NeedsChoices);
         pending.Reason.Should().Contain("No such option");
+        CollectionDownloader.GetStatus(pending.Download, group.AsCollectionGroup(), Connection.Db).IsInLibrary(out _).Should().BeTrue("a pending mod leaves no group behind, so the next run retries it");
         InstalledFileNames(group, loadout).Should().Contain("mod0_a.out.esp");
     }
 
@@ -898,7 +900,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         ServiceProvider.GetRequiredService<IJobMonitor>().Cancel(job);
         gate.Fail(new OperationCanceledException());
         var act = async () => await running;
-        await act.Should().ThrowAsync<Exception>();
+        await act.Should().ThrowAsync<OperationCanceledException>();
 
         var group = CollectionDownloader.GetCollectionGroup(revision, loadout, Connection.Db).Value;
         PendingInstalls.For(Connection.Db, group.Id).Should().ContainSingle().Which.Download.Id.Should().Be(unknown.Id);

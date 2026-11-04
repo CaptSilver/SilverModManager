@@ -215,7 +215,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             }
             catch (ReviewRequiredException e)
             {
-                Logger.LogInformation("`{DownloadName}` (index={Index}) of `{CollectionName}/{RevisionNumber}` needs a person: {Reason}", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber, e.Reason);
+                Logger.LogDebug("`{DownloadName}` (index={Index}) of `{CollectionName}/{RevisionNumber}` needs a person: {Reason}", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber, e.Reason);
                 var pending = new PendingItem(modAndDownload.Download, modAndDownload.Mod.Name, e.Kind, e.Reason);
                 _pendingItems.Enqueue(pending);
                 Progress.ModNeedsReview(pending.Name, pending.Kind, pending.Reason);

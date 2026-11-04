@@ -275,7 +275,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         
         if (installer is not null) return installer;
 
-        // A game without a FOMOD installer cannot apply saved choices; an attended install can still fall back to a person.
+        // A game without a FOMOD installer cannot apply saved choices: an unattended install records the mod as pending, an attended one fails.
         if (Unattended) throw new ReviewRequiredException(ReviewKind.NeedsChoices, CollectionMod.Name, "the game has no FOMOD installer");
         throw new InvalidOperationException("FomodXmlInstaller not found");
     }

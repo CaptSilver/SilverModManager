@@ -219,8 +219,8 @@ public static partial class CollectionUpdater
             // The install can end early (cancelled, or the collection's rules contradict the user's after every mod went in), so
             // the clean-up works from what is in the database: an old version goes only if its replacement is there.
             var (kept, skippedRules) = await FinishReplacements(serviceProvider, connection, loadoutId, switched.Group.Id, switched.ReplacedSlots);
-            logger.LogDebug("Update of collection `{Slug}` to revision {To} installed {Installed} mods ({Failed} failed); {Replaced} old versions replaced, {Kept} kept as the user's own",
-                newRevision.Collection.Slug, newRevision.RevisionNumber, switched.Items.Length - job.JobDefinition.FailedItems.Count, job.JobDefinition.FailedItems.Count,
+            logger.LogDebug("Update of collection `{Slug}` to revision {To} installed {Installed} mods ({Failed} failed, {Pending} need review); {Replaced} old versions replaced, {Kept} kept as the user's own",
+                newRevision.Collection.Slug, newRevision.RevisionNumber, switched.Items.Length - job.JobDefinition.FailedItems.Count - job.JobDefinition.PendingItems.Count, job.JobDefinition.FailedItems.Count, job.JobDefinition.PendingItems.Count,
                 switched.ReplacedSlots.Count - kept, kept);
 
             if (failure is not null && (cancellationToken.IsCancellationRequested || TimeoutDetection.IsRealCancellation(failure)))
