@@ -193,10 +193,10 @@ public class TextureEncoderTests
         [(BlockFormat.Bc3, "noise")] = 14.4,
         [(BlockFormat.Bc3, "checkerboard")] = 98.5,
         [(BlockFormat.Bc3, "partial alpha")] = 52.5,
-        [(BlockFormat.Bc7, "gradient")] = 55.8,
+        [(BlockFormat.Bc7, "gradient")] = 56.3,
         [(BlockFormat.Bc7, "noise")] = 15.0,
         [(BlockFormat.Bc7, "checkerboard")] = 56.6,
-        [(BlockFormat.Bc7, "partial alpha")] = 56.2,
+        [(BlockFormat.Bc7, "partial alpha")] = 56.3,
     };
 
     public static TheoryData<BlockFormat, string> FloorCases => Native.Value is null

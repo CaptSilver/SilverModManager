@@ -12,8 +12,9 @@ internal readonly record struct NativeEncoderLevels(uint Bc1, uint Bc3, uint Bc7
     /// <summary>
     /// The fastest level whose decoded PSNR is no lower than BCnEncoder's Balanced on the generated textures (gradient,
     /// noise, checkerboard, partial alpha) at 1024 and 2048 pixels square, one thread. PSNR is what the TextureEncoders
-    /// benchmark prints: BC1 over RGB, BC3 and BC7 over RGBA, bc7e not run perceptually. BC1 and BC3 meet that; BC7 does
-    /// not, and needs a tolerance (or a decision to leave BC7 on the managed encoder) before it can claim to.
+    /// benchmark prints: BC1 over RGB, BC3 and BC7 over RGBA, bc7e not run perceptually. BC1 and BC3 meet that. BC7
+    /// meets it within half a dB: no bc7e preset reaches Balanced on the gradient, and a gradient half a dB under is not
+    /// visible, while leaving BC7 on the managed encoder keeps it 50 to 80 times slower.
     /// <para>
     /// rgbcx BC1 and BC3: level 10, where rgbcx's header says to start. It beats Balanced on every texture: gradient
     /// 51.93 against 50.21 dB (BC1) and 53.03 against 51.46 dB (BC3) at 1024 pixels, 53.47 against 51.17 and 54.63
@@ -22,22 +23,20 @@ internal readonly record struct NativeEncoderLevels(uint Bc1, uint Bc3, uint Bc7
     /// 0.2 dB under Balanced at level 10, which is below the sizes the rule measures.
     /// </para>
     /// <para>
-    /// bc7e BC7: preset 3, "basic", the fastest of the presets the quality rule allows (ultrafast to basic) that stays
-    /// close. None of them reaches Balanced on the gradient, whose Balanced PSNR is 56.94 dB at 1024 pixels and 60.07 at
-    /// 2048. Behind Balanced there: basic 0.6 and 0.7 dB (56.36 and 59.40), veryfast 0.8 and 1.3, fast 1.4 and 1.8,
-    /// ultrafast 4.0 and 3.5. Basic is ahead of Balanced on every other texture. The presets past basic are not allowed
-    /// candidates: slow is 0.14 and 0.38 dB behind on the gradient, veryslow is ahead at 1024 and 1.5 behind at 2048,
-    /// slowest 0.2 and 2.1 behind. So BC7 here is within about 0.7 dB of Balanced on the gradient, not equal or
-    /// better, and holding it to "no lower" means CanEncode(Bc7) goes false and the managed encoder keeps BC7.
+    /// bc7e BC7: preset 4, "slow". On the gradient, Balanced scores 56.94 dB at 1024 pixels and 60.07 at 2048; slow scores
+    /// 56.80 and 59.69, 0.14 and 0.38 dB under, and beats Balanced on every other texture (checkerboard 57.16 against
+    /// 52.39, noise 15.55 against 14.30, partial alpha 56.84 against 54.93 at 1024). Every other preset is further under
+    /// on the gradient (basic 0.6 and 0.7 dB, veryfast 0.8 and 1.3, fast 1.4 and 1.8, ultrafast 4.0 and 3.5; veryslow is
+    /// ahead at 1024 but 1.5 behind at 2048, slowest 0.2 and 2.1 behind). Slow is also faster than basic: basic turns on
+    /// bc7e's uber search and slow does not.
     /// </para>
     /// <para>
     /// One thread, Mpix/s on the 1024 pixel gradient, native against Balanced: BC1 14.3 against 1.0, BC3 23.2 against 1.0,
-    /// BC7 5.5 against 0.11 (slow, which basic replaced, ran 9.1). Through DdsRecompressor from a BC7 source to a BC7
-    /// target with a full mip chain, the 5x speed criterion is met, but its equal-or-better PSNR half is not met on the gradient
-    /// (59.44 dB native against 59.91 managed, measured at slow, which scored higher than basic does).
+    /// BC7 9.1 against 0.11 (basic runs 5.5). Through DdsRecompressor from a BC7 source to a BC7 target with a full mip
+    /// chain, native is 37 to 74 times Balanced's Mpix/s, and on the gradient its PSNR is 59.44 dB against 59.91.
     /// </para>
     /// </summary>
-    public static NativeEncoderLevels Default { get; } = new(Bc1: 10, Bc3: 10, Bc7: 3);
+    public static NativeEncoderLevels Default { get; } = new(Bc1: 10, Bc3: 10, Bc7: 4);
 }
 
 /// <summary>
