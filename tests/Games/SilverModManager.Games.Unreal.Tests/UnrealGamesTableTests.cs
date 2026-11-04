@@ -13,7 +13,7 @@ public class UnrealGamesTableTests
     {
         UnrealGames.All.Should().Equal(
             UnrealGames.FinalFantasy7Remake, UnrealGames.FinalFantasy7Rebirth, UnrealGames.Stalker2,
-            UnrealGames.Palworld, UnrealGames.ReadyOrNot, UnrealGames.Dispatch);
+            UnrealGames.Palworld, UnrealGames.ReadyOrNot, UnrealGames.Dispatch, UnrealGames.HogwartsLegacy);
     }
 
     // Steam ids, names and launch executables from each app's Steam launch entry (api.steamcmd.net); project folders
@@ -26,6 +26,7 @@ public class UnrealGamesTableTests
         { "Unreal.Palworld", "Palworld", "Palworld.exe", "Pal", 1623730, 6063 },
         { "Unreal.ReadyOrNot", "Ready or Not", "ReadyOrNot.exe", "ReadyOrNot", 1144200, 4205 },
         { "Unreal.Dispatch", "Dispatch", "Dispatch.exe", "Dispatch", 2592160, 8325 },
+        { "Unreal.HogwartsLegacy", "Hogwarts Legacy", "HogwartsLegacy.exe", "Phoenix", 990080, 5113 },
     };
 
     [Theory]
@@ -45,6 +46,27 @@ public class UnrealGamesTableTests
     public void Stalker2IsAlsoOnGogUnderItsProductId()
     {
         UnrealGames.Stalker2.Stores.GOGProductIds.Should().Equal(1529799785L);
+    }
+
+    [Fact]
+    public void HogwartsLegacyKeepsItsUe4ssModsBesideTheBinary()
+    {
+        var layout = UnrealGames.HogwartsLegacy.Layout;
+
+        layout.TryRoute(NexusMods.Paths.RelativePath.FromUnsanitizedInput("MyMod/enabled.txt"), out var mod).Should().BeTrue();
+        layout.TryRoute(NexusMods.Paths.RelativePath.FromUnsanitizedInput("Mod_P.pak"), out var pak).Should().BeTrue();
+        layout.TryRoute(NexusMods.Paths.RelativePath.FromUnsanitizedInput("LogicMods/Blueprint.pak"), out var logic).Should().BeTrue();
+
+        mod.Should().Be(new GamePath(LocationId.Game, "Phoenix/Binaries/Win64/Mods/MyMod/enabled.txt"));
+        pak.Should().Be(new GamePath(LocationId.Game, "Phoenix/Content/Paks/~mods/Mod_P.pak"));
+        logic.Should().Be(new GamePath(LocationId.Game, "Phoenix/Content/Paks/LogicMods/Blueprint.pak"));
+    }
+
+    [Fact]
+    public void EveryOtherRowKeepsTheUe4ss3Layout()
+    {
+        UnrealGames.All.Where(row => row != UnrealGames.HogwartsLegacy)
+            .Should().OnlyContain(row => row.Ue4ssLayout == Ue4ssLayout.Ue4ss3);
     }
 
     [Fact]

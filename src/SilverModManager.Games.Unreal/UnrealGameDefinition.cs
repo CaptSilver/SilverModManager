@@ -35,6 +35,9 @@ public sealed record UnrealGameDefinition : IGameDefinition
     /// <summary>The folder under <c>Binaries</c> that holds the shipping binary.</summary>
     public string BinariesPlatform { get; init; } = "Win64";
 
+    /// <summary>Which UE4SS generation the game is modded with. Today's 3.x layout unless a row says otherwise.</summary>
+    public Ue4ssLayout Ue4ssLayout { get; init; } = Ue4ssLayout.Ue4ss3;
+
     public RelativePath? NativeLinuxExecutable => null;
 
     public IReadOnlyDictionary<string, string> LocationNames => ImmutableDictionary<string, string>.Empty;
@@ -45,7 +48,7 @@ public sealed record UnrealGameDefinition : IGameDefinition
         get
         {
             var project = new GamePath(LocationId.Game, ProjectFolder);
-            return new UnrealModLayout(project / "Content", project / $"Binaries/{BinariesPlatform}");
+            return new UnrealModLayout(project / "Content", project / $"Binaries/{BinariesPlatform}", Ue4ssLayout);
         }
     }
 

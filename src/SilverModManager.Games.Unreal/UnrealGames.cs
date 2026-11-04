@@ -75,6 +75,21 @@ public static class UnrealGames
         SteamAppIds = [2592160],
     };
 
+    // Steam launches HogwartsLegacy.exe at the game root (default launch entry of app 990080), which starts
+    // Phoenix/Binaries/Win64/HogwartsLegacy.exe. The game is mostly modded with UE4SS 2.x, whose Mods folder sits
+    // beside that binary. The Epic Games Store sells it too, but no public source for its catalogue item id was
+    // found, so no Epic id is recorded.
+    public static readonly UnrealGameDefinition HogwartsLegacy = new()
+    {
+        GameId = GameId.From("Unreal.HogwartsLegacy"),
+        DisplayName = "Hogwarts Legacy",
+        NexusModsGameId = NexusModsGameId.From(5113),
+        Executable = "HogwartsLegacy.exe",
+        ProjectFolder = "Phoenix",
+        SteamAppIds = [990080],
+        Ue4ssLayout = Ue4ssLayout.Ue4ss2,
+    };
+
     public static readonly IReadOnlyList<UnrealGameDefinition> All =
-        [FinalFantasy7Remake, FinalFantasy7Rebirth, Stalker2, Palworld, ReadyOrNot, Dispatch];
+        [FinalFantasy7Remake, FinalFantasy7Rebirth, Stalker2, Palworld, ReadyOrNot, Dispatch, HogwartsLegacy];
 }

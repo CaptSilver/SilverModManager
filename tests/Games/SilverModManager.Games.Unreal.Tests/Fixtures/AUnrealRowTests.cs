@@ -58,16 +58,35 @@ public abstract class AUnrealRowTests<TTest>(ITestOutputHelper outputHelper, Unr
     }
 
     [Fact]
-    public async Task AnUe4ssModInstallsBelowTheUe4ssFolderBesideTheBinary()
+    public async Task AnUe4ssModInstallsBelowTheModsFolderTheGamesUe4ssLayoutNames()
     {
         var archive = await AddFromPaths("SomeMod/Scripts/main.lua", "SomeMod/enabled.txt");
 
         var (result, targets) = await TryInstall(Installer, archive);
 
         result.IsSuccess.Should().BeTrue();
+        var mods = Definition.Ue4ssLayout == Ue4ssLayout.Ue4ss2 ? "Mods" : "ue4ss/Mods";
         targets.Should().BeEquivalentTo(
-            OnGame($"{Project}/Binaries/Win64/ue4ss/Mods/SomeMod/Scripts/main.lua"),
-            OnGame($"{Project}/Binaries/Win64/ue4ss/Mods/SomeMod/enabled.txt"));
+            OnGame($"{Project}/Binaries/Win64/{mods}/SomeMod/Scripts/main.lua"),
+            OnGame($"{Project}/Binaries/Win64/{mods}/SomeMod/enabled.txt"));
+    }
+
+    [Fact]
+    public async Task AWholeUe4ssLoaderReleaseInstallsBesideTheBinary()
+    {
+        // The loader proxy differs by UE4SS version: xinput1_3.dll for 2.x, dwmapi.dll for 3.x.
+        var proxy = Definition.Ue4ssLayout == Ue4ssLayout.Ue4ss2 ? "xinput1_3.dll" : "dwmapi.dll";
+        var mods = Definition.Ue4ssLayout == Ue4ssLayout.Ue4ss2 ? "Mods" : "ue4ss/Mods";
+        var archive = await AddFromPaths(proxy, "UE4SS.dll", "UE4SS-settings.ini", "Mods/mods.txt");
+
+        var (result, targets) = await TryInstall(Installer, archive);
+
+        result.IsSuccess.Should().BeTrue();
+        targets.Should().BeEquivalentTo(
+            OnGame($"{Project}/Binaries/Win64/{proxy}"),
+            OnGame($"{Project}/Binaries/Win64/UE4SS.dll"),
+            OnGame($"{Project}/Binaries/Win64/UE4SS-settings.ini"),
+            OnGame($"{Project}/Binaries/Win64/{mods}/mods.txt"));
     }
 
     [Fact]
