@@ -35,6 +35,7 @@ using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Networking.NexusWebApi.Errors;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
@@ -832,18 +833,31 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         await tx.Commit();
     }
 
-    private async ValueTask UpdateCollectionInfo(ManagedCollectionLoadoutGroup.ReadOnly managedCollectionLoadoutGroup, CancellationToken cancellationToken)
+    private ValueTask UpdateCollectionInfo(ManagedCollectionLoadoutGroup.ReadOnly managedCollectionLoadoutGroup, CancellationToken cancellationToken)
     {
-        var graphQlResult = await _nexusModsLibrary.GetLastPublishedRevisionNumber(managedCollectionLoadoutGroup.Collection, cancellationToken);
+        return UpdateCollectionInfo(managedCollectionLoadoutGroup, _connection, _nexusModsLibrary.GetLastPublishedRevisionNumber, cancellationToken);
+    }
+
+    /// <summary>
+    /// Asks <paramref name="getLastPublishedRevisionNumber"/> for the collection's latest published revision and
+    /// stores it on the group, which is where the collection update offer reads it.
+    /// </summary>
+    internal static async ValueTask UpdateCollectionInfo(
+        ManagedCollectionLoadoutGroup.ReadOnly managedCollectionLoadoutGroup,
+        IConnection connection,
+        Func<CollectionMetadata.ReadOnly, CancellationToken, ValueTask<GraphQlResult<Optional<RevisionNumber>, NotFound>>> getLastPublishedRevisionNumber,
+        CancellationToken cancellationToken)
+    {
+        var graphQlResult = await getLastPublishedRevisionNumber(managedCollectionLoadoutGroup.Collection, cancellationToken);
 
         // TODO: handle errors
         var lastPublishedRevisionNumber = graphQlResult.AssertHasData();
 
-        using var tx = _connection.BeginTransaction();
-        if (lastPublishedRevisionNumber.HasValue)
-        {
-            tx.Add(managedCollectionLoadoutGroup, ManagedCollectionLoadoutGroup.LastPublishedRevisionNumber, lastPublishedRevisionNumber.Value);
-        }
+        if (!lastPublishedRevisionNumber.HasValue) return;
+
+        using var tx = connection.BeginTransaction();
+        tx.Add(managedCollectionLoadoutGroup, ManagedCollectionLoadoutGroup.LastPublishedRevisionNumber, lastPublishedRevisionNumber.Value);
+        await tx.Commit();
     }
 
     private static bool IsToggleLocked(LoadoutItemId id, IConnection connection)
