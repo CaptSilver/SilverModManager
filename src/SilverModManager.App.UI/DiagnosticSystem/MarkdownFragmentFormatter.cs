@@ -9,6 +9,8 @@ namespace SilverModManager.App.UI.DiagnosticSystem;
 /// </summary>
 internal sealed class MarkdownFragmentFormatter : IValueFormatter<MarkdownFragment>
 {
+    // Appended straight to the builder: writer.Write(span) is what counts the template's backticks, and a fragment's
+    // backticks (a code span around a name that has one) are not the template's.
     public void Format(IDiagnosticWriter writer, ref DiagnosticWriterState state, MarkdownFragment value) =>
-        writer.Write(ref state, value.Markdown.AsSpan());
+        state.StringBuilder.Append(value.Markdown);
 }

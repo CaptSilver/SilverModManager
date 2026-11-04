@@ -54,6 +54,10 @@ internal sealed class DiagnosticWriter : IDiagnosticWriter
 
     public void Write(ref DiagnosticWriterState state, ReadOnlySpan<char> value)
     {
+        foreach (var c in value)
+        {
+            if (c == '`') state.TemplateBackticks.Value++;
+        }
         state.StringBuilder.Append(value);
     }
 
@@ -65,7 +69,7 @@ internal sealed class DiagnosticWriter : IDiagnosticWriter
     {
         var safe = state.Mode switch
         {
-            DiagnosticWriterMode.Markdown when IsInsideCodeSpan(state.StringBuilder) => MarkdownText.InsideCode(text),
+            DiagnosticWriterMode.Markdown when IsInsideCodeSpan(state) => MarkdownText.InsideCode(text),
             DiagnosticWriterMode.Markdown when StartsLine(state.StringBuilder) => MarkdownText.Inline(text),
             DiagnosticWriterMode.Markdown => MarkdownText.InlineMidLine(text),
             _ => MarkdownText.PlainText(text),
@@ -86,18 +90,8 @@ internal sealed class DiagnosticWriter : IDiagnosticWriter
         return true;
     }
 
-    // The template opens a span or fence with an odd number of backticks. Escaped text never writes one (Inline swaps
-    // them out, InsideCode too), so what is in the builder is the template's and the app's Markdown.
-    private static bool IsInsideCodeSpan(StringBuilder builder)
-    {
-        var backticks = 0;
-        foreach (var chunk in builder.GetChunks())
-        {
-            foreach (var c in chunk.Span)
-            {
-                if (c == '`') backticks++;
-            }
-        }
-        return backticks % 2 == 1;
-    }
+    // The template opens a span or fence with an odd number of backticks. Only the template's own text is counted (see
+    // DiagnosticWriterState.TemplateBackticks): a fragment can hold a backtick-fenced name with an odd number of them,
+    // and that must not read as an open span.
+    private static bool IsInsideCodeSpan(DiagnosticWriterState state) => state.TemplateBackticks.Value % 2 == 1;
 }

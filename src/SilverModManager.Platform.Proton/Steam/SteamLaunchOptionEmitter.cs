@@ -10,6 +10,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Steam;
@@ -163,8 +164,8 @@ public sealed class SteamLaunchOptionEmitter(IToolManager tools, IConnection con
 
             {skipped}
 
-            Steam's launch options now: {(string.IsNullOrWhiteSpace(currentLine) ? "empty" : $"`{currentLine}`")}
+            Steam's launch options now: {(string.IsNullOrWhiteSpace(currentLine) ? "empty" : MarkdownText.Code(currentLine))}
 
-            "Use this loadout from Steam" writes: `{lineToWrite}`
+            "Use this loadout from Steam" writes: {MarkdownText.Code(lineToWrite)}
             """;
 }

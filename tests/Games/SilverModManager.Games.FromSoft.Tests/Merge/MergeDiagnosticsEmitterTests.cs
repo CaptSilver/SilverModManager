@@ -98,7 +98,7 @@ public class MergeDiagnosticsEmitterTests(ITestOutputHelper helper) : AVanillaDu
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
         diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 12));
         var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.MergeRefusedMessageData>>().Which.MessageData;
-        data.Message.Should().Be(thrown.Message);
+        data.Message.Markdown.Should().Be(thrown.Message, "the exception's message is Markdown already, so the writer must not escape it again");
         data.Path.Should().Be(RegulationPath);
         data.Strategy.Should().Be("param-rows");
         diagnostic.Actions.Should().BeEmpty("only a refusal for a missing vanilla has something to offer");
@@ -138,7 +138,7 @@ public class MergeDiagnosticsEmitterTests(ITestOutputHelper helper) : AVanillaDu
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
         diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 15));
         var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.VanillaMissingMessageData>>().Which.MessageData;
-        data.Message.Should().Be(thrown.Message);
+        data.Message.Markdown.Should().Be(thrown.Message, "the exception's message is Markdown already, so the writer must not escape it again");
         data.Path.Should().Be(RegulationPath);
         var betaId = beta.AsLoadoutItem().LoadoutItemId;
         diagnostic.Actions.Should().Equal(

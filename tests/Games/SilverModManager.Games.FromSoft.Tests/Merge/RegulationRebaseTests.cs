@@ -296,7 +296,7 @@ public class RegulationRebaseLoadoutTests(ITestOutputHelper helper) : AVanillaDu
 
         var diagnostic1 = diagnostics.Should().ContainSingle().Which;
         diagnostic1.Severity.Should().Be(DiagnosticSeverity.Critical);
-        diagnostic1.Should().BeOfType<Diagnostic<FromSoftDiagnostics.MergeRefusedMessageData>>().Which.MessageData.Message.Should().Contain(expected);
+        diagnostic1.Should().BeOfType<Diagnostic<FromSoftDiagnostics.MergeRefusedMessageData>>().Which.MessageData.Message.Markdown.Should().Contain(expected);
     }
 
     [Fact]

@@ -69,7 +69,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
 
         var card = cards.Should().ContainSingle().Which;
         card.Severity.Should().Be(DiagnosticSeverity.Warning);
-        Summary(card).Should().Contain("Beta's change to `scripts/x.ws` lines 4–7").And.Contain("Alpha's change is used");
+        Summary(card).Should().Contain("Beta's change to scripts/x.ws lines 4–7").And.Contain("Alpha's change is used");
         Details(card).Should().Contain("move Beta below Alpha so it loads after it").And.Contain("Change it on the Test Order page.");
     }
 
@@ -106,8 +106,8 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
         var cards = await Run([Merged()], [Output(Loss, new LinesKept(Script, 12, 15, "Alpha", "Beta"), other)]);
 
         cards.Should().HaveCount(2).And.OnlyContain(c => c.Severity == DiagnosticSeverity.Warning);
-        Summary(cards[0]).Should().Contain("Beta's changes to `scripts/x.ws` lines 4–7, 12–15");
-        Summary(cards[1]).Should().Contain("Alpha's change to `scripts/x.ws` lines 20–21");
+        Summary(cards[0]).Should().Contain("Beta's changes to scripts/x.ws lines 4–7, 12–15");
+        Summary(cards[1]).Should().Contain("Alpha's change to scripts/x.ws lines 20–21");
     }
 
     [Fact]
@@ -310,7 +310,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
         var cards = await Run([Merged()], [Output(new NoVanillaBase(Script), Loss)]);
 
         var card = cards.Should().ContainSingle().Which;
-        Summary(card).Should().Contain("Beta's change to `scripts/x.ws`");
+        Summary(card).Should().Contain("Beta's change to scripts/x.ws");
         Details(card).Should().Contain("Test Order page");
     }
 
@@ -487,7 +487,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
         await foreach (var item in new FixtureEmitter().Items(loadout)) items.Add(item);
 
         var dropped = items.Should().ContainSingle().Which;
-        dropped.Item.Should().Be("Beta's change to `scripts/x.ws` lines 4–7");
+        dropped.Item.Should().Be("Beta's change to scripts/x.ws lines 4–7");
         dropped.Source.Should().Be("Beta");
         dropped.Page.Should().Be("File Conflicts");
         dropped.Severity.Should().Be(DiagnosticSeverity.Warning);

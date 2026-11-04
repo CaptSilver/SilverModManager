@@ -45,9 +45,10 @@ public class DiagnosticDetailsViewModel : APageViewModel<IDiagnosticDetailsViewM
         TabTitle = diagnostic.Title;
         Severity = diagnostic.Severity;
 
-        var summary = diagnostic.FormatSummary(diagnosticWriter);
+        // The page renders this as Markdown, so names in the heading and the body are escaped by the writer.
+        var summary = diagnostic.FormatSummary(diagnosticWriter, DiagnosticWriterMode.Markdown);
         var details = $"## {summary}\n" +
-                  $"{diagnostic.FormatDetails(diagnosticWriter)}";
+                  $"{diagnostic.FormatDetails(diagnosticWriter, DiagnosticWriterMode.Markdown)}";
 
         MarkdownRendererViewModel = markdownRendererViewModel;
         MarkdownRendererViewModel.Contents = details;

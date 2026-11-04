@@ -267,6 +267,20 @@ public class DiagnosticDetailsViewTests(IServiceProvider provider) : AUiTest(pro
             Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IMarkdownRendererViewModel>(Provider)));
 
     [Fact]
+    public async Task Test_TheViewModel_EscapesANameInTheSummaryHeading()
+    {
+        var creator = typeof(Diagnostic).Assembly.GetType("SilverModManager.Abstractions.Diagnostics.Emitters.DroppedItemDiagnostics")
+            ?.GetMethod("CreateDroppedItem", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public)
+            ?? throw new InvalidOperationException("DroppedItemDiagnostics.CreateDroppedItem is gone, so this test needs another diagnostic with a name in its summary");
+        var diagnostic = (Diagnostic)(creator.Invoke(null, ["[x](file:///etc/passwd)", "Source", "Reason", "Library"]) ?? throw new InvalidOperationException("no diagnostic"));
+
+        var vm = await RealViewModel(diagnostic);
+
+        var contents = vm.MarkdownRendererViewModel.Contents;
+        contents.Should().StartWith("## ").And.NotContain("](");
+    }
+
+    [Fact]
     public async Task Test_TheViewModel_ShowsAnEnabledButtonWithTheActionsNote_AndKeepsMoreDetailsSeparate()
     {
         var diagnostic = new Diagnostic

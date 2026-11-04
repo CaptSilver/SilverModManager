@@ -8,6 +8,7 @@ using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using NSubstitute;
 
@@ -185,6 +186,17 @@ public class SteamLaunchOptionEmitterTests
         diagnostic.MoreDetails.Should().Contain("The loadout is not applied before the game starts.")
             .And.Contain("PROTON_LOG=1 %command%")
             .And.Contain(WrittenLine);
+    }
+
+    [Fact]
+    public void ABacktickInTheCurrentLineCannotCloseItsCodeSpanInTheMoreDetails()
+    {
+        const string current = "a`b [x](file:///etc/passwd) `c";
+        var finding = new SteamLaunchOptionEmitter.Finding(null, current);
+
+        var diagnostic = SteamLaunchOptionEmitter.Create(Install(GameStore.Steam), Loadout, finding, "* x", WrittenLine);
+
+        diagnostic.MoreDetails.Should().Contain($"Steam's launch options now: {MarkdownText.Code(current)}");
     }
 
     [Fact]

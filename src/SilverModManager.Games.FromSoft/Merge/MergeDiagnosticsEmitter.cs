@@ -30,7 +30,8 @@ public class MergeDiagnosticsEmitter(MergePlanCache plans, ILogger<MergeDiagnost
             var plan = plans.Current(loadout, MergeSourceMode.Report);
             if (plan.Refusal is not { } refusal) return plan;
 
-            var message = new MergeRefusedException(refusal).Message;
+            // The exception's message is Markdown that already escaped the names in it, so it goes in as a fragment.
+            var message = new MarkdownFragment(new MergeRefusedException(refusal).Message);
             // The choices are on the diagnostic rather than in the message, so the apply's dialog and this text stay one sentence.
             failure = refusal.Missing.Count > 0
                 ? FromSoftDiagnostics.CreateVanillaMissing(message, refusal.Path) with { Actions = [..VanillaMissingActions.For(refusal.Missing)] }
@@ -39,13 +40,13 @@ public class MergeDiagnosticsEmitter(MergePlanCache plans, ILogger<MergeDiagnost
         }
         catch (MergeRefusedException refused)
         {
-            failure = FromSoftDiagnostics.CreateMergeRefused(refused.Message, "", "");
+            failure = FromSoftDiagnostics.CreateMergeRefused(new MarkdownFragment(refused.Message), "", "");
             return null;
         }
         catch (Exception exception) when (MergeFailures.IsInputProblem(exception))
         {
             Logger.LogWarning(exception, "Planning the merges of {Loadout} failed", loadout.Name);
-            failure = FromSoftDiagnostics.CreateMergeRefused(MergeRefusedException.PlanFailed(exception).Message, "", "");
+            failure = FromSoftDiagnostics.CreateMergeRefused(new MarkdownFragment(MergeRefusedException.PlanFailed(exception).Message), "", "");
             return null;
         }
     }

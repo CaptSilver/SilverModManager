@@ -104,6 +104,18 @@ public class OpenXrRuntimeEmitterTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task AMissingLibraryIsNamedInPlainTextForTheWriterToEscape()
+    {
+        var loadout = await WithOpenComposite();
+        await WriteRuntime("""{"file_format_version":"1.0.0","runtime":{"library_path":"./lib/libopenxr_monado.so"}}""");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        // Backticks written here would be swapped for lookalikes, because the writer escapes a plain string.
+        diagnostic.FormatDetails(new PlainDiagnosticWriter()).Should().Contain("and it points to ./lib/libopenxr_monado.so, which does not exist.");
+    }
+
+    [Fact]
     public async Task AManifestThatIsNotJsonIsReported()
     {
         var loadout = await WithOpenComposite();

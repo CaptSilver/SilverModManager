@@ -64,6 +64,20 @@ public class DiagnosticWriterEscapeTests
     }
 
     [Fact]
+    public void Test_AStringAfterAFragmentWithAnOddNumberOfBackticks_IsStillEscapedAsOutsideText()
+    {
+        // Code("a`b") is five backticks long, but the fragment is the app's, not the template's open span.
+        var fragment = MarkdownText.Code("a`b");
+        fragment.Count(c => c == '`').Should().Be(5);
+
+        Fill(DiagnosticWriterMode.Markdown, "Files: ", (writer, state) =>
+        {
+            writer.WriteValueType(ref state, new MarkdownFragment(fragment));
+            writer.Write(ref state, Hostile);
+        }).Should().EndWith(MarkdownText.InlineMidLine(Hostile)).And.NotContain("](");
+    }
+
+    [Fact]
     public void Test_AStringAfterACompleteSpan_IsEscapedAgain()
     {
         FillString(DiagnosticWriterMode.Markdown, "`a` and ", "b_c")

@@ -83,6 +83,6 @@ public class OpenXrRuntimeEmitter(IOpenXrConfig config, ILogger<OpenXrRuntimeEmi
         // A relative path is relative to the manifest wherever a link to it leads.
         var resolvedManifest = ResolvedPath.Of(manifest.GetFullPath());
         var target = Path.IsPathRooted(library) ? library : Path.Combine(Path.GetDirectoryName(resolvedManifest) ?? "", library);
-        return manifest.FileSystem.FromUnsanitizedFullPath(target).FileExists ? null : $"it points to `{library}`, which does not exist";
+        return manifest.FileSystem.FromUnsanitizedFullPath(target).FileExists ? null : $"it points to {library}, which does not exist";
     }
 }

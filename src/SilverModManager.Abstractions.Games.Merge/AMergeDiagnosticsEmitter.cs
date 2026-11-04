@@ -62,7 +62,7 @@ public abstract class AMergeDiagnosticsEmitter<TPlan>(ILogger logger) : ADropped
         var ranges = notes.OfType<LinesKept>().OrderBy(k => k.FirstLine).Select(k => $"{k.FirstLine}–{k.LastLine}").ToArray();
         var lines = ranges.Length == 0 ? "" : $" lines {string.Join(", ", ranges)}";
         return new DroppedItem(
-            $"{loss.DroppedMod}'s {(notes.Count > 1 ? "changes" : "change")} to `{path}`{lines}",
+            $"{loss.DroppedMod}'s {(notes.Count > 1 ? "changes" : "change")} to {path}{lines}",
             loss.DroppedMod,
             $"both {loss.KeptMod} and {loss.DroppedMod} change it and {loss.KeptMod}'s change is used; " +
             $"to use {loss.DroppedMod}'s instead, {AMergeGame.ReorderAdvice(loss.DroppedMod, loss.KeptMod)}",

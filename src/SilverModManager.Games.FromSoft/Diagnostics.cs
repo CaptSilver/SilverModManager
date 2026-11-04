@@ -285,7 +285,7 @@ Applying the loadout stops before anything is written, because deploying the cop
 which one wins. Disable or remove one of the mods that provide the file.
 """)
         .WithMessageData(messageBuilder => messageBuilder
-            .AddValue<string>("Message")
+            .AddValue<MarkdownFragment>("Message")
             .AddValue<string>("Path")
             .AddValue<string>("Strategy")
         )
@@ -352,7 +352,7 @@ whether any of these mods has one. It can't tell which game build a file was mad
 description before installing it. Disabling the mods lets the rest of the loadout apply.
 """)
         .WithMessageData(messageBuilder => messageBuilder
-            .AddValue<string>("Message")
+            .AddValue<MarkdownFragment>("Message")
             .AddValue<string>("Path")
         )
         .Finish();

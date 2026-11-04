@@ -6,6 +6,7 @@ using ColorTextBlock.Avalonia;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
 using NSubstitute;
 using SilverModManager.Abstractions.Diagnostics;
@@ -13,6 +14,9 @@ using SilverModManager.Abstractions.Diagnostics.References;
 using SilverModManager.Abstractions.Diagnostics.Values;
 using SilverModManager.App.UI;
 using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.App.UI.Pages.Diagnostics;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Errors;
@@ -39,7 +43,13 @@ public class HostileNameMarkdownTests(IServiceProvider provider) : AUiTest(provi
         "lone ` backtick",
     ];
 
-    private async Task<(int Links, int Images, int Blocks, string Seen)> Render(IEnumerable<string> paragraphs, string separator = "\n\n")
+    private sealed record Rendered(int Links, int Images, int Blocks, string Seen, IReadOnlyList<string> Targets)
+    {
+        public void Deconstruct(out int links, out int images, out int blocks, out string seen) =>
+            (links, images, blocks, seen) = (Links, Images, Blocks, Seen);
+    }
+
+    private async Task<Rendered> Render(IEnumerable<string> paragraphs, string separator = "\n\n")
     {
         var contents = string.Join(separator, paragraphs);
         var window = await Dispatcher.UIThread.InvokeAsync(() =>
@@ -69,11 +79,12 @@ public class HostileNameMarkdownTests(IServiceProvider provider) : AUiTest(provi
         return await Dispatcher.UIThread.InvokeAsync(() =>
         {
             var texts = window.GetVisualDescendants().OfType<CTextBlock>().ToList();
-            return (
+            return new Rendered(
                 texts.Sum(t => t.Content.OfType<CHyperlink>().Count()),
                 texts.Sum(t => t.Content.OfType<CImage>().Count()),
                 texts.Count,
-                string.Join(" || ", texts.Where(t => t.Content.OfType<CHyperlink>().Any() || t.Content.OfType<CImage>().Any()).Select(t => string.Concat(t.Content.OfType<CRun>().Select(r => r.Text)))));
+                string.Join(" || ", texts.Where(t => t.Content.OfType<CHyperlink>().Any() || t.Content.OfType<CImage>().Any()).Select(t => string.Concat(t.Content.OfType<CRun>().Select(r => r.Text)))),
+                texts.SelectMany(t => t.Content.OfType<CHyperlink>()).Select(l => l.CommandParameter?.ToString() ?? "").ToList());
         });
     }
 
@@ -84,6 +95,14 @@ public class HostileNameMarkdownTests(IServiceProvider provider) : AUiTest(provi
 
         links.Should().BeGreaterThan(0);
         images.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task Test_Detector_ReadsWhereALinkGoes()
+    {
+        var rendered = await Render(["[x](https://a.example/page)"]);
+
+        rendered.Targets.Should().ContainSingle().Which.Should().Contain("a.example/page");
     }
 
     [Fact]
@@ -140,36 +159,41 @@ public class HostileNameMarkdownTests(IServiceProvider provider) : AUiTest(provi
     [Fact]
     public async Task Test_EveryDiagnosticWithStringPlaceholders_RendersNoLinkOrImageFromTheStrings()
     {
-        var writer = Provider.GetRequiredService<IDiagnosticWriter>();
         var exercised = 0;
 
-        // A few templates have a link of their own, so each payload is compared with the same diagnostics filled with plain text.
-        // A name that breaks a NamedLink's text shows as text without its link, which is safe and not counted against it.
-        var benign = DiagnosticTexts(writer, Connection, "plain", out _);
-        var (benignLinks, benignImages, _, _) = await Render(benign);
+        // A few templates have a link of their own (a NamedLink to the fixture URL). A hostile name may only ever lose such a
+        // link's text or the link itself, so every link target must be one the same diagnostics have with a plain fill.
+        var benign = DiagnosticTexts("plain", out _);
+        var benignRendered = await Render(benign);
+        var allowed = benignRendered.Targets.Distinct().ToList();
+        allowed.Should().NotBeEmpty("the fixture NamedLink gives some diagnostics a link of their own");
         foreach (var payload in Payloads)
         {
-            var hostile = DiagnosticTexts(writer, Connection, payload, out exercised);
-            var (links, images, blocks, seen) = await Render(hostile);
+            var hostile = DiagnosticTexts(payload, out exercised);
+            var rendered = await Render(hostile);
+            var (_, images, blocks, seen) = rendered;
+            var targets = rendered.Targets;
 
             blocks.Should().BeGreaterThan(0);
-            links.Should().BeLessThanOrEqualTo(benignLinks, $"a string placeholder holding {payload.ReplaceLineEndings("\\n")} must not add a link: " + seen);
-            images.Should().BeLessThanOrEqualTo(benignImages, $"a string placeholder holding {payload.ReplaceLineEndings("\\n")} must not add an image: " + seen);
+            targets.Should().OnlyContain(t => allowed.Contains(t), $"a string placeholder holding {payload.ReplaceLineEndings("\\n")} must not add a link: " + seen);
+            images.Should().Be(0, $"a string placeholder holding {payload.ReplaceLineEndings("\\n")} must not add an image: " + seen);
         }
 
         exercised.Should().BeGreaterThan(40, "the guard has to reach the diagnostics that take strings, not skip them all");
     }
 
     /// <summary>
-    /// The summary and details, in Markdown, of every diagnostic the generated <c>Create</c> methods can make, with every
-    /// string and name filled with <paramref name="text"/>. A <see cref="MarkdownFragment"/> is the app's own Markdown, so it
-    /// gets a harmless one.
+    /// The text of every diagnostic the generated <c>Create</c> methods can make, as the details page builds it (its heading,
+    /// details and more-details), with every string and name filled with <paramref name="text"/>. A
+    /// <see cref="MarkdownFragment"/> is the app's own Markdown, so it gets a harmless one.
     /// </summary>
-    private static List<string> DiagnosticTexts(IDiagnosticWriter writer, IConnection connection, string text, out int exercised)
+    private List<string> DiagnosticTexts(string text, out int exercised)
     {
         LoadReferencedAssemblies();
         var texts = new List<string>();
-        exercised = 0;
+        var count = 0;
+        var writer = Provider.GetRequiredService<IDiagnosticWriter>();
+        var connection = Connection;
 
         var creators = AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => a.GetName().Name?.StartsWith("SilverModManager", StringComparison.Ordinal) == true)
@@ -178,25 +202,41 @@ public class HostileNameMarkdownTests(IServiceProvider provider) : AUiTest(provi
             .Where(m => m.Name.StartsWith("Create", StringComparison.Ordinal)
                         && m.ReturnType.IsGenericType && m.ReturnType.GetGenericTypeDefinition() == typeof(Diagnostic<>)
                         && m.GetParameters().Any(p => p.ParameterType == typeof(string)))
-            .OrderBy(m => $"{m.DeclaringType?.FullName}.{m.Name}", StringComparer.Ordinal);
+            .OrderBy(m => $"{m.DeclaringType?.FullName}.{m.Name}", StringComparer.Ordinal)
+            .ToList();
 
-        foreach (var creator in creators)
+        // The view model builds the page's Markdown, so the guard reads what it makes rather than repeating how.
+        Dispatcher.UIThread.Invoke(() =>
         {
-            Diagnostic diagnostic;
-            try
+            foreach (var creator in creators)
             {
-                diagnostic = (Diagnostic)creator.Invoke(null, creator.GetParameters().Select(p => Argument(p.ParameterType, connection, text)).ToArray())!;
-            }
-            catch (TargetInvocationException)
-            {
-                continue;
-            }
+                Diagnostic diagnostic;
+                try
+                {
+                    diagnostic = (Diagnostic)creator.Invoke(null, creator.GetParameters().Select(p => Argument(p.ParameterType, connection, text)).ToArray())!;
+                }
+                catch (TargetInvocationException)
+                {
+                    continue;
+                }
 
-            texts.Add(diagnostic.FormatSummary(writer, DiagnosticWriterMode.Markdown));
-            texts.Add(diagnostic.FormatDetails(writer, DiagnosticWriterMode.Markdown));
-            exercised++;
-        }
+                var page = new DiagnosticDetailsViewModel(
+                    new DesignWindowManager(),
+                    writer,
+                    Provider.GetRequiredService<IMarkdownRendererViewModel>(),
+                    diagnostic,
+                    default,
+                    [],
+                    Substitute.For<IErrorPresenter>(),
+                    NullLogger<DiagnosticDetailsViewModel>.Instance,
+                    Provider.GetRequiredService<IMarkdownRendererViewModel>());
+                texts.Add(page.MarkdownRendererViewModel.Contents);
+                if (page.MoreDetailsRendererViewModel is { } more) texts.Add(more.Contents);
+                count++;
+            }
+        });
 
+        exercised = count;
         return texts;
     }
 
