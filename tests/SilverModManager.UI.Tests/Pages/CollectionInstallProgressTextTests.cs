@@ -1,5 +1,6 @@
 using FluentAssertions;
 using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Collections;
 
 namespace SilverModManager.UI.Tests.Pages;
@@ -11,11 +12,13 @@ public class CollectionInstallProgressTextTests
         int alreadyInstalled = 241,
         int installed = 0,
         string[]? failed = null,
+        string[]? pending = null,
         string[]? installing = null,
         bool isFinished = false,
         bool leftDisabled = false) => new(
         total, alreadyInstalled, installed,
         (failed ?? []).Select(f => new CollectionInstallProgress.FailedMod(f, $"{f} reason")).ToArray(),
+        (pending ?? []).Select(p => new CollectionInstallProgress.PendingMod(p, ReviewKind.NoInstaller, $"{p} reason")).ToArray(),
         installing ?? [],
         isFinished, leftDisabled);
 

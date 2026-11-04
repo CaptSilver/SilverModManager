@@ -54,6 +54,12 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
     public Optional<GamePath> FallbackCollectionInstallDirectory { get; init; }
 
     /// <summary>
+    /// Never ask anyone: a mod that needs a person is recorded as a pending install and the job ends with
+    /// <see cref="ReviewRequiredException"/> instead of opening an installer window.
+    /// </summary>
+    public bool Unattended { get; init; }
+
+    /// <summary>
     /// Set when the download is installed on its own (from the collection page): the job then places it in the collection's
     /// order. A whole-collection install leaves it null and imports the order once, after all its downloads.
     /// </summary>
@@ -63,7 +69,8 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         IServiceProvider serviceProvider,
         LoadoutId targetLoadout,
         CollectionDownload.ReadOnly download,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool unattended = false)
     {
         var connection = serviceProvider.GetRequiredService<IConnection>();
 
@@ -86,6 +93,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             TargetLoadout = targetLoadout,
             SourceCollection = sourceCollection,
             OrderManifest = root,
+            Unattended = unattended,
 
             ServiceProvider = serviceProvider,
             Connection = connection,
@@ -101,6 +109,9 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         var (group, patchedFiles) = await Install(context);
 
         using var tx = Connection.BeginTransaction();
+
+        // The mod is in the collection now, so whatever waited for a person is done.
+        PendingInstalls.Retract(tx, Connection.Db, Group.Id, CollectionDownloadId.From(Item.Id));
 
         // Patch files
         foreach (var patchedFile in patchedFiles)
@@ -163,25 +174,36 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             return (await InstallReplicatedMod(patchedFiles), []);
         }
 
-        if (CollectionMod.Choices is { Type: ChoicesType.fomod } choices)
+        try
         {
-            return (await InstallFomodWithPredefinedChoices(choices, context.CancellationToken), patchedFiles);
+            if (CollectionMod.Choices is { Type: ChoicesType.fomod } choices)
+            {
+                return (await InstallFomodWithPredefinedChoices(choices, context.CancellationToken), patchedFiles);
+            }
+
+            var result = await LoadoutManager.InstallItem(
+                libraryFile.AsLibraryItem(),
+                TargetLoadout,
+                parent: Group.AsLoadoutItemGroup().LoadoutItemGroupId,
+                // NOTE(erri120): https://github.com/Nexus-Mods/NexusMods.App/issues/2553
+                // The advanced installer shouldn't appear when installing collections,
+                // the decision was made that the app should behave similar to Vortex,
+                // which installs unknown stuff into a "default folder"
+                fallbackInstaller: FallbackInstaller,
+                unattended: Unattended
+            );
+
+            var installedGroup = result.LoadoutItemGroup
+                ?? throw new InvalidOperationException($"Installing '{Item.Name}' did not create a loadout group");
+            return (installedGroup, patchedFiles);
         }
-
-        var result = await LoadoutManager.InstallItem(
-            libraryFile.AsLibraryItem(),
-            TargetLoadout,
-            parent: Group.AsLoadoutItemGroup().LoadoutItemGroupId,
-            // NOTE(erri120): https://github.com/Nexus-Mods/NexusMods.App/issues/2553
-            // The advanced installer shouldn't appear when installing collections,
-            // the decision was made that the app should behave similar to Vortex,
-            // which installs unknown stuff into a "default folder"
-            fallbackInstaller: FallbackInstaller
-        );
-
-        var installedGroup = result.LoadoutItemGroup
-            ?? throw new InvalidOperationException($"Installing '{Item.Name}' did not create a loadout group");
-        return (installedGroup, patchedFiles);
+        catch (ReviewRequiredException e)
+        {
+            // Written in a transaction of its own: the rows must outlive a cancelled or failed collection install.
+            Logger.LogInformation("`{DownloadName}` (index={Index}) needs a person: {Reason}", Item.Name, Item.ArrayIndex, e.Reason);
+            await PendingInstalls.Record(Connection, Group.Id, Item, e.Kind, e.Reason);
+            throw;
+        }
     }
 
     private Task<LoadoutItemGroup.ReadOnly> InstallBundledMod(CollectionDownloadBundled.ReadOnly download) => LoadoutManager.InstallItemWrapper(TargetLoadout, tx =>
@@ -251,7 +273,11 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         var game = loadout.InstallationInstance.GetGame();
         var installer = game.LibraryItemInstallers.OfType<FomodXmlInstaller>().FirstOrDefault();
         
-        return installer ?? throw new InvalidOperationException("FomodXmlInstaller not found");
+        if (installer is not null) return installer;
+
+        // A game without a FOMOD installer cannot apply saved choices; an attended install can still fall back to a person.
+        if (Unattended) throw new ReviewRequiredException(ReviewKind.NeedsChoices, CollectionMod.Name, "the game has no FOMOD installer");
+        throw new InvalidOperationException("FomodXmlInstaller not found");
     }
 
     /// <summary>Keeps the link invariant for the installs that write the link themselves instead of going through the install job.</summary>
@@ -296,7 +322,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         var loadout = new Loadout.ReadOnly(Connection.Db, TargetLoadout);
 
         var options = choices.Options;
-        await fomodInstaller.ExecuteWithSavedChoicesAsync(libraryArchive, loadoutItemGroup, tx, loadout, options, CollectionMod.Name, allowPrompt: true, cancellationToken);
+        await fomodInstaller.ExecuteWithSavedChoicesAsync(libraryArchive, loadoutItemGroup, tx, loadout, options, CollectionMod.Name, allowPrompt: !Unattended, cancellationToken);
 
         return loadoutItemGroup;
     });

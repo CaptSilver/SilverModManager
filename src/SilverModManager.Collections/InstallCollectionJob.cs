@@ -60,6 +60,12 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 
     private readonly ConcurrentQueue<FailedItem> _failedItems = new();
+    private readonly ConcurrentQueue<PendingItem> _pendingItems = new();
+
+    /// <summary>
+    /// The mods that need a person to finish them, with why. Complete once the job has finished.
+    /// </summary>
+    public IReadOnlyList<PendingItem> PendingItems => _pendingItems.ToArray();
 
     /// <summary>
     /// The mods that could not be installed, with the reason. A failing mod doesn't stop the collection,
@@ -85,6 +91,15 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         /// </summary>
         public string Reason => Exception.Message;
     }
+
+    /// <summary>
+    /// A mod of the collection that waits for a person.
+    /// </summary>
+    /// <param name="Download">The collection item that waits.</param>
+    /// <param name="Name">Name of the mod in the collection.</param>
+    /// <param name="Kind">What kind of help the mod needs.</param>
+    /// <param name="Reason">The installer's own explanation. May be empty.</param>
+    public record PendingItem(CollectionDownload.ReadOnly Download, string Name, ReviewKind Kind, string Reason);
 
     /// <summary>
     /// Factory.
@@ -128,6 +143,8 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
     public async ValueTask<NexusCollectionLoadoutGroup.ReadOnly> StartAsync(IJobContext<InstallCollectionJob> context)
     {
         Logger.LogInformation("Starting installation of `{CollectionName}/{RevisionNumber}`", RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
+        _failedItems.Clear();
+        _pendingItems.Clear();
 
         var g = Group.Convert(static x => x.AsCollectionGroup());
         var items = Items
@@ -196,6 +213,13 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
                 await InstallMod(modAndDownload, collectionGroup, fallbackInstaller, game.GetFallbackCollectionInstallDirectory(loadout.InstallationInstance));
                 Progress.ModInstalled(modAndDownload.Mod.Name);
             }
+            catch (ReviewRequiredException e)
+            {
+                Logger.LogInformation("`{DownloadName}` (index={Index}) of `{CollectionName}/{RevisionNumber}` needs a person: {Reason}", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber, e.Reason);
+                var pending = new PendingItem(modAndDownload.Download, modAndDownload.Mod.Name, e.Kind, e.Reason);
+                _pendingItems.Enqueue(pending);
+                Progress.ModNeedsReview(pending.Name, pending.Kind, pending.Reason);
+            }
             catch (Exception e)
             {
                 Logger.LogFailure(e, "Failed to install `{DownloadName}` (index={Index}) into `{CollectionName}/{RevisionNumber}`", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
@@ -206,7 +230,9 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         });
 
         var allRequiredItems = CollectionDownloader.GetItems(RevisionMetadata, CollectionDownloader.ItemType.Required);
-        var allRequiredItemsInstalled = allRequiredItems.All(item => CollectionDownloader
+        // A mod waiting for a person does not keep the collection off: it is a decision for the user, not a missing install.
+        var pendingDownloads = PendingInstalls.For(Connection.Db, collectionGroup.Id).Select(static row => row.Download.Id).ToHashSet();
+        var allRequiredItemsSatisfied = allRequiredItems.All(item => pendingDownloads.Contains(item.Id) || CollectionDownloader
             .GetStatus(item, collectionGroup.AsCollectionGroup(), db: Connection.Db)
             .IsInstalled(out _));
         {
@@ -229,7 +255,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             {
                 // Nothing to do: the state is the user's.
             }
-            else if (allRequiredItemsInstalled)
+            else if (allRequiredItemsSatisfied)
             {
                 // A group enabled by an earlier run no longer has the marker; retracting it again retracts a datom that doesn't exist.
                 var isDisabled = LoadoutItem.Load(Connection.Db, collectionGroup.Id).IsDisabled;
@@ -244,7 +270,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             collectionGroup = NexusCollectionLoadoutGroup.Load(result.Db, collectionGroup.Id);
         }
 
-        var leftDisabled = PreserveEnabledState ? LoadoutItem.Load(Connection.Db, collectionGroup.Id).IsDisabled : !allRequiredItemsInstalled;
+        var leftDisabled = PreserveEnabledState ? LoadoutItem.Load(Connection.Db, collectionGroup.Id).IsDisabled : !allRequiredItemsSatisfied;
         Progress.Finish(leftDisabled: leftDisabled);
 
         return collectionGroup;
@@ -275,6 +301,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
 
             FallbackInstaller = fallbackInstaller,
             FallbackCollectionInstallDirectory = fallbackCollectionInstallDirectory,
+            Unattended = true,
         };
 
         return monitor.Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(job);

@@ -6,6 +6,7 @@ using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Collections;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Jobs;
@@ -86,6 +87,7 @@ public class CollectionDownloadDesignViewModel : APageViewModel<ICollectionDownl
     public BindableReactiveProperty<CollectionInstallProgress.Snapshot?> InstallProgress { get; } = new(value: new CollectionInstallProgress.Snapshot(
         Total: 46, AlreadyInstalled: 241, Installed: 12,
         Failed: [new CollectionInstallProgress.FailedMod("Broken Mod", "Saved choices do not apply: no option named \"X\".")],
+        Pending: [new CollectionInstallProgress.PendingMod("Docs-only Mod", ReviewKind.NoInstaller, "Archive contains no matching files")],
         Installing: ["Mod A", "Mod B"], IsFinished: false, LeftDisabled: false));
     public BindableReactiveProperty<bool> IsUpdateAvailable { get; } = new();
     public BindableReactiveProperty<bool> HasInstalledAllOptionalItems { get; } = new(value: false);

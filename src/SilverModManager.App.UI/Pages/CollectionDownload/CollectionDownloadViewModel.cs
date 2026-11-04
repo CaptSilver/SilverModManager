@@ -22,6 +22,7 @@ using SilverModManager.App.UI.Pages.TextEdit;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Collections;
 using SilverModManager.UI.Sdk.Icons;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -592,10 +593,18 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
             serviceProvider: _serviceProvider,
             targetLoadout: _targetLoadout,
             download: download,
-            cancellationToken: cancellationToken
+            cancellationToken: cancellationToken,
+            unattended: true
         );
 
-        await monitor.Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(job);
+        try
+        {
+            await monitor.Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(job);
+        }
+        catch (ReviewRequiredException)
+        {
+            // The job has recorded the mod as pending; the collection's review list is where the user sees it.
+        }
     }
 
     /// <summary>

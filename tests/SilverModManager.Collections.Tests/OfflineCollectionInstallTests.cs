@@ -1,9 +1,12 @@
 using System.IO.Compression;
 using System.Text.Json;
+using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.GuidedInstallers;
 using SilverModManager.Abstractions.Collections;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Games.AdvancedInstaller;
 using SilverModManager.Abstractions.Collections.Json;
 using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Library;
@@ -40,11 +43,15 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
     // Stands in for the guided installer window. Assigned before the base constructor builds the services.
     private readonly ScriptedGuidedInstallerState _window = new();
 
+    // Counts how often an install reaches the manual installer; a collection install must never get there.
+    private readonly CountingAdvancedInstallerHandler _manualInstaller = new();
+
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         ConfigOptions.RegisterNullGuidedInstaller = false;
         return base.AddServices(services)
             .AddSingleton(_window)
+            .AddSingleton<IAdvancedInstallerHandler>(_manualInstaller)
             .AddTransient<IGuidedInstaller>(_ => _window.Create());
     }
 
@@ -72,6 +79,16 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         ModShape[]? shapes = null) =>
         new OfflineCollections(ServiceProvider, Connection, LibraryService, TemporaryFileManager)
             .Create(fomodMods, optionalIndexes, rules, silverLoadOrder, shapes);
+
+    /// <summary>Runs the download job the way Review does: attended, on its own.</summary>
+    private async Task RunDownload(InstallCollectionDownloadJob job)
+    {
+        async Task Run() => await ServiceProvider.GetRequiredService<IJobMonitor>().Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(job);
+        await Run().WaitAsync(Timeout);
+    }
+
+    private Optional<NexusCollectionPendingInstall.ReadOnly> PendingRow(NexusCollectionLoadoutGroup.ReadOnly group, CollectionDownload.ReadOnly download) =>
+        PendingInstalls.Find(Connection.Db, group.Id, CollectionDownloadId.From(download.Id));
 
     private static async Task<NexusCollectionLoadoutGroup.ReadOnly> AwaitJob(IJobTask<InstallCollectionJob, NexusCollectionLoadoutGroup.ReadOnly> job)
     {
@@ -278,11 +295,11 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
         var group = await AwaitJob(job);
 
-        var failures = job.JobDefinition.FailedItems;
-        failures.Should().ContainSingle();
-        failures[0].Name.Should().Be("Broken mod");
-        failures[0].Exception.Should().BeOfType<SavedChoicesDoNotApplyException>();
-        failures[0].Reason.Should().Contain("No such option");
+        job.JobDefinition.FailedItems.Should().BeEmpty();
+        var pending = job.JobDefinition.PendingItems.Should().ContainSingle().Which;
+        pending.Name.Should().Be("Broken mod");
+        pending.Kind.Should().Be(ReviewKind.NeedsChoices);
+        pending.Reason.Should().Contain("No such option");
 
         var installedNames = LoadoutItem.FindByLoadout(group.Db, loadout)
             .OfTypeLoadoutItemWithTargetPath()
@@ -307,7 +324,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         // The job starts on the thread pool, so subscribing can still replay the empty snapshot from before it began.
         var seen = snapshots.SkipWhile(s => ReferenceEquals(s, CollectionInstallProgress.Snapshot.Empty)).ToArray();
         seen.Select(s => s.Installed).Should().BeInAscendingOrder();
-        seen.Should().OnlyContain(s => s.Total == 6 && s.Installed + s.Failed.Count + s.Installing.Count <= s.Total);
+        seen.Should().OnlyContain(s => s.Total == 6 && s.Installed + s.Failed.Count + s.Pending.Count + s.Installing.Count <= s.Total);
         seen.SelectMany(s => s.Installing).Distinct().Should().BeEquivalentTo(mods.Select(m => m.Item2));
 
         var last = seen[^1];
@@ -315,6 +332,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         last.Installed.Should().Be(6);
         last.Installing.Should().BeEmpty();
         last.Failed.Should().BeEmpty();
+        last.Pending.Should().BeEmpty();
         last.LeftDisabled.Should().BeFalse();
     }
 
@@ -341,6 +359,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         last.Failed.Should().ContainSingle();
         last.Failed[0].Name.Should().Be("Broken mod");
         last.Failed[0].Reason.Should().Be("broken on purpose");
+        last.Pending.Should().BeEmpty();
         last.LeftDisabled.Should().BeTrue();
     }
 
@@ -586,12 +605,21 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         var group = await AwaitJob(job);
 
         job.JobDefinition.FailedItems.Should().BeEmpty();
+        var pending = job.JobDefinition.PendingItems.Should().ContainSingle().Which;
+        pending.Kind.Should().Be(ReviewKind.NeedsChoices);
+        _window.Prompts.Should().BeEmpty("the collection install never opens a window");
+        PendingRow(group, pending.Download).HasValue.Should().BeTrue();
+
+        var review = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, pending.Download, CancellationToken.None);
+        await RunDownload(review);
+
         var prompt = _window.Prompts.Should().ContainSingle().Which;
         prompt.Notice.Should().Contain("Mod with stale choices").And.Contain("No such option");
         prompt.Steps[0].Groups.Single().Options.Single(o => o.Name == "Option A").Type.Should().Be(OptionType.PreSelected);
         prompt.Steps[0].Groups.Single().Options.Single(o => o.Name == "Option B").Type.Should().Be(OptionType.Available);
 
-        InstalledFileNames(group, loadout).Should().Equal("mod0_a.out.esp", "mod0_c.out.esp", "mod1_a.out.esp");
+        InstalledFileNames(NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id), loadout).Should().Equal("mod0_a.out.esp", "mod0_c.out.esp", "mod1_a.out.esp");
+        PendingRow(group, pending.Download).HasValue.Should().BeFalse("installing the mod retracts its row");
     }
 
     [Fact]
@@ -606,26 +634,37 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         var (file, revision, items) = await CreateCollection(mods);
         var loadout = await CreateLoadout();
 
-        // Keep the first window open until the plain mod has finished.
+        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        var group = await AwaitJob(job);
+
+        _window.Prompts.Should().BeEmpty();
+        job.JobDefinition.PendingItems.Should().HaveCount(2);
+        job.JobDefinition.FailedItems.Should().BeEmpty();
+        job.JobDefinition.Progress.Current.Installed.Should().Be(1);
+
+        // Keep the first window open while the second review waits for it.
         var release = new TaskCompletionSource();
         _window.BeforeAnswer = _ => release.Task;
 
-        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
-        var running = AwaitJob(job);
+        var reviews = new List<Task>();
+        foreach (var pending in job.JobDefinition.PendingItems)
+        {
+            var review = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, pending.Download, CancellationToken.None);
+            reviews.Add(RunDownload(review));
+        }
 
         try
         {
             var deadline = DateTime.UtcNow + Timeout;
-            while (job.JobDefinition.Progress.Current.Installed < 1 || _window.Prompts.Length < 1)
+            while (_window.Prompts.Length < 1)
             {
-                DateTime.UtcNow.Should().BeBefore(deadline, "the plain mod should finish while a window is open");
+                DateTime.UtcNow.Should().BeBefore(deadline, "a review should open a window");
                 await Task.Delay(20);
             }
 
             // The other stale mod waits for the window instead of opening a second one.
             await Task.Delay(300);
             _window.Prompts.Should().ContainSingle();
-            job.JobDefinition.Progress.Current.Installed.Should().Be(1);
         }
         finally
         {
@@ -634,12 +673,12 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
             release.TrySetResult();
         }
 
-        await running;
+        await Task.WhenAll(reviews).WaitAsync(Timeout);
 
         _window.Prompts.Should().HaveCount(2);
         _window.MaxConcurrentPrompts.Should().Be(1);
-        job.JobDefinition.FailedItems.Should().BeEmpty();
-        job.JobDefinition.Progress.Current.Installed.Should().Be(3);
+        PendingInstalls.For(Connection.Db, group.Id).Should().BeEmpty();
+        InstalledFileNames(NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id), loadout).Should().Contain(["mod0_a.out.esp", "mod1_a.out.esp"]);
     }
 
     [Fact]
@@ -658,26 +697,256 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
         var group = await AwaitJob(job);
 
-        var failure = job.JobDefinition.FailedItems.Should().ContainSingle().Which;
-        failure.Name.Should().Be("Stale mod");
-        failure.Exception.Should().BeOfType<FomodInstallCancelledException>();
-        failure.Reason.Should().Contain("No such option");
+        job.JobDefinition.FailedItems.Should().BeEmpty();
+        var pending = job.JobDefinition.PendingItems.Should().ContainSingle().Which;
+        pending.Name.Should().Be("Stale mod");
+        pending.Reason.Should().Contain("No such option");
         InstalledFileNames(group, loadout).Should().Contain(["mod0_a.out.esp", "mod2_a.out.esp"]).And.NotContain("mod1_a.out.esp");
+
+        // Cancelling the window during the review leaves the mod where it was.
+        var review = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, pending.Download, CancellationToken.None);
+        var act = () => RunDownload(review);
+
+        await act.Should().ThrowAsync<FomodInstallCancelledException>();
+        PendingRow(group, pending.Download).HasValue.Should().BeTrue();
+        InstalledFileNames(NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id), loadout).Should().NotContain("mod1_a.out.esp");
     }
 
     [Fact]
-    public async Task AGuidedInstallerWithoutUserInteraction_NeverPrompts_AndFailsTheModWithTheReason()
+    public async Task AGuidedInstallerWithoutUserInteraction_NeverPrompts_AndLeavesTheModPendingWithTheReason()
     {
         var (file, revision, items) = await CreateCollection([(Choices(), "Good mod"), (Choices(secondStepOption: "No such option"), "Stale mod")]);
         var loadout = await CreateLoadout();
         _window.SupportsUserInteraction = false;
 
         var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
-        await AwaitJob(job);
+        var group = await AwaitJob(job);
 
         _window.Prompts.Should().BeEmpty();
-        var failure = job.JobDefinition.FailedItems.Should().ContainSingle().Which;
-        failure.Exception.Should().BeOfType<SavedChoicesDoNotApplyException>();
-        failure.Reason.Should().Contain("No such option");
+        job.JobDefinition.FailedItems.Should().BeEmpty();
+        var pending = job.JobDefinition.PendingItems.Should().ContainSingle().Which;
+        pending.Kind.Should().Be(ReviewKind.NeedsChoices);
+        pending.Reason.Should().Contain("No such option");
+        InstalledFileNames(group, loadout).Should().Contain("mod0_a.out.esp");
+    }
+
+    private async Task<(NexusCollectionLoadoutGroup.ReadOnly Group, LoadoutId Loadout, InstallCollectionJob Job, CollectionRevisionMetadata.ReadOnly Revision, NexusModsCollectionLibraryFile.ReadOnly File, CollectionDownload.ReadOnly[] Items)> InstallWith(
+        (FomodOption[]? Choices, string Name)[] mods, ModShape[] shapes, int[]? optionalIndexes = null)
+    {
+        var (file, revision, items) = await CreateCollection(mods, optionalIndexes, shapes: shapes);
+        var loadout = await CreateLoadout();
+        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        var group = await AwaitJob(job);
+        return (group, loadout, job.JobDefinition, revision, file, items);
+    }
+
+    private static readonly (FomodOption[]? Choices, string Name)[] PlainAndUnknown = [(null, "Plain mod"), (null, "Unknown mod")];
+
+    [Fact]
+    public async Task UnplaceableMod_IsRecordedAsPending_AndTheRestInstall()
+    {
+        var (group, loadout, job, _, _, _) = await InstallWith(
+            [(Choices(), "Fomod mod 0"), (null, "Unknown mod"), (Choices(), "Fomod mod 2")],
+            [ModShape.Fomod, ModShape.Unknown, ModShape.Fomod]);
+
+        job.FailedItems.Should().BeEmpty();
+        var pending = job.PendingItems.Should().ContainSingle().Which;
+        pending.Kind.Should().Be(ReviewKind.NoInstaller);
+        pending.Name.Should().Be("Unknown mod");
+        InstalledFileNames(group, loadout).Should().Contain(["mod0_a.out.esp", "mod2_a.out.esp"]);
+
+        var rows = PendingInstalls.For(Connection.Db, group.Id);
+        rows.Should().ContainSingle().Which.Download.Id.Should().Be(pending.Download.Id);
+        CollectionDownloader.GetStatus(pending.Download, group.AsCollectionGroup(), Connection.Db).IsInLibrary(out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task PlainFomodWithSteps_IsRecordedAsPending_WithNoPrompt()
+    {
+        var (group, loadout, job, _, _, _) = await InstallWith([(null, "Stepped")], [ModShape.Fomod]);
+
+        job.PendingItems.Should().ContainSingle().Which.Kind.Should().Be(ReviewKind.NeedsChoices);
+        job.FailedItems.Should().BeEmpty();
+        _window.Prompts.Should().BeEmpty();
+        InstalledFileNames(group, loadout).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task FomodWithoutSteps_InstallsUnattended()
+    {
+        var (group, loadout, job, _, _, _) = await InstallWith([(null, "Stepless")], [ModShape.FomodWithoutSteps]);
+
+        job.FailedItems.Should().BeEmpty();
+        job.PendingItems.Should().BeEmpty();
+        InstalledFileNames(group, loadout).Should().Contain("mod0_required.out.esp");
+        PendingInstalls.For(Connection.Db, group.Id).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task UnplaceableMod_NeverRunsTheManualInstaller()
+    {
+        await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+
+        _manualInstaller.Calls.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task UnplaceableMod_LeavesTheCollectionEnabled_WhenNothingFailed()
+    {
+        var (group, _, job, _, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+
+        LoadoutItem.Load(Connection.Db, group.Id).IsDisabled.Should().BeFalse();
+        job.Progress.Current.LeftDisabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AHardFailureStillDisablesTheCollection_WithAPendingModBesideIt()
+    {
+        var (file, revision, items) = await CreateCollection([(null, "Plain mod"), (null, "Unknown mod")], shapes: [ModShape.Plain, ModShape.Unknown]);
+        var loadout = await CreateLoadout();
+        using var gate = ArchiveGate.Install(Game.LibraryItemInstallers, 1, "mod0.zip");
+        gate.ThrowsOnEntry = new InvalidOperationException("broken on purpose");
+
+        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        var group = await AwaitJob(job);
+
+        LoadoutItem.Load(Connection.Db, group.Id).IsDisabled.Should().BeTrue();
+        job.JobDefinition.Progress.Current.Failed.Should().ContainSingle();
+        job.JobDefinition.Progress.Current.Pending.Should().ContainSingle();
+        job.JobDefinition.Progress.Current.LeftDisabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task InstallingOnlyOptionalMods_KeepsTheGroupEnabled_WhenRequiredModsArePending()
+    {
+        var (group, loadout, job, revision, file, _) = await InstallWith(PlainAndUnknown.Reverse().ToArray(), [ModShape.Unknown, ModShape.Plain], optionalIndexes: [1]);
+        job.PendingItems.Should().ContainSingle();
+        LoadoutItem.Load(Connection.Db, group.Id).IsDisabled.Should().BeFalse();
+
+        var optional = CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional);
+        await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, optional));
+
+        LoadoutItem.Load(Connection.Db, group.Id).IsDisabled.Should().BeFalse("a required mod waiting for review is not a missing install");
+    }
+
+    [Fact]
+    public async Task InstallingAgain_RetriesThePendingMod_AndKeepsOneRow()
+    {
+        var (group, loadout, job, revision, file, items) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+        job.PendingItems.Should().ContainSingle();
+
+        var second = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        await AwaitJob(second);
+
+        second.JobDefinition.PendingItems.Should().ContainSingle();
+        PendingInstalls.For(Connection.Db, group.Id).Should().ContainSingle();
+
+        var installers = Game.LibraryItemInstallers;
+        var original = installers[1];
+        installers[1] = new ClaimingInstaller("mod1.zip");
+        try
+        {
+            var third = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+            await AwaitJob(third);
+
+            third.JobDefinition.PendingItems.Should().BeEmpty();
+            third.JobDefinition.FailedItems.Should().BeEmpty();
+        }
+        finally
+        {
+            installers[1] = original;
+        }
+
+        PendingInstalls.For(Connection.Db, group.Id).Should().BeEmpty();
+        Child(NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id), "mod1.zip").Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task InstallingOneOptionalFromTheCollectionPage_RecordsItAsPending_WithNoDialog()
+    {
+        var (group, loadout, _, revision, _, _) = await InstallWith(
+            [(Choices(), "Fomod mod"), (null, "Unknown optional")], [ModShape.Fomod, ModShape.Unknown], optionalIndexes: [1]);
+        var optional = CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional).Single();
+
+        var download = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, optional, CancellationToken.None, unattended: true);
+        var act = () => RunDownload(download);
+
+        (await act.Should().ThrowAsync<ReviewRequiredException>()).Which.Kind.Should().Be(ReviewKind.NoInstaller);
+        PendingRow(group, optional).HasValue.Should().BeTrue();
+        _manualInstaller.Calls.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task CancellingTheInstall_KeepsThePendingRowsAlreadyRecorded()
+    {
+        var (file, revision, items) = await CreateCollection([(null, "Unknown mod"), (null, "Plain mod")], shapes: [ModShape.Unknown, ModShape.Plain]);
+        var loadout = await CreateLoadout();
+        using var gate = ArchiveGate.Install(Game.LibraryItemInstallers, 1, "mod1.zip");
+
+        var unknown = items.Single(item => item.ArrayIndex == 0);
+        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        var running = AwaitJob(job);
+
+        await gate.Entered.WaitAsync(Timeout);
+        var deadline = DateTime.UtcNow + Timeout;
+        while (!PendingInstalls.Find(Connection.Db, CollectionDownloader.GetCollectionGroup(revision, loadout, Connection.Db).Value.Id, CollectionDownloadId.From(unknown.Id)).HasValue)
+        {
+            DateTime.UtcNow.Should().BeBefore(deadline, "the unknown mod should be recorded while the plain mod is held");
+            await Task.Delay(20);
+        }
+
+        ServiceProvider.GetRequiredService<IJobMonitor>().Cancel(job);
+        gate.Fail(new OperationCanceledException());
+        var act = async () => await running;
+        await act.Should().ThrowAsync<Exception>();
+
+        var group = CollectionDownloader.GetCollectionGroup(revision, loadout, Connection.Db).Value;
+        PendingInstalls.For(Connection.Db, group.Id).Should().ContainSingle().Which.Download.Id.Should().Be(unknown.Id);
+        LoadoutItem.Load(Connection.Db, group.Id).IsDisabled.Should().BeTrue("the install never finished, so the collection stays off");
+    }
+
+    [Fact]
+    public async Task AModInstalledIntoMyMods_LeavesThePendingRow_AndItsStatusInLibrary()
+    {
+        var (group, loadout, job, _, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+        var pending = job.PendingItems.Should().ContainSingle().Which;
+        CollectionDownloader.GetStatus(pending.Download, group.AsCollectionGroup(), Connection.Db).IsInLibrary(out var libraryItem).Should().BeTrue();
+
+        await LoadoutManager.InstallItem(libraryItem, loadout, installer: new ClaimingInstaller("mod1.zip"));
+
+        PendingRow(group, pending.Download).HasValue.Should().BeTrue();
+        CollectionDownloader.GetStatus(pending.Download, group.AsCollectionGroup(), Connection.Db).IsInLibrary(out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AGameWithoutAFomodInstaller_LandsASavedChoicesModAsPending_NotFailed()
+    {
+        var (file, revision, items) = await CreateCollection([(Choices(), "Fomod mod")]);
+        var loadout = await CreateLoadout();
+        using var gate = ArchiveGate.Install(Game.LibraryItemInstallers, 0, "none.zip"); // hides FomodXmlInstaller from OfType
+
+        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        await AwaitJob(job);
+
+        job.JobDefinition.FailedItems.Should().BeEmpty();
+        var pending = job.JobDefinition.PendingItems.Should().ContainSingle().Which;
+        pending.Kind.Should().Be(ReviewKind.NeedsChoices);
+        pending.Reason.Should().Be("the game has no FOMOD installer");
+    }
+
+    [Fact]
+    public async Task Progress_ListsPendingModsSeparatelyFromFailures()
+    {
+        var (file, revision, items) = await CreateCollection([(null, "Unknown mod"), (null, "Broken mod")], shapes: [ModShape.Unknown, ModShape.Plain]);
+        var loadout = await CreateLoadout();
+        using var gate = ArchiveGate.Install(Game.LibraryItemInstallers, 1, "mod1.zip");
+        gate.ThrowsOnEntry = new InvalidOperationException("broken on purpose");
+
+        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        await AwaitJob(job);
+
+        var last = job.JobDefinition.Progress.Current;
+        last.Pending.Should().ContainSingle().Which.Name.Should().Be("Unknown mod");
+        last.Failed.Should().ContainSingle().Which.Name.Should().Be("Broken mod");
     }
 }
