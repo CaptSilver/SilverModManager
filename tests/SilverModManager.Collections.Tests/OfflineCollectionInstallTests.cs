@@ -68,9 +68,10 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
     private Task<(NexusModsCollectionLibraryFile.ReadOnly File, CollectionRevisionMetadata.ReadOnly Revision, CollectionDownload.ReadOnly[] Items)> CreateCollection(
         (FomodOption[]? Choices, string Name)[] fomodMods, int[]? optionalIndexes = null,
         (int Source, int Other, CollectionDownloadRuleType Type)[]? rules = null,
-        Func<IReadOnlyList<Mod>, SilverLoadOrderEntry[]>? silverLoadOrder = null) =>
+        Func<IReadOnlyList<Mod>, SilverLoadOrderEntry[]>? silverLoadOrder = null,
+        ModShape[]? shapes = null) =>
         new OfflineCollections(ServiceProvider, Connection, LibraryService, TemporaryFileManager)
-            .Create(fomodMods, optionalIndexes, rules, silverLoadOrder);
+            .Create(fomodMods, optionalIndexes, rules, silverLoadOrder, shapes);
 
     private static async Task<NexusCollectionLoadoutGroup.ReadOnly> AwaitJob(IJobTask<InstallCollectionJob, NexusCollectionLoadoutGroup.ReadOnly> job)
     {
@@ -323,12 +324,13 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         var mods = new[]
         {
             (Choices(), "Good mod 0"),
-            (Choices("No such option"), "Broken mod"),
+            ((FomodOption[]?)null, "Broken mod"),
             (Choices(), "Good mod 2"),
         };
         var (file, revision, items) = await CreateCollection(mods);
         var loadout = await CreateLoadout();
-        _window.SupportsUserInteraction = false; // headless: no window to fall back to
+        using var gate = ArchiveGate.Install(Game.LibraryItemInstallers, 1, "mod1.zip");
+        gate.ThrowsOnEntry = new InvalidOperationException("broken on purpose");
 
         var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
         await AwaitJob(job);
@@ -338,7 +340,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         last.Installed.Should().Be(2);
         last.Failed.Should().ContainSingle();
         last.Failed[0].Name.Should().Be("Broken mod");
-        last.Failed[0].Reason.Should().Contain("No such option");
+        last.Failed[0].Reason.Should().Be("broken on purpose");
         last.LeftDisabled.Should().BeTrue();
     }
 
@@ -476,25 +478,19 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         var mods = new (FomodOption[]?, string)[]
         {
             (Choices(), "Good mod 0"),
-            (Choices(secondStepOption: "No such option"), "Stale mod"),
+            (null, "Stale mod"),
         };
         var (file, revision, items) = await CreateCollection(mods);
         var loadout = await CreateLoadout();
 
-        // The stale mod falls back to the window, which stays open and keeps the install running.
-        var release = new TaskCompletionSource();
-        _window.BeforeAnswer = _ => release.Task;
+        // The stale mod is held in the installer, which keeps the install running.
+        using var gate = ArchiveGate.Install(Game.LibraryItemInstallers, 1, "mod1.zip");
         var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
         var running = AwaitJob(job);
 
         try
         {
-            var deadline = DateTime.UtcNow + Timeout;
-            while (_window.Prompts.Length < 1)
-            {
-                DateTime.UtcNow.Should().BeBefore(deadline, "the stale mod should open a window");
-                await Task.Delay(20);
-            }
+            await gate.Entered.WaitAsync(Timeout);
 
             var group = CollectionDownloader.GetCollectionGroup(revision, loadout, Connection.Db);
             group.HasValue.Should().BeTrue();
@@ -505,8 +501,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         }
         finally
         {
-            // The open window holds the process-wide guided installer gate; later tests wait on it.
-            release.TrySetResult();
+            gate.Release();
         }
 
         await running;

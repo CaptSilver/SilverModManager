@@ -24,6 +24,22 @@ namespace SilverModManager.Games.TestFramework.Helpers;
 
 using CollectionResult = (NexusModsCollectionLibraryFile.ReadOnly File, CollectionRevisionMetadata.ReadOnly Revision, CollectionDownload.ReadOnly[] Items);
 
+/// <summary>What is inside a mod archive the offline collections build.</summary>
+public enum ModShape
+{
+    /// <summary>A Cyberpunk archive mod that an installer of the game claims.</summary>
+    Plain,
+
+    /// <summary>A two-step FOMOD with options to choose.</summary>
+    Fomod,
+
+    /// <summary>A FOMOD whose config has required files only, no install steps.</summary>
+    FomodWithoutSteps,
+
+    /// <summary>A readme and a guide; no installer recognises the layout.</summary>
+    Unknown,
+}
+
 /// <summary>
 /// Builds a collection that is already in the database: the collection.json is written as a library file, the downloads are
 /// entities, and nothing touches the network. The mods are zips on disk, or (from a manifest) files the library already holds.
@@ -74,7 +90,22 @@ public sealed class OfflineCollections(
         </config>
         """;
 
-    public async Task<(AbsolutePath Path, Md5Value Md5)> CreateFomodMod(AbsolutePath folder, int index, bool plain)
+    // A FOMOD with only required files: there is nothing to ask, and no install steps.
+    private const string StepLessModuleConfig = """
+        <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+            <moduleName>Mod {0}</moduleName>
+            <requiredInstallFiles>
+                <file source="mod{0}_required.esp" destination="mod{0}_required.out.esp"/>
+            </requiredInstallFiles>
+        </config>
+        """;
+
+    /// <summary>
+    /// A zip of the given <see cref="ModShape"/> named <c>mod{index}.zip</c>: <see cref="ModShape.Plain"/> is a Cyberpunk
+    /// archive mod, <see cref="ModShape.Fomod"/> a two-step FOMOD, <see cref="ModShape.FomodWithoutSteps"/> a FOMOD with
+    /// only required files, and <see cref="ModShape.Unknown"/> a readme and a guide that no installer recognises.
+    /// </summary>
+    public async Task<(AbsolutePath Path, Md5Value Md5)> CreateMod(AbsolutePath folder, int index, ModShape shape)
     {
         var path = folder.Combine($"mod{index}.zip");
         await using (var stream = path.Create())
@@ -86,15 +117,26 @@ public sealed class OfflineCollections(
                 writer.Write(content);
             }
 
-            if (plain)
+            switch (shape)
             {
-                Add($"archive/pc/mod/plain{index}.archive", $"plain mod {index}");
-                Add($"mods/plain{index}/info.json", $$"""{ "name": "plain{{index}}", "version": "1.0.0" }""");
-            }
-            else
-            {
-                Add("fomod/ModuleConfig.xml", string.Format(ModuleConfig, index));
-                foreach (var option in "abc") Add($"mod{index}_{option}.esp", $"mod {index} option {option}");
+                case ModShape.Plain:
+                    Add($"archive/pc/mod/plain{index}.archive", $"plain mod {index}");
+                    Add($"mods/plain{index}/info.json", $$"""{ "name": "plain{{index}}", "version": "1.0.0" }""");
+                    break;
+                case ModShape.Fomod:
+                    Add("fomod/ModuleConfig.xml", string.Format(ModuleConfig, index));
+                    foreach (var option in "abc") Add($"mod{index}_{option}.esp", $"mod {index} option {option}");
+                    break;
+                case ModShape.FomodWithoutSteps:
+                    Add("fomod/ModuleConfig.xml", string.Format(StepLessModuleConfig, index));
+                    Add($"mod{index}_required.esp", $"mod {index} required");
+                    break;
+                case ModShape.Unknown:
+                    Add("readme.txt", $"mod {index}: read the guide and place the files yourself");
+                    Add("docs/guide.md", $"# Mod {index}\n\nCopy things where they belong.");
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(shape), shape, null);
             }
         }
 
@@ -103,11 +145,15 @@ public sealed class OfflineCollections(
     }
 
 
-    /// <summary>The collection of the given FOMOD or plain mods; <paramref name="rules"/> are written as stored download rules directly.</summary>
+    /// <summary>
+    /// The collection of the given mods; <paramref name="rules"/> are written as stored download rules directly.
+    /// <paramref name="shapes"/> sets each archive's shape; it defaults to Plain without choices and Fomod with.
+    /// </summary>
     public async Task<CollectionResult> Create(
         (FomodOption[]? Choices, string Name)[] fomodMods, int[]? optionalIndexes = null,
         (int Source, int Other, CollectionDownloadRuleType Type)[]? rules = null,
-        Func<IReadOnlyList<Mod>, SilverLoadOrderEntry[]>? silverLoadOrder = null)
+        Func<IReadOnlyList<Mod>, SilverLoadOrderEntry[]>? silverLoadOrder = null,
+        ModShape[]? shapes = null)
     {
         var folder = temporaryFileManager.CreateFolder();
 
@@ -115,7 +161,7 @@ public sealed class OfflineCollections(
         var archives = new List<(AbsolutePath Path, Md5Value Md5)>();
         for (var i = 0; i < fomodMods.Length; i++)
         {
-            var archive = await CreateFomodMod(folder.Path, i, plain: fomodMods[i].Choices is null);
+            var archive = await CreateMod(folder.Path, i, shapes?[i] ?? (fomodMods[i].Choices is null ? ModShape.Plain : ModShape.Fomod));
             archives.Add(archive);
             mods.Add(new Mod
             {

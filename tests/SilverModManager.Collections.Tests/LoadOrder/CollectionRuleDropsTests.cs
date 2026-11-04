@@ -44,7 +44,7 @@ public class CollectionRuleDropsTests(ITestOutputHelper helper) : ACyberpunkIsol
         var mods = new List<Mod>();
         for (var i = 0; i < modCount; i++)
         {
-            var (path, md5) = await offline.CreateFomodMod(folder.Path, i, plain: true);
+            var (path, md5) = await offline.CreateMod(folder.Path, i, ModShape.Plain);
             await offline.AddDirectDownload(path, md5);
             mods.Add(new Mod
             {

@@ -46,10 +46,10 @@ public class CollectionUpdateTests(ITestOutputHelper helper) : ACyberpunkIsolate
     private OfflineCollections Offline => new(ServiceProvider, Connection, LibraryService, TemporaryFileManager);
 
     /// <summary>A direct download whose archive is in the library. <paramref name="slot"/> is the mod's identity across revisions; the archive is its file.</summary>
-    private async Task<Mod> MakeMod(string slot, int archive, bool plain = true, FomodOption[]? choices = null, bool inLibrary = true)
+    private async Task<Mod> MakeMod(string slot, int archive, ModShape shape = ModShape.Plain, FomodOption[]? choices = null, bool inLibrary = true)
     {
         var folder = TemporaryFileManager.CreateFolder();
-        var (path, md5) = await Offline.CreateFomodMod(folder.Path, archive, plain);
+        var (path, md5) = await Offline.CreateMod(folder.Path, archive, shape);
         if (inLibrary) await Offline.AddDirectDownload(path, md5);
         return new Mod
         {
@@ -274,21 +274,17 @@ public class CollectionUpdateTests(ITestOutputHelper helper) : ACyberpunkIsolate
         Exists(s.Loadout, "b-1.zip").Should().BeFalse();
     }
 
-    private static FomodOption[] NoSuchOption() =>
-    [
-        new FomodOption { name = "Step 1", groups = [new FomodGroup { name = "Group 1", choices = [new FomodChoice { name = "No such option" }] }] },
-    ];
-
     [Fact]
     public async Task AReplacementThatFailsLeavesTheOldVersionAsTheUsersOwnModAndTheCollectionEnabled()
     {
         var a = await MakeMod("a", 0);
         var first = await Publish(1, [a, await MakeMod("b", 1)], []);
-        _window.SupportsUserInteraction = false;
-        var second = await Publish(2, [a, await MakeMod("b", 11, plain: false, choices: NoSuchOption())], []);
+        var second = await Publish(2, [a, await MakeMod("b", 11)], []);
         var loadout = await CreateLoadout();
         var group = await Await(InstallCollectionJob.Create(ServiceProvider, loadout, first.File, first.Revision, first.Items));
         LoadoutItem.Load(Connection.Db, group.Id).IsDisabled.Should().BeFalse();
+        using var gate = ArchiveGate.Install(Game.LibraryItemInstallers, 1, "mod11.zip");
+        gate.ThrowsOnEntry = new InvalidOperationException("broken on purpose");
 
         var result = await CollectionUpdater.Update(ServiceProvider, group, second.Revision);
 
@@ -309,23 +305,16 @@ public class CollectionUpdateTests(ITestOutputHelper helper) : ACyberpunkIsolate
     {
         var a = await MakeMod("a", 0);
         var first = await Publish(1, [a, await MakeMod("b", 1)], []);
-        var release = new TaskCompletionSource();
-        var windowOpen = new TaskCompletionSource();
-        _window.BeforeAnswer = async _ =>
-        {
-            windowOpen.TrySetResult();
-            await release.Task;
-        };
-        var second = await Publish(2, [a, await MakeMod("b", 11, plain: false, choices: NoSuchOption())], []);
+        var second = await Publish(2, [a, await MakeMod("b", 11)], []);
         var loadout = await CreateLoadout();
         var group = await Await(InstallCollectionJob.Create(ServiceProvider, loadout, first.File, first.Revision, first.Items));
         using var cancel = new CancellationTokenSource();
+        using var gate = ArchiveGate.Install(Game.LibraryItemInstallers, 1, "mod11.zip");
 
         var update = CollectionUpdater.Update(ServiceProvider, group, second.Revision, cancel.Token).AsTask();
-        await windowOpen.Task.WaitAsync(Timeout);
+        await gate.Entered.WaitAsync(Timeout);
         await cancel.CancelAsync();
-        _window.Cancel = true; // the held window is closed, so the replacement never installs
-        release.SetResult();
+        gate.Fail(new OperationCanceledException()); // the held install is abandoned, so the replacement never installs
         var act = async () => await update.WaitAsync(Timeout);
 
         await act.Should().ThrowAsync<Exception>();

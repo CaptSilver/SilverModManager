@@ -63,7 +63,7 @@ public class CollectionUpdateNexusTests(ITestOutputHelper helper) : ACyberpunkIs
     private async Task<Mod> NexusMod(string slot, uint modId, uint fileId, int archive, FomodOption[]? choices = null, bool inLibrary = true)
     {
         var folder = TemporaryFileManager.CreateFolder();
-        var (path, _) = await Offline.CreateFomodMod(folder.Path, archive, plain: choices is null);
+        var (path, _) = await Offline.CreateMod(folder.Path, archive, choices is null ? ModShape.Plain : ModShape.Fomod);
         if (inLibrary) await Offline.AddNexusDownload(path, modId, fileId);
         return new Mod
         {
@@ -395,7 +395,7 @@ public class CollectionUpdateNexusTests(ITestOutputHelper helper) : ACyberpunkIs
     private async Task<Mod> DirectMod(string slot, int archive)
     {
         var folder = TemporaryFileManager.CreateFolder();
-        var (path, md5) = await Offline.CreateFomodMod(folder.Path, archive, plain: true);
+        var (path, md5) = await Offline.CreateMod(folder.Path, archive, ModShape.Plain);
         await Offline.AddDirectDownload(path, md5);
         return new Mod
         {

@@ -326,7 +326,7 @@ public class CollectionOrderShareTests(ITestOutputHelper helper) : ACyberpunkIso
         var files = new Dictionary<int, EntityId>();
         foreach (var (index, _) in mods)
         {
-            var (path, md5) = await Offline.CreateFomodMod(folder.Path, index, plain: true);
+            var (path, md5) = await Offline.CreateMod(folder.Path, index, ModShape.Plain);
             var file = await LibraryService.AddLocalFile(path, new GameAcquisition(GameInstallation.Game.GameId));
             using var fileTx = Connection.BeginTransaction();
             fileTx.Add(file.Id, LibraryFile.Md5, md5);

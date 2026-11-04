@@ -128,8 +128,8 @@ public class CollectionDestinationTests(ITestOutputHelper helper) : ACyberpunkIs
     {
         var offline = new OfflineCollections(ServiceProvider, Connection, LibraryService, TemporaryFileManager);
         var folder = TemporaryFileManager.CreateFolder();
-        var external = await offline.CreateFomodMod(folder.Path, 0, plain: true);
-        var nexus = await offline.CreateFomodMod(folder.Path, 1, plain: true);
+        var external = await offline.CreateMod(folder.Path, 0, ModShape.Plain);
+        var nexus = await offline.CreateMod(folder.Path, 1, ModShape.Plain);
         var externalBytes = await external.Path.ReadAllBytesAsync();
         var nexusBytes = await nexus.Path.ReadAllBytesAsync();
         _files.Serve(ExternalUrl, externalBytes);
@@ -273,7 +273,7 @@ public class CollectionDestinationTests(ITestOutputHelper helper) : ACyberpunkIs
         // A mod with Hashes is installed by mapping the archive's files to the listed paths, not through an installer.
         var offline = new OfflineCollections(ServiceProvider, Connection, LibraryService, TemporaryFileManager);
         var folder = TemporaryFileManager.CreateFolder();
-        var (path, archiveMd5) = await offline.CreateFomodMod(folder.Path, 0, plain: true);
+        var (path, archiveMd5) = await offline.CreateMod(folder.Path, 0, ModShape.Plain);
         await offline.AddDirectDownload(path, archiveMd5);
         var innerMd5 = await Md5Hasher.HashAsync(new MemoryStream(System.Text.Encoding.UTF8.GetBytes("plain mod 0")));
         var manifest = new CollectionRoot
