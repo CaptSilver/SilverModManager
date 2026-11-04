@@ -20,6 +20,42 @@ internal static class TestTextures
         return pixels;
     }
 
+    /// <summary><see cref="Gradient"/> as RGBA bytes.</summary>
+    public static byte[] GradientRgba(int size) => MemoryMarshal.AsBytes(Gradient(size).AsSpan()).ToArray();
+
+    /// <summary>Seeded full-amplitude noise in every channel, alpha included. No encoder reproduces it well, which is the point.</summary>
+    public static byte[] NoiseRgba(int size, int seed)
+    {
+        var pixels = new byte[size * size * 4];
+        new Random(seed).NextBytes(pixels);
+        return pixels;
+    }
+
+    /// <summary>Black and white squares one pixel wide, opaque.</summary>
+    public static byte[] CheckerboardRgba(int size)
+    {
+        var pixels = new byte[size * size * 4];
+        for (var y = 0; y < size; y++)
+        for (var x = 0; x < size; x++)
+        {
+            var at = (y * size + x) * 4;
+            var value = (byte)((x + y) % 2 == 0 ? 255 : 0);
+            pixels[at] = pixels[at + 1] = pixels[at + 2] = value;
+            pixels[at + 3] = 255;
+        }
+        return pixels;
+    }
+
+    /// <summary>A colour ramp whose alpha falls from opaque on the left to clear on the right, with colour kept under the clear part.</summary>
+    public static byte[] PartialAlphaRgba(int size)
+    {
+        var pixels = GradientRgba(size);
+        for (var y = 0; y < size; y++)
+        for (var x = 0; x < size; x++)
+            pixels[(y * size + x) * 4 + 3] = (byte)(255 - x * 255 / (size - 1));
+        return pixels;
+    }
+
     private static BcEncoder Encoder(CompressionFormat format) => new()
     {
         OutputOptions =

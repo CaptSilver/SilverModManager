@@ -13,6 +13,7 @@ using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.DataModel.SchemaVersions;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Native;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Cli;
@@ -50,8 +51,10 @@ public static class Services
             .AddSingleton<ILibraryArchiveLocator, LibraryArchiveLocator>()
             .AddSingleton<IModlistCatalog, ModlistCatalog>()
             .AddSingleton<ArchiveInventory>()
-            .AddSingleton<ITextureEncoder, ManagedTextureEncoder>()
-            .AddSingleton<DdsRecompressor>()
+            .AddSingleton(provider => new TextureEncoderSelector(
+                new BundledNativeLibraryLoader(typeof(TextureEncoderSelector).Assembly),
+                provider.GetRequiredService<ILogger<TextureEncoderSelector>>()))
+            .AddSingleton(provider => new DdsRecompressor(provider.GetRequiredService<TextureEncoderSelector>().Encoders))
             .AddSingleton<IDirectiveTransforms, DirectiveTransforms>()
             .AddSingleton<ModlistInstallRuns>()
             .AddSingleton<ILoadoutInstallActivity>(sp => sp.GetRequiredService<ModlistInstallRuns>())

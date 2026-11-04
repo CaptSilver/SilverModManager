@@ -49,3 +49,10 @@ The SSE2 target is the floor, so every x86-64 CPU has a kernel to dispatch to; n
 
 `tests/SilverModManager.Wabbajack.Transforms.Tests/NativeTextureLibraryTests.cs` loads the committed binary, compares the library's whole dynamic symbol table with the export list and encodes every format, alpha included.
 It does not tie the binary to the sources, so rebuild after any change here.
+
+## Which exports the app uses
+
+The managed side binds `smm_texenc_encode_bc1`, `_bc3` and `_bc7`. `_bc4` and `_bc5` are exported and checked for at load
+but not called: rgbcx's fast BC4/BC5 encoder has no quality level and decodes below BCnEncoder.Net's Balanced on noise
+(about 29.3 against 30.6 dB) and on a 64 pixel gradient (51.7 against 66.2 dB), so those formats stay on the managed encoder.
+`rgbcx::encode_bc4_hq` and `encode_bc5_hq` are the next thing to try; that is a shim change and a rebuild.

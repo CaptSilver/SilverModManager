@@ -14,14 +14,7 @@ public sealed class ManagedTextureEncoder : ITextureEncoder
         CancellationToken cancellationToken)
     {
         if (!CanEncode(format)) throw new ArgumentOutOfRangeException(nameof(format), format, null);
-        ArgumentOutOfRangeException.ThrowIfLessThan(parallelism, 1);
-        if (paddedWidth < 4 || paddedHeight < 4 || paddedWidth % 4 != 0 || paddedHeight % 4 != 0)
-            throw new ArgumentException($"A level to encode is padded to whole blocks, not {paddedWidth}x{paddedHeight}");
-        if (rgba.Length != paddedWidth * paddedHeight * 4)
-            throw new ArgumentException($"A {paddedWidth}x{paddedHeight} level holds {paddedWidth * paddedHeight * 4} bytes of RGBA, not {rgba.Length}", nameof(rgba));
-        var expected = format.BlockBytes(paddedWidth, paddedHeight);
-        if (dst.Length != expected)
-            throw new ArgumentException($"A {paddedWidth}x{paddedHeight} {format} level takes {expected} bytes, not {dst.Length}", nameof(dst));
+        EncodeArguments.Check(format, rgba.Length, paddedWidth, paddedHeight, dst.Length, parallelism);
         cancellationToken.ThrowIfCancellationRequested();
 
         var encoder = new BcEncoder

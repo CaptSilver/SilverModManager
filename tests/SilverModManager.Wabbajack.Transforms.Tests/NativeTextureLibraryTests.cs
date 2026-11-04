@@ -10,6 +10,7 @@ namespace SilverModManager.Wabbajack.Transforms.Tests;
 /// against the export list and that every export encodes. It cannot tell whether the binary matches the current
 /// extern/texenc sources; rebuild with scripts/build-texenc.sh after changing them.
 /// </summary>
+[Collection(NativeTexenc.Collection)]
 public sealed unsafe class NativeTextureLibraryTests : IDisposable
 {
     private static readonly string[] Exports =
@@ -28,21 +29,29 @@ public sealed unsafe class NativeTextureLibraryTests : IDisposable
 
     private static readonly string LibraryPath = Path.Combine(AppContext.BaseDirectory, "runtimes", "linux-x64", "native", "libsmmtexenc.so");
 
-    private readonly nint _library = NativeLibrary.Load(LibraryPath);
+    // A platform with no bundled library is a supported configuration (the managed encoder is the floor), so these skip there.
+    private readonly nint _library = File.Exists(LibraryPath) ? NativeLibrary.Load(LibraryPath) : 0;
 
-    public void Dispose() => NativeLibrary.Free(_library);
+    public void Dispose()
+    {
+        if (_library != 0) NativeLibrary.Free(_library);
+    }
+
+    private void RequireLibrary() => Assert.SkipUnless(_library != 0, $"{LibraryPath} is not bundled for this platform");
 
     private nint Export(string name) => NativeLibrary.GetExport(_library, name);
 
     [Fact]
     public void ExportsEverySymbolTheManagedSideBinds()
     {
+        RequireLibrary();
         Assert.All(Exports, name => Assert.True(NativeLibrary.TryGetExport(_library, name, out var address) && address != 0, name));
     }
 
     [Fact]
     public void ExportsNothingBeyondTheShim()
     {
+        RequireLibrary();
         // bc7e's per-target entry points, its params_init functions and rgbcx's C++ symbols stay private, so the list
         // above is the whole surface. Read straight from .dynsym so no name has to be guessed.
         Assert.Equal(Exports.Order(StringComparer.Ordinal), DefinedDynamicSymbols(LibraryPath).Order(StringComparer.Ordinal));
@@ -120,6 +129,7 @@ public sealed unsafe class NativeTextureLibraryTests : IDisposable
     [MemberData(nameof(Formats))]
     public void EncodesEveryBlockOfARowBandToTheRightSizeAndPlace(string export, CompressionFormat format, int blockBytes, uint level, int channels)
     {
+        RequireLibrary();
         Init();
         var rgba = Texture();
         var dst = new byte[Width / 4 * (Rows / 4) * blockBytes];
@@ -140,6 +150,7 @@ public sealed unsafe class NativeTextureLibraryTests : IDisposable
     [MemberData(nameof(Formats))]
     public void RejectsALevelOrShapeItCannotEncode(string export, CompressionFormat format, int blockBytes, uint level, int channels)
     {
+        RequireLibrary();
         Init();
         _ = format; _ = channels;
         var rgba = Texture();
