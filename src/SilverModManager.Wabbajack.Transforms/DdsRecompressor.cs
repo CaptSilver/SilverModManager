@@ -39,6 +39,8 @@ public sealed class DdsRecompressor
         return Task.Run(() => RecompressCore(dds, target, output, parallelism, token), token);
     }
 
+    private readonly record struct BlockEncoding(BlockFormat Format, ITextureEncoder Encoder);
+
     private ITextureEncoder EncoderFor(BlockFormat format, DxgiFormat target)
         => _encoders.FirstOrDefault(e => e.CanEncode(format))
            ?? throw new UnsupportedTextureFormatException($"cannot write {target}: no encoder takes {format}");
@@ -63,8 +65,13 @@ public sealed class DdsRecompressor
 
         // Check the target before the expensive decode.
         var packed = UncompressedWriter.Handles(target.Format);
-        var blockFormat = packed ? default : ToBlockFormat(target.Format);
-        var encoder = packed ? _encoders[0] : EncoderFor(blockFormat, target.Format);
+        // An uncompressed target has no block format and never reaches an encoder.
+        BlockEncoding? block = null;
+        if (!packed)
+        {
+            var format = ToBlockFormat(target.Format);
+            block = new BlockEncoding(format, EncoderFor(format, target.Format));
+        }
 
         var decodeFormat = header.IsBlockCompressed && header.Format is not (DxgiFormat.BC4_SNORM or DxgiFormat.BC5_SNORM)
             ? ToDecodeFormat(header)
@@ -83,11 +90,8 @@ public sealed class DdsRecompressor
         // BC1 stores 1-bit alpha in its 3-colour blocks. Opaque BC1 would drop a cut-out (foliage), so any pixel under 128
         // anywhere on the top level makes the whole texture a punch-through one. Every level of every face then shares one
         // block format, and the header is the same DXT1 either way.
-        if (blockFormat == BlockFormat.Bc1 && faces.Any(HasCutOut))
-        {
-            blockFormat = BlockFormat.Bc1PunchThrough;
-            encoder = EncoderFor(blockFormat, target.Format);
-        }
+        if (block is { Format: BlockFormat.Bc1 } && faces.Any(HasCutOut))
+            block = new BlockEncoding(BlockFormat.Bc1PunchThrough, EncoderFor(BlockFormat.Bc1PunchThrough, target.Format));
 
         // MipChain builds the levels from the previous one. A block target filters in the source's colour space and
         // takes the sRGB transfer per level afterwards, as texconv does when it compresses. An uncompressed target
@@ -112,7 +116,7 @@ public sealed class DdsRecompressor
             foreach (var level in MipChain.Build(new RgbaLevel(target.Width, target.Height, top), filterInLinear, levels))
             {
                 token.ThrowIfCancellationRequested();
-                if (packed)
+                if (block is not { } blockEncoding)
                 {
                     faceLevels[index++] = UncompressedWriter.Pack(level.Pixels, target.Format);
                     continue;
@@ -126,8 +130,8 @@ public sealed class DdsRecompressor
                     SrgbTransfer.Apply(pixels, transfer);
                 }
                 var padded = MipChain.Pad(level with { Pixels = pixels });
-                var blocks = new byte[blockFormat.BlockBytes(padded.Width, padded.Height)];
-                encoder.Encode(padded.Pixels, padded.Width, padded.Height, blockFormat, blocks, parallelism, token);
+                var blocks = new byte[blockEncoding.Format.BlockBytes(padded.Width, padded.Height)];
+                blockEncoding.Encoder.Encode(padded.Pixels, padded.Width, padded.Height, blockEncoding.Format, blocks, parallelism, token);
                 faceLevels[index++] = blocks;
             }
             encoded.Add(faceLevels);

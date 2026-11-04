@@ -150,6 +150,18 @@ public class DdsRecompressorChainTests
         Assert.Equal([expected], encoder.Calls.Select(c => c.Format));
     }
 
+    [Theory]
+    [InlineData(DxgiFormat.R8G8B8A8_UNORM)]
+    [InlineData(DxgiFormat.B8G8R8A8_UNORM)]
+    public async Task AnUncompressedTargetNeedsNoEncoderEvenWithCutOutAlpha(DxgiFormat format)
+    {
+        var encoder = new RecordingEncoder("bc7 only", BlockFormat.Bc7);
+
+        await Recompress(new DdsRecompressor([encoder]), RgbaSource(16, 0), new DdsTarget(16, 16, 1, format));
+
+        Assert.Empty(encoder.Calls);
+    }
+
     [Fact]
     public async Task ACubemapIsOnePunchThroughTextureEvenIfOnlyOneFaceHasCutOuts()
     {
