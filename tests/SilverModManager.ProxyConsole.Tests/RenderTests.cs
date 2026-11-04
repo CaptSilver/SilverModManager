@@ -177,4 +177,38 @@ public class RenderTests
 
         _test.Output.Should().Be("[red]x[/]");
     }
+
+    [Theory]
+    [InlineData("x\ry", "name: x y")]
+    [InlineData("x\ny", "name: x y")]
+    [InlineData("x\ty", "name: x y")]
+    public async Task TextArguments_FlattenLineBreaksAndTabs(string value, string expected)
+    {
+        await _renderer.RenderAsync(new Text { Template = "name: {0}", Arguments = [value] });
+
+        _test.Output.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task TableCell_DropsACarriageReturn()
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+
+        await new SpectreRenderer(console).RenderAsync(new Table
+        {
+            Columns = [new Text { Template = "Name" }],
+            Rows = [[new Text { Template = "a\rb" }], [new Text { Template = "{0}", Arguments = ["c\rd"] }]],
+        });
+
+        console.Output.Should().NotContain("\r").And.Contain("ab").And.Contain("c d");
+    }
+
+    [Fact]
+    public async Task TextLine_DropsFormatCharactersOutsideTheBasicMultilingualPlane()
+    {
+        await _renderer.RenderAsync(new Text { Template = "n: {0}|{1}", Arguments = ["a\U000E0041b\U000E0001", "c\uD800d"] });
+
+        _test.Output.Should().Be("n: ab|cd");
+    }
 }

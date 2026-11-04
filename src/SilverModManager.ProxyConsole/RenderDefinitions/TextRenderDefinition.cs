@@ -19,14 +19,14 @@ public class TextRenderDefinition() : ARenderableDefinition<Text>("718E119C-FABF
 
     /// <summary>
     /// The text with its arguments applied, or the template verbatim when there are none, with terminal control
-    /// characters dropped. Names and messages from outside end up in templates and arguments alike, so the whole
-    /// result is cleaned; line breaks and tabs stay.
+    /// characters dropped. Each argument is flattened to one line first, so a value cannot add output lines; only the
+    /// template's own line feeds and tabs stay.
     /// </summary>
     internal static string Format(Text renderable)
     {
         var text = renderable.Arguments.Length == 0
             ? renderable.Template
-            : string.Format(renderable.Template, renderable.Arguments);
+            : string.Format(renderable.Template, renderable.Arguments.Select(a => (object)MarkdownText.PlainText(a)).ToArray());
         return MarkdownText.PlainText(text, keepLayout: true);
     }
 }

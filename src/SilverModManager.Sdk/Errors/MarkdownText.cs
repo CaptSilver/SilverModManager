@@ -158,21 +158,24 @@ public static partial class MarkdownText
     /// <summary>
     /// <paramref name="text"/> with everything dropped that a terminal or a text box would act on instead of show:
     /// C0 and C1 controls (escape sequences, bell, U+009B) and Unicode format characters (bidi overrides, zero-width
-    /// marks). Line breaks and tabs become spaces, or stay as they are with <paramref name="keepLayout"/>, for text
-    /// whose own template has line structure. Markup is not touched.
+    /// marks), including those above U+FFFF, and unpaired surrogates. Line breaks and tabs become spaces, or with
+    /// <paramref name="keepLayout"/> line feeds and tabs stay, for text whose own template has line structure; a carriage
+    /// return is always dropped, so a value cannot move the cursor. Markup is not touched.
     /// </summary>
     public static string PlainText(string? text, bool keepLayout = false)
     {
         if (string.IsNullOrEmpty(text)) return string.Empty;
 
         var builder = new StringBuilder(text.Length);
-        foreach (var c in text)
+        foreach (var rune in text.EnumerateRunes())
         {
-            if (keepLayout && c is '\r' or '\n' or '\t') builder.Append(c);
-            else if (c is '\r' or '\n' or '\t' or '\v' or '\f' or '\u0085' or '\u2028' or '\u2029') builder.Append(keepLayout ? string.Empty : " ");
-            else if (char.IsControl(c)) continue;
-            else if (CharUnicodeInfo.GetUnicodeCategory(c) is UnicodeCategory.Format) continue;
-            else builder.Append(c);
+            // Unpaired surrogates enumerate as U+FFFD; the replacement character is only kept when the input had it.
+            if (rune.Value == 0xFFFD && !text.Contains('\uFFFD')) continue;
+            if (rune.Value is '\n' or '\t' && keepLayout) builder.Append((char)rune.Value);
+            else if (rune.Value is '\r' or '\n' or '\t' or '\v' or '\f' or 0x85 or 0x2028 or 0x2029) builder.Append(keepLayout ? string.Empty : " ");
+            else if (Rune.IsControl(rune)) continue;
+            else if (Rune.GetUnicodeCategory(rune) is UnicodeCategory.Format) continue;
+            else builder.Append(rune.ToString());
         }
         return builder.ToString();
     }
