@@ -137,11 +137,14 @@ internal sealed class ArchiveEntryPlan
         var addressable = _raws.Select(raw => EntryNames.IsAddressable(raw)).ToArray();
 
         // Only a name 7z can be told about can be left out; an unaddressable one stays in the bulk run, where
-        // ExtractedNames settles a file against a link.
+        // ExtractedNames settles a file against a link. A name stored more than once with any hard link among
+        // the copies is dropped too: 7z cannot create the second link over the first, and the kept-name pass
+        // below would put the name back into the run.
         var mixedKeys = Enumerable.Range(0, entries.Count)
             .Where(i => addressable[i])
             .GroupBy(i => Key(_raws[i]))
-            .Where(g => g.Select(i => entries[i].IsSymlink ? 1 : entries[i].HardLinkTarget is not null ? 2 : 0).Distinct().Count() > 1)
+            .Where(g => g.Select(i => entries[i].IsSymlink ? 1 : entries[i].HardLinkTarget is not null ? 2 : 0).Distinct().Count() > 1
+                || (g.Count() > 1 && g.Any(i => entries[i].HardLinkTarget is not null)))
             .Select(g => g.Key)
             .ToHashSet(StringComparer.Ordinal);
         var mixedNames = new List<string>();
