@@ -4,6 +4,7 @@ using SilverModManager.Platform.Proton.PrefixSetup;
 using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Platform.Proton.Verbs;
 
@@ -46,7 +47,7 @@ public sealed class PrefixSetupCommand(LoadoutResolver resolver, IPrefixSetupRun
 
         // Checked here as well as by the runner, so a wrong path is refused before the plan is acted on.
         if (!string.Equals(prefix?.TrimEnd('/'), actual.TrimEnd('/'), StringComparison.Ordinal))
-            throw new PrefixSetupRefusedException($"--prefix names {prefix}, but this game's prefix is {actual}. Nothing was changed.");
+            throw new PrefixSetupRefusedException($"--prefix names {MarkdownText.Code(prefix)}, but this game's prefix is {MarkdownText.Code(actual)}. Nothing was changed.");
 
         var result = await runner.Run(
             installation,
@@ -56,7 +57,7 @@ public sealed class PrefixSetupCommand(LoadoutResolver resolver, IPrefixSetupRun
 
         await renderer.Table(["Component", "Result"], result.Steps.Select(s => new object[] { s.Name, DescribeStatus(s) }));
         if (result.Failure is { } failure)
-            throw new PrefixSetupFailedException($"Setting up {failure.Name} failed: {failure.Error}");
+            throw new PrefixSetupFailedException($"Setting up {MarkdownText.Code(failure.Name)} failed: {MarkdownText.Inline(failure.Error)}");
 
         return 0;
     }

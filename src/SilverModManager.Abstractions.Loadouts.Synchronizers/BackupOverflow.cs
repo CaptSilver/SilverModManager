@@ -264,13 +264,13 @@ public sealed record BackupOverflow(
         if (listed.Count == 0) return "";
 
         var mixed = !IsSingleKind;
-        var lines = listed.Select(g => $"- {g.Folder} — {Files(g.FileCount)}, {FormatSize(g.Size)}{(mixed ? KindSuffix(g.Kind) : "")}");
+        var lines = listed.Select(g => $"- {MarkdownText.Inline(g.Folder)} — {Files(g.FileCount)}, {FormatSize(g.Size)}{(mixed ? KindSuffix(g.Kind) : "")}");
         var text = "Where they are:\n\n" + string.Join('\n', lines);
 
         List<string> after = [];
         if (HiddenFolders > 0) after.Add($"and {HiddenFolders} more {(HiddenFolders == 1 ? "folder" : "folders")} ({FormatSize(HiddenSize)}).");
         if (Examples is { Count: > 0 })
-            after.Add($"For example {string.Join(", ", Examples.Select(e => $"{e.Path} ({FormatSize(e.Size)})"))}.");
+            after.Add($"For example {string.Join(", ", Examples.Select(e => $"{MarkdownText.Inline(e.Path)} ({FormatSize(e.Size)})"))}.");
         return after.Count == 0 ? text : text + "\n\n" + string.Join(' ', after);
     }
 

@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Abstractions.Games.Merge;
 
@@ -13,21 +14,24 @@ namespace SilverModManager.Abstractions.Games.Merge;
 /// to pick one of them. The message is shown to the player as is.
 /// </summary>
 public sealed class MergeOutputMissingException(string relPath) : SynchronizerPreflightException(
-    $"{relPath} is provided by several mods but its merged file is not part of this apply; deploying the copies whole would leave it to load order which one wins");
+    $"{MarkdownText.Code(relPath)} is provided by several mods but its merged file is not part of this apply; deploying the copies whole would leave it to load order which one wins");
 
 /// <summary>An apply the merge part stops before anything is written, for a reason that is not one missing file. The message is shown as is.</summary>
-public sealed class MergeApplyRefusedException(string reason) : SynchronizerPreflightException(reason)
+public sealed class MergeApplyRefusedException : SynchronizerPreflightException
 {
+    // Only the factories below build one, so every piece of outside text in the message is escaped in one place.
+    private MergeApplyRefusedException(string reason) : base(reason) { }
+
     /// <summary>The loadout, or the merge plan made from it, changed between the preflight and the sync tree.</summary>
     public static MergeApplyRefusedException Changed() => new("The loadout changed while it was being applied. Apply again.");
 
     /// <summary>A merged file is written for a revision whose plan no check verified, so there are no checked bytes to write.</summary>
     public static MergeApplyRefusedException Unchecked(string relPath)
-        => new($"{relPath} is merged from several mods, but the merge was not checked before this apply wrote it, so it is not written. Apply again.");
+        => new($"{MarkdownText.Code(relPath)} is merged from several mods, but the merge was not checked before this apply wrote it, so it is not written. Apply again.");
 
-    public static MergeApplyRefusedException PlanFailed(Exception cause) => new($"The files the mods provide could not be merged: {cause.Message}");
+    public static MergeApplyRefusedException PlanFailed(Exception cause) => new($"The files the mods provide could not be merged: {MarkdownText.Inline(cause.Message)}");
 
-    public static MergeApplyRefusedException ListingFailed(string reason) => new($"The files the mods provide could not be listed: {reason}");
+    public static MergeApplyRefusedException ListingFailed(string reason) => new($"The files the mods provide could not be listed: {MarkdownText.Inline(reason)}");
 }
 
 /// <summary>

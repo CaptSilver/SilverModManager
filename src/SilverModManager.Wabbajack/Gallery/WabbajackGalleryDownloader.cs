@@ -6,6 +6,7 @@ using SilverModManager.Sdk.Hashes;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Models;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Wabbajack.Gallery;
 
@@ -24,7 +25,7 @@ public sealed class WabbajackGalleryDownloader(
     public async Task<WabbajackModlistLibraryFile.ReadOnly> Download(GalleryEntry entry, CancellationToken cancellationToken = default)
     {
         if (entry is not { Download: { } url, DownloadHash: { } expectedHash, DownloadSize: { } expectedSize })
-            throw new GalleryDownloadException($"'{entry.Title}' has no download link, hash and size to check it against, so it is not downloaded");
+            throw new GalleryDownloadException($"{MarkdownText.Code(entry.Title)} has no download link, hash and size to check it against, so it is not downloaded");
 
         await using var folder = temporaryFileManager.CreateFolder();
         var file = folder.Path.Combine(FileNameFor(entry));
@@ -37,7 +38,7 @@ public sealed class WabbajackGalleryDownloader(
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {
-                throw new GalleryDownloadException($"Downloading '{entry.Title}' failed: {e.Message}", e);
+                throw new GalleryDownloadException($"Downloading {MarkdownText.Code(entry.Title)} failed: {MarkdownText.Inline(e.Message)}", e);
             }
 
             await Verify(entry, file, expectedHash, expectedSize, cancellationToken);
@@ -47,7 +48,7 @@ public sealed class WabbajackGalleryDownloader(
             if (!libraryFile.TryGetAsWabbajackModlistLibraryFile(out var modlist))
             {
                 await libraryService.RemoveLibraryItems([libraryFile.AsLibraryItem()]);
-                throw new GalleryDownloadException($"'{entry.Title}' downloaded correctly but is not a Wabbajack modlist");
+                throw new GalleryDownloadException($"{MarkdownText.Code(entry.Title)} downloaded correctly but is not a Wabbajack modlist");
             }
 
             using var tx = connection.BeginTransaction();
@@ -64,13 +65,13 @@ public sealed class WabbajackGalleryDownloader(
 
     private static async Task Verify(GalleryEntry entry, AbsolutePath file, FileIdentity expectedHash, ulong expectedSize, CancellationToken cancellationToken)
     {
-        if (!file.FileExists) throw new GalleryDownloadException($"Downloading '{entry.Title}' produced no file");
+        if (!file.FileExists) throw new GalleryDownloadException($"Downloading {MarkdownText.Code(entry.Title)} produced no file");
 
         var size = file.FileInfo.Size.Value;
         if (size != expectedSize)
         {
             file.Delete();
-            throw new GalleryDownloadException($"'{entry.Title}' is {size} bytes but the gallery says its size is {expectedSize}; the file was deleted");
+            throw new GalleryDownloadException($"{MarkdownText.Code(entry.Title)} is {size} bytes but the gallery says its size is {expectedSize}; the file was deleted");
         }
 
         var actual = FileIdentity.XxHash64(await FileHashing.XxHash64(file, cancellationToken));

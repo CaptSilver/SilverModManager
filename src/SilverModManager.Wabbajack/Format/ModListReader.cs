@@ -1,5 +1,6 @@
 using System.Text.Json;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Wabbajack.Format;
 
@@ -24,11 +25,11 @@ public static class ModListReader
         }
         catch (JsonException e)
         {
-            throw new UnsupportedModlistException($"The modlist is not valid JSON: {e.Message}");
+            throw new UnsupportedModlistException($"The modlist is not valid JSON: {MarkdownText.Inline(e.Message)}");
         }
         catch (Exception e) when (e is InvalidOperationException or OverflowException or FormatException)
         {
-            throw new UnsupportedModlistException($"The modlist is malformed: {e.Message}");
+            throw new UnsupportedModlistException($"The modlist is malformed: {MarkdownText.Inline(e.Message)}");
         }
     }
 
@@ -150,7 +151,7 @@ public static class ModListReader
             case "ArchiveMeta":
                 return new ArchiveMeta(to, hash, size, d.String("SourceDataID"));
             default:
-                throw new UnsupportedModlistException($"Directive {index} has the type '{typeName}', which this app cannot install");
+                throw new UnsupportedModlistException($"Directive {index} has the type {MarkdownText.Code(typeName)}, which this app cannot install");
         }
     }
 

@@ -91,7 +91,7 @@ public static class ThunderstoreLoadoutPackages
 /// enable on its own.
 /// </summary>
 public sealed class ThunderstorePackageInDisabledGroupException(string package, string group)
-    : UserFacingException($"{package} is in the loadout, but '{group}', the group holding it, is disabled. Enable '{group}' and install again.")
+    : UserFacingException($"{MarkdownText.Code(package)} is in the loadout, but {MarkdownText.Code(group)}, the group holding it, is disabled. Enable {MarkdownText.Code(group)} and install again.")
 {
     /// <inheritdoc />
     public override string Title => "The package was not installed";

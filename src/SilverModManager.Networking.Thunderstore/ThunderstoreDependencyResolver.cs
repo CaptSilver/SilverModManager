@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using SilverModManager.Networking.Thunderstore.DTOs;
 using SilverModManager.Sdk.Thunderstore;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Networking.Thunderstore;
 
@@ -31,7 +32,7 @@ public sealed class ThunderstoreDependencyResolver(IPackageLookup lookup)
     public async Task<IReadOnlyList<ThunderstoreVersionRef>> Resolve(ResolveRequest request, CancellationToken cancellationToken)
     {
         var rootVersion = await lookup.LookupVersion(request.Root, cancellationToken)
-            ?? throw new DependencyResolutionException($"Package version '{request.Root}' does not exist");
+            ?? throw new DependencyResolutionException($"Package version {MarkdownText.Code(request.Root)} does not exist");
 
         var state = new State(request, cancellationToken);
         state.Visited.Add(request.Root.Package);
@@ -83,21 +84,21 @@ public sealed class ThunderstoreDependencyResolver(IPackageLookup lookup)
         {
             var pinned = new ThunderstoreVersionRef(package, exact);
             var details = await lookup.LookupVersion(pinned, state.Token)
-                ?? throw new DependencyResolutionException($"Package version '{pinned}' does not exist");
+                ?? throw new DependencyResolutionException($"Package version {MarkdownText.Code(pinned)} does not exist");
             return (pinned, exact, details);
         }
 
         var detail = await LookupPackage(state, package)
-            ?? throw new DependencyResolutionException($"Package '{package}' does not exist");
+            ?? throw new DependencyResolutionException($"Package {MarkdownText.Code(package)} does not exist");
         if (!ThunderstoreVersionNumber.TryParse(detail.Latest.VersionNumber, out var latest))
-            throw new DependencyResolutionException($"Package '{package}' has an unreadable latest version '{detail.Latest.VersionNumber}'");
+            throw new DependencyResolutionException($"Package {MarkdownText.Code(package)} has an unreadable latest version {MarkdownText.Code(detail.Latest.VersionNumber)}");
         return (new ThunderstoreVersionRef(package, latest), latest, detail.Latest);
     }
 
     private async Task<(ThunderstorePackageRef Package, ThunderstoreVersionNumber Version)> ParseDependency(State state, string text, ThunderstoreVersionRef dependent)
     {
         if (!ThunderstoreDependencyString.TryParse(text, out var dependency))
-            throw new DependencyResolutionException($"Dependency '{text}' of '{dependent}' is not a valid dependency string");
+            throw new DependencyResolutionException($"Dependency {MarkdownText.Code(text)} of {MarkdownText.Code(dependent)} is not a valid dependency string");
 
         foreach (var candidate in dependency.Candidates())
         {
@@ -106,7 +107,7 @@ public sealed class ThunderstoreDependencyResolver(IPackageLookup lookup)
             if (await LookupPackage(state, package) is not null) return (package, dependency.VersionNumber);
         }
 
-        throw new DependencyResolutionException($"Dependency '{text}' of '{dependent}' does not match any Thunderstore package");
+        throw new DependencyResolutionException($"Dependency {MarkdownText.Code(text)} of {MarkdownText.Code(dependent)} does not match any Thunderstore package");
     }
 
     // Confirming a split and choosing a version both need the package, and over the web API each lookup is a

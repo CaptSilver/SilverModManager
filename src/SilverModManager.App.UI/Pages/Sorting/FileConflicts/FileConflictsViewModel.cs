@@ -33,6 +33,7 @@ using SilverModManager.Sdk.Resources;
 using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.App.UI.Pages.Sorting;
 
@@ -214,7 +215,7 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
         var winner = rule.Kind == GroupRuleKind.After ? source : other;
         var loser = rule.Kind == GroupRuleKind.After ? other : source;
         var markdownRendererViewModel = _serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
-        markdownRendererViewModel.Contents = string.Format(Language.FileConflicts_Refused_Message, winner, loser);
+        markdownRendererViewModel.Contents = string.Format(Language.FileConflicts_Refused_Message, MarkdownText.Inline(winner), MarkdownText.Inline(loser));
 
         var dialog = DialogFactory.CreateStandardDialog(
             title: Language.FileConflicts_Refused_Title,

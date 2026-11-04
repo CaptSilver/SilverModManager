@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Loadouts.Extensions;
 using SilverModManager.Library.Sources;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Library.Lock;
 
@@ -32,11 +33,11 @@ public sealed class LockExport(IEnumerable<ILibrarySource> sources)
             var groupName = item.AsLoadoutItem().Name;
             var libraryItem = item.LibraryItem;
             if (!libraryItem.TryGetAsLibraryFile(out var file))
-                throw new LockException($"'{groupName}' is not linked to a downloaded file, so there is nothing to pin.");
+                throw new LockException($"{MarkdownText.Code(groupName)} is not linked to a downloaded file, so there is nothing to pin.");
 
             var entry = await ToEntry(groupName, libraryItem, file, cancellationToken);
             if (!entries.TryAdd(entry.Id, entry))
-                throw new LockException($"'{groupName}' ({file.FileName}) and '{entries[entry.Id].Asset}' both become the lock id '{entry.Id}'.");
+                throw new LockException($"{MarkdownText.Code(groupName)} ({MarkdownText.Code(file.FileName)}) and {MarkdownText.Code(entries[entry.Id].Asset)} both become the lock id {MarkdownText.Code(entry.Id)}.");
         }
 
         return new LockFile(entries.Values.ToArray());
@@ -52,7 +53,7 @@ public sealed class LockExport(IEnumerable<ILibrarySource> sources)
         }
 
         var names = string.Join(", ", sources.Select(source => source.Name));
-        throw new LockException($"'{file.FileName}' ('{groupName}') came from none of the sources a lock can pin ({names}), so it cannot be pinned.");
+        throw new LockException($"{MarkdownText.Code(file.FileName)} ({MarkdownText.Code(groupName)}) came from none of the sources a lock can pin ({MarkdownText.Code(names)}), so it cannot be pinned.");
     }
 
     /// <summary>
@@ -68,6 +69,6 @@ public sealed class LockExport(IEnumerable<ILibrarySource> sources)
         }
 
         var id = builder.ToString().TrimEnd('-');
-        return id.Length > 0 ? id : throw new LockException($"'{name}' ({file}) has no letters or digits to make a lock id from.");
+        return id.Length > 0 ? id : throw new LockException($"{MarkdownText.Code(name)} ({MarkdownText.Code(file)}) has no letters or digits to make a lock id from.");
     }
 }

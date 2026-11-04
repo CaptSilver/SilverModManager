@@ -1,4 +1,5 @@
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Games.FromSoft.Merge;
 
@@ -9,10 +10,10 @@ namespace SilverModManager.Games.FromSoft.Merge;
 /// </summary>
 public class MergeRefusedException : SynchronizerPreflightException
 {
-    public MergeRefusedException(MergeRefusal refusal) : base($"Can't merge {refusal.Describe()}") { }
+    public MergeRefusedException(MergeRefusal refusal) : base($"Can't merge {MarkdownText.Inline(refusal.Describe())}") { }
 
     /// <param name="reason">Why the merges could not be planned at all, so no path or strategy is to blame.</param>
-    public MergeRefusedException(string reason) : base($"Can't apply the loadout's merges: {reason}") { }
+    public MergeRefusedException(string reason) : base($"Can't apply the loadout's merges: {MarkdownText.Inline(reason)}") { }
 
     /// <summary>The refusal for a plan that could not be made at all; the apply and Health Check say it in the same words.</summary>
     public static MergeRefusedException PlanFailed(Exception cause)

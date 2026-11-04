@@ -9,7 +9,7 @@ namespace SilverModManager.Abstractions.Games.FileHashes;
 /// A game file that kept changing while the app read it, so no hash of it describes it.
 /// </summary>
 public sealed class GameFileChangedWhileReadException(AbsolutePath file) : UserFacingException(
-    $"`{file}` kept changing while it was being read, so the app cannot tell what it holds. Nothing was changed; try again once nothing is writing to it.")
+    $"{MarkdownText.Code(file.ToString())} kept changing while it was being read, so the app cannot tell what it holds. Nothing was changed; try again once nothing is writing to it.")
 {
     /// <inheritdoc />
     public override string Title => "A game file would not hold still";

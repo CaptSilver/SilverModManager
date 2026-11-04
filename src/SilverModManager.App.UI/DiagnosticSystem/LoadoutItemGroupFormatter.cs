@@ -2,6 +2,7 @@ using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.References;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.App.UI.DiagnosticSystem;
 
@@ -14,7 +15,7 @@ internal sealed class LoadoutItemGroupFormatter(IConnection conn) : IValueFormat
         var loadoutItemGroup = LoadoutItemGroup.Load(conn.Db, value.DataId);
         if (loadoutItemGroup.IsValid())
         {
-            writer.Write(ref state, $"{loadoutItemGroup.AsLoadoutItem().Name}");
+            writer.Write(ref state, state.Mode == DiagnosticWriterMode.Markdown ? MarkdownText.Inline(loadoutItemGroup.AsLoadoutItem().Name) : loadoutItemGroup.AsLoadoutItem().Name);
         }
         else
         {

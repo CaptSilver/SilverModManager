@@ -10,7 +10,7 @@ namespace SilverModManager.Networking.Thunderstore;
 public sealed class ThunderstoreIndexUnavailableException : UserFacingException
 {
     public ThunderstoreIndexUnavailableException(string community, Exception? inner = null)
-        : base($"No usable Thunderstore package index is cached for community '{community}'. Refresh the index and try again.", inner)
+        : base($"No usable Thunderstore package index is cached for community {MarkdownText.Code(community)}. Refresh the index and try again.", inner)
     {
         Community = community;
     }

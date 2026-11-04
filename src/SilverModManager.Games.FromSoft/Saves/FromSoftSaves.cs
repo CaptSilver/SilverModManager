@@ -3,6 +3,7 @@ using SilverModManager.Games.FromSoft.Launch;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Settings;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Games.FromSoft.Saves;
 
@@ -99,6 +100,6 @@ public sealed class FromSoftSaves(
     private void RequireListed(GameInstallation installation, SaveFolder folder)
     {
         if (List(installation).Folders.All(f => f.Folder != folder.Folder))
-            throw new SaveRefusedException($"{folder.Folder} is not one of the game's save folders.");
+            throw new SaveRefusedException($"{MarkdownText.Code(folder.Folder)} is not one of the game's save folders.");
     }
 }

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Wabbajack.Format;
 
@@ -16,7 +17,7 @@ internal readonly struct JsonObject
     public JsonObject(JsonElement element, string context)
     {
         if (element.ValueKind != JsonValueKind.Object)
-            throw new UnsupportedModlistException($"{context} is not a JSON object");
+            throw new UnsupportedModlistException($"{MarkdownText.Code(context)} is not a JSON object");
         _element = element;
         _context = context;
     }

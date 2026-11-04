@@ -7,7 +7,7 @@ namespace SilverModManager.Games.CreationEngine;
 /// substitute characters would corrupt the lines the app doesn't own, so nothing is written.
 /// </summary>
 public sealed class UndecodablePluginListException(string fileName, string encodingName) : UserFacingException(
-    $"{fileName} was not read because it is not valid {encodingName} text. " +
+    $"{MarkdownText.Code(fileName)} was not read because it is not valid {MarkdownText.Inline(encodingName)} text. " +
     "Fix or remove the lines with characters that aren't, then apply the loadout again.")
 {
     public string FileName { get; } = fileName;

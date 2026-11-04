@@ -273,7 +273,7 @@ public sealed class ArchiveInbox(
     public static async Task Stage(AbsolutePath source, AbsolutePath inbox, Func<string, string, int>? link = null, CancellationToken cancellationToken = default)
     {
         // A link could point anywhere, so a dropped one is refused rather than followed or copied.
-        if (IsLink(source)) throw new InboxSourceRefusedException($"'{source.FileName}' is a link, not a file. Drop the file itself.");
+        if (IsLink(source)) throw new InboxSourceRefusedException($"{MarkdownText.Code(source.FileName)} is a link, not a file. Drop the file itself.");
 
         var destination = inbox.Combine(source.FileName);
         var partial = inbox.Combine(source.FileName + ".part");

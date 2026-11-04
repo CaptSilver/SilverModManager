@@ -7,7 +7,7 @@ namespace SilverModManager.Games.CreationEngine;
 /// out of Plugins.txt is a disabled plugin, so writing the rest would silently switch mods off.
 /// </summary>
 public sealed class UnreadablePluginsException(IReadOnlyList<string> pluginNames) : UserFacingException(
-    $"Plugins.txt was not written because {(pluginNames.Count == 1 ? "this plugin" : "these plugins")} could not be read: {string.Join(", ", pluginNames)}. " +
+    $"Plugins.txt was not written because {(pluginNames.Count == 1 ? "this plugin" : "these plugins")} could not be read: {string.Join(", ", pluginNames.Select(MarkdownText.Code))}. " +
     "Verify the game files in the game store, then apply the loadout again.")
 {
     public IReadOnlyList<string> PluginNames { get; } = pluginNames;

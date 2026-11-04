@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Wabbajack.Acquire.Hosts;
 
@@ -37,7 +38,7 @@ public sealed record HeaderedHttpDownloadJob : HostedDownloadJob, IJobDefinition
     protected override async Task Fetch(HostTransfer transfer, CancellationToken token)
     {
         if (HeaderPolicy.Refused(Headers).FirstOrDefault() is { } refused)
-            throw new HostRefusedException($"The list asks for the request header {refused}, which this app does not send; download it in your browser");
+            throw new HostRefusedException($"The list asks for the request header {MarkdownText.Code(refused)}, which this app does not send; download it in your browser");
 
         using var request = HostLinks.Get(Url);
         foreach (var line in Headers)

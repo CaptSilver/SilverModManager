@@ -29,7 +29,7 @@ public static class TexturesVerbs
         [Injected] CancellationToken token)
     {
         if (!directory.DirectoryExists())
-            throw new CensusFolderMissingException($"{directory} is not a folder");
+            throw new CensusFolderMissingException($"{MarkdownText.Code(directory)} is not a folder");
 
         var census = new TextureCensus();
         var archives = 0;

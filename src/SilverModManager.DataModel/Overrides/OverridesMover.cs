@@ -11,6 +11,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.DataModel.Overrides;
 
@@ -88,9 +89,9 @@ internal sealed class OverridesMover : IOverridesMover
         {
             var row = FindInGroup(db, overrides, path);
             if (!row.HasValue)
-                throw new OverridesMoveRefusedException($"`{path.Path}` is no longer among the external changes, so it was not moved.");
+                throw new OverridesMoveRefusedException($"{MarkdownText.Code(path.Path)} is no longer among the external changes, so it was not moved.");
             if (!synchronizer.CanMoveOverrides(loadout, path))
-                throw new OverridesMoveRefusedException($"This game does not allow `{path.Path}` to be moved into a mod.");
+                throw new OverridesMoveRefusedException($"This game does not allow {MarkdownText.Code(path.Path)} to be moved into a mod.");
             rows.Add((path, row.Value));
         }
 

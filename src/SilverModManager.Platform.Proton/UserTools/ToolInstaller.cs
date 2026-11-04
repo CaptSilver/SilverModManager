@@ -7,6 +7,7 @@ using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Platform.Proton.UserTools;
 
@@ -29,7 +30,7 @@ public sealed class ToolInstaller(IConnection connection, KnownToolDetector dete
         {
             found = detector.Scan(game, path).Select(d => (d.Definition.DisplayName, d.Definition.Id, d.Installed.Exe)).ToArray();
             if (found.Count == 0)
-                throw new ToolRefusedException($"There is no known tool in {path}. Point at the program itself to add it as it is.");
+                throw new ToolRefusedException($"There is no known tool in {MarkdownText.Code(path)}. Point at the program itself to add it as it is.");
         }
         else if (path.FileExists)
         {
@@ -40,7 +41,7 @@ public sealed class ToolInstaller(IConnection connection, KnownToolDetector dete
         }
         else
         {
-            throw new ToolRefusedException($"{path} does not exist.");
+            throw new ToolRefusedException($"{MarkdownText.Code(path)} does not exist.");
         }
 
         var existing = UserTool.FindByInstallation(connection.Db, loadout.InstallationId)

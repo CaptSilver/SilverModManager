@@ -4,6 +4,7 @@ using SilverModManager.Games.FromSoft.Launch;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Settings;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Games.FromSoft.Saves;
 
@@ -85,8 +86,8 @@ public sealed partial class SaveBackups(AbsolutePath root, SaveFolderScanner sca
     {
         var name = Path.GetFileName(savePath);
         if (scanner.KindOf(name, out _) == SaveKind.Unknown)
-            throw new SaveRefusedException($"{name} is not a save file this page knows, so it was left alone.");
-        if (!File.Exists(savePath)) throw new SaveRefusedException($"{name} does not exist, so there is nothing to back up.");
+            throw new SaveRefusedException($"{MarkdownText.Code(name)} is not a save file this page knows, so it was left alone.");
+        if (!File.Exists(savePath)) throw new SaveRefusedException($"{MarkdownText.Code(name)} does not exist, so there is nothing to back up.");
 
         var directory = DirectoryOf(location);
         Directory.CreateDirectory(directory);
@@ -144,9 +145,9 @@ public sealed partial class SaveBackups(AbsolutePath root, SaveFolderScanner sca
     public RestoreResult Restore(SaveBackup backup, string saveFolder)
     {
         if (scanner.KindOf(backup.SaveName, out _) == SaveKind.Unknown)
-            throw new SaveRefusedException($"{Path.GetFileName(backup.Path)} is not a copy of a save this page knows, so it was not restored.");
-        if (!File.Exists(backup.Path)) throw new SaveRefusedException($"{Path.GetFileName(backup.Path)} no longer exists.");
-        if (!Directory.Exists(saveFolder)) throw new SaveRefusedException($"The save folder {saveFolder} does not exist.");
+            throw new SaveRefusedException($"{MarkdownText.Code(Path.GetFileName(backup.Path))} is not a copy of a save this page knows, so it was not restored.");
+        if (!File.Exists(backup.Path)) throw new SaveRefusedException($"{MarkdownText.Code(Path.GetFileName(backup.Path))} no longer exists.");
+        if (!Directory.Exists(saveFolder)) throw new SaveRefusedException($"The save folder {MarkdownText.Code(saveFolder)} does not exist.");
 
         var destination = Path.Combine(saveFolder, backup.SaveName);
         var preRestore = File.Exists(destination) ? CopyInto(SaveBackupLocation.Backups, destination, "pre-restore", StampNow()) : null;

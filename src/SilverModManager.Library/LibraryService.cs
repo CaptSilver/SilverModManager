@@ -13,6 +13,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Library;
 
@@ -113,7 +114,7 @@ public sealed class LibraryService : ILibraryService
         var installedHere = LibraryLinkedLoadoutItem.FindByLibraryItem(db, item)
             .Any(link => new LoadoutAcquisition(link.AsLoadoutItem().LoadoutId).Destination(db).Games.Contains(game));
         if (installedHere)
-            throw new DestinationStillInstalledException($"\"{item.Name}\" is installed in a loadout for {gameDescription}. Uninstall it first, then take the game off it.");
+            throw new DestinationStillInstalledException($"{MarkdownText.Code(item.Name)} is installed in a loadout for {MarkdownText.Code(gameDescription)}. Uninstall it first, then take the game off it.");
     }
 
     public IEnumerable<(Loadout.ReadOnly loadout, LibraryLinkedLoadoutItem.ReadOnly linkedItem)> LoadoutsWithLibraryItem(LibraryItem.ReadOnly libraryItem)

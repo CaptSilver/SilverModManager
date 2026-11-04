@@ -33,6 +33,7 @@ using Ba2Dx10FileState = SilverModManager.Games.Bethesda.Archives.Ba2Dx10FileSta
 using PatchException = SilverModManager.Wabbajack.Transforms.PatchException;
 using UnreadableTextureException = SilverModManager.Wabbajack.Transforms.UnreadableTextureException;
 using UnsupportedTextureFormatException = SilverModManager.Wabbajack.Transforms.UnsupportedTextureFormatException;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Wabbajack.Install;
 
@@ -223,9 +224,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     {
         var name = installation.Game.DisplayName;
         if (installation.Game is not IMo2InstanceTarget target)
-            throw new UnsupportedModlistException($"Wabbajack lists for {name} are not supported yet: the game cannot lay out a Mod Organizer instance");
+            throw new UnsupportedModlistException($"Wabbajack lists for {MarkdownText.Code(name)} are not supported yet: the game cannot lay out a Mod Organizer instance");
         if (target.UnsupportedReason(installation) is { } reason)
-            throw new UnsupportedModlistException($"Wabbajack lists for {name} are not supported yet: {reason}");
+            throw new UnsupportedModlistException($"Wabbajack lists for {MarkdownText.Code(name)} are not supported yet: {MarkdownText.Inline(reason)}");
         return target;
     }
 
@@ -241,9 +242,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     private static void RequireGame(GameInstallation installation, ModList list)
     {
         var listGame = WabbajackGames.GameIdFor(list.GameType)
-            ?? throw new UnsupportedModlistException($"Wabbajack lists for {list.GameType} are not supported yet: this app has no title for that game");
+            ?? throw new UnsupportedModlistException($"Wabbajack lists for {MarkdownText.Code(list.GameType)} are not supported yet: this app has no title for that game");
         if (listGame != installation.Game.GameId)
-            throw new UnsupportedModlistException($"The list is for {list.GameType}, but this loadout is for {installation.Game.DisplayName}");
+            throw new UnsupportedModlistException($"The list is for {MarkdownText.Code(list.GameType)}, but this loadout is for {installation.Game.DisplayName}");
     }
 
     private async Task<string> SelectedProfile(ModList list, IReadOnlyList<RelativePath> tos, LibraryArchive.ReadOnly listArchive, CancellationToken cancellationToken)

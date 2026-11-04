@@ -196,7 +196,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         lock (_runLock)
         {
             if (_runCancellation is not null)
-                throw new ToolRefusedException($"{_runningName} is still running. Wait for it to finish, or cancel it, before starting another.");
+                throw new ToolRefusedException($"{MarkdownText.Code(_runningName)} is still running. Wait for it to finish, or cancel it, before starting another.");
         }
     }
 
@@ -255,7 +255,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         => RunQuickAutoCleanAsync(row.Tool, plugin, token);
 
     private Task RunQuickAutoCleanAsync(ModdingTool tool, string plugin, CancellationToken token)
-        => RunToolAsync(tool.ForQuickAutoClean(plugin) ?? throw new ToolRefusedException($"{tool.Name} cannot clean a plugin."), token);
+        => RunToolAsync(tool.ForQuickAutoClean(plugin) ?? throw new ToolRefusedException($"{MarkdownText.Code(tool.Name)} cannot clean a plugin."), token);
 
     internal async Task RunPipelineAsync(ToolPipeline pipeline, CancellationToken token)
     {
@@ -306,7 +306,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         EnsureIdle();
         var loadout = LoadLoadout();
         if (!_toolRunner.CanRun(loadout.InstallationInstance, out var diagnostic))
-            throw new WindowsProgramRefusedException($"Cannot run a Windows program for {loadout.InstallationInstance.Game.DisplayName}: {diagnostic}");
+            throw new WindowsProgramRefusedException($"Cannot run a Windows program for {loadout.InstallationInstance.Game.DisplayName}: {MarkdownText.Inline(diagnostic)}");
 
         var picked = await _avaloniaInterop.OpenFilePickerAsync(new FilePickerOpenOptions
         {

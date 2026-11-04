@@ -4,7 +4,7 @@ namespace SilverModManager.Sdk.Errors;
 /// A download host kept the connection open but sent nothing for longer than the idle limit. Raised by
 /// <see cref="IO.IdleReads"/>; a job that can resume asks again, the rest let it fail so the row shows the reason.
 /// </summary>
-public sealed class DownloadStalledException(string host) : UserFacingException($"{host} stopped sending data")
+public sealed class DownloadStalledException(string host) : UserFacingException($"{MarkdownText.Inline(host)} stopped sending data")
 {
     public override string Title => "The download stalled";
 

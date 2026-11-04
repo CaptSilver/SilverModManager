@@ -2,6 +2,7 @@ using System.Text.Json;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Wabbajack.Format;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Wabbajack.Gallery;
 
@@ -57,7 +58,7 @@ public static class GalleryReader
         }
         catch (JsonException e)
         {
-            throw new GalleryFormatException($"not valid JSON: {e.Message}");
+            throw new GalleryFormatException($"not valid JSON: {MarkdownText.Inline(e.Message)}");
         }
     }
 

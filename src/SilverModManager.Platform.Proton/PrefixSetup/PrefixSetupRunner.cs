@@ -7,6 +7,7 @@ using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Platform.Proton.PrefixSetup;
 
@@ -94,7 +95,7 @@ public sealed class PrefixSetupRunner : IPrefixSetupRunner
         var store = installation.LocatorResult.Store.Value.ToLowerInvariant();
         using var installationLock = _locks.Create(store, installation.LocatorResult.StoreIdentifier);
         if (!installationLock.TryAcquire())
-            throw new PrefixSetupRefusedException($"Another SilverModManager window is launching or changing this game ({installationLock.LockPath} is locked). Wait for it to finish, then try again.");
+            throw new PrefixSetupRefusedException($"Another SilverModManager window is launching or changing this game ({MarkdownText.Code(installationLock.LockPath)} is locked). Wait for it to finish, then try again.");
 
         // Detected under the lock, so the plan a write acts on is the one nothing else can change.
         var plan = MakePlan(prefix, steps);
@@ -126,15 +127,15 @@ public sealed class PrefixSetupRunner : IPrefixSetupRunner
     {
         var resolution = _resolver.Resolve(installation);
         if (resolution.IsNative)
-            throw new PrefixSetupRefusedException($"This game has no Wine prefix to set up. {resolution.Diagnostic}");
+            throw new PrefixSetupRefusedException($"This game has no Wine prefix to set up. {MarkdownText.Inline(resolution.Diagnostic)}");
         if (resolution.Prefix is not { } prefix)
             throw new PrefixSetupRefusedException(resolution.Diagnostic ?? "The game's prefix could not be determined.");
 
         if (!ProtonPrefix.IsReady(prefix.Path))
-            throw new PrefixSetupRefusedException($"The prefix at {prefix.Path} has not been created yet. Start the game once so the launcher creates it, then run the setup. SilverModManager never creates a prefix itself.");
+            throw new PrefixSetupRefusedException($"The prefix at {MarkdownText.Code(prefix.Path)} has not been created yet. Start the game once so the launcher creates it, then run the setup. SilverModManager never creates a prefix itself.");
 
         if (!_tools.CanRun(installation, out var diagnostic))
-            throw new PrefixSetupRefusedException($"Programs cannot be run in the prefix at {prefix.Path}, so it cannot be set up from here: {diagnostic}");
+            throw new PrefixSetupRefusedException($"Programs cannot be run in the prefix at {MarkdownText.Code(prefix.Path)}, so it cannot be set up from here: {MarkdownText.Inline(diagnostic)}");
 
         return prefix;
     }
@@ -193,10 +194,10 @@ public sealed class PrefixSetupRunner : IPrefixSetupRunner
             : "";
 
         if (string.IsNullOrWhiteSpace(confirmed))
-            throw new PrefixSetupRefusedException($"Changing a prefix needs a confirmation that names it. Confirm {actual} to continue.{steam}");
+            throw new PrefixSetupRefusedException($"Changing a prefix needs a confirmation that names it. Confirm {MarkdownText.Code(actual)} to continue.{steam}");
 
         if (!string.Equals(confirmed.TrimEnd('/'), actual.TrimEnd('/'), StringComparison.Ordinal))
-            throw new PrefixSetupRefusedException($"The confirmation names {confirmed}, but this game's prefix is {actual}. Nothing was changed.{steam}");
+            throw new PrefixSetupRefusedException($"The confirmation names {MarkdownText.Code(confirmed)}, but this game's prefix is {MarkdownText.Code(actual)}. Nothing was changed.{steam}");
     }
 
     private bool IsInSteamLibrary(AbsolutePath path)
@@ -215,7 +216,7 @@ public sealed class PrefixSetupRunner : IPrefixSetupRunner
         if (running.Count == 0) return;
 
         var names = string.Join(", ", running.Select(p => $"{p.Name} (pid {p.Pid})"));
-        throw new PrefixSetupRefusedException($"The game or its Wine session is still running: {names}. Close the game and let Wine exit, then try again.");
+        throw new PrefixSetupRefusedException($"The game or its Wine session is still running: {MarkdownText.Code(names)}. Close the game and let Wine exit, then try again.");
     }
 
     private void BackUpRegistry(ResolvedPrefix prefix, AbsolutePath backup)

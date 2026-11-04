@@ -62,7 +62,7 @@ public sealed class ModlistCatalog(IConnection connection) : IModlistCatalog
         return byName.Length switch
         {
             1 => byName[0],
-            0 => throw new ModlistNotKnownException($"'{query}' is not a modlist the app knows. Add the .wabbajack file to the library first; 'wabbajack list' shows what it holds."),
+            0 => throw new ModlistNotKnownException($"{MarkdownText.Code(query)} is not a modlist the app knows. Add the .wabbajack file to the library first; 'wabbajack list' shows what it holds."),
             _ => throw new ModlistNotKnownException(
                 $"More than one modlist fits '{query}': {string.Join("; ", byName.Select(m => $"{m.Name} {m.Version} ({m.FileName}), id {m.HexId}"))}. Use the id."),
         };

@@ -55,7 +55,7 @@ public sealed record MassRemoval(int FileCount, int DeployedCount, IReadOnlyList
         };
 
         foreach (var reason in Reasons.Take(ReasonsListed))
-            lines.Add($"{reason.Name} is switched off, so applying removes its {Files(reason.FileCount)} from the game folder.");
+            lines.Add($"{MarkdownText.Inline(reason.Name)} is switched off, so applying removes its {Files(reason.FileCount)} from the game folder.");
 
         var more = Reasons.Skip(ReasonsListed).ToArray();
         if (more.Length > 0)

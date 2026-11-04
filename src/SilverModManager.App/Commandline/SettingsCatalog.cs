@@ -96,14 +96,14 @@ public static class SettingsCatalog
         }
         else
         {
-            throw new SettingsRefusal($"{entry.Key} can't be set from the command line: it holds a {type.Name}, which only the Settings page can edit.");
+            throw new SettingsRefusal($"{MarkdownText.Code(entry.Key)} can't be set from the command line: it holds a {MarkdownText.Code(type.Name)}, which only the Settings page can edit.");
         }
 
-        if (value is null) throw new SettingsRefusal($"'{text}' isn't a valid value for {entry.Key}. {problem}");
+        if (value is null) throw new SettingsRefusal($"{MarkdownText.Code(text)} isn't a valid value for {MarkdownText.Code(entry.Key)}. {MarkdownText.Inline(problem)}");
 
         var validation = entry.Property.Options.Validation?.Invoke(value);
         if (validation is { } result && result.IsFailed())
-            throw new SettingsRefusal($"'{text}' isn't a valid value for {entry.Key}. {result.Value.AsT0.Reason}");
+            throw new SettingsRefusal($"{MarkdownText.Code(text)} isn't a valid value for {MarkdownText.Code(entry.Key)}. {MarkdownText.Inline(result.Value.AsT0.Reason)}");
 
         RefuseWhatThePageDoesNotOffer(entry, text, value);
         return value;
@@ -119,10 +119,10 @@ public static class SettingsCatalog
         {
             case SingleValueMultipleChoiceContainerOptions choices
                 when !choices.AllowedValues.Any(allowed => choices.ValueComparer.Equals(allowed, value)):
-                throw new SettingsRefusal($"'{text}' isn't a choice for {entry.Key}. Use one of: {string.Join(", ", choices.AllowedValues.Select(choices.ValueToDisplayString.Invoke).Zip(choices.AllowedValues, (display, raw) => Format(raw) == display ? display : $"{Format(raw)} ({display})"))}.");
+                throw new SettingsRefusal($"{MarkdownText.Code(text)} isn't a choice for {MarkdownText.Code(entry.Key)}. Use one of: {string.Join(", ", choices.AllowedValues.Select(choices.ValueToDisplayString.Invoke).Zip(choices.AllowedValues, (display, raw) => Format(raw) == display ? display : $"{Format(raw)} ({MarkdownText.Code(display)})"))}.");
             case SliderContainerOptions slider
                 when Convert.ToDouble(value, CultureInfo.InvariantCulture) is var number && (number < slider.Minimum || number > slider.Maximum):
-                throw new SettingsRefusal($"'{text}' is outside the range of {entry.Key}. Use a value between {Format(slider.Minimum)} and {Format(slider.Maximum)}.");
+                throw new SettingsRefusal($"{MarkdownText.Code(text)} is outside the range of {MarkdownText.Code(entry.Key)}. Use a value between {Format(slider.Minimum)} and {Format(slider.Maximum)}.");
         }
     }
 

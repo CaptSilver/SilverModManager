@@ -28,7 +28,7 @@ internal static class LoadoutGroupLookup
         if (byName.Length > 1)
         {
             var ids = string.Join(", ", byName.Select(g => g.Id.ToString()));
-            throw new LoadoutVerbRefusedException($"{byName.Length} groups are called '{nameOrId}' ({ids}). Pass one of those ids to -g instead of the name.");
+            throw new LoadoutVerbRefusedException($"{byName.Length} groups are called {MarkdownText.Code(nameOrId)} ({MarkdownText.Code(ids)}). Pass one of those ids to -g instead of the name.");
         }
 
         if (EntityId.TryParseFromHex(nameOrId, out var id))
@@ -37,6 +37,6 @@ internal static class LoadoutGroupLookup
             if (byId.Length == 1) return byId[0];
         }
 
-        throw new LoadoutVerbRefusedException($"Group '{nameOrId}' was not found in loadout {loadout.Name}. 'loadout groups list' shows the groups and their ids.");
+        throw new LoadoutVerbRefusedException($"Group {MarkdownText.Code(nameOrId)} was not found in loadout {MarkdownText.Code(loadout.Name)}. 'loadout groups list' shows the groups and their ids.");
     }
 }

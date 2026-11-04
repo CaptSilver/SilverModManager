@@ -10,7 +10,7 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 [PublicAPI]
 public class CollectionRulesCycleException(string collectionName, string firstGroupName, string secondGroupName)
     : UserFacingException(
-        $"The load order rules of the collection \"{collectionName}\" can't all hold: they put \"{firstGroupName}\" and \"{secondGroupName}\" " +
+        $"The load order rules of the collection {MarkdownText.Code(collectionName)} can't all hold: they put {MarkdownText.Code(firstGroupName)} and {MarkdownText.Code(secondGroupName)} " +
         "both before and after each other, directly or together with a rule already on the loadout. " +
         "Its mods were installed, but none of its rules were added and the install stopped before enabling the collection. " +
         "If a rule you added contradicts the collection, remove it and install the collection again."

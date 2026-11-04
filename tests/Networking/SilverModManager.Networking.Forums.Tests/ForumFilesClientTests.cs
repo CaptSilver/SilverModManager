@@ -228,7 +228,7 @@ public class ForumFilesClientTests : IDisposable
         await Store(Valid());
 
         await client.Invoking(c => c.Resolve(ForumSite.LoversLab, 42, "MOD.7z", 1234, CancellationToken.None)).Should()
-            .ThrowAsync<ForumFileNotListedException>().WithMessage("LoversLab no longer lists 'MOD.7z' under this file");
+            .ThrowAsync<ForumFileNotListedException>().WithMessage("LoversLab no longer lists `MOD.7z` under this file");
     }
 
     [Fact]
@@ -239,7 +239,7 @@ public class ForumFilesClientTests : IDisposable
         await Store(Valid());
 
         await client.Invoking(c => c.Resolve(ForumSite.LoversLab, 42, "mod.7z", 1, CancellationToken.None)).Should()
-            .ThrowAsync<ForumFileAmbiguousException>().WithMessage("LoversLab lists 'mod.7z' more than once under this file; download it from the page");
+            .ThrowAsync<ForumFileAmbiguousException>().WithMessage("LoversLab lists `mod.7z` more than once under this file; download it from the page");
     }
 
     [Fact]
@@ -250,7 +250,7 @@ public class ForumFilesClientTests : IDisposable
         await Store(Valid());
 
         await client.Invoking(c => c.Resolve(ForumSite.LoversLab, 42, "mod.7z", 999, CancellationToken.None)).Should()
-            .ThrowAsync<ForumFileSizeMismatchException>().WithMessage("LoversLab's copy of 'mod.7z' is a different size than the list expects");
+            .ThrowAsync<ForumFileSizeMismatchException>().WithMessage("LoversLab's copy of `mod.7z` is a different size than the list expects");
     }
 
     [Fact]

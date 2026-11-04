@@ -24,7 +24,7 @@ public sealed class ToolCommands(ToolInstaller installer, IToolManager tools, To
         => Guarded(renderer, "Adding the tool", async () =>
         {
             if (System.IO.Path.IsPathRooted(path) is false)
-                throw new ToolRefusedException($"'{path}' is not an absolute path. Give the full path of a tool's folder or program.");
+                throw new ToolRefusedException($"{MarkdownText.Code(path)} is not an absolute path. Give the full path of a tool's folder or program.");
 
             var result = await installer.Add(loadout, FileSystem.Shared.FromUnsanitizedFullPath(path));
             foreach (var name in result.Added) await renderer.TextLine($"Added {name}.");
@@ -39,13 +39,13 @@ public sealed class ToolCommands(ToolInstaller installer, IToolManager tools, To
                                                  || string.Equals(t.CatalogueId?.Value, toolName.Trim(), StringComparison.OrdinalIgnoreCase));
             if (tool is null)
             {
-                var names = added.Length == 0 ? "none added yet, use add-tool" : string.Join(", ", added.Select(t => t.Name));
-                throw new ToolRefusedException($"No tool called '{toolName}' is added for loadout '{loadout.Name}'. Added tools: {names}.");
+                var names = added.Length == 0 ? "none added yet, use add-tool" : string.Join(", ", added.Select(t => MarkdownText.Code(t.Name)));
+                throw new ToolRefusedException($"No tool called {MarkdownText.Code(toolName)} is added for loadout {MarkdownText.Code(loadout.Name)}. Added tools: {names}.");
             }
 
             ITool toRun = tool;
             if (cleanPlugin is not null)
-                toRun = tool.ForQuickAutoClean(cleanPlugin) ?? throw new ToolRefusedException($"{tool.Name} cannot clean a plugin.");
+                toRun = tool.ForQuickAutoClean(cleanPlugin) ?? throw new ToolRefusedException($"{MarkdownText.Code(tool.Name)} cannot clean a plugin.");
 
             var outcome = await tools.RunToolWithOutcome(toRun, loadout, monitor, token);
             await renderer.TextLine(ToolRunMessage.Finished(toRun.Name, outcome.ExitCode, outcome.OutputGroup, outcome.CapturedFiles));
@@ -55,7 +55,7 @@ public sealed class ToolCommands(ToolInstaller installer, IToolManager tools, To
         => Guarded(renderer, "Running the pipeline", async () =>
         {
             var pipeline = pipelines.Find(pipelineName, loadout)
-                           ?? throw new ToolRefusedException($"No pipeline called '{pipelineName}'. Pipelines: {string.Join(", ", pipelines.PipelinesFor(loadout).Select(p => p.Name))}.");
+                           ?? throw new ToolRefusedException($"No pipeline called {MarkdownText.Code(pipelineName)}. Pipelines: {string.Join(", ", pipelines.PipelinesFor(loadout).Select(p => MarkdownText.Code(p.Name)))}.");
 
             var lines = new List<string>();
             try

@@ -112,15 +112,15 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
     {
         var release = await FetchRelease(context.CancellationToken);
         var asset = ReleaseAssets.Pick(release, Suffix, NameHint)
-            ?? throw new ReleaseAssetIntegrityException($"Release '{release.TagName}' of {Repository} has no asset ending in '{Suffix}'.");
+            ?? throw new ReleaseAssetIntegrityException($"Release {MarkdownText.Code(release.TagName)} of {MarkdownText.Code(Repository)} has no asset ending in {MarkdownText.Code(Suffix)}.");
 
         // The name becomes a file name in the library, so it must not be able to name a path.
         if (asset.Name != Path.GetFileName(asset.Name))
-            throw new ReleaseAssetIntegrityException($"Asset name '{asset.Name}' of release '{release.TagName}' of {Repository} is not a plain file name.");
+            throw new ReleaseAssetIntegrityException($"Asset name {MarkdownText.Code(asset.Name)} of release {MarkdownText.Code(release.TagName)} of {MarkdownText.Code(Repository)} is not a plain file name.");
 
         var advertised = asset.GetSha256();
         if (RequireAdvertisedDigest && advertised is null && ExpectedSha256 is null)
-            throw new ReleaseAssetIntegrityException($"Asset '{asset.Name}' of release '{release.TagName}' of {Repository} has no SHA-256 digest, so the download cannot be verified.");
+            throw new ReleaseAssetIntegrityException($"Asset {MarkdownText.Code(asset.Name)} of release {MarkdownText.Code(release.TagName)} of {MarkdownText.Code(Repository)} has no SHA-256 digest, so the download cannot be verified.");
 
         var temporaryFileManager = ServiceProvider.GetRequiredService<TemporaryFileManager>();
         await using var folder = temporaryFileManager.CreateFolder();
@@ -196,7 +196,7 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
             throw new InvalidOperationException($"The repository is neither an id nor a name: {Repository}.");
         }
 
-        return release ?? throw new ReleaseAssetIntegrityException($"No release {Tag ?? "(latest)"} found for {Repository}.");
+        return release ?? throw new ReleaseAssetIntegrityException($"No release {MarkdownText.Code(Tag ?? "(latest)")} found for {MarkdownText.Code(Repository)}.");
     }
 
     private void Verify(Asset asset, string tag, Sha256Value? expected, Sha256Value actual, string source)

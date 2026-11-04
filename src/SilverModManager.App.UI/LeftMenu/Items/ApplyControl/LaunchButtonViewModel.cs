@@ -264,7 +264,7 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
 
 /// <summary>Refuses a launch for a game the app has no run tool for, instead of failing with an empty sequence.</summary>
 public sealed class NoRunGameToolException(string gameName)
-    : UserFacingException($"The app has no way to start {gameName} yet, so the game was not launched.")
+    : UserFacingException($"The app has no way to start {MarkdownText.Inline(gameName)} yet, so the game was not launched.")
 {
     public override string Title => "The game was not started";
 }

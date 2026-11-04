@@ -9,6 +9,7 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Games.FromSoft.Heal;
 
@@ -201,7 +202,7 @@ public sealed class RegulationBaselines(Func<AbsolutePath> root, IManifestVouchi
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            throw new HealException($"can't read {source}: {exception.Message}");
+            throw new HealException($"can't read {MarkdownText.Code(source)}: {MarkdownText.Inline(exception.Message)}");
         }
 
         var got = Regulation.Sha256Hex(blob);
@@ -263,7 +264,7 @@ public sealed class RegulationBaselines(Func<AbsolutePath> root, IManifestVouchi
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            throw new HealException($"can't read {file}: {exception.Message}");
+            throw new HealException($"can't read {MarkdownText.Code(file)}: {MarkdownText.Inline(exception.Message)}");
         }
 
         var sha1 = Sha1Value.From(SHA1.HashData(blob));
@@ -280,10 +281,10 @@ public sealed class RegulationBaselines(Func<AbsolutePath> root, IManifestVouchi
         }
         catch (Exception exception) when (exception is RegulationException or AesException or DcxException or KrakenException)
         {
-            throw new HealException($"{file} is not a regulation this game's key opens: {exception.Message}");
+            throw new HealException($"{MarkdownText.Code(file)} is not a regulation this game's key opens: {MarkdownText.Inline(exception.Message)}");
         }
         if (expectedVersion is not null && !version.Equals(expectedVersion, StringComparison.Ordinal))
-            throw new HealException($"{file} is regulation build {version}, not {expectedVersion}.");
+            throw new HealException($"{MarkdownText.Code(file)} is regulation build {version}, not {expectedVersion}.");
 
         var provenance = NewProvenance(BaselineSource.SteamManifest, blob, match, file.GetFullPath());
         var dest = PathOf(version);
@@ -406,7 +407,7 @@ public sealed class RegulationBaselines(Func<AbsolutePath> root, IManifestVouchi
             }
             catch (JsonException exception)
             {
-                throw new HealException($"{sidecar} can't be read ({exception.Message}); the baseline is not used until that is fixed.");
+                throw new HealException($"{MarkdownText.Code(sidecar)} can't be read ({MarkdownText.Inline(exception.Message)}); the baseline is not used until that is fixed.");
             }
         }
 

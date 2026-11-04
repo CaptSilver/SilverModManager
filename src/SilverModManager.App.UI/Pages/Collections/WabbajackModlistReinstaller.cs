@@ -15,6 +15,7 @@ using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.UI.Sdk.Dialog.Enums;
 using SilverModManager.Wabbajack.Install;
 using SilverModManager.Wabbajack.Models;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.App.UI.Pages.Collections;
 
@@ -71,7 +72,7 @@ public sealed class WabbajackModlistReinstaller(
 
         // The install must be able to start before anything is removed: the check also finds an archive that left the library.
         await downloads.PrepareInstallAsync(cancellationToken);
-        if (!downloads.CanInstall) throw new ModlistReinstallRefusedException($"'{name}' cannot be installed again yet. {downloads.InstallBlockedReason}");
+        if (!downloads.CanInstall) throw new ModlistReinstallRefusedException($"{MarkdownText.Code(name)} cannot be installed again yet. {MarkdownText.Inline(downloads.InstallBlockedReason)}");
 
         if (!await Confirm(host, name)) return;
 

@@ -48,8 +48,8 @@ public sealed class ReviewRequiredException : UserFacingException
 
     private static string MessageFor(ReviewKind kind, string modName) => kind switch
     {
-        ReviewKind.NoInstaller => $"No installer knows where the files of `{modName}` go.",
-        ReviewKind.NeedsChoices => $"`{modName}` has choices to make before it can be installed.",
+        ReviewKind.NoInstaller => $"No installer knows where the files of {MarkdownText.Code(modName)} go.",
+        ReviewKind.NeedsChoices => $"{MarkdownText.Code(modName)} has choices to make before it can be installed.",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
 }

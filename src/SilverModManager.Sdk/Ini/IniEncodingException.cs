@@ -11,7 +11,7 @@ namespace SilverModManager.Sdk.Ini;
 [PublicAPI]
 public class IniEncodingException(string settingName, IniEncoding encoding)
     : UserFacingException(
-        $"The setting \"{settingName}\" has a character that the INI file's {encoding} encoding cannot hold, so the file was not written. " +
+        $"The setting {MarkdownText.Code(settingName)} has a character that the INI file's {encoding} encoding cannot hold, so the file was not written. " +
         "Use only plain characters in this setting, or change the file's encoding with a text editor first."
     )
 {

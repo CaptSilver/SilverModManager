@@ -1,4 +1,5 @@
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Games.FromSoft.Saves;
 
@@ -25,7 +26,7 @@ public sealed class SaveQuarantine(SaveBackups backups, IProcessTracker processT
 
         var name = Path.GetFileName(savePath);
         if (backups.Scanner.KindOf(name, out var isBackup) != SaveKind.Vanilla || isBackup)
-            throw new SaveRefusedException($"Only the vanilla save can be quarantined, and {name} is not it.");
+            throw new SaveRefusedException($"Only the vanilla save can be quarantined, and {MarkdownText.Code(name)} is not it.");
 
         var notes = new List<string>();
         string? movedTo = null;

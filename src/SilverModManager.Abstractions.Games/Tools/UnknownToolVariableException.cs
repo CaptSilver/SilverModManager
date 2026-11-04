@@ -7,7 +7,7 @@ namespace SilverModManager.Abstractions.Games.Tools;
 /// The arguments come from the tool's definition or the player's own tool, so the message is for the player.
 /// </summary>
 public sealed class UnknownToolVariableException(string variableName)
-    : UserFacingException($"The tool's arguments use {{{variableName}}}, which has no value for this game.")
+    : UserFacingException($"The tool's arguments use {MarkdownText.Code("{" + variableName + "}")}, which has no value for this game.")
 {
     public string VariableName { get; } = variableName;
 

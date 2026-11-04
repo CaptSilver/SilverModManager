@@ -14,6 +14,7 @@ using NexusMods.Paths;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Games.FromSoft.Merge;
 
@@ -605,10 +606,10 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or RegulationException or AesException or DcxException or KrakenException)
         {
-            throw new HealException($"{file} is not a regulation this game's key opens: {exception.Message}");
+            throw new HealException($"{MarkdownText.Code(file)} is not a regulation this game's key opens: {MarkdownText.Inline(exception.Message)}");
         }
         if (expectedVersion is not null && !version.Equals(expectedVersion, StringComparison.Ordinal))
-            throw new HealException($"{file} is regulation build {version}, not {expectedVersion}.");
+            throw new HealException($"{MarkdownText.Code(file)} is regulation build {version}, not {expectedVersion}.");
         if (baselines.ListedBySteam(installation, bytes)) return baselines.Import(installation, file, expectedVersion);
 
         var regulationName = traits.RegulationFileName ?? throw new HealException($"{GameOf(installation).DisplayName} has no regulation file.");
@@ -622,10 +623,10 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
             throw new HealException(exception.Message);
         }
         if (contributors.Count == 0)
-            throw new HealException($"No mod in this loadout ships a regulation of build {version}, so there is nothing to check {file} against; it can only be kept as a vanilla once it is checked against the mods built from it.");
+            throw new HealException($"No mod in this loadout ships a regulation of build {version}, so there is nothing to check {MarkdownText.Code(file)} against; it can only be kept as a vanilla once it is checked against the mods built from it.");
 
         var verdict = VanillaValidation.Check(bytes, GameBaseOrNull(installation, regulationName), contributors.Select(c => (c.ModName, ContributorBytes(c))).ToArray(), traits);
-        if (!verdict.Passed) throw new HealException($"{file} was refused as a vanilla regulation of build {version}: {verdict.Summary}");
+        if (!verdict.Passed) throw new HealException($"{MarkdownText.Code(file)} was refused as a vanilla regulation of build {version}: {MarkdownText.Inline(verdict.Summary)}");
 
         var provenance = baselines.ValidatedProvenance(bytes, BaselineSource.UserFile, file.GetFullPath(), verdict.Summary);
         var before = baselines.Provenance(version);

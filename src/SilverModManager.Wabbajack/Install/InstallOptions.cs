@@ -11,7 +11,7 @@ public sealed record InstallOptions(bool SkipMissingArchives, IReadOnlySet<Relat
 
 /// <summary>Thrown before anything is written when archives are missing and the caller did not choose to go on without them.</summary>
 public sealed class ArchivesMissingException(IReadOnlyList<ArchivePlanRow> rows)
-    : UserFacingException($"{rows.Count} archive(s) of the list are not available: {string.Join(", ", rows.Take(5).Select(r => r.Archive.Name))}{(rows.Count > 5 ? ", ..." : "")}. " +
+    : UserFacingException($"{rows.Count} archive(s) of the list are not available: {string.Join(", ", rows.Take(5).Select(r => MarkdownText.Code(r.Archive.Name)))}{(rows.Count > 5 ? ", ..." : "")}. " +
                           "Add them to the library, or tick \"Skip files from missing archives\" to install without them.")
 {
     /// <inheritdoc />

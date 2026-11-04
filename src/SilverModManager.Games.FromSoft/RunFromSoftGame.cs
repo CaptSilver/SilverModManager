@@ -7,6 +7,7 @@ using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Settings;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Games.FromSoft;
 
@@ -56,7 +57,7 @@ public class RunFromSoftGame<TGame>(IServiceProvider provider, TGame game) : Run
         }
 
         if (commandLineArgs is { Length: > 0 })
-            throw new GameLaunchException($"Arguments for a game started through me3 are not supported: {string.Join(' ', commandLineArgs)}");
+            throw new GameLaunchException($"Arguments for a game started through me3 are not supported: {MarkdownText.Code(string.Join(' ', commandLineArgs))}");
 
         var installation = loadout.InstallationInstance;
         var spec = await GetLaunchSpec(loadout, cancellationToken);

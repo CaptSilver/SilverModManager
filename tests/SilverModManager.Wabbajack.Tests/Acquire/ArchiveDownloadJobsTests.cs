@@ -186,7 +186,7 @@ public class ArchiveDownloadJobsTests(ITestOutputHelper helper) : AcquireTestBas
 
         var act = () => Jobs.Create(row, destination.Path, CancellationToken.None);
 
-        await act.Should().ThrowAsync<ForumFileNotListedException>().WithMessage("*'gone.7z'*");
+        await act.Should().ThrowAsync<ForumFileNotListedException>().WithMessage("*`gone.7z`*");
         _forum.FileRequests.Should().BeEmpty();
     }
 
@@ -199,7 +199,7 @@ public class ArchiveDownloadJobsTests(ITestOutputHelper helper) : AcquireTestBas
 
         var act = () => Jobs.Create(ForumRow(new LoversLabState(null, "mod.7z", 42, false)), destination.Path, CancellationToken.None);
 
-        await act.Should().ThrowAsync<ForumFileAmbiguousException>().WithMessage("LoversLab lists 'mod.7z' more than once under this file; download it from the page");
+        await act.Should().ThrowAsync<ForumFileAmbiguousException>().WithMessage("LoversLab lists `mod.7z` more than once under this file; download it from the page");
     }
 
     [Fact]

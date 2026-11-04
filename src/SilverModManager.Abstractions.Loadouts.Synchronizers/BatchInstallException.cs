@@ -9,11 +9,14 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 /// </summary>
 [PublicAPI]
 public class BatchInstallException(string itemName, Exception reason)
-    : UserFacingException($"Couldn't install `{itemName}`, so nothing was installed: {reason.Message}", reason)
+    : UserFacingException($"Couldn't install {MarkdownText.Code(itemName)}, so nothing was installed: {ReasonText(reason)}", reason)
 {
     /// <summary>The library item that failed.</summary>
     public string ItemName { get; } = itemName;
 
     /// <inheritdoc />
     public override string Title => "Nothing was installed";
+
+    // A refusal's message is already Markdown; anything else is a runtime message that can carry file names.
+    private static string ReasonText(Exception reason) => reason is UserFacingException ? reason.Message : MarkdownText.Inline(reason.Message);
 }

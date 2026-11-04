@@ -2,6 +2,7 @@ using System.Text;
 using JetBrains.Annotations;
 using Tomlyn;
 using Tomlyn.Model;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Library.Lock;
 
@@ -32,14 +33,14 @@ public sealed class LockFile(IReadOnlyList<LockEntry> entries)
         }
         catch (TomlException exception)
         {
-            throw new LockException($"The lock file is not valid TOML: {exception.Message}");
+            throw new LockException($"The lock file is not valid TOML: {MarkdownText.Inline(exception.Message)}");
         }
 
         var entries = new List<LockEntry>();
         foreach (var (id, value) in root)
         {
             if (value is not TomlTable table)
-                throw new LockException($"The lock file has a top level value '{id}' that is not a table of one mod.");
+                throw new LockException($"The lock file has a top level value {MarkdownText.Code(id)} that is not a table of one mod.");
             entries.Add(ParseEntry(id, table));
         }
 
@@ -52,21 +53,21 @@ public sealed class LockFile(IReadOnlyList<LockEntry> entries)
         foreach (var (key, value) in table)
         {
             if (!KnownKeys.Contains(key))
-                throw new LockException($"The lock entry '{id}' has an unknown key '{key}'.");
+                throw new LockException($"The lock entry {MarkdownText.Code(id)} has an unknown key {MarkdownText.Code(key)}.");
             if (value is not string text)
-                throw new LockException($"The lock entry '{id}' has a '{key}' that is not a string.");
+                throw new LockException($"The lock entry {MarkdownText.Code(id)} has a {MarkdownText.Code(key)} that is not a string.");
             values[key] = text;
         }
 
         foreach (var key in RequiredKeys)
         {
             if (!values.ContainsKey(key))
-                throw new LockException($"The lock entry '{id}' has no '{key}'.");
+                throw new LockException($"The lock entry {MarkdownText.Code(id)} has no {MarkdownText.Code(key)}.");
         }
 
         var source = values["source"];
         if (!LockSources.All.Contains(source))
-            throw new LockException($"The lock entry '{id}' has an unknown source '{source}'.");
+            throw new LockException($"The lock entry {MarkdownText.Code(id)} has an unknown source {MarkdownText.Code(source)}.");
 
         return new LockEntry(id, values["version"], values.GetValueOrDefault("file_id"), values["asset"], values["sha256"], source);
     }

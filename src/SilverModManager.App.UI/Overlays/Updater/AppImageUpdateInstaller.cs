@@ -40,12 +40,12 @@ internal sealed class AppImageUpdateInstaller(ILogger logger, UpdateDownload dow
             throw new AppImageUpdateException("The app was not started from an AppImage ($APPIMAGE is not set), so it cannot update itself. Download the update in the browser instead.");
 
         if (!File.Exists(appImagePath))
-            throw new AppImageUpdateException($"The AppImage `{appImagePath}` does not exist, so it cannot be replaced.");
+            throw new AppImageUpdateException($"The AppImage {MarkdownText.Code(appImagePath)} does not exist, so it cannot be replaced.");
 
         var expected = GetExpectedDigest(asset);
 
         var directory = Path.GetDirectoryName(appImagePath)
-            ?? throw new AppImageUpdateException($"`{appImagePath}` has no parent folder to download the update into.");
+            ?? throw new AppImageUpdateException($"{MarkdownText.Code(appImagePath)} has no parent folder to download the update into.");
         var temporary = Path.Combine(directory, $".{Path.GetFileName(appImagePath)}.{Guid.NewGuid():N}.update");
         EnsureWritable(directory, appImagePath, temporary);
 
@@ -60,7 +60,7 @@ internal sealed class AppImageUpdateInstaller(ILogger logger, UpdateDownload dow
             if (!actual.Equals(expected))
             {
                 logger.LogError("SHA-256 of `{Asset}` is {Actual}, GitHub reports {Expected}", asset.Name, actual, expected);
-                throw new AppImageUpdateException($"The downloaded file does not match the SHA-256 GitHub reports for it (expected {expected}, got {actual}), so it was discarded.");
+                throw new AppImageUpdateException($"The downloaded file does not match the SHA-256 GitHub reports for it (expected {MarkdownText.Code(expected)}, got {MarkdownText.Code(actual)}), so it was discarded.");
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -81,7 +81,7 @@ internal sealed class AppImageUpdateInstaller(ILogger logger, UpdateDownload dow
         try
         {
             return asset.GetSha256()
-                ?? throw new AppImageUpdateException($"GitHub reports no SHA-256 for `{asset.Name}`, so the download could not be verified and was not started.");
+                ?? throw new AppImageUpdateException($"GitHub reports no SHA-256 for {MarkdownText.Code(asset.Name)}, so the download could not be verified and was not started.");
         }
         catch (FormatException e)
         {
@@ -99,7 +99,7 @@ internal sealed class AppImageUpdateInstaller(ILogger logger, UpdateDownload dow
         }
         catch (Exception e) when (e is UnauthorizedAccessException or IOException)
         {
-            throw new AppImageUpdateException($"The folder `{directory}` is not writable, so `{Path.GetFileName(appImagePath)}` cannot be replaced: {e.Message}");
+            throw new AppImageUpdateException($"The folder {MarkdownText.Code(directory)} is not writable, so {MarkdownText.Code(Path.GetFileName(appImagePath))} cannot be replaced: {MarkdownText.Inline(e.Message)}");
         }
     }
 

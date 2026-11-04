@@ -239,7 +239,8 @@ public sealed class ErrorPresenter(IServiceProvider serviceProvider, ILogger<Err
 
         public OpenCrash(string headline, IMarkdownRendererViewModel markdown)
         {
-            _headline = headline;
+            // The headline is a log message, which can quote a mod, file or collection name.
+            _headline = MarkdownText.Inline(headline);
             _markdown = markdown;
             Refresh();
         }

@@ -1,5 +1,6 @@
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Platform.Proton.PrefixSetup;
 
@@ -15,7 +16,7 @@ public sealed class PrefixSetupJob(PrefixSetupRunner runner, GameInstallation in
     {
         var result = await runner.Run(installation, request, context.CancellationToken);
         if (result.Failure is { } failure)
-            throw new PrefixSetupFailedException($"Setting up {failure.Name} failed: {failure.Error}");
+            throw new PrefixSetupFailedException($"Setting up {MarkdownText.Code(failure.Name)} failed: {MarkdownText.Inline(failure.Error)}");
 
         return result;
     }

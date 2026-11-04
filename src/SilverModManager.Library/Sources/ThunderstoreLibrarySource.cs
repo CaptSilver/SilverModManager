@@ -7,6 +7,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Thunderstore;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Library.Sources;
 
@@ -25,7 +26,7 @@ internal sealed class ThunderstoreLibrarySource(IServiceProvider provider) : ILi
 
         var asset = file.FileName.ToString();
         if (!ThunderstoreLibraryFile.PinnedSha256.TryGetValue(package, out var pinned))
-            throw new LockException($"'{asset}' is a Thunderstore package without a pinned SHA-256, so it cannot be pinned.");
+            throw new LockException($"{MarkdownText.Code(asset)} is a Thunderstore package without a pinned SHA-256, so it cannot be pinned.");
 
         var entry = new LibrarySourceEntry(LockExport.SanitizeId($"{package.Namespace}-{package.Name}", asset), package.VersionNumber, null, asset, pinned.ToString(), Name);
         return ValueTask.FromResult<LibrarySourceEntry?>(entry);

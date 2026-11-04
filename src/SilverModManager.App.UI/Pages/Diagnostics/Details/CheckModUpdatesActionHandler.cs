@@ -48,7 +48,7 @@ public sealed class CheckModUpdatesActionHandler(IServiceProvider serviceProvide
             .Where(item => item.IsValid())
             .Select(item => (item.Name, ModUpdateReport.Outcome(db, modUpdates, item.LoadoutItemId)))
             .ToArray();
-        if (mods.Length == 0) throw new ModsNotFoundException($"None of the mods the diagnostic named is in loadout {loadoutId} any more.");
+        if (mods.Length == 0) throw new ModsNotFoundException($"None of the mods the diagnostic named is in loadout {MarkdownText.Code(loadoutId)} any more.");
 
         await MessageBoxOkViewModel.Show(serviceProvider, "Updates for these mods", ModUpdateReport.Describe(mods, status, failure));
     }

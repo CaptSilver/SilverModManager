@@ -75,7 +75,7 @@ public sealed class ModlistDownloads(
 
             if (busy == modlist.Id) return new DownloadStart(modlist, true, PlanCounts.Of(acquirer.Plan));
             var other = catalog.List().FirstOrDefault(m => m.Id == busy)?.Name ?? "another modlist";
-            throw new DownloadBusyException($"The downloads of '{other}' are running. Cancel them first, or wait for them to finish.");
+            throw new DownloadBusyException($"The downloads of {MarkdownText.Code(other)} are running. Cancel them first, or wait for them to finish.");
         }
     }
 

@@ -512,8 +512,8 @@ public class ConnectionDroppedException(string host, Size downloaded, Optional<S
 
     private static string Describe(string host, Size downloaded, Optional<Size> total)
         => total.HasValue
-            ? $"{host} kept dropping the connection; downloaded {Format(downloaded)} of {Format(total.Value)}"
-            : $"{host} kept dropping the connection; downloaded {Format(downloaded)}";
+            ? $"{MarkdownText.Inline(host)} kept dropping the connection; downloaded {Format(downloaded)} of {Format(total.Value)}"
+            : $"{MarkdownText.Inline(host)} kept dropping the connection; downloaded {Format(downloaded)}";
 
     private static string Format(Size size)
     {
@@ -532,7 +532,7 @@ public class ConnectionDroppedException(string host, Size downloaded, Optional<S
 /// The host of a download did not answer in time. Deliberately not a network error the retry pipeline recognises:
 /// a host that never connects is not going to start after a few seconds.
 /// </summary>
-public class HostNotRespondingException(string host, Exception inner) : UserFacingException($"{host} didn't respond", inner)
+public class HostNotRespondingException(string host, Exception inner) : UserFacingException($"{MarkdownText.Inline(host)} didn't respond", inner)
 {
     public override string Title => "The download server didn't respond";
 

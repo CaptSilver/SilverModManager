@@ -52,7 +52,7 @@ public static class ThunderstoreGame
 /// </summary>
 [PublicAPI]
 public sealed class NoThunderstoreGameException(string community)
-    : UserFacingException($"No game installs mods from the Thunderstore community '{community}'.")
+    : UserFacingException($"No game installs mods from the Thunderstore community {MarkdownText.Code(community)}.")
 {
     /// <inheritdoc />
     public override string Title => "The update was not applied";

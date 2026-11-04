@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Platform.Proton.Tools;
 
@@ -46,7 +47,7 @@ public sealed class ToolPipelineRunner(IToolManager tools, IEnumerable<ToolPipel
         }
 
         if (missing.Count > 0)
-            throw new ToolRefusedException($"'{pipeline.Name}' needs {string.Join(", ", missing)}, which {(missing.Count == 1 ? "has" : "have")} not been added for this game. Add it first; nothing was run.");
+            throw new ToolRefusedException($"{MarkdownText.Code(pipeline.Name)} needs {string.Join(", ", missing.Select(MarkdownText.Code))}, which {(missing.Count == 1 ? "has" : "have")} not been added for this game. Add it first; nothing was run.");
 
         foreach (var step in steps)
         {

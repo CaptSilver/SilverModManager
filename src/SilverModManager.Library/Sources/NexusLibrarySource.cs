@@ -8,6 +8,7 @@ using NexusMods.Paths;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Library.Sources;
 
@@ -25,7 +26,7 @@ internal sealed class NexusLibrarySource(IServiceProvider provider, LibraryFileD
 
         var asset = file.FileName.ToString();
         var sha256 = await digests.EnsureSha256(file, cancellationToken)
-            ?? throw new LockException($"'{asset}' has no SHA-256 and its bytes are not in the file store, so it cannot be pinned.");
+            ?? throw new LockException($"{MarkdownText.Code(asset)} has no SHA-256 and its bytes are not in the file store, so it cannot be pinned.");
 
         var id = LockExport.SanitizeId(nexus.ModPageMetadata.Name, asset);
         return new LibrarySourceEntry(id, nexus.FileMetadata.Version, nexus.FileMetadata.Uid.FileId.Value.ToString(), asset, sha256.ToString(), Name);

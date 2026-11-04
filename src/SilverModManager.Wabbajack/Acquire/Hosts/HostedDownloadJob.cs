@@ -87,7 +87,7 @@ public abstract record HostedDownloadJob : ITrackedDownloadJob
 
     /// <summary>The reason shown to the user for a non-success answer; a host overrides it for the codes it uses for its own limits.</summary>
     internal virtual Exception ExplainStatus(HttpResponseMessage response)
-        => new HostRefusedException($"{HostName} answered {(int)response.StatusCode}; download it in your browser");
+        => new HostRefusedException($"{MarkdownText.Inline(HostName)} answered {(int)response.StatusCode}; download it in your browser");
 
     protected async ValueTask<AbsolutePath> RunAsync(IJobContext context)
     {
@@ -246,7 +246,7 @@ public sealed class HostTransfer
         EnsureSuccess(response);
         var host = hostName ?? response.RequestMessage?.RequestUri?.Host ?? _job.Url.Host;
         if (IsWebPage(response))
-            throw new HostRefusedException($"{host} sent a web page instead of the file; download it in your browser");
+            throw new HostRefusedException($"{MarkdownText.Inline(host)} sent a web page instead of the file; download it in your browser");
 
         var total = expectedSize ?? response.Content.Headers.ContentLength;
         await using var network = await response.Content.ReadAsStreamAsync(token);

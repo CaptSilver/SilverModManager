@@ -477,7 +477,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
 
         var act = () => vm.RunQuickAutoCleanAsync(vm.CatalogueTools.Single(), "Update.esm", TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<SilverModManager.Sdk.Errors.UserFacingException>().WithMessage("*TexGen cannot clean a plugin*");
+        await act.Should().ThrowAsync<SilverModManager.Sdk.Errors.UserFacingException>().WithMessage("*`TexGen` cannot clean a plugin*");
     }
 
     [Fact]
@@ -529,7 +529,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         await manager.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         manager.Ran.Should().Equal(first);
         vm.IsRunning.Should().BeTrue();
-        vm.LastRunMessage.Should().Contain("DynDOLOD is still running");
+        vm.LastRunMessage.Should().Contain("`DynDOLOD` is still running");
         vm.CancelRun();
         await run;
         manager.Tokens.Single().IsCancellationRequested.Should().BeTrue();

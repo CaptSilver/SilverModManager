@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Abstractions.Games;
 
@@ -39,7 +40,7 @@ public sealed class FreedesktopTrash : ITrash
     public void MoveToTrash(string path)
     {
         var source = path.TrimEnd('/');
-        if (!Directory.Exists(source)) throw new HostFolderMoveRefusedException($"'{source}' is no longer there, so nothing was moved to the trash.");
+        if (!Directory.Exists(source)) throw new HostFolderMoveRefusedException($"{MarkdownText.Code(source)} is no longer there, so nothing was moved to the trash.");
 
         var files = Path.Combine(_trashRoot, "files");
         var info = Path.Combine(_trashRoot, "info");

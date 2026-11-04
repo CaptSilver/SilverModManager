@@ -23,6 +23,7 @@ using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.UI.Sdk.Dialog.Enums;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.App.UI.Pages.Diagnostics;
 
@@ -86,7 +87,7 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
         {
             if (!plan.Steps.Any(s => s.Acts || s.Kind == CleanupStepKind.Privileged))
             {
-                await MessageBoxOkViewModel.Show(serviceProvider, "Nothing to fix", "The game folder has nothing left that the cleanup can change.", Markdown(CleanupPlanText.StepLines(plan)));
+                await MessageBoxOkViewModel.Show(serviceProvider, "Nothing to fix", "The game folder has nothing left that the cleanup can change.", Markdown(CleanupPlanText.StepLines(plan).Select(MarkdownText.Inline)));
                 return;
             }
 
@@ -237,7 +238,7 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
     private IDialog ManualCommandDialog(string command, string? why)
     {
         var markdown = serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
-        markdown.Contents = $"```\n{command}\n```";
+        markdown.Contents = MarkdownText.CodeBlock(command);
         return DialogFactory.CreateStandardDialog(
             title: "Run this command",
             new StandardDialogParameters
@@ -255,12 +256,12 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
 
     private async Task ShowResult(CleanupResult result, SaveReport saved, string? rescanFailure)
     {
-        var lines = result.Done.Select(step => "- " + step.Description).ToList();
-        lines.AddRange(saved.Added.Select(m => $"- Added {m.Name} {m.Version} to your library"));
-        lines.AddRange(saved.OpenedInBrowser.Select(m => $"- Opened the page of {m.Name} {m.Version} in your browser; download it there to add it to your library"));
-        lines.AddRange(saved.Failed.Select(f => $"- Could not add {f.Mod.Name} {f.Mod.Version} to your library: {f.Message}"));
-        if (result.RestoreRecordFolder is { } folder) lines.Add($"- The removed links are recorded in {folder}");
-        if (rescanFailure is not null) lines.Add("- " + rescanFailure);
+        var lines = result.Done.Select(step => "- " + MarkdownText.Inline(step.Description)).ToList();
+        lines.AddRange(saved.Added.Select(m => $"- Added {MarkdownText.Code(m.Name)} {MarkdownText.Inline(m.Version)} to your library"));
+        lines.AddRange(saved.OpenedInBrowser.Select(m => $"- Opened the page of {MarkdownText.Code(m.Name)} {MarkdownText.Inline(m.Version)} in your browser; download it there to add it to your library"));
+        lines.AddRange(saved.Failed.Select(f => $"- Could not add {MarkdownText.Code(f.Mod.Name)} {MarkdownText.Inline(f.Mod.Version)} to your library: {MarkdownText.Inline(f.Message)}"));
+        if (result.RestoreRecordFolder is { } folder) lines.Add($"- The removed links are recorded in {MarkdownText.Code(folder)}");
+        if (rescanFailure is not null) lines.Add("- " + MarkdownText.Inline(rescanFailure));
 
         if (result.Failure is { } failure)
             await MessageBoxOkViewModel.Show(serviceProvider, "Cleanup stopped", failure, lines.Count > 0 ? "Done so far:\n\n" + string.Join('\n', lines) : null);

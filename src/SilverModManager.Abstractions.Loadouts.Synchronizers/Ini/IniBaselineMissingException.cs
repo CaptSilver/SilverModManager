@@ -11,7 +11,7 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 [PublicAPI]
 public class IniBaselineMissingException(GamePath path)
     : UserFacingException(
-        $"This loadout's copy of {path.FileName} is missing from the app's file store, so the file was not written. " +
+        $"This loadout's copy of {MarkdownText.Code(path.FileName)} is missing from the app's file store, so the file was not written. " +
         "Turn off \"Own the game INIs\" for the loadout to leave the file to the game."
     )
 {

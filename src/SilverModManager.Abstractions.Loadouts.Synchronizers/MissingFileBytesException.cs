@@ -20,7 +20,7 @@ public class MissingFileBytesException(IReadOnlyList<GamePath> paths) : UserFaci
     private static string MessageFor(IReadOnlyList<GamePath> paths)
     {
         const int listed = 5;
-        var names = string.Join(", ", paths.Take(listed).Select(p => p.Path.ToString()));
+        var names = string.Join(", ", paths.Take(listed).Select(p => MarkdownText.Code(p.Path.ToString())));
         var more = paths.Count > listed ? $" and {paths.Count - listed} more" : "";
         return $"The app has no copy of {names}{more}, so it cannot put {(paths.Count == 1 ? "it" : "them")} back in the game folder. " +
                "Restore the file yourself or remove it from the loadout, then apply again.";

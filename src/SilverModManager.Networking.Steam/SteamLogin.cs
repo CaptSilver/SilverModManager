@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Steam;
 using SilverModManager.Networking.Steam.DTOs;
 using SilverModManager.Networking.Steam.Exceptions;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Networking.Steam;
 
@@ -44,7 +45,7 @@ internal sealed class SteamLogin(IAuthStorage storage, ISteamAuthenticator authe
                 // Starting a QR login here would wait for a scan nobody can answer in a headless run, and
                 // the token it produced could not be stored anyway.
                 logger.LogWarning("The stored Steam login is unavailable: {Reason}", unavailable.Reason);
-                throw new SteamLoginException($"The stored Steam login is unavailable: {unavailable.Reason}");
+                throw new SteamLoginException($"The stored Steam login is unavailable: {MarkdownText.Inline(unavailable.Reason)}");
 
             default:
                 await AuthenticateAsync();

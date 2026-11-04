@@ -1,5 +1,6 @@
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Wabbajack.Format;
 
@@ -26,7 +27,7 @@ public static class ModlistArchive
     {
         var entry = archive.Children.FirstOrDefault(c => string.Equals(c.Path.ToString(), id, StringComparison.OrdinalIgnoreCase));
         if (!entry.IsValid())
-            throw new UnsupportedModlistException($"The modlist refers to '{id}', which is not in the file");
+            throw new UnsupportedModlistException($"The modlist refers to {MarkdownText.Code(id)}, which is not in the file");
 
         return await store.GetFileStream(entry.AsLibraryFile().Identity, cancellationToken);
     }

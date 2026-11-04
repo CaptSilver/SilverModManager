@@ -101,8 +101,8 @@ public sealed class ModlistPlanner(IServiceProvider provider) : IModlistPlanner
     public GameInstallation InstallationFor(LibraryFileId file)
     {
         var game = WabbajackGames.GameIdFor(Modlist(file).GameType)
-            ?? throw new ModlistGameMissingException($"The app has no title for the game '{Modlist(file).GameType}' of this modlist");
+            ?? throw new ModlistGameMissingException($"The app has no title for the game {MarkdownText.Code(Modlist(file).GameType)} of this modlist");
         return provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().FirstOrDefault(i => i.Game.GameId == game)
-            ?? throw new ModlistGameMissingException($"The modlist's game ({Modlist(file).GameType}) is not installed, so its files cannot be checked");
+            ?? throw new ModlistGameMissingException($"The modlist's game ({MarkdownText.Code(Modlist(file).GameType)}) is not installed, so its files cannot be checked");
     }
 }

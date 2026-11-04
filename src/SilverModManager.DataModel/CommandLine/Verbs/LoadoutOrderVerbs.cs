@@ -8,6 +8,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.DataModel.CommandLine.Verbs;
 
@@ -63,7 +64,7 @@ internal static class LoadoutOrderVerbs
         var group = LoadoutGroupLookup.Find(loadout, groupName);
         var rows = PriorityRows(variety, loadout);
         var row = rows.FirstOrDefault(r => r.GroupId == group.Id.ToString())
-                  ?? throw new LoadoutVerbRefusedException($"{group.AsLoadoutItem().Name} is not in the priority order. A group is added to it when it is installed or its rules change.");
+                  ?? throw new LoadoutVerbRefusedException($"{MarkdownText.Code(group.AsLoadoutItem().Name)} is not in the priority order. A group is added to it when it is installed or its rules change.");
 
         if (json)
         {
@@ -95,7 +96,7 @@ internal static class LoadoutOrderVerbs
         var items = variety.GetSortOrderItems(sortOrder);
         var from = IndexOf(items, groupId);
         if (from < 0)
-            throw new LoadoutVerbRefusedException($"{name} is not in the priority order. A group is added to it when it is installed or its rules change.");
+            throw new LoadoutVerbRefusedException($"{MarkdownText.Code(name)} is not in the priority order. A group is added to it when it is installed or its rules change.");
 
         var to = Math.Clamp(index, 0, items.Count - 1);
         var clamped = to != index ? $" (clamped from {index}; the list has indexes 0 to {items.Count - 1})" : "";
@@ -165,10 +166,10 @@ internal static class LoadoutOrderVerbs
         var byName = items.ToDictionary(item => item.DisplayName, StringComparer.OrdinalIgnoreCase);
         var unknown = wanted.Where(name => !byName.ContainsKey(name)).ToArray();
         if (unknown.Length > 0)
-            throw new LoadoutVerbRefusedException($"The loadout has no plugin called {string.Join(", ", unknown.Select(n => $"'{n}'"))}. 'loadout plugins list' shows the plugins.");
+            throw new LoadoutVerbRefusedException($"The loadout has no plugin called {string.Join(", ", unknown.Select(n => $"{MarkdownText.Code(n)}"))}. 'loadout plugins list' shows the plugins.");
         var locked = wanted.Where(name => byName[name] is ISortItemDetails { IsLocked: true }).ToArray();
         if (locked.Length > 0)
-            throw new LoadoutVerbRefusedException($"{string.Join(", ", locked)} can't be moved, because the game always loads {(locked.Length == 1 ? "it" : "them")} first.");
+            throw new LoadoutVerbRefusedException($"{string.Join(", ", locked.Select(MarkdownText.Code))} can't be moved, because the game always loads {(locked.Length == 1 ? "it" : "them")} first.");
 
         await LoadoutSnapshot.WriteRestorePoint(connection, loadout.LoadoutId);
         for (var i = 1; i < wanted.Length; i++)
@@ -269,7 +270,7 @@ internal static class LoadoutOrderVerbs
         {
             var named = varieties.Where(v => string.Equals(v.SortOrderUiMetadata.SortOrderName, name, StringComparison.OrdinalIgnoreCase)).ToArray();
             if (named.Length == 0)
-                throw new LoadoutVerbRefusedException($"No order is called '{name}'. This game has: {string.Join(", ", varieties.Select(v => $"'{v.SortOrderUiMetadata.SortOrderName}'"))}.");
+                throw new LoadoutVerbRefusedException($"No order is called {MarkdownText.Code(name)}. This game has: {string.Join(", ", varieties.Select(v => $"{MarkdownText.Code(v.SortOrderUiMetadata.SortOrderName)}"))}.");
             varieties = named;
         }
 
@@ -280,7 +281,7 @@ internal static class LoadoutOrderVerbs
         }
 
         if (varieties.Length > 1)
-            throw new LoadoutVerbRefusedException($"This game keeps more than one order ({string.Join(", ", varieties.Select(v => $"'{v.SortOrderUiMetadata.SortOrderName}'"))}). Pass --variety to say which.");
+            throw new LoadoutVerbRefusedException($"This game keeps more than one order ({string.Join(", ", varieties.Select(v => $"{MarkdownText.Code(v.SortOrderUiMetadata.SortOrderName)}"))}). Pass --variety to say which.");
         return varieties[0];
     }
 

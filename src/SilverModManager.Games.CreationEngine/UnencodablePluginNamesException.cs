@@ -7,7 +7,7 @@ namespace SilverModManager.Games.CreationEngine;
 /// can't hold. libloadorder refuses the same way; writing a substitute would name a file that doesn't exist.
 /// </summary>
 public sealed class UnencodablePluginNamesException(string fileName, string encodingName, IReadOnlyList<string> pluginNames) : UserFacingException(
-    $"{fileName} was not written because {(pluginNames.Count == 1 ? "this plugin name" : "these plugin names")} can't be encoded as {encodingName}: {string.Join(", ", pluginNames)}. " +
+    $"{MarkdownText.Code(fileName)} was not written because {(pluginNames.Count == 1 ? "this plugin name" : "these plugin names")} can't be encoded as {MarkdownText.Inline(encodingName)}: {string.Join(", ", pluginNames.Select(MarkdownText.Code))}. " +
     "Rename the plugin file to use only characters the game can read.")
 {
     public IReadOnlyList<string> PluginNames { get; } = pluginNames;
