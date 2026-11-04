@@ -71,6 +71,7 @@ public class LoginManagerTests : IAsyncLifetime
                 // The server rejects one specific key and never answers for another, whatever else is stored.
                 var keys = request.Headers.TryGetValues("apikey", out var values) ? values.ToArray() : [];
                 foreach (var seen in keys) _seenKeys.Add(seen);
+                if (_holdValidate is { } hold && keys.Contains("held-key")) return HeldValidate(hold);
                 if (keys.Contains("slow-key")) return Task.FromException<HttpResponseMessage>(new TaskCanceledException("The request timed out"));
                 var rejected = keys.Contains("wrong-key");
                 return Task.FromResult(new HttpResponseMessage(rejected ? HttpStatusCode.Unauthorized : validateStatus) { Content = new StringContent(ValidateJson) });
@@ -79,9 +80,59 @@ public class LoginManagerTests : IAsyncLifetime
         var oauth = AuthTestSupport.CreateOAuth(_jobMonitor, new MockHttpMessageHandler(), oauthClientId);
         var router = AuthTestSupport.CreateRouter(cache, oauth);
         var apiClient = new NexusApiClient(NullLogger<NexusApiClient>.Instance, router, new HttpClient(rest), Substitute.For<IGraphQlClient>());
-        var loginManager = new LoginManager(_conn, apiClient, router, oauth, cache, prompt ?? Substitute.For<IApiKeyPrompt>(), NullLogger<LoginManager>.Instance);
+        var loginManager = new LoginManager(_conn, apiClient, router, oauth, cache, prompt ?? Substitute.For<IApiKeyPrompt>(), _managerLog);
         _disposables.Add(loginManager);
         return loginManager;
+    }
+
+    // Completes when a refresh reports that it ended without publishing a user (dropped it, or gave up), so a test waits for that instead of sleeping.
+    private readonly SignalLogger<LoginManager> _managerLog = new("Dropping a user info refresh", "Failed to refresh user info after");
+
+    private sealed class SignalLogger<T>(params string[] markers) : Microsoft.Extensions.Logging.ILogger<T>
+    {
+        public TaskCompletionSource Seen { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            var message = formatter(state, exception);
+            if (markers.Any(marker => message.Contains(marker, StringComparison.Ordinal))) Seen.TrySetResult();
+        }
+    }
+
+    // While set, a check of "held-key" against Nexus Mods stops until the task completes.
+    private Task? _holdValidate;
+    private readonly TaskCompletionSource _validateArrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private async Task<HttpResponseMessage> HeldValidate(Task hold)
+    {
+        _validateArrived.TrySetResult();
+        await hold;
+        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ValidateJson) };
+    }
+
+    [Fact]
+    public async Task ARefreshThatStartedBeforeSignOutDoesNotSignTheUserBackIn()
+    {
+        await AuthTestSupport.StoreKey(_store, "held-key");
+        using var loginManager = CreateLoginManager();
+        await NextUser(loginManager);
+
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _holdValidate = release.Task;
+        var focus = new Subject<bool>();
+        using var refresh = loginManager.RefreshOnObservable(focus);
+        focus.OnNext(true);
+        await _validateArrived.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        await loginManager.Logout();
+        release.SetResult();
+        await _managerLog.Seen.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        loginManager.UserInfo.Should().BeNull();
+        (await loginManager.GetIsUserLoggedInAsync()).Should().BeFalse();
     }
 
     /// <summary>

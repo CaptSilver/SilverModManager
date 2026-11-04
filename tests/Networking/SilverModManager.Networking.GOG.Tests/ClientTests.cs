@@ -114,6 +114,17 @@ public class ClientTests : IDisposable
         (await _cache.GetAsync(CancellationToken.None)).Should().BeNull();
     }
 
+    [Fact]
+    public async Task LogOutFailsLoudlyWhenTheStoreCannotRemoveTheLogin()
+    {
+        await StoreCredential("old-access", DateTimeOffset.UtcNow.AddMinutes(10));
+        _store.Availability = (SecretUnavailableKind.Locked, "the wallet is locked");
+
+        var act = async () => await _client.LogOut();
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("the wallet is locked");
+    }
+
     private static string TokenJson(string access, string refresh, string session, string userId, int expiresIn)
         => JsonSerializer.Serialize(new Dictionary<string, object>
         {

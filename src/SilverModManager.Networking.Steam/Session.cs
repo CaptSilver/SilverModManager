@@ -25,7 +25,7 @@ namespace SilverModManager.Networking.Steam;
 public class Session : ISteamSession
 {
     private bool _isConnected = false;
-    private bool _isLoggedOn = false;
+    private volatile bool _isLoggedOn;
     private volatile ExceptionDispatchInfo? _loginFailure;
 
     internal readonly ILogger<Session> _logger;
@@ -87,7 +87,9 @@ public class Session : ISteamSession
         _callbacks = new CallbackManager(_steamClient);
         _callbacks.Subscribe(WrapAsync<SteamClient.ConnectedCallback>(ConnectedCallback));
         _callbacks.Subscribe(WrapAsync<SteamClient.DisconnectedCallback>(DisconnectedCallback));
-        _callbacks.Subscribe(WrapAsync<SteamUser.LoggedOnCallback>(LoggedOnCallback));
+        // Not wrapped in Task.Run: the waiter in ConnectedAsync returns from RunWaitCallbackAsync as soon as this
+        // handler returns, and it has to find the logon result already stored.
+        _callbacks.Subscribe<SteamUser.LoggedOnCallback>(callback => HandleLogon(callback.Result, callback.ExtendedResult));
         _callbacks.Subscribe(WrapAsync<SteamApps.LicenseListCallback>(LicenseListCallback));
 
         _pipeline = new ResiliencePipelineBuilder()
@@ -116,10 +118,31 @@ public class Session : ISteamSession
         return Task.CompletedTask;
     }
     
-    private async Task LoggedOnCallback(SteamUser.LoggedOnCallback callback)
+    internal bool IsLoggedOn => _isLoggedOn;
+
+    internal Exception? LoginFailure => _loginFailure?.SourceException;
+
+    /// <summary>
+    /// Records the outcome of a logon. Runs inline on the callback pump and does no awaiting, so the result is
+    /// visible to the waiter before its wait returns.
+    /// </summary>
+    internal void HandleLogon(EResult result, EResult extendedResult)
     {
-        _isLoggedOn = true;
-        _logger.LogInformation("Logged on to Steam network.");
+        var rejection = LogonRejection.For(result);
+        if (rejection is null)
+        {
+            _isLoggedOn = true;
+            _logger.LogInformation("Logged on to Steam network.");
+            return;
+        }
+
+        // Without this the waiter in ConnectedAsync would spin until some unrelated callback arrived, and a
+        // rejected token used to be reported as a success. Hand the failure over and disconnect so it wakes up.
+        _logger.LogWarning("Steam rejected the logon: {Result} ({ExtendedResult})", result, extendedResult);
+        _loginFailure = ExceptionDispatchInfo.Capture(rejection);
+        _isLoggedOn = false;
+        _isConnected = false;
+        _steamClient.Disconnect();
     }
 
     private async Task DisconnectedCallback(SteamClient.DisconnectedCallback callback)

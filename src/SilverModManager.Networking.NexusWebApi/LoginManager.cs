@@ -87,6 +87,7 @@ public sealed class LoginManager : IDisposable, ILoginManager
             .DistinctUntilChanged()
             .SubscribeAwait(async (hasValue, cancellationToken) =>
             {
+                AccountChanged();
                 if (!hasValue)
                 {
                     _cachedUserInfo.Evict();
@@ -154,15 +155,40 @@ public sealed class LoginManager : IDisposable, ILoginManager
         cachedValue = _cachedUserInfo.Get();
         if (cachedValue is not null) return cachedValue;
 
-        var isAuthenticated = await _msgFactory.IsAuthenticated();
-        if (!isAuthenticated) return null;
+        // The check can take a while. If the account changes meanwhile (sign-in, sign-out), what it found belongs
+        // to the old credential and must not be published over the new state, so it is dropped and asked again.
+        for (var attempt = 0; attempt < MaxStaleVerifyAttempts; attempt++)
+        {
+            var version = Volatile.Read(ref _accountVersion);
 
-        var userInfo = await _msgFactory.Verify(_nexusApiClient, cancellationToken);
-        _cachedUserInfo.Store(userInfo);
+            var isAuthenticated = await _msgFactory.IsAuthenticated();
+            if (!isAuthenticated) return null;
 
-        if (userInfo is not null) await AddUserToDb(userInfo);
-        return userInfo;
+            var userInfo = await _msgFactory.Verify(_nexusApiClient, cancellationToken);
+            if (version != Volatile.Read(ref _accountVersion))
+            {
+                _logger.LogTrace("Discarding a user check that finished after the account changed");
+                continue;
+            }
+
+            _cachedUserInfo.Store(userInfo);
+
+            if (userInfo is not null) await AddUserToDb(userInfo);
+            return userInfo;
+        }
+
+        // Still changing underneath us; whatever the newer flow cached is the answer.
+        return _cachedUserInfo.Get();
     }
+
+    /// <summary>
+    /// Bumped whenever the signed-in account may have changed, so a check that started earlier can tell its result is stale.
+    /// </summary>
+    private long _accountVersion;
+
+    private const int MaxStaleVerifyAttempts = 3;
+
+    private void AccountChanged() => Interlocked.Increment(ref _accountVersion);
 
     private async Task RefreshUserInfoWithRetry(CancellationToken cancellationToken)
     {
@@ -173,6 +199,8 @@ public sealed class LoginManager : IDisposable, ILoginManager
         {
             try
             {
+                var version = Volatile.Read(ref _accountVersion);
+
                 // Force cache eviction to trigger a fresh API call
                 _cachedUserInfo.Evict();
                 var userInfo = await Verify(cancellationToken);
@@ -180,8 +208,20 @@ public sealed class LoginManager : IDisposable, ILoginManager
                 if (userInfo is null) 
                     continue;
 
-                _cachedUserInfo.Store(userInfo);
-                _userInfo.OnNext(userInfo);
+                // Publish under the same lock a sign-in takes, and only if no sign-in or sign-out happened since
+                // this refresh started; otherwise the old account's info would replace the new one.
+                using (await _verifySemaphore.WaitAsyncDisposable(cancellationToken))
+                {
+                    if (version != Volatile.Read(ref _accountVersion))
+                    {
+                        _logger.LogDebug("Dropping a user info refresh that was overtaken by a sign-in or sign-out");
+                        return;
+                    }
+
+                    _cachedUserInfo.Store(userInfo);
+                    _userInfo.OnNext(userInfo);
+                }
+
                 return; // Success, exit retry loop
             }
             catch (TaskCanceledException)
@@ -315,7 +355,9 @@ public sealed class LoginManager : IDisposable, ILoginManager
             return;
         }
 
+        AccountChanged();
         var result = await _credentials.SetTokenAsync(newToken, CancellationToken.None);
+        AccountChanged();
         if (result is not SecretWriteResult.Written)
             _logger.LogWarning("The OAuth token was not saved ({Result}); it is used until the app closes", Describe(result));
     }
@@ -393,6 +435,7 @@ public sealed class LoginManager : IDisposable, ILoginManager
         // lands, finds it cached instead of asking again, and so it replaces any earlier user. The
         // semaphore makes a check still running against the old credential store its result first.
         using var _ = await _verifySemaphore.WaitAsyncDisposable(CancellationToken.None);
+        AccountChanged();
         _cachedUserInfo.Store(verified);
         _userInfo.OnNext(verified);
         var stored = await _credentials.SetApiKeyAsync(key, CancellationToken.None);
@@ -406,7 +449,9 @@ public sealed class LoginManager : IDisposable, ILoginManager
     /// </summary>
     public async Task Logout()
     {
+        AccountChanged();
         var result = await _credentials.ClearAsync(CancellationToken.None);
+        AccountChanged();
         if (result is not SecretWriteResult.Written)
             _logger.LogWarning("Not every credential was removed on sign-out ({Result})", Describe(result));
 

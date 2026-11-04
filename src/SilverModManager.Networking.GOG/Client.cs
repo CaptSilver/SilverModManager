@@ -357,13 +357,19 @@ internal class Client : IClient
     }
 
     /// <summary>
-    /// Try to log out the user.
+    /// Log out the user, removing the stored login.
     /// </summary>
     public async Task LogOut()
     {
         var result = await _credentials.ClearAsync(CancellationToken.None);
-        if (result is SecretWriteResult.ReadOnly readOnly)
-            throw new InvalidOperationException($"The GOG login cannot be removed: {readOnly.Source} supplies it.");
+        switch (result)
+        {
+            case SecretWriteResult.ReadOnly readOnly:
+                throw new InvalidOperationException($"The GOG login cannot be removed: {readOnly.Source} supplies it.");
+            case SecretWriteResult.Unavailable unavailable:
+                // The cache dropped it for this run, but it comes back next start; saying so beats a silent success.
+                throw new InvalidOperationException($"The GOG login could not be removed from the secret store: {unavailable.Reason}");
+        }
     }
 
     /// <summary>

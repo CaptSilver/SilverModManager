@@ -25,6 +25,7 @@ public static class Verbs
             .AddModule("gog", "Verbs for interacting with GOG")
             .AddModule("gog app", "Verbs for querying GOG apps")
             .AddVerb(() => Login)
+            .AddVerb(() => Logout)
             .AddVerb(() => Index);
 
     [Verb("gog login", "Logs into GOG")]
@@ -34,6 +35,27 @@ public static class Verbs
         return 0;
     }
     
+    [Verb("gog logout", "Forgets the stored GOG login")]
+    private static async Task<int> Logout([Injected] IClient client, [Injected] IRenderer renderer)
+        => await LogoutAsync(client, renderer);
+
+    /// <returns>0 when the login was removed; 1 with the reason when it could not be.</returns>
+    internal static async Task<int> LogoutAsync(IClient client, IRenderer renderer)
+    {
+        try
+        {
+            await client.LogOut();
+        }
+        catch (InvalidOperationException ex)
+        {
+            await renderer.Text(ex.Message);
+            return 1;
+        }
+
+        await renderer.Text("The stored GOG login was removed.");
+        return 0;
+    }
+
     [Verb("gog app index", "Indexes a GOG app and updates the given output folder")]
     private static async Task<int> Index(
         [Injected] IRenderer renderer,

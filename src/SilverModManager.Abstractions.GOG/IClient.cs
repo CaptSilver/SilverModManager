@@ -22,6 +22,12 @@ public interface IClient
     public Task Login(CancellationToken token);
 
     /// <summary>
+    /// Forgets the stored login. Throws <see cref="InvalidOperationException"/> when the login is still there
+    /// afterwards because something outside the store supplies it or the store cannot remove it.
+    /// </summary>
+    public Task LogOut();
+
+    /// <summary>
     /// Gets all installers.
     /// </summary>
     ValueTask<(OSPlatform OS, Uri DownloadLink)[]> GetInstallers(ProductId productId, CancellationToken cancellationToken);
