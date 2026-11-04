@@ -26,6 +26,11 @@ public static class Services
     {
         serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<IDestinationInference, LoadoutLinkInference>());
         serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<IDestinationInference, ThunderstoreCommunityInference>());
+        serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, NexusModFileKind>());
+        serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, DownloadedFileKind>());
+        serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, LocalFileKind>());
+        serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, GitHubReleaseKind>());
+        serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, ThunderstorePackageKind>());
         return serviceCollection
             .AddMigration<_0006_AssignLibraryDestinations>()
             .AddSingleton<ILibraryService, LibraryService>()

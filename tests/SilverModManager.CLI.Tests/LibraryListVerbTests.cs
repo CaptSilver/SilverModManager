@@ -103,11 +103,12 @@ public class LibraryListVerbTests(IServiceProvider provider) : IDisposable
 
     private static Sha256Value DigestOf(string content) => Sha256Value.From(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(content)));
 
-    private async Task<(LibraryFile.ReadOnly File, EntityId ModPage)> AddNexusFile(string name, uint modId, uint fileId, string version, bool inStore = true, string? thumbnail = "https://example.invalid/thumb.png")
+    private async Task<(LibraryFile.ReadOnly File, EntityId ModPage)> AddNexusFile(string name, uint modId, uint fileId, string version, bool inStore = true, string? thumbnail = "https://example.invalid/thumb.png", Sha256Value? sha256 = null, bool withSha256 = true, Action<ITransaction, LibraryFile.New>? alsoExtend = null)
     {
         EntityId modPage = default;
-        var file = await AddFile(name + ".zip", name, DigestOf(name), inStore, (tx, newFile) =>
+        var file = await AddFile(name + ".zip", name, withSha256 ? sha256 ?? DigestOf(name) : null, inStore, (tx, newFile) =>
         {
+            alsoExtend?.Invoke(tx, newFile);
             var page = new NexusModsModPageMetadata.New(tx)
             {
                 Uid = new ModUid(ModId.From(modId), NexusModsGameId.From(4333)),
@@ -130,6 +131,35 @@ public class LibraryListVerbTests(IServiceProvider provider) : IDisposable
             modPage = page.Id;
         });
         return (file, modPage);
+    }
+
+    /// <summary>Adds a stored member to the archive the transaction is creating; the store never holds the archive itself.</summary>
+    private async Task<(Action<ITransaction, LibraryFile.New> Extend, string MemberName)> ArchiveWithStoredMember(string memberContent)
+    {
+        var memberName = Unique("member") + ".esp";
+        var bytes = Encoding.UTF8.GetBytes(memberContent);
+        var hash = bytes.xxHash3();
+        await provider.GetRequiredService<IFileStore>().BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(memberName, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length))]);
+
+        return (Extend, memberName);
+
+        void Extend(ITransaction tx, LibraryFile.New archiveFile)
+        {
+            var archive = new LibraryArchive.New(tx, archiveFile.Id) { IsArchive = true, LibraryFile = archiveFile };
+            var memberId = tx.TempId();
+            _ = new LibraryArchiveFileEntry.New(tx, memberId)
+            {
+                Path = memberName,
+                ParentId = archive.Id,
+                LibraryFile = new LibraryFile.New(tx, memberId)
+                {
+                    FileName = memberName,
+                    Hash = hash,
+                    Size = Size.From((ulong)bytes.Length),
+                    LibraryItem = new LibraryItem.New(tx, memberId) { Name = memberName },
+                },
+            };
+        }
     }
 
     private static JsonObject Row(string output, string name)
@@ -336,5 +366,47 @@ public class LibraryListVerbTests(IServiceProvider provider) : IDisposable
         var report = JsonNode.Parse(text)!.AsObject();
         report["entries"]!.AsArray().Should().BeEmpty();
         report["skipped"]!.AsArray().Select(n => (string?)n).Should().ContainSingle().Which.Should().Contain("Dangling");
+    }
+
+    [Fact]
+    public async Task AnArchiveWhoseMembersAreStoredIsInStoreAndNotDanglingWithoutADigest()
+    {
+        var loadout = await CreateLoadout();
+        var (extend, _) = await ArchiveWithStoredMember("member bytes");
+        var (archive, _) = await AddNexusFile(Unique("archive"), 8, 9, "1.0", inStore: false, withSha256: false, alsoExtend: extend);
+        await Link(loadout, archive, "Archive");
+
+        var (_, output) = await Run("library", "list", "-l", loadout.Name, "--json");
+
+        var row = Row(output, archive.FileName.ToString());
+        ((bool?)row["inStore"]).Should().BeTrue("the archive's members are in the store");
+        ((bool?)row["dangling"]).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ExportLockFailsOnAnArchiveWithoutADigestInsteadOfDroppingIt()
+    {
+        var loadout = await CreateLoadout();
+        var (extend, _) = await ArchiveWithStoredMember("member bytes for the lock");
+        var (archive, _) = await AddNexusFile(Unique("lockarchive"), 10, 11, "1.0", inStore: false, withSha256: false, alsoExtend: extend);
+        await Link(loadout, archive, "Archive");
+
+        var (exitCode, text) = await Run("library", "export-lock", "--loadout", loadout.Name, "--out", Path.Combine(_root, "archive.lock.toml"));
+
+        exitCode.Should().NotBe(0, text);
+        text.Should().Contain(archive.FileName.ToString()).And.NotContain("[skipped]");
+    }
+
+    [Fact]
+    public async Task TheUnfilteredListLeavesOutArchiveMembers()
+    {
+        var (extend, memberName) = await ArchiveWithStoredMember("unfiltered member");
+        var (archive, _) = await AddNexusFile(Unique("unfiltered"), 12, 13, "1.0", alsoExtend: extend);
+
+        var (exitCode, output) = await Run("library", "list", "--json");
+
+        exitCode.Should().Be(0, output);
+        var names = JsonNode.Parse(output)!.AsArray().Select(n => (string?)n!["name"]).ToArray();
+        names.Should().Contain(archive.FileName.ToString()).And.NotContain(memberName);
     }
 }

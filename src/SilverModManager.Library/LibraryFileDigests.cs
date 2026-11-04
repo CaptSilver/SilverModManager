@@ -39,17 +39,29 @@ public sealed class LibraryFileDigests(IFileStore fileStore, IConnection connect
     }
 
     /// <summary>
-    /// Whether the file store holds the file's bytes.
+    /// Whether the file store holds the file's bytes. The store never holds a top-level archive's own bytes, only its
+    /// members', so an archive counts as present when any of its members is.
     /// </summary>
-    public ValueTask<bool> HasBytes(LibraryFile.ReadOnly file) => fileStore.HaveFile(file.Identity);
+    public async ValueTask<bool> HasBytes(LibraryFile.ReadOnly file)
+    {
+        if (!file.TryGetAsLibraryArchive(out var archive)) return await fileStore.HaveFile(file.Identity);
+
+        foreach (var member in archive.Children)
+        {
+            if (await fileStore.HaveFile(member.AsLibraryFile().Identity)) return true;
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// True for a row that has no SHA-256 and whose bytes are not in the file store, such as the record of a download
-    /// that never finished. Nothing can pin or verify it, and unlike <see cref="EnsureSha256"/> this never writes.
+    /// that never finished. An archive is never dangling: it is installed from its members, and its own digest can never
+    /// be back-filled. Nothing can pin or verify a dangling row, and unlike <see cref="EnsureSha256"/> this never writes.
     /// </summary>
     public async ValueTask<bool> IsDangling(LibraryFile.ReadOnly file)
     {
-        if (file.Sha256.HasValue) return false;
+        if (file.Sha256.HasValue || file.TryGetAsLibraryArchive(out _)) return false;
 
         var current = LibraryFile.Load(connection.Db, file.Id);
         if (current.IsValid() && current.Sha256.HasValue) return false;
