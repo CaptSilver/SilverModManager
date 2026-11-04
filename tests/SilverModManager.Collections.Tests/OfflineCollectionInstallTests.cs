@@ -1031,15 +1031,31 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
     }
 
     /// <summary>
-    /// The value an observable settles on. Status observables start from a placeholder and correct themselves a moment
-    /// later, so the first value alone proves nothing.
+    /// Asserts an observable settles on <paramref name="expected"/>. Status observables start from a placeholder and
+    /// correct themselves a moment later, so this waits for the expected value, then checks it holds. An observable that
+    /// never emits fails instead of reading as false.
     /// </summary>
-    private static async Task<bool> Settled(IObservable<bool> observable)
+    /// <summary>The last value an observable emitted, or null before it emitted anything.</summary>
+    private sealed class Latest<T> where T : struct
     {
-        var latest = false;
-        using var _ = observable.Subscribe(value => Volatile.Write(ref latest, value));
+        private readonly Lock _lock = new();
+        private T? _value;
+        public T? Value { get { lock (_lock) return _value; } }
+        public void Set(T value) { lock (_lock) _value = value; }
+    }
+
+    private static async Task SettlesTo(IObservable<bool> observable, bool expected, string because = "")
+    {
+        var latest = new Latest<bool>();
+        using var _ = observable.Subscribe(latest.Set);
+
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+        while (latest.Value != expected && DateTime.UtcNow < deadline) await Task.Delay(25);
+
+        // A placeholder can match the expectation before the real value arrives, so make sure it stays.
         await Task.Delay(750);
-        return Volatile.Read(ref latest);
+        latest.Value.Should().NotBeNull("the observable must emit");
+        latest.Value.Should().Be(expected, because);
     }
 
     [Fact]
@@ -1050,9 +1066,9 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         var groupObservable = downloader.GetCollectionGroupObservable(revision, loadout);
 
         PendingInstalls.For(Connection.Db, group.Id).Should().ContainSingle();
-        (await Settled(downloader.IsListedAsInstalledObservable(group))).Should().BeTrue();
-        (await Settled(downloader.IsOfferedForInstallObservable(revision, loadout))).Should().BeFalse();
-        (await Settled(downloader.IsCollectionInstalledObservable(revision, groupObservable))).Should().BeFalse("the strict test still wants the mod itself installed");
+        await SettlesTo(downloader.IsListedAsInstalledObservable(group), true);
+        await SettlesTo(downloader.IsOfferedForInstallObservable(revision, loadout), false);
+        await SettlesTo(downloader.IsCollectionInstalledObservable(revision, groupObservable), false, "the strict test still wants the mod itself installed");
     }
 
     [Fact]
@@ -1061,12 +1077,78 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         var (_, loadout, _, revision, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown], optionalIndexes: [0, 1]);
         var downloader = ServiceProvider.GetRequiredService<CollectionDownloader>();
 
-        (await Settled(downloader.IsCollectionInstalledOrPendingObservable(revision, downloader.GetCollectionGroupObservable(revision, loadout))))
-            .Should().BeTrue("the loadout has the collection's group");
+        await SettlesTo(downloader.IsCollectionInstalledOrPendingObservable(revision, downloader.GetCollectionGroupObservable(revision, loadout)), true, "the loadout has the collection's group");
 
         var otherLoadout = await CreateLoadout();
-        (await Settled(downloader.IsCollectionInstalledOrPendingObservable(revision, downloader.GetCollectionGroupObservable(revision, otherLoadout))))
-            .Should().BeFalse("that loadout has no group for the collection");
+        await SettlesTo(downloader.IsCollectionInstalledOrPendingObservable(revision, downloader.GetCollectionGroupObservable(revision, otherLoadout)), false, "that loadout has no group for the collection");
+    }
+
+    private static async Task<int> CountSettlesTo(IObservable<int> observable, int expected)
+    {
+        var latest = new Latest<int>();
+        using var _ = observable.Subscribe(latest.Set);
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+        while (latest.Value != expected && DateTime.UtcNow < deadline) await Task.Delay(25);
+        await Task.Delay(300);
+        return latest.Value ?? -1;
+    }
+
+    [Fact]
+    public async Task InstallOptional_WithoutAGroup_OffersEveryOptionalMod()
+    {
+        var (_, _, _, revision, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown], optionalIndexes: [0, 1]);
+        var otherLoadout = await CreateLoadout();
+
+        var noGroup = CollectionDownloader.GetCollectionGroup(revision, otherLoadout, Connection.Db);
+        noGroup.HasValue.Should().BeFalse();
+
+        PendingInstalls.OptionalItemsToInstall(Connection.Db, revision, noGroup)
+            .Select(static item => item.Id).Should().BeEquivalentTo(CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional).Select(static item => item.Id));
+    }
+
+    [Fact]
+    public async Task InstallOptional_WithAGroup_OffersOnlyModsWithoutARow()
+    {
+        var (group, loadout, _, revision, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown], optionalIndexes: [1]);
+        var withGroup = CollectionDownloader.GetCollectionGroup(revision, loadout, Connection.Db);
+        withGroup.HasValue.Should().BeTrue();
+        var pendingOptional = CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional).Single();
+
+        PendingInstalls.OptionalItemsToInstall(Connection.Db, revision, withGroup).Should().BeEquivalentTo(
+            PendingInstalls.OptionalItemsToInstall(Connection.Db, revision, group.Id));
+        PendingInstalls.OptionalItemsToInstall(Connection.Db, revision, withGroup).Select(static item => item.Id)
+            .Should().Contain(pendingOptional.Id, "no row and not installed yet");
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task UndismissedCount_CountsEveryPendingRow_AndDropsDismissedOnes(int pendingMods)
+    {
+        var mods = Enumerable.Range(0, pendingMods).Select(i => ((FomodOption[]?)null, $"Unknown {i}")).ToArray();
+        var (group, loadout, _, revision, _, _) = await InstallWith(mods, Enumerable.Repeat(ModShape.Unknown, pendingMods).ToArray());
+        var downloader = ServiceProvider.GetRequiredService<CollectionDownloader>();
+        var count = PendingInstalls.ObserveUndismissedCount(Connection, downloader.GetCollectionGroupObservable(revision, loadout));
+
+        (await CountSettlesTo(count, pendingMods)).Should().Be(pendingMods);
+
+        using var latest = new System.Reactive.Disposables.SerialDisposable();
+        var seen = new Latest<int>();
+        latest.Disposable = count.Subscribe(seen.Set);
+        await PendingInstalls.Dismiss(Connection, PendingInstalls.For(Connection.Db, group.Id).First().Id);
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+        while (seen.Value != pendingMods - 1 && DateTime.UtcNow < deadline) await Task.Delay(25);
+        seen.Value.Should().Be(pendingMods - 1, "dismissing a row re-emits without it");
+    }
+
+    [Fact]
+    public async Task UndismissedCount_IsZeroWithoutAGroup()
+    {
+        var (_, _, _, revision, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+        var downloader = ServiceProvider.GetRequiredService<CollectionDownloader>();
+        var otherLoadout = await CreateLoadout();
+
+        (await CountSettlesTo(PendingInstalls.ObserveUndismissedCount(Connection, downloader.GetCollectionGroupObservable(revision, otherLoadout)), 0)).Should().Be(0);
     }
 
     [Fact]
@@ -1080,15 +1162,12 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, [optional]));
         var row = PendingRow(group, optional).Value;
 
-        (await Settled(downloader.IsCollectionInstalledOrPendingObservable(revision, groupObservable, CollectionDownloader.ItemType.Optional)))
-            .Should().BeTrue("an undismissed pending row counts");
+        await SettlesTo(downloader.IsCollectionInstalledOrPendingObservable(revision, groupObservable, CollectionDownloader.ItemType.Optional), true, "an undismissed pending row counts");
 
         await PendingInstalls.Dismiss(Connection, row.Id);
 
-        (await Settled(downloader.IsCollectionInstalledOrPendingObservable(revision, groupObservable, CollectionDownloader.ItemType.Optional)))
-            .Should().BeFalse("a dismissed row does not count unless dismissals are accepted");
-        (await Settled(downloader.IsCollectionInstalledOrPendingObservable(revision, groupObservable, CollectionDownloader.ItemType.Optional, acceptDismissed: true)))
-            .Should().BeTrue();
+        await SettlesTo(downloader.IsCollectionInstalledOrPendingObservable(revision, groupObservable, CollectionDownloader.ItemType.Optional), false, "a dismissed row does not count unless dismissals are accepted");
+        await SettlesTo(downloader.IsCollectionInstalledOrPendingObservable(revision, groupObservable, CollectionDownloader.ItemType.Optional, acceptDismissed: true), true);
 
         var toInstall = PendingInstalls.OptionalItemsToInstall(Connection.Db, revision, group.Id);
         toInstall.Should().BeEmpty();

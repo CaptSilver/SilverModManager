@@ -175,11 +175,9 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     return;
                 }
 
-                // Mods already waiting for review, or dismissed, are only brought back from the grid's per-item Install.
+                // Mods already waiting for review, or dismissed, are only brought back from the grid's per-item Install. Before the collection is installed nothing has a row, so every optional mod goes.
                 var installedGroup = CollectionDownloader.GetCollectionGroup(revisionMetadata, targetLoadout, connection.Db);
-                var optionalItems = installedGroup.HasValue
-                    ? PendingInstalls.OptionalItemsToInstall(connection.Db, revisionMetadata, installedGroup.Value.Id)
-                    : [];
+                var optionalItems = PendingInstalls.OptionalItemsToInstall(connection.Db, revisionMetadata, installedGroup);
                 if (optionalItems.Length == 0)
                 {
                     _notificationService.ShowToast(Language.CollectionDownloadViewModel_Nothing_optional_to_install, ToastNotificationVariant.Neutral);
@@ -434,13 +432,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                 var hasInstalledAllOptionalItems = collectionDownloader
                     .IsCollectionInstalledOrPendingObservable(_revision, collectionGroupObservable, CollectionDownloader.ItemType.Optional, acceptDismissed: true)
                     .Prepend(false);
-                var numPendingObservable = collectionGroupObservable
-                    .OffUi()
-                    .Select(group => group.HasValue
-                        ? PendingInstalls.Observe(connection, group.Value.Id).Select(static rows => rows.Count(static row => !PendingInstalls.IsDismissed(row)))
-                        : Observable.Return(0))
-                    .Switch()
-                    .Prepend(0);
+                var numPendingObservable = PendingInstalls.ObserveUndismissedCount(connection, collectionGroupObservable.OffUi());
 
                 // Installed under another revision of the collection: this page's primary action is then "Update".
                 var installedAnyRevisionObservable = CollectionUpdater.ObserveInstalledGroup(connection, _collection, _targetLoadout);
@@ -488,12 +480,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                                         IsInstalled.Value = true;
                                     }
                                     
-                                    CollectionStatusText = numPending switch
-                                    {
-                                        0 => Language.CollectionDownloadViewModel_CollectionDownloadViewModel_Ready_to_play___All_required_mods_installed,
-                                        1 => Language.CollectionDownloadViewModel_Installed_one_mod_needs_review,
-                                        _ => string.Format(Language.CollectionDownloadViewModel_Installed_mods_need_review, numPending),
-                                    };
+                                    CollectionStatusText = InstalledStatusText(numPending);
                                 }
                                 else
                                 {
@@ -641,6 +628,16 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
     /// The tab's title: the collection's name, plus the revision number when a newer revision exists, so two revisions
     /// of one collection can be told apart in the tab strip.
     /// </summary>
+    /// <summary>
+    /// The status line of an installed collection: ready, or how many mods wait for review.
+    /// </summary>
+    public static string InstalledStatusText(int numPending) => numPending switch
+    {
+        <= 0 => Language.CollectionDownloadViewModel_CollectionDownloadViewModel_Ready_to_play___All_required_mods_installed,
+        1 => Language.CollectionDownloadViewModel_Installed_one_mod_needs_review,
+        _ => string.Format(Language.CollectionDownloadViewModel_Installed_mods_need_review, numPending),
+    };
+
     public static string TabTitleOf(string collectionName, RevisionNumber revision, Optional<RevisionNumber> newestRevision) =>
         newestRevision.HasValue ? string.Format(Language.CollectionDownloadViewModel_TabTitleWithRevision, collectionName, revision) : collectionName;
 

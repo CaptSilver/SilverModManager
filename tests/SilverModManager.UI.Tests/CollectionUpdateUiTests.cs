@@ -154,6 +154,26 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
     }
 
     [Fact]
+    public void TheInstalledStatusReadsReadyWithNothingToReview()
+    {
+        CollectionDownloadViewModel.InstalledStatusText(0).Should().Be(Language.CollectionDownloadViewModel_CollectionDownloadViewModel_Ready_to_play___All_required_mods_installed);
+    }
+
+    [Fact]
+    public void TheInstalledStatusSaysOneModNeedsReview()
+    {
+        CollectionDownloadViewModel.InstalledStatusText(1).Should().Be("Installed. 1 mod needs review");
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(7)]
+    public void TheInstalledStatusCountsTheModsToReview(int pending)
+    {
+        CollectionDownloadViewModel.InstalledStatusText(pending).Should().Be($"Installed. {pending} mods need review");
+    }
+
+    [Fact]
     public void TheTabTitleCarriesTheRevisionOnlyWhenANewerOneExists()
     {
         var rev = RevisionNumber.From(2);

@@ -100,6 +100,30 @@ public static class PendingInstalls
     }
 
     /// <summary>
+    /// The optional mods "Install optional" installs for a loadout that may not hold the collection yet. Without a group
+    /// nothing has a row or is installed, so every optional mod is offered.
+    /// </summary>
+    public static CollectionDownload.ReadOnly[] OptionalItemsToInstall(IDb db, CollectionRevisionMetadata.ReadOnly revision, Optional<NexusCollectionLoadoutGroup.ReadOnly> group) =>
+        group.HasValue
+            ? OptionalItemsToInstall(db, revision, group.Value.Id)
+            : CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional);
+
+    /// <summary>
+    /// How many rows still wait for a person: dismissed rows are left out.
+    /// </summary>
+    public static int CountUndismissed(IEnumerable<NexusCollectionPendingInstall.ReadOnly> rows) => rows.Count(static row => !IsDismissed(row));
+
+    /// <summary>
+    /// <see cref="CountUndismissed"/> of the group's rows, again whenever a row is added, retracted or dismissed. 0 while
+    /// there is no group.
+    /// </summary>
+    public static IObservable<int> ObserveUndismissedCount(IConnection connection, IObservable<Optional<CollectionGroup.ReadOnly>> group) =>
+        group
+            .Select(g => g.HasValue ? Observe(connection, g.Value.Id).Select(CountUndismissed) : Observable.Return(0))
+            .Switch()
+            .Prepend(0);
+
+    /// <summary>
     /// Emits the group's rows now and again whenever one is added, retracted or dismissed.
     /// </summary>
     public static IObservable<NexusCollectionPendingInstall.ReadOnly[]> Observe(IConnection connection, EntityId group)
