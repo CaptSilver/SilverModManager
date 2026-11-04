@@ -5,7 +5,7 @@ using SilverModManager.Collections;
 
 namespace SilverModManager.UI.Tests.Pages;
 
-public class CollectionInstallProgressTextTests
+public class CollectionInstallProgressTextTests(IServiceProvider provider) : AUiTest(provider)
 {
     private static CollectionInstallProgress.Snapshot Snapshot(
         int total = 46,
@@ -69,5 +69,44 @@ public class CollectionInstallProgressTextTests
     {
         // An optional-only run can finish cleanly while required mods are still missing; blaming failures would be wrong.
         CollectionInstallProgressText.DisabledNotice(Snapshot(isFinished: true, leftDisabled: true)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void PendingNotice_IsEmptyWithNoPendingMods()
+    {
+        CollectionInstallProgressText.PendingNotice(Snapshot()).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void PendingNotice_SaysOneModNeedsReview()
+    {
+        CollectionInstallProgressText.PendingNotice(Snapshot(pending: ["A"])).Should().Be("1 mod needs review, see below");
+    }
+
+    [Fact]
+    public void PendingNotice_CountsSeveral()
+    {
+        CollectionInstallProgressText.PendingNotice(Snapshot(pending: ["A", "B", "C"])).Should().Be("3 mods need review, see below");
+    }
+
+    [Fact]
+    public void FailedLines_ExcludesPendingMods()
+    {
+        CollectionInstallProgressText.FailedLines(Snapshot(failed: ["Broken"], pending: ["Waiting"])).Should().Equal("Broken: Broken reason");
+    }
+
+    [Fact]
+    public async Task PendingNotice_AndRowDetail_TakeAReasonWithBraces()
+    {
+        const string reason = "{mods}/x and {0}";
+        var snapshot = new CollectionInstallProgress.Snapshot(
+            1, 0, 0, [], [new CollectionInstallProgress.PendingMod("Braced", ReviewKind.NoInstaller, reason)], [], IsFinished: true, LeftDisabled: false);
+        var (row, download) = await PendingReviewRowTests.CreateRow(Connection, ReviewKind.NoInstaller, reason);
+
+        var notice = () => CollectionInstallProgressText.PendingNotice(snapshot);
+        var review = new PendingReviewRow(row, download);
+
+        notice.Should().NotThrow().Which.Should().Be("1 mod needs review, see below");
+        review.Detail.Should().Be(reason);
     }
 }

@@ -45,6 +45,17 @@ public static class CollectionInstallProgressText
     }
 
     /// <summary>
+    /// Points at the review list when mods of this run are waiting for a person, or an empty string if none are. The reasons
+    /// stay out of it: they can hold braces, and the list shows them.
+    /// </summary>
+    public static string PendingNotice(CollectionInstallProgress.Snapshot snapshot) => snapshot.Pending.Count switch
+    {
+        0 => string.Empty,
+        1 => Language.CollectionInstallProgress_PendingOne,
+        var count => string.Format(Language.CollectionInstallProgress_PendingMany, count),
+    };
+
+    /// <summary>
     /// Says the collection stayed disabled because mods of this run failed, or an empty string otherwise.
     /// </summary>
     public static string DisabledNotice(CollectionInstallProgress.Snapshot snapshot)

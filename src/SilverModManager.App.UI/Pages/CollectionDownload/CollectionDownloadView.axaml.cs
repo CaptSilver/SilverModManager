@@ -87,6 +87,19 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                     .Subscribe(ShowInstallProgress)
                     .DisposeWith(d);
 
+                this.BindCommand(ViewModel, vm => vm.CommandRetryPendingItems, view => view.ButtonRetryPendingItems)
+                    .DisposeWith(d);
+
+                this.OneWayBind(ViewModel, vm => vm.PendingItems, view => view.ListPendingItems.ItemsSource)
+                    .DisposeWith(d);
+
+                this.WhenAnyValue(view => view.ViewModel)
+                    .WhereNotNull()
+                    .Select(static vm => vm.PendingCount.AsSystemObservable())
+                    .Switch()
+                    .Subscribe(ShowPendingCount)
+                    .DisposeWith(d);
+
                 this.OneWayBind(ViewModel, vm => vm.Name, view => view.CollectionName.Text)
                     .DisposeWith(d);
 
@@ -301,6 +314,16 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
         TextInstallRunning.IsVisible = snapshot.Installing.Count > 0;
         TextInstallDisabled.Text = CollectionInstallProgressText.DisabledNotice(snapshot);
         TextInstallDisabled.IsVisible = TextInstallDisabled.Text.Length > 0;
+        TextInstallPending.Text = CollectionInstallProgressText.PendingNotice(snapshot);
+        TextInstallPending.IsVisible = TextInstallPending.Text.Length > 0;
         ListInstallFailures.ItemsSource = CollectionInstallProgressText.FailedLines(snapshot);
+    }
+
+    private void ShowPendingCount(int count)
+    {
+        ReviewPanel.IsVisible = count > 0;
+        TextReviewHeader.Text = count == 1
+            ? Language.CollectionReview_HeaderOne
+            : string.Format(Language.CollectionReview_HeaderMany, count);
     }
 }

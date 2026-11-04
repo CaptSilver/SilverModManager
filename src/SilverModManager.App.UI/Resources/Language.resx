@@ -1533,6 +1533,39 @@ Use it for {0}?</value>
     <data name="CollectionInstallProgress_LeftDisabled" xml:space="preserve">
         <value>The collection was left disabled because required mods failed to install.</value>
     </data>
+    <data name="CollectionInstallProgress_PendingOne" xml:space="preserve">
+        <value>1 mod needs review, see below</value>
+    </data>
+    <data name="CollectionInstallProgress_PendingMany" xml:space="preserve">
+        <value>{0} mods need review, see below</value>
+    </data>
+    <data name="CollectionReview_HeaderOne" xml:space="preserve">
+        <value>1 mod needs review</value>
+    </data>
+    <data name="CollectionReview_HeaderMany" xml:space="preserve">
+        <value>{0} mods need review</value>
+    </data>
+    <data name="CollectionReview_Lead" xml:space="preserve">
+        <value>Review each one to finish installing it, or try again after an update.</value>
+    </data>
+    <data name="CollectionReview_Review" xml:space="preserve">
+        <value>Review</value>
+    </data>
+    <data name="CollectionReview_Dismiss" xml:space="preserve">
+        <value>Dismiss</value>
+    </data>
+    <data name="CollectionReview_TryAgain" xml:space="preserve">
+        <value>Try again</value>
+    </data>
+    <data name="CollectionReview_NoInstaller" xml:space="preserve">
+        <value>No installer knows where the files go</value>
+    </data>
+    <data name="CollectionReview_NeedsChoices" xml:space="preserve">
+        <value>Has choices to make</value>
+    </data>
+    <data name="CollectionReview_DownloadAgain" xml:space="preserve">
+        <value>Download it again from the list above</value>
+    </data>
     <data name="CollectionComponents_InstallAction_ButtonText_Installing" xml:space="preserve">
         <value>Installing</value>
     </data>

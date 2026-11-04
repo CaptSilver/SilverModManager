@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Avalonia.Media.Imaging;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
@@ -120,6 +121,17 @@ public interface ICollectionDownloadViewModel : IPageViewModelInterface
     /// Stays set after the job ends so its failures remain visible.
     /// </summary>
     BindableReactiveProperty<CollectionInstallProgress.Snapshot?> InstallProgress { get; }
+
+    /// <summary>
+    /// The mods of the collection waiting for a person that the player has not dismissed.
+    /// </summary>
+    ReadOnlyObservableCollection<PendingReviewRow> PendingItems { get; }
+
+    /// <summary>
+    /// How many entries <see cref="PendingItems"/> holds.
+    /// </summary>
+    BindableReactiveProperty<int> PendingCount { get; }
+
     BindableReactiveProperty<bool> IsDownloading { get; }
     BindableReactiveProperty<bool> IsUpdateAvailable { get; }
     BindableReactiveProperty<bool> HasInstalledAllOptionalItems { get; }
@@ -133,6 +145,21 @@ public interface ICollectionDownloadViewModel : IPageViewModelInterface
     ReactiveCommand<Unit> CommandInstallOptionalItems { get; }
 
     ReactiveCommand<Unit> CommandUpdateCollection { get; }
+
+    /// <summary>
+    /// Opens the right installer for the mod and installs it. Off while the collection is busy.
+    /// </summary>
+    ReactiveCommand<PendingReviewRow> CommandReviewPendingItem { get; }
+
+    /// <summary>
+    /// Hides an optional mod from the list. Off while the collection is busy.
+    /// </summary>
+    ReactiveCommand<PendingReviewRow> CommandDismissPendingItem { get; }
+
+    /// <summary>
+    /// Runs the collection install again over the listed mods whose archive is in the library.
+    /// </summary>
+    ReactiveCommand<Unit> CommandRetryPendingItems { get; }
 
     ReactiveCommand<Unit> CommandViewOnNexusMods { get; }
     ReactiveCommand<Unit> CommandOpenJsonFile { get; }

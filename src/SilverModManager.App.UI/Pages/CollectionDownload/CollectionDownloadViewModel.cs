@@ -1,7 +1,9 @@
+using System.Collections.ObjectModel;
 using System.Reactive.Linq;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Media.Imaging;
 using DynamicData;
+using DynamicData.Binding;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -23,6 +25,8 @@ using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Games.FOMOD;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Collections;
 using SilverModManager.UI.Sdk.Icons;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -234,6 +238,70 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
             configureAwait: false
         );
 
+        var collectionGroupNow = () => CollectionDownloader.GetCollectionGroup(revisionMetadata, targetLoadout, connection.Db).Convert(static group => group.AsCollectionGroup());
+
+        // The archive check sits on the row's own button: a command shared by every row can't know which row it is for.
+        CommandReviewPendingItem = IsInstalling.Select(static busy => !busy).ToReactiveCommand<PendingReviewRow>(
+            executeAsync: async (row, cancellationToken) =>
+            {
+                if (row.IsArchiveMissing.Value) return;
+
+                // A finishing job may have retracted the row since the click.
+                if (!PendingInstalls.ShouldReview(connection.Db, row.Download, collectionGroupNow())) return;
+
+                try
+                {
+                    var job = await InstallCollectionDownloadJob.CreateForReview(serviceProvider, targetLoadout, row.Download, row.Kind, cancellationToken);
+                    await jobMonitor.Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(job);
+                }
+                catch (OperationCanceledException)
+                {
+                    // The player closed the installer; the row stays in the list.
+                }
+                catch (FomodInstallCancelledException)
+                {
+                }
+                catch (UserFacingException e)
+                {
+                    _notificationService.ShowToast(MarkdownText.ToPlain(e.Message), ToastNotificationVariant.Failure);
+                }
+            },
+            awaitOperation: AwaitOperation.Drop,
+            configureAwait: false
+        );
+
+        CommandDismissPendingItem = IsInstalling.Select(static busy => !busy).ToReactiveCommand<PendingReviewRow>(
+            executeAsync: async (row, _) => await PendingInstalls.Dismiss(connection, row.RowId),
+            awaitOperation: AwaitOperation.Drop,
+            configureAwait: false
+        );
+
+        CommandRetryPendingItems = IsInstalling.CombineLatest(_canRetryPendingItems, static (isInstalling, canRetry) => !isInstalling && canRetry).ToReactiveCommand<Unit>(
+            executeAsync: async (_, _) =>
+            {
+                var group = collectionGroupNow();
+                if (!group.HasValue) return;
+
+                var items = PendingInstalls.RetryItems(connection.Db, group.Value.Id);
+                if (items.Length == 0) return;
+
+                try
+                {
+                    await InstallCollectionJob.Create(serviceProvider, targetLoadout, source: libraryFile, revisionMetadata, items: items);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Whatever was recorded before the cancel stays in the list.
+                }
+                catch (UserFacingException e)
+                {
+                    _notificationService.ShowToast(MarkdownText.ToPlain(e.Message), ToastNotificationVariant.Failure);
+                }
+            },
+            awaitOperation: AwaitOperation.Drop,
+            configureAwait: false
+        );
+
         CommandDeleteCollectionRevision = new ReactiveCommand(
             executeAsync: async (_, _) =>
             {
@@ -433,6 +501,62 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     .IsCollectionInstalledOrPendingObservable(_revision, collectionGroupObservable, CollectionDownloader.ItemType.Optional, acceptDismissed: true)
                     .Prepend(false);
                 var numPendingObservable = PendingInstalls.ObserveUndismissedCount(connection, collectionGroupObservable.OffUi());
+
+                // The review list: the group's undismissed rows, each with a live check that its archive is still in the library.
+                var rowSubscriptions = new Dictionary<EntityId, (PendingReviewRow Row, IDisposable Subscription)>();
+                disposables.Add(Disposable.Create(() =>
+                {
+                    foreach (var (row, subscription) in rowSubscriptions.Values)
+                    {
+                        subscription.Dispose();
+                        row.Dispose();
+                    }
+
+                    rowSubscriptions.Clear();
+                }));
+                _pendingRows.Connect().Bind(_pendingItems).Subscribe().AddTo(disposables);
+
+                collectionGroupObservable
+                    .OffUi()
+                    .Select(group => group.HasValue ? PendingInstalls.Observe(connection, group.Value.Id) : Observable.Return(Array.Empty<NexusCollectionPendingInstall.ReadOnly>()))
+                    .Switch()
+                    .OnUI()
+                    .Subscribe(rows =>
+                    {
+                        var live = rows.Where(static row => !PendingInstalls.IsDismissed(row)).ToArray();
+                        var liveIds = live.Select(static row => row.Id).ToHashSet();
+
+                        foreach (var gone in rowSubscriptions.Keys.Where(id => !liveIds.Contains(id)).ToArray())
+                        {
+                            var (row, subscription) = rowSubscriptions[gone];
+                            subscription.Dispose();
+                            _pendingRows.Remove(row);
+                            row.Dispose();
+                            rowSubscriptions.Remove(gone);
+                        }
+
+                        foreach (var added in live.Where(row => !rowSubscriptions.ContainsKey(row.Id)))
+                        {
+                            var item = new PendingReviewRow(added, added.Download);
+                            var subscription = Observable.Return(added.Download)
+                                .OffUi()
+                                .SelectMany(download => collectionDownloader.GetStatusObservable(download, collectionGroupObservable))
+                                .Select(static status => status.IsNotDownloaded())
+                                .DistinctUntilChanged()
+                                .OnUI()
+                                .Subscribe(isMissing =>
+                                {
+                                    item.IsArchiveMissing.Value = isMissing;
+                                    _canRetryPendingItems.OnNext(_pendingRows.Items.Any(static row => !row.IsArchiveMissing.Value));
+                                });
+                            rowSubscriptions[added.Id] = (item, subscription);
+                            _pendingRows.AddOrUpdate(item);
+                        }
+
+                        PendingCount.Value = live.Length;
+                        _canRetryPendingItems.OnNext(_pendingRows.Items.Any(static row => !row.IsArchiveMissing.Value));
+                    })
+                    .AddTo(disposables);
 
                 // Installed under another revision of the collection: this page's primary action is then "Update".
                 var installedAnyRevisionObservable = CollectionUpdater.ObserveInstalledGroup(connection, _collection, _targetLoadout);
@@ -663,6 +787,13 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
     /// <summary>How the revision installed in the loadout relates to this page's revision.</summary>
     private enum InstalledRevision { None, Older, Newer }
 
+    private readonly SourceCache<PendingReviewRow, EntityId> _pendingRows = new(static row => row.RowId);
+    private readonly ObservableCollectionExtended<PendingReviewRow> _pendingItems = [];
+    private readonly BehaviorSubject<bool> _canRetryPendingItems = new(initialValue: false);
+
+    public ReadOnlyObservableCollection<PendingReviewRow> PendingItems => field ??= new ReadOnlyObservableCollection<PendingReviewRow>(_pendingItems);
+    public BindableReactiveProperty<int> PendingCount { get; } = new(value: 0);
+
     public BindableReactiveProperty<bool> IsInstalling { get; } = new(value: false);
     public BindableReactiveProperty<CollectionInstallProgress.Snapshot?> InstallProgress { get; } = new(value: null);
 
@@ -706,6 +837,9 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
     public ReactiveCommand<Unit> CommandDownloadOptionalItems { get; }
     public ReactiveCommand<Unit> CommandInstallOptionalItems { get; }
     public ReactiveCommand<Unit> CommandUpdateCollection { get; }
+    public ReactiveCommand<PendingReviewRow> CommandReviewPendingItem { get; }
+    public ReactiveCommand<PendingReviewRow> CommandDismissPendingItem { get; }
+    public ReactiveCommand<Unit> CommandRetryPendingItems { get; }
 
     public ReactiveCommand<Unit> CommandViewOnNexusMods { get; }
     public ReactiveCommand<Unit> CommandOpenJsonFile { get; }

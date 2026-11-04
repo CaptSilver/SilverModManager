@@ -1450,6 +1450,105 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to 1 mod needs review, see below.
+        /// </summary>
+        public static string CollectionInstallProgress_PendingOne {
+            get {
+                return ResourceManager.GetString("CollectionInstallProgress_PendingOne", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} mods need review, see below.
+        /// </summary>
+        public static string CollectionInstallProgress_PendingMany {
+            get {
+                return ResourceManager.GetString("CollectionInstallProgress_PendingMany", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 1 mod needs review.
+        /// </summary>
+        public static string CollectionReview_HeaderOne {
+            get {
+                return ResourceManager.GetString("CollectionReview_HeaderOne", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} mods need review.
+        /// </summary>
+        public static string CollectionReview_HeaderMany {
+            get {
+                return ResourceManager.GetString("CollectionReview_HeaderMany", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Review each one to finish installing it, or try again after an update..
+        /// </summary>
+        public static string CollectionReview_Lead {
+            get {
+                return ResourceManager.GetString("CollectionReview_Lead", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Review.
+        /// </summary>
+        public static string CollectionReview_Review {
+            get {
+                return ResourceManager.GetString("CollectionReview_Review", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Dismiss.
+        /// </summary>
+        public static string CollectionReview_Dismiss {
+            get {
+                return ResourceManager.GetString("CollectionReview_Dismiss", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Try again.
+        /// </summary>
+        public static string CollectionReview_TryAgain {
+            get {
+                return ResourceManager.GetString("CollectionReview_TryAgain", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No installer knows where the files go.
+        /// </summary>
+        public static string CollectionReview_NoInstaller {
+            get {
+                return ResourceManager.GetString("CollectionReview_NoInstaller", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Has choices to make.
+        /// </summary>
+        public static string CollectionReview_NeedsChoices {
+            get {
+                return ResourceManager.GetString("CollectionReview_NeedsChoices", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Download it again from the list above.
+        /// </summary>
+        public static string CollectionReview_DownloadAgain {
+            get {
+                return ResourceManager.GetString("CollectionReview_DownloadAgain", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Installing.
         /// </summary>
         public static string CollectionComponents_InstallAction_ButtonText_Installing {

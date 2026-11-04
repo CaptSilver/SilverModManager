@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using DynamicData.Kernel;
@@ -89,6 +90,12 @@ public class CollectionDownloadDesignViewModel : APageViewModel<ICollectionDownl
         Failed: [new CollectionInstallProgress.FailedMod("Broken Mod", "Saved choices do not apply: no option named \"X\".")],
         Pending: [new CollectionInstallProgress.PendingMod("Docs-only Mod", ReviewKind.NoInstaller, "Archive contains no matching files")],
         Installing: ["Mod A", "Mod B"], IsFinished: false, LeftDisabled: false));
+    public ReadOnlyObservableCollection<PendingReviewRow> PendingItems { get; } = new(new ObservableCollection<PendingReviewRow>(
+    [
+        new PendingReviewRow("Docs-only Mod", ReviewKind.NoInstaller, "Archive contains no matching files", isOptional: false),
+        new PendingReviewRow("Texture Pack", ReviewKind.NeedsChoices, "Saved choices do not apply: no option named \"X\".", isOptional: true),
+    ]));
+    public BindableReactiveProperty<int> PendingCount { get; } = new(value: 2);
     public BindableReactiveProperty<bool> IsUpdateAvailable { get; } = new();
     public BindableReactiveProperty<bool> HasInstalledAllOptionalItems { get; } = new(value: false);
     public BindableReactiveProperty<Optional<RevisionNumber>> NewestRevisionNumber { get; } = new();
@@ -99,6 +106,9 @@ public class CollectionDownloadDesignViewModel : APageViewModel<ICollectionDownl
     public ReactiveCommand<Unit> CommandInstallOptionalItems { get; } = new ReactiveCommand();
     public ReactiveCommand<Unit> CommandInstallRequiredItems { get; } = new ReactiveCommand();
     public ReactiveCommand<Unit> CommandUpdateCollection { get; } = new ReactiveCommand();
+    public ReactiveCommand<PendingReviewRow> CommandReviewPendingItem { get; } = new();
+    public ReactiveCommand<PendingReviewRow> CommandDismissPendingItem { get; } = new();
+    public ReactiveCommand<Unit> CommandRetryPendingItems { get; } = new ReactiveCommand();
 
     public ReactiveCommand<Unit> CommandViewOnNexusMods { get; } = new ReactiveCommand();
     public ReactiveCommand<Unit> CommandOpenJsonFile { get; } = new ReactiveCommand();

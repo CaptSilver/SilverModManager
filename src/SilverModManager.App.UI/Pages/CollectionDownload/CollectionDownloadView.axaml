@@ -91,7 +91,50 @@
                 <TextBlock x:Name="TextInstallSummary" />
                 <TextBlock x:Name="TextInstallRunning" TextWrapping="Wrap" />
                 <TextBlock x:Name="TextInstallDisabled" TextWrapping="Wrap" />
+                <TextBlock x:Name="TextInstallPending" TextWrapping="Wrap" />
                 <ItemsControl x:Name="ListInstallFailures" />
+            </StackPanel>
+
+            <!-- the mods an install left for a person; shown for as long as any are waiting, not only after a run -->
+            <StackPanel DockPanel.Dock="Top" x:Name="ReviewPanel" IsVisible="False" Margin="16 8" Spacing="8">
+                <TextBlock x:Name="TextReviewHeader" FontWeight="SemiBold" />
+                <TextBlock x:Name="TextReviewLead" TextWrapping="Wrap" Text="{x:Static resources:Language.CollectionReview_Lead}" />
+                <ItemsControl x:Name="ListPendingItems">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="collectionDownload:PendingReviewRow">
+                            <Grid ColumnDefinitions="*, Auto" Margin="0 4">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Headline}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" Opacity="0.6" IsVisible="{Binding Detail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                    <TextBlock Text="{x:Static resources:Language.CollectionReview_DownloadAgain}" TextWrapping="Wrap" Opacity="0.6" IsVisible="{Binding IsArchiveMissing.Value}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <controls:StandardButton Text="{x:Static resources:Language.CollectionReview_Review}"
+                                                             Size="Toolbar"
+                                                             Type="Primary"
+                                                             Fill="Weak"
+                                                             IsEnabled="{Binding !IsArchiveMissing.Value}"
+                                                             CommandParameter="{Binding}"
+                                                             Command="{Binding $parent[ItemsControl].DataContext.CommandReviewPendingItem}" />
+                                    <controls:StandardButton Text="{x:Static resources:Language.CollectionReview_Dismiss}"
+                                                             Size="Toolbar"
+                                                             Type="Secondary"
+                                                             Fill="Weak"
+                                                             IsVisible="{Binding IsOptional}"
+                                                             CommandParameter="{Binding}"
+                                                             Command="{Binding $parent[ItemsControl].DataContext.CommandDismissPendingItem}" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <controls:StandardButton x:Name="ButtonRetryPendingItems"
+                                         HorizontalAlignment="Left"
+                                         Text="{x:Static resources:Language.CollectionReview_TryAgain}"
+                                         Size="Toolbar"
+                                         Type="Secondary"
+                                         Fill="Strong" />
             </StackPanel>
 
             <Border x:Name="DownloadsTreeContainer"
