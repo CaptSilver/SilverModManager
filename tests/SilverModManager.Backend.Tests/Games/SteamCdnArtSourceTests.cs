@@ -102,6 +102,18 @@ public class SteamCdnArtSourceTests
     }
 
     [Fact]
+    public async Task Tile_EndlessBodyWithNoLength_StopsReadingAtTheSizeLimit()
+    {
+        var body = new EndlessImageStream(Jpeg);
+        _server.ServeStream(Cover, body);
+
+        var tile = await CreateSource().FindTileAsync(Request(413150));
+
+        tile.Should().BeNull();
+        body.BytesRead.Should().BeLessThan(9L * 1024 * 1024, "the download must stop once it passes the 8 MiB limit, not read the whole body");
+    }
+
+    [Fact]
     public async Task Tile_NonImageBody_IsRejectedAndNotCached()
     {
         _server.Serve(Cover, "<html>captive portal</html>"u8.ToArray());
@@ -237,18 +249,28 @@ public class SteamCdnArtSourceTests
     {
         var ids = Enumerable.Range(100, 12).Select(i => (uint)i).ToArray();
         foreach (var id in ids) _server.Hold($"https://cdn.cloudflare.steamstatic.com/steam/apps/{id}/library_600x900.jpg", Jpeg);
-        var source = CreateSource(maxConcurrency: 3);
 
-        var lookups = ids.Select(id => source.FindTileAsync(Request(id)).AsTask()).ToArray();
-        await _server.WaitUntilRequests(3);
-        await Task.Delay(100);
-        _server.MaxInFlight.Should().Be(3);
+        // The downloads write their cache folders at the same moment, which the in-memory file system can't take.
+        var root = Directory.CreateTempSubdirectory("sdm-art-concurrent-");
+        try
+        {
+            var source = new SteamCdnArtSource(() => FileSystem.Shared.FromUnsanitizedFullPath(root.FullName), new HttpClient(_server), NullLogger<SteamCdnArtSource>.Instance, _clock, TimeSpan.FromSeconds(5), 3);
 
-        _server.ReleaseAll();
-        var results = await Task.WhenAll(lookups);
+            var lookups = ids.Select(id => source.FindTileAsync(Request(id)).AsTask()).ToArray();
+            await _server.WaitUntilRequests(3);
+            await Task.Delay(100);
+            _server.MaxInFlight.Should().Be(3);
 
-        results.Should().OnlyContain(r => r != null);
-        _server.MaxInFlight.Should().Be(3);
+            _server.ReleaseAll();
+            var results = await Task.WhenAll(lookups);
+
+            results.Should().OnlyContain(r => r != null);
+            _server.MaxInFlight.Should().Be(3);
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
     }
 
     [Fact]
@@ -303,6 +325,9 @@ internal sealed class FakeSteamImageServer : HttpMessageHandler
 
     public void Serve(string url, byte[] body) => _routes[url] = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(body) });
 
+    /// <summary>Serves a body with no Content-Length, as a chunked response would arrive.</summary>
+    public void ServeStream(string url, Stream body) => _routes[url] = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(body) });
+
     public void Fail(string url, HttpStatusCode status) => _routes[url] = _ => Task.FromResult(new HttpResponseMessage(status));
 
     public void Throw(string url, Exception exception) => _routes[url] = _ => Task.FromException<HttpResponseMessage>(exception);
@@ -354,4 +379,34 @@ internal sealed class FakeSteamImageServer : HttpMessageHandler
             Interlocked.Decrement(ref _inFlight);
         }
     }
+}
+
+/// <summary>A body that starts like an image and never ends, counting what the reader took from it.</summary>
+internal sealed class EndlessImageStream(byte[] start) : Stream
+{
+    private long _position;
+
+    public long BytesRead => Interlocked.Read(ref _position);
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        for (var i = 0; i < count; i++)
+        {
+            var at = _position + i;
+            buffer[offset + i] = at < start.Length ? start[at] : (byte)0;
+        }
+
+        Interlocked.Add(ref _position, count);
+        return count;
+    }
+
+    public override bool CanRead => true;
+    public override bool CanSeek => false;
+    public override bool CanWrite => false;
+    public override long Length => throw new NotSupportedException();
+    public override long Position { get => _position; set => throw new NotSupportedException(); }
+    public override void Flush() { }
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    public override void SetLength(long value) => throw new NotSupportedException();
+    public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 }

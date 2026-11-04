@@ -136,8 +136,9 @@ internal sealed class SteamCdnArtSource : IGameArtProvider
 
                 if (response.Content.Headers.ContentLength > MaxImageBytes) return Fail(key, "the image is larger than expected");
 
-                var bytes = await response.Content.ReadAsByteArrayAsync(timeout.Token).ConfigureAwait(false);
-                if (bytes.Length > MaxImageBytes || !LooksLikeAnImage(bytes)) return Fail(key, "the body is not a JPEG or PNG");
+                var bytes = await ReadAtMost(response.Content, MaxImageBytes, timeout.Token).ConfigureAwait(false);
+                if (bytes is null) return Fail(key, "the image is larger than expected");
+                if (!LooksLikeAnImage(bytes)) return Fail(key, "the body is not a JPEG or PNG");
 
                 await WriteAtomically(path, bytes).ConfigureAwait(false);
                 _logger.LogInformation("Downloaded {File} for Steam app {AppId} into the art cache", fileName, appId);
@@ -152,6 +153,25 @@ internal sealed class SteamCdnArtSource : IGameArtProvider
         {
             return Fail(key, exception.GetType().Name + (exception is OperationCanceledException ? " (timed out)" : ": " + exception.Message));
         }
+    }
+
+    /// <summary>
+    /// The body, or null once it passes <paramref name="limit"/>. A chunked reply carries no length to check up front,
+    /// so the copy itself stops at the limit instead of buffering whatever the server sends.
+    /// </summary>
+    private static async Task<byte[]?> ReadAtMost(HttpContent content, int limit, CancellationToken cancellationToken)
+    {
+        await using var body = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        using var copy = new MemoryStream();
+        var buffer = new byte[81920];
+        int read;
+        while ((read = await body.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
+        {
+            if (copy.Length + read > limit) return null;
+            copy.Write(buffer, 0, read);
+        }
+
+        return copy.ToArray();
     }
 
     private Outcome Fail(string key, string reason)
