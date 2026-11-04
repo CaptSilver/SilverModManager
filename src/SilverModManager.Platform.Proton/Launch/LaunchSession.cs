@@ -658,13 +658,32 @@ public sealed class LaunchSession
             if (_lock is null) return false;
             try
             {
-                return _lock.ReadState()?.Values.ContainsKey(WrapperKey) ?? false;
+                // The wrapper outlives the key only when it crashed or finished, and a key nobody is behind
+                // must not keep the launch wait going.
+                return _lock.ReadState()?.Values.TryGetValue(WrapperKey, out var pid) == true && IsProcessAlive(pid);
             }
             catch (InvalidDataException)
             {
                 // A half-written file has no wrapper we can rely on; the next poll reads it again.
                 return false;
             }
+        }
+    }
+
+    private static bool IsProcessAlive(string pidText)
+    {
+        if (!int.TryParse(pidText, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var pid)) return false;
+        try
+        {
+            // Field 3 of /proc/<pid>/stat follows the last ')' (the command name may contain one); Z is a
+            // process that has exited and is waiting to be reaped.
+            var stat = File.ReadAllText($"/proc/{pid}/stat");
+            var state = stat[(stat.LastIndexOf(')') + 1)..].TrimStart();
+            return state.Length > 0 && state[0] != 'Z' && state[0] != 'X';
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return false;
         }
     }
 

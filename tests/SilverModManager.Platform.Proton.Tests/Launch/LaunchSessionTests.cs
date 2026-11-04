@@ -682,13 +682,40 @@ public class LaunchSessionTests : IDisposable
         {
             before = session.WrapperActive;
             using var wrapper = new InstallationLock(LockPath);
-            wrapper.WriteWrapperKey("wrapper", "999");
+            wrapper.WriteWrapperKey("wrapper", Environment.ProcessId.ToString());
             after = session.WrapperActive;
             return Task.CompletedTask;
         });
 
         before.Should().BeFalse();
         after.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task WrapperActive_IsFalseOnceTheWrapperProcessHasExited()
+    {
+        // A wrapper that crashed or finished leaves its key behind; that must not keep the launch wait alive.
+        int deadPid;
+        using (var finished = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("true") { UseShellExecute = false })!)
+        {
+            deadPid = finished.Id;
+            finished.WaitForExit();
+        }
+        var session = NewSession();
+        bool? whileAlive = null, afterExit = null;
+
+        await session.RunExternalAsync(_context, _ =>
+        {
+            using var wrapper = new InstallationLock(LockPath);
+            wrapper.WriteWrapperKey("wrapper", Environment.ProcessId.ToString());
+            whileAlive = session.WrapperActive;
+            wrapper.WriteWrapperKey("wrapper", deadPid.ToString());
+            afterExit = session.WrapperActive;
+            return Task.CompletedTask;
+        });
+
+        whileAlive.Should().BeTrue();
+        afterExit.Should().BeFalse("the pid the wrapper recorded no longer exists");
     }
 
     [Fact]
