@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.App.UI.Pages.MyGames;
 using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.UI.Sdk.Dialog.Enums;
@@ -19,6 +20,17 @@ public class MassRemovalPromptTests(IServiceProvider provider)
         prompt.Markdown.Should().Contain("Ultimate Mod List is switched off, so applying removes its 1235 files from the game folder")
             .And.Contain("The Witcher 3").And.Contain("100%");
         prompt.Markdown.Should().NotContain("`").And.NotContain("silvermod");
+    }
+
+    [Fact]
+    public void ASwitchedOffNameFromOutsideIsEscapedSoItCannotBecomeALink()
+    {
+        const string name = "[x](file:///etc/passwd) _a_";
+        var removal = Removal with { Reasons = [new MassRemovalReason(name, 1235)] };
+
+        var markdown = MassRemovalPrompt.For("The Witcher 3", removal).Markdown;
+
+        markdown.Should().Contain(MarkdownText.Inline(name)).And.NotContain("](");
     }
 
     [Fact]

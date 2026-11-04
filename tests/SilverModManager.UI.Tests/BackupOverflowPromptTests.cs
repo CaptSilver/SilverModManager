@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Pages.MyGames;
@@ -28,6 +29,22 @@ public class BackupOverflowPromptTests(IServiceProvider provider)
 
         prompt.Markdown.Should().Contain("deletes or replaces").And.NotContain("Adopt").And.NotContain("Keep them where they are");
         prompt.Buttons.Select(b => b.Text).Should().NotContain("Keep them where they are");
+    }
+
+    [Fact]
+    public void FolderNamesAndExamplePathsFromOutsideAreEscapedSoTheyCannotBecomeLinks()
+    {
+        const string folder = "[x](file:///etc/passwd)/_mods_";
+        const string path = "![p](https://evil.example/a.png)/*a*.esp";
+        var overflow = Witcher() with
+        {
+            Groups = [Group(folder, 20, Size.GB * 30)],
+            Examples = [new(path, Size.MB * 100, BackupOverflowKind.GameFileChanged)],
+        };
+
+        var markdown = BackupOverflowPrompt.For("The Witcher 3", overflow).Markdown;
+
+        markdown.Should().Contain(MarkdownText.Inline(folder)).And.Contain(MarkdownText.Inline(path)).And.NotContain("](");
     }
 
     [Fact]

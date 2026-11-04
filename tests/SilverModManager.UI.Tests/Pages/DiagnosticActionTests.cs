@@ -14,6 +14,7 @@ using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.UI.Sdk.Dialog.Enums;
 using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using SilverModManager.App.UI.Overlays;
+using SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 using SilverModManager.App.UI.Pages.Diagnostics;
 using SilverModManager.App.UI.Pages.SteamLaunchOption;
 using SilverModManager.App.UI.Windows;
@@ -509,7 +510,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
     private static CleanupFixOutcome Applied(params string[] deletes)
         => new(CleanupFixStatus.Applied, new CleanupResult([..PlanOf(deletes).Steps], null));
 
-    private FixCleanupActionHandler FixHandler(IWindowManager windows, IDiagnosticManager manager, ICleanupFixService fixer, ILibrarySaver? saver = null, IModDownloader? downloader = null, ILoadoutManager? loadouts = null)
+    private FixCleanupActionHandler FixHandler(IWindowManager windows, IDiagnosticManager manager, ICleanupFixService fixer, ILibrarySaver? saver = null, IModDownloader? downloader = null, ILoadoutManager? loadouts = null, IOverlayController? overlays = null)
     {
         // Without a saver of its own a test gets one that finds nothing to save, so no extra dialog appears.
         var nothingToSave = Substitute.For<ILibrarySaver>();
@@ -517,7 +518,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         var services = new ServicesWith(
             Provider,
             (typeof(ICleanupFixService), fixer),
-            (typeof(IOverlayController), Substitute.For<IOverlayController>()),
+            (typeof(IOverlayController), overlays ?? Substitute.For<IOverlayController>()),
             (typeof(ILibrarySaver), saver ?? nothingToSave),
             (typeof(IModDownloader), downloader ?? Substitute.For<IModDownloader>()),
             (typeof(ILoadoutManager), loadouts ?? Substitute.For<ILoadoutManager>()),
@@ -548,6 +549,60 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         var fixer = Substitute.For<ICleanupFixService>();
         fixer.Plan(Arg.Any<Loadout.ReadOnly>()).Returns(plan);
         return fixer;
+    }
+
+    private static string WithoutCodeSpans(string markdown)
+        => System.Text.RegularExpressions.Regex.Replace(markdown, @"(?<!\\)(`+)(.+?)(?<!`)\1(?!`)", "", System.Text.RegularExpressions.RegexOptions.Singleline);
+
+    [Fact]
+    public async Task Test_FixResultDialog_EscapesStepsFoldersAndModNamesFromOutside()
+    {
+        const string hostile = "[x](http://evil.example) _a_";
+        var folder = "/home/x/[y](http://evil.example)/_f_";
+        var mod = new ModToSave("id", hostile, "1.0 [v](http://evil.example)", 1, 2);
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("mods/a"));
+        var result = new CleanupResult([new CleanupStep(CleanupStepKind.Delete, hostile, "mods/a")], null, folder);
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>())
+            .Returns(new CleanupFixOutcome(CleanupFixStatus.Applied, result));
+        var downloader = Substitute.For<IModDownloader>();
+        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<LoadoutId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Added);
+        var overlays = Substitute.For<IOverlayController>();
+
+        await FixHandler(Answering(ButtonDefinitionId.Accept), Substitute.For<IDiagnosticManager>(), fixer, SaverOffering(mod), downloader, overlays: overlays)
+            .ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        var box = overlays.ReceivedCalls().SelectMany(c => c.GetArguments()).OfType<MessageBoxOkViewModel>().Should().ContainSingle().Subject;
+        var body = box.MarkdownRenderer!.Contents;
+        body.Should().Contain("- " + MarkdownText.Inline(hostile))
+            .And.Contain($"- Added {MarkdownText.Code(hostile)} {MarkdownText.Inline(mod.Version)} to your library")
+            .And.Contain($"recorded in {MarkdownText.Code(folder)}");
+        WithoutCodeSpans(body).Should().NotContain("](");
+    }
+
+    [Fact]
+    public async Task Test_FixManualCommandDialog_ShowsTheCommandInAFenceItCannotClose()
+    {
+        const string command = "sudo chattr -i \"a```b\"\n```\n[x](http://evil.example)";
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("a"));
+        var asked = 0;
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                await call.Arg<ManualCommandPrompt>()(command, "why", () => asked++ > 0, CancellationToken.None);
+                return Applied("a");
+            });
+        var shown = new List<Dialog>();
+        var windows = Substitute.For<IWindowManager>();
+        windows.ShowDialog(Arg.Do<IDialog>(d => shown.Add((Dialog)d)), Arg.Any<DialogWindowType>())
+            .Returns(new StandardDialogResult { ButtonId = ButtonDefinitionId.Accept });
+
+        await FixHandler(windows, Substitute.For<IDiagnosticManager>(), fixer).ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        var manual = shown.Select(d => d.ViewModel).Single(v => v.WindowTitle == "Run this command");
+        var body = PresenterRig.Body(manual);
+        body.Should().Be(MarkdownText.CodeBlock(command)).And.StartWith("````\n").And.EndWith("\n````");
     }
 
     [Fact]

@@ -10,7 +10,9 @@ using SilverModManager.App.UI.Pages.Sorting;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Tests.Helpers;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.UI.Sdk.Dialog.Enums;
@@ -61,6 +63,25 @@ public class FileConflictsMoveRefusalTests(IServiceProvider provider) : AUiTest(
             .Equal(DialogStandardButtons.Cancel.Text, Language.FileConflicts_Refused_RemoveAndMove);
         await loadouts.DidNotReceive().RemoveGroupRule(Arg.Any<LoadoutGroupRuleId>());
         await loadouts.Received(1).ResolveFileConflicts(Arg.Any<LoadoutItemGroupPriorityId[]>(), Arg.Any<LoadoutItemGroupPriorityId>());
+    }
+
+    [Fact]
+    public async Task TheRefusalEscapesTheGroupNamesSoNeitherBecomesALink()
+    {
+        const string winner = "[x](http://evil.example) _w_";
+        const string loser = "![p](https://evil.example/a.png) *l*";
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Refused Hostile");
+        var rule = await SeedRule(loadout.LoadoutId, winner, loser);
+        var loadouts = Substitute.For<ILoadoutManager>();
+        loadouts.ResolveFileConflicts(Arg.Any<LoadoutItemGroupPriorityId[]>(), Arg.Any<LoadoutItemGroupPriorityId>())
+            .Returns(new ValueTask<ConflictMoveResult>(ConflictMoveResult.RuleViolation(rule)));
+        var shown = new List<Dialog>();
+        var vm = new FileConflictsViewModel(new FakedServices(Provider, loadouts), WindowsAnswering(ButtonDefinitionId.Cancel, shown), loadout.LoadoutId);
+
+        await vm.Move(EntityId.From(10), Neighbours, System.ComponentModel.ListSortDirection.Ascending, moveUp: false);
+
+        var body = PresenterRig.Body(shown.Should().ContainSingle().Subject.ViewModel);
+        body.Should().Contain(MarkdownText.Inline(winner)).And.Contain(MarkdownText.Inline(loser)).And.NotContain("](");
     }
 
     [Fact]
