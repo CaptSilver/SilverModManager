@@ -68,21 +68,21 @@ podman run --rm --security-opt label=disable -v "$root/extern/texenc":/src:ro -v
     nm -D --defined-only /lib/x86_64-linux-gnu/libm.so.6 | awk "{print \$3}" | sed "s/@.*//" | sort -u > /out/libm-names
     objdump -T /out/libsmmtexenc.so | awk "/\*UND\*/ {print \$NF, \$(NF-1)}" | tr -d "()" | sort -u > /out/undefined
 '
-cp "$work/out/libsmmtexenc.so" "$out"
 
+built="$work/out/libsmmtexenc.so"
 baseline="$(max_glibc "$RUNTIME_NATIVE_DIR/libcoreclr.so")"
-actual="$(max_glibc "$out")"
+actual="$(max_glibc "$built")"
 libm_bound="$(awk 'NR==FNR { m[$1]; next } ($1 in m) { print $2 }' "$work/out/libm-names" "$work/out/undefined" | sort -uV | tr '\n' ' ')"
-exports="$(nm -D --defined-only "$out" | awk '$2 ~ /^[TDBR]$/ {print $3}' | sort | tr '\n' ' ')"
+exports="$(nm -D --defined-only "$built" | awk '{print $3}' | sort | tr '\n' ' ')"
 echo "g++:      $(cat "$work/out/gxx-version")"
 echo "ispc:     $ISPC_VERSION ($ISPC_SHA256) targets $ISPC_TARGETS"
 echo "image:    $IMAGE"
-echo "sha256:   $(sha256sum "$out" | cut -d' ' -f1)"
-echo "size:     $(stat -c %s "$out") bytes"
+echo "sha256:   $(sha256sum "$built" | cut -d' ' -f1)"
+echo "size:     $(stat -c %s "$built") bytes"
 echo "glibc:    libsmmtexenc.so binds up to ${actual:-none}; libcoreclr.so binds up to $baseline"
-echo "all:      $(objdump -T "$out" | grep -o 'GLIBC_[0-9.]*' | sort -uV | tr '\n' ' ')"
+echo "all:      $(objdump -T "$built" | grep -o 'GLIBC_[0-9.]*' | sort -uV | tr '\n' ' ')"
 echo "libm:     ${libm_bound:-none}"
-echo "needed:   $(objdump -p "$out" | awk '/NEEDED/ {print $2}' | tr '\n' ' ')"
+echo "needed:   $(objdump -p "$built" | awk '/NEEDED/ {print $2}' | tr '\n' ' ')"
 echo "exports:  $exports"
 
 fail=0
@@ -90,7 +90,7 @@ if [[ -n "$actual" && "$(printf '%s\n%s\n' "$actual" "$baseline" | sort -V | tai
     echo "FAIL gate 1: $actual is newer than $baseline; pin an older image" >&2
     fail=1
 fi
-if ldd "$out" | grep -q libstdc++; then
+if ldd "$built" | grep -q libstdc++; then
     echo "FAIL gate 2: libsmmtexenc.so depends on libstdc++" >&2
     fail=1
 fi
@@ -98,5 +98,9 @@ if [[ "$exports" != "$EXPECTED_EXPORTS " ]]; then
     echo "FAIL gate 3: exports are '$exports', expected '$EXPECTED_EXPORTS '" >&2
     fail=1
 fi
-[[ $fail -eq 0 ]] && echo "gates:    ok"
-exit $fail
+if [[ $fail -ne 0 ]]; then
+    echo "libsmmtexenc.so was not replaced" >&2
+    exit 1
+fi
+cp "$built" "$out"
+echo "gates:    ok"

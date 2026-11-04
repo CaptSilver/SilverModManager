@@ -31,19 +31,21 @@ managed-side edit, not a rebuild.
 
 ## Build
 
-`scripts/build-texenc.sh` compiles `bc7e.ispc` with ISPC 1.28.2 (release tarball, pinned by sha256 in the script) for
+`scripts/build-texenc.sh` compiles `bc7e.ispc` with ISPC 1.28.2 (release tarball
+`https://github.com/ispc/ispc/releases/download/v1.28.2/ispc-v1.28.2-linux.tar.gz`, sha256
+`32e611de1252cf1e09a6a13327f5746b8477f99e15ffa4cbd1b422386776688c`, also pinned in the script) for
 `sse2-i32x4`, `avx2-i32x8` and `avx512skx-x16`, then links the objects with `texenc.cpp` and `rgbcx.cpp` in the same
 digest-pinned `ubuntu:20.04` image `build-ooz.sh` uses, and writes
 `src/SilverModManager.Wabbajack.Transforms/runtimes/linux-x64/native/libsmmtexenc.so`.
 `libsmmtexenc.so` is committed; rebuild it only when these sources, the ISPC pin or the flags change.
 
 The script fails unless the highest glibc symbol version (libm's included) is no newer than `libcoreclr.so`'s, the
-library does not depend on libstdc++, and it exports exactly the `smm_texenc_*` functions. It prints the glibc
+library does not depend on libstdc++, and it exports exactly the `smm_texenc_*` functions (every symbol type counts, weak ones included). The committed library is only replaced when all three gates pass. It prints the glibc
 versions bound, the ones bound from libm on their own, the exports and the sha256 of the result. Two runs give the
 same sha256.
 
 The SSE2 target is the floor, so every x86-64 CPU has a kernel to dispatch to; no CPU check is needed before loading.
 `ISPC_TARBALL=<path>` points the script at a copy of the tarball you already have; it is verified against the same sha256.
 
-`tests/SilverModManager.Wabbajack.Transforms.Tests/NativeTextureLibraryTests.cs` loads the committed binary, checks
-the export list and encodes every format, so a stale binary after a source change fails the suite.
+`tests/SilverModManager.Wabbajack.Transforms.Tests/NativeTextureLibraryTests.cs` loads the committed binary, compares the library's whole dynamic symbol table with the export list and encodes every format, alpha included.
+It does not tie the binary to the sources, so rebuild after any change here.
