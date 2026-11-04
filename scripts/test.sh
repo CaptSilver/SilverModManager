@@ -100,17 +100,40 @@ export DOTNET_DbgEnableMiniDump=1 DOTNET_DbgMiniDumpType=2 DOTNET_EnableCrashRep
 # dotnet test refuses more than one target, so the solution is only the default
 # when the caller didn't name a project, directory or test modules.
 target=(--solution SilverModManager.App.sln)
-for arg in "$@"; do
-    case "$arg" in
-        --project|--project=*|--solution|--solution=*|--directory|--directory=*|--test-modules|--test-modules=*) target=() ;;
+build_target=(SilverModManager.App.sln)
+args=("$@")
+for ((i = 0; i < ${#args[@]}; i++)); do
+    case "${args[i]}" in
+        --project|--solution|--directory) target=(); build_target=("${args[i + 1]:-}") ;;
+        --project=*|--solution=*|--directory=*) target=(); build_target=("${args[i]#*=}") ;;
+        --test-modules|--test-modules=*) target=(); build_target=() ;;
+        --) break ;;
     esac
 done
+
+# Two runs building in this checkout at once write the same obj/ and bin/ folders and break each other's builds, so
+# the build holds a lock in the git folder and the tests run after it, unlocked, without building again. Test
+# modules are already built and skip this.
+if (( ${#build_target[@]} )); then
+    lock="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || echo /tmp)/silvermod-build.lock"
+    exec 9>"$lock"
+    if ! flock -n 9; then
+        echo "Waiting for another run's build to finish ($lock)" >&2
+        flock 9
+    fi
+    dotnet build "${build_target[@]}" -nodeReuse:false || exit $?
+    flock -u 9
+    exec 9>&-
+    no_build=(--no-build)
+else
+    no_build=()
+fi
 
 # Left alone, the whole suite starts one test host per project at once, on top of the build.
 # SILVER_TEST_MODULES caps how many run together (default 8).
 before_dumps=$(find "$dump_dir" -maxdepth 1 -name 'core.*' 2>/dev/null | wc -l)
 status=0
-dotnet test "${target[@]}" --ignore-exit-code 8 \
+dotnet test "${target[@]}" "${no_build[@]}" --ignore-exit-code 8 \
     --max-parallel-test-modules "${SILVER_TEST_MODULES:-8}" \
     -p:XunitArgs="--filter-not-trait RequiresNetworking=True --filter-not-trait RequiresApiKey=True --filter-not-trait RequiresProton=True --filter-not-trait RequiresSecretService=True --filter-not-trait FlakeyTest=True --filter-not-trait Benchmark=True" \
     "$@" || status=$?
