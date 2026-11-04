@@ -18,12 +18,17 @@ var benchmarks = Assembly.GetExecutingAssembly()
 Console.WriteLine("Note: Benchmarks can be ran directly by passing arguments in CLI, e.g. SilverModManager.Benchmarks.dll 0 1\n");
 if (args.Length > 0)
 {
-    // Anything that is not a benchmark number goes to BenchmarkDotNet, e.g. --filter '*native/Bc7*'.
-    var runnerArgs = args.Where(a => !int.TryParse(a, out _)).ToArray();
-    foreach (var arg in args)
+    // Leading arguments are benchmark numbers. From the first option (anything starting with '-') on, everything goes to
+    // BenchmarkDotNet unchanged, so an option's own value, e.g. --iterationCount 5, is never read as a benchmark number.
+    var firstOption = Array.FindIndex(args, a => a.StartsWith('-'));
+    var numbers = firstOption < 0 ? args : args[..firstOption];
+    var runnerArgs = firstOption < 0 ? [] : args[firstOption..];
+    foreach (var arg in numbers)
     {
         if (int.TryParse(arg, out var result) && (result >= 0 && result < benchmarks.Length))
             StartBenchmark(benchmarks, result, runnerArgs);
+        else
+            Console.WriteLine($"'{arg}' is not a benchmark number between 0 and {benchmarks.Length - 1}.");
     }
 
     return;
