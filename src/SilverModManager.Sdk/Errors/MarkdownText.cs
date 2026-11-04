@@ -33,13 +33,22 @@ public static partial class MarkdownText
     /// no autolinks and no reference links. For a name, prefer
     /// <see cref="Code(string?)"/>, which shows it exactly.
     /// </summary>
-    public static string Inline(string? text)
+    public static string Inline(string? text) => Escape(text, startsLine: true);
+
+    /// <summary>
+    /// <see cref="Inline(string?)"/> for text that sits in the middle of a line, such as a version after a plugin name.
+    /// Nothing there can start a heading, list or quote, so a start like <c>1.27.4</c> is left as it is instead of getting
+    /// an invisible character in front.
+    /// </summary>
+    public static string InlineMidLine(string? text) => Escape(text, startsLine: false);
+
+    private static string Escape(string? text, bool startsLine)
     {
         if (string.IsNullOrEmpty(text)) return string.Empty;
 
         var clean = Sanitise(text);
         var builder = new StringBuilder(clean.Length + 8);
-        if (clean.Length > 0 && StartsBlock(clean)) builder.Append(ZeroWidthSpace);
+        if (startsLine && clean.Length > 0 && StartsBlock(clean)) builder.Append(ZeroWidthSpace);
         foreach (var c in clean)
         {
             if (BackslashEscaped.Contains(c)) builder.Append('\\');
@@ -132,6 +141,14 @@ public static partial class MarkdownText
         var pad = clean[0] == '`' || clean[^1] == '`' ? " " : string.Empty;
         return $"{fence}{pad}{clean}{pad}{fence}";
     }
+
+    /// <summary>
+    /// Text for the inside of a code span or fence the surrounding template already opened. Nothing in a span is
+    /// interpreted, so only what could end it is changed: a backtick becomes U+02CB, and control and format characters
+    /// and line breaks go as in <see cref="PlainText(string?, bool)"/>. Use <see cref="Code(string?)"/> where the text
+    /// brings its own fence.
+    /// </summary>
+    public static string InsideCode(string? text) => PlainText(text).Replace('`', BacktickLookalike);
 
     /// <summary><see cref="Code(string?)"/> for any value, such as a path or an id, through its <c>ToString()</c>.</summary>
     public static string Code(object? value) => Code(value?.ToString());

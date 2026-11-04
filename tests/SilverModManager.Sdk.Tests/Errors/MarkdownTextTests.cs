@@ -113,6 +113,27 @@ public class MarkdownTextTests
         MarkdownText.CodeBlock(input).Should().Be(expected);
     }
 
+    [Theory]
+    [InlineData("a_b*c", "a_b*c")]
+    [InlineData("a`b``c", "a\u02CBb\u02CB\u02CBc")]
+    [InlineData("one\ntwo\tthree\u001b\u202E", "one two three")]
+    [InlineData("a\U000E0041b", "ab")]
+    [InlineData(null, "")]
+    public void Test_InsideCode_ChangesOnlyWhatCouldEndOrDisturbTheSpan(string? input, string expected)
+    {
+        MarkdownText.InsideCode(input).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("1.27.4", "1.27.4")]
+    [InlineData("# not a heading", "# not a heading")]
+    [InlineData("- item", "- item")]
+    [InlineData("a_b [x](y)", "a\\_b [x]" + Z + "(y)")]
+    public void Test_InlineMidLine_LeavesAStartThatLooksLikeABlockMarkerAlone(string input, string expected)
+    {
+        MarkdownText.InlineMidLine(input).Should().Be(expected);
+    }
+
     [Fact]
     public void Test_CodeBlock_DropsFormatCharactersAboveTheBasicPlane()
     {
