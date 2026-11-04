@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using System.Runtime.CompilerServices;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
@@ -28,7 +30,7 @@ public class GameInstalledGroupDisabledEmitter : ILoadoutDiagnosticEmitter
                 .ToArray();
             if (names.Length == 0) continue;
 
-            var items = string.Join('\n', names.Select(name => $"- {name}"));
+            var items = new MarkdownFragment(string.Join('\n', names.Select(name => $"- {MarkdownText.Inline(name)}")));
             yield return Diagnostics.CreateGameInstalledGroupDisabled(loadout.Installation.Name, names.Length, items);
         }
     }

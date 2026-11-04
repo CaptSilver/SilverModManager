@@ -93,6 +93,6 @@ public class BinderMemberNotesTests
         var data = cards.Should().ContainSingle().Which.Should()
             .BeOfType<SilverModManager.Abstractions.Diagnostics.Diagnostic<FromSoftDiagnostics.MergeNoteMessageData>>().Which.MessageData;
         data.Note.Should().Contain("Weapon Glow").And.Contain("Moveset").And.Contain("the model");
-        data.Advice.Should().Contain("move Moveset below Weapon Glow on Rules > File Conflicts");
+        data.Advice.Markdown.Should().Contain("move Moveset below Weapon Glow on Rules > File Conflicts");
     }
 }

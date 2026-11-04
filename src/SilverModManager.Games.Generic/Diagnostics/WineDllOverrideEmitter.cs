@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Diagnostics.Values;
 using System.Runtime.CompilerServices;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
@@ -34,7 +35,7 @@ public class WineDllOverrideEmitter : ILoadoutDiagnosticEmitter
         );
         if (instructions is null) yield break;
 
-        yield return Diagnostics.CreateRequiredWineDllOverrides(GameName: game.DisplayName, Instructions: instructions)
+        yield return Diagnostics.CreateRequiredWineDllOverrides(GameName: game.DisplayName, Instructions: new MarkdownFragment(instructions))
             with { Actions = WineDiagnosticHelper.GetWineDllOverridesFixActions(installation) };
     }
 }

@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using SilverModManager.Abstractions.Collections;
@@ -34,7 +36,7 @@ public sealed class ModOrderDroppedEmitter : ADroppedItemEmitter
         foreach (var group in Groups(loadout))
         {
             var first = group[0];
-            var entries = string.Join('\n', group.Select(row => $"- **{row.Item}**: {row.Reason}"));
+            var entries = new MarkdownFragment(string.Join('\n', group.Select(row => $"- **{MarkdownText.Inline(row.Item)}**: {MarkdownText.Inline(row.Reason)}")));
             var card = group.Count == 1
                 ? Card(new DroppedItem(first.Item, first.Source, first.Reason, first.Page))
                 : IsRuleDrop(first)

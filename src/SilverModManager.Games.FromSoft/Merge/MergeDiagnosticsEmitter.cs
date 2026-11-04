@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using System.Collections.Frozen;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics;
@@ -97,12 +99,13 @@ public class MergeDiagnosticsEmitter(MergePlanCache plans, ILogger<MergeDiagnost
         return path;
     }
 
-    private static string Advice(IMergeNote note)
+    // Two paragraphs, so a fragment: the names in it are escaped here rather than by the writer, which would flatten the break.
+    private static MarkdownFragment Advice(IMergeNote note)
     {
         var advice = note.Loss is { } loss
-            ? $"{loss.DroppedMod}'s change is not used. To use it instead, move {loss.DroppedMod} below {loss.KeptMod} on Rules > File Conflicts " +
-              $"(in the default order, the mod lower in the list wins), or disable {loss.KeptMod}."
+            ? $"{MarkdownText.Inline(loss.DroppedMod)}'s change is not used. To use it instead, move {MarkdownText.Inline(loss.DroppedMod)} below {MarkdownText.Inline(loss.KeptMod)} on Rules > File Conflicts " +
+              $"(in the default order, the mod lower in the list wins), or disable {MarkdownText.Inline(loss.KeptMod)}."
             : "Nothing is refused and the apply goes ahead.";
-        return note.Details is { } details ? $"{advice}\n\nDetails: {details}." : advice;
+        return new MarkdownFragment(note.Details is { } details ? $"{advice}\n\nDetails: {MarkdownText.Inline(details)}." : advice);
     }
 }

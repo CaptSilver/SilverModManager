@@ -6,11 +6,17 @@ using ColorTextBlock.Avalonia;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NexusMods.Paths;
 using NSubstitute;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using SilverModManager.App.UI;
 using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Errors;
+using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.UI.Tests.Controls;
 
@@ -50,13 +56,15 @@ public class HostileNameMarkdownTests(IServiceProvider provider) : AUiTest(provi
         });
 
         // The view binds its contents when it is activated, so the blocks appear a beat after Show().
-        for (var i = 0; i < 100; i++)
+        // A long document fills in over several beats, so wait until the number of blocks stops changing.
+        int previous = -1, steady = 0;
+        for (var i = 0; i < 200 && steady < 4; i++)
         {
             var blocks = await Dispatcher.UIThread.InvokeAsync(() => window.GetVisualDescendants().OfType<CTextBlock>().Count());
-            if (blocks > 0) break;
-            await Task.Delay(50);
+            steady = blocks > 0 && blocks == previous ? steady + 1 : 0;
+            previous = blocks;
+            await Task.Delay(100);
         }
-        await Task.Delay(300);
 
         return await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -127,6 +135,87 @@ public class HostileNameMarkdownTests(IServiceProvider provider) : AUiTest(provi
         blocks.Should().BeGreaterThan(0);
         links.Should().Be(0, "a name from outside must not turn a refusal into a link: " + seen);
         images.Should().Be(0, seen);
+    }
+
+    [Fact]
+    public async Task Test_EveryDiagnosticWithStringPlaceholders_RendersNoLinkOrImageFromTheStrings()
+    {
+        var writer = Provider.GetRequiredService<IDiagnosticWriter>();
+        var exercised = 0;
+
+        // A few templates have a link of their own, so each payload is compared with the same diagnostics filled with plain text.
+        // A name that breaks a NamedLink's text shows as text without its link, which is safe and not counted against it.
+        var benign = DiagnosticTexts(writer, Connection, "plain", out _);
+        var (benignLinks, benignImages, _, _) = await Render(benign);
+        foreach (var payload in Payloads)
+        {
+            var hostile = DiagnosticTexts(writer, Connection, payload, out exercised);
+            var (links, images, blocks, seen) = await Render(hostile);
+
+            blocks.Should().BeGreaterThan(0);
+            links.Should().BeLessThanOrEqualTo(benignLinks, $"a string placeholder holding {payload.ReplaceLineEndings("\\n")} must not add a link: " + seen);
+            images.Should().BeLessThanOrEqualTo(benignImages, $"a string placeholder holding {payload.ReplaceLineEndings("\\n")} must not add an image: " + seen);
+        }
+
+        exercised.Should().BeGreaterThan(40, "the guard has to reach the diagnostics that take strings, not skip them all");
+    }
+
+    /// <summary>
+    /// The summary and details, in Markdown, of every diagnostic the generated <c>Create</c> methods can make, with every
+    /// string and name filled with <paramref name="text"/>. A <see cref="MarkdownFragment"/> is the app's own Markdown, so it
+    /// gets a harmless one.
+    /// </summary>
+    private static List<string> DiagnosticTexts(IDiagnosticWriter writer, IConnection connection, string text, out int exercised)
+    {
+        LoadReferencedAssemblies();
+        var texts = new List<string>();
+        exercised = 0;
+
+        var creators = AppDomain.CurrentDomain.GetAssemblies()
+            .Where(a => a.GetName().Name?.StartsWith("SilverModManager", StringComparison.Ordinal) == true)
+            .SelectMany(SafeTypes)
+            .SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+            .Where(m => m.Name.StartsWith("Create", StringComparison.Ordinal)
+                        && m.ReturnType.IsGenericType && m.ReturnType.GetGenericTypeDefinition() == typeof(Diagnostic<>)
+                        && m.GetParameters().Any(p => p.ParameterType == typeof(string)))
+            .OrderBy(m => $"{m.DeclaringType?.FullName}.{m.Name}", StringComparer.Ordinal);
+
+        foreach (var creator in creators)
+        {
+            Diagnostic diagnostic;
+            try
+            {
+                diagnostic = (Diagnostic)creator.Invoke(null, creator.GetParameters().Select(p => Argument(p.ParameterType, connection, text)).ToArray())!;
+            }
+            catch (TargetInvocationException)
+            {
+                continue;
+            }
+
+            texts.Add(diagnostic.FormatSummary(writer, DiagnosticWriterMode.Markdown));
+            texts.Add(diagnostic.FormatDetails(writer, DiagnosticWriterMode.Markdown));
+            exercised++;
+        }
+
+        return texts;
+    }
+
+    private static object? Argument(Type type, IConnection connection, string text)
+    {
+        // A reference to a row that is not there, as of the current database.
+        if (typeof(IDataReference).IsAssignableFrom(type) && type.GetProperty("TxId") is { CanWrite: true } txId)
+        {
+            var reference = Activator.CreateInstance(type);
+            txId.SetValue(reference, connection.Db.BasisTxId);
+            return reference;
+        }
+
+        if (type == typeof(string)) return text;
+        if (type == typeof(MarkdownFragment)) return new MarkdownFragment("- **a fragment** of `code`");
+        if (type == typeof(NamedLink)) return new NamedLink(text, new Uri("https://example.test/mod"));
+        if (type == typeof(GamePath)) return new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(text));
+        if (type == typeof(RelativePath)) return RelativePath.FromUnsanitizedInput(text);
+        return type.IsValueType ? Activator.CreateInstance(type) : null;
     }
 
     /// <summary>

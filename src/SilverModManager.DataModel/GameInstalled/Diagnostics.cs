@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Generators.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Values;
 
 namespace SilverModManager.DataModel.GameInstalled;
 
@@ -26,7 +27,7 @@ To change this, switch the "Installed by the game" group back on from the Mods p
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("Game")
             .AddValue<int>("ItemCount")
-            .AddValue<string>("Items")
+            .AddValue<MarkdownFragment>("Items")
         )
         .Finish();
 }

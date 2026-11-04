@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using SilverModManager.Generators.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Values;
 
 namespace SilverModManager.Abstractions.Diagnostics.Emitters;
 
@@ -66,7 +67,7 @@ Change the order on the {Page} page.
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<int>("Count")
             .AddValue<string>("Source")
-            .AddValue<string>("Entries")
+            .AddValue<MarkdownFragment>("Entries")
             .AddValue<string>("Page")
         )
         .Finish();
@@ -90,7 +91,7 @@ The next import of the collection writes them again. See the {Page} page.
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<int>("Count")
             .AddValue<string>("Source")
-            .AddValue<string>("Entries")
+            .AddValue<MarkdownFragment>("Entries")
             .AddValue<string>("Page")
         )
         .Finish();

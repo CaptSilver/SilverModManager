@@ -45,7 +45,7 @@ public sealed class GameUpdatedSinceExtenderRanCheckTests : IDisposable
         data.GameVersion.Should().Be(NewVersion);
         data.LoggedVersion.Should().Be(OldVersion);
         data.Extender.Should().Be("RED4ext and Cyber Engine Tweaks");
-        data.Plugins.Should().Contain("ArchiveXL 1.27.4").And.Contain("Codeware 1.20.5").And.Contain("audioware 1.9.9-rc.0");
+        data.Plugins.Markdown.Should().Contain("ArchiveXL 1.27.4").And.Contain("Codeware 1.20.5").And.Contain("audioware 1.9.9-rc.0");
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public sealed class GameUpdatedSinceExtenderRanCheckTests : IDisposable
         var data = Check().Should().ContainSingle().Subject.Should().BeOfType<Diagnostic<Diagnostics.GameUpdatedSinceExtenderRanMessageData>>().Subject.MessageData;
 
         data.Extender.Should().Be("Cyber Engine Tweaks");
-        data.Plugins.Should().BeEmpty();
+        data.Plugins.Markdown.Should().BeEmpty();
     }
 
     [Fact]

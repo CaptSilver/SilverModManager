@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using SilverModManager.Abstractions.Diagnostics;
@@ -40,7 +42,7 @@ public class HealEmitter(BuildStampStore stamps, LoadoutMergeSources sources, Re
                     with { Actions = [..restore.Actions(installation, stamped, regulationDiffers: true, otherFilesDiffer: false)] };
                 break;
             case BuildChangeKind.Patched when ShipsARegulation(loadout, game):
-                var steps = string.Join("\n", HealPlan.Plan(stamped, live, game.Formats).Select(s => "- " + s.Detail));
+                var steps = new MarkdownFragment(string.Join("\n", HealPlan.Plan(stamped, live, game.Formats).Select(s => "- " + MarkdownText.Inline(s.Detail))));
                 yield return FromSoftDiagnostics.CreateHealPlan(game.DisplayName, steps);
                 break;
         }

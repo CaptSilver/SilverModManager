@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using System.Runtime.CompilerServices;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
@@ -36,14 +38,14 @@ public sealed class WabbajackSkippedFilesEmitter : ILoadoutDiagnosticEmitter
             var skipped = WabbajackSkippedFile.FindByGroup(db, group.Id).Select(row => (Path: row.To, row.Reason)).OrderBy(row => row.Path, StringComparer.Ordinal).ToArray();
             if (skipped.Length == 0) continue;
 
-            var paths = string.Join('\n', skipped.Take(MaxPathsListed).Select(row => $"- `{row.Path}`: {row.Reason}"));
+            var paths = string.Join('\n', skipped.Take(MaxPathsListed).Select(row => $"- {MarkdownText.Code(row.Path)}: {MarkdownText.Inline(row.Reason)}"));
             if (skipped.Length > MaxPathsListed) paths += $"\n- and {skipped.Length - MaxPathsListed} more";
 
             yield return WabbajackDiagnostics.CreateModlistFilesSkipped(
                 new LoadoutItemGroupReference { TxId = db.BasisTxId, DataId = group.Id },
                 item.Name,
                 skipped.Length,
-                paths);
+                new MarkdownFragment(paths));
         }
     }
 }

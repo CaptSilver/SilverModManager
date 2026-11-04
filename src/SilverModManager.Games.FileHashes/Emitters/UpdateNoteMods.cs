@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games;
 
@@ -14,5 +16,5 @@ internal static class UpdateNoteMods
         => context.Installation.Game is IGameNativeCode game ? NativeCodeMods.Find(context.Loadout, game) : [];
 
     /// <summary>One mod per line, as a Markdown list.</summary>
-    public static string List(IReadOnlyList<NativeCodeMod> mods) => string.Join("\n", mods.Select(mod => $"- {mod.Name}"));
+    public static MarkdownFragment List(IReadOnlyList<NativeCodeMod> mods) => new(string.Join("\n", mods.Select(mod => $"- {MarkdownText.Inline(mod.Name)}")));
 }

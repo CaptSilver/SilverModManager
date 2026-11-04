@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using System.Runtime.CompilerServices;
 using System.Text;
 using SilverModManager.Abstractions.Diagnostics;
@@ -129,15 +131,15 @@ public class ProtonPrefixEmitter(IFileSystem hostFileSystem) : ILoadoutDiagnosti
         }
     }
 
-    private static string FormatPaths(List<GamePath> paths)
+    private static MarkdownFragment FormatPaths(List<GamePath> paths)
     {
         var sb = new StringBuilder();
         foreach (var path in paths.OrderBy(p => p.ToString(), StringComparer.Ordinal).Take(MaxListedPaths))
-            sb.Append("* `").Append(path).AppendLine("`");
+            sb.Append("* ").AppendLine(MarkdownText.Code(path));
 
         if (paths.Count > MaxListedPaths)
             sb.Append("* and ").Append(paths.Count - MaxListedPaths).AppendLine(" more");
 
-        return sb.ToString();
+        return new MarkdownFragment(sb.ToString());
     }
 }

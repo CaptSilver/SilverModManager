@@ -244,7 +244,7 @@ Re-stamp once you have, to take the installed build as the new reference.
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("Game")
             .AddValue<string>("Kind")
-            .AddValue<string>("Changes")
+            .AddValue<MarkdownFragment>("Changes")
         )
         .Finish();
 
@@ -266,7 +266,7 @@ Re-stamp once you have, to take the installed build as the new reference.
             .AddValue<string>("Path")
             .AddValue<string>("Mods")
             .AddValue<string>("Note")
-            .AddValue<string>("Advice")
+            .AddValue<MarkdownFragment>("Advice")
         )
         .Finish();
 
@@ -310,7 +310,7 @@ merges them onto the new one when the loadout is applied:
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("Game")
-            .AddValue<string>("Steps")
+            .AddValue<MarkdownFragment>("Steps")
         )
         .Finish();
 
@@ -377,7 +377,7 @@ a Steam launch would take it online. Verify the game's files in Steam to restore
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("Game")
-            .AddValue<string>("Files")
+            .AddValue<MarkdownFragment>("Files")
         )
         .Finish();
 }

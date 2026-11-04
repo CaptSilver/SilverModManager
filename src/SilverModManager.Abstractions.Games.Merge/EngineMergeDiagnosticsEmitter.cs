@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
@@ -122,7 +124,7 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Eng
         {
             var (cause, advice) = CauseAndAdvice(group.Key, store);
             var paths = group.Select(o => o.Notes.OfType<VanillaBaseUntrusted>().First().Path).ToArray();
-            var entries = string.Join("\n", group.Select(Entry));
+            var entries = new MarkdownFragment(string.Join("\n", group.Select(Entry)));
             yield return MergeDiagnostics.CreateUntrustedOriginal(Subject(paths), cause, entries, advice);
         }
     }
@@ -145,7 +147,7 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Eng
         var winner = output.Contributors[0];
         var losers = output.Contributors.Skip(1).Distinct().ToArray();
         var path = output.Notes.OfType<VanillaBaseUntrusted>().First().Path;
-        return $"- `{path}`: {winner} and {string.Join(" and ", losers)}; {DroppedLines(output, losers)} are dropped";
+        return $"- {MarkdownText.Code(path)}: {MarkdownText.Inline(winner)} and {MarkdownText.Inline(string.Join(" and ", losers))}; {MarkdownText.Inline(DroppedLines(output, losers))} are dropped";
     }
 
     private static (string Cause, string Advice) CauseAndAdvice(string reason, GameStore store) => reason switch

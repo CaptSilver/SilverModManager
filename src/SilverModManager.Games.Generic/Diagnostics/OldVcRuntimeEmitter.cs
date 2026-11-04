@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -146,35 +148,35 @@ public class OldVcRuntimeEmitter(IPrefixResolver prefixResolver, INativeImageRea
     private static bool IsRuntimeLibrary(string name)
         => ImportedRuntimePrefixes.Any(prefix => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
 
-    private static string FormatRuntimes(ResolvedPrefix prefix, List<OldRuntime> old)
+    private static MarkdownFragment FormatRuntimes(ResolvedPrefix prefix, List<OldRuntime> old)
     {
         var sb = new StringBuilder();
         foreach (var o in old)
         {
             var bits = o.Is64Bit ? "64-bit" : "32-bit";
-            sb.Append("* `").Append(o.Runtime.RelativeTo(prefix.Path)).Append("`, for ").Append(bits).Append(" files, is ").AppendLine(o.Found);
+            sb.Append("* ").Append(MarkdownText.Code(o.Runtime.RelativeTo(prefix.Path))).Append(", for ").Append(bits).Append(" files, is ").AppendLine(MarkdownText.Inline(o.Found));
         }
-        return sb.ToString();
+        return new MarkdownFragment(sb.ToString());
     }
 
-    private static string FormatFiles(List<GamePath> files)
+    private static MarkdownFragment FormatFiles(List<GamePath> files)
     {
         var sb = new StringBuilder();
         foreach (var file in files.Take(MaxListedFiles))
-            sb.Append("* `").Append(file.Path).AppendLine("`");
+            sb.Append("* ").AppendLine(MarkdownText.Code(file.Path));
         if (files.Count > MaxListedFiles)
             sb.Append("* and ").Append(files.Count - MaxListedFiles).AppendLine(" more");
-        return sb.ToString();
+        return new MarkdownFragment(sb.ToString());
     }
 
-    private static string Instructions(GameInstallation installation, ResolvedPrefix prefix)
+    private static MarkdownFragment Instructions(GameInstallation installation, ResolvedPrefix prefix)
     {
         if (prefix.Kind == CompatibilityLayerKind.SteamProton)
         {
             var appId = prefix.ProtonAppId?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? installation.LocatorResult.StoreIdentifier;
-            return $"Run [protontricks](https://github.com/Matoking/protontricks) with the game's Steam app id:\n\n```\nprotontricks {appId} -q {FixComponent}\n```";
+            return new MarkdownFragment($"Run [protontricks](https://github.com/Matoking/protontricks) with the game's Steam app id:\n\n{MarkdownText.CodeBlock($"protontricks {appId} -q {FixComponent}")}");
         }
 
-        return $"Run [winetricks](https://github.com/Winetricks/winetricks) against the prefix:\n\n```\nWINEPREFIX=\"{prefix.Path.GetFullPath()}\" winetricks -q {FixComponent}\n```";
+        return new MarkdownFragment($"Run [winetricks](https://github.com/Winetricks/winetricks) against the prefix:\n\n{MarkdownText.CodeBlock($"WINEPREFIX=\"{prefix.Path.GetFullPath()}\" winetricks -q {FixComponent}")}");
     }
 }

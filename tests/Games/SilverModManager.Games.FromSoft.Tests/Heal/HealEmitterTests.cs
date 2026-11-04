@@ -51,7 +51,7 @@ public class HealEmitterTests(ITestOutputHelper helper) : AVanillaDumpTest<HealE
         diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 13));
         var steps = HealPlan.Plan(BeforeAPatch(), Live, Formats);
         var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.HealPlanMessageData>>().Which.MessageData;
-        foreach (var step in steps) data.Steps.Should().Contain(step.Detail);
+        foreach (var step in steps) data.Steps.Markdown.Should().Contain(step.Detail);
     }
 
     [Fact]

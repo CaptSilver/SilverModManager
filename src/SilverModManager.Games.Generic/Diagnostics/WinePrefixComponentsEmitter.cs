@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using System.Runtime.CompilerServices;
 using System.Text;
 using SilverModManager.Abstractions.Diagnostics;
@@ -38,13 +40,13 @@ public class WinePrefixComponentsEmitter(IPrefixResolver prefixResolver, IPrefix
         var unverified = statuses.Where(s => s.State == PrefixComponentState.Unknown).ToList();
         var hinted = await WinetricksHints(installation, cancellationToken);
 
-        var missingList = string.Join('\n', missing.Select(s => Describe(s, hinted)));
-        var unverifiedList = unverified.Count == 0
+        var missingList = new MarkdownFragment(string.Join('\n', missing.Select(s => Describe(s, hinted))));
+        var unverifiedList = new MarkdownFragment(unverified.Count == 0
             ? ""
-            : "\nThe app could not verify these:\n\n" + string.Join('\n', unverified.Select(s => Describe(s, hinted))) + "\n";
+            : "\nThe app could not verify these:\n\n" + string.Join('\n', unverified.Select(s => Describe(s, hinted))) + "\n");
         var instructions = WineDiagnosticHelper.WinetricksInstructions(resolution.Prefix.Kind == CompatibilityLayerKind.SteamProton, missing.Select(s => s.Id.Value));
 
-        yield return Diagnostics.CreateRequiredPrefixComponents(game.DisplayName, missingList, unverifiedList, instructions)
+        yield return Diagnostics.CreateRequiredPrefixComponents(game.DisplayName, missingList, unverifiedList, new MarkdownFragment(instructions))
             with { Actions = [DiagnosticActions.SetUpPrefix(missing.Select(s => s.Id.Value))] };
     }
 
@@ -75,7 +77,7 @@ public class WinePrefixComponentsEmitter(IPrefixResolver prefixResolver, IPrefix
 
     private static string Describe(PrefixComponentStatus status, IReadOnlySet<string> winetricksHints)
     {
-        var sb = new StringBuilder("* `").Append(status.Id).Append("`: ").Append(status.Evidence);
+        var sb = new StringBuilder("* ").Append(MarkdownText.Code(status.Id)).Append(": ").Append(MarkdownText.Inline(status.Evidence));
         if (status.State == PrefixComponentState.Missing && winetricksHints.Contains(status.Id.Value))
             sb.Append(" (winetricks.log lists it, but its files are not there)");
         return sb.ToString();

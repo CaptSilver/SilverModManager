@@ -2,6 +2,7 @@ using JetBrains.Annotations;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.References;
 using SilverModManager.Generators.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Values;
 
 namespace SilverModManager.Wabbajack.Diagnostics;
 
@@ -26,7 +27,7 @@ The install of **{ModlistName}** could not execute {SkippedCount} of the modlist
             .AddDataReference<LoadoutItemGroupReference>("Modlist")
             .AddValue<string>("ModlistName")
             .AddValue<int>("SkippedCount")
-            .AddValue<string>("Paths")
+            .AddValue<MarkdownFragment>("Paths")
         )
         .Finish();
 }

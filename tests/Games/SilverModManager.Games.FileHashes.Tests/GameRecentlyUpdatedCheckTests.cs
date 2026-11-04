@@ -53,7 +53,7 @@ public sealed class GameRecentlyUpdatedCheckTests : IDisposable
         data.Store.Should().Be("Steam");
         data.Date.Should().Be((Now - TimeSpan.FromDays(1)).ToLocalTime().ToString("d MMMM yyyy", CultureInfo.InvariantCulture));
         data.WhatBreaks.Should().Be("Mods with a DLL break.");
-        data.Mods.Should().Be("- Codeware");
+        data.Mods.Markdown.Should().Be("- Codeware");
     }
 
     [Theory]
@@ -117,7 +117,7 @@ public sealed class GameRecentlyUpdatedCheckTests : IDisposable
 
         var data = Recent(loadout, Window, lastWrite: Now).Single().Should().BeOfType<Diagnostic<Diagnostics.GameRecentlyUpdatedMessageData>>().Subject.MessageData;
 
-        data.Mods.Should().Be("- ArchiveXL\n- Codeware");
+        data.Mods.Markdown.Should().Be("- ArchiveXL\n- Codeware");
     }
 
     [Theory]
@@ -144,7 +144,7 @@ public sealed class GameRecentlyUpdatedCheckTests : IDisposable
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.GameBuildChangedWithModsMessageData>>().Subject.MessageData;
         data.ModCount.Should().Be(1);
-        data.Mods.Should().Be("- Codeware");
+        data.Mods.Markdown.Should().Be("- Codeware");
         data.WhatBreaks.Should().Be("Mods with a DLL break.");
     }
 

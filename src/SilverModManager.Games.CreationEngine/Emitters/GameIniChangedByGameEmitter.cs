@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
@@ -34,13 +36,13 @@ public class GameIniChangedByGameEmitter(IGameIniFiles game, IServiceProvider pr
             var changes = await GameInis.ChangesByGame(game, fileStore, loadout, path, await file.ReadAllBytesAsync(cancellationToken), written);
             var replaced = changes.Where(c => c.Kind != GameIniChangeKind.Adopted).Select(Describe).ToList();
             if (replaced.Count > 0)
-                yield return Diagnostics.CreateGameIniChangesReplaced(path.FileName.ToString(), string.Join("\n", replaced));
+                yield return Diagnostics.CreateGameIniChangesReplaced(path.FileName.ToString(), new MarkdownFragment(string.Join("\n", replaced)));
         }
     }
 
     private static string Describe(GameIniChange change) => change.Kind switch
     {
-        GameIniChangeKind.ManagedKeyReset => $"- the game changed {change.Key} in [{change.Section}]; it is reset on the next Apply",
-        _ => $"- the game changed {change.Key} in [{change.Section}]; overridden by {change.Owner}",
+        GameIniChangeKind.ManagedKeyReset => $"- the game changed {MarkdownText.Inline(change.Key)} in [{MarkdownText.Inline(change.Section)}]; it is reset on the next Apply",
+        _ => $"- the game changed {MarkdownText.Inline(change.Key)} in [{MarkdownText.Inline(change.Section)}]; overridden by {MarkdownText.Inline(change.Owner)}",
     };
 }

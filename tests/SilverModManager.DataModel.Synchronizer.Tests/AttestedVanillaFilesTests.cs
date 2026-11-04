@@ -802,7 +802,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         var diagnostic = (await WhatTheMissingGameFilesEmitterSays(loadout, tree)).Should().ContainSingle().Subject;
 
         diagnostic.Should().BeOfType<Diagnostic<SilverModManager.Games.FileHashes.Diagnostics.UndeployableLoadoutDueToMissingGameFilesMessageData>>()
-            .Which.MessageData.Files.Should().Contain(Vanilla);
+            .Which.MessageData.Files.Markdown.Should().Contain(Vanilla);
     }
 
     [Fact]

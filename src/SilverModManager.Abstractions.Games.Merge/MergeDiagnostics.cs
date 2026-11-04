@@ -1,5 +1,6 @@
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Generators.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Values;
 
 namespace SilverModManager.Abstractions.Games.Merge;
 
@@ -46,7 +47,7 @@ These files were merged two-way: the first mod's copy is the result and what the
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("Subject")
             .AddValue<string>("Cause")
-            .AddValue<string>("Entries")
+            .AddValue<MarkdownFragment>("Entries")
             .AddValue<string>("Advice")
         )
         .Finish();

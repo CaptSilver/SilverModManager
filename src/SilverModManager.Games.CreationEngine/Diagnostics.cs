@@ -188,7 +188,7 @@ loadout adopts them into its own copy of the file.
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("File")
-            .AddValue<string>("Settings")
+            .AddValue<MarkdownFragment>("Settings")
         )
         .Finish();
     [DiagnosticTemplate]

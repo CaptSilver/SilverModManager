@@ -26,13 +26,9 @@ public interface IDiagnosticWriter
 
     /// <inheritdoc cref="Write{T}"/>
     /// <remarks>
-    /// This is used to write everything between field values to the output.
+    /// This is used to write everything between field values to the output, and text a formatter has already made safe
+    /// for the mode. The span is written as it is. A <see cref="string"/> goes through <see cref="Write{T}"/> instead,
+    /// which treats it as outside text and escapes it for Markdown, so call <c>AsSpan()</c> to write finished text.
     /// </remarks>
     void Write(ref DiagnosticWriterState state, ReadOnlySpan<char> value);
-
-    /// <inheritdoc cref="Write{T}"/>
-    /// <remarks>
-    /// This is used to write everything between field values to the output.
-    /// </remarks>
-    void Write(ref DiagnosticWriterState state, string value) => Write(ref state, value.AsSpan());
 }

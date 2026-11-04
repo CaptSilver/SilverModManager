@@ -2,6 +2,7 @@ using JetBrains.Annotations;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.References;
 using SilverModManager.Generators.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Values;
 
 namespace SilverModManager.Games.Generic.Diagnostics;
 
@@ -93,7 +94,7 @@ then deploy to the save folder, except where a file of the player's own is alrea
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddDataReference<LoadoutItemGroupReference>("Group")
-            .AddValue<string>("Paths")
+            .AddValue<MarkdownFragment>("Paths")
         )
         .Finish();
 
@@ -118,7 +119,7 @@ usually keeps the original folder next to the link under a backup name.
             .AddValue<string>("GameName")
             .AddValue<string>("Path")
             .AddValue<string>("Target")
-            .AddValue<string>("Backups")
+            .AddValue<MarkdownFragment>("Backups")
         )
         .Finish();
 
@@ -145,7 +146,7 @@ The WINE DLL overrides of this game's prefix do not include the ones its mod loa
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("GameName")
-            .AddValue<string>("Instructions")
+            .AddValue<MarkdownFragment>("Instructions")
         )
         .Finish();
 
@@ -172,9 +173,9 @@ The prefix was read from disk without running anything. A DLL in `system32` does
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("GameName")
-            .AddValue<string>("Missing")
-            .AddValue<string>("Unverified")
-            .AddValue<string>("Instructions")
+            .AddValue<MarkdownFragment>("Missing")
+            .AddValue<MarkdownFragment>("Unverified")
+            .AddValue<MarkdownFragment>("Instructions")
         )
         .Finish();
 
@@ -200,7 +201,7 @@ Remove the files from the mod if they are not meant to be there.
         .WithMessageData(messageBuilder => messageBuilder
             .AddDataReference<LoadoutItemGroupReference>("Group")
             .AddValue<string>("GameName")
-            .AddValue<string>("Paths")
+            .AddValue<MarkdownFragment>("Paths")
         )
         .Finish();
     [DiagnosticTemplate]
@@ -233,9 +234,9 @@ for 64-bit ones, and the import tables of the DLLs and executables the loadout p
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("GameName")
-            .AddValue<string>("Files")
-            .AddValue<string>("Runtimes")
-            .AddValue<string>("Instructions")
+            .AddValue<MarkdownFragment>("Files")
+            .AddValue<MarkdownFragment>("Runtimes")
+            .AddValue<MarkdownFragment>("Instructions")
         )
         .Finish();
 

@@ -2,6 +2,7 @@ using JetBrains.Annotations;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Generators.Diagnostics;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Diagnostics.Values;
 
 namespace SilverModManager.Games.FileHashes;
 
@@ -56,7 +57,7 @@ The files with issues:
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<Size>("Size")
             .AddValue<int>("FileCount")
-            .AddValue<string>("Files")
+            .AddValue<MarkdownFragment>("Files")
             .AddValue<string>("Game")
             .AddValue<string>("Store")
             .AddValue<string>("Version")
@@ -91,7 +92,7 @@ The files with issues:
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<Size>("Size")
             .AddValue<int>("FileCount")
-            .AddValue<string>("Files")
+            .AddValue<MarkdownFragment>("Files")
             .AddValue<string>("Game")
             .AddValue<string>("Store")
             .AddValue<string>("Verify")
@@ -149,8 +150,8 @@ Dismiss this note once you have read it.
             .AddValue<string>("TheGame")
             .AddValue<string>("Store")
             .AddValue<int>("FileCount")
-            .AddValue<string>("Folders")
-            .AddValue<string>("Files")
+            .AddValue<MarkdownFragment>("Folders")
+            .AddValue<MarkdownFragment>("Files")
         )
         .Finish();
 
@@ -200,7 +201,7 @@ Applying the loadout again clears this note.
             .AddValue<string>("Store")
             .AddValue<string>("WhatBreaks")
             .AddValue<int>("ModCount")
-            .AddValue<string>("Mods")
+            .AddValue<MarkdownFragment>("Mods")
         )
         .Finish();
 
@@ -228,7 +229,7 @@ Mods installed outside the app are not listed here. If a mod stops working, chec
             .AddValue<string>("Store")
             .AddValue<string>("Date")
             .AddValue<string>("WhatBreaks")
-            .AddValue<string>("Mods")
+            .AddValue<MarkdownFragment>("Mods")
             .AddValue<string>("UpdateAdvice")
         )
         .Finish();

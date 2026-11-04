@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -71,7 +73,7 @@ public class UndeployableLoadoutDueToMissingGameFiles : ILoadoutDiagnosticEmitte
                 Size: missing.Size,
                 FileCount: missing.Count,
                 Game: game,
-                Files: missing.Files.ToString(),
+                Files: new MarkdownFragment(missing.Files.ToString()),
                 Store: store,
                 Version: version
             );
@@ -83,7 +85,7 @@ public class UndeployableLoadoutDueToMissingGameFiles : ILoadoutDiagnosticEmitte
                 Size: mismatched.Size,
                 FileCount: mismatched.Count,
                 Game: game,
-                Files: mismatched.Files.ToString(),
+                Files: new MarkdownFragment(mismatched.Files.ToString()),
                 Store: store,
                 Version: version,
                 Verify: EngineMergeDiagnosticsEmitter.VerifyFiles(loadout.Installation.Store)
@@ -101,7 +103,7 @@ public class UndeployableLoadoutDueToMissingGameFiles : ILoadoutDiagnosticEmitte
         {
             Size += node.Loadout.Size;
             Count++;
-            Files.AppendLine($"* `{path}`");
+            Files.AppendLine($"* {MarkdownText.Code(path)}");
         }
     }
 }

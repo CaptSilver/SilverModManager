@@ -44,7 +44,7 @@ public sealed class MissingGameFilesEmitterTests : IDisposable
 
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.UndeployableLoadoutDueToMissingGameFilesMessageData>>().Subject.MessageData;
         data.FileCount.Should().Be(1);
-        data.Files.Should().Contain("data/absent.pak");
+        data.Files.Markdown.Should().Contain("data/absent.pak");
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public sealed class MissingGameFilesEmitterTests : IDisposable
 
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.GameFilesDifferFromTheAppsFileDataMessageData>>().Subject.MessageData;
         data.FileCount.Should().Be(1);
-        data.Files.Should().Contain("data/changed.pak");
+        data.Files.Markdown.Should().Contain("data/changed.pak");
     }
 
     [Fact]
@@ -97,10 +97,10 @@ public sealed class MissingGameFilesEmitterTests : IDisposable
         diagnostics.Should().HaveCount(2);
         var missing = diagnostics.OfType<Diagnostic<Diagnostics.UndeployableLoadoutDueToMissingGameFilesMessageData>>().Single().MessageData;
         missing.FileCount.Should().Be(2);
-        missing.Files.Should().Contain("data/absent.pak").And.Contain("data/also_absent.pak").And.NotContain("changed.pak");
+        missing.Files.Markdown.Should().Contain("data/absent.pak").And.Contain("data/also_absent.pak").And.NotContain("changed.pak");
         var mismatched = diagnostics.OfType<Diagnostic<Diagnostics.GameFilesDifferFromTheAppsFileDataMessageData>>().Single().MessageData;
         mismatched.FileCount.Should().Be(1);
-        mismatched.Files.Should().Contain("data/changed.pak");
+        mismatched.Files.Markdown.Should().Contain("data/changed.pak");
     }
 
     [Fact]
@@ -132,7 +132,7 @@ public sealed class MissingGameFilesEmitterTests : IDisposable
         var diagnostic = (await Diagnose(tree)).Should().ContainSingle().Subject;
 
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.UndeployableLoadoutDueToMissingGameFilesMessageData>>().Subject.MessageData;
-        data.Files.Should().Contain("data/gone.pak");
+        data.Files.Markdown.Should().Contain("data/gone.pak");
     }
 
     private static SyncNode Unresolved(bool withDisk)

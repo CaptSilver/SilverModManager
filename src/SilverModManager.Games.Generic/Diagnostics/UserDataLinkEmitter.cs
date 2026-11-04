@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using System.Runtime.CompilerServices;
 using System.Text;
 using SilverModManager.Abstractions.Diagnostics;
@@ -97,20 +99,20 @@ public class UserDataLinkEmitter : ILoadoutDiagnosticEmitter
         }
     }
 
-    private static string DescribeBackups(IReadOnlyList<string> backups)
+    private static MarkdownFragment DescribeBackups(IReadOnlyList<string> backups)
     {
         switch (backups.Count)
         {
             case 0:
-                return "No backup folder was found next to it.";
+                return new MarkdownFragment("No backup folder was found next to it.");
             case 1:
-                return SavedFolderRestore.IsRestorableBackup(backups[0])
-                    ? $"A backup folder is next to it: `{backups[0]}`. Restoring it removes the broken link and moves the backup into its place."
-                    : $"`{backups[0]}` looks like a backup but is empty or a link, so there is nothing to restore from it.";
+                return new MarkdownFragment(SavedFolderRestore.IsRestorableBackup(backups[0])
+                    ? $"A backup folder is next to it: {MarkdownText.Code(backups[0])}. Restoring it removes the broken link and moves the backup into its place."
+                    : $"{MarkdownText.Code(backups[0])} looks like a backup but is empty or a link, so there is nothing to restore from it.");
         }
 
         var sb = new StringBuilder("Several folders next to it look like backups, so the app will not guess which one holds your files:\n\n");
-        foreach (var backup in backups) sb.Append("* `").Append(backup).AppendLine("`");
-        return sb.ToString();
+        foreach (var backup in backups) sb.Append("* ").AppendLine(MarkdownText.Code(backup));
+        return new MarkdownFragment(sb.ToString());
     }
 }

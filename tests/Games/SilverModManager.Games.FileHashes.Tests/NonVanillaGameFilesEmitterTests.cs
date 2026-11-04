@@ -165,7 +165,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
         data.FileCount.Should().Be(3);
         data.Store.Should().Be(GameStore.Steam.Value);
         data.Game.Should().Be("Test game");
-        data.Files.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Should().Equal(
+        data.Files.Markdown.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Should().Equal(
             "* `b.esm` (content differs)",
             "* `data/other.pak` (size differs)",
             "* `mod.esp` (not in the store's manifest)"
@@ -182,7 +182,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
         var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
 
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
-        data.Files.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Should().Equal(
+        data.Files.Markdown.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Should().Equal(
             "* `sksevr_loader.exe` (looks like a mod loader or mod; no store file list was available to check)");
     }
 
@@ -196,7 +196,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
         var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
 
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
-        data.Files.Should().Contain("`mod.esp` (put there by a loadout");
+        data.Files.Markdown.Should().Contain("`mod.esp` (put there by a loadout");
     }
 
     [Fact]
@@ -215,7 +215,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
 
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
         data.FileCount.Should().Be(1);
-        data.Files.Should().Contain("mod.esp").And.NotContain("deployed.pak").And.NotContain("replaced.pak");
+        data.Files.Markdown.Should().Contain("mod.esp").And.NotContain("deployed.pak").And.NotContain("replaced.pak");
     }
 
     [Fact]
@@ -251,7 +251,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
 
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
         data.FileCount.Should().Be(2);
-        data.Files.Should().Contain("left/over.dll").And.Contain("stray.txt").And.NotContain("saves.sav");
+        data.Files.Markdown.Should().Contain("left/over.dll").And.Contain("stray.txt").And.NotContain("saves.sav");
     }
 
     [Fact]
@@ -273,7 +273,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
 
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
         data.FileCount.Should().Be(1);
-        data.Files.Should().Contain("found.dll");
+        data.Files.Markdown.Should().Contain("found.dll");
     }
 
     [Fact]
@@ -293,7 +293,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
 
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
         data.FileCount.Should().Be(1);
-        data.Files.Should().Contain("stray.txt").And.NotContain("off.pak");
+        data.Files.Markdown.Should().Contain("stray.txt").And.NotContain("off.pak");
     }
 
     [Fact]
@@ -306,7 +306,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
 
         var diagnostic = (await Diagnose(loadout, tree)).Should().ContainSingle().Subject;
 
-        diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData.Files.Should().Contain("a.esm");
+        diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData.Files.Markdown.Should().Contain("a.esm");
     }
 
     [Fact]
@@ -322,7 +322,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
 
         var diagnostic = (await Diagnose(loadout, tree)).Should().ContainSingle().Subject;
 
-        diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData.Files.Should().Contain("found.dll");
+        diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData.Files.Markdown.Should().Contain("found.dll");
     }
 
     [Fact]
@@ -344,7 +344,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
 
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
         data.FileCount.Should().Be(1);
-        data.Files.Should().Contain("a.esm").And.NotContain("ccinvented");
+        data.Files.Markdown.Should().Contain("a.esm").And.NotContain("ccinvented");
     }
 
     [Fact]
@@ -358,7 +358,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
 
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
         data.FileCount.Should().Be(1);
-        data.Files.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Should().Equal(
+        data.Files.Markdown.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Should().Equal(
             "* `mod.esp` (not in the store's manifest)",
             "3 log and crash files the game wrote itself are not listed."
         );
@@ -386,7 +386,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
 
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
         data.FileCount.Should().Be(1);
-        data.Files.Should().Contain("game.log").And.NotContain("own.dat").And.Contain("1 log or crash file the game wrote itself is not listed.");
+        data.Files.Markdown.Should().Contain("game.log").And.NotContain("own.dat").And.Contain("1 log or crash file the game wrote itself is not listed.");
     }
 
     [Fact]
@@ -401,7 +401,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
 
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
         data.FileCount.Should().Be(1);
-        data.Files.Should().Contain("mod.esp").And.NotContain("metadata.store.stamp").And.NotContain("wrote itself");
+        data.Files.Markdown.Should().Contain("mod.esp").And.NotContain("metadata.store.stamp").And.NotContain("wrote itself");
     }
 
     [Theory]
@@ -457,7 +457,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
 
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
         data.FileCount.Should().Be(1);
-        data.Files.Should().Contain("real.txt").And.NotContain("gone");
+        data.Files.Markdown.Should().Contain("real.txt").And.NotContain("gone");
     }
 
     [Fact]
@@ -483,7 +483,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
         var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
 
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
-        data.Folders.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Should().Equal(
+        data.Folders.Markdown.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Should().Equal(
             "* `Mods/`: 3 files",
             "* `dlc/`: 1 file",
             "* the top of the game folder: 1 file"

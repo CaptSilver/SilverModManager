@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using System.Collections.Immutable;
 using System.Text;
 using SilverModManager.Abstractions.Diagnostics;
@@ -37,7 +38,7 @@ public static class WineDiagnosticHelper
     {
         var sb = new StringBuilder();
 
-        var missingPackagesString = missingPackages.Select(x => $"* `{x}`").Aggregate((a, b) => $"{a}\n{b}");
+        var missingPackagesString = missingPackages.Select(x => $"* {MarkdownText.Code(x)}").Aggregate((a, b) => $"{a}\n{b}");
 
         if (steamProton)
         {

@@ -10,6 +10,7 @@ public static class Services
         return serviceCollection
             .AddSingleton<IValueFormatter, LoadoutReferenceFormatter>()
             .AddSingleton<IValueFormatter, NamedLinkFormatter>()
+            .AddSingleton<IValueFormatter, MarkdownFragmentFormatter>()
             .AddSingleton<IValueFormatter, LoadoutItemGroupFormatter>()
             .AddSingleton<IDiagnosticWriter, DiagnosticWriter>();
     }

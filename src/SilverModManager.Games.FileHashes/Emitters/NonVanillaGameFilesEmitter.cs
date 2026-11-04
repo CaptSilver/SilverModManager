@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using SilverModManager.Sdk.Hashes;
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
@@ -82,7 +84,7 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         var list = new StringBuilder();
         foreach (var file in files)
         {
-            list.AppendLine($"* `{file.Path}` ({DescribeReason(file.Reason)})");
+            list.AppendLine($"* {MarkdownText.Code(file.Path)} ({DescribeReason(file.Reason)})");
         }
         if (gameWritten > 0)
         {
@@ -97,8 +99,8 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
             TheGame: Diagnostics.WithArticle(installation.Name),
             Store: installation.Store.Value,
             FileCount: files.Length,
-            Folders: folders,
-            Files: list.ToString()
+            Folders: new MarkdownFragment(folders),
+            Files: new MarkdownFragment(list.ToString())
         );
     }
 
@@ -190,7 +192,7 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
             var noun = count == 1 ? "file" : "files";
             text.AppendLine(group.Key is null
                 ? $"* the top of the game folder: {count} {noun}"
-                : $"* `{group.Key}/`: {count} {noun}");
+                : $"* {MarkdownText.Code(group.Key + "/")}: {count} {noun}");
         }
         return text.ToString();
     }

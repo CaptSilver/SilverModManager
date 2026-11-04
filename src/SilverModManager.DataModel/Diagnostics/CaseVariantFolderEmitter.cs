@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -55,8 +57,8 @@ public class CaseVariantFolderEmitter : ILoadoutDiagnosticEmitter
         if (pairs.Count == 0) return null;
 
         var list = new StringBuilder();
-        foreach (var (first, second) in pairs) list.AppendLine($"* `{first}` and `{second}`");
-        return CaseVariantFolderDiagnostics.CreateCaseVariantFolders(installation.Game.DisplayName, list.ToString().TrimEnd(), AdviceFor(installation.GetGame().Synchronizer.MergesCaseVariantFoldersOnApply(installation)));
+        foreach (var (first, second) in pairs) list.AppendLine($"* {MarkdownText.Code(first)} and {MarkdownText.Code(second)}");
+        return CaseVariantFolderDiagnostics.CreateCaseVariantFolders(installation.Game.DisplayName, new MarkdownFragment(list.ToString().TrimEnd()), AdviceFor(installation.GetGame().Synchronizer.MergesCaseVariantFoldersOnApply(installation)));
     }
 
     /// <summary>The advice under the list: what an Apply does about the pairs, or what the user has to do.</summary>

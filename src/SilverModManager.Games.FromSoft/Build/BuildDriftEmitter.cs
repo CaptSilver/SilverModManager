@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using SilverModManager.Abstractions.Diagnostics;
@@ -37,7 +39,8 @@ public class BuildDriftEmitter(BuildStampStore stamps) : IFromSoftDiagnosticEmit
         var kind = BuildIdentity.Classify(stamped, live);
         if (kind == BuildChangeKind.Unchanged) yield break;
 
-        var moved = string.Join("; ", BuildIdentity.Drift(stamped, live).Select(c => $"{c.Field} {c.Stamped ?? NoValue} -> {c.Live ?? NoValue}"));
+        var moved = new MarkdownFragment(string.Join("; ", BuildIdentity.Drift(stamped, live).Select(c =>
+            $"{MarkdownText.Code(c.Field)} {MarkdownText.InlineMidLine(c.Stamped ?? NoValue)} -> {MarkdownText.InlineMidLine(c.Live ?? NoValue)}")));
         yield return FromSoftDiagnostics.CreateBuildChanged(loadout.InstallationInstance.Game.DisplayName, kind.ToString().ToLowerInvariant(), moved) with { Actions = [RestampAction(loadout.LoadoutId)] };
     }
 }

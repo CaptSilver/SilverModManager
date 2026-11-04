@@ -77,7 +77,7 @@ public record Diagnostic
     public virtual string FormatSummary(IDiagnosticWriter writer, DiagnosticWriterMode mode = DiagnosticWriterMode.PlainText)
     {
         var state = new DiagnosticWriterState(mode, capacity: Summary.Value.Length);
-        writer.Write(ref state, Summary.Value);
+        writer.Write(ref state, Summary.Value.AsSpan());
         return state.ToOutput();
     }
 
@@ -87,7 +87,7 @@ public record Diagnostic
     public virtual string FormatDetails(IDiagnosticWriter writer, DiagnosticWriterMode mode = DiagnosticWriterMode.Markdown)
     {
         var state = new DiagnosticWriterState(mode, capacity: Details.Value.Length);
-        writer.Write(ref state, Details.Value);
+        writer.Write(ref state, Details.Value.AsSpan());
         return state.ToOutput();
     }
 }

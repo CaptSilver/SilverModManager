@@ -121,7 +121,7 @@ internal static partial class Diagnostics
                      """
 
         )
-        .WithMessageData(messageBuilder => messageBuilder.AddValue<string>("Instructions"))
+        .WithMessageData(messageBuilder => messageBuilder.AddValue<MarkdownFragment>("Instructions"))
         .Finish();
 
     [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate OutdatedGameModuleTemplate = DiagnosticTemplateBuilder

@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Generators.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Values;
 
 namespace SilverModManager.DataModel.Diagnostics;
 
@@ -25,7 +26,7 @@ public partial class CaseVariantFolderDiagnostics
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("Game")
-            .AddValue<string>("Pairs")
+            .AddValue<MarkdownFragment>("Pairs")
             .AddValue<string>("Advice")
         )
         .Finish();

@@ -1,3 +1,5 @@
+using SilverModManager.Sdk.Errors;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using SilverModManager.Abstractions.Diagnostics;
@@ -36,8 +38,8 @@ public class SteamFolderEmitter(IManifestVouching vouching, SteamFolderCheck che
         var found = await check.Check(game.Definition, installation.Locations[LocationId.Game].Path, manifest, cancellationToken);
         if (found.IsEmpty) yield break;
 
-        var lines = found.Changed.Select(f => $"- {f} (differs from Steam's)")
-            .Concat(found.ModFiles.Select(f => $"- {f} (put there by mods)"))
+        var lines = found.Changed.Select(f => $"- {MarkdownText.Inline(f)} (differs from Steam's)")
+            .Concat(found.ModFiles.Select(f => $"- {MarkdownText.Inline(f)} (put there by mods)"))
             .ToArray();
         var shown = lines.Take(MaxListed).ToList();
         if (lines.Length > MaxListed) shown.Add($"- and {lines.Length - MaxListed} more");
@@ -45,6 +47,6 @@ public class SteamFolderEmitter(IManifestVouching vouching, SteamFolderCheck che
         var regulationDiffers = found.Changed.Any(f => f.Equals(regulation, StringComparison.OrdinalIgnoreCase));
         var otherFilesDiffer = found.ModFiles.Count > 0 || found.Changed.Any(f => !f.Equals(regulation, StringComparison.OrdinalIgnoreCase));
         var actions = restore.Actions(installation, stamps.Find(loadout.InstallationId), regulationDiffers, otherFilesDiffer, manifest);
-        yield return FromSoftDiagnostics.CreateFolderDiffersFromSteam(game.DisplayName, string.Join("\n", shown)) with { Actions = [..actions] };
+        yield return FromSoftDiagnostics.CreateFolderDiffersFromSteam(game.DisplayName, new MarkdownFragment(string.Join("\n", shown))) with { Actions = [..actions] };
     }
 }

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
@@ -53,7 +54,7 @@ public class GameUpdatedSinceExtenderRanCheck(ILogger<GameUpdatedSinceExtenderRa
             Extender: string.Join(" and ", stale.Select(s => s.Extender)),
             GameVersion: exeVersion,
             LoggedVersion: LoggedVersions(stale),
-            Plugins: stale.Any(s => s.Extender == Red4ExtName) && red4Ext is { Plugins.Count: > 0 } ? PluginList(red4Ext.Plugins) : "",
+            Plugins: stale.Any(s => s.Extender == Red4ExtName) && red4Ext is { Plugins.Count: > 0 } ? PluginList(red4Ext.Plugins) : new MarkdownFragment(""),
             Red4ExtReleases: Red4ExtReleases,
             CetReleases: CetReleases
         );
@@ -65,11 +66,11 @@ public class GameUpdatedSinceExtenderRanCheck(ILogger<GameUpdatedSinceExtenderRa
             ? stale[0].Logged
             : string.Join(" and ", stale.Select(s => $"{s.Logged} ({s.Extender})"));
 
-    private static string PluginList(IReadOnlyList<RedPlugin> plugins)
+    private static MarkdownFragment PluginList(IReadOnlyList<RedPlugin> plugins)
     {
         var text = new StringBuilder("RED4ext loaded these plugins last time:\n\n");
-        foreach (var plugin in plugins) text.Append("- ").Append(plugin.Name).Append(' ').Append(plugin.Version).Append('\n');
-        return text.ToString();
+        foreach (var plugin in plugins) text.Append("- ").Append(MarkdownText.Inline(plugin.Name)).Append(' ').Append(MarkdownText.InlineMidLine(plugin.Version)).Append('\n');
+        return new MarkdownFragment(text.ToString());
     }
 
     private bool TryReadExeVersion(AbsolutePath exe, out string version)
