@@ -81,6 +81,18 @@ public class ErrorPresenterTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Fact]
+    public async Task ACrashHeadline_ShowsNamesInBackticksAsTheyAreAndEscapesTheRest()
+    {
+        var headline = "The provided library item `my_mod [x](http://evil.example)` is bad_ [y](http://evil.example) stray`b";
+
+        var rig = await Pipe(new PresenterRig(Provider), ThrownInvalidOperation("boom"), headline);
+
+        var body = PresenterRig.Body(rig.Dialogs.Should().ContainSingle().Subject);
+        body.Should().Contain("`my_mod [x](http://evil.example)`", "a name in a code span is shown as it is, without an added backslash");
+        body.Should().Contain("is bad\\_ [y]\u200B(http://evil.example) stray\u02CBb");
+    }
+
+    [Fact]
     public async Task ACrashReport_HoldsTheTraceForCopyingButIsNeverRendered()
     {
         var failure = ThrownInvalidOperation("boom");

@@ -239,8 +239,9 @@ public sealed class ErrorPresenter(IServiceProvider serviceProvider, ILogger<Err
 
         public OpenCrash(string headline, IMarkdownRendererViewModel markdown)
         {
-            // The headline is a log message, which can quote a mod, file or collection name.
-            _headline = MarkdownText.Inline(headline);
+            // The headline is a log message, which can quote a mod, file or collection name. Many templates already put
+            // the name in backticks, and a span shows its text as it is.
+            _headline = MarkdownText.InlineKeepingCode(headline);
             _markdown = markdown;
             Refresh();
         }
