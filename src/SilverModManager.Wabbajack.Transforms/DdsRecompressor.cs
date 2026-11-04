@@ -143,9 +143,9 @@ public static class DdsRecompressor
         if (width == newWidth && height == newHeight) return pixels;
 
         // An sRGB source is resized in linear light on float pixels, so a 0/255 edge averages to 188 and not 128.
-        // Skia accepts RgbaF32 in SKBitmap.Resize; if a future version stops, resize the stored bytes (gamma space)
-        // instead of failing, since the mips, the bulk of the filtering, are linear regardless.
-        if (srgb && TryResizeLinear(pixels, width, height, newWidth, newHeight) is { } linear) return linear;
+        // This needs Skia's RgbaF32 resize. A null from it throws like the gamma path below rather than quietly
+        // resizing the stored bytes in gamma space.
+        if (srgb) return ResizeLinear(pixels, width, height, newWidth, newHeight);
 
         using var source = new SKBitmap(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul));
         MemoryMarshal.AsBytes(pixels.AsSpan()).CopyTo(source.GetPixelSpan());
@@ -157,7 +157,7 @@ public static class DdsRecompressor
         return MemoryMarshal.Cast<byte, ColorRgba32>(resized.GetPixelSpan()).ToArray();
     }
 
-    private static ColorRgba32[]? TryResizeLinear(ColorRgba32[] pixels, int width, int height, int newWidth, int newHeight)
+    private static ColorRgba32[] ResizeLinear(ColorRgba32[] pixels, int width, int height, int newWidth, int newHeight)
     {
         using var source = new SKBitmap(new SKImageInfo(width, height, SKColorType.RgbaF32, SKAlphaType.Unpremul));
         var floats = MemoryMarshal.Cast<byte, float>(source.GetPixelSpan());
@@ -172,7 +172,7 @@ public static class DdsRecompressor
 
         using var resized = source.Resize(new SKImageInfo(newWidth, newHeight, SKColorType.RgbaF32, SKAlphaType.Unpremul),
             new SKSamplingOptions(SKCubicResampler.Mitchell));
-        if (resized is null) return null;
+        if (resized is null) throw new InvalidOperationException($"Could not resize a {width}x{height} texture to {newWidth}x{newHeight}");
 
         var result = new ColorRgba32[newWidth * newHeight];
         var back = MemoryMarshal.Cast<byte, float>(resized.GetPixelSpan());
