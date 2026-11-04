@@ -173,4 +173,41 @@ public class TextureEncoderTests
         if (texture is "gradient" or "partial alpha")
             Assert.True(native >= 30, $"{format} {texture}: native {native:F2} dB");
     }
+
+    // Floors -----------------------------------------------------------------------------------------------------------
+
+    private const int FloorSize = 1024;
+
+    /// <summary>
+    /// The native encoder's PSNR on each generated texture at <see cref="FloorSize"/> pixels, at the pinned levels, less half a
+    /// dB (a checkerboard is exact, 99 dB, and must stay so). The benchmark harness prints the same figures (benchmarks/SilverModManager.Benchmarks, TextureEncoders).
+    /// </summary>
+    private static readonly Dictionary<(BlockFormat, string), double> NativeFloors = new()
+    {
+        [(BlockFormat.Bc1, "gradient")] = 51.4,
+        [(BlockFormat.Bc1, "noise")] = 13.2,
+        [(BlockFormat.Bc1, "checkerboard")] = 98.5,
+        [(BlockFormat.Bc1, "partial alpha")] = 51.4,
+        [(BlockFormat.Bc3, "gradient")] = 52.5,
+        [(BlockFormat.Bc3, "noise")] = 14.4,
+        [(BlockFormat.Bc3, "checkerboard")] = 98.5,
+        [(BlockFormat.Bc3, "partial alpha")] = 52.5,
+        [(BlockFormat.Bc7, "gradient")] = 56.3,
+        [(BlockFormat.Bc7, "noise")] = 15.0,
+        [(BlockFormat.Bc7, "checkerboard")] = 56.6,
+        [(BlockFormat.Bc7, "partial alpha")] = 56.3,
+    };
+
+    public static TheoryData<BlockFormat, string> FloorCases => Native.Value is null
+        ? []
+        : new(NativeFloors.Keys.Select(k => (k.Item1, k.Item2)));
+
+    [Theory(SkipTestWithoutData = true)]
+    [MemberData(nameof(FloorCases))]
+    public void NativeBlocksStayAboveTheirMeasuredFloor(BlockFormat format, string texture)
+    {
+        var psnr = Psnr(Encoder("native"), TestTextures.Named(texture, FloorSize), FloorSize, format);
+
+        Assert.True(psnr >= NativeFloors[(format, texture)], $"{format} {texture}: {psnr:F2} dB against a floor of {NativeFloors[(format, texture)]:F2} dB");
+    }
 }

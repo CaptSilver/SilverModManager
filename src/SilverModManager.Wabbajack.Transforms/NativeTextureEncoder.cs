@@ -10,14 +10,32 @@ namespace SilverModManager.Wabbajack.Transforms;
 internal readonly record struct NativeEncoderLevels(uint Bc1, uint Bc3, uint Bc7)
 {
     /// <summary>
-    /// Each the lowest level whose decoded PSNR is no lower than BCnEncoder's Balanced on every generated test texture
-    /// (gradient, two noise seeds, checkerboard, partial alpha) at 64 and at 256 pixels square, single thread:
-    /// rgbcx level 13 for BC1 and BC3 (10 to 12 sit 0.1 to 0.2 dB under on the gradient: 45.26 against 45.40 dB for BC1,
-    /// 46.44 against 46.67 dB for BC3), bc7e "basic" (3) for BC7 (the faster presets fall under on small gradient and
-    /// partial-alpha content). At 256 squared, native against managed Balanced: BC1 about 12 ms against 70 to 110 ms,
-    /// BC3 about 7 ms against 70 to 80 ms, BC7 about 5 to 13 ms against 0.4 to 20 s.
+    /// The fastest level whose decoded PSNR is no lower than BCnEncoder's Balanced on the generated textures (gradient,
+    /// noise, checkerboard, partial alpha) at 1024 and 2048 pixels square, one thread. PSNR is what the TextureEncoders
+    /// benchmark prints: BC1 over RGB, BC3 and BC7 over RGBA, bc7e not run perceptually.
+    /// <para>
+    /// rgbcx BC1 and BC3: level 10, where rgbcx's header says to start. It beats Balanced on every texture: gradient
+    /// 51.93 against 50.21 dB (BC1) and 53.03 against 51.46 dB (BC3) at 1024 pixels, 53.47 against 51.17 and 54.63
+    /// against 52.42 at 2048, noise by 1.4 dB, and the checkerboard is exact in both. Levels 11 and 12 score the same
+    /// and run slower; 13 and up add 0.7 dB on the gradient for roughly half the speed. A 64 pixel gradient sits 0.1 to
+    /// 0.2 dB under Balanced at level 10, which is below the sizes the rule measures.
+    /// </para>
+    /// <para>
+    /// bc7e BC7: preset 4, "slow". No preset reaches Balanced everywhere. On the gradient, Balanced scores 56.94 dB at 1024
+    /// pixels and 60.07 at 2048; slow scores 56.80 and 59.69, 0.14 and 0.38 dB under, and beats Balanced on every other
+    /// texture (checkerboard 57.16 against 52.39, noise 15.55 against 14.30, partial alpha 56.84 against 54.93 at 1024).
+    /// The faster presets are further under on the gradient (basic 0.6 and 0.7 dB, fast 1.4 and 1.8, veryfast 0.8 and
+    /// 1.3); veryslow beats it at 1024 only, and veryslow and slowest trail by 1.5 and 2.1 dB at 2048, at about a quarter of the speed. So slow is
+    /// the fastest preset within half a dB of Balanced on all of them, and it needs that tolerance to qualify.
+    /// Slow also runs faster than basic: basic turns on bc7e's uber search (uber level 1) and slow leaves it off (0).
+    /// </para>
+    /// <para>
+    /// One thread, Mpix/s on the 1024 pixel gradient, native against Balanced: BC1 14.3 against 1.0, BC3 23.2 against 1.0,
+    /// BC7 8.7 against 0.11. Through DdsRecompressor from a BC7 source to a BC7 target with a full mip chain, native is 37
+    /// to 74 times Balanced's Mpix/s whether the textures run one per worker or one at a time over row bands.
+    /// </para>
     /// </summary>
-    public static NativeEncoderLevels Default { get; } = new(Bc1: 13, Bc3: 13, Bc7: 3);
+    public static NativeEncoderLevels Default { get; } = new(Bc1: 10, Bc3: 10, Bc7: 4);
 }
 
 /// <summary>
