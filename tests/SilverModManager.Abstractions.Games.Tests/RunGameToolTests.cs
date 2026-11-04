@@ -631,4 +631,84 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
         Session.Events.Should().BeEmpty("the loadout must not be applied for a program that cannot start");
         LauncherStartedByProcessRunner().Should().BeFalse();
     }
+
+    private sealed class ShellLauncherTool(IServiceProvider provider, StubbedGame game, string[] extraArgs) : RunGameTool<StubbedGame>(provider, game)
+    {
+        protected override bool UseShell { get; set; } = true;
+
+        public override async ValueTask<LaunchSpec> GetLaunchSpec(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
+        {
+            var baseSpec = await base.GetLaunchSpec(loadout, cancellationToken);
+            return baseSpec with { Exe = baseSpec.Exe.Parent.Combine("launcher.exe"), ExtraArgs = extraArgs };
+        }
+    }
+
+    // The runner would start a real process, so the test takes the start info it was given and substitutes a harmless one.
+    [Fact]
+    public async Task NonPrimaryExe_ThroughTheShell_PassesEveryArgumentUnchanged()
+    {
+        MakeBuildNative();
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+        string[] callerArgs = ["-caller", "with space", "say \"hi\"", "$HOME;`id`|&>x", "trailing\\", "'single'"];
+        string[] extraArgs = ["-extra", ""];
+        System.Diagnostics.ProcessStartInfo? seen = null;
+        string? argsText = null;
+        string[]? argList = null;
+        _processRunner.RunAsync(Arg.Any<System.Diagnostics.Process>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var process = call.Arg<System.Diagnostics.Process>();
+            seen = process.StartInfo;
+            argsText = seen.Arguments;
+            argList = seen.ArgumentList.ToArray();
+            // Start something harmless so the exit code can be read; the start info under test is already captured.
+            process.StartInfo = new System.Diagnostics.ProcessStartInfo("true") { UseShellExecute = false };
+            process.Start();
+            process.WaitForExit();
+            return Task.CompletedTask;
+        });
+
+        await new ShellLauncherTool(ServiceProvider, Game, extraArgs).Execute(loadout, CancellationToken.None, callerArgs);
+
+        seen.Should().NotBeNull();
+        string[] expected = [..callerArgs, ..extraArgs];
+        var received = argList!.Length > 0 ? argList : SplitLikeDotNet(argsText!);
+        received.Should().Equal(expected);
+    }
+
+    // The way .NET splits ProcessStartInfo.Arguments into argv for a program it starts directly on Linux.
+    private static string[] SplitLikeDotNet(string arguments)
+    {
+        var result = new List<string>();
+        var current = new System.Text.StringBuilder();
+        var inQuotes = false;
+        var started = false;
+        for (var i = 0; i < arguments.Length; i++)
+        {
+            var c = arguments[i];
+            if (c == '\\')
+            {
+                var slashes = 0;
+                while (i < arguments.Length && arguments[i] == '\\') { slashes++; i++; }
+                if (i < arguments.Length && arguments[i] == '"')
+                {
+                    current.Append('\\', slashes / 2);
+                    if (slashes % 2 == 1) current.Append('"'); else inQuotes = !inQuotes;
+                }
+                else
+                {
+                    current.Append('\\', slashes);
+                    i--;
+                }
+                started = true;
+            }
+            else if (c == '"') { inQuotes = !inQuotes; started = true; }
+            else if (char.IsWhiteSpace(c) && !inQuotes)
+            {
+                if (started) { result.Add(current.ToString()); current.Clear(); started = false; }
+            }
+            else { current.Append(c); started = true; }
+        }
+        if (started) result.Add(current.ToString());
+        return result.ToArray();
+    }
 }

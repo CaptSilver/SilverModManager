@@ -201,7 +201,7 @@ public class RunGameTool : IRunGameTool
         else if (UseShell)
         {
             _logger.LogInformation("Running {Program} through shell", program);
-            await RunWithShell(cancellationToken, program);
+            await RunWithShell(cancellationToken, program, commandLineArgs);
         }
         else
         {
@@ -243,7 +243,7 @@ public class RunGameTool : IRunGameTool
         return result;
     }
 
-    private async Task<Process> RunWithShell(CancellationToken cancellationToken, AbsolutePath program)
+    private async Task<Process> RunWithShell(CancellationToken cancellationToken, AbsolutePath program, string[] arguments)
     {
         var process = new Process
         {
@@ -251,6 +251,9 @@ public class RunGameTool : IRunGameTool
             {
                 FileName = program.ToString(),
                 WorkingDirectory = program.Parent.ToString(),
+                // ArgumentList is refused with UseShellExecute, so the quoted string is the only way in. Linux
+                // splits it into argv itself and never hands it to sh, so metacharacters stay literal.
+                Arguments = new CliWrap.Builders.ArgumentsBuilder().Add(arguments).Build(),
                 UseShellExecute = true,
                 CreateNoWindow = false,
             },
