@@ -61,13 +61,15 @@ public sealed record ReplacedSlot(CollectionDownloadId NewDownload, LoadoutItemG
 /// <param name="Group">The collection's group after the install.</param>
 /// <param name="Dropped">The mods that are no longer part of the collection; the user decides whether to keep them.</param>
 /// <param name="Failed">The mods that failed to install.</param>
+/// <param name="Pending">The mods that wait for a person: no installer claimed the archive, or its installer needs choices.</param>
 /// <param name="SkippedRules">The user's rules that couldn't be carried over to a replacement because they would contradict other rules.</param>
 /// <param name="Error">What stopped the install after the group was switched, if anything. The clean-up has run either way.</param>
-/// <param name="OldVersionsKept">How many of the failed mods replace an older version, which stays in the loadout as the user's own mod.</param>
+/// <param name="OldVersionsKept">How many of the failed or pending mods replace an older version, which stays in the loadout as the user's own mod.</param>
 public sealed record CollectionUpdateResult(
     NexusCollectionLoadoutGroup.ReadOnly Group,
     IReadOnlyList<DroppedMod> Dropped,
     IReadOnlyList<InstallCollectionJob.FailedItem> Failed,
+    IReadOnlyList<InstallCollectionJob.PendingItem> Pending,
     int OldVersionsKept,
     IReadOnlyList<string> SkippedRules,
     Exception? Error);
@@ -204,6 +206,9 @@ public static partial class CollectionUpdater
                 failure = e;
             }
 
+            // A mod that went pending remembers the old version it replaces, so whichever install finishes it later removes the old one.
+            await PendingInstalls.StampReplacements(connection, switched.Group.Id, switched.ReplacedSlots);
+
             // The install can end early (cancelled, or the collection's rules contradict the user's after every mod went in), so
             // the clean-up works from what is in the database: an old version goes only if its replacement is there.
             var (kept, skippedRules) = await FinishReplacements(serviceProvider, connection, loadoutId, switched.Group.Id, switched.ReplacedSlots);
@@ -218,6 +223,7 @@ public static partial class CollectionUpdater
                 NexusCollectionLoadoutGroup.Load(connection.Db, switched.Group.Id),
                 [.. repaired.Dropped, .. switched.Dropped],
                 job.JobDefinition.FailedItems,
+                job.JobDefinition.PendingItems,
                 kept,
                 [.. repaired.SkippedRules, .. skippedRules],
                 failure);
@@ -339,6 +345,9 @@ public static partial class CollectionUpdater
             }
 
             foreach (var rule in oldRules) tx.Delete(rule, recursive: false);
+
+            // Every row of the group, not PendingInstalls.For: that hides rows of older revisions, which would never be retracted.
+            foreach (var row in NexusCollectionPendingInstall.FindByCollectionGroup(db, group.Id)) tx.Delete(row.Id, recursive: false);
 
             await tx.Commit();
         }

@@ -6001,7 +6001,25 @@ namespace SilverModManager.App.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to  Where there was an older version of a failed mod, it was kept in My Mods..
+        ///   Looks up a localized string similar to  1 mod needs review..
+        /// </summary>
+        public static string ToastNotification_Collection_update_one_needs_review {
+            get {
+                return ResourceManager.GetString("ToastNotification_Collection_update_one_needs_review", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to  {0} mods need review..
+        /// </summary>
+        public static string ToastNotification_Collection_update_need_review {
+            get {
+                return ResourceManager.GetString("ToastNotification_Collection_update_need_review", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to  An older version was kept in My Mods for mods that failed or still need review..
         /// </summary>
         public static string ToastNotification_Collection_update_kept_old_versions {
             get {

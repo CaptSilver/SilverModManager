@@ -4,6 +4,7 @@ using DynamicData;
 using DynamicData.Kernel;
 using FluentAssertions;
 using NSubstitute;
+using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Controls;
@@ -238,10 +239,11 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
             .Should().Be("1 mod installed by Big Collection isn't in revision 7. Removing it avoids conflicts. A kept mod moves to My Mods and is managed as your own.");
     }
 
-    private static CollectionUpdateResult ResultWith(int failed, int oldVersionsKept, string[]? skippedRules = null, Exception? error = null)
+    private static CollectionUpdateResult ResultWith(int failed, int oldVersionsKept, string[]? skippedRules = null, Exception? error = null, int pending = 0)
     {
+        var pendingMods = Enumerable.Range(0, pending).Select(i => new InstallCollectionJob.PendingItem(default, $"Pending {i}", ReviewKind.NoInstaller, "no installer")).ToArray();
         var failures = Enumerable.Range(0, failed).Select(i => new InstallCollectionJob.FailedItem(default, $"Mod {i}", new InvalidOperationException("no"))).ToArray();
-        return new CollectionUpdateResult(default, [], failures, oldVersionsKept, skippedRules ?? [], error);
+        return new CollectionUpdateResult(default, [], failures, pendingMods, oldVersionsKept, skippedRules ?? [], error);
     }
 
     [Fact]
@@ -249,7 +251,15 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
     {
         CollectionUpdateFlow.ResultText(ResultWith(0, 0)).Should().Be("Collection updated");
         CollectionUpdateFlow.ResultText(ResultWith(1, 0)).Should().Be("Collection updated, but 1 mod failed to install.");
-        CollectionUpdateFlow.ResultText(ResultWith(3, 2)).Should().Be("Collection updated, but 3 mods failed to install. Where there was an older version of a failed mod, it was kept in My Mods.");
+        CollectionUpdateFlow.ResultText(ResultWith(3, 2)).Should().Be("Collection updated, but 3 mods failed to install. An older version was kept in My Mods for mods that failed or still need review.");
+    }
+
+    [Fact]
+    public void ResultText_SaysHowManyModsNeedReview()
+    {
+        CollectionUpdateFlow.ResultText(ResultWith(0, 0, pending: 1)).Should().Be("Collection updated. 1 mod needs review.");
+        CollectionUpdateFlow.ResultText(ResultWith(0, 0, pending: 3)).Should().Be("Collection updated. 3 mods need review.");
+        CollectionUpdateFlow.ResultText(ResultWith(1, 0, pending: 2)).Should().Be("Collection updated, but 1 mod failed to install. 2 mods need review.");
     }
 
     [Fact]

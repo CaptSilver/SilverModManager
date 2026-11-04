@@ -22,7 +22,7 @@ public static class CollectionReinstaller
     /// same revision. Mods run through their installers again, so the collection's saved choices are re-applied.
     /// </summary>
     /// <remarks>
-    /// The optional items that were installed stay selected; optional items that weren't are left out.
+    /// The optional items that were installed or are waiting for review stay selected; optional items that weren't are left out.
     /// Nothing is downloaded, so the group is only removed once every archive the install needs is in the library.
     /// </remarks>
     /// <param name="serviceProvider">The app's services.</param>
@@ -60,9 +60,16 @@ public static class CollectionReinstaller
             var installedOptional = CollectionDownloader
                 .GetItems(revision, CollectionDownloader.ItemType.Optional)
                 .Where(item => CollectionDownloader.GetStatus(item, collectionGroup, connection.Db).IsInstalled(out _));
+            // A pending optional mod was marked for install, so it comes back too, unless the user dismissed it.
+            var pendingOptional = PendingInstalls.For(connection.Db, current.Id)
+                .Where(static row => !PendingInstalls.IsDismissed(row))
+                .Select(static row => row.Download)
+                .Where(static download => download.IsOptional);
             var items = CollectionDownloader
                 .GetItems(revision, CollectionDownloader.ItemType.Required)
                 .Concat(installedOptional)
+                .Concat(pendingOptional)
+                .DistinctBy(static item => item.Id)
                 .ToArray();
 
             // The install job refuses to start with an archive missing, and by then the group would already be gone.

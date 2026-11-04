@@ -98,6 +98,32 @@ public static class PendingInstalls
     }
 
     /// <summary>
+    /// Stamps the old version each slot replaces on the slot's pending row, so whichever install finishes the mod later
+    /// removes the old version and keeps its switched-off state. A slot without a row, or whose old version is already
+    /// gone, is left alone.
+    /// </summary>
+    public static async ValueTask StampReplacements(IConnection connection, EntityId group, IReadOnlyList<ReplacedSlot> slots)
+    {
+        if (slots.Count == 0) return;
+
+        using var tx = connection.BeginTransaction();
+        var db = connection.Db;
+        var any = false;
+        foreach (var slot in slots)
+        {
+            if (!LoadoutItemGroup.Load(db, slot.OldGroup.Value).IsValid()) continue;
+            foreach (var row in Rows(db, group, slot.NewDownload))
+            {
+                tx.Add(row.Id, NexusCollectionPendingInstall.ReplacesGroup, slot.OldGroup.Value.Value);
+                tx.Add(row.Id, NexusCollectionPendingInstall.ReplacedWasDisabled, slot.WasDisabled);
+                any = true;
+            }
+        }
+
+        if (any) await tx.Commit();
+    }
+
+    /// <summary>
     /// The downloads "Try again" runs over: every undismissed row, optional ones included, whose archive is still in the
     /// library. An archive that is gone has to be downloaded again first.
     /// </summary>

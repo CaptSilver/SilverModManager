@@ -1237,6 +1237,37 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
     }
 
     [Fact]
+    public async Task Reinstall_IncludesPendingOptionalMods_ButNotDismissedOnes()
+    {
+        var (file, revision, required) = await CreateCollection(
+            [(null, "Required"), (null, "Pending optional"), (null, "Dismissed optional")],
+            optionalIndexes: [1, 2],
+            shapes: [ModShape.Plain, ModShape.Unknown, ModShape.Unknown]);
+        var loadout = await CreateLoadout();
+        var optional = CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional);
+        var group = await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, [.. required, .. optional]));
+        PendingInstalls.For(Connection.Db, group.Id).Should().HaveCount(2);
+        var dismissed = optional.Single(item => item.ArrayIndex == 2);
+        await PendingInstalls.Dismiss(Connection, PendingRow(group, dismissed).Value.Id);
+
+        var newGroup = await AwaitJob(await CollectionReinstaller.Reinstall(ServiceProvider, NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id)));
+
+        PendingInstalls.For(Connection.Db, newGroup.Id).Select(static row => row.Download.Name).Should().Equal("Pending optional");
+        PendingInstalls.IsDismissed(PendingInstalls.For(Connection.Db, newGroup.Id).Single()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RemovingTheCollection_RemovesItsPendingRows()
+    {
+        var (group, _, _, _, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+        PendingInstalls.For(Connection.Db, group.Id).Should().ContainSingle();
+
+        await LoadoutManager.RemoveCollection(CollectionGroupId.From(group.Id));
+
+        Connection.Db.Datoms(NexusCollectionPendingInstall.CollectionGroup, group.Id).Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Reviewing_APendingMod_InstallsItAndRetractsTheRow()
     {
         var (group, loadout, job, _, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);

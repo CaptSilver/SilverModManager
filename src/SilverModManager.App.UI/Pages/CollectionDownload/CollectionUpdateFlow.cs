@@ -26,7 +26,9 @@ internal static class CollectionUpdateFlow
         var text = result.Failed.Count == 0
             ? Language.ToastNotification_Collection_updated
             : string.Format(Language.ToastNotification_Collection_updated_with_failures, ModCount.Text(result.Failed.Count));
-        if (result.Failed.Count == 0 && result.SkippedRules.Count > 0) text += ".";
+        if (result.Failed.Count == 0 && (result.SkippedRules.Count > 0 || result.Pending.Count > 0)) text += ".";
+        if (result.Pending.Count > 0)
+            text += result.Pending.Count == 1 ? Language.ToastNotification_Collection_update_one_needs_review : string.Format(Language.ToastNotification_Collection_update_need_review, result.Pending.Count);
         if (result.OldVersionsKept > 0) text += Language.ToastNotification_Collection_update_kept_old_versions;
         if (result.SkippedRules.Count > 0) text += string.Format(Language.ToastNotification_Collection_update_skipped_rules, result.SkippedRules.Count);
         return text;

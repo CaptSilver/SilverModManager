@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
+using DynamicData.Kernel;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Collections.Json;
 using SilverModManager.Abstractions.GuidedInstallers;
@@ -13,6 +14,7 @@ using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.Games.FOMOD;
 using SilverModManager.Games.TestFramework;
+using SilverModManager.Games.TestFramework.Helpers;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
@@ -89,13 +91,13 @@ public class CollectionUpdateTests(ITestOutputHelper helper) : ACyberpunkIsolate
 
     private sealed record Scenario(Revision First, Revision Second, LoadoutId Loadout, NexusCollectionLoadoutGroup.ReadOnly Group);
 
-    private async Task<Scenario> InstalledFirstRevision(bool withRules = true, ModRule[]? secondRules = null)
+    private async Task<Scenario> InstalledFirstRevision(bool withRules = true, ModRule[]? secondRules = null, ModShape secondB = ModShape.Plain)
     {
         var a = await MakeMod("a", 0);
         var c = await MakeMod("c", 2);
         var d = await MakeMod("d", 3);
         var first = await Publish(1, [a, await MakeMod("b", 1), c, d], withRules ? [Over("a", "d")] : []);
-        var second = await Publish(2, [a, await MakeMod("b", 11), d, await MakeMod("e", 4)], secondRules ?? (withRules ? [Over("d", "a")] : []));
+        var second = await Publish(2, [a, await MakeMod("b", 11, secondB), d, await MakeMod("e", 4)], secondRules ?? (withRules ? [Over("d", "a")] : []));
         var loadout = await CreateLoadout();
         var group = await Await(InstallCollectionJob.Create(ServiceProvider, loadout, first.File, first.Revision, first.Items));
         return new Scenario(first, second, loadout, group);
@@ -122,6 +124,121 @@ public class CollectionUpdateTests(ITestOutputHelper helper) : ACyberpunkIsolate
     private string[] OrderOf(LoadoutId loadout, params string[] names) =>
         LoadoutItemGroupPriority.FindByLoadout(Connection.Db, loadout).Where(row => row.Target.IsValid()).OrderByDescending(row => row.Priority)
             .Select(row => LoadoutItem.Load(Connection.Db, row.TargetId).Name).Where(names.Contains).ToArray();
+
+    /// <summary>Runs the download job the way Review does: attended, on its own.</summary>
+    private async Task Review(LoadoutId loadout, CollectionDownload.ReadOnly download, params string[] claimedArchives)
+    {
+        var job = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, download, CancellationToken.None, unattended: false, installer: new ClaimingInstaller(claimedArchives));
+        async Task Run() => await ServiceProvider.GetRequiredService<IJobMonitor>().Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(job);
+        await Run().WaitAsync(Timeout);
+    }
+
+    private static CollectionDownload.ReadOnly Download(Scenario s, string name) => s.Second.Items.Single(item => item.Name == name);
+
+    private Optional<NexusCollectionPendingInstall.ReadOnly> RowOf(Scenario s, string name) =>
+        PendingInstalls.Find(Connection.Db, s.Group.Id, CollectionDownloadId.From(Download(s, name).Id));
+
+    private async Task DisableMod(LoadoutId loadout, string name)
+    {
+        using var tx = Connection.BeginTransaction();
+        tx.Add(Mod(loadout, name).Id, LoadoutItem.Disabled, Null.Instance);
+        await tx.Commit();
+    }
+
+    private static readonly string[] AllNames = ["a-0.zip", "b-1.zip", "b-11.zip", "c-2.zip", "d-3.zip", "e-4.zip"];
+
+    [Fact]
+    public async Task Update_StampsTheReplacedGroupOnThePendingRow_AndReviewFinishesTheReplacement()
+    {
+        var s = await InstalledFirstRevision(withRules: false, secondB: ModShape.Unknown);
+        var oldB = Mod(s.Loadout, "b-1.zip");
+        await DisableMod(s.Loadout, "b-1.zip");
+
+        var result = await CollectionUpdater.Update(ServiceProvider, s.Group, s.Second.Revision);
+
+        result.Pending.Select(pending => pending.Name).Should().Equal("Mod b");
+        result.OldVersionsKept.Should().Be(1);
+        Exists(s.Loadout, "b-1.zip").Should().BeTrue("the old version waits for its replacement");
+        var row = RowOf(s, "Mod b").Value;
+        row.ReplacesGroup.Value.Should().Be(oldB.Id.Value);
+        row.ReplacedWasDisabled.Value.Should().BeTrue();
+        var before = OrderOf(s.Loadout, AllNames);
+
+        await Review(s.Loadout, Download(s, "Mod b"), "mod11.zip");
+
+        LoadoutItemGroup.Load(Connection.Db, oldB.Id).IsValid().Should().BeFalse("the review removed the old version");
+        Mod(s.Loadout, "b-11.zip").AsLoadoutItem().IsDisabled.Should().BeTrue("the old version was switched off");
+        OrderOf(s.Loadout, AllNames).Should().Equal(before.Select(name => name == "b-1.zip" ? "b-11.zip" : name));
+    }
+
+    [Fact]
+    public async Task Update_StampSurvivesTryAgain_AndReviewStillFinishesTheReplacement()
+    {
+        var s = await InstalledFirstRevision(withRules: false, secondB: ModShape.Unknown);
+        var oldB = Mod(s.Loadout, "b-1.zip");
+        await CollectionUpdater.Update(ServiceProvider, s.Group, s.Second.Revision);
+
+        var group = NexusCollectionLoadoutGroup.Load(Connection.Db, s.Group.Id);
+        var retry = PendingInstalls.RetryItems(Connection.Db, group.Id);
+        await Await(InstallCollectionJob.Create(ServiceProvider, s.Loadout, group.LibraryFile, group.Revision, retry));
+
+        var row = RowOf(s, "Mod b").Value;
+        row.ReplacesGroup.Value.Should().Be(oldB.Id.Value, "a second pending result keeps the stamp");
+        LoadoutItemGroup.Load(Connection.Db, oldB.Id).IsValid().Should().BeTrue("its replacement is still pending");
+
+        await Review(s.Loadout, Download(s, "Mod b"), "mod11.zip");
+
+        LoadoutItemGroup.Load(Connection.Db, oldB.Id).IsValid().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeletingTheOldVersion_KeepsThePendingRow_AndReviewHasNothingToReplace()
+    {
+        var s = await InstalledFirstRevision(withRules: false, secondB: ModShape.Unknown);
+        var oldB = Mod(s.Loadout, "b-1.zip");
+        await CollectionUpdater.Update(ServiceProvider, s.Group, s.Second.Revision);
+
+        await LoadoutManager.RemoveItems([oldB.LoadoutItemGroupId]);
+
+        RowOf(s, "Mod b").HasValue.Should().BeTrue();
+        PendingInstalls.ReplacementOf(Connection.Db, RowOf(s, "Mod b")).Should().BeNull();
+
+        await Review(s.Loadout, Download(s, "Mod b"), "mod11.zip");
+
+        RowOf(s, "Mod b").HasValue.Should().BeFalse();
+        CollectionMods(s.Group).Count(name => name == "b-11.zip").Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Update_DropsPendingOptionalRows_DismissedOrNot()
+    {
+        var a = await MakeMod("a", 0);
+        var optional = new[] { await MakeMod("o", 5, ModShape.Unknown), await MakeMod("p", 6, ModShape.Unknown), await MakeMod("q", 7, ModShape.Unknown) };
+        Mod[] mods = [a, .. optional];
+        var first = await Publish(1, mods, [], optional: [1, 2, 3]);
+        var second = await Publish(2, mods, [], optional: [1, 2, 3]);
+        var loadout = await CreateLoadout();
+        var optionalItems = CollectionDownloader.GetItems(first.Revision, CollectionDownloader.ItemType.Optional);
+        var group = await Await(InstallCollectionJob.Create(ServiceProvider, loadout, first.File, first.Revision, [.. first.Items, .. optionalItems]));
+        PendingInstalls.For(Connection.Db, group.Id).Should().HaveCount(3);
+        await PendingInstalls.Dismiss(Connection, PendingInstalls.For(Connection.Db, group.Id).First().Id);
+
+        await CollectionUpdater.Update(ServiceProvider, group, second.Revision);
+
+        Connection.Db.Datoms(NexusCollectionPendingInstall.CollectionGroup, group.Id).Should().BeEmpty("rows of the old revision's downloads would never be retracted otherwise");
+        PendingInstalls.For(Connection.Db, group.Id).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Update_ReportsPendingModsInTheResult()
+    {
+        var s = await InstalledFirstRevision(secondB: ModShape.Unknown);
+
+        var result = await CollectionUpdater.Update(ServiceProvider, s.Group, s.Second.Revision);
+
+        result.Pending.Select(pending => pending.Name).Should().Equal("Mod b");
+        result.Failed.Should().BeEmpty();
+    }
 
     [Fact]
     public async Task SwitchKeepsTheGroupAndPointsUnchangedModsAtTheNewRevision()

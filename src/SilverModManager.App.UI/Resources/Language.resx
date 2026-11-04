@@ -1470,7 +1470,7 @@ Use it for {0}?</value>
         <value>Reinstall collection?</value>
     </data>
     <data name="CollectionLoadoutView_ReinstallCollection_Confirmation_Message" xml:space="preserve">
-        <value>The mods of "{0}" will be removed from the loadout and installed again from the downloaded files. Installers run again with the choices saved in the collection. Nothing is downloaded.</value>
+        <value>The mods of "{0}" will be removed from the loadout and installed again from the downloaded files. Installers run again with the choices saved in the collection. Mods you placed with Review will need Review again. Nothing is downloaded.</value>
     </data>
     <data name="CollectionLoadoutView_ReinstallCollection_Confirmation_Button" xml:space="preserve">
         <value>Reinstall</value>
@@ -2071,7 +2071,13 @@ Use it for {0}?</value>
         <value>Collection updated, but {0} failed to install.</value>
     </data>
     <data name="ToastNotification_Collection_update_kept_old_versions" xml:space="preserve">
-        <value> Where there was an older version of a failed mod, it was kept in My Mods.</value>
+        <value> An older version was kept in My Mods for mods that failed or still need review.</value>
+    </data>
+    <data name="ToastNotification_Collection_update_one_needs_review" xml:space="preserve">
+        <value> 1 mod needs review.</value>
+    </data>
+    <data name="ToastNotification_Collection_update_need_review" xml:space="preserve">
+        <value> {0} mods need review.</value>
     </data>
     <data name="CollectionDownloadViewModel_OlderThanInstalled" xml:space="preserve">
         <value>A newer revision of this collection is installed, so this one can't replace it.</value>
