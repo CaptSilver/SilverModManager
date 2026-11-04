@@ -115,15 +115,23 @@ done
 # the build holds a lock in the git folder and the tests run after it, unlocked, without building again. Test
 # modules are already built and skip this.
 if (( ${#build_target[@]} )); then
-    lock="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || echo /tmp)/silvermod-build.lock"
+    git_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || echo /tmp)"
+    lock="$git_dir/silvermod-build.lock"
     exec 9>"$lock"
+    asked=$SECONDS
     if ! flock -n 9; then
         echo "Waiting for another run's build to finish ($lock)" >&2
         flock 9
     fi
-    dotnet build "${build_target[@]}" -nodeReuse:false || exit $?
+    started=$SECONDS
+    build_status=0
+    dotnet build "${build_target[@]}" -nodeReuse:false || build_status=$?
+    # One line per build, to see how long runs queue for the lock against how long they build.
+    printf '%s\twaited %ds\tbuilt %ds\texit %d\t%s\n' "$(date -Is)" $((started - asked)) $((SECONDS - started)) \
+        "$build_status" "${build_target[*]}" >> "$git_dir/silvermod-build.log"
     flock -u 9
     exec 9>&-
+    (( build_status == 0 )) || exit "$build_status"
     no_build=(--no-build)
 else
     no_build=()
