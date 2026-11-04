@@ -729,6 +729,35 @@ public class ArchiveTraversalTests : AFileExtractorTest
         outcome.Warnings.Should().ContainSingle(w => w.Contains("sub/../x.txt") && w.Contains("Dropping"));
     }
 
+    // The last copy of a repeated name is a hard link: whatever it points at, the name is dropped with a
+    // warning, the same way a name stored as a file and a hard link is.
+    [Theory]
+    [InlineData("earlier")]
+    [InlineData("outside")]
+    [InlineData("link")]
+    public async Task ARepeatedNameWhoseLastCopyIsAHardLinkIsDropped(string targetKind)
+    {
+        await using var outside = TemporaryFileManager.CreateFolder();
+        var secret = outside.Path.Combine("secret.txt");
+        await secret.WriteAllTextAsync("private", TestContext.Current.CancellationToken);
+
+        var outcome = await ExtractTar(writer =>
+        {
+            AddFile(writer, "ok.txt", "real");
+            writer.WriteEntry(new GnuTarEntry(TarEntryType.HardLink, "first-link") { LinkName = "ok.txt" });
+            AddFile(writer, "sub/../x.txt", "first");
+            var target = targetKind switch { "earlier" => "ok.txt", "outside" => secret.ToString(), _ => "first-link" };
+            writer.WriteEntry(new GnuTarEntry(TarEntryType.HardLink, "sub/../x.txt") { LinkName = target });
+            writer.WriteEntry(new GnuTarEntry(TarEntryType.HardLink, "sub/../x.txt") { LinkName = target });
+        });
+
+        outcome.Files.Keys.Should().NotContain(k => k.Contains("x.txt"));
+        outcome.Files["ok.txt"].Should().Be("real");
+        outcome.Outside.Should().BeEmpty();
+        File.ReadAllText(secret.ToString()).Should().Be("private");
+        outcome.Warnings.Should().Contain(w => w.Contains("sub/../x.txt") && w.Contains("Dropping"));
+    }
+
     // 7z writes through a folder link that is already in the destination, so what would go below it is
     // left out of the 7z run and skipped, as a moved entry is.
     [Fact]

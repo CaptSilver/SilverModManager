@@ -36,4 +36,22 @@ public class ExtractArchive(IServiceProvider provider) : AVerbTest(provider)
         new FileInfo(output.Combine("rootFile.txt").ToString()).LinkTarget.Should().BeNull();
         File.Exists(output.Combine("deepFolder/deepFolder2/deepFolder3/deepFolder4/deepFile.txt").ToString()).Should().BeTrue();
     }
+
+    // data_7zip_lzma2.7z stores deepFolder/deepFolder2/deepFolder3/deepFolder4/deepFile.txt.
+    [Fact]
+    public async Task ANestedLinkAlreadyInTheOutputFolderIsNeverWrittenThrough()
+    {
+        await using var container = TemporaryFileManager.CreateFolder();
+        var outside = container.Path.Combine("outside");
+        outside.CreateDirectory();
+        var output = container.Path.Combine("out");
+        output.Combine("deepFolder/deepFolder2").CreateDirectory();
+        Directory.CreateSymbolicLink(output.Combine("deepFolder/deepFolder2/deepFolder3").ToString(), outside.ToString());
+
+        await Run("extract-archive", "-i", Data7ZipLZMA2.ToString(), "-o", output.ToString());
+
+        Directory.EnumerateFileSystemEntries(outside.ToString()).Should().BeEmpty();
+        new FileInfo(output.Combine("deepFolder/deepFolder2/deepFolder3").ToString()).LinkTarget.Should().Be(outside.ToString());
+        File.Exists(output.Combine("rootFile.txt").ToString()).Should().BeTrue();
+    }
 }
