@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.ProxyConsole;
 using Rendering = Spectre.Console.Rendering;
 using Console = Spectre.Console;
@@ -17,12 +18,15 @@ public class TextRenderDefinition() : ARenderableDefinition<Text>("718E119C-FABF
     }
 
     /// <summary>
-    /// The text with its arguments applied, or the template verbatim when there are none.
+    /// The text with its arguments applied, or the template verbatim when there are none, with terminal control
+    /// characters dropped. Names and messages from outside end up in templates and arguments alike, so the whole
+    /// result is cleaned; line breaks and tabs stay.
     /// </summary>
     internal static string Format(Text renderable)
     {
-        return renderable.Arguments.Length == 0
+        var text = renderable.Arguments.Length == 0
             ? renderable.Template
             : string.Format(renderable.Template, renderable.Arguments);
+        return MarkdownText.PlainText(text, keepLayout: true);
     }
 }

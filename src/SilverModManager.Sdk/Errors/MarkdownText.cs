@@ -153,12 +153,23 @@ public static partial class MarkdownText
         return $"{fence}\n{clean}\n{fence}";
     }
 
-    private static string Sanitise(string text)
+    private static string Sanitise(string text) => PlainText(text);
+
+    /// <summary>
+    /// <paramref name="text"/> with everything dropped that a terminal or a text box would act on instead of show:
+    /// C0 and C1 controls (escape sequences, bell, U+009B) and Unicode format characters (bidi overrides, zero-width
+    /// marks). Line breaks and tabs become spaces, or stay as they are with <paramref name="keepLayout"/>, for text
+    /// whose own template has line structure. Markup is not touched.
+    /// </summary>
+    public static string PlainText(string? text, bool keepLayout = false)
     {
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+
         var builder = new StringBuilder(text.Length);
         foreach (var c in text)
         {
-            if (c is '\r' or '\n' or '\t' or '\v' or '\f' or '\u0085' or '\u2028' or '\u2029') builder.Append(' ');
+            if (keepLayout && c is '\r' or '\n' or '\t') builder.Append(c);
+            else if (c is '\r' or '\n' or '\t' or '\v' or '\f' or '\u0085' or '\u2028' or '\u2029') builder.Append(keepLayout ? string.Empty : " ");
             else if (char.IsControl(c)) continue;
             else if (CharUnicodeInfo.GetUnicodeCategory(c) is UnicodeCategory.Format) continue;
             else builder.Append(c);

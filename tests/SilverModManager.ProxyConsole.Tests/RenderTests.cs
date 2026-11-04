@@ -120,4 +120,61 @@ public class RenderTests
         console.Lines.Should().OnlyContain(l => l.Length <= 40);
         console.Lines.Count.Should().BeGreaterThan(5);
     }
+
+    private const string Hostile = "a\u001b]0;pwned\u0007b\u001b[2Jc\u009b2Jd\u202Ee\u0000f";
+
+    [Fact]
+    public async Task TextLine_DropsTerminalControlSequences()
+    {
+        await _renderer.RenderAsync(new Text { Template = $"line1\n\t{Hostile}\r\nÜnïcödé 日本" });
+
+        _test.Output.Should().Be("line1\n\ta]0;pwnedb[2Jc2Jdef\nÜnïcödé 日本");
+    }
+
+    [Fact]
+    public async Task TextArguments_DropTerminalControlSequences()
+    {
+        await _renderer.RenderAsync(new Text { Template = "name: {0}", Arguments = [Hostile] });
+
+        _test.Output.Should().Be("name: a]0;pwnedb[2Jc2Jdef");
+    }
+
+    [Fact]
+    public async Task TableCell_DropsTerminalControlSequences()
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+
+        await new SpectreRenderer(console).RenderAsync(new Table
+        {
+            Columns = [new Text { Template = "Name" }],
+            Rows = [[new Text { Template = Hostile }], [new Text { Template = "Ünïcödé 日本" }]],
+        });
+
+        console.Output.Should().Contain("a]0;pwnedb[2Jc2Jdef").And.Contain("Ünïcödé 日本");
+        console.Output.Should().NotContainAny("\u001b", "\u0007", "\u009b", "\u202E", "\0");
+    }
+
+    [Fact]
+    public async Task TableCell_DropsTerminalControlSequences_InTheTableRenderDefinition()
+    {
+        var text = new RenderDefinitions.TextRenderDefinition();
+        var rendered = await new RenderDefinitions.TableRenderDefinition().ToSpectreAsync(
+            new Table { Columns = [new Text { Template = "Name" }], Rows = [[new Text { Template = Hostile }]] },
+            r => text.ToSpectreAsync(r, _ => throw new InvalidOperationException()));
+        var console = new TestConsole();
+
+        console.Write(rendered);
+
+        console.Output.Should().Contain("a]0;pwnedb[2Jc2Jdef");
+        console.Output.Should().NotContainAny("\u001b", "\u0007", "\u009b", "\u202E", "\0");
+    }
+
+    [Fact]
+    public async Task SquareBracketsInValues_AreStillShownLiterally()
+    {
+        await _renderer.RenderAsync(new Text { Template = "{0}", Arguments = ["[red]x[/]"] });
+
+        _test.Output.Should().Be("[red]x[/]");
+    }
 }

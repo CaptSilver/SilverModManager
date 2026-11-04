@@ -37,7 +37,7 @@ public static class CollectionInstallReport
         if (definition.FailedItems.Count > 0)
         {
             await renderer.TextLine($"Not installed ({definition.FailedItems.Count}):");
-            await renderer.Table(["Name", "Reason"], definition.FailedItems.Select(item => new object[] { item.Name, item.Reason }));
+            await renderer.Table(["Name", "Reason"], definition.FailedItems.Select(item => new object[] { item.Name, CliErrors.Describe(item.Exception) }));
         }
 
         if (definition.PendingItems.Count > 0)

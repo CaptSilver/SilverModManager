@@ -70,6 +70,7 @@ public class InstallCollectionVerbTests(ITestOutputHelper helper) : ACyberpunkIs
         var code = await CollectionInstallReport.Run(renderer, ServiceProvider, loadout, file, revision, CancellationToken.None).WaitAsync(Timeout);
 
         code.Should().Be(1, renderer.Output);
-        renderer.Output.Should().Contain("Not installed").And.Contain("Broken mod").And.Contain("broken on purpose");
+        renderer.Output.Should().Contain("Not installed").And.Contain("Broken mod").And.Contain("Something went wrong. Details are in the log at");
+        renderer.Output.Should().NotContain("broken on purpose");
     }
 }
