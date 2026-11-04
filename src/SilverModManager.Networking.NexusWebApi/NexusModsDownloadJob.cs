@@ -71,6 +71,8 @@ public class NexusModsDownloadJob : INexusModsDownloadJob, IJobDefinitionWithSta
     /// <inheritdoc/>
     public ValueTask AddMetadata(ITransaction tx, LibraryFile.New libraryFile)
     {
+        // The download was written to a temporary file, so the row would otherwise be named after that.
+        libraryFile.FileName = ArchiveFileName(HttpDownloadJob.JobDefinition.Uri, FileMetadata.Name);
         libraryFile.GetLibraryItem(tx).Name = FileMetadata.Name;
 
         // Not using .New here because we can't use the LibraryItem Id and don't have the LibraryItem in this method
@@ -86,4 +88,17 @@ public class NexusModsDownloadJob : INexusModsDownloadJob, IJobDefinitionWithSta
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>
+    /// The archive's own name: the last segment of the download link's path, which the Nexus Mods CDN ends with the
+    /// uploaded file's name. A link without one falls back to the file's name on the mod page.
+    /// </summary>
+    internal static RelativePath ArchiveFileName(Uri downloadLink, string pageFileName)
+    {
+        var segment = Uri.UnescapeDataString(downloadLink.AbsolutePath.Split('/')[^1]).Trim();
+        if (segment.Length == 0 || segment is "." or "..")
+            segment = pageFileName.Trim();
+
+        // A name never holds a directory, whatever the page or the link says.
+        return RelativePath.FromUnsanitizedInput(segment.Replace('/', '_').Replace('\\', '_'));
+    }
 }

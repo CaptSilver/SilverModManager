@@ -53,46 +53,59 @@ public partial class NexusModsLibrary
         _graphQlClient = serviceProvider.GetRequiredService<IGraphQlClient>();
     }
 
+    /// <summary>
+    /// Serialises the check-then-write that adds a mod page, a file or a collection revision's pages and files. A
+    /// uid is indexed but not unique, so two writers that both read "not there yet" would each add a row. A writer
+    /// takes this after its network calls and reads the database again once it holds it.
+    /// </summary>
+    private readonly SemaphoreSlim _metadataWrites = new(1, 1);
+
     public async Task<NexusModsModPageMetadata.ReadOnly> GetOrAddModPage(
         ModId modId,
         NexusModsGameId nexusModsGameId,
         CancellationToken cancellationToken = default)
     {
         var uid = new ModUid(modId, nexusModsGameId);
-        var modPageEntities = NexusModsModPageMetadata.FindByUid(_connection.Db, uid);
-        if (modPageEntities.TryGetFirst(x => x.Uid.GameId == nexusModsGameId, out var modPage)) return modPage;
-
-        using var tx = _connection.BeginTransaction();
+        if (TryFindModPage(uid, out var modPage)) return modPage;
 
         var modResult = await _graphQlClient.QueryMod(uid.ModId, uid.GameId, cancellationToken);
         // TODO: handle errors
         var mod = modResult.AssertHasData();
 
-        var modEntityId = mod.Resolve(_connection.Db, tx, setFilesTimestamp: true);
-        await ResolveAllFilesInModPage(uid, tx, modEntityId, cancellationToken);
-
-        var txResults = await tx.Commit();
-        return NexusModsModPageMetadata.Load(txResults.Db, txResults[modEntityId]);
-    }
-
-    private async Task ResolveAllFilesInModPage(ModUid modUid, ITransaction tx, EntityId modPageId, CancellationToken cancellationToken)
-    {
         // Note(sewer):
         // Make sure to also fetch all files on the mod page.
         // The update code refreshes file info only on changes of the mod page.
         // If our initial mod page item does not contain info on all the files,
         // then updates are not visible unless an actual change is made to the
         // mod page, this is somewhat undesireable.
-        var result = await _graphQlClient.QueryModFiles(modUid.ModId, modUid.GameId, cancellationToken: cancellationToken);
-
+        var filesResult = await _graphQlClient.QueryModFiles(uid.ModId, uid.GameId, cancellationToken: cancellationToken);
         // TODO: handle errors
-        var modFiles = result.AssertHasData();
+        var modFiles = filesResult.AssertHasData();
 
-        foreach (var modFile in modFiles)
+        await _metadataWrites.WaitAsync(cancellationToken);
+        try
         {
-            modFile.Resolve(_connection.Db, tx, modPageId);
+            // A caller that held the gate before us may have added the page while we waited on the network.
+            if (TryFindModPage(uid, out modPage)) return modPage;
+
+            using var tx = _connection.BeginTransaction();
+            var modEntityId = mod.Resolve(_connection.Db, tx, setFilesTimestamp: true);
+            foreach (var modFile in modFiles)
+            {
+                modFile.Resolve(_connection.Db, tx, modEntityId);
+            }
+
+            var txResults = await tx.Commit();
+            return NexusModsModPageMetadata.Load(txResults.Db, txResults[modEntityId]);
+        }
+        finally
+        {
+            _metadataWrites.Release();
         }
     }
+
+    private bool TryFindModPage(ModUid uid, out NexusModsModPageMetadata.ReadOnly modPage)
+        => NexusModsModPageMetadata.FindByUid(_connection.Db, uid).TryGetFirst(x => x.Uid.GameId == uid.GameId, out modPage);
 
     public async Task<NexusModsFileMetadata.ReadOnly> GetOrAddFile(
         FileId fileId,
@@ -100,30 +113,40 @@ public partial class NexusModsLibrary
         CancellationToken cancellationToken = default)
     {
         var uid = new FileUid(fileId, modPage.Uid.GameId);
-        var fileEntities = NexusModsFileMetadata.FindByUid(_connection.Db, uid);
-        if (fileEntities.TryGetFirst(x => x.ModPageId == modPage, out var file))
-            return file;
+        if (TryFindFile(uid, modPage, out var file)) return file;
 
         var modFileResult = await _graphQlClient.QueryModFile(fileId, modPage.Uid.GameId, cancellationToken);
         // TODO: handle errors
         var modFile = modFileResult.AssertHasData();
 
-        using var tx = _connection.BeginTransaction();
-
-        var size = Size.FromLong(long.Parse(modFile.SizeInBytes ?? "0"));
-        var newFile = new NexusModsFileMetadata.New(tx)
+        await _metadataWrites.WaitAsync(cancellationToken);
+        try
         {
-            Name = modFile.Name,
-            Version = modFile.Version,
-            ModPageId = modPage,
-            Uid = uid,
-            UploadedAt = DateTimeOffset.FromUnixTimeSeconds(modFile.Date).UtcDateTime,
-            Size = size,
-        };
+            if (TryFindFile(uid, modPage, out file)) return file;
 
-        var txResults = await tx.Commit();
-        return txResults.Remap(newFile);
+            using var tx = _connection.BeginTransaction();
+            var size = Size.FromLong(long.Parse(modFile.SizeInBytes ?? "0"));
+            var newFile = new NexusModsFileMetadata.New(tx)
+            {
+                Name = modFile.Name,
+                Version = modFile.Version,
+                ModPageId = modPage,
+                Uid = uid,
+                UploadedAt = DateTimeOffset.FromUnixTimeSeconds(modFile.Date).UtcDateTime,
+                Size = size,
+            };
+
+            var txResults = await tx.Commit();
+            return txResults.Remap(newFile);
+        }
+        finally
+        {
+            _metadataWrites.Release();
+        }
     }
+
+    private bool TryFindFile(FileUid uid, NexusModsModPageMetadata.ReadOnly modPage, out NexusModsFileMetadata.ReadOnly file)
+        => NexusModsFileMetadata.FindByUid(_connection.Db, uid).TryGetFirst(x => x.ModPageId == modPage, out file);
 
     public async Task<Uri> GetDownloadUri(
         NexusModsFileMetadata.ReadOnly file,

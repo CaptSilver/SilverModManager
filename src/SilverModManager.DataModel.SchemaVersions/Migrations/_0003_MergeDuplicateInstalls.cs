@@ -4,7 +4,6 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Deployment;
 using SilverModManager.MnemonicDB.Abstractions;
-using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -105,21 +104,11 @@ public sealed class _0003_MergeDuplicateInstalls(ILogger<_0003_MergeDuplicateIns
 
         var diskStateGame = db.AttributeCache.GetAttributeId(DiskStateEntry.Game.Id);
         var planInstallation = db.AttributeCache.GetAttributeId(DeploymentPlanEntry.Installation.Id);
-        Span<byte> canonicalValue = stackalloc byte[sizeof(ulong)];
-        var canonicalId = canonical.Id;
-        MemoryMarshal.Write(canonicalValue, in canonicalId);
 
         foreach (var duplicate in duplicates)
         {
-            foreach (var reference in db.ReferencesTo(duplicate.Id))
-            {
-                // Disk state and plan rows were handled above: their paths carry the row id too.
-                if (reference.A == diskStateGame || reference.A == planInstallation) continue;
-                if (reference.Prefix.ValueTag != ValueTag.Reference) continue;
-
-                if (db.AttributeCache.IsCardinalityMany(reference.A)) tx.Add(reference.Retract());
-                tx.Add(reference.E, reference.A, ValueTag.Reference, canonicalValue);
-            }
+            // Disk state and plan rows were handled above: their paths carry the row id too.
+            ReferenceRepointing.Repoint(tx, db, duplicate.Id, canonical.Id, reference => reference.A == diskStateGame || reference.A == planInstallation);
 
             tx.Delete(duplicate.Id, recursive: false);
         }

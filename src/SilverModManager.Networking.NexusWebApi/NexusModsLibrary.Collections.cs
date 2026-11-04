@@ -337,22 +337,34 @@ public partial class NexusModsLibrary
     {
         var gameIds = CacheGameIds(collectionManifest, cancellationToken);
 
-        using var tx = _connection.BeginTransaction();
-        var db = _connection.Db;
+        CollectionRevisionMetadata.ReadOnly revisionMetadata;
 
-        var collectionEntityId = UpdateCollectionInfo(db, tx, collectionFragment);
+        // Two collections can share a mod, and each reads "the page is not there yet" from the database as it was
+        // when its transaction began, so the read and the commit happen under the gate that GetOrAddModPage uses.
+        await _metadataWrites.WaitAsync(cancellationToken);
+        try
+        {
+            using var tx = _connection.BeginTransaction();
+            var db = _connection.Db;
 
-        var revisionId = RevisionId.From((ulong)collectionRevisionFragment.Id);
-        var existingRevisions = CollectionRevisionMetadata.FindByRevisionId(db, revisionId);
-        if (existingRevisions.Count > 0) throw new NotSupportedException($"Revision with id `{revisionId}` already exists!");
+            var collectionEntityId = UpdateCollectionInfo(db, tx, collectionFragment);
 
-        var collectionRevisionEntityId = UpdateRevisionInfo(db, tx, collectionEntityId, collectionRevisionFragment);
+            var revisionId = RevisionId.From((ulong)collectionRevisionFragment.Id);
+            var existingRevisions = CollectionRevisionMetadata.FindByRevisionId(db, revisionId);
+            if (existingRevisions.Count > 0) throw new NotSupportedException($"Revision with id `{revisionId}` already exists!");
 
-        var resolvedEntitiesLookup = ResolveModFiles(db, tx, collectionManifest, gameIds, collectionRevisionFragment);
-        UpdateFiles(db, tx, collectionRevisionEntityId, collectionRevisionFragment, collectionManifest, gameIds, resolvedEntitiesLookup);
+            var collectionRevisionEntityId = UpdateRevisionInfo(db, tx, collectionEntityId, collectionRevisionFragment);
 
-        var results = await tx.Commit();
-        var revisionMetadata = CollectionRevisionMetadata.Load(results.Db, results[collectionRevisionEntityId]);
+            var resolvedEntitiesLookup = ResolveModFiles(db, tx, collectionManifest, gameIds, collectionRevisionFragment);
+            UpdateFiles(db, tx, collectionRevisionEntityId, collectionRevisionFragment, collectionManifest, gameIds, resolvedEntitiesLookup);
+
+            var results = await tx.Commit();
+            revisionMetadata = CollectionRevisionMetadata.Load(results.Db, results[collectionRevisionEntityId]);
+        }
+        finally
+        {
+            _metadataWrites.Release();
+        }
 
         using var ruleTx = _connection.BeginTransaction();
         AddCollectionDownloadRules(ruleTx, collectionManifest, revisionMetadata);
