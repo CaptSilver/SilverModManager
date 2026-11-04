@@ -173,7 +173,9 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         catch (Exception ex)
         {
             _logger.LogFailure(ex, "Running a tool from the Tools page failed");
-            LastRunMessage = string.IsNullOrEmpty(LastRunMessage) ? ex.Message : $"{LastRunMessage}\n{ex.Message}";
+            // The page is a plain text block and a refusal's message is Markdown.
+            var failure = ex is UserFacingException ? MarkdownText.ToPlain(ex.Message) : ex.Message;
+            LastRunMessage = string.IsNullOrEmpty(LastRunMessage) ? failure : $"{LastRunMessage}\n{failure}";
         }
     }
 

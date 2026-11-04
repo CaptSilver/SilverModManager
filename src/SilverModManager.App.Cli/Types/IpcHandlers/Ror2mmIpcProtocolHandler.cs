@@ -86,7 +86,8 @@ public class Ror2mmIpcProtocolHandler(
         catch (UserFacingException e)
         {
             logger.LogWarning(e, "Installing {Version} was refused", parsed.Version);
-            Refuse(e.Message);
+            // The toast shows the message as plain text.
+            Refuse(MarkdownText.ToPlain(e.Message));
         }
         catch (Exception e)
         {

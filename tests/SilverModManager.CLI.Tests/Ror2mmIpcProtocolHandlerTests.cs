@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using DynamicData.Kernel;
 using FluentAssertions;
+using SilverModManager.Sdk.Errors;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
 using NSubstitute;
@@ -253,7 +254,8 @@ public class Ror2mmIpcProtocolHandlerTests
 
         await HandlerFor([Install("REPO", "repo")]).Handle(Link, CancellationToken.None);
 
-        TheFailure().Should().BeOfType<FailureReason.Refused>().Which.Message.Should().Be(refusal.Message);
+        // The toast shows the message as plain text, so the Markdown of the refusal is stripped.
+        TheFailure().Should().BeOfType<FailureReason.Refused>().Which.Message.Should().Be(MarkdownText.ToPlain(refusal.Message)).And.NotContain("`");
     }
 
     [Fact]

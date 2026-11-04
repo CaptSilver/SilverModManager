@@ -22,12 +22,13 @@ public static class CliErrors
 
     /// <summary>
     /// The sentence to print for <paramref name="exception"/>: the refusal's message followed by its command line hint, or where to find the details of a crash.
+    /// A refusal's message is Markdown, so it is printed as plain text.
     /// </summary>
     public static string Describe(Exception exception) => UserFacingErrors.Find(exception) switch
     {
         null => CrashPointer,
-        { CommandLineHint: { } hint } refusal => $"{refusal.Message}{Environment.NewLine}{Environment.NewLine}{hint}",
-        var refusal => refusal.Message,
+        { CommandLineHint: { } hint } refusal => $"{MarkdownText.ToPlain(refusal.Message)}{Environment.NewLine}{Environment.NewLine}{hint}",
+        var refusal => MarkdownText.ToPlain(refusal.Message),
     };
 
     /// <summary>

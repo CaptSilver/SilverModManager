@@ -137,7 +137,7 @@ public class ToolCommandsTests(ITestOutputHelper helper) : AToolFlowTest<ToolCom
         var exit = await Commands().RunToolAsync(_out, loadout, "nothing", null, CancellationToken.None);
 
         exit.Should().Be(1);
-        _out.All.Should().Contain("No tool called `nothing`").And.Contain("TexGen").And.Contain("DynDOLOD");
+        _out.All.Should().Contain("No tool called nothing").And.Contain("TexGen").And.Contain("DynDOLOD");
         await _manager.DidNotReceiveWithAnyArgs().RunToolWithOutcome(default!, default, default!, default);
     }
 
@@ -167,7 +167,7 @@ public class ToolCommandsTests(ITestOutputHelper helper) : AToolFlowTest<ToolCom
         var exit = await Commands().RunToolAsync(_out, loadout, "texgen", "Update.esm", CancellationToken.None);
 
         exit.Should().Be(1);
-        _out.All.Should().Contain("`TexGen` cannot clean a plugin");
+        _out.All.Should().Contain("TexGen cannot clean a plugin");
     }
 
     [Fact]
@@ -219,7 +219,7 @@ public class ToolCommandsTests(ITestOutputHelper helper) : AToolFlowTest<ToolCom
         var exit = await Commands().RunPipelineAsync(_out, loadout, "nothing", CancellationToken.None);
 
         exit.Should().Be(1);
-        _out.All.Should().Contain("No pipeline called `nothing`").And.Contain("LOD generation");
+        _out.All.Should().Contain("No pipeline called nothing").And.Contain("LOD generation");
     }
 
     [Fact]
@@ -244,7 +244,7 @@ public class ToolCommandsTests(ITestOutputHelper helper) : AToolFlowTest<ToolCom
         var exit = await commands.RunPipelineAsync(_out, loadout, "LOD generation", CancellationToken.None);
 
         exit.Should().Be(1);
-        _out.All.Should().Contain("No pipeline called `LOD generation`");
+        _out.All.Should().Contain("No pipeline called LOD generation");
         await _manager.DidNotReceive().RunToolWithOutcome(Arg.Any<ITool>(), Arg.Any<Loadout.ReadOnly>(), Arg.Any<IJobMonitor>(), Arg.Any<CancellationToken>());
     }
 }

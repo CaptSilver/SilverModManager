@@ -70,7 +70,7 @@ public sealed class LoadoutLaunchCommand(IServiceProvider services, IToolManager
         if (finished == launch && await launch is { } failure)
         {
             var refusal = UserFacingErrors.Find(failure);
-            await renderer.TextLine(refusal?.Message ?? $"Launching '{loadout.Name}' failed. The SilverModManager log has the details.");
+            await renderer.TextLine((refusal is null ? null : MarkdownText.ToPlain(refusal.Message)) ?? $"Launching '{loadout.Name}' failed. The SilverModManager log has the details.");
             return FailureExitCode;
         }
 

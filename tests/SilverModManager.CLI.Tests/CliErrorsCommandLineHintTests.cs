@@ -42,4 +42,12 @@ public class CliErrorsCommandLineHintTests
     public void SeveralRefusalsWithoutHints_PrintJustTheMessages()
         => CliErrors.Describe(new AggregateException(new Refusal("First.", null), new Refusal("Second.", null)))
             .Should().Be($"First.{Environment.NewLine}Second.");
+
+    [Fact]
+    public void ARefusalMessage_IsPrintedAsPlainTextWithoutMarkdownEscapes()
+    {
+        var message = $"Could not move {MarkdownText.Code("my_mod")} ({MarkdownText.Inline("disk_full *now*")}) [x](http://e)";
+
+        CliErrors.Describe(new Refusal(message, null)).Should().Be("Could not move my_mod (disk_full *now*) [x](http://e)");
+    }
 }

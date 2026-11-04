@@ -83,7 +83,7 @@ public sealed class ToolCommands(ToolInstaller installer, IToolManager tools, To
         }
         catch (Exception ex) when (ex is UserFacingException or InvalidOperationException)
         {
-            await renderer.TextLine(ex.Message);
+            await renderer.TextLine(ex is UserFacingException ? MarkdownText.ToPlain(ex.Message) : ex.Message);
         }
         catch (Exception ex)
         {
