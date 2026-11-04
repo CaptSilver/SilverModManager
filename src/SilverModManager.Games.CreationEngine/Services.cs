@@ -1,4 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using SilverModManager.Games.CreationEngine.GeneratedCaches;
+using SilverModManager.Sdk.GeneratedCaches;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
@@ -36,6 +39,7 @@ public static class Services
         services.AddBethesdaGame<OblivionRemastered.OblivionRemastered>(KnownPaths.OBSE64Loader);
 
         services.AddCreationEngineTools();
+        services.AddSkyrimGeneratedCaches();
 
         services.AddSettings<LootMasterlistSettings>();
         services.AddSingleton(s => new LootDataDirectory(
@@ -49,6 +53,18 @@ public static class Services
             .AddPluginListNoticeModel()
             .AddPluginQueriesSql();
 
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the caches Skyrim SE/AE and VR mods keep derived from the game files, so the synchronizer clears
+    /// them when an Apply changes the files they came from.
+    /// </summary>
+    public static IServiceCollection AddSkyrimGeneratedCaches(this IServiceCollection services)
+    {
+        IReadOnlyCollection<GameId> games = [SkyrimSE.SkyrimSE.GameId, SkyrimVR.SkyrimVR.GameId];
+        services.AddSingleton<IGeneratedCache>(s => new FasterFileCopyCache(games, s.GetRequiredService<ILogger<FasterFileCopyCache>>()));
+        services.AddSingleton<IGeneratedCache>(s => new SkyrimPrecombinesCache(games, s.GetRequiredService<ILogger<SkyrimPrecombinesCache>>()));
         return services;
     }
 

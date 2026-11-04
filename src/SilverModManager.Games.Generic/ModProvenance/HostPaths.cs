@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace SilverModManager.Games.Generic.ModProvenance;
 
 /// <summary>Turns the paths another manager wrote (often Windows paths seen through Wine) into paths on this machine.</summary>
-internal static partial class HostPaths
+public static partial class HostPaths
 {
     private const int MaxLinkHops = 40;
 
@@ -46,7 +46,7 @@ internal static partial class HostPaths
     }
 
     /// <summary>The path with every link on the way followed, so <c>/home/x</c> and <c>/var/home/x</c> compare equal.</summary>
-    internal static string RealPath(string path, int hops = 0)
+    public static string RealPath(string path, int hops = 0)
     {
         var current = "/";
         foreach (var segment in Path.GetFullPath(path).Split('/', StringSplitOptions.RemoveEmptyEntries))

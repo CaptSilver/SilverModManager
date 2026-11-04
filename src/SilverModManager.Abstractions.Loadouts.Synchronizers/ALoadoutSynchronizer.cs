@@ -16,6 +16,7 @@ using SilverModManager.Abstractions.Loadouts.Deployment;
 using SilverModManager.Abstractions.Loadouts.Exceptions;
 using SilverModManager.Abstractions.Loadouts.Files.Diff;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Sdk.GeneratedCaches;
 using SilverModManager.Abstractions.Loadouts.Sorting;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Hashing.xxHash3;
@@ -79,6 +80,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private readonly MassRemovalThreshold _massRemovalThreshold;
     private readonly IFullFileHasher _fullHasher;
     private readonly IForeignDeploymentSource[] _foreignDeploymentSources;
+    private readonly GeneratedCacheClearer _cacheClearer;
 
     /// <summary>
     /// Loadout synchronizer base constructor.
@@ -110,6 +112,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         _massRemovalThreshold = serviceProvider.GetRequiredService<MassRemovalThreshold>();
         _fullHasher = serviceProvider.GetService<IFullFileHasher>() ?? MultiHashFileHasher.Instance;
         _foreignDeploymentSources = serviceProvider.GetServices<IForeignDeploymentSource>().ToArray();
+        _cacheClearer = new GeneratedCacheClearer(serviceProvider.GetServices<IGeneratedCache>().ToArray(), logger);
 
         _fileHashService = fileHashService;
         _identityResolver = serviceProvider.GetRequiredService<IFileIdentityResolver>();
@@ -761,7 +764,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private void LeaveGameWrittenFileAlone(GamePath path, ref SyncNode item)
     {
         if (item.HaveLoadout && item.SourceItemType != LoadoutSourceItemType.Game) return;
-        if (!IsGameWrittenPath(path) || !GamePathFilter.ShouldFilter(path)) return;
+        if (!IsGameOrCacheOutput(path) || !GamePathFilter.ShouldFilter(path)) return;
 
         item.Actions = item.HaveDisk ? Actions.ForgetDiskState : Actions.DoNothing;
     }
@@ -908,6 +911,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         job?.SetStatus(SyncPhases.CleaningUp);
         await _garbageCollectorRunner.RunAsync();
 
+        // Last, once the Apply is recorded: a failed Apply never reaches here and leaves the caches alone.
+        _cacheClearer.Clear(loadout.InstallationInstance, ChangedGamePaths(syncTree));
 
         return loadout;
     }
@@ -1119,7 +1124,14 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// earlier build that did not filter the path filed the game's output as the player's overrides; the sync never
     /// deploys such a row, so it is dropped rather than left to read as a mod that cannot be deployed.
     /// </summary>
-    private bool IsGameOutputOnFilteredPath(GamePath path) => IsGameWrittenPath(path) && GamePathFilter.ShouldFilter(path);
+    private bool IsGameOutputOnFilteredPath(GamePath path) => IsGameOrCacheOutput(path) && GamePathFilter.ShouldFilter(path);
+
+    /// <summary>
+    /// Whether the path is something the game or a mod's generated cache writes, so never the loadout's to deploy.
+    /// A cache folder an earlier build indexed has disk state and Overrides rows that are dropped the way the
+    /// game's own output is; the files stay on disk.
+    /// </summary>
+    private bool IsGameOrCacheOutput(GamePath path) => IsGameWrittenPath(path) || _cacheClearer.IsOwnedPath(path);
 
     /// <summary>
     /// Alternative to <see cref="RunActions"/> that ignores changes and optionally clears the last sync loadout metadata
@@ -2177,7 +2189,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <summary>
     /// Whether the path is a record another mod manager (Vortex's deployment manifests and folder markers) keeps in the
     /// game folder. They stay on disk and are never indexed, so they are not ingested as a mod file, backed up or
-    /// deleted when a mod is switched off.
+    /// deleted when a mod is switched off. A folder a mod keeps its generated cache in is filtered the same way
+    /// (see <see cref="IGeneratedCache"/>); only the cache clearing deletes from it.
     /// </summary>
     private bool IsForeignManagerRecord(GamePath path)
     {
@@ -2189,12 +2202,21 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         return false;
     }
 
+    /// <summary>
+    /// The paths an Apply wrote, deleted or took over from the disk, which is what a cache derived from the game
+    /// files has to be checked against.
+    /// </summary>
+    private static List<GamePath> ChangedGamePaths(Dictionary<GamePath, SyncNode> syncTree)
+        => syncTree.Where(pair => (pair.Value.Actions & (Actions.ExtractToDisk | Actions.DeleteFromDisk | Actions.IngestFromDisk)) != 0)
+            .Select(pair => pair.Key)
+            .ToList();
+
     /// <inheritdoc />
     /// <remarks>
     /// The base rule joined with <see cref="GameSpecificPathFilter"/>. It is composed on first use rather than in
     /// an initializer because an initializer cannot call the virtual member.
     /// </remarks>
-    public IGamePathFilter GamePathFilter => _composedFilter ??= Synchronizers.GamePathFilters.Any(BaseGamePathFilter, GameSpecificPathFilter, Synchronizers.GamePathFilters.Create(IsForeignManagerRecord));
+    public IGamePathFilter GamePathFilter => _composedFilter ??= Synchronizers.GamePathFilters.Any(BaseGamePathFilter, GameSpecificPathFilter, Synchronizers.GamePathFilters.Create(path => IsForeignManagerRecord(path) || _cacheClearer.IsOwnedPath(path)));
 
     /// <summary>
     /// The rule every game gets: save files are never indexed, backed up, overwritten or deleted, whichever
