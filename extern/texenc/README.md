@@ -56,3 +56,17 @@ The managed side binds `smm_texenc_encode_bc1`, `_bc3` and `_bc7`. `_bc4` and `_
 but not called: rgbcx's fast BC4/BC5 encoder has no quality level and decodes below BCnEncoder.Net's Balanced on noise
 (about 29.3 against 30.6 dB) and on a 64 pixel gradient (51.7 against 66.2 dB), so those formats stay on the managed encoder.
 `rgbcx::encode_bc4_hq` and `encode_bc5_hq` are the next thing to try; that is a shim change and a rebuild.
+
+## Benchmarks
+
+`benchmarks/SilverModManager.Benchmarks` has two texture cases (`TextureEncoders`, `TextureEndToEnd`; run the app with no
+arguments for the numbers). `TextureEncoders` times each encoder alone per level and prints Mpix/s and PSNR for the
+generated textures at 1024 and 2048 pixels; it is how the levels in `NativeEncoderLevels` were picked. `TextureEndToEnd`
+runs `DdsRecompressor` from a BC7 source with one texture, four at once, and four in a row over row bands.
+
+Run them on four cores at the lowest priority, one at a time, and with `--filter` after the benchmark number:
+
+    taskset -c 0-3 nice -n 19 dotnet SilverModManager.Benchmarks.dll 6 --filter '*native/Bc7*'
+
+Managed BC7 on the noise texture takes about seven minutes a level at 1024 pixels, so the managed noise baseline is
+only run at 1024 and the end-to-end cases leave noise out.

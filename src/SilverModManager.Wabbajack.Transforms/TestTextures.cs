@@ -56,6 +56,19 @@ internal static class TestTextures
         return pixels;
     }
 
+    /// <summary>The names <see cref="Named"/> takes, in the order reports list them.</summary>
+    public static IReadOnlyList<string> Names { get; } = ["gradient", "noise", "checkerboard", "partial alpha"];
+
+    /// <summary>One of <see cref="Names"/> as RGBA bytes, <paramref name="size"/> square. Noise always uses the same seed.</summary>
+    public static byte[] Named(string name, int size) => name switch
+    {
+        "gradient" => GradientRgba(size),
+        "noise" => NoiseRgba(size, 1234),
+        "checkerboard" => CheckerboardRgba(size),
+        "partial alpha" => PartialAlphaRgba(size),
+        _ => throw new ArgumentOutOfRangeException(nameof(name), name, null),
+    };
+
     private static BcEncoder Encoder(CompressionFormat format) => new()
     {
         OutputOptions =

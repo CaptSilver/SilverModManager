@@ -26,7 +26,7 @@ public sealed class ManagedTextureEncoder : ITextureEncoder
         encoder.EncodeToRawBytes(rgba.ToArray(), paddedWidth, paddedHeight, PixelFormat.Rgba32, 0, out _, out _).CopyTo(dst);
     }
 
-    private static CompressionFormat ToCompressionFormat(BlockFormat format) => format switch
+    internal static CompressionFormat ToCompressionFormat(BlockFormat format) => format switch
     {
         BlockFormat.Bc1 => CompressionFormat.Bc1,
         BlockFormat.Bc1PunchThrough => CompressionFormat.Bc1WithAlpha,

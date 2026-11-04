@@ -1,5 +1,3 @@
-using BCnEncoder.Decoder;
-using BCnEncoder.Shared;
 using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.Sdk.Native;
 using SilverModManager.Wabbajack.Transforms;
@@ -33,17 +31,6 @@ public class TextureEncoderTests
 
     public static TheoryData<string, BlockFormat> EncoderFormats => new(
         EncoderNames.SelectMany(name => Enum.GetValues<BlockFormat>().Where(f => name == "managed" || NativeFormats.Contains(f)).Select(f => (name, f))));
-
-    private static CompressionFormat Compression(BlockFormat format) => format switch
-    {
-        BlockFormat.Bc1 => CompressionFormat.Bc1,
-        BlockFormat.Bc1PunchThrough => CompressionFormat.Bc1WithAlpha,
-        BlockFormat.Bc2 => CompressionFormat.Bc2,
-        BlockFormat.Bc3 => CompressionFormat.Bc3,
-        BlockFormat.Bc4 => CompressionFormat.Bc4,
-        BlockFormat.Bc5 => CompressionFormat.Bc5,
-        _ => CompressionFormat.Bc7,
-    };
 
     private static byte[] Level(int width, int height)
     {
@@ -162,37 +149,13 @@ public class TextureEncoderTests
 
     public static TheoryData<string, BlockFormat, string> QualityCases => new(
         EncoderNames.Where(n => n == "native")
-            .SelectMany(n => NativeFormats.SelectMany(f => new[] { "gradient", "noise", "checkerboard", "partial alpha" }.Select(t => (n, f, t)))));
-
-    private static byte[] Texture(string name, int size) => name switch
-    {
-        "gradient" => TestTextures.GradientRgba(size),
-        "noise" => TestTextures.NoiseRgba(size, 1234),
-        "checkerboard" => TestTextures.CheckerboardRgba(size),
-        _ => TestTextures.PartialAlphaRgba(size),
-    };
-
-    /// <summary>Channels the format carries: BC1 is opaque.</summary>
-    private static int Channels(BlockFormat format) => format == BlockFormat.Bc1 ? 3 : 4;
+            .SelectMany(n => NativeFormats.SelectMany(f => TestTextures.Names.Select(t => (n, f, t)))));
 
     private static double Psnr(ITextureEncoder encoder, byte[] rgba, int size, BlockFormat format)
     {
         var dst = new byte[format.BlockBytes(size, size)];
         encoder.Encode(rgba, size, size, format, dst, 1, CancellationToken.None);
-        var decoded = new BcDecoder().DecodeRaw(dst, size, size, Compression(format));
-        var channels = Channels(format);
-        double squared = 0;
-        for (var i = 0; i < size * size; i++)
-        {
-            var actual = new[] { decoded[i].r, decoded[i].g, decoded[i].b, decoded[i].a };
-            for (var c = 0; c < channels; c++)
-            {
-                var difference = rgba[i * 4 + c] - actual[c];
-                squared += difference * difference;
-            }
-        }
-        var mse = squared / (size * size * channels);
-        return mse == 0 ? 99 : 10 * Math.Log10(255.0 * 255.0 / mse);
+        return TextureQuality.Psnr(rgba, dst, size, size, format);
     }
 
     [Theory(SkipTestWithoutData = true)]
@@ -201,7 +164,7 @@ public class TextureEncoderTests
     {
         Assert.Equal("native", which);
         const int size = 64;
-        var rgba = Texture(texture, size);
+        var rgba = TestTextures.Named(texture, size);
 
         var native = Psnr(Encoder("native"), rgba, size, format);
         var managed = Psnr(Encoder("managed"), rgba, size, format);

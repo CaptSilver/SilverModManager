@@ -18,10 +18,12 @@ var benchmarks = Assembly.GetExecutingAssembly()
 Console.WriteLine("Note: Benchmarks can be ran directly by passing arguments in CLI, e.g. SilverModManager.Benchmarks.dll 0 1\n");
 if (args.Length > 0)
 {
+    // Anything that is not a benchmark number goes to BenchmarkDotNet, e.g. --filter '*native/Bc7*'.
+    var runnerArgs = args.Where(a => !int.TryParse(a, out _)).ToArray();
     foreach (var arg in args)
     {
         if (int.TryParse(arg, out var result) && (result >= 0 && result < benchmarks.Length))
-            StartBenchmark(benchmarks, result);
+            StartBenchmark(benchmarks, result, runnerArgs);
     }
 
     return;
@@ -55,7 +57,7 @@ void PrintOption(int x, SelectableBenchmark benchmark)
     Console.WriteLine(benchmark.Description);
 }
 
-void StartBenchmark(SelectableBenchmark[] selectableBenchmarks, int benchmarkIndex)
+void StartBenchmark(SelectableBenchmark[] selectableBenchmarks, int benchmarkIndex, string[]? runnerArgs = null)
 {
     if (Debugger.IsAttached)
     {
@@ -67,6 +69,6 @@ void StartBenchmark(SelectableBenchmark[] selectableBenchmarks, int benchmarkInd
         var summaryStyle = new SummaryStyle(CultureInfo.CurrentCulture, printUnitsInHeader: false, printUnitsInContent: true,
             printZeroValuesInContent: false, sizeUnit: null, timeUnit: null, maxParameterColumnWidth: 40);
         var config = ManualConfig.Create(DefaultConfig.Instance).WithSummaryStyle(summaryStyle);
-        BenchmarkRunner.Run(selectableBenchmarks[benchmarkIndex].Type, config);
+        BenchmarkRunner.Run(selectableBenchmarks[benchmarkIndex].Type, config, runnerArgs ?? []);
     }
 }
