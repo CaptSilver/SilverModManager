@@ -299,8 +299,48 @@ public class CollectionDownloader
     }
 
     /// <summary>
+    /// Like <see cref="IsCollectionInstalledObservable"/>, but a mod that is waiting for review counts as done. Required
+    /// rows are never dismissed, so <paramref name="acceptDismissed"/> only matters for <see cref="ItemType.Optional"/>:
+    /// the "all optional mods done" test accepts a dismissed row, every other caller does not.
+    /// </summary>
+    public IObservable<bool> IsCollectionInstalledOrPendingObservable(
+        CollectionRevisionMetadata.ReadOnly revision,
+        IObservable<Optional<CollectionGroup.ReadOnly>> groupObservable,
+        ItemType itemType = ItemType.Required,
+        bool acceptDismissed = false)
+    {
+        var downloads = revision.Downloads
+            .Where(download => DownloadMatchesItemType(download, itemType))
+            .ToArray();
+
+        if (downloads.Length == 0) return groupObservable.Select(static optional => optional.HasValue);
+
+        var installed = downloads
+            .Select(download => GetStatusObservable(download, groupObservable).Select(static status => status.IsInstalled(out _)))
+            .CombineLatest(static list => list.ToArray());
+        var rows = groupObservable
+            .Select(group => group.HasValue
+                ? PendingInstalls.Observe(_connection, group.Value.Id)
+                : Observable.Return(Array.Empty<NexusCollectionPendingInstall.ReadOnly>()))
+            .Switch();
+
+        return installed.CombineLatest(rows, (installedFlags, pendingRows) =>
+        {
+            var waiting = pendingRows
+                .Where(row => acceptDismissed || !PendingInstalls.IsDismissed(row))
+                .Select(static row => row.DownloadId)
+                .ToHashSet();
+            for (var i = 0; i < downloads.Length; i++)
+            {
+                if (!installedFlags[i] && !waiting.Contains(CollectionDownloadId.From(downloads[i].Id))) return false;
+            }
+            return true;
+        });
+    }
+
+    /// <summary>
     /// Emits whether the left menu lists <paramref name="group"/> as an installed collection: every required mod of the
-    /// revision it is on is installed in it.
+    /// revision it is on is installed in it or waiting for review.
     /// </summary>
     public IObservable<bool> IsListedAsInstalledObservable(NexusCollectionLoadoutGroup.ReadOnly group)
     {
@@ -313,7 +353,7 @@ public class CollectionDownloader
             .Where(static current => current.IsValid())
             .Select(static current => current.Revision.Id)
             .DistinctUntilChanged()
-            .Select(revision => IsCollectionInstalledObservable(CollectionRevisionMetadata.Load(_connection.Db, revision), groupObservable))
+            .Select(revision => IsCollectionInstalledOrPendingObservable(CollectionRevisionMetadata.Load(_connection.Db, revision), groupObservable))
             .Switch();
     }
 
@@ -324,7 +364,7 @@ public class CollectionDownloader
     public IObservable<bool> IsOfferedForInstallObservable(CollectionRevisionMetadata.ReadOnly revision, LoadoutId loadout)
     {
         var groupObservable = GetCollectionGroupObservable(revision, loadout);
-        var isNotInstalledObservable = IsCollectionInstalledObservable(revision, groupObservable).Select(static isInstalled => !isInstalled);
+        var isNotInstalledObservable = IsCollectionInstalledOrPendingObservable(revision, groupObservable).Select(static isInstalled => !isInstalled);
         // An update leaves the old revision behind with nothing installed from it; listing it would show the
         // collection twice under one name.
         var isSupersededObservable = CollectionUpdater.ObserveIsSuperseded(_connection, revision, loadout);

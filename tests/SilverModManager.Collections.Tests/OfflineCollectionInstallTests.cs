@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Reactive.Linq;
 using System.Text.Json;
 using DynamicData.Kernel;
 using FluentAssertions;
@@ -1027,6 +1028,100 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
 
         var wait = async () => await running;
         await wait.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    /// <summary>
+    /// The value an observable settles on. Status observables start from a placeholder and correct themselves a moment
+    /// later, so the first value alone proves nothing.
+    /// </summary>
+    private static async Task<bool> Settled(IObservable<bool> observable)
+    {
+        var latest = false;
+        using var _ = observable.Subscribe(value => Volatile.Write(ref latest, value));
+        await Task.Delay(750);
+        return Volatile.Read(ref latest);
+    }
+
+    [Fact]
+    public async Task APendingRequiredMod_KeepsTheCollectionListedAndNotOffered()
+    {
+        var (group, loadout, _, revision, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+        var downloader = ServiceProvider.GetRequiredService<CollectionDownloader>();
+        var groupObservable = downloader.GetCollectionGroupObservable(revision, loadout);
+
+        PendingInstalls.For(Connection.Db, group.Id).Should().ContainSingle();
+        (await Settled(downloader.IsListedAsInstalledObservable(group))).Should().BeTrue();
+        (await Settled(downloader.IsOfferedForInstallObservable(revision, loadout))).Should().BeFalse();
+        (await Settled(downloader.IsCollectionInstalledObservable(revision, groupObservable))).Should().BeFalse("the strict test still wants the mod itself installed");
+    }
+
+    [Fact]
+    public async Task InstalledOrPending_WithNoRequiredItems_FollowsTheGroup()
+    {
+        var (_, loadout, _, revision, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown], optionalIndexes: [0, 1]);
+        var downloader = ServiceProvider.GetRequiredService<CollectionDownloader>();
+
+        (await Settled(downloader.IsCollectionInstalledOrPendingObservable(revision, downloader.GetCollectionGroupObservable(revision, loadout))))
+            .Should().BeTrue("the loadout has the collection's group");
+
+        var otherLoadout = await CreateLoadout();
+        (await Settled(downloader.IsCollectionInstalledOrPendingObservable(revision, downloader.GetCollectionGroupObservable(revision, otherLoadout))))
+            .Should().BeFalse("that loadout has no group for the collection");
+    }
+
+    [Fact]
+    public async Task Dismiss_HidesAnOptionalRow_AndInstallOptionalLeavesItAlone()
+    {
+        var (group, loadout, _, revision, file, _) = await InstallWith(
+            [(Choices(), "Fomod mod"), (null, "Unknown optional")], [ModShape.Fomod, ModShape.Unknown], optionalIndexes: [1]);
+        var downloader = ServiceProvider.GetRequiredService<CollectionDownloader>();
+        var groupObservable = downloader.GetCollectionGroupObservable(revision, loadout);
+        var optional = CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional).Single();
+        await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, [optional]));
+        var row = PendingRow(group, optional).Value;
+
+        (await Settled(downloader.IsCollectionInstalledOrPendingObservable(revision, groupObservable, CollectionDownloader.ItemType.Optional)))
+            .Should().BeTrue("an undismissed pending row counts");
+
+        await PendingInstalls.Dismiss(Connection, row.Id);
+
+        (await Settled(downloader.IsCollectionInstalledOrPendingObservable(revision, groupObservable, CollectionDownloader.ItemType.Optional)))
+            .Should().BeFalse("a dismissed row does not count unless dismissals are accepted");
+        (await Settled(downloader.IsCollectionInstalledOrPendingObservable(revision, groupObservable, CollectionDownloader.ItemType.Optional, acceptDismissed: true)))
+            .Should().BeTrue();
+
+        var toInstall = PendingInstalls.OptionalItemsToInstall(Connection.Db, revision, group.Id);
+        toInstall.Should().BeEmpty();
+        await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, toInstall));
+        PendingInstalls.IsDismissed(PendingRow(group, optional).Value).Should().BeTrue();
+
+        // Marking the mod again from the grid's Install brings it back.
+        var download = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, optional, CancellationToken.None, unattended: true);
+        var act = () => RunDownload(download);
+        await act.Should().ThrowAsync<ReviewRequiredException>();
+        PendingInstalls.IsDismissed(PendingRow(group, optional).Value).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task OptionalItemsToInstall_SkipsPendingAndDismissed_KeepsUninstalled()
+    {
+        var (file, revision, items) = await CreateCollection(
+            [(null, "Required"), (null, "Installed optional"), (null, "Pending optional"), (null, "Untouched optional")],
+            optionalIndexes: [1, 2, 3],
+            shapes: [ModShape.Plain, ModShape.Plain, ModShape.Unknown, ModShape.Plain]);
+        var loadout = await CreateLoadout();
+        var optionalItems = CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional);
+        var untouched = optionalItems.Single(item => item.ArrayIndex == 3);
+        var group = await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision,
+            [.. items, .. optionalItems.Where(item => item.ArrayIndex != 3)]));
+        var pending = optionalItems.Single(item => item.ArrayIndex == 2);
+        PendingRow(group, pending).HasValue.Should().BeTrue();
+
+        var result = PendingInstalls.OptionalItemsToInstall(Connection.Db, revision, group.Id);
+        result.Select(static item => item.Id).Should().Equal(untouched.Id);
+
+        await PendingInstalls.Dismiss(Connection, PendingRow(group, pending).Value.Id);
+        PendingInstalls.OptionalItemsToInstall(Connection.Db, revision, group.Id).Select(static item => item.Id).Should().Equal(untouched.Id);
     }
 
     /// <summary>A second revision of the "offline" collection that <see cref="PlainAndUnknown"/> creates, with one mod of its own.</summary>

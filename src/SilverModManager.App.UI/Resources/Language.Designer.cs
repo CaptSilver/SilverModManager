@@ -5947,6 +5947,33 @@ namespace SilverModManager.App.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Installed. 1 mod needs review.
+        /// </summary>
+        public static string CollectionDownloadViewModel_Installed_one_mod_needs_review {
+            get {
+                return ResourceManager.GetString("CollectionDownloadViewModel_Installed_one_mod_needs_review", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Installed. {0} mods need review.
+        /// </summary>
+        public static string CollectionDownloadViewModel_Installed_mods_need_review {
+            get {
+                return ResourceManager.GetString("CollectionDownloadViewModel_Installed_mods_need_review", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Every optional mod is already installed, waiting for review or dismissed..
+        /// </summary>
+        public static string CollectionDownloadViewModel_Nothing_optional_to_install {
+            get {
+                return ResourceManager.GetString("CollectionDownloadViewModel_Nothing_optional_to_install", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Update the installed collection to this revision before installing single mods from it..
         /// </summary>
         public static string ToastNotification_Update_collection_first {

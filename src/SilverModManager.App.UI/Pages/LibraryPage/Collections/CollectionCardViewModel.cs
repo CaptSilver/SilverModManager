@@ -69,7 +69,7 @@ public partial class CollectionCardViewModel : AViewModel<ICollectionCardViewMod
 
             var collectionGroupObservable = collectionDownloader.GetCollectionGroupObservable(_revision, targetLoadout);
             collectionDownloader
-                .IsCollectionInstalledObservable(_revision, collectionGroupObservable)
+                .IsCollectionInstalledOrPendingObservable(_revision, collectionGroupObservable)
                 .OnUI()
                 .SubscribeWithErrorLogging(isInstalled => IsCollectionInstalled = isInstalled)
                 .AddTo(disposables);

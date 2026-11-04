@@ -3,6 +3,7 @@ using DynamicData;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.Query;
@@ -78,6 +79,23 @@ public static class PendingInstalls
             .Where(row => CollectionDownload.CollectionRevision.TryGetValue(row.Download, out var rowRevision) && rowRevision == revision)
             .GroupBy(static row => row.DownloadId)
             .Select(static rows => rows.First())
+            .ToArray();
+    }
+
+    /// <summary>
+    /// The optional mods "Install optional" should install: those that are not installed in the group and have no row,
+    /// dismissed or not. A pending or dismissed optional mod only comes back through the grid's per-item Install.
+    /// </summary>
+    public static CollectionDownload.ReadOnly[] OptionalItemsToInstall(IDb db, CollectionRevisionMetadata.ReadOnly revision, EntityId group)
+    {
+        var loaded = NexusCollectionLoadoutGroup.Load(db, group);
+        if (!loaded.IsValid()) return [];
+
+        var collectionGroup = Optional<CollectionGroup.ReadOnly>.Create(loaded.AsCollectionGroup());
+        var withRow = For(db, group).Select(static row => row.DownloadId).ToHashSet();
+        return CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional)
+            .Where(download => !withRow.Contains(CollectionDownloadId.From(download.Id)))
+            .Where(download => !CollectionDownloader.GetStatus(download, collectionGroup, db).IsInstalled(out _))
             .ToArray();
     }
 

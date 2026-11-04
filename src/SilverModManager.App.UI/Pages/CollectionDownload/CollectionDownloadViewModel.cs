@@ -175,12 +175,23 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     return;
                 }
 
+                // Mods already waiting for review, or dismissed, are only brought back from the grid's per-item Install.
+                var installedGroup = CollectionDownloader.GetCollectionGroup(revisionMetadata, targetLoadout, connection.Db);
+                var optionalItems = installedGroup.HasValue
+                    ? PendingInstalls.OptionalItemsToInstall(connection.Db, revisionMetadata, installedGroup.Value.Id)
+                    : [];
+                if (optionalItems.Length == 0)
+                {
+                    _notificationService.ShowToast(Language.CollectionDownloadViewModel_Nothing_optional_to_install, ToastNotificationVariant.Neutral);
+                    return;
+                }
+
                 await InstallCollectionJob.Create(
                     serviceProvider,
                     targetLoadout,
                     source: libraryFile,
                     revisionMetadata,
-                    items: CollectionDownloader.GetItems(revisionMetadata, CollectionDownloader.ItemType.Optional)
+                    items: optionalItems
                 );
             },
             awaitOperation: AwaitOperation.Drop,
@@ -415,12 +426,21 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     .AddTo(disposables);
 
                 var collectionGroupObservable = collectionDownloader.GetCollectionGroupObservable(_revision, _targetLoadout);
+                // A mod waiting for review counts as installed: the review list on this page is where it gets finished.
                 var isCollectionInstalledObservable = collectionDownloader
-                    .IsCollectionInstalledObservable(_revision, collectionGroupObservable)
+                    .IsCollectionInstalledOrPendingObservable(_revision, collectionGroupObservable)
                     .Prepend(false);
+                // Dismissing an optional mod is a decision, so a dismissed one is done for the "Install optional" button too.
                 var hasInstalledAllOptionalItems = collectionDownloader
-                    .IsCollectionInstalledObservable(_revision, collectionGroupObservable, CollectionDownloader.ItemType.Optional)
+                    .IsCollectionInstalledOrPendingObservable(_revision, collectionGroupObservable, CollectionDownloader.ItemType.Optional, acceptDismissed: true)
                     .Prepend(false);
+                var numPendingObservable = collectionGroupObservable
+                    .OffUi()
+                    .Select(group => group.HasValue
+                        ? PendingInstalls.Observe(connection, group.Value.Id).Select(static rows => rows.Count(static row => !PendingInstalls.IsDismissed(row)))
+                        : Observable.Return(0))
+                    .Switch()
+                    .Prepend(0);
 
                 // Installed under another revision of the collection: this page's primary action is then "Update".
                 var installedAnyRevisionObservable = CollectionUpdater.ObserveInstalledGroup(connection, _collection, _targetLoadout);
@@ -448,11 +468,11 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     })
                     .AddTo(disposables);
 
-                numDownloadedRequiredItemsObservable.CombineLatest(isCollectionInstalledObservable)
+                numDownloadedRequiredItemsObservable.CombineLatest(isCollectionInstalledObservable, numPendingObservable)
                     .OnUI()
                     .Subscribe(tuple =>
                         {
-                            var (numDownloadedRequiredItems, isCollectionInstalled) = tuple;
+                            var (numDownloadedRequiredItems, isCollectionInstalled, numPending) = tuple;
                             var hasDownloadedAllRequiredItems = numDownloadedRequiredItems == RequiredDownloadsCount;
 
                             CountDownloadedRequiredItems = numDownloadedRequiredItems;
@@ -468,7 +488,12 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                                         IsInstalled.Value = true;
                                     }
                                     
-                                    CollectionStatusText = Language.CollectionDownloadViewModel_CollectionDownloadViewModel_Ready_to_play___All_required_mods_installed;
+                                    CollectionStatusText = numPending switch
+                                    {
+                                        0 => Language.CollectionDownloadViewModel_CollectionDownloadViewModel_Ready_to_play___All_required_mods_installed,
+                                        1 => Language.CollectionDownloadViewModel_Installed_one_mod_needs_review,
+                                        _ => string.Format(Language.CollectionDownloadViewModel_Installed_mods_need_review, numPending),
+                                    };
                                 }
                                 else
                                 {

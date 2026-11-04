@@ -2052,6 +2052,15 @@ Use it for {0}?</value>
     <data name="ToastNotification_Collection_is_busy" xml:space="preserve">
         <value>The collection is being installed, updated or reviewed. Install this mod when that finishes.</value>
     </data>
+    <data name="CollectionDownloadViewModel_Installed_one_mod_needs_review" xml:space="preserve">
+        <value>Installed. 1 mod needs review</value>
+    </data>
+    <data name="CollectionDownloadViewModel_Installed_mods_need_review" xml:space="preserve">
+        <value>Installed. {0} mods need review</value>
+    </data>
+    <data name="CollectionDownloadViewModel_Nothing_optional_to_install" xml:space="preserve">
+        <value>Every optional mod is already installed, waiting for review or dismissed.</value>
+    </data>
     <data name="ToastNotification_Update_collection_first" xml:space="preserve">
         <value>Update the installed collection to this revision before installing single mods from it.</value>
     </data>
