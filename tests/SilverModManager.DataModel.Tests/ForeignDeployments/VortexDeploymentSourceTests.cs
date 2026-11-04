@@ -237,6 +237,9 @@ public sealed class VortexDeploymentSourceTests : IDisposable
     [InlineData("__folder_managed_by_vortex", true)]
     [InlineData("Phoenix/Content/Paks/~mods/__folder_managed_by_vortex", true)]
     [InlineData("Phoenix/Content/readme.txt", false)]
+    [InlineData("HogwartsLegacy.exe.vortex_backup", true)]
+    [InlineData("Phoenix/Binaries/Win64/dxgi.dll.VORTEX_BACKUP", true)]
+    [InlineData("Phoenix/Binaries/Win64/vortex_backup.txt", false)]
     public void IsRecordFile_RecognisesManifestsAndMarkersByName(string path, bool expected)
     {
         _source.IsRecordFile(Game(path)).Should().Be(expected);

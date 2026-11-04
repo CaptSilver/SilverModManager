@@ -13,8 +13,8 @@ namespace SilverModManager.DataModel.ForeignDeployments;
 /// source mod folder each came from.
 /// </summary>
 /// <remarks>
-/// The record files and the <c>__folder_managed_by_vortex</c> markers Vortex drops into folders it deploys to are
-/// ignored: the app neither indexes nor ingests them, and a switched-off mod never deletes them. They stay Vortex's.
+/// The record files, the <c>__folder_managed_by_vortex</c> markers Vortex drops into folders it deploys to, and the
+/// <c>.vortex_backup</c> copies of game files it replaced are ignored: the app neither indexes nor ingests them, and a switched-off mod never deletes them. They stay Vortex's.
 /// The <c>targetPath</c> and <c>stagingPath</c> in a record are Windows paths, often from another machine, so they
 /// only hint at where a mod type's files sit; every file is found by looking for it under the game folder.
 /// </remarks>
@@ -36,6 +36,8 @@ public sealed class VortexDeploymentSource(ILogger<VortexDeploymentSource> logge
 
         var name = path.FileName.ToString();
         if (name.Equals(MarkerName, StringComparison.OrdinalIgnoreCase)) return true;
+        // The game's original that Vortex set aside before replacing it; it is Vortex's to put back, not a stray file.
+        if (name.EndsWith(BackupSuffix, StringComparison.OrdinalIgnoreCase)) return true;
         return path.Path.Parent == RelativePath.Empty && IsManifestName(name);
     }
 
