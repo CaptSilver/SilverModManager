@@ -37,6 +37,53 @@ public class ExtractedLinksTests : IDisposable
 
     private bool Exists(string path) => File.Exists(InRoot(path)) || Directory.Exists(InRoot(path)) || new FileInfo(InRoot(path)).LinkTarget is not null;
 
+    [Fact]
+    public void SanitizeDropsLinksWhoseNamesAreNotUtf8AfterModesAreNormalized()
+    {
+        var secret = Path.Combine(_outside, "secret.txt");
+        byte[] link = [(byte)'l', 0xFC];
+        byte[] folder = [(byte)'d', 0xFD];
+        byte[] inner = [.. folder, (byte)'/', (byte)'i', 0xFA];
+        RawSymlink.Create(_root, link, secret);
+        RawSymlink.CreateFolder(_root, folder, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        RawSymlink.Create(_root, inner, secret);
+
+        try
+        {
+            SevenZipExtractor.NormalizeModes(_root);
+            Sanitize();
+
+            RawSymlink.Exists(_root, link).Should().BeFalse("a link whose name .NET cannot spell is still a link out of the folder");
+            RawSymlink.Exists(_root, inner).Should().BeFalse("the same inside a folder whose name is not UTF-8");
+            RawSymlink.Exists(_root, folder).Should().BeTrue("only the links go");
+        }
+        finally
+        {
+            foreach (var name in new[] { inner, link, folder }) RawSymlink.Remove(_root, name);
+        }
+
+        AssertSecretUntouched();
+    }
+
+    [Fact]
+    public void SanitizeLeavesAnUnchangedLinkWhoseNameIsNotUtf8AlreadyInTheFolder()
+    {
+        byte[] link = [(byte)'l', 0xFC];
+        RawSymlink.Create(_root, link, Path.Combine(_outside, "secret.txt"));
+
+        try
+        {
+            var existing = ExtractedLinks.Snapshot(_root);
+            ExtractedLinks.Sanitize(_root, Archive, new ListLogger(_log), existing);
+
+            RawSymlink.Exists(_root, link).Should().BeTrue("it was there before the archive");
+        }
+        finally
+        {
+            RawSymlink.Remove(_root, link);
+        }
+    }
+
     private void AssertSecretUntouched() => File.ReadAllText(Path.Combine(_outside, "secret.txt")).Should().Be("private");
 
     [Fact]

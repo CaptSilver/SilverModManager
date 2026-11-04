@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using SilverModManager.Backend.FileExtractor.Extractors;
 
 namespace SilverModManager.Backend.Tests.FileExtractor;
 
@@ -35,10 +36,6 @@ internal static partial class RawSymlink
 
     [LibraryImport("libc", EntryPoint = "rmdir", SetLastError = true)]
     private static partial int RmDir(byte[] path);
-
-    // statx has the same struct layout on every Linux architecture, unlike stat.
-    [LibraryImport("libc", EntryPoint = "statx", SetLastError = true)]
-    private static partial int StatX(int dirFd, byte[] path, int flags, uint mask, byte[] buffer);
 
     private static byte[] Terminated(ReadOnlySpan<byte> bytes) => [.. bytes, 0];
 
@@ -77,14 +74,11 @@ internal static partial class RawSymlink
     }
 
     /// <summary>The permission bits of <paramref name="rawName"/> itself, never of what it links to.</summary>
-    internal static UnixFileMode ModeOf(string folder, byte[] rawName)
-    {
-        const int noFollow = 0x100; // AT_SYMLINK_NOFOLLOW
-        const uint basicStats = 0x7ff;
-        var buffer = new byte[256];
-        if (StatX(-100, RawPath(folder, rawName), noFollow, basicStats, buffer) != 0) throw new IOException($"statx failed with errno {Marshal.GetLastPInvokeError()}");
-        return (UnixFileMode)(BitConverter.ToUInt16(buffer, 28) & 0xFFF);
-    }
+    internal static UnixFileMode ModeOf(string folder, byte[] rawName) =>
+        RawStat.Lstat(RawPath(folder, rawName))?.Mode ?? throw new IOException($"lstat failed with errno {Marshal.GetLastPInvokeError()}");
+
+    /// <summary>Whether <paramref name="rawName"/> exists as an entry of its own; a dangling link counts.</summary>
+    internal static bool Exists(string folder, byte[] rawName) => RawStat.Lstat(RawPath(folder, rawName)) is not null;
 
     /// <summary>The target text of every symbolic link directly in <paramref name="folder"/>, whatever its name's bytes.</summary>
     internal static List<string> Targets(string folder) => Links(folder).Select(link => link.Target).ToList();

@@ -148,9 +148,9 @@ public class SevenZipExtractor : IExtractor
             {
                 switch (entry.Kind)
                 {
-                    case RawFolderWalk.Kind.Link:
+                    case RawStat.Kind.Link:
                         continue;
-                    case RawFolderWalk.Kind.Folder:
+                    case RawStat.Kind.Folder:
                         // A directory has to be fixed before it can be listed.
                         RawFolderWalk.Chmod(entry.Path, Executable);
                         pending.Push(entry.Path);

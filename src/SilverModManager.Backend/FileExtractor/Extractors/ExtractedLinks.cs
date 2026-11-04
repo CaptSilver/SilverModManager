@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Sdk.IO;
 
@@ -22,7 +23,19 @@ internal static class ExtractedLinks
     {
         if (!Directory.Exists(root)) return;
 
-        var links = FindLinks(root).Where(link => existing is null || !existing.TryGetValue(link, out var before) || before != IdentityOf(link)).ToList();
+        var found = FindLinks(root).Where(link => existing is null || !existing.TryGetValue(link.Key, out var before) || before != IdentityOf(link)).ToList();
+        if (found.Count == 0) return;
+
+        // A link whose path is not valid UTF-8 cannot be handed to the string-based judging below (.NET reads such a
+        // name back with replacement characters, so its target cannot be read), and none of the rules has judged it,
+        // so it goes. unlink removes the link itself and never follows it.
+        foreach (var link in found.Where(link => !link.Nameable))
+        {
+            RawFolderWalk.Unlink(link.Path);
+            logger.LogWarning("Dropping symlink `{Entry}` from archive `{Archive}`: its name is not valid UTF-8, so it cannot be judged", EntryNames.Printable(Path.GetRelativePath(root, Encoding.UTF8.GetString(link.Path[..^1]))), archive);
+        }
+
+        var links = found.Where(link => link.Nameable).Select(link => link.Key).ToList();
         if (links.Count == 0) return;
 
         var lexicalRoot = TrimSeparator(Path.GetFullPath(root));
@@ -56,12 +69,35 @@ internal static class ExtractedLinks
 
     /// <summary>The links in <paramref name="root"/> (see <see cref="FindLinks"/>) with their identity, taken before an archive is extracted.</summary>
     internal static Dictionary<string, LinkIdentity> Snapshot(string root) =>
-        FindLinks(root).ToDictionary(link => link, IdentityOf, StringComparer.Ordinal);
+        FindLinks(root).ToDictionary(link => link.Key, IdentityOf, StringComparer.Ordinal);
 
-    private static LinkIdentity IdentityOf(string link)
+    private static LinkIdentity IdentityOf(FoundLink link)
     {
-        var (device, inode) = LinkInode.Read(link);
-        return new LinkIdentity(new FileInfo(link).LinkTarget, device, inode);
+        // The target of a link whose name .NET cannot spell is unreadable to it; the inode still tells the link apart.
+        if (!link.Nameable) return RawStat.Lstat(link.Path) is { } info ? new LinkIdentity(null, info.Device, info.Inode) : new LinkIdentity(null, null, null);
+
+        var (device, inode) = LinkInode.Read(link.Key);
+        return new LinkIdentity(new FileInfo(link.Key).LinkTarget, device, inode);
+    }
+
+    /// <summary>A link found by the raw walk: its path bytes (NUL-terminated) and the string that names it, which is the path itself when that is valid UTF-8.</summary>
+    internal readonly record struct FoundLink(byte[] Path, string Key)
+    {
+        private const string RawPrefix = "\0raw:";
+
+        internal bool Nameable => !Key.StartsWith(RawPrefix, StringComparison.Ordinal);
+
+        internal static FoundLink Of(byte[] path)
+        {
+            try
+            {
+                return new FoundLink(path, new UTF8Encoding(false, true).GetString(path[..^1]));
+            }
+            catch (ArgumentException)
+            {
+                return new FoundLink(path, RawPrefix + Convert.ToBase64String(path[..^1]));
+            }
+        }
     }
 
     internal readonly record struct Decision(string? CopyFrom, string? Reason, bool TargetMissing = false);
@@ -178,20 +214,23 @@ internal static class ExtractedLinks
         return new Decision(null, $"`{target}` is not a file inside the archive", TargetMissing: !Directory.Exists(real));
     }
 
-    /// <summary>The symbolic links in <paramref name="root"/> and the folders below it, without entering any link. Empty when the folder is missing.</summary>
-    internal static List<string> FindLinks(string root)
+    /// <summary>
+    /// The symbolic links in <paramref name="root"/> and the folders below it, without entering any link. Empty when the folder is missing.
+    /// Folders are listed by name bytes, so a link .NET cannot spell is found too.
+    /// </summary>
+    internal static List<FoundLink> FindLinks(string root)
     {
-        var links = new List<string>();
+        var links = new List<FoundLink>();
         if (!Directory.Exists(root)) return links;
 
-        var pending = new Stack<string>();
-        pending.Push(root);
+        var pending = new Stack<byte[]>();
+        pending.Push(RawFolderWalk.Terminated(root));
         while (pending.TryPop(out var directory))
         {
-            foreach (var info in new DirectoryInfo(directory).EnumerateFileSystemInfos())
+            foreach (var entry in RawFolderWalk.Children(directory))
             {
-                if (info.LinkTarget is not null) links.Add(info.FullName);
-                else if (info is DirectoryInfo) pending.Push(info.FullName);
+                if (entry.Kind == RawStat.Kind.Link) links.Add(FoundLink.Of(entry.Path));
+                else if (entry.Kind == RawStat.Kind.Folder) pending.Push(entry.Path);
             }
         }
 
