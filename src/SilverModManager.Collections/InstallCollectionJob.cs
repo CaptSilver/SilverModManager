@@ -211,78 +211,85 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             .OfType<ReplacedSlot>()
             .ToArray();
 
-        await Parallel.ForEachAsync(modsAndDownloads, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = context.CancellationToken }, async (modAndDownload, _) =>
+        // Each mod's install retracts its pending row and with it the stamp, so a cancel or a failure in any step from here on
+        // must still finish the replacements of the mods that did install. It only acts on slots whose new version is installed.
+        try
         {
-            try
+            await Parallel.ForEachAsync(modsAndDownloads, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = context.CancellationToken }, async (modAndDownload, _) =>
             {
-                Logger.LogDebug("Installing `{DownloadName}` (index={Index}) into `{CollectionName}/{RevisionNumber}`", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
-                Progress.ModStarted(modAndDownload.Mod.Name);
-                await InstallMod(modAndDownload, collectionGroup, fallbackInstaller, game.GetFallbackCollectionInstallDirectory(loadout.InstallationInstance));
-                Progress.ModInstalled(modAndDownload.Mod.Name);
-            }
-            catch (ReviewRequiredException e)
+                try
+                {
+                    Logger.LogDebug("Installing `{DownloadName}` (index={Index}) into `{CollectionName}/{RevisionNumber}`", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
+                    Progress.ModStarted(modAndDownload.Mod.Name);
+                    await InstallMod(modAndDownload, collectionGroup, fallbackInstaller, game.GetFallbackCollectionInstallDirectory(loadout.InstallationInstance));
+                    Progress.ModInstalled(modAndDownload.Mod.Name);
+                }
+                catch (ReviewRequiredException e)
+                {
+                    Logger.LogDebug("`{DownloadName}` (index={Index}) of `{CollectionName}/{RevisionNumber}` needs a person: {Reason}", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber, e.Reason);
+                    var pending = new PendingItem(modAndDownload.Download, modAndDownload.Mod.Name, e.Kind, e.Reason);
+                    _pendingItems.Enqueue(pending);
+                    Progress.ModNeedsReview(pending.Name, pending.Kind, pending.Reason);
+                }
+                catch (Exception e)
+                {
+                    Logger.LogFailure(e, "Failed to install `{DownloadName}` (index={Index}) into `{CollectionName}/{RevisionNumber}`", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
+                    var failed = new FailedItem(modAndDownload.Download, modAndDownload.Mod.Name, e);
+                    _failedItems.Enqueue(failed);
+                    Progress.ModFailed(failed.Name, failed.Reason);
+                }
+            });
+
+            var allRequiredItems = CollectionDownloader.GetItems(RevisionMetadata, CollectionDownloader.ItemType.Required);
+            // A mod waiting for a person does not keep the collection off: it is a decision for the user, not a missing install.
+            var pendingDownloads = PendingInstalls.For(Connection.Db, collectionGroup.Id).Select(static row => row.Download.Id).ToHashSet();
+            var allRequiredItemsSatisfied = allRequiredItems.All(item => pendingDownloads.Contains(item.Id) || CollectionDownloader
+                .GetStatus(item, collectionGroup.AsCollectionGroup(), db: Connection.Db)
+                .IsInstalled(out _));
             {
-                Logger.LogDebug("`{DownloadName}` (index={Index}) of `{CollectionName}/{RevisionNumber}` needs a person: {Reason}", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber, e.Reason);
-                var pending = new PendingItem(modAndDownload.Download, modAndDownload.Mod.Name, e.Kind, e.Reason);
-                _pendingItems.Enqueue(pending);
-                Progress.ModNeedsReview(pending.Name, pending.Kind, pending.Reason);
-            }
-            catch (Exception e)
-            {
-                Logger.LogFailure(e, "Failed to install `{DownloadName}` (index={Index}) into `{CollectionName}/{RevisionNumber}`", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
-                var failed = new FailedItem(modAndDownload.Download, modAndDownload.Mod.Name, e);
-                _failedItems.Enqueue(failed);
-                Progress.ModFailed(failed.Name, failed.Reason);
-            }
-        });
+                await LoadoutManager.ApplyCollectionDownloadRules(collectionGroup);
 
-        var allRequiredItems = CollectionDownloader.GetItems(RevisionMetadata, CollectionDownloader.ItemType.Required);
-        // A mod waiting for a person does not keep the collection off: it is a decision for the user, not a missing install.
-        var pendingDownloads = PendingInstalls.For(Connection.Db, collectionGroup.Id).Select(static row => row.Download.Id).ToHashSet();
-        var allRequiredItemsSatisfied = allRequiredItems.All(item => pendingDownloads.Contains(item.Id) || CollectionDownloader
-            .GetStatus(item, collectionGroup.AsCollectionGroup(), db: Connection.Db)
-            .IsInstalled(out _));
-        {
-            await LoadoutManager.ApplyCollectionDownloadRules(collectionGroup);
+                // The sort orders learn about the installed mods from a background subscription; the order below can only seed rows that exist.
+                await game.SortOrderManager.UpdateLoadOrders(TargetLoadout);
 
-            // The sort orders learn about the installed mods from a background subscription; the order below can only seed rows that exist.
-            await game.SortOrderManager.UpdateLoadOrders(TargetLoadout);
+                using var tx = Connection.BeginTransaction();
 
-            using var tx = Connection.BeginTransaction();
+                // A run over mods an earlier run installed ("install optional mods") must keep what the user did with those.
+                IReadOnlySet<LoadoutItemGroupId>? newGroups = installedBefore.Count == 0
+                    ? null
+                    : CollectionOrderImport.Children(Connection.Db, containerId).Except(installedBefore).ToHashSet();
 
-            // A run over mods an earlier run installed ("install optional mods") must keep what the user did with those.
-            IReadOnlySet<LoadoutItemGroupId>? newGroups = installedBefore.Count == 0
-                ? null
-                : CollectionOrderImport.Children(Connection.Db, containerId).Except(installedBefore).ToHashSet();
+                // ApplyCollectionDownloadRules above has already committed its own priority write; SetGroupOrder must be the only priority writer in the transaction it joins.
+                CollectionOrderImport.Import(ServiceProvider, Connection.Db, TargetLoadout, game, root, RevisionMetadata, containerId, newGroups, tx);
 
-            // ApplyCollectionDownloadRules above has already committed its own priority write; SetGroupOrder must be the only priority writer in the transaction it joins.
-            CollectionOrderImport.Import(ServiceProvider, Connection.Db, TargetLoadout, game, root, RevisionMetadata, containerId, newGroups, tx);
+                if (PreserveEnabledState)
+                {
+                    // Nothing to do: the state is the user's.
+                }
+                else if (allRequiredItemsSatisfied)
+                {
+                    // A group enabled by an earlier run no longer has the marker; retracting it again retracts a datom that doesn't exist.
+                    var isDisabled = LoadoutItem.Load(Connection.Db, collectionGroup.Id).IsDisabled;
+                    if (isDisabled) tx.Retract(collectionGroup.Id, LoadoutItem.Disabled, Null.Instance);
+                }
+                else
+                {
+                    tx.Add(collectionGroup.Id, LoadoutItem.Disabled, Null.Instance);
+                }
 
-            if (PreserveEnabledState)
-            {
-                // Nothing to do: the state is the user's.
-            }
-            else if (allRequiredItemsSatisfied)
-            {
-                // A group enabled by an earlier run no longer has the marker; retracting it again retracts a datom that doesn't exist.
-                var isDisabled = LoadoutItem.Load(Connection.Db, collectionGroup.Id).IsDisabled;
-                if (isDisabled) tx.Retract(collectionGroup.Id, LoadoutItem.Disabled, Null.Instance);
-            }
-            else
-            {
-                tx.Add(collectionGroup.Id, LoadoutItem.Disabled, Null.Instance);
+                var result = await tx.Commit();
+                collectionGroup = NexusCollectionLoadoutGroup.Load(result.Db, collectionGroup.Id);
             }
 
-            var result = await tx.Commit();
-            collectionGroup = NexusCollectionLoadoutGroup.Load(result.Db, collectionGroup.Id);
+            var leftDisabled = PreserveEnabledState ? LoadoutItem.Load(Connection.Db, collectionGroup.Id).IsDisabled : !allRequiredItemsSatisfied;
+            Progress.Finish(leftDisabled: leftDisabled);
+
+            return collectionGroup;
         }
-
-        await CollectionUpdater.FinishReplacements(ServiceProvider, Connection, TargetLoadout, collectionGroup.Id, replacements);
-
-        var leftDisabled = PreserveEnabledState ? LoadoutItem.Load(Connection.Db, collectionGroup.Id).IsDisabled : !allRequiredItemsSatisfied;
-        Progress.Finish(leftDisabled: leftDisabled);
-
-        return collectionGroup;
+        finally
+        {
+            await CollectionUpdater.FinishReplacements(ServiceProvider, Connection, TargetLoadout, collectionGroup.Id, replacements);
+        }
     }
 
     private IJobTask<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly> InstallMod(

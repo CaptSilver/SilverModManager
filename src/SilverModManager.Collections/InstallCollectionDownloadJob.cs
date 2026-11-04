@@ -145,13 +145,18 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         var result = await tx.Commit();
         if (OrderManifest is not { } root) return new LoadoutItemGroup.ReadOnly(result.Db, group.Id);
 
-        var placed = await PlaceInOrder(root, group.LoadoutItemGroupId);
-
-        // Installed on its own, so no whole-collection run is around to finish the update this mod was part of.
-        if (PendingInstalls.ReplacementOf(Connection.Db, pending) is { } slot)
-            await CollectionUpdater.FinishReplacement(ServiceProvider, Connection, TargetLoadout, Group.Id, slot);
-
-        return placed;
+        // The row and its stamp are gone, so the replacement must be finished even when placing the mod throws or is cancelled;
+        // nothing else knows which old version this mod takes the place of. It only acts when the new version is installed.
+        try
+        {
+            return await PlaceInOrder(root, group.LoadoutItemGroupId);
+        }
+        finally
+        {
+            // Installed on its own, so no whole-collection run is around to finish the update this mod was part of.
+            if (PendingInstalls.ReplacementOf(Connection.Db, pending) is { } slot)
+                await CollectionUpdater.FinishReplacement(ServiceProvider, Connection, TargetLoadout, Group.Id, slot);
+        }
     }
 
     /// <summary>Puts the one download in its listed slot of the collection's order, leaving the rest of the collection as the user has it.</summary>

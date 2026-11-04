@@ -1298,12 +1298,8 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         var optional = CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional).Single();
         await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, [optional]));
         PendingInstalls.For(Connection.Db, group.Id).Should().HaveCount(2);
-        var stamped = PendingRow(group, optional).Value;
-        using (var tx = Connection.BeginTransaction())
-        {
-            tx.Add(stamped.Id, NexusCollectionPendingInstall.ReplacesGroup, group.Id.Value);
-            await tx.Commit();
-        }
+        var oldVersion = await InstallOldVersion(group, loadout, optional);
+        await StampReplacement(group, optional, oldVersion);
 
         var retry = PendingInstalls.RetryItems(Connection.Db, group.Id);
         retry.Select(static item => item.ArrayIndex).Should().BeEquivalentTo([0, 1]);
@@ -1314,7 +1310,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         again.JobDefinition.PendingItems.Should().HaveCount(2);
         PendingInstalls.For(Connection.Db, group.Id).Should().HaveCount(2);
         NexusCollectionPendingInstall.ReplacesGroup.TryGetValue(PendingRow(group, optional).Value, out var replaces).Should().BeTrue();
-        replaces.Should().Be(group.Id.Value);
+        replaces.Should().Be(oldVersion.Value.Value);
     }
 
     [Fact]
@@ -1382,6 +1378,104 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         foreach (var old in oldOf.Values) LoadoutItemGroup.Load(Connection.Db, old).IsValid().Should().BeFalse("the replacement removed the old version");
         var oldToNew = oldOf.ToDictionary(static pair => pair.Value, pair => newOf[pair.Key]);
         Order(newOf.Values.ToHashSet()).Should().Equal(before.Select(old => oldToNew[old]));
+    }
+
+    /// <summary>The user's own copy of a collection mod: installed from the same archive into My Mods, outside the collection.</summary>
+    private async Task<LoadoutItemGroupId> InstallOldVersion(NexusCollectionLoadoutGroup.ReadOnly group, LoadoutId loadout, CollectionDownload.ReadOnly download)
+    {
+        CollectionDownloader.GetStatus(download, group.AsCollectionGroup(), Connection.Db).IsInLibrary(out var libraryItem).Should().BeTrue();
+        var old = await LoadoutManager.InstallItem(libraryItem, loadout, installer: new ClaimingInstaller($"mod{download.ArrayIndex}.zip"));
+        return old.LoadoutItemGroup!.Value.LoadoutItemGroupId;
+    }
+
+    private async Task StampReplacement(NexusCollectionLoadoutGroup.ReadOnly group, CollectionDownload.ReadOnly download, LoadoutItemGroupId old)
+    {
+        using var tx = Connection.BeginTransaction();
+        tx.Add(PendingRow(group, download).Value.Id, NexusCollectionPendingInstall.ReplacesGroup, old.Value.Value);
+        await tx.Commit();
+    }
+
+    private string[] CollectionChildNames(NexusCollectionLoadoutGroup.ReadOnly group) =>
+        LoadoutItemGroup.Load(Connection.Db, group.Id).Children.OfTypeLoadoutItemGroup().Select(static child => child.AsLoadoutItem().Name).ToArray();
+
+    private List<LoadoutItemGroupId> PriorityOrder(LoadoutId loadout) => LoadoutItemGroupPriority.FindByLoadout(Connection.Db, loadout)
+        .Where(static row => row.Target.IsValid()).OrderByDescending(static row => row.Priority).Select(static row => row.TargetId).ToList();
+
+    [Fact]
+    public async Task Reviewing_AStampedMod_FinishesTheReplacement_InTheOldSlot()
+    {
+        var (group, loadout, job, _, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+        var pending = job.PendingItems.Should().ContainSingle().Which;
+        var old = await InstallOldVersion(group, loadout, pending.Download);
+        await StampReplacement(group, pending.Download, old);
+        var before = PriorityOrder(loadout);
+        before.Should().Contain(old);
+
+        var review = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, pending.Download, CancellationToken.None, unattended: false, installer: new ClaimingInstaller("mod1.zip"));
+        await RunDownload(review);
+
+        LoadoutItemGroup.Load(Connection.Db, old).IsValid().Should().BeFalse("the review removed the old version");
+        var installed = Child(NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id), "mod1.zip").LoadoutItemGroupId;
+        PriorityOrder(loadout).Should().Equal(before.Select(id => id == old ? installed : id));
+    }
+
+    [Fact]
+    public async Task Reviewing_WhenTheOldVersionWasDeleted_InstallsOnceAndHasNothingToReplace()
+    {
+        var (group, loadout, job, _, _, _) = await InstallWith(PlainAndUnknown, [ModShape.Plain, ModShape.Unknown]);
+        var pending = job.PendingItems.Should().ContainSingle().Which;
+        var old = await InstallOldVersion(group, loadout, pending.Download);
+        await StampReplacement(group, pending.Download, old);
+        await LoadoutManager.RemoveItems([old]);
+
+        PendingInstalls.ReplacementOf(Connection.Db, PendingRow(group, pending.Download)).Should().BeNull();
+
+        var review = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, pending.Download, CancellationToken.None, unattended: false, installer: new ClaimingInstaller("mod1.zip"));
+        await RunDownload(review);
+
+        PendingRow(group, pending.Download).HasValue.Should().BeFalse();
+        CollectionChildNames(group).Count(static name => name == "mod1.zip").Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CancellingATryAgain_AfterAStampedModInstalled_StillRemovesTheOldVersion()
+    {
+        var (group, loadout, job, revision, file, items) = await InstallWith(
+            [(null, "Unknown 0"), (null, "Unknown 1")], [ModShape.Unknown, ModShape.Unknown]);
+        job.PendingItems.Should().HaveCount(2);
+        var stamped = items.Single(item => item.ArrayIndex == 0);
+        var old = await InstallOldVersion(group, loadout, stamped);
+        await StampReplacement(group, stamped, old);
+
+        var installers = Game.LibraryItemInstallers;
+        var original = installers[1];
+        installers[1] = new ClaimingInstaller("mod0.zip", "mod1.zip");
+        try
+        {
+            // The second mod is held, so the first has finished installing when the run is cancelled.
+            using var gate = ArchiveGate.Install(installers, 1, "mod1.zip");
+            var retry = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, PendingInstalls.RetryItems(Connection.Db, group.Id));
+            var running = AwaitJob(retry);
+            await gate.Entered.WaitAsync(Timeout);
+
+            var deadline = DateTime.UtcNow + Timeout;
+            while (!CollectionChildNames(group).Contains("mod0.zip"))
+            {
+                DateTime.UtcNow.Should().BeBefore(deadline, "the stamped mod should install while the other is held");
+                await Task.Delay(20);
+            }
+
+            ServiceProvider.GetRequiredService<IJobMonitor>().Cancel(retry);
+            gate.Fail(new OperationCanceledException());
+            var act = async () => await running;
+            await act.Should().ThrowAsync<OperationCanceledException>();
+        }
+        finally
+        {
+            installers[1] = original;
+        }
+
+        LoadoutItemGroup.Load(Connection.Db, old).IsValid().Should().BeFalse("a cancelled run must not leave both versions in the loadout");
     }
 
     [Fact]
