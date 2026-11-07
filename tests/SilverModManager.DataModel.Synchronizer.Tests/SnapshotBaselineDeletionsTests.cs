@@ -3,6 +3,8 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
@@ -33,6 +35,8 @@ public class SnapshotBaselineDeletionsTests(ITestOutputHelper helper) : ASteamIn
     private static readonly GamePath ExtraPath = new(LocationId.Game, Extra);
 
     private readonly CapturedLogs _logs = new();
+
+    private IFileHashesService Hashes => ServiceProvider.GetRequiredService<IFileHashesService>();
 
     protected override IServiceCollection AddServices(IServiceCollection services)
         => _logs.AddTo(base.AddServices(services).AddRedEngineGames());
@@ -94,6 +98,81 @@ public class SnapshotBaselineDeletionsTests(ITestOutputHelper helper) : ASteamIn
         again.Values.Should().OnlyContain(n => n.Actions == Actions.DoNothing);
         (await Synchronizer.ShouldSynchronize(Refresh(loadout), Synchronizer.GetLastScannedDiskState(GameRegistry.ForceGetMetadata(GameInstallation)), Synchronizer.GetDiskStateForGame(GameRegistry.ForceGetMetadata(GameInstallation))))
             .Should().BeFalse("nothing is left to apply");
+    }
+
+    // The player deleted the file after the snapshot recorded it and before any apply, so no previous state ever held
+    // it. Creating the loadout is the first sync, and it is the one that has to record the deletion.
+    private async Task<Loadout.ReadOnly> LoadoutAfterDeletingBeforeTheAppRecordedIt(string path)
+    {
+        (await Hashes.EnsureLocalBaseline(GameInstallation)).Kind.Should().Be(LocalBaselineKind.Snapshot);
+        DeleteFromDisk(path);
+        return await CreateLoadout();
+    }
+
+    [Fact]
+    public async Task SnapshotGameFileDeletedBeforeTheAppRecordedIt_IsRecordedAsADeleteNotAPermanentWarning()
+    {
+        var loadout = await LoadoutAfterDeletingBeforeTheAppRecordedIt(Extra);
+
+        ((ALoadoutSynchronizer)Synchronizer).WinningFilesForTest(Refresh(loadout))
+            .Single(f => f.Path == ExtraPath).ItemType.Should().Be("Deleted", "the first sync recorded the player's deletion");
+        var tree = await Tree(loadout);
+        tree.Should().NotContainKey(ExtraPath);
+        tree.Values.Should().NotContain(n => n.Actions.HasFlag(Actions.WarnOfUnableToExtract));
+        (await WhatTheMissingGameFilesEmitterSays(loadout, tree)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SnapshotGameFileDeletedBeforeTheAppRecordedIt_LeavesNothingPendingAfterTheNextApply()
+    {
+        var loadout = await LoadoutAfterDeletingBeforeTheAppRecordedIt(Extra);
+
+        loadout = await Synchronizer.Synchronize(Refresh(loadout));
+
+        (GameFolder / Extra).FileExists.Should().BeFalse("a deleted file is not recreated");
+        (await Tree(loadout)).Values.Should().OnlyContain(n => n.Actions == Actions.DoNothing);
+        (await Synchronizer.ShouldSynchronize(Refresh(loadout), Synchronizer.GetLastScannedDiskState(GameRegistry.ForceGetMetadata(GameInstallation)), Synchronizer.GetDiskStateForGame(GameRegistry.ForceGetMetadata(GameInstallation))))
+            .Should().BeFalse("nothing is left to apply");
+    }
+
+    [Fact]
+    public async Task SnapshotGameFilePresentOnDisk_IsLeftAlone()
+    {
+        var loadout = await LoadoutAfterDeletingBeforeTheAppRecordedIt(Extra);
+
+        var node = (await Tree(loadout))[new GamePath(LocationId.Game, Vanilla)];
+
+        node.HaveDisk.Should().BeTrue();
+        node.PlayerDeleted.Should().BeFalse();
+        node.Actions.Should().Be(Actions.DoNothing);
+    }
+
+    // A snapshot taken before a mod-shape rule existed holds a hand-installed mod as the game's own file. The loadout was
+    // applied with that row, so the file is on disk and in the previous state. When the baseline is re-checked and the row
+    // retracted, the file must become the player's (an Overrides row), not a mod the loadout no longer has and so removes.
+    [Fact]
+    public async Task SnapshotRowRetractedAfterAnApply_KeepsTheFileAsAnOverridesRowInsteadOfDeletingIt()
+    {
+        const string modFile = "src/x.dll";
+        var loadout = await CreateLoadout();
+        (GameFolder / modFile).Parent.CreateDirectory();
+        await (GameFolder / modFile).WriteAllTextAsync("hand-installed upscaler");
+        await LocalBaselineRows.AddFileToBaseline(Hashes.Local.Connection, LocalBaseline.All(Hashes.Local).Single().Id, modFile, "hand-installed upscaler");
+        loadout = await Synchronizer.Synchronize(Refresh(loadout));
+        var path = new GamePath(LocationId.Game, modFile);
+        (await Tree(loadout))[path].SourceItemType.Should().Be(LoadoutSourceItemType.Game, "the stale snapshot row still counts it as vanilla");
+
+        await Hashes.EnsureLocalBaseline(GameInstallation);
+
+        var node = (await Tree(loadout))[path];
+        node.Actions.Should().NotHaveFlag(Actions.DeleteFromDisk, "the retracted file is not a mod the loadout dropped");
+        node.Actions.Should().HaveFlag(Actions.IngestFromDisk);
+        loadout = await Synchronizer.Synchronize(Refresh(loadout));
+
+        (GameFolder / modFile).FileExists.Should().BeTrue();
+        ((ALoadoutSynchronizer)Synchronizer).WinningFilesForTest(Refresh(loadout))
+            .Single(f => f.Path == path).ItemType.Should().Be("Loadout");
+        (await Tree(loadout)).Values.Should().NotContain(n => n.Actions.HasFlag(Actions.DeleteFromDisk));
     }
 
     // With no hash store knowing the build, a real vanilla file is as unvouched-for as a snapshot mod file, so the

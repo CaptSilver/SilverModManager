@@ -533,6 +533,16 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         => AttestedFileRows.Find(Local, installation.LocatorResult.Store, LocalBaselineCoordinator.GamePathOf(installation), installation.LocatorResult.LocatorIds);
 
     /// <inheritdoc />
+    public IReadOnlySet<GamePath> FilesThatLookLikeMods(GameInstallation installation)
+    {
+        if (LocalBaselineCoordinator.FindBaselineFor(Local, installation) is not { } baseline) return new HashSet<GamePath>();
+        return NonVanillaFile.FindByBaseline(Local, baseline.Id)
+            .Where(file => file.Reason == NonVanillaReason.LooksLikeAMod)
+            .Select(file => new GamePath(LocationId.Game, file.Path))
+            .ToHashSet();
+    }
+
+    /// <inheritdoc />
     public Task SettleAttested(GameInstallation installation, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, CancellationToken cancellationToken = default)
         => AttestedFileRows.Settle(_local.Connection, LocalBaselineCoordinator.GamePathOf(installation), read, _logger);
 

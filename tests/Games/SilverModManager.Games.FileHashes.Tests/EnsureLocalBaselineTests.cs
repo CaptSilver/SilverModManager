@@ -822,6 +822,78 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     }
 
     [Fact]
+    public async Task Snapshot_BuiltBeforeAModShapeRule_RetractsTheRowsTheRuleFlagsWithoutRebuilding()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        WriteGameFile("b.esm", "vanilla too");
+        (await _coordinator.Ensure(Installation("102"))).Kind.Should().Be(LocalBaselineKind.Snapshot);
+        var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        var untouched = baseline.Files.Single(f => f.Path.ToString() == "a.esm").Id;
+        // An older build had no rule for source folders and recorded a hand-installed one as the game's own file.
+        await AddSnapshotRow(baseline, "src/x.dll", "upscaler");
+
+        var result = await _coordinator.Ensure(Installation("102"));
+
+        result.Rebuilt.Should().BeFalse("the folder is not hashed again, only the recorded rows are checked");
+        var after = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        after.Id.Should().Be(baseline.Id);
+        after.Files.Select(f => f.Path.ToString()).Should().BeEquivalentTo(["a.esm", "b.esm"]);
+        after.Files.Select(f => f.Id).Should().Contain(untouched, "a row the rule does not flag is left as it was");
+        NonVanillaFile.All(_store.Db).Should().ContainSingle(f => f.Path.ToString() == "src/x.dll")
+            .Which.Reason.Should().Be(NonVanillaReason.LooksLikeAMod);
+        result.NonVanillaCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Snapshot_KeptWhileTheStoreIsUpdating_StillRetractsTheRowsTheRuleFlags()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        (await _coordinator.Ensure(Installation("102"))).Kind.Should().Be(LocalBaselineKind.Snapshot);
+        await AddSnapshotRow(LocalBaseline.All(_store.Db).Single(), "src/x.dll", "upscaler");
+
+        var result = await _coordinator.Ensure(Make(["102"], updateInProgress: true));
+
+        result.Rebuilt.Should().BeFalse();
+        LocalBaseline.All(_store.Db).Single().Files.Select(f => f.Path.ToString()).Should().Equal("a.esm");
+        NonVanillaFile.All(_store.Db).Should().ContainSingle(f => f.Path.ToString() == "src/x.dll");
+        result.NonVanillaCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Snapshot_KeptBecauseTheDeployedFilesAreUnknown_StillRetractsTheRowsTheRuleFlags()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        (await _coordinator.Ensure(Installation("102"))).Kind.Should().Be(LocalBaselineKind.Snapshot);
+        await AddSnapshotRow(LocalBaseline.All(_store.Db).Single(), "src/x.dll", "upscaler");
+
+        var result = await ManagedCoordinator(_ => throw new InvalidOperationException("the loadout is gone")).Ensure(Installation("103"));
+
+        result.Rebuilt.Should().BeFalse();
+        var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        baseline.LocatorIds.Should().Equal("102");
+        baseline.Files.Select(f => f.Path.ToString()).Should().Equal("a.esm");
+        NonVanillaFile.All(_store.Db).Should().ContainSingle(f => f.Path.ToString() == "src/x.dll");
+        result.NonVanillaCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task DepotBaseline_RowsThatLookLikeAModAreNotRetracted()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        _source.Add(101, ("a.esm", "vanilla"));
+        await _coordinator.Ensure(Installation("101"));
+        var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        await AddSnapshotRow(baseline, "src/x.dll", "listed by the manifest");
+
+        await _coordinator.Ensure(Installation("101"));
+
+        LocalBaseline.All(_store.Db).Single().Files.Select(f => f.Path.ToString()).Should().Contain("src/x.dll");
+    }
+
+    private Task AddSnapshotRow(LocalBaseline.ReadOnly baseline, string path, string content)
+        => LocalBaselineRows.AddFileToBaseline(_store, baseline.Id, path, content);
+
+    [Fact]
     public async Task DepotBaselineBuiltUnderOlderClassificationRules_IsRebuilt()
     {
         WriteGameFile("a.esm", "vanilla");

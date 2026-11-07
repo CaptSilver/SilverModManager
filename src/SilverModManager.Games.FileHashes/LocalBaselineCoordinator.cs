@@ -168,11 +168,11 @@ internal sealed class LocalBaselineCoordinator : IDisposable
             // watcher and the next apply or start try again. An install the store only flags as needing an update
             // (Steam's UpdateRequired for players who update on launch) is not this: its files are whole.
             _logger.LogInformation("{Game} is being updated by {Store}, or its files are damaged, not building its baseline until that is settled", installation.Game.DisplayName, locator.Store);
-            return existing is { } current ? Describe(store.Db, current, rebuilt: false) : new LocalBaselineResult(LocalBaselineKind.Snapshot, false, 0);
+            return await KeepExisting(installation, existing, store);
         }
 
         if (existing is { } baseline && !IsStale(baseline, installation))
-            return Describe(store.Db, baseline, rebuilt: false);
+            return await KeepExisting(installation, baseline, store);
 
         var (manifests, allCovered) = ResolveManifests(installation);
 
@@ -192,7 +192,7 @@ internal sealed class LocalBaselineCoordinator : IDisposable
             {
                 _logger.LogInformation(e, "Not building a baseline of {Game}: no complete set of manifests covers its build and the paths its loadout deployed are not known, so a baseline taken from the folder could count mods as the game's own files{Kept}",
                     installation.Game.DisplayName, existing is null ? "" : "; keeping the one it has");
-                return existing is { } old ? Describe(store.Db, old, rebuilt: false) : new LocalBaselineResult(LocalBaselineKind.Snapshot, false, 0);
+                return await KeepExisting(installation, existing, store);
             }
         }
 
@@ -232,6 +232,26 @@ internal sealed class LocalBaselineCoordinator : IDisposable
                 built.Kind, installation.Game.DisplayName,
                 build.Count(NonVanillaReason.NotInManifest), build.Count(NonVanillaReason.SizeDiffers), build.Count(NonVanillaReason.HashDiffers));
         return new LocalBaselineResult(built.Kind, Rebuilt: true, build.NonVanilla.Count);
+    }
+
+    /// <summary>
+    /// Describes the baseline that stays as it is, or the empty snapshot result when there is none. A snapshot taken
+    /// before a mod-shape rule existed holds the mods that rule flags as vanilla, and no rebuild is due to correct it,
+    /// so its rows are checked against the rule as it is now whichever way the baseline came to be kept.
+    /// </summary>
+    private async Task<LocalBaselineResult> KeepExisting(GameInstallation installation, LocalBaseline.ReadOnly? existing, IConnection store)
+    {
+        if (existing is not { } baseline) return new LocalBaselineResult(LocalBaselineKind.Snapshot, false, 0);
+
+        if (baseline.Kind == LocalBaselineKind.Snapshot)
+        {
+            var game = installation.GetGame();
+            var moved = await _baseline.RetractModShapedRows(baseline, path => ModLoaderPaths.LooksLikeAMod(game, installation, path), store);
+            if (moved.Count > 0)
+                _logger.LogInformation("The snapshot baseline of {Game} held {Count} files that look like a mod loader or mod, they are no longer counted as the game's own", installation.Game.DisplayName, moved.Count);
+        }
+
+        return Describe(store.Db, baseline, rebuilt: false);
     }
 
     private IReadOnlySet<GamePath> FilesOfOtherManagers(GameInstallation installation)

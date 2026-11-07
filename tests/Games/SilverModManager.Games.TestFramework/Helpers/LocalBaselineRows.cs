@@ -47,6 +47,19 @@ public static class LocalBaselineRows
         return result[baseline.Id];
     }
 
+    /// <summary>
+    /// Adds <paramref name="path"/> to the baseline's vanilla files, as an older build that did not know the file was a
+    /// mod would have recorded it.
+    /// </summary>
+    public static async Task AddFileToBaseline(IConnection store, EntityId baselineId, string path, string content)
+    {
+        var hash = (await HashAll([(path, content)]))[0];
+        using var tx = store.BeginTransaction();
+        var ids = AddPaths(tx, [hash]);
+        tx.Add(baselineId, LocalBaseline.Files, ids[0]);
+        await tx.Commit();
+    }
+
     internal static async Task<(string Path, MultiHash Hash)[]> HashAll((string Path, string Content)[] files)
     {
         var rows = new List<(string, MultiHash)>();

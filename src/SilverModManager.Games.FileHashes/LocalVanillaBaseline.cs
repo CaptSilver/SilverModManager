@@ -128,9 +128,10 @@ internal sealed class LocalVanillaBaseline
     /// Gate 3), which left those files in neither list and showed them as external changes. Version 2 filters
     /// the Creation Engine games' own Creations records (the content catalog and the Creations folder), which
     /// an older baseline reports as non-vanilla. The ignore rule is the synchronizer's path filter, so the
-    /// bump has to land with the filter: a baseline built in between would never be rebuilt. Snapshot rules (the
-    /// mod-shape rule, the deployed-by-loadout exclusion) are not versioned: a snapshot is only rebuilt when
-    /// the locator ids change or a manifest appears, so a bump would rebuild manifest baselines for nothing.
+    /// bump has to land with the filter: a baseline built in between would never be rebuilt. A snapshot is not
+    /// versioned: it is only rebuilt when the locator ids change or a manifest appears, and a bump would rebuild
+    /// manifest baselines for nothing. The coordinator instead re-checks a snapshot's rows against the current
+    /// mod-shape rule each time it checks the baseline (<see cref="RetractModShapedRows"/>).
     /// </summary>
     internal const int ClassificationVersion = 2;
 
@@ -279,6 +280,40 @@ internal sealed class LocalVanillaBaseline
 
         var result = await tx.Commit();
         return new BaselineBuild(result[baseline.Id], nonVanilla, attestedWritten);
+    }
+
+    /// <summary>
+    /// Moves the snapshot rows that <paramref name="looksLikeAMod"/> flags out of the baseline's vanilla files and
+    /// into its non-vanilla list as <see cref="NonVanillaReason.LooksLikeAMod"/>, and returns the paths moved.
+    /// A snapshot records every file as it stood when it was taken, so one taken before a mod-shape rule existed
+    /// holds hand-installed mods as the game's own files; nothing is read or hashed here, the recorded rows are
+    /// only checked against the rule as it is now. A path that already has a non-vanilla row keeps that row.
+    /// </summary>
+    public async Task<IReadOnlyList<RelativePath>> RetractModShapedRows(LocalBaseline.ReadOnly baseline, Func<GamePath, bool> looksLikeAMod, IConnection localStore)
+    {
+        var db = localStore.Db;
+        var flagged = baseline.Files.Where(f => looksLikeAMod(new GamePath(LocationId.Game, f.Path))).ToList();
+        if (flagged.Count == 0) return [];
+
+        var alreadyListed = NonVanillaFile.FindByBaseline(db, baseline.Id).Select(f => f.Path).ToHashSet();
+        using var tx = localStore.BeginTransaction();
+        foreach (var file in flagged)
+        {
+            tx.Retract(baseline.Id, LocalBaseline.Files, file.Id);
+            tx.Delete(file.Id, recursive: false);
+            if (alreadyListed.Contains(file.Path)) continue;
+            _ = new NonVanillaFile.New(tx)
+            {
+                BaselineId = baseline.Id,
+                Path = file.Path,
+                Reason = NonVanillaReason.LooksLikeAMod,
+                Size = file.Hash.Size,
+            };
+        }
+
+        await tx.Commit();
+        foreach (var file in flagged) _logger.LogTrace("Retracted {Path} from the snapshot of {Root}: it looks like a mod", file.Path, baseline.GamePath);
+        return flagged.Select(f => f.Path).ToList();
     }
 
     private static Dictionary<RelativePath, IndexEntry> BuildIndex(IReadOnlyList<Manifest> manifests)

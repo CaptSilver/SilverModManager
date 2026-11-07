@@ -1374,6 +1374,7 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         public Task RecordHashRelations(IReadOnlyList<MultiHash> hashes, CancellationToken cancellationToken = default) => inner.RecordHashRelations(hashes, cancellationToken);
         public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out FileIdentity identity) => inner.TryGetFingerprintedHash(installation, path, size, modifiedUtc, out identity);
         public System.Collections.Frozen.FrozenDictionary<GamePath, AttestedLookup> AttestedFiles(GameInstallation installation) => inner.AttestedFiles(installation);
+        public IReadOnlySet<GamePath> FilesThatLookLikeMods(GameInstallation installation) => inner.FilesThatLookLikeMods(installation);
         public DynamicData.Kernel.Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, FileIdentity Identity)> files) => inner.SuggestVersionData(gameInstallation, files);
     }
 }

@@ -166,6 +166,14 @@ public interface IFileHashesService
     public FrozenDictionary<GamePath, AttestedLookup> AttestedFiles(GameInstallation installation);
 
     /// <summary>
+    /// The game-folder paths the installation's baseline left out of the game's own files because they look like a mod
+    /// loader or mod (<see cref="NonVanillaReason.LooksLikeAMod"/>). Empty when the installation has no baseline.
+    /// A path in it that a loadout once counted as a game file (the baseline listed it before the mod-shape rule
+    /// existed) is a hand-installed mod, not one the loadout deployed.
+    /// </summary>
+    public IReadOnlySet<GamePath> FilesThatLookLikeMods(GameInstallation installation);
+
+    /// <summary>
     /// Records what reading attested files found, in one transaction on <see cref="Local"/>. A file whose SHA-1 and
     /// size match its row is promoted: the hashes become a <see cref="HashRelation"/> with a
     /// <see cref="PathHashRelation"/> in the baseline and the manifest, and the row is deleted. One that does not

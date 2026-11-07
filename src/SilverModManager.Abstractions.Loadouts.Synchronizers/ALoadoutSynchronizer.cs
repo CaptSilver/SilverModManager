@@ -239,6 +239,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         MergeStates(latestDiskState, previousDiskState, syncTree);
         MarkPlayerDeletions(syncTree, loadout);
+        TreatRetractedModFilesAsNew(syncTree, loadout);
         NameTheSameBytesByOneKind(syncTree, _identityResolver.Scoped(IdentitiesToResolve(syncTree)));
         AdoptGameInstalledFiles(syncTree, loadout);
         LeaveUserProtectedFilesAlone(syncTree, loadout);
@@ -246,15 +247,15 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <summary>
-    /// Flags the nodes the player deleted from disk after an earlier apply, when the row that provides the file is
+    /// Flags the nodes the player deleted from disk, when the row that provides the file is
     /// the player's and not a mod's, so there is nothing to restore it from and nothing to re-deploy:
     /// <list type="bullet">
-    /// <item>An Overrides row: adopted from the game folder (its bytes may never have been copied into the store) or
+    /// <item>An Overrides row, after an earlier apply: adopted from the game folder (its bytes may never have been copied into the store) or
     /// kept from an edit. A mod that provides the same path underneath is not consulted: the Overrides row is dropped
     /// and the mod's copy comes back on the next sync.</item>
     /// <item>A Game row the store's file list does not name. With no depot manifest for the install, the baseline
     /// recorded whatever was on disk, old mod files included, and only the disk vouched for them. A path the list
-    /// does name stays a warning: Steam can put it back.</item>
+    /// does name stays a warning: Steam can put it back. The file need not have been seen by an earlier apply.</item>
     /// </list>
     /// </summary>
     private void MarkPlayerDeletions(Dictionary<GamePath, SyncNode> tree, Loadout.ReadOnly loadout)
@@ -264,20 +265,46 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         foreach (var path in tree.Keys.ToArray())
         {
             ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(tree, path);
-            if (node.HaveDisk || !node.HavePrevious) continue;
+            if (node.HaveDisk) continue;
 
             switch (node.SourceItemType)
             {
-                case LoadoutSourceItemType.Loadout when node.Loadout.HaveEntityId:
+                // An Overrides row with no previous entry is a file that was never on disk, such as one still waiting
+                // to be deployed, so it stays in the list.
+                case LoadoutSourceItemType.Loadout when node.HavePrevious && node.Loadout.HaveEntityId:
                     overridesId ??= OverridesGroupLookup.Find(loadout);
                     if (overridesId.Value.Value == 0) continue;
                     node.PlayerDeleted = OverridesGroupLookup.IsInGroup(loadout.Db, node.Loadout.EntityId, overridesId.Value);
                     break;
+                // A Game row needs no previous entry: the file can be gone before any apply recorded it, and the
+                // baseline that named it is the only thing that ever saw it.
                 case LoadoutSourceItemType.Game:
                     listed ??= ListedGameFiles(loadout.InstallationInstance);
                     node.PlayerDeleted = !listed.ContainsKey(path.Path.ToString());
                     break;
             }
+        }
+    }
+
+    /// <summary>
+    /// A file on disk and in the previous state that no loadout row names any more, and that the baseline says looks
+    /// like a mod, was a snapshot Game row until the baseline retracted it. The loadout never deployed it, so it is
+    /// not a mod the loadout dropped and must not be backed up and deleted: the previous side is cleared, which makes
+    /// it a new file on disk that the sync ingests into Overrides, as the first sync does for such files.
+    /// </summary>
+    private void TreatRetractedModFilesAsNew(Dictionary<GamePath, SyncNode> tree, Loadout.ReadOnly loadout)
+    {
+        IReadOnlySet<GamePath>? modShaped = null;
+        foreach (var path in tree.Keys.ToArray())
+        {
+            ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(tree, path);
+            if (node.HaveLoadout || !node.HaveDisk || !node.HavePrevious) continue;
+
+            modShaped ??= _fileHashService.FilesThatLookLikeMods(loadout.InstallationInstance);
+            if (!modShaped.Contains(path)) continue;
+
+            Logger.LogTrace("`{Path}` is on disk and was applied, but the baseline retracted it as looking like a mod: treating it as a new file", path);
+            node.Previous = default;
         }
     }
 

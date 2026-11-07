@@ -197,6 +197,18 @@ public class StubbedFileHasherService : IFileHashesService, IDisposable
     public FrozenDictionary<GamePath, AttestedLookup> AttestedFiles(GameInstallation installation)
         => AttestedFileRows.Find(EnsureLocal(), installation.LocatorResult.Store, GameKey(installation), installation.LocatorResult.LocatorIds);
 
+    // Baselines seeded by tests carry no locator ids, so the baseline is found by store and folder alone.
+    public IReadOnlySet<GamePath> FilesThatLookLikeMods(GameInstallation installation)
+    {
+        var db = EnsureLocal();
+        return LocalBaseline.FindByGamePath(db, GameKey(installation))
+            .Where(baseline => baseline.Store == installation.LocatorResult.Store)
+            .SelectMany(baseline => NonVanillaFile.FindByBaseline(db, baseline.Id))
+            .Where(file => file.Reason == NonVanillaReason.LooksLikeAMod)
+            .Select(file => new GamePath(LocationId.Game, file.Path))
+            .ToHashSet();
+    }
+
     public Task SettleAttested(GameInstallation installation, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, CancellationToken cancellationToken = default)
     {
         EnsureLocal();
