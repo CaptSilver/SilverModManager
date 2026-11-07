@@ -47,9 +47,10 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
         // Index the plugins that will be on-disk in the game folder
         Dictionary<string, (SyncNode Node, PluginHeader Header)> pluginHeaders = new(PluginNameComparer.Instance);
         List<string> unreadable = [];
+        var installation = loadout.InstallationInstance;
         foreach (var (key, node) in plugins)
         {
-            var header = await _game.ParseNode(node, node.Loadout.Identity, key.Path.FileName);
+            var header = await _game.ParseNode(node, node.Loadout.Identity, key, installation);
             if (header == null)
             {
                 unreadable.Add(key.Path.FileName);

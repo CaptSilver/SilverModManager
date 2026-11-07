@@ -106,8 +106,15 @@ public class Morrowind(IServiceProvider provider) : ACreationEngineGame<Morrowin
     // A .omwscripts file is a text list of Lua scripts, with no header record to read.
     public override ValueTask<PluginHeader?> ParsePlugin(FileIdentity identity, RelativePath? name = null) =>
         name is { } file && file.Extension == KnownCEExtensions.OMWScripts
-            ? ValueTask.FromResult<PluginHeader?>(new PluginHeader(file.FileName.ToString(), [], 0, null, null, null, null, HeaderFormat))
+            ? ValueTask.FromResult<PluginHeader?>(ScriptsHeader(file))
             : base.ParsePlugin(identity, name);
+
+    public override ValueTask<PluginHeader?> ParsePluginFile(AbsolutePath file, RelativePath? name = null) =>
+        name is { } plugin && plugin.Extension == KnownCEExtensions.OMWScripts
+            ? ValueTask.FromResult<PluginHeader?>(ScriptsHeader(plugin))
+            : base.ParsePluginFile(file, name);
+
+    private PluginHeader ScriptsHeader(RelativePath file) => new(file.FileName.ToString(), [], 0, null, null, null, null, HeaderFormat);
 
     public Task<IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)>> PluginTimestamps(Loadout.ReadOnly loadout, IReadOnlyDictionary<GamePath, SyncNode> syncTree) =>
         PlanPluginTimestamps(loadout, syncTree);

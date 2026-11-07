@@ -97,4 +97,12 @@ public interface ICreationEngineGame : IBethesdaGame
     /// That happens for a game file whose recorded build is no longer on disk.
     /// </returns>
     public ValueTask<PluginHeader?> ParsePlugin(FileIdentity identity, RelativePath? name = null);
+
+    /// <summary>
+    /// Parse the plugin at <paramref name="file"/> in the game folder, the way <see cref="ParsePlugin"/> parses a stored one.
+    /// </summary>
+    /// <returns>
+    /// The plugin header, or <c>null</c> when the file is missing or cannot be read (not a plugin, or no permission).
+    /// </returns>
+    public ValueTask<PluginHeader?> ParsePluginFile(AbsolutePath file, RelativePath? name = null);
 }

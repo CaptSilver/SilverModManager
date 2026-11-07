@@ -209,6 +209,21 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
         return PluginHeaderReader.Read(stream, HeaderFormat, name?.FileName.ToString() ?? "unknown.esm");
     }
 
+    public virtual ValueTask<PluginHeader?> ParsePluginFile(AbsolutePath file, RelativePath? name = null)
+    {
+        if (!file.FileExists) return ValueTask.FromResult<PluginHeader?>(null);
+
+        try
+        {
+            using var stream = file.Read();
+            return ValueTask.FromResult<PluginHeader?>(PluginHeaderReader.Read(stream, HeaderFormat, name?.FileName.ToString() ?? "unknown.esm"));
+        }
+        catch (Exception e) when (e is InvalidPluginException or IOException or UnauthorizedAccessException)
+        {
+            return ValueTask.FromResult<PluginHeader?>(null);
+        }
+    }
+
     string? IMo2InstanceTarget.UnsupportedReason(GameInstallation installation) => CreationEngineMo2Target.UnsupportedReason(TSelf.GameId);
 
     GamePath IMo2InstanceTarget.ModFilePath(GameInstallation installation, RelativePath modRelative) => CreationEngineMo2Target.ModFilePath(this, modRelative);

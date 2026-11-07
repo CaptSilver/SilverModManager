@@ -26,7 +26,8 @@ namespace SilverModManager.Games.CreationEngine;
 /// A game can have several such files (plugins.txt beside loadorder.txt), each in its own <see cref="IPluginListCodec"/>.
 /// A codec that rewrites an existing file (Morrowind.ini, openmw.cfg) gets the current file to work on.
 /// The Apply button's status renders it to see whether the last apply's bytes would change; a render that fails
-/// (a plugin header nobody can read) counts as pending.
+/// (a plugin header nobody can read) counts as pending. A header missing from the file store is read from the
+/// copy in the game folder, and one that neither has is refused, as the Apply refuses it.
 /// </summary>
 public class PluginsFile : IIntrinsicFileWithReset, IIntrinsicFileRenderedFromLoadout
 {
@@ -177,23 +178,33 @@ public class PluginsFile : IIntrinsicFileWithReset, IIntrinsicFileRenderedFromLo
         IReadOnlyDictionary<GamePath, SyncNode> syncTree,
         GameInstalledPlugins gameInstalled)
     {
+        var early = new Dictionary<string, int>(PluginNameComparer.Instance);
+        for (var i = 0; i < earlyLoaders.Count; i++) early.TryAdd(earlyLoaders[i], i);
+
+        // The game switches these on whatever the list and the user's switches say.
+        var implicitlyActive = _game.ImplicitlyActivePlugins(
+                syncTree.Where(e => e.Key.Parent == _game.DataPath && (e.Value.HaveLoadout || IsAdoptedFromDisk(e.Value))).Select(e => e.Key.FileName.ToString()))
+            .ToHashSet(PluginNameComparer.Instance);
+
         var plugins = new List<Metadata>();
         List<string> unreadable = [];
-        List<string> unreadableInstalled = [];
+        List<string> unreadableListedWithoutMasters = [];
         foreach (var entry in syncTree)
         {
             if (!IsPluginPath(entry.Key)) continue;
             var adopted = IsAdoptedFromDisk(entry.Value);
             if (!entry.Value.HaveLoadout && !adopted) continue;
 
-            if (await MakeMetadata(entry) is { } found)
+            if (await MakeMetadata(entry, installation) is { } found)
                 plugins.Add(found);
             // A file the sync is about to take into the loadout may not be readable before it is stored; it is
             // listed on the next Apply instead of blocking this one.
             else if (adopted)
                 _logger.LogDebug("The header of {Plugin}, already in the Data folder, could not be read yet", entry.Key.FileName);
-            else if (gameInstalled.Contains(entry.Key.FileName))
-                unreadableInstalled.Add(entry.Key.FileName);
+            // The game decides these without the list's help (a Creation it is still downloading, the masters it always
+            // loads), so a header nobody can read must not stop the file from being written.
+            else if (gameInstalled.Contains(entry.Key.FileName) || early.ContainsKey(entry.Key.FileName) || implicitlyActive.Contains(entry.Key.FileName))
+                unreadableListedWithoutMasters.Add(entry.Key.FileName);
             else
                 unreadable.Add(entry.Key.FileName);
         }
@@ -208,14 +219,6 @@ public class PluginsFile : IIntrinsicFileWithReset, IIntrinsicFileRenderedFromLo
         var rowsByName = new Dictionary<string, PluginSortData>(PluginNameComparer.Instance);
         foreach (var row in rows) rowsByName.TryAdd(row.Name, row);
 
-        var early = new Dictionary<string, int>(PluginNameComparer.Instance);
-        for (var i = 0; i < earlyLoaders.Count; i++) early.TryAdd(earlyLoaders[i], i);
-
-        // The game switches these on whatever the list and the user's switches say.
-        var implicitlyActive = _game.ImplicitlyActivePlugins(
-                syncTree.Where(e => e.Key.Parent == _game.DataPath && (e.Value.HaveLoadout || IsAdoptedFromDisk(e.Value))).Select(e => e.Key.FileName.ToString()))
-            .ToHashSet(PluginNameComparer.Instance);
-
         var entries = plugins.Select(plugin =>
         {
             var name = plugin.Header.FileName;
@@ -228,11 +231,12 @@ public class PluginsFile : IIntrinsicFileWithReset, IIntrinsicFileRenderedFromLo
                 early.TryGetValue(name, out var earlyIndex) ? earlyIndex : null);
         }).ToList();
 
-        // A Creation the game is still downloading has no readable header yet. It must not block every Apply, so it
-        // is listed where its row puts it, as a plugin with no masters.
-        foreach (var name in unreadableInstalled)
+        // A Creation the game is still downloading has no readable header yet, and a game master can have no bytes in
+        // the file store. Neither must block every Apply, so they are listed where their row puts them, as plugins
+        // with no masters.
+        foreach (var name in unreadableListedWithoutMasters)
         {
-            _logger.LogWarning("The header of {Plugin}, installed by the game, could not be read; listing it without masters", name);
+            _logger.LogWarning("The header of {Plugin}, which the game loads or installs itself, could not be read; listing it without masters", name);
             entries.Add(new PluginOrderEntry(
                 name, false, false, [],
                 rowsByName.TryGetValue(name, out var row) ? row.SortIndex : null,
@@ -266,7 +270,7 @@ public class PluginsFile : IIntrinsicFileWithReset, IIntrinsicFileRenderedFromLo
         }).ToList();
     }
 
-    private async ValueTask<Metadata?> MakeMetadata(KeyValuePair<GamePath, SyncNode> arg)
+    private async ValueTask<Metadata?> MakeMetadata(KeyValuePair<GamePath, SyncNode> arg, GameInstallation installation)
     {
         var relPath = arg.Key.Path.FileName;
         FileIdentity identity;
@@ -278,7 +282,7 @@ public class PluginsFile : IIntrinsicFileWithReset, IIntrinsicFileRenderedFromLo
         else
             identity = syncNode.Disk.Identity;
 
-        var modHeader = await _game.ParseNode(syncNode, identity, relPath);
+        var modHeader = await _game.ParseNode(syncNode, identity, arg.Key, installation);
         return modHeader is null ? null : new Metadata(relPath, identity, modHeader);
     }
 

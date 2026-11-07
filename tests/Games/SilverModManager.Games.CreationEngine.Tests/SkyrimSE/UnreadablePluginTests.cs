@@ -177,6 +177,68 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
         diagnostics.Should().ContainSingle(d => d.Id == MissingMasterId);
     }
 
+    /// <summary>A plugin in the game folder that no store holds and the index has never seen, under an identity nothing resolves.</summary>
+    private async Task<SyncNode> UnstoredPluginOnDisk(string fileName, byte[] bytes)
+    {
+        await EnsureLoadout();
+        var file = GameInstallation.Locations.ToAbsolutePath(DataPath(fileName));
+        file.Parent.CreateDirectory();
+        await file.WriteAllBytesAsync(bytes);
+        var disk = new SyncNodePart { Identity = FileIdentity.XxHash3(Hash.From(0xE5)), Size = Size.FromLong(bytes.Length), LastModifiedTicks = 0 };
+        return LoadoutNode(Hash.From(0xC4), Size.FromLong(4096)) with { Disk = disk };
+    }
+
+    [Fact]
+    public async Task MissingMasterEmitter_ReadsTheGameFolderCopyWhenNoStoreHasEitherHash()
+    {
+        // Skyrim VR's masters: the loadout's bytes are gone and the index holds the patched file under no store either.
+        var node = await UnstoredPluginOnDisk("Patched.esm", await PluginBytes("Patched.esm", "Absent.esm"));
+
+        var diagnostics = await Diagnose(Tree((DataPath("Patched.esm"), node)));
+
+        diagnostics.Should().NotContain(d => d.Id == UnreadablePluginsId);
+        diagnostics.Should().ContainSingle(d => d.Id == MissingMasterId);
+    }
+
+    [Fact]
+    public async Task MissingMasterEmitter_StillNamesAPluginWhoseGameFolderCopyIsNotAPlugin()
+    {
+        var node = await UnstoredPluginOnDisk("Garbled.esm", "not a plugin"u8.ToArray());
+
+        var diagnostics = await Diagnose(Tree((DataPath("Garbled.esm"), node)));
+
+        diagnostics.Should().ContainSingle(d => d.Id == UnreadablePluginsId);
+    }
+
+    [Fact]
+    public async Task ParsePluginFile_AFileTheUserCannotRead_ReturnsNull()
+    {
+        Assert.SkipWhen(Environment.IsPrivilegedProcess || OperatingSystem.IsWindows(), "file permissions do not stop this process");
+        await EnsureLoadout();
+        var file = GameInstallation.Locations.ToAbsolutePath(DataPath("Locked.esm"));
+        file.Parent.CreateDirectory();
+        await file.WriteAllBytesAsync(await PluginBytes("Locked.esm"));
+        File.SetUnixFileMode(file.ToString(), UnixFileMode.None);
+
+        var header = await Creation.ParsePluginFile(file, RelativePath.FromUnsanitizedInput("Locked.esm"));
+
+        header.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task PluginsFile_AGameFolderCopyTheUserCannotRead_RefusesLikeAnyOtherUnreadablePlugin()
+    {
+        Assert.SkipWhen(Environment.IsPrivilegedProcess || OperatingSystem.IsWindows(), "file permissions do not stop this process");
+        var node = await UnstoredPluginOnDisk("Locked.esp", await PluginBytes("Locked.esp"));
+        File.SetUnixFileMode(GameInstallation.Locations.ToAbsolutePath(DataPath("Locked.esp")).ToString(), UnixFileMode.None);
+        var loadout = await EnsureLoadout();
+
+        using var stream = new MemoryStream();
+        var act = async () => await NewPluginsFile().Write(stream, loadout, Tree((DataPath("Locked.esp"), node)).ToDictionary());
+
+        (await act.Should().ThrowAsync<UnreadablePluginsException>()).Which.Message.Should().Contain("Locked.esp");
+    }
+
     [Fact]
     public async Task MissingMasterEmitter_MatchesAMasterNamedInADifferentCase()
     {
