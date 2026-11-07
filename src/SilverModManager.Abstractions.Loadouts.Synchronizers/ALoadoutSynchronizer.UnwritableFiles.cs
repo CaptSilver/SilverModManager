@@ -127,8 +127,7 @@ public partial class ALoadoutSynchronizer
         var withActions = WithActions(node, Actions.BackupFile | Actions.IngestFromDisk);
         if (node.Disk.Identity.Kind == HashKind.XxHash3) return withActions;
 
-        await using var stream = installation.Locations.ToAbsolutePath(path).Read();
-        var hash = await Xx3Hasher.HashAsync(stream);
+        var hash = await FileHashing.XxHash3(installation.Locations.ToAbsolutePath(path), cancellationToken);
         withActions.Disk = new SyncNodePart
         {
             EntityId = node.Disk.EntityId,
