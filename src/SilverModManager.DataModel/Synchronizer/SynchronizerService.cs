@@ -703,6 +703,10 @@ public class SynchronizerService : ISynchronizerService, IDisposable
             void Changed() => observer.OnNext((_conn.Db.BasisTxId, Interlocked.Increment(ref archiveEpoch)));
 
             fileStore.ArchivesChanged += Changed;
+            // Nothing listens while the status has no subscriber, so an archive that came back in that time raised no
+            // change. Counting the (re)connect as one means a file known to wait for an archive is compared once
+            // instead of being answered from the inputs recorded before the gap.
+            Interlocked.Increment(ref archiveEpoch);
             return R3.Disposable.Create(() => fileStore.ArchivesChanged -= Changed);
         });
 
@@ -711,7 +715,7 @@ public class SynchronizerService : ISynchronizerService, IDisposable
 
         // A file is known to wait for an archive when the last apply left one out (recorded in the database) or the
         // last comparison found one. Only a change to the file store can make it writable, so it forces a comparison
-        // once per change (the store is not asked about changes from before the status began); otherwise the recorded inputs answer, and an apply that found nothing it could write
+        // once per change, and once after each time the status starts listening to the store; otherwise the recorded inputs answer, and an apply that found nothing it could write
         // reads Current instead of re-comparing, and finding the same generated files pending, on every look.
         var waitsForArchive = 0;
         var epochAtLastLook = 0L; // the epoch's start: the file store has not changed since this status began
