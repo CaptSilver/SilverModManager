@@ -170,4 +170,5 @@ public static class ModSources
     public const string Download = "Download";
     public const string Bundled = "Bundled";
     public const string Game = "Game";
+    public const string GameFolder = "Game folder";
 }

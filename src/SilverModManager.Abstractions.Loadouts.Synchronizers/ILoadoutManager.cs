@@ -57,10 +57,12 @@ public interface ILoadoutManager
     ValueTask DeactivateCurrentLoadout(GameInstallation installation, CancellationToken cancellationToken = default, BackupOverflowChoice? largeFiles = null, bool discardBackups = false);
 
     /// <summary>
-    /// Removes the loadout's External Changes and synchronizes, which deletes those files from the game folder.
-    /// Throws <see cref="SynchronizerPreflightException"/>, before any row is deleted, when the file hashes data does
+    /// Moves the loadout's External Changes into the switched-off <see cref="SilverModManager.Abstractions.Loadouts.DefaultCollection.FoundInGameFolderName"/>
+    /// group in My Mods and synchronizes, which takes those files out of the game folder; switching the group back on
+    /// restores them. Throws <see cref="SynchronizerPreflightException"/>, before any row is deleted, when the file hashes data does
     /// not cover the installed build and the game's own files could not be told from the added ones.
-    /// A refusal at the backup-cap question, or a cancellation, puts the External Changes back.
+    /// A clean that fails before the Apply finishes, such as a refusal at the backup-cap question or a cancellation,
+    /// puts the External Changes back.
     /// </summary>
     Task CleanGameFolder(Loadout.ReadOnly loadout, BackupOverflowChoice? largeFiles = null, CancellationToken cancellationToken = default);
 

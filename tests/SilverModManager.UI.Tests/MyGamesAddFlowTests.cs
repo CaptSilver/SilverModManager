@@ -17,10 +17,10 @@ namespace SilverModManager.UI.Tests;
 /// </summary>
 public class MyGamesAddFlowTests(IServiceProvider provider) : AUiTest(provider)
 {
-    private async Task<Loadout.ReadOnly> SeedWithExternalFiles(int count)
+    private async Task<Loadout.ReadOnly> SeedWithExternalFiles(int count, int deletedCount = 0)
     {
         var loadout = await SeedLoadoutRow(GameStore.Unknown, "add-flow-" + Guid.NewGuid().ToString("N"));
-        if (count == 0) return loadout;
+        if (count == 0 && deletedCount == 0) return loadout;
 
         using var tx = Connection.BeginTransaction();
         _ = new LoadoutOverridesGroup.New(tx, out var overrides)
@@ -52,6 +52,25 @@ public class MyGamesAddFlowTests(IServiceProvider provider) : AUiTest(provider)
             };
         }
 
+        for (var i = 0; i < deletedCount; i++)
+        {
+            var path = new GamePath(LocationId.Game, $"Movies/intro{i}.bk2");
+            _ = new DeletedFile.New(tx, out var deletedId)
+            {
+                Reason = "Deleted from disk",
+                LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, deletedId)
+                {
+                    LoadoutItem = new LoadoutItem.New(tx, deletedId)
+                    {
+                        LoadoutId = loadout.Id,
+                        ParentId = LoadoutItemGroupId.From(overrides),
+                        Name = path.Path.FileName,
+                    },
+                    TargetPath = path.ToGamePathParentTuple(loadout.LoadoutId.Value),
+                },
+            };
+        }
+
         await tx.Commit();
         return Loadout.Load(Connection.Db, loadout.LoadoutId);
     }
@@ -80,5 +99,33 @@ public class MyGamesAddFlowTests(IServiceProvider provider) : AUiTest(provider)
         described.Changes.Should().BeEmpty();
         described.BuildCovered.Should().BeTrue();
         asked.Should().BeSameAs(installation);
+    }
+
+    [Fact]
+    public async Task CleanPrompt_CountsAndListsOnlyTheFilesTheCleanMoves_AndSaysTheDeletedGameFilesComeBack()
+    {
+        var loadout = await SeedWithExternalFiles(2, deletedCount: 3);
+        var installation = LocateStubbedInstallation<Cyberpunk2077Game>(Provider);
+        var described = MyGamesViewModel.DescribeFreshLoadout(Connection, loadout, installation, _ => true);
+
+        var prompt = MyGamesViewModel.CleanPromptFor(described.Changes, "Cyberpunk 2077", described.BuildCovered, default);
+
+        prompt.Markdown.Should().Contain("We found 2 files");
+        prompt.Markdown.Should().Contain("- external (2 files)");
+        prompt.Markdown.Should().NotContain("Movies");
+        prompt.Markdown.Should().Contain("3 files the game ships are missing from the folder");
+    }
+
+    [Fact]
+    public async Task CleanPrompt_WhenTheOnlyChangesAreDeletedGameFiles_SaysTheyComeBackAndCountsNoFiles()
+    {
+        var loadout = await SeedWithExternalFiles(0, deletedCount: 2);
+        var installation = LocateStubbedInstallation<Cyberpunk2077Game>(Provider);
+        var described = MyGamesViewModel.DescribeFreshLoadout(Connection, loadout, installation, _ => true);
+
+        var prompt = MyGamesViewModel.CleanPromptFor(described.Changes, "Cyberpunk 2077", described.BuildCovered, default);
+
+        prompt.Markdown.Should().StartWith("2 files the game ships are missing from the folder. **Clean folder** puts them back.");
+        prompt.Markdown.Should().NotContain("We found").And.NotContain("moves these files");
     }
 }

@@ -420,6 +420,7 @@ public static class Services
             .AddSingleton<ILoadoutDataProvider, ThunderstoreDataProvider>()
             .AddSingleton<ILoadoutDataProvider, BundledDataProvider>()
             .AddSingleton<ILoadoutDataProvider, GameInstalledDataProvider>()
+            .AddSingleton<ILoadoutDataProvider, UnclaimedGroupsDataProvider>()
             .AddSingleton<ILoadoutDataProvider, WabbajackLoadoutDataProvider>()
             .AddSingleton<ILoadOrderDataProvider, LoadOrderDataProvider>()
             .AddSingleton<IDownloadsDataProvider, DownloadsDataProvider>()

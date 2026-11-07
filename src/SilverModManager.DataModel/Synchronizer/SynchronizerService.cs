@@ -16,6 +16,7 @@ using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using DynamicData.Kernel;
 using SilverModManager.Sdk;
+using SilverModManager.DataModel.Sorting;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.FileStore;
@@ -257,9 +258,12 @@ public class SynchronizerService : ISynchronizerService, IDisposable
     }
 
     /// <summary>
-    /// Deletes the loadout's External Changes and applies it. The rows go first because the apply measures what it
-    /// would back up from the loadout as it is after the clean, but a refused question, a cancelled wait or a failure
-    /// before the apply started writing is no reason to lose them, so they are put back then.
+    /// Takes the loadout's External Changes out of the Overrides and applies it. The rows go first because the apply
+    /// measures what it would back up from the loadout as it is after the clean. Files move into a switched-off group
+    /// in My Mods, so the apply takes them off disk but the player keeps them; rows that record a deleted game file are
+    /// dropped, so the game's file comes back. A refused question or a failure before the apply started writing is no
+    /// reason to lose them, so they are put back then. Once the apply has started writing the files may already be off
+    /// disk, so they stay in the group, where the next sync finds them.
     /// </summary>
     private async Task CleanExternalChanges(Loadout.ReadOnly loadout, SynchronizeLoadoutJob job, BackupOverflowChoice? largeFiles, CancellationToken cancellationToken)
     {
@@ -271,9 +275,9 @@ public class SynchronizerService : ISynchronizerService, IDisposable
         {
             await synchronizer.Synchronize(Loadout.Load(_conn.Db, loadout.LoadoutId), job, largeFiles, cancellationToken);
         }
-        catch (Exception e) when (e is BackupOverflowException or SynchronizerPreflightException or OperationCanceledException || !ApplyBeganWriting(job))
+        catch (Exception e) when (e is BackupOverflowException or SynchronizerPreflightException || !ApplyBeganWriting(job))
         {
-            await RestoreExternalChanges(removed);
+            await RestoreExternalChanges(removed, loadout.LoadoutId);
             throw;
         }
     }
@@ -286,33 +290,108 @@ public class SynchronizerService : ISynchronizerService, IDisposable
     private static bool ApplyBeganWriting(SynchronizeLoadoutJob job)
         => job.Progress.Value.Phase is { } phase && phase != SyncPhases.Collecting && phase != SyncPhases.ReadingBackups && phase != SyncPhases.WaitingForAnswer;
 
-    private async Task<List<(EntityId Entity, AttributeId Attribute, ValueTag Tag, byte[] Value)>> RemoveExternalChanges(Loadout.ReadOnly loadout)
+    /// <summary>What <see cref="RemoveExternalChanges"/> changed, kept so it can be undone.</summary>
+    private sealed record RemovedExternalChanges(
+        List<(EntityId Entity, AttributeId Attribute, ValueTag Tag, byte[] Value)> DroppedRows,
+        IReadOnlyList<EntityId> MovedFiles,
+        LoadoutItemGroupId? Overrides,
+        LoadoutItemGroupId? CreatedGroup)
     {
-        loadout = loadout.Rebase();
-        var removed = new List<(EntityId, AttributeId, ValueTag, byte[])>();
-
-        using var tx = _conn.BeginTransaction();
-        if (LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id).TryGetFirst(out var overridesGroup))
-        {
-            foreach (var entry in overridesGroup.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
-            {
-                foreach (var datom in loadout.Db.Get(entry.Id))
-                    removed.Add((datom.E, datom.A, datom.Prefix.ValueTag, datom.ValueSpan.ToArray()));
-
-                tx.Delete(entry.Id, recursive: false);
-            }
-        }
-
-        await tx.Commit();
-        return removed;
+        public static RemovedExternalChanges Nothing { get; } = new([], [], null, null);
     }
 
-    private async Task RestoreExternalChanges(List<(EntityId Entity, AttributeId Attribute, ValueTag Tag, byte[] Value)> removed)
+    private async Task<RemovedExternalChanges> RemoveExternalChanges(Loadout.ReadOnly loadout)
     {
-        if (removed.Count == 0) return;
+        loadout = loadout.Rebase();
+        if (!LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id).TryGetFirst(out var overridesGroup))
+            return RemovedExternalChanges.Nothing;
+
+        var dropped = new List<(EntityId, AttributeId, ValueTag, byte[])>();
+        var files = new List<EntityId>();
+        using var tx = _conn.BeginTransaction();
+        foreach (var entry in overridesGroup.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
+        {
+            if (!entry.TryGetAsDeletedFile(out _))
+            {
+                files.Add(entry.Id);
+                continue;
+            }
+
+            foreach (var datom in loadout.Db.Get(entry.Id))
+                dropped.Add((datom.E, datom.A, datom.Prefix.ValueTag, datom.ValueSpan.ToArray()));
+            tx.Delete(entry.Id, recursive: false);
+        }
+
+        var overrides = LoadoutItemGroupId.From(overridesGroup.Id);
+        if (files.Count == 0)
+        {
+            await tx.Commit();
+            return new RemovedExternalChanges(dropped, [], overrides, null);
+        }
+
+        var (group, created) = FoundInGameFolder(tx, loadout);
+        foreach (var file in files) tx.Add(file, LoadoutItem.Parent, group);
+        var result = await tx.Commit();
+
+        _logger.LogInformation("{Files} files that were not part of the game were moved into the switched-off group {Group} in My Mods", files.Count, DefaultCollection.FoundInGameFolderName);
+        return new RemovedExternalChanges(dropped, files, overrides, created ? LoadoutItemGroupId.From(result[group.Value]) : null);
+    }
+
+    /// <summary>
+    /// The switched-off group in My Mods that the clean moves files into: the loadout's existing one, or a new one added
+    /// to <paramref name="tx"/>. Only a switched-off group is reused, because files moved into one the player switched
+    /// back on would stay on disk, which the clean said it would not do.
+    /// </summary>
+    private static (LoadoutItemGroupId Group, bool Created) FoundInGameFolder(ITransaction tx, Loadout.ReadOnly loadout)
+    {
+        var myMods = LoadoutItemGroupId.From(DefaultCollection.OfOrCreate(tx, loadout.Db, loadout.LoadoutId));
+
+        // A My Mods made in this transaction has no children to look through.
+        if (!myMods.Value.InPartition(PartitionId.Temp))
+        {
+            var existing = LoadoutItemGroup.Load(loadout.Db, myMods).Children
+                .Where(child => child.IsDisabled && FoundInGameFolderGroup.Load(loadout.Db, child.Id).IsValid())
+                .Select(child => (LoadoutItem.ReadOnly?)child)
+                .FirstOrDefault();
+            if (existing is { } found) return (LoadoutItemGroupId.From(found.Id), false);
+        }
+
+        _ = new FoundInGameFolderGroup.New(tx, out var id)
+        {
+            IsMarker = true,
+            LoadoutItemGroup = new LoadoutItemGroup.New(tx, id)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, id)
+                {
+                    LoadoutId = loadout.Id,
+                    Name = DefaultCollection.FoundInGameFolderName,
+                    ParentId = myMods,
+                },
+            },
+        };
+        tx.Add(id, LoadoutItem.Disabled, Null.Instance);
+        tx.Add(new LoadoutManager.ApplyGroupRulesTxFunc(loadout.LoadoutId, new RuleDelta { NewGroups = [LoadoutItemGroupId.From(id)] }));
+        return (LoadoutItemGroupId.From(id), true);
+    }
+
+    private async Task RestoreExternalChanges(RemovedExternalChanges removed, LoadoutId loadoutId)
+    {
+        if (removed.DroppedRows.Count == 0 && removed.MovedFiles.Count == 0) return;
 
         using var tx = _conn.BeginTransaction();
-        foreach (var (entity, attribute, tag, value) in removed) tx.Add(entity, attribute, tag, value);
+        foreach (var (entity, attribute, tag, value) in removed.DroppedRows) tx.Add(entity, attribute, tag, value);
+        if (removed.Overrides is { } overrides)
+        {
+            foreach (var file in removed.MovedFiles) tx.Add(file, LoadoutItem.Parent, overrides);
+        }
+
+        if (removed.CreatedGroup is { } group)
+        {
+            tx.Add(new LoadoutManager.ApplyGroupRulesTxFunc(loadoutId, new RuleDelta { RemovedGroups = [group] }));
+            tx.Delete(group.Value, recursive: false);
+        }
+
         await tx.Commit();
     }
 

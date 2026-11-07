@@ -472,6 +472,17 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
         return (changes, buildCovered(installation));
     }
 
+    /// <summary>
+    /// The clean prompt for the External Changes of a fresh loadout. A row that records a deleted game file is not a file the
+    /// clean moves: the clean drops it and the game's file comes back, so it is counted apart.
+    /// </summary>
+    internal static CleanFolderPrompt CleanPromptFor(IReadOnlyCollection<LoadoutItemWithTargetPath.ReadOnly> changeEntries, string gameName, bool buildCovered, UnbackedFiles unbacked)
+    {
+        var movedPaths = changeEntries.Where(entry => !entry.TryGetAsDeletedFile(out _))
+            .Select(entry => ((GamePath)entry.TargetPath).Path.ToString()).ToArray();
+        return CleanFolderPrompt.For(buildCovered, movedPaths.Length, gameName, unbacked, movedPaths, changeEntries.Count - movedPaths.Length);
+    }
+
     private async Task<ButtonDefinitionId> ShowCleanGameFolderDialog(
         ButtonDefinitionId revert,
         ButtonDefinitionId doNothing,
@@ -481,7 +492,7 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
         bool buildCovered,
         UnbackedFiles unbacked)
     {
-        var prompt = CleanFolderPrompt.For(buildCovered, changeEntries.Length, installation.Game.DisplayName, unbacked);
+        var prompt = CleanPromptFor(changeEntries, installation.Game.DisplayName, buildCovered, unbacked);
         var markdownVm = _serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
         markdownVm.Contents = prompt.Markdown;
 

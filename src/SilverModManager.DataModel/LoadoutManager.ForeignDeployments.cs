@@ -8,6 +8,8 @@ using SilverModManager.Sdk.ForeignDeployments;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
@@ -72,8 +74,8 @@ internal partial class LoadoutManager
 
     /// <summary>
     /// Moves the files of each foreign mod out of the Overrides group, where the first sync put everything on disk that
-    /// neither the game nor a mod provides, into a group of their own. Reuses that sync's ingest, so the bytes are
-    /// already in the file store and the rows keep their ids.
+    /// neither the game nor a mod provides, into a group of their own in My Mods, where a mod installed from the
+    /// library goes too. Reuses that sync's ingest, so the bytes are already in the file store and the rows keep their ids.
     /// </summary>
     private async Task<Loadout.ReadOnly> AdoptForeignDeployments(Loadout.ReadOnly loadout, IReadOnlyList<ForeignDeployment> deployments)
     {
@@ -90,6 +92,7 @@ internal partial class LoadoutManager
 
         using var tx = _connection.BeginTransaction();
         var newGroups = new List<LoadoutItemGroupId>();
+        var myMods = MyModsOf(tx, loadout.Db, loadout.LoadoutId);
         var adopted = new List<AdoptedMod>();
         var notAdopted = new List<GamePath>();
         var missing = deployments.SelectMany(d => d.MissingFiles).ToList();
@@ -119,6 +122,7 @@ internal partial class LoadoutManager
                         {
                             LoadoutId = loadout.Id,
                             Name = mod.DisplayName,
+                            ParentId = myMods,
                         },
                     },
                 };
@@ -143,6 +147,15 @@ internal partial class LoadoutManager
 
         Announce(new ForeignAdoptionResult(adopted, missing, notAdopted, replaced));
         return loadout.Rebase(result.Db);
+    }
+
+    /// <summary>
+    /// The loadout's My Mods group, where the mods it holds for the user live. Added to <paramref name="tx"/> when the
+    /// loadout has none left.
+    /// </summary>
+    private static LoadoutItemGroupId MyModsOf(ITransaction tx, IDb db, LoadoutId loadoutId)
+    {
+        return LoadoutItemGroupId.From(DefaultCollection.OfOrCreate(tx, db, loadoutId));
     }
 
     private void Announce(ForeignAdoptionResult result)

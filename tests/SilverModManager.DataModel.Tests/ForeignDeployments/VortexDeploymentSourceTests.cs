@@ -49,6 +49,23 @@ public sealed class VortexDeploymentSourceTests : IDisposable
         File.WriteAllText(Path.Combine(_root, name), json);
     }
 
+    private void ManifestIn(string folder, string name, params (string RelPath, string Source)[] files)
+    {
+        var json = JsonSerializer.Serialize(new
+        {
+            instance = "default",
+            version = 1,
+            deploymentMethod = "hardlink_activator",
+            gameId = "hogwartslegacy",
+            deploymentTime = 1700000000,
+            stagingPath = @"Z:\staging",
+            targetPath = @"Z:\games\Hogwarts Legacy\" + folder.Replace('/', '\\'),
+            files = files.Select(f => new { relPath = f.RelPath, source = f.Source, target = "", time = 1700000000 }).ToArray(),
+        });
+        Directory.CreateDirectory(Path.Combine(_root, folder));
+        File.WriteAllText(Path.Combine(_root, folder, name), json);
+    }
+
     private static GamePath Game(string path) => new(LocationId.Game, path);
 
     [Fact]
@@ -92,6 +109,84 @@ public sealed class VortexDeploymentSourceTests : IDisposable
 
         var hook = found.Mods.Should().ContainSingle().Subject;
         hook.Files.Should().BeEquivalentTo([Game("Merged/hook.dll"), Game("Phoenix/Content/Paks/~mods/skin_P.pak")]);
+    }
+
+    [Fact]
+    public void Detect_FindsAModTypeManifestInItsOwnDeploymentFolderAndResolvesPathsAgainstIt()
+    {
+        Put("Phoenix/Content/Paks/~mods/AAA-Apparition-1162-1-01-1679514562/a.pak");
+        Put("Phoenix/Content/Paks/~mods/AAA-Apparition-1162-1-01-1679514562/b.pak");
+        Put("Phoenix/Content/Paks/~mods/Other-5-1-1679514563/c.pak");
+        ManifestIn("Phoenix/Content/Paks/~mods", "vortex.deployment.hogwarts-PAK-modtype.json",
+            (@"AAA-Apparition-1162-1-01-1679514562\a.pak", "AAA-Apparition-1162-1-01-1679514562"),
+            (@"AAA-Apparition-1162-1-01-1679514562\b.pak", "AAA-Apparition-1162-1-01-1679514562"),
+            (@"Other-5-1-1679514563\c.pak", "Other-5-1-1679514563"));
+
+        var found = _source.Detect(Root)!;
+
+        found.MissingFiles.Should().BeEmpty();
+        found.Mods.Select(m => m.DisplayName).Should().Equal("AAA-Apparition", "Other");
+        found.Mods[0].Files.Should().BeEquivalentTo([
+            Game("Phoenix/Content/Paks/~mods/AAA-Apparition-1162-1-01-1679514562/a.pak"),
+            Game("Phoenix/Content/Paks/~mods/AAA-Apparition-1162-1-01-1679514562/b.pak"),
+        ]);
+    }
+
+    [Fact]
+    public void Detect_ReadsTheRootAndTheNestedManifestsTogether()
+    {
+        Put("Merged/hook.dll");
+        Put("Phoenix/Content/Paks/~mods/skin_P.pak");
+        Manifest("vortex.deployment.dinput.json", @"Z:\x", (@"Merged\hook.dll", "Hook-5-2-0-1700000003", ""));
+        ManifestIn("Phoenix/Content/Paks/~mods", "vortex.deployment.pak.json", ("skin_P.pak", "Skin-6-1-1700000004"));
+
+        _source.Detect(Root)!.Mods.Select(m => m.DisplayName).Should().Equal("Hook", "Skin");
+    }
+
+    [Fact]
+    public void Detect_DoesNotLookForANestedManifestsFilesAnywhereButItsOwnFolder()
+    {
+        Put("skin_P.pak");
+        ManifestIn("Phoenix/Content/Paks/~mods", "vortex.deployment.pak.json", ("skin_P.pak", "Skin-6-1-1700000004"));
+
+        var found = _source.Detect(Root)!;
+
+        found.Mods.Should().BeEmpty();
+        found.MissingFiles.Should().Equal(Game("Phoenix/Content/Paks/~mods/skin_P.pak"));
+    }
+
+    [Fact]
+    public void Detect_RefusesANestedManifestThatLeavesTheGameFolder()
+    {
+        Put("Phoenix/Content/Paks/~mods/ok.pak");
+        ManifestIn("Phoenix/Content/Paks/~mods", "vortex.deployment.pak.json", ("ok.pak", "Ok-1-1-1700000007"), (@"..\..\..\..\..\outside.pak", "Bad-2-1-1700000008"));
+
+        var act = () => _source.Detect(Root);
+
+        act.Should().Throw<ForeignDeploymentRefusedException>().WithMessage("*vortex.deployment.pak.json*outside the game folder*");
+    }
+
+    [Fact]
+    public void Detect_IgnoresAManifestBeyondTheSearchDepth()
+    {
+        var deep = string.Join('/', Enumerable.Range(0, 20).Select(i => "d" + i));
+        Put(deep + "/x.pak");
+        ManifestIn(deep, "vortex.deployment.pak.json", ("x.pak", "Mod-1-1-1700000007"));
+
+        _source.Detect(Root).Should().BeNull();
+    }
+
+    [Fact]
+    public void Detect_DoesNotFollowAFolderLinkToFindAManifest()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Needs symbolic links");
+        var elsewhere = Path.Combine(_outside, "elsewhere");
+        Directory.CreateDirectory(elsewhere);
+        File.WriteAllText(Path.Combine(elsewhere, "a.pak"), "not the game's");
+        File.WriteAllText(Path.Combine(elsewhere, "vortex.deployment.pak.json"), """{"files":[{"relPath":"a.pak","source":"Mod-1-1-1700000007"}]}""");
+        Directory.CreateSymbolicLink(Path.Combine(_root, "Escape"), elsewhere);
+
+        _source.Detect(Root).Should().BeNull();
     }
 
     [Fact]
@@ -233,7 +328,9 @@ public sealed class VortexDeploymentSourceTests : IDisposable
     [InlineData("VORTEX.DEPLOYMENT.pak.json", true)]
     [InlineData("vortex.deployment.json.bak", false)]
     [InlineData("vortex.json", false)]
-    [InlineData("Phoenix/vortex.deployment.json", false)]
+    [InlineData("Phoenix/vortex.deployment.json", true)]
+    [InlineData("Phoenix/Content/Paks/~mods/vortex.deployment.hogwarts-PAK-modtype.json", true)]
+    [InlineData("Phoenix/Content/Paks/~mods/vortex.deployment.json.bak", false)]
     [InlineData("__folder_managed_by_vortex", true)]
     [InlineData("Phoenix/Content/Paks/~mods/__folder_managed_by_vortex", true)]
     [InlineData("Phoenix/Content/readme.txt", false)]

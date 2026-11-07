@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xF7EE34E99D8B41EE
-   - Total attributes: 403
-   - Total namespaces: 110
+   - Fingerprint: 0xB67EC099442FC4F9
+   - Total attributes: 404
+   - Total namespaces: 111
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -213,6 +213,7 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Loadouts.ForeignDeploymentGroup/NexusModId                               | UInt32                  | False   | False | False     | 
 | SilverModManager.Loadouts.ForeignDeploymentGroup/Source                                   | Utf8                    | False   | False | False     | 
 | SilverModManager.Loadouts.ForeignDeploymentGroup/Version                                  | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.FoundInGameFolderGroup/Marker                                   | Null                    | True    | False | False     | 
 | SilverModManager.Loadouts.GameInstalledClaim/ClaimedAt                                    | Int64                   | False   | False | False     | 
 | SilverModManager.Loadouts.GameInstalledClaim/Loadout                                      | Reference               | True    | False | False     | 
 | SilverModManager.Loadouts.GameInstalledClaim/Path                                         | Tuple3_Ref_UShort_Utf8I | False   | False | False     | 

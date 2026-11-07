@@ -30,6 +30,7 @@ public static class Services
             .AddGameInstalledFileModel()
             .AddGameInstalledClaimModel()
             .AddForeignDeploymentGroupModel()
+            .AddFoundInGameFolderGroupModel()
             .AddLibraryLinkedLoadoutItemModel()
             .AddLoadoutItemWithTargetPathModel()
             .AddLoadoutFileModel()

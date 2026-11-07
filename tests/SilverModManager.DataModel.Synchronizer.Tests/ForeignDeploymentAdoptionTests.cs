@@ -25,6 +25,8 @@ public class ForeignDeploymentAdoptionTests(ITestOutputHelper helper) : AStubbed
     private const string Skin = "Fancy Skin-77-3-1700000001";
 
     private bool _withVortex = true;
+    private bool _withPakType;
+    private const string Pak = "Apparition-1162-1-01-1679514562";
 
     protected override IServiceCollection AddServices(IServiceCollection services)
         => base.AddServices(services).ReplaceDesktopNotifier();
@@ -69,6 +71,19 @@ public class ForeignDeploymentAdoptionTests(ITestOutputHelper helper) : AStubbed
         await Write("Data/player_own.txt", "mine");
         await WriteManifest("vortex.deployment.json", (@"Data\combat.pak", Combat), (@"Data\combat_extra.pak", Combat), (@"Data\gone.pak", Combat));
         await WriteManifest("vortex.deployment.dinput.json", (@"Merged\skin.dll", Skin));
+
+        if (!_withPakType) return;
+
+        // A mod type that deploys below the game folder keeps its record there, with paths relative to that folder.
+        await Write($"Mods/~pak/{Pak}/a.pak", "pak a");
+        await Write($"Mods/~pak/{Pak}/b.pak", "pak b");
+        await Write("Mods/~pak/vortex.deployment.stub-PAK-modtype.json", JsonSerializer.Serialize(new
+        {
+            instance = "default",
+            version = 1,
+            targetPath = @"Z:\games\StubbedGame\Mods\~pak",
+            files = new[] { $@"{Pak}\a.pak", $@"{Pak}\b.pak" }.Select(rel => new { relPath = rel, source = Pak, target = "", time = 1700000000 }).ToArray(),
+        }));
     }
 
     private static IEnumerable<ForeignDeploymentGroup.ReadOnly> Groups(IDb db, Loadout.ReadOnly loadout)
@@ -94,6 +109,33 @@ public class ForeignDeploymentAdoptionTests(ITestOutputHelper helper) : AStubbed
         groups.Select(group => group.Manager).Should().AllBe("Vortex");
         FilesOf(groups[0]).Should().Equal("Data/combat.pak", "Data/combat_extra.pak");
         FilesOf(groups[1]).Should().Equal("Merged/skin.dll");
+    }
+
+    [Fact]
+    public async Task AModTypeManifestBelowTheGameFolderAdoptsItsModsWithPathsRelativeToItsFolder()
+    {
+        _withPakType = true;
+
+        var loadout = await CreateLoadout();
+
+        var pak = Groups(Connection.Db, loadout).Single(group => group.Source == Pak);
+        pak.AsLoadoutItemGroup().AsLoadoutItem().Name.Should().Be("Apparition");
+        FilesOf(pak).Should().Equal($"Mods/~pak/{Pak}/a.pak", $"Mods/~pak/{Pak}/b.pak");
+        OverridesPaths(loadout).Should().NotContain(path => path.StartsWith("Mods/"), "the files and the record were not left as unknown files");
+        OnDisk("Mods/~pak/vortex.deployment.stub-PAK-modtype.json").FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AdoptedGroupsAreMyModsChildren()
+    {
+        _withPakType = true;
+
+        var loadout = await CreateLoadout();
+
+        var myMods = LoadoutItemGroupId.From(DefaultCollection.Of(Connection.Db, loadout.LoadoutId)!.Value.Value);
+        var groups = Groups(Connection.Db, loadout).ToArray();
+        groups.Should().HaveCount(3);
+        groups.Select(group => group.AsLoadoutItemGroup().AsLoadoutItem().ParentId).Should().AllBeEquivalentTo(myMods);
     }
 
     [Fact]

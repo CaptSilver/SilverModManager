@@ -498,7 +498,8 @@ internal partial class LoadoutManager : ILoadoutManager
     {
         EnsureBuildCovered(loadout.InstallationInstance);
 
-        // Through the service so the clean waits its turn behind other syncs and the question holds the install.
+        // Through the service so the clean waits its turn behind other syncs and the question holds the install. It also
+        // moves the External Changes' files into the switched-off group, under the same locks as the Apply that follows.
         await _synchronizerService.CleanGameFolder(loadout.LoadoutId, largeFiles, cancellationToken);
     }
 

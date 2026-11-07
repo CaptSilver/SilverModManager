@@ -13,6 +13,12 @@ namespace SilverModManager.DataModel.ForeignDeployments;
 /// source mod folder each came from.
 /// </summary>
 /// <remarks>
+/// Vortex writes a mod type's record in that type's own deployment folder, so a game that deploys its PAK mods to
+/// <c>Phoenix/Content/Paks/~mods</c> has that type's record there, with paths relative to <c>~mods</c>. The ones at
+/// the game root are read with the game's hints; the ones further down are found by a bounded walk of the game folder
+/// and resolved against the folder they sit in.
+/// </remarks>
+/// <remarks>
 /// The record files, the <c>__folder_managed_by_vortex</c> markers Vortex drops into folders it deploys to, and the
 /// <c>.vortex_backup</c> copies of game files it replaced are ignored: the app neither indexes nor ingests them, and a switched-off mod never deletes them. They stay Vortex's.
 /// The <c>targetPath</c> and <c>stagingPath</c> in a record are Windows paths, often from another machine, so they
@@ -26,6 +32,10 @@ public sealed class VortexDeploymentSource(ILogger<VortexDeploymentSource> logge
     private const string MarkerName = "__folder_managed_by_vortex";
     private const string UnknownSource = "Unknown Vortex mod";
 
+    // Deepest folder, counted from the game folder, searched for a record. Vortex deploys a mod type at the game folder
+    // or a few folders below it; the limit keeps a huge or looping install from being walked end to end.
+    private const int MaxManifestDepth = 8;
+
     /// <inheritdoc />
     public string ManagerName => "Vortex";
 
@@ -38,7 +48,8 @@ public sealed class VortexDeploymentSource(ILogger<VortexDeploymentSource> logge
         if (name.Equals(MarkerName, StringComparison.OrdinalIgnoreCase)) return true;
         // The game's original that Vortex set aside before replacing it; it is Vortex's to put back, not a stray file.
         if (name.EndsWith(BackupSuffix, StringComparison.OrdinalIgnoreCase)) return true;
-        return path.Path.Parent == RelativePath.Empty && IsManifestName(name);
+        // A mod type's record sits in that type's deployment folder, which can be anywhere under the game folder.
+        return IsManifestName(name);
     }
 
     private static bool IsManifestName(string name)
@@ -58,10 +69,7 @@ public sealed class VortexDeploymentSource(ILogger<VortexDeploymentSource> logge
         var root = gameRoot.ToString();
         if (!Directory.Exists(root)) return null;
 
-        var manifests = Directory.EnumerateFiles(root, ManifestPrefix + "*", SearchOption.TopDirectoryOnly)
-            .Where(file => IsManifestName(Path.GetFileName(file)))
-            .Order(StringComparer.Ordinal)
-            .ToArray();
+        var manifests = FindManifests(root);
         if (manifests.Length == 0) return null;
 
         var disk = new GameFolderLookup(root);
@@ -76,8 +84,11 @@ public sealed class VortexDeploymentSource(ILogger<VortexDeploymentSource> logge
             if (entries is null) continue;
 
             var manifestName = Path.GetFileName(manifest);
+            var manifestFolder = Path.GetDirectoryName(manifest) ?? root;
+            var atGameRoot = IsSameFolder(manifestFolder, root);
             var isDefaultType = manifestName.Equals(ManifestPrefix + ManifestSuffix, StringComparison.OrdinalIgnoreCase);
-            var candidates = isDefaultType ? [root] : disk.CandidateRoots(targetPath);
+            // A record below the game folder is in the folder its paths are relative to; at the game folder, only the default type is.
+            var candidates = !atGameRoot ? [manifestFolder] : isDefaultType ? [root] : disk.CandidateRoots(targetPath);
 
             foreach (var entry in entries)
             {
@@ -129,6 +140,48 @@ public sealed class VortexDeploymentSource(ILogger<VortexDeploymentSource> logge
             .ThenBy(mod => mod.Source, StringComparer.Ordinal)
             .ToArray();
         return new ForeignDeployment(ManagerName, mods, missing, replaced);
+    }
+
+    private static bool IsSameFolder(string a, string b)
+        => Path.TrimEndingDirectorySeparator(Path.GetFullPath(a)).Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(b)), StringComparison.Ordinal);
+
+    /// <summary>
+    /// The records at the game folder and in the folders below it, down to <see cref="MaxManifestDepth"/>. Folders and
+    /// records that are links are left out of the walk: a link can lead out of the game folder or around in a loop.
+    /// </summary>
+    private string[] FindManifests(string root)
+    {
+        var found = Directory.EnumerateFiles(root, ManifestPrefix + "*", SearchOption.TopDirectoryOnly)
+            .Where(file => IsManifestName(Path.GetFileName(file)))
+            .ToList();
+
+        var options = new EnumerationOptions { IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint, RecurseSubdirectories = false };
+        var pending = new Stack<(string Folder, int Depth)>();
+        foreach (var child in SafeEnumerate(() => Directory.EnumerateDirectories(root, "*", options))) pending.Push((child, 1));
+
+        while (pending.Count > 0)
+        {
+            var (folder, depth) = pending.Pop();
+            found.AddRange(SafeEnumerate(() => Directory.EnumerateFiles(folder, ManifestPrefix + "*", options))
+                .Where(file => IsManifestName(Path.GetFileName(file))));
+            if (depth >= MaxManifestDepth) continue;
+            foreach (var child in SafeEnumerate(() => Directory.EnumerateDirectories(folder, "*", options))) pending.Push((child, depth + 1));
+        }
+
+        return found.Order(StringComparer.Ordinal).ToArray();
+    }
+
+    private IEnumerable<string> SafeEnumerate(Func<IEnumerable<string>> enumerate)
+    {
+        try
+        {
+            return enumerate().ToList();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            logger.LogInformation(e, "Could not search a folder of the game for Vortex records, skipping it");
+            return [];
+        }
     }
 
     private sealed record Entry(string RelPath, string Source, string Target);
