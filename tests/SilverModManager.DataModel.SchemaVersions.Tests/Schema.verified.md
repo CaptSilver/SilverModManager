@@ -3,8 +3,8 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xFEF37ABF4D706B65
-   - Total attributes: 414
+   - Fingerprint: 0xB5B43E79FD6559F0
+   - Total attributes: 417
    - Total namespaces: 113
    
 ## Attributes
@@ -236,6 +236,9 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Loadouts.GameMetadata/LastScannedDiskStateTransaction                    | Reference               | False   | False | False     | 
 | SilverModManager.Loadouts.GameMetadata/LastSyncedLoadout                                  | Reference               | False   | False | False     | 
 | SilverModManager.Loadouts.GameMetadata/LastSyncedLoadoutTransaction                       | Reference               | False   | False | False     | 
+| SilverModManager.Loadouts.GameMetadata/LaunchFinishPending                                | Reference               | False   | False | False     | 
+| SilverModManager.Loadouts.GameMetadata/LaunchFinishPendingGates                           | Utf8                    | False   | True  | False     | 
+| SilverModManager.Loadouts.GameMetadata/LaunchFinishPendingSession                         | Utf8                    | False   | False | False     | 
 | SilverModManager.Loadouts.GameMetadata/MovedFrom                                          | Utf8                    | False   | False | False     | 
 | SilverModManager.Loadouts.GameMetadata/Name                                               | Utf8                    | False   | False | False     | 
 | SilverModManager.Loadouts.GameMetadata/Path                                               | Utf8                    | True    | False | False     | 

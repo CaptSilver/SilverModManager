@@ -81,6 +81,28 @@ public partial class GameInstallMetadata : IModelDefinition
     public static readonly BooleanAttribute RespellPending = new(Namespace, nameof(RespellPending)) { IsOptional = true };
 
     /// <summary>
+    /// The loadout whose launch reached <c>LaunchPhase.Running</c> and whose after-game ingest has not been committed yet. Written when
+    /// the game starts and retracted by the next committed sync, so a marker that outlives its launch means the
+    /// process that was watching the game went away before it could finish.
+    /// Durability: the write goes through RocksDB's write-ahead log with no per-write sync, so it survives the process
+    /// dying but may not survive power loss. A lost marker means the after-game changes are picked up by the next
+    /// apply, which asks the backup-overflow question as <c>BackupOverflowOperation.Launch</c> instead of
+    /// <c>AfterPlay</c>.
+    /// </summary>
+    public static readonly ReferenceAttribute<Loadout> LaunchFinishPending = new(Namespace, nameof(LaunchFinishPending)) { IsOptional = true };
+
+    /// <summary>
+    /// The launch session id the pending finish belongs to.
+    /// </summary>
+    public static readonly StringAttribute LaunchFinishPendingSession = new(Namespace, nameof(LaunchFinishPendingSession)) { IsOptional = true };
+
+    /// <summary>
+    /// The type names of the launch gates that were prepared for the pending finish, so the finish can run the same
+    /// gates' Finish steps. Names are not unique across assemblies; two gates sharing a type name would both match.
+    /// </summary>
+    public static readonly StringsAttribute LaunchFinishPendingGates = new(Namespace, nameof(LaunchFinishPendingGates));
+
+    /// <summary>
     /// The 'AsOf' transaction ID of the initial disk state when the game folder was first indexed
     /// </summary>
     public static readonly ReferenceAttribute<Transaction> InitialDiskStateTransaction = new(Namespace, nameof(InitialDiskStateTransaction)) { IsOptional = true };
