@@ -50,6 +50,49 @@ public class DiagnosticManagerTests(IServiceProvider provider) : AGameTest<Cyber
     }
 
     [Fact]
+    public async Task RevisionTriggers_AnnounceOfTheSameDatabaseStateTwice_TriggerOnceHoweverFarApart()
+    {
+        var loadout = await CreateLoadout();
+        var revisions = new System.Reactive.Subjects.Subject<Loadout.ReadOnly>();
+        var clock = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
+        var triggers = 0;
+        using var subscription = R3.ObservableSubscribeExtensions.Subscribe(
+            SilverModManager.DataModel.Diagnostics.DiagnosticManager.RevisionTriggers(revisions, TimeSpan.FromMilliseconds(50), clock),
+            _ => Interlocked.Increment(ref triggers));
+
+        revisions.OnNext(Loadout.Load(Connection.Db, loadout.LoadoutId));
+        clock.Advance(TimeSpan.FromMilliseconds(300));
+        revisions.OnNext(Loadout.Load(Connection.Db, loadout.LoadoutId));
+        clock.Advance(TimeSpan.FromMilliseconds(300));
+
+        triggers.Should().Be(1, "the second revision has the same basis, so nothing changed");
+    }
+
+    [Fact]
+    public async Task RevisionTriggers_ANewDatabaseState_TriggersAgain()
+    {
+        var loadout = await CreateLoadout();
+        var revisions = new System.Reactive.Subjects.Subject<Loadout.ReadOnly>();
+        var clock = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
+        var triggers = 0;
+        using var subscription = R3.ObservableSubscribeExtensions.Subscribe(
+            SilverModManager.DataModel.Diagnostics.DiagnosticManager.RevisionTriggers(revisions, TimeSpan.FromMilliseconds(50), clock),
+            _ => Interlocked.Increment(ref triggers));
+
+        revisions.OnNext(Loadout.Load(Connection.Db, loadout.LoadoutId));
+        clock.Advance(TimeSpan.FromMilliseconds(300));
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(loadout.LoadoutId, Loadout.LastAppliedDateTime, DateTime.UtcNow);
+            await tx.Commit();
+        }
+        revisions.OnNext(Loadout.Load(Connection.Db, loadout.LoadoutId));
+        clock.Advance(TimeSpan.FromMilliseconds(300));
+
+        triggers.Should().Be(2);
+    }
+
+    [Fact]
     public async Task RefreshAsync_WhileARefreshIsRunningJoinsItInsteadOfStartingAnother()
     {
         var emitter = ScriptedEmitter();

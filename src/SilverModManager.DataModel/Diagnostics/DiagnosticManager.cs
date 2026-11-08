@@ -82,10 +82,7 @@ internal sealed class DiagnosticManager : IDiagnosticManager
 
         var refreshRequests = new R3.Subject<Unit>();
         var runsStarted = new StrongBox<int>();
-        var results = LoadoutQueries2.RevisionsWithChildUpdates(_connection, loadoutId)
-            .ToObservable()
-            .Debounce(TimeSpan.FromMilliseconds(250))
-            .Select(_ => Unit.Default)
+        var results = RevisionTriggers(LoadoutQueries2.RevisionsWithChildUpdates(_connection, loadoutId), TimeSpan.FromMilliseconds(250), TimeProvider.System)
             .Merge(refreshRequests)
             .Select(_ => Interlocked.Increment(ref runsStarted.Value))
             .SelectAwait(async (run, cancellationToken) => (Run: run, Diagnostics: await DiagnoseLoadout(loadoutId, cancellationToken)), AwaitOperation.Switch)
@@ -114,6 +111,19 @@ internal sealed class DiagnosticManager : IDiagnosticManager
         _loadouts.Add(loadoutId, entry);
         return entry;
     }
+
+    /// <summary>
+    /// One trigger per settled database state. The revision query can announce the same database state more
+    /// than once, and further apart than the debounce window; collapsing by basis TxId keeps an unchanged
+    /// state from re-running every emitter.
+    /// </summary>
+    internal static Observable<Unit> RevisionTriggers(IObservable<Loadout.ReadOnly> revisions, TimeSpan debounce, TimeProvider timeProvider) =>
+        revisions
+            .ToObservable()
+            .Select(revision => revision.Db.BasisTxId)
+            .DistinctUntilChanged()
+            .Debounce(debounce, timeProvider)
+            .Select(_ => Unit.Default);
 
     private async ValueTask<Diagnostic[]> DiagnoseLoadout(LoadoutId loadoutId, CancellationToken cancellationToken)
     {
