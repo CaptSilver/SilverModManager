@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using FluentAssertions;
 using SilverModManager.Deployment.Fuse.Availability;
 
@@ -9,12 +10,19 @@ public class FuseAvailabilityTests
         bool Device = true,
         bool Openable = true,
         string? Fusermount = "/usr/bin/fusermount3",
-        (bool Loaded, string? Soname, int? Version, string? Error)? Library = null) : IFuseEnvironmentProbe
+        (bool Loaded, string? Soname, int? Version, string? Error)? Library = null,
+        Architecture Architecture = Architecture.X64) : IFuseEnvironmentProbe
     {
+        public int LoadLibraryCalls { get; private set; }
+        public Architecture ProcessArchitecture() => Architecture;
         public bool DeviceExists() => Device;
         public bool CanOpenDevice() => Openable;
         public string? FusermountPath() => Fusermount;
-        public (bool loaded, string? soname, int? version, string? error) LoadLibrary() => Library ?? (true, "libfuse3.so.4", 318, null);
+        public (bool loaded, string? soname, int? version, string? error) LoadLibrary()
+        {
+            LoadLibraryCalls++;
+            return Library ?? (true, "libfuse3.so.4", 318, null);
+        }
     }
 
     [Fact]
@@ -24,7 +32,8 @@ public class FuseAvailabilityTests
 
         report.Usable.Should().BeTrue();
         report.Reason.Should().BeNull();
-        report.Lines.Should().HaveCount(4);
+        report.Lines.Should().HaveCount(5);
+        report.Lines.Should().Contain("ok: this process is x86-64");
     }
 
     [Fact]
@@ -63,6 +72,29 @@ public class FuseAvailabilityTests
         var report = FuseAvailability.Evaluate(new FakeProbe(Device: false, Fusermount: null));
 
         report.Reason.Should().Contain("/dev/fuse does not exist");
+        report.Lines.Should().Contain(line => line.Contains("fusermount3 is not on PATH"));
+    }
+
+    [Fact]
+    public void AnArm64ProcessFailsThePreflightAndSkipsTheLibraryLoad()
+    {
+        var probe = new FakeProbe(Architecture: Architecture.Arm64);
+
+        var report = FuseAvailability.Evaluate(probe);
+
+        report.Usable.Should().BeFalse();
+        report.Reason.Should().Be("the libfuse bindings are x86-64 only; this process is Arm64");
+        report.Lines.Should().Contain("skipped: libfuse3 load");
+        probe.LoadLibraryCalls.Should().Be(0);
+    }
+
+    [Fact]
+    public void AnArm64ProcessStillReportsTheOtherChecks()
+    {
+        var report = FuseAvailability.Evaluate(new FakeProbe(Device: false, Fusermount: null, Architecture: Architecture.Arm64));
+
+        report.Reason.Should().Contain("x86-64 only");
+        report.Lines.Should().Contain(line => line.Contains("/dev/fuse does not exist"));
         report.Lines.Should().Contain(line => line.Contains("fusermount3 is not on PATH"));
     }
 }

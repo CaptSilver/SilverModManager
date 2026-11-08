@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using SilverModManager.Deployment.Fuse.Native;
 
 namespace SilverModManager.Deployment.Fuse.Availability;
@@ -20,6 +21,11 @@ public static class FuseAvailability
             reason ??= line;
         }
 
+        var architecture = probe.ProcessArchitecture();
+        var bindingsUsable = architecture == Architecture.X64;
+        if (bindingsUsable) Pass("this process is x86-64");
+        else Fail($"the libfuse bindings are x86-64 only; this process is {architecture}");
+
         var deviceExists = probe.DeviceExists();
         if (deviceExists) Pass("/dev/fuse exists");
         else Fail("/dev/fuse does not exist");
@@ -31,8 +37,13 @@ public static class FuseAvailability
         if (probe.FusermountPath() is { } fusermount) Pass($"fusermount3 at {fusermount}");
         else Fail("fusermount3 is not on PATH");
 
-        var (loaded, soname, version, error) = probe.LoadLibrary();
-        if (!loaded || soname is null || version is not { } fuseVersion)
+        // An arm64 libfuse3 would load fine and print a passing line the x86-64-only bindings cannot use.
+        var (loaded, soname, version, error) = bindingsUsable ? probe.LoadLibrary() : default;
+        if (!bindingsUsable)
+        {
+            lines.Add("skipped: libfuse3 load");
+        }
+        else if (!loaded || soname is null || version is not { } fuseVersion)
         {
             Fail($"libfuse3 could not be loaded: {error ?? "no soname or version reported"}");
         }

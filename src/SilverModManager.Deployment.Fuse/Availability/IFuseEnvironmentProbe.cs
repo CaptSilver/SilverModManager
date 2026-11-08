@@ -1,8 +1,13 @@
+using System.Runtime.InteropServices;
+
 namespace SilverModManager.Deployment.Fuse.Availability;
 
 /// <summary>The machine facts <see cref="FuseAvailability"/> reads, behind an interface so tests can fake each one.</summary>
 public interface IFuseEnvironmentProbe
 {
+    /// <summary>The CPU architecture of this process; the libfuse bindings only support x86-64.</summary>
+    Architecture ProcessArchitecture();
+
     /// <summary>Whether <c>/dev/fuse</c> exists.</summary>
     bool DeviceExists();
 

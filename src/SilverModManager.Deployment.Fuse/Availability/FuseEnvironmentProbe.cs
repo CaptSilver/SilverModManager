@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using SilverModManager.Deployment.Fuse.Native;
 
 namespace SilverModManager.Deployment.Fuse.Availability;
@@ -6,6 +7,8 @@ namespace SilverModManager.Deployment.Fuse.Availability;
 public sealed class FuseEnvironmentProbe : IFuseEnvironmentProbe
 {
     private const string DevicePath = "/dev/fuse";
+
+    public Architecture ProcessArchitecture() => RuntimeInformation.ProcessArchitecture;
 
     public bool DeviceExists() => File.Exists(DevicePath);
 
