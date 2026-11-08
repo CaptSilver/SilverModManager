@@ -12,6 +12,9 @@ namespace SilverModManager.Wabbajack.Tests.Gallery;
 /// <summary>Adds real modlist files to the library and sets the gallery fields a test needs.</summary>
 internal static class GalleryLibraryFiles
 {
+    /// <summary>The address a file added with <c>fromGallery</c> was fetched from.</summary>
+    public static readonly Uri OldDownloadUrl = new("https://authored-files.wabbajack.org/old.wabbajack_1");
+
     public static async Task<WabbajackModlistLibraryFile.ReadOnly> Add(
         ILibraryService libraryService, TemporaryFileManager temporaryFileManager, IConnection connection, string name, string? author = null,
         string? version = null, string gameType = "SkyrimSpecialEdition", string? fileName = null, bool fromGallery = false)
@@ -24,7 +27,7 @@ internal static class GalleryLibraryFiles
         if (!fromGallery) return model;
 
         using var tx = connection.BeginTransaction();
-        tx.Add(model.Id, WabbajackModlistLibraryFile.GalleryDownloadUrl, "https://authored-files.wabbajack.org/old.wabbajack_1");
+        tx.Add(model.Id, WabbajackModlistLibraryFile.GalleryDownloadUrl, OldDownloadUrl.ToString());
         var result = await tx.Commit();
         return WabbajackModlistLibraryFile.Load(result.Db, model.Id);
     }

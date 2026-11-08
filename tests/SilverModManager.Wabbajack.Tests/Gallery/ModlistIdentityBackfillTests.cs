@@ -1,3 +1,5 @@
+using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -19,6 +21,9 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     private Task<WabbajackModlistLibraryFile.ReadOnly> FromGallery(string name, string? author = "Someone", string? fileName = null)
         => Add(libraryService, temporaryFileManager, connection, name, author, fileName: fileName, fromGallery: true);
 
+    // An entry whose download link is the one FromGallery files were fetched from.
+    private static GalleryEntry Linked(GalleryEntry entry) => entry with { Download = OldDownloadUrl };
+
     private WabbajackModlistLibraryFile.ReadOnly Fresh(WabbajackModlistLibraryFile.ReadOnly file) => WabbajackModlistLibraryFile.Load(connection.Db, file.Id);
 
     [Fact]
@@ -26,8 +31,8 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Hash");
         var file = await FromGallery(name);
-        var byHash = Entry("Renamed by the gallery", machineUrl: "by-hash") with { DownloadHash = file.AsLibraryFile().XxHash64Identity() };
-        var byTitle = Entry(name, machineUrl: "by-title");
+        var byHash = Linked(Entry(name, machineUrl: "by-hash")) with { DownloadHash = file.AsLibraryFile().XxHash64Identity() };
+        var byTitle = Linked(Entry(name, machineUrl: "by-title"));
 
         await Backfill.Run(Listing(byTitle, byHash), TestContext.Current.CancellationToken);
 
@@ -38,8 +43,8 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     public async Task TheLibraryFileNameMatchesTheGalleryTitle()
     {
         var title = Unique("Named");
-        var entry = Entry(title, author: "Nobody", machineUrl: "by-file-name");
-        var file = await FromGallery(Unique("Internal name"), author: "Somebody else", fileName: WabbajackGalleryDownloader.FileNameFor(entry));
+        var entry = Linked(Entry(title, author: "Nobody", machineUrl: "by-file-name"));
+        var file = await FromGallery(title, author: "Somebody else", fileName: WabbajackGalleryDownloader.FileNameFor(entry));
 
         await Backfill.Run(Listing(entry), TestContext.Current.CancellationToken);
 
@@ -52,7 +57,7 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Title");
         var file = await FromGallery(name.ToUpperInvariant(), author: "SOMEONE");
-        var entry = Entry(name.ToLowerInvariant(), author: "someone", machineUrl: "by-title") with { DateUpdated = DateTimeOffset.UnixEpoch };
+        var entry = Linked(Entry(name.ToLowerInvariant(), author: "someone", machineUrl: "by-title")) with { DateUpdated = DateTimeOffset.UnixEpoch };
 
         await Backfill.Run(Listing(entry, Entry(Unique("Unrelated"), machineUrl: "unrelated")), TestContext.Current.CancellationToken);
 
@@ -67,8 +72,8 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Twice");
         var file = await FromGallery(name);
-        var first = Entry(name, machineUrl: "one");
-        var second = Entry(name, machineUrl: "two", repository: "someone/community-lists");
+        var first = Linked(Entry(name, machineUrl: "one"));
+        var second = Linked(Entry(name, machineUrl: "two", repository: "someone/community-lists"));
         var listing = Listing(first, second);
 
         await Backfill.Run(listing, TestContext.Current.CancellationToken);
@@ -82,7 +87,7 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Game");
         var file = await FromGallery(name);
-        var elsewhere = Entry(name, game: "fallout4");
+        var elsewhere = Linked(Entry(name, game: "fallout4"));
 
         await Backfill.Run(Listing(elsewhere), TestContext.Current.CancellationToken);
 
@@ -107,7 +112,9 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
         var name = Unique("Known");
         var file = await WithIdentity(connection, await FromGallery(name), "mine", "my/repository");
 
-        await Backfill.Run(Listing(Entry(name, machineUrl: "other")), TestContext.Current.CancellationToken);
+        var wouldBind = Linked(Entry(name, machineUrl: "other")) with { DownloadHash = file.AsLibraryFile().XxHash64Identity() };
+
+        await Backfill.Run(Listing(wouldBind), TestContext.Current.CancellationToken);
 
         Fresh(file).MachineUrl.Value.Should().Be("mine");
         Fresh(file).Repository.Value.Should().Be("my/repository");
@@ -130,7 +137,7 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Partial");
         var file = await FromGallery(name);
-        var official = Entry(name, machineUrl: "official");
+        var official = Linked(Entry(name, machineUrl: "official"));
         var partial = Listing(official) with { FailedRepositories = ["someone/community-lists"] };
 
         await Backfill.Run(partial, TestContext.Current.CancellationToken);
@@ -147,12 +154,99 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     public async Task TheFileNameRuleStaysInTheFilesGame()
     {
         var name = Unique("Games");
-        var sse = Entry(name, machineUrl: "sse");
+        var sse = Linked(Entry(name, machineUrl: "sse"));
         var file = await FromGallery(name, fileName: WabbajackGalleryDownloader.FileNameFor(sse));
-        var fallout = Entry(name, machineUrl: "fo4", game: "fallout4");
+        var fallout = Linked(Entry(name, machineUrl: "fo4", game: "fallout4"));
 
         await Backfill.Run(Listing(fallout, sse), TestContext.Current.CancellationToken);
 
         Fresh(file).MachineUrl.Value.Should().Be("sse");
+    }
+
+    [Fact]
+    public async Task AHashMatchFromAnEntryWithAnotherDownloadLinkIsNotBound()
+    {
+        var name = Unique("Moved");
+        var file = await FromGallery(name);
+        var hash = file.AsLibraryFile().XxHash64Identity();
+        // The official entry moved to a new release; another repository still advertises the old bytes at its own link.
+        var official = Entry(name, machineUrl: "official") with { Download = new Uri("https://authored-files.wabbajack.org/new.wabbajack_2"), DownloadHash = FileIdentity.XxHash64(Hash.From(1UL)) };
+        var other = Entry(Unique("Other"), machineUrl: "other", repository: "someone/community-lists") with { Download = new Uri("https://example.org/other.wabbajack"), DownloadHash = hash };
+
+        await Backfill.Run(Listing(official, other), TestContext.Current.CancellationToken);
+
+        Fresh(file).Contains(WabbajackModlistLibraryFile.MachineUrl).Should().BeFalse();
+        Backfill.Candidates(file, Listing(official, other)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AnEntryWithTheRecordedLinkAndHashIsBound()
+    {
+        var name = Unique("Linked");
+        var file = await FromGallery(name);
+        var entry = Linked(Entry(name, machineUrl: "linked")) with
+        {
+            Download = new Uri("HTTPS://Authored-Files.Wabbajack.org/old.wabbajack_1"),
+            DownloadHash = file.AsLibraryFile().XxHash64Identity(),
+        };
+
+        await Backfill.Run(Listing(entry), TestContext.Current.CancellationToken);
+
+        Fresh(file).MachineUrl.Value.Should().Be("linked");
+        Fresh(file).Repository.Value.Should().Be(entry.Repository);
+    }
+
+    [Fact]
+    public async Task AnEntryWhoseLinkDiffersInPathCaseIsNotBound()
+    {
+        var file = await FromGallery(Unique("Case"));
+        var entry = Entry("Whatever", machineUrl: "case") with
+        {
+            Download = new Uri("https://authored-files.wabbajack.org/OLD.wabbajack_1"),
+            DownloadHash = file.AsLibraryFile().XxHash64Identity(),
+        };
+
+        await Backfill.Run(Listing(entry), TestContext.Current.CancellationToken);
+
+        Fresh(file).Contains(WabbajackModlistLibraryFile.MachineUrl).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ASameTitledListInAnotherRepositoryLeavesTheFileForTheUser()
+    {
+        var name = Unique("Twin");
+        var file = await FromGallery(name);
+        var match = Linked(Entry(name, machineUrl: "mine")) with { DownloadHash = file.AsLibraryFile().XxHash64Identity() };
+        var twin = Entry(name.ToUpperInvariant(), machineUrl: "twin", repository: "someone/community-lists") with { Download = new Uri("https://example.org/twin.wabbajack") };
+
+        await Backfill.Run(Listing(match, twin), TestContext.Current.CancellationToken);
+
+        Fresh(file).Contains(WabbajackModlistLibraryFile.MachineUrl).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task TheSameMachineUrlInAnotherRepositoryLeavesTheFileForTheUser()
+    {
+        var name = Unique("Same");
+        var file = await FromGallery(name);
+        var match = Linked(Entry(name, machineUrl: "shared-id")) with { DownloadHash = file.AsLibraryFile().XxHash64Identity() };
+        var twin = Entry(Unique("Different title"), machineUrl: "shared-id", repository: "someone/community-lists");
+
+        await Backfill.Run(Listing(match, twin), TestContext.Current.CancellationToken);
+
+        Fresh(file).Contains(WabbajackModlistLibraryFile.MachineUrl).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AnotherRepositoryAdvertisingTheRecordedLinkAndHashUnderItsOwnTitleIsNotBound()
+    {
+        var name = Unique("Official");
+        var file = await FromGallery(name);
+        var official = Entry(name, machineUrl: "official") with { Download = new Uri("https://authored-files.wabbajack.org/new.wabbajack_2"), DownloadHash = FileIdentity.XxHash64(Hash.From(1UL)) };
+        var squatter = Linked(Entry(Unique("Squatter"), machineUrl: "squatter", repository: "someone/community-lists")) with { DownloadHash = file.AsLibraryFile().XxHash64Identity() };
+
+        await Backfill.Run(Listing(official, squatter), TestContext.Current.CancellationToken);
+
+        Fresh(file).Contains(WabbajackModlistLibraryFile.MachineUrl).Should().BeFalse("the link proves the bytes, not the repository that lists them");
     }
 }

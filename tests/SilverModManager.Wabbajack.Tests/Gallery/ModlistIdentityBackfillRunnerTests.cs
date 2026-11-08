@@ -41,7 +41,7 @@ public class ModlistIdentityBackfillRunnerTests(ILibraryService libraryService, 
     {
         var name = $"Cached {Guid.NewGuid():N}";
         var file = await FromGallery(name);
-        var gallery = new FakeGallery { Cached = Listing(Entry(name, machineUrl: "cached")) };
+        var gallery = new FakeGallery { Cached = Listing(Entry(name, machineUrl: "cached") with { Download = OldDownloadUrl }) };
         using var runner = Runner(gallery);
 
         await runner.StartAsync(TestContext.Current.CancellationToken);
@@ -60,7 +60,7 @@ public class ModlistIdentityBackfillRunnerTests(ILibraryService libraryService, 
         await runner.StartAsync(TestContext.Current.CancellationToken);
         HasIdentity(file).Should().BeFalse();
 
-        gallery.RefreshedSubject.OnNext(Listing(Entry(name, machineUrl: "refreshed")));
+        gallery.RefreshedSubject.OnNext(Listing(Entry(name, machineUrl: "refreshed") with { Download = OldDownloadUrl }));
 
         (await Eventually(() => HasIdentity(file))).Should().BeTrue();
         await runner.StopAsync(TestContext.Current.CancellationToken);
@@ -76,7 +76,7 @@ public class ModlistIdentityBackfillRunnerTests(ILibraryService libraryService, 
         await runner.StartAsync(TestContext.Current.CancellationToken);
         await runner.StopAsync(TestContext.Current.CancellationToken);
 
-        gallery.RefreshedSubject.OnNext(Listing(Entry(name, machineUrl: "late")));
+        gallery.RefreshedSubject.OnNext(Listing(Entry(name, machineUrl: "late") with { Download = OldDownloadUrl }));
 
         await Task.Delay(500, TestContext.Current.CancellationToken);
         HasIdentity(file).Should().BeFalse();
