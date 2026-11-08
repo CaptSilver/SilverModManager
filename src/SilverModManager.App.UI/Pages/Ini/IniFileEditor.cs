@@ -175,8 +175,10 @@ public sealed partial class IniFileEditor : ReactiveObject
     {
         var result = IniDocument.Parse(resultText);
         var managed = _game.ManagedKeysFile == Path ? _game.ManagedKeys(loadout) : [];
+        var gameId = GameInstallMetadata.Game.TryGetValue(loadout.Installation, out var id) ? id : (GameId?)null;
         return IniSettingsCatalog.All
             .Where(definition => IniSettingsCatalog.FileFor(_game.IniFiles, definition.File) == FileName)
+            .Where(definition => definition.AppliesTo(gameId))
             .Select(definition =>
             {
                 var isManaged = managed.Any(k => k.Section.Equals(definition.Section, StringComparison.OrdinalIgnoreCase) && k.Key.Equals(definition.Key, StringComparison.OrdinalIgnoreCase));

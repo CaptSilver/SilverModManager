@@ -9,6 +9,8 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Pages.Ini;
+using SilverModManager.Games.CreationEngine.Oblivion;
+using SilverModManager.Games.CreationEngine.SkyrimSE;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
@@ -519,6 +521,61 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
         PresenterRig.Body(_presenter.Dialogs[0]).Should().Contain("iSize W");
         editor.LoadoutTweakText.Should().BeEmpty();
         IniTweakLayers.All(Fresh(loadout), PrefsPath).Should().BeEmpty();
+    }
+
+    private async Task<Loadout.ReadOnly> SeedBaselinesOfGame(GameId game)
+    {
+        var loadout = await SeedBaselines();
+        using var tx = Connection.BeginTransaction();
+        tx.Retract(loadout.Installation.Id, GameInstallMetadata.Game, loadout.Installation.Game.Value);
+        tx.Add(loadout.Installation.Id, GameInstallMetadata.Game, game);
+        await tx.Commit();
+        return Fresh(loadout);
+    }
+
+    [Fact]
+    public async Task ThePapyrusLoggingSettingsAreOfferedOnTheMainFileOfASkyrimGame()
+    {
+        var loadout = await SeedBaselinesOfGame(SkyrimSE.GameId);
+        var main = await Editor(loadout, MainPath);
+        var prefs = await Editor(loadout, PrefsPath);
+
+        var papyrus = main.Settings.Where(s => s.Definition.Section == "Papyrus").ToList();
+        papyrus.Select(s => s.Definition.Key).Should().BeEquivalentTo("bEnableLogging", "bEnableTrace", "bLoadDebugInformation");
+        papyrus.Should().OnlyContain(s => s.Definition.Type == IniSettingType.Bool);
+        prefs.Settings.Should().NotContain(s => s.Definition.Section == "Papyrus");
+    }
+
+    [Fact]
+    public async Task ThePapyrusSettingsAreNotOfferedOnOblivion()
+    {
+        var loadout = await SeedBaselinesOfGame(Oblivion.GameId);
+        var main = await Editor(loadout, MainPath);
+
+        main.Settings.Should().NotContain(s => s.Definition.Section == "Papyrus");
+        main.Settings.Select(s => s.Definition.Key).Should().Contain("sLocalSavePath", "settings without a game list stay on every game");
+    }
+
+    [Fact]
+    public void ASettingWithoutAGameListAppliesToEveryGameAndToAMissingGame()
+    {
+        var everywhere = IniSettingsCatalog.All.Single(d => d.Key == "sLocalSavePath");
+
+        everywhere.Games.Should().BeNull();
+        everywhere.AppliesTo(null).Should().BeTrue();
+        everywhere.AppliesTo(Oblivion.GameId).Should().BeTrue();
+        everywhere.AppliesTo(SkyrimSE.GameId).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ThePapyrusSettingsApplyToSkyrimSEAndNotToOblivionOrAMissingGame()
+    {
+        var papyrus = IniSettingsCatalog.All.Where(d => d.Section == "Papyrus").ToList();
+
+        papyrus.Should().NotBeEmpty();
+        papyrus.Should().OnlyContain(d => d.AppliesTo(SkyrimSE.GameId));
+        papyrus.Should().OnlyContain(d => !d.AppliesTo(Oblivion.GameId));
+        papyrus.Should().OnlyContain(d => !d.AppliesTo(null));
     }
 
     [Fact]

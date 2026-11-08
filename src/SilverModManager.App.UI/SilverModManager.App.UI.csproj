@@ -104,6 +104,7 @@
         <ProjectReference Include="..\SilverModManager.Networking.Thunderstore\SilverModManager.Networking.Thunderstore.csproj" />
         <ProjectReference Include="..\SilverModManager.Wabbajack\SilverModManager.Wabbajack.csproj" />
         <ProjectReference Include="..\SilverModManager.Platform.Proton\SilverModManager.Platform.Proton.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.CreationEngine\SilverModManager.Games.CreationEngine.csproj" />
         <ProjectReference Include="..\SilverModManager.Games.FromSoft\SilverModManager.Games.FromSoft.csproj" />
         <ProjectReference Include="..\SilverModManager.UI.Sdk\SilverModManager.UI.Sdk.csproj" />
     </ItemGroup>

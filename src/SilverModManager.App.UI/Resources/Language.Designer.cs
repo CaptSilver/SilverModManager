@@ -5740,6 +5740,33 @@ namespace SilverModManager.App.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Papyrus logging.
+        /// </summary>
+        public static string IniPage_Setting_PapyrusLogging {
+            get {
+                return ResourceManager.GetString("IniPage_Setting_PapyrusLogging", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Papyrus trace.
+        /// </summary>
+        public static string IniPage_Setting_PapyrusTrace {
+            get {
+                return ResourceManager.GetString("IniPage_Setting_PapyrusTrace", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Papyrus debug information.
+        /// </summary>
+        public static string IniPage_Setting_PapyrusDebugInfo {
+            get {
+                return ResourceManager.GetString("IniPage_Setting_PapyrusDebugInfo", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Glass.
         /// </summary>
         public static string Appearance_Glass_Name {

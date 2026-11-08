@@ -1,5 +1,15 @@
 using System.Globalization;
 using SilverModManager.App.UI.Resources;
+using SilverModManager.Games.CreationEngine.Enderal;
+using SilverModManager.Games.CreationEngine.EnderalSE;
+using SilverModManager.Games.CreationEngine.Fallout4;
+using SilverModManager.Games.CreationEngine.Fallout4London;
+using SilverModManager.Games.CreationEngine.Fallout4VR;
+using SilverModManager.Games.CreationEngine.SkyrimLE;
+using SilverModManager.Games.CreationEngine.SkyrimSE;
+using SilverModManager.Games.CreationEngine.SkyrimVR;
+using SilverModManager.Games.CreationEngine.Starfield;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Ini;
 
 namespace SilverModManager.App.UI.Pages.Ini;
@@ -29,8 +39,12 @@ public enum IniFileRole
 /// <param name="Key">The key as the game reads it.</param>
 /// <param name="Type">What a value must look like.</param>
 /// <param name="File">Which file the game honours the key in.</param>
-public sealed record IniSettingDefinition(string Label, string Section, string Key, IniSettingType Type, IniFileRole File)
+/// <param name="Games">The games that read the key, or null when every game that has the file does.</param>
+public sealed record IniSettingDefinition(string Label, string Section, string Key, IniSettingType Type, IniFileRole File, IReadOnlySet<GameId>? Games = null)
 {
+    /// <summary>Whether the game <paramref name="game"/> reads this setting. A setting with no game list applies to every game, including an unknown one.</summary>
+    public bool AppliesTo(GameId? game) => Games is null || game is { } id && Games.Contains(id);
+
     /// <summary>What a value of this setting is described as in a refusal.</summary>
     public string TypeDescription => Type switch
     {
@@ -56,6 +70,13 @@ public sealed record IniSettingDefinition(string Label, string Section, string K
 /// </summary>
 public static class IniSettingsCatalog
 {
+    /// <summary>The games with a Papyrus script engine, whose log settings sit in the [Papyrus] section of the main INI.</summary>
+    private static readonly IReadOnlySet<GameId> PapyrusGames = new HashSet<GameId>
+    {
+        SkyrimLE.GameId, SkyrimSE.GameId, SkyrimVR.GameId, Enderal.GameId, EnderalSE.GameId,
+        Fallout4.GameId, Fallout4VR.GameId, Fallout4London.GameId, Starfield.GameId,
+    };
+
     public static IReadOnlyList<IniSettingDefinition> All { get; } =
     [
         new(Language.IniPage_Setting_SavePath, "General", "sLocalSavePath", IniSettingType.Text, IniFileRole.Main),
@@ -67,6 +88,9 @@ public static class IniSettingsCatalog
         new(Language.IniPage_Setting_ResolutionHeight, "Display", "iSize H", IniSettingType.Int, IniFileRole.Prefs),
         new(Language.IniPage_Setting_Vsync, "Display", "iPresentInterval", IniSettingType.Int, IniFileRole.Prefs),
         new(Language.IniPage_Setting_Fov, "Display", "fDefaultWorldFOV", IniSettingType.Float, IniFileRole.Prefs),
+        new(Language.IniPage_Setting_PapyrusLogging, "Papyrus", "bEnableLogging", IniSettingType.Bool, IniFileRole.Main, PapyrusGames),
+        new(Language.IniPage_Setting_PapyrusTrace, "Papyrus", "bEnableTrace", IniSettingType.Bool, IniFileRole.Main, PapyrusGames),
+        new(Language.IniPage_Setting_PapyrusDebugInfo, "Papyrus", "bLoadDebugInformation", IniSettingType.Bool, IniFileRole.Main, PapyrusGames),
     ];
 
     /// <summary>The file of <paramref name="files"/> that honours settings of <paramref name="role"/>, or null when the game has none.</summary>
