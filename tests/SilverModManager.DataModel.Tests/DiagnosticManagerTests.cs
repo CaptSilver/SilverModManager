@@ -8,6 +8,8 @@ using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Diagnostics.References;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.RedEngine.Cyberpunk2077;
 using SilverModManager.Games.TestFramework;
@@ -50,43 +52,143 @@ public class DiagnosticManagerTests(IServiceProvider provider) : AGameTest<Cyber
     }
 
     [Fact]
-    public async Task RevisionTriggers_AnnounceOfTheSameDatabaseStateTwice_TriggerOnceHoweverFarApart()
+    public async Task AWriteToAnotherLoadout_DoesNotRerunTheEmittersOfThisOne()
     {
+        var emitter = ScriptedEmitter();
         var loadout = await CreateLoadout();
-        var revisions = new System.Reactive.Subjects.Subject<Loadout.ReadOnly>();
-        var clock = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
-        var triggers = 0;
-        using var subscription = R3.ObservableSubscribeExtensions.Subscribe(
-            SilverModManager.DataModel.Diagnostics.DiagnosticManager.RevisionTriggers(revisions, TimeSpan.FromMilliseconds(50), clock),
-            _ => Interlocked.Increment(ref triggers));
+        var script = emitter.Scripts.GetOrAdd(loadout.LoadoutId, _ => new EmitterScript { Answer = "answer" });
+        await DiagnosticManager.GetLoadoutDiagnostics(loadout.LoadoutId).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+        script.Started.Should().Be(1);
 
-        revisions.OnNext(Loadout.Load(Connection.Db, loadout.LoadoutId));
-        clock.Advance(TimeSpan.FromMilliseconds(300));
-        revisions.OnNext(Loadout.Load(Connection.Db, loadout.LoadoutId));
-        clock.Advance(TimeSpan.FromMilliseconds(300));
+        // Every transaction on the connection makes the revision query announce again, whichever loadout it wrote to.
+        await CreateLoadout();
+        await WaitForRevisionAnnouncement(loadout.LoadoutId);
+        await Task.Delay(800);
 
-        triggers.Should().Be(1, "the second revision has the same basis, so nothing changed");
+        script.Started.Should().Be(1, "nothing this loadout depends on changed, so its diagnostics are still current");
     }
 
     [Fact]
-    public async Task RevisionTriggers_ANewDatabaseState_TriggersAgain()
+    public async Task RefreshAsync_AfterAWriteToAnotherLoadout_RunsTheEmittersOnce()
     {
+        var emitter = ScriptedEmitter();
         var loadout = await CreateLoadout();
-        var revisions = new System.Reactive.Subjects.Subject<Loadout.ReadOnly>();
-        var clock = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
-        var triggers = 0;
-        using var subscription = R3.ObservableSubscribeExtensions.Subscribe(
-            SilverModManager.DataModel.Diagnostics.DiagnosticManager.RevisionTriggers(revisions, TimeSpan.FromMilliseconds(50), clock),
-            _ => Interlocked.Increment(ref triggers));
+        var script = emitter.Scripts.GetOrAdd(loadout.LoadoutId, _ => new EmitterScript { Answer = "before the fix" });
+        await DiagnosticManager.GetLoadoutDiagnostics(loadout.LoadoutId).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
 
-        revisions.OnNext(Loadout.Load(Connection.Db, loadout.LoadoutId));
-        clock.Advance(TimeSpan.FromMilliseconds(300));
+        // A sibling loadout written between the first run and the refresh must not add a run of its own.
+        await CreateLoadout();
+        await WaitForRevisionAnnouncement(loadout.LoadoutId);
+        await Task.Delay(800);
+
+        script.Answer = "after the fix";
+        await DiagnosticManager.RefreshAsync(loadout.LoadoutId).WaitAsync(TimeSpan.FromSeconds(30));
+
+        script.Started.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task AWriteToTheGameInstallation_RerunsTheEmittersOfItsLoadouts()
+    {
+        var emitter = ScriptedEmitter();
+        var loadout = await CreateLoadout();
+        var script = emitter.Scripts.GetOrAdd(loadout.LoadoutId, _ => new EmitterScript { Answer = "answer" });
+        await DiagnosticManager.GetLoadoutDiagnostics(loadout.LoadoutId).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+        script.Started.Should().Be(1);
+
+        // A rescan of the disk, a move record or applying another loadout all land on the installation entity,
+        // and the emitters read what they changed.
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(loadout.Installation.Id, GameInstallMetadata.LastScannedDiskStateTransaction, EntityId.From(tx.ThisTxId.Value));
+            await tx.Commit();
+        }
+
+        await WaitForStarted(script, 2);
+        await Task.Delay(800);
+        script.Started.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task AWriteToThisLoadout_WhileARefreshIsRunning_PublishesTheRunItStarts()
+    {
+        var emitter = ScriptedEmitter();
+        var loadout = await CreateLoadout();
+        var script = emitter.Scripts.GetOrAdd(loadout.LoadoutId, _ => new EmitterScript { Answer = "first answer" });
+        await DiagnosticManager.GetLoadoutDiagnostics(loadout.LoadoutId).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+        await Task.Delay(600);
+        var startedBeforeRefresh = script.Started;
+
+        script.Gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var refresh = DiagnosticManager.RefreshAsync(loadout.LoadoutId);
+        await WaitForStarted(script, startedBeforeRefresh + 1);
+
+        // A real change lands while the refresh's run is held open: the run it triggers supersedes the held one.
+        script.Answer = "answer after the write";
         using (var tx = Connection.BeginTransaction())
         {
             tx.Add(loadout.LoadoutId, Loadout.LastAppliedDateTime, DateTime.UtcNow);
             await tx.Commit();
         }
-        revisions.OnNext(Loadout.Load(Connection.Db, loadout.LoadoutId));
+        await WaitForStarted(script, startedBeforeRefresh + 2);
+        script.Gate.SetResult();
+
+        await refresh.WaitAsync(TimeSpan.FromSeconds(30));
+        var published = await DiagnosticManager.GetLoadoutDiagnostics(loadout.LoadoutId).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+        published.Select(d => d.Title).Should().Equal("answer after the write");
+    }
+
+    [Fact]
+    public async Task AWriteToThisLoadout_RerunsItsEmittersOnce()
+    {
+        var emitter = ScriptedEmitter();
+        var loadout = await CreateLoadout();
+        var script = emitter.Scripts.GetOrAdd(loadout.LoadoutId, _ => new EmitterScript { Answer = "answer" });
+        await DiagnosticManager.GetLoadoutDiagnostics(loadout.LoadoutId).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+        script.Started.Should().Be(1);
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(loadout.LoadoutId, Loadout.LastAppliedDateTime, DateTime.UtcNow);
+            await tx.Commit();
+        }
+
+        await WaitForStarted(script, 2);
+        await Task.Delay(800);
+        script.Started.Should().Be(2);
+    }
+
+    [Fact]
+    public void RevisionTriggers_AnnounceOfTheSameStampTwice_TriggerOnceHoweverFarApart()
+    {
+        var stamps = new System.Reactive.Subjects.Subject<(ulong LastTx, long Datoms)>();
+        var clock = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
+        var triggers = 0;
+        using var subscription = R3.ObservableSubscribeExtensions.Subscribe(
+            SilverModManager.DataModel.Diagnostics.DiagnosticManager.RevisionTriggers(stamps, TimeSpan.FromMilliseconds(50), clock),
+            _ => Interlocked.Increment(ref triggers));
+
+        stamps.OnNext((7, 11));
+        clock.Advance(TimeSpan.FromMilliseconds(300));
+        stamps.OnNext((7, 11));
+        clock.Advance(TimeSpan.FromMilliseconds(300));
+
+        triggers.Should().Be(1, "the second announcement has the same stamp, so nothing changed");
+    }
+
+    [Fact]
+    public void RevisionTriggers_ANewStamp_TriggersAgain()
+    {
+        var stamps = new System.Reactive.Subjects.Subject<(ulong LastTx, long Datoms)>();
+        var clock = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
+        var triggers = 0;
+        using var subscription = R3.ObservableSubscribeExtensions.Subscribe(
+            SilverModManager.DataModel.Diagnostics.DiagnosticManager.RevisionTriggers(stamps, TimeSpan.FromMilliseconds(50), clock),
+            _ => Interlocked.Increment(ref triggers));
+
+        stamps.OnNext((7, 11));
+        clock.Advance(TimeSpan.FromMilliseconds(300));
+        stamps.OnNext((9, 11));
         clock.Advance(TimeSpan.FromMilliseconds(300));
 
         triggers.Should().Be(2);
@@ -256,6 +358,29 @@ public class DiagnosticManagerTests(IServiceProvider provider) : AGameTest<Cyber
         action.Id.Should().Be(DiagnosticActions.UseLoadoutFromSteamId);
         action.Id.Should().Be("use-loadout-from-steam");
         action.Label.Should().NotBeNullOrWhiteSpace();
+    }
+
+    private static async Task WaitForStarted(EmitterScript script, int started)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+        while (script.Started < started)
+        {
+            DateTime.UtcNow.Should().BeBefore(deadline, $"the emitters should have started {started} times");
+            await Task.Delay(10);
+        }
+    }
+
+    /// <summary>
+    /// Waits until the revision query has announced a database state that includes everything committed so far,
+    /// so a test that expects no rerun knows the announcement a rerun would hang on has already happened.
+    /// </summary>
+    private async Task WaitForRevisionAnnouncement(LoadoutId loadoutId)
+    {
+        var committed = Connection.Db.BasisTxId;
+        await LoadoutQueries2.RevisionsWithChildUpdates(Connection, loadoutId)
+            .Where(revision => revision.Db.BasisTxId >= committed)
+            .Timeout(TimeSpan.FromSeconds(30))
+            .FirstAsync();
     }
 
     private ScriptedLoadoutEmitter ScriptedEmitter() =>

@@ -82,7 +82,7 @@ internal sealed class DiagnosticManager : IDiagnosticManager
 
         var refreshRequests = new R3.Subject<Unit>();
         var runsStarted = new StrongBox<int>();
-        var results = RevisionTriggers(LoadoutQueries2.RevisionsWithChildUpdates(_connection, loadoutId), TimeSpan.FromMilliseconds(250), TimeProvider.System)
+        var results = RevisionTriggers(LoadoutQueries2.RevisionStamps(_connection, loadoutId), TimeSpan.FromMilliseconds(250), TimeProvider.System)
             .Merge(refreshRequests)
             .Select(_ => Interlocked.Increment(ref runsStarted.Value))
             .SelectAwait(async (run, cancellationToken) => (Run: run, Diagnostics: await DiagnoseLoadout(loadoutId, cancellationToken)), AwaitOperation.Switch)
@@ -113,14 +113,14 @@ internal sealed class DiagnosticManager : IDiagnosticManager
     }
 
     /// <summary>
-    /// One trigger per settled database state. The revision query can announce the same database state more
-    /// than once, and further apart than the debounce window; collapsing by basis TxId keeps an unchanged
-    /// state from re-running every emitter.
+    /// One trigger per settled state of the loadout's diagnostic inputs. The revision query announces again on
+    /// every transaction on the connection, including ones that wrote to other loadouts, and can announce
+    /// the same state more than once, further apart than the debounce window; collapsing equal stamps
+    /// keeps an unchanged loadout from re-running every emitter.
     /// </summary>
-    internal static Observable<Unit> RevisionTriggers(IObservable<Loadout.ReadOnly> revisions, TimeSpan debounce, TimeProvider timeProvider) =>
-        revisions
+    internal static Observable<Unit> RevisionTriggers<TStamp>(IObservable<TStamp> stamps, TimeSpan debounce, TimeProvider timeProvider) where TStamp : IEquatable<TStamp> =>
+        stamps
             .ToObservable()
-            .Select(revision => revision.Db.BasisTxId)
             .DistinctUntilChanged()
             .Debounce(debounce, timeProvider)
             .Select(_ => Unit.Default);
