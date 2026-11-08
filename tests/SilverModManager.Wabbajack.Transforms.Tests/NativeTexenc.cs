@@ -11,9 +11,9 @@ internal static class NativeTexenc
     public const string Collection = "native texenc";
 
     /// <summary>
-    /// True on linux-x64, the one runtime the library is committed for. Tests expect the library there and fail when it
-    /// is missing from the output; elsewhere they skip, since the managed encoder is the supported floor.
+    /// True on linux-x64 and linux-arm64, the runtimes the library is committed for. Tests expect the library there and
+    /// fail when it is missing from the output; elsewhere they skip, since the managed encoder is the supported floor.
     /// </summary>
     public static bool LibraryIsBundledForThisPlatform
-        => OperatingSystem.IsLinux() && RuntimeInformation.ProcessArchitecture == Architecture.X64;
+        => OperatingSystem.IsLinux() && RuntimeInformation.ProcessArchitecture is Architecture.X64 or Architecture.Arm64;
 }

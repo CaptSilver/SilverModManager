@@ -39,6 +39,28 @@ digest-pinned `ubuntu:20.04` image `build-ooz.sh` uses, and writes
 `src/SilverModManager.Wabbajack.Transforms/runtimes/linux-x64/native/libsmmtexenc.so`.
 `libsmmtexenc.so` is committed; rebuild it only when these sources, the ISPC pin or the flags change.
 
+`scripts/build-texenc.sh aarch64` builds `runtimes/linux-arm64/native/libsmmtexenc.so`. ISPC is an x86-64 program, so
+it runs on the host with `--arch=aarch64 --target=neon-i32x4` and only `bc7e.o` and its header go into the digest-pinned
+arm64 `ubuntu:20.04` image (`podman run --platform linux/arm64`, qemu binfmt), where `g++` links the library. The
+glibc gate reads the arm64 runtime pack's `libcoreclr.so` (restore it with
+`dotnet restore src/SilverModManager.App -r linux-arm64 -p:SelfContained=true` in the fedora box, or point
+`RUNTIME_NATIVE_DIR` at a directory holding it). The ELF checks run inside the image because the host binutils read
+x86-64 files only.
+
+Gate 0 for that build: the pinned ISPC must list `aarch64` for `neon-i32x4` in `ispc --support-matrix`. ISPC 1.28.2's
+Linux binary does:
+
+    neon-i32x4      |         | arm, aarch64              | arm, aarch64   | arm, aarch64 ...
+
+If a future ISPC pin loses the target, the script stops there, no arm64 library is committed, and the arm64 app takes
+the managed encoder (BCnEncoder.Net) with `TextureEncoderSelector`'s usual Information line ("... was not found, using
+BCnEncoder.Net. Looked in: ...").
+
+The arm64 library does not match the x64 one byte for byte, since the SIMD targets differ. Encoding the same
+generated textures (gradient with alpha, noise, patterned; 600x8, 256x256 and 64x64) through both gives identical BC4
+and BC5 output. BC1, BC3 and BC7 differ in at most 12 blocks per case (BC1 and BC3 at most 2), out of 4096 on the
+largest, at the levels tried. This was a one-off comparison; the driver is not kept in the repo.
+
 The script fails unless the highest glibc symbol version (libm's included) is no newer than `libcoreclr.so`'s, the
 library does not depend on libstdc++, and it exports exactly the `smm_texenc_*` functions (every symbol type counts, weak ones included). The committed library is only replaced when all three gates pass. It prints the glibc
 versions bound, the ones bound from libm on their own, the exports and the sha256 of the result. Two runs give the

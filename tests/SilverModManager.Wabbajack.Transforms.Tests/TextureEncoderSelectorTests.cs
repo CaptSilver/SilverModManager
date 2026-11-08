@@ -262,8 +262,8 @@ public sealed unsafe class TextureEncoderSelectorTests
         var logger = new ListLogger<TextureEncoderSelector>();
         var selector = new TextureEncoderSelector(new BundledNativeLibraryLoader(typeof(NativeTextureEncoder).Assembly), logger);
 
-        // linux-x64 is the RID the library is committed for, so there it must be native; a missing file fails here
-        // instead of quietly selecting managed. Other platforms bundle nothing and take the managed encoder.
+        // linux-x64 and linux-arm64 are the RIDs the library is committed for, so there it must be native; a missing
+        // file fails here instead of quietly selecting managed. Other platforms bundle nothing and take the managed encoder.
         var expected = NativeTexenc.LibraryIsBundledForThisPlatform ? "libsmmtexenc" : "BCnEncoder.Net";
         Assert.Equal(expected, selector.Encoders[0].Name);
         Assert.Equal("BCnEncoder.Net", selector.Encoders[^1].Name);
