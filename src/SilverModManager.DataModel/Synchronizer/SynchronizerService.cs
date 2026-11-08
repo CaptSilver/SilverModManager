@@ -198,6 +198,15 @@ public class SynchronizerService : ISynchronizerService, IDisposable
 
     private async Task SynchronizeCore(LoadoutId loadoutId, bool refuseWhileRunning, bool reselectBackends, BackupOverflowChoice? largeFiles, CancellationToken callerToken, bool cleanExternalChanges = false, BackupOverflowOperation operation = BackupOverflowOperation.Apply)
     {
+        // Before the job and the semaphore: the finish syncs through SynchronizeFromLaunchSession, which takes the
+        // semaphore itself, and it shows as a job of its own rather than nested in the caller's. Its re-entrancy flag
+        // makes that nested pass through here return at once. Optional so a host without launches syncs as before.
+        if (_serviceProvider.GetService<IPendingLaunchFinisher>() is { } finisher)
+        {
+            var target = Loadout.Load(_conn.Db, loadoutId);
+            if (target.IsValid()) await finisher.FinishIfPending(target.InstallationInstance, callerToken);
+        }
+
         await _jobMonitor.Begin(new SynchronizeLoadoutJob(loadoutId),
             async ctx =>
             {

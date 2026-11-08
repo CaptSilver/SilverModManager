@@ -44,17 +44,20 @@ public sealed class BackupOverflowAnswer
     /// <summary>
     /// Moves the operation on to its next leg: the question of the leg after the game exited is worded for that
     /// leg, not for the launch that opened the scope. Opens a scope when none is active, otherwise retargets the
-    /// active one and returns a handle that leaves it open and puts the earlier operation back when disposed. <paramref name="defaultAnswer"/> stands in for a
-    /// question nothing has answered yet; an answer already given stands.
+    /// active one and returns a handle that leaves it open and puts the earlier operation and answer back when
+    /// disposed, so a leg that runs in the middle of another operation (a finish inside a switch) leaves that
+    /// operation's own questions open. <paramref name="defaultAnswer"/> stands in for a question nothing has answered
+    /// yet; an answer already given stands.
     /// </summary>
     public static IDisposable BeginLeg(BackupOverflowOperation operation, BackupOverflowChoice? defaultAnswer = null)
     {
         if (Current.Value is { } active)
         {
             var earlier = active.Operation;
+            var earlierAnswer = active._answer;
             active.Operation = operation;
             active._answer ??= defaultAnswer;
-            return new Leg(active, earlier);
+            return new Leg(active, earlier, earlierAnswer);
         }
 
         var scope = new BackupOverflowAnswer(operation) { _answer = defaultAnswer };
@@ -70,9 +73,13 @@ public sealed class BackupOverflowAnswer
         }
     }
 
-    private sealed class Leg(BackupOverflowAnswer scope, BackupOverflowOperation earlier) : IDisposable
+    private sealed class Leg(BackupOverflowAnswer scope, BackupOverflowOperation earlier, BackupOverflowChoice? earlierAnswer) : IDisposable
     {
-        public void Dispose() => scope.Operation = earlier;
+        public void Dispose()
+        {
+            scope.Operation = earlier;
+            scope._answer = earlierAnswer;
+        }
     }
 
     private sealed class Joined : IDisposable

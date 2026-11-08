@@ -843,6 +843,29 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         BackupOverflowAnswer.Active!.Operation.Should().Be(BackupOverflowOperation.Launch);
     }
 
+    [Fact]
+    public void EndingALeg_PutsBackTheAnswerTheOperationHeldBeforeIt()
+    {
+        using var switching = BackupOverflowAnswer.Begin(BackupOverflowOperation.Switch);
+
+        using (BackupOverflowAnswer.BeginLeg(BackupOverflowOperation.AfterPlay, BackupOverflowChoice.AdoptInPlace))
+            BackupOverflowAnswer.Active!.Remembered.Should().Be(BackupOverflowChoice.AdoptInPlace);
+
+        BackupOverflowAnswer.Active!.Remembered.Should().BeNull("the leg's default was for the leg, not for the legs after it");
+    }
+
+    [Fact]
+    public void EndingALeg_KeepsAnAnswerThePlayerGaveBeforeIt()
+    {
+        using var switching = BackupOverflowAnswer.Begin(BackupOverflowOperation.Switch);
+        BackupOverflowAnswer.Active!.Remember(BackupOverflowChoice.BackUpAnyway);
+
+        using (BackupOverflowAnswer.BeginLeg(BackupOverflowOperation.AfterPlay, BackupOverflowChoice.AdoptInPlace))
+            BackupOverflowAnswer.Active!.Remembered.Should().Be(BackupOverflowChoice.BackUpAnyway);
+
+        BackupOverflowAnswer.Active!.Remembered.Should().Be(BackupOverflowChoice.BackUpAnyway);
+    }
+
     /// <summary>A run-game tool whose run is one more sync, the way the launch session syncs before it starts the process.</summary>
     private sealed class SyncingRunTool(GameId game, ISynchronizerService synchronizer, LoadoutId loadoutId) : IRunGameTool
     {

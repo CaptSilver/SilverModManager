@@ -58,6 +58,26 @@ public class SyncOriginTests(ITestOutputHelper helper) : AStubbedGameTest<SyncOr
     }
 
     [Fact]
+    public async Task ANestedScopeNamesItsOwnOriginAndRestoresTheOuterOneWhenItEnds()
+    {
+        var loadout = await CreateLoadout();
+
+        using (SyncOrigin.Begin(SyncTrigger.ApplyButton))
+        {
+            using (SyncOrigin.BeginNested(SyncTrigger.AfterGameRun))
+            {
+                SyncOrigin.Current.Should().Be(SyncTrigger.AfterGameRun);
+                await SynchronizerService.Synchronize(loadout.LoadoutId);
+            }
+
+            SyncOrigin.Current.Should().Be(SyncTrigger.ApplyButton);
+        }
+
+        StartLines.Last().Message.Should().Contain("started by the game closing");
+        SyncOrigin.Current.Should().BeNull();
+    }
+
+    [Fact]
     public async Task PuttingTheFolderBackNamesWhatAskedForIt()
     {
         var loadout = await CreateLoadout();

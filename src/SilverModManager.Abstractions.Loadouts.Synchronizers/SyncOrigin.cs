@@ -69,6 +69,18 @@ public static class SyncOrigin
         return scope;
     }
 
+    /// <summary>
+    /// Starts a scope that names its own cause even inside another one, and puts the outer one back when it ends. For
+    /// work that runs in the middle of an operation but has a cause of its own: finishing a session the game left
+    /// behind while the person is applying, say.
+    /// </summary>
+    public static IDisposable BeginNested(SyncTrigger trigger)
+    {
+        var scope = new Scope(trigger, Active.Value);
+        Active.Value = scope;
+        return scope;
+    }
+
     /// <summary>The cause in plain words, to follow "started by".</summary>
     public static string Describe(SyncTrigger trigger) => trigger switch
     {
@@ -98,11 +110,11 @@ public static class SyncOrigin
             logger.LogWarning("Starting {What}, started with no recorded origin, so the log cannot say why", what);
     }
 
-    private sealed class Scope(SyncTrigger trigger) : IDisposable
+    private sealed class Scope(SyncTrigger trigger, Scope? outer = null) : IDisposable
     {
         public SyncTrigger Trigger { get; } = trigger;
 
-        public void Dispose() => Active.Value = null;
+        public void Dispose() => Active.Value = outer;
     }
 
     private sealed class Joined : IDisposable

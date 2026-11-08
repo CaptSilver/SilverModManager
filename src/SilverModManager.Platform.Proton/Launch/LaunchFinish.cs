@@ -68,7 +68,8 @@ public sealed class LaunchFinish(ILaunchSynchronizer synchronizer, ILaunchFinish
             // Files a game writes into its own folder are the game's: keep them where they are unless keeping
             // would lose files, and never put the launch's wording on a question asked after the game closed.
             using var leg = BackupOverflowAnswer.BeginLeg(BackupOverflowOperation.AfterPlay, BackupOverflowChoice.AdoptInPlace);
-            using var origin = SyncOrigin.Begin(SyncTrigger.AfterGameRun);
+            // Nested: the finish can run inside someone else's apply or reset, and its sync is still the game closing.
+            using var origin = SyncOrigin.BeginNested(SyncTrigger.AfterGameRun);
             await synchronizer.Synchronize(context.LoadoutId);
         }
         catch (Exception e)
