@@ -33,7 +33,9 @@ public static class Services
     public static IServiceCollection AddWabbajack(this IServiceCollection services)
     {
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, WabbajackSkippedFilesEmitter>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, WabbajackUpdateEmitter>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WabbajackModlistRemovalWatcher>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, GalleryRefreshDiagnosticsRunner>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ModlistIdentityBackfillRunner>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDestinationInference, ModlistFetchInference>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ICollectionLock, WabbajackModlistLock>());
@@ -95,6 +97,7 @@ public static class Services
                 provider.GetRequiredService<ILogger<WabbajackGalleryClient>>()))
             .AddSingleton<IWabbajackGalleryClient>(provider => provider.GetRequiredService<WabbajackGalleryClient>())
             .AddSingleton<ModlistIdentityBackfill>()
+            .AddSingleton<ModlistUpdateCheck>()
             .AddSingleton<ILibraryFileRecogniser, WabbajackModlistRecogniser>()
             .AddSingleton<SilverModManager.Library.Listing.ILibraryItemKind, WabbajackModlistKind>();
     }

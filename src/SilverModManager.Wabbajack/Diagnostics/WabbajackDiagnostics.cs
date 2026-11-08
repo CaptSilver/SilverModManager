@@ -30,4 +30,27 @@ The install of **{ModlistName}** could not execute {SkippedCount} of the modlist
             .AddValue<MarkdownFragment>("Paths")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate ModlistUpdateAvailable = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 2))
+        .WithTitle("A Newer Modlist Version Is Available")
+        .WithSeverity(DiagnosticSeverity.Suggestion)
+        .WithSummary("A newer version of {ModlistName} is available ({InstalledVersion} → {NewVersion}{Download})")
+        .WithDetails("""
+The gallery lists **{NewVersion}** of **{ModlistName}**; this loadout has **{InstalledVersion}** installed. Open the modlist's page to review the update.
+
+{ListingNote}
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddDataReference<LoadoutItemGroupReference>("Modlist")
+            .AddValue<string>("ModlistName")
+            .AddValue<string>("InstalledVersion")
+            .AddValue<string>("NewVersion")
+            .AddValue<string>("Download")
+            .AddValue<string>("ListingNote")
+        )
+        .Finish();
 }

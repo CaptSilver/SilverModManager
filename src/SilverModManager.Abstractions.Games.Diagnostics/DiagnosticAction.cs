@@ -100,6 +100,31 @@ public static class DiagnosticActions
         => new(ReapplyCollectionOrderId, "Apply the collection's load order again", [collectionGroup.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
 
     /// <summary>
+    /// Id of the action that opens an installed Wabbajack modlist's page.
+    /// </summary>
+    public const string OpenWabbajackModlistId = "open-wabbajack-modlist";
+
+    /// <summary>
+    /// Opens the page of the modlist library file with the entity id <paramref name="libraryFile"/>, fixed to the loadout with
+    /// the entity id <paramref name="loadout"/>. The arguments are the two ids in that order; <see cref="ParseOpenWabbajackModlist"/> reads them back.
+    /// </summary>
+    public static DiagnosticAction OpenWabbajackModlist(EntityId libraryFile, EntityId loadout)
+        => new(OpenWabbajackModlistId, "Open the modlist",
+            [libraryFile.Value.ToString(System.Globalization.CultureInfo.InvariantCulture), loadout.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+
+    /// <summary>
+    /// Reads the arguments <see cref="OpenWabbajackModlist"/> wrote.
+    /// </summary>
+    public static (EntityId LibraryFile, EntityId Loadout) ParseOpenWabbajackModlist(ImmutableArray<string> arguments)
+    {
+        if (arguments.Length != 2
+            || !ulong.TryParse(arguments[0], System.Globalization.CultureInfo.InvariantCulture, out var file)
+            || !ulong.TryParse(arguments[1], System.Globalization.CultureInfo.InvariantCulture, out var loadout))
+            throw new ArgumentException("The action names no modlist to open", nameof(arguments));
+        return (EntityId.From(file), EntityId.From(loadout));
+    }
+
+    /// <summary>
     /// Id of the action that folds a game's folder on the host into the one inside its Proton prefix.
     /// </summary>
     public const string MoveHostFolderIntoGameId = "move-host-folder-into-game";

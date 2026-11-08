@@ -4,9 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Cli;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Gallery;
 using SilverModManager.Wabbajack.Library;
 
 namespace SilverModManager.Wabbajack.Cli;
@@ -21,7 +23,8 @@ public static class Verbs
             .AddVerb(() => List)
             .AddVerb(() => Download)
             .AddVerb(() => Status)
-            .AddVerb(() => Cancel);
+            .AddVerb(() => Cancel)
+            .AddVerb(() => Updates);
 
     private sealed record KindCount(string Kind, int Count);
 
@@ -167,6 +170,44 @@ public static class Verbs
 
         downloads.Cancel();
         await renderer.TextLine("Stopping the running modlist download.");
+        return 0;
+    }
+
+    private sealed record UpdateRow(string Modlist, string Installed, string Newer, bool Reupload, int Archives, long DownloadBytes, bool OfflineCopy, DateTimeOffset ListingFetchedAt);
+
+    [Verb("wabbajack updates", "Lists the modlists installed in a loadout that the gallery has a newer version of, with the archive count and size of the whole new list")]
+    private static async Task<int> Updates([Injected] IRenderer renderer, [Injected] ModlistUpdateCheck check, [Injected] CancellationToken token,
+        [Option("l", "loadout", "Loadout whose modlists to check")] Loadout.ReadOnly loadout,
+        [Option("j", "json", "Print the updates as JSON", true)] bool json)
+    {
+        var updates = await check.Check(loadout.LoadoutId, token);
+        string NameOf(ModlistUpdate update) => update.Group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().Name;
+
+        if (json)
+        {
+            var rows = updates.Select(u => new UpdateRow(NameOf(u), u.Installed.Version, u.Newer.Version, u.IsReupload, u.ArchivesToDownload, (long)u.DownloadSize.Value, u.IsStale, u.ListingFetchedAt));
+            await renderer.TextLine(JsonSerializer.Serialize(rows, CliJson.Options));
+            return 0;
+        }
+
+        if (updates.Count == 0)
+        {
+            await renderer.TextLine("Nothing to do: no newer version of an installed modlist is known.");
+            return 0;
+        }
+
+        if (updates.FirstOrDefault(u => u.IsStale) is { } stale)
+            await renderer.TextLine("Offline copy from {0}: the gallery could not be reached, so newer versions may have been released since.",
+                stale.ListingFetchedAt.UtcDateTime.ToString("yyyy-MM-dd HH:mm 'UTC'", System.Globalization.CultureInfo.InvariantCulture));
+
+        await renderer.Table(["Modlist", "Installed", "Newer", "Archives (list total)", "Download size"], updates.Select(u => new object[]
+        {
+            NameOf(u),
+            u.Installed.Version,
+            u.IsReupload ? $"{u.Newer.Version} (re-uploaded by the author)" : u.Newer.Version,
+            u.ArchivesToDownload.ToString(),
+            u.DownloadSize.ToString(),
+        }));
         return 0;
     }
 
