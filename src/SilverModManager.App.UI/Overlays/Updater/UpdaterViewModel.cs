@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using SilverModManager.Sdk.Errors;
 using System.Diagnostics;
 using Avalonia.Threading;
@@ -95,7 +96,7 @@ public partial class UpdaterViewModel : AOverlayViewModel<IUpdaterViewModel>, IU
         StatusMessage = Language.Updater_Downloading;
         try
         {
-            await _inAppUpdate.Installer.InstallAsync(_inAppUpdate.Asset, _inAppUpdate.AppImagePath, fraction => Progress = fraction, _cancellation.Token);
+            await _inAppUpdate.Installer.InstallAsync(_inAppUpdate.Asset, _inAppUpdate.AppImagePath, RuntimeInformation.ProcessArchitecture, fraction => Progress = fraction, _cancellation.Token);
             State = UpdateState.ReadyToRestart;
             StatusMessage = Language.Updater_Installed;
         }
@@ -148,7 +149,7 @@ public partial class UpdaterViewModel : AOverlayViewModel<IUpdaterViewModel>, IU
         if (!release.TryGetVersion(out var latestVersion)) throw new UnreachableException();
         if (settingsManager.Get<UpdaterSettings>().VersionToSkip.Equals(latestVersion)) return null;
 
-        updateChecker.TryGetMatchingReleaseAsset(release, installationMethod, out var releaseAsset);
+        updateChecker.TryGetMatchingReleaseAsset(release, installationMethod, RuntimeInformation.ProcessArchitecture, out var releaseAsset);
 
         InAppUpdate? inAppUpdate = null;
         if (installationMethod is InstallationMethod.AppImage && releaseAsset is not null)

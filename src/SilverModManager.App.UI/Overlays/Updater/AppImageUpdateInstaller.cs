@@ -1,4 +1,7 @@
+using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 using NexusMods.Paths;
+using SilverModManager.Sdk;
 using SilverModManager.Sdk.Errors;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Networking.GitHub;
@@ -22,17 +25,19 @@ internal sealed class AppImageUpdateException(string message) : UserFacingExcept
 }
 
 /// <summary>
-/// Replaces the running AppImage with a release asset once its bytes match the SHA-256 GitHub reports for it.
+/// Replaces the running AppImage with a release asset once its bytes match the SHA-256 GitHub reports for it and
+/// its ELF header says it runs on the CPU the app is running on.
 /// </summary>
 /// <remarks>
 /// The download lands beside the target so the final rename stays on one filesystem and is atomic. Linux lets a
-/// running executable be replaced by rename, the old inode lives on until the process exits.
+/// running executable be replaced by rename, the old inode lives on until the process exits. The CPU check does not
+/// depend on the asset name, so a release that lists the wrong CPU's AppImage first cannot replace the app with it.
 /// </remarks>
 internal sealed class AppImageUpdateInstaller(ILogger logger, UpdateDownload download)
 {
     private const UnixFileMode ExecuteBits = UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
 
-    public async Task InstallAsync(Asset asset, string? appImagePath, Action<double> progress, CancellationToken cancellationToken)
+    public async Task InstallAsync(Asset asset, string? appImagePath, Architecture expectedArchitecture, Action<double> progress, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -63,6 +68,8 @@ internal sealed class AppImageUpdateInstaller(ILogger logger, UpdateDownload dow
                 throw new AppImageUpdateException($"The downloaded file does not match the SHA-256 GitHub reports for it (expected {MarkdownText.Code(expected)}, got {MarkdownText.Code(actual)}), so it was discarded.");
             }
 
+            EnsureBuiltFor(expectedArchitecture, asset, temporary);
+
             cancellationToken.ThrowIfCancellationRequested();
 
             File.SetUnixFileMode(temporary, File.GetUnixFileMode(appImagePath) | ExecuteBits);
@@ -74,6 +81,46 @@ internal sealed class AppImageUpdateInstaller(ILogger logger, UpdateDownload dow
             // After a successful rename there is nothing left under this name.
             TryDelete(temporary);
         }
+    }
+
+    private const int ElfHeaderLength = 20;
+    private const int ElfMachineOffset = 18;
+    private static readonly byte[] ElfMagic = [0x7f, (byte)'E', (byte)'L', (byte)'F'];
+
+    private void EnsureBuiltFor(Architecture expected, Asset asset, string downloaded)
+    {
+        var expectedMachine = ReleaseAssetArchitecture.ElfMachine(expected);
+        var expectedName = ReleaseAssetArchitecture.Token(expected);
+        if (expectedMachine is null || expectedName is null)
+            throw new AppImageUpdateException($"There is no update build for this machine's CPU ({expected}), so {MarkdownText.Code(asset.Name)} was discarded.");
+
+        var header = new byte[ElfHeaderLength];
+        int read;
+        using (var stream = File.OpenRead(downloaded))
+            read = stream.ReadAtLeast(header, header.Length, throwOnEndOfStream: false);
+
+        if (read < header.Length || !header.AsSpan(0, ElfMagic.Length).SequenceEqual(ElfMagic))
+        {
+            logger.LogError("`{Asset}` is not an ELF program", asset.Name);
+            throw new AppImageUpdateException($"{MarkdownText.Code(asset.Name)} is not a Linux program, so it was discarded.");
+        }
+
+        var machine = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(ElfMachineOffset));
+        if (machine == expectedMachine) return;
+
+        var actualName = DescribeMachine(machine);
+        logger.LogError("`{Asset}` is built for {Actual}, this app runs on {Expected}", asset.Name, actualName, expectedName);
+        throw new AppImageUpdateException($"{MarkdownText.Code(asset.Name)} is built for {actualName}, this app runs on {expectedName}; the download was discarded.");
+    }
+
+    private static string DescribeMachine(ushort machine)
+    {
+        foreach (var architecture in new[] { Architecture.X64, Architecture.Arm64 })
+        {
+            if (ReleaseAssetArchitecture.ElfMachine(architecture) == machine && ReleaseAssetArchitecture.Token(architecture) is { } name) return name;
+        }
+
+        return $"another CPU (ELF machine 0x{machine:x})";
     }
 
     private static Sha256Value GetExpectedDigest(Asset asset)

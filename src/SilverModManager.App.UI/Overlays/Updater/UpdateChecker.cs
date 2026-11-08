@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.App.UI.Settings;
@@ -60,7 +61,7 @@ public class UpdateChecker
         return latestRelease;
     }
 
-    public bool TryGetMatchingReleaseAsset(Release release, InstallationMethod installationMethod, [NotNullWhen(true)] out Asset? releaseAsset)
+    public bool TryGetMatchingReleaseAsset(Release release, InstallationMethod installationMethod, Architecture architecture, [NotNullWhen(true)] out Asset? releaseAsset)
     {
         if (release.Assets.Count == 0)
         {
@@ -70,7 +71,7 @@ public class UpdateChecker
 
         foreach (var asset in release.Assets)
         {
-            if (!Matches(asset.Name, installationMethod)) continue;
+            if (!Matches(asset.Name, installationMethod, architecture)) continue;
 
             releaseAsset = asset;
             return true;
@@ -81,16 +82,25 @@ public class UpdateChecker
     }
 
     private static readonly Extension ArchiveExtension = new(".zip");
-    private static readonly Extension AppImageExtension = new(".AppImage");
+    private const string AppImageSuffix = ".AppImage";
 
-    internal static bool Matches(RelativePath fileName, InstallationMethod installationMethod)
+    /// <summary>
+    /// Whether <paramref name="fileName"/> is a release asset built for this installation method and CPU. A CPU that
+    /// has no spelling in <see cref="ReleaseAssetArchitecture"/> matches nothing.
+    /// </summary>
+    internal static bool Matches(RelativePath fileName, InstallationMethod installationMethod, Architecture architecture)
     {
-        if (installationMethod is InstallationMethod.AppImage) return fileName.Extension.Equals(AppImageExtension);
+        if (installationMethod is InstallationMethod.AppImage)
+        {
+            if (ReleaseAssetArchitecture.Token(architecture) is not { } token) return false;
+            return fileName.Path.EndsWith($".{token}{AppImageSuffix}", StringComparison.OrdinalIgnoreCase);
+        }
 
         if (installationMethod is InstallationMethod.Archive)
         {
             if (!fileName.Extension.Equals(ArchiveExtension)) return false;
-            return fileName.Path.Contains(".linux-", StringComparison.OrdinalIgnoreCase);
+            if (ReleaseAssetArchitecture.RuntimeIdentifierSuffix(architecture) is not { } suffix) return false;
+            return fileName.Path.Contains($".linux{suffix}.", StringComparison.OrdinalIgnoreCase);
         }
 
         // not supported

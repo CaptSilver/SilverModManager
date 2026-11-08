@@ -12,7 +12,7 @@ namespace SilverModManager.UI.Tests;
 
 public class UpdaterViewTests(IServiceProvider provider) : AUiTest(provider)
 {
-    private static readonly byte[] NewBytes = "new appimage"u8.ToArray();
+    private static readonly byte[] NewBytes = ElfBytes.For(System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture, filler: 0x42);
 
     private readonly string _directory = Directory.CreateTempSubdirectory("updater-view-").FullName;
 
