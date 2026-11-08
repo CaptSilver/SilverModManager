@@ -6739,7 +6739,7 @@ namespace SilverModManager.App.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to One gallery entry looks like this list, but it was not matched automatically. If the list came from it, confirm it; updates are looked for under it from then on..
+        ///   Looks up a localized string similar to This list could not be matched to a gallery entry by itself. Pick the entry it came from only if you recognise it; updates are looked for under it from then on..
         /// </summary>
         public static string CollectionUpdate_Pick_Text_One {
             get {

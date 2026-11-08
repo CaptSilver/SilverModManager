@@ -27,6 +27,9 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     // The same list after the author published again: the CDN gives each release its own uuid suffix.
     private static readonly Uri RenewedUrl = new("https://authored-files.wabbajack.org/old.wabbajack_39f36b83-0000-0000-0000-000000000002");
 
+    // The repository Wabbajack runs; only it may claim a list by a renewed link.
+    private const string Featured = "wj-featured";
+
     private static GalleryEntry Renewed(GalleryEntry entry, Uri? link = null) => entry with { Download = link ?? RenewedUrl };
 
     private WabbajackModlistLibraryFile.ReadOnly Fresh(WabbajackModlistLibraryFile.ReadOnly file) => WabbajackModlistLibraryFile.Load(connection.Db, file.Id);
@@ -281,7 +284,7 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Yggdrasil");
         var file = await Add(libraryService, temporaryFileManager, connection, name, "Crit", gameType: "SkyrimVR", fromGallery: true);
-        var entry = Renewed(Entry(name, author: "Crit", machineUrl: "yggdrasil_vr", repository: "wj-featured", game: "skyrimvr")) with { DateUpdated = DateTimeOffset.UnixEpoch };
+        var entry = Renewed(Entry(name, author: "Crit", machineUrl: "yggdrasil_vr", repository: Featured, game: "skyrimvr")) with { DateUpdated = DateTimeOffset.UnixEpoch };
 
         await Backfill.Run(Listing(entry), TestContext.Current.CancellationToken);
 
@@ -289,6 +292,65 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
         after.MachineUrl.Value.Should().Be("yggdrasil_vr");
         after.Repository.Value.Should().Be("wj-featured");
         after.Contains(WabbajackModlistLibraryFile.GalleryDateUpdated).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task YggdrasilVrFromAnOlderCdnReleaseIsBoundToTheFeaturedEntry()
+    {
+        var file = await Add(libraryService, temporaryFileManager, connection, "Yggdrasil VR", "Crit", gameType: "SkyrimVR", fromGallery: true,
+            downloadUrl: new Uri("https://authored-files.wabbajack.org/Yggdrasil VR.wabbajack_6b1f0f0e-8f0c-4e0a-9a53-0d6f3a1c2b44"));
+        var entry = Entry("Yggdrasil VR", author: "Crit", machineUrl: "yggdrasil_vr", repository: Featured, game: "skyrimvr")
+            with { Version = "2.0.0.0", Download = new Uri("https://authored-files.wabbajack.org/Yggdrasil VR.wabbajack_39f36b83-f1fc-4b61-af94-137523e55b04") };
+
+        await Backfill.Run(Listing(entry), TestContext.Current.CancellationToken);
+
+        var after = Fresh(file);
+        after.MachineUrl.Value.Should().Be("yggdrasil_vr");
+        after.Repository.Value.Should().Be("wj-featured");
+    }
+
+    [Fact]
+    public async Task ARenewedReleaseInAThirdPartyRepositoryIsOfferedButNotBound()
+    {
+        var name = Unique("Third party");
+        var file = await FromGallery(name);
+        var entry = Renewed(Entry(name, machineUrl: "third", repository: "someone/community-lists"));
+        var listing = Listing(entry);
+
+        await Backfill.Run(listing, TestContext.Current.CancellationToken);
+
+        Backfill.AutomaticMatch(file, listing).Should().BeNull("only the repository Wabbajack runs may claim a list by a renewed link");
+        Backfill.PickerCandidates(file, listing).Should().BeEquivalentTo([entry]);
+        Fresh(file).Contains(WabbajackModlistLibraryFile.MachineUrl).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ARepositoryWhoseNameOnlyResemblesTheFeaturedOneIsNotFeatured()
+    {
+        var name = Unique("Name mimic");
+        var file = await FromGallery(name);
+        var entry = Renewed(Entry(name, machineUrl: "wj-featured", repository: "wj-featured-lists/mod-lists"));
+
+        await Backfill.Run(Listing(entry), TestContext.Current.CancellationToken);
+
+        Fresh(file).Contains(WabbajackModlistLibraryFile.MachineUrl).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("latest")]
+    [InlineData("2")]
+    [InlineData("39f36b83")]
+    [InlineData("39f36b83-f1fc-4b61-af94-137523e55b0")]
+    public async Task AReleaseSuffixThatIsNotAGuidIsNotASibling(string suffix)
+    {
+        var name = Unique("Suffix form");
+        var file = await FromGallery(name);
+        var entry = Renewed(Entry(name, repository: Featured), new Uri($"https://authored-files.wabbajack.org/old.wabbajack_{suffix}"));
+
+        await Backfill.Run(Listing(entry), TestContext.Current.CancellationToken);
+
+        Backfill.Candidates(file, Listing(entry)).Should().BeEmpty();
+        Fresh(file).Contains(WabbajackModlistLibraryFile.MachineUrl).Should().BeFalse();
     }
 
     [Fact]
@@ -306,7 +368,7 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     public async Task ARenewedLinkUnderAnotherTitleIsNotACandidate()
     {
         var file = await FromGallery(Unique("Title"));
-        var entry = Renewed(Entry(Unique("Other title")));
+        var entry = Renewed(Entry(Unique("Other title"), repository: Featured));
 
         await Backfill.Run(Listing(entry), TestContext.Current.CancellationToken);
 
@@ -319,7 +381,7 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Author");
         var file = await FromGallery(name, author: "Someone");
-        var entry = Renewed(Entry(name, author: "Somebody else"));
+        var entry = Renewed(Entry(name, author: "Somebody else", repository: Featured));
 
         await Backfill.Run(Listing(entry), TestContext.Current.CancellationToken);
 
@@ -332,7 +394,7 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Game");
         var file = await FromGallery(name);
-        var entry = Renewed(Entry(name, game: "fallout4"));
+        var entry = Renewed(Entry(name, game: "fallout4", repository: Featured));
 
         await Backfill.Run(Listing(entry), TestContext.Current.CancellationToken);
 
@@ -345,7 +407,7 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Host");
         var file = await FromGallery(name);
-        var entry = Renewed(Entry(name), new Uri("https://example.org/old.wabbajack_39f36b83-0000-0000-0000-000000000002"));
+        var entry = Renewed(Entry(name, repository: Featured), new Uri("https://example.org/old.wabbajack_39f36b83-0000-0000-0000-000000000002"));
 
         await Backfill.Run(Listing(entry), TestContext.Current.CancellationToken);
 
@@ -358,7 +420,7 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Suffix");
         var file = await FromGallery(name);
-        var entry = Renewed(Entry(name), new Uri("https://authored-files.wabbajack.org/old.wabbajack"));
+        var entry = Renewed(Entry(name, repository: Featured), new Uri("https://authored-files.wabbajack.org/old.wabbajack"));
 
         await Backfill.Run(Listing(entry), TestContext.Current.CancellationToken);
 
@@ -371,7 +433,7 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Alias");
         var file = await FromGallery(name);
-        var entry = Renewed(Entry(name, machineUrl: "alias"), new Uri("https://wabbajack.b-cdn.net/old.wabbajack_39f36b83-0000-0000-0000-000000000002"));
+        var entry = Renewed(Entry(name, machineUrl: "alias", repository: Featured), new Uri("https://wabbajack.b-cdn.net/old.wabbajack_39f36b83-0000-0000-0000-000000000002"));
 
         await Backfill.Run(Listing(entry), TestContext.Current.CancellationToken);
 
@@ -383,7 +445,7 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Mimic");
         var file = await FromGallery(name);
-        var official = Renewed(Entry(name, machineUrl: "official"));
+        var official = Renewed(Entry(name, machineUrl: "official", repository: Featured));
         var mimic = Renewed(Entry(name, machineUrl: "mimic", repository: "someone/community-lists"));
 
         await Backfill.Run(Listing(official, mimic), TestContext.Current.CancellationToken);
@@ -398,7 +460,7 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Lookalike");
         var file = await FromGallery(name);
-        var renewed = Renewed(Entry(name, machineUrl: "renewed"));
+        var renewed = Renewed(Entry(name, machineUrl: "renewed", repository: Featured));
         var lookalike = Entry(name, machineUrl: "elsewhere", repository: "someone/community-lists") with { Download = new Uri("https://example.org/other.wabbajack") };
         var listing = Listing(renewed, lookalike);
 
@@ -410,11 +472,36 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     }
 
     [Fact]
+    public async Task ALookalikeThatStoppedTheBindingIsListedNextToTheCandidateInThePicker()
+    {
+        var name = Unique("Picker lookalike");
+        var file = await FromGallery(name);
+        var renewed = Renewed(Entry(name, machineUrl: "renewed", repository: Featured));
+        var byTitle = Entry(name.ToUpperInvariant(), machineUrl: "by-title", repository: "someone/community-lists") with { Download = new Uri("https://example.org/other.wabbajack") };
+        var byMachineUrl = Entry(Unique("Different"), machineUrl: "renewed", repository: "other/lists");
+        var listing = Listing(renewed, byTitle, byMachineUrl);
+
+        Backfill.AutomaticMatch(file, listing).Should().BeNull();
+        Backfill.PickerCandidates(file, listing).Should().BeEquivalentTo([renewed, byTitle, byMachineUrl], options => options.WithStrictOrdering());
+    }
+
+    [Fact]
+    public async Task APickerWithNoLookalikeListsOnlyTheCandidate()
+    {
+        var name = Unique("Picker alone");
+        var file = await FromGallery(name);
+        var linked = Linked(Entry(name, machineUrl: "alone", repository: "someone/community-lists"));
+        var unrelated = Entry(Unique("Unrelated"), machineUrl: "unrelated", repository: "other/lists");
+
+        Backfill.PickerCandidates(file, Listing(linked, unrelated)).Should().BeEquivalentTo([linked]);
+    }
+
+    [Fact]
     public async Task ARenewedLinkBindsNothingOnAnIncompleteListing()
     {
         var name = Unique("Renewed partial");
         var file = await FromGallery(name);
-        var partial = Listing(Renewed(Entry(name))) with { FailedRepositories = ["someone/community-lists"] };
+        var partial = Listing(Renewed(Entry(name, repository: Featured))) with { FailedRepositories = ["someone/community-lists"] };
 
         await Backfill.Run(partial, TestContext.Current.CancellationToken);
 
@@ -427,8 +514,8 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Filtered");
         var file = await FromGallery(name);
-        var otherGame = Linked(Entry(name, machineUrl: "other-game", game: "fallout4"));
-        var renewed = Renewed(Entry(name, machineUrl: "renewed"));
+        var otherGame = Linked(Entry(name, machineUrl: "other-game", game: "fallout4", repository: Featured));
+        var renewed = Renewed(Entry(name, machineUrl: "renewed", repository: Featured));
         var listing = Listing(otherGame, renewed);
 
         Backfill.Candidates(file, listing).Should().BeEquivalentTo([renewed]);
@@ -443,7 +530,7 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Squatted");
         var file = await FromGallery(name);
-        var real = Renewed(Entry(name, machineUrl: "real"));
+        var real = Renewed(Entry(name, machineUrl: "real", repository: Featured));
         var squatter = Linked(Entry(name, machineUrl: "squatter", repository: "someone/community-lists")) with { DownloadHash = file.AsLibraryFile().XxHash64Identity() };
         var listing = Listing(real, squatter);
 
@@ -459,7 +546,7 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     {
         var name = Unique("Unsuffixed file");
         var file = await Add(libraryService, temporaryFileManager, connection, name, "Someone", fromGallery: true, downloadUrl: new Uri("https://authored-files.wabbajack.org/old.wabbajack"));
-        var entry = Renewed(Entry(name));
+        var entry = Renewed(Entry(name, repository: Featured));
 
         await Backfill.Run(Listing(entry), TestContext.Current.CancellationToken);
 

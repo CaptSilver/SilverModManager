@@ -29,6 +29,16 @@ public sealed record GalleryEntry
     /// <summary>The name of the repository the entry came from, e.g. <c>wabbajack-tools/mod-lists</c>.</summary>
     public required string Repository { get; init; }
 
+    /// <summary>
+    /// Whether the repository is one Wabbajack itself runs. The name is the key the entry's repository has in
+    /// <c>repositories.json</c>, which Wabbajack's own repository assigns, never something the repository's
+    /// <c>modlists.json</c> says about itself, so a third-party list cannot choose it.
+    /// </summary>
+    public bool IsFromWabbajackRepository => string.Equals(Repository, FeaturedRepositoryName, StringComparison.Ordinal);
+
+    // The key Wabbajack's repositories.json gives the repository it runs and features.
+    private const string FeaturedRepositoryName = "wj-featured";
+
     public bool IsOfficial { get; init; }
     public bool IsNsfw { get; init; }
     public bool IsUtility { get; init; }

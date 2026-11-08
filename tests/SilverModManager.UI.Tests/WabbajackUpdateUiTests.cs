@@ -52,7 +52,7 @@ namespace SilverModManager.UI.Tests;
 /// </summary>
 public class WabbajackUpdateUiTests(IServiceProvider provider) : AUiTest(provider)
 {
-    private const string Repository = "wabbajack-tools/mod-lists";
+    private const string Repository = "wj-featured";
     private static readonly TimeSpan Wait = TimeSpan.FromSeconds(10);
 
     private static async Task WaitFor(Func<bool> condition)
@@ -657,7 +657,7 @@ public class WabbajackUpdateUiTests(IServiceProvider provider) : AUiTest(provide
     }
 
     [Fact]
-    public async Task ThePickerIsOfferedForAListWithOneCandidateTheBackfillDeclined()
+    public async Task ThePickerListsALookalikeNextToTheOneCandidateTheBackfillDeclined()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, $"Picker one {Guid.NewGuid()}");
         var link = $"https://authored-files.wabbajack.org/picker-one-{Guid.NewGuid():N}.wabbajack";
@@ -665,7 +665,34 @@ public class WabbajackUpdateUiTests(IServiceProvider provider) : AUiTest(provide
         var candidate = Entry("1.0", "single-a", title: file.Name, repository: "first/repo", download: link);
         // Another repository lists the same title, so the backfill leaves the file for the user to decide.
         var lookalike = Entry("1.0", "single-b", title: file.Name, repository: "second/repo", download: "https://example.org/other.wabbajack");
-        var client = new FakeClient(Listing(candidate, lookalike));
+        var shown = await PickFromMenu(loadout, file, Listing(candidate, lookalike));
+
+        var dialog = shown.Should().ContainSingle().Subject;
+        dialog.ViewModel.ContentViewModel.Should().BeAssignableTo<IDialogStandardContentViewModel>().Subject.Text.Should().Be(Language.CollectionUpdate_Pick_Text);
+        dialog.ViewModel.ButtonDefinitions.Select(b => b.Id).Should().Equal(ButtonDefinitionId.Cancel, ButtonDefinitionId.From("pick-0"), ButtonDefinitionId.From("pick-1"));
+        var written = WabbajackModlistLibraryFile.Load(Connection.Db, file.Id);
+        written.MachineUrl.Value.Should().Be("single-a");
+        written.Repository.Value.Should().Be("first/repo");
+    }
+
+    [Fact]
+    public async Task ThePickerOffersALoneThirdPartyRenewedReleaseWithTheCautiousText()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, $"Picker third party {Guid.NewGuid()}");
+        var file = await AddList("1.0", name: $"Third party list {Guid.NewGuid():N}", galleryUrl: "https://authored-files.wabbajack.org/third.wabbajack_00000000-0000-0000-0000-000000000001");
+        var renewed = Entry("2.0", "third-a", title: file.Name, repository: "first/repo", download: "https://authored-files.wabbajack.org/third.wabbajack_39f36b83-0000-0000-0000-000000000002");
+        var shown = await PickFromMenu(loadout, file, Listing(renewed));
+
+        var dialog = shown.Should().ContainSingle().Subject;
+        dialog.ViewModel.ContentViewModel.Should().BeAssignableTo<IDialogStandardContentViewModel>().Subject.Text.Should().Be(Language.CollectionUpdate_Pick_Text_One);
+        dialog.ViewModel.ButtonDefinitions.Select(b => b.Id).Should().Equal(ButtonDefinitionId.Cancel, ButtonDefinitionId.From("pick-0"));
+    }
+
+    // Opens the "Which gallery entry is this list?" item for the file against the listing, answers the first pick button,
+    // and returns the dialogs shown. The item must disappear once the pick is recorded.
+    private async Task<List<Dialog>> PickFromMenu(Loadout.ReadOnly loadout, WabbajackModlistLibraryFile.ReadOnly file, GalleryListing listing)
+    {
+        var client = new FakeClient(listing);
         var shown = new List<Dialog>();
         var windows = Substitute.For<IWindowManager>();
         windows.ShowDialog(Arg.Do<IDialog>(d => shown.Add((Dialog)d)), DialogWindowType.Modal).Returns(new StandardDialogResult { ButtonId = ButtonDefinitionId.From("pick-0") });
@@ -678,14 +705,9 @@ public class WabbajackUpdateUiTests(IServiceProvider provider) : AUiTest(provide
         var picker = source.MenuItems(Host(windows), null).Single(item => item.Header == "Which gallery entry is this list?");
         await picker.Command.Execute();
 
-        var dialog = shown.Should().ContainSingle().Subject;
-        dialog.ViewModel.ContentViewModel.Should().BeAssignableTo<IDialogStandardContentViewModel>().Subject.Text.Should().Be(Language.CollectionUpdate_Pick_Text_One);
-        dialog.ViewModel.ButtonDefinitions.Select(b => b.Id).Should().Equal(ButtonDefinitionId.Cancel, ButtonDefinitionId.From("pick-0"));
-        var written = WabbajackModlistLibraryFile.Load(Connection.Db, file.Id);
-        written.MachineUrl.Value.Should().Be("single-a");
-        written.Repository.Value.Should().Be("first/repo");
         await WaitFor(() => changes == 2);
         source.MenuItems(Host(), null).Select(item => item.Header).Should().NotContain("Which gallery entry is this list?");
+        return shown;
     }
 
     [Fact]

@@ -2319,7 +2319,7 @@ A restore point was written before the update started. Undo puts {1} back as it 
         <value>More than one gallery entry matches this list. Pick the one it came from; updates are looked for under it from then on.</value>
     </data>
     <data name="CollectionUpdate_Pick_Text_One" xml:space="preserve">
-        <value>One gallery entry looks like this list, but it was not matched automatically. If the list came from it, confirm it; updates are looked for under it from then on.</value>
+        <value>This list could not be matched to a gallery entry by itself. Pick the entry it came from only if you recognise it; updates are looked for under it from then on.</value>
     </data>
     <data name="CollectionUpdate_Pick_Candidate" xml:space="preserve">
         <value>{0} by {1} ({2})</value>
