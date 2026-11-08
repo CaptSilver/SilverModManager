@@ -23,7 +23,8 @@ command -v dnf >/dev/null || {
 
 # dotnet-sdk-10.0 pulls in the runtime. libicu is a hard requirement of .NET
 # globalization, listed because the SDK package does not always drag it in.
-sudo dnf install -y dotnet-sdk-10.0 libicu git
+# squashfs-tools gives dev-package.sh unsquashfs, which lists a built AppImage without running it.
+sudo dnf install -y dotnet-sdk-10.0 libicu git squashfs-tools
 
 # On Bazzite and other ostree hosts /mnt is a symlink to var/mnt, so Steam records extra
 # libraries as /mnt/<name>. distrobox mounts the host's /var/mnt, but the box's own /mnt

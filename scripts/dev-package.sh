@@ -32,6 +32,36 @@ case "$arch" in
         ;;
 esac
 
+# Fails when the AppImage carries a usr/bin/runtimes/<name> folder other than the RID it was built
+# for or a RID-neutral one (unix, any, linux). Bare OS names such as win or osx count as foreign, like
+# the pattern in Directory.Build.targets. The image can't be run when it targets the other CPU, so
+# list its squashfs, found by its "hsqs" magic.
+check_runtimes() {
+    local image="$1" want offset listing foreign found=0
+    case "$2" in
+        x86_64) want=linux-x64 ;;
+        aarch64) want=linux-arm64 ;;
+    esac
+    # The runtime in front of the squashfs can contain the magic by chance, so take the first
+    # offset unsquashfs accepts.
+    for offset in $(grep -abo hsqs "$image" | cut -d: -f1); do
+        if listing="$(unsquashfs -l -o "$offset" "$image" 2>/dev/null)"; then
+            found=1
+            break
+        fi
+    done
+    (( found )) || { echo "$image has no readable squashfs section" >&2; exit 1; }
+    foreign="$(sed -n 's|^.*/usr/bin/runtimes/\([^/]*\)/.*$|\1|p' <<<"$listing" | sort -u | grep -vxE -- "$want|unix|any|linux" || true)"
+    if [[ -n "$foreign" ]]; then
+        echo "$image ships runtimes for other platforms than $want:" >&2
+        sed 's|^|  runtimes/|; s|$|/|' <<<"$foreign" >&2
+        exit 1
+    fi
+}
+
+# unsquashfs inspects the finished image, so fail before the build rather than after it.
+command -v unsquashfs >/dev/null || { echo "unsquashfs (squashfs-tools) is needed to inspect the AppImage" >&2; exit 1; }
+
 # Same pinned PupNet as CI.
 pupnet_repo=https://github.com/kuiperzone/PupNet-Deploy.git
 pupnet_commit=dabed0cc2063c5a2d2c4f780bb6718f4b90cfd16
@@ -64,4 +94,6 @@ export DOTNET_ROLL_FORWARD=Major
 version="$(app_version "$root")"
 cd "$root/src/SilverModManager.App"
 pupnet -y -v "$version" -k AppImage -p DefineConstants=INSTALLATION_METHOD_APPIMAGE "${pupnet_runtime[@]}" "$@"
-ls -1 Deploy/OUT/*."$arch".AppImage
+image="$(ls -1 Deploy/OUT/*."$arch".AppImage)"
+check_runtimes "$image" "$arch"
+echo "$image"

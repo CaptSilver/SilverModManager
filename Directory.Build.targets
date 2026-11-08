@@ -40,4 +40,32 @@
                                      Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(ReferenceCopyLocalPaths.DestinationSubDirectory)', '$(_ForeignRuntimePattern)'))" />
         </ItemGroup>
     </Target>
+
+    <!--
+    The NuGet lists above don't cover files a referenced project hands over as copy-to-output content.
+    The RID-agnostic libraries (Wabbajack, the UI projects) build without the app's -r, so SmmNativeRid falls
+    back to the build machine's CPU there, and a project that bundles natives (Wabbajack.Transforms,
+    Games.FromSoft) offers runtimes/<that rid>/native/* to the app. In an arm64 package that left x86-64
+    libooz and libsmmtexenc behind. Drop those from the build output and publish lists, using the same
+    pattern as above; the paths there use backslashes, hence the Replace.
+    -->
+    <Target Name="PruneForeignRuntimeContent" AfterTargets="GetCopyToOutputDirectoryItems">
+        <ItemGroup>
+            <AllItemsFullPathWithTargetPath Remove="@(AllItemsFullPathWithTargetPath)"
+                                            Condition="$([System.Text.RegularExpressions.Regex]::IsMatch($([System.String]::Copy('%(AllItemsFullPathWithTargetPath.TargetPath)').Replace('\', '/')), '$(_ForeignRuntimePattern)'))" />
+            <_SourceItemsToCopyToOutputDirectoryAlways Remove="@(_SourceItemsToCopyToOutputDirectoryAlways)"
+                                                       Condition="$([System.Text.RegularExpressions.Regex]::IsMatch($([System.String]::Copy('%(_SourceItemsToCopyToOutputDirectoryAlways.TargetPath)').Replace('\', '/')), '$(_ForeignRuntimePattern)'))" />
+            <_SourceItemsToCopyToOutputDirectory Remove="@(_SourceItemsToCopyToOutputDirectory)"
+                                                 Condition="$([System.Text.RegularExpressions.Regex]::IsMatch($([System.String]::Copy('%(_SourceItemsToCopyToOutputDirectory.TargetPath)').Replace('\', '/')), '$(_ForeignRuntimePattern)'))" />
+            <_SourceItemsToCopyToOutputDirectoryIfDifferent Remove="@(_SourceItemsToCopyToOutputDirectoryIfDifferent)"
+                                                            Condition="$([System.Text.RegularExpressions.Regex]::IsMatch($([System.String]::Copy('%(_SourceItemsToCopyToOutputDirectoryIfDifferent.TargetPath)').Replace('\', '/')), '$(_ForeignRuntimePattern)'))" />
+        </ItemGroup>
+    </Target>
+
+    <Target Name="PruneForeignRuntimePublishContent" AfterTargets="ComputeResolvedFilesToPublishList">
+        <ItemGroup>
+            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+                                   Condition="$([System.Text.RegularExpressions.Regex]::IsMatch($([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\', '/')), '$(_ForeignRuntimePattern)'))" />
+        </ItemGroup>
+    </Target>
 </Project>
