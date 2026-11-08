@@ -1246,9 +1246,48 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
         var destination = extras.Root.Combine(extra.Path);
         destination.Parent.CreateDirectory();
-        await using var output = destination.Create();
-        // A tool file has no rows to hold a note, so a kept original there is silent.
-        await WriteBytes(check, extras, item.Placement, item.Member, output, parallelism: 1, keepOriginalIfUnsupported: true, notes: [], cancellationToken);
+
+        // Written beside the destination and renamed over it, so a tool that has the file open keeps its old bytes
+        // instead of finding them truncated, and a run that dies halfway leaves the previous file whole.
+        var temporary = destination.Parent.Combine($".{Guid.NewGuid():N}.smm-tmp");
+        try
+        {
+            await using (var output = temporary.Create())
+            {
+                // A tool file has no rows to hold a note, so a kept original there is silent.
+                await WriteBytes(check, extras, item.Placement, item.Member, output, parallelism: 1, keepOriginalIfUnsupported: true, notes: [], cancellationToken);
+            }
+
+            if (await SameBytes(temporary, destination, cancellationToken)) return;
+
+            // A new file starts with the default mode; keep what the user set on the old one (say, an executable script).
+            if (destination.FileExists && !OperatingSystem.IsWindows())
+                File.SetUnixFileMode(temporary.ToString(), File.GetUnixFileMode(destination.ToString()));
+            File.Move(temporary.ToString(), destination.ToString(), overwrite: true);
+        }
+        finally
+        {
+            if (temporary.FileExists) temporary.Delete();
+        }
+    }
+
+    /// <summary>Whether both files exist and hold the same bytes, so a rerun leaves an unchanged tool file alone.</summary>
+    private static async Task<bool> SameBytes(AbsolutePath first, AbsolutePath second, CancellationToken cancellationToken)
+    {
+        if (!first.FileExists || !second.FileExists) return false;
+        if (first.FileInfo.Size != second.FileInfo.Size) return false;
+
+        await using var a = first.Read();
+        await using var b = second.Read();
+        var bufferA = new byte[81920];
+        var bufferB = new byte[81920];
+        while (true)
+        {
+            var read = await a.ReadAtLeastAsync(bufferA, bufferA.Length, throwOnEndOfStream: false, cancellationToken);
+            var readB = await b.ReadAtLeastAsync(bufferB, bufferB.Length, throwOnEndOfStream: false, cancellationToken);
+            if (read != readB || !bufferA.AsSpan(0, read).SequenceEqual(bufferB.AsSpan(0, readB))) return false;
+            if (read == 0) return true;
+        }
     }
 
     private void AddSkip(ITransaction tx, LoadoutItemGroupId group, WriteState state, Placement placement, SkipKind kind, string reason, Checked check)

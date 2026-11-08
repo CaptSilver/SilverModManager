@@ -79,6 +79,76 @@ public class ModlistToolsTests(ITestOutputHelper helper) : InstallTestBase<Modli
     }
 
     [Fact]
+    public async Task AToolFileWhoseBytesAlreadyMatchIsNotRewritten()
+    {
+        var loadout = await CreateLoadout();
+        var list = ListWith(DefaultExecutables);
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+        var (_, group) = await Install(loadout, modlist, Options);
+        var file = ExtrasOf(group).Combine("xEdit/SSEEdit.exe").ToString();
+        var marker = new DateTime(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(file, marker);
+        var inode = Inode(file);
+
+        await Install(loadout, modlist, Options);
+
+        File.GetLastWriteTimeUtc(file).Should().Be(marker, "identical bytes are left alone");
+        Inode(file).Should().Be(inode);
+        File.ReadAllBytes(file).Should().Equal(EditBytes);
+        Directory.EnumerateFiles(Path.GetDirectoryName(file)!, "*.smm-tmp").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AToolFileIsReplacedByRenameSoAnOpenHandleKeepsTheOldBytes()
+    {
+        var loadout = await CreateLoadout();
+        var list = ListWith(DefaultExecutables);
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+        var (_, group) = await Install(loadout, modlist, Options);
+        var file = ExtrasOf(group).Combine("xEdit/SSEEdit.exe").ToString();
+        var stale = "stale bytes from an earlier version"u8.ToArray();
+        await File.WriteAllBytesAsync(file, stale);
+
+        await using var open = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        await Install(loadout, modlist, Options);
+
+        var seenThroughHandle = new byte[stale.Length];
+        await open.ReadExactlyAsync(seenThroughHandle);
+        seenThroughHandle.Should().Equal(stale, "the open handle still reads the file it opened");
+        File.ReadAllBytes(file).Should().Equal(EditBytes, "the path holds the list's bytes");
+        Directory.EnumerateFiles(Path.GetDirectoryName(file)!, "*.smm-tmp").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AToolFileKeepsItsPermissionsWhenItsBytesAreReplaced()
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        var loadout = await CreateLoadout();
+        var list = ListWith(DefaultExecutables);
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+        var (_, group) = await Install(loadout, modlist, Options);
+        var file = ExtrasOf(group).Combine("xEdit/SSEEdit.exe").ToString();
+        await File.WriteAllBytesAsync(file, "stale bytes from an earlier version"u8.ToArray());
+        var mode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
+        File.SetUnixFileMode(file, mode);
+
+        await Install(loadout, modlist, Options);
+
+        File.ReadAllBytes(file).Should().Equal(EditBytes, "the stale bytes were replaced");
+        File.GetUnixFileMode(file).Should().Be(mode, "a user's executable bit survives an update of the file");
+    }
+
+    private static long Inode(string path)
+    {
+        using var stat = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("stat", ["-c", "%i", path]) { RedirectStandardOutput = true })
+            ?? throw new InvalidOperationException("stat did not start");
+        var output = stat.StandardOutput.ReadToEnd();
+        stat.WaitForExit();
+        return long.Parse(output.Trim());
+    }
+
+    [Fact]
     public async Task TheDefaultExecutablesOfAListAreNotRegisteredAsTools()
     {
         var (loadout, _, job) = await InstallList(ListWith(DefaultExecutables));
