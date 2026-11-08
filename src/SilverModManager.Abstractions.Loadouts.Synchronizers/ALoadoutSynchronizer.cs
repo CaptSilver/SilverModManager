@@ -496,7 +496,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     {
         var item = LoadoutItem.Load(db, itemId);
         var group = item.IsValid() && item.HasParent() ? item.Parent.AsLoadoutItem().Name : "(no group)";
-        Logger.LogWarning("Skipping `{Path}` from `{Group}`: the synchronizer ignores this path", gamePath, group);
+        // Vortex puts a marker in every folder it deploys to, so one per mod folder is routine, not something gone wrong.
+        var level = _foreignDeploymentSources.Any(source => source.IsFolderMarker(gamePath)) ? LogLevel.Debug : LogLevel.Warning;
+        Logger.Log(level, "Skipping `{Path}` from `{Group}`: the synchronizer ignores this path", gamePath, group);
     }
 
     /// <inheritdoc />

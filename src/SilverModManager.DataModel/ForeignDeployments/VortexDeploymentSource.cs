@@ -40,12 +40,16 @@ public sealed class VortexDeploymentSource(ILogger<VortexDeploymentSource> logge
     public string ManagerName => "Vortex";
 
     /// <inheritdoc />
+    public bool IsFolderMarker(GamePath path)
+        => path.LocationId == LocationId.Game && path.FileName.ToString().Equals(MarkerName, StringComparison.OrdinalIgnoreCase);
+
+    /// <inheritdoc />
     public bool IsRecordFile(GamePath path)
     {
         if (path.LocationId != LocationId.Game) return false;
 
         var name = path.FileName.ToString();
-        if (name.Equals(MarkerName, StringComparison.OrdinalIgnoreCase)) return true;
+        if (IsFolderMarker(path)) return true;
         // The game's original that Vortex set aside before replacing it; it is Vortex's to put back, not a stray file.
         if (name.EndsWith(BackupSuffix, StringComparison.OrdinalIgnoreCase)) return true;
         // A mod type's record sits in that type's deployment folder, which can be anywhere under the game folder.

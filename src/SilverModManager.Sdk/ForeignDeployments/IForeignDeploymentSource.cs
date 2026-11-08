@@ -26,6 +26,12 @@ public interface IForeignDeploymentSource
     bool IsRecordFile(GamePath path);
 
     /// <summary>
+    /// Whether the path is the marker file the manager drops into every folder it deploys to. A subset of
+    /// <see cref="IsRecordFile"/>: routine clutter, so skipping one is not worth a warning.
+    /// </summary>
+    bool IsFolderMarker(GamePath path);
+
+    /// <summary>
     /// Reads the manager's records in the game folder. Null when the manager left none.
     /// </summary>
     /// <exception cref="ForeignDeploymentRefusedException">A record names a file outside the game folder.</exception>
