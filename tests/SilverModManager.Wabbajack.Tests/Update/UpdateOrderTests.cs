@@ -176,7 +176,7 @@ public class UpdateOrderTests(ITestOutputHelper helper) : InstallTestBase<Update
         await UserSets(group, loadout, "B", "C", "A");
 
         var failing = new UpdateJobTests.FailingAfter(FileStore, 1);
-        var job = NewJob(loadout, two, UpdateOf(group), writer: new GeneratedFileWriter(failing, TemporaryFileManager), parallelism: 1, commits: new CommitPolicy(2, long.MaxValue, TimeSpan.MaxValue));
+        var job = NewJob(loadout, two, UpdateOf(group), writer: failing.WriterStoringOneFileAtATime(TemporaryFileManager), parallelism: 1, commits: new CommitPolicy(2, long.MaxValue, TimeSpan.MaxValue));
         var failure = await Record.ExceptionAsync(() => Run(job));
         failure.Should().BeOfType<IOException>();
         ModGroup(Fresh(group), "A SE").Should().NotBeNull("the rename was committed before the run stopped");

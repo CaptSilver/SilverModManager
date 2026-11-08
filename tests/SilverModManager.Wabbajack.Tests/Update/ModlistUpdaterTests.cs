@@ -343,7 +343,7 @@ public class ModlistUpdaterTests(ITestOutputHelper helper) : UpdateCheckTestBase
         var (loadout, one, two, group) = await InstalledVersionOne();
         var before = TreeOf(group);
         var failing = new UpdateJobTests.FailingAfter(FileStore, 1);
-        var job = NewJob(loadout, two, UpdateOf(group), writer: new GeneratedFileWriter(failing, TemporaryFileManager), parallelism: 1, commits: new CommitPolicy(2, long.MaxValue, TimeSpan.MaxValue));
+        var job = NewJob(loadout, two, UpdateOf(group), writer: failing.WriterStoringOneFileAtATime(TemporaryFileManager), parallelism: 1, commits: new CommitPolicy(2, long.MaxValue, TimeSpan.MaxValue));
         (await Record.ExceptionAsync(() => Run(job))).Should().NotBeNull();
         ModlistInstallRuns.IsMidUpdate(Fresh(group)).Should().BeTrue();
 

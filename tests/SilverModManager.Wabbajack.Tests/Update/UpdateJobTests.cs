@@ -234,15 +234,35 @@ public class UpdateJobTests(ITestOutputHelper helper) : InstallTestBase<UpdateJo
         RowsOf(after).Should().BeEquivalentTo(before);
     }
 
-    /// <summary>Forwards to a store, but every call to back files up after the first <c>allowed</c> ones fails.</summary>
+    /// <summary>
+    /// Forwards to a store, but the call that would take the total past <c>allowed</c> files fails. Counting files rather
+    /// than calls keeps the fault from depending on how the job batches its stores.
+    /// </summary>
     internal sealed class FailingAfter(IFileStore inner, int allowed) : ForwardingFileStore(inner)
     {
         private int _calls;
+        private int _files;
 
         public int Calls => _calls;
 
+        public int Files => _files;
+
+        /// <summary>
+        /// A writer that stores each generated file that has bytes in a call of its own. The job's file producers run
+        /// ahead of its commits, so with the default batching the files that reach the store in one call vary from run to
+        /// run; this keeps the state a fault leaves behind the same: the first file stored, the second one failing.
+        /// </summary>
+        public GeneratedFileWriter WriterStoringOneFileAtATime(TemporaryFileManager temporaryFiles)
+            => new(this, temporaryFiles) { StoreByteLimit = 1 };
+
         public override Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null)
-            => Interlocked.Increment(ref _calls) > allowed ? throw new IOException("The disk is full") : base.BackupFiles(backups, deduplicate, token, progress);
+        {
+            var entries = backups.ToList();
+            Interlocked.Increment(ref _calls);
+            return Interlocked.Add(ref _files, entries.Count) > allowed
+                ? throw new IOException("The disk is full")
+                : base.BackupFiles(entries, deduplicate, token, progress);
+        }
     }
 
     [Fact]
@@ -255,10 +275,10 @@ public class UpdateJobTests(ITestOutputHelper helper) : InstallTestBase<UpdateJo
         await Disable(group.Id);
 
         var failing = new FailingAfter(FileStore, 1);
-        var job = NewJob(loadout, two, UpdateOf(group), writer: new GeneratedFileWriter(failing, TemporaryFileManager), parallelism: 1, commits: new CommitPolicy(2, long.MaxValue, TimeSpan.MaxValue));
+        var job = NewJob(loadout, two, UpdateOf(group), writer: failing.WriterStoringOneFileAtATime(TemporaryFileManager), parallelism: 1, commits: new CommitPolicy(2, long.MaxValue, TimeSpan.MaxValue));
         var failure = await Record.ExceptionAsync(() => Run(job));
 
-        failure.Should().BeOfType<IOException>($"the store was asked to back up files {failing.Calls} times");
+        failure.Should().BeOfType<IOException>($"the store was asked to back up {failing.Files} files in {failing.Calls} calls");
         var stopped = Fresh(group);
         stopped.InstalledAt.HasValue.Should().BeFalse();
         WabbajackModlistLoadoutGroup.PreviousModlist.TryGetValue(stopped, out var previous).Should().BeTrue();
