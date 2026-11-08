@@ -287,4 +287,38 @@ public sealed class McpForwardedToolTests : IAsyncDisposable
         result.IsError.Should().BeFalse();
         result.Text.Should().Contain("This game has no plugin order.");
     }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task TheIniTools_PassTheFileSectionKeyAndValueAsOptions()
+    {
+        var tools = await ToolsAsync();
+        JsonObject Args(Action<JsonObject> add)
+        {
+            var args = Loadout("skyrim/main");
+            args["file"] = "SkyrimVR.ini";
+            add(args);
+            return args;
+        }
+
+        (await McpTestHost.CallAsync(tools, "loadout_ini_list", Loadout("skyrim/main"))).Text.Trim().Should().Be("ini list loadout=skyrim/main json=True");
+        (await McpTestHost.CallAsync(tools, "loadout_ini_show", Args(_ => { }))).Text.Trim().Should().Be("ini show loadout=skyrim/main file=[SkyrimVR.ini] part=[] layer=[]");
+        (await McpTestHost.CallAsync(tools, "loadout_ini_show", Args(a => { a["part"] = "tweak"; }))).Text.Trim().Should().Be("ini show loadout=skyrim/main file=[SkyrimVR.ini] part=[tweak] layer=[]");
+        (await McpTestHost.CallAsync(tools, "loadout_ini_show", Args(a => { a["layer"] = "ab12"; }))).Text.Trim().Should().Be("ini show loadout=skyrim/main file=[SkyrimVR.ini] part=[] layer=[ab12]");
+        (await McpTestHost.CallAsync(tools, "loadout_ini_set", Args(a => { a["section"] = "Papyrus"; a["key"] = "bEnableLogging"; a["value"] = "1"; }))).Text.Trim()
+            .Should().Be("ini set loadout=skyrim/main file=[SkyrimVR.ini] section=[Papyrus] key=[bEnableLogging] value=[1]");
+        (await McpTestHost.CallAsync(tools, "loadout_ini_unset", Args(a => { a["section"] = "Papyrus"; a["key"] = "bEnableLogging"; }))).Text.Trim()
+            .Should().Be("ini unset loadout=skyrim/main file=[SkyrimVR.ini] section=[Papyrus] key=[bEnableLogging]");
+        (await McpTestHost.CallAsync(tools, "loadout_ini_replace", Args(a => { a["text"] = ""; }))).Text.Trim()
+            .Should().Be("ini replace loadout=skyrim/main file=[SkyrimVR.ini] text=[]");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task ShowingATweakThatDoesNotExistAnswersInWords()
+    {
+        var result = await McpTestHost.CallAsync(await ToolsAsync(), "loadout_ini_show",
+            new JsonObject { ["loadout"] = "no-tweak", ["file"] = "Skyrim.ini", ["part"] = "tweak" });
+
+        result.IsError.Should().BeFalse();
+        result.Text.Should().Be("The loadout has no tweak of Skyrim.ini.");
+    }
 }

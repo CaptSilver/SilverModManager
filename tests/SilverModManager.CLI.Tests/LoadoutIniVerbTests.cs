@@ -1,6 +1,11 @@
 using System.Text.Json.Nodes;
 using System.Text;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using NexusMods.Paths;
+using NSubstitute;
+using SilverModManager.App.Mcp;
+using SilverModManager.Sdk.Settings;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Sdk.Ini;
@@ -512,5 +517,49 @@ public class LoadoutIniVerbTests(ITestOutputHelper helper) : SkyrimIniVerbTest<L
         exit.Should().Be(0, output);
         Plain(output).Should().Contain("Note: The app sets [Archive] bInvalidateOlderFiles in Skyrim.ini itself");
         (await UserTweakOf(loadout, "Skyrim.ini"))!.Value.Document.Get("Archive", "bInvalidateOlderFiles").Should().Be("0");
+    }
+
+    /// <summary>
+    /// The stand-ins in <see cref="McpTestHost"/> name their own options, so this sends each tool's argv through the
+    /// real verbs and the real command line parser, in a server over a scratch sync file.
+    /// </summary>
+    [Fact]
+    public async Task EveryIniToolsArgumentsParseAgainstTheRealVerbs()
+    {
+        var loadout = await CreateLoadout();
+        await SeedBaseline(loadout, "Skyrim.ini", SkyrimText);
+        var directory = Directory.CreateTempSubdirectory("mcp-ini-verbs").FullName;
+        var syncFile = new SyncFile(NullLogger<SyncFile>.Instance, NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath(Path.Combine(directory, "test.sync")));
+        using var server = new CliServer(NullLogger<CliServer>.Instance, ServiceProvider.GetRequiredService<CommandLineConfigurator>(), Substitute.For<ISettingsManager>(), syncFile, ServiceProvider);
+        try
+        {
+            await server.StartCliServerAsync();
+            var client = new CliClient(NullLogger<CliClient>.Instance, syncFile, ServiceProvider);
+            var tools = McpToolTable.Create(new McpToolContext(new VerbRunner(client), McpLimits.Default, null, directory), readOnly: false);
+            var id = loadout.LoadoutId.ToString();
+
+            async Task<ToolResult> Call(string name, params (string Key, string Value)[] args)
+            {
+                var arguments = new JsonObject { ["loadout"] = id, ["file"] = "Skyrim.ini" };
+                foreach (var (key, value) in args) arguments[key] = value;
+                var result = await McpTestHost.CallAsync(tools, name, arguments);
+                result.IsError.Should().BeFalse(name + ": " + result.Text);
+                return result;
+            }
+
+            (await Call("loadout_ini_list")).Text.Should().Contain("Skyrim.ini");
+            (await Call("loadout_ini_set", ("section", "Papyrus"), ("key", "bEnableTrace"), ("value", "1"))).Text.Should().Contain("bEnableTrace");
+            (await Call("loadout_ini_show", ("part", "tweak"))).Text.Should().Contain("bEnableTrace=1");
+            var layerId = (string)(await ListJson(loadout))["files"]![0]!["layers"]![0]!["fileId"]!;
+            (await Call("loadout_ini_show", ("layer", layerId))).Text.Should().Contain("bEnableTrace=1");
+            (await Call("loadout_ini_show")).Text.Should().Contain("sLanguage=ENGLISH");
+            (await Call("loadout_ini_unset", ("section", "Papyrus"), ("key", "bEnableTrace"))).Text.Should().Contain("Removed");
+            (await Call("loadout_ini_replace", ("text", "[Papyrus]\r\nbEnableLogging=1\r\n"))).Text.Should().Contain("Replaced");
+        }
+        finally
+        {
+            await server.StopAsync(CancellationToken.None);
+            Directory.Delete(directory, recursive: true);
+        }
     }
 }

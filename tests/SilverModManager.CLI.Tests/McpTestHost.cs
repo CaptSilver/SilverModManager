@@ -40,6 +40,7 @@ public sealed class McpTestHost : IAsyncDisposable
             .AddModule("loadout group priority", "Group priority verbs")
             .AddModule("loadout priority", "Priority verbs")
             .AddModule("loadout plugins", "Plugin verbs")
+            .AddModule("loadout ini", "INI verbs")
             .AddModule("games", "Games verbs")
             .AddModule("settings", "Settings verbs")
             .AddModule("wabbajack", "Wabbajack verbs")
@@ -71,6 +72,11 @@ public sealed class McpTestHost : IAsyncDisposable
             .AddVerb(() => Verbs.PluginsList)
             .AddVerb(() => Verbs.PluginsSet)
             .AddVerb(() => Verbs.PluginsSort)
+            .AddVerb(() => Verbs.IniList)
+            .AddVerb(() => Verbs.IniShow)
+            .AddVerb(() => Verbs.IniSet)
+            .AddVerb(() => Verbs.IniUnset)
+            .AddVerb(() => Verbs.IniReplace)
             .AddVerb(() => Verbs.Heartbeat)
             .AddSingleton<CommandLineConfigurator>();
         if (withVersionVerb) services.AddVerb(() => Verbs.Version);
@@ -246,6 +252,46 @@ public sealed class McpTestHost : IAsyncDisposable
         public static async Task<int> Revert([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout, [Option("r", "revisionNumber", "Revision")] int revisionNumber)
         {
             await renderer.TextLine($"revert loadout={loadout} revisionNumber={revisionNumber}");
+            return 0;
+        }
+
+        [Verb("loadout ini list", "Stand-in for the INI list")]
+        public static async Task<int> IniList([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout, [Option("j", "json", "Json", true)] bool json)
+        {
+            await renderer.TextLine($"ini list loadout={loadout} json={json}");
+            return 0;
+        }
+
+        [Verb("loadout ini show", "Stand-in for the INI show")]
+        public static async Task<int> IniShow([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout, [Option("f", "file", "File")] string file,
+            [Option("part", "part", "Part", true)] string? part, [Option("layer", "layer", "Layer", true)] string? layer)
+        {
+            if (loadout == "no-tweak") return 0;
+            await renderer.TextLine($"ini show loadout={loadout} file=[{file}] part=[{part}] layer=[{layer}]");
+            return 0;
+        }
+
+        [Verb("loadout ini set", "Stand-in for the INI set")]
+        public static async Task<int> IniSet([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout, [Option("f", "file", "File")] string file,
+            [Option("s", "section", "Section")] string section, [Option("k", "key", "Key")] string key, [Option("v", "value", "Value")] string value)
+        {
+            await renderer.TextLine($"ini set loadout={loadout} file=[{file}] section=[{section}] key=[{key}] value=[{value}]");
+            return 0;
+        }
+
+        [Verb("loadout ini unset", "Stand-in for the INI unset")]
+        public static async Task<int> IniUnset([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout, [Option("f", "file", "File")] string file,
+            [Option("s", "section", "Section")] string section, [Option("k", "key", "Key")] string key)
+        {
+            await renderer.TextLine($"ini unset loadout={loadout} file=[{file}] section=[{section}] key=[{key}]");
+            return 0;
+        }
+
+        [Verb("loadout ini replace", "Stand-in for the INI replace")]
+        public static async Task<int> IniReplace([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout, [Option("f", "file", "File")] string file,
+            [Option("text", "text", "Text")] string text)
+        {
+            await renderer.TextLine($"ini replace loadout={loadout} file=[{file}] text=[{text}]");
             return 0;
         }
 

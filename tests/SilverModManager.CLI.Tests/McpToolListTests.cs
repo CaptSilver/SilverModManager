@@ -20,7 +20,8 @@ public sealed class McpToolListTests : IAsyncDisposable
             "app_status", "app_log_errors", "loadouts_list", "loadout_merge_report", "loadout_vanilla_list", "loadout_heal_plan", "doctor", "games_list", "loadout_health_check", "settings_list", "settings_get", "settings_set", "loadout_apply", "game_launch",
             "wabbajack_list", "wabbajack_status", "wabbajack_download", "wabbajack_cancel",
             "loadout_revisions", "loadout_priority_list", "loadout_plugins_list",
-            "loadout_group_enable", "loadout_group_disable", "loadout_group_priority_set", "loadout_plugins_set", "loadout_plugins_sort", "loadout_revert");
+            "loadout_group_enable", "loadout_group_disable", "loadout_group_priority_set", "loadout_plugins_set", "loadout_plugins_sort", "loadout_revert",
+            "loadout_ini_list", "loadout_ini_show", "loadout_ini_set", "loadout_ini_unset", "loadout_ini_replace");
     }
 
     [Fact]
@@ -49,7 +50,35 @@ public sealed class McpToolListTests : IAsyncDisposable
 
         all.Where(t => !t.ReadOnly).Select(t => t.Name).Should().BeEquivalentTo(
             "settings_set", "loadout_apply", "game_launch", "wabbajack_download", "wabbajack_cancel",
-            "loadout_group_enable", "loadout_group_disable", "loadout_group_priority_set", "loadout_plugins_set", "loadout_plugins_sort", "loadout_revert");
+            "loadout_group_enable", "loadout_group_disable", "loadout_group_priority_set", "loadout_plugins_set", "loadout_plugins_sort", "loadout_revert",
+            "loadout_ini_set", "loadout_ini_unset", "loadout_ini_replace");
+    }
+
+    [Fact]
+    public void AReadOnlyServer_LeavesOutTheIniToolsThatWrite()
+    {
+        Tools(readOnly: true).Select(t => t.Name).Should().NotContain(["loadout_ini_set", "loadout_ini_unset", "loadout_ini_replace"]);
+    }
+
+    [Fact]
+    public void AReadOnlyServer_OffersToReadTheInis()
+    {
+        Tools(readOnly: true).Select(t => t.Name).Should().Contain(["loadout_ini_list", "loadout_ini_show"]);
+    }
+
+    [Fact]
+    public void TheIniToolsTakeTheFileAndTheKeyAsRequiredArguments()
+    {
+        var tools = Tools(readOnly: false).ToDictionary(t => t.Name);
+
+        tools["loadout_ini_list"].Params.Select(p => (p.Name, p.Required)).Should().Equal(("loadout", true));
+        tools["loadout_ini_show"].Params.Select(p => (p.Name, p.Required)).Should().Equal(("loadout", true), ("file", true), ("part", false), ("layer", false));
+        tools["loadout_ini_set"].Params.Select(p => (p.Name, p.Required)).Should().Equal(("loadout", true), ("file", true), ("section", true), ("key", true), ("value", true));
+        tools["loadout_ini_unset"].Params.Select(p => (p.Name, p.Required)).Should().Equal(("loadout", true), ("file", true), ("section", true), ("key", true));
+        tools["loadout_ini_replace"].Params.Select(p => (p.Name, p.Required)).Should().Equal(("loadout", true), ("file", true), ("text", true));
+        tools["loadout_ini_set"].Description.Should().Contain("Papyrus").And.Contain("loadout_apply");
+        tools["loadout_ini_replace"].Description.Should().Contain("loadout_ini_show");
+        tools["loadout_ini_show"].Description.Should().Contain("loadout_ini_list");
     }
 
     [Fact]

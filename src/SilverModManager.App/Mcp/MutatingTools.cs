@@ -10,6 +10,13 @@ public static class MutatingTools
     private static readonly ToolParam GroupParam = new(
         "group", "The group's name as loadout groups lists it, or its id from the JSON when two groups share a name.", Required: true);
 
+    internal static readonly ToolParam IniFileParam = new(
+        "file", "The INI's file name as loadout_ini_list shows it, e.g. SkyrimVR.ini", Required: true);
+
+    private static readonly ToolParam IniSectionParam = new("section", "The section, without brackets, e.g. Papyrus.", Required: true);
+
+    private static readonly ToolParam IniKeyParam = new("key", "The key, e.g. bEnableLogging.", Required: true);
+
     private const string UndoNote = " Undo with loadout_revert. Find the loadout with loadouts_list.";
 
     public static IReadOnlyList<McpTool> Create(McpToolContext context) =>
@@ -51,6 +58,21 @@ public static class MutatingTools
             readOnly: false, ["loadout", "revert"], takesLoadout: true, context.Limits.ReadTimeout,
             options: [new ToolParam("revision", "The revision number from loadout_revisions.", Required: true, Type: "integer", CliName: "revisionNumber")],
             emptyText: args => $"Reverted {args.String("loadout")} to revision {args.Int("revision")}."),
+        VerbTool.Create(context, "loadout_ini_set",
+            "Sets one key in the loadout's own INI tweak, the same as the INI page's Settings tab: for example section Papyrus, key bEnableLogging, value 1 in SkyrimVR.ini. " +
+            "The tweak is merged over the game's INI on the next Apply (run loadout_apply) and wins over any mod's or modlist's tweak, except keys the app sets itself, which are refused and named. " +
+            "A value cannot start with '-'. A restore point is written first." + UndoNote,
+            readOnly: false, ["loadout", "ini", "set"], takesLoadout: true, context.Limits.ReadTimeout,
+            options: [IniFileParam, IniSectionParam, IniKeyParam, new ToolParam("value", "The new value, e.g. 1.", Required: true)]),
+        VerbTool.Create(context, "loadout_ini_unset",
+            "Removes one key from the loadout's own INI tweak, so the game's INI or a mod's tweak decides it again. A restore point is written first." + UndoNote,
+            readOnly: false, ["loadout", "ini", "unset"], takesLoadout: true, context.Limits.ReadTimeout,
+            options: [IniFileParam, IniSectionParam, IniKeyParam]),
+        VerbTool.Create(context, "loadout_ini_replace",
+            "Replaces the loadout's own INI tweak for one file with the text given, the same as saving the tweak editor on the INI page; " +
+            "an empty text clears it so the game's INI and the mods' tweaks decide every key again. Read the current tweak with loadout_ini_show first. A restore point is written first." + UndoNote,
+            readOnly: false, ["loadout", "ini", "replace"], takesLoadout: true, context.Limits.ReadTimeout,
+            options: [IniFileParam, new ToolParam("text", "The whole tweak as INI text with sections and key=value lines; an empty string clears the tweak.", Required: true)]),
         VerbTool.Create(context, "settings_set",
             "Changes one app setting, the same as the Settings page, and says if a restart is needed for it to take effect. " +
             "Values are checked against the setting's type and rules. An empty value clears a text setting. " +

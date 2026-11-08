@@ -37,6 +37,21 @@ public static class ReadOnlyTools
             "Reports the files the app merges for a FromSoft loadout, which mods feed each one, and whether an apply would be refused, as JSON. " +
             "Find the loadout with loadouts_list.",
             readOnly: true, ["fromsoft", "merge", "list"], takesLoadout: true, context.Limits.SlowReadTimeout, flags: ["--json"], reportsExitOne: true),
+        VerbTool.Create(context, "loadout_ini_list",
+            "Lists, as JSON, a loadout's game INI files with their path on disk, whether a copy exists, whether the last Apply wrote the current bake and whether the file on disk is that bake, " +
+            "and the tweak layers of each: name, source, kind (user, list or mod), switch and whether it is merged. Says whether the loadout owns its INIs at all. Find the loadout with loadouts_list.",
+            readOnly: true, ["loadout", "ini", "list"], takesLoadout: true, context.Limits.ReadTimeout, flags: ["--json"]),
+        VerbTool.Create(context, "loadout_ini_show",
+            "Prints one of a loadout's game INIs as text: the result Apply writes (the default), the loadout's copy before any tweak, the user's own tweak, or one tweak layer by the id loadout_ini_list shows. " +
+            "Find the loadout with loadouts_list.",
+            readOnly: true, ["loadout", "ini", "show"], takesLoadout: true, context.Limits.SlowReadTimeout,
+            options:
+            [
+                MutatingTools.IniFileParam,
+                new ToolParam("part", "result (what Apply writes; the default), baseline (the loadout's copy before tweaks) or tweak (the user's own tweak)"),
+                new ToolParam("layer", "A layer's id from loadout_ini_list, to read that layer's text instead of a part"),
+            ],
+            emptyText: args => $"The loadout has no tweak of {args.String("file")}."),
         VerbTool.Create(context, "loadout_vanilla_list",
             "Lists the vanilla regulations the app keeps for a FromSoft loadout's game and where each came from. Find the loadout with loadouts_list.",
             readOnly: true, ["fromsoft", "vanilla", "list"], takesLoadout: true, context.Limits.SlowReadTimeout),
