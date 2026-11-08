@@ -33,6 +33,7 @@ public static class LaunchServices
         services.TryAddSingleton<IGameProcessFactory, GameProcessFactory>();
         services.TryAddSingleton<ILaunchSynchronizer, SynchronizerServiceLaunchSynchronizer>();
         services.TryAddTransient<LaunchSession>();
+        services.TryAddSingleton<ILaunchFinishMarkers, LaunchFinishMarkers>();
         services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
         services.TryAddSingleton<LoadoutResolver>();
         services.TryAddSingleton<LocalConfigVdfWriter>();
