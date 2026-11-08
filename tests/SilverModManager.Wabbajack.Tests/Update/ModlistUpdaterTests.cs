@@ -177,6 +177,30 @@ public class ModlistUpdaterTests(ITestOutputHelper helper) : UpdateCheckTestBase
     }
 
     [Fact]
+    public async Task EnsureCanApplyRefusesAnEntryTheGalleryHasSwitchedOffWithoutLookingAtArchives()
+    {
+        var (_, one, two, group) = await InstalledVersionOne();
+        await WithIdentity(Connection, one, "a-list", "wabbajack-tools/mod-lists");
+        two = await WithIdentity(Connection, two, "a-list", "wabbajack-tools/mod-lists");
+        Gallery.Cached = Listing(GalleryLibraryFiles.Entry("Test list") with { IsForcedDown = true });
+        var basis = Connection.Db.BasisTxId;
+
+        var refused = Record.Exception(() => Updater.EnsureCanApply(Fresh(group), two));
+
+        refused.Should().BeOfType<ModlistUpdateRefusedException>().Which.Message.Should().Contain("has been taken down from the gallery");
+        Connection.Db.BasisTxId.Should().Be(basis);
+    }
+
+    [Fact]
+    public async Task EnsureCanApplyRefusesTheInstalledFileAndAcceptsANewerOne()
+    {
+        var (_, one, two, group) = await InstalledVersionOne();
+
+        Record.Exception(() => Updater.EnsureCanApply(Fresh(group), one)).Should().BeOfType<ModlistUpdateRefusedException>().Which.Message.Should().Contain("already at this version");
+        Record.Exception(() => Updater.EnsureCanApply(Fresh(group), two)).Should().BeNull();
+    }
+
+    [Fact]
     public async Task ApplyOfAnEntryTheGalleryHasSwitchedOffIsRefusedBeforeAnyWrite()
     {
         var (_, one, two, group) = await InstalledVersionOne();

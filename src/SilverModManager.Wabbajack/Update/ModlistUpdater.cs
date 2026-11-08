@@ -23,12 +23,12 @@ namespace SilverModManager.Wabbajack.Update;
 /// (the install job switching the group under a restore point) and the undo of it. Keeping or releasing the restore
 /// point is <see cref="ModlistUpdateFinish"/>.
 /// </summary>
-public sealed class ModlistUpdater(IServiceProvider provider)
+public class ModlistUpdater(IServiceProvider provider)
 {
     private IConnection Connection => provider.GetRequiredService<IConnection>();
 
     /// <summary>What the update would do, worked out without doing any of it.</summary>
-    public Task<ModlistUpdatePreviewResult> Review(WabbajackModlistLoadoutGroup.ReadOnly group, WabbajackModlistLibraryFile.ReadOnly newFile, CancellationToken ct)
+    public virtual Task<ModlistUpdatePreviewResult> Review(WabbajackModlistLoadoutGroup.ReadOnly group, WabbajackModlistLibraryFile.ReadOnly newFile, CancellationToken ct)
         => new ModlistUpdatePreview(provider).Preview(group, newFile, ct);
 
     /// <summary>
@@ -36,7 +36,7 @@ public sealed class ModlistUpdater(IServiceProvider provider)
     /// <see cref="Apply"/> refuses on: the library may have gained archives, or complete copies of ones it held
     /// incompletely, since the review was made.
     /// </summary>
-    public async Task<bool> IsDownloaded(WabbajackModlistLibraryFile.ReadOnly newFile, LoadoutId loadout, CancellationToken ct)
+    public virtual async Task<bool> IsDownloaded(WabbajackModlistLibraryFile.ReadOnly newFile, LoadoutId loadout, CancellationToken ct)
         => (await MissingArchives(loadout, newFile, ct)).Count == 0;
 
     /// <summary>
@@ -44,7 +44,7 @@ public sealed class ModlistUpdater(IServiceProvider provider)
     /// stops reporting it as running. Archives that need a browser or the user's hands do not end the batch by being
     /// absent, so the caller asks <see cref="IsDownloaded"/> again afterwards. Cancelling stops the batch.
     /// </summary>
-    public async Task Download(WabbajackModlistLibraryFile.ReadOnly newFile, LoadoutId loadout, CancellationToken ct)
+    public virtual async Task Download(WabbajackModlistLibraryFile.ReadOnly newFile, LoadoutId loadout, CancellationToken ct)
     {
         var file = LibraryFileId.From(newFile.Id);
         var info = provider.GetRequiredService<IModlistCatalog>().List().First(m => m.Id == file);
@@ -103,17 +103,13 @@ public sealed class ModlistUpdater(IServiceProvider provider)
     /// Cancelling <paramref name="ct"/> stops the install job and leaves the group mid-update.
     /// </summary>
     /// <exception cref="ModlistUpdateRefusedException">The group already is at this version, the gallery has taken the list down, or archives are missing and the caller did not allow skipping them.</exception>
-    public async Task<WabbajackModlistLoadoutGroup.ReadOnly> Apply(
+    public virtual async Task<WabbajackModlistLoadoutGroup.ReadOnly> Apply(
         WabbajackModlistLoadoutGroup.ReadOnly group, WabbajackModlistLibraryFile.ReadOnly newFile, bool skipMissing,
         IReadOnlySet<RelativePath> gameFilesToKeep, CancellationToken ct)
     {
+        EnsureCanApply(group, newFile);
         var current = Reload(group);
         var loadout = LoadoutOf(current);
-        provider.GetRequiredService<ModlistInstallRuns>().EnsureNoneInto(loadout);
-
-        if (current.ModlistId.Value == newFile.Id && !ModlistInstallRuns.IsMidUpdate(current))
-            throw new ModlistUpdateRefusedException($"{NameOf(current)} is already at this version of the list.");
-        RefuseWhenTakenDown(newFile);
         if (!skipMissing) await RefuseWhenArchivesAreMissing(loadout, newFile, ct);
 
         ct.ThrowIfCancellationRequested();
@@ -125,8 +121,24 @@ public sealed class ModlistUpdater(IServiceProvider provider)
         return await job;
     }
 
+    /// <summary>
+    /// The refusals <see cref="Apply"/> makes before it looks at the archives: an install already writing into the
+    /// loadout, a group that already is at this version, and a list the gallery has taken down. The caller asks first
+    /// so it does not download for an update that will be refused.
+    /// </summary>
+    /// <exception cref="ModlistUpdateRefusedException">The group already is at this version, or the gallery has taken the list down.</exception>
+    public virtual void EnsureCanApply(WabbajackModlistLoadoutGroup.ReadOnly group, WabbajackModlistLibraryFile.ReadOnly newFile)
+    {
+        var current = Reload(group);
+        provider.GetRequiredService<ModlistInstallRuns>().EnsureNoneInto(LoadoutOf(current));
+
+        if (current.ModlistId.Value == newFile.Id && !ModlistInstallRuns.IsMidUpdate(current))
+            throw new ModlistUpdateRefusedException($"{NameOf(current)} is already at this version of the list.");
+        RefuseWhenTakenDown(newFile);
+    }
+
     /// <summary>The restore point the update wrote before it switched the group, or null when none is recorded.</summary>
-    public TxId? RestorePointOf(WabbajackModlistLoadoutGroup.ReadOnly group)
+    public virtual TxId? RestorePointOf(WabbajackModlistLoadoutGroup.ReadOnly group)
         => WabbajackModlistLoadoutGroup.LastUpdateRestorePoint.TryGetValue(Reload(group), out var restorePoint) ? TxId.From(restorePoint.Value) : null;
 
     /// <summary>
@@ -143,18 +155,12 @@ public sealed class ModlistUpdater(IServiceProvider provider)
             .ToArray();
         if (groups.Any(group => group.ModlistId.Value == file.Id)) return false;
 
-        var hasIdentity = WabbajackModlistLibraryFile.MachineUrl.TryGetValue(file, out var machineUrl)
-                          & WabbajackModlistLibraryFile.Repository.TryGetValue(file, out var repository);
         foreach (var group in groups)
         {
             if (WabbajackModlistLoadoutGroup.PreviousModlist.TryGetValue(group, out var previous) && previous == file.Id) return true;
-            if (!hasIdentity) continue;
 
             var installed = WabbajackModlistLibraryFile.Load(db, group.ModlistId.Value);
-            if (installed.IsValid()
-                && WabbajackModlistLibraryFile.MachineUrl.TryGetValue(installed, out var installedUrl) && installedUrl == machineUrl
-                && WabbajackModlistLibraryFile.Repository.TryGetValue(installed, out var installedRepository) && installedRepository == repository)
-                return true;
+            if (installed.IsValid() && ModlistIdentity.SameList(installed, file)) return true;
         }
         return false;
     }
