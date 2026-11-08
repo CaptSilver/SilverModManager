@@ -39,6 +39,9 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
         ["wabbajacktest.b-cdn.net"] = "test-files.wabbajack.org",
     };
 
+    /// <summary>The host that serves files for the address's host: the remap target for an old CDN host, else the host itself.</summary>
+    public static string CanonicalHost(Uri url) => DomainRemaps.TryGetValue(url.Host, out var remapped) ? remapped : url.Host;
+
     public required HttpClient Client { get; init; }
     public required ILogger Logger { get; init; }
 

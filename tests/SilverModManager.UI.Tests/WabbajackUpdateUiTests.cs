@@ -16,6 +16,7 @@ using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Pages.Collections;
 using SilverModManager.App.UI.Pages.Collections.Update;
 using SilverModManager.App.UI.Pages.LibraryPage.Collections;
@@ -653,6 +654,55 @@ public class WabbajackUpdateUiTests(IServiceProvider provider) : AUiTest(provide
         repository.Should().Be("second/repo");
         await WaitFor(() => changes == 2);
         source.MenuItems(Host(), null).Select(item => item.Header).Should().NotContain("Which gallery entry is this list?", "the identity is known now");
+    }
+
+    [Fact]
+    public async Task ThePickerIsOfferedForAListWithOneCandidateTheBackfillDeclined()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, $"Picker one {Guid.NewGuid()}");
+        var link = $"https://authored-files.wabbajack.org/picker-one-{Guid.NewGuid():N}.wabbajack";
+        var file = await AddList("1.0", name: $"Single list {Guid.NewGuid():N}", galleryUrl: link);
+        var candidate = Entry("1.0", "single-a", title: file.Name, repository: "first/repo", download: link);
+        // Another repository lists the same title, so the backfill leaves the file for the user to decide.
+        var lookalike = Entry("1.0", "single-b", title: file.Name, repository: "second/repo", download: "https://example.org/other.wabbajack");
+        var client = new FakeClient(Listing(candidate, lookalike));
+        var shown = new List<Dialog>();
+        var windows = Substitute.For<IWindowManager>();
+        windows.ShowDialog(Arg.Do<IDialog>(d => shown.Add((Dialog)d)), DialogWindowType.Modal).Returns(new StandardDialogResult { ButtonId = ButtonDefinitionId.From("pick-0") });
+        var source = new WabbajackModlistSource(With((typeof(IWabbajackGalleryClient), client)), loadout.LoadoutId, file);
+        source.CreateDownloads();
+        var changes = 0;
+        using var subscription = source.MenuChanged.Subscribe(_ => changes++);
+        await WaitFor(() => changes == 1);
+
+        var picker = source.MenuItems(Host(windows), null).Single(item => item.Header == "Which gallery entry is this list?");
+        await picker.Command.Execute();
+
+        var dialog = shown.Should().ContainSingle().Subject;
+        dialog.ViewModel.ContentViewModel.Should().BeAssignableTo<IDialogStandardContentViewModel>().Subject.Text.Should().Be(Language.CollectionUpdate_Pick_Text_One);
+        dialog.ViewModel.ButtonDefinitions.Select(b => b.Id).Should().Equal(ButtonDefinitionId.Cancel, ButtonDefinitionId.From("pick-0"));
+        var written = WabbajackModlistLibraryFile.Load(Connection.Db, file.Id);
+        written.MachineUrl.Value.Should().Be("single-a");
+        written.Repository.Value.Should().Be("first/repo");
+        await WaitFor(() => changes == 2);
+        source.MenuItems(Host(), null).Select(item => item.Header).Should().NotContain("Which gallery entry is this list?");
+    }
+
+    [Fact]
+    public async Task AnUpdateAppearsForAListWhoseGalleryLinkMovedToANewRelease()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, $"Renewed {Guid.NewGuid()}");
+        var file = await AddList("1.0", name: $"Renewed list {Guid.NewGuid():N}", galleryUrl: "https://authored-files.wabbajack.org/renewed.wabbajack_00000000-0000-0000-0000-000000000001");
+        var group = await Install(loadout.LoadoutId, file);
+        var listing = Listing(Entry("2.0", "renewed-list", title: file.Name, download: "https://authored-files.wabbajack.org/renewed.wabbajack_39f36b83-0000-0000-0000-000000000002"));
+        var offers = new List<ICollectionUpdate?>();
+        using var subscription = Offer(new FakeClient(listing), group).Subscribe(offers.Add);
+        offers.Last().Should().BeNull("the list has no gallery identity yet");
+
+        await Provider.GetRequiredService<ModlistIdentityBackfill>().Run(listing, CancellationToken.None);
+
+        await WaitFor(() => offers.Last() is not null);
+        offers.Last()!.NewVersionText.Should().Be("Version 2.0");
     }
 
     // ---- following the install to the new file ----

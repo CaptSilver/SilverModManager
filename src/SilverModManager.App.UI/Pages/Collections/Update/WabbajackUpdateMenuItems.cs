@@ -125,7 +125,7 @@ public static class WabbajackUpdateMenuItems
                 ButtonDefinitionId.From($"pick-{index}"), ButtonAction.Accept, ButtonStyling.Primary))
             .Prepend(DialogStandardButtons.Cancel)
             .ToArray();
-        var dialog = DialogFactory.CreateStandardDialog(Language.CollectionUpdate_Pick_Title, new StandardDialogParameters { Text = Language.CollectionUpdate_Pick_Text }, buttons);
+        var dialog = DialogFactory.CreateStandardDialog(Language.CollectionUpdate_Pick_Title, new StandardDialogParameters { Text = candidates.Count == 1 ? Language.CollectionUpdate_Pick_Text_One : Language.CollectionUpdate_Pick_Text }, buttons);
         var answer = (await host.WindowManager.ShowDialog(dialog, DialogWindowType.Modal)).ButtonId;
 
         var picked = candidates.Where((_, index) => answer == ButtonDefinitionId.From($"pick-{index}")).FirstOrDefault();

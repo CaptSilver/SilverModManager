@@ -12,12 +12,12 @@ namespace SilverModManager.Wabbajack.Tests.Gallery;
 /// <summary>Adds real modlist files to the library and sets the gallery fields a test needs.</summary>
 internal static class GalleryLibraryFiles
 {
-    /// <summary>The address a file added with <c>fromGallery</c> was fetched from.</summary>
-    public static readonly Uri OldDownloadUrl = new("https://authored-files.wabbajack.org/old.wabbajack_1");
+    /// <summary>The address a file added with <c>fromGallery</c> was fetched from, shaped like the CDN's release links (a uuid suffix).</summary>
+    public static readonly Uri OldDownloadUrl = new("https://authored-files.wabbajack.org/old.wabbajack_00000000-0000-0000-0000-000000000001");
 
     public static async Task<WabbajackModlistLibraryFile.ReadOnly> Add(
         ILibraryService libraryService, TemporaryFileManager temporaryFileManager, IConnection connection, string name, string? author = null,
-        string? version = null, string gameType = "SkyrimSpecialEdition", string? fileName = null, bool fromGallery = false)
+        string? version = null, string gameType = "SkyrimSpecialEdition", string? fileName = null, bool fromGallery = false, Uri? downloadUrl = null)
     {
         await using var folder = temporaryFileManager.CreateFolder();
         var list = WabbajackFixture.EmptyList(name) with { GameType = gameType, Version = version ?? "1.0.0.0", Author = author ?? "" };
@@ -27,7 +27,7 @@ internal static class GalleryLibraryFiles
         if (!fromGallery) return model;
 
         using var tx = connection.BeginTransaction();
-        tx.Add(model.Id, WabbajackModlistLibraryFile.GalleryDownloadUrl, OldDownloadUrl.ToString());
+        tx.Add(model.Id, WabbajackModlistLibraryFile.GalleryDownloadUrl, (downloadUrl ?? OldDownloadUrl).ToString());
         var result = await tx.Commit();
         return WabbajackModlistLibraryFile.Load(result.Db, model.Id);
     }

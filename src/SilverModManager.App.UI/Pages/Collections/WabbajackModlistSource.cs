@@ -235,8 +235,8 @@ public sealed class WabbajackModlistSource : CollectionSource
         return items;
     }
 
-    // Undo and Finish while the group records a restore point; the picker while the list's gallery entry is unknown and
-    // more than one entry could be it.
+    // Undo and Finish while the group records a restore point; the picker while the list's gallery entry is unknown, at
+    // least one entry could be it, and the backfill would not bind one on its own.
     private IEnumerable<IContextMenuItem> UpdateItems(ICollectionPageHost host, IWabbajackModlistViewModel model)
     {
         var loadout = LoadoutId ?? model.SelectedLoadout?.Id;
@@ -253,7 +253,9 @@ public sealed class WabbajackModlistSource : CollectionSource
         if (file.IsValid()
             && !HasIdentity(db, _file)
             && Services.GetRequiredService<IWabbajackGalleryClient>().GetCached() is { } listing
-            && Services.GetRequiredService<ModlistIdentityBackfill>().Candidates(file, listing) is { Count: > 1 } candidates)
+            && Services.GetRequiredService<ModlistIdentityBackfill>() is { } backfill
+            && backfill.AutomaticMatch(file, listing) is null
+            && backfill.PickerCandidates(file, listing) is { Count: >= 1 } candidates)
             yield return WabbajackUpdateMenuItems.PickGalleryEntry(Services, host, file, candidates);
     }
 

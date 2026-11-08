@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Models;
 
 namespace SilverModManager.Wabbajack.Gallery;
@@ -12,11 +13,16 @@ namespace SilverModManager.Wabbajack.Gallery;
 /// same-MachineUrl entry in the repository that failed to load, so even an exact link, hash and title match might be
 /// the survivor of an ambiguity a complete listing would have shown. The user can still pick with <see cref="Assign"/>.
 /// The gallery lists third-party repositories, so a repository other than the one the file came from must not be able
-/// to claim it. An entry is only a candidate when its own download link is the one the file was fetched from, its
-/// title is the list's own name, and no other repository offers a list with the same title or machine URL. The link
-/// only proves which bytes were fetched, not who lists them, which is why the title is checked too. The cost: once the
-/// real list moves to a new link, or is renamed, the file is no longer bound automatically; the user picks it with
-/// <see cref="Assign"/>.
+/// to claim it. An entry is only a candidate when its own download link is the one the file was fetched from
+/// (<see cref="WabbajackModlistLibraryFile.GalleryDownloadUrl"/>), its title is the list's own name, and no other
+/// repository offers a list with the same title or machine URL. The link only proves which bytes were fetched, not who
+/// lists them, which is why the title is checked too.
+/// Every release of a list gets a new link, so a list that has moved on since the download, the case where an update
+/// matters, has no entry with the recorded link. Then an entry whose link is another release of the same file (same
+/// host, directory and file name, differing in the "_&lt;release&gt;" suffix) is a candidate, provided its title and
+/// author are the file's and it is for the file's game. Without the exact link nothing else pins the list down, so
+/// title and author are part of the candidate rule rather than a later check. Any candidate the automatic rule
+/// declines is still offered to the user, who picks with <see cref="Assign"/>.
 /// </summary>
 public sealed class ModlistIdentityBackfill(IConnection connection, ILogger<ModlistIdentityBackfill> logger)
 {
@@ -40,11 +46,9 @@ public sealed class ModlistIdentityBackfill(IConnection connection, ILogger<Modl
             foreach (var file in WabbajackModlistLibraryFile.All(db))
             {
                 if (!file.Contains(WabbajackModlistLibraryFile.GalleryDownloadUrl) || file.Contains(WabbajackModlistLibraryFile.MachineUrl)) continue;
-                if (Candidates(file, listing) is not [var only]) continue;
-                if (!string.Equals(only.Title, file.Name, StringComparison.OrdinalIgnoreCase)) continue;
-                if (HasLookalikeElsewhere(only, listing)) continue;
+                if (AutomaticMatch(file, listing) is not { } match) continue;
 
-                Write(tx, file, only);
+                Write(tx, file, match);
                 assigned++;
             }
             if (assigned == 0) return;
@@ -59,10 +63,22 @@ public sealed class ModlistIdentityBackfill(IConnection connection, ILogger<Modl
     }
 
     /// <summary>
+    /// The entry <see cref="Run"/> binds the file to, or null when it binds none: there must be exactly one candidate,
+    /// its title must be the list's own name, and no other repository may offer a list with that title or machine URL.
+    /// </summary>
+    public GalleryEntry? AutomaticMatch(WabbajackModlistLibraryFile.ReadOnly file, GalleryListing listing)
+    {
+        if (Candidates(file, listing) is not [var only]) return null;
+        if (!string.Equals(only.Title, file.Name, StringComparison.OrdinalIgnoreCase)) return null;
+        return HasLookalikeElsewhere(only, listing) ? null : only;
+    }
+
+    /// <summary>
     /// The entries the file may be, from the most certain rule that finds any: the same bytes, the file name the
     /// downloader gives that entry, then the same title and author in the same game. Every rule only considers entries
     /// whose download link is the one the file was fetched from (<see cref="WabbajackModlistLibraryFile.GalleryDownloadUrl"/>),
-    /// so a hash advertised by another repository's entry cannot claim the file. More than one is ambiguous and
+    /// so a hash advertised by another repository's entry cannot claim the file. When none of those rules finds an
+    /// entry, the renewed releases of the list are used instead. More than one is ambiguous and
     /// is left for the user to pick. On an incomplete listing nothing is offered, so the result never rests on a
     /// repository that could not be read (<see cref="Run"/> does not use it then either).
     /// </summary>
@@ -72,6 +88,26 @@ public sealed class ModlistIdentityBackfill(IConnection connection, ILogger<Modl
             || !file.Contains(WabbajackModlistLibraryFile.GalleryDownloadUrl)
             || !Uri.TryCreate(file.GalleryDownloadUrl.Value, UriKind.Absolute, out var recordedUri)) return [];
 
+        var byLink = LinkedCandidates(file, listing, recordedUri);
+        return byLink.Count > 0 ? byLink : RenewedReleases(file, listing, recordedUri);
+    }
+
+    /// <summary>
+    /// What the picker offers: <see cref="Candidates"/> plus the renewed releases of the list. The recorded link can
+    /// belong to a third-party entry that copied the old link while the real list moved on; then the linked rules
+    /// find only that entry, and the user must also see the real one to choose it.
+    /// </summary>
+    public IReadOnlyList<GalleryEntry> PickerCandidates(WabbajackModlistLibraryFile.ReadOnly file, GalleryListing listing)
+    {
+        var candidates = Candidates(file, listing);
+        if (candidates.Count == 0
+            || !Uri.TryCreate(file.GalleryDownloadUrl.Value, UriKind.Absolute, out var recordedUri)) return candidates;
+
+        return candidates.Concat(RenewedReleases(file, listing, recordedUri).Where(e => !candidates.Contains(e))).ToList();
+    }
+
+    private static List<GalleryEntry> LinkedCandidates(WabbajackModlistLibraryFile.ReadOnly file, GalleryListing listing, Uri recordedUri)
+    {
         var linked = listing.Entries.Where(e => e.Download is { } link && SameLink(link, recordedUri)).ToList();
         if (linked.Count == 0) return [];
 
@@ -93,6 +129,43 @@ public sealed class ModlistIdentityBackfill(IConnection connection, ILogger<Modl
                         && string.Equals(e.Title, file.Name, StringComparison.OrdinalIgnoreCase)
                         && string.Equals(e.Author, file.Author, StringComparison.OrdinalIgnoreCase))
             .ToList();
+    }
+
+    // Every Wabbajack release gets a new link (a "_<uuid>" suffix on the same file name), so a list that has moved on
+    // since the download has no entry with the recorded link. Without the exact link nothing proves the entry is
+    // the list, so the entry must be a release of the same file on the same host and carry the file's own game,
+    // title and author.
+    private static List<GalleryEntry> RenewedReleases(WabbajackModlistLibraryFile.ReadOnly file, GalleryListing listing, Uri recordedUri)
+    {
+        var game = WabbajackGames.GameIdFor(file.GameType);
+        if (game is null || ReleaseStem(recordedUri) is not { } stem) return [];
+
+        return listing.Entries
+            .Where(e => e.Game == game
+                        && string.Equals(e.Title, file.Name, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(e.Author, file.Author, StringComparison.OrdinalIgnoreCase)
+                        && e.Download is { IsAbsoluteUri: true } link
+                        && ReleaseStem(link) == stem)
+            .ToList();
+    }
+
+    private readonly record struct Stem(string Scheme, string Host, string Directory, string Name);
+
+    // The link without its release suffix, or null when it has none. The suffix is whatever follows the last "_" of the
+    // last segment, and what precedes it must end in ".wabbajack" so an unrelated underscore in a name is not taken
+    // for one. Path case is exact, as in SameLink.
+    private static Stem? ReleaseStem(Uri link)
+    {
+        var path = link.GetComponents(UriComponents.Path, UriFormat.UriEscaped);
+        var slash = path.LastIndexOf('/');
+        var directory = path[..(slash + 1)];
+        var last = path[(slash + 1)..];
+        var underscore = last.LastIndexOf('_');
+        if (underscore < 0 || underscore == last.Length - 1) return null;
+
+        var name = last[..underscore];
+        if (!name.EndsWith(".wabbajack", StringComparison.OrdinalIgnoreCase)) return null;
+        return new Stem(link.Scheme, WabbajackCdnDownloadJob.CanonicalHost(link), directory, name);
     }
 
     // The downloader records entry.Download.ToString(). Scheme and host compare case-insensitively (Uri lower-cases
