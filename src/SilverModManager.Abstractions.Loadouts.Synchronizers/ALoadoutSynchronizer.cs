@@ -1686,8 +1686,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <exception cref="LoadoutInstallRunningException">An install is still writing into <paramref name="loadout"/>.</exception>
     private void EnsureNoInstallInto(LoadoutId loadout)
     {
-        if (_serviceProvider.GetService<ILoadoutInstallActivity>()?.IsInstallingInto(loadout) == true)
-            throw new LoadoutInstallRunningException();
+        if (_serviceProvider.GetService<ILoadoutInstallActivity>() is { } activity && activity.IsInstallingInto(loadout))
+            throw activity.BlockedApply(loadout);
     }
 
     public record struct AddedEntry

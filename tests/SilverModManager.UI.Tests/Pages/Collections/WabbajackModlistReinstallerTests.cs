@@ -84,7 +84,7 @@ public class WabbajackModlistReinstallerTests(IServiceProvider provider) : AUiTe
                 Connection,
                 Provider.GetRequiredService<ILoadoutManager>(),
                 errors,
-                new ModlistInstallRuns(monitor),
+                new ModlistInstallRuns(monitor, Connection),
                 downloads,
                 LibraryFileId.From(file.Id),
                 () => loadout.LoadoutId),
@@ -143,6 +143,7 @@ public class WabbajackModlistReinstallerTests(IServiceProvider provider) : AUiTe
             Openers = null!,
             Logger = null!,
             OrderImporter = null!,
+            LoadoutManager = null!,
         });
         return job;
     }

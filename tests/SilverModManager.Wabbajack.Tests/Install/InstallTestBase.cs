@@ -120,6 +120,7 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
             Openers = ServiceProvider.GetServices<INestedArchiveOpener>().ToArray(),
             Logger = ServiceProvider.GetRequiredService<ILogger<InstallModlistJob>>(),
             OrderImporter = ServiceProvider.GetRequiredService<ModOrderImporter>(),
+            LoadoutManager = LoadoutManager,
             MemoryBudget = budget,
             Parallelism = parallelism,
             Commits = commits ?? CommitPolicy.Default,

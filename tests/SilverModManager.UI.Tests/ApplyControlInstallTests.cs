@@ -58,7 +58,7 @@ public class ApplyControlInstallTests(IServiceProvider provider) : AUiTest(provi
             Modlist = file,
             Options = new InstallOptions(false, new HashSet<RelativePath>()),
             Connection = null!, FileStore = null!, Inventory = null!, Transforms = null!, PrefixResolver = null!,
-            Paths = null!, Writer = null!, Openers = null!, Logger = null!, OrderImporter = null!,
+            Paths = null!, Writer = null!, Openers = null!, Logger = null!, OrderImporter = null!, LoadoutManager = null!,
         };
         var gate = new TaskCompletionSource();
         var task = Provider.GetRequiredService<IJobMonitor>().Begin<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly>(job,

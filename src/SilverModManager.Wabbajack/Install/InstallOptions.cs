@@ -1,13 +1,15 @@
 using NexusMods.Paths;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Models;
 
 namespace SilverModManager.Wabbajack.Install;
 
 /// <summary>What the caller chose before starting an install.</summary>
 /// <param name="SkipMissingArchives">Install what can be installed when archives are missing, and leave a skip row for each file that needed one.</param>
 /// <param name="GameFilesNotToReplace">Files of the game folder (relative to it) the caller wants to keep as they are, whatever the list says.</param>
-public sealed record InstallOptions(bool SkipMissingArchives, IReadOnlySet<RelativePath> GameFilesNotToReplace);
+/// <param name="UpdateTo">The installed group to move to the list being installed, in place. Null for an install; a group an earlier update left unfinished continues as an update without it.</param>
+public sealed record InstallOptions(bool SkipMissingArchives, IReadOnlySet<RelativePath> GameFilesNotToReplace, WabbajackModlistLoadoutGroupId? UpdateTo = null);
 
 /// <summary>An archive plan with the rows of it the install cannot go on without.</summary>
 /// <param name="Plan">The archives the list names and what the library and the game hold of each.</param>
@@ -29,4 +31,11 @@ public sealed class ArchivesMissingException(IReadOnlyList<ArchivePlanRow> rows)
 
     /// <summary>The rows of the plan that are neither in the library nor a game file this install matches.</summary>
     public IReadOnlyList<ArchivePlanRow> Rows { get; } = rows;
+}
+
+/// <summary>Thrown before anything is written when a group cannot be moved to the list being installed.</summary>
+public sealed class ModlistUpdateRefusedException(string message) : UserFacingException(message)
+{
+    /// <inheritdoc />
+    public override string Title => "The modlist was not updated";
 }

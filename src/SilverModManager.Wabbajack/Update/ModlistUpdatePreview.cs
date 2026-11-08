@@ -89,7 +89,7 @@ public sealed class ModlistUpdatePreview(IServiceProvider provider)
         var (_, userTweaks) = InstallReconciler.StaleRows(state, isListOutput);
 
         var warnings = new List<string>();
-        var previous = await PreviousVersion(group, loadoutId, connection, fileStore, ct);
+        var previous = await InstallModlistJob.ClassifyVersion(WabbajackModlistLibraryFile.Load(db, group.ModlistId.Value), loadoutId, connection, fileStore, ct);
         if (previous is null) warnings.Add(InstalledVersionGoneWarning);
 
         var downloads = check.Archives.Missing;
@@ -112,21 +112,6 @@ public sealed class ModlistUpdatePreview(IServiceProvider provider)
                 changed.Add(folder);
         }
         return changed.Order(StringComparer.OrdinalIgnoreCase).ToArray();
-    }
-
-    /// <summary>
-    /// The previous version of the list, laid out for the loadout: the only place to tell which game files it placed and
-    /// which were plain copies of the game's own. Null when the library no longer holds it.
-    /// </summary>
-    private static async Task<InstallModlistJob.Classified?> PreviousVersion(
-        WabbajackModlistLoadoutGroup.ReadOnly group, LoadoutId loadoutId, IConnection connection, IFileStore fileStore, CancellationToken ct)
-    {
-        var previous = WabbajackModlistLibraryFile.Load(connection.Db, group.ModlistId.Value);
-        if (!previous.IsValid() || !previous.AsLibraryFile().TryGetAsLibraryArchive(out var archive)) return null;
-
-        if (!await ModlistArchive.CanReadModlist(fileStore, archive)) return null;
-
-        return await InstallModlistJob.ClassifyList(loadoutId, previous, connection, fileStore, ct);
     }
 
     /// <summary>The game files the user kept, as the install works them out; none when there is no previous version to compare with.</summary>

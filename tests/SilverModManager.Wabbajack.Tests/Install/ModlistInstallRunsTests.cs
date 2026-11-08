@@ -72,6 +72,41 @@ public class ModlistInstallRunsTests(ITestOutputHelper helper) : InstallTestBase
     }
 
     [Fact]
+    public async Task AGroupMidUpdateCountsAsAnInstallIntoItsLoadout()
+    {
+        var loadout = await CreateLoadout();
+        var modlist = await AddList();
+        var (_, group) = await Install(loadout, modlist, Options);
+        var seen = new List<bool>();
+        using var _ = Runs.ObserveInstallingInto(loadout.LoadoutId).Subscribe(seen.Add);
+        Runs.IsInstallingInto(loadout.LoadoutId).Should().BeFalse();
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(group.Id, WabbajackModlistLoadoutGroup.PreviousModlist, modlist.Id);
+            tx.Add(group.Id, WabbajackModlistLoadoutGroup.WasDisabledByUser, false);
+            tx.Retract(group.Id, WabbajackModlistLoadoutGroup.InstalledAt, group.InstalledAt.Value);
+            await tx.Commit();
+        }
+
+        Runs.FindInto(loadout.LoadoutId).Should().BeNull("nothing is running");
+        Runs.IsInstallingInto(loadout.LoadoutId).Should().BeTrue();
+        Runs.IsInstallingInto((await CreateLoadout()).LoadoutId).Should().BeFalse("another loadout is not held");
+        Runs.EnsureNoneInto(loadout.LoadoutId);
+        seen.Should().EndWith(true);
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(group.Id, WabbajackModlistLoadoutGroup.InstalledAt, DateTimeOffset.UtcNow);
+            await tx.Commit();
+        }
+
+        Runs.IsInstallingInto(loadout.LoadoutId).Should().BeFalse();
+        Runs.InstallBlockReason(loadout.LoadoutId).Should().BeNull();
+        seen.Should().EndWith(false);
+    }
+
+    [Fact]
     public async Task AnotherModlistIntoTheSameLoadoutIsRefusedToo()
     {
         var loadout = await CreateLoadout();
@@ -229,7 +264,7 @@ public class ModlistInstallRunsTests(ITestOutputHelper helper) : InstallTestBase
         monitor.Snapshot().Returns(_ => jobs.Items.ToArray());
         monitor.GetObservableChangeSet<InstallModlistJob>().Returns(_ => jobs.Connect());
         jobs.AddOrUpdate(handle);
-        var runs = new ModlistInstallRuns(monitor);
+        var runs = new ModlistInstallRuns(monitor, Connection);
         var seen = new List<bool>();
         using var _ = runs.ObserveInstallingInto(loadout.LoadoutId).Subscribe(seen.Add);
 

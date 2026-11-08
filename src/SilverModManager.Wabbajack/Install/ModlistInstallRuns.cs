@@ -4,6 +4,7 @@ using DynamicData;
 using SilverModManager.Abstractions.Games.Modlists;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -41,10 +42,15 @@ public sealed class RunningModlistInstall
 
 /// <summary>
 /// Answers which modlist installs are running, from the job monitor: the one place that knows, so a page that was
-/// opened after an install started follows it instead of offering to start another.
+/// opened after an install started follows it instead of offering to start another. A group an update switched to a new
+/// list and has not finished counts as an install into its loadout too, whether or not a job is running: the loadout
+/// holds half a list, and Apply would put it in the game folder.
 /// </summary>
-public sealed class ModlistInstallRuns(IJobMonitor monitor) : ILoadoutInstallActivity
+public sealed class ModlistInstallRuns(IJobMonitor monitor, IConnection connection) : ILoadoutInstallActivity
 {
+    /// <summary>What Apply is refused with while an update waits to be resumed or undone.</summary>
+    public const string UnfinishedUpdateReason = "Finish the update with Resume, or undo it, before applying";
+
     private readonly ConditionalWeakTable<InstallModlistJob, RunningModlistInstall> _runs = new();
 
     /// <summary>The unfinished install of <paramref name="file"/> into <paramref name="loadout"/>, or null.</summary>
@@ -74,16 +80,42 @@ public sealed class ModlistInstallRuns(IJobMonitor monitor) : ILoadoutInstallAct
     }
 
     /// <inheritdoc />
-    public bool IsInstallingInto(LoadoutId loadout) => FindInto(loadout) is not null;
+    public bool IsInstallingInto(LoadoutId loadout) => FindInto(loadout) is not null || HasUnfinishedUpdate(connection.Db, loadout);
+
+    /// <inheritdoc />
+    /// <remarks>Only the unfinished update has a reason of its own; a running job is the plain "still running".</remarks>
+    public string? InstallBlockReason(LoadoutId loadout)
+        => FindInto(loadout) is null && HasUnfinishedUpdate(connection.Db, loadout) ? UnfinishedUpdateReason : null;
+
+    /// <summary>Whether a group of <paramref name="loadout"/> has been switched to a new list version and has not ended the install of it.</summary>
+    internal static bool HasUnfinishedUpdate(IDb db, LoadoutId loadout)
+        => WabbajackModlistLoadoutGroup.All(db).Any(group =>
+            group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId == loadout
+            && IsMidUpdate(group));
+
+    /// <summary>
+    /// Whether an update switched <paramref name="group"/> to its list and has not finished installing it. The previous
+    /// list stays on a group after the update ends, and a reinstall retracts the install mark too; only the update's
+    /// switch writes <see cref="WabbajackModlistLoadoutGroup.WasDisabledByUser"/> and only its last step retracts it.
+    /// </summary>
+    internal static bool IsMidUpdate(WabbajackModlistLoadoutGroup.ReadOnly group)
+        => WabbajackModlistLoadoutGroup.PreviousModlist.TryGetValue(group, out _)
+           && WabbajackModlistLoadoutGroup.WasDisabledByUser.TryGetValue(group, out _)
+           && !group.InstalledAt.HasValue;
 
     /// <inheritdoc />
     /// <remarks>Counts the same jobs as <see cref="IsInstallingInto"/>: the Apply button must not come on while the check would refuse.</remarks>
     public IObservable<bool> ObserveInstallingInto(LoadoutId loadout)
-        => monitor.GetObservableChangeSet<InstallModlistJob>()
+    {
+        var jobs = monitor.GetObservableChangeSet<InstallModlistJob>()
             .FilterOnObservable(job => job.ObservableStatus.Select(status => status.IsUnfinished()))
             .QueryWhenChanged(query => query.Items.Any(job => job.Definition is InstallModlistJob definition && definition.TargetLoadout == loadout))
-            .Prepend(IsInstallingInto(loadout))
-            .DistinctUntilChanged();
+            .Prepend(FindInto(loadout) is not null);
+        var updates = connection.Revisions
+            .Select(db => HasUnfinishedUpdate(db, loadout))
+            .Prepend(HasUnfinishedUpdate(connection.Db, loadout));
+        return jobs.CombineLatest(updates, (running, unfinished) => running || unfinished).DistinctUntilChanged();
+    }
 
     private IEnumerable<RunningModlistInstall> Running()
     {
