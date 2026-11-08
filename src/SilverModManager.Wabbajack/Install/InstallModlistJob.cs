@@ -1504,7 +1504,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             if (await SameBytes(temporary, destination, cancellationToken)) return;
 
             // A new file starts with the default mode; keep what the user set on the old one (say, an executable script).
-            if (destination.FileExists && !OperatingSystem.IsWindows())
+            if (destination.FileExists)
                 File.SetUnixFileMode(temporary.ToString(), File.GetUnixFileMode(destination.ToString()));
             File.Move(temporary.ToString(), destination.ToString(), overwrite: true);
         }
