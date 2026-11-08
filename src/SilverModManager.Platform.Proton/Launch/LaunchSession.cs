@@ -220,6 +220,7 @@ public sealed class LaunchSession
         if (_started) throw new InvalidOperationException("A launch session runs once.");
         _started = true;
         _callerReports = whileRunning is not null;
+        if (context.SessionId == Guid.Empty) context = context with { SessionId = Guid.NewGuid() };
 
         RunOutcome outcome;
         if (_stop is null)

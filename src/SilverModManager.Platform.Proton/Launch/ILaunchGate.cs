@@ -19,7 +19,15 @@ namespace SilverModManager.Platform.Proton.Launch;
 /// What the loadout's run tool wants started, for a launch whose game Steam starts. Its exe and arguments go into
 /// the state file for the same reason. Null when the command is left as it is.
 /// </param>
-public sealed record LaunchContext(GameInstallation Installation, LoadoutId LoadoutId, string LoadoutName, IReadOnlyList<WineDllOverride> WineDllOverrides, LaunchSpec? RunSpec = null);
+/// <param name="SessionId">
+/// Names one launch from its first check to its finish. <see cref="LaunchSession"/> mints it when it is left empty,
+/// so a gate can tell the session whose state it saved from a later one.
+/// </param>
+/// <param name="EndSeen">
+/// Whether this process watched the game run and exit. False when a finish is carried out for a launch that ended
+/// without it, where a gate cannot take what it finds in the game folder as the game's own doing.
+/// </param>
+public sealed record LaunchContext(GameInstallation Installation, LoadoutId LoadoutId, string LoadoutName, IReadOnlyList<WineDllOverride> WineDllOverrides, LaunchSpec? RunSpec = null, Guid SessionId = default, bool EndSeen = true);
 
 /// <summary>
 /// A gate's reason for refusing a launch.

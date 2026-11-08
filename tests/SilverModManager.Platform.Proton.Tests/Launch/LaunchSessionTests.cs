@@ -107,6 +107,30 @@ public class LaunchSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task EveryGateSeesTheSameFreshSessionId_AndEndSeen()
+    {
+        var gate = AddGate("a");
+
+        await Run(NewSession());
+
+        gate.ContextsSeen.Select(c => c.Step).Should().Equal("check", "prepare", "finish");
+        gate.ContextsSeen.Select(c => c.SessionId).Distinct().Should().ContainSingle().Which.Should().NotBe(Guid.Empty);
+        gate.ContextsSeen.Should().OnlyContain(c => c.EndSeen);
+    }
+
+    [Fact]
+    public async Task AContextWithASessionId_KeepsIt()
+    {
+        var gate = AddGate("a");
+        var pinned = Guid.NewGuid();
+
+        await NewSession().RunAsync(_context with { SessionId = pinned }, () => new GameProcessSpec(["game.exe"]));
+
+        gate.ContextsSeen.Select(c => c.SessionId).Should().OnlyContain(id => id == pinned);
+        gate.ContextsSeen.Should().HaveCount(3);
+    }
+
+    [Fact]
     public async Task ARunThatSucceeds_TakesTheLockForTheInstallationsStoreAndId()
     {
         await Run(NewSession());
@@ -517,10 +541,12 @@ public class LaunchSessionTests : IDisposable
         public LaunchPhase? PrepareSaw { get; private set; }
         public LaunchPhase? FinishSaw { get; private set; }
         public bool Finished { get; private set; }
+        public List<(string Step, Guid SessionId, bool EndSeen)> ContextsSeen { get; } = [];
 
         public Veto? Check(LaunchContext context)
         {
             events.Add($"check:{name}");
+            ContextsSeen.Add(("check", context.SessionId, context.EndSeen));
             if (CheckFailure is not null) throw CheckFailure;
             return Veto;
         }
@@ -528,6 +554,7 @@ public class LaunchSessionTests : IDisposable
         public Task Prepare(LaunchContext context, CancellationToken cancellationToken)
         {
             events.Add($"prepare:{name}");
+            ContextsSeen.Add(("prepare", context.SessionId, context.EndSeen));
             PrepareSaw = test.Phase();
             return PrepareFailure is null ? Task.CompletedTask : Task.FromException(PrepareFailure);
         }
@@ -535,6 +562,7 @@ public class LaunchSessionTests : IDisposable
         public Task Finish(LaunchContext context)
         {
             events.Add($"finish:{name}");
+            ContextsSeen.Add(("finish", context.SessionId, context.EndSeen));
             Finished = true;
             FinishSaw = test.Phase();
             OnFinish?.Invoke();
