@@ -9,6 +9,7 @@ using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Native;
 using Reloaded.Memory.Extensions;
 
 namespace SilverModManager.Backend.FileExtractor.Extractors;
@@ -36,7 +37,10 @@ public class SevenZipExtractor : IExtractor
     private readonly IOSInformation _osInformation;
     private readonly IProcessRunner _processRunner;
     private readonly TemporaryFileManager _temporaryFileManager;
-    private readonly string _exePath;
+    private readonly Lazy<string> _exePath;
+
+    /// <summary>The 7z executable this extractor runs, resolved on first use; throws <see cref="SevenZipMissingException"/> when the package lacks one.</summary>
+    internal string ExecutablePath => _exePath.Value;
 
     /// <summary>
     /// Constructor.
@@ -53,8 +57,14 @@ public class SevenZipExtractor : IExtractor
         _processRunner = processRunner;
         _osInformation = osInformation;
 
-        _exePath = GetExtractorExecutable(fileSystem);
-        logger.LogDebug("Using extractor at {ExtractorExecutable}", _exePath);
+        // Resolved at the first extraction so a package without the binary refuses that extraction with a readable
+        // message instead of failing service setup. PublicationOnly does not cache a failure, so a later attempt looks again.
+        _exePath = new Lazy<string>(() =>
+        {
+            var path = GetExtractorExecutable(fileSystem);
+            logger.LogDebug("Using extractor at {ExtractorExecutable}", path);
+            return path;
+        }, LazyThreadSafetyMode.PublicationOnly);
     }
 
     /// <inheritdoc />
@@ -195,7 +205,7 @@ public class SevenZipExtractor : IExtractor
     /// the user's LANG; the probed results are the same under C and C.UTF-8.
     /// </summary>
     private Command SevenZip(params string[] arguments) => Cli
-        .Wrap(_exePath)
+        .Wrap(ExecutablePath)
         .WithArguments(arguments)
         .WithEnvironmentVariables(environment => environment.Set("LC_ALL", "C.UTF-8"));
 
@@ -798,7 +808,10 @@ public class SevenZipExtractor : IExtractor
             return FindSystem7zOnLinux();
         }
 
-        return fileSystem.GetKnownPath(KnownPath.EntryDirectory).Combine("runtimes/linux-x64/native/7zz").ToString();
+        var roots = new[] { fileSystem.GetKnownPath(KnownPath.EntryDirectory).ToString(), AppContext.BaseDirectory };
+        var found = BundledNativeLibrary.FindFile("7zz", roots, BundledNativeLibrary.RuntimeIdentifiers(),
+            path => fileSystem.FromUnsanitizedFullPath(path).FileExists, out var pathsTried);
+        return found ?? throw new SevenZipMissingException(pathsTried);
 #pragma warning restore CS0162 // Unreachable code detected
     }
 

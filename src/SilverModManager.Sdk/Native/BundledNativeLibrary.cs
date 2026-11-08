@@ -38,10 +38,27 @@ public static class BundledNativeLibrary
         if (!string.IsNullOrEmpty(assemblyFolder)) folders.Add(assemblyFolder);
         if (!string.IsNullOrEmpty(baseDirectory)) folders.Add(baseDirectory);
 
-        return folders
-            .SelectMany(folder => runtimeIdentifiers.Select(rid => Path.Combine(folder, RelativePath(rid, fileName))))
+        return CandidatePaths(fileName, folders, runtimeIdentifiers);
+    }
+
+    private static string[] CandidatePaths(string fileName, IReadOnlyList<string> roots, IReadOnlyList<string> runtimeIdentifiers)
+        => roots
+            .SelectMany(root => runtimeIdentifiers.Select(rid => Path.Combine(root, RelativePath(rid, fileName))))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+
+    /// <summary>
+    /// The first bundled file <paramref name="exists"/> accepts, looking under each of <paramref name="roots"/> and, within
+    /// a root, under each runtime identifier in turn. <paramref name="exists"/> is a parameter so a caller with its own file
+    /// system can ask it instead of the disk. <paramref name="pathsTried"/> is every candidate in order, found or not,
+    /// so a refusal can name them.
+    /// </summary>
+    public static string? FindFile(string fileName, IReadOnlyList<string> roots, IReadOnlyList<string> runtimeIdentifiers, Func<string, bool> exists,
+        out IReadOnlyList<string> pathsTried)
+    {
+        var candidates = CandidatePaths(fileName, roots, runtimeIdentifiers);
+        pathsTried = candidates;
+        return candidates.FirstOrDefault(exists);
     }
 
     /// <summary>

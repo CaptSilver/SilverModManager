@@ -1,7 +1,12 @@
 using System.Formats.Tar;
 using System.IO.Compression;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.Backend.FileExtractor.Extractors;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Native;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
@@ -484,7 +489,7 @@ public class SevenZipExtractionTests : AFileExtractorTest
     [Fact]
     public void BundledSevenZipMatchesItsPin()
     {
-        var folder = FileSystem.GetKnownPath(KnownPath.EntryDirectory).Combine("runtimes/linux-x64/native");
+        var folder = FileSystem.GetKnownPath(KnownPath.EntryDirectory).Combine($"runtimes/{PortableRuntimeIdentifier}/native");
         var binary = folder.Combine("7zz");
         var pin = folder.Combine("7zz.sha256");
         Assert.SkipUnless(binary.FileExists, "the system 7zz is used and nothing is bundled");
@@ -493,6 +498,40 @@ public class SevenZipExtractionTests : AFileExtractorTest
         var expected = File.ReadAllText(pin.ToString()).Split(' ', StringSplitOptions.RemoveEmptyEntries)[0].Trim();
         var actual = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(binary.ToString())));
         actual.Should().Be(expected.ToLowerInvariant());
+    }
+
+    private static string PortableRuntimeIdentifier => BundledNativeLibrary.RuntimeIdentifiers()[^1];
+
+    private SevenZipExtractor ExtractorOn(IFileSystem fileSystem) => new(
+        NullLogger<SevenZipExtractor>.Instance,
+        TemporaryFileManager,
+        fileSystem,
+        ServiceProvider.GetRequiredService<IProcessRunner>(),
+        ServiceProvider.GetRequiredService<IOSInformation>());
+
+    [Fact]
+    public void TheBundledSevenZipIsFoundUnderTheRunningRuntimeIdentifier()
+    {
+        var path = ExtractorOn(FileSystem).ExecutablePath;
+
+        path.Replace('\\', '/').Should().EndWith($"runtimes/{PortableRuntimeIdentifier}/native/7zz");
+        File.Exists(path).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AMissingBundledSevenZipIsRefusedAtExtractionNotAtConstruction()
+    {
+        var emptyFileSystem = new InMemoryFileSystem();
+
+        var extractor = ExtractorOn(emptyFileSystem);
+
+        await using var destination = TemporaryFileManager.CreateFolder();
+        var archive = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources/data_7zip_lzma2.7z");
+        var act = async () => await extractor.ExtractAllAsync(new NativeFileStreamFactory(archive), destination.Path, TestContext.Current.CancellationToken);
+
+        var refusal = (await act.Should().ThrowAsync<SevenZipMissingException>()).Which;
+        refusal.Message.Replace('\\', '/').Should().Contain($"runtimes/{PortableRuntimeIdentifier}/native/7zz");
+        refusal.Title.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]

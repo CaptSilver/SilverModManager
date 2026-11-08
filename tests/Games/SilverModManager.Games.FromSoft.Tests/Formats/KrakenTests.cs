@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using FluentAssertions;
 using SilverModManager.Games.FromSoft.Formats;
 using SilverModManager.Games.FromSoft.Formats.Native;
+using SilverModManager.Sdk.Native;
 using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
 namespace SilverModManager.Games.FromSoft.Tests.Formats;
@@ -11,7 +12,7 @@ public class KrakenTests
     [Fact]
     public void TheBundledLibraryIsCopiedBesideTheAssemblyAndExportsTheEntryPoint()
     {
-        var path = Path.Combine(Path.GetDirectoryName(typeof(Kraken).Assembly.Location)!, "runtimes", "linux-x64", "native", "libooz.so");
+        var path = Path.Combine(Path.GetDirectoryName(typeof(Kraken).Assembly.Location)!, "runtimes", BundledNativeLibrary.RuntimeIdentifiers()[^1], "native", "libooz.so");
         File.Exists(path).Should().BeTrue("the project copies the built library to the output folder");
 
         NativeLibrary.TryLoad(path, out var handle).Should().BeTrue();

@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using BCnEncoder.Decoder;
 using BCnEncoder.Shared;
+using SilverModManager.Sdk.Native;
 using SilverModManager.Wabbajack.Transforms;
 
 namespace SilverModManager.Wabbajack.Transforms.Tests;
@@ -27,7 +28,7 @@ public sealed unsafe class NativeTextureLibraryTests : IDisposable
     private const int Bc7Levels = 7;
     private const int RgbcxLevels = 19;
 
-    private static readonly string LibraryPath = Path.Combine(AppContext.BaseDirectory, "runtimes", "linux-x64", "native", "libsmmtexenc.so");
+    private static readonly string LibraryPath = Path.Combine(AppContext.BaseDirectory, "runtimes", BundledNativeLibrary.RuntimeIdentifiers()[^1], "native", "libsmmtexenc.so");
 
     // A platform with no bundled library is a supported configuration (the managed encoder is the floor), so these skip there.
     private readonly nint _library = File.Exists(LibraryPath) ? NativeLibrary.Load(LibraryPath) : 0;

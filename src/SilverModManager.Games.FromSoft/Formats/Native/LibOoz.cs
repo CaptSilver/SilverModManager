@@ -5,7 +5,7 @@ namespace SilverModManager.Games.FromSoft.Formats.Native;
 // Linux only, like the rest of the app. The library is built from extern/ooz by scripts/build-ooz.sh.
 internal static unsafe partial class LibOoz
 {
-    // Resolved by LibOozResolver: the file ships under runtimes/linux-x64/native, not on the loader's search path.
+    // Resolved by LibOozResolver: the file ships under runtimes/<rid>/native (the build's SmmNativeRid), not on the loader's search path.
     internal const string LibraryName = "ooz";
 
     static LibOoz() => LibOozResolver.Install();

@@ -3,6 +3,7 @@ using System.Formats.Tar;
 using System.IO.Compression;
 using System.Text;
 using FluentAssertions;
+using SilverModManager.Sdk.Native;
 using ICSharpCode.SharpZipLib.Zip;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -291,7 +292,7 @@ public class ArchiveTraversalTests : AFileExtractorTest
         await source.Combine("a/b/kept.txt").WriteAllTextAsync("payload", TestContext.Current.CancellationToken);
 
         var archive = container.Path.Combine("Traversal Mod-1-0.7z");
-        var sevenZip = FileSystem.GetKnownPath(KnownPath.EntryDirectory).Combine("runtimes/linux-x64/native/7zz").ToString();
+        var sevenZip = FileSystem.GetKnownPath(KnownPath.EntryDirectory).Combine($"runtimes/{BundledNativeLibrary.RuntimeIdentifiers()[^1]}/native/7zz").ToString();
         var startInfo = new ProcessStartInfo(sevenZip) { WorkingDirectory = source.ToString(), RedirectStandardOutput = true };
         foreach (var argument in new[] { "a", "-spf", archive.ToString(), "a/../x.txt", "a/b/kept.txt" }) startInfo.ArgumentList.Add(argument);
         using (var process = System.Diagnostics.Process.Start(startInfo)!)
@@ -332,7 +333,7 @@ public class ArchiveTraversalTests : AFileExtractorTest
 
     private async Task Run7z(AbsolutePath workingDirectory, params string[] arguments)
     {
-        var sevenZip = FileSystem.GetKnownPath(KnownPath.EntryDirectory).Combine("runtimes/linux-x64/native/7zz").ToString();
+        var sevenZip = FileSystem.GetKnownPath(KnownPath.EntryDirectory).Combine($"runtimes/{BundledNativeLibrary.RuntimeIdentifiers()[^1]}/native/7zz").ToString();
         var startInfo = new ProcessStartInfo(sevenZip) { WorkingDirectory = workingDirectory.ToString(), RedirectStandardOutput = true };
         foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
         using var process = System.Diagnostics.Process.Start(startInfo) ?? throw new InvalidOperationException("7zz did not start");

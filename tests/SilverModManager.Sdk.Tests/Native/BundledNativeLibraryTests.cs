@@ -36,6 +36,34 @@ public class BundledNativeLibraryTests
     }
 
     [Fact]
+    public void FindFileReturnsTheFirstCandidateThatExists()
+    {
+        var wanted = Path.Combine("/app/bin/", "runtimes/linux-x64/native/7zz");
+
+        var found = BundledNativeLibrary.FindFile("7zz", ["/app/bin/", "/app/"], ["fedora.44-x64", "linux-x64"], path => path == wanted, out var pathsTried);
+
+        found.Should().Be(wanted);
+        pathsTried.Should().Equal(
+            Path.Combine("/app/bin/", "runtimes/fedora.44-x64/native/7zz"),
+            wanted,
+            Path.Combine("/app/", "runtimes/fedora.44-x64/native/7zz"),
+            Path.Combine("/app/", "runtimes/linux-x64/native/7zz"));
+    }
+
+    [Fact]
+    public void FindFileReportsEveryPathTriedWhenNothingExists()
+    {
+        var found = BundledNativeLibrary.FindFile("7zz", ["/app/bin/", "/app/"], ["fedora.44-x64", "linux-x64"], _ => false, out var pathsTried);
+
+        found.Should().BeNull();
+        pathsTried.Should().Equal(
+            Path.Combine("/app/bin/", "runtimes/fedora.44-x64/native/7zz"),
+            Path.Combine("/app/bin/", "runtimes/linux-x64/native/7zz"),
+            Path.Combine("/app/", "runtimes/fedora.44-x64/native/7zz"),
+            Path.Combine("/app/", "runtimes/linux-x64/native/7zz"));
+    }
+
+    [Fact]
     public void ADistroSpecificRid_IsTriedBeforeThePortableOneInEachFolder()
     {
         var candidates = BundledNativeLibrary.CandidatePaths("libsmmtexenc.so", "/opt/smm/A.dll", "/app/", ["fedora.44-arm64", "linux-arm64"]);
