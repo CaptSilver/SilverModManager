@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NexusMods.Paths;
@@ -245,5 +246,96 @@ public class GalleryClientTests(TemporaryFileManager temporaryFileManager)
         var act = async () => await rig.Client.Get(cancellationToken: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<GalleryUnavailableException>();
+    }
+
+    [Fact]
+    public async Task GetCachedReadsTheCacheFileOnceUntilItChanges()
+    {
+        await using var rig = new Rig(temporaryFileManager);
+        await rig.Client.Get(cancellationToken: TestContext.Current.CancellationToken);
+        var fresh = rig.Create();
+        var requests = rig.Handler.Requests.Count;
+
+        var first = fresh.GetCached();
+        var second = fresh.GetCached();
+
+        rig.Handler.Requests.Count.Should().Be(requests, "GetCached never uses the network");
+        first.Should().NotBeNull();
+        second.Should().BeSameAs(first);
+
+        var later = rig.Time.GetUtcNow().AddHours(1);
+        var text = await rig.CacheFile.ReadAllTextAsync(TestContext.Current.CancellationToken);
+        var rewritten = System.Text.RegularExpressions.Regex.Replace(text, "\"FetchedAt\":\"[^\"]*\"", $"\"FetchedAt\":\"{later:O}\"");
+        rewritten.Should().NotBe(text);
+        await rig.CacheFile.WriteAllTextAsync(rewritten, TestContext.Current.CancellationToken);
+
+        var third = fresh.GetCached();
+
+        third.Should().NotBeSameAs(first);
+        third!.FetchedAt.Should().Be(later);
+    }
+
+    [Fact]
+    public async Task GetCachedNeverFetches()
+    {
+        await using var rig = new Rig(temporaryFileManager);
+
+        var listing = rig.Client.GetCached();
+
+        listing.Should().BeNull();
+        rig.Handler.Requests.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RefreshedEmitsOnceAfterANetworkFetch()
+    {
+        await using var rig = new Rig(temporaryFileManager);
+        var emitted = new List<GalleryListing>();
+        using var subscription = rig.Client.Refreshed.Subscribe(emitted.Add);
+
+        await rig.Client.Get(refresh: true, cancellationToken: TestContext.Current.CancellationToken);
+
+        emitted.Should().ContainSingle().Which.IsStale.Should().BeFalse();
+
+        await rig.Client.Get(cancellationToken: TestContext.Current.CancellationToken);
+
+        emitted.Should().HaveCount(1, "a list served from the cache is not a refresh");
+    }
+
+    [Fact]
+    public async Task ASubscriberThatThrowsDoesNotFailTheFetch()
+    {
+        await using var rig = new Rig(temporaryFileManager);
+        using var subscription = rig.Client.Refreshed.Subscribe(_ => throw new TaskCanceledException("from a subscriber"));
+
+        var listing = await rig.Client.Get(refresh: true, cancellationToken: TestContext.Current.CancellationToken);
+
+        listing.IsStale.Should().BeFalse();
+        rig.Client.GetCached().Should().NotBeNull("the fetch wrote the cache");
+    }
+
+    private sealed class CountingLogger : ILogger<WabbajackGalleryClient>
+    {
+        public int Warnings;
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == LogLevel.Warning) Warnings++;
+        }
+    }
+
+    [Fact]
+    public async Task AnUnreadableCacheIsParsedOnceUntilItChanges()
+    {
+        await using var rig = new Rig(temporaryFileManager);
+        rig.CacheFile.Parent.CreateDirectory();
+        await rig.CacheFile.WriteAllTextAsync("not json", TestContext.Current.CancellationToken);
+        var logger = new CountingLogger();
+        var client = new WabbajackGalleryClient(new HttpClient(rig.Handler), rig.CacheFile, rig.Time, logger);
+
+        client.GetCached().Should().BeNull();
+        client.GetCached().Should().BeNull();
+        logger.Warnings.Should().Be(1, "the unchanged junk file is not read and reported again");
     }
 }

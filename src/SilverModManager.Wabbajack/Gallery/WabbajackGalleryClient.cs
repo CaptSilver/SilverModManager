@@ -1,3 +1,4 @@
+using System.Reactive.Subjects;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
@@ -8,12 +9,27 @@ namespace SilverModManager.Wabbajack.Gallery;
 /// <param name="IsStale">The network could not be reached, so this is an older copy than the cache lifetime allows.</param>
 public sealed record GalleryListing(IReadOnlyList<GalleryEntry> Entries, DateTimeOffset FetchedAt, bool IsStale);
 
+public interface IWabbajackGalleryClient
+{
+    /// <summary>The combined gallery from the cache or, when that is old or missing, the network.</summary>
+    Task<GalleryListing> Get(bool refresh = false, CancellationToken cancellationToken = default);
+
+    /// <summary>The listing in the disk cache, never fetching. Parsed once per cache file version.</summary>
+    GalleryListing? GetCached();
+
+    /// <summary>
+    /// Emits after every successful network fetch, and only then. It emits on a thread-pool thread, so a UI subscriber
+    /// must <c>ObserveOn</c> the UI scheduler. A subscriber that throws is logged and does not affect the fetch.
+    /// </summary>
+    IObservable<GalleryListing> Refreshed { get; }
+}
+
 /// <summary>
 /// Reads Wabbajack's public gallery: <c>repositories.json</c> names the repositories, each has a
 /// <c>modlists.json</c>. The combined result is cached on disk; a fresh cache is used as is, an old one is replaced
 /// when the network answers and served as it is when it doesn't.
 /// </summary>
-public sealed class WabbajackGalleryClient(HttpClient client, AbsolutePath cacheFile, TimeProvider time, ILogger<WabbajackGalleryClient> logger)
+public sealed class WabbajackGalleryClient(HttpClient client, AbsolutePath cacheFile, TimeProvider time, ILogger<WabbajackGalleryClient> logger) : IWabbajackGalleryClient
 {
     public static readonly Uri RepositoriesAddress = new("https://raw.githubusercontent.com/wabbajack-tools/mod-lists/master/repositories.json");
 
@@ -29,6 +45,33 @@ public sealed class WabbajackGalleryClient(HttpClient client, AbsolutePath cache
 
     private readonly Lock _flightLock = new();
     private Task<GalleryListing>? _inFlight;
+    private readonly Subject<GalleryListing> _refreshed = new();
+    private readonly Lock _cacheLock = new();
+    private (DateTime Written, long Length, GalleryListing? Listing)? _parsed;
+
+    public IObservable<GalleryListing> Refreshed => _refreshed;
+
+    public GalleryListing? GetCached()
+    {
+        lock (_cacheLock)
+        {
+            try
+            {
+                if (!cacheFile.FileExists) { _parsed = null; return null; }
+                var info = new FileInfo(cacheFile.ToString());
+                if (_parsed is { } known && known.Written == info.LastWriteTimeUtc && known.Length == info.Length) return known.Listing;
+
+                // A junk file is remembered too, so an unchanged one is neither re-read nor reported again.
+                var listing = LoadCache();
+                _parsed = (info.LastWriteTimeUtc, info.Length, listing);
+                return listing;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                return null;
+            }
+        }
+    }
 
     /// <summary>
     /// Callers that ask while a fetch is running share it instead of starting their own: the repositories are hit once
@@ -62,12 +105,13 @@ public sealed class WabbajackGalleryClient(HttpClient client, AbsolutePath cache
 
     private async Task<GalleryListing> Load(bool refresh)
     {
-        var cached = LoadCache();
+        var cached = GetCached();
         if (!refresh && cached is not null && time.GetUtcNow() - cached.FetchedAt < CacheLifetime) return cached;
 
+        GalleryListing fetched;
         try
         {
-            return await Fetch(CancellationToken.None);
+            fetched = await Fetch(CancellationToken.None);
         }
         catch (Exception e) when (e is GalleryUnavailableException or GalleryFormatException or HttpRequestException or TaskCanceledException)
         {
@@ -75,6 +119,18 @@ public sealed class WabbajackGalleryClient(HttpClient client, AbsolutePath cache
             logger.LogWarning(e, "The Wabbajack gallery could not be refreshed, using the copy from {FetchedAt}", cached.FetchedAt);
             return cached with { IsStale = true };
         }
+
+        // Outside the try above: the fetch has succeeded and the cache is written, so a subscriber's failure must not
+        // turn it into the stale-cache fallback.
+        try
+        {
+            _refreshed.OnNext(fetched);
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning(e, "A subscriber to the gallery's Refreshed failed");
+        }
+        return fetched;
     }
 
     private async Task<GalleryListing> Fetch(CancellationToken cancellationToken)

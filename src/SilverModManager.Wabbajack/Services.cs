@@ -91,6 +91,7 @@ public static class Services
                 provider.GetRequiredService<WabbajackPaths>().GalleryCache.Combine("gallery.json"),
                 provider.GetService<TimeProvider>() ?? TimeProvider.System,
                 provider.GetRequiredService<ILogger<WabbajackGalleryClient>>()))
+            .AddSingleton<IWabbajackGalleryClient>(provider => provider.GetRequiredService<WabbajackGalleryClient>())
             .AddSingleton<ILibraryFileRecogniser, WabbajackModlistRecogniser>()
             .AddSingleton<SilverModManager.Library.Listing.ILibraryItemKind, WabbajackModlistKind>();
     }

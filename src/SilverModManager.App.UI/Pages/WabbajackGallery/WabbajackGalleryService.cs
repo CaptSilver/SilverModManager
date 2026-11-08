@@ -6,7 +6,7 @@ using SilverModManager.Wabbajack.Models;
 namespace SilverModManager.App.UI.Pages.WabbajackGallery;
 
 /// <inheritdoc/>
-public sealed class WabbajackGalleryService(WabbajackGalleryClient client, WabbajackGalleryDownloader downloader, IConnection connection) : IWabbajackGalleryService
+public sealed class WabbajackGalleryService(IWabbajackGalleryClient client, WabbajackGalleryDownloader downloader, IConnection connection) : IWabbajackGalleryService
 {
     public Task<GalleryListing> GetListing(bool refresh, CancellationToken cancellationToken) => client.Get(refresh, cancellationToken);
 
