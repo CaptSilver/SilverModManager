@@ -25,6 +25,7 @@ public class LaunchSessionTests : IDisposable
     private readonly ActiveLaunchSessions _active = new();
     private readonly FakeSynchronizer _synchronizer;
     private readonly FakeProcessFactory _processes;
+    private readonly FakeLaunchFinishMarkers _markers = new();
     private readonly IDesktopNotifier _notifier = Substitute.For<IDesktopNotifier>();
     private readonly IInstallationLockFactory _lockFactory = Substitute.For<IInstallationLockFactory>();
     private readonly List<ILaunchGate> _gates = [];
@@ -70,7 +71,7 @@ public class LaunchSessionTests : IDisposable
 
     private LaunchSession NewSession()
     {
-        var session = new LaunchSession(_lockFactory, _active, _synchronizer, new LaunchFinish(_synchronizer, _log), _processes, _gates, _notifier, _log, _error);
+        var session = new LaunchSession(_lockFactory, _active, _synchronizer, new LaunchFinish(_synchronizer, _markers, _log), _markers, _processes, _gates, _notifier, _log, _error);
         _sessions.Add(session);
         return session;
     }
@@ -399,6 +400,117 @@ public class LaunchSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task TheMarkerIsWrittenWhenTheGameStarts_AndNotBefore()
+    {
+        var gate = AddGate("a");
+        var before = new List<bool>();
+        _synchronizer.OnSync = () => { if (!_processes.Started) before.Add(_markers.IsSet); };
+        gate.OnPrepare = () => before.Add(_markers.IsSet);
+        (Guid, IReadOnlyList<string>)? atStart = null;
+        _processes.OnStart = () => atStart = _markers.Written is { } w ? (w.SessionId, w.GateNames) : null;
+        var session = NewSession();
+
+        await Run(session);
+
+        before.Should().OnlyContain(set => !set);
+        atStart.Should().NotBeNull();
+        atStart!.Value.Item1.Should().NotBe(Guid.Empty);
+        atStart.Value.Item1.Should().Be(gate.ContextsSeen.Last().SessionId);
+        atStart.Value.Item2.Should().Equal(nameof(FakeGate));
+    }
+
+    [Fact]
+    public async Task TheAfterGameSyncClearsTheMarker_AndTheFinishRetractsNothingMore()
+    {
+        var syncs = 0;
+        var setBeforeSecondSync = false;
+        _synchronizer.OnSync = () =>
+        {
+            if (++syncs != 2) return;
+            setBeforeSecondSync = _markers.IsSet;
+            _markers.Clear();
+        };
+
+        await Run(NewSession());
+
+        setBeforeSecondSync.Should().BeTrue();
+        _markers.Retracts.Should().Be(1);
+        _markers.RetractsThatFoundOne.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AFinishWhoseSyncIsRefused_LeavesNoMarker()
+    {
+        _synchronizer.FailOn = 2;
+        _synchronizer.FailWith = RemovalQuestion(declined: true);
+
+        var result = await Run(NewSession());
+
+        _markers.IsSet.Should().BeFalse();
+        _markers.RetractsThatFoundOne.Should().Be(1);
+        result.Message.Should().Contain("Nothing was removed from the game folder");
+    }
+
+    [Fact]
+    public async Task AFinishWhoseSyncFails_LeavesNoMarker()
+    {
+        _synchronizer.FailOn = 2;
+
+        var result = await Run(NewSession());
+
+        _markers.IsSet.Should().BeFalse();
+        result.ExitCode.Should().Be(125);
+    }
+
+    [Fact]
+    public async Task AFailureToClearTheMarker_IsReported_AndDoesNotHideTheGamesExit()
+    {
+        _markers.RetractFailure = new IOException("db is read-only");
+
+        var result = await Run(NewSession());
+
+        result.ExitCode.Should().Be(125);
+        result.Message.Should().Contain("clearing the finish marker").And.Contain("db is read-only");
+    }
+
+    [Fact]
+    public async Task AFailureToWriteTheMarker_FailsTheLaunchBeforeTheGameStarts()
+    {
+        _markers.WriteFailure = new IOException("db is read-only");
+
+        var result = await Run(NewSession());
+
+        result.ExitCode.Should().Be(125);
+        result.Message.Should().StartWith("Could not start Test Game");
+        _processes.Started.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AnExternalLaunch_WritesTheMarkerToo()
+    {
+        LoadoutId? inCallback = null;
+
+        await NewSession().RunExternalAsync(_context, _ =>
+        {
+            inCallback = _markers.Written?.Loadout;
+            return Task.CompletedTask;
+        });
+
+        inCallback.Should().Be(_context.LoadoutId);
+    }
+
+    [Fact]
+    public async Task AGameThatSurvivesKill_LeavesTheMarkerForTheNextStart()
+    {
+        _processes.Result = new GameProcessResult(0, new TrackedProcess(4242, "wineserver"));
+
+        await Run(NewSession());
+
+        _markers.IsSet.Should().BeTrue();
+        _markers.Retracts.Should().Be(0);
+    }
+
+    [Fact]
     public async Task AProcessThatCouldNotBeStarted_Is125_AndTheLaunchIsStillFinished()
     {
         var gate = AddGate("a");
@@ -489,7 +601,7 @@ public class LaunchSessionTests : IDisposable
         var credentials = Substitute.For<INexusCredentialSummary>();
         credentials.Kind.Returns(NexusCredentialKind.ApiKey);
         credentials.Source.Returns("environment variable NEXUS_API_KEY");
-        var session = new LaunchSession(_lockFactory, _active, _synchronizer, new LaunchFinish(_synchronizer, _log), _processes, _gates, _notifier, _log, _error, credentials: credentials);
+        var session = new LaunchSession(_lockFactory, _active, _synchronizer, new LaunchFinish(_synchronizer, _markers, _log), _markers, _processes, _gates, _notifier, _log, _error, credentials: credentials);
         _sessions.Add(session);
 
         await Run(session);
@@ -538,6 +650,7 @@ public class LaunchSessionTests : IDisposable
         public Exception? PrepareFailure { get; set; }
         public Exception? FinishFailure { get; set; }
         public Action? OnFinish { get; set; }
+        public Action? OnPrepare { get; set; }
         public LaunchPhase? PrepareSaw { get; private set; }
         public LaunchPhase? FinishSaw { get; private set; }
         public bool Finished { get; private set; }
@@ -556,6 +669,7 @@ public class LaunchSessionTests : IDisposable
             events.Add($"prepare:{name}");
             ContextsSeen.Add(("prepare", context.SessionId, context.EndSeen));
             PrepareSaw = test.Phase();
+            OnPrepare?.Invoke();
             return PrepareFailure is null ? Task.CompletedTask : Task.FromException(PrepareFailure);
         }
 

@@ -7,12 +7,12 @@ namespace SilverModManager.Platform.Proton.Launch;
 /// What happens after the game has stopped: the gates' teardown, then taking the game folder's changes back into
 /// the loadout.
 /// </summary>
-public sealed class LaunchFinish(ILaunchSynchronizer synchronizer, ILogger<LaunchFinish> logger)
+public sealed class LaunchFinish(ILaunchSynchronizer synchronizer, ILaunchFinishMarkers markers, ILogger<LaunchFinish> logger)
 {
     /// <summary>
     /// Runs the teardown of every gate that was prepared and then ingests the game folder. A failing gate does not
-    /// stop the others or the ingest, so a bad teardown can't cost the user their game's changes. Returns the first
-    /// failure.
+    /// stop the others or the ingest, so a bad teardown can't cost the user their game's changes. The pending-finish
+    /// marker is cleared last, whether or not the ingest worked. Returns the first failure.
     /// </summary>
     internal async Task<LaunchFailure?> RunAsync(LaunchContext context, IReadOnlyList<ILaunchGate> gates, InstallationLock heldLock, bool callerReports)
     {
@@ -74,6 +74,17 @@ public sealed class LaunchFinish(ILaunchSynchronizer synchronizer, ILogger<Launc
         catch (Exception e)
         {
             Record(e, "taking the game's changes back into the loadout");
+        }
+
+        // A committed sync already cleared the marker, so this usually finds nothing. After a refused or failed
+        // sync it is the only thing that does, and a marker left behind would repeat the same failure at every start.
+        try
+        {
+            await markers.Retract(context.Installation);
+        }
+        catch (Exception e)
+        {
+            Record(e, "clearing the finish marker");
         }
 
         return failure;

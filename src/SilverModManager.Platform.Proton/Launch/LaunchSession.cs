@@ -84,6 +84,7 @@ public sealed class LaunchSession
     private bool _stopRequested;
     private IGameProcess? _process;
     private Task? _terminating;
+    private readonly ILaunchFinishMarkers _markers;
 
     private GameInstallation? _installation;
     private InstallationLock? _lock;
@@ -99,6 +100,7 @@ public sealed class LaunchSession
         ActiveLaunchSessions activeSessions,
         ILaunchSynchronizer synchronizer,
         LaunchFinish finish,
+        ILaunchFinishMarkers markers,
         IGameProcessFactory processFactory,
         IEnumerable<ILaunchGate> gates,
         IDesktopNotifier notifier,
@@ -111,6 +113,7 @@ public sealed class LaunchSession
         _activeSessions = activeSessions;
         _synchronizer = synchronizer;
         _finish = finish;
+        _markers = markers;
         _processFactory = processFactory;
         _gates = gates.ToList();
         _notifier = notifier;
@@ -347,6 +350,7 @@ public sealed class LaunchSession
                     LogPlan(plan, game);
                     if (BeginRunning())
                     {
+                        await WriteMarker(context, prepared);
                         heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context));
                         using var process = _processFactory.Start(plan.Process, context.Installation);
                         AttachProcess(process);
@@ -363,6 +367,7 @@ public sealed class LaunchSession
                 }
                 else if (BeginRunning())
                 {
+                    await WriteMarker(context, prepared);
                     heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context));
                     var waitWhileRunning = whileRunning
                         ?? throw new InvalidOperationException("LaunchSession.RunCore was given neither a plan nor a wait");
@@ -413,6 +418,11 @@ public sealed class LaunchSession
         if (exit is null) throw new InvalidOperationException($"LaunchSession for {game} finished without a game exit or a stop request");
         return new LaunchResult(exit.ExitCode, null);
     }
+
+    // Written before the game exists so a crash at any later point leaves the finish owed. Gate names are type
+    // names, as in the log lines; two gates with the same type name in different assemblies would collide.
+    private Task WriteMarker(LaunchContext context, IReadOnlyList<ILaunchGate> prepared)
+        => _markers.Write(context.Installation, context.LoadoutId, context.SessionId, prepared.Select(g => g.GetType().Name).ToList());
 
     /// <summary>
     /// Stops the launch the way a termination signal would, for an owner that has no <see cref="StopHandler"/>

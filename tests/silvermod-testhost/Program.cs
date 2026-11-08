@@ -173,7 +173,9 @@ static int SessionScenario(string runtimeDir, string blockIn, bool killFail)
         Platform = OSPlatform.Windows,
     }, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, folder)));
 
-    var session = new LaunchSession(lockFactory, new ActiveLaunchSessions(), synchronizer, new LaunchFinish(synchronizer, NullLogger<LaunchFinish>.Instance), processes, [gate],
+    // The host exercises signal handling, not the database-backed marker; substitutes complete immediately.
+    var markers = Substitute.For<ILaunchFinishMarkers>();
+    var session = new LaunchSession(lockFactory, new ActiveLaunchSessions(), synchronizer, new LaunchFinish(synchronizer, markers, NullLogger<LaunchFinish>.Instance), markers, processes, [gate],
         Substitute.For<IDesktopNotifier>(), NullLogger<LaunchSession>.Instance, TextWriter.Null, stop);
     Console.WriteLine("ready");
     Console.Out.Flush();

@@ -37,9 +37,20 @@ public sealed class ModdedLaunchFakes : IDisposable
         services.AddSingleton(provider => new ActiveLaunchSessions(provider));
         services.AddTransient<LaunchSession>();
         services.AddSingleton<LaunchFinish>();
+        services.Replace(ServiceDescriptor.Singleton<ILaunchFinishMarkers, NoFinishMarkers>());
     }
 
     public void Dispose() => Directory.Delete(RuntimeDir, recursive: true);
+}
+
+/// <summary>Stands in for the database-backed pending-finish marker; these launches never leave anything to finish.</summary>
+public sealed class NoFinishMarkers : ILaunchFinishMarkers
+{
+    public Task Write(GameInstallation installation, LoadoutId loadout, Guid sessionId, IReadOnlyList<string> gateNames) => Task.CompletedTask;
+
+    public PendingLaunchFinish? Read(GameInstallation installation) => null;
+
+    public Task<bool> Retract(GameInstallation installation) => Task.FromResult(false);
 }
 
 public sealed class FakeExecutableLocator : IExecutableLocator
