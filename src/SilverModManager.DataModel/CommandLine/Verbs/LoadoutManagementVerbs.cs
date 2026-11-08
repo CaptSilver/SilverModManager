@@ -1,3 +1,4 @@
+using System.Reactive.Linq;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileSystemGlobbing;
@@ -115,9 +116,19 @@ public static class LoadoutManagementVerbs
     private static async Task<int> Synchronize([Injected] IRenderer renderer,
         [Option("l", "loadout", "Loadout to apply")] Loadout.ReadOnly loadout,
         [Injected] ISynchronizerService syncService,
+        [Injected] IServiceProvider services,
         [Option("large-files", "large-files", LargeFilesHelp, true)] string? largeFiles,
         [Option("confirm-removal", "confirm-removal", ConfirmRemovalHelp, true)] bool confirmRemoval)
     {
+        // A launch that closed without being finished is finished at the start of the sync. Its line goes to stderr so
+        // a script reading stdout sees only what it asked for. Only this loadout's game is reported: the finisher is
+        // shared by the whole process. This is the stderr of the process running the verb, so it reaches a terminal
+        // for a headless as-main run; a call forwarded to a running main reports through that main's own subscriber.
+        // A host without launches has no finisher.
+        var installation = loadout.InstallationInstance;
+        using var finishReports = services.GetService<IPendingLaunchFinisher>()?.Reports
+            .Where(report => report.Installation == installation && report.Message is not null)
+            .Subscribe(report => Console.Error.WriteLine(report.Message));
         using var origin = SyncOrigin.Begin(SyncTrigger.CommandLine);
         using var removal = confirmRemoval ? MassRemovalConsent.Confirmed() : MassRemovalConsent.Refused();
         await syncService.Synchronize(loadout.LoadoutId, BackupOverflowChoices.Parse(largeFiles));
