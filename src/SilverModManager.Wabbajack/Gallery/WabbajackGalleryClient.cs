@@ -203,6 +203,8 @@ public sealed class WabbajackGalleryClient(HttpClient client, AbsolutePath cache
     // is one format to get right and a hand-edited or truncated file is just another kind of junk.
     private sealed record CacheFile(DateTimeOffset FetchedAt, Dictionary<string, string> Repositories, List<string>? Failed = null);
 
+    private const string LegacyCacheMarker = "(cache predates failure tracking)";
+
     private GalleryListing? LoadCache()
     {
         try
@@ -213,6 +215,9 @@ public sealed class WabbajackGalleryClient(HttpClient client, AbsolutePath cache
 
             var entries = new List<GalleryEntry>();
             var failed = new List<string>(parsed.Failed ?? []);
+            // A cache from before failures were recorded cannot say whether a repository was missing from that fetch,
+            // so it counts as incomplete until the next fetch records the truth.
+            if (parsed.Failed is null) failed.Add(LegacyCacheMarker);
             foreach (var (name, text) in parsed.Repositories)
             {
                 try { entries.AddRange(GalleryReader.ReadModlists(text, name)); }

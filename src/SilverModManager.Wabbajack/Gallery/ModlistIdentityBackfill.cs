@@ -8,8 +8,9 @@ namespace SilverModManager.Wabbajack.Gallery;
 /// <summary>
 /// Gives a list downloaded before the library recorded gallery identities its <c>MachineUrl</c> and
 /// <c>Repository</c>. A file added from disk (no download address) is never matched, and neither is one that already
-/// has an identity. A listing missing a repository only confirms exact hash matches: a name or title match might be
-/// the survivor of an ambiguity the missing repository would have shown.
+/// has an identity. A listing missing a repository binds nothing: the lookalike check cannot see a same-titled or
+/// same-MachineUrl entry in the repository that failed to load, so even an exact link, hash and title match might be
+/// the survivor of an ambiguity a complete listing would have shown. The user can still pick with <see cref="Assign"/>.
 /// The gallery lists third-party repositories, so a repository other than the one the file came from must not be able
 /// to claim it. An entry is only a candidate when its own download link is the one the file was fetched from, its
 /// title is the list's own name, and no other repository offers a list with the same title or machine URL. The link
@@ -22,9 +23,14 @@ public sealed class ModlistIdentityBackfill(IConnection connection, ILogger<Modl
     // One at a time: a refresh and the start-up pass must not both write the same file.
     private readonly SemaphoreSlim _running = new(1, 1);
 
-    /// <summary>Writes the identity of every file with exactly one candidate. Never writes <c>GalleryDateUpdated</c>.</summary>
+    /// <summary>
+    /// Writes the identity of every file with exactly one candidate. Never writes <c>GalleryDateUpdated</c>, and
+    /// writes nothing at all when the listing is incomplete.
+    /// </summary>
     public async Task Run(GalleryListing listing, CancellationToken ct)
     {
+        if (!listing.IsComplete) return;
+
         await _running.WaitAsync(ct);
         try
         {
@@ -57,11 +63,13 @@ public sealed class ModlistIdentityBackfill(IConnection connection, ILogger<Modl
     /// downloader gives that entry, then the same title and author in the same game. Every rule only considers entries
     /// whose download link is the one the file was fetched from (<see cref="WabbajackModlistLibraryFile.GalleryDownloadUrl"/>),
     /// so a hash advertised by another repository's entry cannot claim the file. More than one is ambiguous and
-    /// is left for the user to pick. The name rules are skipped on an incomplete listing.
+    /// is left for the user to pick. On an incomplete listing nothing is offered, so the result never rests on a
+    /// repository that could not be read (<see cref="Run"/> does not use it then either).
     /// </summary>
     public IReadOnlyList<GalleryEntry> Candidates(WabbajackModlistLibraryFile.ReadOnly file, GalleryListing listing)
     {
-        if (!file.Contains(WabbajackModlistLibraryFile.GalleryDownloadUrl)
+        if (!listing.IsComplete
+            || !file.Contains(WabbajackModlistLibraryFile.GalleryDownloadUrl)
             || !Uri.TryCreate(file.GalleryDownloadUrl.Value, UriKind.Absolute, out var recordedUri)) return [];
 
         var linked = listing.Entries.Where(e => e.Download is { } link && SameLink(link, recordedUri)).ToList();
@@ -72,8 +80,6 @@ public sealed class ModlistIdentityBackfill(IConnection connection, ILogger<Modl
             var byHash = linked.Where(e => e.DownloadHash is { } offered && offered.Equals(hash)).ToList();
             if (byHash.Count > 0) return byHash;
         }
-
-        if (!listing.IsComplete) return [];
 
         var game = WabbajackGames.GameIdFor(file.GameType);
         var inGame = linked.Where(e => game is null || e.Game == game).ToList();

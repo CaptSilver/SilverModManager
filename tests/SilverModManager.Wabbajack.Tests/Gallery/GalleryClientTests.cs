@@ -276,6 +276,22 @@ public class GalleryClientTests(TemporaryFileManager temporaryFileManager)
     }
 
     [Fact]
+    public async Task ACacheWrittenBeforeFailuresWereRecordedLoadsAsIncomplete()
+    {
+        await using var rig = new Rig(temporaryFileManager);
+        await rig.Client.Get(cancellationToken: TestContext.Current.CancellationToken);
+        var text = await rig.CacheFile.ReadAllTextAsync(TestContext.Current.CancellationToken);
+        var legacy = System.Text.Json.Nodes.JsonNode.Parse(text)!.AsObject();
+        legacy.Remove("Failed").Should().BeTrue("the fetch recorded its failing repositories");
+        await rig.CacheFile.WriteAllTextAsync(legacy.ToJsonString(), TestContext.Current.CancellationToken);
+
+        var listing = rig.Create().GetCached();
+
+        listing.Should().NotBeNull();
+        listing!.IsComplete.Should().BeFalse("a cache with no record of failures cannot show that nothing failed");
+    }
+
+    [Fact]
     public async Task GetCachedNeverFetches()
     {
         await using var rig = new Rig(temporaryFileManager);

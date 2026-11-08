@@ -133,7 +133,7 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
     }
 
     [Fact]
-    public async Task AnIncompleteListingOnlyAcceptsAnExactHashMatch()
+    public async Task AnIncompleteListingBindsNothingAutomatically()
     {
         var name = Unique("Partial");
         var file = await FromGallery(name);
@@ -145,9 +145,30 @@ public class ModlistIdentityBackfillTests(ILibraryService libraryService, IConne
         Fresh(file).Contains(WabbajackModlistLibraryFile.MachineUrl).Should().BeFalse();
         Backfill.Candidates(file, partial).Should().BeEmpty();
 
-        var byHash = official with { DownloadHash = file.AsLibraryFile().XxHash64Identity() };
-        await Backfill.Run(partial with { Entries = [byHash] }, TestContext.Current.CancellationToken);
-        Fresh(file).MachineUrl.Value.Should().Be("official");
+        // Even the exact link, hash and title: the repository that failed might list a twin that a complete listing would have shown.
+        var exact = official with { DownloadHash = file.AsLibraryFile().XxHash64Identity() };
+        await Backfill.Run(partial with { Entries = [exact] }, TestContext.Current.CancellationToken);
+
+        Fresh(file).Contains(WabbajackModlistLibraryFile.MachineUrl).Should().BeFalse();
+        Fresh(file).Contains(WabbajackModlistLibraryFile.Repository).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AnIncompleteListingStillAllowsTheUsersOwnPick()
+    {
+        var name = Unique("Picked while partial");
+        var file = await FromGallery(name);
+        var entry = Linked(Entry(name, machineUrl: "picked-partial")) with { DownloadHash = file.AsLibraryFile().XxHash64Identity() };
+        var partial = Listing(entry) with { FailedRepositories = ["someone/community-lists"] };
+
+        // A complete listing would bind this one by link, hash and title, so only the guard keeps it unwritten.
+        await Backfill.Run(partial, TestContext.Current.CancellationToken);
+        Fresh(file).Contains(WabbajackModlistLibraryFile.MachineUrl).Should().BeFalse();
+
+        await Backfill.Assign(file, entry);
+
+        Fresh(file).MachineUrl.Value.Should().Be("picked-partial");
+        Fresh(file).Repository.Value.Should().Be(entry.Repository);
     }
 
     [Fact]
