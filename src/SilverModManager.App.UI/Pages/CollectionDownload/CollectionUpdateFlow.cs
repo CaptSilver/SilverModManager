@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using SilverModManager.App.UI.Controls.DragAndDrop;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Collections;
@@ -97,7 +98,7 @@ internal static class CollectionUpdateFlow
         {
             // Not rethrown: the commands that call this have no error handler, so a throw would swallow the explanation.
             logger.LogError(e, "Updating `{Name}` to {To} failed", update.Name, update.NewVersionText);
-            notifications.ShowToast(string.Format(Language.CollectionUpdate_Failed, update.Name, update.NewVersionText, e.Message), ToastNotificationVariant.Failure);
+            notifications.ShowToast(string.Format(Language.CollectionUpdate_Failed, MarkdownText.InlineMidLine(update.Name), MarkdownText.InlineMidLine(update.NewVersionText), MarkdownText.Message(e)), ToastNotificationVariant.Failure);
         }
     }
 
@@ -133,11 +134,11 @@ internal static class CollectionUpdateFlow
         catch (Exception e)
         {
             logger.LogError(e, "Undoing the update of `{Name}` to {To} failed", update.Name, update.NewVersionText);
-            notifications.ShowToast(e.Message, ToastNotificationVariant.Failure);
+            notifications.ShowToast(MarkdownText.Message(e), ToastNotificationVariant.Failure);
             return false;
         }
 
-        notifications.ShowToast(string.Format(Language.CollectionUpdate_Undone, update.Name, update.CurrentVersionText), ToastNotificationVariant.Success);
+        notifications.ShowToast(string.Format(Language.CollectionUpdate_Undone, MarkdownText.InlineMidLine(update.Name), MarkdownText.InlineMidLine(update.CurrentVersionText)), ToastNotificationVariant.Success);
         return true;
     }
 }

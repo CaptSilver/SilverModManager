@@ -246,7 +246,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                 }
                 catch (UserFacingException e)
                 {
-                    _notificationService.ShowToast(MarkdownText.ToPlain(e.Message), ToastNotificationVariant.Failure);
+                    _notificationService.ShowToast(e.Message, ToastNotificationVariant.Failure);
                 }
             },
             awaitOperation: AwaitOperation.Drop,
@@ -278,7 +278,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                 }
                 catch (UserFacingException e)
                 {
-                    _notificationService.ShowToast(MarkdownText.ToPlain(e.Message), ToastNotificationVariant.Failure);
+                    _notificationService.ShowToast(e.Message, ToastNotificationVariant.Failure);
                 }
             },
             awaitOperation: AwaitOperation.Drop,

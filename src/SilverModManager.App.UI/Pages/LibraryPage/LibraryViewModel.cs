@@ -390,7 +390,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
 
         var replacements = outcomes.SelectMany(outcome => outcome.Replacements).ToArray();
         foreach (var replacement in replacements.Where(replacement => replacement.Result == LibraryItemReplacementResult.Success))
-            _notificationService.ShowToast(string.Format(Language.ToastNotification_Mod_updated____0_, replacement.New.Name), ToastNotificationVariant.Success);
+            _notificationService.ShowToast(string.Format(Language.ToastNotification_Mod_updated____0_, MarkdownText.InlineMidLine(replacement.New.Name)), ToastNotificationVariant.Success);
 
         // Some (but not all) downloads failed, so show relevant dialog.
         var failures = outcomes.SelectMany(outcome => outcome.DownloadFailures).ToArray();

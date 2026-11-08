@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Aggregation;
@@ -149,7 +150,7 @@ internal class GameInstalledDataProvider : ILoadoutDataProvider
         {
             _logger.LogError(e, "Treating game-installed item {Item} as the user's own failed", itemId);
             _serviceProvider.GetRequiredService<IWindowNotificationService>()
-                .ShowToast(string.Format(Language.GameInstalled_TreatAsMine_Failed, e.Message));
+                .ShowToast(string.Format(Language.GameInstalled_TreatAsMine_Failed, MarkdownText.Message(e)));
         }
     }
 }

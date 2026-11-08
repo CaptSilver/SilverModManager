@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Dialog;
 
@@ -51,18 +52,18 @@ public class WindowNotificationService : IWindowNotificationService
                 // TODO: Use ToastNotificationVariant
                 // TODO: Use buttons and handler
         
-                var notification = new Notification(
-                    null,
-                    message,
-                    NotificationType.Information,
-                    expiration ?? TimeSpan.FromSeconds(5));
-                
                 // Must be on UI thread to show the notification
-                manager.Show(notification);
+                manager.Show(BuildNotification(message, expiration));
                 return;
             }
         );
     }
+
+    /// <summary>
+    /// The toast shows plain text, but messages arrive as Markdown (a refusal wraps each name in a code span, which
+    /// the dialogs render). Code spans are unwrapped and escapes removed here, once, for every caller; a name stays
+    /// inert because plain text has nothing to interpret.
+    /// </summary>
+    internal static Notification BuildNotification(string message, TimeSpan? expiration) =>
+        new(null, MarkdownText.PlainText(MarkdownText.ToPlain(message), keepLayout: true), NotificationType.Information, expiration ?? TimeSpan.FromSeconds(5));
 }
-
-

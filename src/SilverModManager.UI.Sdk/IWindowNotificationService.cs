@@ -11,7 +11,10 @@ public interface IWindowNotificationService
     /// <summary>
     /// Shows a toast-like notification in the UI.
     /// </summary>
-    /// <param name="message">Content of the notification</param>
+    /// <param name="message">
+    ///     Content of the notification, as Markdown: the toast shows it as plain text, with code spans unwrapped and
+    ///     escapes removed. Escape raw names and exception messages first (<c>MarkdownText.Inline</c>, <c>MarkdownText.Message</c>).
+    /// </param>
     /// <param name="type">the type of the notification</param>
     /// <param name="expiration">
     ///     the expiration time of the notification after which it will automatically close.

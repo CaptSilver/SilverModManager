@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using System.ComponentModel;
 using System.Reactive.Disposables;
 using Avalonia.Controls.Models.TreeDataGrid;
@@ -286,7 +287,7 @@ public partial class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFi
         {
             logger.LogError(e, "Reading the game folder again for External Changes failed");
             provider.GetRequiredService<IWindowNotificationService>()
-                .ShowToast($"The app could not read the game folder: {e.Message}");
+                .ShowToast($"The app could not read the game folder: {MarkdownText.Message(e)}");
         }
     }
 

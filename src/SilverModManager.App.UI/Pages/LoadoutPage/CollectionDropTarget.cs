@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using Avalonia.Input;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Library;
@@ -130,12 +131,12 @@ public sealed class CollectionDropTarget(
         try
         {
             var installed = await loadoutManager.InstallItems(items, payload.Loadout, LoadoutItemGroupId.From(collection.Value));
-            notifications.ShowToast($"Installed {ModCount.Text(installed.Length)} into {name}", ToastNotificationVariant.Success);
+            notifications.ShowToast($"Installed {ModCount.Text(installed.Length)} into {MarkdownText.InlineMidLine(name)}", ToastNotificationVariant.Success);
         }
         catch (BatchInstallException failure)
         {
-            var why = failure.InnerException?.Message ?? failure.Message;
-            notifications.ShowToast($"Couldn't install into {name}: {failure.ItemName}: {why}. Nothing was installed.", ToastNotificationVariant.Failure, TimeSpan.FromSeconds(12));
+            var why = failure.InnerException is { } inner ? MarkdownText.Message(inner) : MarkdownText.Message(failure);
+            notifications.ShowToast($"Couldn't install into {MarkdownText.InlineMidLine(name)}: {MarkdownText.InlineMidLine(failure.ItemName)}: {why}. Nothing was installed.", ToastNotificationVariant.Failure, TimeSpan.FromSeconds(12));
         }
     }
 
@@ -147,7 +148,7 @@ public sealed class CollectionDropTarget(
             var result = await loadoutManager.MoveItemsToCollection(payload.Items, collection);
             if (result.Moved.Count > 0)
             {
-                notifications.ShowToast($"Moved {ModCount.Text(result.Moved.Count)} to {name}", ToastNotificationVariant.Success);
+                notifications.ShowToast($"Moved {ModCount.Text(result.Moved.Count)} to {MarkdownText.InlineMidLine(name)}", ToastNotificationVariant.Success);
                 return;
             }
 
@@ -158,7 +159,7 @@ public sealed class CollectionDropTarget(
         catch (InvalidOperationException)
         {
             // The resolver refuses an order the stored group rules make impossible; its message is for the log.
-            notifications.ShowToast($"Couldn't move: the load-order rules of {name} contradict the rules of these mods. Nothing moved.", ToastNotificationVariant.Failure, TimeSpan.FromSeconds(12));
+            notifications.ShowToast($"Couldn't move: the load-order rules of {MarkdownText.InlineMidLine(name)} contradict the rules of these mods. Nothing moved.", ToastNotificationVariant.Failure, TimeSpan.FromSeconds(12));
         }
     }
 }

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -255,7 +256,7 @@ public sealed class NexusCollectionSource : CollectionSource
         }
         catch (Exception ex)
         {
-            notifications.ShowToast($"Failed to delete collection: {ex.Message}", ToastNotificationVariant.Failure);
+            notifications.ShowToast($"Failed to delete collection: {MarkdownText.Message(ex)}", ToastNotificationVariant.Failure);
         }
     }
 
