@@ -420,6 +420,37 @@ public class CollectionUpdateTests(ITestOutputHelper helper) : ACyberpunkIsolate
     }
 
     [Fact]
+    public async Task PlanningASwitchWritesNothing()
+    {
+        var s = await InstalledFirstRevision();
+        var basis = Connection.Db.BasisTxId;
+
+        var plan = await CollectionUpdater.PlanSwitch(ServiceProvider, s.Group, s.Second.Revision);
+
+        Connection.Db.BasisTxId.Should().Be(basis, "planning is read-only");
+        plan.Target.Id.Should().Be(s.Second.Revision.Id);
+        plan.ToInstall.Select(item => item.Name).Should().BeEquivalentTo(["Mod b", "Mod e"]);
+        plan.MissingDownloads.Should().BeEmpty();
+        NexusCollectionLoadoutGroup.Load(Connection.Db, s.Group.Id).Revision.Id.Should().Be(s.First.Revision.Id);
+    }
+
+    [Fact]
+    public async Task ThePlanNamesTheDownloadsStillMissing()
+    {
+        var a = await MakeMod("a", 0);
+        var first = await Publish(1, [a, await MakeMod("b", 1)], []);
+        var second = await Publish(2, [a, await MakeMod("b", 11, inLibrary: false)], []);
+        var loadout = await CreateLoadout();
+        var group = await Await(InstallCollectionJob.Create(ServiceProvider, loadout, first.File, first.Revision, first.Items));
+        var basis = Connection.Db.BasisTxId;
+
+        var plan = await CollectionUpdater.PlanSwitch(ServiceProvider, group, second.Revision);
+
+        plan.MissingDownloads.Should().Equal("Mod b");
+        Connection.Db.BasisTxId.Should().Be(basis);
+    }
+
+    [Fact]
     public async Task UpdateInstallsWhatChangedInTheSameCollectionEntry()
     {
         var s = await InstalledFirstRevision();

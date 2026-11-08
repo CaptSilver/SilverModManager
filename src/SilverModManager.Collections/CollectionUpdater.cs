@@ -51,6 +51,23 @@ public sealed record CollectionSwitch(
     IReadOnlyList<DroppedMod> Dropped,
     IReadOnlyList<ReplacedSlot> ReplacedSlots);
 
+/// <summary>What <see cref="CollectionUpdater.PlanSwitch"/> worked out without changing anything.</summary>
+/// <param name="Group">The collection's group as it was when planned.</param>
+/// <param name="Target">The revision the group would move to.</param>
+/// <param name="Plan">How each mod would be handled.</param>
+/// <param name="ToInstall">The new revision's downloads the install has to run for.</param>
+/// <param name="MissingDownloads">Names of the <paramref name="ToInstall"/> downloads whose archives aren't in the library yet.</param>
+/// <param name="TargetLibraryFile">The new revision's collection archive.</param>
+/// <param name="ReplacedSlots">The old versions of the changed mods.</param>
+public sealed record CollectionSwitchPlan(
+    NexusCollectionLoadoutGroup.ReadOnly Group,
+    CollectionRevisionMetadata.ReadOnly Target,
+    CollectionUpdatePlan Plan,
+    IReadOnlyList<CollectionDownload.ReadOnly> ToInstall,
+    IReadOnlyList<string> MissingDownloads,
+    NexusModsCollectionLibraryFile.ReadOnly TargetLibraryFile,
+    IReadOnlyList<ReplacedSlot> ReplacedSlots);
+
 /// <summary>An old version of a changed mod, waiting for its replacement. It is a plain mod of the loadout until then.</summary>
 /// <param name="NewDownload">The download that replaces the mod.</param>
 /// <param name="OldGroup">The old version's group.</param>
@@ -240,14 +257,28 @@ public static partial class CollectionUpdater
     /// the ones that stay (repointed at the new revision's downloads), the ones the new revision replaces (taken out of the collection until the replacement is installed) and
     /// the ones it no longer lists (moved to the loadout's own collection). No mod is installed.
     /// </summary>
-    public static ValueTask<CollectionSwitch> Switch(
+    public static async ValueTask<CollectionSwitch> Switch(
         IServiceProvider serviceProvider,
         NexusCollectionLoadoutGroup.ReadOnly group,
         CollectionRevisionMetadata.ReadOnly newRevision,
         CancellationToken cancellationToken = default)
     {
         group = CheckCanSwitch(serviceProvider.GetRequiredService<IConnection>().Db, serviceProvider.GetRequiredService<IJobMonitor>(), group, newRevision);
-        return SwitchUnlocked(serviceProvider, group, newRevision, cancellationToken);
+        return await SwitchUnlocked(serviceProvider, group, newRevision, cancellationToken);
+    }
+
+    /// <summary>
+    /// Works out what <see cref="Switch"/> would do, including which downloads the library still lacks, and writes nothing.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The group can't be switched to that revision; the message says why.</exception>
+    public static ValueTask<CollectionSwitchPlan> PlanSwitch(
+        IServiceProvider serviceProvider,
+        NexusCollectionLoadoutGroup.ReadOnly group,
+        CollectionRevisionMetadata.ReadOnly newRevision,
+        CancellationToken cancellationToken = default)
+    {
+        group = CheckCanSwitch(serviceProvider.GetRequiredService<IConnection>().Db, serviceProvider.GetRequiredService<IJobMonitor>(), group, newRevision);
+        return PlanSwitchUnlocked(serviceProvider, group, newRevision, cancellationToken);
     }
 
     /// <summary>The group as it is now, if it can be switched to <paramref name="newRevision"/>.</summary>
@@ -264,7 +295,7 @@ public static partial class CollectionUpdater
         return group;
     }
 
-    private static async ValueTask<CollectionSwitch> SwitchUnlocked(
+    private static async ValueTask<CollectionSwitchPlan> PlanSwitchUnlocked(
         IServiceProvider serviceProvider,
         NexusCollectionLoadoutGroup.ReadOnly group,
         CollectionRevisionMetadata.ReadOnly newRevision,
@@ -276,7 +307,6 @@ public static partial class CollectionUpdater
 
         var db = connection.Db;
         group = NexusCollectionLoadoutGroup.Load(db, group.Id);
-        var loadoutId = group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId;
 
         var nexusModsLibrary = serviceProvider.GetRequiredService<NexusModsLibrary>();
         var options = serviceProvider.GetRequiredService<JsonSerializerOptions>();
@@ -297,13 +327,6 @@ public static partial class CollectionUpdater
         var toInstall = plan.ToInstall.Select(mod => mod.Download).ToHashSet();
         var itemsToInstall = newDownloads.Where(download => toInstall.Contains(CollectionDownloadId.From(download.Id))).ToArray();
         var missing = itemsToInstall.Where(download => !CollectionDownloader.GetStatus(download, db).IsDownloaded()).Select(static download => download.Name).ToArray();
-        if (missing.Length > 0)
-            throw new InvalidOperationException($"These mods aren't in the library yet: {string.Join(", ", missing)}. Download them from the collection page first.");
-
-        // What the old revision's rules put in the stored rules has to go before the items stop pointing at it.
-        var oldRules = StoredRulesOf(connection, db, group, loadoutId);
-
-        var itemByGroup = items.ToDictionary(static item => item.AsLoadoutItemGroup().LoadoutItemGroupId);
 
         var replaced = plan.Changed
             .Select(change => new ReplacedSlot(
@@ -312,6 +335,37 @@ public static partial class CollectionUpdater
                 LoadoutItem.Load(db, change.Installed.Group).IsDisabled))
             .Concat(CarriedReplacements(db, group, plan))
             .ToArray();
+
+        return new CollectionSwitchPlan(group, newRevision, plan, itemsToInstall, missing, newLibraryFile, replaced);
+    }
+
+    private static async ValueTask<CollectionSwitch> SwitchUnlocked(
+        IServiceProvider serviceProvider,
+        NexusCollectionLoadoutGroup.ReadOnly group,
+        CollectionRevisionMetadata.ReadOnly newRevision,
+        CancellationToken cancellationToken)
+    {
+        var switchPlan = await PlanSwitchUnlocked(serviceProvider, group, newRevision, cancellationToken);
+        return await WriteSwitch(serviceProvider, switchPlan);
+    }
+
+    /// <summary>Applies a plan from <see cref="PlanSwitch"/>: the writes of <see cref="Switch"/>.</summary>
+    /// <exception cref="InvalidOperationException">An archive the install needs isn't in the library. Nothing was changed.</exception>
+    private static async ValueTask<CollectionSwitch> WriteSwitch(IServiceProvider serviceProvider, CollectionSwitchPlan switchPlan)
+    {
+        var connection = serviceProvider.GetRequiredService<IConnection>();
+        var (group, newRevision, plan, itemsToInstall, missing, newLibraryFile, replaced) = switchPlan;
+        if (missing.Count > 0)
+            throw new InvalidOperationException($"These mods aren't in the library yet: {string.Join(", ", missing)}. Download them from the collection page first.");
+
+        var db = connection.Db;
+        var loadoutId = group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId;
+        var items = group.GetCollectionItems().ToArray();
+
+        // What the old revision's rules put in the stored rules has to go before the items stop pointing at it.
+        var oldRules = StoredRulesOf(connection, db, group, loadoutId);
+
+        var itemByGroup = items.ToDictionary(static item => item.AsLoadoutItemGroup().LoadoutItemGroupId);
 
         using (var tx = connection.BeginTransaction())
         {
@@ -354,7 +408,7 @@ public static partial class CollectionUpdater
         }
 
         var dropped = plan.Dropped.Select(mod => new DroppedMod(mod.Group, mod.Name)).ToArray();
-        return new CollectionSwitch(NexusCollectionLoadoutGroup.Load(connection.Db, group.Id), newRevision, newLibraryFile, plan, itemsToInstall, dropped, replaced);
+        return new CollectionSwitch(NexusCollectionLoadoutGroup.Load(connection.Db, group.Id), newRevision, newLibraryFile, plan, [.. itemsToInstall], dropped, replaced);
     }
 
     /// <summary>
