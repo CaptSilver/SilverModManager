@@ -7,7 +7,12 @@ namespace SilverModManager.Wabbajack.Gallery;
 
 /// <summary>The combined gallery, and when it was fetched.</summary>
 /// <param name="IsStale">The network could not be reached, so this is an older copy than the cache lifetime allows.</param>
-public sealed record GalleryListing(IReadOnlyList<GalleryEntry> Entries, DateTimeOffset FetchedAt, bool IsStale);
+/// <param name="FailedRepositories">Repositories that could not be read, so their entries are missing from <paramref name="Entries"/>.</param>
+public sealed record GalleryListing(IReadOnlyList<GalleryEntry> Entries, DateTimeOffset FetchedAt, bool IsStale, IReadOnlyList<string>? FailedRepositories = null)
+{
+    /// <summary>False when a repository is missing, so an entry absent from the listing may only be absent from what loaded.</summary>
+    public bool IsComplete => FailedRepositories is not { Count: > 0 };
+}
 
 public interface IWabbajackGalleryClient
 {
@@ -146,12 +151,12 @@ public sealed class WabbajackGalleryClient(HttpClient client, AbsolutePath cache
             {
                 var text = await GetText(repository.Url, cancellationToken);
                 // Parsed here so a repository with junk is skipped now instead of poisoning the cache.
-                return (repository, text, entries: GalleryReader.ReadModlists(text, repository.Name));
+                return (repository, text: (string?)text, entries: (IReadOnlyList<GalleryEntry>)GalleryReader.ReadModlists(text, repository.Name));
             }
             catch (Exception e) when (!cancellationToken.IsCancellationRequested && e is GalleryFormatException or HttpRequestException or TaskCanceledException)
             {
                 logger.LogWarning(e, "Skipping gallery repository {Repository}", repository.Name);
-                return default;
+                return (repository, text: (string?)null, entries: (IReadOnlyList<GalleryEntry>)[]);
             }
             finally
             {
@@ -159,12 +164,13 @@ public sealed class WabbajackGalleryClient(HttpClient client, AbsolutePath cache
             }
         }));
 
-        var good = fetched.Where(f => f.repository is not null).ToList();
+        var good = fetched.Where(f => f.text is not null).ToList();
         if (good.Count == 0) throw new GalleryUnavailableException("No gallery repository could be read");
 
+        var failed = fetched.Where(f => f.text is null).Select(f => f.repository.Name).ToList();
         var now = time.GetUtcNow();
-        SaveCache(now, good.ToDictionary(f => f.repository.Name, f => f.text));
-        return new GalleryListing(good.SelectMany(f => f.entries).ToList(), now, IsStale: false);
+        SaveCache(now, good.ToDictionary(f => f.repository.Name, f => f.text ?? ""), failed);
+        return new GalleryListing(good.SelectMany(f => f.entries).ToList(), now, IsStale: false, failed);
     }
 
     private async Task<string> GetText(Uri uri, CancellationToken cancellationToken)
@@ -195,7 +201,7 @@ public sealed class WabbajackGalleryClient(HttpClient client, AbsolutePath cache
 
     // The cache holds the repositories' documents as they arrived and is read back through the same parser, so there
     // is one format to get right and a hand-edited or truncated file is just another kind of junk.
-    private sealed record CacheFile(DateTimeOffset FetchedAt, Dictionary<string, string> Repositories);
+    private sealed record CacheFile(DateTimeOffset FetchedAt, Dictionary<string, string> Repositories, List<string>? Failed = null);
 
     private GalleryListing? LoadCache()
     {
@@ -206,12 +212,13 @@ public sealed class WabbajackGalleryClient(HttpClient client, AbsolutePath cache
             if (parsed?.Repositories is null) return null;
 
             var entries = new List<GalleryEntry>();
+            var failed = new List<string>(parsed.Failed ?? []);
             foreach (var (name, text) in parsed.Repositories)
             {
                 try { entries.AddRange(GalleryReader.ReadModlists(text, name)); }
-                catch (GalleryFormatException) { }
+                catch (GalleryFormatException) { failed.Add(name); }
             }
-            return new GalleryListing(entries, parsed.FetchedAt, IsStale: false);
+            return new GalleryListing(entries, parsed.FetchedAt, IsStale: false, failed);
         }
         catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
         {
@@ -220,13 +227,13 @@ public sealed class WabbajackGalleryClient(HttpClient client, AbsolutePath cache
         }
     }
 
-    private void SaveCache(DateTimeOffset fetchedAt, Dictionary<string, string> repositories)
+    private void SaveCache(DateTimeOffset fetchedAt, Dictionary<string, string> repositories, List<string> failed)
     {
         try
         {
             cacheFile.Parent.CreateDirectory();
             var temporary = cacheFile.Parent.Combine(cacheFile.FileName + ".tmp");
-            File.WriteAllText(temporary.ToString(), JsonSerializer.Serialize(new CacheFile(fetchedAt, repositories)));
+            File.WriteAllText(temporary.ToString(), JsonSerializer.Serialize(new CacheFile(fetchedAt, repositories, failed)));
             File.Move(temporary.ToString(), cacheFile.ToString(), overwrite: true);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)

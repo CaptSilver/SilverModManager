@@ -76,6 +76,32 @@ public class GalleryDownloaderTests(IServiceProvider provider, ILibraryService l
     }
 
     [Fact]
+    public async Task ADownloadRecordsTheEntrysMachineUrlRepositoryAndDate()
+    {
+        await using var folder = temporaryFileManager.CreateFolder();
+        var bytes = ModlistBytes(folder.Path, "With identity");
+        var updated = new DateTimeOffset(2026, 5, 6, 7, 8, 9, TimeSpan.Zero);
+        var entry = EntryFor(bytes) with { DateUpdated = updated };
+
+        var model = await Downloader(new FixedDownloads(provider, bytes)).Download(entry, TestContext.Current.CancellationToken);
+
+        model.MachineUrl.Value.Should().Be("fixture-list");
+        model.Repository.Value.Should().Be("wabbajack-tools/mod-lists");
+        model.GalleryDateUpdated.Value.Should().Be(updated);
+    }
+
+    [Fact]
+    public async Task AnEntryWithoutADateRecordsNone()
+    {
+        await using var folder = temporaryFileManager.CreateFolder();
+        var bytes = ModlistBytes(folder.Path, "Undated");
+
+        var model = await Downloader(new FixedDownloads(provider, bytes)).Download(EntryFor(bytes), TestContext.Current.CancellationToken);
+
+        model.Contains(WabbajackModlistLibraryFile.GalleryDateUpdated).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task AListAddedFromDiskIsNotFromTheGallery()
     {
         await using var folder = temporaryFileManager.CreateFolder();

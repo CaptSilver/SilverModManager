@@ -53,6 +53,9 @@ public sealed class WabbajackGalleryDownloader(
 
             using var tx = connection.BeginTransaction();
             tx.Add(modlist.Id, WabbajackModlistLibraryFile.GalleryDownloadUrl, url.ToString());
+            tx.Add(modlist.Id, WabbajackModlistLibraryFile.MachineUrl, entry.MachineUrl);
+            tx.Add(modlist.Id, WabbajackModlistLibraryFile.Repository, entry.Repository);
+            if (entry.DateUpdated is { } updated) tx.Add(modlist.Id, WabbajackModlistLibraryFile.GalleryDateUpdated, updated);
             var result = await tx.Commit();
             return WabbajackModlistLibraryFile.Load(result.Db, modlist.Id);
         }
