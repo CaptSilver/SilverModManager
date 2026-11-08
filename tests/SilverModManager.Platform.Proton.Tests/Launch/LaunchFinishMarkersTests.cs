@@ -142,15 +142,38 @@ public class LaunchFinishMarkersTests(ITestOutputHelper helper) : AStubbedGameIs
     public async Task Read_WhenTheLoadoutWasDeleted_IsLoadoutGone()
     {
         var loadout = await ManagedLoadout();
+        var other = (await CreateLoadout()).LoadoutId;
         var markers = NewMarkers();
         await markers.Write(GameInstallation, loadout, Guid.NewGuid(), ["a"]);
+
+        // Deleting the loadout that was synced last syncs it first, and that sync takes the marker with it. The
+        // marker only outlives its loadout when another loadout is the one on disk.
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(MetadataId, GameInstallMetadata.LastSyncedLoadout, other.Value);
+            await tx.Commit();
+        }
 
         await DeleteLoadoutAsync(loadout);
 
         var marker = markers.Read(GameInstallation);
+        marker.Should().NotBeNull();
         marker!.State.Should().Be(PendingLaunchFinishState.LoadoutGone);
         marker.LoadoutId.Should().Be(loadout);
         marker.LoadoutName.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Read_WhenTheSyncedLoadoutWasDeleted_HasNoMarker()
+    {
+        var loadout = await ManagedLoadout();
+        var markers = NewMarkers();
+        await RecordASync(loadout);
+        await markers.Write(GameInstallation, loadout, Guid.NewGuid(), ["a"]);
+
+        await DeleteLoadoutAsync(loadout);
+
+        markers.Read(GameInstallation).Should().BeNull("deleting the synced loadout syncs it first, which takes the pending finish");
     }
 
     [Fact]
