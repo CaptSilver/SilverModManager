@@ -12,6 +12,9 @@ internal sealed class KnownFile
     public List<EntityId> Ids { get; } = [];
     public bool Wanted { get; set; }
 
+    /// <summary>The size of the file's bytes; a folder's share of another's is counted in these.</summary>
+    public Size Size { get; set; }
+
     /// <summary>The xxHash64 the list gave the directive this file was written for, when the run that wrote it recorded one.</summary>
     public FileIdentity? ListHash { get; set; }
 }

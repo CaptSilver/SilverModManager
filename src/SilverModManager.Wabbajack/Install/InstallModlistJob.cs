@@ -131,12 +131,15 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         using var progressLog = Progress.Changes.Subscribe(new InstallProgressLog(Logger, Modlist.Name).Report);
 
         var check = await Check(cancellationToken);
+        if (check.Archives.Missing.Count > 0 && !Options.SkipMissingArchives) throw new ArchivesMissingException(check.Archives.Missing);
         var (group, extrasFolder) = await EnsureGroup(check, cancellationToken);
 
         try
         {
             // What an earlier run committed is read first: the directives it finished are left out of both phases.
             var state = LoadExisting(group);
+            await RecordFolders(state);
+            if (_groupWasInstalled) _gameFilesKeptByUser = InstallReconciler.GameFilesKeptByUser(state, check.Placements, _earlierSkips);
             var prepared = await Resolve(check, state, cancellationToken);
             await Write(check, group, extrasFolder, state, prepared, cancellationToken);
             await RegisterTools(check, group, extrasFolder, cancellationToken);
@@ -167,17 +170,20 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     #region Check
 
     /// <summary>One directive with the place it lands in the loadout, decided once for the whole job.</summary>
-    private sealed record Placement(int Index, Directive Directive, RelativePath To, Mo2Target Target, string? Group, GamePath? Path);
+    internal sealed record Placement(int Index, Directive Directive, RelativePath To, Mo2Target Target, string? Group, GamePath? Path);
 
     private sealed record Checked(
         Loadout.ReadOnly Loadout,
         ModList List,
         LibraryArchive.ReadOnly ListArchive,
-        ArchivePlan Plan,
+        ArchiveCheck Archives,
         GameFileSourceLookup GameFiles,
         IReadOnlyList<Placement> Placements,
         // TempId and path inside it, folded, to the directive that supplies the file.
-        IReadOnlyDictionary<string, Dictionary<string, Placement>> BsaInputs);
+        IReadOnlyDictionary<string, Dictionary<string, Placement>> BsaInputs)
+    {
+        public ArchivePlan Plan => Archives.Plan;
+    }
 
     private async Task<Checked> Check(CancellationToken cancellationToken)
     {
@@ -210,15 +216,12 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         placements = DropProgramFiles(placements, program, context.GameRootFolders);
         var gameFiles = Inventory.GameFilesFor(loadout);
         var plan = await Inventory.Build(list, Connection.Db, gameFiles, cancellationToken, program: program);
-        // A game file of another version is not a download to fetch: its directives are skipped with that reason instead.
-        var missing = plan.Rows.Where(r => r.State is not (ArchiveState.Have or ArchiveState.GameFile or ArchiveState.GameFileVersion or ArchiveState.NotNeeded)).ToArray();
-        if (missing.Length > 0 && !Options.SkipMissingArchives) throw new ArchivesMissingException(missing);
 
         var (estimate, isLowerBound) = EstimateExtractedSize(plan);
         Progress.SetEstimate(estimate, isLowerBound);
         CountPathsNeverInstalled(placements, list);
 
-        return new Checked(loadout, list, listArchive, plan, gameFiles, placements, bsaInputs);
+        return new Checked(loadout, list, listArchive, ArchiveCheck.Of(plan), gameFiles, placements, bsaInputs);
     }
 
     private static IMo2InstanceTarget RequireTarget(GameInstallation installation)
@@ -393,8 +396,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             {
                 // The note is deleted with the other rows, so the directive it is about has to run again to write it.
                 if (skipped.Kind == SkipKind.KeptOriginal) _keptOriginals.Add(skipped.To);
+                _earlierSkips.Add(skipped.To);
                 tx.Delete(skipped.Id, recursive: false);
             }
+            _groupWasInstalled = found.InstalledAt is { HasValue: true };
             // A resume is an unfinished install again until it ends; with InstalledAt left in place it would read as
             // installed from the moment its skip rows are gone.
             if (found.InstalledAt is { HasValue: true } finishedAt)
@@ -513,6 +518,11 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             {
                 return await PrepareVanillaFile(check, placement, vanilla, gameRow, gameFile, cancellationToken);
             }
+
+            // After the vanilla comparison: a vanilla copy that matched leaves no row and no note either, and it still
+            // has to be compared again, since a game update can make it differ.
+            if (_gameFilesKeptByUser.Any(kept => SameFile(kept, root.Path)))
+                return new Prepared(placement, null, null, Silent: true);
         }
 
         if (placement.Directive is CreateBsa)
@@ -592,7 +602,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
     #region Write
 
-    private sealed class WriteState
+    internal sealed class WriteState
     {
         /// <summary>Directive destinations, folded, to the file store hash and xxHash64 of what was written, for merges to read back and check.</summary>
         public ConcurrentDictionary<string, (FileIdentity Store, FileIdentity XxHash64)> Written { get; } = new();
@@ -626,6 +636,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
         public HashSet<string> NewGroups { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>Existing mod groups that carry no <see cref="WabbajackModGroup.Folder"/> yet, keyed by their name, which is then also their folder.</summary>
+        public HashSet<string> FolderlessGroups { get; } = new(StringComparer.OrdinalIgnoreCase);
+
         /// <summary>Per group, the files an earlier run (or this one) already created, as path and hash.</summary>
         public Dictionary<string, GroupFiles> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
 
@@ -655,62 +668,32 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     /// <summary>The destinations of the <see cref="SkipKind.KeptOriginal"/> notes an earlier run left, which the resume deletes and so has to write again.</summary>
     private readonly HashSet<string> _keptOriginals = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>The destinations of every skip note an earlier run left; read before the resume deletes them.</summary>
+    private readonly HashSet<string> _earlierSkips = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Whether the group this run continues had finished installing, so a file it holds neither a row nor a note for was left alone on purpose.</summary>
+    private bool _groupWasInstalled;
+
+    /// <summary>Game-folder files the user kept on an earlier run, which a rerun without the same choice must not replace.</summary>
+    private IReadOnlySet<RelativePath> _gameFilesKeptByUser = new HashSet<RelativePath>();
+
     /// <summary>
     /// Leaves out the directives an earlier run already wrote the file of, so a resume locates and writes only the rest.
-    /// A directive is finished when the group holds a file at its path that the earlier run recorded for the same list
-    /// hash, or, for a file written before the hash was recorded, a plain copy of a library file that has that hash. The
-    /// file is marked wanted, so the stale-file pass keeps it, and its destination is recorded for merges that read it.
-    /// A directive with no file row (one that was skipped) is never finished, so a skip is always retried.
+    /// <see cref="InstallReconciler.FinishedDirectives"/> decides which are finished; the destination of each is recorded
+    /// for merges that read it.
     /// </summary>
     private Placement[] LeaveOutFinishedDirectives(Checked check, WriteState state, Placement[] executable)
     {
-        var remaining = new List<Placement>(executable.Length);
-        foreach (var placement in executable)
-        {
-            if (FindFinishedFile(check, state, placement) is { } finished)
-            {
-                finished.Known.Wanted = true;
-                state.Written[Fold(placement.To)] = (finished.Identity, placement.Directive.XxHash64);
-            }
-            else
-            {
-                remaining.Add(placement);
-            }
-        }
+        var finished = InstallReconciler.FinishedDirectives(
+            state, executable, _keptOriginals, updateMode: false,
+            path => OwnedIniPath(check, path) is not null,
+            IsLibraryCopyOf,
+            (placement, identity) => state.Written[Fold(placement.To)] = (identity, placement.Directive.XxHash64));
 
-        var finishedCount = executable.Length - remaining.Count;
-        if (finishedCount > 0)
-            Logger.LogInformation("{Count} of {Total} files of '{List}' are already in the loadout and are kept", finishedCount, executable.Length, check.List.Name);
-        return remaining.ToArray();
-    }
-
-    private (FileIdentity Identity, KnownFile Known)? FindFinishedFile(Checked check, WriteState state, Placement placement)
-    {
-        if (placement.Group is not { } groupName || placement.Path is not { } path) return null;
-        if (!CanBeFinished(check, placement, path) || _keptOriginals.Contains(placement.To.ToString())) return null;
-        if (!state.Files.TryGetValue(groupName, out var files)) return null;
-        var expected = placement.Directive.XxHash64;
-
-        foreach (var (identity, known) in files.AtPath(path))
-        {
-            if (known.ListHash is { } recorded ? recorded.Equals(expected) : IsLibraryCopyOf(placement.Directive, identity)) return (identity, known);
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// Whether the directive's output is a file row whose bytes depend only on the list. A tool file and a game's INI
-    /// baseline leave no such row, and a path-remapped file or a list-edited profile file depends on this machine.
-    /// </summary>
-    private bool CanBeFinished(Checked check, Placement placement, GamePath path)
-    {
-        if (placement.Directive is RemappedInlineFile || IsHashUnchecked(placement.Directive)) return false;
-        return placement.Target switch
-        {
-            Mo2Target.ModFile or Mo2Target.GameRootFile => true,
-            Mo2Target.ProfileSetting or Mo2Target.ProfileTweak => OwnedIniPath(check, path) is null,
-            _ => false,
-        };
+        var done = finished.Select(p => p.Index).ToHashSet();
+        if (finished.Length > 0)
+            Logger.LogInformation("{Count} of {Total} files of '{List}' are already in the loadout and are kept", finished.Length, executable.Length, check.List.Name);
+        return executable.Where(p => !done.Contains(p.Index)).ToArray();
     }
 
     /// <summary>
@@ -773,8 +756,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             await DiscardPending(state);
         }
 
-        await KeepUserTweaksOfEarlierInstalls(state);
-        await RemoveStaleFiles(state);
+        var isListOutput = await ListOutputRows(state);
+        await KeepUserTweaksOfEarlierInstalls(state, isListOutput);
+        await RemoveStaleFiles(state, isListOutput);
         LogSkipSummary(check, state);
     }
 
@@ -993,23 +977,18 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
     /// <summary>
     /// Deletes the rows an earlier run made that this run did not ask for again: a file whose content changed has a row
-    /// for the old hash next to the new one, and a file the list dropped would otherwise stay installed. Runs only after
-    /// every batch committed, so an install that failed part way keeps what it had.
+    /// for the old hash next to the new one, and a file the list dropped would otherwise stay installed.
+    /// <see cref="InstallReconciler.StaleRows"/> decides which. Runs only after every batch committed, so an install that
+    /// failed part way keeps what it had.
     /// </summary>
-    private async Task RemoveStaleFiles(WriteState state)
+    private async Task RemoveStaleFiles(WriteState state, Func<GamePath, FileIdentity, bool> isListOutput)
     {
+        var (stale, _) = InstallReconciler.StaleRows(state, isListOutput);
+        if (stale.Count == 0) return;
+
         using var tx = Connection.BeginTransaction();
-        var any = false;
-        foreach (var known in state.Files.Values.SelectMany(files => files.Known))
-        {
-            // Rows beyond the first of a wanted file are duplicates a past run left.
-            foreach (var id in known.Wanted ? known.Ids.Skip(1) : known.Ids)
-            {
-                tx.Delete(id, recursive: false);
-                any = true;
-            }
-        }
-        if (any) await tx.Commit();
+        foreach (var id in stale) tx.Delete(id, recursive: false);
+        await tx.Commit();
     }
 
     /// <summary>
@@ -1020,9 +999,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     /// it was written) is redundant next to the list's tweak and is left to be deleted. When the user's group already
     /// has a tweak for the same INI, the row is merged under it, so the user's own keys win, and then deleted.
     /// </summary>
-    private async Task KeepUserTweaksOfEarlierInstalls(WriteState state)
+    private async Task KeepUserTweaksOfEarlierInstalls(WriteState state, Func<GamePath, FileIdentity, bool> isListOutput)
     {
-        if (!state.Files.TryGetValue(Mo2Layout.ProfileSettingsGroup, out var files)) return;
+        var legacy = InstallReconciler.UsersTweakRows(state, isListOutput);
+        if (legacy.Count == 0) return;
 
         var db = Connection.Db;
         var loadout = Loadout.Load(db, TargetLoadout);
@@ -1032,48 +1012,65 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         try
         {
             LoadoutItemGroupId? userGroup = null;
-            var changed = false;
-            foreach (var path in files.Paths.ToList())
+            foreach (var (path, identity, known) in legacy)
+            {
+                IniTweakLayers.IsLoadoutTweakPath(path, out var target);
+                if (userRows.TryGetValue(target, out var user))
+                {
+                    var under = IniDocument.Parse(await FileStore.Load(identity));
+                    under.Merge(IniDocument.Parse(await FileStore.Load(user.Identity)));
+                    var bytes = under.ToBytes();
+                    pins.Add(await IniEdits.Store(FileStore, path, bytes));
+                    var merged = FileIdentity.XxHash3(bytes.xxHash3());
+                    tx.Add(user.Id, LoadoutFile.Hash, bytes.xxHash3());
+                    tx.Add(user.Id, LoadoutFile.Size, Size.FromLong(bytes.Length));
+                    userRows[target] = (user.Id, merged);
+                    Logger.LogInformation("Merged the loadout tweak of '{Target}' from an earlier install under the user's own", target);
+                }
+                else
+                {
+                    userGroup ??= IniEdits.UserSettingsGroup(db, tx, loadout);
+                    tx.Add(known.Ids[0], LoadoutItem.ParentId, userGroup.Value);
+                    userRows[target] = (known.Ids[0], identity);
+                    known.Ids.RemoveAt(0);
+                    Logger.LogInformation("Kept the loadout tweak of '{Target}' as the user's: an earlier install had put it in the list's settings group", target);
+                }
+
+                // What is left of the legacy row is folded into the user's tweak or a duplicate of it.
+                foreach (var id in known.Ids) tx.Delete(id, recursive: false);
+                known.Ids.Clear();
+            }
+            await tx.Commit();
+        }
+        finally
+        {
+            foreach (var pin in pins) pin.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// The rows at a loadout-named tweak path of the list's settings group whose bytes are the list's own: still what the
+    /// list wrote (the xxHash64 of the stored bytes is the one recorded with the row), or the very bytes of the list's tweak.
+    /// The list's tweak is an inline file, so no library file holds its bytes to compare with.
+    /// </summary>
+    private async Task<Func<GamePath, FileIdentity, bool>> ListOutputRows(WriteState state)
+    {
+        var listOutputs = new HashSet<(GamePath Path, FileIdentity Identity)>();
+        if (state.Files.TryGetValue(Mo2Layout.ProfileSettingsGroup, out var files))
+        {
+            foreach (var path in files.Paths)
             {
                 if (!IniTweakLayers.IsLoadoutTweakPath(path, out var target)) continue;
 
                 var listPath = IniTweakLayers.TweakPath(Mo2Layout.ListTweakName, target);
                 foreach (var (identity, known) in files.AtPath(path))
                 {
-                    if (known.Wanted || known.Ids.Count == 0 || files.TryGet(listPath, identity, out _)) continue;
-                    if (await IsListOutput(known, identity)) continue;
-
-                    if (userRows.TryGetValue(target, out var user))
-                    {
-                        var under = IniDocument.Parse(await FileStore.Load(identity));
-                        under.Merge(IniDocument.Parse(await FileStore.Load(user.Identity)));
-                        var bytes = under.ToBytes();
-                        pins.Add(await IniEdits.Store(FileStore, path, bytes));
-                        var merged = FileIdentity.XxHash3(bytes.xxHash3());
-                        tx.Add(user.Id, LoadoutFile.Hash, bytes.xxHash3());
-                        tx.Add(user.Id, LoadoutFile.Size, Size.FromLong(bytes.Length));
-                        userRows[target] = (user.Id, merged);
-                        // The stale-file pass deletes the legacy rows once this commit has folded them in.
-                        Logger.LogInformation("Merged the loadout tweak of '{Target}' from an earlier install under the user's own", target);
-                    }
-                    else
-                    {
-                        userGroup ??= IniEdits.UserSettingsGroup(db, tx, loadout);
-                        tx.Add(known.Ids[0], LoadoutItem.ParentId, userGroup.Value);
-                        userRows[target] = (known.Ids[0], identity);
-                        // Further rows at this path are duplicates of the first; the stale-file pass deletes them.
-                        known.Ids.RemoveAt(0);
-                        Logger.LogInformation("Kept the loadout tweak of '{Target}' as the user's: an earlier install had put it in the list's settings group", target);
-                    }
-                    changed = true;
+                    if (known.Wanted || known.Ids.Count == 0) continue;
+                    if (files.TryGet(listPath, identity, out _) || await IsListOutput(known, identity)) listOutputs.Add((path, identity));
                 }
             }
-            if (changed) await tx.Commit();
         }
-        finally
-        {
-            foreach (var pin in pins) pin.Dispose();
-        }
+        return (path, identity) => listOutputs.Contains((path, identity));
     }
 
     /// <summary>Whether a legacy row still holds what the list wrote: the xxHash64 of its bytes is the one recorded with the row.</summary>
@@ -1097,20 +1094,34 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         return rows;
     }
 
+    /// <summary>Records the folder of each existing mod group made before groups carried one, from the name it has now, so a later rename keeps finding it.</summary>
+    private async Task RecordFolders(WriteState state)
+    {
+        if (state.FolderlessGroups.Count == 0) return;
+
+        using var tx = Connection.BeginTransaction();
+        foreach (var name in state.FolderlessGroups) tx.Add(state.Groups[name].Value, WabbajackModGroup.Folder, name);
+        await tx.Commit();
+        state.FolderlessGroups.Clear();
+    }
+
     private WriteState LoadExisting(LoadoutItemGroupId groupId)
     {
         var state = new WriteState();
         var db = Connection.Db;
         foreach (var child in LoadoutItem.FindByParent(db, groupId).OfTypeLoadoutItemGroup())
         {
-            // The settings group is found by its marker; a user may have renamed it.
-            var name = child.IsGameSettingsGroup ? Mo2Layout.ProfileSettingsGroup : child.AsLoadoutItem().Name;
+            // The settings group is found by its marker and a mod group by the folder it was made from; a user may have renamed either.
+            var name = child.IsGameSettingsGroup ? Mo2Layout.ProfileSettingsGroup
+                : WabbajackModGroup.Folder.TryGetValue(child, out var folder) ? folder
+                : child.AsLoadoutItem().Name;
             state.Groups[name] = child.LoadoutItemGroupId;
+            if (!child.IsGameSettingsGroup && !WabbajackModGroup.Folder.TryGetValue(child, out _)) state.FolderlessGroups.Add(name);
             var files = state.Files[name] = new();
             foreach (var file in LoadoutItem.FindByParent(db, child.Id).OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile())
             {
                 var path = file.AsLoadoutItemWithTargetPath().TargetPath;
-                if (!files.TryGet(path, file.Identity, out var known)) known = files.Add(path, file.Identity, new KnownFile());
+                if (!files.TryGet(path, file.Identity, out var known)) known = files.Add(path, file.Identity, new KnownFile { Size = file.Size });
                 known.Ids.Add(file.Id);
                 if (WabbajackInstalledFile.ListHash.TryGetValue(file, out var listHash)) known.ListHash = listHash;
             }
@@ -1394,6 +1405,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             },
         };
         if (isSettings) tx.Add(id, LoadoutItemGroup.GameSettingsGroup, Null.Instance);
+        else tx.Add(id, WabbajackModGroup.Folder, groupName);
         group = state.Groups[groupName] = created.LoadoutItemGroupId;
         state.NewGroups.Add(groupName);
         state.Files[groupName] = new();
@@ -1437,7 +1449,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 Size = size,
             },
         };
-        known.Add(path, identity, new KnownFile { Wanted = true, ListHash = expected });
+        known.Add(path, identity, new KnownFile { Wanted = true, ListHash = expected, Size = size });
     }
 
     #endregion
@@ -1653,7 +1665,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     private static (FileIdentity, Size, FileIdentity, IReadOnlyList<string>) WithNotes((FileIdentity Identity, Size Size, FileIdentity XxHash64) file, IReadOnlyList<string> notes)
         => (file.Identity, file.Size, file.XxHash64, notes);
 
-    private static bool IsHashUnchecked(Directive directive)
+    internal static bool IsHashUnchecked(Directive directive)
         => directive is InlineFile or ArchiveMeta && HashUnchecked.Contains(directive.To.FileName.ToString(), StringComparer.OrdinalIgnoreCase);
 
     private async Task<(FileIdentity, Size, FileIdentity)> Generated(WriteState state, Directive directive, Func<Stream, Task> produce, bool checkHash, CancellationToken cancellationToken)
