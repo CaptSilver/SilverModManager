@@ -48,7 +48,11 @@ public abstract class AModdedEldenRingTest<TTest>(ITestOutputHelper helper, bool
     protected OverlayLayout LayoutOf(Loadout.ReadOnly loadout)
         => OverlayLayout.For(ServiceProvider.GetRequiredService<ISettingsManager>().Get<FromSoftSettings>(), ServiceProvider.GetRequiredService<IFileSystem>(), GameInstallation, loadout.LoadoutId);
 
-    protected LaunchContext ContextOf(Loadout.ReadOnly loadout) => new(GameInstallation, loadout.LoadoutId, loadout.Name, []);
+    protected LaunchContext ContextOf(Loadout.ReadOnly loadout, Guid? sessionId = null, bool endSeen = true)
+        => new(GameInstallation, loadout.LoadoutId, loadout.Name, [], SessionId: sessionId ?? DefaultSessionId, EndSeen: endSeen);
+
+    /// <summary>The session id of a context that does not name one, so a Prepare and a Finish built the same way match.</summary>
+    private static readonly Guid DefaultSessionId = new("5e5510a1-0000-4000-8000-000000000001");
 
     private async Task Install<TInstaller>(LoadoutId loadout, Func<AbsolutePath, Task> write, string archiveName)
         where TInstaller : ILibraryItemInstaller

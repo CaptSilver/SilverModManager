@@ -63,7 +63,7 @@ public sealed class OverlayLaunchGate(
         var written = await WriteConfigurationLayer(layout, game, installation, cancellationToken);
 
         var snapshot = await GameFolderSnapshot.Take(layout.Lower, game.Layout, cancellationToken);
-        new OverlaySessionState(written, snapshot).Save(layout);
+        new OverlaySessionState(written, snapshot, context.SessionId == Guid.Empty ? null : context.SessionId).Save(layout);
         logger.LogInformation("Prepared the overlay of {Game} at {Root}: {Count} configuration files, {Snapshot} game files recorded", installation.Game.DisplayName, layout.Root, written.Count, snapshot.Entries.Count);
     }
 
@@ -75,7 +75,11 @@ public sealed class OverlayLaunchGate(
         var layout = LayoutOf(context);
         var findings = await UpperdirAudit.Run(layout, game.Overlay);
 
-        if (OverlaySessionState.Load(layout) is { } state)
+        // A finish carried out after the process that ran the game is gone cannot tell a write made during the
+        // session from a Steam update since, so it leaves the lower folder alone. A snapshot saved by another
+        // launch, or by a build that saved no id, describes a different session's folder.
+        var state = OverlaySessionState.Load(layout);
+        if (state is not null && state.SessionId == context.SessionId && context.EndSeen)
         {
             var changes = state.Snapshot.Compare(await GameFolderSnapshot.Take(layout.Lower, game.Layout));
             if (changes.Count > 0)
@@ -83,6 +87,11 @@ public sealed class OverlayLaunchGate(
                 logger.LogError("The game folder {Folder} changed during a modded session: {Paths}", layout.Lower, string.Join(", ", changes.Select(c => $"{c.Path} ({c.Change})")));
                 UpperdirAudit.RecordGameFolderChanges(layout, changes);
             }
+        }
+        else
+        {
+            var reason = state is null ? "no session state" : state.SessionId != context.SessionId ? "state from another session" : "end not seen";
+            logger.LogDebug("Left the lower folder of {Loadout} uncompared: {Reason}", context.LoadoutName, reason);
         }
 
         if (findings.Count > 0) logger.LogWarning("The overlay of {Loadout} holds {Count} files that need a look: {Paths}", context.LoadoutName, findings.Count, string.Join(", ", findings.Select(f => f.Path)));

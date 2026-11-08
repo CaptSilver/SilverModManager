@@ -125,8 +125,10 @@ public static class UpperdirAudit
 /// <summary>
 /// What a preparation recorded for the audit that follows the session: the files it wrote with their hashes, and
 /// the game folder as it was. Kept in a file because the session may outlive the process that prepared it.
+/// <paramref name="SessionId"/> names the launch that took the snapshot; a state written without one never matches a
+/// session, so its snapshot is not compared.
 /// </summary>
-internal sealed record OverlaySessionState(Dictionary<string, string> Written, GameFolderSnapshot Snapshot)
+internal sealed record OverlaySessionState(Dictionary<string, string> Written, GameFolderSnapshot Snapshot, Guid? SessionId = null)
 {
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 

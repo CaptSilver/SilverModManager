@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Games.FromSoft.EldenRing;
@@ -191,6 +192,75 @@ public class OverlayLaunchGateTests(ITestOutputHelper helper) : AModdedEldenRing
             new AuditFinding(AuditFindingKind.GameFolderChanged, "regulation.bin", "changed"),
             new AuditFinding(AuditFindingKind.GameFolderChanged, "steam_api64.dll", "removed"));
         Gate.Check(ContextOf(loadout))!.Message.Should().Contain("leaked.dll");
+    }
+
+    [Fact]
+    public async Task FinishInARecoveryRecordsTheUpperFolderButSkipsTheLowerFolderComparison()
+    {
+        var loadout = await CreateModdedLoadout();
+        var layout = LayoutOf(loadout);
+        var session = Guid.NewGuid();
+        await Gate.Prepare(ContextOf(loadout, session), CancellationToken.None);
+
+        await File.WriteAllTextAsync(RealGame("updated-by-steam.dll"), "x");
+        await File.WriteAllTextAsync(Path.Combine(layout.Upper.GetFullPath(), "stray.txt"), "x");
+        await Gate.Finish(ContextOf(loadout, session, endSeen: false));
+
+        UpperdirAudit.PendingFindings(layout).Should().Equal(new AuditFinding(AuditFindingKind.Unexpected, "stray.txt"));
+        Gate.Check(ContextOf(loadout))!.Message.Should().NotContain("updated-by-steam.dll");
+    }
+
+    [Fact]
+    public async Task FinishForTheSessionItSnapshottedRecordsGameFolderChanges()
+    {
+        var loadout = await CreateModdedLoadout();
+        var session = Guid.NewGuid();
+        await Gate.Prepare(ContextOf(loadout, session), CancellationToken.None);
+
+        await File.WriteAllTextAsync(RealGame("leaked.dll"), "x");
+        await Gate.Finish(ContextOf(loadout, session, endSeen: true));
+
+        UpperdirAudit.PendingFindings(LayoutOf(loadout)).Should().Equal(new AuditFinding(AuditFindingKind.GameFolderChanged, "leaked.dll", "added"));
+    }
+
+    [Fact]
+    public async Task FinishForAnotherSessionIdSkipsTheComparison()
+    {
+        var loadout = await CreateModdedLoadout();
+        await Gate.Prepare(ContextOf(loadout, Guid.NewGuid()), CancellationToken.None);
+
+        await File.WriteAllTextAsync(RealGame("leaked.dll"), "x");
+        await Gate.Finish(ContextOf(loadout, Guid.NewGuid(), endSeen: true));
+
+        UpperdirAudit.PendingFindings(LayoutOf(loadout)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AnOlderSessionStateWithoutAnIdNeverMatches()
+    {
+        var loadout = await CreateModdedLoadout();
+        var layout = LayoutOf(loadout);
+        await Gate.Prepare(ContextOf(loadout), CancellationToken.None);
+        var json = JsonNode.Parse(await File.ReadAllTextAsync(layout.SessionState.GetFullPath()))!.AsObject();
+        json.Remove("SessionId").Should().BeTrue("the state records which session it snapshotted");
+        await File.WriteAllTextAsync(layout.SessionState.GetFullPath(), json.ToJsonString());
+
+        await File.WriteAllTextAsync(RealGame("leaked.dll"), "x");
+        await Gate.Finish(ContextOf(loadout));
+
+        UpperdirAudit.PendingFindings(layout).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AContextWithoutASessionIdSavesNoIdSoItNeverMatches()
+    {
+        var loadout = await CreateModdedLoadout();
+        await Gate.Prepare(ContextOf(loadout, Guid.Empty), CancellationToken.None);
+
+        await File.WriteAllTextAsync(RealGame("leaked.dll"), "x");
+        await Gate.Finish(ContextOf(loadout, Guid.Empty));
+
+        UpperdirAudit.PendingFindings(LayoutOf(loadout)).Should().BeEmpty();
     }
 
     private static GameInstallation WithUpdatePending(GameInstallation installation)
