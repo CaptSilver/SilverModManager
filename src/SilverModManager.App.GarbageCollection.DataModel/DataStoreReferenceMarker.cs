@@ -44,12 +44,44 @@ public static class DataStoreReferenceMarker
         // A loadout's copy of each game INI, and the bytes last baked from it, live only in the file store.
         MarkGameIniCopies(archiveGc, db, isLoadoutValidDict);
 
+        // A revision someone asked to keep reachable holds files the live rows no longer name.
+        MarkProtectedRevisions(archiveGc, connection);
+
         // Mark non Loadout/Library items that are backups (e.g. Backups of original game files)
         MarkItemsMarkedAsBackups(archiveGc, db);
 
         // Bytes a running job stored but has not yet recorded in any of the above.
         foreach (var identity in pinned)
             archiveGc.AddReferencedFile(identity);
+    }
+
+    /// <summary>
+    /// Marks every file, and every INI copy, that a loadout referenced as of each of its
+    /// <see cref="ProtectedLoadoutRevision"/>s. Reverting to such a revision restores rows, and the bytes they name
+    /// must still be in the store by then. A protection whose loadout is gone is ignored.
+    /// </summary>
+    private static void MarkProtectedRevisions<TParsedHeaderState, TFileEntryWrapper>(ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWrapper> archiveGc, IConnection connection)
+        where TParsedHeaderState : ICanProvideFileHashes<TFileEntryWrapper> where TFileEntryWrapper : IHaveFileHash
+    {
+        foreach (var protectedRevision in ProtectedLoadoutRevision.All(connection.Db))
+        {
+            if (!protectedRevision.Loadout.IsValid()) continue;
+
+            var loadoutId = protectedRevision.LoadoutId;
+            var asOf = connection.AsOf(TxId.From(protectedRevision.Revision.Id.Value));
+
+            foreach (var item in LoadoutItem.FindByLoadout(asOf, loadoutId))
+            {
+                if (item.TryGetAsLoadoutItemWithTargetPath(out var withPath) && withPath.TryGetAsLoadoutFile(out var loadoutFile))
+                    archiveGc.AddReferencedFile(loadoutFile.Identity);
+            }
+
+            foreach (var state in LoadoutIniState.FindByLoadout(asOf, loadoutId))
+            {
+                archiveGc.AddReferencedFile(state.BaselineIdentity);
+                if (state.LastBakedIdentity() is { } baked) archiveGc.AddReferencedFile(baked);
+            }
+        }
     }
 
     private static void MarkGameIniCopies<TParsedHeaderState, TFileEntryWrapper>(ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWrapper> archiveGc, IDb db, Dictionary<LoadoutId, bool> isLoadoutValidDict)
