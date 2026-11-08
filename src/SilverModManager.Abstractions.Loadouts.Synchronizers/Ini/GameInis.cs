@@ -162,7 +162,6 @@ public static class GameInis
         var left = IniDocument.Parse(live);
         var last = IniDocument.Parse(written);
 
-        var managed = game.ManagedKeysFile == path ? game.ManagedKeys(loadout) : [];
         var tweaks = new List<(string Name, IniDocument Document)>();
         foreach (var layer in IniTweakLayers.For(loadout, path))
             tweaks.Add((OwnerOf(layer), await LoadLayer(fileStore, layer, path)));
@@ -174,7 +173,7 @@ public static class GameInis
             {
                 if (last.Get(section, key) == value) continue;
 
-                if (managed.Any(m => Same(m.Section, section) && Same(m.Key, key)) || game.IsDerivedKey(path, section, key))
+                if (AppSetsKey(game, loadout, path, section, key) is not null)
                     changes.Add(new GameIniChange(GameIniChangeKind.ManagedKeyReset, section, key, value));
                 else if (tweaks.LastOrDefault(t => t.Document.Get(section, key) is not null) is { Name: not null } owner)
                     changes.Add(new GameIniChange(GameIniChangeKind.TweakOverrides, section, key, value, owner.Name));
@@ -189,6 +188,18 @@ public static class GameInis
     // "Loadout (Yggdrasil VR)" for a modlist's Loadout-named file, so it is not mistaken for the user's own tweak.
     private static string OwnerOf(IniTweakLayer layer) =>
         layer.Name.Equals(layer.SourceName, StringComparison.Ordinal) ? layer.Name : $"{layer.Name} ({layer.SourceName})";
+
+    /// <summary>
+    /// What the app writes to the key on every Apply, or null when the key is not one the app sets itself: the managed
+    /// value (with " on every Apply") or "rendered from the loadout" for a derived key.
+    /// </summary>
+    public static string? AppSetsKey(IGameIniFiles game, Loadout.ReadOnly loadout, GamePath path, string section, string key)
+    {
+        if (game.ManagedKeysFile == path
+            && game.ManagedKeys(loadout).FirstOrDefault(m => Same(m.Section, section) && Same(m.Key, key)) is { Key: not null } managed)
+            return $"{managed.Value} on every Apply";
+        return game.IsDerivedKey(path, section, key) ? "rendered from the loadout" : null;
+    }
 
     private static bool Same(string a, string b) => a.Equals(b, StringComparison.OrdinalIgnoreCase);
 

@@ -7,6 +7,7 @@ using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Ini;
@@ -17,7 +18,8 @@ namespace SilverModManager.DataModel.CommandLine.Verbs;
 
 /// <summary>
 /// The INI verbs: a loadout's copies of the game's INI files, the tweak layers laid over them, and the bytes the next
-/// Apply writes. They go through <see cref="GameInis"/> and <see cref="IniTweakLayers"/>, the code the INI page uses.
+/// Apply writes, and the loadout's own tweak. They go through <see cref="GameInis"/>, <see cref="IniTweakLayers"/> and
+/// <see cref="IniEdits"/>, the code the INI page uses.
 /// </summary>
 internal static class LoadoutIniVerbs
 {
@@ -27,7 +29,10 @@ internal static class LoadoutIniVerbs
     public static IServiceCollection AddLoadoutIniVerbs(this IServiceCollection services) => services
         .AddModule("loadout ini", "Commands for a loadout's copies of the game's INI files and the tweaks laid over them")
         .AddVerb(() => List)
-        .AddVerb(() => Show);
+        .AddVerb(() => Show)
+        .AddVerb(() => Set)
+        .AddVerb(() => Unset)
+        .AddVerb(() => Replace);
 
     private sealed record IniLayerRow(string Name, string Source, string Kind, string FileId, bool On, bool Active);
 
@@ -134,10 +139,139 @@ internal static class LoadoutIniVerbs
         }
 
         await renderer.Text(IniDocument.Parse(await GameInis.Render(game, fileStore, loadout, path)).ToText());
-        if (!Loadout.OwnsGameInis.Get(loadout))
-            await renderer.TextLine("{0}", OwnershipWarning);
+        await WriteOwnershipWarning(renderer, loadout);
         return 0;
     }
+
+    private const string AfterWrite = "Run 'loadout synchronize' to write it to the game folder. 'loadout revisions' lists the restore point; 'loadout revert' undoes it until the next Apply.";
+
+    private static async Task WriteOwnershipWarning(IRenderer renderer, Loadout.ReadOnly loadout)
+    {
+        if (!Loadout.OwnsGameInis.Get(loadout))
+            await renderer.TextLine("{0}", OwnershipWarning);
+    }
+
+    [Verb("loadout ini set", "Sets one key in the loadout's own tweak of a game INI, creating the tweak when there is none. The tweak is laid over the mods' tweaks on every Apply. A value starting with '-' is given as --value=-1. Writes a restore point")]
+    private static async Task<int> Set([Injected] IRenderer renderer,
+        [Option("l", "loadout", "Loadout to change")] Loadout.ReadOnly loadout,
+        [Option("f", "file", "The INI's file name as 'loadout ini list' prints it")] string file,
+        [Option("s", "section", "The section, without brackets")] string section,
+        [Option("k", "key", "The key")] string key,
+        [Option("v", "value", "The value; a value starting with '-' is given as --value=-1")] string value,
+        [Injected] IConnection connection,
+        [Injected] IFileStore fileStore)
+    {
+        var (game, _) = ResolveGame(loadout);
+        var path = ResolveFile(game, file);
+        var fileName = path.FileName.ToString();
+
+        IniEdits.CheckTweakName(section, key, value);
+        if (GameInis.AppSetsKey(game, loadout, path, section, key) is { } sets)
+            throw new LoadoutVerbRefusedException(AppSetsMessage(section, key, fileName, sets));
+
+        var (tweak, identity) = await IniEdits.LoadLoadoutTweak(fileStore, loadout, path);
+        var old = tweak.Get(section, key);
+        if (old == value)
+        {
+            await renderer.TextLine("{0}", $"{MarkdownText.Code($"[{section}] {key}")} is already {MarkdownText.Code(value)} in the loadout tweak of {MarkdownText.Code(fileName)}.");
+            return 0;
+        }
+
+        tweak.Set(section, key, value);
+        var bytes = tweak.ToBytes();
+        await LoadoutSnapshot.WriteRestorePoint(connection, loadout.LoadoutId);
+        await IniEdits.SetLoadoutTweak(connection, fileStore, loadout, path, bytes, identity);
+
+        var was = old is null ? "was not set" : $"was {MarkdownText.Code(old)}";
+        await renderer.TextLine("{0}", $"Set {MarkdownText.Code($"[{section}] {key}={value}")} in the loadout tweak of {MarkdownText.Code(fileName)} ({was}). {AfterWrite}");
+        await WriteOwnershipWarning(renderer, loadout);
+        return 0;
+    }
+
+    [Verb("loadout ini unset", "Removes a key from the loadout's own tweak of a game INI, every line that sets it. Writes a restore point")]
+    private static async Task<int> Unset([Injected] IRenderer renderer,
+        [Option("l", "loadout", "Loadout to change")] Loadout.ReadOnly loadout,
+        [Option("f", "file", "The INI's file name as 'loadout ini list' prints it")] string file,
+        [Option("s", "section", "The section, without brackets")] string section,
+        [Option("k", "key", "The key")] string key,
+        [Injected] IConnection connection,
+        [Injected] IFileStore fileStore)
+    {
+        var (game, _) = ResolveGame(loadout);
+        var path = ResolveFile(game, file);
+        var fileName = path.FileName.ToString();
+
+        IniEdits.CheckTweakName(section, key, null);
+        var (tweak, identity) = await IniEdits.LoadLoadoutTweak(fileStore, loadout, path);
+        var removed = false;
+        while (tweak.Remove(section, key)) removed = true;
+        if (!removed)
+        {
+            await renderer.TextLine("{0}", $"The loadout tweak of {MarkdownText.Code(fileName)} does not set {MarkdownText.Code($"[{section}] {key}")}.");
+            return 0;
+        }
+
+        var bytes = tweak.ToBytes();
+        await LoadoutSnapshot.WriteRestorePoint(connection, loadout.LoadoutId);
+        await IniEdits.SetLoadoutTweak(connection, fileStore, loadout, path, bytes, identity);
+
+        await renderer.TextLine("{0}", $"Removed {MarkdownText.Code($"[{section}] {key}")} from the loadout tweak of {MarkdownText.Code(fileName)}. {AfterWrite}");
+        await WriteOwnershipWarning(renderer, loadout);
+        return 0;
+    }
+
+    [Verb("loadout ini replace", "Replaces the whole of the loadout's own tweak of a game INI with the given INI text, or with the file --from names. An empty --text clears the tweak. Writes a restore point")]
+    private static async Task<int> Replace([Injected] IRenderer renderer,
+        [Option("l", "loadout", "Loadout to change")] Loadout.ReadOnly loadout,
+        [Option("f", "file", "The INI's file name as 'loadout ini list' prints it")] string file,
+        [Option("text", "text", "The new tweak as INI text", true)] string? text,
+        [Option("", "from", "A file to take the new tweak from, as an absolute path", true)] AbsolutePath? from,
+        [Injected] IConnection connection,
+        [Injected] IFileStore fileStore)
+    {
+        var (game, _) = ResolveGame(loadout);
+        var path = ResolveFile(game, file);
+        var fileName = path.FileName.ToString();
+
+        if (text is null == from is null)
+            throw new LoadoutVerbRefusedException("Give either --text or --from.");
+
+        var (current, identity) = await IniEdits.LoadLoadoutTweak(fileStore, loadout, path);
+        var replacement = from is { } source
+            ? IniDocument.Parse(await ReadFrom(source))
+            : IniDocument.Parse(text ?? "", current.Encoding);
+        if (replacement.ToText() == current.ToText())
+        {
+            await renderer.TextLine("{0}", $"The loadout tweak of {MarkdownText.Code(fileName)} already has that text.");
+            return 0;
+        }
+
+        // An empty tweak is zero bytes, as the INI page's reset leaves it, not a byte order mark.
+        var bytes = replacement.Lines.Count == 0 ? [] : replacement.ToBytes();
+
+        foreach (var section in replacement.Sections)
+            foreach (var key in replacement.Entries(section).Select(e => e.Key).Distinct(StringComparer.OrdinalIgnoreCase))
+                if (GameInis.AppSetsKey(game, loadout, path, section, key) is { } sets)
+                    await renderer.TextLine("{0}", $"Note: {AppSetsMessage(section, key, fileName, sets)}");
+
+        await LoadoutSnapshot.WriteRestorePoint(connection, loadout.LoadoutId);
+        await IniEdits.SetLoadoutTweak(connection, fileStore, loadout, path, bytes, identity);
+
+        var settings = replacement.Lines.Count(l => l.Kind == IniLineKind.KeyValue);
+        await renderer.TextLine("{0}", $"Replaced the loadout tweak of {MarkdownText.Code(fileName)} ({settings} settings). {AfterWrite}");
+        await WriteOwnershipWarning(renderer, loadout);
+        return 0;
+    }
+
+    private static async Task<byte[]> ReadFrom(AbsolutePath source)
+    {
+        if (!source.FileExists)
+            throw new LoadoutVerbRefusedException($"{MarkdownText.Code(source)} is not a file.");
+        return await source.ReadAllBytesAsync();
+    }
+
+    private static string AppSetsMessage(string section, string key, string fileName, string sets) =>
+        $"The app sets {MarkdownText.Code($"[{section}] {key}")} in {MarkdownText.Code(fileName)} itself ({sets}), so a tweak of it would have no effect.";
 
     internal const string OwnershipWarning = "This loadout does not own its INIs, so nothing is baked until that is turned on in the loadout card.";
 

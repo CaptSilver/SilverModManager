@@ -3,6 +3,7 @@ using System.Text;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
+using SilverModManager.Sdk.Ini;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;
 using SilverModManager.SingleProcess;
@@ -12,7 +13,8 @@ namespace SilverModManager.CLI.Tests;
 
 /// <summary>
 /// <c>loadout ini list</c> and <c>loadout ini show</c> read a loadout's copies of the game's INI files, the tweak
-/// layers laid over them and the bytes Apply would write.
+/// layers laid over them and the bytes Apply would write; <c>set</c>, <c>unset</c> and <c>replace</c> change the
+/// loadout's own tweak.
 /// </summary>
 [Collection("ConsoleOutput")]
 public class LoadoutIniVerbTests(ITestOutputHelper helper) : SkyrimIniVerbTest<LoadoutIniVerbTests>(helper)
@@ -262,5 +264,253 @@ public class LoadoutIniVerbTests(ITestOutputHelper helper) : SkyrimIniVerbTest<L
 
         exit.Should().NotBe(0);
         output.Should().Contain("Nope.ini is not one of").And.Contain("Skyrim.ini, SkyrimPrefs.ini, SkyrimCustom.ini");
+    }
+
+    private async Task<(IniDocument Document, byte[] Bytes)?> UserTweakOf(Loadout.ReadOnly loadout, string fileName)
+    {
+        var fresh = Loadout.Load(Connection.Db, loadout.LoadoutId);
+        if (IniTweakLayers.UserTweak(fresh, IniPath(fileName)) is not { } user) return null;
+        var bytes = await Store.Load(user.Identity);
+        return (IniDocument.Parse(bytes), bytes);
+    }
+
+    // Refusals and notes wrap names in code spans; the sentences are compared without them.
+    private static string Plain(string output) => output.Replace("`", "");
+
+    private const string RestoreTail = "Run 'loadout synchronize' to write it to the game folder. 'loadout revisions' lists the restore point; 'loadout revert' undoes it until the next Apply.";
+
+    [Fact]
+    public async Task SetWritesTheKeyIntoTheUsersTweakAndARestorePoint()
+    {
+        var loadout = await CreateLoadout();
+        await SeedBaseline(loadout, "Skyrim.ini", SkyrimText);
+        var before = LatestRevisionNumber(loadout.LoadoutId);
+
+        var (exit, output) = await Run("loadout", "ini", "set", "-l", loadout.LoadoutId.ToString(), "-f", "Skyrim.ini", "-s", "Papyrus", "-k", "bEnableTrace", "-v", "1");
+        var (secondExit, second) = await Run("loadout", "ini", "set", "-l", loadout.LoadoutId.ToString(), "-f", "skyrim.ini", "-s", "Papyrus", "-k", "bEnableTrace", "-v=-1");
+
+        exit.Should().Be(0, output);
+        Plain(output).Should().Contain("Set [Papyrus] bEnableTrace=1 in the loadout tweak of Skyrim.ini (was not set).").And.Contain(RestoreTail);
+        secondExit.Should().Be(0, second);
+        Plain(second).Should().Contain("(was 1)");
+        LatestRevisionNumber(loadout.LoadoutId).Should().BeGreaterThan(before);
+        var tweak = await UserTweakOf(loadout, "Skyrim.ini");
+        tweak!.Value.Document.Get("Papyrus", "bEnableTrace").Should().Be("-1");
+        var (_, result) = await Run("loadout", "ini", "show", "-l", loadout.LoadoutId.ToString(), "-f", "Skyrim.ini");
+        result.Should().Contain("bEnableTrace=-1");
+    }
+
+    [Fact]
+    public async Task SetThenRevertBringsTheOldTweakBack()
+    {
+        var loadout = await CreateLoadout();
+        await SeedBaseline(loadout, "Skyrim.ini", SkyrimText);
+        var id = loadout.LoadoutId.ToString();
+        await Run("loadout", "ini", "set", "-l", id, "-f", "Skyrim.ini", "-s", "Papyrus", "-k", "bEnableTrace", "-v", "1");
+        await Run("loadout", "ini", "set", "-l", id, "-f", "Skyrim.ini", "-s", "Papyrus", "-k", "bEnableTrace", "-v", "0");
+        (await UserTweakOf(loadout, "Skyrim.ini"))!.Value.Document.Get("Papyrus", "bEnableTrace").Should().Be("0");
+
+        var (exit, output) = await Run("loadout", "revert", "-l", id, "-r", LatestRevisionNumber(loadout.LoadoutId).ToString());
+
+        exit.Should().Be(0, output);
+        (await UserTweakOf(loadout, "Skyrim.ini"))!.Value.Document.Get("Papyrus", "bEnableTrace").Should().Be("1", "the restore point was taken before the write");
+    }
+
+    [Fact]
+    public async Task ReplaceRefusesAFromThatIsNotAFile()
+    {
+        var loadout = await CreateLoadout();
+        await SeedBaseline(loadout, "Skyrim.ini", SkyrimText);
+        var before = LatestRevisionNumber(loadout.LoadoutId);
+
+        var (exit, output) = await Run("loadout", "ini", "replace", "-l", loadout.LoadoutId.ToString(), "-f", "Skyrim.ini", "--from", "/nonexistent/tweak.ini");
+
+        exit.Should().NotBe(0);
+        Plain(output).Should().Contain("/nonexistent/tweak.ini is not a file.");
+        LatestRevisionNumber(loadout.LoadoutId).Should().Be(before);
+    }
+
+    [Fact]
+    public async Task SettingTheSameValueAgainWritesNoRestorePoint()
+    {
+        var loadout = await CreateLoadout();
+        await SeedBaseline(loadout, "Skyrim.ini", SkyrimText);
+        var id = loadout.LoadoutId.ToString();
+        await Run("loadout", "ini", "set", "-l", id, "-f", "Skyrim.ini", "-s", "Papyrus", "-k", "bEnableLogging", "-v", "1");
+        var revisions = LatestRevisionNumber(loadout.LoadoutId);
+        var bytes = (await UserTweakOf(loadout, "Skyrim.ini"))!.Value.Bytes;
+
+        var (exit, output) = await Run("loadout", "ini", "set", "-l", id, "-f", "Skyrim.ini", "-s", "Papyrus", "-k", "bEnableLogging", "-v", "1");
+
+        exit.Should().Be(0, output);
+        Plain(output).Should().Contain("[Papyrus] bEnableLogging is already 1 in the loadout tweak of Skyrim.ini.");
+        LatestRevisionNumber(loadout.LoadoutId).Should().Be(revisions);
+        (await UserTweakOf(loadout, "Skyrim.ini"))!.Value.Bytes.Should().Equal(bytes);
+    }
+
+    [Fact]
+    public async Task SetRefusesAnUnknownIniAndNamesTheGamesFiles()
+    {
+        var loadout = await CreateLoadout();
+        var before = LatestRevisionNumber(loadout.LoadoutId);
+
+        var (exit, output) = await Run("loadout", "ini", "set", "-l", loadout.LoadoutId.ToString(), "-f", "Nope.ini", "-s", "A", "-k", "b", "-v", "1");
+
+        exit.Should().NotBe(0);
+        output.Should().Contain("Nope.ini is not one of").And.Contain("Skyrim.ini, SkyrimPrefs.ini, SkyrimCustom.ini");
+        LatestRevisionNumber(loadout.LoadoutId).Should().Be(before);
+    }
+
+    [Fact]
+    public async Task SetRefusesAKeyWithAnEqualsSignAndWritesNoRestorePoint()
+    {
+        var loadout = await CreateLoadout();
+        await SeedBaseline(loadout, "Skyrim.ini", SkyrimText);
+        var before = LatestRevisionNumber(loadout.LoadoutId);
+
+        var (exit, output) = await Run("loadout", "ini", "set", "-l", loadout.LoadoutId.ToString(), "-f", "Skyrim.ini", "-s", "Papyrus", "-k", "a=b", "-v", "1");
+
+        exit.Should().NotBe(0);
+        Plain(output).Should().Contain("a=b is not a key name: it cannot be empty or contain '=' or a line break.");
+        LatestRevisionNumber(loadout.LoadoutId).Should().Be(before);
+        (await UserTweakOf(loadout, "Skyrim.ini")).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SetRefusesAKeyTheAppManages()
+    {
+        var loadout = await CreateLoadout();
+        await SeedBaseline(loadout, "Skyrim.ini", SkyrimText);
+        var before = LatestRevisionNumber(loadout.LoadoutId);
+
+        var (exit, output) = await Run("loadout", "ini", "set", "-l", loadout.LoadoutId.ToString(), "-f", "Skyrim.ini", "-s", "Archive", "-k", "bInvalidateOlderFiles", "-v", "0");
+
+        exit.Should().NotBe(0);
+        Plain(output).Should().Contain("sets [Archive] bInvalidateOlderFiles in Skyrim.ini itself (1 on every Apply), so a tweak of it would have no effect.");
+        LatestRevisionNumber(loadout.LoadoutId).Should().Be(before);
+        (await UserTweakOf(loadout, "Skyrim.ini")).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SetWarnsWhenTheLoadoutDoesNotOwnItsInis()
+    {
+        var loadout = await CreateLoadout();
+        await SeedBaseline(loadout, "Skyrim.ini", SkyrimText);
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(loadout.Id, Loadout.OwnsGameInis, false);
+            await tx.Commit();
+        }
+
+        var (exit, output) = await Run("loadout", "ini", "set", "-l", loadout.LoadoutId.ToString(), "-f", "Skyrim.ini", "-s", "Papyrus", "-k", "bEnableTrace", "-v", "1");
+
+        exit.Should().Be(0, output);
+        output.Split('\n').Select(l => l.TrimEnd('\r')).Should().Contain("This loadout does not own its INIs, so nothing is baked until that is turned on in the loadout card.", "the warning is its own line");
+        (await UserTweakOf(loadout, "Skyrim.ini"))!.Value.Document.Get("Papyrus", "bEnableTrace").Should().Be("1", "the tweak is stored anyway");
+    }
+
+    [Fact]
+    public async Task UnsetRemovesTheKeyAndSaysSoWhenItWasNotThere()
+    {
+        var loadout = await CreateLoadout();
+        await SeedBaseline(loadout, "Skyrim.ini", SkyrimText);
+        var id = loadout.LoadoutId.ToString();
+        var path = IniPath("Skyrim.ini");
+        await IniEdits.SetLoadoutTweak(Connection, Store, loadout, path, Encoding.UTF8.GetBytes("[Papyrus]\r\nbEnableTrace=1\r\nbEnableTrace=1\r\nbEnableLogging=1\r\n"), null);
+        var before = LatestRevisionNumber(loadout.LoadoutId);
+
+        var (exit, output) = await Run("loadout", "ini", "unset", "-l", id, "-f", "Skyrim.ini", "-s", "Papyrus", "-k", "bEnableTrace");
+        var afterRemoval = LatestRevisionNumber(loadout.LoadoutId);
+        var (missingExit, missing) = await Run("loadout", "ini", "unset", "-l", id, "-f", "Skyrim.ini", "-s", "Papyrus", "-k", "bEnableTrace");
+
+        exit.Should().Be(0, output);
+        Plain(output).Should().Contain("Removed [Papyrus] bEnableTrace from the loadout tweak of Skyrim.ini.").And.Contain(RestoreTail);
+        afterRemoval.Should().BeGreaterThan(before);
+        (await UserTweakOf(loadout, "Skyrim.ini"))!.Value.Document.ToText().Should().Be("[Papyrus]\r\nbEnableLogging=1\r\n");
+        missingExit.Should().Be(0, missing);
+        Plain(missing).Should().Contain("The loadout tweak of Skyrim.ini does not set [Papyrus] bEnableTrace.");
+        LatestRevisionNumber(loadout.LoadoutId).Should().Be(afterRemoval);
+    }
+
+    [Fact]
+    public async Task ReplaceKeepsTheTweaksEncodingAndAnEmptyTextClearsIt()
+    {
+        var loadout = await CreateLoadout();
+        await SeedBaseline(loadout, "Skyrim.ini", SkyrimText);
+        var id = loadout.LoadoutId.ToString();
+        var windows1252 = Encoding.GetEncoding(1252);
+        await IniEdits.SetLoadoutTweak(Connection, Store, loadout, IniPath("Skyrim.ini"), windows1252.GetBytes("[General]\r\nsLanguage=caf\u00e9\r\n"), null);
+        var before = LatestRevisionNumber(loadout.LoadoutId);
+
+        var (exit, output) = await Run("loadout", "ini", "replace", "-l", id, "-f", "Skyrim.ini", "--text", "[General]\r\nsLanguage=r\u00f4le\r\n[Papyrus]\r\nbEnableLogging=1\r\n");
+
+        exit.Should().Be(0, output);
+        Plain(output).Should().Contain("Replaced the loadout tweak of Skyrim.ini (2 settings).").And.Contain(RestoreTail);
+        var stored = (await UserTweakOf(loadout, "Skyrim.ini"))!.Value.Bytes;
+        windows1252.GetString(stored).Should().Be("[General]\r\nsLanguage=r\u00f4le\r\n[Papyrus]\r\nbEnableLogging=1\r\n");
+        stored.Should().Contain((byte)0xF4, "the character is one Windows-1252 byte, not UTF-8");
+        LatestRevisionNumber(loadout.LoadoutId).Should().BeGreaterThan(before);
+
+        var (clearExit, clear) = await Run("loadout", "ini", "replace", "-l", id, "-f", "Skyrim.ini", "--text", "");
+
+        clearExit.Should().Be(0, clear);
+        (await UserTweakOf(loadout, "Skyrim.ini"))!.Value.Bytes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ReplaceTakesTheTextFromAFileAndRefusesTwoSourcesOrNone()
+    {
+        var loadout = await CreateLoadout();
+        await SeedBaseline(loadout, "Skyrim.ini", SkyrimText);
+        var id = loadout.LoadoutId.ToString();
+        var source = Path.Combine(Path.GetTempPath(), $"ini-replace-{Guid.NewGuid():N}.ini");
+        await File.WriteAllTextAsync(source, "[Papyrus]\r\nbEnableTrace=1\r\n");
+        try
+        {
+            var (exit, output) = await Run("loadout", "ini", "replace", "-l", id, "-f", "Skyrim.ini", "--from", source);
+            var (bothExit, both) = await Run("loadout", "ini", "replace", "-l", id, "-f", "Skyrim.ini", "--from", source, "--text", "x");
+            var (noneExit, none) = await Run("loadout", "ini", "replace", "-l", id, "-f", "Skyrim.ini");
+
+            exit.Should().Be(0, output);
+            (await UserTweakOf(loadout, "Skyrim.ini"))!.Value.Document.Get("Papyrus", "bEnableTrace").Should().Be("1");
+            bothExit.Should().NotBe(0);
+            both.Should().Contain("Give either --text or --from.");
+            noneExit.Should().NotBe(0);
+            none.Should().Contain("Give either --text or --from.");
+        }
+        finally
+        {
+            File.Delete(source);
+        }
+    }
+
+    [Fact]
+    public async Task ReplaceWithTheSameTextWritesNoRestorePoint()
+    {
+        var loadout = await CreateLoadout();
+        await SeedBaseline(loadout, "Skyrim.ini", SkyrimText);
+        var id = loadout.LoadoutId.ToString();
+        const string text = "[Papyrus]\r\nbEnableTrace=1\r\n";
+        await Run("loadout", "ini", "replace", "-l", id, "-f", "Skyrim.ini", "--text", text);
+        var revisions = LatestRevisionNumber(loadout.LoadoutId);
+
+        var (exit, output) = await Run("loadout", "ini", "replace", "-l", id, "-f", "Skyrim.ini", "--text", text);
+
+        exit.Should().Be(0, output);
+        Plain(output).Should().Contain("The loadout tweak of Skyrim.ini already has that text.");
+        LatestRevisionNumber(loadout.LoadoutId).Should().Be(revisions);
+    }
+
+    [Fact]
+    public async Task ReplaceWarnsAboutAManagedKeyButStoresTheText()
+    {
+        var loadout = await CreateLoadout();
+        await SeedBaseline(loadout, "Skyrim.ini", SkyrimText);
+
+        var (exit, output) = await Run("loadout", "ini", "replace", "-l", loadout.LoadoutId.ToString(), "-f", "Skyrim.ini", "--text", "[Archive]\r\nbInvalidateOlderFiles=0\r\n");
+
+        exit.Should().Be(0, output);
+        Plain(output).Should().Contain("Note: The app sets [Archive] bInvalidateOlderFiles in Skyrim.ini itself");
+        (await UserTweakOf(loadout, "Skyrim.ini"))!.Value.Document.Get("Archive", "bInvalidateOlderFiles").Should().Be("0");
     }
 }
