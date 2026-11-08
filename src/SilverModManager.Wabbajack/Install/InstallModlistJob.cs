@@ -130,16 +130,16 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var cancellationToken = context.CancellationToken;
         using var progressLog = Progress.Changes.Subscribe(new InstallProgressLog(Logger, Modlist.Name).Report);
 
-        var check = await Check(cancellationToken);
+        var check = await CheckOnly(TargetLoadout, Modlist, Connection, FileStore, Inventory, Logger, Progress, cancellationToken);
         if (check.Archives.Missing.Count > 0 && !Options.SkipMissingArchives) throw new ArchivesMissingException(check.Archives.Missing);
         var (group, extrasFolder) = await EnsureGroup(check, cancellationToken);
 
         try
         {
             // What an earlier run committed is read first: the directives it finished are left out of both phases.
-            var state = LoadExisting(group);
+            var state = LoadExisting(Connection.Db, group);
             await RecordFolders(state);
-            if (_groupWasInstalled) _gameFilesKeptByUser = InstallReconciler.GameFilesKeptByUser(state, check.Placements, _earlierSkips);
+            if (_groupWasInstalled) _gameFilesKeptByUser = GameFilesKept(state, check.Placements, _earlierSkips, check.Placements, check.List);
             var prepared = await Resolve(check, state, cancellationToken);
             await Write(check, group, extrasFolder, state, prepared, cancellationToken);
             await RegisterTools(check, group, extrasFolder, cancellationToken);
@@ -172,7 +172,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     /// <summary>One directive with the place it lands in the loadout, decided once for the whole job.</summary>
     internal sealed record Placement(int Index, Directive Directive, RelativePath To, Mo2Target Target, string? Group, GamePath? Path);
 
-    private sealed record Checked(
+    internal sealed record Checked(
         Loadout.ReadOnly Loadout,
         ModList List,
         LibraryArchive.ReadOnly ListArchive,
@@ -185,28 +185,60 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         public ArchivePlan Plan => Archives.Plan;
     }
 
-    private async Task<Checked> Check(CancellationToken cancellationToken)
+    /// <summary>
+    /// The check phase on its own: reads the list, classifies every directive and matches its archives against the
+    /// library, writing nothing. The install job runs it first, and a read-only look at an update runs the same code.
+    /// </summary>
+    internal static async Task<Checked> CheckOnly(
+        LoadoutId target, WabbajackModlistLibraryFile.ReadOnly modlist, IConnection connection, IFileStore fileStore,
+        ArchiveInventory inventory, ILogger logger, ModlistInstallProgress progress, CancellationToken cancellationToken)
     {
-        Progress.Enter(InstallPhase.Check, 0, 0);
+        progress.Enter(InstallPhase.Check, 0, 0);
 
-        var loadout = Loadout.Load(Connection.Db, TargetLoadout);
+        var classified = await ClassifyList(target, modlist, connection, fileStore, cancellationToken);
+        var loadout = classified.Loadout;
+        var list = classified.List;
+        var gameFiles = inventory.GameFilesFor(loadout);
+        var plan = await inventory.Build(list, connection.Db, gameFiles, cancellationToken, program: classified.Program);
+
+        var (estimate, isLowerBound) = EstimateExtractedSize(plan);
+        progress.SetEstimate(estimate, isLowerBound);
+        CountPathsNeverInstalled(progress, logger, classified.Placements, list);
+
+        return new Checked(loadout, list, classified.ListArchive, ArchiveCheck.Of(plan), gameFiles, classified.Placements, classified.BsaInputs);
+    }
+
+    /// <summary>A list read and laid out for a loadout, before its archives are matched.</summary>
+    internal sealed record Classified(
+        Loadout.ReadOnly Loadout,
+        ModList List,
+        LibraryArchive.ReadOnly ListArchive,
+        IReadOnlyList<Placement> Placements,
+        IReadOnlyDictionary<string, Dictionary<string, Placement>> BsaInputs,
+        Mo2ProgramArchives Program);
+
+    /// <summary>Reads <paramref name="modlist"/> and decides where each of its directives lands in <paramref name="target"/>.</summary>
+    internal static async Task<Classified> ClassifyList(
+        LoadoutId target, WabbajackModlistLibraryFile.ReadOnly modlist, IConnection connection, IFileStore fileStore, CancellationToken cancellationToken)
+    {
+        var loadout = Loadout.Load(connection.Db, target);
         var installation = loadout.InstallationInstance;
-        var target = RequireTarget(installation);
+        var mo2Target = RequireTarget(installation);
         _ = RequirePluginVariety(installation);
 
-        if (!Modlist.AsLibraryFile().TryGetAsLibraryArchive(out var listArchive))
+        if (!modlist.AsLibraryFile().TryGetAsLibraryArchive(out var listArchive))
             throw new UnsupportedModlistException("The modlist file is not an expanded archive, so it cannot be read");
-        var list = await ModlistArchive.ReadModlist(FileStore, listArchive, cancellationToken);
+        var list = await ModlistArchive.ReadModlist(fileStore, listArchive, cancellationToken);
         RequireGame(installation, list);
 
         var unified = PathCasing.Unify(list.Directives.Select(d => d.To));
         var tos = list.Directives.Select(d => unified[d.To]).ToArray();
 
         var context = new Mo2Context(
-            await SelectedProfile(list, tos, listArchive, cancellationToken),
-            Mo2Layout.GameRootFolders(installation, target, tos),
-            target.ProfileSettingsFiles(installation),
-            relative => target.ModFilePath(installation, relative));
+            await SelectedProfile(fileStore, list, tos, listArchive, cancellationToken),
+            Mo2Layout.GameRootFolders(installation, mo2Target, tos),
+            mo2Target.ProfileSettingsFiles(installation),
+            relative => mo2Target.ModFilePath(installation, relative));
 
         var placements = Classify(list, tos, context);
         var bsaInputs = CollectBsaInputs(placements);
@@ -214,14 +246,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         // Mod Organizer 2's own files are the app's job: they are dropped here and its archive is not fetched.
         var program = Mo2Program.Find(list, context.GameRootFolders);
         placements = DropProgramFiles(placements, program, context.GameRootFolders);
-        var gameFiles = Inventory.GameFilesFor(loadout);
-        var plan = await Inventory.Build(list, Connection.Db, gameFiles, cancellationToken, program: program);
-
-        var (estimate, isLowerBound) = EstimateExtractedSize(plan);
-        Progress.SetEstimate(estimate, isLowerBound);
-        CountPathsNeverInstalled(placements, list);
-
-        return new Checked(loadout, list, listArchive, ArchiveCheck.Of(plan), gameFiles, placements, bsaInputs);
+        return new Classified(loadout, list, listArchive, placements, bsaInputs, program);
     }
 
     private static IMo2InstanceTarget RequireTarget(GameInstallation installation)
@@ -251,13 +276,13 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             throw new UnsupportedModlistException($"The list is for {MarkdownText.Code(list.GameType)}, but this loadout is for {installation.Game.DisplayName}");
     }
 
-    private async Task<string> SelectedProfile(ModList list, IReadOnlyList<RelativePath> tos, LibraryArchive.ReadOnly listArchive, CancellationToken cancellationToken)
+    private static async Task<string> SelectedProfile(IFileStore fileStore, ModList list, IReadOnlyList<RelativePath> tos, LibraryArchive.ReadOnly listArchive, CancellationToken cancellationToken)
     {
         for (var i = 0; i < list.Directives.Count; i++)
         {
             if (list.Directives[i] is not InlineFile ini || !tos[i].ToString().Equals("ModOrganizer.ini", StringComparison.OrdinalIgnoreCase)) continue;
 
-            await using var stream = await ModlistArchive.ReadBlob(FileStore, listArchive, ini.SourceDataId, cancellationToken);
+            await using var stream = await ModlistArchive.ReadBlob(fileStore, listArchive, ini.SourceDataId, cancellationToken);
             using var reader = new StreamReader(stream, Encoding.UTF8);
             if (Mo2Ini.SelectedProfile(Mo2Ini.Parse(await reader.ReadToEndAsync(cancellationToken))) is { Length: > 0 } selected)
                 return selected;
@@ -358,18 +383,18 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         return (Size.From(total), isLowerBound);
     }
 
-    private void CountPathsNeverInstalled(IReadOnlyList<Placement> placements, ModList list)
+    private static void CountPathsNeverInstalled(ModlistInstallProgress progress, ILogger logger, IReadOnlyList<Placement> placements, ModList list)
     {
-        Progress.AddDropped(placements.Count(p => p.Target is Mo2Target.Seed or Mo2Target.Dropped));
-        Progress.AddExtras(placements.Count(p => p.Target is Mo2Target.Extra));
+        progress.AddDropped(placements.Count(p => p.Target is Mo2Target.Seed or Mo2Target.Dropped));
+        progress.AddExtras(placements.Count(p => p.Target is Mo2Target.Extra));
 
         // Files for an archive no CreateBsa directive builds go nowhere either.
         var built = list.Directives.OfType<CreateBsa>().Select(b => Fold(b.TempId)).ToHashSet();
         var unbuilt = placements.Where(p => p.Target is Mo2Target.BsaInput input && !built.Contains(Fold(input.TempId))).ToArray();
-        Progress.AddDropped(unbuilt.Length);
+        progress.AddDropped(unbuilt.Length);
         foreach (var group in unbuilt.GroupBy(p => ((Mo2Target.BsaInput)p.Target).TempId.ToString()))
         {
-            Logger.LogWarning("Dropped {Count} file(s) for archive '{TempId}' of '{List}' because no directive builds it: {Inputs}",
+            logger.LogWarning("Dropped {Count} file(s) for archive '{TempId}' of '{List}' because no directive builds it: {Inputs}",
                 group.Count(), group.Key, list.Name, string.Join(", ", group.Select(p => p.To.ToString()).Take(SkipExamplesLogged)));
         }
     }
@@ -476,13 +501,17 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
     private SemaphoreSlim InputResolves => _inputResolves ?? throw new InvalidOperationException("Archive inputs are resolved before the resolve phase created their limiter");
 
+    /// <summary>The placements the install executes: the ones that become a file in the loadout or an extra.</summary>
+    internal static Placement[] Executable(IReadOnlyList<Placement> placements)
+        => placements
+            .Where(p => p.Target is Mo2Target.ModFile or Mo2Target.ProfileSetting or Mo2Target.ProfileTweak or Mo2Target.GameRootFile or Mo2Target.Extra)
+            .ToArray();
+
     private async Task<IReadOnlyList<Prepared>> Resolve(Checked check, WriteState state, CancellationToken cancellationToken)
     {
         _resolver = NewResolver(check);
         _inputResolves = new SemaphoreSlim(Workers);
-        var executable = check.Placements
-            .Where(p => p.Target is Mo2Target.ModFile or Mo2Target.ProfileSetting or Mo2Target.ProfileTweak or Mo2Target.GameRootFile or Mo2Target.Extra)
-            .ToArray();
+        var executable = Executable(check.Placements);
         executable = LeaveOutFinishedDirectives(check, state, executable);
         Progress.Enter(InstallPhase.Resolve, executable.Length, executable.Sum(p => p.Directive.Size));
 
@@ -511,12 +540,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             // Only a plain copy can be compared with the live file. A patched or re-encoded directive derives from
             // FromArchive too, but its output is never the vanilla file; it goes the normal way and ResolveMember
             // checks the patch's FromHash against the game file source.
-            if (placement.Directive is FromArchive { Source.Parts.Count: 0 } vanilla && vanilla.GetType() == typeof(FromArchive)
-                && rows.TryGetValue(vanilla.Source.ArchiveXxHash64, out var gameRow)
-                && gameRow.Archive.State is GameFileSourceState gameFile
-                && SameFile(gameFile.GameFile, root.Path))
+            if (IsPlainGameFileCopy(placement, root, hash => rows.GetValueOrDefault(hash)?.Archive, out var vanilla, out var gameFile))
             {
-                return await PrepareVanillaFile(check, placement, vanilla, gameRow, gameFile, cancellationToken);
+                return await PrepareVanillaFile(check, placement, vanilla, rows[vanilla.Source.ArchiveXxHash64], gameFile, cancellationToken);
             }
 
             // After the vanilla comparison: a vanilla copy that matched leaves no row and no note either, and it still
@@ -538,6 +564,48 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         {
             return new Prepared(placement, null, new Skip(skipped.Kind, skipped.Message), Silent: false);
         }
+    }
+
+    /// <summary>
+    /// Whether the placement is a plain copy of the game's own file at the same path, which the install compares with the
+    /// live file instead of writing. <paramref name="archiveOf"/> finds the list's archive entry by hash, so the question
+    /// can be asked of any version of a list, not only the one whose archives were matched against the library.
+    /// </summary>
+    internal static bool IsPlainGameFileCopy(
+        Placement placement, Mo2Target.GameRootFile root, Func<FileIdentity, ArchiveEntry?> archiveOf,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out FromArchive? vanilla,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out GameFileSourceState? gameFile)
+    {
+        vanilla = null;
+        gameFile = null;
+        if (placement.Directive is not FromArchive { Source.Parts.Count: 0 } copy || copy.GetType() != typeof(FromArchive)) return false;
+        if (archiveOf(copy.Source.ArchiveXxHash64)?.State is not GameFileSourceState source) return false;
+        if (!SameFile(source.GameFile, root.Path)) return false;
+
+        vanilla = copy;
+        gameFile = source;
+        return true;
+    }
+
+    /// <summary>
+    /// The game-folder files the user chose to keep: the ones <paramref name="placements"/> copy in that the earlier
+    /// version of the list (<paramref name="earlierPlacements"/>, <paramref name="earlierList"/>) also placed as something
+    /// other than a plain copy of the game's file, and that the group holds neither a row nor a skip note for. A file the
+    /// earlier version copied from the game and that matched also left neither, so it is not a choice; nor is a file that
+    /// only this version places. The install and the update preview both ask here.
+    /// </summary>
+    internal static IReadOnlySet<RelativePath> GameFilesKept(
+        WriteState state, IReadOnlyList<Placement> placements, IReadOnlySet<string> skippedDestinations,
+        IReadOnlyList<Placement> earlierPlacements, ModList earlierList)
+    {
+        var archives = earlierList.Archives.GroupBy(a => a.XxHash64).ToDictionary(g => g.Key, g => g.First());
+        var placedBefore = earlierPlacements
+            .Where(p => p.Target is Mo2Target.GameRootFile root
+                        && !IsPlainGameFileCopy(p, root, hash => archives.GetValueOrDefault(hash), out _, out _))
+            .Select(p => Fold(((Mo2Target.GameRootFile)p.Target).Path))
+            .ToHashSet(StringComparer.Ordinal);
+        var candidates = placements.Where(p => p.Target is Mo2Target.GameRootFile root && placedBefore.Contains(Fold(root.Path))).ToArray();
+        return InstallReconciler.GameFilesKeptByUser(state, candidates, skippedDestinations);
     }
 
     /// <summary>A file the list copies from the game itself: nothing to write when the user's copy is the one the list wants.</summary>
@@ -687,7 +755,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var finished = InstallReconciler.FinishedDirectives(
             state, executable, _keptOriginals, updateMode: false,
             path => OwnedIniPath(check, path) is not null,
-            IsLibraryCopyOf,
+            (directive, stored) => IsLibraryCopyOf(Connection.Db, directive, stored),
             (placement, identity) => state.Written[Fold(placement.To)] = (identity, placement.Directive.XxHash64));
 
         var done = finished.Select(p => p.Index).ToHashSet();
@@ -700,10 +768,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     /// A file an earlier version wrote has no list hash to compare. A plain copy of an archive member is the member's
     /// bytes, so it is the list's file when the library file holding those bytes has the list's hash.
     /// </summary>
-    private bool IsLibraryCopyOf(Directive directive, FileIdentity stored)
+    internal static bool IsLibraryCopyOf(IDb db, Directive directive, FileIdentity stored)
     {
         if (directive.GetType() != typeof(FromArchive) || !stored.TryXxHash3(out var storeHash)) return false;
-        foreach (var file in LibraryFile.FindByHash(Connection.Db, storeHash))
+        foreach (var file in LibraryFile.FindByHash(db, storeHash))
         {
             if (file.XxHash64Identity() is { } known && known.Equals(directive.XxHash64)) return true;
         }
@@ -756,7 +824,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             await DiscardPending(state);
         }
 
-        var isListOutput = await ListOutputRows(state);
+        var isListOutput = await ListOutputRows(FileStore, state);
         await KeepUserTweaksOfEarlierInstalls(state, isListOutput);
         await RemoveStaleFiles(state, isListOutput);
         LogSkipSummary(check, state);
@@ -1053,7 +1121,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     /// list wrote (the xxHash64 of the stored bytes is the one recorded with the row), or the very bytes of the list's tweak.
     /// The list's tweak is an inline file, so no library file holds its bytes to compare with.
     /// </summary>
-    private async Task<Func<GamePath, FileIdentity, bool>> ListOutputRows(WriteState state)
+    internal static async Task<Func<GamePath, FileIdentity, bool>> ListOutputRows(IFileStore fileStore, WriteState state)
     {
         var listOutputs = new HashSet<(GamePath Path, FileIdentity Identity)>();
         if (state.Files.TryGetValue(Mo2Layout.ProfileSettingsGroup, out var files))
@@ -1066,7 +1134,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 foreach (var (identity, known) in files.AtPath(path))
                 {
                     if (known.Wanted || known.Ids.Count == 0) continue;
-                    if (files.TryGet(listPath, identity, out _) || await IsListOutput(known, identity)) listOutputs.Add((path, identity));
+                    if (files.TryGet(listPath, identity, out _) || await IsListOutput(fileStore, known, identity)) listOutputs.Add((path, identity));
                 }
             }
         }
@@ -1074,10 +1142,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     }
 
     /// <summary>Whether a legacy row still holds what the list wrote: the xxHash64 of its bytes is the one recorded with the row.</summary>
-    private async Task<bool> IsListOutput(KnownFile known, FileIdentity identity)
+    private static async Task<bool> IsListOutput(IFileStore fileStore, KnownFile known, FileIdentity identity)
     {
         if (known.ListHash is not { } recorded) return false;
-        return FileIdentity.XxHash64(Xx64Hasher.Hash(await FileStore.Load(identity))).Equals(recorded);
+        return FileIdentity.XxHash64(Xx64Hasher.Hash(await fileStore.Load(identity))).Equals(recorded);
     }
 
     /// <summary>The loadout's own tweak rows in its top-level settings group, by the INI each one changes.</summary>
@@ -1105,10 +1173,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         state.FolderlessGroups.Clear();
     }
 
-    private WriteState LoadExisting(LoadoutItemGroupId groupId)
+    /// <summary>The rows the group holds now, by mod folder, as the reconciliation reads them.</summary>
+    internal static WriteState LoadExisting(IDb db, LoadoutItemGroupId groupId)
     {
         var state = new WriteState();
-        var db = Connection.Db;
         foreach (var child in LoadoutItem.FindByParent(db, groupId).OfTypeLoadoutItemGroup())
         {
             // The settings group is found by its marker and a mod group by the folder it was made from; a user may have renamed either.
@@ -1356,7 +1424,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     /// The path the loadout's bake owns that <paramref name="path"/> names, spelled as the game spells it, or null when
     /// the game keeps no copy of that file per loadout.
     /// </summary>
-    private static GamePath? OwnedIniPath(Checked check, GamePath path)
+    internal static GamePath? OwnedIniPath(Checked check, GamePath path)
     {
         if (check.Loadout.InstallationInstance.Game is not IGameIniFiles game) return null;
         foreach (var owned in GameInis.Paths(game))

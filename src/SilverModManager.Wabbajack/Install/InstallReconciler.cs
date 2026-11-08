@@ -76,7 +76,7 @@ internal static class InstallReconciler
     /// Whether the directive's output is a file row whose bytes depend only on the list. A tool file and a game's INI
     /// baseline leave no such row, and a path-remapped file or a list-edited profile file depends on this machine.
     /// </summary>
-    private static bool CanBeFinished(Placement placement, GamePath path, Func<GamePath, bool> isGameIni)
+    public static bool CanBeFinished(Placement placement, GamePath path, Func<GamePath, bool> isGameIni)
     {
         if (placement.Directive is RemappedInlineFile || InstallModlistJob.IsHashUnchecked(placement.Directive)) return false;
         return placement.Target switch
@@ -223,7 +223,8 @@ internal static class InstallReconciler
         return kept;
     }
 
-    private static HashSet<string> NamedFolders(IReadOnlyList<Placement> placements)
+    /// <summary>The mod folders the list's placements name, not counting the profile settings group.</summary>
+    public static HashSet<string> NamedFolders(IReadOnlyList<Placement> placements)
         => placements
             .Select(p => p.Group)
             .OfType<string>()

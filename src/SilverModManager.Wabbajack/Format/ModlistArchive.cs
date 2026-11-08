@@ -12,6 +12,13 @@ public static class ModlistArchive
 {
     private static readonly string[] ModlistEntryNames = ["modlist", "modlist.json"];
 
+    /// <summary>Whether <see cref="ReadModlist"/> would find the list: the archive has its 'modlist' entry and the store still holds the bytes.</summary>
+    public static async ValueTask<bool> CanReadModlist(IFileStore store, LibraryArchive.ReadOnly archive)
+    {
+        var entry = archive.Children.FirstOrDefault(c => ModlistEntryNames.Contains(c.Path.ToString(), StringComparer.OrdinalIgnoreCase));
+        return entry.IsValid() && await store.HaveFile(entry.AsLibraryFile().Identity);
+    }
+
     public static async Task<ModList> ReadModlist(IFileStore store, LibraryArchive.ReadOnly archive, CancellationToken cancellationToken = default)
     {
         var entry = archive.Children.FirstOrDefault(c => ModlistEntryNames.Contains(c.Path.ToString(), StringComparer.OrdinalIgnoreCase));
