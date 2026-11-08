@@ -11,7 +11,7 @@ namespace SilverModManager.CLI.Tests;
 /// A game that only has a name and an id. NSubstitute cannot stand in for <see cref="IGameData"/>: it builds a default
 /// value for an unconfigured property first, and a <see cref="GameId"/> has no default.
 /// </summary>
-internal sealed class StubGameData(string displayName, GameId gameId) : IGameData
+internal class StubGameData(string displayName, GameId gameId) : IGameData
 {
     public GameId GameId { get; } = gameId;
     public StoreIdentifiers StoreIdentifiers => new(GameId);

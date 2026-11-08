@@ -15,6 +15,7 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 /// <param name="IsLoadoutTweak">Whether this is the loadout's own tweak.</param>
 /// <param name="IsSwitchedOn">Whether the file itself is on, apart from the mod above it.</param>
 /// <param name="IsEnabled">Whether the bake merges it: the file and every group above it are on.</param>
+/// <param name="Kind">Who supplies the file: the user, a collection or modlist, or a single mod.</param>
 public readonly record struct IniTweakSource(
     string Name,
     string SourceName,
@@ -22,7 +23,21 @@ public readonly record struct IniTweakSource(
     EntityId FileId,
     bool IsLoadoutTweak,
     bool IsSwitchedOn,
-    bool IsEnabled);
+    bool IsEnabled,
+    IniTweakKind Kind);
+
+/// <summary>Who supplies a tweak file.</summary>
+public enum IniTweakKind
+{
+    /// <summary>The loadout's own tweak, the one the INI editor writes.</summary>
+    User,
+
+    /// <summary>A file inside a collection or modlist group.</summary>
+    List,
+
+    /// <summary>A file of a mod outside any collection.</summary>
+    Mod,
+}
 
 public static partial class IniTweakLayers
 {
@@ -44,7 +59,7 @@ public static partial class IniTweakLayers
             if (!TryParse(path, target.FileName.ToString(), out var name)) continue;
 
             var isLoadoutTweak = name.Equals(LoadoutTweakName, StringComparison.OrdinalIgnoreCase) && InGameSettingsGroup(item);
-            var source = new IniTweakSource(name, SourceNameOf(item, priorities), file.Identity, file.Id, isLoadoutTweak, !item.IsDisabled, item.IsEnabled());
+            var source = new IniTweakSource(name, SourceNameOf(item, priorities), file.Identity, file.Id, isLoadoutTweak, !item.IsDisabled, item.IsEnabled(), KindOf(item, isLoadoutTweak));
             found.Add((PriorityOf(item, priorities), isLoadoutTweak, path.ToString(), source));
         }
 
@@ -75,10 +90,16 @@ public static partial class IniTweakLayers
             if (knownTargets.Contains(target, StringComparer.OrdinalIgnoreCase)) continue;
 
             var isLoadoutTweak = name.Equals(LoadoutTweakName, StringComparison.OrdinalIgnoreCase) && InGameSettingsGroup(item);
-            found.Add((path.ToString(), target, new IniTweakSource(name, SourceNameOf(item, priorities), file.Identity, file.Id, isLoadoutTweak, true, true)));
+            found.Add((path.ToString(), target, new IniTweakSource(name, SourceNameOf(item, priorities), file.Identity, file.Id, isLoadoutTweak, true, true, KindOf(item, isLoadoutTweak))));
         }
 
         return found.OrderBy(f => f.Path, StringComparer.Ordinal).Select(f => (f.Target, f.Source)).ToList();
+    }
+
+    private static IniTweakKind KindOf(LoadoutItem.ReadOnly item, bool isLoadoutTweak)
+    {
+        if (isLoadoutTweak) return IniTweakKind.User;
+        return item.GetThisAndParents().Skip(1).Any(a => a.TryGetAsLoadoutItemGroup(out var group) && group.TryGetAsCollectionGroup(out _)) ? IniTweakKind.List : IniTweakKind.Mod;
     }
 
     // The name of the group the priority belongs to (the mod), else of the file's own parent.

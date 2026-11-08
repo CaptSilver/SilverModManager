@@ -68,7 +68,8 @@ public static class LoadoutManagementVerbs
             .AddVerb(() => Revert)
             .AddVerb(() => EnableGroup)
             .AddVerb(() => DisableGroup)
-            .AddLoadoutOrderVerbs();
+            .AddLoadoutOrderVerbs()
+            .AddLoadoutIniVerbs();
 
     [Verb("loadout version set", "Sets the game version for a loadout")]
     private static async Task<int> SetVersion([Injected] IRenderer renderer,
