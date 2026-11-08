@@ -64,6 +64,27 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
     protected static CreateBsa UnbuildableArchive(string to)
         => new(P(to), Xx64.From(1), 1, P("none"), JsonDocument.Parse("{\"$type\":\"NotAnArchive\"}").RootElement, []);
 
+    /// <summary>An empty Skyrim SE plugin: just the TES4 record with its HEDR, which is all the plugin list reads.</summary>
+    protected static byte[] Plugin()
+    {
+        using var buffer = new MemoryStream();
+        using var writer = new BinaryWriter(buffer);
+        const int hedrSize = 12;
+        writer.Write("TES4"u8);
+        writer.Write(4u + 2 + hedrSize); // data size: HEDR tag, its length, its payload
+        writer.Write(0u); // flags
+        writer.Write(0u); // form id
+        writer.Write(0u); // version control info
+        writer.Write((ushort)44); // form version of Skyrim SE
+        writer.Write((ushort)0);
+        writer.Write("HEDR"u8);
+        writer.Write((ushort)hedrSize);
+        writer.Write(1.7f);
+        writer.Write(0); // record count
+        writer.Write(0x800u); // next object id
+        return buffer.ToArray();
+    }
+
     protected static RelativePath P(string path) => RelativePath.FromUnsanitizedInput(path);
 
     /// <summary>Puts a zip with these files in the library and returns the list entry that names it by hash.</summary>

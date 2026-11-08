@@ -235,7 +235,7 @@ public class UpdateJobTests(ITestOutputHelper helper) : InstallTestBase<UpdateJo
     }
 
     /// <summary>Forwards to a store, but every call to back files up after the first <c>allowed</c> ones fails.</summary>
-    private sealed class FailingAfter(IFileStore inner, int allowed) : ForwardingFileStore(inner)
+    internal sealed class FailingAfter(IFileStore inner, int allowed) : ForwardingFileStore(inner)
     {
         private int _calls;
 

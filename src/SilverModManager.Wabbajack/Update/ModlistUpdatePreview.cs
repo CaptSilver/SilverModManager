@@ -1,6 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using SilverModManager.Abstractions.Games.Modlists;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.FileStore;
@@ -22,23 +25,23 @@ namespace SilverModManager.Wabbajack.Update;
 /// files are the install's own decisions (<see cref="InstallReconciler"/>) run against the rows the group holds.
 /// <paramref name="Downloads"/> are the archives the library lacks; <paramref name="NewBytesUpperBound"/> is the sum of
 /// the sizes of the files still to be written, an upper bound because the store holds identical bytes once.
-/// The folder lists name the list's mod folders.
+/// The folder lists name the list's mod folders. <paramref name="ModOrder"/> names the kept mods whose place or switch the
+/// list changes and the user had not; <paramref name="Plugins"/> and <paramref name="Conflicts"/> are the plugins and the
+/// mods whose place or switch the user changed and the list changes to something else, which stay as the user has them.
 /// </summary>
 public sealed record ModlistUpdatePreviewResult(
     IReadOnlyList<ArchivePlanRow> Downloads, Size DownloadSize, Size NewBytesUpperBound,
     IReadOnlyList<string> Added, IReadOnlyList<string> Changed, IReadOnlyList<(string From, string To)> Renamed, IReadOnlyList<string> Removed,
     IReadOnlyList<string> RetriedTextures, IReadOnlyList<RelativePath> GameFilesKept, IReadOnlyList<GamePath> UserTweaksKept,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    IReadOnlyList<string> ModOrder, IReadOnlyList<string> Plugins, IReadOnlyList<string> Conflicts);
 
 /// <summary>
-/// A read-only review of an update. It is not an install job: it opens no transaction, pins nothing and registers no
+/// A read-only review of an update. It is not an install job: it commits nothing, pins nothing and registers no
 /// run. It runs the install's check phase and reconciliation functions against the new list and the group as it stands.
 /// </summary>
 public sealed class ModlistUpdatePreview(IServiceProvider provider)
 {
-    /// <summary>Shown when the library no longer holds the installed version, so there is nothing to tell which files the user changed or kept.</summary>
-    public const string InstalledVersionGoneWarning = "the installed version's files are gone from the library; the list's order and flags are applied in full";
-
     /// <summary>
     /// Parses the new list, builds its archive plan, reads the group's rows and runs the install's reconciliation on them.
     /// Changes nothing.
@@ -90,14 +93,60 @@ public sealed class ModlistUpdatePreview(IServiceProvider provider)
 
         var warnings = new List<string>();
         var previous = await InstallModlistJob.ClassifyVersion(WabbajackModlistLibraryFile.Load(db, group.ModlistId.Value), loadoutId, connection, fileStore, ct);
-        if (previous is null) warnings.Add(InstalledVersionGoneWarning);
+        if (previous is null) warnings.Add(UpdateOrderPlanner.InstalledVersionGoneWarning);
+
+        var (modOrder, plugins, conflicts) = previous is null
+            ? ([], [], [])
+            : await OrderChanges(check, previous, state, gone, renamed, loadoutId, groupId, connection, fileStore, ct);
 
         var downloads = check.Archives.Missing;
         var downloadSize = Size.From((ulong)downloads.Sum(row => row.Archive.Size));
         var newBytes = Size.From((ulong)unfinished.Sum(p => p.Directive.Size));
         return new ModlistUpdatePreviewResult(
             downloads, downloadSize, newBytes, added, changed, renamed, removed, retried,
-            GameFilesKept(check, state, group, skips, previous), userTweaks, warnings);
+            GameFilesKept(check, state, group, skips, previous), userTweaks, warnings, modOrder, plugins, conflicts);
+    }
+
+    /// <summary>
+    /// What the three-way rule would do to the order and switches of the kept mods and to the plugin list, by the same
+    /// planner and plugin staging the install runs. The plugin staging goes into a transaction that is never committed.
+    /// </summary>
+    private static async Task<(string[] ModOrder, string[] Plugins, string[] Conflicts)> OrderChanges(
+        InstallModlistJob.Checked check, InstallModlistJob.Classified previous, InstallModlistJob.WriteState state,
+        IReadOnlySet<string> gone, IReadOnlyList<(string From, string To)> renamed, LoadoutId loadoutId, LoadoutItemGroupId groupId,
+        IConnection connection, IFileStore fileStore, CancellationToken ct)
+    {
+        var db = connection.Db;
+        var newTexts = await InstallModlistJob.ReadProfileTexts(fileStore, check.Placements, check.ListArchive, ct);
+        var oldTexts = await InstallModlistJob.ReadProfileTexts(fileStore, previous.Placements, previous.ListArchive, ct);
+
+        // The groups still carry the previous version's folder names, so the new lines are read under those.
+        // A renamed folder is among the gone ones until the install renames its group; it is kept.
+        var renamedFrom = renamed.Select(r => r.From).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var existed = state.Groups.Where(pair => !gone.Contains(pair.Key) || renamedFrom.Contains(pair.Key)).Select(pair => pair.Value).ToHashSet();
+        var children = existed.Select(id => LoadoutItemGroup.Load(db, id)).ToArray();
+        var newEntries = UpdateOrderPlanner.Rename(newTexts.ModlistTxt is null ? [] : ModlistTxt.Parse(newTexts.ModlistTxt), renamed.Select(r => (r.To, r.From)));
+        var oldEntries = oldTexts.ModlistTxt is null ? [] : ModlistTxt.Parse(oldTexts.ModlistTxt);
+        var rootNames = InstallModlistJob.StockGameFolders(check);
+        var newOrder = Mo2ProfileOrderReader.Read(children, newEntries, rootNames, check.List.Name, NullLogger.Instance);
+        var plan = UpdateOrderPlanner.ForContainer(db, groupId, children, existed, oldEntries, newOrder, rootNames, check.List.Name);
+
+        string NameOf(LoadoutItemGroupId id) => LoadoutItem.Load(db, id).Name;
+        var modOrder = plan.NewGroups.Where(existed.Contains).Select(NameOf)
+            .Concat(plan.FlagWrites.Select(write => NameOf(write.Group)))
+            .Distinct().Order(StringComparer.OrdinalIgnoreCase).ToArray();
+
+        var pluginConflicts = new List<string>();
+        var installation = check.Loadout.InstallationInstance;
+        if ((newTexts.PluginsTxt is not null || newTexts.LoadorderTxt is not null)
+            && InstallModlistJob.RequirePluginVariety(installation).GetSortOrderIdFor(loadoutId, db) is { HasValue: true } sortOrder)
+        {
+            using var tx = connection.BeginTransaction();
+            InstallModlistJob.RequireTarget(installation).StagePluginList(
+                Loadout.Load(db, loadoutId), sortOrder.Value,
+                new ProfilePluginTexts(oldTexts.PluginsTxt, oldTexts.LoadorderTxt), new ProfilePluginTexts(newTexts.PluginsTxt, newTexts.LoadorderTxt), tx, pluginConflicts);
+        }
+        return (modOrder, pluginConflicts.Order(StringComparer.OrdinalIgnoreCase).ToArray(), plan.Conflicts.Order(StringComparer.OrdinalIgnoreCase).ToArray());
     }
 
     /// <summary>The folders that already exist and have a file still to write; a directive no earlier run could have finished does not count.</summary>

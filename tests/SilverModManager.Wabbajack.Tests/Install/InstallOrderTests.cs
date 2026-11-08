@@ -30,27 +30,6 @@ public class InstallOrderTests(ITestOutputHelper helper) : InstallTestBase<Insta
     private static readonly byte[] EnbFromModA = "enb of mod a"u8.ToArray();
     private static readonly byte[] RootDll = "root dll"u8.ToArray();
 
-    /// <summary>An empty Skyrim SE plugin: just the TES4 record with its HEDR, which is all the plugin list reads.</summary>
-    private static byte[] Plugin()
-    {
-        using var buffer = new MemoryStream();
-        using var writer = new BinaryWriter(buffer);
-        const int hedrSize = 12;
-        writer.Write("TES4"u8);
-        writer.Write(4u + 2 + hedrSize); // data size: HEDR tag, its length, its payload
-        writer.Write(0u); // flags
-        writer.Write(0u); // form id
-        writer.Write(0u); // version control info
-        writer.Write((ushort)44); // form version of Skyrim SE
-        writer.Write((ushort)0);
-        writer.Write("HEDR"u8);
-        writer.Write((ushort)hedrSize);
-        writer.Write(1.7f);
-        writer.Write(0); // record count
-        writer.Write(0x800u); // next object id
-        return buffer.ToArray();
-    }
-
     private IPluginSortOrderVariety Variety => Game.SortOrderManager.GetSortOrderVarieties().OfType<IPluginSortOrderVariety>().Single();
 
     private static readonly InstallOptions Options = new(false, new HashSet<RelativePath>());
