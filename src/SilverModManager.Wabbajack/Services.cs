@@ -24,6 +24,7 @@ using SilverModManager.Wabbajack.Library;
 using SilverModManager.Wabbajack.Migrations;
 using SilverModManager.Wabbajack.Models;
 using SilverModManager.Wabbajack.Transforms;
+using SilverModManager.Wabbajack.Update;
 
 namespace SilverModManager.Wabbajack;
 
@@ -98,6 +99,9 @@ public static class Services
             .AddSingleton<IWabbajackGalleryClient>(provider => provider.GetRequiredService<WabbajackGalleryClient>())
             .AddSingleton<ModlistIdentityBackfill>()
             .AddSingleton<ModlistUpdateCheck>()
+            .AddSingleton<ModlistRemovalPlanner>()
+            .AddSingleton<ModlistUpdater>()
+            .AddSingleton<ModlistUpdateFinish>()
             .AddSingleton<ILibraryFileRecogniser, WabbajackModlistRecogniser>()
             .AddSingleton<SilverModManager.Library.Listing.ILibraryItemKind, WabbajackModlistKind>();
     }

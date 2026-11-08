@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Sdk.Errors;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.Wabbajack.Library;
@@ -41,15 +42,17 @@ public sealed class ModlistDownloads(
     /// <summary>
     /// Plans the list against the library, starts the run and returns without waiting for it. The run belongs to the
     /// app, not to the caller: a command that disconnects does not stop it. <see cref="Cancel"/> does.
+    /// <paramref name="target"/> is the loadout the list will install into, so the game files it names are matched
+    /// against that loadout's game; null plans against the library alone.
     /// </summary>
     /// <exception cref="DownloadBusyException">Another list's downloads are under way.</exception>
-    public async Task<DownloadStart> Start(ModlistInfo modlist, CancellationToken cancellationToken)
+    public async Task<DownloadStart> Start(ModlistInfo modlist, CancellationToken cancellationToken, LoadoutId? target = null)
     {
         if (Claim(modlist) is { } running) return running;
 
         try
         {
-            var plan = await planner.BuildPlan(modlist.Id, null, null, cancellationToken);
+            var plan = await planner.BuildPlan(modlist.Id, target, null, cancellationToken);
             var counts = PlanCounts.Of(plan);
             var run = acquirer.Run(plan, null, CancellationToken.None);
             _ = Observe(run, modlist.Name);

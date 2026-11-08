@@ -11,6 +11,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.UI.Tests.Pages.Collections;
+using SilverModManager.Wabbajack.Library;
 using SilverModManager.Wabbajack.Models;
 
 namespace SilverModManager.UI.Tests.Pages;
@@ -48,6 +49,19 @@ public class WabbajackModlistRemoverTests(IServiceProvider provider) : AUiTest(p
 
         await Remover.ConfirmAndRemove(_windows, _workspace, list);
 
+        ListExists(list).Should().BeTrue();
+        FileExists(owned).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RemovingAListAnInstallWasUpdatedAwayFromIsRefusedBeforeAnythingIsDeleted()
+    {
+        var (list, owned) = await ListWithAnOwnedArchive();
+        var plan = Remover.Plan(list) with { UnfinishedUpdates = ["Main"] };
+
+        var refused = await Record.ExceptionAsync(() => Remover.Remove(plan, deleteArchives: true, _workspace));
+
+        refused.Should().BeOfType<ModlistRemovalRefusedException>().Which.Message.Should().Contain("Main");
         ListExists(list).Should().BeTrue();
         FileExists(owned).Should().BeTrue();
     }
