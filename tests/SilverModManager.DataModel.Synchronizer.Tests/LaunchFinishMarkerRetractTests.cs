@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
 using SilverModManager.Sdk.Games;
@@ -76,5 +77,35 @@ public class LaunchFinishMarkerRetractTests(ITestOutputHelper helper) : AStubbed
         datoms.Should().NotContain(d => d.IsRetract && (IsAttribute(d, GameInstallMetadata.LaunchFinishPending)
             || IsAttribute(d, GameInstallMetadata.LaunchFinishPendingSession)
             || IsAttribute(d, GameInstallMetadata.LaunchFinishPendingGates)), "there was no marker to retract");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AResetOfTheGameFolder_LeavesNoMarker(bool discardBackups)
+    {
+        var loadout = await CreateLoadout();
+        await SynchronizerService.Synchronize(loadout.LoadoutId);
+        await WriteMarker(loadout);
+        HasMarker(Connection.Db, MetadataId).Should().BeTrue("the marker was just written");
+
+        await Synchronizer.ResetToOriginalGameState(GameInstallation, [LocatorId.From("StubbedGameState.zip")], discardBackups: discardBackups);
+
+        HasMarker(Connection.Db, MetadataId).Should().BeFalse("a reset forgets the last sync, and a marker outliving it can no longer be told stale");
+    }
+
+    [Fact]
+    public async Task ClearingTheInstallState_LeavesNoMarker()
+    {
+        var loadout = await CreateLoadout();
+        await WriteMarker(loadout);
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            SilverModManager.DataModel.LoadoutManager.ClearInstallState(tx, GameInstallMetadata.Load(Connection.Db, MetadataId));
+            await tx.Commit();
+        }
+
+        HasMarker(Connection.Db, MetadataId).Should().BeFalse();
     }
 }

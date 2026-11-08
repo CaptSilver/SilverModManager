@@ -617,6 +617,7 @@ internal partial class LoadoutManager : ILoadoutManager
             tx.RetractCurrent(id, GameInstallMetadata.InitialDiskStateTransaction);
             tx.RetractCurrent(id, GameInstallMetadata.LastScannedDiskStateTransaction);
             tx.RetractCurrent(id, GameInstallMetadata.LastApplyLeftFilesUnextracted);
+            GameInstallMetadata.RetractLaunchFinishMarker(tx, id);
         });
 
     public async Task<LoadoutItemGroup.ReadOnly> InstallItemWrapper(LoadoutId targetLoadout, Func<ITransaction, Task<LoadoutItemGroupId>> func)

@@ -1,6 +1,8 @@
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.Attributes;
 using SilverModManager.MnemonicDB.Abstractions.BuiltInEntities;
 using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.NexusModsApi;
 
@@ -101,6 +103,18 @@ public partial class GameInstallMetadata : IModelDefinition
     /// gates' Finish steps. Names are not unique across assemblies; two gates sharing a type name would both match.
     /// </summary>
     public static readonly StringsAttribute LaunchFinishPendingGates = new(Namespace, nameof(LaunchFinishPendingGates));
+
+    /// <summary>
+    /// Retracts the three pending-finish marker attributes from <paramref name="id"/> when the transaction runs.
+    /// Whatever commit records a sync, or forgets the last one, calls this so the marker never outlives the state it
+    /// describes.
+    /// </summary>
+    public static void RetractLaunchFinishMarker(ITransaction tx, EntityId id)
+    {
+        tx.RetractCurrent(id, LaunchFinishPending);
+        tx.RetractCurrent(id, LaunchFinishPendingSession);
+        tx.RetractCurrent(id, LaunchFinishPendingGates);
+    }
 
     /// <summary>
     /// The 'AsOf' transaction ID of the initial disk state when the game folder was first indexed

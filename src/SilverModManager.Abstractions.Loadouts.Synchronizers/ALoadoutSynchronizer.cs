@@ -923,9 +923,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastScannedDiskStateTransaction, EntityId.From(tx.ThisTxId.Value));
         // This sync took in whatever the pending launch finish was owed, so the marker goes in the same commit: no
         // window where the sync is recorded and the marker still asks for another one.
-        tx.RetractCurrent(gameMetadataId, Sdk.Games.GameInstallMetadata.LaunchFinishPending);
-        tx.RetractCurrent(gameMetadataId, Sdk.Games.GameInstallMetadata.LaunchFinishPendingSession);
-        tx.RetractCurrent(gameMetadataId, Sdk.Games.GameInstallMetadata.LaunchFinishPendingGates);
+        Sdk.Games.GameInstallMetadata.RetractLaunchFinishMarker(tx, gameMetadataId);
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastApplyLeftFilesUnextracted,
             syncTree.Values.Any(node => node.Actions.HasFlag(Actions.WarnOfUnableToExtract)));
         tx.Add(loadout.Id, Loadout.LastAppliedDateTime, DateTime.UtcNow);
@@ -1280,6 +1278,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         // With no last apply there is nothing for the flag to describe.
         tx.RetractCurrent(metadata.Id, Sdk.Games.GameInstallMetadata.LastApplyLeftFilesUnextracted);
+
+        // With no last sync the marker's stale checks can't tell it from a live one; after a re-manage it would
+        // report a loadout deleted that never existed in this install.
+        Sdk.Games.GameInstallMetadata.RetractLaunchFinishMarker(tx, metadata.Id);
 
         tx.Add(metadata, Sdk.Games.GameInstallMetadata.LastScannedDiskStateTransaction, EntityId.From(tx.ThisTxId.Value));
 
