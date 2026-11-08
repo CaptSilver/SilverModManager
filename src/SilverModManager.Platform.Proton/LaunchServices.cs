@@ -35,6 +35,8 @@ public static class LaunchServices
         services.TryAddTransient<LaunchSession>();
         services.TryAddSingleton<LaunchFinish>();
         services.TryAddSingleton<ILaunchFinishMarkers, LaunchFinishMarkers>();
+        services.TryAddSingleton<PendingLaunchFinisher>();
+        services.TryAddSingleton<IPendingLaunchFinisher>(s => s.GetRequiredService<PendingLaunchFinisher>());
         services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
         services.TryAddSingleton<LoadoutResolver>();
         services.TryAddSingleton<LocalConfigVdfWriter>();

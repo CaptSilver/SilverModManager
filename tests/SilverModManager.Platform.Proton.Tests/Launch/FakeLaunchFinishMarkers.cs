@@ -16,6 +16,9 @@ internal sealed class FakeLaunchFinishMarkers : ILaunchFinishMarkers
     public Exception? WriteFailure { get; set; }
     public Exception? RetractFailure { get; set; }
 
+    /// <summary>What <see cref="Read"/> answers. Left null, Read throws so a test cannot get a silent "nothing pending".</summary>
+    public Func<PendingLaunchFinish?>? ReadWith { get; set; }
+
     public bool IsSet => Written is not null;
 
     public void Clear() => Written = null;
@@ -27,10 +30,9 @@ internal sealed class FakeLaunchFinishMarkers : ILaunchFinishMarkers
         return Task.CompletedTask;
     }
 
-    // Not backed by Written on purpose: a test that needs to read a marker back should say so by implementing this,
-    // not get a silent "nothing pending".
+    // Not backed by Written on purpose: a test that reads a marker back says what it should see.
     public PendingLaunchFinish? Read(GameInstallation installation) =>
-        throw new NotSupportedException("FakeLaunchFinishMarkers does not support Read; assert on Written instead.");
+        ReadWith is { } read ? read() : throw new NotSupportedException("FakeLaunchFinishMarkers needs ReadWith to support Read; otherwise assert on Written instead.");
 
     public Task<bool> Retract(GameInstallation installation)
     {
