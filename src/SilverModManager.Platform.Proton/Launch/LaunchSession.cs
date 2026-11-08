@@ -210,6 +210,10 @@ public sealed class LaunchSession
         return new LaunchResult(0, null);
     }
 
+    // Every outcome but the silent ones carries the line the person is shown; one without it is a finisher bug.
+    private static string MessageOf(LaunchFinishReport report)
+        => report.Message ?? throw new InvalidOperationException($"The pending-finish report for {report.Outcome} carries no message");
+
     internal static string WineOverridesOf(LaunchContext context) => string.Join(';', context.WineDllOverrides);
 
     internal static RecordedLaunch? RecordedLaunchOf(LaunchContext context)
@@ -304,12 +308,13 @@ public sealed class LaunchSession
         switch (pending.Outcome)
         {
             case LaunchFinishOutcome.GameRunning or LaunchFinishOutcome.WaitingForSteam:
-                return new LaunchFailure(pending.Message!, Refused: true);
+                return new LaunchFailure(MessageOf(pending), Refused: true);
             case LaunchFinishOutcome.Failed:
-                return new LaunchFailure(pending.Message!, Cause: pending.Cause, LoadoutStillApplied: pending.LoadoutStillApplied);
+                return new LaunchFailure(MessageOf(pending), Cause: pending.Cause, LoadoutStillApplied: pending.LoadoutStillApplied);
             case LaunchFinishOutcome.Finished or LaunchFinishOutcome.ClearedLoadoutGone:
-                _logger.LogInformation("{Message}", pending.Message);
-                if (!_callerReports) _notifier.Notify(ApplicationConstants.ProductName, pending.Message!);
+                var message = MessageOf(pending);
+                _logger.LogInformation("{Message}", message);
+                if (!_callerReports) _notifier.Notify(ApplicationConstants.ProductName, message);
                 break;
         }
 
