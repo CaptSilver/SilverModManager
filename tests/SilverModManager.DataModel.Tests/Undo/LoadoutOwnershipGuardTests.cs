@@ -63,6 +63,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
         "SilverModManager.StardewValley.SMAPILoadoutItem/ModDatabase",
         "SilverModManager.Wabbajack.SkippedFile/Group",
         "SilverModManager.Collections.NexusCollectionPendingInstall/CollectionGroup",
+        "SilverModManager.Games.CreationEngine.PluginListNotice/SortOrder",
     ];
 
     /// <summary>
