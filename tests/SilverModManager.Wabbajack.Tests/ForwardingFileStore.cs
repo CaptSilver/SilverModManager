@@ -30,6 +30,8 @@ internal abstract class ForwardingFileStore(IFileStore inner) : IFileStore
         add => inner.ArchivesChanged += value;
         remove => inner.ArchivesChanged -= value;
     }
+
+    public long ArchivesVersion => inner.ArchivesVersion;
 }
 
 /// <summary>Forwards to a store and counts the calls that back files up.</summary>

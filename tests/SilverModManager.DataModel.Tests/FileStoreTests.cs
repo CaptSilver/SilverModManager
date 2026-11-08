@@ -47,6 +47,41 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
         return new ArchivedFileEntry(new MemoryStreamFactory($"random{seed}.bin", new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(length));
     }
 
+    // Nothing subscribes here: the version has to count changes nobody was listening to.
+    [Fact]
+    public async Task BackingUpAFileMovesTheArchivesVersionWithNoSubscriber()
+    {
+        var before = _fileStore.ArchivesVersion;
+
+        await _fileStore.BackupFiles([RandomEntry(99, 1024, out _)], token: TestContext.Current.CancellationToken);
+
+        _fileStore.ArchivesVersion.Should().BeGreaterThan(before);
+    }
+
+    // A reload is also how a garbage collection tells the store it dropped files, and losing files makes nothing
+    // available.
+    [Fact]
+    public async Task AReloadThatFindsNoNewFileLeavesTheArchivesVersion()
+    {
+        await _fileStore.BackupFiles([RandomEntry(98, 1024, out _)], token: TestContext.Current.CancellationToken);
+        var before = _fileStore.ArchivesVersion;
+
+        _fileStore.ReloadCaches();
+
+        _fileStore.ArchivesVersion.Should().Be(before);
+    }
+
+    [Fact]
+    public async Task AGarbageCollectionLeavesTheArchivesVersion()
+    {
+        await _fileStore.BackupFiles([RandomEntry(97, 1024, out _)], token: TestContext.Current.CancellationToken);
+        var before = _fileStore.ArchivesVersion;
+
+        await _gcRunner.RunAsync();
+
+        _fileStore.ArchivesVersion.Should().Be(before);
+    }
+
     [Fact]
     public async Task BackingUpFiles_ReportsProgressThatNeverGoesBackAndEndsAtOne()
     {

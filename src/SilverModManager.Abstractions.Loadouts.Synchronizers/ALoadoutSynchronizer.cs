@@ -76,6 +76,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     protected readonly IFileIdentityResolver _identityResolver;
     private readonly IBackupOverflowPrompt _backupOverflowPrompt;
     private readonly BackupLimit _backupLimit;
+    private readonly ArchiveVersionsAtApply _archiveVersionsAtApply;
     private readonly IMassRemovalPrompt _massRemovalPrompt;
     private readonly MassRemovalThreshold _massRemovalThreshold;
     private readonly IFullFileHasher _fullHasher;
@@ -108,6 +109,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         _stagingStore = serviceProvider.GetRequiredService<ILooseStagingStore>();
         _backupOverflowPrompt = serviceProvider.GetRequiredService<IBackupOverflowPrompt>();
         _backupLimit = serviceProvider.GetRequiredService<BackupLimit>();
+        _archiveVersionsAtApply = serviceProvider.GetRequiredService<ArchiveVersionsAtApply>();
         _massRemovalPrompt = serviceProvider.GetRequiredService<IMassRemovalPrompt>();
         _massRemovalThreshold = serviceProvider.GetRequiredService<MassRemovalThreshold>();
         _fullHasher = serviceProvider.GetService<IFullFileHasher>() ?? MultiHashFileHasher.Instance;
@@ -920,7 +922,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastApplyLeftFilesUnextracted,
             syncTree.Values.Any(node => node.Actions.HasFlag(Actions.WarnOfUnableToExtract)));
         tx.Add(loadout.Id, Loadout.LastAppliedDateTime, DateTime.UtcNow);
-        await tx.Commit();
+        // Read before the commit: an archive that lands in between then counts as a change after this Apply, and the
+        // status compares once more than it needs to rather than missing it.
+        var archivesVersion = _fileStore.ArchivesVersion;
+        var applied = await tx.Commit();
+        _archiveVersionsAtApply.Record(gameMetadataId, applied.NewTx, archivesVersion);
 
         loadout = loadout.Rebase();
         var newState = DiskStateEntry.FindByGame(loadout.Db, loadout.Installation);

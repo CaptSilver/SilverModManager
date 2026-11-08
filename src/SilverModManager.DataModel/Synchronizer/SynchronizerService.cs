@@ -685,28 +685,24 @@ public class SynchronizerService : ISynchronizerService, IDisposable
             .Select(metadata => AppliedStateOf(metadata))
             .ToObservable();
 
-        // The epoch counts changes to the file store. A file store change moves no database revision, so without it
-        // the pipeline's DistinctUntilChanged would see the same values and drop the trigger.
-        var archiveEpoch = 0L;
+        // The file store's version goes up with every change to it. A file store change moves no database revision,
+        // so without it the pipeline's DistinctUntilChanged would see the same values and drop the trigger.
+        var fileStore = _serviceProvider.GetRequiredService<IFileStore>();
+        var versionsAtApply = _serviceProvider.GetRequiredService<ArchiveVersionsAtApply>();
         var inputRevisions = LoadoutQueries2.SyncInputRevisions(_conn, loadoutId)
             .ToObservable()
-            .Select(rev => (Basis: rev.Db.BasisTxId, Epoch: Volatile.Read(ref archiveEpoch)));
+            .Select(rev => (Basis: rev.Db.BasisTxId, Version: fileStore.ArchivesVersion));
 
         // An archive that comes back is no input of the loadout, so a change to the file store is a reason to look
         // again. Every change is passed on, whether or not a file is known to wait for an archive: a comparison that
         // is still running when the archive lands has not recorded yet that it saw a file missing, and a trigger
         // dropped now would never come again. A look that finds nothing waiting is answered from the recorded inputs
         // without building a tree.
-        var fileStore = _serviceProvider.GetRequiredService<IFileStore>();
-        var archiveChanges = R3.Observable.Create<(TxId Basis, long Epoch)>(observer =>
+        var archiveChanges = R3.Observable.Create<(TxId Basis, long Version)>(observer =>
         {
-            void Changed() => observer.OnNext((_conn.Db.BasisTxId, Interlocked.Increment(ref archiveEpoch)));
+            void Changed() => observer.OnNext((_conn.Db.BasisTxId, fileStore.ArchivesVersion));
 
             fileStore.ArchivesChanged += Changed;
-            // Nothing listens while the status has no subscriber, so an archive that came back in that time raised no
-            // change. Counting the (re)connect as one means a file known to wait for an archive is compared once
-            // instead of being answered from the inputs recorded before the gap.
-            Interlocked.Increment(ref archiveEpoch);
             return R3.Disposable.Create(() => fileStore.ArchivesChanged -= Changed);
         });
 
@@ -715,10 +711,13 @@ public class SynchronizerService : ISynchronizerService, IDisposable
 
         // A file is known to wait for an archive when the last apply left one out (recorded in the database) or the
         // last comparison found one. Only a change to the file store can make it writable, so it forces a comparison
-        // once per change, and once after each time the status starts listening to the store; otherwise the recorded inputs answer, and an apply that found nothing it could write
-        // reads Current instead of re-comparing, and finding the same generated files pending, on every look.
+        // once per change since the later of the last look and the Apply; otherwise the recorded inputs answer, and an
+        // apply that found nothing it could write reads Current instead of re-comparing, and finding the same
+        // generated files pending, on every look. The store's version, unlike a count of events seen here, includes
+        // changes made while nothing watched this status. An Apply this process did not run (one from before a
+        // restart) has no recorded version, so the first look compares.
         var waitsForArchive = 0;
-        var epochAtLastLook = 0L; // the epoch's start: the file store has not changed since this status began
+        var versionAtLastLook = -1L; // not looked yet
         var statusFailureLogged = 0;
         var statusObservable = isBusy.CombineLatest(appliedState,
                 revisions,
@@ -758,9 +757,9 @@ public class SynchronizerService : ISynchronizerService, IDisposable
             var db = _conn.Db;
             var rev = Loadout.Load(db, loadoutId);
             var (last, scanTx, leftUnextracted) = AppliedStateOf(GameInstallMetadata.Load(db, metadataId));
-            var epochNow = Volatile.Read(ref archiveEpoch);
-            var archiveMayHaveReturned = (leftUnextracted || Volatile.Read(ref waitsForArchive) == 1)
-                                         && epochNow != Volatile.Read(ref epochAtLastLook);
+            var versionNow = fileStore.ArchivesVersion;
+            var seenUpTo = Math.Max(Volatile.Read(ref versionAtLastLook), versionsAtApply.For(metadataId, last.Tx) ?? -1);
+            var archiveMayHaveReturned = (leftUnextracted || Volatile.Read(ref waitsForArchive) == 1) && versionNow > seenUpTo;
 
             var verdict = StatusDecision.Decide(
                 busy, rev.IsValid(), loadoutId, last, scanTx,
@@ -772,10 +771,10 @@ public class SynchronizerService : ISynchronizerService, IDisposable
                 case StatusVerdict.Pending: return LoadoutSynchronizerState.Pending;
                 case StatusVerdict.OtherLoadoutSynced:
                     Volatile.Write(ref waitsForArchive, 0);
-                    Volatile.Write(ref epochAtLastLook, epochNow);
+                    Volatile.Write(ref versionAtLastLook, versionNow);
                     return LoadoutSynchronizerState.OtherLoadoutSynced;
                 case StatusVerdict.Current:
-                    Volatile.Write(ref epochAtLastLook, epochNow);
+                    Volatile.Write(ref versionAtLastLook, versionNow);
                     return LoadoutSynchronizerState.Current;
             }
 
@@ -813,8 +812,8 @@ public class SynchronizerService : ISynchronizerService, IDisposable
             }
 
             Volatile.Write(ref waitsForArchive, evaluation.WaitsForArchive ? 1 : 0);
-            // The epoch is read before the comparison, so an archive that lands during it is looked at again.
-            Volatile.Write(ref epochAtLastLook, epochNow);
+            // The version is read before the comparison, so an archive that lands during it is looked at again.
+            Volatile.Write(ref versionAtLastLook, versionNow);
             return evaluation.Needed ? LoadoutSynchronizerState.NeedsSync : LoadoutSynchronizerState.Current;
         }
     }

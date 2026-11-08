@@ -170,6 +170,8 @@ public class LibraryFileDigestsTests(IConnection connection, IServiceProvider se
 
         // This store never gains an archive, so there is nobody to tell.
         public event Action? ArchivesChanged { add { } remove { } }
+
+        public long ArchivesVersion => 0;
     }
 
     public class Startup

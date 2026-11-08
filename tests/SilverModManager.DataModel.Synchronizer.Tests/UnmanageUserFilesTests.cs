@@ -186,6 +186,8 @@ public class UnmanageUserFilesTests(ITestOutputHelper helper) : AStubbedGameTest
             add => inner.ArchivesChanged += value;
             remove => inner.ArchivesChanged -= value;
         }
+
+        public long ArchivesVersion => inner.ArchivesVersion;
     }
 
     private class WarningCapture(ConcurrentQueue<string> sink) : ILoggerProvider

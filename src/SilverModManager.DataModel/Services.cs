@@ -117,6 +117,7 @@ public static class Services
         coll.TryAddSingleton<IDiagnosticWriter, PlainDiagnosticWriter>();
         coll.TryAddSingleton<IBackupOverflowPrompt, RefusingBackupOverflowPrompt>();
         coll.TryAddSingleton(BackupLimit.Default);
+        coll.TryAddSingleton<ArchiveVersionsAtApply>();
         coll.TryAddSingleton<IMassRemovalPrompt, RefusingMassRemovalPrompt>();
         coll.TryAddSingleton(MassRemovalThreshold.Default);
         

@@ -35,6 +35,11 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
     /// <inheritdoc />
     public event Action? ArchivesChanged;
 
+    private long _archivesVersion;
+
+    /// <inheritdoc />
+    public long ArchivesVersion => Interlocked.Read(ref _archivesVersion);
+
     private ArchiveIndex _index = ArchiveIndex.Empty;
 
     /// <summary>
@@ -133,15 +138,16 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
             ).ToList();
 
         _index = ArchiveIndex.Of(archives);
-        RaiseArchivesChanged();
+        RaiseArchivesChanged(GainedFiles(oldIndex, archives));
     }
 
     /// <summary>
     /// Tells the subscribers one by one. The archive is already written and indexed by now, so a subscriber that fails
     /// (the app can be shutting down under it) must not turn a stored backup into a failed one.
     /// </summary>
-    private void RaiseArchivesChanged()
+    private void RaiseArchivesChanged(bool gainedFiles)
     {
+        if (gainedFiles) Interlocked.Increment(ref _archivesVersion);
         var handlers = ArchivesChanged;
         if (handlers is null) return;
         foreach (var handler in handlers.GetInvocationList().Cast<Action>())
@@ -177,8 +183,17 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
                 break;
         }
 
-        RaiseArchivesChanged();
+        RaiseArchivesChanged(gainedFiles: true);
     }
+
+    /// <summary>
+    /// Whether a reload found a file the old index did not hold. An archive the reload kept is the same object as
+    /// before, so only new or rewritten archives are looked at. A garbage collection removes files and repacks the
+    /// rest, so it gains nothing.
+    /// </summary>
+    private static bool GainedFiles(ArchiveIndex oldIndex, IReadOnlyList<ArchiveContents> archives)
+        => archives.Any(archive => !(oldIndex.TryGetArchive(archive.ArchivePath, out var old) && ReferenceEquals(old, archive))
+                                   && archive.Entries.Keys.Any(hash => !oldIndex.ContainsFile(hash)));
 
     private static void ArchiveValidation(FrozenDictionary<Hash, FileEntry> actualFiles, Dictionary<Hash, (ArchivedFileEntry, Stream)> expectedFiles)
     {

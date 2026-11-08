@@ -100,6 +100,13 @@ public interface IFileStore
     /// reloaded. A file the loadout needs may have become available. May fire on any thread.
     /// </summary>
     event Action? ArchivesChanged;
+
+    /// <summary>
+    /// Goes up whenever the store gains a file it did not hold, whether or not anything is subscribed to
+    /// <see cref="ArchivesChanged"/>, so a reader can tell that a file may have become available while it was not
+    /// listening. Removing files (a garbage collection) leaves it where it was.
+    /// </summary>
+    long ArchivesVersion { get; }
 }
 
 

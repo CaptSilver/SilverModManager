@@ -82,6 +82,23 @@ public class UnwritableFilesWithGeneratedFileTests : AIsolatedGameTest<Unwritabl
         (await Status(loadout)).Should().Be(LoadoutSynchronizerState.Current);
     }
 
+    // The status counts the file store's changes from the Apply it answers for, not from whenever it last looked,
+    // so a second Apply that leaves the same file out (and backs up whatever it backs up) is not a reason to compare.
+    [Fact]
+    public async Task ASecondApplyThatLeftTheSameFileOutLeavesTheStatusCurrent()
+    {
+        RenderedListingStubbedGame.OptIn = false;
+        var loadout = await ModFileWithNoCopyAndDifferentOnDisk();
+        await Synchronizer.Synchronize(loadout);
+        (await Status(loadout)).Should().Be(LoadoutSynchronizerState.Current, "the premise: the first Apply reads current");
+
+        var job = new SynchronizeLoadoutJob(loadout.LoadoutId);
+        await Synchronizer.Synchronize(Refresh(loadout), job);
+
+        job.UnwritableFiles.Should().HaveCount(1, "the premise: the second apply left the same file out");
+        (await Status(loadout)).Should().Be(LoadoutSynchronizerState.Current);
+    }
+
     [Fact]
     public async Task SettlingTheFileLeavesTheStatusCurrentWhenTheGeneratedFileRendersTheSame()
     {
