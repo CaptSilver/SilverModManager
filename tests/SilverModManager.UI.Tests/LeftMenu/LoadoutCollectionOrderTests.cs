@@ -101,7 +101,8 @@ public class LoadoutCollectionOrderTests(IServiceProvider provider) : AUiTest(pr
         for (var settled = 0; settled < 3; settled++)
         {
             await Task.Delay(50);
-            await OnUi(() => Names(open).Should().Equal(names, "the list keeps the order once it shows it"));
+            await OnUi(() => AssertAfterDrain(
+                () => Names(open).Should().Equal(names, "the list keeps the order once it shows it")));
         }
     }
 

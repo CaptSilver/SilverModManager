@@ -321,7 +321,7 @@ public class AUiTest : IAsyncDisposable
         {
             await OnUi(async () =>
             {
-                await action();
+                await AssertAfterDrain(action);
             });
         }, maxTimeout, delay);
     }
@@ -334,7 +334,33 @@ public class AUiTest : IAsyncDisposable
     /// <param name="delay"></param>
     public async Task EventuallyOnUi(Action action, TimeSpan? maxTimeout = null, TimeSpan? delay = null)
     {
-        await Eventually(async () => await OnUi(action), maxTimeout, delay);
+        await Eventually(async () => await OnUi(() => AssertAfterDrain(action)), maxTimeout, delay);
+    }
+
+    /// <summary>
+    /// Runs the jobs queued at Background priority and above. View models hand every value to the UI thread through
+    /// <c>RxApp.MainThreadScheduler</c>, which posts at Background, below everything the tests' own awaits post. All
+    /// UI tests share one dispatcher, so while other tests keep it busy with Normal jobs a Background job can wait
+    /// for tens of seconds, and a poll that only looks at the page sees values that were emitted long ago but not
+    /// delivered yet. Polling for the page's state therefore drains that queue first. Must run on the UI thread.
+    /// </summary>
+    private static void RunBackgroundJobs() => Dispatcher.UIThread.RunJobs(DispatcherPriority.Background);
+
+    /// <summary>
+    /// Drains the Background queue (see <see cref="RunBackgroundJobs"/>), then runs the assertion. Every poll goes
+    /// through this so none can read the page before the view models' queued values have been delivered.
+    /// </summary>
+    protected static void AssertAfterDrain(Action assert)
+    {
+        RunBackgroundJobs();
+        assert();
+    }
+
+    /// <summary>Async form of <see cref="AssertAfterDrain(Action)"/>.</summary>
+    protected static async Task AssertAfterDrain(Func<Task> assert)
+    {
+        RunBackgroundJobs();
+        await assert();
     }
 
     /// <summary>
