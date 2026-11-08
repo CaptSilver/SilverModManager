@@ -45,8 +45,9 @@ public class DryRunTests : IDisposable
         }, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, folder)));
 
         _context = new LaunchContext(installation, LoadoutId.From(1), "My Loadout", []);
-        var markers = new FakeLaunchFinishMarkers();
-        _session = new LaunchSession(_lockFactory, new ActiveLaunchSessions(), _synchronizer, new LaunchFinish(_synchronizer, markers, NullLogger<LaunchFinish>.Instance), markers, _processes, [], _notifier, NullLogger<LaunchSession>.Instance, _error, credentials: _credentials);
+        var markers = new FakeLaunchFinishMarkers { ReadWith = () => null };
+        var active = new ActiveLaunchSessions();
+        _session = new LaunchSession(_lockFactory, active, _synchronizer, new LaunchFinish(_synchronizer, markers, NullLogger<LaunchFinish>.Instance), TestFinishers.For(_lockFactory, active, [], new LaunchFinish(_synchronizer, markers, NullLogger<LaunchFinish>.Instance), markers), markers, _processes, [], _notifier, NullLogger<LaunchSession>.Instance, _error, credentials: _credentials);
     }
 
     public void Dispose() => Directory.Delete(_runtimeDir, recursive: true);
@@ -168,8 +169,9 @@ public class DryRunTests : IDisposable
     [Fact]
     public void WithoutACredentialSummaryTheCredentialLineSaysNone()
     {
-        var markers = new FakeLaunchFinishMarkers();
-        var session = new LaunchSession(_lockFactory, new ActiveLaunchSessions(), _synchronizer, new LaunchFinish(_synchronizer, markers, NullLogger<LaunchFinish>.Instance), markers, _processes, [], _notifier, NullLogger<LaunchSession>.Instance, _error);
+        var markers = new FakeLaunchFinishMarkers { ReadWith = () => null };
+        var active = new ActiveLaunchSessions();
+        var session = new LaunchSession(_lockFactory, active, _synchronizer, new LaunchFinish(_synchronizer, markers, NullLogger<LaunchFinish>.Instance), TestFinishers.For(_lockFactory, active, [], new LaunchFinish(_synchronizer, markers, NullLogger<LaunchFinish>.Instance), markers), markers, _processes, [], _notifier, NullLogger<LaunchSession>.Instance, _error);
 
         session.DryRun(_context, () => new LaunchPlan(new GameProcessSpec(["/usr/bin/true"])), _output);
 

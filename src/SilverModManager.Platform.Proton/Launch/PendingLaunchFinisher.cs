@@ -17,18 +17,43 @@ namespace SilverModManager.Platform.Proton.Launch;
 /// same hook) returns at once. The re-entrancy flag is checked before the semaphore: the other way round, the
 /// finish's own sync would wait on the semaphore it already holds.
 /// </remarks>
-internal sealed class PendingLaunchFinisher(
-    IConnection connection,
-    ILaunchFinishMarkers markers,
-    IInstallationLockFactory locks,
-    IProcessTracker tracker,
-    ActiveLaunchSessions sessions,
-    IEnumerable<ILaunchGate> gates,
-    LaunchFinish finish,
-    ILogger<PendingLaunchFinisher> logger,
-    OwnProcessFamily? family = null,
-    Func<LoadoutId, IReadOnlyList<WineDllOverride>>? wineOverridesOf = null) : IPendingLaunchFinisher
+public sealed class PendingLaunchFinisher : IPendingLaunchFinisher
 {
+    private readonly IConnection connection;
+    private readonly ILaunchFinishMarkers markers;
+    private readonly IInstallationLockFactory locks;
+    private readonly IProcessTracker tracker;
+    private readonly ActiveLaunchSessions sessions;
+    private readonly IEnumerable<ILaunchGate> gates;
+    private readonly LaunchFinish finish;
+    private readonly ILogger<PendingLaunchFinisher> logger;
+    private readonly OwnProcessFamily? family;
+    private readonly Func<LoadoutId, IReadOnlyList<WineDllOverride>>? wineOverridesOf;
+
+    // Public so LaunchSession, a public type, can take it and the container can build it; the optional pieces are
+    // for tests and stay internal.
+    public PendingLaunchFinisher(IConnection connection, ILaunchFinishMarkers markers, IInstallationLockFactory locks, IProcessTracker tracker,
+        ActiveLaunchSessions sessions, IEnumerable<ILaunchGate> gates, LaunchFinish finish, ILogger<PendingLaunchFinisher> logger)
+        : this(connection, markers, locks, tracker, sessions, gates, finish, logger, null, null)
+    {
+    }
+
+    internal PendingLaunchFinisher(IConnection connection, ILaunchFinishMarkers markers, IInstallationLockFactory locks, IProcessTracker tracker,
+        ActiveLaunchSessions sessions, IEnumerable<ILaunchGate> gates, LaunchFinish finish, ILogger<PendingLaunchFinisher> logger,
+        OwnProcessFamily? family, Func<LoadoutId, IReadOnlyList<WineDllOverride>>? wineOverridesOf)
+    {
+        this.connection = connection;
+        this.markers = markers;
+        this.locks = locks;
+        this.tracker = tracker;
+        this.sessions = sessions;
+        this.gates = gates;
+        this.finish = finish;
+        this.logger = logger;
+        this.family = family;
+        this.wineOverridesOf = wineOverridesOf;
+    }
+
     private readonly SemaphoreSlim _one = new(1, 1);
     private readonly AsyncLocal<bool> _finishing = new();
     private readonly Subject<LaunchFinishReport> _reports = new();
@@ -50,7 +75,8 @@ internal sealed class PendingLaunchFinisher(
 
     /// <summary>
     /// The entry for a caller that already holds the installation lock. Leaves the lock to its owner and publishes
-    /// nothing: the caller shows the report itself.
+    /// nothing: the caller shows the report itself. Once a finish will run it reports the Finishing phase on the
+    /// caller's registration, so the caller restores its own phase afterwards.
     /// </summary>
     public Task<LaunchFinishReport> FinishIfPending(GameInstallation installation, InstallationLock heldLock, bool callerReports)
         => Guarded(installation, heldLock, callerReports, CancellationToken.None);
@@ -170,8 +196,9 @@ internal sealed class PendingLaunchFinisher(
                 }
 
                 registration = sessions.Register(installation);
-                sessions.ReportPhase(installation, LaunchPhase.Finishing);
             }
+
+            sessions.ReportPhase(installation, LaunchPhase.Finishing);
 
             var named = marker.GateNames.ToHashSet();
             var chosen = gates.Where(g => named.Contains(g.GetType().Name)).ToList();

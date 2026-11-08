@@ -68,6 +68,7 @@ public sealed class LaunchSession
     private readonly ActiveLaunchSessions _activeSessions;
     private readonly ILaunchSynchronizer _synchronizer;
     private readonly LaunchFinish _finish;
+    private readonly PendingLaunchFinisher _finisher;
     private readonly IGameProcessFactory _processFactory;
     private readonly IReadOnlyList<ILaunchGate> _gates;
     private readonly IDesktopNotifier _notifier;
@@ -100,6 +101,7 @@ public sealed class LaunchSession
         ActiveLaunchSessions activeSessions,
         ILaunchSynchronizer synchronizer,
         LaunchFinish finish,
+        PendingLaunchFinisher finisher,
         ILaunchFinishMarkers markers,
         IGameProcessFactory processFactory,
         IEnumerable<ILaunchGate> gates,
@@ -113,6 +115,7 @@ public sealed class LaunchSession
         _activeSessions = activeSessions;
         _synchronizer = synchronizer;
         _finish = finish;
+        _finisher = finisher;
         _markers = markers;
         _processFactory = processFactory;
         _gates = gates.ToList();
@@ -293,6 +296,31 @@ public sealed class LaunchSession
 
         _registration = _activeSessions.Register(context.Installation);
         _installation = context.Installation;
+
+        // A session that died after the game started leaves its ingest owed. It is taken back into its own loadout
+        // before this launch checks or applies anything, so the new apply cannot overwrite what the game changed.
+        // The finisher reports the Finishing phase itself once it knows there is something to finish.
+        var pending = await _finisher.FinishIfPending(context.Installation, heldLock, _callerReports);
+        switch (pending.Outcome)
+        {
+            case LaunchFinishOutcome.GameRunning or LaunchFinishOutcome.WaitingForSteam:
+                return new LaunchFailure(pending.Message!, Refused: true);
+            case LaunchFinishOutcome.Failed:
+                return new LaunchFailure(pending.Message!, Cause: pending.Cause, LoadoutStillApplied: pending.LoadoutStillApplied);
+            case LaunchFinishOutcome.Finished or LaunchFinishOutcome.ClearedLoadoutGone:
+                _logger.LogInformation("{Message}", pending.Message);
+                if (!_callerReports) _notifier.Notify(ApplicationConstants.ProductName, pending.Message!);
+                break;
+        }
+
+        // A stop that came in during the old session's ingest ends the launch here; the checks and the apply that
+        // follow would only be undone.
+        if (StopRequested)
+        {
+            _logger.LogInformation("Stop requested while finishing the last session of {Game}; not starting", game);
+            return new LaunchResult(StoppedExitCode, null);
+        }
+
         _activeSessions.ReportPhase(context.Installation, LaunchPhase.Preparing);
 
         foreach (var gate in _gates)

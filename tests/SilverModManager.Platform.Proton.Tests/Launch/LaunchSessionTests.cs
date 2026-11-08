@@ -25,7 +25,8 @@ public class LaunchSessionTests : IDisposable
     private readonly ActiveLaunchSessions _active = new();
     private readonly FakeSynchronizer _synchronizer;
     private readonly FakeProcessFactory _processes;
-    private readonly FakeLaunchFinishMarkers _markers = new();
+    private readonly FakeLaunchFinishMarkers _markers = new() { ReadWith = () => null };
+    private readonly IProcessTracker _tracker = Substitute.For<IProcessTracker>();
     private readonly IDesktopNotifier _notifier = Substitute.For<IDesktopNotifier>();
     private readonly IInstallationLockFactory _lockFactory = Substitute.For<IInstallationLockFactory>();
     private readonly List<ILaunchGate> _gates = [];
@@ -37,6 +38,7 @@ public class LaunchSessionTests : IDisposable
         _installation = Installation();
         _context = new LaunchContext(_installation, LoadoutId.From(1), "My Loadout", [new WineDllOverride("winmm", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn])]);
         _log = new RecordingLogger();
+        _tracker.FindGameProcesses(Arg.Any<GameInstallation>()).Returns(Array.Empty<TrackedProcess>());
         _synchronizer = new FakeSynchronizer(_events, this);
         _processes = new FakeProcessFactory(_events, this, _log);
         _lockFactory.Create(Arg.Any<string>(), Arg.Any<string>())
@@ -71,7 +73,7 @@ public class LaunchSessionTests : IDisposable
 
     private LaunchSession NewSession()
     {
-        var session = new LaunchSession(_lockFactory, _active, _synchronizer, new LaunchFinish(_synchronizer, _markers, _log), _markers, _processes, _gates, _notifier, _log, _error);
+        var session = new LaunchSession(_lockFactory, _active, _synchronizer, new LaunchFinish(_synchronizer, _markers, _log), TestFinishers.For(_lockFactory, _active, _gates, new LaunchFinish(_synchronizer, _markers, _log), _markers, _tracker), _markers, _processes, _gates, _notifier, _log, _error);
         _sessions.Add(session);
         return session;
     }
@@ -155,6 +157,107 @@ public class LaunchSessionTests : IDisposable
             "start", "wait",
             "finish:a", "finish:b",
             "sync");
+    }
+
+    private static readonly Guid LeftoverSessionId = Guid.Parse("0c9f6d3a-5d1e-4a7c-8f55-2b1f0a6d9e11");
+
+    // A marker an earlier process left behind; reads as gone once anything has retracted it.
+    private void LeaveMarkerFromEarlierSession()
+        => _markers.ReadWith = () => _markers.Retracts == 0
+            ? new PendingLaunchFinish(_context.LoadoutId, "My Loadout", LeftoverSessionId, ["FakeGate"], PendingLaunchFinishState.Pending)
+            : null;
+
+    [Fact]
+    public async Task ARunWithALeftoverMarker_FinishesTheOldSessionBeforeItsOwnChecks()
+    {
+        AddGate("a");
+        LeaveMarkerFromEarlierSession();
+        Guid? newSessionId = null;
+        _processes.OnStart = () => newSessionId = _markers.Written?.SessionId;
+
+        await Run(NewSession());
+
+        _events.Should().Equal("finish:a", "sync", "check:a", "sync", "prepare:a", "resolve", "start", "wait", "finish:a", "sync");
+        newSessionId.Should().NotBeNull().And.NotBe(LeftoverSessionId);
+        _notifier.Received(1).Notify(Arg.Any<string>(), "Test Game closed before its changes were taken back into 'My Loadout'. That is done now.");
+    }
+
+    [Fact]
+    public async Task ARunWithALeftoverMarkerWhileTheGameRuns_IsRefusedBeforeCheck()
+    {
+        AddGate("a");
+        LeaveMarkerFromEarlierSession();
+        _tracker.FindGameProcesses(Arg.Any<GameInstallation>()).Returns([new TrackedProcess(5000, "game.exe")]);
+
+        var result = await Run(NewSession());
+
+        result.Refused.Should().BeTrue();
+        result.Message.Should().Be("Test Game is still running, so the changes from your last session are not in 'My Loadout' yet. Quit the game; the app finishes this the next time it applies or launches.");
+        _events.Should().BeEmpty();
+        _processes.Started.Should().BeFalse();
+        _markers.Retracts.Should().Be(0, "the owed finish stays for a later try");
+    }
+
+    [Fact]
+    public async Task ARunWhoseOldFinishFails_FailsWithTheFinishsOwnMessage_AndTheMarkerIsGone()
+    {
+        AddGate("a");
+        LeaveMarkerFromEarlierSession();
+        _synchronizer.FailOn = 1;
+        _synchronizer.FailWith = new InvalidOperationException("sync broke");
+
+        var result = await Run(NewSession());
+
+        result.ExitCode.Should().Be(LaunchSession.FailureExitCode);
+        result.Message.Should().Contain("is still applied").And.Contain("sync broke");
+        result.LoadoutStillApplied.Should().BeTrue();
+        _events.Should().Equal("finish:a", "sync");
+        _markers.Retracts.Should().BeGreaterThan(0);
+        _markers.IsSet.Should().BeFalse();
+        _processes.Started.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ARunWithALeftoverMarkerWhoseLoadoutIsGone_TellsThePersonOnce_AndGoesOn()
+    {
+        AddGate("a");
+        _markers.ReadWith = () => _markers.Retracts == 0
+            ? new PendingLaunchFinish(_context.LoadoutId, "Old Loadout", LeftoverSessionId, ["FakeGate"], PendingLaunchFinishState.LoadoutGone)
+            : null;
+
+        var result = await Run(NewSession());
+
+        result.ExitCode.Should().Be(0);
+        _notifier.Received(1).Notify(Arg.Any<string>(), Arg.Is<string>(m => m.Contains("has since been deleted") && m.Contains("Old Loadout")));
+        _events.Should().StartWith("check:a");
+        _markers.Retracts.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task AStopDuringTheOldSessionsFinish_EndsTheLaunchBeforeItChecksOrApplies()
+    {
+        AddGate("a");
+        LeaveMarkerFromEarlierSession();
+        var session = NewSession();
+        _synchronizer.OnSync = session.RequestStop;
+
+        var result = await Run(session);
+
+        result.Should().Be(new LaunchResult(LaunchSession.StoppedExitCode, null));
+        _events.Should().Equal("finish:a", "sync");
+        _processes.Started.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ARunWithoutAMarker_FindsNothingToFinish_AndSaysNothing()
+    {
+        AddGate("a");
+
+        await Run(NewSession());
+
+        _events.First().Should().Be("check:a");
+        _events.Count(e => e == "finish:a").Should().Be(1, "only the run's own finish, after the game, appears");
+        _notifier.DidNotReceiveWithAnyArgs().Notify(default!, default!);
     }
 
     [Fact]
@@ -615,7 +718,7 @@ public class LaunchSessionTests : IDisposable
         var credentials = Substitute.For<INexusCredentialSummary>();
         credentials.Kind.Returns(NexusCredentialKind.ApiKey);
         credentials.Source.Returns("environment variable NEXUS_API_KEY");
-        var session = new LaunchSession(_lockFactory, _active, _synchronizer, new LaunchFinish(_synchronizer, _markers, _log), _markers, _processes, _gates, _notifier, _log, _error, credentials: credentials);
+        var session = new LaunchSession(_lockFactory, _active, _synchronizer, new LaunchFinish(_synchronizer, _markers, _log), TestFinishers.For(_lockFactory, _active, _gates, new LaunchFinish(_synchronizer, _markers, _log), _markers, _tracker), _markers, _processes, _gates, _notifier, _log, _error, credentials: credentials);
         _sessions.Add(session);
 
         await Run(session);

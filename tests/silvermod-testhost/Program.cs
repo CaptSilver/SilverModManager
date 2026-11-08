@@ -175,7 +175,11 @@ static int SessionScenario(string runtimeDir, string blockIn, bool killFail)
 
     // The host exercises signal handling, not the database-backed marker; substitutes complete immediately.
     var markers = Substitute.For<ILaunchFinishMarkers>();
-    var session = new LaunchSession(lockFactory, new ActiveLaunchSessions(), synchronizer, new LaunchFinish(synchronizer, markers, NullLogger<LaunchFinish>.Instance), markers, processes, [gate],
+    var active = new ActiveLaunchSessions();
+    var finish = new LaunchFinish(synchronizer, markers, NullLogger<LaunchFinish>.Instance);
+    var finisher = new PendingLaunchFinisher(Substitute.For<SilverModManager.MnemonicDB.Abstractions.IConnection>(), markers, lockFactory,
+        Substitute.For<IProcessTracker>(), active, [gate], finish, NullLogger<PendingLaunchFinisher>.Instance);
+    var session = new LaunchSession(lockFactory, active, synchronizer, finish, finisher, markers, processes, [gate],
         Substitute.For<IDesktopNotifier>(), NullLogger<LaunchSession>.Instance, TextWriter.Null, stop);
     Console.WriteLine("ready");
     Console.Out.Flush();

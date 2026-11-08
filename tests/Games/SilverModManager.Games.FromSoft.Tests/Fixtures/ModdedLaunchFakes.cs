@@ -37,6 +37,7 @@ public sealed class ModdedLaunchFakes : IDisposable
         services.AddSingleton(provider => new ActiveLaunchSessions(provider));
         services.AddTransient<LaunchSession>();
         services.AddSingleton<LaunchFinish>();
+        services.AddSingleton<PendingLaunchFinisher>();
         services.Replace(ServiceDescriptor.Singleton<ILaunchFinishMarkers, NoFinishMarkers>());
     }
 

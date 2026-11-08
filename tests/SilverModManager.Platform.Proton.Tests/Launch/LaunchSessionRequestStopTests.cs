@@ -82,8 +82,9 @@ public class LaunchSessionRequestStopTests : IDisposable
 
     private LaunchSession NewSession()
     {
-        var markers = new FakeLaunchFinishMarkers();
-        var session = new LaunchSession(_lockFactory, new ActiveLaunchSessions(), _synchronizer, new LaunchFinish(_synchronizer, markers, NullLogger<LaunchFinish>.Instance), markers, _processes, [], Substitute.For<IDesktopNotifier>(), NullLogger<LaunchSession>.Instance, TextWriter.Null);
+        var markers = new FakeLaunchFinishMarkers { ReadWith = () => null };
+        var active = new ActiveLaunchSessions();
+        var session = new LaunchSession(_lockFactory, active, _synchronizer, new LaunchFinish(_synchronizer, markers, NullLogger<LaunchFinish>.Instance), TestFinishers.For(_lockFactory, active, [], new LaunchFinish(_synchronizer, markers, NullLogger<LaunchFinish>.Instance), markers), markers, _processes, [], Substitute.For<IDesktopNotifier>(), NullLogger<LaunchSession>.Instance, TextWriter.Null);
         _sessions.Add(session);
         return session;
     }
