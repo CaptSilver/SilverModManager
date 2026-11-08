@@ -105,6 +105,34 @@ public class StagePluginListTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task StagingADeltaWritesEveryRowAndLeavesUntouchedSwitchesAlone()
+    {
+        var (loadout, id) = await LoadoutWithRowsTheProfileDoesNotList();
+        // The user's own arrangement: Mine first, B off.
+        using (var tx = Connection.BeginTransaction())
+        {
+            Variety.StageOrder(id, [("Mine.esp", (bool?)null), ("A.esp", null), ("B.esp", false)], tx);
+            await tx.Commit();
+        }
+        var conflicts = new List<string>();
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            Target.StagePluginList(Refresh(loadout), id,
+                new ProfilePluginTexts("*A.esp\n*B.esp\n", "A.esp\nB.esp\n"),
+                new ProfilePluginTexts("*A.esp\n*New.esp\n*B.esp\n", "A.esp\nNew.esp\nB.esp\n"),
+                tx, conflicts);
+            await tx.Commit();
+        }
+
+        var rows = StoredRows(id);
+        rows.Select(r => r.Name).Should().Equal("Mine.esp", "A.esp", "New.esp", "B.esp");
+        rows.Select(r => r.Index).Should().OnlyHaveUniqueItems();
+        rows.Select(r => r.IsEnabled).Should().Equal(true, true, true, false);
+        conflicts.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task WithNeitherFile_StagingIsRefused()
     {
         var (loadout, id) = await LoadoutWithRowsTheProfileDoesNotList();

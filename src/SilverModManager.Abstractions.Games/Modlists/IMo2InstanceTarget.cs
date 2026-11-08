@@ -31,4 +31,13 @@ public interface IMo2InstanceTarget
     /// filled so the first Apply does not replace it with the game's list. At least one of the texts is needed.
     /// </summary>
     void StagePluginList(Loadout.ReadOnly loadout, SortOrderId sortOrderId, string? pluginsTxt, string? loadorderTxt, ITransaction tx);
+
+    /// <summary>
+    /// Updates the loadout's plugin order from <paramref name="previous"/> profile to <paramref name="current"/>
+    /// one: plugins the list added or moved are placed after their predecessor in the list, and a switch the list
+    /// changed is taken unless the user changed it too. Every other row keeps its place and switch. A plugin the
+    /// user moved that the list also moved stays where the user put it; its name is added to
+    /// <paramref name="conflicts"/> when the list put it somewhere else. At least one of the current texts is needed.
+    /// </summary>
+    void StagePluginList(Loadout.ReadOnly loadout, SortOrderId sortOrderId, ProfilePluginTexts previous, ProfilePluginTexts current, ITransaction tx, ICollection<string> conflicts);
 }

@@ -239,6 +239,13 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
             SortOrderManager.GetSortOrderVarieties().OfType<IPluginSortOrderVariety>().Single(),
             loadout, sortOrderId, pluginsTxt, loadorderTxt, tx);
 
+    void IMo2InstanceTarget.StagePluginList(
+        Loadout.ReadOnly loadout, SortOrderId sortOrderId, ProfilePluginTexts previous, ProfilePluginTexts current, ITransaction tx, ICollection<string> conflicts) =>
+        CreationEngineMo2Target.StagePluginList(
+            this,
+            SortOrderManager.GetSortOrderVarieties().OfType<IPluginSortOrderVariety>().Single(),
+            loadout, sortOrderId, previous, current, tx, conflicts);
+
     // Built once: the sink holds the game's plugin variety, which owns a header cache.
     IModOrderSink? IModOrderGame.OrderSink => _orderSink ??= new BethesdaModOrderSink(
         _provider.GetRequiredService<DefaultPriorityOrderSink>(),

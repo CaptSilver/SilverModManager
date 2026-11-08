@@ -1,4 +1,5 @@
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.Modlists;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.Bethesda.LoadOrder;
 using SilverModManager.Games.Bethesda.LoadOrder.Formats;
@@ -100,21 +101,51 @@ internal static class CreationEngineMo2Target
             throw new ArgumentException("A profile with neither a plugins.txt nor a loadorder.txt has no plugin list to stage.");
 
         var installation = loadout.InstallationInstance;
+        var listed = ListedPlugins(game, installation, pluginsTxt, loadorderTxt);
+        var early = game.EarlyLoadingPlugins(installation).ToHashSet(PluginNameComparer.Instance);
+        variety.StageOrder(sortOrderId, PluginOrderMerge.Build(variety.StoredOrder(loadout), listed, early), tx);
+        tx.Add(sortOrderId.Value, PluginSortOrder.SeededFromGameFile, true);
+    }
+
+    /// <exception cref="ArgumentException">The current profile has neither text.</exception>
+    public static void StagePluginList(
+        ICreationEngineGame game,
+        IPluginSortOrderVariety variety,
+        Loadout.ReadOnly loadout,
+        SortOrderId sortOrderId,
+        ProfilePluginTexts previous,
+        ProfilePluginTexts current,
+        ITransaction tx,
+        ICollection<string> conflicts)
+    {
+        if (current.PluginsTxt is null && current.LoadorderTxt is null)
+            throw new ArgumentException("A profile with neither a plugins.txt nor a loadorder.txt has no plugin list to stage.");
+
+        var installation = loadout.InstallationInstance;
+        var early = game.EarlyLoadingPlugins(installation).ToHashSet(PluginNameComparer.Instance);
+        var order = PluginOrderDelta.Build(
+            variety.StoredOrder(loadout),
+            ListedPlugins(game, installation, previous.PluginsTxt, previous.LoadorderTxt),
+            ListedPlugins(game, installation, current.PluginsTxt, current.LoadorderTxt),
+            early, conflicts);
+        variety.StageOrder(sortOrderId, order, tx);
+        tx.Add(sortOrderId.Value, PluginSortOrder.SeededFromGameFile, true);
+    }
+
+    // loadorder.txt names every plugin in order; a plugin only plugins.txt mentions follows the listed ones. Without a
+    // plugins.txt nothing says which plugins are off, so the switches are null and stay as they are.
+    private static List<(string Name, bool? IsEnabled)> ListedPlugins(ICreationEngineGame game, GameInstallation installation, string? pluginsTxt, string? loadorderTxt)
+    {
         IReadOnlyList<PluginListEntry> active = pluginsTxt is null ? [] : game.PluginList(installation) is AsteriskMechanism
             ? AsteriskPluginList.Parse(pluginsTxt)
             : PlainPluginList.Parse(pluginsTxt);
 
-        // loadorder.txt names every plugin in order; a plugin only plugins.txt mentions follows the listed ones.
         var order = loadorderTxt is null ? [] : LoadOrderTxt.Parse(loadorderTxt);
         var names = order.Concat(active.Select(entry => entry.Name)).Distinct(PluginNameComparer.Instance);
 
-        // Without a plugins.txt nothing says which plugins are off, so the switches are left as they are.
         var switches = new Dictionary<string, bool>(PluginNameComparer.Instance);
         foreach (var entry in active) switches[entry.Name] = entry.Active;
 
-        var listed = names.Select(name => (name, pluginsTxt is null ? null : (bool?)switches.GetValueOrDefault(name, false))).ToList();
-        var early = game.EarlyLoadingPlugins(installation).ToHashSet(PluginNameComparer.Instance);
-        variety.StageOrder(sortOrderId, PluginOrderMerge.Build(variety.StoredOrder(loadout), listed, early), tx);
-        tx.Add(sortOrderId.Value, PluginSortOrder.SeededFromGameFile, true);
+        return names.Select(name => (name, pluginsTxt is null ? null : (bool?)switches.GetValueOrDefault(name, false))).ToList();
     }
 }
