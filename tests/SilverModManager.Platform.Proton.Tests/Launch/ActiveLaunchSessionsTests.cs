@@ -55,6 +55,24 @@ public class ActiveLaunchSessionsTests
     }
 
     [Fact]
+    public void IsFinishing_FollowsTheReportedPhase()
+    {
+        var sessions = new ActiveLaunchSessions();
+        var installation = Installation("1");
+        var registration = sessions.Register(installation);
+
+        sessions.IsFinishing(installation).Should().BeFalse();
+        sessions.ReportPhase(installation, LaunchPhase.Finishing);
+        sessions.IsFinishing(installation).Should().BeTrue();
+        sessions.ReportPhase(installation, LaunchPhase.Preparing);
+        sessions.IsFinishing(installation).Should().BeFalse();
+
+        sessions.ReportPhase(installation, LaunchPhase.Finishing);
+        registration.Dispose();
+        sessions.IsFinishing(installation).Should().BeFalse();
+    }
+
+    [Fact]
     public void WhenRunning_EmitsTheCurrentValueThenTrueOnRegisterAndFalseOnceTheLastRegistrationIsDisposed()
     {
         var sessions = new ActiveLaunchSessions();

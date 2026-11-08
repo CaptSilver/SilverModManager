@@ -17,6 +17,11 @@ public class FakeGameLaunchSession : IGameLaunchSession
     public bool Running { get; set; }
 
     /// <summary>
+    /// What <see cref="IsFinishing"/> returns for every installation; not finishing by default.
+    /// </summary>
+    public bool Finishing { get; set; }
+
+    /// <summary>
     /// What the launches this fake hands out did, in order: <c>lock</c>, <c>running</c>, <c>finish</c>, <c>release</c>.
     /// </summary>
     public List<string> Events { get; } = [];
@@ -38,6 +43,9 @@ public class FakeGameLaunchSession : IGameLaunchSession
 
     /// <inheritdoc />
     public bool IsRunning(GameInstallation installation) => Running;
+
+    /// <inheritdoc />
+    public bool IsFinishing(GameInstallation installation) => Finishing;
 
     /// <inheritdoc />
     public IGameLaunch BeginSession(Loadout.ReadOnly loadout, LaunchSpec? runSpec = null)

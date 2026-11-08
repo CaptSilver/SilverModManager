@@ -586,6 +586,9 @@ public sealed class LaunchSession
             // A half-written or foreign state file only costs the details.
         }
 
+        if (state is { Phase: LaunchPhase.Finishing })
+            return $"{game} is being finished after its last session by SilverModManager process {state.Pid} (loadout '{state.Loadout}').";
+
         return state is null
             ? $"{game} is already being launched by another SilverModManager process."
             : $"{game} is already being launched by SilverModManager process {state.Pid} (loadout '{state.Loadout}', {state.Phase.ToString().ToLowerInvariant()}).";

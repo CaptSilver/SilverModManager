@@ -294,6 +294,20 @@ public class LaunchSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task AHeldLockInTheFinishingPhase_SaysTheGameIsBeingFinished()
+    {
+        using var other = new InstallationLock(LockPath);
+        other.TryAcquire().Should().BeTrue();
+        other.WriteState(4711, "test-loadout", LaunchPhase.Finishing, "");
+
+        var result = await Run(NewSession());
+
+        result.ExitCode.Should().Be(125);
+        result.Message.Should().Be("Test Game is being finished after its last session by SilverModManager process 4711 (loadout 'test-loadout').");
+        _events.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task AHeldLockWithoutAStateFile_Is125_WithoutAPid()
     {
         using var other = new InstallationLock(LockPath);

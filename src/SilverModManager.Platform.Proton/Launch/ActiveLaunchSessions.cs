@@ -39,6 +39,12 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
         lock (_lock) return _counts.ContainsKey(KeyOf(installation));
     }
 
+    /// <inheritdoc />
+    public bool IsFinishing(GameInstallation installation)
+    {
+        lock (_lock) return _phases.TryGetValue(KeyOf(installation), out var phase) && phase == LaunchPhase.Finishing;
+    }
+
     /// <summary>
     /// Whether <paramref name="installation"/> is running a launch: the current value on subscribe, then each
     /// change. Two registrations for one installation report false only after both are disposed.

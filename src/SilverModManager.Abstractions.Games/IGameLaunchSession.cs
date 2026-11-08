@@ -18,6 +18,12 @@ public interface IGameLaunchSession
     bool IsRunning(GameInstallation installation);
 
     /// <summary>
+    /// True while the launch holding <paramref name="installation"/> is past the game and taking its changes back.
+    /// A refusal to write says so in its wording, because the game is no longer running and a retry in a moment works.
+    /// </summary>
+    bool IsFinishing(GameInstallation installation);
+
+    /// <summary>
     /// Prepares a launch of <paramref name="loadout"/>. Nothing happens until <see cref="IGameLaunch.RunAsync"/>.
     /// The caller disposes the launch once it is done with it, which releases the installation lock.
     /// </summary>
