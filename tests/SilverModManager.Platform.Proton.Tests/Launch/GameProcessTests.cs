@@ -186,6 +186,9 @@ public class GameProcessTests : IDisposable
         new GameProcessFactory(tracker, stop).ForwardTermination.Should().BeFalse();
     }
 
+    // No APPIMAGE and no readable exe links: only the pid rules apply, whatever the test host runs.
+    private static readonly OwnProcessFamily Family = new(_ => null, _ => null, Environment.ProcessId);
+
     [Theory]
     [InlineData(0, false)]
     [InlineData(-1, false)]
@@ -193,13 +196,13 @@ public class GameProcessTests : IDisposable
     [InlineData(4242, true)]
     public void OnlyRealProcessesOtherThanInitAreSignalled(int pid, bool expected)
     {
-        GameProcess.IsSafeToSignal(pid).Should().Be(expected);
+        Family.Foreign([new TrackedProcess(pid, "x")]).Any().Should().Be(expected);
     }
 
     [Fact]
     public void OurOwnProcessIsNeverSignalled()
     {
-        GameProcess.IsSafeToSignal(Environment.ProcessId).Should().BeFalse();
+        Family.Foreign([new TrackedProcess(Environment.ProcessId, "x")]).Should().BeEmpty();
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Platform.Proton.Launch;
@@ -23,25 +24,40 @@ internal static partial class StragglerShutdown
     /// </param>
     /// <param name="signal">Sends a signal to a pid and returns the call's result. Defaults to <c>kill(2)</c>.</param>
     /// <param name="parentOf">Gives a pid's parent, or null. Defaults to reading <c>/proc</c>.</param>
+    /// <param name="family">Which processes are ours and so never stragglers. Defaults to <see cref="OwnProcessFamily.Current"/>.</param>
+    /// <param name="logger">Receives each signal sent at Trace and each wait at Debug.</param>
     public static async Task<TrackedProcess?> RunAsync(
         IProcessTracker tracker, GameInstallation installation, TimeSpan grace, CancellationToken cancellationToken,
-        IReadOnlySet<int>? excludedPids = null, Func<int, int, int>? signal = null, Func<int, int?>? parentOf = null)
+        IReadOnlySet<int>? excludedPids = null, Func<int, int, int>? signal = null, Func<int, int?>? parentOf = null,
+        OwnProcessFamily? family = null, ILogger? logger = null)
     {
-        var sweep = new Sweep(tracker, installation, grace, signal ?? kill, ProtectedPids(excludedPids, parentOf ?? ParentOf));
+        var sweep = new Sweep(tracker, installation, grace, signal ?? kill, ProtectedPids(excludedPids, parentOf ?? ParentOf), family ?? OwnProcessFamily.Current, logger);
         var remaining = await sweep.WaitUntilGoneAsync(number: null, cancellationToken);
         if (remaining.Count > 0) remaining = await sweep.WaitUntilGoneAsync(SigTerm, cancellationToken);
         if (remaining.Count > 0) remaining = await sweep.WaitUntilGoneAsync(SigKill, cancellationToken);
         return remaining.Count > 0 ? remaining[0] : null;
     }
 
-    private sealed class Sweep(IProcessTracker tracker, GameInstallation installation, TimeSpan grace, Func<int, int, int> signal, HashSet<int> protectedPids)
+    private static string SignalName(int number) => number switch { SigTerm => "SIGTERM", SigKill => "SIGKILL", _ => $"signal {number}" };
+
+    private sealed class Sweep(IProcessTracker tracker, GameInstallation installation, TimeSpan grace, Func<int, int, int> signal, HashSet<int> protectedPids, OwnProcessFamily family, ILogger? logger)
     {
         public async Task<IReadOnlyList<TrackedProcess>> WaitUntilGoneAsync(int? number, CancellationToken cancellationToken)
         {
             var processes = FindStragglers();
             if (number is { } value)
             {
-                foreach (var process in processes) signal(process.Pid, value);
+                foreach (var process in processes)
+                {
+                    logger?.LogTrace("Sending {Signal} to pid {Pid} ({Name})", SignalName(value), process.Pid, process.Name);
+                    signal(process.Pid, value);
+                }
+            }
+
+            if (processes.Count > 0)
+            {
+                logger?.LogDebug("Waiting up to {Grace} ms for {Count} game process(es) to leave: {Processes}",
+                    (long)grace.TotalMilliseconds, processes.Count, string.Join(", ", processes.Select(p => $"{p.Name} ({p.Pid})")));
             }
 
             var deadline = Stopwatch.StartNew();
@@ -54,7 +70,7 @@ internal static partial class StragglerShutdown
         }
 
         private IReadOnlyList<TrackedProcess> FindStragglers()
-            => tracker.FindGameProcesses(installation).Where(process => GameProcess.IsSafeToSignal(process.Pid) && !protectedPids.Contains(process.Pid)).ToList();
+            => family.Foreign(tracker.FindGameProcesses(installation)).Where(process => !protectedPids.Contains(process.Pid)).ToList();
     }
 
     // The excluded processes and everything above them. Their parents (a shell, the AppImage runtime, Steam's

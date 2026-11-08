@@ -39,6 +39,7 @@ public sealed class PrefixSetupRunner : IPrefixSetupRunner
     private readonly IFileSystem _fileSystem;
     private readonly TimeProvider _time;
     private readonly Func<PrefixComponentId, PrefixComponent> _component;
+    private readonly OwnProcessFamily _ownProcessFamily;
 
     /// <summary>
     /// Creates a runner over the built-in component table.
@@ -63,7 +64,8 @@ public sealed class PrefixSetupRunner : IPrefixSetupRunner
         IPrefixFileFetcher fetcher,
         IFileSystem fileSystem,
         TimeProvider time,
-        Func<PrefixComponentId, PrefixComponent> component)
+        Func<PrefixComponentId, PrefixComponent> component,
+        OwnProcessFamily? ownProcessFamily = null)
     {
         _resolver = resolver;
         _processes = processes;
@@ -74,6 +76,7 @@ public sealed class PrefixSetupRunner : IPrefixSetupRunner
         _fileSystem = fileSystem;
         _time = time;
         _component = component;
+        _ownProcessFamily = ownProcessFamily ?? OwnProcessFamily.Current;
     }
 
     /// <summary>
@@ -209,10 +212,9 @@ public sealed class PrefixSetupRunner : IPrefixSetupRunner
 
     private void RequireNoRunningProcesses(GameInstallation installation, ResolvedPrefix prefix)
     {
-        var running = _processes.FindGameProcesses(installation)
+        var running = _ownProcessFamily.Foreign(_processes.FindGameProcesses(installation)
             .Concat(_processes.FindByPrefix(prefix.Path))
-            .DistinctBy(p => p.Pid)
-            .ToList();
+            .DistinctBy(p => p.Pid));
         if (running.Count == 0) return;
 
         var names = string.Join(", ", running.Select(p => $"{p.Name} (pid {p.Pid})"));

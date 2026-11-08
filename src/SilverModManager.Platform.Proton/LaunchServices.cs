@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Platform.Proton.Steam;
@@ -17,7 +18,7 @@ public static class LaunchServices
     /// through the launch session.
     /// </summary>
     public static IServiceCollection LeaveSignalsToHost(this IServiceCollection services)
-        => services.Replace(ServiceDescriptor.Singleton<IGameProcessFactory>(s => new GameProcessFactory(s.GetRequiredService<IProcessTracker>(), stop: null, leaveSignalsAlone: true)));
+        => services.Replace(ServiceDescriptor.Singleton<IGameProcessFactory>(s => new GameProcessFactory(s.GetRequiredService<IProcessTracker>(), stop: null, leaveSignalsAlone: true, logger: s.GetService<ILogger<GameProcessFactory>>())));
 
     /// <summary>
     /// Registers the services that let a game launch run without the GUI.

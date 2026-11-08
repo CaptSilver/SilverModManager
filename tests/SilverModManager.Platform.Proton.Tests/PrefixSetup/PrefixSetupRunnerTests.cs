@@ -117,12 +117,12 @@ public class PrefixSetupRunnerTests : IDisposable
         return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, gameFolder)));
     }
 
-    private PrefixSetupRunner Runner() => new(_resolver, _processes, _locks, _tools, _inspector, _fetcher, _fs, _time, id => id.Value switch
+    private PrefixSetupRunner Runner(OwnProcessFamily? family = null) => new(_resolver, _processes, _locks, _tools, _inspector, _fetcher, _fs, _time, id => id.Value switch
     {
         "vcrun2022" or "vcrun2019" => _vc,
         "d3dcompiler_47" => _d3d,
         _ => PrefixComponents.Get(id),
-    });
+    }, family);
 
     private PrefixSetupRequest Write(params string[] components) => new()
     {
@@ -348,6 +348,52 @@ public class PrefixSetupRunnerTests : IDisposable
         (await act.Should().ThrowAsync<PrefixSetupRefusedException>()).Which.Message.Should().Contain("wineserver");
         asked.Should().Be(_prefixPath);
         _tools.Commands.Should().BeEmpty();
+    }
+
+    private const int AppImageHelper = 902;
+    // Spelled through a symlink on any machine; the kernel reports the resolved path in /proc/<pid>/exe.
+    private const string AppImagePath = "/proc/self/root/opt/SilverModManager.AppImage";
+
+    private static OwnProcessFamily FamilyOf(string? appImage)
+        => new(name => name == "APPIMAGE" ? appImage : null, pid => pid == AppImageHelper ? ProcProcessTracker.RealPath(AppImagePath) : null, Environment.ProcessId);
+
+    private void TheAppImageHelperIsListedEverywhere()
+    {
+        var helper = new TrackedProcess(AppImageHelper, "SilverModManager");
+        _processes.ForInstallation = _ => [helper];
+        _processes.ByPrefix = _ => [helper];
+    }
+
+    [Fact]
+    public async Task Write_IgnoresTheAppImageMountHelperThatCarriesThePrefix()
+    {
+        TheAppImageHelperIsListedEverywhere();
+
+        var result = await Runner(FamilyOf(AppImagePath)).Run(_installation, Write("vcrun2022"), CancellationToken.None);
+
+        result.Written.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Write_IgnoresOurOwnProcessThatCarriesThePrefix()
+    {
+        var us = new TrackedProcess(Environment.ProcessId, "SilverModManager");
+        _processes.ForInstallation = _ => [us];
+        _processes.ByPrefix = _ => [us];
+
+        var result = await Runner(FamilyOf(appImage: null)).Run(_installation, Write("vcrun2022"), CancellationToken.None);
+
+        result.Written.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Write_IsRefusedForTheSameProcessWhenNoAppImageIsSet()
+    {
+        TheAppImageHelperIsListedEverywhere();
+
+        var act = () => Runner(FamilyOf(appImage: null)).Run(_installation, Write("vcrun2022"), CancellationToken.None);
+
+        (await act.Should().ThrowAsync<PrefixSetupRefusedException>()).Which.Message.Should().Contain("SilverModManager");
     }
 
     [Fact]

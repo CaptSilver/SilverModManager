@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 
@@ -66,9 +67,11 @@ public sealed partial class GameProcess : IGameProcess
     private readonly bool _forwardTermination;
     private readonly bool _leaveSignalsAlone;
     private readonly IReadOnlySet<int> _excludedPids;
+    private readonly ILogger? _logger;
 
-    private GameProcess(Process process, IProcessTracker? tracker, GameInstallation? installation, TimeSpan grace, bool forwardTermination, bool leaveSignalsAlone, IReadOnlySet<int>? excludedPids)
+    private GameProcess(Process process, IProcessTracker? tracker, GameInstallation? installation, TimeSpan grace, bool forwardTermination, bool leaveSignalsAlone, IReadOnlySet<int>? excludedPids, ILogger? logger)
     {
+        _logger = logger;
         _excludedPids = excludedPids ?? new HashSet<int>();
         _forwardTermination = forwardTermination;
         _leaveSignalsAlone = leaveSignalsAlone;
@@ -102,9 +105,10 @@ public sealed partial class GameProcess : IGameProcess
         IReadOnlyDictionary<string, string>? baseEnvironment = null,
         TimeSpan? grace = null,
         bool forwardTermination = true,
-        bool leaveSignalsAlone = false)
+        bool leaveSignalsAlone = false,
+        ILogger? logger = null)
     {
-        return Spawn(spec, tracker, installation, baseEnvironment, grace, forwardTermination, leaveSignalsAlone);
+        return Spawn(spec, tracker, installation, baseEnvironment, grace, forwardTermination, leaveSignalsAlone, logger);
     }
 
     /// <summary>
@@ -114,7 +118,7 @@ public sealed partial class GameProcess : IGameProcess
     /// </summary>
     public static GameProcess PassThrough(GameProcessSpec spec, IReadOnlyDictionary<string, string>? baseEnvironment = null)
     {
-        return Spawn(spec, tracker: null, installation: null, baseEnvironment, grace: null, forwardTermination: true, leaveSignalsAlone: false);
+        return Spawn(spec, tracker: null, installation: null, baseEnvironment, grace: null, forwardTermination: true, leaveSignalsAlone: false, logger: null);
     }
 
     private static GameProcess Spawn(
@@ -124,7 +128,8 @@ public sealed partial class GameProcess : IGameProcess
         IReadOnlyDictionary<string, string>? baseEnvironment,
         TimeSpan? grace,
         bool forwardTermination,
-        bool leaveSignalsAlone)
+        bool leaveSignalsAlone,
+        ILogger? logger)
     {
         if (spec.Argv.Count == 0) throw new ArgumentException("The command has no program.", nameof(spec));
 
@@ -137,7 +142,7 @@ public sealed partial class GameProcess : IGameProcess
         foreach (var (key, value) in environment) startInfo.Environment[key] = value;
 
         var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Failed to start {spec.Argv[0]}");
-        return new GameProcess(process, tracker, installation, grace ?? DefaultGrace, forwardTermination, leaveSignalsAlone, spec.ExcludedPids);
+        return new GameProcess(process, tracker, installation, grace ?? DefaultGrace, forwardTermination, leaveSignalsAlone, spec.ExcludedPids, logger);
     }
 
     private static Dictionary<string, string> CurrentEnvironment()
@@ -264,14 +269,7 @@ public sealed partial class GameProcess : IGameProcess
     /// to leave on their own, then SIGTERM, then SIGKILL.
     /// </summary>
     private Task<TrackedProcess?> ShutDownStragglersAsync(IProcessTracker tracker, GameInstallation installation, CancellationToken cancellationToken)
-        => StragglerShutdown.RunAsync(tracker, installation, _grace, cancellationToken, _excludedPids);
-
-    /// <summary>
-    /// Whether a pid can be signalled as one process. <c>kill(2)</c> reads 0 as our process group and -1 as
-    /// every process we may signal, and the tracker can match us too when we were started with the game's
-    /// <c>WINEPREFIX</c> in our environment.
-    /// </summary>
-    public static bool IsSafeToSignal(int pid) => pid > 1 && pid != Environment.ProcessId;
+        => StragglerShutdown.RunAsync(tracker, installation, _grace, cancellationToken, _excludedPids, logger: _logger);
 
     /// <inheritdoc />
     public void Dispose() => _process.Dispose();
