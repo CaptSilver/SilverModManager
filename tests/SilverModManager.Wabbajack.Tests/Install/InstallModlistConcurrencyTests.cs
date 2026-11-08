@@ -297,8 +297,10 @@ public class InstallModlistConcurrencyTests(ITestOutputHelper helper) : InstallT
         var modlist = await AddModlist(list.ToList(), list.Blobs);
         var failing = new FailingBackups(FileStore);
         // The big file overfills the waiting files, so its worker flushes the small one with it and that flush fails.
+        // One worker takes the files in list order, so the small one is always waiting when the big one arrives; with
+        // two, the big one could be generated first and flush alone, and no flush would ever hold two files.
         var writer = new GeneratedFileWriter(failing, TemporaryFileManager) { StoreByteLimit = 1_000_000 };
-        var job = NewJob(loadout, modlist, Defaults, writer: writer, parallelism: 2, commits: new CommitPolicy(1, long.MaxValue, TimeSpan.FromHours(1)));
+        var job = NewJob(loadout, modlist, Defaults, writer: writer, parallelism: 1, commits: new CommitPolicy(1, long.MaxValue, TimeSpan.FromHours(1)));
         // Holds the thread that records rows after the small file until the failure has happened, so its commit comes later.
         using var holdBack = job.Progress.Changes.Subscribe(snapshot =>
         {

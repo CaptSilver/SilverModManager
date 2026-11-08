@@ -129,47 +129,67 @@ public class ArchivePathResolverBsaMemoryTests(ITestOutputHelper helper) : Acqui
         perMember.Should().BeLessThan(2 * 1024 * 1024);
     }
 
+    /// <summary>
+    /// Resolves <paramref name="members"/> members through a new resolver and returns the heap while the resolver is
+    /// still alive, then drops the resolver. It is its own method so no local of the caller keeps the resolver reachable.
+    /// </summary>
+    private async Task<(long Held, WeakReference Resolver)> HeapWhileHolding(FileIdentity archive, SilverModManager.Sdk.Loadouts.Loadout.ReadOnly loadout, int members)
+    {
+        var resolver = NewResolver(new ArchivePlan([]), loadout);
+        var via = new[] { RelativePath.FromUnsanitizedInput("data/pack.bsa") };
+        var gate = new SemaphoreSlim(16);
+        await Task.WhenAll(Enumerable.Range(0, members).Select(async i =>
+        {
+            await gate.WaitAsync();
+            try { await resolver.Resolve(new ArchiveHashPath(archive, [.. via, RelativePath.FromUnsanitizedInput(NameOf(i))]), CancellationToken.None); }
+            finally { gate.Release(); }
+        }));
+        var held = Retained();
+        var weak = new WeakReference(resolver);
+        await resolver.DisposeAsync();
+        resolver = null!;
+        return (held, weak);
+    }
+
     [Fact]
     public async Task WhatTheResolverKeepsDoesNotGrowWithTheNumberOfMembersResolved()
     {
+        // The heap is process-wide, so its size moves by megabytes while members are resolved whatever the resolver
+        // keeps (pooled buffers come and go, another thread's garbage is collected). Comparing the heap before and
+        // after a stretch of work reads that movement. This reads the heap twice in a row instead, with the resolver
+        // alive and then unreachable: the difference is what the resolver and everything only it references held,
+        // and the rest of the process is the same in both samples. Doing that for a small and a large number of
+        // members and taking the slope leaves what each further member costs; what opening the archive costs cancels.
+        // State a resolver parks in a static would be in both samples and go unseen.
+        const int Few = 200, Many = 4200;
+        ArchiveMembers.Should().BeGreaterThanOrEqualTo(Many, "the test resolves members 0 to {0} of the archive; SILVER_BSA_MEMBERS must cover them", Many - 1);
         var loadout = await CreateLoadout();
         await using var zip = await CreateTestArchive(new Dictionary<RelativePath, byte[]> { [RelativePath.FromUnsanitizedInput("data/pack.bsa")] = BigBsa });
         var library = await RegisterLocalArchive(zip.Path);
         var hash = library.AsLibraryFile().XxHash64Identity()!.Value;
-        using var resolver = NewResolver(new ArchivePlan([]), loadout);
-        var via = new[] { RelativePath.FromUnsanitizedInput("data/pack.bsa") };
 
-        async Task ResolveRange(int from, int count)
+        async Task<long> Kept(int members)
         {
-            var gate = new SemaphoreSlim(16);
-            await Task.WhenAll(Enumerable.Range(from, count).Select(async i =>
+            var (held, resolver) = await HeapWhileHolding(hash, loadout, members);
+            // The tasks that finished the resolver's last work can still hold it for a moment after DisposeAsync returns.
+            var released = Retained();
+            for (var wait = 0; wait < 100 && resolver.IsAlive; wait++)
             {
-                await gate.WaitAsync();
-                try { await resolver.Resolve(new ArchiveHashPath(hash, [.. via, RelativePath.FromUnsanitizedInput(NameOf(i))]), CancellationToken.None); }
-                finally { gate.Release(); }
-            }));
+                await Task.Delay(50);
+                released = Retained();
+            }
+
+            resolver.IsAlive.Should().BeFalse("the sample after the resolver is dropped must not still count it");
+            helper.WriteLine($"{members} members: held {held} B, after release {released} B");
+            return held - released;
         }
 
-        // The first members open the archive and fill its readers' caches; the rest only add what each member costs.
-        await ResolveRange(0, 200);
+        var keptFew = await Kept(Few);
+        var keptMany = await Kept(Many);
 
-        // The heap is process-wide, so anything else the process does while a stage runs (a finalizer, a pool thread
-        // finishing an earlier test's work) lands in that stage's number, and memory another thread frees can pull it
-        // to zero or below. A resolver that keeps something per member grows in every stage, so the middle stage of
-        // three says what it keeps: one noisy stage in either direction cannot move it.
-        const int Stages = 3, StageMembers = 400;
-        var next = 200;
-        var perStage = new List<long>();
-        for (var stage = 0; stage < Stages; stage++)
-        {
-            var before = Retained();
-            await ResolveRange(next, StageMembers);
-            perStage.Add((Retained() - before) / StageMembers);
-            next += StageMembers;
-        }
-
-        helper.WriteLine($"retained per further member, by stage: {string.Join(", ", perStage.Select(b => $"{b} B"))}");
-        perStage.Order().ElementAt(Stages / 2).Should().BeLessThan(16 * 1024, "the median stage is what the resolver keeps per member");
+        var perMember = (keptMany - keptFew) / (Many - Few);
+        helper.WriteLine($"kept by the resolver per further member: {perMember} B");
+        perMember.Should().BeLessThan(16 * 1024, "what the resolver keeps per member must not grow with the members resolved");
     }
 
     [Fact]
