@@ -11,8 +11,9 @@
     <!--
     NuGet packages ship native libraries for every platform under runtimes/<rid>/, and a
     framework-dependent build or publish copies all of them next to the app. The app ships as a
-    Linux x64 AppImage, so keep only runtimes/linux-x64 (and the RID-neutral folders such as
-    unix/ or any/) and drop every other operating system and CPU: win-*, osx-*, linux-arm*,
+    Linux AppImage per CPU, so keep only the runtimes folder of the one RID this build is for (SmmNativeRid:
+    the RuntimeIdentifier, else the SDK's portable one) plus the RID-neutral folders such as unix/ or any/,
+    and drop every other operating system and CPU: win-*, osx-*, the other linux-* CPUs,
     linux-musl-*, linux-x86, linux-mips64 and so on. Left in, every test project carries its own
     copy of each (libduckdb.so alone is 60 MB per RID) and a full suite run exhausts a 20 GB tmpfs.
     Pruning the items keeps output paths as they are; a RuntimeIdentifier would append the RID to them.
@@ -20,8 +21,11 @@
     from them, because build output, publish and deps.json each read a different one of them.
     Games run under Proton/Wine in a separate process and need none of these.
     -->
+    <Import Project="$(MSBuildThisFileDirectory)src/SmmNativeRid.props" Condition="'$(SmmNativeRid)' == ''" />
+
     <PropertyGroup>
-        <_ForeignRuntimePattern>^runtimes/(win|osx|browser|android|ios|maccatalyst|tvos|tizen|linux-bionic|linux-(?!x64/))</_ForeignRuntimePattern>
+        <!-- Assumes SmmNativeRid is a linux-* identifier: Substring(6) drops the "linux-". -->
+        <_ForeignRuntimePattern>^runtimes/(win|osx|browser|android|ios|maccatalyst|tvos|tizen|linux-bionic|linux-(?!$(SmmNativeRid.Substring(6))/))</_ForeignRuntimePattern>
     </PropertyGroup>
 
     <Target Name="PruneForeignRuntimeAssets" AfterTargets="ResolveLockFileCopyLocalFiles">

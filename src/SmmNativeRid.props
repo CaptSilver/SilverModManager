@@ -1,0 +1,17 @@
+<Project>
+    <!--
+    The runtime identifier whose runtimes/<rid>/native folder holds the bundled native binaries (7zz, libooz,
+    libsmmtexenc) for this build: the RuntimeIdentifier when the project builds with one (-r), otherwise the SDK's portable
+    identifier for the machine, linux-x64 or linux-arm64.
+
+    The SDK sets the portable fallback after Directory.Build.props has been read, so this file is imported at the
+    top of each project body that picks a folder, and by Directory.Build.targets (only when the project has not
+    imported it already: MSBuild warns MSB4011 on a repeated import), which reads the result to decide which NuGet
+    runtimes folders to prune. Plain libraries are RID-agnostic by default and never see the app's -r, so the
+    three that bundle natives set IsRidAgnostic=false.
+    -->
+    <PropertyGroup>
+        <SmmNativeRid Condition="'$(SmmNativeRid)' == ''">$(RuntimeIdentifier)</SmmNativeRid>
+        <SmmNativeRid Condition="'$(SmmNativeRid)' == ''">$(NETCoreSdkPortableRuntimeIdentifier)</SmmNativeRid>
+    </PropertyGroup>
+</Project>

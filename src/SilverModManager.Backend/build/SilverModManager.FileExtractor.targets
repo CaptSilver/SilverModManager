@@ -1,10 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <_IsLinux Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">true</_IsLinux>
-
-    <_NativeRuntime Condition=" '$(_IsLinux)' == 'true' And ('$(Prefer32Bit)' == 'false' Or '$(PlatformTarget)' == 'x64')">linux-x64</_NativeRuntime>
-
     <_UseSystemExtractor Condition="$([System.String]::new('$(DefineConstants)').Contains('SMM_USE_SYSTEM_EXTRACTOR'))">true</_UseSystemExtractor>
   </PropertyGroup>
 
@@ -14,16 +10,9 @@
   </PropertyGroup>
     
   <ItemGroup Condition="'$(_UseSystemExtractor)' == '' Or '$(_UseSystemExtractor)' == 'false'">
-    <!-- Copy all if platform not specified -->
-    <None Condition="'$(PlatformTarget)' == 'AnyCPU' Or '$(PlatformTarget)' == ''" Include="$(MSBuildThisFileDirectory)../runtimes/**" Exclude="$(MSBuildThisFileDirectory)*.targets">
-      <Link>runtimes\%(RecursiveDir)\%(Filename)%(Extension)</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Visible>False</Visible>
-    </None>
-
-    <!-- Otherwise unpack for specific platform -->
-    <None Condition="'$(_NativeRuntime)' != '' And '$(PlatformTarget)' != 'AnyCPU' And '$(PlatformTarget)' != ''" Include="$(MSBuildThisFileDirectory)../runtimes/$(_NativeRuntime)/**" Exclude="$(MSBuildThisFileDirectory)*.targets">
-      <Link>runtimes\$(_NativeRuntime)\native\%(Filename)%(Extension)</Link>
+    <!-- The bundled binaries for the build's runtime identifier (SmmNativeRid), whatever PlatformTarget says. -->
+    <None Include="$(MSBuildThisFileDirectory)../runtimes/$(SmmNativeRid)/**" Exclude="$(MSBuildThisFileDirectory)*.targets">
+      <Link>runtimes\$(SmmNativeRid)\native\%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>False</Visible>
     </None>

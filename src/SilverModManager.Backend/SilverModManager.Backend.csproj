@@ -1,4 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="..\SmmNativeRid.props" />
+
+    <PropertyGroup>
+        <!-- Without this the SDK treats a plain library as RID-agnostic and builds it without the app's -r, so SmmNativeRid would fall back to the build machine. -->
+        <IsRidAgnostic>false</IsRidAgnostic>
+    </PropertyGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\SilverModManager.Abstractions.Games.FileHashes\SilverModManager.Abstractions.Games.FileHashes.csproj" />
         <ProjectReference Include="..\SilverModManager.Abstractions.Games\SilverModManager.Abstractions.Games.csproj" />
@@ -44,9 +51,9 @@
 
     <ItemGroup>
         <!-- Using .nupkg convention for auto extract. -->
-        <None Update="runtimes\linux-x64\**">
+        <None Update="runtimes\$(SmmNativeRid)\**">
             <Pack>true</Pack>
-            <PackagePath>runtimes/linux-x64</PackagePath>
+            <PackagePath>runtimes/$(SmmNativeRid)</PackagePath>
         </None>
 
         <None Update="build\SilverModManager.FileExtractor.targets">

@@ -1,4 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="..\SmmNativeRid.props" />
+
+    <PropertyGroup>
+        <!-- Without this the SDK treats a plain library as RID-agnostic and builds it without the app's -r, so SmmNativeRid would fall back to the build machine. -->
+        <IsRidAgnostic>false</IsRidAgnostic>
+    </PropertyGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
     </ItemGroup>
@@ -12,10 +19,10 @@
 
     <ItemGroup>
         <!-- Built from extern/texenc by scripts/build-texenc.sh. -->
-        <None Include="runtimes\linux-x64\native\libsmmtexenc.so">
+        <None Include="runtimes\$(SmmNativeRid)\native\libsmmtexenc.so">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <Pack>true</Pack>
-            <PackagePath>runtimes/linux-x64/native</PackagePath>
+            <PackagePath>runtimes/$(SmmNativeRid)/native</PackagePath>
         </None>
     </ItemGroup>
 

@@ -1,4 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="..\SmmNativeRid.props" />
+
+    <PropertyGroup>
+        <!-- Without this the SDK treats a plain library as RID-agnostic and builds it without the app's -r, so SmmNativeRid would fall back to the build machine. -->
+        <IsRidAgnostic>false</IsRidAgnostic>
+    </PropertyGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\SilverModManager.Abstractions.Games.Diagnostics\SilverModManager.Abstractions.Games.Diagnostics.csproj" />
         <ProjectReference Include="..\SilverModManager.Abstractions.Games.Merge\SilverModManager.Abstractions.Games.Merge.csproj" />
@@ -19,10 +26,10 @@
 
     <ItemGroup>
         <!-- Built from extern/ooz by scripts/build-ooz.sh; see Formats/Native/LibOozResolver.cs for the lookup. -->
-        <None Include="runtimes\linux-x64\native\libooz.so">
+        <None Include="runtimes\$(SmmNativeRid)\native\libooz.so">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <Pack>true</Pack>
-            <PackagePath>runtimes/linux-x64/native</PackagePath>
+            <PackagePath>runtimes/$(SmmNativeRid)/native</PackagePath>
         </None>
     </ItemGroup>
 

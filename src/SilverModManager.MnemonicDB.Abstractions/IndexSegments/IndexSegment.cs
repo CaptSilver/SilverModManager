@@ -5,7 +5,6 @@ using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
 using JetBrains.Annotations;
 using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
 using SilverModManager.MnemonicDB.Abstractions.Internals;

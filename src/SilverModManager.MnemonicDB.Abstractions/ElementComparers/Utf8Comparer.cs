@@ -2,7 +2,6 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
 
 namespace SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 
