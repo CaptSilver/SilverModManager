@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Wabbajack.Mapping;
 
@@ -12,6 +13,7 @@ public class Mo2LayoutTests
 
     private static readonly Mo2Context Context = new(
         "Main",
+        "Test list",
         new HashSet<string>(["Stock Game"]),
         [SkyrimIni, SkyrimPrefs],
         rel => new GamePath(LocationId.Game, "Data") / rel);
@@ -104,12 +106,23 @@ public class Mo2LayoutTests
     }
 
     [Fact]
-    public void TheProfilesInitweaks_IsTheListsTweakOfTheMainIniNotThePrefsFile()
+    public void TheProfilesInitweaksInstallAsATweakLayerNamedAfterTheList()
     {
         var tweak = Classify("profiles/main/INITWEAKS.ini").Should().BeOfType<Mo2Target.ProfileTweak>().Subject;
 
         tweak.Path.LocationId.Should().Be(LocationId.Game);
-        tweak.Path.Path.ToString().Should().Be("INI Tweaks/Modlist [Skyrim.ini].ini");
+        tweak.Path.Path.ToString().Should().Be("INI Tweaks/Test list [Skyrim.ini].ini");
+        tweak.Path.Should().Be(IniTweakLayers.TweakPath("Test list", "Skyrim.ini"));
+    }
+
+    [Fact]
+    public void AListNameWithSlashesOrBracketsStillMakesATweakPath()
+    {
+        var tweak = Classify("profiles/Main/initweaks.ini", Context with { ListName = "A/B [x]" }).Should().BeOfType<Mo2Target.ProfileTweak>().Subject;
+
+        tweak.Path.Path.ToString().Should().Be("INI Tweaks/A-B -x- [Skyrim.ini].ini");
+        IniTweakLayers.IsTweakPath(tweak.Path).Should().BeTrue();
+        IniTweakLayers.LayerName("/").Should().Be("Modlist");
     }
 
     [Fact]

@@ -7,11 +7,13 @@ namespace SilverModManager.Wabbajack.Mapping;
 
 /// <summary>What the classifier needs to know about the game and the instance a modlist was built for.</summary>
 /// <param name="SelectedProfile">The profile named in ModOrganizer.ini; every other profile's files are dropped.</param>
+/// <param name="ListName">The modlist's name; the profile's initweaks.ini becomes an INI tweak layer called after it.</param>
 /// <param name="GameRootFolders">Top-level folders that hold a copy of the game ("Stock Game").</param>
 /// <param name="ProfileSettingsFiles">The ini files MO2 keeps in a profile, with the place the game reads each from.</param>
 /// <param name="ModFilePath">Where a file at this path inside a mod goes in the game.</param>
 public sealed record Mo2Context(
     string SelectedProfile,
+    string ListName,
     IReadOnlySet<string> GameRootFolders,
     IReadOnlyList<GamePath> ProfileSettingsFiles,
     Func<RelativePath, GamePath> ModFilePath);
@@ -60,11 +62,6 @@ public static class Mo2Layout
 
     /// <summary>What a new game settings group is called. The user may rename it.</summary>
     public const string GameSettingsGroupName = "Game settings";
-    /// <summary>
-    /// The name of the INI tweak the list's initweaks.ini becomes. It is not <see cref="IniTweakLayers.LoadoutTweakName"/>:
-    /// that tweak is the user's, the INI editor changes it in place, and the list's install never writes it.
-    /// </summary>
-    public const string ListTweakName = "Modlist";
 
     public const string GameFolderFilesGroup = "Game Folder Files";
 
@@ -164,7 +161,7 @@ public static class Mo2Layout
 
         // MO2 writes the tweaks the profile has switched on to initweaks.ini, to be laid over the main INI.
         if (name.Equals("initweaks.ini", StringComparison.OrdinalIgnoreCase) && GameInis.MainIni(context.ProfileSettingsFiles) is { } main)
-            return new Mo2Target.ProfileTweak(IniTweakLayers.TweakPath(ListTweakName, main.FileName.ToString()));
+            return new Mo2Target.ProfileTweak(IniTweakLayers.TweakPath(IniTweakLayers.LayerName(context.ListName), main.FileName.ToString()));
 
         foreach (var setting in context.ProfileSettingsFiles)
         {

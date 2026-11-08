@@ -119,7 +119,7 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
         var tos = PathCasing.Unify(list.Directives.Select(d => d.To));
         var roots = GameRootFolders(installation, mo2, list.Directives.Select(d => tos[d.To]).ToArray());
         // Which profile is selected only matters for profile files, and those are never game files.
-        var context = new Mo2Context("", roots, mo2.ProfileSettingsFiles(installation), relative => mo2.ModFilePath(installation, relative));
+        var context = new Mo2Context("", list.Name, roots, mo2.ProfileSettingsFiles(installation), relative => mo2.ModFilePath(installation, relative));
 
         var replaced = new Dictionary<string, RelativePath>(StringComparer.OrdinalIgnoreCase);
         var gate = new PlanProgressGate(progress);

@@ -31,6 +31,19 @@ public static partial class IniTweakLayers
     /// <summary>Where the loadout's own tweak of the INI called <paramref name="targetFileName"/> lives.</summary>
     public static GamePath LoadoutTweakPath(string targetFileName) => TweakPath(LoadoutTweakName, targetFileName);
 
+    /// <summary>The name used when a layer's text has nothing left after <see cref="LayerName"/> cleans it.</summary>
+    public const string FallbackLayerName = "Modlist";
+
+    /// <summary>
+    /// A layer name made from <paramref name="text"/> (a modlist's name, say): the characters a tweak path cannot
+    /// hold (<c>/ \ [ ]</c> and control characters) become <c>-</c>, so the name still parses as a path. Nothing but replacements (or nothing at all) gives <see cref="FallbackLayerName"/>.
+    /// </summary>
+    public static string LayerName(string text)
+    {
+        var name = string.Concat(text.Select(c => char.IsControl(c) || c is '/' or '\\' or '[' or ']' ? '-' : c)).Trim();
+        return name.Trim('-').Length == 0 ? FallbackLayerName : name;
+    }
+
     /// <summary>Where a tweak called <paramref name="name"/> of the INI called <paramref name="targetFileName"/> lives.</summary>
     public static GamePath TweakPath(string name, string targetFileName) =>
         new(LocationId.Game, $"{Folder}/{name} [{targetFileName}].ini");

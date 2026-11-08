@@ -47,6 +47,29 @@ public class IniTweakOwnershipTests(ITestOutputHelper helper) : IniTweakTestBase
     private static bool IsInCollection(LoadoutItem.ReadOnly item) =>
         item.TryGetAsLoadoutItemGroup(out var group) && group.TryGetAsCollectionGroup(out _);
 
+    [Theory]
+    [InlineData("Yggdrasil VR", "Yggdrasil VR")]
+    [InlineData("A/B [x]", "A-B -x-")]
+    [InlineData("  a\\b  ", "a-b")]
+    [InlineData("", "Modlist")]
+    [InlineData("  ", "Modlist")]
+    [InlineData("/", "Modlist")]
+    [InlineData("[]", "Modlist")]
+    [InlineData("A\nB", "A-B")]
+    [InlineData("A\r\nB", "A--B")]
+    public void LayerNameReplacesPathAndBracketCharactersAndFallsBackToModlist(string text, string expected) =>
+        IniTweakLayers.LayerName(text).Should().Be(expected);
+
+    [Fact]
+    public async Task AListLayerNamedAfterAListWithSlashesAndBracketsIsListed()
+    {
+        var loadout = await LoadoutWithBaseline();
+        var name = IniTweakLayers.LayerName("A/B [x]");
+        await AddTweakMod(loadout, "List tweak", $"{name} [Game.ini].ini", "[A]\r\nb=1\r\n", priority: 20);
+
+        Sources(loadout).Select(s => s.Name).Should().Equal(name);
+    }
+
     [Fact]
     public async Task ALoadoutNamedTweakInsideAModlistsSettingsGroupIsTheModlistsLayerNotTheLoadouts()
     {

@@ -245,6 +245,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
         var context = new Mo2Context(
             await SelectedProfile(fileStore, list, tos, listArchive, cancellationToken),
+            list.Name,
             Mo2Layout.GameRootFolders(installation, mo2Target, tos),
             mo2Target.ProfileSettingsFiles(installation),
             relative => mo2Target.ModFilePath(installation, relative));
@@ -987,8 +988,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             await DiscardPending(state);
         }
 
-        var isListOutput = await ListOutputRows(FileStore, state);
-        await KeepUserTweaksOfEarlierInstalls(state, isListOutput);
+        var isListOutput = await ListOutputRows(FileStore, state, check.List.Name);
+        await KeepUserTweaksOfEarlierInstalls(state, check.List.Name, isListOutput);
         await RemoveStaleFiles(state, isListOutput);
         if (_updateMode) await RemoveGoneGroups(check, state);
         LogSkipSummary(check, state);
@@ -1230,8 +1231,12 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     /// ask for. A row whose bytes are still what the list wrote (this run's text, or the xxHash64 the row recorded when
     /// it was written) is redundant next to the list's tweak and is left to be deleted. When the user's group already
     /// has a tweak for the same INI, the row is merged under it, so the user's own keys win, and then deleted.
+    /// Such a row holds the list's whole initweaks text next to the user's keys, so before it moves or merges the keys
+    /// whose value is the one the list's tweak of this version sets are dropped: they are the list's, still current, and
+    /// kept as the user's they would beat every later version of the list. A key the list's tweak changed or dropped stays
+    /// as the user's, since it cannot be told from a deliberate edit. A row left with no keys is deleted.
     /// </summary>
-    private async Task KeepUserTweaksOfEarlierInstalls(WriteState state, Func<GamePath, FileIdentity, bool> isListOutput)
+    private async Task KeepUserTweaksOfEarlierInstalls(WriteState state, string listName, Func<GamePath, FileIdentity, bool> isListOutput)
     {
         var legacy = InstallReconciler.UsersTweakRows(state, isListOutput);
         if (legacy.Count == 0) return;
@@ -1247,9 +1252,14 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             foreach (var (path, identity, known) in legacy)
             {
                 IniTweakLayers.IsLoadoutTweakPath(path, out var target);
-                if (userRows.TryGetValue(target, out var user))
+                var (remaining, kept) = await WithoutTheListsKeys(state, listName, target, identity);
+                if (kept.Count == 0)
                 {
-                    var under = IniDocument.Parse(await FileStore.Load(identity));
+                    Logger.LogInformation("Dropped the loadout tweak of '{Target}' from an earlier install: every key in it is one the list sets", target);
+                }
+                else if (userRows.TryGetValue(target, out var user))
+                {
+                    var under = remaining;
                     under.Merge(IniDocument.Parse(await FileStore.Load(user.Identity)));
                     var bytes = under.ToBytes();
                     pins.Add(await IniEdits.Store(FileStore, path, bytes));
@@ -1257,15 +1267,20 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                     tx.Add(user.Id, LoadoutFile.Hash, bytes.xxHash3());
                     tx.Add(user.Id, LoadoutFile.Size, Size.FromLong(bytes.Length));
                     userRows[target] = (user.Id, merged);
-                    Logger.LogInformation("Merged the loadout tweak of '{Target}' from an earlier install under the user's own", target);
+                    Logger.LogInformation("Merged the loadout tweak of '{Target}' from an earlier install under the user's own, keeping {Keys}", target, kept);
                 }
                 else
                 {
+                    var bytes = remaining.ToBytes();
+                    pins.Add(await IniEdits.Store(FileStore, path, bytes));
+                    var moved = FileIdentity.XxHash3(bytes.xxHash3());
                     userGroup ??= IniEdits.UserSettingsGroup(db, tx, loadout);
                     tx.Add(known.Ids[0], LoadoutItem.ParentId, userGroup.Value);
-                    userRows[target] = (known.Ids[0], identity);
+                    tx.Add(known.Ids[0], LoadoutFile.Hash, bytes.xxHash3());
+                    tx.Add(known.Ids[0], LoadoutFile.Size, Size.FromLong(bytes.Length));
+                    userRows[target] = (known.Ids[0], moved);
                     known.Ids.RemoveAt(0);
-                    Logger.LogInformation("Kept the loadout tweak of '{Target}' as the user's: an earlier install had put it in the list's settings group", target);
+                    Logger.LogInformation("Kept the loadout tweak of '{Target}' as the user's, with {Keys}: an earlier install had put it in the list's settings group", target, kept);
                 }
 
                 // What is left of the legacy row is folded into the user's tweak or a duplicate of it.
@@ -1281,11 +1296,51 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     }
 
     /// <summary>
+    /// A legacy tweak without the keys the list's tweak of the same INI sets to the same value, and the keys left, as
+    /// <c>[section] key</c> names for the log.
+    /// </summary>
+    private async Task<(IniDocument Remaining, IReadOnlyList<string> Kept)> WithoutTheListsKeys(WriteState state, string listName, string target, FileIdentity legacy)
+    {
+        var document = IniDocument.Parse(await FileStore.Load(legacy));
+        var listPath = IniTweakLayers.TweakPath(IniTweakLayers.LayerName(listName), target);
+        if (state.Files.TryGetValue(Mo2Layout.ProfileSettingsGroup, out var files))
+        {
+            foreach (var (identity, known) in files.AtPath(listPath))
+            {
+                if (!known.Wanted) continue;
+                var list = IniDocument.Parse(await FileStore.Load(identity));
+                document = WithoutLinesSetByTheList(document, list);
+            }
+        }
+
+        var kept = document.Sections.SelectMany(section => document.Entries(section).Select(entry => $"[{section}] {entry.Key}")).ToArray();
+        return (document, kept);
+    }
+
+    // Every line of `document` that sets a key to the value `list` sets it to, not just the first copy of the key.
+    private static IniDocument WithoutLinesSetByTheList(IniDocument document, IniDocument list)
+    {
+        var listed = list.Sections.SelectMany(section => list.Entries(section).Select(e => (Section: section, e.Key, e.Value))).ToArray();
+        var text = new StringBuilder();
+        var section = "";
+        foreach (var line in document.Lines)
+        {
+            if (line.Kind == IniLineKind.Section) section = line.Name;
+            var listsIt = line.Kind == IniLineKind.KeyValue && listed.Any(l =>
+                string.Equals(l.Section, section, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(l.Key, line.Name, StringComparison.OrdinalIgnoreCase)
+                && l.Value == line.Value);
+            if (!listsIt) text.Append(line.Text).Append(line.Terminator);
+        }
+        return IniDocument.Parse(text.ToString(), document.Encoding);
+    }
+
+    /// <summary>
     /// The rows at a loadout-named tweak path of the list's settings group whose bytes are the list's own: still what the
     /// list wrote (the xxHash64 of the stored bytes is the one recorded with the row), or the very bytes of the list's tweak.
     /// The list's tweak is an inline file, so no library file holds its bytes to compare with.
     /// </summary>
-    internal static async Task<Func<GamePath, FileIdentity, bool>> ListOutputRows(IFileStore fileStore, WriteState state)
+    internal static async Task<Func<GamePath, FileIdentity, bool>> ListOutputRows(IFileStore fileStore, WriteState state, string listName)
     {
         var listOutputs = new HashSet<(GamePath Path, FileIdentity Identity)>();
         if (state.Files.TryGetValue(Mo2Layout.ProfileSettingsGroup, out var files))
@@ -1294,7 +1349,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             {
                 if (!IniTweakLayers.IsLoadoutTweakPath(path, out var target)) continue;
 
-                var listPath = IniTweakLayers.TweakPath(Mo2Layout.ListTweakName, target);
+                var listPath = IniTweakLayers.TweakPath(IniTweakLayers.LayerName(listName), target);
                 foreach (var (identity, known) in files.AtPath(path))
                 {
                     if (known.Wanted || known.Ids.Count == 0) continue;

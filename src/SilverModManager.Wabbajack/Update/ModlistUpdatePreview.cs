@@ -85,7 +85,7 @@ public sealed class ModlistUpdatePreview(IServiceProvider provider)
             .Select(p => p.To.ToString())
             .ToArray();
 
-        var isListOutput = await InstallModlistJob.ListOutputRows(fileStore, state);
+        var isListOutput = await InstallModlistJob.ListOutputRows(fileStore, state, check.List.Name);
         var (_, userTweaks) = InstallReconciler.StaleRows(state, isListOutput);
 
         var warnings = new List<string>();
