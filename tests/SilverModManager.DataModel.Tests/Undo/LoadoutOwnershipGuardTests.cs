@@ -56,6 +56,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
         "SilverModManager.Loadouts.LoadoutFileWinner/WinnerGroup",
         "SilverModManager.Loadouts.ModOrderDroppedEntry/Container",
         "SilverModManager.Loadouts.GameMetadata/LastSyncedLoadout",
+        "SilverModManager.Loadouts.GameMetadata/LaunchFinishPending",
         "SilverModManager.Loadouts.LoadoutSnapshot/Snapshot",
         "SilverModManager.RedEngine.Cyberpunk2077.RedModLoadoutGroup/RedModInfoFile",
         "SilverModManager.MountAndBlade2Bannerlord.ModLoadoutItem/ModuleInfo",
