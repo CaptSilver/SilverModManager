@@ -63,7 +63,31 @@ public sealed unsafe class NativeTextureLibraryTests : IDisposable
         Assert.Equal(Exports.Order(StringComparer.Ordinal), DefinedDynamicSymbols(LibraryPath).Order(StringComparer.Ordinal));
     }
 
-    // Names of the defined (section index != UND) entries of an ELF64 little-endian file's .dynsym, of every binding and type.
+    // The test output only carries the build machine's library, so read every CPU's committed copy from the source
+    // tree too: an arm64 link problem then shows up on an x64 run. Reading the ELF needs no loading.
+    [Theory]
+    [InlineData("linux-x64")]
+    [InlineData("linux-arm64")]
+    public void TheCommittedLibraryOfEveryCpuExportsOnlyTheShim(string rid)
+    {
+        var path = Path.Combine(TransformsProjectFolder(), "runtimes", rid, "native", "libsmmtexenc.so");
+        Assert.True(File.Exists(path), path);
+        Assert.Equal(Exports.Order(StringComparer.Ordinal), DefinedDynamicSymbols(path).Order(StringComparer.Ordinal));
+    }
+
+    private static string TransformsProjectFolder()
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+        {
+            var candidate = Path.Combine(dir.FullName, "src", "SilverModManager.Wabbajack.Transforms");
+            if (Directory.Exists(candidate)) return candidate;
+        }
+        throw new DirectoryNotFoundException($"No src/SilverModManager.Wabbajack.Transforms above {AppContext.BaseDirectory}");
+    }
+
+    // Names of the defined (section index != UND), non-local entries of an ELF64 little-endian file's .dynsym, of every
+    // type. Local ones are not exports: dlsym cannot find them, and the aarch64 linker leaves unnamed section symbols
+    // for .init and .data in .dynsym where the x86-64 one leaves none.
     private static List<string> DefinedDynamicSymbols(string path)
     {
         var file = File.ReadAllBytes(path);
@@ -83,7 +107,8 @@ public sealed unsafe class NativeTextureLibraryTests : IDisposable
             var strOffset = (long)BitConverter.ToUInt64(file, (int)strtab + 0x18);
             for (var sym = offset + 24; sym < offset + size; sym += 24)
             {
-                if (BitConverter.ToUInt16(file, (int)sym + 6) == 0)
+                const int stbLocal = 0;
+                if (BitConverter.ToUInt16(file, (int)sym + 6) == 0 || file[sym + 4] >> 4 == stbLocal)
                     continue;
                 var start = (int)(strOffset + BitConverter.ToUInt32(file, (int)sym));
                 var end = Array.IndexOf(file, (byte)0, start);
