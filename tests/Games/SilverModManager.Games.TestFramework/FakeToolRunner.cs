@@ -113,10 +113,20 @@ public class FakeToolRunner : IToolRunner
         return Task.FromResult(PrefixResult(command));
     }
 
+    /// <summary>
+    /// Whether the refusal reported while <see cref="CanRunTools"/> is false is the machine being unable to run x86-64 programs.
+    /// </summary>
+    public bool CannotRunX86_64 { get; set; }
+
     /// <inheritdoc />
     public bool CanRun(GameInstallation installation, [NotNullWhen(false)] out string? diagnostic)
+        => CanRun(installation, out diagnostic, out _);
+
+    /// <inheritdoc />
+    public bool CanRun(GameInstallation installation, [NotNullWhen(false)] out string? diagnostic, out bool cannotRunX86_64)
     {
         diagnostic = CanRunTools ? null : Diagnostic;
+        cannotRunX86_64 = !CanRunTools && CannotRunX86_64;
         return CanRunTools;
     }
 }

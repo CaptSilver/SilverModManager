@@ -19,6 +19,12 @@ public interface IToolRunStrategy
     ToolRunVia? Via => null;
 
     /// <summary>
+    /// Whether the launcher this strategy starts is itself an x86-64 program (Proton, umu, Heroic's bundled
+    /// Proton, protontricks), so a machine with another CPU needs an x86-64 interpreter to use it.
+    /// </summary>
+    bool NeedsX86_64Host => true;
+
+    /// <summary>
     /// The reason a program cannot be run for the installation, or null when it can.
     /// </summary>
     string? CheckRunnable(GameInstallation installation, ResolvedPrefix prefix);

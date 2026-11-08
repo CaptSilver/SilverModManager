@@ -27,6 +27,7 @@ public interface IToolRunner
     /// Runs the plan from <see cref="Plan"/> and waits for the program to exit.
     /// </summary>
     /// <exception cref="InvalidOperationException">No strategy can run the program; the message is the plan's diagnostic.</exception>
+    /// <exception cref="X86_64HostRequiredException">The strategy needs an x86-64 machine and this one cannot run x86-64 programs.</exception>
     /// <exception cref="OperationCanceledException">The token was cancelled; the process is interrupted, then killed.</exception>
     Task<ToolRunResult> RunWindowsTool(
         GameInstallation installation,
@@ -43,6 +44,7 @@ public interface IToolRunner
     /// be started at all throws.
     /// </summary>
     /// <exception cref="InvalidOperationException">No strategy can run the command; the message is the reason.</exception>
+    /// <exception cref="X86_64HostRequiredException">The strategy needs an x86-64 machine and this one cannot run x86-64 programs.</exception>
     /// <exception cref="OperationCanceledException">The token was cancelled; the process is interrupted, then killed.</exception>
     Task<PrefixRunResult> RunInPrefix(
         GameInstallation installation,
@@ -53,6 +55,16 @@ public interface IToolRunner
     /// Whether a program can be run for this installation, and if not, why.
     /// </summary>
     bool CanRun(GameInstallation installation, [NotNullWhen(false)] out string? diagnostic);
+
+    /// <summary>
+    /// Whether a program can be run for this installation, and if not, why, and whether the reason is that the
+    /// machine cannot run x86-64 programs, which callers refuse with <see cref="X86_64HostRequiredException"/>.
+    /// </summary>
+    bool CanRun(GameInstallation installation, [NotNullWhen(false)] out string? diagnostic, out bool cannotRunX86_64)
+    {
+        cannotRunX86_64 = false;
+        return CanRun(installation, out diagnostic);
+    }
 
     /// <summary>
     /// Whether a program can be run for this installation.

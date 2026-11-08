@@ -1,11 +1,13 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using CliWrap;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.Platform.Proton.ToolRunner;
 
@@ -17,7 +19,10 @@ public sealed class ToolRunner(
     IEnumerable<IToolRunStrategy> strategies,
     IProcessRunner processRunner,
     IGameRegistry gameRegistry,
-    DeploymentLaunchRoots launchRoots) : IToolRunner
+    DeploymentLaunchRoots launchRoots,
+    HostExecution hostExecution,
+    ISettingsManager settingsManager,
+    ILogger<ToolRunner>? logger = null) : IToolRunner
 {
     private readonly IToolRunStrategy[] _strategies = DistinctByKind(strategies.Where(s => s is not ILastResortToolRunStrategy));
     private readonly ILastResortToolRunStrategy[] _lastResorts = DistinctByKind(strategies.OfType<ILastResortToolRunStrategy>()).Cast<ILastResortToolRunStrategy>().ToArray();
@@ -41,8 +46,8 @@ public sealed class ToolRunner(
         IReadOnlyDictionary<string, string>? env,
         ToolRunVia via = ToolRunVia.Auto)
     {
-        if (!TryGetStrategy(installation, via, out var strategy, out var prefix, out var diagnostic))
-            return ToolRunPlan.Failed(diagnostic);
+        if (!TryGetStrategy(installation, via, out var strategy, out var prefix, out var diagnostic, out var cannotRunX86_64))
+            return ToolRunPlan.Failed(diagnostic, cannotRunX86_64);
 
         return WithLaunchRoots(installation, strategy.Plan(installation, prefix, PrefixCommand.ForExe(exe, args, env)));
     }
@@ -52,8 +57,8 @@ public sealed class ToolRunner(
     /// </summary>
     public ToolRunPlan PlanInPrefix(GameInstallation installation, PrefixCommand command)
     {
-        if (!TryGetStrategy(installation, ToolRunVia.Auto, out var strategy, out var prefix, out var diagnostic))
-            return ToolRunPlan.Failed(diagnostic);
+        if (!TryGetStrategy(installation, ToolRunVia.Auto, out var strategy, out var prefix, out var diagnostic, out var cannotRunX86_64))
+            return ToolRunPlan.Failed(diagnostic, cannotRunX86_64);
 
         return WithLaunchRoots(installation, strategy.Plan(installation, prefix, command));
     }
@@ -86,7 +91,7 @@ public sealed class ToolRunner(
         ToolRunVia via = ToolRunVia.Auto)
     {
         var plan = Plan(installation, exe, args, env, via);
-        if (!plan.IsRunnable) throw new InvalidOperationException(plan.Diagnostic);
+        if (!plan.IsRunnable) throw Refusal(plan.Diagnostic, plan.CannotRunX86_64);
 
         var result = await processRunner.RunAsync(ToCommand(plan), logOutput, cancellationToken);
         return new ToolRunResult(result.ExitCode);
@@ -96,7 +101,7 @@ public sealed class ToolRunner(
     public async Task<PrefixRunResult> RunInPrefix(GameInstallation installation, PrefixCommand command, CancellationToken cancellationToken)
     {
         var plan = PlanInPrefix(installation, command);
-        if (!plan.IsRunnable) throw new InvalidOperationException(plan.Diagnostic);
+        if (!plan.IsRunnable) throw Refusal(plan.Diagnostic, plan.CannotRunX86_64);
 
         var stdout = new StringBuilder();
         var stderr = new StringBuilder();
@@ -109,6 +114,9 @@ public sealed class ToolRunner(
         return new PrefixRunResult(result.ExitCode, stdout.ToString(), stderr.ToString());
     }
 
+    private static Exception Refusal(string diagnostic, bool cannotRunX86_64)
+        => cannotRunX86_64 ? new X86_64HostRequiredException(diagnostic) : new InvalidOperationException(diagnostic);
+
     // Only called for a runnable plan, which always has a working directory.
     private static Command ToCommand(ToolRunPlan plan) => Cli.Wrap(plan.Argv[0])
         .WithArguments(plan.Argv.Skip(1))
@@ -118,19 +126,23 @@ public sealed class ToolRunner(
 
     /// <inheritdoc/>
     public bool CanRun(GameInstallation installation, [NotNullWhen(false)] out string? diagnostic)
-    {
-        return TryGetStrategy(installation, ToolRunVia.Auto, out _, out _, out diagnostic);
-    }
+        => CanRun(installation, out diagnostic, out _);
+
+    /// <inheritdoc/>
+    public bool CanRun(GameInstallation installation, [NotNullWhen(false)] out string? diagnostic, out bool cannotRunX86_64)
+        => TryGetStrategy(installation, ToolRunVia.Auto, out _, out _, out diagnostic, out cannotRunX86_64);
 
     private bool TryGetStrategy(
         GameInstallation installation,
         ToolRunVia via,
         [NotNullWhen(true)] out IToolRunStrategy? strategy,
         [NotNullWhen(true)] out ResolvedPrefix? prefix,
-        [NotNullWhen(false)] out string? diagnostic)
+        [NotNullWhen(false)] out string? diagnostic,
+        out bool cannotRunX86_64)
     {
         strategy = null;
         prefix = null;
+        cannotRunX86_64 = false;
 
         var resolution = prefixResolver.Resolve(installation);
         if (resolution.IsNative)
@@ -145,7 +157,7 @@ public sealed class ToolRunner(
             return false;
         }
 
-        if (via is not ToolRunVia.Auto) return TryGetForcedStrategy(installation, via, resolution.Prefix, out strategy, out prefix, out diagnostic);
+        if (via is not ToolRunVia.Auto) return TryGetForcedStrategy(installation, via, resolution.Prefix, out strategy, out prefix, out diagnostic, out cannotRunX86_64);
 
         var kind = resolution.Prefix.Kind;
         strategy = _strategies.FirstOrDefault(s => s.Kind == kind);
@@ -156,16 +168,31 @@ public sealed class ToolRunner(
         }
 
         var resolved = resolution.Prefix;
-        prefix = resolved;
         diagnostic = strategy.CheckRunnable(installation, resolved);
-        if (diagnostic is null) return true;
+        if (diagnostic is not null)
+        {
+            // The regular strategy's reason is the one worth showing: it is the way the program is meant to run.
+            var lastResort = _lastResorts.FirstOrDefault(s => s.Kind == kind && s.CheckRunnable(installation, resolved) is null);
+            if (lastResort is null)
+            {
+                strategy = null;
+                return false;
+            }
 
-        // The regular strategy's reason is the one worth showing: it is the way the program is meant to run.
-        var lastResort = _lastResorts.FirstOrDefault(s => s.Kind == kind && s.CheckRunnable(installation, resolved) is null);
-        if (lastResort is null) return false;
+            strategy = lastResort;
+            diagnostic = null;
+        }
 
-        strategy = lastResort;
-        diagnostic = null;
+        // Gated on the strategy that would actually run, so a last resort is refused the same way.
+        if (X86_64Refusal(installation, strategy) is { } refusal)
+        {
+            strategy = null;
+            diagnostic = refusal;
+            cannotRunX86_64 = true;
+            return false;
+        }
+
+        prefix = resolved;
         return true;
     }
 
@@ -177,10 +204,12 @@ public sealed class ToolRunner(
         ResolvedPrefix resolved,
         [NotNullWhen(true)] out IToolRunStrategy? strategy,
         [NotNullWhen(true)] out ResolvedPrefix? prefix,
-        [NotNullWhen(false)] out string? diagnostic)
+        [NotNullWhen(false)] out string? diagnostic,
+        out bool cannotRunX86_64)
     {
         strategy = null;
         prefix = null;
+        cannotRunX86_64 = false;
 
         if (via is ToolRunVia.Native)
         {
@@ -195,6 +224,13 @@ public sealed class ToolRunner(
             return false;
         }
 
+        if (X86_64Refusal(installation, forced) is { } refusal)
+        {
+            diagnostic = refusal;
+            cannotRunX86_64 = true;
+            return false;
+        }
+
         diagnostic = forced.CheckRunnable(installation, resolved);
         if (diagnostic is not null) return false;
 
@@ -202,4 +238,32 @@ public sealed class ToolRunner(
         prefix = resolved;
         return true;
     }
+
+    /// <summary>
+    /// The one place every program start passes through to learn whether this machine can start the
+    /// strategy's x86-64 launcher. Null when it can, when the strategy is not x86-64, or when the user said
+    /// to assume it can.
+    /// </summary>
+    private string? X86_64Refusal(GameInstallation installation, IToolRunStrategy strategy)
+    {
+        if (!strategy.NeedsX86_64Host) return null;
+
+        var support = hostExecution.CanRunX86_64();
+        if (support is X86_64Support.Native or X86_64Support.Interpreter) return null;
+
+        if (settingsManager.Get<HostExecutionSettings>().AssumeX86_64Runs)
+        {
+            logger?.LogTrace("Running {Game} through {Strategy} although no x86-64 support was found ({Support}), because {Setting} is on",
+                installation.Game.DisplayName, strategy.Kind, support, OverrideKey);
+            return null;
+        }
+
+        var game = installation.Game.DisplayName;
+        var fixHint = $"If Proton does run here, turn on {OverrideKey} with: settings set -k {OverrideKey} -v true";
+        return support is X86_64Support.Unknown
+            ? $"{game}'s Windows programs run through {strategy.Kind}, an x86-64 program, and this machine is not x86-64 and could not read {hostExecution.BinfmtDirectory} to check for an x86-64 interpreter (FEX). {fixHint}"
+            : $"{game}'s Windows programs run through {strategy.Kind}, an x86-64 program, and this machine is not x86-64 and has no x86-64 binfmt interpreter (FEX) registered. {fixHint}";
+    }
+
+    internal const string OverrideKey = "HostExecutionSettings.AssumeX86_64Runs";
 }

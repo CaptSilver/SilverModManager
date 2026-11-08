@@ -37,6 +37,12 @@ public sealed record ToolRunPlan
     public string? Diagnostic { get; private init; }
 
     /// <summary>
+    /// Whether the plan failed because the strategy needs an x86-64 machine and this one cannot run x86-64
+    /// programs.
+    /// </summary>
+    public bool CannotRunX86_64 { get; private init; }
+
+    /// <summary>
     /// Whether the plan can be run.
     /// </summary>
     [MemberNotNullWhen(true, nameof(Strategy))]
@@ -53,7 +59,8 @@ public sealed record ToolRunPlan
         => new() { Strategy = strategy, Argv = argv, WorkingDirectory = workingDirectory, Environment = environment };
 
     /// <summary/>
-    public static ToolRunPlan Failed(string diagnostic) => new() { Diagnostic = diagnostic };
+    public static ToolRunPlan Failed(string diagnostic, bool cannotRunX86_64 = false)
+        => new() { Diagnostic = diagnostic, CannotRunX86_64 = cannotRunX86_64 };
 }
 
 /// <summary>

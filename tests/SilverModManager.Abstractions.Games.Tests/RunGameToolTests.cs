@@ -619,6 +619,20 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
     }
 
     [Fact]
+    public async Task NonPrimaryExe_WhenTheMachineCannotRunX86_64_ThrowsAUserFacingRefusalBeforeTheSessionStarts()
+    {
+        ToolRunner.CanRunTools = false;
+        ToolRunner.CannotRunX86_64 = true;
+        ToolRunner.Diagnostic = "this machine is not x86-64";
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+
+        var act = async () => await new LauncherTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, []);
+
+        await act.Should().ThrowAsync<X86_64HostRequiredException>().WithMessage("*this machine is not x86-64*");
+        Session.Events.Should().BeEmpty("the loadout must not be applied for a program that cannot start");
+    }
+
+    [Fact]
     public async Task NonPrimaryExe_WhenTheToolRunnerCannotRunIt_ThrowsItsDiagnosticBeforeTheSessionStarts()
     {
         ToolRunner.CanRunTools = false;

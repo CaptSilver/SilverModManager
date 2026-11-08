@@ -25,7 +25,8 @@ public sealed class DoctorReporter(
     IInstallationLockFactory lockFactory,
     IEnumerable<IInstallationCheck>? checks = null,
     IPrefixInspector? prefixInspector = null,
-    IEnumerable<IPrefixComponentRequirements>? componentRequirements = null)
+    IEnumerable<IPrefixComponentRequirements>? componentRequirements = null,
+    HostExecution? hostExecution = null)
 {
     private readonly IInstallationCheck[] _checks = checks?.ToArray() ?? [];
     private readonly IPrefixComponentRequirements[] _componentRequirements = componentRequirements?.ToArray() ?? [];
@@ -66,8 +67,13 @@ public sealed class DoctorReporter(
         {
             Checks = _checks.SelectMany(check => check.Check(installation)).ToArray(),
             PrefixComponents = DescribeComponents(installation, prefix),
+            HostX86_64 = DescribeHostX86_64(prefix),
         };
     }
+
+    // A native Linux build never starts Proton or Wine, so what the machine can emulate does not matter to it.
+    private X86_64Support? DescribeHostX86_64(PrefixResolution prefix)
+        => !prefix.IsNative && hostExecution?.CanRunX86_64() is { } support and not X86_64Support.Native ? support : null;
 
     /// <summary>
     /// Reads the prefix for the components the game needs. Only reads files: nothing is run in the prefix. A file

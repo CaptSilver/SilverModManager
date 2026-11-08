@@ -49,7 +49,7 @@ public class ProtontricksStrategyTests
             });
     }
 
-    private IToolRunner Runner() => new ToolRunner.ToolRunner(
+    private IToolRunner Runner(HostExecution? host = null) => new ToolRunner.ToolRunner(
         new PrefixResolver(),
         [
             new SteamProtonStrategy(new ProtonResolver(new EmptyEnvironment())),
@@ -57,7 +57,9 @@ public class ProtontricksStrategyTests
         ],
         _processRunner,
         UnmanagedGames.Registry(),
-        UnmanagedGames.LaunchRoots());
+        UnmanagedGames.LaunchRoots(),
+        host ?? UnmanagedGames.X64Host(),
+        UnmanagedGames.Settings());
 
     private AggregateProtontricksDependency Protontricks() => new(_processRunner);
 
@@ -105,6 +107,27 @@ public class ProtontricksStrategyTests
         plan.Argv.Should().Equal("protontricks-launch", "--appid", "42", Exe.ToString(), "-o:plain", @"Z:\out\dir");
         plan.WorkingDirectory.Should().Be(Exe.Parent);
         plan.Environment.Should().BeEquivalentTo(new Dictionary<string, string> { ["FOO"] = "bar" });
+    }
+
+    [Fact]
+    public void AHostWithoutX86_64RefusesEveryStrategyThatNeedsItIncludingTheLastResort()
+    {
+        NoProtonBuild();
+        _installed.Add("protontricks");
+        var directory = Path.Combine(Path.GetTempPath(), "smm-binfmt-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var runner = Runner(new HostExecution(directory, Architecture.Arm64));
+
+            runner.CanRun(SteamGame(), out var diagnostic).Should().BeFalse();
+            diagnostic.Should().Contain("FEX").And.Contain("HostExecutionSettings.AssumeX86_64Runs");
+            runner.Plan(SteamGame(), Exe, [], null).IsRunnable.Should().BeFalse();
+        }
+        finally
+        {
+            Directory.Delete(directory);
+        }
     }
 
     [Fact]

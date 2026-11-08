@@ -69,6 +69,12 @@ public sealed record DoctorInstallation(
     /// chosen, so the JSON gains an array and no existing field changes.
     /// </summary>
     public IReadOnlyList<DoctorPrefixComponent> PrefixComponents { get; init; } = [];
+
+    /// <summary>
+    /// Whether this machine can run x86-64 programs, which Proton is. Null on an x86-64 machine, where it is
+    /// never in doubt, so the JSON gains a field only elsewhere.
+    /// </summary>
+    public X86_64Support? HostX86_64 { get; init; }
 }
 
 /// <summary>One prefix component the game needs and what the prefix shows for it.</summary>

@@ -49,7 +49,7 @@ public class OtherRunnerStrategyTests
         ],
         _processRunner,
         UnmanagedGames.Registry(),
-        UnmanagedGames.LaunchRoots());
+        UnmanagedGames.LaunchRoots(), UnmanagedGames.X64Host(), UnmanagedGames.Settings());
 
     private AbsolutePath Exe => _fs.FromUnsanitizedFullPath("/tools/xEdit/SSEEdit.exe");
 
@@ -394,7 +394,7 @@ public class OtherRunnerStrategyTests
     public void ForcedStrategyWithNoRegistration_IsADiagnosticNamingIt()
     {
         var installation = Install(CompatibilityLayerKind.PlainWine, "/wine/prefix", null);
-        var runner = new ToolRunner.ToolRunner(new PrefixResolver(), [new PlainWineStrategy(_processRunner)], _processRunner, UnmanagedGames.Registry(), UnmanagedGames.LaunchRoots());
+        var runner = new ToolRunner.ToolRunner(new PrefixResolver(), [new PlainWineStrategy(_processRunner)], _processRunner, UnmanagedGames.Registry(), UnmanagedGames.LaunchRoots(), UnmanagedGames.X64Host(), UnmanagedGames.Settings());
 
         var plan = runner.Plan(installation, Exe, [], null, ToolRunVia.Umu);
 

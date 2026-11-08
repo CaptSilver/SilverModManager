@@ -21,6 +21,9 @@ public sealed class PlainWineStrategy(IProcessRunner processRunner) : IToolRunSt
 
     public ToolRunVia? Via => ToolRunVia.Wine;
 
+    // An aarch64 wine, from the distro or a Hangover build, runs without an x86-64 interpreter in the kernel.
+    public bool NeedsX86_64Host => false;
+
     public string? CheckRunnable(GameInstallation installation, ResolvedPrefix prefix)
     {
         var dependency = DependencyFor(Binary(prefix));

@@ -162,8 +162,11 @@ public class RunGameTool : IRunGameTool
         // directly. Asked before the session so the loadout is not applied for a program that cannot run.
         var installation = loadout.InstallationInstance;
         var viaToolRunner = LaunchPlatform.IsWindowsProgram(_prefixResolver.Resolve(installation), installation.LocatorResult);
-        if (viaToolRunner && !_toolRunner.CanRun(installation, out var cannotRunReason))
-            throw new InvalidOperationException($"Cannot run {program.FileName} for {_game.DisplayName}: {cannotRunReason}");
+        if (viaToolRunner && !_toolRunner.CanRun(installation, out var cannotRunReason, out var cannotRunX86_64))
+        {
+            var message = $"Cannot run {program.FileName} for {_game.DisplayName}: {cannotRunReason}";
+            throw cannotRunX86_64 ? new X86_64HostRequiredException(message) : new InvalidOperationException(message);
+        }
 
         // The launcher or loader is started by us, so the session's lock covers it and everything it spawns.
         using var launch = _launchSessions.BeginSession(loadout);

@@ -80,7 +80,7 @@ public class RunInPrefixTests
         ];
         if (protontricks) strategies.Add(new ProtontricksStrategy(new AggregateProtontricksDependency(_processRunner)));
 
-        return new ToolRunner.ToolRunner(new PrefixResolver(), strategies, _processRunner, UnmanagedGames.Registry(), UnmanagedGames.LaunchRoots());
+        return new ToolRunner.ToolRunner(new PrefixResolver(), strategies, _processRunner, UnmanagedGames.Registry(), UnmanagedGames.LaunchRoots(), UnmanagedGames.X64Host(), UnmanagedGames.Settings());
     }
 
     private AbsolutePath Path(string path) => _fs.FromUnsanitizedFullPath(path);

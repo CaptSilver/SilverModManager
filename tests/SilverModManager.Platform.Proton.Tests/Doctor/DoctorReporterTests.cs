@@ -43,13 +43,15 @@ public class DoctorReporterTests : IDisposable
         PrefixResolution? prefix = null,
         ProtonResolution? proton = null,
         FakeToolRunner? runner = null,
+        HostExecution? host = null,
         params IInstallationCheck[] checks)
         => new(
             new FakePrefixResolver(prefix ?? PrefixResolution.Resolved(new ResolvedPrefix(_prefix, CompatibilityLayerKind.SteamProton, ProtonAppId: 42))),
             new FakeProtonResolver([Proton8, Proton9], proton ?? ProtonResolution.Resolved(Proton9)),
             runner ?? new FakeToolRunner(),
             new InstallationLockFactory(new FakeEnvironment(_runtimeDir)),
-            checks);
+            checks,
+            hostExecution: host);
 
     private GameInstallation SteamGame(string name = "Test Game", string id = AppId, bool withProvider = true)
     {
@@ -116,6 +118,59 @@ public class DoctorReporterTests : IDisposable
     private sealed class FakeCheck(Func<GameInstallation, IReadOnlyList<DoctorCheck>> check) : IInstallationCheck
     {
         public IReadOnlyList<DoctorCheck> Check(GameInstallation installation) => check(installation);
+    }
+
+    private HostExecution Arm64HostWithBinfmt(bool directoryExists)
+    {
+        var directory = Path.Combine(_runtimeDir, "binfmt_misc");
+        if (directoryExists) Directory.CreateDirectory(directory);
+        return new HostExecution(directory, Architecture.Arm64);
+    }
+
+    private const string HostLine = "  x86-64 programs: ";
+
+    [Fact]
+    public void Build_OnAnX86_64Machine_HasNoHostFieldAndNoLine()
+    {
+        WriteLocalConfig(null);
+
+        var report = Reporter(host: UnmanagedGames.X64Host()).Build([Managed(SteamGame())]);
+
+        report.Installations[0].HostX86_64.Should().BeNull();
+        DoctorTextFormatter.Format(report).Should().NotContain(l => l.StartsWith(HostLine));
+    }
+
+    [Fact]
+    public void Build_OnAnArm64MachineWithoutAnInterpreter_SaysX86_64CannotRunHere()
+    {
+        WriteLocalConfig(null);
+
+        var report = Reporter(host: Arm64HostWithBinfmt(directoryExists: true)).Build([Managed(SteamGame())]);
+
+        report.Installations[0].HostX86_64.Should().Be(X86_64Support.None);
+        DoctorTextFormatter.Format(report).Should().Contain(l => l.StartsWith(HostLine) && l.Contains("cannot run here"));
+    }
+
+    [Fact]
+    public void Build_OnAnArm64MachineWhoseBinfmtCannotBeRead_SaysItIsUnknown()
+    {
+        WriteLocalConfig(null);
+
+        var report = Reporter(host: Arm64HostWithBinfmt(directoryExists: false)).Build([Managed(SteamGame())]);
+
+        report.Installations[0].HostX86_64.Should().Be(X86_64Support.Unknown);
+        DoctorTextFormatter.Format(report).Should().Contain(l => l.StartsWith(HostLine) && l.Contains("unknown, could not read"));
+    }
+
+    [Fact]
+    public void Build_ANativeLinuxGame_HasNoX86_64LineOnAnArm64Machine()
+    {
+        WriteLocalConfig(null);
+
+        var report = Reporter(prefix: PrefixResolution.Native("runs natively"), host: Arm64HostWithBinfmt(directoryExists: true)).Build([Managed(SteamGame())]);
+
+        report.Installations[0].HostX86_64.Should().BeNull();
+        DoctorTextFormatter.Format(report).Should().NotContain(l => l.StartsWith(HostLine));
     }
 
     [Fact]

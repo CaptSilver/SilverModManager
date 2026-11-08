@@ -14,6 +14,7 @@ using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.Platform.Proton;
 
@@ -43,6 +44,8 @@ public static class Services
         services.AddSingleton<IToolProvider, UserToolProvider>();
         services.AddSingleton<IToolProvider, CatalogueToolProvider>();
         services.AddSingleton<KnownToolDetector>();
+        services.AddSettings<HostExecutionSettings>();
+        services.TryAddSingleton(_ => HostExecution.ForThisProcess());
         services.AddSingleton<IToolRunner, ToolRunner.ToolRunner>();
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);
         services.AddSingleton<IPrefixInspector, PrefixInspector>();
