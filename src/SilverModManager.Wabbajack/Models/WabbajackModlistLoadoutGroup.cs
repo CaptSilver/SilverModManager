@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.BuiltInEntities;
 using SilverModManager.MnemonicDB.Abstractions.Models;
 
 namespace SilverModManager.Wabbajack.Models;
@@ -27,4 +28,16 @@ public partial class WabbajackModlistLoadoutGroup : IModelDefinition
     /// acted on when it lies inside the extras root.
     /// </summary>
     public static readonly StringAttribute ExtrasFolder = new(Namespace, nameof(ExtrasFolder)) { IsOptional = true };
+
+    /// <summary>
+    /// The library file the group was installed from before an update switched it to <see cref="Modlist"/>. Set from the
+    /// switch until the update is finished; with <see cref="InstalledAt"/> absent it marks an update in progress.
+    /// </summary>
+    public static readonly ReferenceAttribute<WabbajackModlistLibraryFile> PreviousModlist = new(Namespace, nameof(PreviousModlist)) { IsOptional = true, IsIndexed = true };
+
+    /// <summary>The restore point written before the update switched the group, which Undo reverts to.</summary>
+    public static readonly ReferenceAttribute<Transaction> LastUpdateRestorePoint = new(Namespace, nameof(LastUpdateRestorePoint)) { IsOptional = true };
+
+    /// <summary>Whether the group was switched off by the user before the update, so finishing it can put that back.</summary>
+    public static readonly BooleanAttribute WasDisabledByUser = new(Namespace, nameof(WasDisabledByUser)) { IsOptional = true };
 }

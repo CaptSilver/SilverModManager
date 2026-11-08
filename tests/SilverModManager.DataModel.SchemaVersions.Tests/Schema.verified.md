@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xB67EC099442FC4F9
-   - Total attributes: 404
-   - Total namespaces: 111
+   - Fingerprint: 0xFEF37ABF4D706B65
+   - Total attributes: 414
+   - Total namespaces: 113
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -285,6 +285,9 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Loadouts.ModOrderDroppedEntry/Page                                       | Utf8                    | False   | False | False     | 
 | SilverModManager.Loadouts.ModOrderDroppedEntry/Reason                                     | Utf8                    | False   | False | False     | 
 | SilverModManager.Loadouts.ModOrderDroppedEntry/Source                                     | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.ProtectedLoadoutRevision/Loadout                                | Reference               | True    | False | False     | 
+| SilverModManager.Loadouts.ProtectedLoadoutRevision/Reason                                 | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.ProtectedLoadoutRevision/Revision                               | Reference               | False   | False | False     | 
 | SilverModManager.Loadouts.SortOrder/Loadout                                               | Reference               | True    | False | False     | 
 | SilverModManager.Loadouts.SortOrder/ParentEntity                                          | UInt128                 | True    | False | False     | 
 | SilverModManager.Loadouts.SortOrder/SortOrderTypeId                                       | UInt128                 | False   | False | False     | 
@@ -393,6 +396,7 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.StardewValley.SMAPIModDatabaseLoadoutFile/ModDatabaseFile                | Null                    | False   | False | False     | 
 | SilverModManager.StardewValley.SMAPIModLoadoutItem/Manifest                               | Reference               | False   | False | False     | 
 | SilverModManager.Wabbajack.InstalledFile/ListHash                                         | Blob                    | False   | False | False     | 
+| SilverModManager.Wabbajack.ModGroup/Folder                                                | Utf8                    | True    | False | False     | 
 | SilverModManager.Wabbajack.ModlistArchive/FetchedFiles                                    | Reference               | True    | True  | False     | 
 | SilverModManager.Wabbajack.ModlistArchive/Identity                                        | Blob                    | True    | False | False     | 
 | SilverModManager.Wabbajack.ModlistArchive/Modlist                                         | Reference               | True    | False | False     | 
@@ -401,15 +405,21 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Wabbajack.ModlistLibraryFile/ArchiveCount                                | Int32                   | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/ArchiveSize                                 | UInt64                  | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/Author                                      | Utf8                    | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistLibraryFile/GalleryDateUpdated                          | Int64                   | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/GalleryDownloadUrl                          | Utf8                    | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/GameType                                    | Utf8                    | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/InstallSize                                 | UInt64                  | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/IsNsfw                                      | UInt8                   | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistLibraryFile/MachineUrl                                  | Utf8                    | True    | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/Name                                        | Utf8                    | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistLibraryFile/Repository                                  | Utf8                    | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/Version                                     | Utf8                    | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLoadoutGroup/ExtrasFolder                               | Utf8                    | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLoadoutGroup/InstalledAt                                | Int64                   | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistLoadoutGroup/LastUpdateRestorePoint                     | Reference               | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLoadoutGroup/Modlist                                    | Reference               | True    | False | False     | 
+| SilverModManager.Wabbajack.ModlistLoadoutGroup/PreviousModlist                            | Reference               | True    | False | False     | 
+| SilverModManager.Wabbajack.ModlistLoadoutGroup/WasDisabledByUser                          | UInt8                   | False   | False | False     | 
 | SilverModManager.Wabbajack.SkippedFile/Group                                              | Reference               | True    | False | False     | 
 | SilverModManager.Wabbajack.SkippedFile/Kind                                               | UInt8                   | False   | False | False     | 
 | SilverModManager.Wabbajack.SkippedFile/Reason                                             | Utf8                    | False   | False | False     | 

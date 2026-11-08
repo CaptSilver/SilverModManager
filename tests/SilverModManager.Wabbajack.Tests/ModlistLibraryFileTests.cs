@@ -130,4 +130,42 @@ public class ModlistLibraryFileTests(ILibraryService libraryService, IConnection
         added.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out var model).Should().BeTrue();
         WabbajackModlistArchive.FindByModlist(connection.Db, model.Id).Count().Should().Be(model.ArchiveCount);
     }
+
+    [Fact]
+    public async Task AGalleryIdentityRoundTripsThroughTheLibraryFile()
+    {
+        await using var folder = temporaryFileManager.CreateFolder();
+        var path = WabbajackFixture.Write(folder.Path, WabbajackFixture.EmptyList("Identity"));
+        var added = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
+        var updated = new DateTimeOffset(2026, 10, 3, 12, 30, 0, TimeSpan.Zero);
+
+        using (var tx = connection.BeginTransaction())
+        {
+            var id = added.AsLibraryFile().Id;
+            tx.Add(id, WabbajackModlistLibraryFile.MachineUrl, "skyrim_test");
+            tx.Add(id, WabbajackModlistLibraryFile.Repository, "wj-featured");
+            tx.Add(id, WabbajackModlistLibraryFile.GalleryDateUpdated, updated);
+            await tx.Commit();
+        }
+
+        var model = WabbajackModlistLibraryFile.Load(connection.Db, added.AsLibraryFile().Id);
+        model.MachineUrl.Value.Should().Be("skyrim_test");
+        model.Repository.Value.Should().Be("wj-featured");
+        model.GalleryDateUpdated.Value.Should().Be(updated);
+        WabbajackModlistLibraryFile.FindByMachineUrl(connection.Db, "skyrim_test").Select(f => f.Id)
+            .Should().Equal(model.Id);
+    }
+
+    [Fact]
+    public async Task AModlistWithoutAGalleryIdentityReadsItAsAbsent()
+    {
+        await using var folder = temporaryFileManager.CreateFolder();
+        var path = WabbajackFixture.Write(folder.Path, WabbajackFixture.EmptyList("Local"));
+        var added = await libraryService.AddLocalFile(path, UnassignedAcquisition.Instance);
+
+        var model = WabbajackModlistLibraryFile.Load(connection.Db, added.AsLibraryFile().Id);
+        model.Contains(WabbajackModlistLibraryFile.MachineUrl).Should().BeFalse();
+        model.Contains(WabbajackModlistLibraryFile.Repository).Should().BeFalse();
+        model.Contains(WabbajackModlistLibraryFile.GalleryDateUpdated).Should().BeFalse();
+    }
 }

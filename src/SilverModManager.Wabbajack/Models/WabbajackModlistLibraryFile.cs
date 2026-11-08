@@ -43,4 +43,16 @@ public partial class WabbajackModlistLibraryFile : IModelDefinition
     /// also tells those apart from a <c>.wabbajack</c> the user added from disk.
     /// </summary>
     public static readonly StringAttribute GalleryDownloadUrl = new(Namespace, nameof(GalleryDownloadUrl)) { IsOptional = true };
+
+    /// <summary>
+    /// The gallery's <c>links.machineURL</c> for the list. Together with <see cref="Repository"/> it identifies the list
+    /// across releases, which the file's hash and version do not.
+    /// </summary>
+    public static readonly StringAttribute MachineUrl = new(Namespace, nameof(MachineUrl)) { IsOptional = true, IsIndexed = true };
+
+    /// <summary>The key of the gallery repository (from <c>repositories.json</c>) the list was downloaded from.</summary>
+    public static readonly StringAttribute Repository = new(Namespace, nameof(Repository)) { IsOptional = true };
+
+    /// <summary>The gallery entry's <c>dateUpdated</c> when the list was downloaded.</summary>
+    public static readonly TimestampAttribute GalleryDateUpdated = new(Namespace, nameof(GalleryDateUpdated)) { IsOptional = true };
 }

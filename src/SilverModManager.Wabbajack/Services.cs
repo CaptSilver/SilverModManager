@@ -43,6 +43,7 @@ public static class Services
             .AddMigration<_0005_LinkModlistArchives>()
             .AddMigration<_0007_RetractInstalledAtOfDisabledModlists>()
             .AddWabbajackModlistLoadoutGroupModel()
+            .AddWabbajackModGroupModel()
             .AddWabbajackSkippedFileModel()
             .AddWabbajackInstalledFileModel()
             .AddWabbajackSettings()

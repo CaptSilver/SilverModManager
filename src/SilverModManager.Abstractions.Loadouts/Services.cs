@@ -35,6 +35,7 @@ public static class Services
             .AddLoadoutItemWithTargetPathModel()
             .AddLoadoutFileModel()
             .AddLoadoutSnapshotModel()
+            .AddProtectedLoadoutRevisionModel()
             .AddDeletedFileModel()
             .AddCollectionGroupModel()
             .AddSortOrderModel()
