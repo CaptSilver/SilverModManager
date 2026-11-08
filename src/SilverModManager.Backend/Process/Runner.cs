@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using CliWrap;
 using Microsoft.Extensions.DependencyInjection;
@@ -67,7 +68,36 @@ internal class ProcessRunner : IProcessRunner
         return ExecuteCommand(command, logOutput, cancellationToken);
     }
 
+    // Every Command start (Run, RunAsync(Command)) goes through here, so a program the kernel cannot execute is
+    // reported the same way for tools, game launches and probes. RunAsync(Process) maps the same failure itself.
     private async Task<CommandResult> ExecuteCommand(Command command, bool logOutput, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await ExecuteCommandCore(command, logOutput, cancellationToken);
+        }
+        catch (Exception e) when (IsExecFormatError(e))
+        {
+            throw new ProgramNotRunnableException(command.TargetFilePath, e);
+        }
+    }
+
+    // ENOEXEC, "Exec format error": the file is executable but the kernel has no interpreter for its format or CPU.
+    private const int ExecFormatError = 8;
+
+    /// <summary>
+    /// CliWrap wraps the start failure, so the code is looked for along the whole inner-exception chain.
+    /// </summary>
+    private static bool IsExecFormatError(Exception exception)
+    {
+        for (var e = exception; e is not null; e = e.InnerException)
+        {
+            if (e is Win32Exception { NativeErrorCode: ExecFormatError }) return true;
+        }
+        return false;
+    }
+
+    private async Task<CommandResult> ExecuteCommandCore(Command command, bool logOutput, CancellationToken cancellationToken)
     {
         if (logOutput) _logger.LogDebug("Starting command `{Command}`", command.ToString());
 
@@ -181,7 +211,7 @@ internal class ProcessRunner : IProcessRunner
         catch (Exception e)
         {
             _logger.LogError(e, "Failed to start process `{Process}`", process.StartInfo.FileName);
-            tcs.SetException(e);
+            tcs.SetException(IsExecFormatError(e) ? new ProgramNotRunnableException(process.StartInfo.FileName, e) : e);
         }
 
         return tcs.Task; 
