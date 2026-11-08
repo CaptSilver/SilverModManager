@@ -30,15 +30,9 @@ namespace SilverModManager.DataModel.Synchronizer.Tests;
 /// A loadout that owns the game's INIs: the first copy comes from disk, every write is the baseline with the enabled
 /// tweaks and the app's own keys on top, and what was written is recorded.
 /// </summary>
-public class GameIniBakeTests(ITestOutputHelper helper) : AIsolatedGameTest<GameIniBakeTests, IniStubbedGame>(helper)
+public class GameIniBakeTests(ITestOutputHelper helper) : IniTweakTestBase<GameIniBakeTests>(helper)
 {
     private static readonly byte[] UserIni = "; my settings\r\n[Display]\r\niSize W=2560 ; wide\r\niSize H=1440\r\n\r\n[General]\r\nsLanguage=ENGLISH\r\n"u8.ToArray();
-
-    private IniStubbedGame Stub => (IniStubbedGame)GameInstallation.Game;
-
-    protected override IServiceCollection AddServices(IServiceCollection services) => base.AddServices(services)
-        .AddGame<IniStubbedGame>()
-        .AddUniversalGameLocator<IniStubbedGame>(Version.Parse("0.0.0"));
 
     private AbsolutePath Live(GamePath path) => GameInstallation.Locations.ToAbsolutePath(path);
 
@@ -68,25 +62,6 @@ public class GameIniBakeTests(ITestOutputHelper helper) : AIsolatedGameTest<Game
         using var tx = Connection.BeginTransaction();
         tx.Add(loadout.Id, Loadout.OwnsGameInis, value);
         await tx.Commit();
-    }
-
-    private async Task<LoadoutItemGroupId> AddTweakMod(Loadout.ReadOnly loadout, string modName, string tweakFile, string content, ulong priority, bool disabled = false)
-    {
-        var bytes = Encoding.UTF8.GetBytes(content);
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(tweakFile, new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length))]);
-
-        using var tx = Connection.BeginTransaction();
-        var group = AddEmptyGroup(tx, loadout.LoadoutId, modName);
-        AddFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, $"INI Tweaks/{tweakFile}"), content);
-        _ = new LoadoutItemGroupPriority.New(tx)
-        {
-            LoadoutId = loadout.LoadoutId,
-            TargetId = group,
-            Priority = ConflictPriority.From(priority),
-        };
-        if (disabled) tx.Add(group.Value, LoadoutItem.Disabled, Null.Instance);
-        var result = await tx.Commit();
-        return LoadoutItemGroupId.From(result[group.Value]);
     }
 
     [Fact]
@@ -167,12 +142,7 @@ public class GameIniBakeTests(ITestOutputHelper helper) : AIsolatedGameTest<Game
         await AddTweakMod(loadout, "High", "High [Game.ini].ini", "[Display]\r\niSize W=1920\r\n[Extra]\r\nfromHigh=1\r\n", priority: 20);
         await AddTweakMod(loadout, "Low", "Low [Game.ini].ini", "[Display]\r\niSize W=800\r\niSize H=600\r\n", priority: 10);
         await AddTweakMod(loadout, "Elsewhere", "Other [GamePrefs.ini].ini", "[Display]\r\niSize H=1\r\n", priority: 30);
-        var settings = await AddTweakMod(loadout, "Game settings", "Loadout [Game.ini].ini", "[Display]\r\niSize H=900\r\n", priority: 5);
-        using (var tx = Connection.BeginTransaction())
-        {
-            tx.Add(settings.Value, LoadoutItemGroup.GameSettingsGroup, Null.Instance);
-            await tx.Commit();
-        }
+        await AddTweakMod(loadout, "Game settings", "Loadout [Game.ini].ini", "[Display]\r\niSize H=900\r\n", priority: 5, settingsGroup: true);
 
         await Apply(loadout);
 

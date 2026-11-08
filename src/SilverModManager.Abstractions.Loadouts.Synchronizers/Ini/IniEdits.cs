@@ -56,11 +56,11 @@ public static class IniEdits
         var size = Size.FromLong(bytes.Length);
 
         using var tx = connection.BeginTransaction();
-        var existing = IniTweakLayers.All(loadout, target).Where(t => t.IsLoadoutTweak).ToList();
-        if (existing.Count > 0)
+        var existing = IniTweakLayers.UserTweak(loadout, target);
+        if (existing is { } user)
         {
-            tx.Add(existing[0].FileId, LoadoutFile.Hash, hash);
-            tx.Add(existing[0].FileId, LoadoutFile.Size, size);
+            tx.Add(user.FileId, LoadoutFile.Hash, hash);
+            tx.Add(user.FileId, LoadoutFile.Size, size);
         }
         else
         {
@@ -105,7 +105,7 @@ public static class IniEdits
     public static LoadoutItemGroupId? GameSettingsGroupOf(IDb db, Loadout.ReadOnly loadout)
     {
         var groups = LoadoutItem.FindByLoadout(db, loadout.LoadoutId).OfTypeLoadoutItemGroup()
-            .Where(g => g.IsGameSettingsGroup && !g.AsLoadoutItem().HasParent())
+            .Where(IniTweakLayers.IsUsersSettingsGroup)
             .ToList();
         return groups.Count > 0 ? groups[0].LoadoutItemGroupId : null;
     }

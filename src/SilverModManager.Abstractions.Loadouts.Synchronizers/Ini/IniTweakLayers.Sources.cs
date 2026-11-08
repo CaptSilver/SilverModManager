@@ -9,7 +9,7 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 
 /// <summary>A tweak file for an INI as the editor lists it, whether or not it is applied.</summary>
 /// <param name="Name">The part of the file name before the bracketed target.</param>
-/// <param name="SourceName">The mod the file belongs to, or the game settings group for the loadout's own tweak.</param>
+/// <param name="SourceName">The collection or modlist the file belongs to, else the mod, or the game settings group for the loadout's own tweak.</param>
 /// <param name="Identity">The tweak's bytes in the file store.</param>
 /// <param name="FileId">The loadout item holding the file.</param>
 /// <param name="IsLoadoutTweak">Whether this is the loadout's own tweak.</param>
@@ -58,7 +58,7 @@ public static partial class IniTweakLayers
             var path = ((GamePath)file.AsLoadoutItemWithTargetPath().TargetPath).Path;
             if (!TryParse(path, target.FileName.ToString(), out var name)) continue;
 
-            var isLoadoutTweak = name.Equals(LoadoutTweakName, StringComparison.OrdinalIgnoreCase) && InGameSettingsGroup(item);
+            var isLoadoutTweak = name.Equals(LoadoutTweakName, StringComparison.OrdinalIgnoreCase) && IsUsersTweakFile(item);
             var source = new IniTweakSource(name, SourceNameOf(item, priorities), file.Identity, file.Id, isLoadoutTweak, !item.IsDisabled, item.IsEnabled(), KindOf(item, isLoadoutTweak));
             found.Add((PriorityOf(item, priorities), isLoadoutTweak, path.ToString(), source));
         }
@@ -70,6 +70,13 @@ public static partial class IniTweakLayers
             .Select(f => f.Source)
             .ToList();
     }
+
+    /// <summary>
+    /// The user's own tweak of <paramref name="target"/>: the one that merges last, so the one that wins when a past
+    /// bug left two. Null when the loadout has none.
+    /// </summary>
+    public static IniTweakSource? UserTweak(Loadout.ReadOnly loadout, GamePath target) =>
+        All(loadout, target).Where(t => t.IsLoadoutTweak).Select(t => (IniTweakSource?)t).LastOrDefault();
 
     /// <summary>
     /// The enabled tweaks that name an INI other than <paramref name="knownTargets"/>: fragments for a file the game
@@ -89,7 +96,7 @@ public static partial class IniTweakLayers
             if (!item.IsEnabled() || !TryParse(path, out var name, out var target)) continue;
             if (knownTargets.Contains(target, StringComparer.OrdinalIgnoreCase)) continue;
 
-            var isLoadoutTweak = name.Equals(LoadoutTweakName, StringComparison.OrdinalIgnoreCase) && InGameSettingsGroup(item);
+            var isLoadoutTweak = name.Equals(LoadoutTweakName, StringComparison.OrdinalIgnoreCase) && IsUsersTweakFile(item);
             found.Add((path.ToString(), target, new IniTweakSource(name, SourceNameOf(item, priorities), file.Identity, file.Id, isLoadoutTweak, true, true, KindOf(item, isLoadoutTweak))));
         }
 
@@ -99,15 +106,28 @@ public static partial class IniTweakLayers
     private static IniTweakKind KindOf(LoadoutItem.ReadOnly item, bool isLoadoutTweak)
     {
         if (isLoadoutTweak) return IniTweakKind.User;
-        return item.GetThisAndParents().Skip(1).Any(a => a.TryGetAsLoadoutItemGroup(out var group) && group.TryGetAsCollectionGroup(out _)) ? IniTweakKind.List : IniTweakKind.Mod;
+        return CollectionOf(item).IsValid() ? IniTweakKind.List : IniTweakKind.Mod;
     }
 
-    // The name of the group the priority belongs to (the mod), else of the file's own parent.
+    // The nearest collection or modlist group above the file, or an invalid item when it sits in none.
+    private static LoadoutItem.ReadOnly CollectionOf(LoadoutItem.ReadOnly item) =>
+        item.GetThisAndParents().Skip(1).FirstOrDefault(a => a.TryGetAsLoadoutItemGroup(out var group) && group.TryGetAsCollectionGroup(out _));
+
+    // The collection's name when the group that owns the priority row is the collection itself or a game settings
+    // group (a modlist's own tweak, which has no mod name of its own). A mod inside a collection keeps its own name, so
+    // a card or a listing can say which mod ships a fragment. Otherwise the name of the group the priority belongs to,
+    // else of the file's own parent.
     private static string SourceNameOf(LoadoutItem.ReadOnly item, Dictionary<EntityId, ConflictPriority> priorities)
     {
         var above = item.GetThisAndParents().Skip(1).ToList();
         var owner = above.FirstOrDefault(a => priorities.ContainsKey(a.Id));
+        var collection = CollectionOf(item);
+        if (collection.IsValid() && owner.IsValid() && (owner.Id == collection.Id || IsSettingsGroup(owner))) return collection.Name;
+
         if (owner.IsValid()) return owner.Name;
         return above.Count > 0 ? above[0].Name : item.Name;
     }
+
+    private static bool IsSettingsGroup(LoadoutItem.ReadOnly item) =>
+        item.TryGetAsLoadoutItemGroup(out var group) && group.IsGameSettingsGroup;
 }

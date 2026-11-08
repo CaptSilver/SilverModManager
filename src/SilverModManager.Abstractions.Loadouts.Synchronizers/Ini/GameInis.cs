@@ -160,7 +160,7 @@ public static class GameInis
         var managed = game.ManagedKeysFile == path ? game.ManagedKeys(loadout) : [];
         var tweaks = new List<(string Name, IniDocument Document)>();
         foreach (var layer in IniTweakLayers.For(loadout, path))
-            tweaks.Add((layer.Name, IniDocument.Parse(await fileStore.Load(layer.Identity))));
+            tweaks.Add((OwnerOf(layer), IniDocument.Parse(await fileStore.Load(layer.Identity))));
 
         var changes = new List<GameIniChange>();
         foreach (var section in left.Sections)
@@ -180,6 +180,10 @@ public static class GameInis
 
         return changes;
     }
+
+    // "Loadout (Yggdrasil VR)" for a modlist's Loadout-named file, so it is not mistaken for the user's own tweak.
+    private static string OwnerOf(IniTweakLayer layer) =>
+        layer.Name.Equals(layer.SourceName, StringComparison.Ordinal) ? layer.Name : $"{layer.Name} ({layer.SourceName})";
 
     private static bool Same(string a, string b) => a.Equals(b, StringComparison.OrdinalIgnoreCase);
 

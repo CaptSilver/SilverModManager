@@ -95,17 +95,23 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
         return Fresh(loadout);
     }
 
-    private async Task<EntityId> SeedTweak(Loadout.ReadOnly loadout, string mod, string tweakFile, string content, ulong priority, bool modDisabled = false, bool settingsGroup = false)
+    private static LoadoutItem.New GroupItem(ITransaction tx, EntityId id, Loadout.ReadOnly loadout, string name, LoadoutItemGroupId? parent)
+    {
+        var item = new LoadoutItem.New(tx, id) { LoadoutId = loadout.LoadoutId, Name = name };
+        if (parent is { } parentGroup) item.ParentId = parentGroup;
+        return item;
+    }
+
+    private async Task<EntityId> SeedTweak(Loadout.ReadOnly loadout, string mod, string tweakFile, string content, ulong priority, bool modDisabled = false, bool settingsGroup = false, LoadoutItemGroupId? parent = null)
     {
         using var pin = PinUntilCommitted(Encoding.UTF8.GetBytes(content));
         var hash = await Store(content);
         using var tx = Connection.BeginTransaction();
-        var group = new LoadoutItemGroup.New(tx, out var groupId)
+        _ = new LoadoutItemGroup.New(tx, out var groupId)
         {
             IsGroup = true,
-            LoadoutItem = new LoadoutItem.New(tx, groupId) { LoadoutId = loadout.LoadoutId, Name = mod },
+            LoadoutItem = GroupItem(tx, groupId, loadout, mod, parent),
         };
-        _ = group;
         var path = new GamePath(LocationId.Game, $"INI Tweaks/{tweakFile}");
         _ = new LoadoutFile.New(tx, out var fileId)
         {
@@ -127,6 +133,23 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
         if (settingsGroup) tx.Add(groupId, LoadoutItemGroup.GameSettingsGroup, Null.Instance);
         var result = await tx.Commit();
         return result[fileId];
+    }
+
+    /// <summary>An empty modlist group, the parent of a tweak or settings group a list installs.</summary>
+    private async Task<LoadoutItemGroupId> SeedList(Loadout.ReadOnly loadout, string name)
+    {
+        using var tx = Connection.BeginTransaction();
+        _ = new CollectionGroup.New(tx, out var id)
+        {
+            IsReadOnly = false,
+            LoadoutItemGroup = new LoadoutItemGroup.New(tx, id)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, id) { LoadoutId = loadout.LoadoutId, Name = name },
+            },
+        };
+        var result = await tx.Commit();
+        return LoadoutItemGroupId.From(result[id]);
     }
 
     private async Task<IniFileEditor> Editor(Loadout.ReadOnly loadout, GamePath path, IServiceProvider? services = null)
@@ -325,6 +348,55 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
         LoadoutItem.FindByLoadout(Connection.Db, loadout.LoadoutId).OfTypeLoadoutItemGroup()
             .Count(g => g.IsGameSettingsGroup).Should().Be(1);
         IniTweakLayers.All(Fresh(loadout), PrefsPath).Should().ContainSingle(l => l.IsLoadoutTweak);
+    }
+
+    [Fact]
+    public async Task ASettingAppliedWhileAModlistOwnsALoadoutNamedTweakGoesIntoTheUsersOwnTweak()
+    {
+        const string listText = "[Display]\r\niSize W=3840\r\n";
+        var loadout = await SeedBaselines();
+        var list = await SeedList(loadout, "Yggdrasil VR");
+        await SeedTweak(loadout, "Game settings", $"Loadout [{PrefsName}].ini", listText, priority: 5, settingsGroup: true, parent: list);
+        var editor = await Editor(loadout, PrefsPath);
+        var width = editor.Settings.Single(s => s.Definition.Key == "iSize W");
+
+        width.Value = "1920";
+        await width.ApplyCommand.Execute().FirstAsync();
+
+        var layers = IniTweakLayers.All(Fresh(loadout), PrefsPath);
+        var nested = layers.Single(l => l.Kind == IniTweakKind.List);
+        Encoding.UTF8.GetString(await FileStore.Load(nested.Identity)).Should().Be(listText, "the modlist's file is not the user's to rewrite");
+        var user = layers.Single(l => l.IsLoadoutTweak);
+        Encoding.UTF8.GetString(await FileStore.Load(user.Identity)).Should().Contain("iSize W=1920");
+        editor.ResultText.Should().Contain("iSize W=1920");
+    }
+
+    [Fact]
+    public async Task TheTweaksTabListsAModlistsLoadoutNamedFileAsThatListsLayer()
+    {
+        var loadout = await SeedBaselines();
+        var list = await SeedList(loadout, "Yggdrasil VR");
+        await SeedTweak(loadout, "Game settings", $"Loadout [{PrefsName}].ini", "[Display]\r\niSize W=3840\r\n", priority: 5, settingsGroup: true, parent: list);
+
+        var editor = await Editor(loadout, PrefsPath);
+
+        var layer = editor.Layers.Should().ContainSingle().Subject;
+        layer.Name.Should().Be("Loadout");
+        layer.IsLoadoutTweak.Should().BeFalse();
+        layer.SourceName.Should().Be("Yggdrasil VR");
+    }
+
+    [Fact]
+    public async Task WithOnlyTheListsLoadoutNamedFileTheTweakEditorIsEmptyAndTheSettingsTabShowsItsValue()
+    {
+        var loadout = await SeedBaselines();
+        var list = await SeedList(loadout, "Yggdrasil VR");
+        await SeedTweak(loadout, "Game settings", $"Loadout [{PrefsName}].ini", "[Display]\r\niSize W=3840\r\n", priority: 5, settingsGroup: true, parent: list);
+
+        var editor = await Editor(loadout, PrefsPath);
+
+        editor.LoadoutTweakText.Should().BeEmpty();
+        editor.Settings.Single(s => s.Definition.Key == "iSize W").Value.Should().Be("3840");
     }
 
     // ---- typed settings

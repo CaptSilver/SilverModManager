@@ -161,6 +161,25 @@ public class LoadoutIniVerbTests(ITestOutputHelper helper) : SkyrimIniVerbTest<L
     }
 
     [Fact]
+    public async Task ALoadoutNamedFileInsideAListIsTheListsLayerAndNotTheUsersTweak()
+    {
+        var loadout = await CreateLoadout();
+        await SeedBaseline(loadout, "Skyrim.ini", SkyrimText);
+        var list = await AddTweakLayer(loadout, "A List", "Filler [Other.ini].ini", "[A]\r\nb=1\r\n", priority: 20, collection: true);
+        await AddTweakLayer(loadout, "Game settings", "Loadout [Skyrim.ini].ini", "[General]\r\nsLanguage=FRENCH\r\n", priority: 5, parent: list, settingsGroup: true);
+        var id = loadout.LoadoutId.ToString();
+
+        var json = await ListJson(loadout);
+        var (exit, tweak) = await Run("loadout", "ini", "show", "-l", id, "-f", "Skyrim.ini", "--part", "tweak");
+
+        var layer = json["files"]!.AsArray()[0]!["layers"]!.AsArray().Single()!.AsObject();
+        ((string)layer["kind"]!).Should().Be("list");
+        ((string)layer["source"]!).Should().Be("A List");
+        exit.Should().Be(0, tweak);
+        tweak.Should().BeEmpty("the list's file is not the loadout's own tweak");
+    }
+
+    [Fact]
     public async Task ShowWarnsThatNothingIsBakedWhenTheLoadoutDoesNotOwnItsInis()
     {
         var loadout = await CreateLoadout();

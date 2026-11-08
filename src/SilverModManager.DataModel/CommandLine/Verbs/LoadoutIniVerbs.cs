@@ -120,8 +120,7 @@ internal static class LoadoutIniVerbs
         part ??= "result";
         if (part == "tweak")
         {
-            var user = IniTweakLayers.All(loadout, path).Where(t => t.IsLoadoutTweak).Select(t => (FileIdentity?)t.Identity).LastOrDefault();
-            if (user is { } identity) await renderer.Text("{0}", IniDocument.Parse(await fileStore.Load(identity)).ToText());
+            if (IniTweakLayers.UserTweak(loadout, path) is { } user) await renderer.Text("{0}", IniDocument.Parse(await fileStore.Load(user.Identity)).ToText());
             return 0;
         }
 

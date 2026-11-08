@@ -10,14 +10,16 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 
 /// <summary>One tweak file a mod, or the loadout itself, supplies for an INI.</summary>
 /// <param name="Name">The part of the file name before the bracketed target.</param>
+/// <param name="SourceName">The mod, modlist or settings group the file belongs to.</param>
 /// <param name="Identity">The tweak's bytes in the file store.</param>
-public readonly record struct IniTweakLayer(string Name, FileIdentity Identity);
+public readonly record struct IniTweakLayer(string Name, string SourceName, FileIdentity Identity);
 
 /// <summary>
 /// Finds the tweaks that apply to one INI: <c>INI Tweaks/&lt;Name&gt; [&lt;Target.ini&gt;].ini</c> files in the
 /// loadout. A mod's tweak counts while the mod is enabled; the loadout's own tweak, <c>INI Tweaks/Loadout
-/// [&lt;Target.ini&gt;].ini</c> in the game settings group, comes last. The loadout's own tweak is the user's: the INI
-/// editor writes it, so it wins over every mod's and every modlist's tweak, and an install never writes it.
+/// [&lt;Target.ini&gt;].ini</c> directly in the loadout's top-level game settings group, comes last. A Loadout-named
+/// file in a modlist's settings group is that list's layer. The loadout's own tweak is the user's: the INI editor
+/// writes it, so it wins over every mod's and every modlist's tweak, and an install never writes it.
 /// </summary>
 public static partial class IniTweakLayers
 {
@@ -59,7 +61,7 @@ public static partial class IniTweakLayers
     /// the highest wins, then the loadout's own tweak.
     /// </summary>
     public static IReadOnlyList<IniTweakLayer> For(Loadout.ReadOnly loadout, GamePath target) =>
-        All(loadout, target).Where(t => t.IsEnabled).Select(t => new IniTweakLayer(t.Name, t.Identity)).ToList();
+        All(loadout, target).Where(t => t.IsEnabled).Select(t => new IniTweakLayer(t.Name, t.SourceName, t.Identity)).ToList();
 
     private static bool TryParse(NexusMods.Paths.RelativePath path, string targetFileName, out string name)
     {
@@ -83,8 +85,22 @@ public static partial class IniTweakLayers
         return true;
     }
 
-    private static bool InGameSettingsGroup(LoadoutItem.ReadOnly item) =>
-        item.GetThisAndParents().Any(i => i.Contains(LoadoutItemGroup.GameSettingsGroup));
+    /// <summary>
+    /// Whether <paramref name="item"/> sits directly in the loadout's own game settings group: a group with the marker
+    /// and no parent. A settings group inside a modlist's group belongs to the modlist's installer, whatever its files
+    /// are called.
+    /// </summary>
+    private static bool IsUsersTweakFile(LoadoutItem.ReadOnly item) =>
+        LoadoutItem.Parent.TryGetValue(item, out var parentId)
+        && LoadoutItem.Load(item.Db, parentId).TryGetAsLoadoutItemGroup(out var parent)
+        && IsUsersSettingsGroup(parent);
+
+    /// <summary>
+    /// Whether <paramref name="group"/> is the loadout's own game settings group: the marker and no parent group. The
+    /// one rule for where the user's tweaks live, shared by the bake, the INI page and the CLI.
+    /// </summary>
+    internal static bool IsUsersSettingsGroup(LoadoutItemGroup.ReadOnly group) =>
+        group.IsGameSettingsGroup && !group.AsLoadoutItem().HasParent();
 
     // The nearest group above the file that has a priority row: the mod the file belongs to.
     private static ConflictPriority PriorityOf(LoadoutItem.ReadOnly item, Dictionary<EntityId, ConflictPriority> priorities)
