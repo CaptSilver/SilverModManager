@@ -4,6 +4,9 @@ using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.SingleProcess;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace SilverModManager.CLI.Tests;
 
@@ -144,6 +147,22 @@ public class LoadoutIniVerbTests(ITestOutputHelper helper) : SkyrimIniVerbTest<L
         baseline.Should().Contain("bEnableLogging=0");
         tweakExit.Should().Be(0, tweak);
         tweak.Should().BeEmpty("the loadout has no tweak of its own yet");
+    }
+
+    [Fact]
+    public async Task ShowHandsTheConsoleTheTextAsTheTemplateBecauseAnArgumentIsFlattenedToOneLine()
+    {
+        var loadout = await CreateLoadout();
+        await SeedBaseline(loadout, "Skyrim.ini", SkyrimText);
+        var renderer = new LoggingRenderer();
+
+        var exit = await ServiceProvider.GetRequiredService<CommandLineConfigurator>()
+            .RunAsync(["loadout", "ini", "show", "-l", loadout.LoadoutId.ToString(), "-f", "Skyrim.ini", "--part", "baseline"], renderer, CancellationToken.None);
+
+        exit.Should().Be(0);
+        var text = renderer.Logs.OfType<Text>().Should().ContainSingle().Subject;
+        text.Arguments.Should().BeEmpty("the console turns line breaks inside an argument into spaces");
+        text.Template.Should().Contain("[General]\r\nsLanguage=ENGLISH\r\n");
     }
 
     [Fact]

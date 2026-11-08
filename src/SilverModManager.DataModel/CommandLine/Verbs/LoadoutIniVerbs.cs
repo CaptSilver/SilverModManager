@@ -113,14 +113,14 @@ internal static class LoadoutIniVerbs
             var found = IniTweakLayers.All(loadout, path).Where(t => t.FileId.ToString().Equals(layer, StringComparison.OrdinalIgnoreCase)).ToArray();
             if (found.Length == 0)
                 throw new LoadoutVerbRefusedException($"{layer} is not a tweak layer of {fileName}. 'loadout ini list' prints the ids.");
-            await renderer.Text("{0}", IniDocument.Parse(await fileStore.Load(found[0].Identity)).ToText());
+            await renderer.Text(IniDocument.Parse(await fileStore.Load(found[0].Identity)).ToText());
             return 0;
         }
 
         part ??= "result";
         if (part == "tweak")
         {
-            if (IniTweakLayers.UserTweak(loadout, path) is { } user) await renderer.Text("{0}", IniDocument.Parse(await fileStore.Load(user.Identity)).ToText());
+            if (IniTweakLayers.UserTweak(loadout, path) is { } user) await renderer.Text(IniDocument.Parse(await fileStore.Load(user.Identity)).ToText());
             return 0;
         }
 
@@ -129,11 +129,11 @@ internal static class LoadoutIniVerbs
 
         if (part == "baseline")
         {
-            await renderer.Text("{0}", IniDocument.Parse(await GameInis.LoadBaseline(fileStore, loadout, path)).ToText());
+            await renderer.Text(IniDocument.Parse(await GameInis.LoadBaseline(fileStore, loadout, path)).ToText());
             return 0;
         }
 
-        await renderer.Text("{0}", IniDocument.Parse(await GameInis.Render(game, fileStore, loadout, path)).ToText());
+        await renderer.Text(IniDocument.Parse(await GameInis.Render(game, fileStore, loadout, path)).ToText());
         if (!Loadout.OwnsGameInis.Get(loadout))
             await renderer.TextLine("{0}", OwnershipWarning);
         return 0;
