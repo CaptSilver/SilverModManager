@@ -401,7 +401,6 @@ public class Program
     private static void AddLogging(ObservableLoggingTarget observableLoggingTarget, ILoggingBuilder loggingBuilder, LoggingSettings settings, StartupMode startupMode)
     {
         var fs = FileSystem.Shared;
-        var config = new NLog.Config.LoggingConfiguration();
 
         const string defaultLayout = "${processtime} [${level:uppercase=true}] (${logger}) ${message:withexception=true}";
         const string defaultHeader = "############ SilverModManager log file - ${longdate} ############";
@@ -418,27 +417,16 @@ public class Program
         fileTarget.Layout = defaultLayout;
         fileTarget.Header = defaultHeader;
 
-        if (settings.LogToConsole) config.AddRuleForAllLevels(CreateConsoleTarget(startupMode));
+        var sinks = new List<NLog.Targets.Target>();
+        if (settings.LogToConsole) sinks.Add(CreateConsoleTarget(startupMode));
+        sinks.Add(fileTarget);
+        sinks.Add(observableLoggingTarget);
 
-        config.AddRuleForAllLevels(fileTarget);
-        config.AddRuleForAllLevels(observableLoggingTarget);
+        // Own factory instead of NLog's global one, so the exit hooks flush exactly the writers built here.
+        var factory = new NLog.LogFactory { Configuration = LoggingSetup.CreateConfiguration(sinks) };
+        LoggingSetup.FlushOnProcessEnd(factory);
 
-
-        // NOTE(erri120): RemoveLoggerFactoryFilter prevents
-        // the global minimum level to take effect.
-        // https://github.com/Nexus-Mods/NexusMods.App/issues/250
-        var options = new NLogProviderOptions
-        {
-            RemoveLoggerFactoryFilter = false,
-        };
-
-        loggingBuilder.AddFilter("Microsoft", LogLevel.Warning);
-        loggingBuilder.AddFilter("System", LogLevel.Warning);
-        loggingBuilder.AddFilter("Avalonia.ReactiveUI", LogLevel.Warning);
-
-        loggingBuilder.ClearProviders();
-        loggingBuilder.SetMinimumLevel(settings.MinimumLevel);
-        loggingBuilder.AddNLog(config, options);
+        LoggingSetup.ConfigureBuilder(loggingBuilder, factory, settings.MinimumLevel, LoggingSetup.PerFileRequested(new ProcessEnvironmentReader()));
     }
 
     /// <summary>

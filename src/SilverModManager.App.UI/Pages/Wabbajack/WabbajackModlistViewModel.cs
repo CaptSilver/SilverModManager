@@ -1038,8 +1038,6 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
     private void ShowInstallStatus(WabbajackInstallStatus status)
     {
-        if (_logger?.IsEnabled(LogLevel.Trace) == true && status.Text is { Length: > 0 })
-            _logger.LogTrace("Install status shown for '{List}': {Text} at {Fraction:P1}", Name, status.Text, status.Fraction);
         InstallStatus = status;
     }
 

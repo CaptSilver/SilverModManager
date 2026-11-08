@@ -9,6 +9,7 @@ using CommunityToolkit.HighPerformance.Buffers;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.Abstractions.GC;
@@ -49,6 +50,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private readonly IFileStore _fileStore;
 
     protected readonly ILogger Logger;
+
+    /// <summary>
+    /// The lines that name one file each, on every pass. See <see cref="SynchronizerLogging.PerFileCategory"/>.
+    /// </summary>
+    private readonly ILogger _perFileLogger;
     private readonly ISorter _sorter;
     private readonly IGarbageCollectorRunner _garbageCollectorRunner;
     private readonly ISynchronizerService _synchronizerService;
@@ -120,6 +126,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         _identityResolver = serviceProvider.GetRequiredService<IFileIdentityResolver>();
 
         Logger = logger;
+        _perFileLogger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(SynchronizerLogging.PerFileCategory);
         _fileStore = fileStore;
         _sorter = sorter;
         Connection = conn;
@@ -305,7 +312,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             modShaped ??= _fileHashService.FilesThatLookLikeMods(loadout.InstallationInstance);
             if (!modShaped.Contains(path)) continue;
 
-            Logger.LogTrace("`{Path}` is on disk and was applied, but the baseline retracted it as looking like a mod: treating it as a new file", path);
+            _perFileLogger.LogTrace("`{Path}` is on disk and was applied, but the baseline retracted it as looking like a mod: treating it as a new file", path);
             node.Previous = default;
         }
     }
@@ -407,7 +414,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         if (JoinsByRelation(resolver, part, second)) { part = part with { Identity = second.Identity }; return; }
 
         // Left as a SHA-1 beside an xxHash3 part: the pair stays mixed and reads as changed.
-        if (!Logger.IsEnabled(LogLevel.Trace)) return;
+        if (!_perFileLogger.IsEnabled(LogLevel.Trace)) return;
         TraceUnjoined(resolver, path, part, first);
         TraceUnjoined(resolver, path, part, second);
     }
@@ -420,12 +427,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         if (other.Identity.IsNone || other.Identity.Kind == HashKind.Sha1) return;
         if (resolver.Resolve(part.Identity, other.Identity, part.Size) == IdentityMatch.Different)
         {
-            Logger.LogTrace("The relations of {Size} bytes name other bytes than {Identity} for the {OtherKind} part {OtherIdentity} of `{Path}`",
+            _perFileLogger.LogTrace("The relations of {Size} bytes name other bytes than {Identity} for the {OtherKind} part {OtherIdentity} of `{Path}`",
                 part.Size, part.Identity, other.Identity.Kind, other.Identity, path);
         }
         else
         {
-            Logger.LogTrace("No relation of {Size} bytes joins the {OtherKind} part {OtherIdentity} of `{Path}` to {Identity}; searched {Databases} hash database(s)",
+            _perFileLogger.LogTrace("No relation of {Size} bytes joins the {OtherKind} part {OtherIdentity} of `{Path}` to {Identity}; searched {Databases} hash database(s)",
                 part.Size, other.Identity.Kind, other.Identity, path, part.Identity, _fileHashService.Databases.Count);
         }
     }
@@ -1497,10 +1504,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         switch (_identityResolver.Resolve(record.Identity, identity, Size.From(size)))
         {
             case IdentityMatch.Different:
-                Logger.LogTrace("`{Path}` is not the listed file: the list has {ListedIdentity}, the disk has {Identity}", path, record.Identity, identity);
+                _perFileLogger.LogTrace("`{Path}` is not the listed file: the list has {ListedIdentity}, the disk has {Identity}", path, record.Identity, identity);
                 return false;
             case IdentityMatch.Unknown:
-                Logger.LogTrace("`{Path}` is listed by path and size only: no relation joins the list's {ListedIdentity} to the disk's {Identity}", path, record.Identity, identity);
+                _perFileLogger.LogTrace("`{Path}` is listed by path and size only: no relation joins the list's {ListedIdentity} to the disk's {Identity}", path, record.Identity, identity);
                 return true;
             default:
                 return true;
@@ -1916,11 +1923,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // A file with no archive to extract it from is only a warning to an apply, so it is not work until the
         // archive is back and the same node maps to an extraction.
         var pending = syncTree.Where(n => n.Value.Actions != Actions.DoNothing && n.Value.Actions != Actions.WarnOfUnableToExtract).ToList();
-        if (Logger.IsEnabled(LogLevel.Trace))
-        {
-            foreach (var (path, node) in pending)
-                Logger.LogTrace("Pending in loadout {LoadoutId}: {Path} ({Actions})", loadout.LoadoutId, path, node.Actions);
-        }
+        TracePending(loadout, pending);
 
         if (pending.Count == 0) return new SynchronizeEvaluation(false, waitsForArchive);
         if (!pending.All(n => IsIntrinsicWriteOfAnUntouchedFile(n.Value))) return new SynchronizeEvaluation(true, waitsForArchive);
@@ -1934,6 +1937,27 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         return new SynchronizeEvaluation(false, waitsForArchive);
     }
+
+    // One line per pass, because the status looks again on every change and a game folder holds thousands of files.
+    // The file-by-file listing is on the per-file category.
+    private void TracePending(Loadout.ReadOnly loadout, List<KeyValuePair<GamePath, SyncNode>> pending)
+    {
+        if (pending.Count == 0) return;
+
+        if (Logger.IsEnabled(LogLevel.Trace))
+        {
+            var byAction = pending.GroupBy(n => n.Value.Actions).OrderByDescending(g => g.Count()).Select(g => $"{g.Key}: {g.Count()}");
+            var sample = pending.Take(PendingSampleSize).Select(n => n.Key.ToString());
+            Logger.LogTrace("Pending in loadout {LoadoutId}: {Count} file(s) ({ByAction}); first {SampleSize}: {Sample}. Every file is listed by logger {PerFileCategory} when {PerFileVariable}=1 is set before the app starts",
+                loadout.LoadoutId, pending.Count, string.Join(", ", byAction), PendingSampleSize, string.Join(", ", sample), SynchronizerLogging.PerFileCategory, SynchronizerLogging.PerFileEnvironmentVariable);
+        }
+
+        if (!_perFileLogger.IsEnabled(LogLevel.Trace)) return;
+        foreach (var (path, node) in pending)
+            _perFileLogger.LogTrace("Pending in loadout {LoadoutId}: {Path} ({Actions})", loadout.LoadoutId, path, node.Actions);
+    }
+
+    private const int PendingSampleSize = 3;
 
     /// <summary>
     /// A generated file that is on disk as the app left it, with the recorded identity of what the app wrote: the
