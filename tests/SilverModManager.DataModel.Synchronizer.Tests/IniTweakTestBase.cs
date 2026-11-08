@@ -32,13 +32,15 @@ public abstract class IniTweakTestBase<TTest>(ITestOutputHelper helper) : AIsola
     /// row for the group. <paramref name="parent"/> puts the group inside another one, <paramref name="settingsGroup"/>
     /// marks it as a game settings group and <paramref name="collection"/> makes it a collection (a modlist's group).
     /// A nested group gets its own priority row, as an install gives a list's settings group.
+    /// With <paramref name="storeBytes"/> false the row points at bytes the file store does not have.
     /// </summary>
     protected async Task<LoadoutItemGroupId> AddTweakMod(
         Loadout.ReadOnly loadout, string modName, string tweakFile, string content, ulong priority, bool disabled = false,
-        LoadoutItemGroupId? parent = null, bool settingsGroup = false, bool collection = false)
+        LoadoutItemGroupId? parent = null, bool settingsGroup = false, bool collection = false, bool storeBytes = true)
     {
         var bytes = Encoding.UTF8.GetBytes(content);
-        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(tweakFile, new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length))]);
+        if (storeBytes)
+            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(tweakFile, new MemoryStream(bytes)), FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length))]);
 
         using var tx = Connection.BeginTransaction();
         LoadoutItemGroupId group;

@@ -446,6 +446,66 @@ public class IniPageTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Fact]
+    public async Task SavingTheTweakAfterTheCommandLineChangedItIsRefusedAndReloads()
+    {
+        var loadout = await SeedBaselines();
+        var editor = await Editor(loadout, PrefsPath);
+        await IniEdits.SetLoadoutTweakKey(Connection, FileStore, loadout.LoadoutId, PrefsPath, "Papyrus", "bEnableLogging", "1");
+
+        editor.LoadoutTweakText = "[Display]\r\nbFull Screen=1\r\n";
+        await editor.SaveLoadoutTweakCommand.Execute().FirstAsync();
+
+        _presenter.Dialogs.Should().ContainSingle();
+        PresenterRig.Body(_presenter.Dialogs[0]).Should().Contain("changed since it was read");
+        editor.LoadoutTweakText.Should().Contain("bEnableLogging=1").And.NotContain("bFull Screen");
+        var stored = IniTweakLayers.UserTweak(Fresh(loadout), PrefsPath)!.Value;
+        IniDocument.Parse(await FileStore.Load(stored.Identity)).Get("Papyrus", "bEnableLogging").Should().Be("1");
+    }
+
+    [Fact]
+    public async Task UnsavedTweakTextStaysTiedToTheTweakItWasTypedAgainstWhenAnotherEditReloadsThePage()
+    {
+        var loadout = await SeedBaselines();
+        var editor = await Editor(loadout, PrefsPath);
+        editor.LoadoutTweakText = "[Display]\r\nbFull Screen=1\r\n";
+        await IniEdits.SetLoadoutTweakKey(Connection, FileStore, loadout.LoadoutId, PrefsPath, "Papyrus", "bEnableLogging", "1");
+
+        var width = editor.Settings.Single(s => s.Definition.Key == "iSize W");
+        width.Value = "1920";
+        await width.ApplyCommand.Execute().FirstAsync();
+        await editor.SaveLoadoutTweakCommand.Execute().FirstAsync();
+
+        _presenter.Dialogs.Should().ContainSingle();
+        PresenterRig.Body(_presenter.Dialogs[0]).Should().Contain("changed since it was read");
+        editor.LoadoutTweakText.Should().Contain("bEnableLogging=1").And.NotContain("bFull Screen");
+        var stored = IniTweakLayers.UserTweak(Fresh(loadout), PrefsPath)!.Value;
+        IniDocument.Parse(await FileStore.Load(stored.Identity)).Get("Papyrus", "bEnableLogging").Should().Be("1");
+    }
+
+    [Fact]
+    public async Task ASettingRefusedBecauseTheTweakBytesAreGoneKeepsTheTweakTextTheUserTyped()
+    {
+        var loadout = await SeedBaselines();
+        await IniEdits.SetLoadoutTweakKey(Connection, FileStore, loadout.LoadoutId, PrefsPath, "Papyrus", "bEnableLogging", "1");
+        var editor = await Editor(loadout, PrefsPath);
+        var stored = IniTweakLayers.UserTweak(Fresh(loadout), PrefsPath)!.Value;
+        var missing = Encoding.UTF8.GetBytes("bytes the store never had");
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(stored.FileId, LoadoutFile.Hash, missing.xxHash3());
+            await tx.Commit();
+        }
+        editor.LoadoutTweakText = "[Display]\r\nbFull Screen=1\r\n";
+
+        var width = editor.Settings.Single(s => s.Definition.Key == "iSize W");
+        width.Value = "1920";
+        await width.ApplyCommand.Execute().FirstAsync();
+
+        _presenter.Dialogs.Should().ContainSingle();
+        editor.LoadoutTweakText.Should().Contain("bFull Screen=1");
+    }
+
+    [Fact]
     public async Task AValueOfTheWrongTypeIsRefusedWithADialogAndNothingIsWritten()
     {
         var loadout = await SeedBaselines();

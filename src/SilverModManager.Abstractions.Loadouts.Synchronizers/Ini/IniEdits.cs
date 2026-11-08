@@ -5,7 +5,9 @@ using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Ini;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Loadouts;
 
@@ -45,10 +47,44 @@ public static class IniEdits
     }
 
     /// <summary>
+    /// Refuses a section, key or value <see cref="IniDocument"/> could not write, before anything is changed.
+    /// <paramref name="value"/> is null when the change has none (a removal).
+    /// </summary>
+    /// <exception cref="IniTweakRefusedException">The section, key or value cannot be written to an INI.</exception>
+    public static void CheckTweakName(string section, string key, string? value)
+    {
+        if (HasLineBreak(section) || section.Contains(']'))
+            throw new IniTweakRefusedException($"{MarkdownText.Code(section)} is not a section name: it cannot contain ']' or a line break.");
+        if (key.Length == 0 || key.Contains('=') || HasLineBreak(key))
+            throw new IniTweakRefusedException($"{MarkdownText.Code(key)} is not a key name: it cannot be empty or contain '=' or a line break.");
+        if (value is not null && HasLineBreak(value))
+            throw new IniTweakRefusedException("A value cannot span lines.");
+    }
+
+    private static bool HasLineBreak(string text) => text.Contains('\n') || text.Contains('\r');
+
+    /// <summary>
+    /// The user's tweak of <paramref name="target"/> as a document, with the identity it was read from: an empty
+    /// document and a null identity when the loadout has none.
+    /// </summary>
+    /// <exception cref="IniTweakRefusedException">The tweak's bytes are not in the file store.</exception>
+    public static async Task<(IniDocument Document, FileIdentity? Identity)> LoadLoadoutTweak(IFileStore fileStore, Loadout.ReadOnly loadout, GamePath target)
+    {
+        if (IniTweakLayers.UserTweak(loadout, target) is not { } user) return (IniDocument.CreateEmpty(), null);
+        if (!await fileStore.HaveFile(user.Identity)) throw GoneLayer(user.Name, user.SourceName, target);
+        return (IniDocument.Parse(await fileStore.Load(user.Identity)), user.Identity);
+    }
+
+    /// <summary>
     /// Sets the loadout's own tweak for <paramref name="target"/>. The file is created, together with the game
     /// settings group when the loadout has none, the first time and replaced in place after that.
     /// </summary>
-    public static async Task SetLoadoutTweak(IConnection connection, IFileStore fileStore, Loadout.ReadOnly loadout, GamePath target, byte[] bytes)
+    /// <param name="expected">
+    /// The identity of the user's tweak the caller read, null for "there was none". When the tweak is different now
+    /// something else changed it since, and nothing is written.
+    /// </param>
+    /// <exception cref="IniTweakRefusedException">The tweak is not the one the caller read.</exception>
+    public static async Task SetLoadoutTweak(IConnection connection, IFileStore fileStore, Loadout.ReadOnly loadout, GamePath target, byte[] bytes, FileIdentity? expected)
     {
         var tweakPath = IniTweakLayers.LoadoutTweakPath(target.FileName.ToString());
         using var pin = await Store(fileStore, tweakPath, bytes);
@@ -56,7 +92,13 @@ public static class IniEdits
         var size = Size.FromLong(bytes.Length);
 
         using var tx = connection.BeginTransaction();
+        // The caller's snapshot may be old, so the tweak is read again from the database the write goes to.
+        var current = Loadout.Load(connection.Db, loadout.LoadoutId);
+        if (current.IsValid()) loadout = current;
         var existing = IniTweakLayers.UserTweak(loadout, target);
+        if (!Equals(existing?.Identity, expected))
+            throw new IniTweakRefusedException($"The loadout tweak of {MarkdownText.Code(target.FileName.ToString())} changed since it was read, by the command line or another window. It was reloaded; make the change again.");
+
         if (existing is { } user)
         {
             tx.Add(user.FileId, LoadoutFile.Hash, hash);
@@ -83,6 +125,48 @@ public static class IniEdits
         }
         await tx.Commit();
     }
+
+    /// <summary>
+    /// Sets one key in the user's tweak of <paramref name="target"/>, keeping the rest of the file and its encoding.
+    /// The loadout is read again from the database, so the caller needs no current snapshot.
+    /// </summary>
+    /// <returns>The value the tweak had for the key, null when it did not set it.</returns>
+    /// <exception cref="IniTweakRefusedException">The name or value cannot be written, or the tweak changed while it was edited.</exception>
+    public static async Task<string?> SetLoadoutTweakKey(IConnection connection, IFileStore fileStore, LoadoutId loadoutId, GamePath target, string section, string key, string value)
+    {
+        CheckTweakName(section, key, value);
+        var loadout = Loadout.Load(connection.Db, loadoutId);
+        var (tweak, identity) = await LoadLoadoutTweak(fileStore, loadout, target);
+
+        var old = tweak.Get(section, key);
+        tweak.Set(section, key, value);
+        await SetLoadoutTweak(connection, fileStore, loadout, target, tweak.ToBytes(), identity);
+        return old;
+    }
+
+    /// <summary>
+    /// Removes every line of the user's tweak of <paramref name="target"/> that sets the key (a hand-written tweak may
+    /// repeat one). Nothing is written when none does.
+    /// </summary>
+    /// <returns>Whether the tweak set the key.</returns>
+    /// <exception cref="IniTweakRefusedException">The name cannot be written, or the tweak changed while it was edited.</exception>
+    public static async Task<bool> RemoveLoadoutTweakKey(IConnection connection, IFileStore fileStore, LoadoutId loadoutId, GamePath target, string section, string key)
+    {
+        CheckTweakName(section, key, null);
+        var loadout = Loadout.Load(connection.Db, loadoutId);
+        var (tweak, identity) = await LoadLoadoutTweak(fileStore, loadout, target);
+
+        var removed = false;
+        while (tweak.Remove(section, key)) removed = true;
+        if (!removed) return false;
+
+        await SetLoadoutTweak(connection, fileStore, loadout, target, tweak.ToBytes(), identity);
+        return true;
+    }
+
+    /// <summary>The refusal for a tweak layer whose bytes the file store lost.</summary>
+    internal static IniTweakRefusedException GoneLayer(string name, string sourceName, GamePath target) =>
+        new($"The tweak {MarkdownText.Code(name)} from {MarkdownText.Code(sourceName)} for {MarkdownText.Code(target.FileName.ToString())} has no stored bytes any more (a restore point older than the last Apply was restored). Switch it off or set it again.");
 
     /// <summary>Turns one tweak file on or off without touching the mod it belongs to.</summary>
     public static async Task SetTweakSwitch(IConnection connection, EntityId file, bool on)

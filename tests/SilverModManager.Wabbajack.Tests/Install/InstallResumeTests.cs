@@ -259,7 +259,7 @@ public class InstallResumeTests(ITestOutputHelper helper) : InstallTestBase<Inst
         var modlist = await AddModlist(list.ToList(), list.Blobs);
         var loadout = await CreateLoadout();
         var (_, first) = await Install(loadout, modlist, Options);
-        await IniEdits.SetLoadoutTweak(Connection, FileStore, Loadout.Load(Connection.Db, loadout.LoadoutId), MainIni, Encoding.UTF8.GetBytes(UserTweak));
+        await IniEdits.SetLoadoutTweak(Connection, FileStore, Loadout.Load(Connection.Db, loadout.LoadoutId), MainIni, Encoding.UTF8.GetBytes(UserTweak), IniTweakLayers.UserTweak(Loadout.Load(Connection.Db, loadout.LoadoutId), MainIni)?.Identity);
         await Forget(first, "m1.bin");
 
         var (_, resumed) = await Resume(loadout, modlist);

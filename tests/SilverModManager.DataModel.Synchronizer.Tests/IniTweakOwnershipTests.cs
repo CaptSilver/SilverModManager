@@ -84,7 +84,7 @@ public class IniTweakOwnershipTests(ITestOutputHelper helper) : IniTweakTestBase
         var list = await AddList(loadout);
         await AddListSettings(loadout, list, listText);
 
-        await IniEdits.SetLoadoutTweak(Connection, FileStore, Refresh(loadout), IniStubbedGame.MainIni, "[Display]\r\niSize H=900\r\n"u8.ToArray());
+        await IniEdits.SetLoadoutTweak(Connection, FileStore, Refresh(loadout), IniStubbedGame.MainIni, "[Display]\r\niSize H=900\r\n"u8.ToArray(), expected: null);
 
         var fresh = Refresh(loadout);
         var nested = Sources(loadout).Single(s => s.Kind == IniTweakKind.List);
@@ -175,10 +175,167 @@ public class IniTweakOwnershipTests(ITestOutputHelper helper) : IniTweakTestBase
         var list = await AddList(loadout);
         await AddListSettings(loadout, list, "[Display]\r\niSize H=1\r\n");
 
-        await IniEdits.SetLoadoutTweak(Connection, FileStore, Refresh(loadout), IniStubbedGame.MainIni, "[Display]\r\niSize H=900\r\n"u8.ToArray());
+        await IniEdits.SetLoadoutTweak(Connection, FileStore, Refresh(loadout), IniStubbedGame.MainIni, "[Display]\r\niSize H=900\r\n"u8.ToArray(), expected: null);
 
         var user = IniTweakLayers.UserTweak(Refresh(loadout), IniStubbedGame.MainIni)!.Value;
         var item = LoadoutItem.Load(Connection.Db, user.FileId);
         item.GetThisAndParents().Any(IsInCollection).Should().BeFalse();
+    }
+
+    private static GamePath Main => IniStubbedGame.MainIni;
+
+    private async Task<string?> SetKey(Loadout.ReadOnly loadout, string section, string key, string value) =>
+        await IniEdits.SetLoadoutTweakKey(Connection, FileStore, loadout.LoadoutId, Main, section, key, value);
+
+    private async Task<string> UserTweakText(Loadout.ReadOnly loadout) =>
+        IniDocument.Parse(await FileStore.Load(IniTweakLayers.UserTweak(Refresh(loadout), Main)!.Value.Identity)).ToText();
+
+    private async Task WriteUserTweak(Loadout.ReadOnly loadout, string text)
+    {
+        var current = IniTweakLayers.UserTweak(Refresh(loadout), Main)?.Identity;
+        await IniEdits.SetLoadoutTweak(Connection, FileStore, Refresh(loadout), Main, Encoding.UTF8.GetBytes(text), current);
+    }
+
+    [Fact]
+    public async Task SettingAKeyCreatesTheTweakAndReturnsThatItWasNotSet()
+    {
+        var loadout = await LoadoutWithBaseline();
+
+        var old = await SetKey(loadout, "Papyrus", "bEnableLogging", "1");
+
+        old.Should().BeNull();
+        IniDocument.Parse(await UserTweakText(loadout)).Get("Papyrus", "bEnableLogging").Should().Be("1");
+        IniTweakLayers.UserTweak(Refresh(loadout), Main)!.Value.Kind.Should().Be(IniTweakKind.User);
+    }
+
+    [Fact]
+    public async Task SettingAKeyAgainReturnsTheOldValueAndKeepsOtherKeys()
+    {
+        var loadout = await LoadoutWithBaseline();
+        await SetKey(loadout, "Papyrus", "bEnableLogging", "1");
+        await SetKey(loadout, "Display", "iSize H", "900");
+
+        var old = await SetKey(loadout, "Papyrus", "bEnableLogging", "0");
+
+        old.Should().Be("1");
+        var tweak = IniDocument.Parse(await UserTweakText(loadout));
+        tweak.Get("Papyrus", "bEnableLogging").Should().Be("0");
+        tweak.Get("Display", "iSize H").Should().Be("900");
+    }
+
+    [Fact]
+    public async Task RemovingAKeyThatIsNotSetWritesNothing()
+    {
+        var loadout = await LoadoutWithBaseline();
+
+        (await IniEdits.RemoveLoadoutTweakKey(Connection, FileStore, loadout.LoadoutId, Main, "Papyrus", "bEnableLogging")).Should().BeFalse();
+        IniTweakLayers.UserTweak(Refresh(loadout), Main).Should().BeNull("there was no tweak to create for a key that was never set");
+
+        await SetKey(loadout, "Display", "iSize H", "900");
+        var before = IniTweakLayers.UserTweak(Refresh(loadout), Main)!.Value.Identity;
+        (await IniEdits.RemoveLoadoutTweakKey(Connection, FileStore, loadout.LoadoutId, Main, "Papyrus", "bEnableLogging")).Should().BeFalse();
+        IniTweakLayers.UserTweak(Refresh(loadout), Main)!.Value.Identity.Should().Be(before);
+    }
+
+    [Fact]
+    public async Task RemovingAKeyRemovesEveryLineThatSetsIt()
+    {
+        var loadout = await LoadoutWithBaseline();
+        await WriteUserTweak(loadout, "[Papyrus]\r\nbEnableLogging=1\r\nbEnableTrace=1\r\nbEnableLogging=0\r\n");
+
+        (await IniEdits.RemoveLoadoutTweakKey(Connection, FileStore, loadout.LoadoutId, Main, "Papyrus", "bEnableLogging")).Should().BeTrue();
+
+        var tweak = IniDocument.Parse(await UserTweakText(loadout));
+        tweak.Get("Papyrus", "bEnableLogging").Should().BeNull();
+        tweak.Get("Papyrus", "bEnableTrace").Should().Be("1");
+    }
+
+    [Fact]
+    public async Task ASectionWithAClosingBracketIsRefusedBeforeAnythingIsWritten()
+    {
+        var loadout = await LoadoutWithBaseline();
+
+        var act = () => SetKey(loadout, "Pap]yrus", "bEnableLogging", "1");
+
+        (await act.Should().ThrowAsync<IniTweakRefusedException>()).Which.Message.Should().Contain("is not a section name");
+        IniTweakLayers.UserTweak(Refresh(loadout), Main).Should().BeNull();
+        LoadoutItem.FindByLoadout(Connection.Db, loadout.LoadoutId).OfTypeLoadoutItemGroup().Count(g => g.IsGameSettingsGroup).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AnEmptyKeyIsRefused()
+    {
+        var loadout = await LoadoutWithBaseline();
+
+        var act = () => SetKey(loadout, "Papyrus", "", "1");
+
+        (await act.Should().ThrowAsync<IniTweakRefusedException>()).Which.Message.Should().Contain("is not a key name");
+        IniTweakLayers.UserTweak(Refresh(loadout), Main).Should().BeNull();
+    }
+
+    [Fact]
+    public void ANameOrValueIniCannotHoldIsRefusedWithTheTextOfWhatIsWrong()
+    {
+        var keyWithEquals = () => IniEdits.CheckTweakName("S", "a=b", "1");
+        var valueWithBreak = () => IniEdits.CheckTweakName("S", "k", "1\r\n2");
+        var fine = () => IniEdits.CheckTweakName("S", "k", null);
+
+        keyWithEquals.Should().Throw<IniTweakRefusedException>().Which.Message.Should().Contain("is not a key name");
+        valueWithBreak.Should().Throw<IniTweakRefusedException>().WithMessage("A value cannot span lines.");
+        fine.Should().NotThrow();
+    }
+
+    [Fact]
+    public async Task SavingAStaleTweakTextIsRefusedAndKeepsTheNewerTweak()
+    {
+        var loadout = await LoadoutWithBaseline();
+        await SetKey(loadout, "Display", "iSize H", "900");
+        var (_, readIdentity) = await IniEdits.LoadLoadoutTweak(FileStore, Refresh(loadout), Main);
+        await SetKey(loadout, "Papyrus", "bEnableLogging", "1");
+
+        var act = () => IniEdits.SetLoadoutTweak(Connection, FileStore, Refresh(loadout), Main, "[Display]\r\niSize H=1\r\n"u8.ToArray(), readIdentity);
+
+        (await act.Should().ThrowAsync<IniTweakRefusedException>()).Which.Message.Should().Contain("changed since it was read");
+        IniDocument.Parse(await UserTweakText(loadout)).Get("Papyrus", "bEnableLogging").Should().Be("1");
+    }
+
+    [Fact]
+    public async Task ATweakReadAsMissingIsRefusedOnceSomethingWroteOne()
+    {
+        var loadout = await LoadoutWithBaseline();
+        var (_, readIdentity) = await IniEdits.LoadLoadoutTweak(FileStore, Refresh(loadout), Main);
+        readIdentity.Should().BeNull();
+        await SetKey(loadout, "Papyrus", "bEnableLogging", "1");
+
+        var act = () => IniEdits.SetLoadoutTweak(Connection, FileStore, Refresh(loadout), Main, "[A]\r\nb=1\r\n"u8.ToArray(), readIdentity);
+
+        await act.Should().ThrowAsync<IniTweakRefusedException>();
+        IniDocument.Parse(await UserTweakText(loadout)).Get("Papyrus", "bEnableLogging").Should().Be("1");
+    }
+
+    [Fact]
+    public async Task SettingAKeyKeepsTheEncodingOfTheTweak()
+    {
+        var loadout = await LoadoutWithBaseline();
+        var latin = IniDocument.Parse("[Text]\r\nsName=caf\u00e9\r\n", IniEncoding.Latin1).ToBytes();
+        await IniEdits.SetLoadoutTweak(Connection, FileStore, Refresh(loadout), Main, latin, expected: null);
+
+        await SetKey(loadout, "Text", "sOther", "x");
+
+        var bytes = await FileStore.Load(IniTweakLayers.UserTweak(Refresh(loadout), Main)!.Value.Identity);
+        IniDocument.Parse(bytes).Encoding.Should().Be(IniEncoding.Latin1);
+        bytes.Should().Contain((byte)0xE9);
+    }
+
+    [Fact]
+    public async Task RenderingALayerWhoseBytesAreGoneIsARefusalThatNamesIt()
+    {
+        var loadout = await LoadoutWithBaseline();
+        await AddTweakMod(loadout, "Lost Mod", "Lost [Game.ini].ini", "[Display]\r\niSize H=77777\r\n", priority: 6, storeBytes: false);
+
+        var act = () => GameInis.Render(Stub, FileStore, Refresh(loadout), Main);
+
+        var message = (await act.Should().ThrowAsync<IniTweakRefusedException>()).Which.Message;
+        message.Should().Contain("Lost").And.Contain("Lost Mod").And.Contain("Game.ini").And.Contain("no stored bytes");
     }
 }

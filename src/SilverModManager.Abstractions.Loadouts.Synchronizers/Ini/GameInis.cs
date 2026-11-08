@@ -104,7 +104,7 @@ public static class GameInis
         var ini = IniDocument.Parse(baseline ?? await LoadBaseline(fileStore, loadout, path));
 
         foreach (var layer in IniTweakLayers.For(loadout, path))
-            ini.Merge(IniDocument.Parse(await fileStore.Load(layer.Identity)));
+            ini.Merge(await LoadLayer(fileStore, layer, path));
 
         if (game.ManagedKeysFile == path)
             foreach (var key in game.ManagedKeys(loadout))
@@ -113,6 +113,11 @@ public static class GameInis
         await game.RenderDerivedKeys(ini, path, loadout);
         return ini.ToBytes();
     }
+
+    private static async Task<IniDocument> LoadLayer(IFileStore fileStore, IniTweakLayer layer, GamePath path) =>
+        await fileStore.HaveFile(layer.Identity)
+            ? IniDocument.Parse(await fileStore.Load(layer.Identity))
+            : throw IniEdits.GoneLayer(layer.Name, layer.SourceName, path);
 
     /// <summary>The baseline of <paramref name="path"/> as the file store holds it.</summary>
     /// <exception cref="IniBaselineMissingException">The loadout has no baseline for the path, or the store lost it.</exception>
@@ -160,7 +165,7 @@ public static class GameInis
         var managed = game.ManagedKeysFile == path ? game.ManagedKeys(loadout) : [];
         var tweaks = new List<(string Name, IniDocument Document)>();
         foreach (var layer in IniTweakLayers.For(loadout, path))
-            tweaks.Add((OwnerOf(layer), IniDocument.Parse(await fileStore.Load(layer.Identity))));
+            tweaks.Add((OwnerOf(layer), await LoadLayer(fileStore, layer, path)));
 
         var changes = new List<GameIniChange>();
         foreach (var section in left.Sections)

@@ -38,6 +38,7 @@ public sealed partial class IniFileEditor : ReactiveObject
     private IniEncoding _tweakEncoding = IniEncoding.Utf8;
     private string _savedBaselineText = "";
     private string _savedTweakText = "";
+    private FileIdentity? _tweakIdentity;
 
     /// <param name="loadout">The loadout the INI belongs to.</param>
     /// <param name="game">The game, which says where the file is and which keys the app sets in it.</param>
@@ -125,6 +126,8 @@ public sealed partial class IniFileEditor : ReactiveObject
         var sources = IniTweakLayers.All(loadout, Path);
         var layers = new List<IniLayerEntry>();
         var tweakText = "";
+        FileIdentity? loaded = null;
+        var encoding = _tweakEncoding;
         foreach (var source in sources)
         {
             var document = await TryLoadDocument(source.Identity);
@@ -132,10 +135,17 @@ public sealed partial class IniFileEditor : ReactiveObject
             layers.Add(new IniLayerEntry(source.Name, source.SourceName, source.FileId, source.IsLoadoutTweak, source.IsSwitchedOn, source.IsEnabled, text));
             if (!source.IsLoadoutTweak) continue;
             tweakText = text;
-            _tweakEncoding = document?.Encoding ?? IniEncoding.Utf8;
+            loaded = source.Identity;
+            encoding = document?.Encoding ?? IniEncoding.Utf8;
         }
         Layers = layers;
-        if (LoadoutTweakText == _savedTweakText) LoadoutTweakText = tweakText;
+        // Unsaved text stays tied to the identity it was typed against, so a later Save is checked against it.
+        if (LoadoutTweakText == _savedTweakText)
+        {
+            LoadoutTweakText = tweakText;
+            _tweakIdentity = loaded;
+            _tweakEncoding = encoding;
+        }
         _savedTweakText = tweakText;
 
         var resultText = "";
@@ -184,8 +194,7 @@ public sealed partial class IniFileEditor : ReactiveObject
 
     private async Task SaveLoadoutTweak()
     {
-        await IniEdits.SetLoadoutTweak(_connection, _fileStore, Fresh(), Path, IniDocument.Parse(LoadoutTweakText, _tweakEncoding).ToBytes());
-        await Load();
+        await WriteTweak(IniDocument.Parse(LoadoutTweakText, _tweakEncoding).ToBytes());
     }
 
     private async Task ToggleLayer(IniLayerEntry layer)
@@ -200,16 +209,44 @@ public sealed partial class IniFileEditor : ReactiveObject
         if (!definition.Accepts(setting.Value))
             throw new IniEditException(Language.IniPage_InvalidValue_Title, string.Format(Language.IniPage_InvalidValue, definition.Key, definition.Section, definition.TypeDescription, setting.Value));
 
-        // Edit the saved tweak, not the text box: unsaved typing there is not part of this change.
-        var tweak = IniDocument.Parse(_savedTweakText, _tweakEncoding);
-        tweak.Set(definition.Section, definition.Key, setting.Value);
-        await IniEdits.SetLoadoutTweak(_connection, _fileStore, Fresh(), Path, tweak.ToBytes());
+        // The stored tweak is edited, not the text box: unsaved typing there is not part of this change.
+        try
+        {
+            await IniEdits.SetLoadoutTweakKey(_connection, _fileStore, _snapshot.LoadoutId, Path, definition.Section, definition.Key, setting.Value);
+        }
+        catch (IniTweakRefusedException)
+        {
+            await Load();
+            throw;
+        }
         await Load();
     }
 
     private async Task ResetToBaseline()
     {
-        await IniEdits.SetLoadoutTweak(_connection, _fileStore, Fresh(), Path, []);
+        await WriteTweak([]);
+    }
+
+    // Writes the tweak only if it is still the one this editor read; otherwise shows what is stored now and refuses.
+    private async Task WriteTweak(byte[] bytes)
+    {
+        try
+        {
+            await IniEdits.SetLoadoutTweak(_connection, _fileStore, Fresh(), Path, bytes, _tweakIdentity);
+        }
+        catch (IniTweakRefusedException)
+        {
+            await Reload();
+            throw;
+        }
+        // The box content is what was just written (or replaced by a reset), so nothing in it is unsaved any more.
+        await Reload();
+    }
+
+    // Drops text typed into the tweak box, so Load shows the tweak as stored.
+    private async Task Reload()
+    {
+        LoadoutTweakText = _savedTweakText;
         await Load();
     }
 

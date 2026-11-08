@@ -180,7 +180,7 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         IniTweakLayers.For(Loadout.Load(Connection.Db, loadout.LoadoutId), ini);
 
     private async Task UserEdits(Loadout.ReadOnly loadout, GamePath ini, string text) =>
-        await IniEdits.SetLoadoutTweak(Connection, FileStore, Loadout.Load(Connection.Db, loadout.LoadoutId), ini, Encoding.UTF8.GetBytes(text));
+        await IniEdits.SetLoadoutTweak(Connection, FileStore, Loadout.Load(Connection.Db, loadout.LoadoutId), ini, Encoding.UTF8.GetBytes(text), IniTweakLayers.UserTweak(Loadout.Load(Connection.Db, loadout.LoadoutId), ini)?.Identity);
 
     [Fact]
     public async Task AUserEditToTheMainIniSurvivesInstallingTheListAgain()
