@@ -57,4 +57,6 @@ public class DummyFileStore : IFileStore
         add { }
         remove { }
     }
+
+    public long ArchivesVersion => 0;
 }
