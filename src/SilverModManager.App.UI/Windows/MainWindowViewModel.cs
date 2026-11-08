@@ -118,6 +118,7 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
         this.WhenActivated(d =>
         {
             ConnectErrors(serviceProvider);
+            serviceProvider.GetRequiredService<PendingLaunchFinishKick>().Start();
 
             var welcomeOverlayViewModel = WelcomeOverlayViewModel.CreateIfNeeded(serviceProvider);
             if (welcomeOverlayViewModel is not null) overlayController.Enqueue(welcomeOverlayViewModel);

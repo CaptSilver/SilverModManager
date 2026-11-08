@@ -113,6 +113,7 @@ public static class Services
             .AddSingleton<IBackupOverflowPrompt, DialogBackupOverflowPrompt>()
             .AddSingleton<IMassRemovalPrompt, DialogMassRemovalPrompt>()
             .AddSingleton<GameRunningTracker>()
+            .AddSingleton<PendingLaunchFinishKick>()
             .AddSingleton<ILibraryNewItems, LibraryNewItems>()
             .AddSingleton<UiStallWatchdog>()
             .AddTransient<MainWindow>()
