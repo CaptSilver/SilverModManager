@@ -13,7 +13,8 @@ namespace SilverModManager.App.UI;
 /// <summary>
 /// Finishes launches whose process went away after the game started, from the window's side: once when the window
 /// opens, and again for an installation whenever a launch in this process ends with its marker still set (the
-/// game was still running when the finisher last looked, or Steam was updating it). Each result is toasted.
+/// game was still running when the finisher last looked, or Steam was updating it). A finish the kick or the sync
+/// hook ran itself does not count as a launch ending. Each result is toasted.
 /// </summary>
 public sealed class PendingLaunchFinishKick(IPendingLaunchFinisher finisher, ILaunchFinishMarkers markers, IGameRegistry registry,
     ActiveLaunchSessions sessions, IWindowNotificationService toasts, ILogger<PendingLaunchFinishKick> logger) : IDisposable
@@ -39,14 +40,9 @@ public sealed class PendingLaunchFinishKick(IPendingLaunchFinisher finisher, ILa
             foreach (var installation in registry.LocateGameInstallations())
             {
                 // Subscribe before the first kick: a launch that ends between the two would otherwise go unnoticed.
-                // The current value arrives first: only a true to false change is a launch ending.
-                var wasRunning = false;
-                _subscriptions.Add(sessions.WhenRunning(installation).Subscribe(isRunning =>
-                {
-                    var ended = wasRunning && !isRunning;
-                    wasRunning = isRunning;
-                    if (ended) _ = Task.Run(() => KickIfMarked(installation));
-                }));
+                // Only a launch ending counts. The finisher registers the installation while it finishes, and
+                // answering that would repeat a finish that failed (or left its marker) without end.
+                _subscriptions.Add(sessions.WhenLaunchEnded(installation).Subscribe(_ => Task.Run(() => KickIfMarked(installation))));
                 KickIfMarked(installation);
             }
         }

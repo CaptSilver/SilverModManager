@@ -1,3 +1,4 @@
+using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +27,9 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
 
     // Says which installation's count just changed. Subscribers read the count themselves.
     private readonly Subject<(GameStore, string)> _changes = new();
+
+    // Says which installation's last launch registration just went away. A finish's registration never does.
+    private readonly Subject<(GameStore, string)> _launchEnds = new();
 
     /// <param name="services">
     /// Builds the sessions <see cref="BeginSession"/> hands out. Resolved lazily because a session depends on this
@@ -62,6 +66,18 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
             Emit();
             return subscription;
         }).DistinctUntilChanged();
+    }
+
+    /// <summary>
+    /// Emits each time a launch of <paramref name="installation"/> ends, meaning its last launch registration is
+    /// disposed. A registration made with <see cref="RegisterFinish"/> is not a launch, so the finishes of a
+    /// leftover session never show up here: a listener that reacts to a launch ending by starting a finish would
+    /// otherwise answer its own finish.
+    /// </summary>
+    public IObservable<Unit> WhenLaunchEnded(GameInstallation installation)
+    {
+        var key = KeyOf(installation);
+        return _launchEnds.Where(ended => ended == key).Select(_ => Unit.Default);
     }
 
     /// <summary>
@@ -114,23 +130,33 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
     /// <summary>
     /// Marks <paramref name="installation"/> as running until the returned registration is disposed.
     /// </summary>
-    public IDisposable Register(GameInstallation installation)
+    public IDisposable Register(GameInstallation installation) => Register(installation, isLaunch: true);
+
+    /// <summary>
+    /// Like <see cref="Register"/>, for the finish of a leftover session: the installation counts as running while it
+    /// is held, but disposing it is not reported by <see cref="WhenLaunchEnded"/>.
+    /// </summary>
+    internal IDisposable RegisterFinish(GameInstallation installation) => Register(installation, isLaunch: false);
+
+    private Registration Register(GameInstallation installation, bool isLaunch)
     {
         var key = KeyOf(installation);
         lock (_lock) _counts[key] = _counts.GetValueOrDefault(key) + 1;
         _changes.OnNext(key);
-        return new Registration(this, key);
+        return new Registration(this, key, isLaunch);
     }
 
     private static (GameStore, string) KeyOf(GameInstallation installation)
         => (installation.LocatorResult.Store, installation.LocatorResult.StoreIdentifier);
 
-    private void Unregister((GameStore, string) key)
+    private void Unregister((GameStore, string) key, bool isLaunch)
     {
+        bool last;
         lock (_lock)
         {
             var remaining = _counts[key] - 1;
-            if (remaining == 0)
+            last = remaining == 0;
+            if (last)
             {
                 _counts.Remove(key);
                 _phases.Remove(key);
@@ -138,15 +164,16 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
             else _counts[key] = remaining;
         }
         _changes.OnNext(key);
+        if (isLaunch && last) _launchEnds.OnNext(key);
     }
 
-    private sealed class Registration(ActiveLaunchSessions owner, (GameStore, string) key) : IDisposable
+    private sealed class Registration(ActiveLaunchSessions owner, (GameStore, string) key, bool isLaunch) : IDisposable
     {
         private int _disposed;
 
         public void Dispose()
         {
-            if (Interlocked.Exchange(ref _disposed, 1) == 0) owner.Unregister(key);
+            if (Interlocked.Exchange(ref _disposed, 1) == 0) owner.Unregister(key, isLaunch);
         }
     }
 }

@@ -65,21 +65,35 @@ public sealed class PendingLaunchFinisher : IPendingLaunchFinisher
     public async Task<LaunchFinishReport> FinishIfPending(GameInstallation installation, CancellationToken cancellationToken = default)
     {
         var report = await Guarded(installation, heldLock: null, callerReports: false, cancellationToken);
-        if (!report.Silent)
-        {
-            // Published outside the semaphore, so two finishes can reach here together; Rx wants one notification at a time.
-            lock (_reports) _reports.OnNext(report);
-        }
+        Publish(report);
         return report;
     }
 
     /// <summary>
-    /// The entry for a caller that already holds the installation lock. Leaves the lock to its owner and publishes
-    /// nothing: the caller shows the report itself. Once a finish will run it reports the Finishing phase on the
-    /// caller's registration, so the caller restores its own phase afterwards.
+    /// The entry for a caller that already holds the installation lock. Leaves the lock to its owner. Once a finish
+    /// will run it reports the Finishing phase on the caller's registration, so the caller restores its own phase
+    /// afterwards.
     /// </summary>
-    public Task<LaunchFinishReport> FinishIfPending(GameInstallation installation, InstallationLock heldLock, bool callerReports)
-        => Guarded(installation, heldLock, callerReports, CancellationToken.None);
+    /// <remarks>
+    /// With <paramref name="callerReports"/> false the caller shows the report itself (the run verb sends a desktop
+    /// notification) and nothing is published. With it true the caller is a window launch, which has no notifier of its
+    /// own, so a finish that let the launch go on is published for the window's toast. A report the launch refuses
+    /// with (still running, Steam updating, failed) comes back to the caller as the launch's own failure and is not
+    /// published, or it would be shown twice.
+    /// </remarks>
+    public async Task<LaunchFinishReport> FinishIfPending(GameInstallation installation, InstallationLock heldLock, bool callerReports)
+    {
+        var report = await Guarded(installation, heldLock, callerReports, CancellationToken.None);
+        if (callerReports && report.Outcome is LaunchFinishOutcome.Finished or LaunchFinishOutcome.ClearedLoadoutGone) Publish(report);
+        return report;
+    }
+
+    private void Publish(LaunchFinishReport report)
+    {
+        if (report.Silent) return;
+        // Published outside the semaphore, so two finishes can reach here together; Rx wants one notification at a time.
+        lock (_reports) _reports.OnNext(report);
+    }
 
     private async Task<LaunchFinishReport> Guarded(GameInstallation installation, InstallationLock? heldLock, bool callerReports, CancellationToken cancellationToken)
     {
@@ -195,7 +209,8 @@ public sealed class PendingLaunchFinisher : IPendingLaunchFinisher
                     return Report(LaunchFinishOutcome.Failed, $"{game} closed before its changes were taken back into '{name}', and the launch lock is unavailable: {e.Message}", e);
                 }
 
-                registration = sessions.Register(installation);
+                // Not a launch: the window re-kicks when a launch ends, and must not answer this finish's own end.
+                registration = sessions.RegisterFinish(installation);
             }
 
             sessions.ReportPhase(installation, LaunchPhase.Finishing);

@@ -55,8 +55,9 @@ public interface IPendingLaunchFinisher
     Task<LaunchFinishReport> FinishIfPending(GameInstallation installation, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Every report a call that took its own installation lock produced, except the silent ones. The window shows
-    /// them and the command line prints them.
+    /// Every report a call that took its own installation lock produced, except the silent ones, and the finish
+    /// a window launch ran under its own lock when it let the launch go on. The window shows them and the command
+    /// line prints them.
     /// </summary>
     IObservable<LaunchFinishReport> Reports { get; }
 }

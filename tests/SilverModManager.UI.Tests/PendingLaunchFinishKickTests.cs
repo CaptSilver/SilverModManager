@@ -200,4 +200,58 @@ public class PendingLaunchFinishKickTests
 
         FinishCalls(_marked).Should().Be(0);
     }
+
+    // The real finisher registers the installation with the sessions while it finishes, whoever asked it to.
+    private void FinisherThatRegistersAndLeavesTheMarker(LaunchFinishOutcome outcome, string message)
+        => _finisher.FinishIfPending(Arg.Any<GameInstallation>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var installation = call.Arg<GameInstallation>();
+            using (_sessions.RegisterFinish(installation)) { }
+            var report = new LaunchFinishReport(outcome, installation, message);
+            _reports.OnNext(report);
+            return report;
+        });
+
+    [Fact(Timeout = 30000)]
+    public async Task AFinishTheKickStarted_DoesNotKickTheInstallationAgain()
+    {
+        _markers.Read(_marked).Returns(Marker());
+        FinisherThatRegistersAndLeavesTheMarker(LaunchFinishOutcome.GameRunning, "Test Game is still running.");
+        using var kick = NewKick();
+
+        kick.Start();
+        await Eventually(() => FinishCalls(_marked) >= 1);
+        await Task.Delay(500);
+
+        FinishCalls(_marked).Should().Be(1, "the registration the finisher makes for itself is not a launch ending");
+    }
+
+    [Fact(Timeout = 30000)]
+    public async Task AFinishThatFailsAndLeavesItsMarker_ShowsOneFailureToast()
+    {
+        _markers.Read(_marked).Returns(Marker());
+        FinisherThatRegistersAndLeavesTheMarker(LaunchFinishOutcome.Failed, "Finishing failed.");
+        using var kick = NewKick();
+
+        kick.Start();
+        await Eventually(() => _toasts.ReceivedCalls().Any());
+        await Task.Delay(500);
+
+        _toasts.ReceivedCalls().Should().HaveCount(1);
+        FinishCalls(_marked).Should().Be(1);
+    }
+
+    [Fact(Timeout = 30000)]
+    public async Task AFinishThatFailed_IsKickedAgainWhenARealLaunchEnds()
+    {
+        _markers.Read(_marked).Returns(Marker());
+        FinisherThatRegistersAndLeavesTheMarker(LaunchFinishOutcome.Failed, "Finishing failed.");
+        using var kick = NewKick();
+        kick.Start();
+        await Eventually(() => FinishCalls(_marked) == 1);
+
+        _sessions.Register(_marked).Dispose();
+
+        await Eventually(() => FinishCalls(_marked) == 2);
+    }
 }

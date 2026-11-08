@@ -166,4 +166,38 @@ public class ActiveLaunchSessionsTests
 
         provider.GetRequiredService<IGameLaunchSession>().Should().BeSameAs(provider.GetRequiredService<ActiveLaunchSessions>());
     }
+
+    [Fact]
+    public void RegisterFinish_CountsAsRunning_ButItsEndIsNotALaunchEnding()
+    {
+        var sessions = new ActiveLaunchSessions();
+        var installation = Installation("1");
+        var ended = 0;
+        using var subscription = sessions.WhenLaunchEnded(installation).Subscribe(_ => ended++);
+
+        var finish = sessions.RegisterFinish(installation);
+        sessions.IsRunning(installation).Should().BeTrue();
+        finish.Dispose();
+
+        sessions.IsRunning(installation).Should().BeFalse();
+        ended.Should().Be(0);
+    }
+
+    [Fact]
+    public void WhenLaunchEnded_EmitsWhenTheLastLaunchRegistrationIsDisposed_OnlyForThatInstallation()
+    {
+        var sessions = new ActiveLaunchSessions();
+        var installation = Installation("1");
+        var ended = 0;
+        using var subscription = sessions.WhenLaunchEnded(installation).Subscribe(_ => ended++);
+
+        var first = sessions.Register(installation);
+        var second = sessions.Register(installation);
+        sessions.Register(Installation("2")).Dispose();
+        first.Dispose();
+        ended.Should().Be(0, "a launch is still registered");
+        second.Dispose();
+
+        ended.Should().Be(1);
+    }
 }

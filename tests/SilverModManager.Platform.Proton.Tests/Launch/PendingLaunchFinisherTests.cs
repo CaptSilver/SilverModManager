@@ -383,12 +383,54 @@ public class PendingLaunchFinisherTests : IDisposable
         var registered = new List<bool>();
         _synchronizer.OnSync = () => registered.Add(_sessions.IsRunning(_installation));
 
-        var report = await NewFinisher().FinishIfPending(_installation, held, callerReports: true);
+        var report = await NewFinisher().FinishIfPending(_installation, held, callerReports: false);
 
         report.Outcome.Should().Be(LaunchFinishOutcome.Finished);
         held.IsHeld.Should().BeTrue();
         registered.Should().Equal(false);
-        _reports.Should().BeEmpty("the caller of the lock-holding entry shows the report itself");
+        _reports.Should().BeEmpty("a caller that does not report through the window shows the report itself");
+    }
+
+    [Fact]
+    public async Task FinishIfPending_WithAHeldLockAndACallerThatReports_PublishesTheFinishOnce()
+    {
+        await MarkPending();
+        using var held = new InstallationLock(LockPath);
+        held.TryAcquire().Should().BeTrue();
+
+        var report = await NewFinisher().FinishIfPending(_installation, held, callerReports: true);
+
+        report.Outcome.Should().Be(LaunchFinishOutcome.Finished);
+        _reports.Should().ContainSingle().Which.Should().BeSameAs(report, "the window toasts what a Play press finished");
+    }
+
+    [Fact]
+    public async Task FinishIfPending_WithAHeldLockAndACallerThatReports_PublishesAClearedLoadoutGoneOnce()
+    {
+        await MarkPending();
+        _state = PendingLaunchFinishState.LoadoutGone;
+        _loadoutName = null;
+        using var held = new InstallationLock(LockPath);
+        held.TryAcquire().Should().BeTrue();
+
+        var report = await NewFinisher().FinishIfPending(_installation, held, callerReports: true);
+
+        report.Outcome.Should().Be(LaunchFinishOutcome.ClearedLoadoutGone);
+        _reports.Should().ContainSingle().Which.Should().BeSameAs(report);
+    }
+
+    [Fact]
+    public async Task FinishIfPending_WithAHeldLockAndACallerThatReports_DoesNotPublishAFailureTheCallerReturns()
+    {
+        await MarkPending();
+        _synchronizer.FailWith = new InvalidOperationException("boom");
+        using var held = new InstallationLock(LockPath);
+        held.TryAcquire().Should().BeTrue();
+
+        var report = await NewFinisher().FinishIfPending(_installation, held, callerReports: true);
+
+        report.Outcome.Should().Be(LaunchFinishOutcome.Failed);
+        _reports.Should().BeEmpty("the launch returns this failure to its caller, which would show it a second time");
     }
 
     [Fact(Timeout = 30_000)]
