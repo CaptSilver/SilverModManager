@@ -2,6 +2,7 @@ using System.Reactive.Linq;
 using DynamicData;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Collections;
+using SilverModManager.App.UI.Pages.Collections.Update;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Pages.LibraryPage.Collections;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -33,6 +34,8 @@ public sealed class WabbajackModlistProvider(IServiceProvider services) : IColle
             .Select(static install => install.State == WabbajackModlistCardState.Installed)
             .DistinctUntilChanged();
     }
+
+    public IObservable<ICollectionUpdate?> ObserveUpdate(CollectionGroup.ReadOnly group) => Observable.Return<ICollectionUpdate?>(null);
 
     public IObservable<IChangeSet<CollectionSource, EntityId>> ObservePending(Loadout.ReadOnly loadout)
     {

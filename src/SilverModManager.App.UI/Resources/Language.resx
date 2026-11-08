@@ -2166,4 +2166,87 @@ Use it for {0}?</value>
     <data name="ToastNotification_Applied_With_Unrestorable" xml:space="preserve">
         <value>Applied, but {0} files cannot be restored because no copy of them is kept. The Apply preview lists them.</value>
     </data>
+    <data name="CollectionUpdate_Review_Title" xml:space="preserve">
+        <value>{0} {1} → {2}</value>
+    </data>
+    <data name="CollectionUpdate_Review_Update" xml:space="preserve">
+        <value>Update</value>
+    </data>
+    <data name="CollectionUpdate_Review_DownloadAndUpdate" xml:space="preserve">
+        <value>Download and update</value>
+    </data>
+    <data name="CollectionUpdate_Review_Downloads" xml:space="preserve">
+        <value>Archives to download</value>
+    </data>
+    <data name="CollectionUpdate_Review_NeedsBrowser" xml:space="preserve">
+        <value>opens in your browser</value>
+    </data>
+    <data name="CollectionUpdate_Review_Added" xml:space="preserve">
+        <value>Added</value>
+    </data>
+    <data name="CollectionUpdate_Review_Changed" xml:space="preserve">
+        <value>Changed</value>
+    </data>
+    <data name="CollectionUpdate_Review_Renamed" xml:space="preserve">
+        <value>Renamed</value>
+    </data>
+    <data name="CollectionUpdate_Review_Dropped" xml:space="preserve">
+        <value>No longer in the list</value>
+    </data>
+    <data name="CollectionUpdate_Review_Removed" xml:space="preserve">
+        <value>Removed</value>
+    </data>
+    <data name="CollectionUpdate_Review_ModOrder" xml:space="preserve">
+        <value>Mod order</value>
+    </data>
+    <data name="CollectionUpdate_Review_Plugins" xml:space="preserve">
+        <value>Plugins</value>
+    </data>
+    <data name="CollectionUpdate_Review_UserEditsKept" xml:space="preserve">
+        <value>Your edits the list overrides — kept yours</value>
+    </data>
+    <data name="CollectionUpdate_Review_GameFilesKept" xml:space="preserve">
+        <value>Game files kept</value>
+    </data>
+    <data name="CollectionUpdate_Review_SkipMissing" xml:space="preserve">
+        <value>Skip files from missing archives</value>
+    </data>
+    <data name="CollectionUpdate_Review_RestorePoint" xml:space="preserve">
+        <value>A restore point is written first; Undo is on the modlist page.</value>
+    </data>
+    <data name="CollectionUpdate_Menu_UpdateTo" xml:space="preserve">
+        <value>Update to {0}…</value>
+    </data>
+    <data name="CollectionUpdate_Undo" xml:space="preserve">
+        <value>Undo update</value>
+    </data>
+    <data name="CollectionUpdate_Progress_Checking" xml:space="preserve">
+        <value>Checking what the update changes…</value>
+    </data>
+    <data name="CollectionUpdate_Review_StoreGrows" xml:space="preserve">
+        <value>The file store grows by at most {0}; nothing is downloaded twice.</value>
+    </data>
+    <data name="CollectionUpdate_NotAllDownloaded" xml:space="preserve">
+        <value>Some files for {0} {1} didn't download, so {0} wasn't updated. Check the Downloads page, then press Update again.</value>
+    </data>
+    <data name="CollectionUpdate_Failed" xml:space="preserve">
+        <value>Couldn't update {0} to {1}: {2}</value>
+    </data>
+    <data name="CollectionUpdate_DroppedMods_Text_Version" xml:space="preserve">
+        <value>{0} mods installed by {1} aren't in version {2}. Removing them avoids conflicts. Kept mods move to My Mods and are managed as your own.</value>
+    </data>
+    <data name="CollectionUpdate_DroppedMods_Text_One_Version" xml:space="preserve">
+        <value>{0} mod installed by {1} isn't in version {2}. Removing it avoids conflicts. A kept mod moves to My Mods and is managed as your own.</value>
+    </data>
+    <data name="CollectionUpdate_UndoOffer_Title" xml:space="preserve">
+        <value>Update stopped</value>
+    </data>
+    <data name="CollectionUpdate_UndoOffer_Text" xml:space="preserve">
+        <value>{0}
+
+A restore point was written before the update started. Undo puts {1} back as it was.</value>
+    </data>
+    <data name="CollectionUpdate_Undone" xml:space="preserve">
+        <value>Update undone: {0} is back at {1}.</value>
+    </data>
 </root>

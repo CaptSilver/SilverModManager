@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
+using System.Reflection;
 using DynamicData;
 using DynamicData.Kernel;
 using FluentAssertions;
@@ -12,6 +13,10 @@ using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.App.UI.Pages.CollectionDownload.Dialogs.DroppedMods;
+using SilverModManager.App.UI.Pages.Collections.Update;
+using NexusMods.Paths;
+using SilverModManager.UI.Sdk;
+using SilverModManager.Sdk.Jobs;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.Collections;
@@ -293,5 +298,328 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
 
         await Dispatcher.UIThread.InvokeAsync(() => ToolTip.GetTip(Find<StandardButton>(view, "ButtonInstallRequiredItems"))
             .Should().Be("A newer revision of this collection is installed, so this one can't replace it."));
+    }
+
+    private static CollectionUpdateReview ReviewOf(bool needsBrowser = false, bool writesRestorePoint = false, string[]? added = null) => new(
+        Downloads: [new ReviewArchive("a.7z", Size.From(1024), "Nexus", needsBrowser)],
+        DownloadSize: Size.From(1024), NewBytesUpperBound: null, DiskNote: "Room for the largest 4 archives while they extract",
+        Added: added ?? ["New mod"], Changed: [], Renamed: [new ReviewRename("Old name", "New name")], Dropped: [],
+        ModOrderChanges: [], PluginChanges: [], UserEditsKept: [], GameFilesKept: [], Warnings: [],
+        WritesRestorePoint: writesRestorePoint, DroppedAreRemovedNotAsked: false);
+
+    private static CollectionUpdateOutcome OutcomeOf(
+        Exception? error = null, Func<CancellationToken, Task>? undo = null, IReadOnlyList<DroppedMod>? toAsk = null, IReadOnlyList<string>? removed = null) =>
+        new(Updated: error is null, Failed: 0, Pending: 0, DroppedToAsk: toAsk ?? [], Removed: removed ?? [], RestorePoint: null, Undo: undo, Error: error, ToastText: "Toast text");
+
+    /// <summary>Records what the flow asked of an update, in order.</summary>
+    private sealed class FakeUpdate(bool downloaded, CollectionUpdateOutcome? outcome = null) : ICollectionUpdate
+    {
+        public List<string> Calls { get; } = [];
+        public bool? SkipMissing { get; private set; }
+        public CollectionUpdateReview Review_ { get; init; } = ReviewOf();
+        public CollectionUpdateDownload DownloadResult { get; init; } = CollectionUpdateDownload.Downloaded;
+        public bool ReviewWaitsForCancel { get; init; }
+        public string? ReviewReports { get; init; }
+        public Exception? ApplyThrows { get; init; }
+
+        public string Name => "Big List";
+        public string CurrentVersionText => "1.0";
+        public string NewVersionText => "2.0";
+        public string? Note => null;
+
+        public async Task<CollectionUpdateReview> Review(IProgress<string>? progress, CancellationToken ct)
+        {
+            Calls.Add("review");
+            if (ReviewReports is not null) progress?.Report(ReviewReports);
+            if (ReviewWaitsForCancel) await Task.Delay(Timeout.Infinite, ct);
+            return Review_;
+        }
+        public Task<bool> IsDownloaded(CancellationToken ct) { Calls.Add("isDownloaded"); return Task.FromResult(downloaded); }
+        public Task<CollectionUpdateDownload> Download(CancellationToken ct) { Calls.Add("download"); return Task.FromResult(DownloadResult); }
+        public Task<CollectionUpdateOutcome> Apply(bool skipMissing, CancellationToken ct)
+        {
+            Calls.Add("apply");
+            SkipMissing = skipMissing;
+            if (ApplyThrows is not null) throw ApplyThrows;
+            return Task.FromResult(outcome ?? OutcomeOf());
+        }
+    }
+
+    private static bool IsProgress(IDialog dialog) => ((Dialog)dialog).ViewModel.ContentViewModel is CollectionUpdateProgressViewModel;
+
+    /// <summary>
+    /// A window manager that keeps the progress dialog open until the flow closes it, as a real one does, and answers
+    /// every other dialog in turn with <paramref name="answers"/> (the last repeats).
+    /// </summary>
+    private static IWindowManager Windows(params StandardDialogResult[] answers)
+    {
+        var windows = Substitute.For<IWindowManager>();
+        var next = 0;
+        windows.ShowDialog(Arg.Any<IDialog>(), DialogWindowType.Modal).Returns(call =>
+            IsProgress(call.Arg<IDialog>())
+                ? new TaskCompletionSource<StandardDialogResult>().Task
+                : Task.FromResult(answers[Math.Min(next++, answers.Length - 1)]));
+        return windows;
+    }
+
+    private static IWindowManager ReviewAnsweredWith(ButtonDefinitionId button) => Windows(new StandardDialogResult { ButtonId = button });
+
+    private static IDialog[] DialogsShown(IWindowManager windows) => windows.ReceivedCalls()
+        .Where(call => call.GetMethodInfo().Name == nameof(IWindowManager.ShowDialog))
+        .Select(call => (IDialog)call.GetArguments()[0]!)
+        .Where(dialog => !IsProgress(dialog))
+        .ToArray();
+
+    [Fact]
+    public async Task CancellingTheReviewCallsNothingAfterReview()
+    {
+        var update = new FakeUpdate(downloaded: false);
+
+        await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Cancel), Substitute.For<IWindowNotificationService>(), update, CancellationToken.None);
+
+        update.Calls.Should().NotContain(["download", "apply"]);
+        update.Calls.Should().Contain("review");
+    }
+
+    [Fact]
+    public async Task AcceptingAnUndownloadedReviewDownloadsThenApplies()
+    {
+        var update = new FakeUpdate(downloaded: false);
+        var toasts = Substitute.For<IWindowNotificationService>();
+
+        await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Accept), toasts, update, CancellationToken.None);
+
+        update.Calls.Where(call => call is "download" or "apply").Should().Equal("download", "apply");
+        toasts.Received(1).ShowToast("Toast text", ToastNotificationVariant.Success, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+    }
+
+    [Fact]
+    public async Task AnAlreadyDownloadedReviewAppliesWithoutDownloading()
+    {
+        var update = new FakeUpdate(downloaded: true);
+
+        await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Accept), Substitute.For<IWindowNotificationService>(), update, CancellationToken.None);
+
+        update.Calls.Should().NotContain("download");
+        update.Calls.Should().Contain("apply");
+    }
+
+    [Fact]
+    public async Task ADownloadThatFallsShortAppliesNothingAndSaysSo()
+    {
+        var update = new FakeUpdate(downloaded: false) { DownloadResult = CollectionUpdateDownload.NotAllDownloaded };
+        var toasts = Substitute.For<IWindowNotificationService>();
+
+        await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Accept), toasts, update, CancellationToken.None);
+
+        update.Calls.Should().NotContain("apply");
+        toasts.Received(1).ShowToast(Arg.Is<string>(m => m.Contains("2.0")), ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+    }
+
+    [Fact]
+    public async Task ADownloadThatCouldNotStartAppliesNothing()
+    {
+        var update = new FakeUpdate(downloaded: false) { DownloadResult = CollectionUpdateDownload.CantDownload };
+
+        await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Accept), Substitute.For<IWindowNotificationService>(), update, CancellationToken.None);
+
+        update.Calls.Should().NotContain("apply");
+    }
+
+    [Fact]
+    public async Task AFailedApplyWithARestorePointOffersUndoInADialogAndConfirmsTheUndo()
+    {
+        var undone = 0;
+        var update = new FakeUpdate(downloaded: true, OutcomeOf(new InvalidOperationException("disk full"), undo: _ => { undone++; return Task.CompletedTask; }));
+        var toasts = Substitute.For<IWindowNotificationService>();
+        var windows = Windows(Pressed("accept"), Pressed("undo-update"));
+
+        await CollectionUpdateFlow.Run(Provider, windows, toasts, update, CancellationToken.None);
+
+        var offer = (Dialog)DialogsShown(windows).Last();
+        offer.ViewModel.ButtonDefinitions.Select(b => b.Text).Should().Equal("Close", "Undo update");
+        undone.Should().Be(1);
+        toasts.Received(1).ShowToast("Update undone: Big List is back at 1.0.", ToastNotificationVariant.Success, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+    }
+
+    [Fact]
+    public async Task ClosingTheUndoOfferLeavesTheUpdateAlone()
+    {
+        var undone = 0;
+        var update = new FakeUpdate(downloaded: true, OutcomeOf(new InvalidOperationException("disk full"), undo: _ => { undone++; return Task.CompletedTask; }));
+        var toasts = Substitute.For<IWindowNotificationService>();
+
+        await CollectionUpdateFlow.Run(Provider, Windows(Pressed("accept"), Pressed("close")), toasts, update, CancellationToken.None);
+
+        undone.Should().Be(0);
+        toasts.DidNotReceive().ShowToast(Arg.Is<string>(m => m.StartsWith("Update undone")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+    }
+
+    [Fact]
+    public async Task AnUndoThatFailsSaysSoInsteadOfClaimingSuccess()
+    {
+        var update = new FakeUpdate(downloaded: true, OutcomeOf(new InvalidOperationException("disk full"), undo: _ => throw new InvalidOperationException("restore broke")));
+        var toasts = Substitute.For<IWindowNotificationService>();
+
+        await CollectionUpdateFlow.Run(Provider, Windows(Pressed("accept"), Pressed("undo-update")), toasts, update, CancellationToken.None);
+
+        toasts.Received(1).ShowToast("restore broke", ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        toasts.DidNotReceive().ShowToast(Arg.Is<string>(m => m.StartsWith("Update undone")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+    }
+
+    [Fact]
+    public async Task AFailedApplyWithoutARestorePointOffersNoUndo()
+    {
+        var update = new FakeUpdate(downloaded: true, OutcomeOf(new InvalidOperationException("disk full"), undo: null));
+        var toasts = Substitute.For<IWindowNotificationService>();
+
+        await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Accept), toasts, update, CancellationToken.None);
+
+        toasts.Received(1).ShowToast("Toast text", ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), null, null);
+    }
+
+    [Fact]
+    public async Task NothingIsAskedAboutDroppedModsWhenTheUpdateRemovedThem()
+    {
+        var update = new FakeUpdate(downloaded: true, OutcomeOf(removed: ["Gone mod"]));
+        var windows = ReviewAnsweredWith(ButtonDefinitionId.Accept);
+
+        await CollectionUpdateFlow.Run(Provider, windows, Substitute.For<IWindowNotificationService>(), update, CancellationToken.None);
+
+        DialogsShown(windows).Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task DroppedModsTheUpdateLeftToTheUserAreAskedAbout()
+    {
+        var update = new FakeUpdate(downloaded: true, OutcomeOf(toAsk: Dropped));
+        var windows = Windows(Pressed("accept"), Pressed("keep-all"));
+
+        await CollectionUpdateFlow.Run(Provider, windows, Substitute.For<IWindowNotificationService>(), update, CancellationToken.None);
+
+        DialogsShown(windows).Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void TheReviewDialogNamesTheUpdateAndOffersDownloadWhenSomethingIsMissing()
+    {
+        var update = new FakeUpdate(downloaded: false);
+
+        var (dialog, model) = CollectionUpdateReviewDialog.Create(update, ReviewOf(writesRestorePoint: true), isDownloaded: false);
+
+        var view = ((Dialog)dialog).ViewModel;
+        view.WindowTitle.Should().Be("Big List 1.0 → 2.0");
+        view.ButtonDefinitions.Select(b => b.Text).Should().Equal("Cancel", "Download and update");
+        model.RestorePointText.Should().Be("A restore point is written first; Undo is on the modlist page.");
+        model.Sections.Select(s => s.Title).Should().Equal("Archives to download (1, 1 KB)", "Added (1)", "Renamed (1)");
+    }
+
+    [Fact]
+    public void TheReviewDialogOffersUpdateWhenEverythingIsDownloaded()
+    {
+        var (dialog, model) = CollectionUpdateReviewDialog.Create(new FakeUpdate(downloaded: true), ReviewOf(), isDownloaded: true);
+
+        ((Dialog)dialog).ViewModel.ButtonDefinitions.Select(b => b.Text).Should().Equal("Cancel", "Update");
+        model.RestorePointText.Should().BeNull();
+    }
+
+    [Fact]
+    public void TheSkipMissingBoxIsOfferedOnlyWhenAnArchiveNeedsTheBrowser()
+    {
+        CollectionUpdateReviewDialog.Create(new FakeUpdate(false), ReviewOf(needsBrowser: true), false).Model.CanSkipMissing.Should().BeTrue();
+        CollectionUpdateReviewDialog.Create(new FakeUpdate(false), ReviewOf(needsBrowser: false), false).Model.CanSkipMissing.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task TheSkipMissingChoiceReachesApply()
+    {
+        var update = new FakeUpdate(downloaded: true) { Review_ = ReviewOf(needsBrowser: true) };
+        var windows = Substitute.For<IWindowManager>();
+        windows.ShowDialog(Arg.Any<IDialog>(), DialogWindowType.Modal).Returns(call =>
+        {
+            if (IsProgress(call.Arg<IDialog>())) return new TaskCompletionSource<StandardDialogResult>().Task;
+            ((CollectionUpdateReviewViewModel)((Dialog)call.Arg<IDialog>()).ViewModel.ContentViewModel).SkipMissing = true;
+            return Task.FromResult(Pressed("accept"));
+        });
+
+        await CollectionUpdateFlow.Run(Provider, windows, Substitute.For<IWindowNotificationService>(), update, CancellationToken.None);
+
+        update.SkipMissing.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CancellingDuringTheReviewCallsNothingAfterIt()
+    {
+        var update = new FakeUpdate(downloaded: false) { ReviewWaitsForCancel = true };
+        var windows = Substitute.For<IWindowManager>();
+        windows.ShowDialog(Arg.Any<IDialog>(), DialogWindowType.Modal).Returns(Task.FromResult(new StandardDialogResult { ButtonId = ButtonDefinitionId.Cancel }));
+        var toasts = Substitute.For<IWindowNotificationService>();
+
+        await CollectionUpdateFlow.Run(Provider, windows, toasts, update, CancellationToken.None);
+
+        update.Calls.Should().Equal("review");
+        _ = windows.Received(1).ShowDialog(Arg.Any<IDialog>(), DialogWindowType.Modal);
+        toasts.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task TheProgressDialogShowsWhatTheReviewReportsAndClosesWhenItIsDone()
+    {
+        var update = new FakeUpdate(downloaded: true) { ReviewReports = "Hashing archive 3 of 9" };
+        var shown = new List<CollectionUpdateProgressViewModel>();
+        var windows = Substitute.For<IWindowManager>();
+        windows.ShowDialog(Arg.Any<IDialog>(), DialogWindowType.Modal).Returns(call =>
+        {
+            if (!IsProgress(call.Arg<IDialog>())) return Task.FromResult(Pressed("cancel"));
+            shown.Add((CollectionUpdateProgressViewModel)((Dialog)call.Arg<IDialog>()).ViewModel.ContentViewModel);
+            return new TaskCompletionSource<StandardDialogResult>().Task;
+        });
+
+        await CollectionUpdateFlow.Run(Provider, windows, Substitute.For<IWindowNotificationService>(), update, CancellationToken.None);
+
+        await Dispatcher.UIThread.InvokeAsync(() => shown.Should().ContainSingle().Which.Text.Should().Be("Hashing archive 3 of 9"));
+    }
+
+    [Fact]
+    public void TheReviewDialogLeadsTheDiskNoteWithTheStoreGrowthBoundEvenWhenNothingDownloads()
+    {
+        var review = ReviewOf() with { Downloads = [], DownloadSize = Size.Zero, NewBytesUpperBound = Size.From(2048) };
+
+        var (_, model) = CollectionUpdateReviewDialog.Create(new FakeUpdate(downloaded: true), review, isDownloaded: true);
+
+        model.DiskNote.Should().Be("The file store grows by at most 2 KB; nothing is downloaded twice. Room for the largest 4 archives while they extract");
+    }
+
+    [Fact]
+    public void TheReviewDialogShowsJustTheDiskNoteWhenThereIsNoGrowthBound()
+    {
+        var (_, model) = CollectionUpdateReviewDialog.Create(new FakeUpdate(downloaded: false), ReviewOf(), isDownloaded: false);
+
+        model.DiskNote.Should().Be("Room for the largest 4 archives while they extract");
+    }
+
+    [Fact]
+    public async Task TheGenericFlowNeverCallsAVersionARevision()
+    {
+        var failing = new FakeUpdate(downloaded: false) { DownloadResult = CollectionUpdateDownload.NotAllDownloaded };
+        var toasts = Substitute.For<IWindowNotificationService>();
+        await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Accept), toasts, failing, CancellationToken.None);
+
+        var throwing = new FakeUpdate(downloaded: true) { ApplyThrows = new InvalidOperationException("boom") };
+        await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Accept), toasts, throwing, CancellationToken.None);
+
+        var messages = toasts.ReceivedCalls().Select(call => (string)call.GetArguments()[0]!).ToArray();
+        messages.Should().HaveCount(2).And.OnlyContain(m => !m.Contains("revision", StringComparison.OrdinalIgnoreCase));
+        messages[1].Should().Be("Couldn't update Big List to 2.0: boom");
+    }
+
+    [Fact]
+    public void TheDroppedModsQuestionForAVersionStringDoesNotSayRevisionButTheNexusOneStill()
+    {
+        static string TextOf(IDialog dialog) => ((DialogStandardContentViewModel)((Dialog)dialog).ViewModel.ContentViewModel).Text;
+
+        TextOf(DroppedModsPrompt.Question("Big List", "2.0", 2)).Should().Contain("aren't in version 2.0").And.NotContain("revision");
+        TextOf(DroppedModsPrompt.Question("Big List", "2.0", 1)).Should().Contain("isn't in version 2.0").And.NotContain("revision");
+        TextOf(DroppedModsPrompt.Question("C", 7, 2)).Should().Contain("aren't in revision 7");
     }
 }

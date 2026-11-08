@@ -2,6 +2,7 @@ using System.Reactive.Linq;
 using DynamicData;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Collections;
+using SilverModManager.App.UI.Pages.Collections.Update;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.App.UI.Helpers;
@@ -25,6 +26,8 @@ public sealed class NexusCollectionProvider(IServiceProvider services) : ICollec
 
     public IObservable<bool> IsListedAsInstalled(CollectionGroup.ReadOnly group) =>
         services.GetRequiredService<CollectionDownloader>().IsListedAsInstalledObservable(NexusGroup(group));
+
+    public IObservable<ICollectionUpdate?> ObserveUpdate(CollectionGroup.ReadOnly group) => Observable.Return<ICollectionUpdate?>(null);
 
     public IObservable<IChangeSet<CollectionSource, EntityId>> ObservePending(Loadout.ReadOnly loadout)
     {

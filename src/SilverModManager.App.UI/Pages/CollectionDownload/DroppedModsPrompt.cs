@@ -21,9 +21,16 @@ public static class DroppedModsPrompt
     private static readonly ButtonDefinitionId RemoveSelectedId = ButtonDefinitionId.From("remove-selected");
 
     /// <summary>The first question: keep, review or remove everything.</summary>
-    public static IDialog Question(string collectionName, int revisionNumber, int count) => DialogFactory.CreateStandardDialog(
+    public static IDialog Question(string collectionName, int revisionNumber, int count) => Question(
+        string.Format(count == 1 ? Language.CollectionUpdate_DroppedMods_Text_One : Language.CollectionUpdate_DroppedMods_Text, count, collectionName, revisionNumber));
+
+    /// <summary>The first question for a version that is not a Nexus revision number, so the text doesn't say "revision".</summary>
+    public static IDialog Question(string collectionName, string version, int count) => Question(
+        string.Format(count == 1 ? Language.CollectionUpdate_DroppedMods_Text_One_Version : Language.CollectionUpdate_DroppedMods_Text_Version, count, collectionName, version));
+
+    private static IDialog Question(string text) => DialogFactory.CreateStandardDialog(
         Language.CollectionUpdate_DroppedMods_Title,
-        new StandardDialogParameters { Text = string.Format(count == 1 ? Language.CollectionUpdate_DroppedMods_Text_One : Language.CollectionUpdate_DroppedMods_Text, count, collectionName, revisionNumber) },
+        new StandardDialogParameters { Text = text },
         [
             new DialogButtonDefinition(Language.CollectionUpdate_DroppedMods_KeepAll, KeepAllId, ButtonAction.Reject, ButtonStyling.Default),
             new DialogButtonDefinition(Language.CollectionUpdate_DroppedMods_Review, ReviewId, ButtonAction.None, ButtonStyling.Default),
@@ -47,11 +54,17 @@ public static class DroppedModsPrompt
     }
 
     /// <summary>Shows the dialogs and returns the mods to remove: none when the user keeps them or closes a dialog.</summary>
-    public static async Task<IReadOnlyList<DroppedMod>> Ask(IWindowManager windowManager, string collectionName, int revisionNumber, IReadOnlyList<DroppedMod> dropped)
+    public static Task<IReadOnlyList<DroppedMod>> Ask(IWindowManager windowManager, string collectionName, int revisionNumber, IReadOnlyList<DroppedMod> dropped) =>
+        Ask(windowManager, Question(collectionName, revisionNumber, dropped.Count), dropped);
+
+    public static Task<IReadOnlyList<DroppedMod>> Ask(IWindowManager windowManager, string collectionName, string version, IReadOnlyList<DroppedMod> dropped) =>
+        Ask(windowManager, Question(collectionName, version, dropped.Count), dropped);
+
+    private static async Task<IReadOnlyList<DroppedMod>> Ask(IWindowManager windowManager, IDialog question, IReadOnlyList<DroppedMod> dropped)
     {
         if (dropped.Count == 0) return [];
 
-        var answer = await windowManager.ShowDialog(Question(collectionName, revisionNumber, dropped.Count), DialogWindowType.Modal);
+        var answer = await windowManager.ShowDialog(question, DialogWindowType.Modal);
         if (answer.ButtonId == RemoveAllId) return dropped;
         if (answer.ButtonId != ReviewId) return [];
 

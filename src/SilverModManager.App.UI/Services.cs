@@ -50,6 +50,7 @@ using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.App.UI.Pages.CollectionDownload.Dialogs.DroppedMods;
 using SilverModManager.App.UI.Pages.CollectionDownload.Dialogs.PremiumDownloads;
 using SilverModManager.App.UI.Pages.Collections;
+using SilverModManager.App.UI.Pages.Collections.Update;
 using SilverModManager.App.UI.Pages.DebugControls;
 using SilverModManager.App.UI.Pages.Diagnostics;
 using SilverModManager.App.UI.Pages.Diff.ApplyDiff;
@@ -307,6 +308,10 @@ public static class Services
             
             .AddView<DialogPremiumCollectionDownloadsView, IDialogPremiumCollectionDownloadsViewModel>()
             .AddViewModel<DialogPremiumCollectionDownloadsViewModel, IDialogPremiumCollectionDownloadsViewModel>()
+            .AddView<CollectionUpdateReviewView, ICollectionUpdateReviewViewModel>()
+            .AddViewModel<CollectionUpdateReviewViewModel, ICollectionUpdateReviewViewModel>()
+            .AddView<CollectionUpdateProgressView, ICollectionUpdateProgressViewModel>()
+            .AddViewModel<CollectionUpdateProgressViewModel, ICollectionUpdateProgressViewModel>()
             .AddView<DialogDroppedModsReviewView, IDialogDroppedModsReviewViewModel>()
             .AddViewModel<DialogDroppedModsReviewViewModel, IDialogDroppedModsReviewViewModel>()
 

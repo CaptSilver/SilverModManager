@@ -1,4 +1,5 @@
 using SilverModManager.Abstractions.Collections;
+using SilverModManager.App.UI.Pages.Collections.Update;
 using DynamicData;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Loadouts;
@@ -21,6 +22,8 @@ public sealed class CollectionProviders(IEnumerable<ICollectionProvider> provide
     public CollectionSource For(CollectionGroup.ReadOnly group, LoadoutId loadout) => ProviderOf(group).ForGroup(group, loadout);
 
     public IObservable<bool> IsListedAsInstalled(CollectionGroup.ReadOnly group) => ProviderOf(group).IsListedAsInstalled(group);
+
+    public IObservable<ICollectionUpdate?> ObserveUpdate(CollectionGroup.ReadOnly group) => ProviderOf(group).ObserveUpdate(group);
 
     /// <summary>
     /// Every provider's pending collections as one changeset. Keys are revision ids for Nexus and library file ids for

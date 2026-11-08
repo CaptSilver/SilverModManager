@@ -1,0 +1,48 @@
+<reactiveUi:ReactiveUserControl x:TypeArguments="update:ICollectionUpdateReviewViewModel"
+                                xmlns="https://github.com/avaloniaui"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                                xmlns:reactiveUi="http://reactiveui.net"
+                                xmlns:update="clr-namespace:SilverModManager.App.UI.Pages.Collections.Update"
+                                xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
+                                mc:Ignorable="d" d:DesignWidth="560"
+                                x:Class="SilverModManager.App.UI.Pages.Collections.Update.CollectionUpdateReviewView">
+
+    <ScrollViewer MaxHeight="480">
+        <StackPanel Spacing="{StaticResource Spacing-4}">
+            <TextBlock x:Name="NoteText" TextWrapping="WrapWithOverflow" />
+            <TextBlock x:Name="DiskNoteText" TextWrapping="WrapWithOverflow" />
+
+            <ItemsControl x:Name="SectionsList">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="update:ReviewSection">
+                        <Expander Header="{Binding Title}">
+                            <ItemsControl ItemsSource="{Binding Items}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <TextBlock Text="{Binding}" TextWrapping="WrapWithOverflow" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Expander>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <ItemsControl x:Name="WarningsList">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                        <TextBlock Text="{Binding}" TextWrapping="WrapWithOverflow" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock x:Name="RestorePointTextBlock" TextWrapping="WrapWithOverflow" />
+
+            <CheckBox x:Name="SkipMissingBox" Classes="accent"
+                      Content="{x:Static resources:Language.CollectionUpdate_Review_SkipMissing}" />
+        </StackPanel>
+    </ScrollViewer>
+
+</reactiveUi:ReactiveUserControl>

@@ -1,4 +1,5 @@
 using SilverModManager.Abstractions.Collections;
+using SilverModManager.App.UI.Pages.Collections.Update;
 using DynamicData;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Loadouts;
@@ -23,6 +24,13 @@ public interface ICollectionProvider
     /// Wabbajack: the install finished; local: always.
     /// </summary>
     IObservable<bool> IsListedAsInstalled(CollectionGroup.ReadOnly group);
+
+    /// <summary>
+    /// The newer version of the installed group, when one is known. A source with nothing to offer answers
+    /// <c>Observable.Return&lt;ICollectionUpdate?&gt;(null)</c>: "no update known" is a real value, and the page adds
+    /// its Update item only for a non-null one.
+    /// </summary>
+    IObservable<ICollectionUpdate?> ObserveUpdate(CollectionGroup.ReadOnly group);
 
     /// <summary>
     /// Collections of this kind that belong to the loadout's game and are not installed in it: the pending entries.

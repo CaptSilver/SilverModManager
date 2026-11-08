@@ -12,6 +12,7 @@ using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.App.UI.Pages.Collections;
+using SilverModManager.App.UI.Pages.Collections.Update;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
@@ -49,6 +50,7 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
 
     // Only read and written on the UI thread.
     private Optional<CollectionGroupId> _group = Optional<CollectionGroupId>.None;
+    private ContextMenuItem? _removalItem;
 
     public CollectionLoadoutViewModel(IWindowManager windowManager, IServiceProvider services, CollectionSource source) : base(windowManager)
     {
@@ -126,6 +128,21 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
                 .Subscribe(group => ApplyGroup(group, treeActivation))
                 .AddTo(disposables);
 
+            // A group that is gone has no update; one that is there asks its provider.
+            source.Group
+                .DistinctUntilChanged()
+                .Select(group => group.HasValue
+                    ? _services.GetRequiredService<CollectionProviders>().ObserveUpdate(CollectionGroup.Load(_connection.Db, group.Value))
+                    : System.Reactive.Linq.Observable.Return<ICollectionUpdate?>(null))
+                .Switch()
+                .OnUI()
+                .Subscribe(update =>
+                {
+                    Update = update;
+                    MenuItems = BuildMenu();
+                })
+                .AddTo(disposables);
+
             source.Name.OnUI().Subscribe(name =>
             {
                 Name = name;
@@ -162,7 +179,8 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
         {
             Adapter = null;
             InstalledModsCount = 0;
-            MenuItems = _sourceMenuItems;
+            Update = null;
+            MenuItems = BuildMenu();
 
             // No tab stays selected once it is hidden.
             if (SelectedTab == CollectionPageTab.Installed)
@@ -178,7 +196,8 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
             CollectionGroupId = LoadoutItemGroupId.From(groupId),
         });
         Adapter = adapter;
-        MenuItems = [.._sourceMenuItems, RemovalItem(_source.InstalledRemoval(groupId))];
+        _removalItem = RemovalItem(_source.InstalledRemoval(groupId));
+        MenuItems = BuildMenu();
 
         treeActivation.Disposable = new CompositeDisposable(
             adapter.Activate(),
@@ -192,6 +211,16 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
                 .Subscribe(isEnabled => IsCollectionEnabled = isEnabled),
             HandleMessages(adapter, loadoutId)
         );
+    }
+
+    // The update item comes first so it is the page's most visible action; the removal sits last. Both are optional.
+    private IReadOnlyList<IContextMenuItem> BuildMenu()
+    {
+        List<IContextMenuItem> items = [];
+        if (Update is { } update) items.Add(CollectionUpdateMenuItems.UpdateTo(_services, update, this));
+        items.AddRange(_sourceMenuItems);
+        if (_group.HasValue && _removalItem is { } removal) items.Add(removal);
+        return items;
     }
 
     private IReadOnlyList<CollectionPageTab> Tabs(bool hasInstalled) =>
@@ -256,6 +285,8 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
     public CollectionLink? Link { get; }
     public IPageViewModelInterface? Downloads { get; }
 
+    /// <summary>The newer version of the installed collection, or null when none is known. The header pill reads it.</summary>
+    [Reactive] public partial ICollectionUpdate? Update { get; private set; }
     [Reactive] public partial LoadoutTreeDataGridAdapter? Adapter { get; private set; }
     [Reactive] public partial bool HasInstalledTab { get; private set; }
     [Reactive] public partial bool IsToggleVisible { get; private set; }

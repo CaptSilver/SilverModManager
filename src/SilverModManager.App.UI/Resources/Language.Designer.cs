@@ -6287,5 +6287,247 @@ namespace SilverModManager.App.UI.Resources {
                 return ResourceManager.GetString("ToastNotification_Applied_With_Unrestorable", resourceCulture);
             }
         }
+        /// <summary>
+        ///   Looks up a localized string similar to {0} {1} → {2}.
+        /// </summary>
+        public static string CollectionUpdate_Review_Title {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Update.
+        /// </summary>
+        public static string CollectionUpdate_Review_Update {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_Update", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Download and update.
+        /// </summary>
+        public static string CollectionUpdate_Review_DownloadAndUpdate {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_DownloadAndUpdate", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Archives to download.
+        /// </summary>
+        public static string CollectionUpdate_Review_Downloads {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_Downloads", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to opens in your browser.
+        /// </summary>
+        public static string CollectionUpdate_Review_NeedsBrowser {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_NeedsBrowser", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Added.
+        /// </summary>
+        public static string CollectionUpdate_Review_Added {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_Added", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Changed.
+        /// </summary>
+        public static string CollectionUpdate_Review_Changed {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_Changed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Renamed.
+        /// </summary>
+        public static string CollectionUpdate_Review_Renamed {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_Renamed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No longer in the list.
+        /// </summary>
+        public static string CollectionUpdate_Review_Dropped {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_Dropped", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Removed.
+        /// </summary>
+        public static string CollectionUpdate_Review_Removed {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_Removed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Mod order.
+        /// </summary>
+        public static string CollectionUpdate_Review_ModOrder {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_ModOrder", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Plugins.
+        /// </summary>
+        public static string CollectionUpdate_Review_Plugins {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_Plugins", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your edits the list overrides — kept yours.
+        /// </summary>
+        public static string CollectionUpdate_Review_UserEditsKept {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_UserEditsKept", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Game files kept.
+        /// </summary>
+        public static string CollectionUpdate_Review_GameFilesKept {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_GameFilesKept", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Skip files from missing archives.
+        /// </summary>
+        public static string CollectionUpdate_Review_SkipMissing {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_SkipMissing", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to A restore point is written first; Undo is on the modlist page..
+        /// </summary>
+        public static string CollectionUpdate_Review_RestorePoint {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_RestorePoint", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Update to {0}….
+        /// </summary>
+        public static string CollectionUpdate_Menu_UpdateTo {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Menu_UpdateTo", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Undo update.
+        /// </summary>
+        public static string CollectionUpdate_Undo {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Undo", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Checking what the update changes….
+        /// </summary>
+        public static string CollectionUpdate_Progress_Checking {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Progress_Checking", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The file store grows by at most {0}; nothing is downloaded twice..
+        /// </summary>
+        public static string CollectionUpdate_Review_StoreGrows {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_StoreGrows", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Some files for {0} {1} didn't download, so {0} wasn't updated. Check the Downloads page, then press Update again..
+        /// </summary>
+        public static string CollectionUpdate_NotAllDownloaded {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_NotAllDownloaded", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Couldn't update {0} to {1}: {2}.
+        /// </summary>
+        public static string CollectionUpdate_Failed {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Failed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} mods installed by {1} aren't in version {2}. Removing them avoids conflicts. Kept mods move to My Mods and are managed as your own..
+        /// </summary>
+        public static string CollectionUpdate_DroppedMods_Text_Version {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_DroppedMods_Text_Version", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} mod installed by {1} isn't in version {2}. Removing it avoids conflicts. A kept mod moves to My Mods and is managed as your own..
+        /// </summary>
+        public static string CollectionUpdate_DroppedMods_Text_One_Version {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_DroppedMods_Text_One_Version", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Update stopped.
+        /// </summary>
+        public static string CollectionUpdate_UndoOffer_Title {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_UndoOffer_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0}.
+        /// </summary>
+        public static string CollectionUpdate_UndoOffer_Text {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_UndoOffer_Text", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Update undone: {0} is back at {1}..
+        /// </summary>
+        public static string CollectionUpdate_Undone {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Undone", resourceCulture);
+            }
+        }
     }
 }

@@ -10,6 +10,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Games;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Pages.Collections;
+using SilverModManager.App.UI.Pages.Collections.Update;
 using SilverModManager.App.UI.Pages.LoadoutPage;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
@@ -511,5 +512,57 @@ public class CollectionLoadoutViewModelTests(IServiceProvider provider) : AUiTes
             "Use the default download folder",
             "Reinstall modlist",
             "Remove modlist"));
+    }
+
+    private async Task<(CollectionLoadoutViewModel Page, IDisposable Activation)> PageWhoseProviderKnows(System.Reactive.Subjects.BehaviorSubject<ICollectionUpdate?> updates)
+    {
+        var (_, group, source) = await TestSource();
+        source.GroupSubject.OnNext(Optional<CollectionGroupId>.Create(group.CollectionGroupId));
+        var owner = Substitute.For<ICollectionProvider>();
+        owner.Owns(Arg.Any<CollectionGroup.ReadOnly>()).Returns(true);
+        owner.ObserveUpdate(Arg.Any<CollectionGroup.ReadOnly>()).Returns(updates);
+        var services = new ServicesWithSources(Provider).With(new CollectionProviders([owner], new LocalCollectionProvider(Provider)));
+        var page = await Dispatcher.UIThread.InvokeAsync(() => new CollectionLoadoutViewModel(_windowManager, services, source));
+        return (page, await Dispatcher.UIThread.InvokeAsync(() => page.Activator.Activate()));
+    }
+
+    [Fact]
+    public async Task ANonNullUpdateFromTheProviderPutsUpdateToFirstInTheMenuAndOnThePage()
+    {
+        var update = Substitute.For<ICollectionUpdate>();
+        update.NewVersionText.Returns("2.0");
+        var updates = new System.Reactive.Subjects.BehaviorSubject<ICollectionUpdate?>(update);
+        var (page, activation) = await PageWhoseProviderKnows(updates);
+        using var _ = activation;
+
+        await EventuallyOnUi(() => page.MenuItems.Select(item => item.Header).Should().Equal("Update to 2.0…", "Source item", "Remove test collection"));
+        page.Update.Should().BeSameAs(update);
+    }
+
+    [Fact]
+    public async Task NoUpdateFromTheProviderLeavesTheMenuAndThePageWithoutOne()
+    {
+        var updates = new System.Reactive.Subjects.BehaviorSubject<ICollectionUpdate?>(null);
+        var (page, activation) = await PageWhoseProviderKnows(updates);
+        using var _ = activation;
+
+        await EventuallyOnUi(() => page.MenuItems.Select(item => item.Header).Should().Equal("Source item", "Remove test collection"));
+        page.Update.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AnUpdateThatGoesAwayTakesItsMenuItemWithIt()
+    {
+        var update = Substitute.For<ICollectionUpdate>();
+        update.NewVersionText.Returns("2.0");
+        var updates = new System.Reactive.Subjects.BehaviorSubject<ICollectionUpdate?>(update);
+        var (page, activation) = await PageWhoseProviderKnows(updates);
+        using var _ = activation;
+        await EventuallyOnUi(() => page.MenuItems.Should().HaveCount(3));
+
+        updates.OnNext(null);
+
+        await EventuallyOnUi(() => page.MenuItems.Select(item => item.Header).Should().Equal("Source item", "Remove test collection"));
+        page.Update.Should().BeNull();
     }
 }
