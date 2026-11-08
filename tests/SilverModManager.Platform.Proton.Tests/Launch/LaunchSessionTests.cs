@@ -70,7 +70,7 @@ public class LaunchSessionTests : IDisposable
 
     private LaunchSession NewSession()
     {
-        var session = new LaunchSession(_lockFactory, _active, _synchronizer, _processes, _gates, _notifier, _log, _error);
+        var session = new LaunchSession(_lockFactory, _active, _synchronizer, new LaunchFinish(_synchronizer, _log), _processes, _gates, _notifier, _log, _error);
         _sessions.Add(session);
         return session;
     }
@@ -489,7 +489,7 @@ public class LaunchSessionTests : IDisposable
         var credentials = Substitute.For<INexusCredentialSummary>();
         credentials.Kind.Returns(NexusCredentialKind.ApiKey);
         credentials.Source.Returns("environment variable NEXUS_API_KEY");
-        var session = new LaunchSession(_lockFactory, _active, _synchronizer, _processes, _gates, _notifier, _log, _error, credentials: credentials);
+        var session = new LaunchSession(_lockFactory, _active, _synchronizer, new LaunchFinish(_synchronizer, _log), _processes, _gates, _notifier, _log, _error, credentials: credentials);
         _sessions.Add(session);
 
         await Run(session);
@@ -497,7 +497,7 @@ public class LaunchSessionTests : IDisposable
         _log.Entries.Should().Contain("Nexus credential: API key from environment variable NEXUS_API_KEY");
     }
 
-    private sealed class RecordingLogger : ILogger<LaunchSession>
+    private sealed class RecordingLogger : ILogger<LaunchSession>, ILogger<LaunchFinish>
     {
         public List<string> Entries { get; } = [];
         public List<(LogLevel Level, Exception? Exception)> Records { get; } = [];

@@ -45,7 +45,7 @@ public class DryRunTests : IDisposable
         }, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, folder)));
 
         _context = new LaunchContext(installation, LoadoutId.From(1), "My Loadout", []);
-        _session = new LaunchSession(_lockFactory, new ActiveLaunchSessions(), _synchronizer, _processes, [], _notifier, NullLogger<LaunchSession>.Instance, _error, credentials: _credentials);
+        _session = new LaunchSession(_lockFactory, new ActiveLaunchSessions(), _synchronizer, new LaunchFinish(_synchronizer, NullLogger<LaunchFinish>.Instance), _processes, [], _notifier, NullLogger<LaunchSession>.Instance, _error, credentials: _credentials);
     }
 
     public void Dispose() => Directory.Delete(_runtimeDir, recursive: true);
@@ -167,7 +167,7 @@ public class DryRunTests : IDisposable
     [Fact]
     public void WithoutACredentialSummaryTheCredentialLineSaysNone()
     {
-        var session = new LaunchSession(_lockFactory, new ActiveLaunchSessions(), _synchronizer, _processes, [], _notifier, NullLogger<LaunchSession>.Instance, _error);
+        var session = new LaunchSession(_lockFactory, new ActiveLaunchSessions(), _synchronizer, new LaunchFinish(_synchronizer, NullLogger<LaunchFinish>.Instance), _processes, [], _notifier, NullLogger<LaunchSession>.Instance, _error);
 
         session.DryRun(_context, () => new LaunchPlan(new GameProcessSpec(["/usr/bin/true"])), _output);
 

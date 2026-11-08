@@ -173,7 +173,7 @@ static int SessionScenario(string runtimeDir, string blockIn, bool killFail)
         Platform = OSPlatform.Windows,
     }, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, folder)));
 
-    var session = new LaunchSession(lockFactory, new ActiveLaunchSessions(), synchronizer, processes, [gate],
+    var session = new LaunchSession(lockFactory, new ActiveLaunchSessions(), synchronizer, new LaunchFinish(synchronizer, NullLogger<LaunchFinish>.Instance), processes, [gate],
         Substitute.For<IDesktopNotifier>(), NullLogger<LaunchSession>.Instance, TextWriter.Null, stop);
     Console.WriteLine("ready");
     Console.Out.Flush();

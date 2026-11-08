@@ -36,6 +36,7 @@ public sealed class ModdedLaunchFakes : IDisposable
         services.Replace(ServiceDescriptor.Singleton<IGameLaunchSession>(provider => provider.GetRequiredService<ActiveLaunchSessions>()));
         services.AddSingleton(provider => new ActiveLaunchSessions(provider));
         services.AddTransient<LaunchSession>();
+        services.AddSingleton<LaunchFinish>();
     }
 
     public void Dispose() => Directory.Delete(RuntimeDir, recursive: true);
