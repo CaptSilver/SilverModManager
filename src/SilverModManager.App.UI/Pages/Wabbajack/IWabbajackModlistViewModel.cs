@@ -155,6 +155,12 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
     /// <summary>The list is in the selected loadout.</summary>
     bool IsInstalled { get; }
 
+    /// <summary>The version of this list that replaced it in the selected loadout or elsewhere in its game, or null. Install is not offered for a superseded list.</summary>
+    string? SupersededBy { get; }
+
+    /// <summary>The version of another release of this list that is installed in the selected loadout while this file is not, or null. Install is not offered then: it would add a second copy.</summary>
+    string? OtherVersion { get; }
+
     /// <summary>The files the last install of this list in the selected loadout skipped.</summary>
     IReadOnlyList<WabbajackSkippedRow> SkippedFiles { get; }
 

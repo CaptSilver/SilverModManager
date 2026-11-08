@@ -2,6 +2,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Resources;
 using ReactiveUI;
 
 namespace SilverModManager.App.UI.Pages.LibraryPage.Collections;
@@ -31,17 +32,21 @@ public partial class WabbajackModlistCardView : ReactiveUserControl<IWabbajackMo
                 .DisposeWith(d);
 
             Models()
-                .Select(card => card.WhenAnyValue(vm => vm.State))
+                .Select(card => card.WhenAnyValue(vm => vm.State, vm => vm.SupersededBy, vm => vm.OtherVersion))
                 .Switch()
-                .SubscribeWithErrorLogging(state =>
+                .SubscribeWithErrorLogging(t =>
                 {
+                    var (state, supersededBy, otherVersion) = t;
                     StateText.Text = state switch
                     {
                         WabbajackModlistCardState.Installed => "Installed",
                         WabbajackModlistCardState.Incomplete => "Install incomplete",
+                        WabbajackModlistCardState.Superseded => string.Format(Language.CollectionUpdate_Superseded, supersededBy),
+                        WabbajackModlistCardState.NotInstalled when otherVersion is not null => string.Format(Language.CollectionUpdate_OtherVersionInstalled, otherVersion),
                         _ => "",
                     };
-                    InstallButton.IsVisible = state == WabbajackModlistCardState.NotInstalled;
+                    // Installing a release of a list that another release holds here would put a second copy beside it.
+                    InstallButton.IsVisible = state == WabbajackModlistCardState.NotInstalled && otherVersion is null;
                 })
                 .DisposeWith(d);
 

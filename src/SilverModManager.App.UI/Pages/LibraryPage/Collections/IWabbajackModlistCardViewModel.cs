@@ -37,6 +37,12 @@ public interface IWabbajackModlistCardViewModel : ILibraryCollectionCardViewMode
 
     WabbajackModlistCardState State { get; }
 
+    /// <summary>The version that replaced the list, while <see cref="State"/> is <see cref="WabbajackModlistCardState.Superseded"/>.</summary>
+    string? SupersededBy { get; }
+
+    /// <summary>The version of another release of this list installed in the card's loadout while this file is not. Install is not offered then.</summary>
+    string? OtherVersion { get; }
+
     ReactiveCommand<Unit, Unit> OpenCommand { get; }
 
     /// <summary>Opens the list's page on the Library's loadout, where the install choices are made.</summary>

@@ -79,6 +79,14 @@ public class WabbajackGalleryViewModelTests(IServiceProvider provider) : AUiTest
 
         public IReadOnlyDictionary<string, LibraryFileId> ListsInLibrary() => InLibrary;
 
+        public Dictionary<string, LibraryFileId> ByHash { get; } = new();
+        public Dictionary<string, InstalledModlist> Installed { get; } = new();
+
+        public LibraryFileId? FindInLibrary(GalleryEntry entry) => ByHash.TryGetValue(entry.MachineUrl, out var file) ? file : null;
+
+        public InstalledModlist? InstalledOlderThan(GalleryEntry entry, SilverModManager.Sdk.Loadouts.LoadoutId loadout)
+            => Installed.TryGetValue(entry.MachineUrl, out var installed) ? installed : null;
+
         public Task<LibraryFileId> Download(GalleryEntry entry, CancellationToken cancellationToken)
         {
             Downloads.Add(entry);
@@ -98,7 +106,8 @@ public class WabbajackGalleryViewModelTests(IServiceProvider provider) : AUiTest
             Substitute.For<SilverModManager.App.UI.Controls.Cards.IThumbnailLoader>(),
             sortMemory ?? new InMemoryStoreSortMemory(),
             adult ?? new FakeAdultContentSetting(),
-            NullLogger<WabbajackGalleryViewModel>.Instance)
+            NullLogger<WabbajackGalleryViewModel>.Instance,
+            Provider)
         {
             LoadoutId = (await SeedLoadoutRow(GameStore.Steam, "gallery")).LoadoutId,
             OpenPage = pages.Add,

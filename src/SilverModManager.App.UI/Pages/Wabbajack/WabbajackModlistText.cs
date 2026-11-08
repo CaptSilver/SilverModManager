@@ -4,6 +4,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Install;
+using SilverModManager.App.UI.Resources;
 
 namespace SilverModManager.App.UI.Pages.Wabbajack;
 
@@ -179,9 +180,11 @@ public static class WabbajackModlistText
     private const string CheckFailed = "The list could not be checked.";
 
     /// <summary>Why Install is off, as a sentence for the page, or "" while it is allowed.</summary>
-    public static string InstallBlockedReason(bool hasLoadout, bool isPlanning, bool planReady, bool isInstalling, ArchivePlan plan, bool skipMissingArchives)
+    public static string InstallBlockedReason(bool hasLoadout, bool isPlanning, bool planReady, bool isInstalling, ArchivePlan plan, bool skipMissingArchives, string? supersededBy = null, string? otherVersion = null)
     {
         if (isInstalling) return "An install is running.";
+        if (supersededBy is not null) return string.Format(Language.CollectionUpdate_SupersededBlocked, supersededBy);
+        if (otherVersion is not null) return string.Format(Language.CollectionUpdate_OtherVersionBlocked, otherVersion);
         if (isPlanning) return CheckingTheList;
         if (!planReady) return CheckFailed;
         if (!hasLoadout) return "Pick a loadout to install the collection into.";

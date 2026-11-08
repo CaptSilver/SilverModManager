@@ -8,6 +8,7 @@ using Humanizer;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
 using R3;
@@ -115,6 +116,13 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
                 .AddTo(disposables);
 
             this.OneWayBind(ViewModel, vm => vm.IsReadOnly, view => view.ReadOnlyPillStack.IsVisible)
+                .AddTo(disposables);
+
+            // Hidden while no newer version is known.
+            this.OneWayBind(ViewModel, vm => vm.Update, view => view.UpdatePillStack.IsVisible, static update => update is not null)
+                .AddTo(disposables);
+            this.OneWayBind(ViewModel, vm => vm.Update, view => view.UpdatePillText.Text,
+                    static update => update is null ? string.Empty : string.Format(Language.CollectionUpdate_Pill, update.NewVersionText))
                 .AddTo(disposables);
 
             this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.IsCollectionEnabled))

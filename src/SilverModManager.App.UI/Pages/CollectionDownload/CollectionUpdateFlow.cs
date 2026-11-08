@@ -26,7 +26,7 @@ internal static class CollectionUpdateFlow
     /// <summary>What the toast after an update says.</summary>
     public static string ResultText(CollectionUpdateResult result, int revision = 0)
     {
-        if (result.Error is not null) return string.Format(Language.ToastNotification_Collection_update_interrupted, revision, result.Error.Message);
+        if (result.Error is not null) return string.Format(Language.ToastNotification_Collection_update_interrupted, revision, MarkdownText.Message(result.Error));
 
         var text = result.Failed.Count == 0
             ? Language.ToastNotification_Collection_updated
@@ -77,7 +77,7 @@ internal static class CollectionUpdateFlow
                         // The source already said why (login, premium).
                         return;
                     case CollectionUpdateDownload.NotAllDownloaded:
-                        notifications.ShowToast(string.Format(Language.CollectionUpdate_NotAllDownloaded, update.Name, update.NewVersionText), ToastNotificationVariant.Failure);
+                        notifications.ShowToast(string.Format(Language.CollectionUpdate_NotAllDownloaded, MarkdownText.InlineMidLine(update.Name), MarkdownText.InlineMidLine(update.NewVersionText)), ToastNotificationVariant.Failure);
                         return;
                 }
             }
@@ -118,7 +118,7 @@ internal static class CollectionUpdateFlow
     {
         var dialog = DialogFactory.CreateStandardDialog(
             Language.CollectionUpdate_UndoOffer_Title,
-            new StandardDialogParameters { Text = string.Format(Language.CollectionUpdate_UndoOffer_Text, outcome.ToastText, update.Name) },
+            new StandardDialogParameters { Text = string.Format(Language.CollectionUpdate_UndoOffer_Text, MarkdownText.ToPlain(outcome.ToastText), update.Name) },
             [
                 DialogStandardButtons.Close,
                 new DialogButtonDefinition(Language.CollectionUpdate_Undo, UndoId, ButtonAction.Accept, ButtonStyling.Primary),

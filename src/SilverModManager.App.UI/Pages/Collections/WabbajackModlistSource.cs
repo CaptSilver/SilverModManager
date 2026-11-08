@@ -1,3 +1,4 @@
+using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -13,6 +14,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Pages.Collections.Update;
 using SilverModManager.App.UI.Pages.LibraryPage.Collections;
 using SilverModManager.App.UI.Pages.Wabbajack;
 using SilverModManager.App.UI.Resources;
@@ -25,6 +27,7 @@ using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.Wabbajack.Gallery;
 using SilverModManager.Wabbajack.Install;
 using SilverModManager.Wabbajack.Models;
 using Observable = System.Reactive.Linq.Observable;
@@ -89,15 +92,83 @@ public sealed class WabbajackModlistSource : CollectionSource
             .Switch();
     });
 
-    private static string StateText(WabbajackModlistInstall install) => install.State switch
+    private static string StateText(WabbajackModlistInstall install) => install is { State: WabbajackModlistCardState.NotInstalled, OtherVersion: { } other }
+        ? string.Format(Language.CollectionUpdate_OtherVersionInstalled, other)
+        : StateTextOf(install);
+
+    private static string StateTextOf(WabbajackModlistInstall install) => install.State switch
     {
         WabbajackModlistCardState.Installed => Language.CollectionLoadoutView_CollectionInstalled,
         WabbajackModlistCardState.Incomplete => "Install not finished",
+        WabbajackModlistCardState.Superseded => string.Format(Language.CollectionUpdate_Superseded, install.SupersededBy),
         _ => "Not installed yet",
     };
 
+    /// <summary>
+    /// While another release of this list holds the loadout's install, the update of that install to this very file.
+    /// The page offers it where a plain Install would put a second copy of the list beside the first.
+    /// </summary>
+    public override IObservable<ICollectionUpdate?> UpdateToThisVersion => _install
+        .Select(static install => install.OtherGroup)
+        .DistinctUntilChanged()
+        .Select(ICollectionUpdate? (other) =>
+        {
+            if (other is not { } groupId) return null;
+            var group = WabbajackModlistLoadoutGroup.Load(Connection.Db, groupId);
+            var file = WabbajackModlistLibraryFile.Load(Connection.Db, _file.Value);
+            return group.IsValid() && file.IsValid() ? new WabbajackCollectionUpdate(Services, group, file) : null;
+        });
+
     public override IObservable<Optional<CollectionGroupId>> Group { get; }
     public override IObservable<bool> IsInstalled { get; }
+
+    /// <summary>
+    /// The Undo and Finish items are there while the group records a restore point, and the picker goes once the list has
+    /// a gallery identity, so the page asks for the menu again when either changes. The group is part of the answer: a
+    /// page that follows the Downloads picker between two loadouts that both have a restore point needs the items of
+    /// the other group.
+    /// </summary>
+    public override IObservable<Unit> MenuChanged => Group
+        .Select(group => group.HasValue ? ObserveRestorePoint(group.Value.Value).Select(restorePoint => (Group: (EntityId?)group.Value.Value, RestorePoint: restorePoint)) : Observable.Return((Group: (EntityId?)null, RestorePoint: false)))
+        .Switch()
+        .CombineLatest(ObserveHasIdentity(), static (state, identity) => (state.Group, state.RestorePoint, Identity: identity))
+        .DistinctUntilChanged()
+        .Select(static _ => Unit.Default);
+
+    private IObservable<bool> ObserveRestorePoint(EntityId group) => Observable.Defer(() => Connection.Revisions
+        .Select(db => WabbajackUpdateMenuItems.HasRestorePoint(db, group))
+        .Prepend(WabbajackUpdateMenuItems.HasRestorePoint(Connection.Db, group)));
+
+    private IObservable<bool> ObserveHasIdentity() => Observable.Defer(() => Connection.Revisions
+        .Select(db => HasIdentity(db, _file))
+        .Prepend(HasIdentity(Connection.Db, _file))
+        .DistinctUntilChanged());
+
+    private static bool HasIdentity(IDb db, LibraryFileId file)
+        => WabbajackModlistLibraryFile.Load(db, file.Value) is { } list && list.IsValid() && WabbajackModlistLibraryFile.MachineUrl.TryGetValue(list, out _);
+
+    /// <summary>
+    /// Once an update has moved this list's install to a newer file, the page of the old file is superseded and the tab
+    /// goes to the new file's page; after an undo it goes back the other way. Only a change while the page is open moves
+    /// it: the value on subscription is where the user chose to be, such as a newer release opened while an older one is
+    /// installed. Only a source fixed to a loadout can tell; a page that follows the Downloads picker never moves.
+    /// </summary>
+    public override IObservable<PageData> MovedTo => LoadoutId is not { } loadout
+        ? Observable.Never<PageData>()
+        : Observable.Defer(() => Connection.Revisions
+                .Prepend(Connection.Db)
+                .Scan((HeldGroup: false, Successor: (LibraryFileId?)null), (previous, db) => (
+                    HeldGroup: previous.HeldGroup || WabbajackModlistInstallState.FindGroup(db, _file, loadout) is not null,
+                    Successor: WabbajackModlistInstallState.SuccessorOf(db, _file, loadout, previous.HeldGroup))))
+            .Select(static state => state.Successor)
+            .DistinctUntilChanged()
+            .Skip(1)
+            .Where(static successor => successor is not null)
+            .Select(successor => new PageData
+            {
+                FactoryId = WabbajackModlistPageFactory.StaticId,
+                Context = new WabbajackModlistPageContext { LibraryFileId = successor.GetValueOrDefault(), TargetLoadout = loadout },
+            });
 
     // The page survives an install and a removal, so it is the same page whichever entry opens it.
     public override PageData InstalledPage(CollectionGroupId group) => Page;
@@ -158,9 +229,32 @@ public sealed class WabbajackModlistSource : CollectionSource
         items.Add(Item("Open inbox folder", IconValues.FolderOpen, model.OpenInboxFolderCommand));
         items.Add(Item("Choose download folder...", IconValues.FolderOpen, model.ChooseDownloadsFolderCommand));
         items.Add(Item("Use the default download folder", IconValues.Refresh, model.UseDefaultDownloadsFolderCommand));
+        items.AddRange(UpdateItems(host, model));
         // Last, so it sits next to the page's Remove item.
         items.Add(ReinstallItem(host, model));
         return items;
+    }
+
+    // Undo and Finish while the group records a restore point; the picker while the list's gallery entry is unknown and
+    // more than one entry could be it.
+    private IEnumerable<IContextMenuItem> UpdateItems(ICollectionPageHost host, IWabbajackModlistViewModel model)
+    {
+        var loadout = LoadoutId ?? model.SelectedLoadout?.Id;
+        if (loadout is not { } picked) yield break;
+
+        var db = Connection.Db;
+        if (WabbajackModlistInstallState.ReadInstall(db, _file, picked).Group is { } group && WabbajackUpdateMenuItems.HasRestorePoint(db, group.Value))
+        {
+            yield return WabbajackUpdateMenuItems.UndoUpdate(Services, host, group.Value);
+            yield return WabbajackUpdateMenuItems.FinishUpdate(Services, host, group.Value);
+        }
+
+        var file = WabbajackModlistLibraryFile.Load(db, _file.Value);
+        if (file.IsValid()
+            && !HasIdentity(db, _file)
+            && Services.GetRequiredService<IWabbajackGalleryClient>().GetCached() is { } listing
+            && Services.GetRequiredService<ModlistIdentityBackfill>().Candidates(file, listing) is { Count: > 1 } candidates)
+            yield return WabbajackUpdateMenuItems.PickGalleryEntry(Services, host, file, candidates);
     }
 
     private ContextMenuItem ReinstallItem(ICollectionPageHost host, IWabbajackModlistViewModel model)

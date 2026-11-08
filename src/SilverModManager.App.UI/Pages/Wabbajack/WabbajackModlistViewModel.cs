@@ -177,6 +177,8 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     [Reactive] public partial string ErrorText { get; private set; } = "";
     [Reactive] public partial bool CanResume { get; private set; }
     [Reactive] public partial bool IsInstalled { get; private set; }
+    [Reactive] public partial string? SupersededBy { get; private set; }
+    [Reactive] public partial string? OtherVersion { get; private set; }
     [Reactive] public partial IReadOnlyList<WabbajackSkippedRow> SkippedFiles { get; private set; } = [];
 
     public ReactiveCommand<WabbajackLoadoutChoice, Unit> SelectLoadoutCommand { get; }
@@ -212,7 +214,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         TabTitle = "Modlist";
 
         // Any of these can change whether Install is allowed.
-        this.WhenAnyValue(vm => vm.SkipMissingArchives, vm => vm.IsPlanning, vm => vm.IsDownloading, vm => vm.HasStartedDownloads)
+        this.WhenAnyValue(vm => vm.SkipMissingArchives, vm => vm.IsPlanning, vm => vm.IsDownloading, vm => vm.HasStartedDownloads, vm => vm.SupersededBy, vm => vm.OtherVersion)
             .Subscribe(_ => Recompute());
 
         // Ten inputs decide the one status line; a single subscription keeps them from being refreshed by hand at every setter.
@@ -833,7 +835,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     {
         CanShowMissing = _planReady && !IsPlanning && _plan.Rows.Any(row => !WabbajackModlistText.IsAvailable(row) && row.State != ArchiveState.GameFileVersion);
         var hasLoadout = SelectedLoadout is not null;
-        InstallBlockedReason = WabbajackModlistText.InstallBlockedReason(hasLoadout, IsPlanning, _planReady, IsInstalling, _plan, SkipMissingArchives);
+        InstallBlockedReason = WabbajackModlistText.InstallBlockedReason(hasLoadout, IsPlanning, _planReady, IsInstalling, _plan, SkipMissingArchives, SupersededBy, OtherVersion);
         DownloadBlockedReason = WabbajackModlistText.DownloadBlockedReason(IsPlanning, _isPreparingDownloads, _planReady, IsDownloading, _plan, IsInstalling);
         // The acquirer works on one list at a time; starting here would abandon the other list's batch.
         var otherListRuns = _acquirer.Status is { IsRunning: true } running && running.Modlist != FileId;
@@ -893,6 +895,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
             _groupId = found?.WabbajackModlistLoadoutGroupId;
             IsInstalled = found is not null;
+            var install = SelectedLoadout?.Id is { } inLoadout ? WabbajackModlistInstallState.ReadInstall(db, FileId, inLoadout) : null;
+            SupersededBy = install?.SupersededBy;
+            OtherVersion = install?.OtherVersion;
             _hasUnfinishedInstall = SelectedLoadout?.Id is { } resumable && WabbajackModlistInstallState.Read(db, FileId, resumable) == WabbajackModlistCardState.Incomplete;
             CanResume = _hasUnfinishedInstall && !IsInstalling;
             SkippedFiles = found is { } owner

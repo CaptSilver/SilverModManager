@@ -6547,5 +6547,204 @@ namespace SilverModManager.App.UI.Resources {
                 return ResourceManager.GetString("CollectionUpdate_Undone", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Update available: {0}.
+        /// </summary>
+        public static string CollectionUpdate_Pill {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Pill", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to re-uploaded by the author.
+        /// </summary>
+        public static string CollectionUpdate_Note_Reupload {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Note_Reupload", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Downloading the list….
+        /// </summary>
+        public static string CollectionUpdate_Progress_DownloadingList {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Progress_DownloadingList", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Plus room for the largest {0} archives while they extract; the new list file sits next to the old one until Finish update..
+        /// </summary>
+        public static string CollectionUpdate_Review_DiskNote_Modlist {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_DiskNote_Modlist", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} (tried again).
+        /// </summary>
+        public static string CollectionUpdate_Review_Retried {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Review_Retried", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} updated to {1}..
+        /// </summary>
+        public static string CollectionUpdate_Updated {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Updated", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} updated to {1}; {2} files were skipped because their archives are missing..
+        /// </summary>
+        public static string CollectionUpdate_UpdatedSkipping {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_UpdatedSkipping", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Finish update.
+        /// </summary>
+        public static string CollectionUpdate_Menu_Finish {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Menu_Finish", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Undo the update of {0}?.
+        /// </summary>
+        public static string CollectionUpdate_Undo_Title {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Undo_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} goes back to how it was before the update, with the mods and order it had then. Apply the loadout afterwards to bring the game folder in line..
+        /// </summary>
+        public static string CollectionUpdate_Undo_Text {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Undo_Text", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Finish the update of {0}?.
+        /// </summary>
+        public static string CollectionUpdate_Finish_Title {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Finish_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Finishing gives up the restore point, so Undo update is gone. The old version of the list stays in the library..
+        /// </summary>
+        public static string CollectionUpdate_Finish_Text {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Finish_Text", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} archives ({1}) were used only by the old version..
+        /// </summary>
+        public static string CollectionUpdate_Finish_OldArchives {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Finish_OldArchives", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Finish and delete {0} old archives ({1}).
+        /// </summary>
+        public static string CollectionUpdate_Finish_DeleteButton {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Finish_DeleteButton", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} update finished..
+        /// </summary>
+        public static string CollectionUpdate_Finished {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Finished", resourceCulture);
+            }
+        }
+
+
+        /// <summary>
+        ///   Looks up a localized string similar to Superseded by {0}.
+        /// </summary>
+        public static string CollectionUpdate_Superseded {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Superseded", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Version {0} of this list is already in your loadouts. Update that one instead of installing this one..
+        /// </summary>
+        public static string CollectionUpdate_SupersededBlocked {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_SupersededBlocked", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Version {0} of this list is installed here.
+        /// </summary>
+        public static string CollectionUpdate_OtherVersionInstalled {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_OtherVersionInstalled", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Version {0} of this list is installed in this loadout. Use "Update to" in the page menu to move it to this version instead of installing a second copy..
+        /// </summary>
+        public static string CollectionUpdate_OtherVersionBlocked {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_OtherVersionBlocked", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Which gallery entry is this list?.
+        /// </summary>
+        public static string CollectionUpdate_Pick_Title {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Pick_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to More than one gallery entry matches this list. Pick the one it came from; updates are looked for under it from then on..
+        /// </summary>
+        public static string CollectionUpdate_Pick_Text {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Pick_Text", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} by {1} ({2}).
+        /// </summary>
+        public static string CollectionUpdate_Pick_Candidate {
+            get {
+                return ResourceManager.GetString("CollectionUpdate_Pick_Candidate", resourceCulture);
+            }
+        }
     }
 }

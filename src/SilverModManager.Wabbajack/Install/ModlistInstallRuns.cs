@@ -98,7 +98,7 @@ public sealed class ModlistInstallRuns(IJobMonitor monitor, IConnection connecti
     /// list stays on a group after the update ends, and a reinstall retracts the install mark too; only the update's
     /// switch writes <see cref="WabbajackModlistLoadoutGroup.WasDisabledByUser"/> and only its last step retracts it.
     /// </summary>
-    internal static bool IsMidUpdate(WabbajackModlistLoadoutGroup.ReadOnly group)
+    public static bool IsMidUpdate(WabbajackModlistLoadoutGroup.ReadOnly group)
         => WabbajackModlistLoadoutGroup.PreviousModlist.TryGetValue(group, out _)
            && WabbajackModlistLoadoutGroup.WasDisabledByUser.TryGetValue(group, out _)
            && !group.InstalledAt.HasValue;

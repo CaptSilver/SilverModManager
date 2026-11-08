@@ -68,7 +68,10 @@ public partial class WabbajackModlistCardViewModel : AViewModel<IWabbajackModlis
         RemoveCommand = ReactiveCommand.CreateFromTask(() =>
             new WabbajackModlistRemover(_provider).ConfirmAndRemove(_windowManager, _windowManager.ActiveWorkspaceController, File));
 
-        State = WabbajackModlistInstallState.Read(_connection.Db, File, _loadout);
+        var install = WabbajackModlistInstallState.ReadInstall(_connection.Db, File, _loadout);
+        State = install.State;
+        SupersededBy = install.SupersededBy;
+        OtherVersion = install.OtherVersion;
         // The list is read in the background (see Refresh); until then every held archive counts, as it does with no list to check.
         ArchivesHad = CountHeld(_connection.Db, HeldArchiveCheck.NothingNeeded);
 
@@ -97,6 +100,8 @@ public partial class WabbajackModlistCardViewModel : AViewModel<IWabbajackModlis
 
     [Reactive] public partial int ArchivesHad { get; private set; }
     [Reactive] public partial WabbajackModlistCardState State { get; private set; }
+    [Reactive] public partial string? SupersededBy { get; private set; }
+    [Reactive] public partial string? OtherVersion { get; private set; }
 
     public ReactiveCommand<Unit, Unit> OpenCommand { get; }
     public ReactiveCommand<Unit, Unit> InstallCommand { get; }
@@ -118,11 +123,13 @@ public partial class WabbajackModlistCardViewModel : AViewModel<IWabbajackModlis
             {
                 var check = await ReadHeldCheck();
                 var db = _connection.Db;
-                var state = WabbajackModlistInstallState.Read(db, File, _loadout);
+                var install = WabbajackModlistInstallState.ReadInstall(db, File, _loadout);
                 var had = CountHeld(db, check);
                 RxApp.MainThreadScheduler.Schedule(() =>
                 {
-                    State = state;
+                    State = install.State;
+                    SupersededBy = install.SupersededBy;
+                    OtherVersion = install.OtherVersion;
                     ArchivesHad = had;
                 });
             }

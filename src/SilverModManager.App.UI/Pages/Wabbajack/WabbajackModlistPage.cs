@@ -2,6 +2,7 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Serialization.Attributes;
 using SilverModManager.App.UI.Pages.Collections;
+using SilverModManager.App.UI.Pages.LibraryPage.Collections;
 using SilverModManager.App.UI.Pages.LoadoutPage;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
@@ -43,6 +44,13 @@ public class WabbajackModlistPageFactory : APageFactory<ICollectionLoadoutViewMo
             throw new PageTargetGoneException($"Modlist {context.LibraryFileId} is no longer in the library");
         if (context.TargetLoadout is { } loadout && Loadout.Load(_connection.Db, loadout.Value).IsValid() is false)
             throw new PageTargetGoneException($"Loadout {loadout} no longer exists");
+
+        // A tab saved before an update still names the version the group was switched away from. Nothing else moves a
+        // page at creation: a newer release opened while an older one is installed is the page the user asked for.
+        if (context.TargetLoadout is { } target
+            && WabbajackModlistInstallState.SwitchedTo(_connection.Db, context.LibraryFileId, target) is { } successor
+            && WabbajackModlistLibraryFile.Load(_connection.Db, successor.Value) is { } newer && newer.IsValid())
+            file = newer;
 
         return new CollectionLoadoutViewModel(
             ServiceProvider.GetRequiredService<IWindowManager>(),

@@ -6,9 +6,10 @@ namespace SilverModManager.App.UI.Pages.WabbajackGallery;
 
 /// <summary>
 /// One gallery list as the page shows it. <paramref name="LibraryFile"/> is the list's file when it is in the
-/// library already, which turns Install into Open.
+/// library already, which turns Install into Open. <paramref name="UpdatesInstalled"/> is the install of an older
+/// release of this list in the page's loadout, which turns the button into Update.
 /// </summary>
-public sealed record WabbajackGalleryRow(GalleryEntry Entry, LibraryFileId? LibraryFile = null)
+public sealed record WabbajackGalleryRow(GalleryEntry Entry, LibraryFileId? LibraryFile = null, InstalledModlist? UpdatesInstalled = null)
 {
     /// <summary>The tags a card has room for; the rest are still searchable.</summary>
     public const int MaxShownTags = 3;
@@ -46,7 +47,9 @@ public sealed record WabbajackGalleryRow(GalleryEntry Entry, LibraryFileId? Libr
 
     public bool IsInLibrary => LibraryFile is not null;
 
-    public string InstallButtonText => IsInLibrary ? "Open" : "Install";
+    public bool IsUpdate => UpdatesInstalled is not null;
+
+    public string InstallButtonText => IsUpdate ? "Update" : IsInLibrary ? "Open" : "Install";
 
     /// <summary>A list can be opened from the library, or downloaded when the gallery gave what its file is checked against.</summary>
     public bool CanInstall => IsInLibrary || Entry.IsDownloadable;

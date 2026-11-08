@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using ColorTextBlock.Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
@@ -16,7 +17,9 @@ using Markdown.Avalonia;
 using SilverModManager.Abstractions.Collections.Json;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Pages.Collections;
+using SilverModManager.App.UI.Pages.Collections.Update;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Pages.LoadoutPage;
 using SilverModManager.App.UI.Pages.MyGames;
@@ -24,6 +27,7 @@ using SilverModManager.App.UI.Pages.Settings;
 using SilverModManager.App.UI.Pages.Wabbajack;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Update;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.Collections;
@@ -256,6 +260,111 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
         await VerifyPng(png);
     }
 
+    /// <summary>
+    /// The review of a Wabbajack list's update as the dialog shows it: the counts-first sections with the downloads, the
+    /// user's own edits the list overrides, the disk note, the restore point sentence and the skip-missing checkbox
+    /// that an archive opened in the browser brings.
+    /// </summary>
+    [Fact]
+    public async Task Test_WabbajackUpdateReviewDialog()
+    {
+        static ArchivePlanRow Archive(ArchiveState state, string name, long size, string host)
+            => new(new ArchiveEntry(FileIdentity.XxHash64(Hash.From((ulong)name.Length)), size, name, "", new ManualState(new Uri($"https://{host}/a"), "get it")), state, null, null, null);
+
+        var preview = new ModlistUpdatePreviewResult(
+            [Archive(ArchiveState.Automatic, "Weather Overhaul.7z", 410_000_000, "www.nexusmods.com"), Archive(ArchiveState.Manual, "Hand Made.zip", 90_000_000, "example.com")],
+            NexusMods.Paths.Size.From(500_000_000), NexusMods.Paths.Size.From(2_300_000_000),
+            Added: ["Dragon Armour Pack", "Weather Overhaul"], Changed: ["Core Patches"], Renamed: [("Old UI", "Modern UI")], Removed: ["Retired Textures"],
+            RetriedTextures: [], GameFilesKept: [NexusMods.Paths.RelativePath.FromUnsanitizedInput("Data/Skyrim - Patch.bsa")], UserTweaksKept: [], Warnings: [],
+            ModOrder: ["Dragon Armour Pack"], Plugins: ["Patch.esp"], Conflicts: ["Weather Overhaul"]);
+        var review = WabbajackCollectionUpdate.ReviewOf(preview, 16);
+        var (dialog, _) = CollectionUpdateReviewDialog.Create(new SnapshotUpdate(), review, isDownloaded: false);
+
+        var png = await CaptureDialog(dialog, width: 800, isReady: ChevronsSettledCollapsed());
+        await VerifyPng(png);
+    }
+
+    /// <summary>
+    /// Each Expander turns its chevron to the collapsed position in a 62.5 ms animation that starts when the template
+    /// is applied (<c>Expander.axaml</c>: Tag=collapsed rotates 180 to 0, filled forward), and a frame taken mid-turn
+    /// differs from run to run. The template's own transform also starts at 0, the animation's end value, so 0 alone
+    /// cannot tell "finished" from "not started". A chevron counts as settled at 0 once it was seen away from 0 (the
+    /// animation ran and came back), or once it has sat at 0 under Tag=collapsed for four animation lengths of
+    /// rendered time, which a cold window that skips straight to the end needs. Returns a checker that keeps that
+    /// history between polls.
+    /// </summary>
+    private static Func<Window, bool> ChevronsSettledCollapsed()
+    {
+        var animation = TimeSpan.FromMilliseconds(62.5);
+        var seenAway = new HashSet<Visual>();
+        var collapsedSince = new Dictionary<Visual, long>();
+        return window =>
+        {
+            var chevrons = window.GetVisualDescendants().OfType<SilverModManager.UI.Sdk.Icons.UnifiedIcon>().Where(icon => icon.Name == "ExpandCollapseChevron").ToList();
+            var settled = chevrons.Count > 0;
+            foreach (var chevron in chevrons)
+            {
+                if (chevron.FindAncestorOfType<ToggleButton>() is not { Tag: "collapsed" } || chevron.RenderTransform is not Avalonia.Media.RotateTransform rotate)
+                {
+                    settled = false;
+                    continue;
+                }
+
+                collapsedSince.TryAdd(chevron, System.Diagnostics.Stopwatch.GetTimestamp());
+                if (rotate.Angle != 0) seenAway.Add(chevron);
+                var waited = System.Diagnostics.Stopwatch.GetElapsedTime(collapsedSince[chevron]);
+                if (rotate.Angle != 0 || !(seenAway.Contains(chevron) || waited >= 4 * animation)) settled = false;
+            }
+            return settled;
+        };
+    }
+
+    /// <summary>The header of an installed list's page when the gallery has a newer version: the update pill beside the badge.</summary>
+    [Fact]
+    public async Task Test_CollectionPageWithAnUpdateAvailable()
+    {
+        var png = await Capture(
+            () => new CollectionLoadoutView
+            {
+                DataContext = new CollectionLoadoutDesignViewModel
+                {
+                    Name = "Skyrim VR Overhaul",
+                    VersionText = "Version 3.2.1",
+                    Stats = new CollectionStats(null, null, null, NexusMods.Paths.Size.From(48_000_000_000), 1294),
+                    Badge = new CollectionBadge(SilverModManager.UI.Sdk.Icons.IconValues.Download, "Wabbajack"),
+                    Link = new CollectionLink("Open readme", SilverModManager.UI.Sdk.Icons.IconValues.OpenInNew, ReactiveUI.ReactiveCommand.Create(() => { }), System.Reactive.Linq.Observable.Return(true)),
+                    IsToggleVisible = false,
+                    IsReadOnly = false,
+                    SelectedTab = CollectionPageTab.Installed,
+                    Update = new SnapshotUpdate(),
+                },
+            },
+            isReady: window => window.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Name == "UpdatePillText" && text.Text == "Update available: Version 3.3.0"));
+        await VerifyPng(png);
+    }
+
+    /// <summary>The dialog that stays up while the review fetches the new list file: one line of progress and Cancel.</summary>
+    [Fact]
+    public async Task Test_CollectionUpdateProgressDialog()
+    {
+        var (dialog, _) = CollectionUpdateProgressDialog.Create("Update to Version 3.3.0…", SilverModManager.App.UI.Resources.Language.CollectionUpdate_Progress_DownloadingList);
+
+        var png = await CaptureDialog(dialog, width: 320);
+        await VerifyPng(png);
+    }
+
+    private sealed class SnapshotUpdate : ICollectionUpdate
+    {
+        public string Name => "Skyrim VR Overhaul";
+        public string CurrentVersionText => "Version 3.2.1";
+        public string NewVersionText => "Version 3.3.0";
+        public string? Note => SilverModManager.App.UI.Resources.Language.CollectionUpdate_Note_Reupload;
+        public Task<CollectionUpdateReview> Review(IProgress<string>? progress, CancellationToken ct) => throw new NotSupportedException();
+        public Task<bool> IsDownloaded(CancellationToken ct) => throw new NotSupportedException();
+        public Task<CollectionUpdateDownload> Download(CancellationToken ct) => throw new NotSupportedException();
+        public Task<CollectionUpdateOutcome> Apply(bool skipMissing, CancellationToken ct) => throw new NotSupportedException();
+    }
+
     /// <summary>A mod added from a local archive, which is the simplest kind of row the loadout page lists.</summary>
     private async Task SeedLocalMod(Loadout.ReadOnly loadout, string name, EntityId? parent = null)
     {
@@ -381,6 +490,44 @@ LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = name, LoadoutId = loadou
         });
     }
 
+    /// <summary>
+    /// A dialog in its own window, sized the way <c>Dialog.Show</c> sizes it (the width of its size class, the height
+    /// of its content), and captured as the window's own frame.
+    /// </summary>
+    private async Task<byte[]> CaptureDialog(IDialog dialog, int width, Func<Window, bool>? isReady = null)
+    {
+        var window = await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var model = ((SilverModManager.App.UI.Dialog.Dialog)dialog).ViewModel;
+            var window = Track(new DialogWindow { DataContext = model, Title = model.WindowTitle, Width = width, MaxHeight = 540, SizeToContent = SizeToContent.Height });
+            // The dialog's content is hosted in a ViewModelViewHost that cross-fades it in on wall-clock time.
+            window.Styles.Add(new Style(x => x.OfType<TransitioningContentControl>())
+            {
+                Setters = { new Setter(TransitioningContentControl.PageTransitionProperty, null) },
+            });
+            ShowRendered(window);
+            Render(window);
+            return window;
+        });
+
+        if (isReady is not null)
+            await EventuallyOnUi(() =>
+            {
+                Render(window);
+                isReady(window).Should().BeTrue("the dialog has to finish loading before it is captured");
+            });
+
+        return await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            Render(window);
+            using var bitmap = new RenderTargetBitmap(new PixelSize(width, (int)Math.Ceiling(window.Bounds.Height)));
+            bitmap.Render(window);
+            using var stream = new MemoryStream();
+            bitmap.Save(stream);
+            return stream.ToArray();
+        });
+    }
+
     private static Task VerifyPng(byte[] png, [CallerMemberName] string name = "", [CallerFilePath] string sourceFile = "")
     {
         AssertHasVariance(png);
@@ -392,11 +539,13 @@ LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = name, LoadoutId = loadou
     private static void AssertHasVariance(byte[] png)
     {
         using var bitmap = new Bitmap(new MemoryStream(png));
-        var buffer = new byte[Width * Height * 4];
+        var width = bitmap.PixelSize.Width;
+        var height = bitmap.PixelSize.Height;
+        var buffer = new byte[width * height * 4];
         var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
         try
         {
-            bitmap.CopyPixels(new PixelRect(0, 0, Width, Height), handle.AddrOfPinnedObject(), buffer.Length, Width * 4);
+            bitmap.CopyPixels(new PixelRect(0, 0, width, height), handle.AddrOfPinnedObject(), buffer.Length, width * 4);
         }
         finally
         {

@@ -17,7 +17,8 @@ public class WabbajackModlistViewTests(IServiceProvider provider) : AUiTest(prov
     // Long enough to wrap past three lines at the test window's width, so the page has to collapse it.
     private static readonly string TwoParagraphs = string.Join("\n\n", Enumerable.Repeat("A big Skyrim VR overhaul. Read the readme before installing; it needs a lot of room and a fast machine, and the first install takes an afternoon.", 5));
 
-    private async Task<(Window Window, WabbajackModlistView View)> Show(WabbajackModlistDesignViewModel viewModel, double width = 1200)
+    /// <param name="readyText">A text that shows once the page has bound; a superseded page has no Install button, so it passes another.</param>
+    private async Task<(Window Window, WabbajackModlistView View)> Show(WabbajackModlistDesignViewModel viewModel, double width = 1200, string readyText = "Install collection")
     {
         var (window, view) = await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -29,7 +30,7 @@ public class WabbajackModlistViewTests(IServiceProvider provider) : AUiTest(prov
         await EventuallyOnUi(() =>
         {
             Render(window);
-            ShownTexts(view).Should().Contain("Install collection", "the page has to bind before it is read");
+            ShownTexts(view).Should().Contain(readyText, "the page has to bind before it is read");
         });
         return (window, view);
     }
@@ -75,6 +76,31 @@ public class WabbajackModlistViewTests(IServiceProvider provider) : AUiTest(prov
             ShownTexts(view).Should().NotContain(t => t.StartsWith("Hashing game files"), "the tab no longer draws the running step");
         });
         await OnUi(window.Close);
+    }
+
+    [Fact]
+    public async Task ASupersededList_HidesInstall_WhereAnOrdinaryOneShowsIt()
+    {
+        var (superseded, view) = await Show(new WabbajackModlistDesignViewModel { SupersededBy = "2.0" }, readyText: "Open next five");
+        var (ordinary, otherView) = await Show(new WabbajackModlistDesignViewModel());
+
+        await EventuallyOnUi(() =>
+        {
+            Named<StandardButton>(view, "InstallButton").IsVisible.Should().BeFalse("the newer version is updated instead of installing a second copy");
+            Named<StandardButton>(otherView, "InstallButton").IsVisible.Should().BeTrue();
+        });
+        await OnUi(superseded.Close);
+        await OnUi(ordinary.Close);
+    }
+
+    [Fact]
+    public async Task AReleaseOfAListAnotherReleaseHoldsHere_HidesInstall()
+    {
+        var (held, view) = await Show(new WabbajackModlistDesignViewModel { OtherVersion = "3.2" }, readyText: "Open next five");
+
+        await EventuallyOnUi(() =>
+            Named<StandardButton>(view, "InstallButton").IsVisible.Should().BeFalse("installing it would put a second copy of the list beside version 3.2"));
+        await OnUi(held.Close);
     }
 
     [Fact]

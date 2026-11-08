@@ -12,6 +12,7 @@ using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.Collections;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Jobs;
 
@@ -194,6 +195,6 @@ public sealed class NexusCollectionUpdate : ICollectionUpdate
         RestorePoint: null,
         Undo: null,
         Error: error,
-        ToastText: string.Format(Language.ToastNotification_Couldn_t_update_to_revision__0____1_, _target.Value, error.Message),
+        ToastText: string.Format(Language.ToastNotification_Couldn_t_update_to_revision__0____1_, _target.Value, MarkdownText.Message(error)),
         DroppedPromptRevision: (int)Group().Revision.RevisionNumber.Value);
 }

@@ -145,10 +145,18 @@
                                     <!-- revision or version -->
                                     <StackPanel x:Name="RevisionsPanel">
                                         <TextBlock x:Name="Revision" />
-                                        <!-- <icons:UnifiedIcon x:Name="ArrowRight" -->
-                                        <!--                    Value="{x:Static icons:IconValues.ArrowForward}" -->
-                                        <!--                    IsVisible="True" /> -->
-                                        <!-- <TextBlock x:Name="NewestRevision" IsVisible="True" /> -->
+                                        <!-- a newer version of the installed collection is known -->
+                                        <StackPanel x:Name="UpdatePillStack"
+                                                    Orientation="Horizontal"
+                                                    Spacing="4"
+                                                    IsVisible="False">
+                                            <icons:UnifiedIcon Size="16"
+                                                               Foreground="{StaticResource PrimaryStrongBrush}"
+                                                               Value="{x:Static icons:IconValues.Update}" />
+                                            <TextBlock x:Name="UpdatePillText"
+                                                       Foreground="{StaticResource PrimaryStrongBrush}"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
                                     </StackPanel>
 
                                 </StackPanel>

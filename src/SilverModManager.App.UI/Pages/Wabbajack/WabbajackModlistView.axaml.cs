@@ -121,10 +121,12 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
                 GameFileRows.ItemsSource = files;
             }).DisposeWith(disposables);
 
-            OnUi(vm => vm.WhenAnyValue(x => x.CanResume, x => x.IsInstalling)).Subscribe(state =>
+            OnUi(vm => vm.WhenAnyValue(x => x.CanResume, x => x.IsInstalling, x => x.SupersededBy, x => x.OtherVersion)).Subscribe(state =>
             {
                 ResumeButton.IsVisible = state.Item1 && !state.Item2;
-                InstallButton.IsVisible = !state.Item1;
+                // A superseded list is not installed again, and neither is a release of a list another release holds
+                // here; the installed one is updated instead.
+                InstallButton.IsVisible = !state.Item1 && state.Item3 is null && state.Item4 is null;
             }).DisposeWith(disposables);
 
             OnUi(vm => vm.WhenAnyValue(x => x.SkippedFiles)).Subscribe(skipped =>

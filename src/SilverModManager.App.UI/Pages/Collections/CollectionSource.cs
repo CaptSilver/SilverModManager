@@ -13,6 +13,7 @@ using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Pages.Collections.Update;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Jobs;
@@ -127,6 +128,26 @@ public abstract class CollectionSource
     /// its order. Called after <see cref="CreateDownloads"/>.
     /// </summary>
     public abstract IReadOnlyList<IContextMenuItem> MenuItems(ICollectionPageHost host, IContextMenuItem? viewDownloads);
+
+    /// <summary>
+    /// Emits when <see cref="MenuItems"/> would answer differently, so the page asks again. Most sources build their menu
+    /// once; a Wabbajack list's Undo and Finish items come and go with the update's restore point.
+    /// </summary>
+    public virtual IObservable<Unit> MenuChanged => System.Reactive.Linq.Observable.Never<Unit>();
+
+    /// <summary>
+    /// The page that takes this one's place when the collection it shows moves on: a Wabbajack list updated to a new
+    /// version is another library file, and the install is no longer under this page's. Never emits for a source that
+    /// stays put.
+    /// </summary>
+    public virtual IObservable<PageData> MovedTo => System.Reactive.Linq.Observable.Never<PageData>();
+
+    /// <summary>
+    /// The update of the collection that holds this loadout's install to this very version, while the install is another
+    /// version of the same collection and this one is not installed. Null otherwise. Where it is set, a plain install of
+    /// this version would put a second copy beside the first.
+    /// </summary>
+    public virtual IObservable<ICollectionUpdate?> UpdateToThisVersion => System.Reactive.Linq.Observable.Return<ICollectionUpdate?>(null);
 
     public abstract CollectionRemoval InstalledRemoval(CollectionGroupId group);
     public abstract CollectionRemoval? PendingRemoval { get; }

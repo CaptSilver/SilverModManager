@@ -21,7 +21,7 @@ public sealed class WabbajackArchiveRow(ArchivePlanRow plan) : ReactiveObject
     public string SizeText { get; } = Size.FromLong(plan.Archive.Size).ToString();
     public string Source { get; } = SourceOf(plan);
 
-    private static string SourceOf(ArchivePlanRow plan) => plan.Archive.State switch
+    internal static string SourceOf(ArchivePlanRow plan) => plan.Archive.State switch
     {
         NexusState => "Nexus Mods",
         HttpState http => http.Url.Host,

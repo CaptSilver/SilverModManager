@@ -2,6 +2,7 @@ using Avalonia.Media.Imaging;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.App.UI.Pages.Collections;
+using SilverModManager.App.UI.Pages.Collections.Update;
 using SilverModManager.App.UI.WorkspaceSystem;
 
 namespace SilverModManager.App.UI.Pages.LoadoutPage;
@@ -39,6 +40,9 @@ public interface ICollectionLoadoutViewModel : IPageViewModelInterface
     int InstalledModsCount { get; }
 
     string Name { get; }
+
+    /// <summary>The newer version of the installed collection, or null when none is known. The header pill shows it.</summary>
+    ICollectionUpdate? Update { get; }
 
     /// <summary>The header's first line: whether the collection is installed.</summary>
     string StateLine { get; }

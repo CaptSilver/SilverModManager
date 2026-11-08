@@ -19,6 +19,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Pages.Collections;
+using SilverModManager.App.UI.Pages.Collections.Update;
 using SilverModManager.UI.Sdk.Icons;
 
 namespace SilverModManager.App.UI.Pages.LoadoutPage;
@@ -51,6 +52,7 @@ public class CollectionLoadoutDesignViewModel : APageViewModel<ICollectionLoadou
     public bool IsCollectionEnabled => true;
     public int InstalledModsCount { get; } = 10;
     public string Name { get; init; } = "Vanilla+ [Quality of Life]";
+    public ICollectionUpdate? Update { get; init; }
     public string StateLine { get; init; } = "Collection Installed";
     public string VersionText { get; init; } = "Revision 6";
     public string Description { get; init; } = "";

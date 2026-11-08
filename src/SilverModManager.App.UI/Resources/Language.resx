@@ -2255,4 +2255,70 @@ A restore point was written before the update started. Undo puts {1} back as it 
     <data name="CollectionUpdate_Undone" xml:space="preserve">
         <value>Update undone: {0} is back at {1}.</value>
     </data>
+    <data name="CollectionUpdate_Pill" xml:space="preserve">
+        <value>Update available: {0}</value>
+    </data>
+    <data name="CollectionUpdate_Note_Reupload" xml:space="preserve">
+        <value>re-uploaded by the author</value>
+    </data>
+    <data name="CollectionUpdate_Progress_DownloadingList" xml:space="preserve">
+        <value>Downloading the list…</value>
+    </data>
+    <data name="CollectionUpdate_Review_DiskNote_Modlist" xml:space="preserve">
+        <value>Plus room for the largest {0} archives while they extract; the new list file sits next to the old one until Finish update.</value>
+    </data>
+    <data name="CollectionUpdate_Review_Retried" xml:space="preserve">
+        <value>{0} (tried again)</value>
+    </data>
+    <data name="CollectionUpdate_Updated" xml:space="preserve">
+        <value>{0} updated to {1}.</value>
+    </data>
+    <data name="CollectionUpdate_UpdatedSkipping" xml:space="preserve">
+        <value>{0} updated to {1}; {2} files were skipped because their archives are missing.</value>
+    </data>
+    <data name="CollectionUpdate_Menu_Finish" xml:space="preserve">
+        <value>Finish update</value>
+    </data>
+    <data name="CollectionUpdate_Undo_Title" xml:space="preserve">
+        <value>Undo the update of {0}?</value>
+    </data>
+    <data name="CollectionUpdate_Undo_Text" xml:space="preserve">
+        <value>{0} goes back to how it was before the update, with the mods and order it had then. Apply the loadout afterwards to bring the game folder in line.</value>
+    </data>
+    <data name="CollectionUpdate_Finish_Title" xml:space="preserve">
+        <value>Finish the update of {0}?</value>
+    </data>
+    <data name="CollectionUpdate_Finish_Text" xml:space="preserve">
+        <value>Finishing gives up the restore point, so Undo update is gone. The old version of the list stays in the library.</value>
+    </data>
+    <data name="CollectionUpdate_Finish_OldArchives" xml:space="preserve">
+        <value>{0} archives ({1}) were used only by the old version.</value>
+    </data>
+    <data name="CollectionUpdate_Finish_DeleteButton" xml:space="preserve">
+        <value>Finish and delete {0} old archives ({1})</value>
+    </data>
+    <data name="CollectionUpdate_Finished" xml:space="preserve">
+        <value>{0} update finished.</value>
+    </data>
+    <data name="CollectionUpdate_Superseded" xml:space="preserve">
+        <value>Superseded by {0}</value>
+    </data>
+    <data name="CollectionUpdate_SupersededBlocked" xml:space="preserve">
+        <value>Version {0} of this list is already in your loadouts. Update that one instead of installing this one.</value>
+    </data>
+    <data name="CollectionUpdate_OtherVersionInstalled" xml:space="preserve">
+        <value>Version {0} of this list is installed here</value>
+    </data>
+    <data name="CollectionUpdate_OtherVersionBlocked" xml:space="preserve">
+        <value>Version {0} of this list is installed in this loadout. Use "Update to" in the page menu to move it to this version instead of installing a second copy.</value>
+    </data>
+    <data name="CollectionUpdate_Pick_Title" xml:space="preserve">
+        <value>Which gallery entry is this list?</value>
+    </data>
+    <data name="CollectionUpdate_Pick_Text" xml:space="preserve">
+        <value>More than one gallery entry matches this list. Pick the one it came from; updates are looked for under it from then on.</value>
+    </data>
+    <data name="CollectionUpdate_Pick_Candidate" xml:space="preserve">
+        <value>{0} by {1} ({2})</value>
+    </data>
 </root>

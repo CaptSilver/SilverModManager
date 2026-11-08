@@ -45,7 +45,8 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
     private readonly CollectionSource _source;
     private readonly IServiceProvider _services;
     private readonly IConnection _connection;
-    private readonly IReadOnlyList<IContextMenuItem> _sourceMenuItems;
+    private readonly ContextMenuItem? _viewDownloads;
+    private IReadOnlyList<IContextMenuItem> _sourceMenuItems;
     private readonly Subject<R3.Unit> _toggleRefused = new();
 
     // Only read and written on the UI thread.
@@ -93,6 +94,7 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
                 Icon = IconValues.Downloading,
                 Command = ReactiveUI.ReactiveCommand.Create(() => { SelectedTab = CollectionPageTab.Downloads; }),
             };
+        _viewDownloads = viewDownloads;
         _sourceMenuItems = source.MenuItems(this, viewDownloads);
         MenuItems = _sourceMenuItems;
 
@@ -128,19 +130,38 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
                 .Subscribe(group => ApplyGroup(group, treeActivation))
                 .AddTo(disposables);
 
-            // A group that is gone has no update; one that is there asks its provider.
-            source.Group
+            // A group that is gone has no update; one that is there asks its provider. A page whose own file is not
+            // installed, while another release of the collection is, offers the update to its own version instead.
+            var groupUpdate = source.Group
                 .DistinctUntilChanged()
                 .Select(group => group.HasValue
                     ? _services.GetRequiredService<CollectionProviders>().ObserveUpdate(CollectionGroup.Load(_connection.Db, group.Value))
                     : System.Reactive.Linq.Observable.Return<ICollectionUpdate?>(null))
-                .Switch()
+                .Switch();
+            groupUpdate
+                .CombineLatest(source.UpdateToThisVersion, static (offered, toThisVersion) => offered ?? toThisVersion)
                 .OnUI()
                 .Subscribe(update =>
                 {
                     Update = update;
                     MenuItems = BuildMenu();
                 })
+                .AddTo(disposables);
+
+            // The source's own items can change while the page is open (a Wabbajack update's Undo and Finish).
+            source.MenuChanged
+                .OnUI()
+                .Subscribe(_ =>
+                {
+                    _sourceMenuItems = _source.MenuItems(this, _viewDownloads);
+                    MenuItems = BuildMenu();
+                })
+                .AddTo(disposables);
+
+            // A list updated to a new version lives under another library file; this tab follows it there.
+            source.MovedTo
+                .OnUI()
+                .Subscribe(page => GetWorkspaceController().OpenPage(WorkspaceId, page, new OpenPageBehavior.ReplaceTab(PanelId, TabId)))
                 .AddTo(disposables);
 
             source.Name.OnUI().Subscribe(name =>
@@ -179,7 +200,6 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
         {
             Adapter = null;
             InstalledModsCount = 0;
-            Update = null;
             MenuItems = BuildMenu();
 
             // No tab stays selected once it is hidden.

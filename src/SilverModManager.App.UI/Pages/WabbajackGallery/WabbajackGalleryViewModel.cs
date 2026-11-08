@@ -7,6 +7,9 @@ using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using SilverModManager.App.UI.Controls.Cards;
 using SilverModManager.App.UI.Helpers;
+using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Pages.Collections.Update;
 using SilverModManager.App.UI.Pages.Wabbajack;
 using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.Windows;
@@ -16,8 +19,10 @@ using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
 using SilverModManager.Wabbajack.Gallery;
+using SilverModManager.Wabbajack.Models;
 
 namespace SilverModManager.App.UI.Pages.WabbajackGallery;
 
@@ -27,6 +32,7 @@ public partial class WabbajackGalleryViewModel : APageViewModel<IWabbajackGaller
     private const string SortPage = "wabbajack";
 
     private readonly IConnection _connection;
+    private readonly IServiceProvider _services;
     private readonly IWabbajackGalleryService _gallery;
     private readonly ILogger<WabbajackGalleryViewModel> _logger;
     private readonly IStoreSortMemory _sortMemory;
@@ -50,6 +56,9 @@ public partial class WabbajackGalleryViewModel : APageViewModel<IWabbajackGaller
     /// <summary>Opens a page in the workspace this page is in; tests swap it for a recorder.</summary>
     public Action<PageData> OpenPage { get; set; }
 
+    /// <summary>Runs an update from the review to the toast; tests swap it for a recorder.</summary>
+    public Func<ICollectionUpdate, Task> RunUpdate { get; set; }
+
     public WabbajackGalleryViewModel(
         IWindowManager windowManager,
         IConnection connection,
@@ -58,8 +67,10 @@ public partial class WabbajackGalleryViewModel : APageViewModel<IWabbajackGaller
         IThumbnailLoader thumbnails,
         IStoreSortMemory sortMemory,
         IAdultContentSetting adultContent,
-        ILogger<WabbajackGalleryViewModel> logger) : base(windowManager)
+        ILogger<WabbajackGalleryViewModel> logger,
+        IServiceProvider services) : base(windowManager)
     {
+        _services = services;
         _connection = connection;
         _gallery = gallery;
         _logger = logger;
@@ -75,6 +86,9 @@ public partial class WabbajackGalleryViewModel : APageViewModel<IWabbajackGaller
             var workspaceController = GetWorkspaceController();
             workspaceController.OpenPage(WorkspaceId, pageData, workspaceController.GetDefaultOpenPageBehavior(pageData, NavigationInput.Default));
         };
+
+        RunUpdate = update => CollectionUpdateFlow.Run(
+            services, windowManager, services.GetRequiredService<IWindowNotificationService>(), update, CancellationToken.None);
 
         this.WhenAnyValue(vm => vm.SearchText, vm => vm.Sort).Subscribe(_ => ApplyFilter());
         this.WhenAnyValue(vm => vm.Sort).Skip(1).Subscribe(RememberSort);
@@ -158,6 +172,12 @@ public partial class WabbajackGalleryViewModel : APageViewModel<IWabbajackGaller
         ErrorText = "";
         try
         {
+            if (row.UpdatesInstalled is { } installed)
+            {
+                await UpdateAsync(row, installed);
+                return;
+            }
+
             var file = row.LibraryFile;
             if (file is null)
             {
@@ -182,6 +202,23 @@ public partial class WabbajackGalleryViewModel : APageViewModel<IWabbajackGaller
             _logger.LogWarning(e, "Could not install {Title} from the Wabbajack gallery", row.Title);
             ErrorText = $"Could not install {row.Title}: {e.Message}";
         }
+    }
+
+    /// <summary>
+    /// Opens the installed list's page and runs the update flow for it. The flow fetches the new list file itself, so
+    /// there is no download here.
+    /// </summary>
+    private async Task UpdateAsync(WabbajackGalleryRow row, InstalledModlist installed)
+    {
+        var group = WabbajackModlistLoadoutGroup.Load(_connection.Db, installed.Group);
+        OpenPage(new PageData
+        {
+            FactoryId = WabbajackModlistPageFactory.StaticId,
+            Context = new WabbajackModlistPageContext { LibraryFileId = installed.File, TargetLoadout = LoadoutId },
+        });
+        await RunUpdate(new WabbajackCollectionUpdate(_services, group, row.Entry));
+        // The row reads Open (or nothing to update) once the install moved to the new release.
+        ApplyFilter();
     }
 
     // Remembered per game, which is what the page lists.
@@ -211,7 +248,10 @@ public partial class WabbajackGalleryViewModel : APageViewModel<IWabbajackGaller
         var inLibrary = _gallery.ListsInLibrary();
         var shown = _entries.ForGame(game.Value).Visible(_adultContent.ShowAdultContent).Where(entry => terms.All(term => Matches(entry, term)));
         Lists = WabbajackGallerySorting.Order(shown, Sort)
-            .Select(entry => new WabbajackGalleryRow(entry, entry.Download is { } url && inLibrary.TryGetValue(url.ToString(), out var file) ? file : null))
+            .Select(entry => new WabbajackGalleryRow(
+                entry,
+                entry.Download is { } url && inLibrary.TryGetValue(url.ToString(), out var file) ? file : null,
+                _gallery.InstalledOlderThan(entry, LoadoutId)))
             .ToArray();
     }
 

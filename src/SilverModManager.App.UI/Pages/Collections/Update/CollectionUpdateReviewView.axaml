@@ -9,40 +9,46 @@
                                 mc:Ignorable="d" d:DesignWidth="560"
                                 x:Class="SilverModManager.App.UI.Pages.Collections.Update.CollectionUpdateReviewView">
 
-    <ScrollViewer MaxHeight="480">
-        <StackPanel Spacing="{StaticResource Spacing-4}">
-            <TextBlock x:Name="NoteText" TextWrapping="WrapWithOverflow" />
-            <TextBlock x:Name="DiskNoteText" TextWrapping="WrapWithOverflow" />
+    <!-- the dialog is at most 540 high; its title bar and buttons take the rest, so a taller list would hide its last lines instead of scrolling -->
+    <Grid RowDefinitions="*,Auto" MaxHeight="400">
+        <ScrollViewer Grid.Row="0">
+            <StackPanel Spacing="{StaticResource Spacing-4}">
+                <TextBlock x:Name="NoteText" TextWrapping="WrapWithOverflow" />
+                <TextBlock x:Name="DiskNoteText" TextWrapping="WrapWithOverflow" />
 
-            <ItemsControl x:Name="SectionsList">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="update:ReviewSection">
-                        <Expander Header="{Binding Title}">
-                            <ItemsControl ItemsSource="{Binding Items}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="x:String">
-                                        <TextBlock Text="{Binding}" TextWrapping="WrapWithOverflow" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </Expander>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                <ItemsControl x:Name="SectionsList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="update:ReviewSection">
+                            <Expander Header="{Binding Title}">
+                                <ItemsControl ItemsSource="{Binding Items}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="x:String">
+                                            <TextBlock Text="{Binding}" TextWrapping="WrapWithOverflow" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Expander>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
-            <ItemsControl x:Name="WarningsList">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="x:String">
-                        <TextBlock Text="{Binding}" TextWrapping="WrapWithOverflow" />
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                <ItemsControl x:Name="WarningsList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <TextBlock Text="{Binding}" TextWrapping="WrapWithOverflow" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
 
+        <!-- outside the scroll area: the choice between refusing and skipping must never be below the fold -->
+        <StackPanel Grid.Row="1" Spacing="{StaticResource Spacing-4}" Margin="0 8 0 0">
             <TextBlock x:Name="RestorePointTextBlock" TextWrapping="WrapWithOverflow" />
 
             <CheckBox x:Name="SkipMissingBox" Classes="accent"
                       Content="{x:Static resources:Language.CollectionUpdate_Review_SkipMissing}" />
         </StackPanel>
-    </ScrollViewer>
+    </Grid>
 
 </reactiveUi:ReactiveUserControl>

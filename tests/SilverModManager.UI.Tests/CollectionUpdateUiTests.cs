@@ -9,6 +9,7 @@ using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Pages.CollectionDownload;
@@ -239,6 +240,28 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
     }
 
     [Fact]
+    public void AnInterruptedUpdateEscapesTheErrorMessageForTheMarkdownToast()
+    {
+        CollectionUpdateFlow.ResultText(ResultWith(0, 0, error: new InvalidOperationException("see [log] for _details_")), revision: 4)
+            .Should().Be($"Update to revision 4 stopped early: {MarkdownText.Inline("see [log] for _details_")}")
+            .And.NotContain("_details_");
+    }
+
+    [Fact]
+    public async Task TheUndoOfferShowsTheEscapedToastTextAsPlainText()
+    {
+        var update = new FakeUpdate(downloaded: true, OutcomeOf(
+            new InvalidOperationException("disk full"), undo: _ => Task.CompletedTask, toastText: $"Couldn't update {MarkdownText.InlineMidLine("My_List*")}: disk full"));
+        var windows = Windows(Pressed("accept"), Pressed("close"));
+
+        await CollectionUpdateFlow.Run(Provider, windows, Substitute.For<IWindowNotificationService>(), update, CancellationToken.None);
+
+        var offer = (Dialog)DialogsShown(windows).Last();
+        var text = offer.ViewModel.ContentViewModel.Should().BeAssignableTo<IDialogStandardContentViewModel>().Subject.Text;
+        text.Should().Contain("My_List*").And.NotContain("\\");
+    }
+
+    [Fact]
     public async Task ThePrimaryActionExplainsWhyItIsOffWhenANewerRevisionIsInstalled()
     {
         var (view, viewModel) = await ShowDownloadView();
@@ -259,8 +282,8 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
 
     private static CollectionUpdateOutcome OutcomeOf(
         Exception? error = null, Func<CancellationToken, Task>? undo = null, IReadOnlyList<DroppedMod>? toAsk = null, IReadOnlyList<string>? removed = null,
-        int warnings = 0, int? droppedPromptRevision = null) =>
-        new(Updated: error is null, Failed: 0, Pending: 0, DroppedToAsk: toAsk ?? [], Removed: removed ?? [], RestorePoint: null, Undo: undo, Error: error, ToastText: "Toast text",
+        int warnings = 0, int? droppedPromptRevision = null, string toastText = "Toast text") =>
+        new(Updated: error is null, Failed: 0, Pending: 0, DroppedToAsk: toAsk ?? [], Removed: removed ?? [], RestorePoint: null, Undo: undo, Error: error, ToastText: toastText,
             Warnings: warnings, DroppedPromptRevision: droppedPromptRevision);
 
     /// <summary>Records what the flow asked of an update, in order.</summary>
@@ -274,9 +297,9 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
         public string? ReviewReports { get; init; }
         public Exception? ApplyThrows { get; init; }
 
-        public string Name => "Big List";
+        public string Name { get; init; } = "Big List";
         public string CurrentVersionText => "1.0";
-        public string NewVersionText => "2.0";
+        public string NewVersionText { get; init; } = "2.0";
         public string? Note => null;
 
         public async Task<CollectionUpdateReview> Review(IProgress<string>? progress, CancellationToken ct)
@@ -366,6 +389,20 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
 
         update.Calls.Should().NotContain("apply");
         toasts.Received(1).ShowToast(Arg.Is<string>(m => m.Contains("2.0")), ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+    }
+
+    [Fact]
+    public async Task TheNotAllDownloadedToastEscapesTheNameAndTheVersionForMarkdown()
+    {
+        var update = new FakeUpdate(downloaded: false) { DownloadResult = CollectionUpdateDownload.NotAllDownloaded, Name = "My_List [beta]*", NewVersionText = "2_0 [rc]" };
+        var toasts = Substitute.For<IWindowNotificationService>();
+
+        await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Accept), toasts, update, CancellationToken.None);
+
+        toasts.Received(1).ShowToast(
+            Arg.Is<string>(m => m.Contains(MarkdownText.InlineMidLine("My_List [beta]*")) && m.Contains(MarkdownText.InlineMidLine("2_0 [rc]"))
+                                && !m.Contains("My_List [beta]*") && !m.Contains("2_0 [rc]")),
+            ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
     }
 
     [Fact]

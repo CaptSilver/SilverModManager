@@ -72,6 +72,8 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public string ErrorText { get; init; } = "";
     public bool CanResume { get; init; } = false;
     public bool IsInstalled { get; init; } = false;
+    public string? SupersededBy { get; init; }
+    public string? OtherVersion { get; init; }
     public IReadOnlyList<WabbajackSkippedRow> SkippedFiles => [];
     // Gated like the real view model's commands, so a fixture shows a button greyed out when the page would.
     // Built on first use: the state is set by initializers that run after the constructor.
