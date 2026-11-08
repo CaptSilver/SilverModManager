@@ -2082,9 +2082,6 @@ Use it for {0}?</value>
     <data name="ToastNotification_Collection_updated" xml:space="preserve">
         <value>Collection updated</value>
     </data>
-    <data name="ToastNotification_Update_not_all_downloaded" xml:space="preserve">
-        <value>Some mods of revision {0} didn't download, so the collection wasn't updated. Check the Downloads page, then press Update again.</value>
-    </data>
     <data name="ToastNotification_Collection_is_busy" xml:space="preserve">
         <value>The collection is being installed, updated or reviewed. Install this mod when that finishes.</value>
     </data>

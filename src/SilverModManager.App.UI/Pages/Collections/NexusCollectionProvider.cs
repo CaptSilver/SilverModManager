@@ -5,9 +5,11 @@ using SilverModManager.Abstractions.Collections;
 using SilverModManager.App.UI.Pages.Collections.Update;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Helpers;
 using SilverModManager.Collections;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.Sdk.Loadouts;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
@@ -27,7 +29,36 @@ public sealed class NexusCollectionProvider(IServiceProvider services) : ICollec
     public IObservable<bool> IsListedAsInstalled(CollectionGroup.ReadOnly group) =>
         services.GetRequiredService<CollectionDownloader>().IsListedAsInstalledObservable(NexusGroup(group));
 
-    public IObservable<ICollectionUpdate?> ObserveUpdate(CollectionGroup.ReadOnly group) => Observable.Return<ICollectionUpdate?>(null);
+    /// <summary>
+    /// An update is offered while the latest published revision recorded on the group (<see cref="ManagedCollectionLoadoutGroup.LastPublishedRevisionNumber"/>,
+    /// written when the collection's page learns it) is newer than the revision the group is on. Only a change of that
+    /// pair emits again, so the menu isn't rebuilt per datom.
+    /// </summary>
+    public IObservable<ICollectionUpdate?> ObserveUpdate(CollectionGroup.ReadOnly group)
+    {
+        var id = NexusGroup(group).Id;
+        var connection = services.GetRequiredService<IConnection>();
+
+        return connection.ObserveDatoms(id)
+            .QueryWhenChanged(_ => NewerRevision(connection.Db, id))
+            .Prepend(NewerRevision(connection.Db, id))
+            .DistinctUntilChanged()
+            .Select(ICollectionUpdate? (offer) => offer is { } known
+                ? new NexusCollectionUpdate(services, NexusCollectionLoadoutGroup.Load(connection.Db, id), known.Target)
+                : null);
+    }
+
+    /// <summary>The revision the group is on and the newer one published, which the offer moves it to.</summary>
+    private readonly record struct Offer(RevisionNumber Installed, RevisionNumber Target);
+
+    private static Offer? NewerRevision(IDb db, EntityId id)
+    {
+        var installed = NexusCollectionLoadoutGroup.Load(db, id);
+        if (!installed.IsValid()) return null;
+        if (!ManagedCollectionLoadoutGroup.LastPublishedRevisionNumber.TryGetValue(installed, out var published)) return null;
+        var current = installed.Revision.RevisionNumber;
+        return published > current ? new Offer(current, published) : null;
+    }
 
     public IObservable<IChangeSet<CollectionSource, EntityId>> ObservePending(Loadout.ReadOnly loadout)
     {

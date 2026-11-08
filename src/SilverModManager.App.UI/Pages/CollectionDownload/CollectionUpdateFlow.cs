@@ -1,7 +1,6 @@
 using SilverModManager.App.UI.Controls.DragAndDrop;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Collections;
-using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Pages.Collections.Update;
@@ -18,8 +17,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace SilverModManager.App.UI.Pages.CollectionDownload;
 
 /// <summary>
-/// Updates the installed collection to a revision and tells the user how it went. The work is
-/// <see cref="CollectionUpdater"/>; this adds the toast, the question about the dropped mods and the error report.
+/// Drives an <see cref="ICollectionUpdate"/> from the review to the toast: the user's go-ahead, the download, the update
+/// itself, the question about dropped mods and the error report.
 /// </summary>
 internal static class CollectionUpdateFlow
 {
@@ -37,36 +36,6 @@ internal static class CollectionUpdateFlow
         if (result.OldVersionsKept > 0) text += Language.ToastNotification_Collection_update_kept_old_versions;
         if (result.SkippedRules.Count > 0) text += string.Format(Language.ToastNotification_Collection_update_skipped_rules, result.SkippedRules.Count);
         return text;
-    }
-
-    public enum UpdateStart
-    {
-        Updated,
-        /// <summary>The user isn't logged in, or can't download collections without premium.</summary>
-        CantDownload,
-        /// <summary>Some required mods didn't download, so the update would install only part of the revision.</summary>
-        NotAllDownloaded,
-    }
-
-    /// <summary>
-    /// One press of Update: downloads the required mods the new revision is missing, then updates to it.
-    /// </summary>
-    public static async Task<UpdateStart> DownloadThenUpdate(
-        Func<bool> isDownloaded,
-        Func<CancellationToken, Task<bool>> ensureCanDownload,
-        Func<CancellationToken, Task> download,
-        Func<CancellationToken, Task> update,
-        CancellationToken cancellationToken)
-    {
-        if (!isDownloaded())
-        {
-            if (!await ensureCanDownload(cancellationToken)) return UpdateStart.CantDownload;
-            await download(cancellationToken);
-            if (!isDownloaded()) return UpdateStart.NotAllDownloaded;
-        }
-
-        await update(cancellationToken);
-        return UpdateStart.Updated;
     }
 
     internal static readonly ButtonDefinitionId UndoId = ButtonDefinitionId.From("undo-update");
@@ -113,13 +82,15 @@ internal static class CollectionUpdateFlow
             }
 
             var outcome = await update.Apply(choices.SkipMissing, cancellationToken);
-            var succeeded = outcome is { Error: null, Failed: 0 };
+            var succeeded = outcome is { Error: null, Failed: 0, Warnings: 0 };
             if (outcome.Error is not null) logger.LogError(outcome.Error, "Updating `{Name}` to {To} stopped early", update.Name, update.NewVersionText);
             notifications.ShowToast(outcome.ToastText, succeeded ? ToastNotificationVariant.Success : ToastNotificationVariant.Failure);
 
             if (outcome is { Error: not null, Undo: { } undo } && await OfferUndo(windowManager, notifications, logger, update, outcome, undo)) return;
 
-            var toRemove = await DroppedModsPrompt.Ask(windowManager, update.Name, update.NewVersionText, outcome.DroppedToAsk);
+            var toRemove = outcome.DroppedPromptRevision is { } revision
+                ? await DroppedModsPrompt.Ask(windowManager, update.Name, revision, outcome.DroppedToAsk)
+                : await DroppedModsPrompt.Ask(windowManager, update.Name, update.NewVersionText, outcome.DroppedToAsk);
             if (toRemove.Count > 0) await CollectionUpdater.RemoveDropped(serviceProvider, toRemove);
         }
         catch (Exception e) when (!TimeoutDetection.IsRealCancellation(e))
@@ -168,49 +139,5 @@ internal static class CollectionUpdateFlow
 
         notifications.ShowToast(string.Format(Language.CollectionUpdate_Undone, update.Name, update.CurrentVersionText), ToastNotificationVariant.Success);
         return true;
-    }
-
-    public static async Task Run(
-        IServiceProvider serviceProvider,
-        IWindowManager windowManager,
-        IWindowNotificationService notifications,
-        NexusCollectionLoadoutGroup.ReadOnly group,
-        CollectionRevisionMetadata.ReadOnly revision,
-        CancellationToken cancellationToken)
-    {
-        var logger = serviceProvider.GetRequiredService<ILogger<CollectionDownloadViewModel>>();
-        try
-        {
-            var result = await CollectionUpdater.Update(serviceProvider, group, revision, cancellationToken);
-            var succeeded = result.Error is null && result.Failed.Count == 0 && result.SkippedRules.Count == 0;
-            notifications.ShowToast(ResultText(result, (int)revision.RevisionNumber.Value), succeeded ? ToastNotificationVariant.Success : ToastNotificationVariant.Failure);
-            if (result.Error is not null) logger.LogError(result.Error, "Updating collection `{Slug}` to revision {To} stopped early", revision.Collection.Slug, revision.RevisionNumber);
-            logger.LogDebug("Updated collection `{Slug}` to revision {To}: {Failed} failed, {Kept} old versions kept, {Dropped} dropped mods to ask about",
-                revision.Collection.Slug, revision.RevisionNumber, result.Failed.Count, result.OldVersionsKept, result.Dropped.Count);
-
-            var toRemove = await DroppedModsPrompt.Ask(windowManager, revision.Collection.Name, (int)revision.RevisionNumber.Value, result.Dropped);
-            if (toRemove.Count > 0) await CollectionUpdater.RemoveDropped(serviceProvider, toRemove);
-        }
-        catch (CollectionUpdateRefusedException e)
-        {
-            // Refused before the switch, but the repair that runs first may have moved mods out of the collection.
-            logger.LogError(e, "Updating collection `{Slug}` to revision {To} was refused", revision.Collection.Slug, revision.RevisionNumber);
-            notifications.ShowToast(
-                string.Format(Language.ToastNotification_Couldn_t_update_to_revision__0____1_, revision.RevisionNumber, e.Message),
-                ToastNotificationVariant.Failure
-            );
-
-            var toRemove = await DroppedModsPrompt.Ask(windowManager, revision.Collection.Name, (int)group.Revision.RevisionNumber.Value, e.Repaired.Dropped);
-            if (toRemove.Count > 0) await CollectionUpdater.RemoveDropped(serviceProvider, toRemove);
-        }
-        catch (Exception e) when (!TimeoutDetection.IsRealCancellation(e))
-        {
-            // Not rethrown: the commands that call this have no error handler, so a throw would swallow the explanation.
-            logger.LogError(e, "Updating collection `{Slug}` to revision {To} failed", revision.Collection.Slug, revision.RevisionNumber);
-            notifications.ShowToast(
-                string.Format(Language.ToastNotification_Couldn_t_update_to_revision__0____1_, revision.RevisionNumber, e.Message),
-                ToastNotificationVariant.Failure
-            );
-        }
     }
 }

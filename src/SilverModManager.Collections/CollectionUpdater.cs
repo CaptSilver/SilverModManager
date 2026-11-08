@@ -18,6 +18,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.Query;
@@ -115,6 +116,21 @@ public static partial class CollectionUpdater
         }
 
         return Optional<NexusCollectionLoadoutGroup.ReadOnly>.None;
+    }
+
+    /// <summary>
+    /// Records the newest revision Nexus has published on an installed group, which is what lets the loadout page offer
+    /// the update without asking Nexus. Writes nothing when the group already holds that number.
+    /// </summary>
+    public static async ValueTask RecordLatestPublishedRevision(IConnection connection, NexusCollectionLoadoutGroup.ReadOnly group, RevisionNumber latest)
+    {
+        var current = NexusCollectionLoadoutGroup.Load(connection.Db, group.Id);
+        if (!current.IsValid()) return;
+        if (ManagedCollectionLoadoutGroup.LastPublishedRevisionNumber.TryGetValue(current, out var recorded) && recorded == latest) return;
+
+        using var tx = connection.BeginTransaction();
+        tx.Add(group.Id, ManagedCollectionLoadoutGroup.LastPublishedRevisionNumber, latest);
+        await tx.Commit();
     }
 
     /// <summary>

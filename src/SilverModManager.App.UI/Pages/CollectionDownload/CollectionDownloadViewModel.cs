@@ -18,6 +18,7 @@ using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Extensions;
 using SilverModManager.App.UI.Overlays;
+using SilverModManager.App.UI.Pages.Collections.Update;
 using SilverModManager.App.UI.Pages.LibraryPage;
 using SilverModManager.App.UI.Pages.LoadoutPage;
 using SilverModManager.App.UI.Pages.TextEdit;
@@ -103,29 +104,11 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
         OptionalDownloadsCount = CollectionDownloader.CountItems(_revision, CollectionDownloader.ItemType.Optional);
 
 
-        async Task<bool> EnsureCanDownloadCollections(CancellationToken cancellationToken)
-        {
-            if (!await loginManager.EnsureLoggedIn("Download Collection", cancellationToken)) return false;
-            if (loginManager.IsPremium) return true;
+        Task<bool> EnsureCanDownloadCollections(CancellationToken cancellationToken) =>
+            CollectionDownloadGate.EnsureCanDownloadCollections(loginManager, windowManager, osInterop, cancellationToken);
 
-            var dialogResult = await windowManager.ShowDialog(CollectionDialogs.PremiumCollectionDialog(), DialogWindowType.Modal);
-            if (dialogResult.ButtonId == ButtonDefinitionId.From("go-premium")) osInterop.OpenUri(NexusModsUrlBuilder.UpgradeToPremiumUri);
-            return false;
-        }
-
-        async Task DownloadThenUpdate(NexusCollectionLoadoutGroup.ReadOnly installed, CollectionRevisionMetadata.ReadOnly revision, CancellationToken cancellationToken)
-        {
-            var items = CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Required);
-            var start = await CollectionUpdateFlow.DownloadThenUpdate(
-                isDownloaded: () => CollectionDownloader.IsFullyDownloaded(items, connection.Db),
-                ensureCanDownload: EnsureCanDownloadCollections,
-                download: token => collectionDownloader.DownloadItems(revision, CollectionDownloader.ItemType.Required, connection.Db, targetLoadout, token).AsTask(),
-                update: token => CollectionUpdateFlow.Run(serviceProvider, windowManager, _notificationService, installed, revision, token),
-                cancellationToken);
-            logger.LogDebug("Update of collection `{Slug}` to revision {To}: {Start}", revision.Collection.Slug, revision.RevisionNumber, start);
-            if (start == CollectionUpdateFlow.UpdateStart.NotAllDownloaded)
-                _notificationService.ShowToast(string.Format(Language.ToastNotification_Update_not_all_downloaded, revision.RevisionNumber), ToastNotificationVariant.Failure);
-        }
+        Task UpdateInstalled(NexusCollectionLoadoutGroup.ReadOnly installed, CollectionRevisionMetadata.ReadOnly revision, CancellationToken cancellationToken) =>
+            CollectionUpdateFlow.Run(serviceProvider, windowManager, _notificationService, new NexusCollectionUpdate(serviceProvider, installed, revision.RevisionNumber), cancellationToken);
 
         CommandDownloadRequiredItems = _isDownloadingRequiredItems.CombineLatest(_canDownloadRequiredItems, static (isDownloading, canDownload) => !isDownloading && canDownload)
             .ToReactiveCommand<Unit>(
@@ -135,7 +118,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     var installed = CollectionUpdater.GetInstalledGroup(_collection, targetLoadout, connection.Db);
                     if (installed.HasValue && CollectionUpdater.IsUpdateTo(installed.Value, revisionMetadata))
                     {
-                        await DownloadThenUpdate(installed.Value, revisionMetadata, cancellationToken);
+                        await UpdateInstalled(installed.Value, revisionMetadata, cancellationToken);
                         return;
                     }
 
@@ -210,7 +193,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     if (CollectionUpdater.IsUpdateTo(installed.Value, revisionMetadata))
                     {
                         logger.LogDebug("Primary action on revision {To} of `{Slug}`: updating the installed revision {From}", revisionMetadata.RevisionNumber, _collection.Slug, installed.Value.Revision.RevisionNumber);
-                        await CollectionUpdateFlow.Run(serviceProvider, windowManager, _notificationService, installed.Value, revisionMetadata, cancellationToken);
+                        await UpdateInstalled(installed.Value, revisionMetadata, cancellationToken);
                     }
                     else
                     {
@@ -410,7 +393,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     if (installed.HasValue && CollectionUpdater.IsUpdateTo(installed.Value, revision))
                     {
                         // Not the command's token: replacing the tab disposes this page, which would cancel the update half-way.
-                        await DownloadThenUpdate(installed.Value, revision, CancellationToken.None);
+                        await UpdateInstalled(installed.Value, revision, CancellationToken.None);
                     }
                     else
                     {
@@ -669,7 +652,18 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
 
                 R3.Observable.Return(_revision)
                     .ObserveOnThreadPool()
-                    .SelectAwait((revision, cancellationToken) => nexusModsLibrary.GetLastPublishedRevisionNumber(revision.Collection, cancellationToken))
+                    .SelectAwait(async (revision, cancellationToken) =>
+                    {
+                        var result = await nexusModsLibrary.GetLastPublishedRevisionNumber(revision.Collection, cancellationToken);
+                        // The loadout page offers the update from this number, so the installed group keeps it.
+                        if (result.TryGetData(out var published) && published.HasValue
+                            && CollectionUpdater.GetInstalledGroup(revision.Collection, targetLoadout, connection.Db) is { HasValue: true, Value: var installed })
+                        {
+                            await CollectionUpdater.RecordLatestPublishedRevision(connection, installed, published.Value);
+                        }
+
+                        return result;
+                    })
                     .ObserveOnUIThreadDispatcher()
                     .Subscribe(this, static (graphQlResult, self) =>
                         {

@@ -109,56 +109,6 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
         _ = windows.DidNotReceive().ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
     }
 
-    /// <summary>Records what one press of Update did, in order.</summary>
-    private sealed class UpdatePress(bool downloaded, bool canDownload = true, bool downloadCompletes = true)
-    {
-        public List<string> Steps { get; } = [];
-        private bool _downloaded = downloaded;
-
-        public Task<CollectionUpdateFlow.UpdateStart> Run() => CollectionUpdateFlow.DownloadThenUpdate(
-            isDownloaded: () => _downloaded,
-            ensureCanDownload: _ => { Steps.Add("check login"); return Task.FromResult(canDownload); },
-            download: _ => { Steps.Add("download"); _downloaded = downloadCompletes; return Task.CompletedTask; },
-            update: _ => { Steps.Add("update"); return Task.CompletedTask; },
-            CancellationToken.None);
-    }
-
-    [Fact]
-    public async Task UpdateDownloadsTheMissingModsAndUpdatesInOnePress()
-    {
-        var press = new UpdatePress(downloaded: false);
-
-        (await press.Run()).Should().Be(CollectionUpdateFlow.UpdateStart.Updated);
-        press.Steps.Should().Equal("check login", "download", "update");
-    }
-
-    [Fact]
-    public async Task UpdateSkipsTheDownloadWhenEverythingIsDownloaded()
-    {
-        var press = new UpdatePress(downloaded: true);
-
-        (await press.Run()).Should().Be(CollectionUpdateFlow.UpdateStart.Updated);
-        press.Steps.Should().Equal("update");
-    }
-
-    [Fact]
-    public async Task UpdateStopsWhenTheModsCantBeDownloaded()
-    {
-        var press = new UpdatePress(downloaded: false, canDownload: false);
-
-        (await press.Run()).Should().Be(CollectionUpdateFlow.UpdateStart.CantDownload);
-        press.Steps.Should().Equal("check login");
-    }
-
-    [Fact]
-    public async Task UpdateDoesntRunOnAPartialDownload()
-    {
-        var press = new UpdatePress(downloaded: false, downloadCompletes: false);
-
-        (await press.Run()).Should().Be(CollectionUpdateFlow.UpdateStart.NotAllDownloaded);
-        press.Steps.Should().Equal("check login", "download");
-    }
-
     [Fact]
     public void TheInstalledStatusReadsReadyWithNothingToReview()
     {
@@ -308,8 +258,10 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
         WritesRestorePoint: writesRestorePoint, DroppedAreRemovedNotAsked: false);
 
     private static CollectionUpdateOutcome OutcomeOf(
-        Exception? error = null, Func<CancellationToken, Task>? undo = null, IReadOnlyList<DroppedMod>? toAsk = null, IReadOnlyList<string>? removed = null) =>
-        new(Updated: error is null, Failed: 0, Pending: 0, DroppedToAsk: toAsk ?? [], Removed: removed ?? [], RestorePoint: null, Undo: undo, Error: error, ToastText: "Toast text");
+        Exception? error = null, Func<CancellationToken, Task>? undo = null, IReadOnlyList<DroppedMod>? toAsk = null, IReadOnlyList<string>? removed = null,
+        int warnings = 0, int? droppedPromptRevision = null) =>
+        new(Updated: error is null, Failed: 0, Pending: 0, DroppedToAsk: toAsk ?? [], Removed: removed ?? [], RestorePoint: null, Undo: undo, Error: error, ToastText: "Toast text",
+            Warnings: warnings, DroppedPromptRevision: droppedPromptRevision);
 
     /// <summary>Records what the flow asked of an update, in order.</summary>
     private sealed class FakeUpdate(bool downloaded, CollectionUpdateOutcome? outcome = null) : ICollectionUpdate
@@ -414,6 +366,42 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
 
         update.Calls.Should().NotContain("apply");
         toasts.Received(1).ShowToast(Arg.Is<string>(m => m.Contains("2.0")), ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+    }
+
+    [Fact]
+    public async Task AnUpdateThatSucceededWithWarningsShowsAFailureToast()
+    {
+        var update = new FakeUpdate(downloaded: true, OutcomeOf(warnings: 2));
+        var toasts = Substitute.For<IWindowNotificationService>();
+
+        await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Accept), toasts, update, CancellationToken.None);
+
+        toasts.Received(1).ShowToast("Toast text", ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), null, null);
+    }
+
+    [Fact]
+    public async Task AnUpdateWithoutWarningsOrFailuresShowsASuccessToast()
+    {
+        var update = new FakeUpdate(downloaded: true, OutcomeOf());
+        var toasts = Substitute.For<IWindowNotificationService>();
+
+        await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Accept), toasts, update, CancellationToken.None);
+
+        toasts.Received(1).ShowToast("Toast text", ToastNotificationVariant.Success, Arg.Any<TimeSpan?>(), null, null);
+    }
+
+    [Fact]
+    public async Task TheDroppedModsQuestionNamesTheVersionUnlessTheOutcomeNamesARevision()
+    {
+        var byVersion = Windows(Pressed("accept"), Pressed("keep-all"));
+        await CollectionUpdateFlow.Run(Provider, byVersion, Substitute.For<IWindowNotificationService>(), new FakeUpdate(true, OutcomeOf(toAsk: Dropped)), CancellationToken.None);
+        var byRevision = Windows(Pressed("accept"), Pressed("keep-all"));
+        await CollectionUpdateFlow.Run(Provider, byRevision, Substitute.For<IWindowNotificationService>(), new FakeUpdate(true, OutcomeOf(toAsk: Dropped, droppedPromptRevision: 1)), CancellationToken.None);
+
+        static string QuestionText(IWindowManager windows) =>
+            ((Dialog)DialogsShown(windows)[1]).ViewModel.ContentViewModel.Should().BeOfType<DialogStandardContentViewModel>().Subject.Text;
+        QuestionText(byVersion).Should().Contain("aren't in version 2.0");
+        QuestionText(byRevision).Should().Contain("aren't in revision 1.").And.NotContain("version");
     }
 
     [Fact]

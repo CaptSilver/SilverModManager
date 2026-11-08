@@ -43,6 +43,8 @@ using Disposable = System.Reactive.Disposables.Disposable;
 using Observable = System.Reactive.Linq.Observable;
 using ReactiveCommand = ReactiveUI.ReactiveCommand;
 
+using SilverModManager.App.UI.Pages.Collections.Update;
+
 namespace SilverModManager.App.UI.Pages.Collections;
 
 /// <summary>Reads the collection.json out of a collection's archive.</summary>
@@ -75,7 +77,7 @@ public sealed class NexusCollectionSource : CollectionSource
 
         var collection = revision.Collection;
         AuthorName = collection.Author.Name;
-        VersionText = $"Revision {revision.RevisionNumber.Value}";
+        VersionText = NexusCollectionUpdate.VersionText(revision.RevisionNumber);
         // Every number reads as zero when Nexus left it out, so the header renders as it always has.
         Stats = new CollectionStats(
             Rating: Percent.CreateClamped(revision.OverallRating.ValueOr(0)),
