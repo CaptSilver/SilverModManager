@@ -921,6 +921,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastSyncedLoadout, loadout.Id);
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastSyncedLoadoutTransaction, EntityId.From(tx.ThisTxId.Value));
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastScannedDiskStateTransaction, EntityId.From(tx.ThisTxId.Value));
+        // This sync took in whatever the pending launch finish was owed, so the marker goes in the same commit: no
+        // window where the sync is recorded and the marker still asks for another one.
+        tx.RetractCurrent(gameMetadataId, Sdk.Games.GameInstallMetadata.LaunchFinishPending);
+        tx.RetractCurrent(gameMetadataId, Sdk.Games.GameInstallMetadata.LaunchFinishPendingSession);
+        tx.RetractCurrent(gameMetadataId, Sdk.Games.GameInstallMetadata.LaunchFinishPendingGates);
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastApplyLeftFilesUnextracted,
             syncTree.Values.Any(node => node.Actions.HasFlag(Actions.WarnOfUnableToExtract)));
         tx.Add(loadout.Id, Loadout.LastAppliedDateTime, DateTime.UtcNow);
