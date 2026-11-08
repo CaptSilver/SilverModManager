@@ -1,5 +1,7 @@
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using FluentAssertions;
+using SilverModManager.Games.FromSoft.EldenRing;
 using SilverModManager.Games.FromSoft.Formats;
 using SilverModManager.Games.FromSoft.Formats.Native;
 using SilverModManager.Sdk.Native;
@@ -105,5 +107,36 @@ public class KrakenTests
     {
         var act = () => Kraken.EnsureExact(10, 10);
         act.Should().NotThrow();
+    }
+
+    /// <summary>
+    /// The SHA-256 of each committed DCX container's decoded payload, computed outside this code base (zlib and the
+    /// zstd tool). The same file must give the same digest on every architecture. These containers are Deflate and
+    /// Zstandard; no Kraken container is committed (game and mod files are not), so they do not exercise libooz.
+    /// </summary>
+    public static TheoryData<string, string> DcxFixtureDigests => new()
+    {
+        { "dflt_payload.dcx", "239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e5" },
+        { "planner_high_01_common.tpf.dcx", "54c605f1b45fa2a23037445f6e92c0c95b94b21755bfdbb9682cfc82b535e6ca" },
+        { "planner_high_item.msgbnd.dcx", "8e62608129bad3de8332e6ac97136b72896aa18e2a95437596e87681d8a90846" },
+        { "planner_low_01_common.tpf.dcx", "6a4e571e3376190db383d8e2f9f40261c0adc4359f540e30126fb02723695ed4" },
+        { "planner_low_item.msgbnd.dcx", "c87b030b88c52102ac649de38efc1c7c93bc1e594583580452e01a078c0f490b" },
+        { "zstd_pinned.dcx", "f63f3ebc8a5c414d9bf393f7a72007f6aea2956181dcf87a7748ed47bf18ef39" },
+    };
+
+    [Theory]
+    [MemberData(nameof(DcxFixtureDigests))]
+    public void EveryCommittedDcxFixtureDecodesToTheRecordedDigest(string name, string digest)
+    {
+        var decoded = Dcx.Read(GoldenFilesTests.Read(name), EldenRingGame.Definition.Formats);
+
+        Convert.ToHexStringLower(SHA256.HashData(decoded)).Should().Be(digest);
+    }
+
+    [Fact]
+    public void EveryCommittedDcxFixtureHasARecordedDigest()
+    {
+        var committed = Directory.EnumerateFiles(GoldenFilesTests.Folder, "*.dcx").Select(Path.GetFileName);
+        committed.Should().BeEquivalentTo(DcxFixtureDigests.Select(row => row.Data.Item1));
     }
 }

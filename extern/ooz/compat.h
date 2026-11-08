@@ -4,7 +4,15 @@
 #include <string.h>
 #include <assert.h>
 #include <stdint.h>
+#if defined(__x86_64__) || defined(__i386__)
 #include <x86intrin.h>
+#else
+// kraken_lib.cpp and lzna.cpp are written against SSE2; sse2neon maps those intrinsics onto NEON.
+#include "sse2neon.h"
+// x86intrin.h supplies _rotl on x86. Keep this definition in this branch; at file scope it would clash
+// with that one.
+static inline uint32_t _rotl(uint32_t x, int n) { return (x << n) | (x >> ((32 - n) & 31)); }
+#endif
 
 typedef unsigned char byte;
 typedef unsigned char uint8;
