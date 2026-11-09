@@ -249,6 +249,24 @@ public class ModlistInstallRunsTests(ITestOutputHelper helper) : InstallTestBase
     }
 
     [Fact]
+    public async Task AnInstallIsReportedAsWritingIntoItsLoadoutUntilItEnds_AndNotForAnotherLoadout()
+    {
+        var busy = await CreateLoadout();
+        var idle = await CreateLoadout();
+        var (running, gate) = BeginHeld(NewJob(busy, await AddList(), Options));
+        var seenBusy = new List<bool>();
+        var seenIdle = new List<bool>();
+        using var _ = Runs.ObserveWritingInto(busy.LoadoutId).Subscribe(seenBusy.Add);
+        using var __ = Runs.ObserveWritingInto(idle.LoadoutId).Subscribe(seenIdle.Add);
+
+        gate.SetResult();
+        await running;
+
+        seenBusy.Should().Equal(true, false);
+        seenIdle.Should().Equal(false);
+    }
+
+    [Fact]
     public async Task AnInstallThatIsCreatedButNotYetRunningIsInstallingForBothTheCheckAndTheObservable()
     {
         var loadout = await CreateLoadout();

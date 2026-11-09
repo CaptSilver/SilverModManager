@@ -12,9 +12,21 @@ namespace SilverModManager.Games.TestFramework;
 public class FakeLoadoutInstallActivity : ILoadoutInstallActivity
 {
     private readonly Dictionary<LoadoutId, BehaviorSubject<bool>> _subjects = new();
+    private readonly Dictionary<LoadoutId, BehaviorSubject<bool>> _writing = new();
 
     /// <summary>Plays an install into <paramref name="loadout"/> starting or ending.</summary>
-    public void SetInstalling(LoadoutId loadout, bool installing) => SubjectOf(loadout).OnNext(installing);
+    public void SetInstalling(LoadoutId loadout, bool installing)
+    {
+        WritingOf(loadout).OnNext(installing);
+        SubjectOf(loadout).OnNext(installing);
+    }
+
+    /// <summary>Plays an update that stopped part way: the loadout cannot be applied, but nothing is writing into it.</summary>
+    public void SetStalled(LoadoutId loadout)
+    {
+        WritingOf(loadout).OnNext(false);
+        SubjectOf(loadout).OnNext(true);
+    }
 
     /// <inheritdoc />
     public bool IsInstallingInto(LoadoutId loadout) => SubjectOf(loadout).Value;
@@ -22,11 +34,18 @@ public class FakeLoadoutInstallActivity : ILoadoutInstallActivity
     /// <inheritdoc />
     public IObservable<bool> ObserveInstallingInto(LoadoutId loadout) => SubjectOf(loadout);
 
-    private BehaviorSubject<bool> SubjectOf(LoadoutId loadout)
+    /// <inheritdoc />
+    public IObservable<bool> ObserveWritingInto(LoadoutId loadout) => WritingOf(loadout);
+
+    private BehaviorSubject<bool> SubjectOf(LoadoutId loadout) => Of(_subjects, loadout);
+
+    private BehaviorSubject<bool> WritingOf(LoadoutId loadout) => Of(_writing, loadout);
+
+    private static BehaviorSubject<bool> Of(Dictionary<LoadoutId, BehaviorSubject<bool>> subjects, LoadoutId loadout)
     {
-        lock (_subjects)
+        lock (subjects)
         {
-            if (!_subjects.TryGetValue(loadout, out var subject)) _subjects[loadout] = subject = new BehaviorSubject<bool>(false);
+            if (!subjects.TryGetValue(loadout, out var subject)) subjects[loadout] = subject = new BehaviorSubject<bool>(false);
             return subject;
         }
     }

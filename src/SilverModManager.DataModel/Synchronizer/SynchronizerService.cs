@@ -56,6 +56,7 @@ public class SynchronizerService : ISynchronizerService, IDisposable
         _loadoutStates = Loadout.All(conn.Db).ToDictionary(e => e.LoadoutId, _ => new SynchronizerState());
         _fileHashesService = fileHashesService;
         _serviceProvider = serviceProvider;
+        _timeProvider = serviceProvider.GetService<TimeProvider>() ?? TimeProvider.System;
         _loadoutManager = new Lazy<ILoadoutManager>(serviceProvider.GetRequiredService<ILoadoutManager>);
     }
 
@@ -642,6 +643,11 @@ public class SynchronizerService : ISynchronizerService, IDisposable
     
     private readonly Dictionary<LoadoutId, Observable<LoadoutSynchronizerState>> _statusObservables = new();
 
+    /// <summary>How long the inputs of a loadout's status must stay unchanged before it is compared with the disk.</summary>
+    private static readonly TimeSpan StatusSettleTime = TimeSpan.FromMilliseconds(250);
+
+    private readonly TimeProvider _timeProvider;
+
     // The inputs of a loadout as of an apply never change, and a status is asked for far more often than applies run.
     private readonly ConcurrentDictionary<(LoadoutId Id, TxId Tx), SyncInputs> _inputsAtApply = new();
     private readonly SemaphoreSlim _statusSemaphore = new(1, 1);
@@ -728,11 +734,36 @@ public class SynchronizerService : ISynchronizerService, IDisposable
         var waitsForArchive = 0;
         var versionAtLastLook = -1L; // not looked yet
         var statusFailureLogged = 0;
+
+        // An install writes thousands of files over minutes, one revision after another. A comparison made meanwhile
+        // walks every file of the loadout and is out of date at the next commit, and it competes with the install for
+        // the CPU and the disk, so nothing is compared while one runs. The install ending is itself an input: it
+        // triggers the one comparison that covers all it wrote, whether it finished, failed or was cancelled. Only a
+        // running install counts: an update that stopped part way blocks Apply, but nothing writes, so edits to it
+        // are still compared. The first look is made regardless, so a status asked for mid-install has a value.
+        var installing = _serviceProvider.GetService<ILoadoutInstallActivity>()?.ObserveWritingInto(loadoutId).ToObservable()
+                         ?? R3.Observable.Return(false);
+        var looked = false;
         var statusObservable = isBusy.CombineLatest(appliedState,
                 revisions,
-                (busy, applied, revisionBasis) => (busy, applied, revisionBasis)
+                installing,
+                (busy, applied, revisionBasis, installingNow) => (busy, applied, revisionBasis, installingNow)
             )
             .DistinctUntilChanged()
+            .Do(onSubscribe: () => looked = false)
+            // Revisions come in bursts (a mod install commits several, and each file backup raises the archive
+            // trigger), and the comparison that is running when the next one lands would only be followed by another.
+            // Waiting for a quiet moment turns a burst into one comparison, and a lone edit shows up a quarter of a
+            // second late, which no one sees. A debounce, not "latest wins while one runs": the latter still starts a
+            // comparison on the first revision of every burst. It sits before the install gate so that a revision
+            // held back here cannot slip through after an install has begun.
+            .Debounce(StatusSettleTime, _timeProvider)
+            .Where(tuple =>
+            {
+                if (tuple.installingNow && looked) return false;
+                looked = true;
+                return true;
+            })
             .SelectAwait(
                 async (tuple, observerToken) =>
                 {

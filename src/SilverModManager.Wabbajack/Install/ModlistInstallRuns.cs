@@ -107,15 +107,20 @@ public sealed class ModlistInstallRuns(IJobMonitor monitor, IConnection connecti
     /// <remarks>Counts the same jobs as <see cref="IsInstallingInto"/>: the Apply button must not come on while the check would refuse.</remarks>
     public IObservable<bool> ObserveInstallingInto(LoadoutId loadout)
     {
-        var jobs = monitor.GetObservableChangeSet<InstallModlistJob>()
-            .FilterOnObservable(job => job.ObservableStatus.Select(status => status.IsUnfinished()))
-            .QueryWhenChanged(query => query.Items.Any(job => job.Definition is InstallModlistJob definition && definition.TargetLoadout == loadout))
-            .Prepend(FindInto(loadout) is not null);
         var updates = connection.Revisions
             .Select(db => HasUnfinishedUpdate(db, loadout))
             .Prepend(HasUnfinishedUpdate(connection.Db, loadout));
-        return jobs.CombineLatest(updates, (running, unfinished) => running || unfinished).DistinctUntilChanged();
+        return ObserveWritingInto(loadout).CombineLatest(updates, (running, unfinished) => running || unfinished).DistinctUntilChanged();
     }
+
+    /// <inheritdoc />
+    /// <remarks>A running job only; the unfinished update <see cref="ObserveInstallingInto"/> also counts has no job.</remarks>
+    public IObservable<bool> ObserveWritingInto(LoadoutId loadout)
+        => monitor.GetObservableChangeSet<InstallModlistJob>()
+            .FilterOnObservable(job => job.ObservableStatus.Select(status => status.IsUnfinished()))
+            .QueryWhenChanged(query => query.Items.Any(job => job.Definition is InstallModlistJob definition && definition.TargetLoadout == loadout))
+            .Prepend(FindInto(loadout) is not null)
+            .DistinctUntilChanged();
 
     private IEnumerable<RunningModlistInstall> Running()
     {

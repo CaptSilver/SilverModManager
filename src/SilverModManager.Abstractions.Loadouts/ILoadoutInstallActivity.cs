@@ -26,4 +26,11 @@ public interface ILoadoutInstallActivity
 
     /// <summary>The current answer of <see cref="IsInstallingInto"/>, then every change of it.</summary>
     IObservable<bool> ObserveInstallingInto(LoadoutId loadout);
+
+    /// <summary>
+    /// Whether something is running and writing into <paramref name="loadout"/> right now, then every change. Narrower
+    /// than <see cref="ObserveInstallingInto"/>: an update that stopped part way keeps the loadout from being applied,
+    /// but nothing is writing, so what the loadout holds is not about to change under a comparison.
+    /// </summary>
+    IObservable<bool> ObserveWritingInto(LoadoutId loadout);
 }

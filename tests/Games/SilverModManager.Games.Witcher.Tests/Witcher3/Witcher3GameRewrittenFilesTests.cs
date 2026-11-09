@@ -432,6 +432,10 @@ public class Witcher3GameRewrittenFilesTests(ITestOutputHelper helper)
         await Synchronizer.Synchronize(Refresh(loadout));
         var states = new List<LoadoutSynchronizerState>();
         using var watch = (await SynchronizerService.StatusForLoadout(loadout.LoadoutId)).Subscribe(states.Add);
+
+        // The first look has to finish before the file arrives: a revision that lands while the status is still
+        // settling joins that look instead of getting one of its own, and the count below would never be reached.
+        await StatusQuiet(states, atLeast: 1);
         await AddLateFileOutsideMods(loadout);
 
         // Every evaluation emits, so the status has caught up with the late file once it has emitted again and
