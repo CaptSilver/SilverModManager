@@ -17,6 +17,7 @@ public sealed class ModlistInstallProgress
     // single Archive slot is only the one that reported last; this is where the others keep their counts.
     private readonly Dictionary<int, (ArchiveBuild Build, long Touched)> _building = new();
     private long _touches;
+    private int _finished;
 
     /// <summary>
     /// A Bethesda archive the Write phase is building. The archive is one item of the phase however long it takes, so
@@ -30,7 +31,17 @@ public sealed class ModlistInstallProgress
             => string.Create(culture, $"Building archive {Number} of {Count}: {Name} ({DoneFiles:N0} of {TotalFiles:N0} files)");
     }
 
+    /// <summary>
+    /// How the archive builds stand. <paramref name="Shown"/> is the oldest build still running, so the name on the page
+    /// stays put until that archive finishes instead of hopping to whichever build reported last.
+    /// </summary>
+    /// <param name="Done">Archives that have finished building.</param>
+    /// <param name="Running">Archives building right now.</param>
+    /// <param name="Count">Archives the list builds in all.</param>
+    public sealed record ArchiveBuilds(int Done, int Running, int Count, ArchiveBuild Shown);
+
     /// <param name="Archive">The archive being built, or null when none is; with several building at once, the one that reported last.</param>
+    /// <param name="Builds">Where the archive builds stand, or null when none is building. The page shows this; <paramref name="Archive"/> is what the log follows.</param>
     /// <param name="ArchiveItems">How much of the phase's items the archives still being built amount to, from the files packed so far; each is less than one because the archive's last step follows its last file. An archive's item is counted by <see cref="Advance"/> when the in-order writer records it, which can be after the archive ends.</param>
     /// <param name="DroppedCount">Paths the list has that the app never installs (Mod Organizer's own files, other profiles, seeds); they leave no skip row.</param>
     /// <param name="ExtraCount">Files of tool folders, which the loadout does not deploy.</param>
@@ -47,7 +58,8 @@ public sealed class ModlistInstallProgress
         Size EstimatedExtractedSize,
         bool IsEstimateLowerBound,
         ArchiveBuild? Archive = null,
-        double ArchiveItems = 0)
+        double ArchiveItems = 0,
+        ArchiveBuilds? Builds = null)
     {
         public static readonly Snapshot Empty = new(InstallPhase.Check, 0, 0, 0, 0, 0, 0, Size.From(0), false);
     }
@@ -91,7 +103,11 @@ public sealed class ModlistInstallProgress
                 _building[number] = (running.Build with { DoneFiles = running.Build.DoneFiles + 1 }, ++_touches);
         });
 
-    public void EndArchive(int number) => ChangeArchives(() => _building.Remove(number));
+    public void EndArchive(int number)
+        => ChangeArchives(() =>
+        {
+            if (_building.Remove(number)) _finished++;
+        });
 
     // The slot and the partial items are worked out from every running build each time, so one ending can never
     // hide another.
@@ -102,7 +118,10 @@ public sealed class ModlistInstallProgress
             change();
             var shown = _building.Count == 0 ? null : _building.Values.MaxBy(b => b.Touched).Build;
             var items = _building.Values.Sum(b => b.Build.TotalFiles <= 0 ? 0 : Math.Min((double)b.Build.DoneFiles / b.Build.TotalFiles, MostOfAnItem));
-            _subject.OnNext(_subject.Value with { Archive = shown, ArchiveItems = items });
+            var builds = shown is null
+                ? null
+                : new ArchiveBuilds(_finished, _building.Count, shown.Count, _building.Values.MinBy(b => b.Build.Number).Build);
+            _subject.OnNext(_subject.Value with { Archive = shown, ArchiveItems = items, Builds = builds });
         }
     }
 

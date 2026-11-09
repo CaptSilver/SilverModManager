@@ -31,9 +31,20 @@ public class WabbajackModlistTextTests
     }
 
     [Fact]
-    public void Progress_NamesTheArchiveBeingBuiltAndHowManyOfItsFilesAreIn()
-        => WabbajackModlistText.Progress(Progress(InstallPhase.Write, 95, 100) with { Archive = new ModlistInstallProgress.ArchiveBuild("pack.bsa", 3, 12, 40, 58) })
-            .Should().Be("Building archive 3 of 12: pack.bsa (40 of 58 files)");
+    public void Progress_CountsTheArchivesDoneAndRunningAndNamesTheOneShown()
+        => WabbajackModlistText.Progress(Progress(InstallPhase.Write, 95, 100) with
+            {
+                Builds = new ModlistInstallProgress.ArchiveBuilds(Done: 94, Running: 3, Count: 141, new ModlistInstallProgress.ArchiveBuild("pack.bsa", 95, 141, 1234, 5678)),
+            })
+            .Should().Be("Building archives: 94 of 141 done, 3 in progress \u00b7 pack.bsa (1,234 of 5,678 files)");
+
+    [Fact]
+    public void Progress_SaysOneInProgressWhenOnlyOneArchiveIsBuilding()
+        => WabbajackModlistText.Progress(Progress(InstallPhase.Write, 95, 100) with
+            {
+                Builds = new ModlistInstallProgress.ArchiveBuilds(Done: 2, Running: 1, Count: 12, new ModlistInstallProgress.ArchiveBuild("pack.bsa", 3, 12, 40, 58)),
+            })
+            .Should().Be("Building archives: 2 of 12 done, 1 in progress \u00b7 pack.bsa (40 of 58 files)");
 
     [Fact]
     public void Fraction_IsTheShareOfTheCurrentPhaseAndZeroWhenThePhaseHasNoItems()

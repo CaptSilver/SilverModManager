@@ -109,6 +109,40 @@ public class ModlistInstallProgressTests
     }
 
     [Fact]
+    public void TheBuildsSummaryShowsTheOldestRunningArchiveEvenWhenANewerOneReportedLast()
+    {
+        var progress = new ModlistInstallProgress();
+        progress.BeginArchive("A.bsa", 1, 3, 5);
+        progress.BeginArchive("B.bsa", 2, 3, 5);
+        progress.AdvanceArchive(2);
+
+        progress.Current.Archive!.Name.Should().Be("B.bsa");
+        progress.Current.Builds!.Shown.Name.Should().Be("A.bsa");
+        progress.Current.Builds.Running.Should().Be(2);
+        progress.Current.Builds.Count.Should().Be(3);
+    }
+
+    [Fact]
+    public void TheBuildsSummaryCountsArchivesThatFinishedAndIsNullWhenNoneIsBuilding()
+    {
+        var progress = new ModlistInstallProgress();
+        progress.Current.Builds.Should().BeNull();
+
+        progress.BeginArchive("A.bsa", 1, 3, 5);
+        progress.BeginArchive("B.bsa", 2, 3, 5);
+        progress.EndArchive(1);
+
+        progress.Current.Builds!.Done.Should().Be(1);
+        progress.Current.Builds.Running.Should().Be(1);
+        progress.Current.Builds.Shown.Name.Should().Be("B.bsa");
+
+        progress.EndArchive(2);
+        progress.Current.Builds.Should().BeNull();
+        progress.BeginArchive("C.bsa", 3, 3, 5);
+        progress.Current.Builds!.Done.Should().Be(2);
+    }
+
+    [Fact]
     public void TwoArchivesWithTheSameFileNameAreCountedSeparately()
     {
         var progress = new ModlistInstallProgress();

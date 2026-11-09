@@ -27,8 +27,14 @@ public static class WabbajackModlistText
     /// <summary>The line for the current phase of an install run.</summary>
     public static string Progress(ModlistInstallProgress.Snapshot snapshot)
     {
-        // An archive build is one Write item that can run for minutes, so its own count is what moves.
-        if (snapshot.Archive is { } archive) return archive.Describe(CultureInfo.CurrentCulture);
+        // Archives build side by side and each is one Write item that can run for minutes. Naming whichever reported
+        // last made the line jump between numbers, so it names the oldest running one and counts the rest.
+        if (snapshot.Builds is { } builds)
+        {
+            var running = builds.Running == 1 ? "1 in progress" : $"{builds.Running:N0} in progress";
+            var shown = builds.Shown;
+            return string.Create(CultureInfo.CurrentCulture, $"Building archives: {builds.Done:N0} of {builds.Count:N0} done, {running} \u00b7 {shown.Name} ({shown.DoneFiles:N0} of {shown.TotalFiles:N0} files)");
+        }
 
         return snapshot.Phase switch
         {
