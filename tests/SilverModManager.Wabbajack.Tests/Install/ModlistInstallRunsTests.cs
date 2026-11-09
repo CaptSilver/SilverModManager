@@ -345,11 +345,11 @@ public class InstallProgressLogTests
     private static ModlistInstallProgress.Snapshot Snap(InstallPhase phase, int done, int total)
         => ModlistInstallProgress.Snapshot.Empty with { Phase = phase, DoneItems = done, TotalItems = total };
 
-    private const string Memory = "; memory: heap 1.0 GB, gen2 3";
+    private const string Memory = "; memory: heap 1.0 GB (committed 2.0 GB), gen2 3";
 
     private sealed class FixedSampler : IMemorySampler
     {
-        public MemorySample Sample() => new(1_073_741_824, 3, null, null);
+        public MemorySample Sample() => new(1_073_741_824, 2_147_483_648, 3, null, null);
     }
 
     private static (InstallProgressLog Log, CapturingLoggerProvider Messages) Create(TimeProvider? time = null)

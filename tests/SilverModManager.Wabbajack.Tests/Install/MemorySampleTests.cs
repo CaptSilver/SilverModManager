@@ -28,20 +28,26 @@ public class MemorySampleTests
     [Fact]
     public void DescribeListsEveryCountInGigabytes()
     {
-        var sample = new MemorySample(13_204_000_000, 45, 32_300_000_000, 107_374_182);
+        var sample = new MemorySample(13_204_000_000, 21_474_836_480, 45, 32_300_000_000, 107_374_182);
 
-        sample.Describe().Should().Be("heap 12.3 GB, gen2 45, anon 30.1 GB, shmem 0.1 GB");
+        sample.Describe().Should().Be("heap 12.3 GB (committed 20.0 GB), gen2 45, anon 30.1 GB, shmem 0.1 GB");
     }
 
     [Fact]
     public void DescribeLeavesOutCountsTheOsDidNotGive()
     {
-        new MemorySample(1_073_741_824, 2, null, null).Describe().Should().Be("heap 1.0 GB, gen2 2");
+        new MemorySample(1_073_741_824, 2_147_483_648, 2, null, null).Describe().Should().Be("heap 1.0 GB (committed 2.0 GB), gen2 2");
     }
 
     [Fact]
     public void TheProcessSamplerReportsALiveHeap()
     {
         new ProcessMemorySampler().Sample().ManagedHeapBytes.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void TheProcessSamplerReportsTheHeapTheGcHasCommitted()
+    {
+        new ProcessMemorySampler().Sample().CommittedHeapBytes.Should().BeGreaterThan(0);
     }
 }

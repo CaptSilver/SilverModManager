@@ -5,15 +5,17 @@ namespace SilverModManager.Wabbajack.Install;
 /// <summary>
 /// What a process holds at one moment. The managed heap alone cannot tell a leak in .NET objects from native memory
 /// (archive readers, the store), so the kernel's anonymous and shared counts come with it where the OS gives them.
+/// <paramref name="CommittedHeapBytes"/> is what the GC keeps from the OS, live objects or not: the gap between it and
+/// the anonymous count is native memory.
 /// </summary>
-public readonly record struct MemorySample(long ManagedHeapBytes, int Gen2Collections, long? RssAnonBytes, long? RssShmemBytes)
+public readonly record struct MemorySample(long ManagedHeapBytes, long CommittedHeapBytes, int Gen2Collections, long? RssAnonBytes, long? RssShmemBytes)
 {
     private const double BytesPerGb = 1024.0 * 1024 * 1024;
 
-    /// <summary>One line such as <c>heap 12.3 GB, gen2 45, anon 30.1 GB, shmem 0.1 GB</c>; counts the OS did not give are left out.</summary>
+    /// <summary>One line such as <c>heap 12.3 GB (committed 20.0 GB), gen2 45, anon 30.1 GB, shmem 0.1 GB</c>; counts the OS did not give are left out.</summary>
     public string Describe()
     {
-        var text = string.Create(CultureInfo.InvariantCulture, $"heap {ManagedHeapBytes / BytesPerGb:F1} GB, gen2 {Gen2Collections}");
+        var text = string.Create(CultureInfo.InvariantCulture, $"heap {ManagedHeapBytes / BytesPerGb:F1} GB (committed {CommittedHeapBytes / BytesPerGb:F1} GB), gen2 {Gen2Collections}");
         if (RssAnonBytes is { } anon) text += string.Create(CultureInfo.InvariantCulture, $", anon {anon / BytesPerGb:F1} GB");
         if (RssShmemBytes is { } shmem) text += string.Create(CultureInfo.InvariantCulture, $", shmem {shmem / BytesPerGb:F1} GB");
         return text;
@@ -33,7 +35,7 @@ public sealed class ProcessMemorySampler : IMemorySampler
     public MemorySample Sample()
     {
         var (anon, shmem) = ReadStatus();
-        return new MemorySample(GC.GetTotalMemory(false), GC.CollectionCount(2), anon, shmem);
+        return new MemorySample(GC.GetTotalMemory(false), GC.GetGCMemoryInfo().TotalCommittedBytes, GC.CollectionCount(2), anon, shmem);
     }
 
     private static (long? Anon, long? Shmem) ReadStatus()
