@@ -336,7 +336,7 @@ public class ModlistInstallRunsTests(ITestOutputHelper helper) : InstallTestBase
         await Install(loadout, modlist, Options);
 
         _logs.Messages.Should().Contain(m => m.StartsWith($"Install of {modlist.Name}: Writing files "));
-        _logs.Messages.Should().Contain($"Install of {modlist.Name}: Ordering mods and plugins");
+        _logs.Messages.Should().Contain(m => m.StartsWith($"Install of {modlist.Name}: Ordering mods and plugins; memory: heap "));
     }
 }
 
@@ -345,10 +345,76 @@ public class InstallProgressLogTests
     private static ModlistInstallProgress.Snapshot Snap(InstallPhase phase, int done, int total)
         => ModlistInstallProgress.Snapshot.Empty with { Phase = phase, DoneItems = done, TotalItems = total };
 
-    private static (InstallProgressLog Log, CapturingLoggerProvider Messages) Create()
+    private const string Memory = "; memory: heap 1.0 GB, gen2 3";
+
+    private sealed class FixedSampler : IMemorySampler
+    {
+        public MemorySample Sample() => new(1_073_741_824, 3, null, null);
+    }
+
+    private static (InstallProgressLog Log, CapturingLoggerProvider Messages) Create(TimeProvider? time = null)
     {
         var provider = new CapturingLoggerProvider();
-        return (new InstallProgressLog(provider.CreateLogger("test"), "Example List"), provider);
+        return (new InstallProgressLog(provider.CreateLogger("test"), "Example List", new FixedSampler(), time ?? TimeProvider.System), provider);
+    }
+
+    [Fact]
+    public void EveryLineEndsWithTheMemorySample()
+    {
+        var (log, logged) = Create();
+        var write = Snap(InstallPhase.Write, 0, 100);
+
+        log.Report(Snap(InstallPhase.Check, 0, 0));
+        log.Report(write with { Archive = new ModlistInstallProgress.ArchiveBuild("A.bsa", 1, 1, 0, 10) });
+
+        logged.Messages.Should().HaveCount(3).And.OnlyContain(m => m.EndsWith(Memory));
+    }
+
+    [Fact]
+    public void NoHeartbeatBeforeThirtySecondsHavePassed()
+    {
+        var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
+        var (log, logged) = Create(time);
+
+        log.Report(Snap(InstallPhase.Resolve, 10, 100));
+        time.Advance(TimeSpan.FromSeconds(29));
+        log.Report(Snap(InstallPhase.Resolve, 11, 100));
+
+        logged.Messages.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void AReportThirtySecondsAfterTheLastLineRepeatsTheProgressWithoutANewStep()
+    {
+        var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
+        var (log, logged) = Create(time);
+
+        log.Report(Snap(InstallPhase.Resolve, 95, 100));
+        time.Advance(TimeSpan.FromSeconds(30));
+        log.Report(Snap(InstallPhase.Resolve, 96, 100));
+        log.Report(Snap(InstallPhase.Resolve, 97, 100));
+        time.Advance(TimeSpan.FromSeconds(31));
+        log.Report(Snap(InstallPhase.Resolve, 98, 100));
+
+        logged.Messages.Should().Equal(
+            "Install of Example List: Locating files in archives 95 of 100 (95%)" + Memory,
+            "Install of Example List: Locating files in archives 96 of 100 (96%)" + Memory,
+            "Install of Example List: Locating files in archives 98 of 100 (98%)" + Memory);
+    }
+
+    [Fact]
+    public void AStepLineRestartsTheHeartbeatClock()
+    {
+        var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
+        var (log, logged) = Create(time);
+
+        log.Report(Snap(InstallPhase.Write, 0, 100));
+        time.Advance(TimeSpan.FromSeconds(20));
+        log.Report(Snap(InstallPhase.Write, 5, 100));
+        time.Advance(TimeSpan.FromSeconds(20));
+        log.Report(Snap(InstallPhase.Write, 6, 100));
+
+        logged.Messages.Should().HaveCount(2);
     }
 
     [Fact]
@@ -360,7 +426,7 @@ public class InstallProgressLogTests
         log.Report(Snap(InstallPhase.Check, 0, 0));
         log.Report(Snap(InstallPhase.Order, 0, 0));
 
-        logged.Messages.Should().Equal("Install of Example List: Checking the list", "Install of Example List: Ordering mods and plugins");
+        logged.Messages.Should().Equal("Install of Example List: Checking the list" + Memory, "Install of Example List: Ordering mods and plugins" + Memory);
     }
 
     [Fact]
@@ -377,9 +443,9 @@ public class InstallProgressLogTests
         log.Report(Snap(InstallPhase.Write, 29, 200));
 
         logged.Messages.Should().Equal(
-            "Install of Example List: Writing files 0 of 200 (0%)",
-            "Install of Example List: Writing files 10 of 200 (5%)",
-            "Install of Example List: Writing files 28 of 200 (14%)");
+            "Install of Example List: Writing files 0 of 200 (0%)" + Memory,
+            "Install of Example List: Writing files 10 of 200 (5%)" + Memory,
+            "Install of Example List: Writing files 28 of 200 (14%)" + Memory);
     }
 
     [Fact]
@@ -391,8 +457,8 @@ public class InstallProgressLogTests
         log.Report(Snap(InstallPhase.Write, 41_200, 281_096));
 
         logged.Messages.Should().Equal(
-            "Install of Example List: Writing files 0 of 281,096 (0%)",
-            "Install of Example List: Writing files 41,200 of 281,096 (14%)");
+            "Install of Example List: Writing files 0 of 281,096 (0%)" + Memory,
+            "Install of Example List: Writing files 41,200 of 281,096 (14%)" + Memory);
     }
 
     [Fact]
@@ -405,8 +471,8 @@ public class InstallProgressLogTests
         log.Report(Snap(InstallPhase.Write, 3, 100));
 
         logged.Messages.Should().Equal(
-            "Install of Example List: Locating files in archives 50 of 100 (50%)",
-            "Install of Example List: Writing files 0 of 100 (0%)");
+            "Install of Example List: Locating files in archives 50 of 100 (50%)" + Memory,
+            "Install of Example List: Writing files 0 of 100 (0%)" + Memory);
     }
 
     [Fact]
@@ -424,10 +490,10 @@ public class InstallProgressLogTests
         log.Report(write);
 
         logged.Messages.Should().Equal(
-            "Install of Example List: Writing files 95 of 100 (95%)",
-            "Install of Example List: Building archive 3 of 12: Textures.bsa (0 of 200 files)",
-            "Install of Example List: Building archive 3 of 12: Textures.bsa (10 of 200 files)",
-            "Install of Example List: Building archive 4 of 12: Meshes.bsa (0 of 40 files)");
+            "Install of Example List: Writing files 95 of 100 (95%)" + Memory,
+            "Install of Example List: Building archive 3 of 12: Textures.bsa (0 of 200 files)" + Memory,
+            "Install of Example List: Building archive 3 of 12: Textures.bsa (10 of 200 files)" + Memory,
+            "Install of Example List: Building archive 4 of 12: Meshes.bsa (0 of 40 files)" + Memory);
     }
 
     [Fact]
@@ -443,9 +509,9 @@ public class InstallProgressLogTests
         log.Report(write with { Archive = new ModlistInstallProgress.ArchiveBuild("Textures.bsa", 1, 2, 6, 100) });
 
         logged.Messages.Skip(1).Should().Equal(
-            "Install of Example List: Building archive 1 of 2: Textures.bsa (0 of 100 files)",
-            "Install of Example List: Building archive 2 of 2: Meshes.bsa (0 of 100 files)",
-            "Install of Example List: Building archive 1 of 2: Textures.bsa (5 of 100 files)",
-            "Install of Example List: Building archive 2 of 2: Meshes.bsa (5 of 100 files)");
+            "Install of Example List: Building archive 1 of 2: Textures.bsa (0 of 100 files)" + Memory,
+            "Install of Example List: Building archive 2 of 2: Meshes.bsa (0 of 100 files)" + Memory,
+            "Install of Example List: Building archive 1 of 2: Textures.bsa (5 of 100 files)" + Memory,
+            "Install of Example List: Building archive 2 of 2: Meshes.bsa (5 of 100 files)" + Memory);
     }
 }

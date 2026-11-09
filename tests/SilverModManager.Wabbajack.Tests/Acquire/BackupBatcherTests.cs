@@ -125,4 +125,37 @@ public class BackupBatcherTests
             (await Record.ExceptionAsync(() => Completes(task))).Should().BeAssignableTo<OperationCanceledException>();
         store.Batches.Should().ContainSingle();
     }
+
+    private sealed class BlockingStore : ForwardingFileStore
+    {
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _started;
+
+        public BlockingStore() : base(Substitute.For<IFileStore>()) { }
+
+        public int Started => Volatile.Read(ref _started);
+        public void Release() => _release.TrySetResult();
+
+        public override async Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null)
+        {
+            Interlocked.Increment(ref _started);
+            await _release.Task;
+        }
+    }
+
+    [Fact]
+    public async Task BatchesBeingStoredAreCountedUntilTheyFinish()
+    {
+        var store = new BlockingStore();
+        var batcher = new BackupBatcher(store, CancellationToken.None, maxEntries: 2, maxWait: Never);
+
+        var added = new[] { batcher.Add(Entry(1)), batcher.Add(Entry(2)), batcher.Add(Entry(3)), batcher.Add(Entry(4)) };
+        while (store.Started < 2) await Task.Delay(5);
+
+        batcher.InFlight.Should().Be(2);
+
+        store.Release();
+        foreach (var task in added) await Completes(task);
+        batcher.InFlight.Should().Be(0);
+    }
 }

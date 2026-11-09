@@ -6,11 +6,16 @@ namespace SilverModManager.Wabbajack.Install;
 /// <summary>
 /// Writes an install's progress to the log at Information: one line when a phase starts and one each time a phase
 /// passes another 5%, so a long install can be followed in the log file. An archive being built gets the same, counted
-/// in its own files: it is one item of the Write phase, and building it can take minutes.
+/// in its own files: it is one item of the Write phase, and building it can take minutes. Every line ends with a memory
+/// sample, and a phase that has gone 30 seconds without a line repeats its progress on the next report, so a long
+/// stretch inside one 5% step still shows how memory grew.
 /// </summary>
-public sealed class InstallProgressLog(ILogger logger, string list)
+public sealed class InstallProgressLog(ILogger logger, string list, IMemorySampler memory, TimeProvider time)
 {
     private const int StepPercent = 5;
+    private static readonly TimeSpan HeartbeatEvery = TimeSpan.FromSeconds(30);
+
+    private long _lastWrite = time.GetTimestamp();
 
     private InstallPhase? _phase;
     private int _step;
@@ -53,13 +58,17 @@ public sealed class InstallProgressLog(ILogger logger, string list)
 
         var percent = (int)(Math.Clamp((double)snapshot.DoneItems / snapshot.TotalItems, 0, 1) * 100);
         var step = percent / StepPercent;
-        if (!started && step <= _step) return;
+        if (!started && step <= _step && time.GetElapsedTime(_lastWrite) < HeartbeatEvery) return;
 
-        _step = step;
+        _step = Math.Max(step, _step);
         Write(string.Create(CultureInfo.InvariantCulture, $"{PhaseName(snapshot.Phase)} {snapshot.DoneItems:N0} of {snapshot.TotalItems:N0} ({percent}%)"));
     }
 
-    private void Write(string text) => logger.LogInformation("Install of {List}: {Progress}", list, text);
+    private void Write(string text)
+    {
+        _lastWrite = time.GetTimestamp();
+        logger.LogInformation("Install of {List}: {Progress}; memory: {Memory}", list, text, memory.Sample().Describe());
+    }
 
     private static string PhaseName(InstallPhase phase) => phase switch
     {

@@ -110,7 +110,7 @@ public sealed class ArchivePathResolver(
     private readonly List<IDisposable> _pins = [];
     private readonly CancellationTokenSource _lifetime = new();
     private readonly NestedArchiveCache _openArchives = new(OpenArchivesKept);
-    private BackupBatcher Backups => _backupBatcher ??= new BackupBatcher(store, _lifetime.Token);
+    private BackupBatcher Backups => _backupBatcher ??= new BackupBatcher(store, _lifetime.Token, logger: logger);
     private BackupBatcher? _backupBatcher;
     // Each running copy with the store key it is for, so a log line can name what is still going.
     private readonly ConcurrentDictionary<Task, string> _copies = new();

@@ -132,7 +132,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     public async ValueTask<WabbajackModlistLoadoutGroup.ReadOnly> StartAsync(IJobContext<InstallModlistJob> context)
     {
         var cancellationToken = context.CancellationToken;
-        using var progressLog = Progress.Changes.Subscribe(new InstallProgressLog(Logger, Modlist.Name).Report);
+        using var progressLog = Progress.Changes.Subscribe(new InstallProgressLog(Logger, Modlist.Name, new ProcessMemorySampler(), TimeProvider.System).Report);
 
         // Before the check, which may record the digests of game files: a refused update writes nothing.
         var existing = FindGroup();
@@ -703,7 +703,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         await Parallel.ForEachAsync(Enumerable.Range(0, executable.Length), options, async (i, token) =>
         {
             var placement = executable[i];
+            var started = Stopwatch.GetTimestamp();
             prepared[i] = await Prepare(check, rows, placement, token);
+            var took = Stopwatch.GetElapsedTime(started);
+            if (took > SlowDirective) Logger.LogDebug("Locating {Kind} for {To} took {Seconds:F1} s", placement.Directive.GetType().Name, placement.Directive.To, took.TotalSeconds);
             Progress.Advance(1, placement.Directive.Size);
         });
         await Resolver.FlushDigests(cancellationToken);
@@ -1052,6 +1055,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     }
 
     private const int SkipExamplesLogged = 5;
+    // Slower than this, one directive's lookup is worth a line: a long tail with no log shows nothing otherwise.
+    private static readonly TimeSpan SlowDirective = TimeSpan.FromSeconds(5);
 
     private static LogLevel LevelOf(SkipKind kind) => kind.IsByDesign() ? LogLevel.Information : LogLevel.Warning;
 
