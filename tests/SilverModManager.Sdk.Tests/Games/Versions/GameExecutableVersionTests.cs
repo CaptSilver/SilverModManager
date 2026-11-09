@@ -18,6 +18,13 @@ public class GameExecutableVersionTests : IDisposable
         return FileSystem.Shared.FromUnsanitizedFullPath(path);
     }
 
+    private AbsolutePath ExecutableWithStringTable(uint fileVersionMs, uint fileVersionLs, string productVersion)
+    {
+        var path = Path.Combine(_folder, "game.exe");
+        File.WriteAllBytes(path, NativeExecutable.WithVersionResource(fileVersionMs, fileVersionLs, productVersion));
+        return FileSystem.Shared.FromUnsanitizedFullPath(path);
+    }
+
     [Fact]
     public void ANativeExecutableReadsTheVersionOfItsFixedFileInfo()
     {
@@ -58,4 +65,59 @@ public class GameExecutableVersionTests : IDisposable
         version.HasValue.Should().BeTrue();
         version.Value.Should().Be(assembly.FileInfo.GetFileVersionInfo().ProductVersion);
     }
+
+    [Fact]
+    public void TheStringTableVersionWinsOverAPlaceholderFixedVersion()
+    {
+        // SkyrimVR.exe: 1.0.0.0 in the numeric block, 1.4.15.0 in the string table.
+        var version = GameExecutableVersion.Read(ExecutableWithStringTable(0x0001_0000, 0, "1.4.15.0"));
+
+        version.HasValue.Should().BeTrue();
+        version.Value.Should().Be(new Version(1, 4, 15, 0));
+    }
+
+    [Fact]
+    public void ACommaSeparatedStringTableVersionIsRead()
+    {
+        var version = GameExecutableVersion.Read(ExecutableWithStringTable(0x0001_0000, 0, "1, 6, 1170, 0"));
+
+        version.HasValue.Should().BeTrue();
+        version.Value.Should().Be(new Version(1, 6, 1170, 0));
+    }
+
+    [Fact]
+    public void AnUnparsableStringTableVersionFallsBackToTheFixedVersion()
+    {
+        var version = GameExecutableVersion.Read(ExecutableWithStringTable(0x0001_0004, 0x000F_0000, "final build"));
+
+        version.HasValue.Should().BeTrue();
+        version.Value.Should().Be(new Version(1, 4, 15, 0));
+    }
+
+    [Fact]
+    public void AnAllZeroesStringTableVersionFallsBackToTheFixedVersion()
+    {
+        var version = GameExecutableVersion.Read(ExecutableWithStringTable(0x0001_0004, 0x000F_0000, "0.0.0.0"));
+
+        version.Value.Should().Be(new Version(1, 4, 15, 0));
+    }
+
+    [Theory]
+    [InlineData("1.4.15.0", 1, 4, 15, 0)]
+    [InlineData("1, 4, 15, 0", 1, 4, 15, 0)]
+    [InlineData("1,4,15,0", 1, 4, 15, 0)]
+    [InlineData(" 1.6.1170.0 ", 1, 6, 1170, 0)]
+    [InlineData("1, 6, 1170, 0 (retail)", 1, 6, 1170, 0)]
+    [InlineData("1.6.1170.0-beta", 1, 6, 1170, 0)]
+    public void ParseProductVersion_ReadsFourNumbersInEitherNotation(string text, int major, int minor, int build, int revision)
+        => GameExecutableVersion.ParseProductVersion(text).Should().Be(new Version(major, minor, build, revision));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("final build")]
+    [InlineData("1.4")]
+    [InlineData("1.4.15")]
+    public void ParseProductVersion_RejectsAnythingWithoutFourNumbers(string? text)
+        => GameExecutableVersion.ParseProductVersion(text).Should().BeNull();
 }

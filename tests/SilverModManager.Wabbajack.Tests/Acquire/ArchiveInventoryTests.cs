@@ -504,6 +504,7 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         row.Reason.Should().Contain("1.5.97", "the version the list was made for").And.Contain("your game's version could not be read");
         row.Reason.Should().NotContain("0.0.0.0", "an unset version is not a version to show");
         row.GameFileAbsent.Should().BeFalse("the file is there, in another version");
+        row.GameFileReplaced.Should().BeFalse("the game is not at the list's version, so nothing says the file was replaced");
     }
 
     [Fact]
@@ -518,7 +519,10 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
 
         var plan = await Inventory().Build(ListWith(Entry(state, Hash64(GameBsaBytes), GameBsaBytes.Length)), Connection.Db, loadout);
 
-        plan.Rows.Single().Reason.Should().Contain("yours is 1.6.1170.0");
+        var row = plan.Rows.Single();
+        row.Reason.Should().Contain("yours is 1.6.1170.0").And.NotContain("not the game's original");
+        row.GameFileReplaced.Should().BeFalse();
+        row.VerifyIn.Should().BeNull();
     }
 
     /// <summary>Replaces the game's executable with padding around a VS_FIXEDFILEINFO, the part of a native executable a version is read from.</summary>
@@ -529,8 +533,25 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         await game.Locations.ToAbsolutePath(game.Game.GetPrimaryFile(game)).WriteAllBytesAsync(bytes);
     }
 
+    /// <summary>The loadout's game files, read as if the game had been installed through <paramref name="store"/> (the stub installation's store is none of them).</summary>
+    private GameFileSourceLookup LookupAsIfFrom(Loadout.ReadOnly loadout, GameStore store)
+    {
+        var installation = loadout.InstallationInstance;
+        var locator = installation.LocatorResult;
+        var fromStore = installation with
+        {
+            LocatorResult = new GameLocatorResult
+            {
+                Game = locator.Game, Path = locator.Path, Store = store, StoreIdentifier = locator.StoreIdentifier,
+                LocatorIds = locator.LocatorIds, Locator = locator.Locator, Platform = locator.Platform,
+            },
+        };
+        return new GameFileSourceLookup(fromStore, (EntityId)loadout.InstallationId, Connection, FileStore,
+            ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileIdentityResolver>(), ServiceProvider.GetRequiredService<IFileHashesService>());
+    }
+
     [Fact]
-    public async Task AGameFileVersionRowSaysSoWhenTheInstalledVersionIsTheListsVersion()
+    public async Task AGameFileOfTheListsOwnVersionThatDiffersIsReplacedAndSaysHowToPutItBack()
     {
         var state = new GameFileSourceState("SkyrimSpecialEdition", GameBsa, Hash64(GameBsaBytes), "1.6.1170.0");
         var changed = (byte[])GameBsaBytes.Clone();
@@ -539,9 +560,33 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         await GameBsaPath(loadout).WriteAllBytesAsync(changed);
         await WriteExecutableVersion(loadout, new Version(1, 6, 1170, 0));
 
-        var plan = await Inventory().Build(ListWith(Entry(state, Hash64(GameBsaBytes), GameBsaBytes.Length)), Connection.Db, loadout);
+        var plan = await Inventory().Build(ListWith(Entry(state, Hash64(GameBsaBytes), GameBsaBytes.Length)), Connection.Db, LookupAsIfFrom(loadout, GameStore.Steam));
 
-        plan.Rows.Single().Reason.Should().Contain("your game is at that version").And.NotContain("yours is");
+        var row = plan.Rows.Single();
+        row.State.Should().Be(ArchiveState.GameFileVersion);
+        row.GameFileReplaced.Should().BeTrue();
+        row.GameFileAbsent.Should().BeFalse();
+        row.VerifyIn.Should().Be("Steam");
+        row.Reason.Should().Be($"'{GameBsa}' is not the game's original: something replaced it, most likely an earlier install, and the app has no copy of the original to use. Verify the game's files in Steam to put it back.");
+    }
+
+    [Fact]
+    public async Task AReplacedGameFileOfAGameNotFromSteamSendsTheUserToTheLauncher()
+    {
+        var state = new GameFileSourceState("SkyrimSpecialEdition", GameBsa, Hash64(GameBsaBytes), "1.6.1170.0");
+        var changed = (byte[])GameBsaBytes.Clone();
+        changed[10] ^= 0xFF;
+        var loadout = await CreateLoadout();
+        await GameBsaPath(loadout).WriteAllBytesAsync(changed);
+        await WriteExecutableVersion(loadout, new Version(1, 6, 1170, 0));
+        var lookup = LookupAsIfFrom(loadout, GameStore.GOG);
+
+        var plan = await Inventory().Build(ListWith(Entry(state, Hash64(GameBsaBytes), GameBsaBytes.Length)), Connection.Db, lookup);
+
+        var row = plan.Rows.Single();
+        row.GameFileReplaced.Should().BeTrue();
+        row.VerifyIn.Should().Be("the game's launcher");
+        row.Reason.Should().EndWith("Verify the game's files in the game's launcher to put it back.");
     }
 
     [Fact]

@@ -5,8 +5,10 @@ namespace SilverModManager.Sdk.Native;
 /// <summary>
 /// Reads the numeric file version (<c>FILEVERSION</c>) from a PE file's <c>VS_FIXEDFILEINFO</c>. A scan for the
 /// struct's signature, not a walk of the resource directory: the struct has a fixed layout and an executable carries
-/// one. The reader in <c>NexusMods.Paths</c> takes its version from the string table instead, which is not the
-/// number a game's own updater compares.
+/// one. The reader in <c>NexusMods.Paths</c> takes its version from the string table instead, and finds nothing in a
+/// native executable on Linux; <see cref="ReadProductVersion"/> reads that table directly. Neither source is always
+/// right: SkyrimVR.exe has a 1.0.0.0 placeholder in this numeric block and the real version only in the string table,
+/// so <c>GameExecutableVersion</c> tries the string table first and falls back to this block.
 /// </summary>
 public static class PeFileVersion
 {

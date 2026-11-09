@@ -46,8 +46,11 @@ public enum ArchiveState
 /// <paramref name="DownloadFailed"/> is set when the app tried to download the archive and could not; the row then waits
 /// for the user like a Manual one, but a retry can still fetch it.
 /// <paramref name="GameFileAbsent"/> is set on a <see cref="ArchiveState.GameFileVersion"/> row whose game file is not in the game folder at all, as opposed to one that is there in another version.
+/// <paramref name="GameFileReplaced"/> is set on a <see cref="ArchiveState.GameFileVersion"/> row whose game file differs from the list's
+/// copy although the game is at the version the list names: something replaced the file, and the app holds no copy of the original.
+/// <paramref name="VerifyIn"/> names where the user can put the original back (<c>Steam</c> or <c>the game's launcher</c>); it is set with <paramref name="GameFileReplaced"/>.
 /// </summary>
-public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, string? Reason, Uri? Page, LibraryFile.ReadOnly? Library, bool Opened = false, string? Note = null, bool DownloadFailed = false, bool GameFileAbsent = false)
+public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, string? Reason, Uri? Page, LibraryFile.ReadOnly? Library, bool Opened = false, string? Note = null, bool DownloadFailed = false, bool GameFileAbsent = false, bool GameFileReplaced = false, string? VerifyIn = null)
 {
     /// <summary>
     /// The library holds the archive but without the bytes of nested archives the list copies whole, so the row still

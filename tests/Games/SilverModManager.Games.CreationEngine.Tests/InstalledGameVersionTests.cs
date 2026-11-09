@@ -44,6 +44,20 @@ public class InstalledGameVersionTests(IServiceProvider serviceProvider) : IDisp
     }
 
     [Fact]
+    public void SkyrimVRReadsTheStringTableVersionWhenItsFixedVersionIsAPlaceholder()
+    {
+        // The shipped SkyrimVR.exe: 1.0.0.0 in the numeric block, 1.4.15.0 in the string table.
+        File.WriteAllBytes(Path.Combine(_folder, "SkyrimVR.exe"), NativeExecutable.WithVersionResource(0x0001_0000, 0, "1.4.15.0"));
+        var root = FileSystem.Shared.FromUnsanitizedFullPath(_folder);
+        var installation = new GameInstallation(null!, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, root)));
+
+        var version = ((IGameData)GameOf<CreationEngine.SkyrimVR.SkyrimVR>()).GetLocalVersion(installation);
+
+        version.HasValue.Should().BeTrue();
+        version.Value.Should().Be(new Version(1, 4, 15, 0));
+    }
+
+    [Fact]
     public void SkyrimSEReadsItsVersionFromSkyrimSEExe()
     {
         var installation = InstallWith("SkyrimSE.exe", 0x0001_0006, 0x0492_0000);

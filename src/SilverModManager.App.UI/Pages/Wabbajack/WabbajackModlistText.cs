@@ -185,13 +185,27 @@ public static class WabbajackModlistText
     /// </summary>
     public static WabbajackNote GameFilesNote(ArchivePlan plan)
     {
-        // A file the game lacks has no copy of its own to use instead, so the sentence below would not be true of it.
-        var differing = plan.Rows.Count(row => row.State == ArchiveState.GameFileVersion && !row.GameFileAbsent);
-        if (differing == 0 || !plan.Rows.All(IsAvailable)) return new WabbajackNote("", false);
+        // A file the game lacks has no copy of its own to use instead, so the sentences below would not be true of it.
+        var present = plan.Rows.Where(row => row.State == ArchiveState.GameFileVersion && !row.GameFileAbsent).ToArray();
+        var replaced = present.Where(row => row.GameFileReplaced).ToArray();
+        var differing = present.Length - replaced.Length;
+        if (present.Length == 0 || !plan.Rows.All(IsAvailable)) return new WabbajackNote("", false);
 
-        var text = differing == 1
-            ? "Your game is a different version from the one the list was made for, so 1 of its files is left out and your game's own copy is used instead. Anything the list builds from it is listed under \"Files that were skipped\" after the install."
-            : $"Your game is a different version from the one the list was made for, so {differing} of its files are left out and your game's own copies are used instead. Anything the list builds from them is listed under \"Files that were skipped\" after the install.";
+        var sentences = new List<string>(2);
+        if (differing == 1)
+            sentences.Add("Your game is a different version from the one the list was made for, so 1 of its files is left out and your game's own copy is used instead. Anything the list builds from it is listed under \"Files that were skipped\" after the install.");
+        else if (differing > 1)
+            sentences.Add($"Your game is a different version from the one the list was made for, so {differing} of its files are left out and your game's own copies are used instead. Anything the list builds from them is listed under \"Files that were skipped\" after the install.");
+
+        if (replaced.Length > 0)
+        {
+            var verifyIn = replaced[0].VerifyIn ?? "Steam";
+            sentences.Add(replaced.Length == 1
+                ? $"1 of your game's files is not the original the list needs: an earlier install replaced it and the app has no copy to go back to, so it is left out. Verify the game's files in {verifyIn} to put it back before you install; until then anything the list builds from it is listed under \"Files that were skipped\" after the install."
+                : $"{replaced.Length} of your game's files are not the originals the list needs: an earlier install replaced them and the app has no copies to go back to, so they are left out. Verify the game's files in {verifyIn} to put them back before you install; until then anything the list builds from them is listed under \"Files that were skipped\" after the install.");
+        }
+
+        var text = string.Join(" ", sentences);
         return new WabbajackNote(text, true);
     }
 

@@ -183,6 +183,42 @@ public class WabbajackModlistTextTests
         many.Should().Be(new WabbajackNote("Your game is a different version from the one the list was made for, so 3 of its files are left out and your game's own copies are used instead. Anything the list builds from them is listed under \"Files that were skipped\" after the install.", true));
     }
 
+    private static ArchivePlanRow Replaced(string name, string verifyIn = "Steam")
+        => Row(ArchiveState.GameFileVersion, name) with { GameFileReplaced = true, VerifyIn = verifyIn };
+
+    [Fact]
+    public void GameFilesNote_ForReplacedFilesAloneNamesTheEarlierInstallInSingularAndPlural()
+    {
+        var one = WabbajackModlistText.GameFilesNote(Plan(Row(ArchiveState.Have), Replaced("b")));
+        var many = WabbajackModlistText.GameFilesNote(Plan(Replaced("a"), Replaced("b"), Replaced("c")));
+
+        one.Should().Be(new WabbajackNote("1 of your game's files is not the original the list needs: an earlier install replaced it and the app has no copy to go back to, so it is left out. Verify the game's files in Steam to put it back before you install; until then anything the list builds from it is listed under \"Files that were skipped\" after the install.", true));
+        many.Should().Be(new WabbajackNote("3 of your game's files are not the originals the list needs: an earlier install replaced them and the app has no copies to go back to, so they are left out. Verify the game's files in Steam to put them back before you install; until then anything the list builds from them is listed under \"Files that were skipped\" after the install.", true));
+    }
+
+    [Fact]
+    public void GameFilesNote_ForReplacedFilesOfAGameNotFromSteamNamesTheLauncher()
+    {
+        var note = WabbajackModlistText.GameFilesNote(Plan(Replaced("a", "the game's launcher")));
+
+        note.Text.Should().Contain("Verify the game's files in the game's launcher to put it back").And.NotContain("in Steam");
+    }
+
+    [Fact]
+    public void GameFilesNote_WhenSomeFilesDifferAndSomeAreReplacedSaysBoth()
+    {
+        var note = WabbajackModlistText.GameFilesNote(Plan(Row(ArchiveState.GameFileVersion, "a"), Replaced("b"), Replaced("c")));
+
+        note.Text.Should().Be(
+            "Your game is a different version from the one the list was made for, so 1 of its files is left out and your game's own copy is used instead. Anything the list builds from it is listed under \"Files that were skipped\" after the install. "
+            + "2 of your game's files are not the originals the list needs: an earlier install replaced them and the app has no copies to go back to, so they are left out. Verify the game's files in Steam to put them back before you install; until then anything the list builds from them is listed under \"Files that were skipped\" after the install.");
+        note.IsWarning.Should().BeTrue();
+    }
+
+    [Fact]
+    public void GameFilesNote_LeavesOutReplacedFilesThatAreMissingFromTheGameFolder()
+        => WabbajackModlistText.GameFilesNote(Plan(Replaced("a") with { GameFileAbsent = true })).Text.Should().BeEmpty();
+
     [Fact]
     public void GameFilesNote_LeavesOutGameFilesThatAreMissingFromTheGameFolder()
     {
