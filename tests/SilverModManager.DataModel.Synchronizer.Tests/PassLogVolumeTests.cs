@@ -53,6 +53,18 @@ public class PassLogVolumeTests(ITestOutputHelper helper) : AStubbedGameTest<Pas
     }
 
     [Fact]
+    public async Task TheSummaryNamesTheActionsInWordsNotAsEnumFlags()
+    {
+        var loadout = await LoadoutWithPendingMod();
+
+        await Evaluate(loadout);
+
+        var message = PendingLines().Single(l => l.Category != SynchronizerLogging.PerFileCategory).Message;
+        message.Should().Contain($"extract: {FileCount}");
+        message.Should().NotContain("ExtractToDisk");
+    }
+
+    [Fact]
     public async Task ThePerFileLinesAreOnTheirOwnCategory()
     {
         var loadout = await LoadoutWithPendingMod();

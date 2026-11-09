@@ -1961,7 +1961,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         if (Logger.IsEnabled(LogLevel.Trace))
         {
-            var byAction = pending.GroupBy(n => n.Value.Actions).OrderByDescending(g => g.Count()).Select(g => $"{g.Key}: {g.Count()}");
+            var byAction = ActionPhrases.Summarize(pending.Select(n => n.Value.Actions));
             var sample = pending.Take(PendingSampleSize).Select(n => n.Key.ToString());
             Logger.LogTrace("Pending in loadout {LoadoutId}: {Count} file(s) ({ByAction}); first {SampleSize}: {Sample}. Every file is listed by logger {PerFileCategory} when {PerFileVariable}=1 is set before the app starts",
                 loadout.LoadoutId, pending.Count, string.Join(", ", byAction), PendingSampleSize, string.Join(", ", sample), SynchronizerLogging.PerFileCategory, SynchronizerLogging.PerFileEnvironmentVariable);
@@ -1969,7 +1969,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         if (!_perFileLogger.IsEnabled(LogLevel.Trace)) return;
         foreach (var (path, node) in pending)
-            _perFileLogger.LogTrace("Pending in loadout {LoadoutId}: {Path} ({Actions})", loadout.LoadoutId, path, node.Actions);
+            _perFileLogger.LogTrace("Pending in loadout {LoadoutId}: {Path} ({Actions})", loadout.LoadoutId, path, ActionPhrases.Describe(node.Actions));
     }
 
     private const int PendingSampleSize = 3;
