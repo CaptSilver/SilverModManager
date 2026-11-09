@@ -173,6 +173,99 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     }
 
     [Fact]
+    public async Task DepotManifestsBaseline_WhoseSizeDiffersRowsNowMatchTheDisk_Rebuilds()
+    {
+        // A list's file sat where the game's own file belongs when the baseline was built, so the path was recorded
+        // as another size. Once the store puts the game's file back the row is wrong and hides the file from the sync.
+        WriteGameFile("a.esm", "a list's replacement");
+        _source.Add(101, ("a.esm", "vanilla"));
+        var first = await _coordinator.Ensure(Installation("101"));
+        first.Rebuilt.Should().BeTrue();
+        NonVanillaFile.All(_store.Db).Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.SizeDiffers);
+        WriteGameFile("a.esm", "vanilla");
+
+        var second = await _coordinator.Ensure(Installation("101"));
+
+        second.Rebuilt.Should().BeTrue("the file on disk no longer has the size the row recorded");
+        second.NonVanillaCount.Should().Be(0);
+        NonVanillaFile.All(_store.Db).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DepotManifestsBaseline_WhoseRowSpellsThePathAsTheManifestDoes_IsNotRebuiltWhileTheDiskIsUnchanged()
+    {
+        // The row keeps the manifest's spelling while the file sits under another one. A stat of the manifest's
+        // spelling finds nothing on a case-sensitive filesystem, which would rebuild on every check and never converge.
+        WriteGameFile("Data/Skyrim.ESM", "a list's replacement");
+        _source.Add(101, ("Data/Skyrim.esm", "vanilla"));
+        var first = await _coordinator.Ensure(Installation("101"));
+        NonVanillaFile.All(_store.Db).Should().ContainSingle().Which.Path.ToString().Should().Be("Data/Skyrim.esm");
+
+        var second = await _coordinator.Ensure(Installation("101"));
+
+        first.Rebuilt.Should().BeTrue();
+        second.Rebuilt.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DepotManifestsBaseline_WhoseSizeDiffersRowNowMatchesUnderAnotherSpelling_Rebuilds()
+    {
+        WriteGameFile("Data/Skyrim.ESM", "a list's replacement");
+        _source.Add(101, ("Data/Skyrim.esm", "vanilla"));
+        await _coordinator.Ensure(Installation("101"));
+        WriteGameFile("Data/Skyrim.ESM", "vanilla");
+
+        var second = await _coordinator.Ensure(Installation("101"));
+
+        second.Rebuilt.Should().BeTrue();
+        NonVanillaFile.All(_store.Db).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DepotManifestsBaseline_WhoseHashDiffersFileWasRewrittenWithTheSameSize_Rebuilds()
+    {
+        // A list's file of the manifest's size is only told from the game's by its content, which the row does not
+        // record; the size and modified time the build saw for the file are what say it was rewritten since.
+        WriteGameFile("a.esm", "vanillb");
+        _source.Add(101, ("a.esm", "vanilla"));
+        await _coordinator.Ensure(Installation("101"));
+        NonVanillaFile.All(_store.Db).Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.HashDiffers);
+        WriteGameFile("a.esm", "vanilla");
+        File.SetLastWriteTimeUtc(Path.Combine(_gameRoot, "a.esm"), DateTime.UtcNow.AddMinutes(10));
+
+        var second = await _coordinator.Ensure(Installation("101"));
+
+        second.Rebuilt.Should().BeTrue();
+        second.NonVanillaCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DepotManifestsBaseline_WhoseHashDiffersFileIsUntouched_IsNotRebuilt()
+    {
+        WriteGameFile("a.esm", "vanillb");
+        _source.Add(101, ("a.esm", "vanilla"));
+        await _coordinator.Ensure(Installation("101"));
+
+        var second = await _coordinator.Ensure(Installation("101"));
+
+        second.Rebuilt.Should().BeFalse();
+        second.NonVanillaCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task DepotManifestsBaseline_WhoseSizeDiffersRowsStillDescribeTheDisk_IsNotRebuilt()
+    {
+        WriteGameFile("a.esm", "a list's replacement");
+        _source.Add(101, ("a.esm", "vanilla"));
+        await _coordinator.Ensure(Installation("101"));
+
+        var second = await _coordinator.Ensure(Installation("101"));
+
+        second.Rebuilt.Should().BeFalse();
+        second.NonVanillaCount.Should().Be(1);
+    }
+
+    [Fact]
     public async Task AnAttestedOnlyBaseline_IsNotRebuiltOnTheNextEnsure()
     {
         // A settled install whose files are older than the store's last write is recorded from the manifest and

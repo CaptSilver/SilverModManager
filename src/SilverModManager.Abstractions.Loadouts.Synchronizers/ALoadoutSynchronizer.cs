@@ -249,7 +249,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         MergeStates(latestDiskState, previousDiskState, syncTree);
         MarkPlayerDeletions(syncTree, loadout);
         TreatRetractedModFilesAsNew(syncTree, loadout);
-        NameTheSameBytesByOneKind(syncTree, _identityResolver.Scoped(IdentitiesToResolve(syncTree)));
+        var resolver = _identityResolver.Scoped(IdentitiesToResolve(syncTree));
+        NameTheSameBytesByOneKind(syncTree, resolver);
+        MarkGameOwnBytesTheLoadoutNoLongerNames(syncTree, loadout, resolver);
         AdoptGameInstalledFiles(syncTree, loadout);
         LeaveUserProtectedFilesAlone(syncTree, loadout);
         return syncTree;
@@ -314,6 +316,30 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
             _perFileLogger.LogTrace("`{Path}` is on disk and was applied, but the baseline retracted it as looking like a mod: treating it as a new file", path);
             node.Previous = default;
+        }
+    }
+
+    /// <summary>
+    /// Flags a file that is on disk and in the previous state, has no loadout row, and holds bytes known to differ
+    /// from the previous ones when those bytes are the game's own. An earlier apply replaced the game's file (a mod,
+    /// or a Wabbajack list), the store restored it, and the row that stood for the vanilla file is gone because the
+    /// baseline had called the path non-vanilla while the replacement was on disk. Without the flag the generic rules
+    /// read it as a removed mod's file that was changed since and delete it. A file whose identity cannot be compared
+    /// yet is not flagged: it may be the mod's own file, unchanged since the apply. The initial disk state and the
+    /// store's list are loaded once, and only if some node gets that far.
+    /// </summary>
+    private void MarkGameOwnBytesTheLoadoutNoLongerNames(Dictionary<GamePath, SyncNode> tree, Loadout.ReadOnly loadout, IFileIdentityResolver resolver)
+    {
+        Dictionary<GamePath, SyncNodePart>? initial = null;
+        Dictionary<string, GameFileRecord>? listed = null;
+        foreach (var path in tree.Keys.ToArray())
+        {
+            ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(tree, path);
+            if (node.HaveLoadout || !node.HaveDisk || !node.HavePrevious) continue;
+            if (MatchParts(resolver, true, node.Disk, true, node.Previous) != IdentityMatch.Different) continue;
+
+            initial ??= InitialDiskState(loadout.InstallationId);
+            node.DiskIsGameOwn = IsGameOwnBytes(resolver, loadout.InstallationInstance, path, node.Disk, diskDiffersFromPrevious: true, initial, ref listed);
         }
     }
 
@@ -790,6 +816,21 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         LeaveGameWrittenFileAlone(path, ref item);
         LeaveUnappliedNeverLoadedFileAlone(path, ref item);
+        LeaveGameOwnBytesAlone(ref item);
+    }
+
+    /// <summary>
+    /// A file the store put back over what an earlier apply wrote (see <see cref="SyncNode.DiskIsGameOwn"/>) is not a
+    /// removed mod's file. Its disk state entry is dropped and the bytes stay, so nothing is deleted. With the entry
+    /// gone the next sync finds a file on disk that nothing tracks and ingests it like any other: the baseline repair,
+    /// not this, is what puts the loadout's own row for the game's file back.
+    /// </summary>
+    private static void LeaveGameOwnBytesAlone(ref SyncNode item)
+    {
+        // A flag left from before a read settled the node's identity does not hold once the disk equals the previous bytes.
+        if (!item.DiskIsGameOwn || item.Signature.HasFlag(Signature.DiskEqualsPrev) || !item.Actions.HasFlag(Actions.DeleteFromDisk)) return;
+
+        item.Actions = Actions.ForgetDiskState;
     }
 
     /// <summary>
@@ -1680,7 +1721,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         {
             if (!node.Actions.HasFlag(Actions.ForgetDiskState)) continue;
 
-            Logger.LogWarning("Leaving `{Path}` on disk: it differs from what the loadout deployed, so it is the player's and no longer tracked", path);
+            if (node.DiskIsGameOwn)
+                Logger.LogInformation("Leaving `{Path}` on disk: the store put the game's own bytes back over an earlier apply's file and no loadout row names it; no longer tracked", path);
+            else
+                Logger.LogWarning("Leaving `{Path}` on disk: it differs from what the loadout deployed, so it is the player's and no longer tracked", path);
             DiskStateEntries.Retract(tx, node);
         }
     }
@@ -1839,7 +1883,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             if (!node.Signature.HasFlag(Signature.DiskArchived)) continue;
 
             initial ??= InitialDiskState(context.MetadataId);
-            if (!IsGameOwnBytes(context, path, node, initial, ref listed)) continue;
+            if (!IsGameOwnBytes(_identityResolver, context.Installation, path, node.Disk, !node.Signature.HasFlag(Signature.DiskEqualsPrev), initial, ref listed)) continue;
 
             var key = node.Disk.Identity.Kind == HashKind.XxHash3
                 ? node.Disk.Identity
@@ -1867,21 +1911,21 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// is not the game's to keep. A list that names the file by path and size but cannot be joined to the disk's
     /// digest counts when the disk is not what an earlier apply wrote.
     /// </summary>
-    private bool IsGameOwnBytes(DeploymentContext context, GamePath path, SyncNode node, Dictionary<GamePath, SyncNodePart> initial, ref Dictionary<string, GameFileRecord>? listed)
+    private bool IsGameOwnBytes(IFileIdentityResolver resolver, GameInstallation installation, GamePath path, SyncNodePart disk, bool diskDiffersFromPrevious, Dictionary<GamePath, SyncNodePart> initial, ref Dictionary<string, GameFileRecord>? listed)
     {
         if (initial.TryGetValue(path, out var original)
-            && original.Size == node.Disk.Size
-            && _identityResolver.Resolve(original.Identity, node.Disk.Identity, node.Disk.Size) == IdentityMatch.Same)
+            && original.Size == disk.Size
+            && resolver.Resolve(original.Identity, disk.Identity, disk.Size) == IdentityMatch.Same)
             return true;
 
         if (path.LocationId != LocationId.Game) return false;
-        listed ??= ListedGameFiles(context.Installation);
-        if (!listed.TryGetValue(path.Path.ToString(), out var record) || record.Size != node.Disk.Size) return false;
+        listed ??= ListedGameFiles(installation);
+        if (!listed.TryGetValue(path.Path.ToString(), out var record) || record.Size != disk.Size) return false;
 
-        return _identityResolver.Resolve(record.Identity, node.Disk.Identity, node.Disk.Size) switch
+        return resolver.Resolve(record.Identity, disk.Identity, disk.Size) switch
         {
             IdentityMatch.Same => true,
-            IdentityMatch.Unknown => !node.Signature.HasFlag(Signature.DiskEqualsPrev),
+            IdentityMatch.Unknown => diskDiffersFromPrevious,
             _ => false,
         };
     }

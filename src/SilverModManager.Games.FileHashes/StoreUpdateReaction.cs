@@ -24,8 +24,8 @@ public enum StoreUpdateOutcome
     Refreshed,
 
     /// <summary>
-    /// The build is the same but the store's state changed (an update or validation settled, or Steam started
-    /// reporting damaged files). The registry and the Health Check follow; the baseline is only rebuilt when the
+    /// The build is the same but the store's state changed (an update or validation settled, Steam started
+    /// reporting damaged files, or the files were being written at the last check and the store has settled since). The registry and the Health Check follow; the baseline is only rebuilt when the
     /// store is settled, so it stays as it was while files are reported damaged.
     /// </summary>
     StateChanged,
@@ -102,7 +102,10 @@ public sealed class StoreUpdateReaction(
         var before = registered.LocatorResult;
         // The registry's copy can have been taken mid-update or while Steam reported damage; settling on the same
         // build still has to clear those flags and let the skipped baseline be built.
-        if (fresh.HasSameStoreStateAs(before)) return StoreUpdateOutcome.Unchanged;
+        // Not when the last check saw the store writing: a verify rewrites files without moving the build or the ids, so
+        // the settled state equals the registry's copy while the files may no longer be the ones the baseline classified.
+        var settledAfterWriting = previous == StoreUpdateOutcome.UpdateInProgress;
+        if (fresh.HasSameStoreStateAs(before) && !settledAfterWriting) return StoreUpdateOutcome.Unchanged;
 
         var buildChanged = BuildChanged(before, fresh);
         var located = new GameInstallation(fresh, registered.Locations);
@@ -160,6 +163,11 @@ public sealed class StoreUpdateReaction(
                 logger.LogInformation("{Game} was updated by {Store} to build {BuildId} but now reports damaged files; its file list is refreshed once the files are verified", name, fresh.Store, build);
             else
                 logger.LogInformation("{Game} was updated by {Store} to build {BuildId}; refreshing its file list", name, fresh.Store, build);
+        }
+        // Only reached after a check that saw the store writing: an identical state is otherwise reported as Unchanged.
+        else if (fresh.HasSameStoreStateAs(before))
+        {
+            logger.LogInformation("{Store} finished writing the files of {Game} (build {BuildId}); checking its file list against them", fresh.Store, name, build);
         }
         else if (fresh.StoreFilesDamaged && !before.StoreFilesDamaged)
         {

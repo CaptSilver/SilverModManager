@@ -140,6 +140,14 @@ public record struct SyncNode
     public bool PlayerDeleted { get; set; }
 
     /// <summary>
+    /// True when the file is on disk and in the previous state but no loadout row names it, the disk bytes differ from
+    /// the previous ones, and they are the game's own: what the install was first indexed with, or what the store's
+    /// file list names. The store put them back over a file an earlier apply replaced, so removing the file as one of a
+    /// mod that is gone would delete the game.
+    /// </summary>
+    public bool DiskIsGameOwn { get; set; }
+
+    /// <summary>
     /// True when two present parts carry identities of different kinds and no recorded digest converts one into the
     /// other, so whether they name the same bytes is not known until the file is read.
     /// </summary>

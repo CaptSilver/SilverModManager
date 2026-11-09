@@ -227,6 +227,118 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
         (await ReadGameFile(Vanilla)).Should().Be(VanillaText);
     }
 
+    private async Task PutOnDisk(string path, string text)
+    {
+        var file = GameFolder / path;
+        await File.WriteAllTextAsync(file.ToString(), text);
+        File.SetLastWriteTimeUtc(file.ToString(), DateTime.UtcNow.AddMinutes(10));
+    }
+
+    private static GamePath Game(string path) => new(LocationId.Game, RelativePath.FromUnsanitizedInput(path));
+
+    private int BackedUp(string text) => GameBackedUpFile.All(Connection.Db).Count(f => f.Hash == text.xxHash3AsUtf8());
+
+    // The local baseline called the path another size while the list's bytes were on disk, which takes it out of the
+    // game's file list and leaves the loadout with no row for it. The recorded size is the size on disk now so that
+    // the baseline's own recheck does not repair the row before the sync is the thing under test.
+    private async Task BaselineCallsTheFileAnotherSize(string path)
+    {
+        var baseline = LocalBaseline.All(Hashes.Local).Single();
+        using var tx = Hashes.Local.Connection.BeginTransaction();
+        var relative = RelativePath.FromUnsanitizedInput(path);
+        foreach (var file in baseline.Files.Where(f => f.Path == relative).ToList())
+            tx.Retract(baseline.Id, LocalBaseline.Files, file.Id);
+
+        foreach (var attested in AttestedFile.FindByBaseline(Hashes.Local, baseline.Id).Where(f => f.Path == relative).ToList())
+            tx.Delete(attested.Id, recursive: false);
+
+        _ = new NonVanillaFile.New(tx)
+        {
+            BaselineId = baseline.Id,
+            Path = relative,
+            Reason = NonVanillaReason.SizeDiffers,
+            Size = Size.FromLong(new FileInfo((GameFolder / path).ToString()).Length),
+        };
+        await tx.Commit();
+    }
+
+    [Fact]
+    public async Task RemovingAListThatReplacedAVanillaFile_AfterTheStoreRestoredIt_KeepsTheFileAndStopsTrackingIt()
+    {
+        var loadout = await CreateLoadout();
+        await AddMod(loadout, Vanilla);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        (await ReadGameFile(Vanilla)).Should().Be(Vanilla, "the list's file replaced the vanilla one");
+        await RemoveMod(loadout);
+        await PutOnDisk(Vanilla, VanillaText);
+        await BaselineCallsTheFileAnotherSize(Vanilla);
+        var backedUpBefore = BackedUp(VanillaText);
+
+        var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
+        Synchronizer.ProcessSyncTree(tree);
+        tree[Game(Vanilla)].Actions.Should().Be(Actions.ForgetDiskState, "the file is the game's own: nothing is backed up or deleted, it is only no longer tracked");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await ReadGameFile(Vanilla)).Should().Be(VanillaText, "the store put the game's own bytes back and the apply does not delete them");
+        BackedUp(VanillaText).Should().Be(backedUpBefore, "nothing is backed up for a file that stays");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await ReadGameFile(Vanilla)).Should().Be(VanillaText, "a later apply leaves the untracked file alone as well");
+    }
+
+    [Fact]
+    public async Task ARemovedFilesRestoredBytesTheInitialDiskStateNamed_AreKeptWhenTheStoreListsNoSuchFile()
+    {
+        const string player = "r6/scripts/tweak.reds";
+        var loadout = await CreateLoadout();
+        await PutOnDisk(player, "// edited");
+        await Synchronizer.Synchronize(Refresh(loadout));
+        using (var tx = Connection.BeginTransaction())
+        {
+            var row = LoadoutItem.FindByLoadout(Connection.Db, Refresh(loadout)).OfTypeLoadoutItemWithTargetPath()
+                .Single(i => ((GamePath)i.TargetPath).Path.ToString() == player);
+            tx.Delete(row.Id, recursive: false);
+            await tx.Commit();
+        }
+
+        await PutOnDisk(player, "// mod script");
+        var backedUpBefore = BackedUp("// mod script");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await ReadGameFile(player)).Should().Be("// mod script", "the bytes are what the install was first indexed with");
+        BackedUp("// mod script").Should().Be(backedUpBefore);
+    }
+
+    [Fact]
+    public async Task ARemovedFileWhoseBytesAreNeitherTheGamesNorWhatWasApplied_IsStillBackedUpAndDeleted()
+    {
+        const string player = "r6/scripts/tweak.reds";
+        var loadout = await CreateLoadout();
+        await PutOnDisk(player, "// edited");
+        await Synchronizer.Synchronize(Refresh(loadout));
+        using (var tx = Connection.BeginTransaction())
+        {
+            var row = LoadoutItem.FindByLoadout(Connection.Db, Refresh(loadout)).OfTypeLoadoutItemWithTargetPath()
+                .Single(i => ((GamePath)i.TargetPath).Path.ToString() == player);
+            tx.Delete(row.Id, recursive: false);
+            await tx.Commit();
+        }
+
+        await PutOnDisk(player, "// third version");
+
+        var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
+        Synchronizer.ProcessSyncTree(tree);
+        tree[Game(player)].Actions.Should().Be(Actions.BackupFile | Actions.DeleteFromDisk);
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (GameFolder / player).FileExists.Should().BeFalse("nothing vouches for these bytes, so the generic removal still applies");
+        BackedUp("// third version").Should().BeGreaterThan(0);
+    }
+
     private async Task StoreWithoutAnyReference(string text)
     {
         var bytes = Encoding.UTF8.GetBytes(text);

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
@@ -317,7 +318,8 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         // for that: it checks every file against its manifest, so mods deployed since land as non-vanilla. A
         // snapshot or partial baseline would take those mods for the game's own files.
         if (baseline.Kind == LocalBaselineKind.DepotManifests)
-            return baseline.ClassificationVersion is not { HasValue: true } built || built.Value < LocalVanillaBaseline.ClassificationVersion;
+            return baseline.ClassificationVersion is not { HasValue: true } built || built.Value < LocalVanillaBaseline.ClassificationVersion
+                   || ChangedOnDiskSinceClassified(baseline, installation);
         if (_manifestSource is null || locator.Store != GameStore.Steam || locator.StoreRoot is not { } storeRoot) return false;
 
         // A manifest Steam cached after the build completes it. Only a file newer than the build counts: one
@@ -332,6 +334,68 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Whether a file the build called another size or other content is no longer the file it classified. Such a row
+    /// takes the path out of the game's file list, so one recorded while a mod or a list's file sat there keeps hiding
+    /// the game's own file after the store puts it back (a verify, an update that rewrites it). A SizeDiffers row
+    /// records the size on disk at build time, so a stat tells whether the file was replaced since. A HashDiffers row
+    /// has the manifest's size, which a restore matches too, so it counts as replaced when the size and modified time
+    /// the build recorded for the file no longer match. The rebuild then classifies it against the manifest again. Only
+    /// these rows are checked: a path no manifest lists stays that way whatever its size.
+    /// </summary>
+    private static bool ChangedOnDiskSinceClassified(LocalBaseline.ReadOnly baseline, GameInstallation installation)
+    {
+        var root = installation.Locations[LocationId.Game].Path.ToString();
+        var gamePath = GamePathOf(installation);
+        foreach (var row in NonVanillaFile.FindByBaseline(baseline.Db, baseline.Id))
+        {
+            if (row.Reason is not (NonVanillaReason.SizeDiffers or NonVanillaReason.HashDiffers)) continue;
+
+            // The row carries the manifest's spelling of the path and the walk met the file under the disk's.
+            if (FindOnDisk(root, row.Path.ToString()) is not { } found) return true;
+            if (found.File.Length != (long)row.Size.Value) return true;
+            if (row.Reason != NonVanillaReason.HashDiffers) continue;
+
+            var recorded = LocalFileHashRows.TryGet(baseline.Db, gamePath, new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(found.RelativePath)),
+                Size.FromLong(found.File.Length), new DateTimeOffset(found.File.LastWriteTimeUtc, TimeSpan.Zero), out _);
+            if (!recorded) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// The file at <paramref name="relativePath"/> under <paramref name="root"/>, found under whichever spelling the
+    /// disk has: a manifest and the folder can differ in case, and a case-sensitive filesystem tells them apart.
+    /// </summary>
+    private static (FileInfo File, string RelativePath)? FindOnDisk(string root, string relativePath)
+    {
+        var current = root;
+        var parts = relativePath.Split('/', '\\');
+        var spelled = new List<string>(parts.Length);
+        for (var i = 0; i < parts.Length; i++)
+        {
+            var next = Path.Combine(current, parts[i]);
+            var last = i == parts.Length - 1;
+            if (last ? File.Exists(next) : Directory.Exists(next))
+            {
+                spelled.Add(parts[i]);
+                current = next;
+                continue;
+            }
+
+            if (!Directory.Exists(current)) return null;
+            var match = (last ? Directory.EnumerateFiles(current) : Directory.EnumerateDirectories(current))
+                .FirstOrDefault(entry => string.Equals(Path.GetFileName(entry), parts[i], StringComparison.OrdinalIgnoreCase));
+            if (match is null) return null;
+
+            spelled.Add(Path.GetFileName(match));
+            current = match;
+        }
+
+        return (new FileInfo(current), string.Join('/', spelled));
     }
 
     /// <summary>
