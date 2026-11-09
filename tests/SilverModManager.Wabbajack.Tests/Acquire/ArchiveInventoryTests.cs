@@ -1,3 +1,4 @@
+using SilverModManager.Games.TestFramework.Helpers;
 using NSubstitute;
 using FluentAssertions;
 using SilverModManager.Sdk.Hashes;
@@ -499,9 +500,48 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
 
         var row = plan.Rows.Single();
         row.State.Should().Be(ArchiveState.GameFileVersion);
-        // The stub's executable carries no version resource, so the install's own version reads as unknown here.
-        row.Reason.Should().Contain("1.5.97", "the version the list was made for").And.Contain("yours is");
+        // The stub's executable carries no version resource, so the install's own version cannot be read here.
+        row.Reason.Should().Contain("1.5.97", "the version the list was made for").And.Contain("your game's version could not be read");
+        row.Reason.Should().NotContain("0.0.0.0", "an unset version is not a version to show");
         row.GameFileAbsent.Should().BeFalse("the file is there, in another version");
+    }
+
+    [Fact]
+    public async Task AGameFileVersionRowNamesTheVersionOfTheInstalledExecutable()
+    {
+        var state = new GameFileSourceState("SkyrimSpecialEdition", GameBsa, Hash64(GameBsaBytes), "1.5.97");
+        var changed = (byte[])GameBsaBytes.Clone();
+        changed[10] ^= 0xFF;
+        var loadout = await CreateLoadout();
+        await GameBsaPath(loadout).WriteAllBytesAsync(changed);
+        await WriteExecutableVersion(loadout, new Version(1, 6, 1170, 0));
+
+        var plan = await Inventory().Build(ListWith(Entry(state, Hash64(GameBsaBytes), GameBsaBytes.Length)), Connection.Db, loadout);
+
+        plan.Rows.Single().Reason.Should().Contain("yours is 1.6.1170.0");
+    }
+
+    /// <summary>Replaces the game's executable with padding around a VS_FIXEDFILEINFO, the part of a native executable a version is read from.</summary>
+    private static async Task WriteExecutableVersion(Loadout.ReadOnly loadout, Version version)
+    {
+        var bytes = NativeExecutable.WithFileVersion(version);
+        var game = loadout.InstallationInstance;
+        await game.Locations.ToAbsolutePath(game.Game.GetPrimaryFile(game)).WriteAllBytesAsync(bytes);
+    }
+
+    [Fact]
+    public async Task AGameFileVersionRowSaysSoWhenTheInstalledVersionIsTheListsVersion()
+    {
+        var state = new GameFileSourceState("SkyrimSpecialEdition", GameBsa, Hash64(GameBsaBytes), "1.6.1170.0");
+        var changed = (byte[])GameBsaBytes.Clone();
+        changed[10] ^= 0xFF;
+        var loadout = await CreateLoadout();
+        await GameBsaPath(loadout).WriteAllBytesAsync(changed);
+        await WriteExecutableVersion(loadout, new Version(1, 6, 1170, 0));
+
+        var plan = await Inventory().Build(ListWith(Entry(state, Hash64(GameBsaBytes), GameBsaBytes.Length)), Connection.Db, loadout);
+
+        plan.Rows.Single().Reason.Should().Contain("your game is at that version").And.NotContain("yours is");
     }
 
     [Fact]

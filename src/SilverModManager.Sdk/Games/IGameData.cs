@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Games.Versions;
 using System.Collections.Immutable;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
@@ -106,9 +107,7 @@ public interface IGameData
     {
         try
         {
-            var primaryFile = GetPrimaryFile(installation);
-            var fvi = installation.Locations.ToAbsolutePath(primaryFile).FileInfo.GetFileVersionInfo();
-            return fvi.ProductVersion;
+            return GameExecutableVersion.Read(installation.Locations.ToAbsolutePath(GetPrimaryFile(installation)));
         }
         catch (Exception e)
         {

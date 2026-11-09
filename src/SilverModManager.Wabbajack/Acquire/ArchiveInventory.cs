@@ -287,8 +287,17 @@ public sealed class ArchiveInventory(
 
         if (described.Value.XxHash64.Equals(state.XxHash64)) return Row(archive, ArchiveState.GameFile);
 
-        var yours = gameFiles.InstalledVersion?.ToString() ?? "unknown";
+        var installed = gameFiles.InstalledVersion;
+        var detail = installed is null ? "your game's version could not be read"
+            : SameVersion(installed, state.GameVersion) ? "your game is at that version, so the file itself was changed or replaced"
+            : $"yours is {installed}";
         return Row(archive, ArchiveState.GameFileVersion,
-            $"'{state.GameFile}' differs from the list's copy: the list was made for game version {state.GameVersion}, yours is {yours}");
+            $"'{state.GameFile}' differs from the list's copy: the list was made for game version {state.GameVersion}, {detail}");
     }
+
+    /// <summary>Whether the list's version text names <paramref name="installed"/>; "1.5.97" and "1.5.97.0" are the same version.</summary>
+    private static bool SameVersion(Version installed, string listVersion)
+        => Version.TryParse(listVersion, out var listed) && Normalise(listed) == Normalise(installed);
+
+    private static Version Normalise(Version version) => new(version.Major, version.Minor, Math.Max(version.Build, 0), Math.Max(version.Revision, 0));
 }

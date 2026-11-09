@@ -13,6 +13,7 @@ using SilverModManager.Games.Generic.Diagnostics;
 using NexusMods.Paths;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Games.Versions;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.IO;
 
@@ -192,8 +193,7 @@ public abstract class ABethesdaGame<TSelf> : IBethesdaGame, IGameIdentifyingFile
     {
         try
         {
-            var fvi = installation.Locations.ToAbsolutePath(GetPrimaryFile(installation)).FileInfo.GetFileVersionInfo();
-            return fvi.ProductVersion;
+            return GameExecutableVersion.Read(installation.Locations.ToAbsolutePath(GetPrimaryFile(installation)));
         }
         catch (Exception)
         {

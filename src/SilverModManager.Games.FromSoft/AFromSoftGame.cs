@@ -12,6 +12,7 @@ using SilverModManager.Games.Generic.Diagnostics;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Games.Versions;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Settings;
 
@@ -120,7 +121,7 @@ public abstract class AFromSoftGame<TSelf> : IFromSoftGame
         try
         {
             var executable = FromSoftPaths.GameFolder(Definition.Layout, installation) / Definition.Layout.GameExecutable;
-            return executable.FileInfo.GetFileVersionInfo().ProductVersion;
+            return GameExecutableVersion.Read(executable);
         }
         catch (Exception)
         {

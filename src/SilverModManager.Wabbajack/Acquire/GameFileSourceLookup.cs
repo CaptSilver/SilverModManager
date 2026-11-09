@@ -74,14 +74,11 @@ public sealed class GameFileSourceLookup(GameInstallation installation, EntityId
     /// <summary>
     /// The version of this install, as far as the game can tell. Null when it cannot read one.
     /// </summary>
-    public Version? InstalledVersion
-    {
-        get
-        {
-            var version = installation.Game.GetLocalVersion(installation);
-            return version.HasValue ? version.Value : null;
-        }
-    }
+    public Version? InstalledVersion => _installedVersion.Value;
+
+    // Asked once per differing row, and reading the version scans the executable.
+    private readonly Lazy<Version?> _installedVersion
+        = new(() => installation.Game.GetLocalVersion(installation) is { HasValue: true } version ? version.Value : null, LazyThreadSafetyMode.ExecutionAndPublication);
 
     /// <summary>
     /// Opens the file at <paramref name="gameFile"/> (relative to the game folder) and returns its xxHash3 identity, which

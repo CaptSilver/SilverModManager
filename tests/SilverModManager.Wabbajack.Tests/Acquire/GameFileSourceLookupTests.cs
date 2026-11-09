@@ -5,6 +5,7 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework.Helpers;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
@@ -25,6 +26,21 @@ public class GameFileSourceLookupTests(ITestOutputHelper helper) : AcquireTestBa
     private GameFileSourceLookup Lookup(Loadout.ReadOnly loadout)
         => new(loadout, Connection, FileStore, ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileIdentityResolver>(),
         ServiceProvider.GetRequiredService<IFileHashesService>());
+
+    [Fact]
+    public async Task TheInstalledVersionIsReadOnceAndRemembered()
+    {
+        var loadout = await CreateLoadout();
+        var executable = loadout.InstallationInstance.Locations.ToAbsolutePath(loadout.InstallationInstance.Game.GetPrimaryFile(loadout.InstallationInstance));
+        await executable.WriteAllBytesAsync(NativeExecutable.WithFileVersion(new Version(1, 6, 1170, 0)));
+        var lookup = Lookup(loadout);
+
+        var first = lookup.InstalledVersion;
+        await executable.WriteAllBytesAsync(NativeExecutable.WithFileVersion(new Version(1, 5, 97, 0)));
+
+        first.Should().Be(new Version(1, 6, 1170, 0));
+        lookup.InstalledVersion.Should().Be(first, "every row of a list asks, and each read scans the executable");
+    }
 
     private async Task BackUpOriginal(Loadout.ReadOnly loadout)
     {

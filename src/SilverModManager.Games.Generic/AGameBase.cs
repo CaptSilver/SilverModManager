@@ -9,6 +9,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.FileHashes.Emitters;
 using SilverModManager.Games.Generic.Diagnostics;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Games.Versions;
 using SilverModManager.Sdk.IO;
 
 namespace SilverModManager.Games.Generic;
@@ -110,8 +111,7 @@ public abstract class AGameBase : IGame
     {
         try
         {
-            var fvi = installation.Locations.ToAbsolutePath(GetPrimaryFile(installation)).FileInfo.GetFileVersionInfo();
-            return fvi.ProductVersion;
+            return GameExecutableVersion.Read(installation.Locations.ToAbsolutePath(GetPrimaryFile(installation)));
         }
         catch (Exception)
         {

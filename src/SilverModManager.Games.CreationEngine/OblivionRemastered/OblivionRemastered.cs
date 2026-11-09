@@ -11,6 +11,7 @@ using SilverModManager.Games.FOMOD;
 using SilverModManager.Games.Unreal;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Games.Versions;
 
 namespace SilverModManager.Games.CreationEngine.OblivionRemastered;
 
@@ -112,7 +113,7 @@ public class OblivionRemastered(IServiceProvider provider) : ACreationEngineGame
         try
         {
             var exe = installation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, EngineExe));
-            return exe.FileInfo.GetFileVersionInfo().ProductVersion;
+            return GameExecutableVersion.Read(exe);
         }
         catch (Exception)
         {

@@ -11,6 +11,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\Games\SilverModManager.Games.TestFramework\Helpers\NativeExecutable.cs" Link="NativeExecutable.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <ProjectReference Include="..\..\src\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
   </ItemGroup>

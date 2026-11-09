@@ -23,23 +23,7 @@ public sealed class LauncherVersionReader : ILauncherVersionReader
         return LauncherVersion.Unknown;
     }
 
-    private static Optional<Version> ReadPeResource(AbsolutePath file)
-    {
-        try
-        {
-            if (!file.FileExists) return Optional<Version>.None;
-            var fvi = file.FileInfo.GetFileVersionInfo();
-            return IsPresent(fvi.ProductVersion) ? fvi.ProductVersion : IsPresent(fvi.FileVersion) ? fvi.FileVersion : Optional<Version>.None;
-        }
-        catch (Exception)
-        {
-            return Optional<Version>.None;
-        }
-    }
-
-    // On Linux the PE reader falls back to the managed assembly attributes, and reports 0.0.0.0 when the informational
-    // version is not a version (or when the file has no version data at all). Metadata uses the same 0.0.0.0 for "unset".
-    private static bool IsPresent(Version? version) => version is not null && (version.Major, version.Minor, Math.Max(version.Build, 0), Math.Max(version.Revision, 0)) != (0, 0, 0, 0);
+    private static Optional<Version> ReadPeResource(AbsolutePath file) => GameExecutableVersion.Read(file);
 
     /// <summary>
     /// Reads the version from the managed metadata without loading the assembly: the informational version
@@ -66,11 +50,11 @@ public sealed class LauncherVersionReader : ILauncherVersionReader
                 var blob = reader.GetBlobReader(attribute.Value);
                 if (blob.ReadUInt16() != 1) continue; // custom attribute prolog
                 var value = blob.ReadSerializedString();
-                if (value is not null && VersionText.TryParse(value, out var informational) && IsPresent(informational)) return informational;
+                if (value is not null && VersionText.TryParse(value, out var informational) && GameExecutableVersion.IsSet(informational)) return informational;
             }
 
             // An assembly built without an AssemblyVersion carries 0.0.0.0, which must not hide the deps.json.
-            return IsPresent(assembly.Version) ? assembly.Version : Optional<Version>.None;
+            return GameExecutableVersion.IsSet(assembly.Version) ? assembly.Version : Optional<Version>.None;
         }
         catch (Exception e) when (e is BadImageFormatException or IOException or UnauthorizedAccessException or InvalidOperationException)
         {
