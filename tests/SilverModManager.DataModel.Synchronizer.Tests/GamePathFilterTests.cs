@@ -45,6 +45,26 @@ public class GamePathFilterTests(ITestOutputHelper helper) : AStubbedGameTest<Ga
         Synchronizer.GamePathFilter.ShouldFilter(new GamePath(LocationId.From(location), path)).Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData("Game", "src/skse64/main.cpp")]
+    [InlineData("Game", "src/skse64/.gitignore")]
+    [InlineData("Game", "src/skse64/skse64.vcxproj")]
+    [InlineData("Game", "CMakeLists.txt")]
+    public void FilesNoGameLoads_AreFiltered(string location, string path)
+    {
+        Synchronizer.GamePathFilter.ShouldFilter(new GamePath(LocationId.From(location), path)).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("Game", "Data/Scripts/Source/Thing.psc")]
+    [InlineData("Game", "skse64_loader.exe")]
+    [InlineData("Game", "Data/SKSE/Plugins/plugin.dll")]
+    [InlineData("Game", ".gitignore")]
+    public void FilesAGameOrExtenderLoads_AreNotFiltered(string location, string path)
+    {
+        Synchronizer.GamePathFilter.ShouldFilter(new GamePath(LocationId.From(location), path)).Should().BeFalse();
+    }
+
     private static readonly GamePath Save = new(LocationId.Saves, "slot1.sav");
     private static readonly FileIdentity Xx1 = FileIdentity.XxHash3(Hash.From(0xFAD01));
     private static readonly FileIdentity Xx2 = FileIdentity.XxHash3(Hash.From(0xFAD02));

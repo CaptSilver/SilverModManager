@@ -449,6 +449,9 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         // Now we map the files to their locations based on the hashes
         foreach (var pair in CollectionMod.Hashes)
         {
+            // Vortex lists every file it installed, and the library leaves source files no game loads out of the archive.
+            if (NeverLoadedFiles.IsNeverLoaded(pair.Path)) continue;
+
             // Try and find the hash we are looking for
             if (!hashes.TryGetValue(pair.MD5, out var libraryItem))
                 throw new InvalidOperationException("The hash was not found in the archive.");
@@ -479,7 +482,8 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         var srcFiles = srcArchive.Children.ToFrozenDictionary(static x => x.Path, static x => x.AsLibraryFile());
         var collectionFiles = SourceCollectionArchive.Children.ToFrozenDictionary(static x => x.Path, static x => x.AsLibraryFile());
 
-        var patches = CollectionMod.Patches.ToArray();
+        // A patched source file would not be in the library's archive either (see InstallReplicatedMod).
+        var patches = CollectionMod.Patches.Where(patch => !NeverLoadedFiles.IsNeverLoaded(patch.Key)).ToArray();
         var results = new ValueTuple<PatchedFile, MemoryStream>[patches.Length];
 
         await Parallel.ForAsync(fromInclusive: 0, toExclusive: patches.Length, parallelOptions: new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = cancellationToken }, async (i, innerCancellationToken) =>

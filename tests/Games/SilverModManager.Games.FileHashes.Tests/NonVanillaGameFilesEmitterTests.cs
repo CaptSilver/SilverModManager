@@ -404,6 +404,31 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
         data.Files.Markdown.Should().Contain("mod.esp").And.NotContain("metadata.store.stamp").And.NotContain("wrote itself");
     }
 
+    // Mod source such as SKSE's src/ folder is not something any game loads, so it is not a file that "came from outside".
+    [Fact]
+    public async Task ARowForAFileNoGameLoads_IsNotListed()
+    {
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("src/skse64/main.cpp", NonVanillaReason.LooksLikeAMod), ("src/skse64/.gitignore", NonVanillaReason.LooksLikeAMod), ("skse64_loader.exe", NonVanillaReason.LooksLikeAMod));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
+        data.FileCount.Should().Be(1);
+        data.Files.Markdown.Should().Contain("skse64_loader.exe").And.NotContain("main.cpp").And.NotContain(".gitignore");
+    }
+
+    [Fact]
+    public async Task WhenOnlyFilesNoGameLoadsDiffer_NothingIsReported()
+    {
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("src/a.cpp", NonVanillaReason.LooksLikeAMod), ("src/b.h", NonVanillaReason.LooksLikeAMod));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        (await Diagnose(loadout)).Should().BeEmpty();
+    }
+
     [Theory]
     [InlineData("bin/game.log", true)]
     [InlineData("Launcher/debug.LOG", true)]
@@ -469,6 +494,78 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
 
         (await Diagnose(loadout, Tree(("a.esm", new SyncNode { SourceItemType = LoadoutSourceItemType.Game, Disk = Part() })))).Should().BeEmpty();
         (await Diagnose(loadout, FrozenDictionary<GamePath, SyncNode>.Empty)).Should().BeEmpty("a folder with nothing in it has nothing to report");
+    }
+
+    [Fact]
+    public async Task AFolderWithManyFiles_IsOneLineWithItsCount_AndSmallOnesKeepOneLinePerFile()
+    {
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var many = Enumerable.Range(1, 7).Select(i => ($"Mods/pack/{i}.pak", NonVanillaReason.NotInManifest)).ToArray();
+        await AddReports(baseline, [.. many, ("dlc/1.pak", NonVanillaReason.HashDiffers), ("dlc/2.pak", NonVanillaReason.NotInManifest)]);
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
+        data.FileCount.Should().Be(9);
+        data.Files.Markdown.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Should().Equal(
+            "* `Mods/pack/`: 7 files (not in the store's manifest)",
+            "* `dlc/1.pak` (content differs)",
+            "* `dlc/2.pak` (not in the store's manifest)"
+        );
+    }
+
+    [Fact]
+    public async Task AFolderWithManyFilesForDifferentReasons_CountsEachReason()
+    {
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var rows = Enumerable.Range(1, 4).Select(i => ($"pack/{i}.pak", NonVanillaReason.NotInManifest))
+            .Concat(Enumerable.Range(5, 3).Select(i => ($"pack/{i}.pak", NonVanillaReason.HashDiffers))).ToArray();
+        await AddReports(baseline, rows);
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
+        data.Files.Markdown.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Should().Equal(
+            "* `pack/`: 7 files (4 not in the store's manifest, 3 with different content)");
+    }
+
+    [Fact]
+    public async Task AModSpreadOverManySmallFolders_IsOneLinePerSecondLevelFolder()
+    {
+        // Two files in each of eight leaf folders: no leaf passes the one-by-one limit, yet sixteen lines would bury the card.
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var textures = Enumerable.Range(1, 4).SelectMany(d => Enumerable.Range(1, 2).Select(i => ($"Data/textures/pack{d}/{i}.dds", NonVanillaReason.NotInManifest)));
+        var meshes = Enumerable.Range(1, 4).SelectMany(d => Enumerable.Range(1, 2).Select(i => ($"Data/meshes/pack{d}/{i}.nif", NonVanillaReason.NotInManifest)));
+        await AddReports(baseline, [.. textures, .. meshes, ("Data/extra.esp", NonVanillaReason.NotInManifest)]);
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
+        data.Files.Markdown.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Should().Equal(
+            "* `Data/extra.esp` (not in the store's manifest)",
+            "* `Data/meshes/`: 8 files (not in the store's manifest)",
+            "* `Data/textures/`: 8 files (not in the store's manifest)"
+        );
+    }
+
+    [Fact]
+    public async Task TheTopOfTheGameFolder_IsListedLast_LikeTheTopFolderSummary()
+    {
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var top = Enumerable.Range(1, 6).Select(i => ($"{i}.dll", NonVanillaReason.NotInManifest));
+        await AddReports(baseline, [.. top, ("Mods/x.pak", NonVanillaReason.NotInManifest)]);
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
+        data.Files.Markdown.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Should().Equal(
+            "* `Mods/x.pak` (not in the store's manifest)",
+            "* the top of the game folder: 6 files (not in the store's manifest)"
+        );
     }
 
     [Fact]

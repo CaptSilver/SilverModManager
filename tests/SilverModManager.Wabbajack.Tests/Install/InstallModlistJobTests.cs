@@ -865,6 +865,47 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         TreeOf(group).Should().NotContainKey("A");
     }
 
+    // The library never unpacks source files nobody loads, so a directive that names one finds no member. It is left out on
+    // purpose, without a note per file, and must not keep the list from being finished.
+    [Fact]
+    public async Task ADirectiveForAFileNoGameLoadsIsLeftOutWithoutANote()
+    {
+        var plugin = "plugin"u8.ToArray();
+        var archive = await AddZip("a.zip", new() { ["Data/mod.esp"] = plugin, ["src/main.cpp"] = "int main() {}"u8.ToArray(), ["Data/Scripts/Source/Thing.psc"] = "Scriptname Thing"u8.ToArray() });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.AddRange(
+        [
+            list.Member("mods/A/mod.esp", archive, "Data/mod.esp", plugin),
+            list.Member("mods/A/src/main.cpp", archive, "src/main.cpp", "int main() {}"u8.ToArray()),
+        ]);
+        list.Directives.Add(new FromArchive(P("mods/A/other.cpp"), Xx64.From(3), 4, new ArchiveHashPath(archive.XxHash64, [P("elsewhere.cpp")])));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        SkipsOf(group).Should().BeEmpty();
+        WabbajackSkippedFile.SkipsThatKeepTheListOff(Connection.Db, group.Id).Should().BeEmpty();
+        TreeOf(group)["A"].Keys.Should().BeEquivalentTo("Game/Data/mod.esp");
+    }
+
+    [Fact]
+    public async Task ADirectiveWhoseSourceMemberIsAFileNoGameLoadsIsLeftOutEvenWhenItsDestinationLoads()
+    {
+        var archive = await AddZip("a.zip", new() { ["Data/mod.esp"] = "plugin"u8.ToArray() });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(new FromArchive(P("mods/A/renamed.bin"), Xx64.From(3), 4, new ArchiveHashPath(archive.XxHash64, [P("src/main.cpp")])));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        SkipsOf(group).Should().BeEmpty("a member the library never unpacks is not a missing one");
+        WabbajackSkippedFile.SkipsThatKeepTheListOff(Connection.Db, group.Id).Should().BeEmpty();
+    }
+
     [Fact]
     public async Task RunningTheJobTwiceCreatesNoSecondGroupOrFileAndNoSecondSkipRow()
     {

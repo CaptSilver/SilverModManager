@@ -2367,9 +2367,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// save folders its author knew about, and a reset or unmanage would otherwise delete the rest.
     /// </summary>
     /// <remarks>
-    /// Proton's shared shader caches are filtered too, see <see cref="IsSharedProtonCache"/>.
+    /// Proton's shared shader caches are filtered too, see <see cref="IsSharedProtonCache"/>, and so are source and project
+    /// files no game loads (see <see cref="NeverLoadedFiles"/>): a mod author's <c>src/</c> folder left in the game folder
+    /// is neither ingested nor reported as an external change.
     /// </remarks>
-    private static readonly IGamePathFilter BaseGamePathFilter = Synchronizers.GamePathFilters.Create(path => path.LocationId == LocationId.Saves || IsSharedProtonCache(path) || IsWriteProbe(path));
+    private static readonly IGamePathFilter BaseGamePathFilter = Synchronizers.GamePathFilters.Create(path => path.LocationId == LocationId.Saves || IsSharedProtonCache(path) || IsWriteProbe(path) || NeverLoadedFiles.IsNeverLoaded(path));
 
     /// <summary>
     /// Whether the path is a shader cache that Proton (vkd3d-proton, DXVK) drops next to the running game.

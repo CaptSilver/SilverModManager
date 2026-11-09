@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Backend.FileExtractor;
 
@@ -189,8 +190,9 @@ internal sealed class ArchiveEntryPlan
                 UnaddressableCount++;
 
                 // Such a link cannot be left out of the run, so 7z creates it under whatever its name says; it
-                // is removed again before anything else reads the folder (see ExtractedNames.Repair).
-                Keep(i, drop: IsLink(entries[i]));
+                // is removed again before anything else reads the folder (see ExtractedNames.Repair). The same goes
+                // for a source file no game loads, judged by the name it would get.
+                Keep(i, drop: IsLink(entries[i]) || (!isDirectory && NeverLoadedFiles.IsNeverLoaded(final[i])));
                 continue;
             }
 
@@ -211,6 +213,14 @@ internal sealed class ArchiveEntryPlan
             {
                 // A folder entry for the root itself ("." or "./") has nothing to create.
                 if (!(isDirectory && placedRight)) excluded.Add(key);
+                continue;
+            }
+
+            // Judged by the name the file would get on disk. A link with such a name is left out too: a copy of its
+            // target under that name would be source code all the same.
+            if (!isDirectory && NeverLoadedFiles.IsNeverLoaded(final[i]))
+            {
+                excluded.Add(key);
                 continue;
             }
 

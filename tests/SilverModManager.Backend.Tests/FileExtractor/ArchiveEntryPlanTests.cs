@@ -8,6 +8,34 @@ public class ArchiveEntryPlanTests
     private static ArchiveEntryPlan Plan(params string[] names) =>
         new(names.Select(n => new ArchiveEntryPlan.Entry(n, IsDirectory: n.EndsWith('/'))).ToArray());
 
+    [Fact]
+    public void FilesNoGameLoadsAreLeftOutOfTheBulkRun()
+    {
+        var plan = Plan("Data/Mod.esp", "src/", "src/skse64/main.cpp", "src/skse64/.gitignore", "src/skse64/skse64.vcxproj", "SKSE/Plugins/plugin.dll");
+
+        plan.Excluded.Should().BeEquivalentTo("src/skse64/main.cpp", "src/skse64/.gitignore", "src/skse64/skse64.vcxproj");
+        plan.Moved.Should().BeEmpty();
+        plan.IsPlain.Should().BeFalse();
+        plan.Kept.Select(k => System.Text.Encoding.UTF8.GetString(k.Raw)).Should().NotContain(name => name.EndsWith(".cpp"));
+    }
+
+    [Fact]
+    public void ANameThatIsMovedAndNeverLoadedIsNotExtractedAtAll()
+    {
+        var plan = Plan("src\\main.cpp", "kept.txt");
+
+        plan.Moved.Should().BeEmpty();
+        plan.Excluded.Should().BeEquivalentTo("src\\main.cpp");
+    }
+
+    [Fact]
+    public void PapyrusSourceStaysInTheRun()
+    {
+        var plan = Plan("Scripts/Source/Thing.psc", "Scripts/Thing.pex");
+
+        plan.IsPlain.Should().BeTrue();
+    }
+
     // 7z drops "." and empty segments itself, so these need neither a separate run nor a warning. Each
     // separate run decompresses the whole archive again, which a tarball of thousands of "./" entries
     // can't afford.
@@ -265,6 +293,18 @@ public class ArchiveEntryPlanTests
             Raw(fileName));
 
         plan.Kept.Select(k => k.Drop).Should().Equal(true, true, false);
+    }
+
+    // 7z cannot be told to leave such a name out, so it is extracted with the rest and removed again afterwards.
+    [Fact]
+    public void AnUnaddressableSourceFileIsMarkedToBeDropped()
+    {
+        byte[] sourceName = [.. "src/"u8.ToArray(), 0x8B, .. "main.cpp "u8.ToArray()];
+        byte[] otherName = [.. "Data/"u8.ToArray(), 0x8B, .. "mod.esp "u8.ToArray()];
+        var plan = Plan(Raw(sourceName), Raw(otherName));
+
+        plan.UnaddressableCount.Should().Be(2);
+        plan.Kept.Select(k => k.Drop).Should().Equal(true, false);
     }
 
     [Fact]

@@ -81,11 +81,7 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         var gameWritten = unmanaged.Length - files.Length;
 
         var folders = DescribeFolders(files.Select(f => f.Path));
-        var list = new StringBuilder();
-        foreach (var file in files)
-        {
-            list.AppendLine($"* {MarkdownText.Code(file.Path)} ({DescribeReason(file.Reason)})");
-        }
+        var list = new StringBuilder(DescribeFiles(files));
         if (gameWritten > 0)
         {
             list.AppendLine();
@@ -127,10 +123,11 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
             ? synchronizer.IsGameWrittenPath
             : GameWrittenFiles.IsLogOrCrashFile;
 
+    // Files no game loads are never listed, whichever synchronizer the game has: an older baseline still holds their rows.
     private static Func<GamePath, bool> FilteredPredicate(Loadout.ReadOnly loadout)
         => loadout.TryGetGame(out var game) && game is IGame { Synchronizer: var synchronizer }
-            ? synchronizer.GamePathFilter.ShouldFilter
-            : _ => false;
+            ? path => NeverLoadedFiles.IsNeverLoaded(path) || synchronizer.GamePathFilter.ShouldFilter(path)
+            : NeverLoadedFiles.IsNeverLoaded;
 
     /// <summary>
     /// Whether the loadout deploys or intends to deploy the file, an earlier apply deployed it, or the game handles
@@ -177,6 +174,49 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         return false;
     }
 
+    // A folder with only a few files lists each of them with its reason. A larger one is a single line with its count: a
+    // pack unpacked by hand can be hundreds of files, and one line each would bury the rest of the card.
+    private const int MostFilesListedOneByOne = 5;
+
+    // Files are counted per folder two levels down (Data/textures), not per leaf folder. A mod spread over many leaf folders
+    // of a few files each would otherwise still be one line per file.
+    private const int FolderLevelsShown = 2;
+
+    private static string DescribeFiles(IEnumerable<NonVanillaFile.ReadOnly> files)
+    {
+        var lines = new List<(bool IsTop, string SortKey, string Line)>();
+        foreach (var folder in files.GroupBy(f => FolderKey(f.Path)))
+        {
+            var inFolder = folder.ToArray();
+            if (inFolder.Length <= MostFilesListedOneByOne)
+            {
+                lines.AddRange(inFolder.Select(file => (false, file.Path.ToString(), $"* {MarkdownText.Code(file.Path)} ({DescribeReason(file.Reason)})")));
+                continue;
+            }
+
+            var isTop = folder.Key.Length == 0;
+            var where = isTop ? "the top of the game folder" : MarkdownText.Code(folder.Key + "/");
+            lines.Add((isTop, folder.Key + "/", $"* {where}: {inFolder.Length} files ({DescribeReasons(inFolder.Select(f => f.Reason))})"));
+        }
+
+        // The files at the top of the game folder come last, as they do in the summary by top-level folder.
+        var text = new StringBuilder();
+        foreach (var (_, _, line) in lines.OrderBy(l => l.IsTop).ThenBy(l => l.SortKey, StringComparer.Ordinal)) text.AppendLine(line);
+        return text.ToString();
+    }
+
+    private static string FolderKey(RelativePath path)
+        => path.Depth == 0 ? "" : string.Join('/', path.Parent.GetParts().Take(FolderLevelsShown).Select(part => part.ToString()));
+
+    // The one reason when they all agree, otherwise each with its count, the most common first.
+    private static string DescribeReasons(IEnumerable<NonVanillaReason> reasons)
+    {
+        var counts = reasons.GroupBy(r => r).OrderByDescending(g => g.Count()).ThenBy(g => g.Key).ToArray();
+        return counts.Length == 1
+            ? DescribeReason(counts[0].Key)
+            : string.Join(", ", counts.Select(g => DescribeReasonCount(g.Key, g.Count())));
+    }
+
     // One line per top-level folder, sorted by name, with the files at the top of the game folder last.
     private static string DescribeFolders(IEnumerable<RelativePath> paths)
     {
@@ -196,6 +236,18 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         }
         return text.ToString();
     }
+
+    // The reason as it reads after a count: "4 not in the store's manifest", "3 with different content".
+    private static string DescribeReasonCount(NonVanillaReason reason, int count) => reason switch
+    {
+        NonVanillaReason.NotInManifest => $"{count} not in the store's manifest",
+        NonVanillaReason.SizeDiffers => $"{count} with a different size",
+        NonVanillaReason.HashDiffers => $"{count} with different content",
+        NonVanillaReason.LooksLikeAMod => $"{count} look like a mod loader or mod",
+        NonVanillaReason.DeployedByLoadout => $"{count} put there by a loadout, which no longer provides them",
+        NonVanillaReason.DeployedByAnotherManager => $"{count} put there by another mod manager",
+        _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, null),
+    };
 
     private static string DescribeReason(NonVanillaReason reason) => reason switch
     {

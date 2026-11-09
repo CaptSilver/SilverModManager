@@ -208,6 +208,31 @@ public class SevenZipExtractionTests : AFileExtractorTest
         ]).Should().BeFalse();
     }
 
+    // A manual SKSE install leaves its C++ source beside the plugin. Nothing loads it, so it never reaches the folder.
+    [Fact]
+    public async Task SourceFilesNoGameLoadsAreNotExtracted()
+    {
+        await using var outside = TemporaryFileManager.CreateFolder();
+        var archive = outside.Path.Combine("with-source.zip");
+        await using (var stream = File.Create(archive.ToString()))
+        await using (var zip = new ZipArchive(stream, ZipArchiveMode.Create))
+        {
+            foreach (var name in new[] { "Data/SKSE/Plugins/plugin.dll", "Data/Scripts/Source/Thing.psc", "src/skse64/main.cpp", "src/skse64/.gitignore", "src/skse64/skse64.vcxproj", "CMakeLists.txt" })
+            {
+                var entry = zip.CreateEntry(name);
+                await using var writer = new StreamWriter(entry.Open());
+                await writer.WriteAsync("content");
+            }
+        }
+
+        var destination = outside.Path.Combine("extracted");
+        destination.CreateDirectory();
+        await FileExtractor.ExtractAllAsync(archive, destination, TestContext.Current.CancellationToken);
+
+        destination.EnumerateFiles().Select(f => f.RelativeTo(destination).ToString())
+            .Should().BeEquivalentTo("Data/SKSE/Plugins/plugin.dll", "Data/Scripts/Source/Thing.psc");
+    }
+
     // hop/evil.txt is extracted on its own into a real hop/ folder and viahop is dropped when the links are
     // placed (7z is never asked to create either link); the archive extracts and nothing is written outside.
     [Fact]

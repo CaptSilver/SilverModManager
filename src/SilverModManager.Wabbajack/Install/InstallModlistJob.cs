@@ -738,6 +738,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
         if (placement.Directive is not FromArchive from) return new Prepared(placement, null, null, Silent: false);
 
+        // The library never unpacks these, so the member would not be found. They are left out without a note: a list can
+        // carry hundreds of them (a mod's whole src/ folder), and nothing the user could do about one is missing.
+        if (NamesAFileNoGameLoads(from)) return new Prepared(placement, null, null, Silent: true);
+
         try
         {
             return new Prepared(placement, await ResolveMember(rows, from, cancellationToken), null, Silent: false);
@@ -747,6 +751,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             return new Prepared(placement, null, new Skip(skipped.Kind, skipped.Message), Silent: false);
         }
     }
+
+    /// <summary>Whether the directive reads, or writes, a file of the kind <see cref="NeverLoadedFiles"/> describes.</summary>
+    private static bool NamesAFileNoGameLoads(FromArchive directive)
+        => NeverLoadedFiles.IsNeverLoaded(directive.To) || (directive.Source.Parts.Count > 0 && NeverLoadedFiles.IsNeverLoaded(directive.Source.Parts[^1]));
 
     /// <summary>
     /// Whether the placement is a plain copy of the game's own file at the same path, which the install compares with the

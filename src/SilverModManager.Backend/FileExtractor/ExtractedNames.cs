@@ -16,7 +16,7 @@ internal static partial class ExtractedNames
     /// <param name="Raw">The name as stored in the archive.</param>
     /// <param name="Index">Position in the archive; of two entries that end up at one path, the higher one stays.</param>
     /// <param name="IsSymlink">True for a symbolic link entry. 7z leaves a 0-byte file where it refused to create one.</param>
-    /// <param name="Drop">True for a link entry that could not be kept out of the run: whatever 7z made of it is removed.</param>
+    /// <param name="Drop">True for a link entry, or a file no game loads, that could not be kept out of the run: whatever 7z made of it is removed.</param>
     /// <param name="HardLinkTarget">The archive path a hard link entry points at, or null for any other entry.</param>
     internal readonly record struct Kept(byte[] Raw, int Index, bool IsDirectory, bool IsSymlink = false, bool Drop = false, string? HardLinkTarget = null);
 
@@ -58,12 +58,13 @@ internal static partial class ExtractedNames
         }
 
         // A link whose name 7z cannot be given is created wherever its name says, which no rule has judged;
-        // it goes, link or hard link alike (unlink removes a link itself and never follows it).
+        // it goes, link or hard link alike (unlink removes a link itself and never follows it). So does a source
+        // file no game loads whose name could not be given to 7z.
         foreach (var p in prepared.Where(p => p.Entry.Drop))
         {
-            Check(Unlink(Join(rootBytes, p.RawSegments, p.RawSegments.Length)), p, "removing the link that 7z could not be told to leave out");
+            Check(Unlink(Join(rootBytes, p.RawSegments, p.RawSegments.Length)), p, "removing the entry that 7z could not be told to leave out");
             placeholders.Add(p);
-            logger.LogWarning("Dropping link `{Entry}` from archive `{Archive}`: its name cannot be given to 7z, so it could not be left out of the extraction", EntryNames.Printable(Encoding.UTF8.GetString(p.Entry.Raw)), archive);
+            logger.LogWarning("Dropping `{Entry}` from archive `{Archive}`: its name cannot be given to 7z, so it could not be left out of the extraction", EntryNames.Printable(Encoding.UTF8.GetString(p.Entry.Raw)), archive);
         }
 
         prepared = prepared.Where(p => !placeholders.Contains(p)).ToArray();

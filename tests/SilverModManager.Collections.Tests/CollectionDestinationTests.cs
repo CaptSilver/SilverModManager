@@ -305,6 +305,47 @@ public class CollectionDestinationTests(ITestOutputHelper helper) : ACyberpunkIs
     }
 
     [Fact]
+    public async Task InstallCollection_ReplicatedMod_IgnoresListedSourceFilesTheLibraryNeverUnpacks()
+    {
+        // Vortex lists every file it installed, a mod's src/ included. The library leaves those out of the archive, so their
+        // hashes can never be found; that must not fail the mod.
+        var offline = new OfflineCollections(ServiceProvider, Connection, LibraryService, TemporaryFileManager);
+        var folder = TemporaryFileManager.CreateFolder();
+        var (path, archiveMd5) = await offline.CreateMod(folder.Path, 0, ModShape.Plain);
+        await offline.AddDirectDownload(path, archiveMd5);
+        var innerMd5 = await Md5Hasher.HashAsync(new MemoryStream(System.Text.Encoding.UTF8.GetBytes("plain mod 0")));
+        var sourceMd5 = await Md5Hasher.HashAsync(new MemoryStream(System.Text.Encoding.UTF8.GetBytes("int main() {}")));
+        var manifest = new CollectionRoot
+        {
+            Info = new CollectionInfo { Name = "Replicated", DomainName = GameDomain.From("cyberpunk2077") },
+            Mods =
+            [
+                new Mod
+                {
+                    Name = "Replicated mod", DomainName = GameDomain.From("cyberpunk2077"),
+                    Source = new ModSource
+                    {
+                        Type = ModSourceType.Direct, Md5 = archiveMd5, Url = new Uri("https://example.invalid/mod0.zip"),
+                        LogicalFilename = "mod0.zip", FileSize = Size.From((ulong)path.FileInfo.Size),
+                    },
+                    Hashes =
+                    [
+                        new PathAndHash { Path = "archive/pc/mod/replicated.archive", MD5 = innerMd5 },
+                        new PathAndHash { Path = "archive/pc/mod/src/main.cpp", MD5 = sourceMd5 },
+                    ],
+                },
+            ],
+        };
+        var (file, revision, items) = await offline.Create(manifest);
+        var loadout = await CreateLoadout();
+
+        await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items));
+
+        NexusCollectionReplicatedLoadoutGroup.All(Connection.Db).Should().ContainSingle("the mod is installed by the replicated path");
+        LoadoutItem.All(Connection.Db).Select(i => i.Name).Should().Contain("archive/pc/mod/replicated.archive").And.NotContain("archive/pc/mod/src/main.cpp");
+    }
+
+    [Fact]
     public async Task CollectionCreator_BundledArchive_IsForTheLoadoutsGame()
     {
         var offline = new OfflineCollections(ServiceProvider, Connection, LibraryService, TemporaryFileManager);
