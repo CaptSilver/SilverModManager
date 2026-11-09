@@ -199,10 +199,10 @@ public static class WabbajackModlistText
 
         if (replaced.Length > 0)
         {
-            var verifyIn = replaced[0].VerifyIn ?? "Steam";
+            var verifyWhere = GameFileReplacement.VerifyWhere(replaced[0].InstalledFrom);
             sentences.Add(replaced.Length == 1
-                ? $"1 of your game's files is not the original the list needs: an earlier install replaced it and the app has no copy to go back to, so it is left out. Verify the game's files in {verifyIn} to put it back before you install; until then anything the list builds from it is listed under \"Files that were skipped\" after the install."
-                : $"{replaced.Length} of your game's files are not the originals the list needs: an earlier install replaced them and the app has no copies to go back to, so they are left out. Verify the game's files in {verifyIn} to put them back before you install; until then anything the list builds from them is listed under \"Files that were skipped\" after the install.");
+                ? $"1 of your game's files is not the original the list needs: something replaced it, {GameFileReplacement.Cause}, and the app has no copy to go back to, so it is left out. Verify the game's files {verifyWhere} to put it back before you install; until then anything the list builds from it is listed under \"Files that were skipped\" after the install."
+                : $"{replaced.Length} of your game's files are not the originals the list needs: something replaced them, {GameFileReplacement.Cause}, and the app has no copies to go back to, so they are left out. Verify the game's files {verifyWhere} to put them back before you install; until then anything the list builds from them is listed under \"Files that were skipped\" after the install.");
         }
 
         var text = string.Join(" ", sentences);
@@ -298,7 +298,7 @@ public static class WabbajackModlistText
         ArchiveState.SignIn => "Needs you to sign in",
         ArchiveState.Manual => "Needs a manual download",
         ArchiveState.GameFile => "Game file",
-        ArchiveState.GameFileVersion => "Game file differs",
+        ArchiveState.GameFileVersion => row.GameFileReplaced ? "Game file replaced" : "Game file differs",
         ArchiveState.Unsupported => "Not available",
         ArchiveState.NotNeeded => "Not needed: Mod Organizer 2 itself",
         _ => throw new ArgumentOutOfRangeException(nameof(row), row.State, "Unknown archive state"),

@@ -8,7 +8,7 @@ namespace SilverModManager.Sdk.Native;
 /// one. The reader in <c>NexusMods.Paths</c> takes its version from the string table instead, and finds nothing in a
 /// native executable on Linux; <see cref="ReadProductVersion"/> reads that table directly. Neither source is always
 /// right: SkyrimVR.exe has a 1.0.0.0 placeholder in this numeric block and the real version only in the string table,
-/// so <c>GameExecutableVersion</c> tries the string table first and falls back to this block.
+/// so <c>GameExecutableVersion</c> prefers the string table and falls back to this block; <see cref="ReadVersions"/> returns both from one scan.
 /// </summary>
 public static class PeFileVersion
 {
@@ -46,7 +46,24 @@ public static class PeFileVersion
     {
         if (FindFixedFileInfo(stream, out var ms, out var ls) < 0) return null;
 
-        return new Version((int)(ms >> 16), (int)(ms & 0xFFFF), (int)(ls >> 16), (int)(ls & 0xFFFF));
+        return ToVersion(ms, ls);
+    }
+
+    /// <summary>The two version sources of one executable: <see cref="Fixed"/> from the numeric block, <see cref="ProductVersion"/> as written in the string table.</summary>
+    public readonly record struct Versions(Version? Fixed, string? ProductVersion);
+
+    /// <summary>
+    /// Both versions from a single scan of <paramref name="stream"/>, which has to be seekable and is read from its
+    /// start. The scan for the struct is the expensive part (SkyrimVR.exe holds it 35 MB into the file), and the
+    /// string table lies right around it, so one pass serves both. Fixed is null when the file has no struct.
+    /// </summary>
+    public static Versions ReadVersions(Stream stream)
+    {
+        stream.Position = 0;
+        var at = FindFixedFileInfo(stream, out var ms, out var ls);
+        if (at < 0) return default;
+
+        return new Versions(ToVersion(ms, ls), ReadProductVersionAround(stream, at));
     }
 
     /// <summary>
@@ -54,10 +71,10 @@ public static class PeFileVersion
     /// or null when the file has no version resource or no such string. Starts from the beginning of
     /// <paramref name="stream"/>, which has to be seekable.
     /// </summary>
-    public static string? ReadProductVersion(Stream stream)
+    public static string? ReadProductVersion(Stream stream) => ReadVersions(stream).ProductVersion;
+
+    private static string? ReadProductVersionAround(Stream stream, long fixedInfo)
     {
-        stream.Position = 0;
-        var fixedInfo = FindFixedFileInfo(stream, out _, out _);
         if (fixedInfo < VersionInfoHeaderLength) return null;
 
         var start = fixedInfo - VersionInfoHeaderLength;
@@ -77,6 +94,8 @@ public static class PeFileVersion
 
         return FindString(resource.AsSpan(VersionInfoHeaderLength + FixedFileInfoLength), Level.VersionInfo);
     }
+
+    private static Version ToVersion(uint ms, uint ls) => new((int)(ms >> 16), (int)(ms & 0xFFFF), (int)(ls >> 16), (int)(ls & 0xFFFF));
 
     /// <summary>
     /// Whether the stream starts like a PE image: <c>MZ</c>, a <c>PE\0\0</c> signature where <c>e_lfanew</c> points,

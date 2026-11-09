@@ -1,4 +1,5 @@
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Wabbajack.Format;
@@ -48,9 +49,9 @@ public enum ArchiveState
 /// <paramref name="GameFileAbsent"/> is set on a <see cref="ArchiveState.GameFileVersion"/> row whose game file is not in the game folder at all, as opposed to one that is there in another version.
 /// <paramref name="GameFileReplaced"/> is set on a <see cref="ArchiveState.GameFileVersion"/> row whose game file differs from the list's
 /// copy although the game is at the version the list names: something replaced the file, and the app holds no copy of the original.
-/// <paramref name="VerifyIn"/> names where the user can put the original back (<c>Steam</c> or <c>the game's launcher</c>); it is set with <paramref name="GameFileReplaced"/>.
+/// <paramref name="InstalledFrom"/> is the store the game was installed from, set with <paramref name="GameFileReplaced"/>; it decides where the user is told to verify the game's files (see <see cref="GameFileReplacement"/>).
 /// </summary>
-public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, string? Reason, Uri? Page, LibraryFile.ReadOnly? Library, bool Opened = false, string? Note = null, bool DownloadFailed = false, bool GameFileAbsent = false, bool GameFileReplaced = false, string? VerifyIn = null)
+public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, string? Reason, Uri? Page, LibraryFile.ReadOnly? Library, bool Opened = false, string? Note = null, bool DownloadFailed = false, bool GameFileAbsent = false, bool GameFileReplaced = false, GameStore? InstalledFrom = null)
 {
     /// <summary>
     /// The library holds the archive but without the bytes of nested archives the list copies whole, so the row still
@@ -63,6 +64,31 @@ public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, st
     /// earlier failure. A Manual row the list gave without a host the app can read is never tried.
     /// </summary>
     public bool CanRetry => DownloadFailed || (State == ArchiveState.Automatic && !string.IsNullOrEmpty(Reason));
+}
+
+/// <summary>
+/// How a replaced game file is explained, shared by a row's reason (built where the plan is) and the page's banner, so
+/// the two say the same thing. The row carries the store, not text: what to say about it is chosen here, in one place.
+/// </summary>
+public static class GameFileReplacement
+{
+    /// <summary>
+    /// The cause as both texts word it. The app cannot tell an earlier install from, say, a master cleaned in xEdit,
+    /// so it is not stated flatly.
+    /// </summary>
+    public const string Cause = "most likely an earlier install";
+
+    /// <summary>
+    /// Where the user verifies the game's files, completing "Verify the game's files ...". Only a Steam game is sent to
+    /// Steam, and only GOG and Epic games are sent to Heroic. For any other store, or none, there is no launcher the
+    /// app knows of, so the user is pointed at whatever put the game there.
+    /// </summary>
+    public static string VerifyWhere(GameStore? store)
+    {
+        if (store == GameStore.Steam) return "in Steam";
+        if (store == GameStore.GOG || store == GameStore.EGS) return "in Heroic or the store's launcher";
+        return "with whatever installed the game";
+    }
 }
 
 /// <summary>

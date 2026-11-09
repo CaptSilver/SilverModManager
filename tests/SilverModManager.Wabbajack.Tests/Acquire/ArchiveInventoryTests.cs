@@ -522,7 +522,7 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         var row = plan.Rows.Single();
         row.Reason.Should().Contain("yours is 1.6.1170.0").And.NotContain("not the game's original");
         row.GameFileReplaced.Should().BeFalse();
-        row.VerifyIn.Should().BeNull();
+        row.InstalledFrom.Should().BeNull();
     }
 
     /// <summary>Replaces the game's executable with padding around a VS_FIXEDFILEINFO, the part of a native executable a version is read from.</summary>
@@ -566,12 +566,12 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         row.State.Should().Be(ArchiveState.GameFileVersion);
         row.GameFileReplaced.Should().BeTrue();
         row.GameFileAbsent.Should().BeFalse();
-        row.VerifyIn.Should().Be("Steam");
+        row.InstalledFrom.Should().Be(GameStore.Steam);
         row.Reason.Should().Be($"'{GameBsa}' is not the game's original: something replaced it, most likely an earlier install, and the app has no copy of the original to use. Verify the game's files in Steam to put it back.");
     }
 
     [Fact]
-    public async Task AReplacedGameFileOfAGameNotFromSteamSendsTheUserToTheLauncher()
+    public async Task AReplacedGameFileOfAGogGameSendsTheUserToHeroicOrTheStoresLauncher()
     {
         var state = new GameFileSourceState("SkyrimSpecialEdition", GameBsa, Hash64(GameBsaBytes), "1.6.1170.0");
         var changed = (byte[])GameBsaBytes.Clone();
@@ -585,8 +585,27 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
 
         var row = plan.Rows.Single();
         row.GameFileReplaced.Should().BeTrue();
-        row.VerifyIn.Should().Be("the game's launcher");
-        row.Reason.Should().EndWith("Verify the game's files in the game's launcher to put it back.");
+        row.InstalledFrom.Should().Be(GameStore.GOG);
+        row.Reason.Should().EndWith("Verify the game's files in Heroic or the store's launcher to put it back.");
+    }
+
+    [Theory]
+    [InlineData("Unknown")]
+    [InlineData("Manually Added")]
+    public async Task AReplacedGameFileOfAGameFromNoKnownStoreIsNeverSentToSteam(string store)
+    {
+        var state = new GameFileSourceState("SkyrimSpecialEdition", GameBsa, Hash64(GameBsaBytes), "1.6.1170.0");
+        var changed = (byte[])GameBsaBytes.Clone();
+        changed[10] ^= 0xFF;
+        var loadout = await CreateLoadout();
+        await GameBsaPath(loadout).WriteAllBytesAsync(changed);
+        await WriteExecutableVersion(loadout, new Version(1, 6, 1170, 0));
+
+        var plan = await Inventory().Build(ListWith(Entry(state, Hash64(GameBsaBytes), GameBsaBytes.Length)), Connection.Db, LookupAsIfFrom(loadout, GameStore.From(store)));
+
+        var row = plan.Rows.Single();
+        row.InstalledFrom.Should().Be(GameStore.From(store));
+        row.Reason.Should().EndWith("Verify the game's files with whatever installed the game to put it back.").And.NotContain("Steam");
     }
 
     [Fact]

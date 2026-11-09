@@ -290,10 +290,10 @@ public sealed class ArchiveInventory(
         var installed = gameFiles.InstalledVersion;
         if (installed is not null && SameVersion(installed, state.GameVersion))
         {
-            var verifyIn = gameFiles.Installation.LocatorResult.Store == GameStore.Steam ? "Steam" : "the game's launcher";
+            var store = gameFiles.Installation.LocatorResult.Store;
             return Row(archive, ArchiveState.GameFileVersion,
-                $"'{state.GameFile}' is not the game's original: something replaced it, most likely an earlier install, and the app has no copy of the original to use. Verify the game's files in {verifyIn} to put it back.")
-                with { GameFileReplaced = true, VerifyIn = verifyIn };
+                $"'{state.GameFile}' is not the game's original: something replaced it, {GameFileReplacement.Cause}, and the app has no copy of the original to use. Verify the game's files {GameFileReplacement.VerifyWhere(store)} to put it back.")
+                with { GameFileReplaced = true, InstalledFrom = store };
         }
 
         var detail = installed is null ? "your game's version could not be read" : $"yours is {installed}";

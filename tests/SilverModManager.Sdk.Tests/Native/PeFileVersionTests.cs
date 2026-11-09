@@ -216,6 +216,81 @@ public class PeFileVersionTests
         PeFileVersion.ReadProductVersion(stream).Should().BeNull();
     }
 
+    [Fact]
+    public void ReadVersions_ReturnsTheFixedWordsAndTheProductVersionStringTogether()
+    {
+        var info = FakeVersionInfo(0x0001_0000, 0, StringFileInfo(StringValue("ProductVersion", "1.4.15.0")));
+        using var stream = Around(info);
+
+        var versions = PeFileVersion.ReadVersions(stream);
+
+        versions.Fixed.Should().Be(new Version(1, 0, 0, 0));
+        versions.ProductVersion.Should().Be("1.4.15.0");
+    }
+
+    [Fact]
+    public void ReadVersions_HasNoStringWhenTheStructIsBare()
+    {
+        using var stream = Around(FixedFileInfo(StrucVersion, 0x0001_0002, 0x0003_0004));
+
+        var versions = PeFileVersion.ReadVersions(stream);
+
+        versions.Fixed.Should().Be(new Version(1, 2, 3, 4));
+        versions.ProductVersion.Should().BeNull();
+    }
+
+    [Fact]
+    public void ReadVersions_HasNothingWhenThereIsNoStruct()
+    {
+        using var stream = new MemoryStream(new byte[4096]);
+
+        var versions = PeFileVersion.ReadVersions(stream);
+
+        versions.Fixed.Should().BeNull();
+        versions.ProductVersion.Should().BeNull();
+    }
+
+    [Fact]
+    public void ReadVersions_StartsFromTheBeginningWhateverThePosition()
+    {
+        using var stream = Around(FakeVersionInfo(1, 1, StringFileInfo(StringValue("ProductVersion", "3.1"))));
+        stream.Position = stream.Length;
+
+        PeFileVersion.ReadVersions(stream).ProductVersion.Should().Be("3.1");
+    }
+
+    [Fact]
+    public void ReadVersions_ScansAHugeFileOnce()
+    {
+        // The struct sits at the very end, as it does in SkyrimVR.exe, so a second scan would read the file twice.
+        var info = FakeVersionInfo(0x0001_0000, 0, StringFileInfo(StringValue("ProductVersion", "1.4.15.0")));
+        var bytes = new byte[1_000_000 + info.Length];
+        Array.Fill(bytes, (byte)0xAB);
+        info.CopyTo(bytes, 1_000_000);
+        using var stream = new CountingStream(new MemoryStream(bytes));
+
+        PeFileVersion.ReadVersions(stream).ProductVersion.Should().Be("1.4.15.0");
+
+        stream.BytesRead.Should().BeLessThan(bytes.Length * 3 / 2);
+    }
+
+    private sealed class CountingStream(Stream inner) : Stream
+    {
+        public long BytesRead { get; private set; }
+        public override bool CanRead => inner.CanRead;
+        public override bool CanSeek => inner.CanSeek;
+        public override bool CanWrite => false;
+        public override long Length => inner.Length;
+        public override long Position { get => inner.Position; set => inner.Position = value; }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => Count(inner.Read(buffer, offset, count));
+        public override int Read(Span<byte> buffer) => Count(inner.Read(buffer));
+        public override long Seek(long offset, SeekOrigin origin) => inner.Seek(offset, origin);
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        private int Count(int read) { BytesRead += read; return read; }
+    }
+
     /// <summary>MZ header, e_lfanew, PE signature, COFF header and an optional header that starts with <paramref name="magic"/>.</summary>
     private static byte[] FakePe(ushort magic, bool peSignature = true)
     {
