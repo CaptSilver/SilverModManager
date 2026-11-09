@@ -439,13 +439,13 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
     /// <inheritdoc />
     /// <remarks>
-    /// Shared Proton caches are skipped even for a flagged item: the flag exists for save files, and a cache
-    /// changes on every launch.
+    /// Shared Proton caches and files no game loads are skipped even for a flagged item: the flag exists for save
+    /// files, a cache changes on every launch, and nothing makes a source file loadable.
     /// </remarks>
     public bool IsSkippedAsProtected(LoadoutItem.ReadOnly item, GamePath path)
     {
         if (!GamePathFilter.ShouldFilter(path)) return false;
-        if (IsSharedProtonCache(path)) return true;
+        if (IsSharedProtonCache(path) || NeverLoadedFiles.IsNeverLoaded(path)) return true;
 
         while (item.IsValid())
         {
@@ -789,6 +789,21 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             item.Actions = Actions.ForgetDiskState;
 
         LeaveGameWrittenFileAlone(path, ref item);
+        LeaveUnappliedNeverLoadedFileAlone(path, ref item);
+    }
+
+    /// <summary>
+    /// A source or project file (see <see cref="NeverLoadedFiles"/>) that is indexed but absent from the last applied
+    /// state was not put there by an apply, so it is not the loadout's to ingest, and the generic rules would take it
+    /// in as an external change. Tracking stops and the file stays. One that the last apply did record has an
+    /// older build's mod behind it and takes the generic path: with no loadout side it is removed like any other
+    /// file of a mod that is gone.
+    /// </summary>
+    private static void LeaveUnappliedNeverLoadedFileAlone(GamePath path, ref SyncNode item)
+    {
+        if (item.HaveLoadout || !item.HaveDisk || item.HavePrevious || !NeverLoadedFiles.IsNeverLoaded(path)) return;
+
+        item.Actions = Actions.ForgetDiskState;
     }
 
     /// <summary>
@@ -2369,7 +2384,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <remarks>
     /// Proton's shared shader caches are filtered too, see <see cref="IsSharedProtonCache"/>, and so are source and project
     /// files no game loads (see <see cref="NeverLoadedFiles"/>): a mod author's <c>src/</c> folder left in the game folder
-    /// is neither ingested nor reported as an external change.
+    /// is neither ingested nor reported as an external change. A copy an older build wrote is
+    /// still removed with its mod: its disk state entry keeps it indexed (see <see cref="IsTrackedProtectedFile"/>), and
+    /// the last applied state is what marks it as written by the app, so the delete is safe.
     /// </remarks>
     private static readonly IGamePathFilter BaseGamePathFilter = Synchronizers.GamePathFilters.Create(path => path.LocationId == LocationId.Saves || IsSharedProtonCache(path) || IsWriteProbe(path) || NeverLoadedFiles.IsNeverLoaded(path));
 

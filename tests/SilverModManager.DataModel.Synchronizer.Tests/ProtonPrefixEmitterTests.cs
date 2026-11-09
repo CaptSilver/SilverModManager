@@ -323,6 +323,31 @@ public class ProtonPrefixEmitterTests(ITestOutputHelper helper) : AStubbedGameTe
         (await Diagnose(Refresh(loadout))).Should().BeEmpty("a disabled mod deploys nothing");
     }
 
+    // Rows are added straight to the loadout: the install path no longer unpacks source files, and a loadout
+    // from an older build still holds them.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SourceFileInTheLoadout_YieldsNothing(bool allowProtectedPaths)
+    {
+        var loadout = await CreateLoadout();
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, ["src/main.cpp", "game/ok.txt"], loadout.LoadoutId, "mod");
+            await tx.Commit();
+        }
+
+        if (allowProtectedPaths)
+        {
+            var mod = LoadoutItem.FindByLoadout(Connection.Db, Refresh(loadout)).Single(item => item.Name == "mod");
+            using var tx = Connection.BeginTransaction();
+            tx.Add(mod.Id, LoadoutItem.ProtectedPathsAllowed, Null.Instance);
+            await tx.Commit();
+        }
+
+        (await Diagnose(Refresh(loadout))).Should().BeEmpty("a source file is never deployed, and allowing protected paths would not change that");
+    }
+
     [Fact]
     public async Task ModWithoutProtectedPaths_YieldsNothing()
     {

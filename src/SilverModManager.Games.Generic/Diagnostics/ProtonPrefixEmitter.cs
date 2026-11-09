@@ -112,6 +112,8 @@ public class ProtonPrefixEmitter(IFileSystem hostFileSystem) : ILoadoutDiagnosti
             var loadoutItem = item.AsLoadoutItem();
             var path = (GamePath)item.TargetPath;
             if (!loadoutItem.HasParent() || !loadoutItem.IsEnabled()) continue;
+            // Nothing the player can allow makes a source file loadable, and a loadout from an older build still holds some.
+            if (NeverLoadedFiles.IsNeverLoaded(path)) continue;
             if (!synchronizer.IsSkippedAsProtected(loadoutItem, path)) continue;
 
             var group = loadoutItem.Parent;
