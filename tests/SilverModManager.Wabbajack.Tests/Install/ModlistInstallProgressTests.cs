@@ -52,4 +52,100 @@ public class ModlistInstallProgressTests
         progress.DoneItems.Should().Be(4000);
         progress.DoneBytes.Should().Be(4000);
     }
+
+    [Fact]
+    public void AnArchiveBeingBuiltIsReportedWithItsOwnFileCountUntilItEnds()
+    {
+        var progress = new ModlistInstallProgress();
+        progress.Enter(InstallPhase.Write, totalItems: 10, totalBytes: 100);
+        var seen = new List<ModlistInstallProgress.ArchiveBuild?>();
+        using var subscription = progress.Changes.Subscribe(s => seen.Add(s.Archive));
+
+        progress.BeginArchive("Textures.bsa", number: 3, count: 12, totalFiles: 58);
+        progress.AdvanceArchive(3);
+        progress.AdvanceArchive(3);
+        progress.EndArchive(3);
+
+        seen.Should().Equal(
+            null,
+            new ModlistInstallProgress.ArchiveBuild("Textures.bsa", 3, 12, 0, 58),
+            new ModlistInstallProgress.ArchiveBuild("Textures.bsa", 3, 12, 1, 58),
+            new ModlistInstallProgress.ArchiveBuild("Textures.bsa", 3, 12, 2, 58),
+            null);
+        progress.DoneItems.Should().Be(0, "an archive's files are not items of the phase");
+    }
+
+    [Fact]
+    public void ArchivesBuildingAtTheSameTimeEachKeepTheirOwnCount()
+    {
+        var progress = new ModlistInstallProgress();
+        progress.BeginArchive("A.bsa", 1, 2, 5);
+        progress.BeginArchive("B.bsa", 2, 2, 5);
+
+        progress.AdvanceArchive(1);
+        progress.AdvanceArchive(1);
+        progress.Current.Archive.Should().Be(new ModlistInstallProgress.ArchiveBuild("A.bsa", 1, 2, 2, 5), "A reported last, so it is the one shown");
+
+        progress.AdvanceArchive(2);
+        progress.Current.Archive.Should().Be(new ModlistInstallProgress.ArchiveBuild("B.bsa", 2, 2, 1, 5));
+        progress.AdvanceArchive(1);
+        progress.Current.Archive!.DoneFiles.Should().Be(3, "B taking the report did not lose A's progress");
+    }
+
+    [Fact]
+    public void WhenTheShownArchiveEndsTheOneStillBuildingTakesItsPlace()
+    {
+        var progress = new ModlistInstallProgress();
+        progress.BeginArchive("A.bsa", 1, 2, 5);
+        progress.AdvanceArchive(1);
+        progress.BeginArchive("B.bsa", 2, 2, 5);
+
+        progress.EndArchive(2);
+
+        progress.Current.Archive.Should().Be(new ModlistInstallProgress.ArchiveBuild("A.bsa", 1, 2, 1, 5));
+
+        progress.EndArchive(1);
+        progress.Current.Archive.Should().BeNull();
+    }
+
+    [Fact]
+    public void TwoArchivesWithTheSameFileNameAreCountedSeparately()
+    {
+        var progress = new ModlistInstallProgress();
+        progress.BeginArchive("Textures.bsa", 1, 2, 4);
+        progress.BeginArchive("Textures.bsa", 2, 2, 4);
+
+        progress.AdvanceArchive(1);
+        progress.EndArchive(2);
+
+        progress.Current.Archive.Should().Be(new ModlistInstallProgress.ArchiveBuild("Textures.bsa", 1, 2, 1, 4));
+    }
+
+    [Fact]
+    public void FilesPackedIntoRunningArchivesCountAsPartOfTheItemsTheyAre()
+    {
+        var progress = new ModlistInstallProgress();
+        progress.Enter(InstallPhase.Write, totalItems: 10, totalBytes: 100);
+        progress.BeginArchive("A.bsa", 1, 2, 4);
+        progress.BeginArchive("B.bsa", 2, 2, 10);
+
+        progress.AdvanceArchive(1);
+        progress.AdvanceArchive(1);
+        progress.AdvanceArchive(2);
+        progress.Current.ArchiveItems.Should().BeApproximately(0.5 + 0.1, 1e-9);
+
+        progress.EndArchive(1);
+        progress.Current.ArchiveItems.Should().BeApproximately(0.1, 1e-9, "an ended archive is an item of the phase, which Advance counts");
+    }
+
+    [Fact]
+    public void AnArchiveWithEveryFilePackedStillHasItsLastStepToDo()
+    {
+        var progress = new ModlistInstallProgress();
+        progress.BeginArchive("A.bsa", 1, 1, 2);
+        progress.AdvanceArchive(1);
+        progress.AdvanceArchive(1);
+
+        progress.Current.ArchiveItems.Should().BeLessThan(1, "compressing and writing the archive follows the last file");
+    }
 }

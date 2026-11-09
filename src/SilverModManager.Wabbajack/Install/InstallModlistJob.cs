@@ -864,6 +864,14 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
     internal sealed class WriteState
     {
+        private int _archivesStarted;
+
+        /// <summary>How many archives this run builds, for "archive 3 of 12".</summary>
+        public int ArchiveCount { get; set; }
+
+        /// <summary>The number the next archive build gets, in the order builds start (they run side by side).</summary>
+        public int NextArchiveNumber() => Interlocked.Increment(ref _archivesStarted);
+
         /// <summary>Directive destinations, folded, to the file store hash and xxHash64 of what was written, for merges to read back and check.</summary>
         public ConcurrentDictionary<string, (FileIdentity Store, FileIdentity XxHash64)> Written { get; } = new();
 
@@ -1008,6 +1016,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     private async Task Write(Checked check, LoadoutItemGroupId groupId, AbsolutePath extrasFolder, WriteState state, IReadOnlyList<Prepared> prepared, CancellationToken cancellationToken)
     {
         Progress.Enter(InstallPhase.Write, prepared.Count, prepared.Sum(p => p.Placement.Directive.Size));
+        state.ArchiveCount = prepared.Count(p => p.Placement.Directive is CreateBsa);
         var extras = new ExtrasFolder(extrasFolder);
         var budget = MemoryBudget ?? ByteBudget.ForThisMachine();
 
@@ -2033,7 +2042,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             {
                 // Inputs the archive could not re-encode are stored as they are; the notes say which.
                 var archiveNotes = new List<string>();
-                return WithNotes(await Generated(state, directive, output => BuildArchive(check, extras, bsa, output, archiveNotes, cancellationToken), checkHash: false, cancellationToken), archiveNotes);
+                return WithNotes(await Generated(state, directive, output => BuildArchive(check, state, extras, bsa, output, archiveNotes, cancellationToken), checkHash: false, cancellationToken), archiveNotes);
             }
 
             default:
@@ -2222,11 +2231,15 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         };
     }
 
-    private async Task BuildArchive(Checked check, ExtrasFolder extras, CreateBsa bsa, Stream output, List<string> notes, CancellationToken cancellationToken)
+    private async Task BuildArchive(Checked check, WriteState state, ExtrasFolder extras, CreateBsa bsa, Stream output, List<string> notes, CancellationToken cancellationToken)
     {
         var inputs = check.BsaInputs.GetValueOrDefault(Fold(bsa.TempId)) ?? new Dictionary<string, Placement>();
         var rows = check.Plan.Rows.GroupBy(r => r.Archive.XxHash64).ToDictionary(g => g.Key, g => g.First());
         var spilled = new List<TemporaryPath>();
+        // Building can run for minutes inside one Write item, so the files going in are counted as they are packed.
+        var name = bsa.To.FileName.ToString();
+        var number = state.NextArchiveNumber();
+        Progress.BeginArchive(name, number, state.ArchiveCount, bsa.FileStates.Length);
         try
         {
             async Task<Stream> OpenInput(RelativePath path, FileState fileState)
@@ -2249,13 +2262,14 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                     throw new DirectiveSkipped(SkipKind.Transform, $"the archive '{bsa.To}' could not be built: the texture '{path}' in it could not be re-encoded to {format} and its {nameof(Ba2Dx10FileState)} records the size and format, so the original cannot stand in: {unsupported.Message}");
                 }
                 spilled.Add(temporary);
-                return temporary.Path.Read();
+                return new NotifyingStream(temporary.Path.Read(), () => Progress.AdvanceArchive(number));
             }
 
             await Transforms.BuildBsa(bsa.State, bsa.FileStates, OpenInput, output, cancellationToken);
         }
         finally
         {
+            Progress.EndArchive(number);
             foreach (var temporary in spilled) await temporary.DisposeAsync();
         }
     }

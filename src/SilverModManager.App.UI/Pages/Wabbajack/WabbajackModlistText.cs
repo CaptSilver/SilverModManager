@@ -1,3 +1,4 @@
+using System.Globalization;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Games;
@@ -24,18 +25,24 @@ public readonly record struct WabbajackPlanCounts(int Ready, int ToGet, int ByHa
 public static class WabbajackModlistText
 {
     /// <summary>The line for the current phase of an install run.</summary>
-    public static string Progress(ModlistInstallProgress.Snapshot snapshot) => snapshot.Phase switch
+    public static string Progress(ModlistInstallProgress.Snapshot snapshot)
     {
-        InstallPhase.Check => "Checking the list",
-        InstallPhase.Resolve => $"Locating files in archives: {snapshot.DoneItems} of {snapshot.TotalItems}",
-        InstallPhase.Write => $"Writing files: {snapshot.DoneItems} of {snapshot.TotalItems}",
-        InstallPhase.Order => "Ordering mods and plugins",
-        _ => throw new ArgumentOutOfRangeException(nameof(snapshot), snapshot.Phase, "Unknown install phase"),
-    };
+        // An archive build is one Write item that can run for minutes, so its own count is what moves.
+        if (snapshot.Archive is { } archive) return archive.Describe(CultureInfo.CurrentCulture);
 
-    /// <summary>How far through its own phase the run is, 0 to 1. Phases with no items count as not started.</summary>
+        return snapshot.Phase switch
+        {
+            InstallPhase.Check => "Checking the list",
+            InstallPhase.Resolve => $"Locating files in archives: {snapshot.DoneItems} of {snapshot.TotalItems}",
+            InstallPhase.Write => $"Writing files: {snapshot.DoneItems} of {snapshot.TotalItems}",
+            InstallPhase.Order => "Ordering mods and plugins",
+            _ => throw new ArgumentOutOfRangeException(nameof(snapshot), snapshot.Phase, "Unknown install phase"),
+        };
+    }
+
+    /// <summary>How far through its own phase the run is, 0 to 1. Phases with no items count as not started. The files packed into archives still being built count as part of those items, so the bar keeps moving through a long build.</summary>
     public static double Fraction(ModlistInstallProgress.Snapshot snapshot)
-        => snapshot.TotalItems <= 0 ? 0 : Math.Clamp((double)snapshot.DoneItems / snapshot.TotalItems, 0, 1);
+        => snapshot.TotalItems <= 0 ? 0 : Math.Clamp((snapshot.DoneItems + snapshot.ArchiveItems) / snapshot.TotalItems, 0, 1);
 
     /// <summary>The line for the phase of the check the page is waiting on.</summary>
     public static string Checking(PlanProgress progress) => progress.Phase switch

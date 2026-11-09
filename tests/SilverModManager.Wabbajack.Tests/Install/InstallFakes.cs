@@ -74,3 +74,37 @@ internal sealed class MismatchingArchiveTransforms : IDirectiveTransforms
         throw new ArchiveMismatchException(path.ToString(), $"'{path}' reads back from the built archive as different bytes than the file written for it");
     }
 }
+
+/// <summary>
+/// Builds archives like <see cref="ConcatenatingTransforms"/>, but each build stops after its first input until the
+/// test lets it go, so a test can look at the progress of archives that are halfway built. An archive is named by the
+/// first input it holds.
+/// </summary>
+internal sealed class GatedArchiveTransforms : IDirectiveTransforms
+{
+    private readonly ConcatenatingTransforms _inner = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, TaskCompletionSource> _reached = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, TaskCompletionSource> _release = new();
+
+    private static TaskCompletionSource Signal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Completes once the build whose first input is <paramref name="firstInput"/> has packed that input.</summary>
+    public Task Reached(string firstInput) => _reached.GetOrAdd(firstInput, _ => Signal()).Task;
+
+    /// <summary>Lets the build whose first input is <paramref name="firstInput"/> go on.</summary>
+    public void Release(string firstInput) => _release.GetOrAdd(firstInput, _ => Signal()).TrySetResult();
+
+    public Task Patch(Stream basis, Stream delta, Stream output, CancellationToken cancellationToken) => _inner.Patch(basis, delta, output, cancellationToken);
+
+    public Task Recompress(Stream dds, SilverModManager.Wabbajack.Format.ImageState target, Stream output, int parallelism, CancellationToken cancellationToken)
+        => _inner.Recompress(dds, target, output, parallelism, cancellationToken);
+
+    public async Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, FileState, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
+    {
+        var first = fileStates[0].GetProperty("Path").GetString()!.Replace('\\', '/');
+        await _inner.BuildBsa(state, fileStates[..1], openInput, output, cancellationToken);
+        _reached.GetOrAdd(first, _ => Signal()).TrySetResult();
+        await _release.GetOrAdd(first, _ => Signal()).Task.WaitAsync(cancellationToken);
+        await _inner.BuildBsa(state, fileStates[1..], openInput, output, cancellationToken);
+    }
+}

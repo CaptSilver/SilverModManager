@@ -13,7 +13,25 @@ public sealed class ModlistInstallProgress
 {
     private readonly object _lock = new();
     private readonly BehaviorSubject<Snapshot> _subject = new(Snapshot.Empty);
+    // Every archive being built, by its number, with when it last reported. Several build at once, so the snapshot's
+    // single Archive slot is only the one that reported last; this is where the others keep their counts.
+    private readonly Dictionary<int, (ArchiveBuild Build, long Touched)> _building = new();
+    private long _touches;
 
+    /// <summary>
+    /// A Bethesda archive the Write phase is building. The archive is one item of the phase however long it takes, so
+    /// this carries its own count of the files packed into it, which moves while the item is still unfinished.
+    /// </summary>
+    /// <param name="Number">Which archive this is of <paramref name="Count"/>, in the order the builds started. It is also the key the model tracks the build by, so two archives with one file name stay apart.</param>
+    public sealed record ArchiveBuild(string Name, int Number, int Count, int DoneFiles, int TotalFiles)
+    {
+        /// <summary>The line the page and the log show for this build.</summary>
+        public string Describe(IFormatProvider culture)
+            => string.Create(culture, $"Building archive {Number} of {Count}: {Name} ({DoneFiles:N0} of {TotalFiles:N0} files)");
+    }
+
+    /// <param name="Archive">The archive being built, or null when none is; with several building at once, the one that reported last.</param>
+    /// <param name="ArchiveItems">How much of the phase's items the archives still being built amount to, from the files packed so far; each is less than one because the archive's last step follows its last file. An archive's item is counted by <see cref="Advance"/> when the in-order writer records it, which can be after the archive ends.</param>
     /// <param name="DroppedCount">Paths the list has that the app never installs (Mod Organizer's own files, other profiles, seeds); they leave no skip row.</param>
     /// <param name="ExtraCount">Files of tool folders, which the loadout does not deploy.</param>
     /// <param name="EstimatedExtractedSize">What the archives need on disk once the library has extracted them.</param>
@@ -27,7 +45,9 @@ public sealed class ModlistInstallProgress
         int DroppedCount,
         int ExtraCount,
         Size EstimatedExtractedSize,
-        bool IsEstimateLowerBound)
+        bool IsEstimateLowerBound,
+        ArchiveBuild? Archive = null,
+        double ArchiveItems = 0)
     {
         public static readonly Snapshot Empty = new(InstallPhase.Check, 0, 0, 0, 0, 0, 0, Size.From(0), false);
     }
@@ -59,6 +79,34 @@ public sealed class ModlistInstallProgress
 
     public void SetEstimate(Size size, bool isLowerBound)
         => Update(s => s with { EstimatedExtractedSize = size, IsEstimateLowerBound = isLowerBound });
+
+    public void BeginArchive(string name, int number, int count, int totalFiles)
+        => ChangeArchives(() => _building[number] = (new ArchiveBuild(name, number, count, 0, totalFiles), ++_touches));
+
+    /// <summary>Counts one more file packed into archive <paramref name="number"/>, which makes it the one the snapshot shows.</summary>
+    public void AdvanceArchive(int number)
+        => ChangeArchives(() =>
+        {
+            if (_building.TryGetValue(number, out var running))
+                _building[number] = (running.Build with { DoneFiles = running.Build.DoneFiles + 1 }, ++_touches);
+        });
+
+    public void EndArchive(int number) => ChangeArchives(() => _building.Remove(number));
+
+    // The slot and the partial items are worked out from every running build each time, so one ending can never
+    // hide another.
+    private void ChangeArchives(Action change)
+    {
+        lock (_lock)
+        {
+            change();
+            var shown = _building.Count == 0 ? null : _building.Values.MaxBy(b => b.Touched).Build;
+            var items = _building.Values.Sum(b => b.Build.TotalFiles <= 0 ? 0 : Math.Min((double)b.Build.DoneFiles / b.Build.TotalFiles, MostOfAnItem));
+            _subject.OnNext(_subject.Value with { Archive = shown, ArchiveItems = items });
+        }
+    }
+
+    private const double MostOfAnItem = 0.99;
 
     private void Update(Func<Snapshot, Snapshot> change)
     {

@@ -51,6 +51,30 @@ public class InstallModlistBsaTests(ITestOutputHelper helper) : InstallTestBase<
     }
 
     [Fact]
+    public async Task EveryFileGoingIntoAnArchiveIsReportedWhileItIsBuilt()
+    {
+        var list = new ListBuilder();
+        list.Directives.Add(list.Inline("TEMP_BSA_FILES/pack/meshes/one.nif", "one"));
+        list.Directives.Add(list.Inline("TEMP_BSA_FILES/pack/meshes/two.nif", "two"));
+        list.Directives.Add(list.Inline("TEMP_BSA_FILES/pack/meshes/three.nif", "three"));
+        list.Directives.Add(list.Bsa("mods/A/pack.bsa", "pack", "meshes/one.nif", "meshes/two.nif", "meshes/three.nif"));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+        var job = NewJob(loadout, modlist, Defaults);
+        var building = new List<ModlistInstallProgress.ArchiveBuild>();
+        using var subscription = job.Progress.Changes.Subscribe(s => { if (s.Archive is { } archive) building.Add(archive); });
+
+        await Run(job);
+
+        building.Should().Equal(
+            new ModlistInstallProgress.ArchiveBuild("pack.bsa", 1, 1, 0, 3),
+            new ModlistInstallProgress.ArchiveBuild("pack.bsa", 1, 1, 1, 3),
+            new ModlistInstallProgress.ArchiveBuild("pack.bsa", 1, 1, 2, 3),
+            new ModlistInstallProgress.ArchiveBuild("pack.bsa", 1, 1, 3, 3));
+        job.Progress.Current.Archive.Should().BeNull("a finished archive is no longer being built");
+    }
+
+    [Fact]
     public async Task AnArchiveListedBeforeItsInputsIsStillBuiltFromThem()
     {
         var list = new ListBuilder();
@@ -332,5 +356,49 @@ public class InstallModlistArchiveMismatchTests(ITestOutputHelper helper) : Inst
         skip.Reason.Should().Contain("meshes/one.nif");
         TreeOf(group).Should().NotContainKey("A");
         job.Progress.DroppedCount.Should().Be(1, "the input went into an archive that was not kept");
+    }
+}
+
+public class InstallModlistBsaProgressTests(ITestOutputHelper helper) : InstallTestBase<InstallModlistBsaProgressTests>(helper)
+{
+    private static readonly InstallOptions Defaults = new(false, new HashSet<RelativePath>());
+    private static readonly TimeSpan Patience = TimeSpan.FromSeconds(60);
+    private readonly GatedArchiveTransforms _transforms = new();
+
+    protected override IServiceCollection AddServices(IServiceCollection services)
+        => base.AddServices(services).AddSingleton<IDirectiveTransforms>(_transforms);
+
+    [Fact]
+    public async Task ArchivesBuiltAtTheSameTimeKeepReportingAfterTheOtherOneFinishes()
+    {
+        var list = new ListBuilder();
+        foreach (var name in new[] { "a1", "a2", "a3", "b1", "b2" })
+            list.Directives.Add(list.Inline($"TEMP_BSA_FILES/pack/meshes/{name}.nif", name));
+        // Results are recorded in list order, so the small archive goes first to be an item of the phase once it ends.
+        list.Directives.Add(list.Bsa("mods/B/small.bsa", "pack", "meshes/b1.nif", "meshes/b2.nif"));
+        list.Directives.Add(list.Bsa("mods/A/big.bsa", "pack", "meshes/a1.nif", "meshes/a2.nif", "meshes/a3.nif"));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+        var job = NewJob(loadout, modlist, Defaults, parallelism: 4);
+
+        var install = Run(job);
+        await Task.WhenAll(_transforms.Reached("meshes/a1.nif"), _transforms.Reached("meshes/b1.nif")).WaitAsync(Patience);
+
+        job.Progress.Current.Archive.Should().NotBeNull("both archives are half built");
+        job.Progress.Current.ArchiveItems.Should().BeApproximately(1.0 / 3 + 1.0 / 2, 1e-9, "the bar has to move while the archives are blocked");
+
+        _transforms.Release("meshes/b1.nif");
+        // The small archive is an item of the phase once it has ended; the big one is the only one left.
+        var waited = System.Diagnostics.Stopwatch.StartNew();
+        while (job.Progress.DoneItems < job.Progress.TotalItems - 1 && waited.Elapsed < Patience) await Task.Delay(20);
+        job.Progress.DoneItems.Should().Be(job.Progress.TotalItems - 1);
+
+        job.Progress.Current.Archive.Should().NotBeNull("the archive still being built must stay visible once the other has ended");
+        job.Progress.Current.Archive!.Name.Should().Be("big.bsa");
+        job.Progress.Current.Archive.DoneFiles.Should().Be(1);
+
+        _transforms.Release("meshes/a1.nif");
+        await install.WaitAsync(Patience);
+        job.Progress.Current.Archive.Should().BeNull();
     }
 }

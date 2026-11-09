@@ -31,10 +31,24 @@ public class WabbajackModlistTextTests
     }
 
     [Fact]
+    public void Progress_NamesTheArchiveBeingBuiltAndHowManyOfItsFilesAreIn()
+        => WabbajackModlistText.Progress(Progress(InstallPhase.Write, 95, 100) with { Archive = new ModlistInstallProgress.ArchiveBuild("pack.bsa", 3, 12, 40, 58) })
+            .Should().Be("Building archive 3 of 12: pack.bsa (40 of 58 files)");
+
+    [Fact]
     public void Fraction_IsTheShareOfTheCurrentPhaseAndZeroWhenThePhaseHasNoItems()
     {
         WabbajackModlistText.Fraction(Progress(InstallPhase.Write, 10, 40)).Should().BeApproximately(0.25, 1e-9);
         WabbajackModlistText.Fraction(Progress(InstallPhase.Order)).Should().Be(0);
+    }
+
+    [Fact]
+    public void Fraction_CountsTheFilesPackedIntoRunningArchivesSoTheBarMovesWhileOneIsBuilt()
+    {
+        var building = Progress(InstallPhase.Write, 20, 40) with { ArchiveItems = 0.5 };
+
+        WabbajackModlistText.Fraction(building).Should().BeApproximately(20.5 / 40, 1e-9);
+        WabbajackModlistText.Fraction(building with { DoneItems = 40, ArchiveItems = 0.99 }).Should().Be(1);
     }
 
     [Fact]

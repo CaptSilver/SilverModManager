@@ -408,4 +408,44 @@ public class InstallProgressLogTests
             "Install of Example List: Locating files in archives 50 of 100 (50%)",
             "Install of Example List: Writing files 0 of 100 (0%)");
     }
+
+    [Fact]
+    public void AnArchiveIsLoggedWhenItStartsAndEachTimeItPassesAnotherFivePercentOfItsFiles()
+    {
+        var (log, logged) = Create();
+        var write = Snap(InstallPhase.Write, 95, 100);
+
+        log.Report(write);
+        log.Report(write with { Archive = new ModlistInstallProgress.ArchiveBuild("Textures.bsa", 3, 12, 0, 200) });
+        log.Report(write with { Archive = new ModlistInstallProgress.ArchiveBuild("Textures.bsa", 3, 12, 9, 200) });
+        log.Report(write with { Archive = new ModlistInstallProgress.ArchiveBuild("Textures.bsa", 3, 12, 10, 200) });
+        log.Report(write with { Archive = new ModlistInstallProgress.ArchiveBuild("Textures.bsa", 3, 12, 11, 200) });
+        log.Report(write with { Archive = new ModlistInstallProgress.ArchiveBuild("Meshes.bsa", 4, 12, 0, 40) });
+        log.Report(write);
+
+        logged.Messages.Should().Equal(
+            "Install of Example List: Writing files 95 of 100 (95%)",
+            "Install of Example List: Building archive 3 of 12: Textures.bsa (0 of 200 files)",
+            "Install of Example List: Building archive 3 of 12: Textures.bsa (10 of 200 files)",
+            "Install of Example List: Building archive 4 of 12: Meshes.bsa (0 of 40 files)");
+    }
+
+    [Fact]
+    public void ArchivesBuildingAtTheSameTimeEachKeepLoggingTheirOwnSteps()
+    {
+        var (log, logged) = Create();
+        var write = Snap(InstallPhase.Write, 95, 100);
+
+        log.Report(write with { Archive = new ModlistInstallProgress.ArchiveBuild("Textures.bsa", 1, 2, 0, 100) });
+        log.Report(write with { Archive = new ModlistInstallProgress.ArchiveBuild("Meshes.bsa", 2, 2, 0, 100) });
+        log.Report(write with { Archive = new ModlistInstallProgress.ArchiveBuild("Textures.bsa", 1, 2, 5, 100) });
+        log.Report(write with { Archive = new ModlistInstallProgress.ArchiveBuild("Meshes.bsa", 2, 2, 5, 100) });
+        log.Report(write with { Archive = new ModlistInstallProgress.ArchiveBuild("Textures.bsa", 1, 2, 6, 100) });
+
+        logged.Messages.Skip(1).Should().Equal(
+            "Install of Example List: Building archive 1 of 2: Textures.bsa (0 of 100 files)",
+            "Install of Example List: Building archive 2 of 2: Meshes.bsa (0 of 100 files)",
+            "Install of Example List: Building archive 1 of 2: Textures.bsa (5 of 100 files)",
+            "Install of Example List: Building archive 2 of 2: Meshes.bsa (5 of 100 files)");
+    }
 }
