@@ -118,8 +118,12 @@ public static class WabbajackModlistText
         return (Size.From(total), isLowerBound);
     }
 
-    /// <summary>The same test the install job applies: only archives in the library and the game's own files count as available.</summary>
-    public static bool IsAvailable(ArchivePlanRow row) => row.State is ArchiveState.Have or ArchiveState.GameFile or ArchiveState.NotNeeded;
+    /// <summary>
+    /// The same test the install job applies (<see cref="ArchiveCheck.Of"/>): archives in the library and the game's own
+    /// files count as available. A game file that differs is available too: the job skips its directives instead of
+    /// needing a download, and putting the right version back is not something the page can ask for.
+    /// </summary>
+    public static bool IsAvailable(ArchivePlanRow row) => row.State is ArchiveState.Have or ArchiveState.GameFile or ArchiveState.GameFileVersion or ArchiveState.NotNeeded;
 
     /// <summary>Whether Install may start: every archive is available, or the user chose to go without the missing ones.</summary>
     public static bool CanInstall(ArchivePlan plan, bool skipMissingArchives)
@@ -148,21 +152,40 @@ public static class WabbajackModlistText
     /// an error. A button's own reason stays in its tooltip.
     /// </summary>
     /// <param name="installBlockedReason">Wins over Download's because it names the next step towards the goal.</param>
+    /// <param name="gameFilesNote">Comes after the install reason and before Download's, since a plan of only the game's own files would otherwise show Download's "nothing to fetch" line and never this one.</param>
     /// <param name="planSummary">What is left to get; shown when both Install and Download are allowed.</param>
     public static WabbajackStatus Status(
         string errorText,
         string installProgressText,
         string checkText, double checkFraction, bool isCheckIndeterminate,
         bool isDownloading, AcquireProgress? downloads,
-        string installBlockedReason, string downloadBlockedReason,
+        string installBlockedReason, WabbajackNote gameFilesNote, string downloadBlockedReason,
         string planSummary)
     {
         if (errorText != "") return new WabbajackStatus(errorText, null, false, true);
         var running = Running(new WabbajackInstallStatus(installProgressText, 0), checkText, checkFraction, isCheckIndeterminate, isDownloading, downloads);
         if (running.Text != "") return new WabbajackStatus("", null, false, false);
         if (installBlockedReason != "") return new WabbajackStatus(installBlockedReason, null, false, false);
+        if (!string.IsNullOrEmpty(gameFilesNote.Text)) return new WabbajackStatus(gameFilesNote.Text, null, false, gameFilesNote.IsWarning);
         if (downloadBlockedReason != "") return new WabbajackStatus(downloadBlockedReason, null, false, false);
         return new WabbajackStatus(planSummary, null, false, false);
+    }
+
+    /// <summary>
+    /// Tells the user their game differs from the one the list was made for, and what the install does about it. Empty
+    /// unless every archive is available: the status line holds one thing, and "N of M still to get" with its "Show
+    /// them" button matters more while something is still missing.
+    /// </summary>
+    public static WabbajackNote GameFilesNote(ArchivePlan plan)
+    {
+        // A file the game lacks has no copy of its own to use instead, so the sentence below would not be true of it.
+        var differing = plan.Rows.Count(row => row.State == ArchiveState.GameFileVersion && !row.GameFileAbsent);
+        if (differing == 0 || !plan.Rows.All(IsAvailable)) return new WabbajackNote("", false);
+
+        var text = differing == 1
+            ? "Your game is a different version from the one the list was made for, so 1 of its files is left out and your game's own copy is used instead. Anything the list builds from it is listed under \"Files that were skipped\" after the install."
+            : $"Your game is a different version from the one the list was made for, so {differing} of its files are left out and your game's own copies are used instead. Anything the list builds from them is listed under \"Files that were skipped\" after the install.";
+        return new WabbajackNote(text, true);
     }
 
     /// <summary>The "what is still to get" line while nothing is running.</summary>
@@ -190,25 +213,19 @@ public static class WabbajackModlistText
         if (!hasLoadout) return "Pick a loadout to install the collection into.";
         if (CanInstall(plan, skipMissingArchives)) return "";
 
-        var differing = plan.Rows.Count(row => row.State == ArchiveState.GameFileVersion);
         var incomplete = plan.Rows.Count(row => !IsAvailable(row) && row.HoldsIncompleteCopy);
-        var missing = plan.Rows.Count(row => !IsAvailable(row)) - differing - incomplete;
+        var missing = plan.Rows.Count(row => !IsAvailable(row)) - incomplete;
         var parts = new List<string>();
         if (missing > 0) parts.Add($"{missing} of {Wanted(plan)} {(missing == 1 ? "archives is" : "archives are")} not in your library yet.");
         if (incomplete > 0) parts.Add(incomplete == 1
             ? "1 archive needs downloading again: the library copy is missing archives packed inside it."
             : $"{incomplete} archives need downloading again: the library copies are missing archives packed inside them.");
-        if (differing > 0) parts.Add($"{GameFilesDiffer(differing)} from the version the list was made for.");
-        parts.Add(missing > 0 || incomplete > 0
-            ? "Get what is missing, or tick \"Skip files from missing archives\"."
-            : "Put back the game files the list was made for, or tick \"Skip files from missing archives\".");
+        parts.Add("Get what is missing, or tick \"Skip files from missing archives\".");
         return string.Join(" ", parts);
     }
 
     /// <summary>The archives the install reads: all but Mod Organizer 2, which is never installed.</summary>
     private static int Wanted(ArchivePlan plan) => plan.Rows.Count(row => row.State != ArchiveState.NotNeeded);
-
-    private static string GameFilesDiffer(int count) => count == 1 ? "1 game file differs" : $"{count} game files differ";
 
     /// <summary>Why Download is off, as a sentence for the page, or "" while it is allowed.</summary>
     public static string DownloadBlockedReason(bool isPlanning, bool isPreparing, bool planReady, bool isDownloading, ArchivePlan plan, bool isInstalling = false)
@@ -222,9 +239,8 @@ public static class WabbajackModlistText
         if (plan.Rows.Count == 0) return "The list names no archives.";
 
         var byHand = plan.Rows.Count(row => row.State is ArchiveState.Manual or ArchiveState.Unsupported);
-        var differing = plan.Rows.Count(row => row.State == ArchiveState.GameFileVersion);
         var signIn = plan.Rows.Count(row => row.State == ArchiveState.SignIn);
-        if (byHand == 0 && differing == 0 && signIn == 0) return "Every archive is already in your library or is a file of your game.";
+        if (byHand == 0 && signIn == 0) return "Every archive is already in your library or is a file of your game.";
 
         var parts = new List<string>();
         if (signIn > 0) parts.Add(signIn == 1 ? "The missing archive is on a forum you need to sign in to first." : $"{signIn} missing archives are on forums you need to sign in to first.");
@@ -233,7 +249,6 @@ public static class WabbajackModlistText
             parts.Add(byHand == 1 ? "The missing archive cannot be fetched by the app." : $"None of the {byHand} missing archives can be fetched by the app.");
             parts.Add("Each needs a manual download: use Open page on its row, or drop the file on this page.");
         }
-        if (differing > 0) parts.Add($"{GameFilesDiffer(differing)} from the version the list was made for, and downloading cannot change that.");
         return string.Join(" ", parts);
     }
 

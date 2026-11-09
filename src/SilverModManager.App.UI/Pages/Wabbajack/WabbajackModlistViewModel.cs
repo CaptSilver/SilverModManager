@@ -147,6 +147,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     [Reactive] public partial bool CanRetryDownloads { get; private set; }
     [Reactive] public partial string InstallBlockedReason { get; private set; } = "";
     [Reactive] public partial string DownloadBlockedReason { get; private set; } = "";
+
+    /// <summary>Says the game differs from the one the list was made for; empty when it does not or while archives are still to get.</summary>
+    [Reactive] public partial WabbajackNote GameFilesNote { get; private set; } = new("", false);
     [Reactive] public partial string OpenNextFiveBlockedReason { get; private set; } = "";
     [Reactive] public partial bool IsPlanning { get; private set; }
     [Reactive] public partial string CheckText { get; private set; } = "";
@@ -217,12 +220,12 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         this.WhenAnyValue(vm => vm.SkipMissingArchives, vm => vm.IsPlanning, vm => vm.IsDownloading, vm => vm.HasStartedDownloads, vm => vm.SupersededBy, vm => vm.OtherVersion)
             .Subscribe(_ => Recompute());
 
-        // Ten inputs decide the one status line; a single subscription keeps them from being refreshed by hand at every setter.
+        // Eleven inputs decide the one status line; a single subscription keeps them from being refreshed by hand at every setter.
         this.WhenAnyValue(
                 vm => vm.ErrorText, vm => vm.InstallStatus, vm => vm.CheckText, vm => vm.CheckFraction,
-                vm => vm.IsCheckIndeterminate, vm => vm.IsDownloading, vm => vm.Downloads, vm => vm.InstallBlockedReason, vm => vm.DownloadBlockedReason, vm => vm.AcquireText,
-                (error, install, check, checkFraction, indeterminate, isDownloading, downloads, installReason, downloadReason, plan) =>
-                    WabbajackModlistText.Status(error, install.Text ?? "", check, checkFraction, indeterminate, isDownloading, downloads, installReason, downloadReason, plan))
+                vm => vm.IsCheckIndeterminate, vm => vm.IsDownloading, vm => vm.Downloads, vm => vm.InstallBlockedReason, vm => vm.GameFilesNote, vm => vm.DownloadBlockedReason, vm => vm.AcquireText,
+                (error, install, check, checkFraction, indeterminate, isDownloading, downloads, installReason, gameFilesNote, downloadReason, plan) =>
+                    WabbajackModlistText.Status(error, install.Text ?? "", check, checkFraction, indeterminate, isDownloading, downloads, installReason, gameFilesNote, downloadReason, plan))
             .Subscribe(status => Status = status);
 
         // The check, the downloads and the install all report through the header, one step at a time.
@@ -833,9 +836,10 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
     private void Recompute()
     {
-        CanShowMissing = _planReady && !IsPlanning && _plan.Rows.Any(row => !WabbajackModlistText.IsAvailable(row) && row.State != ArchiveState.GameFileVersion);
+        CanShowMissing = _planReady && !IsPlanning && _plan.Rows.Any(row => !WabbajackModlistText.IsAvailable(row));
         var hasLoadout = SelectedLoadout is not null;
         InstallBlockedReason = WabbajackModlistText.InstallBlockedReason(hasLoadout, IsPlanning, _planReady, IsInstalling, _plan, SkipMissingArchives, SupersededBy, OtherVersion);
+        GameFilesNote = WabbajackModlistText.GameFilesNote(_plan);
         DownloadBlockedReason = WabbajackModlistText.DownloadBlockedReason(IsPlanning, _isPreparingDownloads, _planReady, IsDownloading, _plan, IsInstalling);
         // The acquirer works on one list at a time; starting here would abandon the other list's batch.
         var otherListRuns = _acquirer.Status is { IsRunning: true } running && running.Modlist != FileId;

@@ -501,6 +501,7 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         row.State.Should().Be(ArchiveState.GameFileVersion);
         // The stub's executable carries no version resource, so the install's own version reads as unknown here.
         row.Reason.Should().Contain("1.5.97", "the version the list was made for").And.Contain("yours is");
+        row.GameFileAbsent.Should().BeFalse("the file is there, in another version");
     }
 
     [Fact]
@@ -603,6 +604,7 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
 
         row.State.Should().Be(ArchiveState.GameFileVersion);
         row.Reason.Should().Contain("Absent.bsa");
+        row.GameFileAbsent.Should().BeTrue();
     }
 
     [Fact]

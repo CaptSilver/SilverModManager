@@ -64,6 +64,30 @@ public class WabbajackModlistInstallStateTests(IServiceProvider provider) : AUiT
         Read(loadout).Should().Be(WabbajackModlistCardState.Incomplete);
     }
 
+    [Theory]
+    [InlineData(SkipKind.KeptOriginal)]
+    [InlineData(SkipKind.ToolFolder)]
+    [InlineData(SkipKind.GameFileOwnVersion)]
+    public async Task AFinishedListWithOnlyByDesignSkipsIsInstalled(SkipKind kind)
+    {
+        var (group, loadout) = await Seed();
+        await WabbajackGroupSeed.Finish(Connection, group);
+        await WabbajackGroupSeed.AddSkip(Connection, group, loadout, kind: kind);
+
+        Read(loadout).Should().Be(WabbajackModlistCardState.Installed);
+    }
+
+    [Fact]
+    public async Task AFinishedListWithAByDesignSkipAndAMissingOneIsIncomplete()
+    {
+        var (group, loadout) = await Seed();
+        await WabbajackGroupSeed.Finish(Connection, group);
+        await WabbajackGroupSeed.AddSkip(Connection, group, loadout, "a/b.esp", SkipKind.GameFileOwnVersion);
+        await WabbajackGroupSeed.AddSkip(Connection, group, loadout, "c/d.esp", SkipKind.GameFileVersion);
+
+        Read(loadout).Should().Be(WabbajackModlistCardState.Incomplete);
+    }
+
     [Fact]
     public async Task ReadInstallCarriesTheGroupAndWhetherTheInstallFinished()
     {

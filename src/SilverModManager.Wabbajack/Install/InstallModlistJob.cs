@@ -474,6 +474,14 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             var skips = WabbajackSkippedFile.FindByGroup(Connection.Db, found.Id).ToArray();
             if (restorePoint is { } restore) SwitchToThisList(tx, found, restore, skips);
 
+            // A resumed update has already deleted the old version's notes. They are still in the db as of the restore
+            // point, and a game file the old version could not place is not one the user chose to keep.
+            if (restorePoint is null && _updateMode && _previousModlist is not null && WabbajackModlistLoadoutGroup.LastUpdateRestorePoint.TryGetValue(found, out var earlierPoint))
+            {
+                foreach (var oldNote in WabbajackSkippedFile.FindByGroup(Connection.AsOf(TxId.From(earlierPoint.Value)), found.Id))
+                    _earlierSkips.Add(oldNote.To);
+            }
+
             foreach (var skipped in skips)
             {
                 // The note is deleted with the other rows, so the directive it is about has to run again to write it.
@@ -790,7 +798,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             return new Prepared(placement, null, null, Silent: true);
 
         var reason = row.Reason ?? $"'{gameFile.GameFile}' differs from the list's copy (game version {gameFile.GameVersion})";
-        return new Prepared(placement, null, new Skip(SkipKind.GameFileVersion, reason), Silent: false);
+        // Only a file the game has can stand in for the list's copy; with none, the list still lacks the file.
+        var kind = described is null ? SkipKind.GameFileVersion : SkipKind.GameFileOwnVersion;
+        return new Prepared(placement, null, new Skip(kind, reason), Silent: false);
     }
 
     /// <summary>The member a FromArchive-family directive reads, or <see cref="DirectiveSkipped"/> saying why there is none.</summary>
@@ -1939,7 +1949,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         if (WabbajackModlistLoadoutGroup.WasDisabledByUser.TryGetValue(finished, out var note))
             tx.Retract(modlistGroup.Value, WabbajackModlistLoadoutGroup.WasDisabledByUser, note);
         // A kept original is on disk and the game loads it, and a tool folder never held the file, so only rows for content that is missing keep the list off.
-        if (!userSwitchedItOff && WabbajackSkippedFile.FindByGroup(db, modlistGroup).All(r => r.Kind.IsByDesign()) && LoadoutItem.Load(db, modlistGroup).IsDisabled)
+        if (!userSwitchedItOff && !WabbajackSkippedFile.SkipsThatKeepTheListOff(db, modlistGroup).Any() && LoadoutItem.Load(db, modlistGroup).IsDisabled)
             tx.Retract(modlistGroup.Value, LoadoutItem.Disabled, Null.Instance);
 
         await tx.Commit();

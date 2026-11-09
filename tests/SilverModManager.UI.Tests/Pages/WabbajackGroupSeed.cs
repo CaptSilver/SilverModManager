@@ -111,12 +111,12 @@ internal static class WabbajackGroupSeed
         await tx.Commit();
     }
 
-    public static async Task<EntityId> AddSkip(IConnection connection, EntityId group, LoadoutId loadout, string to = "x/y.esp")
+    public static async Task<EntityId> AddSkip(IConnection connection, EntityId group, LoadoutId loadout, string to = "x/y.esp", SkipKind kind = SkipKind.MissingArchive)
     {
         using var tx = connection.BeginTransaction();
         var skipped = new WabbajackSkippedFile.New(tx, out var id)
         {
-            GroupId = WabbajackModlistLoadoutGroupId.From(group), To = to, Reason = "missing", Kind = SkipKind.MissingArchive,
+            GroupId = WabbajackModlistLoadoutGroupId.From(group), To = to, Reason = "missing", Kind = kind,
             LoadoutItem = new LoadoutItem.New(tx, id) { Name = "skipped", LoadoutId = loadout },
         };
         return (await tx.Commit()).Remap(skipped).Id;

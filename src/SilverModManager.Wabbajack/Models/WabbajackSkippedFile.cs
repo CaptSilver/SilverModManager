@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.Attributes;
 using SilverModManager.MnemonicDB.Abstractions.Models;
 
@@ -31,15 +32,19 @@ public enum SkipKind : byte
 
     /// <summary>The directive builds a file from other files of the list (a merged patch or an archive) and its destination is a tool folder, which keeps no such files.</summary>
     ToolFolder = 7,
+
+    /// <summary>The list's copy of a game file the game already has at that path; the game loads the user's version.</summary>
+    GameFileOwnVersion = 8,
 }
 
 public static class SkipKindExtensions
 {
     /// <summary>
-    /// Whether the list leaves this out on purpose, so nothing it needs is missing: the game loads a kept original, and a
-    /// tool folder never held the file. Any other kind is something the run failed to produce and keeps the list disabled.
+    /// Whether the list leaves this out on purpose, so nothing it needs is missing: the game loads a kept original or the
+    /// user's own copy of a game file, and a tool folder never held the file. Any other kind is something the run failed
+    /// to produce and keeps the list disabled.
     /// </summary>
-    public static bool IsByDesign(this SkipKind kind) => kind is SkipKind.KeptOriginal or SkipKind.ToolFolder;
+    public static bool IsByDesign(this SkipKind kind) => kind is SkipKind.KeptOriginal or SkipKind.ToolFolder or SkipKind.GameFileOwnVersion;
 }
 
 /// <summary>
@@ -62,4 +67,11 @@ public partial class WabbajackSkippedFile : IModelDefinition
     public static readonly StringAttribute Reason = new(Namespace, nameof(Reason));
 
     public static readonly EnumByteAttribute<SkipKind> Kind = new(Namespace, nameof(Kind));
+
+    /// <summary>
+    /// The skipped files of <paramref name="group"/> that keep its list from being finished: everything but the by-design
+    /// kinds. The install's enable step, the card's state and the update review all ask here, so they cannot disagree.
+    /// </summary>
+    public static IEnumerable<ReadOnly> SkipsThatKeepTheListOff(IDb db, EntityId group)
+        => FindByGroup(db, group).Where(skipped => !skipped.Kind.IsByDesign());
 }

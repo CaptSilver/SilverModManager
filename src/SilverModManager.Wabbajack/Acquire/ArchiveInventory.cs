@@ -283,7 +283,7 @@ public sealed class ArchiveInventory(
     {
         var described = await gameFiles.Describe(state.GameFile, cancellationToken, onRead);
         if (described is null)
-            return Row(archive, ArchiveState.GameFileVersion, $"'{state.GameFile}' is not in your game folder; the list was made for game version {state.GameVersion}");
+            return Row(archive, ArchiveState.GameFileVersion, $"'{state.GameFile}' is not in your game folder; the list was made for game version {state.GameVersion}") with { GameFileAbsent = true };
 
         if (described.Value.XxHash64.Equals(state.XxHash64)) return Row(archive, ArchiveState.GameFile);
 

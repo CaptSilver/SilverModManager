@@ -71,7 +71,7 @@ public static class WabbajackModlistInstallState
 
         // The enable toggle is the user's, not the install's: a finished list they switched off is still installed.
         var finished = group.Contains(WabbajackModlistLoadoutGroup.InstalledAt);
-        var skipped = WabbajackSkippedFile.FindByGroup(db, group.WabbajackModlistLoadoutGroupId).Any();
+        var skipped = WabbajackSkippedFile.SkipsThatKeepTheListOff(db, group.Id).Any();
         var state = finished && !skipped ? WabbajackModlistCardState.Installed : WabbajackModlistCardState.Incomplete;
         return new WabbajackModlistInstall(state, group.AsCollectionGroup().CollectionGroupId, finished);
     }

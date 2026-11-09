@@ -181,7 +181,7 @@ public sealed class WabbajackCollectionUpdate : ICollectionUpdate
 
     private CollectionUpdateOutcome Applied(WabbajackModlistLoadoutGroup.ReadOnly group)
     {
-        var skipped = WabbajackSkippedFile.FindByGroup(_connection.Db, group.Id).Count(static file => file.Kind != SkipKind.KeptOriginal);
+        var skipped = WabbajackSkippedFile.SkipsThatKeepTheListOff(_connection.Db, group.Id).Count();
         var restorePoint = _updater.RestorePointOf(group);
         return new CollectionUpdateOutcome(
             Updated: true,

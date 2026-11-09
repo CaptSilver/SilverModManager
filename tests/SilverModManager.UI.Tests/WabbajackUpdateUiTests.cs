@@ -377,6 +377,26 @@ public class WabbajackUpdateUiTests(IServiceProvider provider) : AUiTest(provide
     }
 
     [Fact]
+    public async Task TheSkippedFilesCountOfAnAppliedUpdateIgnoresEveryByDesignKind()
+    {
+        var (group, two, entry) = await InstalledAndNewer();
+        var loadout = group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId;
+        await WabbajackGroupSeed.AddSkip(Connection, group.Id, loadout, "a/tool.bin", SkipKind.ToolFolder);
+        await WabbajackGroupSeed.AddSkip(Connection, group.Id, loadout, "a/Skyrim.esm", SkipKind.GameFileOwnVersion);
+        await WabbajackGroupSeed.AddSkip(Connection, group.Id, loadout, "a/kept.dds", SkipKind.KeptOriginal);
+        await WabbajackGroupSeed.AddSkip(Connection, group.Id, loadout, "a/lost.esp", SkipKind.MissingArchive);
+        var gallery = new WabbajackGalleryViewModelTests.FakeGallery();
+        gallery.ByHash[entry.MachineUrl] = LibraryFileId.From(two.Id);
+        var updater = new FakeUpdater(Provider) { RestorePoint = TxId.From(0x1234) };
+        var update = new WabbajackCollectionUpdate(With((typeof(IWabbajackGalleryService), gallery), (typeof(ModlistUpdater), updater)), group, entry);
+        await update.Review(null, CancellationToken.None);
+
+        var outcome = await update.Apply(skipMissing: true, CancellationToken.None);
+
+        outcome.Warnings.Should().Be(1, "only the file whose archive is missing is a file the update left out");
+    }
+
+    [Fact]
     public async Task ARefusedApplyIsAnOutcomeWithTheReasonAndNothingToUndo()
     {
         var (group, two, entry) = await InstalledAndNewer();

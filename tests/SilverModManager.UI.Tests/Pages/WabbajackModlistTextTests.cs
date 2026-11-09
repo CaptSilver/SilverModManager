@@ -118,15 +118,77 @@ public class WabbajackModlistTextTests
             .Should().Be("Pick a loadout to install the collection into.");
 
     [Fact]
-    public void InstallBlockedReason_CountsMissingArchivesAndGameFilesOfAnotherVersion()
+    public void InstallBlockedReason_CountsOnlyTheMissingArchiveNotTheGameFilesOfAnotherVersion()
     {
         var plan = Plan(Row(ArchiveState.Manual, "a"), Row(ArchiveState.GameFileVersion, "b"), Row(ArchiveState.GameFileVersion, "c"), Row(ArchiveState.Have, "d"));
 
         var reason = WabbajackModlistText.InstallBlockedReason(true, false, true, false, plan, false);
 
-        reason.Should().Contain("1 of 4 archives is not in your library yet")
-            .And.Contain("2 game files differ from the version the list was made for")
-            .And.Contain("Skip files from missing archives");
+        reason.Should().Be("1 of 4 archives is not in your library yet. Get what is missing, or tick \"Skip files from missing archives\".");
+    }
+
+    [Fact]
+    public void InstallBlockedReason_IsEmptyWhenOnlyGameFilesDiffer()
+        => WabbajackModlistText.InstallBlockedReason(true, false, true, false, Plan(Row(ArchiveState.GameFileVersion), Row(ArchiveState.GameFileVersion, "b"), Row(ArchiveState.Have, "c")), false)
+            .Should().BeEmpty();
+
+    [Fact]
+    public void InstallBlockedReason_CountsAGameFileVersionRowWithALibraryFileNowhere()
+    {
+        // A differing game file that also holds a library copy is available to the install, so it must not turn the count negative.
+        var plan = Plan(Row(ArchiveState.Automatic, "a"), Row(ArchiveState.GameFileVersion, "b") with { Library = default(LibraryFile.ReadOnly) });
+
+        WabbajackModlistText.InstallBlockedReason(true, false, true, false, plan, false)
+            .Should().Be("1 of 2 archives is not in your library yet. Get what is missing, or tick \"Skip files from missing archives\".");
+    }
+
+    [Fact]
+    public void IsAvailable_AgreesWithTheJobsArchiveCheckForEveryState()
+    {
+        foreach (var state in Enum.GetValues<ArchiveState>())
+        {
+            var plan = Plan(Row(state));
+            WabbajackModlistText.IsAvailable(plan.Rows[0]).Should().Be(!ArchiveCheck.Of(plan).Missing.Contains(plan.Rows[0]), $"the page and the job must agree on {state}");
+        }
+    }
+
+    [Fact]
+    public void PlanSummary_DoesNotCountDifferingGameFilesAsStillToGet()
+    {
+        WabbajackModlistText.PlanSummary(Plan(Row(ArchiveState.Have), Row(ArchiveState.GameFileVersion, "b"))).Should().Be("Every archive is available");
+        WabbajackModlistText.PlanSummary(Plan(Row(ArchiveState.Manual), Row(ArchiveState.GameFileVersion, "b"))).Should().Be("1 of 2 archives still to get");
+    }
+
+    [Fact]
+    public void GameFilesNote_CountsDifferingGameFilesInSingularAndPlural()
+    {
+        var one = WabbajackModlistText.GameFilesNote(Plan(Row(ArchiveState.Have), Row(ArchiveState.GameFileVersion, "b")));
+        var many = WabbajackModlistText.GameFilesNote(Plan(Row(ArchiveState.GameFileVersion, "a"), Row(ArchiveState.GameFileVersion, "b"), Row(ArchiveState.GameFileVersion, "c")));
+
+        one.Should().Be(new WabbajackNote("Your game is a different version from the one the list was made for, so 1 of its files is left out and your game's own copy is used instead. Anything the list builds from it is listed under \"Files that were skipped\" after the install.", true));
+        many.Should().Be(new WabbajackNote("Your game is a different version from the one the list was made for, so 3 of its files are left out and your game's own copies are used instead. Anything the list builds from them is listed under \"Files that were skipped\" after the install.", true));
+    }
+
+    [Fact]
+    public void GameFilesNote_LeavesOutGameFilesThatAreMissingFromTheGameFolder()
+    {
+        var missing = Row(ArchiveState.GameFileVersion, "b") with { GameFileAbsent = true };
+
+        WabbajackModlistText.GameFilesNote(Plan(Row(ArchiveState.Have), missing)).Text.Should().BeEmpty("there is no copy of the game's own to use instead");
+        WabbajackModlistText.GameFilesNote(Plan(missing, Row(ArchiveState.GameFileVersion, "c"))).Text.Should().Contain("so 1 of its files is left out");
+    }
+
+    [Fact]
+    public void GameFilesNote_IsEmptyWhenNoGameFileDiffers()
+        => WabbajackModlistText.GameFilesNote(Plan(Row(ArchiveState.Have), Row(ArchiveState.GameFile, "b"))).Text.Should().BeEmpty();
+
+    [Fact]
+    public void GameFilesNote_IsEmptyWhileAnyArchiveIsStillToGet()
+    {
+        var plan = Plan(Row(ArchiveState.Manual), Row(ArchiveState.GameFileVersion, "b"));
+
+        WabbajackModlistText.GameFilesNote(plan).Text.Should().BeEmpty("it would hide how many archives are still to get, and their Show them button");
+        WabbajackModlistText.PlanSummary(plan).Should().Be("1 of 2 archives still to get");
     }
 
     [Fact]
@@ -176,9 +238,9 @@ public class WabbajackModlistTextTests
         WabbajackModlistText.DownloadBlockedReason(false, false, true, false, Plan(Row(ArchiveState.Manual), Row(ArchiveState.Unsupported, "b")))
             .Should().StartWith("None of the 2 missing archives can be fetched by the app").And.Contain("Open page");
         WabbajackModlistText.DownloadBlockedReason(false, false, true, false, Plan(Row(ArchiveState.Manual), Row(ArchiveState.GameFileVersion, "b")))
-            .Should().StartWith("The missing archive cannot be fetched by the app").And.Contain("1 game file differs");
+            .Should().StartWith("The missing archive cannot be fetched by the app").And.NotContain("game file");
         WabbajackModlistText.DownloadBlockedReason(false, false, true, false, Plan(Row(ArchiveState.GameFileVersion, "b")))
-            .Should().StartWith("1 game file differs from the version the list was made for").And.Contain("downloading cannot change that");
+            .Should().Be("Every archive is already in your library or is a file of your game.");
     }
 
     [Fact]
@@ -188,11 +250,10 @@ public class WabbajackModlistTextTests
     [Fact]
     public void InstallBlockedReason_OnlyTellsYouToGetArchivesWhenSomeAreMissing()
     {
-        var onlyDiffering = WabbajackModlistText.InstallBlockedReason(true, false, true, false, Plan(Row(ArchiveState.GameFileVersion), Row(ArchiveState.Have, "b")), false);
-        onlyDiffering.Should().NotContain("Get what is missing").And.Contain("Skip files from missing archives");
+        WabbajackModlistText.InstallBlockedReason(true, false, true, false, Plan(Row(ArchiveState.GameFileVersion), Row(ArchiveState.Have, "b")), false).Should().BeEmpty();
 
         var missing = WabbajackModlistText.InstallBlockedReason(true, false, true, false, Plan(Row(ArchiveState.Manual), Row(ArchiveState.GameFileVersion, "b")), false);
-        missing.Should().Contain("Get what is missing");
+        missing.Should().Contain("Get what is missing").And.NotContain("Put back the game files");
     }
 
     [Fact]
@@ -309,8 +370,8 @@ public class WabbajackModlistTextTests
     private static WabbajackStatus Status(
         string error = "", string install = "",
         string check = "", double checkFraction = 0, bool checkIndeterminate = false,
-        AcquireProgress? downloads = null, bool isDownloading = true, string installReason = "", string downloadReason = "", string plan = "plan")
-        => WabbajackModlistText.Status(error, install, check, checkFraction, checkIndeterminate, isDownloading, downloads, installReason, downloadReason, plan);
+        AcquireProgress? downloads = null, bool isDownloading = true, string installReason = "", string downloadReason = "", string plan = "plan", string gameFilesNote = "")
+        => WabbajackModlistText.Status(error, install, check, checkFraction, checkIndeterminate, isDownloading, downloads, installReason, new WabbajackNote(gameFilesNote, gameFilesNote != ""), downloadReason, plan);
 
     [Fact]
     public void Status_ShowsAnErrorAsAWarningAheadOfARunningInstall()
@@ -388,6 +449,17 @@ public class WabbajackModlistTextTests
     public void Status_PrefersInstallsReasonOverDownloadsBecauseItNamesTheNextStep()
         => Status(installReason: "Get what is missing.", downloadReason: "Every archive is already in your library.")
             .Should().Be(new WabbajackStatus("Get what is missing.", null, false, false));
+
+    [Fact]
+    public void Status_PutsTheGameFilesNoteAboveTheDownloadReasonAndBelowTheInstallReason()
+    {
+        Status(installReason: "Pick a loadout.", gameFilesNote: "Your game differs.", downloadReason: "Every archive is already in your library.")
+            .Should().Be(new WabbajackStatus("Pick a loadout.", null, false, false));
+        Status(gameFilesNote: "Your game differs.", downloadReason: "Every archive is already in your library.")
+            .Should().Be(new WabbajackStatus("Your game differs.", null, false, true));
+        Status(gameFilesNote: "", downloadReason: "Every archive is already in your library.").Text.Should().Be("Every archive is already in your library.");
+        Status(error: "boom", gameFilesNote: "Your game differs.").Text.Should().Be("boom");
+    }
 
     [Fact]
     public void Status_FallsToDownloadsReasonWhenInstallIsAllowed()

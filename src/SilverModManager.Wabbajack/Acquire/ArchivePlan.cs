@@ -45,8 +45,9 @@ public enum ArchiveState
 /// a row that is not what its name suggests, such as a Mod Organizer 2 release the list still takes a file from.
 /// <paramref name="DownloadFailed"/> is set when the app tried to download the archive and could not; the row then waits
 /// for the user like a Manual one, but a retry can still fetch it.
+/// <paramref name="GameFileAbsent"/> is set on a <see cref="ArchiveState.GameFileVersion"/> row whose game file is not in the game folder at all, as opposed to one that is there in another version.
 /// </summary>
-public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, string? Reason, Uri? Page, LibraryFile.ReadOnly? Library, bool Opened = false, string? Note = null, bool DownloadFailed = false)
+public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, string? Reason, Uri? Page, LibraryFile.ReadOnly? Library, bool Opened = false, string? Note = null, bool DownloadFailed = false, bool GameFileAbsent = false)
 {
     /// <summary>
     /// The library holds the archive but without the bytes of nested archives the list copies whole, so the row still

@@ -284,11 +284,26 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
     }
 
     [Fact]
-    public async Task Install_IsDisabledForAGameFileOfAnotherVersion()
+    public async Task Install_IsAllowedForAGameFileOfAnotherVersionBecauseTheJobSkipsItInsteadOfNeedingADownload()
     {
         var (vm, _, _) = await Open(Plan(Row(ArchiveState.GameFileVersion, "Skyrim.exe")));
 
-        vm.CanInstall.Should().BeFalse();
+        vm.CanInstall.Should().BeTrue();
+        vm.InstallBlockedReason.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ResumeIsOnWhenOnlyGameFilesDifferAndTheStatusWarnsAboutThem()
+    {
+        var (vm, _, _) = await Open(Plan(Row(ArchiveState.Have, "mod.7z"), Row(ArchiveState.GameFileVersion, "Skyrim.esm"), Row(ArchiveState.GameFileVersion, "Update.esm")));
+        using var activation = vm.Activator.Activate();
+        await WabbajackGroupSeed.AddGroup(Connection, SomeFile.Value, vm.SelectedLoadout!.Id!.Value, "Resumable");
+
+        await EventuallyOnUi(() => vm.CanResume.Should().BeTrue("the install never finished"));
+
+        vm.CanInstall.Should().BeTrue("the Resume button runs the same command as Install");
+        vm.Status.IsWarning.Should().BeTrue();
+        vm.Status.Text.Should().StartWith("Your game is a different version from the one the list was made for, so 2 of its files are left out");
     }
 
     [Fact]
@@ -639,11 +654,13 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
     }
 
     [Fact]
-    public async Task Install_SaysWhenGameFilesDifferFromTheListsVersion()
+    public async Task Status_SaysWhenGameFilesDifferFromTheListsVersionAndInstallIsStillAllowed()
     {
         var (vm, _, _) = await Open(Plan(Row(ArchiveState.GameFileVersion, "Skyrim.exe"), Row(ArchiveState.Have, "c.7z")));
 
-        vm.InstallBlockedReason.Should().Contain("1 game file differs from the version the list was made for");
+        vm.InstallBlockedReason.Should().BeEmpty();
+        vm.Status.Text.Should().Contain("so 1 of its files is left out");
+        vm.Status.IsWarning.Should().BeTrue();
     }
 
     [Fact]
@@ -813,12 +830,12 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
     }
 
     [Fact]
-    public async Task Install_WhenOnlyGameFilesDiffer_DoesNotTellYouToGetAnything()
+    public async Task Install_WhenArchivesAreMissingAndGameFilesDiffer_CountsOnlyTheArchivesAndKeepsTheirStatusLine()
     {
-        var (vm, _, _) = await Open(Plan(Row(ArchiveState.GameFileVersion, "Skyrim.exe"), Row(ArchiveState.Have, "c.7z")));
+        var (vm, _, _) = await Open(Plan(Row(ArchiveState.GameFileVersion, "Skyrim.exe"), Row(ArchiveState.Manual, "c.7z")));
 
-        vm.InstallBlockedReason.Should().NotContain("Get what is missing");
-        vm.InstallBlockedReason.Should().Contain("Skip files from missing archives");
+        vm.InstallBlockedReason.Should().Be("1 of 2 archives is not in your library yet. Get what is missing, or tick \"Skip files from missing archives\".");
+        vm.Status.Text.Should().Be(vm.InstallBlockedReason, "the note waits until nothing is left to get");
     }
 
     private static ArchivePlanRow Held(string name, LibraryFile.ReadOnly file) => Row(ArchiveState.Have, name) with { Library = file };

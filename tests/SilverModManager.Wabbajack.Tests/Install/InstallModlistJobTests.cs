@@ -507,10 +507,74 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         var (_, group) = await Install(loadout, modlist, new InstallOptions(SkipMissingArchives: true, new HashSet<RelativePath>()));
 
         var skipped = SkipsOf(group).Should().ContainSingle().Subject;
-        skipped.Kind.Should().Be(SkipKind.GameFileVersion);
+        skipped.Kind.Should().Be(SkipKind.GameFileOwnVersion);
         skipped.To.Should().Be("Stock Game/SkyrimSE.exe");
         skipped.Reason.Should().Contain("1.5.97");
         TreeOf(group).Should().NotContainKey("Stock Game");
+    }
+
+    [Fact]
+    public async Task APlainCopyOfTheGamesOwnFileThatDiffersIsSkippedByDesignAndTheListIsSwitchedOn()
+    {
+        var other = "another version"u8.ToArray();
+        var exe = new ArchiveEntry(Hash64(other), other.Length, "SkyrimSE.exe", "",
+            new GameFileSourceState("SkyrimSpecialEdition", P("SkyrimSE.exe"), Hash64(other), "1.5.97"));
+        var list = new ListBuilder();
+        list.Archives.Add(exe);
+        list.Directives.Add(new FromArchive(P("Stock Game/SkyrimSE.exe"), Hash64(other), other.Length, new ArchiveHashPath(exe.XxHash64, [])));
+        list.Directives.Add(list.Inline("profiles/Default/modlist.txt", ""));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(SkipMissingArchives: false, new HashSet<RelativePath>()));
+
+        SkipsOf(group).Should().ContainSingle().Which.Kind.IsByDesign().Should().BeTrue("the game loads the user's own copy");
+        WabbajackSkippedFile.SkipsThatKeepTheListOff(Connection.Db, group.Id).Should().BeEmpty();
+        group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().IsDisabled.Should().BeFalse("nothing the list needs is missing");
+    }
+
+    [Fact]
+    public async Task APlainCopyOfAGameFileTheGameLacksIsNotByDesignAndKeepsTheListOff()
+    {
+        var absent = "a file this game folder does not have"u8.ToArray();
+        var dll = new ArchiveEntry(Hash64(absent), absent.Length, "openvr_api.dll", "",
+            new GameFileSourceState("SkyrimSpecialEdition", P("openvr_api.dll"), Hash64(absent), "1.5.97"));
+        var list = new ListBuilder();
+        var exe = GameExeArchive();
+        list.Archives.Add(exe);
+        // The game's own executable is what makes "Stock Game" a copy of the game folder.
+        list.Directives.Add(new FromArchive(P("Stock Game/SkyrimSE.exe"), Hash64(StubExe), StubExe.Length, new ArchiveHashPath(exe.XxHash64, [])));
+        list.Archives.Add(dll);
+        list.Directives.Add(new FromArchive(P("Stock Game/openvr_api.dll"), Hash64(absent), absent.Length, new ArchiveHashPath(dll.XxHash64, [])));
+        list.Directives.Add(list.Inline("profiles/Default/modlist.txt", ""));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(SkipMissingArchives: false, new HashSet<RelativePath>()));
+
+        var skipped = SkipsOf(group).Should().ContainSingle().Subject;
+        skipped.Kind.Should().Be(SkipKind.GameFileVersion, "the game has no copy of the file to load instead");
+        WabbajackSkippedFile.SkipsThatKeepTheListOff(Connection.Db, group.Id).Should().ContainSingle();
+        group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().IsDisabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ADirectiveThatReadsADifferingGameFileKeepsTheListOff()
+    {
+        var other = "another version"u8.ToArray();
+        var exe = new ArchiveEntry(Hash64(other), other.Length, "SkyrimSE.exe", "",
+            new GameFileSourceState("SkyrimSpecialEdition", P("SkyrimSE.exe"), Hash64(other), "1.5.97"));
+        var list = new ListBuilder();
+        list.Archives.Add(exe);
+        list.Directives.Add(new PatchedFromArchive(P("Stock Game/SkyrimSE.exe"), Xx64.From(1), 1, new ArchiveHashPath(exe.XxHash64, []), Hash64(other), list.Blob([4])));
+        list.Directives.Add(list.Inline("profiles/Default/modlist.txt", ""));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(SkipMissingArchives: true, new HashSet<RelativePath>()));
+
+        SkipsOf(group).Should().ContainSingle().Which.Kind.Should().Be(SkipKind.GameFileVersion);
+        group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().IsDisabled.Should().BeTrue("the patched file was never produced");
     }
 
     [Fact]
@@ -951,7 +1015,7 @@ public class InstallModlistTransformTests(ITestOutputHelper helper) : InstallTes
 
         var (_, group) = await Install(loadout, modlist, new InstallOptions(SkipMissingArchives: false, new HashSet<RelativePath>()));
 
-        SkipsOf(group).Should().ContainSingle().Which.Kind.Should().Be(SkipKind.GameFileVersion, "the file is reported as a differing game file, not as a download to fetch");
+        SkipsOf(group).Should().ContainSingle().Which.Kind.Should().Be(SkipKind.GameFileOwnVersion, "the file is reported as a differing game file, not as a download to fetch");
     }
 
     [Fact]

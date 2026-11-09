@@ -37,13 +37,13 @@ public class WabbajackNeedsYouTextTests
         => WabbajackNeedsYou.Heading(count).Should().Be(expected);
 
     [Theory]
-    [InlineData(WabbajackArchiveFilter.All, new[] { true, true, true, true, true })]
-    [InlineData(WabbajackArchiveFilter.NeedsYou, new[] { false, false, true, false, false })]
-    [InlineData(WabbajackArchiveFilter.Missing, new[] { false, true, true, false, true })]
-    [InlineData(WabbajackArchiveFilter.InLibrary, new[] { true, false, false, false, false })]
+    [InlineData(WabbajackArchiveFilter.All, new[] { true, true, true, true, true, true })]
+    [InlineData(WabbajackArchiveFilter.NeedsYou, new[] { false, false, true, false, false, false })]
+    [InlineData(WabbajackArchiveFilter.Missing, new[] { false, true, true, false, true, false })]
+    [InlineData(WabbajackArchiveFilter.InLibrary, new[] { true, false, false, false, false, false })]
     public void Matches_EachFilterKeepsItsOwnRows(WabbajackArchiveFilter filter, bool[] expected)
     {
-        ArchivePlanRow[] rows = [Plan(ArchiveState.Have), Plan(ArchiveState.Automatic), Plan(ArchiveState.Manual), Plan(ArchiveState.GameFile), Plan(ArchiveState.Unsupported)];
+        ArchivePlanRow[] rows = [Plan(ArchiveState.Have), Plan(ArchiveState.Automatic), Plan(ArchiveState.Manual), Plan(ArchiveState.GameFile), Plan(ArchiveState.Unsupported), Plan(ArchiveState.GameFileVersion)];
         rows.Select(row => WabbajackNeedsYou.Matches(filter, row)).Should().Equal(expected);
     }
 

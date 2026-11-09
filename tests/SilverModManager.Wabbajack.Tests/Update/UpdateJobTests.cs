@@ -476,6 +476,65 @@ public class UpdateJobTests(ITestOutputHelper helper) : InstallTestBase<UpdateJo
         TreeOf(resumed)["B"].Should().HaveCount(8);
     }
 
+    /// <summary>A list that places <c>Stock Game/d3d11.dll</c> from an archive that is not in the library.</summary>
+    private async Task<WabbajackModlistLibraryFile.ReadOnly> AddListWithAnAbsentRootDll(params IEnumerable<(string Folder, string File, string Text)>[] files)
+    {
+        var list = new ListBuilder();
+        var absent = new ArchiveEntry(Xx64.From(0x4D), 10, "d3d11.zip", "", new HttpState(new Uri("https://example.invalid/d3d11.zip"), []));
+        list.Archives.Add(absent);
+        list.Directives.Add(list.Member("Stock Game/d3d11.dll", absent, "d3d11.dll", "stock d3d11.dll"u8.ToArray()));
+        var exe = GameExeArchive();
+        list.Archives.Add(exe);
+        list.Directives.Add(new FromArchive(P("Stock Game/SkyrimSE.exe"), Hash64(StubExe), StubExe.Length, new ArchiveHashPath(exe.XxHash64, [])));
+        list.Directives.Add(list.Remapped("ModOrganizer.ini", "[General]\nselected_profile=@ByteArray(Default)\n"));
+        list.Directives.Add(list.Inline("ModOrganizer.exe", "exe"));
+        var all = files.SelectMany(f => f).ToArray();
+        foreach (var (folder, file, text) in all) list.Directives.Add(list.Inline($"mods/{folder}/{file}", text));
+        list.Directives.Add(list.Inline("profiles/Default/modlist.txt", string.Concat(all.Select(f => f.Folder).Distinct().Select(f => $"+{f}\n"))));
+        return await AddModlist(list.ToList("Test list"), list.Blobs);
+    }
+
+    [Fact]
+    public async Task AResumedUpdateStillKnowsWhichGameFilesTheOldVersionSkipped()
+    {
+        var loadout = await CreateLoadout();
+        var skipMissing = new InstallOptions(true, new HashSet<RelativePath>());
+        var one = await AddListWithAnAbsentRootDll(FilesOf("A"));
+        var two = await AddListWithAnAbsentRootDll(FilesOf("A"), Enumerable.Range(0, 8).Select(i => F("B", $"b{i}.txt", $"B Skipped file {i}")));
+        var (_, group) = await Install(loadout, one, skipMissing);
+        SkipsOf(group).Should().Contain(s => s.To == "Stock Game/d3d11.dll", "the old version could not place the dll");
+
+        // Stopped as the write phase starts: the old version's skip notes are already gone and the new ones are not written yet.
+        var job = NewJob(loadout, two, new InstallOptions(true, new HashSet<RelativePath>(), group.WabbajackModlistLoadoutGroupId));
+        using var stop = job.Progress.Changes.Subscribe(snapshot => { if (snapshot.Phase == InstallPhase.Write) throw new IOException("The disk is full"); });
+        (await Record.ExceptionAsync(() => Run(job))).Should().BeOfType<IOException>();
+        stop.Dispose();
+        SkipsOf(Fresh(group)).Should().BeEmpty("the stop came before the run could write its own notes");
+
+        var (_, resumed) = await Install(loadout, two, skipMissing);
+
+        // The user never chose to keep this dll: the old version simply never had it. Dropping it without a word would hide that.
+        var accounted = SkipsOf(resumed).Any(s => s.To == "Stock Game/d3d11.dll") || TreeOf(resumed).GetValueOrDefault("Stock Game")?.ContainsKey("Game/d3d11.dll") == true;
+        accounted.Should().BeTrue("the resume must write the dll or say why it did not");
+    }
+
+    [Fact]
+    public async Task AReinstallAfterAFinishedUpdateStillKeepsAGameFileTheUserKept()
+    {
+        var loadout = await CreateLoadout();
+        var skipMissing = new InstallOptions(true, new HashSet<RelativePath>());
+        var one = await AddListWithAnAbsentRootDll(FilesOf("A"));
+        var two = await AddListWithRootDlls(["d3d11.dll"], FilesOf("A"));
+        var (_, group) = await Install(loadout, one, skipMissing);
+        SkipsOf(group).Should().Contain(s => s.To == "Stock Game/d3d11.dll", "the old version could not place the dll");
+        var (_, updated) = await Install(loadout, two, new InstallOptions(false, new HashSet<RelativePath> { P("d3d11.dll") }, group.WabbajackModlistLoadoutGroupId));
+        TreeOf(updated).Should().NotContainKey("Stock Game", "the user kept their dll in the current version");
+
+        var (_, reinstalled) = await Install(loadout, two, Options);
+
+        TreeOf(reinstalled).Should().NotContainKey("Stock Game", "an old version's note says nothing about a file of the current one");
+    }
+
     [Fact]
     public async Task UpdatingToTheFileAlreadyInstalledIsRefusedBeforeAnyWrite()
     {

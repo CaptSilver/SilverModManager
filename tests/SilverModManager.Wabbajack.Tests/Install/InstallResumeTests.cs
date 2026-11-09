@@ -355,6 +355,6 @@ public class InstallResumeTests(ITestOutputHelper helper) : InstallTestBase<Inst
         await loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, P("SkyrimSE.exe"))).WriteAllBytesAsync("an updated executable"u8.ToArray());
         var (_, resumed) = await Resume(loadout, modlist);
 
-        SkipsOf(resumed).Should().ContainSingle().Which.Kind.Should().Be(SkipKind.GameFileVersion);
+        SkipsOf(resumed).Should().ContainSingle().Which.Kind.Should().Be(SkipKind.GameFileOwnVersion);
     }
 }
