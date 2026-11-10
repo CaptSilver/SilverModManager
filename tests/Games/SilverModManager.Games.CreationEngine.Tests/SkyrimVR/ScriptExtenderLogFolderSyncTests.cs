@@ -4,8 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.DiagnosticSystem;
+using SilverModManager.Games.Generic.Diagnostics;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
@@ -48,9 +50,11 @@ public class ScriptExtenderLogFolderSyncTests(ITestOutputHelper helper)
         await file.WriteAllTextAsync(content);
     }
 
-    // An Overrides row an earlier build filed, with the disk state the sync would have recorded for it.
-    private async Task SeedIngested(Loadout.ReadOnly loadout, string rel, string content)
+    // An Overrides row an earlier build filed, with the disk state the sync would have recorded for it. The file holds
+    // its own relative path, because that is what AddToOverrides hashes for the row.
+    private async Task SeedIngested(Loadout.ReadOnly loadout, string rel)
     {
+        var content = rel;
         var path = new GamePath(LocationId.Preferences, rel);
         await WriteGameFile(rel, content);
         await AddToOverrides(loadout, path);
@@ -96,7 +100,7 @@ public class ScriptExtenderLogFolderSyncTests(ITestOutputHelper helper)
     public async Task AnAlreadyIngestedLogIsRetiredAndLeftOnDisk()
     {
         var loadout = await CreateLoadout();
-        await SeedIngested(loadout, "SKSE/crash-x.log", "SKSE/crash-x.log");
+        await SeedIngested(loadout, "SKSE/crash-x.log");
 
         var applied = await Synchronizer.Synchronize(Refresh(loadout));
 
@@ -112,11 +116,48 @@ public class ScriptExtenderLogFolderSyncTests(ITestOutputHelper helper)
     public async Task AnAlreadyIngestedJsonIsNotDeletedByTheFirstApply()
     {
         var loadout = await CreateLoadout();
-        await SeedIngested(loadout, "SKSE/OCUGestureSpellList.json", "SKSE/OCUGestureSpellList.json");
+        await SeedIngested(loadout, "SKSE/OCUGestureSpellList.json");
 
         var applied = await Synchronizer.Synchronize(Refresh(loadout));
 
         OverridesPaths(applied).Should().NotContain(p => p.Contains("OCUGestureSpellList"));
         Pref("SKSE/OCUGestureSpellList.json").FileExists.Should().BeTrue("the game wrote it, so the sync must not delete it");
+    }
+
+    private static readonly DiagnosticId ProtectedPathId = new("SilverModManager.Games.Generic", number: 4);
+    private static readonly DiagnosticId GameWrittenPathId = new("SilverModManager.Games.Generic", number: 8);
+
+    // A mod's own file under a protected path: the emitter files it under "the game writes this itself" or under
+    // "allow protected paths" depending on IsGameWrittenPath.
+    private async Task<Diagnostic[]> ProtectedPathDiagnostics(string rel)
+    {
+        var loadout = await CreateLoadout();
+        using (var tx = Connection.BeginTransaction())
+        {
+            var group = AddEmptyGroup(tx, loadout, "Some Mod");
+            AddFile(tx, loadout, group, new GamePath(LocationId.Preferences, rel), content: rel);
+            await tx.Commit();
+        }
+
+        var emitter = Game.DiagnosticEmitters.OfType<ProtonPrefixEmitter>().Single();
+        var diagnostics = await emitter.Diagnose(Refresh(loadout), CancellationToken.None).ToArrayAsync();
+        return diagnostics.Where(d => d.Id == ProtectedPathId || d.Id == GameWrittenPathId).ToArray();
+    }
+
+    [Fact]
+    public async Task AModFileUnderSkseIsReportedAsGameWrittenNotAsProtected()
+    {
+        var diagnostics = await ProtectedPathDiagnostics("SKSE/x.json");
+
+        diagnostics.Should().ContainSingle().Which.Id.Should().Be(GameWrittenPathId);
+        diagnostics[0].FormatDetails(ServiceProvider.GetRequiredService<IDiagnosticWriter>()).Should().Contain("SKSE/x.json");
+    }
+
+    [Fact]
+    public async Task AModSaveFileIsStillReportedAsProtected()
+    {
+        var diagnostics = await ProtectedPathDiagnostics("Saves/x.fos");
+
+        diagnostics.Should().ContainSingle().Which.Id.Should().Be(ProtectedPathId);
     }
 }
