@@ -1,13 +1,11 @@
 using FluentAssertions;
-using NexusMods.Hashing.xxHash3;
+using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
-using SilverModManager.Abstractions.Loadouts.Synchronizers;
-using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
+using SilverModManager.Games.TestFramework;
 using SilverModManager.Sdk.Games;
-using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 using Xunit;
@@ -20,6 +18,10 @@ namespace SilverModManager.DataModel.Synchronizer.Tests;
 /// </summary>
 public class ProtectedPathsOverrideTests(ITestOutputHelper helper) : AStubbedGameTest<ProtectedPathsOverrideTests>(helper)
 {
+    private readonly CapturedLogs _logs = new();
+
+    protected override IServiceCollection AddServices(IServiceCollection services) => _logs.AddTo(base.AddServices(services));
+
     private static readonly byte[] UserSaveBytes = "the player's own save"u8.ToArray();
     private static readonly byte[] ModSaveBytes = "a save shipped by a mod"u8.ToArray();
     private static readonly byte[] ReplacementBytes = "mod save that must not replace the player's"u8.ToArray();
@@ -66,16 +68,6 @@ public class ProtectedPathsOverrideTests(ITestOutputHelper helper) : AStubbedGam
         return Synchronizer.GetDiskStateForGame(metadata).Select(p => p.Path).ToList();
     }
 
-    /// <summary>Files a row at <paramref name="path"/> in the loadout's Overrides group, the way an earlier build adopted it.</summary>
-    private async Task AddToOverrides(Loadout.ReadOnly loadout, GamePath path)
-    {
-        using var tx = Connection.BeginTransaction();
-        var overrides = ((ALoadoutSynchronizer)Synchronizer).GetOrCreateOverridesGroup(tx, loadout);
-        var bytes = System.Text.Encoding.UTF8.GetBytes(path.Path.ToString());
-        OverridesGroupItems.AddFile(tx, loadout, overrides, path, FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length));
-        await tx.Commit();
-    }
-
     private IReadOnlyList<GamePath> OverridesPaths(Loadout.ReadOnly loadout)
         => LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id)
             .SelectMany(g => g.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
@@ -104,6 +96,8 @@ public class ProtectedPathsOverrideTests(ITestOutputHelper helper) : AStubbedGam
 
         OverridesPaths(applied).Should().NotContain(path => path.LocationId == LocationId.Saves);
         (await UserSave.ReadAllBytesAsync()).Should().Equal(UserSaveBytes);
+        _logs.Lines.Where(l => l.Message.StartsWith("Skipping") && l.Message.Contains("saves/old.dat"))
+            .Should().BeEmpty("a retired row no longer shows up in the tree to be skipped");
     }
 
     [Fact]
