@@ -36,6 +36,7 @@ public class SkyrimSE(IServiceProvider provider) : ACreationEngineGame<SkyrimSE>
     public override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override LootGame LootGame(GameInstallation installation) => Bethesda.Loot.Masterlists.LootGame.SkyrimSE;
     public override GamePath PluginsFile => new(LocationId.AppData, "Plugins.txt");
+    public override GamePath? ScriptExtenderLog => new GamePath(LocationId.Preferences, "SKSE/skse64.log");
     public override IPluginListMechanism PluginList(GameInstallation installation) => Mechanism;
     private static readonly IPluginListMechanism Mechanism = new AsteriskMechanism();
     public override IReadOnlyList<string> HardcodedPlugins => ["Skyrim.esm", "Update.esm", "Dawnguard.esm", "HearthFires.esm", "Dragonborn.esm"];

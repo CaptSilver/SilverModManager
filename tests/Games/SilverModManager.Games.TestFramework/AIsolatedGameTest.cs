@@ -272,13 +272,16 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
     /// Puts a file in the loadout's Overrides group, creating the group if needed, the way an adopted game-folder
     /// file is held.
     /// </summary>
-    protected async Task AddToOverrides(Loadout.ReadOnly loadout, string path)
+    protected Task AddToOverrides(Loadout.ReadOnly loadout, string path) => AddToOverrides(loadout, new GamePath(LocationId.Game, path));
+
+    /// <inheritdoc cref="AddToOverrides(Loadout.ReadOnly, string)"/>
+    protected async Task AddToOverrides(Loadout.ReadOnly loadout, GamePath path)
     {
         using var tx = Connection.BeginTransaction();
         var overridesId = LoadoutOverridesGroup.FindByOverridesFor(Connection.Db, loadout.Id).TryGetFirst(out var existing)
             ? LoadoutItemGroupId.From(existing.Id)
             : NewOverridesGroup(tx, loadout);
-        AddFile(tx, loadout, overridesId, new GamePath(LocationId.Game, path), content: path);
+        AddFile(tx, loadout, overridesId, path, content: path.Path.ToString());
         await tx.Commit();
     }
 

@@ -119,11 +119,17 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
 
     IGameInstalledContentRecognizer? ICreationEngineGame.GameInstalledContent => GameInstalledContent;
 
+    public virtual GamePath? ScriptExtenderLog => null;
+
+    public GamePath? ScriptExtenderLogFolder => ScriptExtenderLog?.Parent;
+
     // Not on ABethesdaGame: it is the base class and cannot see GameInstalledContent. The game's records are
-    // read by the recognizer only; the sync neither indexes nor reports them.
+    // read by the recognizer only; the sync neither indexes nor reports them. The script extender's log folder
+    // is the game's too: the loader, its plugins and the crash logger write there while the game runs.
     public override bool IsProtectedPath(GamePath path) =>
         base.IsProtectedPath(path)
-        || (GameInstalledContent?.RecordPaths.Any(record => path == record || path.InFolder(record)) ?? false);
+        || (GameInstalledContent?.RecordPaths.Any(record => path == record || path.InFolder(record)) ?? false)
+        || (ScriptExtenderLogFolder is { } logs && path.InFolder(logs));
 
     public virtual IReadOnlyList<GamePath> TestFileIniFiles => [];
 

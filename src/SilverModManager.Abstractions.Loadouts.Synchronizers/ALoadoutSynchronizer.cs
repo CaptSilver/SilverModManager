@@ -1723,6 +1723,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
             if (node.DiskIsGameOwn)
                 Logger.LogInformation("Leaving `{Path}` on disk: the store put the game's own bytes back over an earlier apply's file and no loadout row names it; no longer tracked", path);
+            else if (IsGameOutputOnFilteredPath(path))
+                Logger.LogInformation("Leaving `{Path}` on disk: the game or a mod's cache writes it, so it is not the loadout's; no longer tracked", path);
             else
                 Logger.LogWarning("Leaving `{Path}` on disk: it differs from what the loadout deployed, so it is the player's and no longer tracked", path);
             DiskStateEntries.Retract(tx, node);

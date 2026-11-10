@@ -38,6 +38,8 @@ public class SkyrimVR(IServiceProvider provider) : ACreationEngineGame<SkyrimVR>
     protected override string LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => "Skyrim VR";
     protected override string MyGamesFolderName(GameLocatorResult gameLocatorResult) => "Skyrim VR";
 
+    public override GamePath? ScriptExtenderLog => new GamePath(LocationId.Preferences, "SKSE/sksevr.log");
+
     protected override string[] GameAliases => ["Skyrim VR", "SkyrimVR"];
     protected override string[] StopPatterns => ["(^|/)skse(/|$)"];
     protected override GamePath? NativePluginFolder => DataPath / "SKSE/Plugins";

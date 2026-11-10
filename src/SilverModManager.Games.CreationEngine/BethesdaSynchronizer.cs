@@ -20,6 +20,13 @@ public class BethesdaSynchronizer(IServiceProvider provider, IBethesdaGame game)
     // recognises come from one set of records.
     protected override IGameInstalledContentRecognizer? GameInstalledContent => (game as ICreationEngineGame)?.GameInstalledContent;
 
+    // Everything the script extender's loader, its plugins and the crash logger write, so an Overrides row an
+    // earlier build filed for one of them is dropped on the next Apply and the file stays on disk. Not all of it
+    // is a log: a plugin's .json or .txt there would otherwise be deleted as an unowned file.
+    public override bool IsGameWrittenPath(GamePath path) =>
+        ((game as ICreationEngineGame)?.ScriptExtenderLogFolder is { } logs && path.InFolder(logs))
+        || base.IsGameWrittenPath(path);
+
     public override Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout) => game.IntrinsicFiles(loadout, provider);
 
     /// <summary>
