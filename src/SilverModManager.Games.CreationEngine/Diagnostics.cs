@@ -218,4 +218,131 @@ the game folder, not something you installed.
             .AddValue<string>("Folder")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate RepeatedCrashNamingAMod = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 10))
+        .WithTitle("Repeated crash")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{Count} crashes with one cause: {Cause}")
+        .WithDetails("""
+The game crashed {Count} times in the same place. The crash logger's reports point at one cause: {Cause}.
+
+Look at the mod **{Mod}** first. {Fix}.
+
+The files these crashes touched, and the mods that supply them:
+
+{Owners}
+
+Most recent crash: {LastSeen}. Read against {Origin}.
+
+Crashes appear here when Health Check is opened or refreshed after the game exits.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddDataReference<LoadoutItemGroupReference>("Mod")
+            .AddValue<int>("Count")
+            .AddValue<string>("Where")
+            .AddValue<string>("Cause")
+            .AddValue<string>("Fix")
+            .AddValue<MarkdownFragment>("Owners")
+            .AddValue<string>("Origin")
+            .AddValue<string>("LastSeen")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate RepeatedCrash = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 11))
+        .WithTitle("Repeated crash")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{Count} crashes while {Where}")
+        .WithDetails("""
+The game crashed {Count} times in the same place. Cause: {Cause}.
+
+{Fix}.
+
+Mods whose files the crash touched:
+
+{Owners}
+
+Most recent crash: {LastSeen}. Read against {Origin}.
+
+Crashes appear here when Health Check is opened or refreshed after the game exits.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<int>("Count")
+            .AddValue<string>("Where")
+            .AddValue<string>("Cause")
+            .AddValue<string>("Fix")
+            .AddValue<MarkdownFragment>("Owners")
+            .AddValue<string>("Origin")
+            .AddValue<string>("LastSeen")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate OneOffCrash = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 12))
+        .WithTitle("Crash seen once")
+        .WithSeverity(DiagnosticSeverity.Suggestion)
+        .WithSummary("One crash while {Where}")
+        .WithDetails("""
+The game crashed once. Cause: {Cause}.
+
+{Fix}.
+
+Seen once; the mods whose files it touched are listed so a repeat is easy to spot:
+
+{Owners}
+
+Crash time: {LastSeen}. Read against {Origin}.
+
+Crashes appear here when Health Check is opened or refreshed after the game exits.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Where")
+            .AddValue<string>("Cause")
+            .AddValue<string>("Fix")
+            .AddValue<MarkdownFragment>("Owners")
+            .AddValue<string>("Origin")
+            .AddValue<string>("LastSeen")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate StartupCrash = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 13))
+        .WithTitle("The game crashed while starting")
+        .WithSeverity(DiagnosticSeverity.Critical)
+        .WithSummary("The game crashed while starting: {Cause}")
+        .WithDetails("""
+The game crashed before it finished starting, {Count} time(s) so far. {Cause}.
+
+{Fix}.
+
+The files the crash touched, and the mods that supply them:
+
+{Owners}
+
+Most recent crash: {LastSeen}. Read against {Origin}.
+
+Crashes appear here when Health Check is opened or refreshed after the game exits.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<int>("Count")
+            .AddValue<string>("Cause")
+            .AddValue<string>("Fix")
+            .AddValue<MarkdownFragment>("Owners")
+            .AddValue<string>("Origin")
+            .AddValue<string>("LastSeen")
+        )
+        .Finish();
 }

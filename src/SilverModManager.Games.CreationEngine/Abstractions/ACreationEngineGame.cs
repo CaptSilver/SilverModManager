@@ -274,6 +274,8 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
         yield return provider.GetRequiredService<WinePrefixComponentsEmitter>();
         if (ScriptExtenderPluginFolder is not null)
             yield return new UnmanagedScriptExtenderPluginEmitter(this);
+        if (ScriptExtenderLogFolder is not null)
+            yield return new CrashReportEmitter(this, provider.GetRequiredService<ILogger<CrashReportEmitter>>());
         foreach (var emitter in base.CreateEmitters(provider))
             yield return emitter;
     }

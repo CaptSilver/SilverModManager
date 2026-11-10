@@ -24,10 +24,10 @@ public class BethesdaPinTests(IServiceProvider serviceProvider)
     private IGame[] Titles => [GameOf<CreationEngine.SkyrimSE.SkyrimSE>(), GameOf<CreationEngine.Fallout4.Fallout4>()];
 
     [Fact]
-    public void EmittersAreTheMissingMasterCheckThePluginListCheckTheIniTakeoverAndIniChangeNoticesThenThePrefixComponentCheckThePluginFolderCheckAndTheProtonPrefixCheckThenTheVisualCppRuntimeAndOpenXrChecks()
+    public void EmittersAreTheMissingMasterCheckThePluginListCheckTheIniTakeoverAndIniChangeNoticesThenThePrefixComponentCheckThePluginFolderCheckTheCrashLogCheckAndTheProtonPrefixCheckThenTheVisualCppRuntimeAndOpenXrChecks()
     {
         GameOf<CreationEngine.SkyrimSE.SkyrimSE>().DiagnosticEmitters.Select(e => e.GetType())
-            .Should().Equal(typeof(MissingMasterEmitter), typeof(PluginListReplacedEmitter), typeof(GameInisTakenOverEmitter), typeof(GameIniChangedByGameEmitter), typeof(WinePrefixComponentsEmitter), typeof(UnmanagedScriptExtenderPluginEmitter), typeof(ProtonPrefixEmitter), typeof(OldVcRuntimeEmitter), typeof(OpenXrRuntimeEmitter));
+            .Should().Equal(typeof(MissingMasterEmitter), typeof(PluginListReplacedEmitter), typeof(GameInisTakenOverEmitter), typeof(GameIniChangedByGameEmitter), typeof(WinePrefixComponentsEmitter), typeof(UnmanagedScriptExtenderPluginEmitter), typeof(CrashReportEmitter), typeof(ProtonPrefixEmitter), typeof(OldVcRuntimeEmitter), typeof(OpenXrRuntimeEmitter));
     }
 
     // Fallout 4 reads sTestFile entries from its ini, so it has one more check than Skyrim SE.
