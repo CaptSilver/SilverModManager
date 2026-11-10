@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace SilverModManager.DataModel.Synchronizer.Tests;
+namespace SilverModManager.Games.TestFramework;
 
 /// <summary>
 /// Collects every log line the test host writes, so a test can assert on what the log tells a person who reads it

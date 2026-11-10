@@ -6,6 +6,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Games.TestFramework;
 using Xunit;
 
 namespace SilverModManager.DataModel.Synchronizer.Tests;

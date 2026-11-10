@@ -24,15 +24,14 @@ namespace SilverModManager.Games.CreationEngine.Tests.SkyrimVR;
 public class ScriptExtenderLogFolderSyncTests(ITestOutputHelper helper)
     : AIsolatedGameTest<ScriptExtenderLogFolderSyncTests, CreationEngine.SkyrimVR.SkyrimVR>(helper)
 {
-    private readonly RecordingLog Log = new();
+    private readonly CapturedLogs _logs = new();
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
-        return base.AddServices(services)
+        return _logs.AddTo(base.AddServices(services)
             .AddDiagnosticWriter()
             .AddCreationEngine()
-            .AddUniversalGameLocator<CreationEngine.SkyrimVR.SkyrimVR>(new Version("1.4.15"), locationsFileSystem: IsolatedKnownFolders.Create)
-            .AddLogging(b => b.AddProvider(Log));
+            .AddUniversalGameLocator<CreationEngine.SkyrimVR.SkyrimVR>(new Version("1.4.15"), locationsFileSystem: IsolatedKnownFolders.Create));
     }
 
     private AbsolutePath Pref(string rel) => GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Preferences, rel));
@@ -106,7 +105,7 @@ public class ScriptExtenderLogFolderSyncTests(ITestOutputHelper helper)
         (await Pref("SKSE/crash-x.log").ReadAllTextAsync()).Should().Be("SKSE/crash-x.log");
         DiskStateEntry.FindByGame(applied.Db, applied.Installation).Select(e => ((GamePath)e.Path).Path.ToString())
             .Should().NotContain(p => p.StartsWith("SKSE/"));
-        Log.Entries.Should().NotContain(e => e.Level >= LogLevel.Warning && e.Message.Contains("crash-x.log"));
+        _logs.Lines.Should().NotContain(e => e.Level >= LogLevel.Warning && e.Message.Contains("crash-x.log"));
     }
 
     [Fact]

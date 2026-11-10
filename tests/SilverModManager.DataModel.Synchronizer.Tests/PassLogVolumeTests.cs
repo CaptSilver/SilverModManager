@@ -6,6 +6,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Games.TestFramework;
 using Xunit;
 
 namespace SilverModManager.DataModel.Synchronizer.Tests;

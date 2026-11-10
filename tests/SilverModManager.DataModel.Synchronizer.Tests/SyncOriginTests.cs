@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.TestFramework;
 using Xunit;
 
 namespace SilverModManager.DataModel.Synchronizer.Tests;
