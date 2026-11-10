@@ -10,6 +10,7 @@ using SilverModManager.App.UI.DiagnosticSystem;
 using SilverModManager.Games.CreationEngine.CrashLogs;
 using SilverModManager.Games.CreationEngine.Emitters;
 using SilverModManager.Games.TestFramework;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.StandardGameLocators.TestHelpers;
@@ -260,6 +261,82 @@ public class CrashReportEmitterTests(ITestOutputHelper helper)
         await Diagnose(loadout);
 
         _logs.Lines.Count(l => l.Message.StartsWith("Parsed crash log")).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ARendererInitCrashIsCriticalUntilTheGameIsLaunchedAgain()
+    {
+        var loadout = await CreateLoadout();
+        await AddLoadedFiles(loadout, "renderer-init.log");
+        await WriteLog("renderer-init.log", lastWriteUtc: DateTime.UtcNow.AddHours(-1));
+
+        var before = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+        before.Id.Should().Be(Startup);
+        before.Severity.Should().Be(DiagnosticSeverity.Critical);
+        Details(before).Should().NotContain("launched since");
+
+        var launchLog = LogFolder / "sksevr.log";
+        await launchLog.WriteAllTextAsync("loader started");
+        File.SetLastWriteTimeUtc(launchLog.ToString(), DateTime.UtcNow);
+
+        var after = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+        after.Id.Should().Be(Startup);
+        after.Severity.Should().Be(DiagnosticSeverity.Warning);
+        Details(after).Should().Contain("launched since");
+    }
+
+    [Fact]
+    public async Task AMissingMastersLogIsCritical()
+    {
+        var loadout = await CreateLoadout();
+        await AddLoadedFiles(loadout, "missing-masters.log");
+        await WriteLog("missing-masters.log");
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        diagnostic.Id.Should().Be(Startup);
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
+        Details(diagnostic).Should().Contain("Missing Master");
+    }
+
+    [Fact]
+    public async Task ALogWhosePluginsAreNotThisLoadoutsIsLabelledAndNotBlamed()
+    {
+        var loadout = await CreateLoadout();
+        await AddMod(loadout, "Glowing Mushrooms", Mesh);
+        await WriteLog("enb-light-mushroom-a.log");
+        await WriteLog("enb-light-mushroom-b.log");
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        diagnostic.Id.Should().Be(Repeated);
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Suggestion);
+        Details(diagnostic).Should().Contain("another loadout").And.Contain("12 of the 12");
+        diagnostic.DataReferences.Values.OfType<LoadoutItemGroupReference>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RemovingOneModAfterTheCrashDoesNotRelabelTheGroup()
+    {
+        const string waterFixes = "Data/Landscape and Water Fixes.esp";
+        var loadout = await CreateLoadout();
+        await AddMod(loadout, "Glowing Mushrooms", Mesh);
+        var water = await AddMod(loadout, "Water Fixes", waterFixes);
+        await TwoEnbLogsFor(loadout, waterFixes);
+
+        var before = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+        before.Id.Should().Be(NamingAMod);
+        Details(before).Should().Contain("this loadout");
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Delete(water.Value, recursive: true);
+            await tx.Commit();
+        }
+
+        var after = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+        after.Id.Should().Be(NamingAMod);
+        Details(after).Should().Contain("this loadout").And.NotContain("another loadout");
     }
 
     [Fact]

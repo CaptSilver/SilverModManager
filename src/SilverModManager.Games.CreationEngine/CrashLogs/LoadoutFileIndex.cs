@@ -29,6 +29,10 @@ public sealed class LoadoutFileIndex
     /// <summary>The DLLs directly under the script extender's plugin folder.</summary>
     public IReadOnlySet<string> SkseDllNames { get; }
 
+    /// <summary>An index holding only plugin and script extender DLL names, for comparing a log's fingerprint without a loadout.</summary>
+    internal static LoadoutFileIndex FromNames(IEnumerable<string> plugins, IEnumerable<string> dlls) =>
+        new(new HashSet<GamePath>(), new HashSet<GamePath>(), new HashSet<string>(plugins, PluginNameComparer.Instance), new HashSet<string>(dlls, PluginNameComparer.Instance));
+
     public static LoadoutFileIndex For(ICreationEngineGame game, Loadout.ReadOnly loadout)
     {
         var paths = new HashSet<GamePath>();

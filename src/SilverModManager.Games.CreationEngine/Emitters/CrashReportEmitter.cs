@@ -36,6 +36,8 @@ public sealed class CrashReportEmitter(ICreationEngineGame game, ILogger<CrashRe
     private const string ThisLoadout = "this loadout";
     private const string NoLooseFile = "no loose file in this loadout supplies it";
     private const string UnknownCause = "unknown";
+    // The details template ends the fix with a full stop, so this note has none.
+    private const string LaunchedSinceNote = ". The game has been launched since";
     private const string NoFix = "Nothing in the log points at one mod, so look at the mods listed below";
 
     private readonly ICrashLogSource _source = new ScriptExtenderCrashLogSource(game);
@@ -73,13 +75,35 @@ public sealed class CrashReportEmitter(ICreationEngineGame game, ILogger<CrashRe
             var verdict = CrashCauseRules.FirstMatch(group.Representative, ownership, game);
             if (WentAway(verdict, owners, index)) continue;
 
-            yield return Render(group, ownership, verdict, unreadable);
+            var fit = LoadoutFit.Of(group.Representative, index);
+            var launchedSince = LaunchedSince(loadout.InstallationInstance, group);
+            yield return Render(group, ownership, verdict, unreadable, fit, launchedSince);
         }
     }
 
     /// <summary>Whether disabling the mod the verdict is about made its cause go away: its file is only in a disabled mod now.</summary>
     private static bool WentAway(CrashVerdict? verdict, CrashLogOwners owners, LoadoutFileIndex index) =>
         verdict?.SubjectFile is { } file && owners.OwnerOf(file) is null && index.DisabledPaths.Contains(file);
+
+    /// <summary>
+    /// Whether the script extender's loader has rewritten its launch log since the group's newest crash. The loader
+    /// does that at every launch and the crash handler never touches it, so a newer launch log means the game
+    /// started again after the crash.
+    /// </summary>
+    private bool LaunchedSince(GameInstallation installation, CrashGroup group)
+    {
+        if (game.ScriptExtenderLog is not { } launchLog) return false;
+        try
+        {
+            var file = installation.Locations.ToAbsolutePath(launchLog);
+            return file.FileExists && file.FileInfo.LastWriteTimeUtc > group.Newest.LastWriteUtc;
+        }
+        catch (IOException e)
+        {
+            logger.LogDebug(e, "Could not stat the script extender log");
+            return false;
+        }
+    }
 
     private void ForgetLogsNotIn(IReadOnlyList<CrashLogFile> files)
     {
@@ -117,7 +141,7 @@ public sealed class CrashReportEmitter(ICreationEngineGame game, ILogger<CrashRe
         return _parsed[key] = report;
     }
 
-    private Diagnostic Render(CrashGroup group, CrashOwnership ownership, CrashVerdict? verdict, IReadOnlyList<string> unreadable)
+    private Diagnostic Render(CrashGroup group, CrashOwnership ownership, CrashVerdict? verdict, IReadOnlyList<string> unreadable, LoadoutFit? fit, bool launchedSince)
     {
         var report = group.Representative;
         var where = Where(report);
@@ -126,9 +150,23 @@ public sealed class CrashReportEmitter(ICreationEngineGame game, ILogger<CrashRe
         var owners = new MarkdownFragment(Owners(ownership));
         var lastSeen = report.CrashTime ?? group.LastSeen.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 
+        // Owners of another loadout's log were resolved against this loadout's tree, so no mod is named and the card is a hint.
+        if (fit is { IsAnotherLoadout: true } other)
+        {
+            var origin = $"probably another loadout of this game: {other.Absent} of the {other.Total} plugins it loaded are not in this one";
+            Diagnostic labelled = verdict switch
+            {
+                { Startup: true } => Diagnostics.CreateStartupCrash(group.Count, cause, fix, owners, origin, lastSeen),
+                _ when group.Count >= 2 => Diagnostics.CreateRepeatedCrash(group.Count, where, cause, fix, owners, origin, lastSeen),
+                _ => Diagnostics.CreateOneOffCrash(where, cause, fix, owners, origin, lastSeen),
+            };
+            return labelled with { Severity = DiagnosticSeverity.Suggestion, MoreDetails = MoreDetails(group, ownership, unreadable) };
+        }
+
         Diagnostic diagnostic = verdict switch
         {
-            { Startup: true } => Diagnostics.CreateStartupCrash(group.Count, cause, fix, owners, ThisLoadout, lastSeen),
+            { Startup: true } => Diagnostics.CreateStartupCrash(group.Count, cause, fix + (launchedSince ? LaunchedSinceNote : ""), owners, ThisLoadout, lastSeen)
+                with { Severity = launchedSince ? DiagnosticSeverity.Warning : DiagnosticSeverity.Critical },
             { NamedMod: { } mod } when group.Count >= 2 => Diagnostics.CreateRepeatedCrashNamingAMod(mod, group.Count, where, cause, fix, owners, ThisLoadout, lastSeen),
             _ when group.Count >= 2 => Diagnostics.CreateRepeatedCrash(group.Count, where, cause, fix, owners, ThisLoadout, lastSeen),
             _ => Diagnostics.CreateOneOffCrash(where, cause, fix, owners, ThisLoadout, lastSeen),
