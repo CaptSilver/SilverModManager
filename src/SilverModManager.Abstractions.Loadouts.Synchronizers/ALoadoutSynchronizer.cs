@@ -1178,11 +1178,13 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             .Select(file => file.Path)
             .ToHashSet();
 
-        // Find all files in the overrides that match a path in the new files
+        // Find all files in the overrides that match a path in the new files, or that sit on a path the sync will
+        // never deploy to (an earlier build adopted them). Those are retired, not promoted: the tree skips them
+        // anyway, so dropping the row only stops it being listed as a loadout file and logging a warning per build.
         var toDelete = (from grp in LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemGroup().OfTypeLoadoutOverridesGroup()
             from item in grp.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath()
             let path = (GamePath)item.TargetPath
-            where versionFiles.Contains(path) || IsGameOutputOnFilteredPath(path)
+            where versionFiles.Contains(path) || IsGameOutputOnFilteredPath(path) || IsSkippedAsProtected(item.AsLoadoutItem(), path)
             select (Item: item, Promote: versionFiles.Contains(path))).ToList();
 
         // No files to process, return early

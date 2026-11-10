@@ -1,9 +1,13 @@
 using FluentAssertions;
+using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 using Xunit;
@@ -62,6 +66,22 @@ public class ProtectedPathsOverrideTests(ITestOutputHelper helper) : AStubbedGam
         return Synchronizer.GetDiskStateForGame(metadata).Select(p => p.Path).ToList();
     }
 
+    /// <summary>Files a row at <paramref name="path"/> in the loadout's Overrides group, the way an earlier build adopted it.</summary>
+    private async Task AddToOverrides(Loadout.ReadOnly loadout, GamePath path)
+    {
+        using var tx = Connection.BeginTransaction();
+        var overrides = ((ALoadoutSynchronizer)Synchronizer).GetOrCreateOverridesGroup(tx, loadout);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(path.Path.ToString());
+        OverridesGroupItems.AddFile(tx, loadout, overrides, path, FileIdentity.XxHash3(bytes.xxHash3()), Size.FromLong(bytes.Length));
+        await tx.Commit();
+    }
+
+    private IReadOnlyList<GamePath> OverridesPaths(Loadout.ReadOnly loadout)
+        => LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id)
+            .SelectMany(g => g.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
+            .Select(item => (GamePath)item.TargetPath)
+            .ToList();
+
     [Fact]
     public async Task WithoutTheFlag_ModSaveFilesAreSkipped()
     {
@@ -70,6 +90,45 @@ public class ProtectedPathsOverrideTests(ITestOutputHelper helper) : AStubbedGam
 
         ModSave.FileExists.Should().BeFalse();
         ModGameFile.FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AnOverridesRowOnAProtectedPathIsRetiredOnApply()
+    {
+        var loadout = await CreateLoadout();
+        var oldSave = new GamePath(LocationId.Saves, "saves/old.dat");
+        await AddToOverrides(loadout, oldSave);
+        OverridesPaths(Refresh(loadout)).Should().Contain(oldSave, "the row is in place before the apply");
+
+        var applied = await Synchronizer.Synchronize(Refresh(loadout));
+
+        OverridesPaths(applied).Should().NotContain(path => path.LocationId == LocationId.Saves);
+        (await UserSave.ReadAllBytesAsync()).Should().Equal(UserSaveBytes);
+    }
+
+    [Fact]
+    public async Task AModsRowOnAProtectedPathIsStillSkippedNotRetired()
+    {
+        var (loadout, mod) = await InstallMod(await CreateLoadout(), SaveModFiles(), allowProtectedPaths: false);
+
+        await Synchronizer.Synchronize(loadout);
+
+        Refresh(mod).Children.OfTypeLoadoutItemWithTargetPath()
+            .Select(file => (GamePath)file.TargetPath)
+            .Should().Contain(ModSavePath, "only the Overrides group's rows are retired");
+        ModSave.FileExists.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AnOverridesRowOnAnUnprotectedPathIsKept()
+    {
+        var loadout = await CreateLoadout();
+        var adopted = new GamePath(LocationId.Game, "game/adopted.txt");
+        await AddToOverrides(loadout, adopted);
+
+        var applied = await Synchronizer.Synchronize(Refresh(loadout));
+
+        OverridesPaths(applied).Should().Contain(adopted);
     }
 
     [Fact]
