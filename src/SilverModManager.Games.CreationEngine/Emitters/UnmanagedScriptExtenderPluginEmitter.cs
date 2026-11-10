@@ -43,20 +43,10 @@ public class UnmanagedScriptExtenderPluginEmitter(ICreationEngineGame game) : AS
         {
             cancellationToken.ThrowIfCancellationRequested();
             var diagnostic = Diagnostics.CreateUnmanagedScriptExtenderPlugin(game.DisplayName, path.Path.ToString(), folder.Path.ToString());
-            yield return OverridesGroupOf(loadout.Db, node) is { } group
+            yield return OwningGroup.Of(loadout.Db, node) is { } group
                 ? diagnostic with { Actions = [DiagnosticActions.RemoveLoadoutFile(path, group)] }
                 : diagnostic;
         }
-    }
-
-    // The row the node's loadout side points at, which is an Overrides row for a node IsUnmanaged lets through; a
-    // disk-only file has none and so nothing to remove. The action is scoped to that group so a mod placing the
-    // same file keeps its row.
-    private static EntityId? OverridesGroupOf(IDb db, SyncNode node)
-    {
-        if (!node.HaveLoadout || !node.Loadout.HaveEntityId) return null;
-        var item = LoadoutItem.Load(db, node.Loadout.EntityId);
-        return item.IsValid() && item.HasParent() ? item.ParentId : null;
     }
 
     private static bool IsUnmanaged(GamePath path, SyncNode node, ModProvidedFiles provided, IReadOnlyDictionary<GamePath, (FileIdentity Identity, Size Size)> gameInstalled)

@@ -48,6 +48,12 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
         Dictionary<string, (SyncNode Node, PluginHeader Header)> pluginHeaders = new(PluginNameComparer.Instance);
         List<string> unreadable = [];
         var installation = loadout.InstallationInstance;
+        var overrides = OverridesGroupLookup.Find(loadout);
+        LoadoutItemGroupReference GroupOf(in SyncNode node) => new()
+        {
+            TxId = loadout.Db.BasisTxId,
+            DataId = LoadoutItemGroupId.From(OwningGroup.Of(loadout.Db, node) ?? overrides),
+        };
         foreach (var (key, node) in plugins)
         {
             var header = await _game.ParseNode(node, node.Loadout.Identity, key, installation);
@@ -84,11 +90,7 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
                 if (pluginsInLoadout.TryGetValue(master, out var disabled))
                 {
                     yield return Diagnostics.CreateMissingMasterIsDisabled(
-                        new LoadoutItemGroupReference()
-                        {
-                            TxId = loadout.Db.BasisTxId,
-                            DataId = header.Value.Node.Loadout.EntityId
-                        },
+                        GroupOf(header.Value.Node),
                         header.Key,
                         master,
                         new LoadoutItemGroupReference()
@@ -102,11 +104,7 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
                 else
                 {
                     yield return Diagnostics.CreateMissingMaster(
-                        new LoadoutItemGroupReference()
-                        {
-                            TxId = loadout.Db.BasisTxId,
-                            DataId = header.Value.Node.Loadout.EntityId
-                        },
+                        GroupOf(header.Value.Node),
                         header.Key,
                         master
                     );

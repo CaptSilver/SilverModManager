@@ -2,6 +2,8 @@ using FluentAssertions;
 using SilverModManager.Games.CreationEngine.TestHelpers;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.Games.TestFramework;
@@ -96,6 +98,11 @@ public class SteamInstalledSkyrimTests(ITestOutputHelper helper) : ASteamInstall
         description.Should().Contain("Orphan.esp").And.Contain("Absent.esm");
         description.Should().NotContain("Present.esp");
         diagnostics.Should().NotContain(d => d.Id == UnreadablePluginsId);
+
+        var reference = missing[0].DataReferences.Values.OfType<LoadoutItemGroupReference>().Should().ContainSingle().Subject;
+        var group = LoadoutItemGroup.Load(Connection.Db, reference.DataId);
+        group.IsValid().Should().BeTrue("the reference must point at the group that holds Orphan.esp, not at its file row");
+        group.AsLoadoutItem().Name.Should().Be("Overrides", "Orphan.esp was found in the game folder and adopted");
     }
 
     [Fact]
