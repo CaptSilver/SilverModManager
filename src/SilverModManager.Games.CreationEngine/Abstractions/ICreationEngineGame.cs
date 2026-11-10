@@ -25,10 +25,10 @@ public interface ICreationEngineGame : IBethesdaGame
     public GamePath? ScriptExtenderPluginFolder { get; }
 
     /// <summary>The file the script extender's loader rewrites at every launch (sksevr.log, skse64.log), or null for a game without one.</summary>
-    GamePath? ScriptExtenderLog { get; }
+    public GamePath? ScriptExtenderLog { get; }
 
     /// <summary>The folder the loader, its plugins and the crash logger write into: the parent of <see cref="ScriptExtenderLog"/>.</summary>
-    GamePath? ScriptExtenderLogFolder { get; }
+    public GamePath? ScriptExtenderLogFolder { get; }
 
     /// <summary>The header layout this game's plugins use.</summary>
     public PluginFormat HeaderFormat { get; }
